@@ -124956,7 +124956,8 @@ var RemoteBrain = class extends EventEmitter2 {
     if (serverState.growth) this.state.growth = serverState.growth;
     if (serverState.grades) this.state.grades = serverState.grades;
     if (serverState.minGrade) this.state.minGrade = serverState.minGrade;
-    if (typeof serverState.canSpeak === "boolean") this.state.canSpeak = serverState.canSpeak;
+    if (typeof serverState.minGradeCleared === "boolean") this.state.minGradeCleared = serverState.minGradeCleared;
+    if (serverState.voice) this.state.voice = serverState.voice;
     if (serverState.clusters) {
       const names = ["cortex", "hippocampus", "amygdala", "basalGanglia", "cerebellum", "hypothalamus", "mystery"];
       const totalSize = names.reduce((s, n) => s + (serverState.clusters[n]?.size || 0), 0) || 1;

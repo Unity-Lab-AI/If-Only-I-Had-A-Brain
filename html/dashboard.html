@@ -983,6 +983,89 @@
       }
       return `${location.origin}/public-state.json`;
     }
+
+    // DASHDEAD.4 — AN AUTH FAILURE IS NOT A BRAIN FAILURE.
+    // "Brain server unreachable" was rendered on a brain teaching 4,257
+    // calls/min. Every lane on the origin was healthy; the ONLY failing one was
+    // /admin/ws (401, expired Forgejo session). The banner fires on exactly one
+    // condition — the admin socket did not open — and then blamed the backend
+    // for it. That sent us hunting a dead brain, cost a diagnostic round and a
+    // press, and the dashboard had the answer the whole time: it can read
+    // /public-state.json with NO auth at all.
+    //
+    // A 200 PROVES NOTHING ON THIS ORIGIN. The public vhost forwards only known
+    // routes and SPA-swallows the rest, so an unknown path returns 200 with the
+    // landing page — during this very investigation two "healthy 200" readings
+    // turned out to be the byte-identical 53,692-byte SPA shell. So this probe
+    // judges the BODY: it must parse and carry the live state shape.
+    async function probePublicBrain() {
+      try {
+        const r = await fetch(publicStateUrl(), { cache: 'no-store' });
+        const j = await r.json();
+        if (!j || j.type !== 'state' || !j.state) {
+          return { alive: false, reason: 'the snapshot parsed but is not a live state payload' };
+        }
+        const st = j.state;
+        const cur = st.curriculum || {};
+        return {
+          alive: true,
+          teachPerMin: (cur.liveness && cur.liveness.teachCallsPerMin) || 0,
+          cell: cur.currentCellKey || '?',
+          build: (st.build && st.build.short) || '?',
+          uptimeS: st.time || 0,
+          donors: (st.community && st.community.donorCount) || 0,
+        };
+      } catch (err) {
+        return { alive: false, reason: (err && err.message) || 'unreachable' };
+      }
+    }
+
+    // Rewrite the recovery banner from EVIDENCE once the admin socket fails.
+    // If the public snapshot answers with live state, the brain is up and the
+    // banner says so plus what is actually broken; if it does not, the existing
+    // backend-down copy stands and the probe's own failure reason is appended
+    // (so a silent probe is never mistaken for a silent brain).
+    async function applyDisconnectDiagnosis() {
+      const noConn = document.getElementById('no-conn-banner');
+      if (!noConn) return;
+      const title = noConn.querySelector('.title');
+      // NOTE: the banner holds TWO .details divs — the description and the
+      // retry countdown. querySelector takes the FIRST, which is the one the
+      // deployed-copy override also targets. The countdown must not be touched.
+      const details = noConn.querySelector('.details');
+      const steps = noConn.querySelector('.steps');
+      const v = await probePublicBrain();
+      if (!v.alive) {
+        if (details && !details.dataset.probeAppended) {
+          details.dataset.probeAppended = '1';
+          details.innerHTML += ' <span style="color:#f59e0b;">Public snapshot also unreachable ('
+            + String(v.reason).slice(0, 120) + ') — the backend really does look down.</span>';
+        }
+        return;
+      }
+      if (title) title.textContent = '⚠ Admin lane not authenticated — the brain is UP';
+      if (details) {
+        details.dataset.probeAppended = '';
+        details.innerHTML = 'The brain is <strong style="color:#22c55e;">alive and training</strong>'
+          + ' — <code>' + v.teachPerMin.toLocaleString() + ' teach/min</code>'
+          + ' · cell <code>' + v.cell + '</code>'
+          + ' · build <code>' + v.build + '</code>'
+          + ' · up ' + fmtDur(v.uptimeS)
+          + ' · ' + v.donors + ' donor(s). Read live from <code>/public-state.json</code>, no auth.<br>'
+          + 'What failed is the ADMIN socket <code>' + SERVER_URL + '</code>'
+          + ' — so this page cannot show controls, but nothing is wrong with the backend.';
+      }
+      if (steps) {
+        steps.innerHTML = _dashIsLocal
+          ? '<li>1. The brain-server is running and answering — only this page\'s WebSocket lane failed. Reload the tab.</li>'
+            + '<li>2. If it keeps failing, check that nothing else grabbed the port: <code>netstat -ano | findstr :7525</code></li>'
+            + '<li>3. Read-only telemetry works right now: <a href="?public=1">open the public view</a>.</li>'
+          : '<li>1. <strong>Re-authenticate Forgejo</strong> — the <code>/admin/</code> lane is gated by <code>auth_request</code>; an expired session returns 401 and the socket never opens. Open <a href="/admin/milestone" target="_blank">/admin/milestone</a>, sign in, then reload this page.</li>'
+            + '<li>2. Do NOT restart the service — it is healthy. A restart here would pause the walk for nothing.</li>'
+            + '<li>3. Need to watch her meanwhile? <a href="?public=1">Public read-only view</a> needs no auth.</li>';
+      }
+    }
+
     function startPublicPolling() {
       document.body.classList.add('public-mode');
       const url = publicStateUrl();
@@ -1058,6 +1141,11 @@
         // retry. Operator gets explicit instructions instead of just
         // a tiny "disconnected" pill (2026-06-17 live-test pain point).
         document.getElementById('no-conn-banner').classList.add('active');
+        // DASHDEAD.4 — ask the brain before blaming it. Fires on every close so
+        // a session that expires mid-run is diagnosed as an auth problem, not a
+        // dead backend. Never awaited: the reconnect schedule below must not
+        // wait on a probe.
+        applyDisconnectDiagnosis();
         // CONSOLE-NOISE GUARD — every failed WS handshake prints a red line
         // the page cannot suppress, and the fixed 3s retry painted ~20 of
         // them across a savestart/deploy window. Exponential backoff
@@ -2108,17 +2196,53 @@
         // F9 — show the donor's bind cap + the HONEST reason when it can't hold the
         // cortex matrices, instead of a mystery 0-Gn/s row.
         const bindGB = x.maxBindMB ? (x.maxBindMB / 1024).toFixed(1) + 'GB' : '';
+        // MIRRORID.5 — A RATE WITH NO FRESHNESS IS NOT A MEASUREMENT.
+        // gneuronsPerSec is a PERSISTENT donor-side field: written only when a
+        // batch completes, then kept forever. A card that stopped computing
+        // entirely kept displaying the rate it earned minutes ago, so the only
+        // honest 0 on the board belonged to the one donor that had never been
+        // primary — and that hid a bug where EVERY mirrored batch was silently
+        // dropped, for hours. computeIdle comes off stepsComputed, which
+        // advances only on a real completion.
+        const rateCell = (x.gneuronsPerSec == null) ? ''
+          : (x.computeIdle
+              ? ` · <span style="color:#ef4444" title="No batch has completed ${x.computeAdvancedAgoSec == null ? 'at all this session' : 'in ' + x.computeAdvancedAgoSec + 's'}. The Gn/s shown is the LAST value this donor earned - not a live rate.">idle${x.computeAdvancedAgoSec == null ? '' : ' ' + x.computeAdvancedAgoSec + 's'} <span style="color:#6b7280">(last ${num(x.gneuronsPerSec, 1)}Gn/s)</span></span>`
+              : ` · <span style="color:#22c55e">${num(x.gneuronsPerSec, 1)}Gn/s</span>`);
+        // SYNCPARTIAL.7 — the DENOMINATOR. "holds 1" reads as a fault; "1/17
+        // mx" reads as a sync in progress. Teach dispatch is per-matrix, so a
+        // donor missing one is filtered out of every teach batch touching it —
+        // which is exactly how a partly-synced card shows plenty of compute
+        // batches and ZERO teach ops, both numbers true.
+        const mxCell = (x.type === 'donor' && x.df7TotalMatrices)
+          ? ` · <span style="color:${x.df7HeldMatrices >= x.df7TotalMatrices ? '#22c55e' : '#f59e0b'}" title="Weight matrices this donor actually HOLDS. Teach work is offered per-matrix, so an under-synced donor can report many compute batches and zero teach ops - both readings honest.">${x.df7HeldMatrices}/${x.df7TotalMatrices} mx</span>`
+          : '';
+        // PARTMIRROR.4 — coverage is deliberate. A card too small for the full
+        // replica is fitted to a subset BY DESIGN, so its rate is
+        // proportionally smaller because it is stepping less brain. The
+        // fraction says that, instead of leaving the board to imply a dud GPU.
+        const clCell = (x.type === 'donor' && x.clusterTotal)
+          ? ` · <span style="color:#93c5fd" title="Clusters this donor is initialised for. A small card is fitted to a subset deliberately - a proportionally lower Gn/s is honest work, not a fault.">${x.clusterCoverageCount}/${x.clusterTotal} cl</span>`
+          : '';
         const gpu = x.type === 'donor'
           ? (x.bindIncapable
               ? `<span style="color:#ef4444">⚠ buffer too small for cortex (${bindGB})</span>`
-              : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'} ${x.gneuronsPerSec != null ? '· ' + num(x.gneuronsPerSec, 1) + 'Gn/s' : ''}${bindGB ? ' · bind ' + bindGB : ''}`)
+              : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'}${rateCell}${mxCell}${clCell}${bindGB ? ' · bind ' + bindGB : ''}`)
+          : '';
+        // DONORKILL.2 — the ★ carries WHAT BREAKS IF YOU KILL THIS ONE.
+        // Nothing outside the brain knew which GPU was load-bearing: the pod
+        // list, this table and the leaderboard all showed a card without
+        // showing it was THE master holding her weights. A spend-kill on the
+        // primary took the walk to 0 teach/min, and the reasoning given before
+        // that irreversible press was wrong. The consequence rides the row now.
+        const primaryMark = x.df7Primary
+          ? `<span style="color:#a78bfa;font-weight:700;" title="${x.pauseIfKilled || ''}">★</span> `
           : '';
         // FLAP — compact platform/backend cell: os·backend·cc (driver version in the tooltip), so a
         // red / 0-Gn/s donor's stack is visible at a glance. Native donor reports it; browser → —.
         const plat = x.type === 'donor'
           ? `<span title="${x.driverVersion ? 'driver ' + String(x.driverVersion).slice(0, 48) : 'driver —'}">${[x.osPlatform, x.engineBackend, x.computeCapability].filter(Boolean).join('·') || '—'}</span>`
           : '—';
-        return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${fmtDur(x.uptimeS)}</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td><td>${plat}</td></tr>`;
+        return `<tr class="${cls.trim()}" title="${x.pauseIfKilled || ''}"><td>${x.type}</td><td>${primaryMark}${nm}</td><td>${x.ip || '?'}</td><td>${fmtDur(x.uptimeS)}</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td><td>${plat}</td></tr>`;
       }).join('');
       const more = (c.total > c.shown) ? `<div class="muted" style="font-size:10px;color:#666;padding:4px 6px;">+${c.total - c.shown} more not shown</div>` : '';
       // F9 — cortex-upload binding-limit banner (honest reason, not a mystery stall).
