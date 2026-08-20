@@ -910,6 +910,39 @@ function _writeBootReason(info) {
 // dropping 5→3) so lowering the cap actually frees the disk. Only ever touches
 // numbered backup slots beyond the cap — never the main weights, the active
 // slots, or any non-slot state file.
+/**
+ * LOOPNAME.7 — REPORT THE BREADCRUMB THE PREVIOUS PROCESS LEFT BEHIND.
+ *
+ * The sync write in the lag monitor is only half a fix; a breadcrumb nobody
+ * reads is worth nothing. This runs once at boot and says, in one line, where
+ * the previous process was standing when it stopped — which is the question
+ * every incident today opened with and none of our channels could answer,
+ * because they all die with the loop.
+ *
+ * Deliberately NOT a warning when it looks clean: a normal restart leaves a
+ * breadcrumb too (the last phase before shutdown), so shouting about every one
+ * would train everyone to ignore it — the alarm-blindness this file has been
+ * burned by twice (`runner quiet ... EXPECTED`, `COMPUTE STALL 709s`). It only
+ * escalates when the evidence says the exit was NOT clean: a breadcrumb whose
+ * phase was mid-work AND whose recorded lag was already elevated.
+ */
+function _reportLastBreadcrumb() {
+  try {
+    const p = path.join(__dirname, '.last-breadcrumb.json');
+    if (!fs.existsSync(p)) return;
+    const b = JSON.parse(fs.readFileSync(p, 'utf8')) || {};
+    if (!b.at) return;
+    const ageMin = (Date.now() - Date.parse(b.at)) / 60000;
+    const rough = (b.lagMs || 0) >= 1000 || (b.phase && b.phase !== 'idle' && b.phase !== 'curriculum');
+    const line = `[Brain] LOOPNAME.7 — the PREVIOUS process's last breadcrumb: phase="${b.phase}" cell=${b.cell || '(none)'} `
+      + `after ${b.uptimeS}s uptime · lag ${b.lagMs}ms · rss ${b.rssMB}MB · donors ${b.donors} · cortexReady=${b.cortexFullyReady} `
+      + `(written ${ageMin.toFixed(1)}min ago). This is where it was standing when it stopped — the one question the WS, `
+      + `/public-state.json and the console ring all die before they can answer.`;
+    if (rough) console.warn(`${line} ⚠ It was MID-WORK, so treat this as the last known position before an unclean exit.`);
+    else console.log(line);
+  } catch { /* diagnostics never block a boot */ }
+}
+
 function _pruneStaleCheckpointSlots() {
   for (let i = CHECKPOINT_SLOTS; i <= 9; i++) {
     for (const ext of ['json', 'bin']) {
@@ -1341,6 +1374,7 @@ if (require.main === module) {
   // after dropping 5→3). Runs on BOTH resume and fresh boots; on a fresh wipe
   // the slots are already gone so it's a no-op.
   _pruneStaleCheckpointSlots();
+  _reportLastBreadcrumb();   // LOOPNAME.7 — say where the previous process died, before anything else scrolls it away
 }
 
 // Display-only scale factor (kept for boot log + state payload).
@@ -10201,6 +10235,49 @@ const _lagTimer = setInterval(() => {
   _lagAnchor = now;
   const lagMs = actualMs - _LAG_SAMPLE_MS;
   brain._lastEventLoopLagMs = lagMs > 0 ? Math.round(lagMs) : 0;
+  // ── LOOPNAME.7 (2026-08-20) — THE PRE-BLOCK BREADCRUMB, flushed to disk.
+  //
+  // Every diagnostic channel we own — admin WS, `/public-state.json`, the
+  // console ring — rides the event loop that IS the thing under investigation.
+  // When she pins we go blind at the exact moment we need eyes, and the
+  // `[EventLoop] BLOCKED` line below only ever prints AFTER the block ends: a
+  // freeze that never returns leaves nothing at all. Today spent an afternoon
+  // on precisely that shape (`PRIMARYFLOOR` / `UPLOADWD`), reading internal
+  // flags no channel exposes.
+  //
+  // This is the half that can be built without a second process: write WHERE WE
+  // ARE, SYNCHRONOUSLY, BEFORE the loop has a chance to stop. A sync write
+  // completes before control returns, so the file survives whatever happens
+  // next — including a hard freeze or an OOM kill, which is exactly when the
+  // ring and the WS are useless.
+  //
+  // Cost is bounded by writing ONLY when the phase label CHANGES, not on every
+  // 250ms sample: phases are seconds-to-minutes, the payload is ~200 bytes, and
+  // an unchanged phase writes nothing. That keeps a diagnostic from becoming the
+  // tax it is diagnosing — the RAMHEAD/CELLBOUND lesson.
+  //
+  // `.last-breadcrumb.json` is excluded from the deploy overlay's `--delete`
+  // alongside the other runtime state (`STATEWIPE.1`), so a redeploy cannot eat
+  // the evidence of the crash that prompted it.
+  try {
+    const _cc = brain.cortexCluster;
+    const _ph = (_cc && _cc._activePhase && _cc._activePhase.name)
+      || (brain._curriculumInProgress ? 'curriculum' : 'idle');
+    if (_ph !== brain._bcLastPhase) {
+      brain._bcLastPhase = _ph;
+      fs.writeFileSync(path.join(__dirname, '.last-breadcrumb.json'), JSON.stringify({
+        at: new Date().toISOString(),
+        phase: _ph,
+        cell: (_cc && _cc._currentCellKey) || null,
+        uptimeS: Math.round(process.uptime()),
+        lagMs: brain._lastEventLoopLagMs,
+        rssMB: Math.round(process.memoryUsage().rss / 1048576),
+        donors: brain._gpuClients ? brain._gpuClients.size : 0,
+        cortexFullyReady: !!(_cc && _cc._cortexFullyReady),
+        note: 'LOOPNAME.7 — written SYNCHRONOUSLY on every phase change. If the process froze or was killed, THIS is where it was. Compare `at` against the process start to see how long it survived.',
+      }));
+    }
+  } catch { /* a breadcrumb must never be the thing that breaks the loop */ }
   // HBGRACE.2 — stamp a REAL block (≥1s) so the donor heartbeat sweep can tell that a missed
   // pong was the server's own loop stalling (couldn't run the pong handler / send the ping),
   // NOT a dead donor — and extend grace instead of terminating a live, busy donor.

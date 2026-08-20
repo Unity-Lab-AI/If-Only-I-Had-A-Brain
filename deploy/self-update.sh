@@ -148,6 +148,8 @@ rsync -a --delete \
   --exclude 'server/brain-code-hash.json' \
   --exclude '.last-boot-reason.json' \
   --exclude 'server/.last-boot-reason.json' \
+  --exclude '.last-breadcrumb.json' \
+  --exclude 'server/.last-breadcrumb.json' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 
