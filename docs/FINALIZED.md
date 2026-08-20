@@ -35665,3 +35665,73 @@ Both now use the same formatter as the rest of the page (`en-US`, `month`/`day`,
 ⚠ **LATENT INCONSISTENCY, FLAGGED NOT SILENTLY CHANGED:** `tsLabel` is *always* Denver (the server's TZ is pinned), while the dashboard renders *browser-local*. Identical while viewing from Denver; they would disagree from another timezone. The documented `TZSTAMP.1` decision was "the admin's own system time", so that choice is preserved rather than quietly overridden — it needs Gee's call, not mine.
 
 **Board: 0 open, 171 closed.**
+
+---
+
+## 2026-08-20 — THE FIVE THAT NEEDED NO PRESS: a watchdog thread, a one-zone dashboard, and the hoard the hook could not see
+
+> Gee (verbatim): *"so what of this still open can we do? knowing we havent deployed al;l the updates yet"*
+> Gee (verbatim): *"do it"*
+> Gee (verbatim), on the walk sitting at `passedCellsTotal: 0` for 65 minutes: *"its doing vocab thats normal"*
+
+Seven items were filed at the end of the previous batch. This one closes **five**, and the two it leaves open are left open **with the reason written into them** so nobody re-opens them blind.
+
+The governing fact, established before any code was touched: the running server is `7ce77189` (deployed 19:28:24Z, booted 19:29:45Z) and **main is 15 commits ahead of it**. `deploy.yml` rsyncs the frontend on every push, but the node process only restarts on a press — so anything needing a boot was blocked before the work started, and anything not needing one was fair game.
+
+### `RUNPOD.17` — CLOSED on live evidence. It was open on my caution, not on a real unknown.
+
+Filed as *"the **Linux** `v0.3.25` binary from CI has **never been executed**"*, with the correct warning attached: **RUNPOD.16 was found BY RUNNING the binary, not by reading it.** So I read the donor row instead of reasoning a second time: `osPlatform: linux`, `donorAppVersion: 0.3.25`, `engineBackend: cuda`, `computeCapability: 8.6`, `maxBindMB: 45498`, **one** adapter enumerated, `primaryEligible: true`, `df7HeldMatrices: 17/17`, uptime 4,040s. The Linux binary is not unrun — **it has been carrying the walk the whole time**, and RUNPOD.16's de-dup is confirmed on a CUDA-only Linux host exactly as reasoned. No code, no press.
+
+**Bonus verify banked from the same read: `TEACHMIRROR.1` is confirmed in production.** `computeIdle: true` with `computeAdvancedAgoSec: 3905`, and the card still reads `workState: "teaching"` / `teachOps: 41319` / `teachAdvancedAgoSec: 0`. Pre-fix that A40 would have rendered **red `idle` for 65 straight minutes while saturated** — the exact misread that created the TEACHMIRROR item.
+
+### `WALKPROG.1` — CLOSED as normal, on Gee's call, and the instrument I had started was DROPPED
+
+The board read `phase 0/25 · 0 complete` and `passedCellsTotal: 0` sixty-five minutes into `ela/kindergarten`. The teach profile said what was actually happening: **`_teachWordDefinition` had burned 3,896,561ms across 988 calls — 99.7% of the cell's entire wall-clock, ~3.9s per definition** — and `cellPhasesStarted: 0` is *correct*, because it counts **declared** phases (`curriculum.js:3485`) and the cell has not reached phase 1. It is in the pre-phase definition bootstrap.
+
+I had begun wiring `_vocabProgress` into `_teachWordDefinitions` (the bulk pass publishes no cursor, unlike `_teachVocabList`). Gee: *"its doing vocab thats normal"* — so the verdict is the deliverable and **the instrument was not built.** Recorded because the numbers are the useful part: at ~15.2 words/min a 2,247-word list is **~2.4 hours of bootstrap before phase 1 of 25 begins**, and that is expected, not a stall.
+
+### `LOOPNAME.8` — BUILT. Eyes that are not on the loop.
+
+`LOOPNAME.7`'s breadcrumb is post-mortem by construction: it says where she *was*. Nothing could say *"she is stuck right now, and it has been 40 seconds"*, because the only thing positioned to say it is the `setInterval` that does not run while the loop is blocked — the same defect as the admin WS, `/public-state.json`, the console ring, and the `[EventLoop] BLOCKED` warn itself, which **can only ever print after the block ends**.
+
+`server/loop-watchdog.js` moves the observer onto its own thread. The main thread stamps a heartbeat into a `SharedArrayBuffer` from the lag sampler already running (`Atomics.store` — one statement, no allocation, no I/O); the watchdog polls it every 500ms on its own event loop and reports a stall **while it is happening**.
+
+**The trap this had to avoid, and it is not obvious:** a worker's `console.log` is **not** a direct write — Node pipes worker stdio to the parent and the *parent's event loop* drains it. Logging the ordinary way would have queued every freeze line behind the freeze and flushed them all on recovery: the exact failure being fixed, reintroduced by the fix. So every byte goes out via `fs.writeSync` on a raw fd — a `write(2)` syscall from this thread that owes the parent loop nothing.
+
+**Deliberately not built: an HTTP port for live querying.** It would be the best version of this, but the public vhost forwards only known routes, so a new port is unreachable from outside and I would be shipping something I could not verify.
+
+**Verified by RUNNING it against a real 14-second busy-loop jam, not by reasoning:** the watchdog printed at **3.1s, 7s and 11s while the main thread was spinning**, and the harness's own `jam released` line landed *after* all three — those lines physically could not have come from the jammed loop. Then `✓ main loop RECOVERED after 14992ms`. The artifact's `STALLED` / `RECOVERED` distinction is the point: **a `STALLED` file still on disk after a reboot is proof the previous process never came back.** Phase attribution reads `.last-breadcrumb.json` rather than marshalling strings through the buffer — reusing LOOPNAME.7's synchronous artifact instead of duplicating it.
+
+`.loop-freeze.json` added to the `STATEWIPE` exclude list (**47 excludes now, up from 45**), because a deploy deleting it would erase exactly the evidence of the freeze that prompted the deploy. `state.profiling.throughput.loopFreeze` carries `{episodes, worstMs}` read straight from the shared buffer, and the board renders a **loop freezes** row — `watchdog off` when the thread failed to start, stated rather than silently rendered as a zero. That matters against the row above it: `loop delay max` is a since-boot high-water mark with **no count and no recency**, so one 58s reading cannot be told apart from a single bad moment at boot.
+
+### `TZSTAMP.3` — CLOSED, and reading the file corrected two things I had filed
+
+Gee had already given the ruling (*"it denver time and AM PM not military time"*), so the `TZSTAMP.1` reversal needed no second ask. Reading the full 3,691-line file first corrected my own filing twice:
+
+- I filed *"1 pins Denver"*. **Zero** formatters pin Denver — the lone `America/Denver` match sits inside the `TZSTAMP.2` **comment** describing `brain-server.js`. I had grepped a comment and reported it as code.
+- I filed *"11 stamps"*. The real surface is **10 `Date` formatter call sites plus 3 raw ISO passthroughs** — `last-save` and `weights mtime` interpolated straight into markup, and `signoff` sliced with `.slice(0, 10)`. Those three could never be fixed by pinning anything: **string surgery on an ISO timestamp renders whatever zone it was serialised in, and `toISOString()` is always UTC.** The same failure this page already caught once on the checkpoint row.
+
+**The fix pins `Date.prototype`, not ten call sites, and that is deliberate.** A wrapper each site must remember to call is enforced only by discipline, and the eleventh stamp added next month lands browser-local again — which is precisely how these ten got here. Pinning makes it structural: no `Date` on this page can render in another zone. Scope is exact — **`Date.prototype` only**, because `Number.prototype.toLocaleString` is a *different method that merely shares a name*, and this page calls it constantly for thousand-separators. Caller options merge last, so an explicit `timeZone` at any site still wins. `.slice(0, 10)` earns its own note: it took the **UTC calendar date**, so anything signed off after 6pm Denver was filed under **tomorrow**.
+
+**Verified by running the exact pin and `fmtStamp` bodies under a deliberately non-Denver process TZ:** `20:13:46Z → 2:13:46 PM`; raw-ISO `fmtStamp` → `Aug 20, 2:13:46 PM`; date-only → `Aug 20, 2026` where the old slice said `2026-08-20`; unparseable input returned verbatim instead of inventing a date; an explicit `timeZone` override still won; and `(411216550).toLocaleString()` still returned `411,216,550`. **Scope confirmed complete: `dashboard.html` is the only HTML in the repo with `Date` formatters** — nothing else to sweep. One visible line added under the title so a reader outside Denver is told whose clock this is.
+
+### `SCRIPTKILL.6` — CLOSED. The hygiene report was clean throughout the worst of the violation.
+
+It scanned `scripts/` **only**. `scripts/` held 6 files; gitignored `.scratch/` held **152**, of which **44** were `patch-*` / `fix-*` / `todo-*` file-editors. Same family as every other item in this ledger: an instrument answering a narrower question than the one being asked, and reading as *all clear*.
+
+Two things the multi-root version had to get right. **Untracked-ness cannot be the signal in an ignored directory** — `git ls-files --others --exclude-standard` excludes ignored paths by construction, so it returns nothing for `.scratch/` however full it is; for an ignored root every file is untracked by definition and the raw **count** is the signal. And **one warning per root**, so a clean `scripts/` can never suppress a dirty `.scratch/`. The legacy top-level shape still points at `scripts/` so existing readers of `env.scripts.file_count` do not silently change meaning; per-root detail lives under `roots`. `todo` joined the patcher-name pattern.
+
+**Verified by running the hook:** `scripts/` → 6 files, 0 untracked, **no warning**; `.scratch/` → `gitignored: true`, 4 loose files, **a warning naming all four**. The clean root stayed quiet while the dirty one spoke.
+
+Because `.claude/` is excluded from this repo by the IP-boundary LAW and the `ual-workflow` remote is never to be pushed to, the code itself is unversioned by construction — so the full re-apply recipe is written into **`deploy/HOOK-FIXES.md`**, and that file's post-refresh check line was updated (`grep -c SCRIPT_SCAN_ROOTS`) because the old marker no longer identifies the current version.
+
+### Left OPEN on purpose, with the reason recorded
+
+- **`LANGRAM.10`** — needs a boot on `05ab1951`+ to observe the `GEOMETRY VERDICT` line. The box is on `7ce77189`. Blocked on a press, full stop. **`349,155` in that line still means stop.**
+- **`SUBSTEPS.6`** — the batch lane has been **paused 65 minutes** by the probe gate (`batchPaused: probe-gate`, `sinceLastBatchMs: 3,908,720`); `substeps` is frozen at 54 with `batchTiming.samples: 16`. **Zero batches in that window**, so the controller has had no input to flap with. Guessing a cooldown number is how `SUBSTEPS.5` shipped wrong the first time — it needs the gate to release first.
+
+### Retracted from my own filing
+
+Two claims in the 7-item filing were wrong and are corrected above: `TZSTAMP.3`'s *"1 pins Denver"* (that hit was a comment, not code) and its *"11 stamps"* (10 formatters + 3 unformatted passthroughs). And `RUNPOD.17` was filed as never-run while the binary was running in production at the moment I filed it.
+
+**Board: 2 open, 176 closed.**

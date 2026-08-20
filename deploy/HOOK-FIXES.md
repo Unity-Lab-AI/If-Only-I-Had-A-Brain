@@ -12,7 +12,7 @@
 **How to check both in one go, after a framework refresh:**
 
 ```bash
-grep -c patcher_shaped .claude/hooks/session-start-env-dump.cjs   # expect 1 — else re-apply FIX 1
+grep -c SCRIPT_SCAN_ROOTS .claude/hooks/session-start-env-dump.cjs # expect >0 — else re-apply FIX 1
 grep -c USAGE_MAX_BYTES .claude/hooks/usage-track.cjs             # expect >0 — else re-apply FIX 2
 ```
 
@@ -50,7 +50,83 @@ function readScriptsDir(root) {
 
 **Verified when it shipped:** `{file_count: 6, untracked_count: 0, patcher_shaped: []}` on the six survivors of the 55→6 purge — no warning, and zero false positives.
 
-⚠ **Known blind spot, found 2026-08-20 (`SCRIPTKILL.5`): this reads `scripts/` ONLY.** The real patcher hoard was in gitignored `.scratch/` — 152 files, 44 of them `patch-*` / `fix-*` / `todo-*` / `close-*` editors. If this is ever re-applied, consider scanning `.scratch/` too.
+### `SCRIPTKILL.6` (2026-08-20) — the blind spot above is CLOSED. Re-apply THIS version, not the one above.
+
+The report read `scripts/` **only**, and that is not where the hoard was. `scripts/` held 6 files; gitignored `.scratch/` held **152**, of which **44** were `patch-*` / `fix-*` / `todo-*` file-editors. So the hygiene report was clean during the entire period the violation was at its worst — the same failure class as everything else in this ledger: an instrument that answers a narrower question than the one being asked, and reads as *all clear*.
+
+Two things the multi-root version has to get right:
+
+1. **Untracked-ness cannot be the signal in an ignored directory.** `git ls-files --others --exclude-standard` excludes ignored paths *by construction*, so it returns nothing for `.scratch/` no matter how full it is. For an ignored root every file is untracked by definition, and the raw **count** is the signal instead — 152 loose files in a scratch dir is the finding, whatever they are named. Hence `ignored: true` per root rather than one detection rule pretending to fit both.
+2. **One warning per root.** A clean `scripts/` must not be able to suppress a dirty `.scratch/`, which a single merged verdict would do.
+
+The legacy top-level shape is kept pointing at `scripts/` so anything already reading `env.scripts.file_count` does not silently change meaning; the per-root detail lives under `env.scripts.roots`. `todo` was added to the patcher-name pattern (the `.scratch/` hoard included `todo-*` editors).
+
+```js
+const SCRIPT_SCAN_ROOTS = [
+  { dir: 'scripts', ignored: false },
+  { dir: '.scratch', ignored: true }
+];
+const PATCHER_NAME_RE = /(^|[-_])(patch|fix|edit|sync|migrate|scrub|rename|write|todo|tmp)[-_.]|-edit\.|^tmp-/i;
+
+function readOneScriptRoot(root, spec) {
+  const dir = path.join(root, spec.dir);
+  if (!fs.existsSync(dir)) return { dir: spec.dir, present: false };
+  let files = [];
+  try { files = fs.readdirSync(dir).filter(f => { try { return fs.statSync(path.join(dir, f)).isFile(); } catch (e) { return false; } }); }
+  catch (e) { return { dir: spec.dir, present: true, read_error: true }; }
+  // An ignored root can never report tracked files, so every file there counts.
+  const untracked = spec.ignored
+    ? files.slice()
+    : (safe('git ls-files --others --exclude-standard -- ' + spec.dir, { cwd: root }) || '')
+        .split(/\r?\n/).filter(Boolean).map(f => f.replace(new RegExp('^' + spec.dir + '/'), ''));
+  const patcherish = files.filter(f => PATCHER_NAME_RE.test(f));
+  return {
+    dir: spec.dir, present: true, gitignored: !!spec.ignored,
+    file_count: files.length,
+    untracked_count: untracked.length,
+    untracked: untracked.slice(0, 10),
+    patcher_shaped: patcherish.slice(0, 10),
+    patcher_shaped_count: patcherish.length
+  };
+}
+
+function readScriptsDir(root) {
+  const roots = SCRIPT_SCAN_ROOTS.map(spec => readOneScriptRoot(root, spec));
+  const live = roots.filter(r => r.present && !r.read_error);
+  const primary = roots.find(r => r.dir === 'scripts') || { present: false };
+  return Object.assign({}, primary, {
+    roots: roots,
+    scanned_dirs: SCRIPT_SCAN_ROOTS.map(s => s.dir),
+    total_file_count: live.reduce((n, r) => n + (r.file_count || 0), 0),
+    total_patcher_shaped: live.reduce((n, r) => n + (r.patcher_shaped_count || 0), 0)
+  });
+}
+```
+
+The reporting block in `main()` loops the roots instead of reading one verdict:
+
+```js
+const scanRoots = (env.scripts && env.scripts.roots) || [];
+for (const s of scanRoots) {
+  if (!s.present || s.read_error) continue;
+  if (!(s.untracked_count > 0 || s.patcher_shaped_count > 0)) continue;
+  let msg = '\n⚠ **`' + s.dir + '/` hygiene** — the standing rule is: **no scripts to edit code, files or the stack** (Edit/Write tools only), and any genuinely-necessary one-shot gets deleted in the same commit that used it.';
+  if (s.gitignored) {
+    msg += ' This directory is **gitignored**, so nothing in it is tracked and nothing in it shows up in a `git status` — **' + s.file_count + ' loose file(s)** live here.';
+  } else if (s.untracked_count > 0) {
+    msg += ' **' + s.untracked_count + ' untracked file(s)**: `' + s.untracked.join('`, `') + '`.';
+  }
+  if (s.patcher_shaped_count > 0) {
+    msg += ' **' + s.patcher_shaped_count + ' patcher-shaped name(s)**'
+         + (s.patcher_shaped_count > s.patcher_shaped.length ? ' (first ' + s.patcher_shaped.length + ')' : '')
+         + ': `' + s.patcher_shaped.join('`, `') + '`.';
+  }
+  msg += ' Delete them or say why they stay.\n';
+  process.stdout.write(msg);
+}
+```
+
+**Verified by running the hook, not by reading it:** `scripts/` → `{file_count: 6, untracked_count: 0, patcher_shaped_count: 0}` and **no warning**; `.scratch/` → `{gitignored: true, file_count: 4, untracked_count: 4}` and a warning naming all four. The clean root stayed quiet while the dirty one spoke, which is the whole point of the per-root split.
 
 ---
 
