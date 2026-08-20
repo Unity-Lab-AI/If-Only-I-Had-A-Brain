@@ -6066,7 +6066,35 @@ class ServerBrain {
             life: pending.grades.life || 'pre-K',
           };
         }
-        if (Array.isArray(pending.passedCells)) cortex.passedCells = [...pending.passedCells];
+        // ─── REWALK (Gee 2026-08-20) — KEEP THE WEIGHTS, RE-TEACH EVERY CELL ──────
+        //
+        // Gee: *"how can u say a freesh walk is not needed when we just got all the
+        // training aligned for Unity"* — and he is right, my answer was too narrow. The
+        // weight FORMAT is unchanged (v4) so a Savestart LOADS fine; but a cell listed
+        // in `passedCells` returns at `curriculum.js:8451`, **before** the first-person
+        // grounding at :8540. So on a plain Savestart the five already-passed K cells
+        // (ela, math, science, social, art) and every passed pre-K cell would NEVER
+        // receive SELFFRAME — her whole foundation would stay narrator-framed, and
+        // there is no retro-fit path because those cells are simply skipped.
+        //
+        // The two obvious options were both bad: a plain Savestart leaves the
+        // foundation wrong forever, and a full fresh walk throws away every hour of
+        // training to fix how it was FRAMED.
+        //
+        // So this is the third: `DREAM_REWALK=1` loads the weights and DISCARDS the
+        // progress markers. She re-walks every cell from pre-K with the first-person
+        // layer active, and because Hebbian is ADDITIVE the re-teach lands on top of
+        // what she already knows rather than starting from noise — the words she has
+        // learned stay learned, and now they get taught to her as things SHE does.
+        // Slower than a resume, immeasurably cheaper than a fresh walk, and the only
+        // option that makes the alignment retroactive.
+        const _rewalk = process.env.DREAM_REWALK === '1';
+        if (_rewalk) {
+          cortex.passedCells = [];
+          console.log('[Brain] ⚠ DREAM_REWALK=1 — WEIGHTS LOADED, PROGRESS MARKERS DISCARDED. She re-walks every cell from the beginning WITH her trained weights intact, so the SELFFRAME first-person layer reaches the cells that already passed (a plain resume skips them at curriculum.js:8451 and they would stay third-person forever). Hebbian is additive: the re-teach accumulates on what she already knows. Unset the flag to resume normally.');
+        } else if (Array.isArray(pending.passedCells)) {
+          cortex.passedCells = [...pending.passedCells];
+        }
         // Phase-level resume markers — so Savestart.bat can skip phases
         // whose _phaseDone already fired in a prior run. Weights live on
         // disk via brain-weights.bin, markers live here.
@@ -6089,7 +6117,14 @@ class ServerBrain {
         // Markers loaded via Savestart are GUARANTEED consistent with the
         // binary weights they describe — no stale-load condition possible,
         // no filter needed. Phase-level resume contract restored.
-        if (Array.isArray(pending.passedPhases)) {
+        if (_rewalk) {
+          // REWALK — the phase markers go with the cell markers. Keeping them would
+          // skip the very phases inside a re-walked cell that carry the frame, which
+          // would make the re-walk a no-op wearing a loud log line.
+          cortex.passedPhases = [];
+          cortex._phaseRepCursor = {};
+          console.log('[Brain] ⚠ DREAM_REWALK=1 — passedPhases + phaseRepCursor also cleared, so every phase of every re-walked cell actually re-teaches (keeping them would have made the re-walk a no-op).');
+        } else if (Array.isArray(pending.passedPhases)) {
           cortex.passedPhases = [...pending.passedPhases];
           if (cortex.passedPhases.length > 0) {
             console.log(`[Brain] passedPhases restored: ${cortex.passedPhases.length} phase markers (T31 phase-level resume active)`);
