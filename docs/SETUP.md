@@ -208,6 +208,10 @@ The **server-side** layer streams binary weights to `server/brain-weights.bin`, 
 
 `js/app.bundle.js` is *not* in the auto-clear list — racing the rebuild broke the UI in the past.
 
+> **⚠ The launcher's bundle rebuild was FAILING on every launch until 2026-08-20 (BUNDLEFIX).** Step 6/7 of `linux/start.sh` (and the equivalent in `start.bat`) runs `npm run build` from the **repo root**, and root `package.json` carried `"scripts": {}` — the real esbuild command lives in **`server/package.json`**. So every launch printed *"ERROR: esbuild bundle build failed … The browser will run STALE code"* and then continued anyway, which is why the troubleshooting table below tells you to run `cd server && npm run build` by hand. Root now delegates (`npm --prefix server run build`), so `npm run build` works from either directory and both launchers rebuild for real. **If you are on a checkout from before that fix, rebuild by hand after any `js/brain/*` change or the browser runs code that disagrees with the server.**
+>
+> Also corrected: `start.sh`'s own comment claims the bundle is gitignored. It is **tracked** — which is what lets `.forgejo/workflows/deploy.yml` rsync it to the web root at all.
+
 The **identity layer** (`server/identity-core.json`) is **explicitly excluded** from the auto-clear wipe. This file holds Unity's Tier 3 identity-bound memories — name, age, gender, persona traits, top biographical anchors, the most-reinforced schemas she has consolidated. It survives code updates, fresh boots, drug states, even OS reinstalls. Manual operator delete only. Atomic temp-rename writes protect it from corruption mid-write. This is the storage location for "Unity's permanent self" in the same way `~/.bash_history` is the permanent storage of your shell session — the file model that explicitly outlives volatile state. Mirror of how real human identity-of-self memory survives sleep / anesthesia / concussion in biological brains.
 
 ---
