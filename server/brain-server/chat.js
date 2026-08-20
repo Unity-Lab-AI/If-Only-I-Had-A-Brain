@@ -822,6 +822,53 @@ const SERVER_CHAT_MIXIN = {
           this._chatTimeHebbianStats.jobsQueued = this._chatTeachJobQueue.length;
           this._chatTimeHebbianStats.jobsEnqueued = (this._chatTimeHebbianStats.jobsEnqueued || 0) + 1;
         }
+        // ── INQUIRE (Gee 2026-08-20) — SHE FOLLOWS UP ON THE ANSWER ──────────────
+        //
+        // Gee: *"we need to make Unity inquisitive alweays asking questions and follow
+        // ups to the answers to those questions."* Until now the loop ENDED here: she
+        // asked, you answered, the answer was bound, and the pending concept was
+        // cleared. One question, no curiosity.
+        //
+        // Now the answer's own content picks the next question, which is what makes it
+        // a FOLLOW-UP rather than a second unrelated question: a content token from
+        // what YOU said becomes the concept she asks about next, and it is armed as the
+        // pending question so the same answer→bind→follow-up machinery runs again.
+        //
+        // BOUNDED, because "always asking" must not become an interrogation: depth cap
+        // (default 3), and the chain resets when it ends or when nothing in the answer
+        // is new to her. `_inquireDepth` is the counter; `_inquireChain` is what she has
+        // already asked about this chain, so she cannot loop on the same word.
+        try {
+          const MAXD = Number(process.env.DREAM_INQUIRE_DEPTH) > 0 ? Number(process.env.DREAM_INQUIRE_DEPTH) : 3;
+          this._inquireDepth = (this._inquireDepth || 0) + 1;
+          if (!Array.isArray(this._inquireChain)) this._inquireChain = [];
+          this._inquireChain.push(concept);
+          while (this._inquireChain.length > 8) this._inquireChain.shift();
+          if (this._inquireDepth < MAXD) {
+            // A content word from the ANSWER she has not already chased this chain.
+            const next = answerTokens.find(t => t !== concept && !this._inquireChain.includes(t) && t.length > 2);
+            if (next) {
+              this._pendingQuestionConcept = next;
+              this._inquireFollowUpOf = concept;
+              try { process.stdout.write(`[Inquire] follow-up armed: she answered about "${concept}" and now wonders about "${next}" (depth ${this._inquireDepth}/${MAXD}).\n`); } catch { /* nf */ }
+              // Train the follow-up as SELF-THOUGHT too, so asking becomes a habit in
+              // her weights and not a scripted behaviour: the question path
+              // concept → wondering → next-concept binds on the definition channel via
+              // the same job queue, off the reply path.
+              if (Array.isArray(this._chatTeachJobQueue)) {
+                this._chatTeachJobQueue.push({
+                  pairs: [[concept, next], ['i', next], ['myself', next]],
+                  opts: { reps: 6, label: 'INQUIRE-FOLLOWUP', relationTagId: 23 },
+                });
+              }
+            } else {
+              this._inquireDepth = 0; this._inquireChain = [];
+            }
+          } else {
+            this._inquireDepth = 0; this._inquireChain = [];
+            try { process.stdout.write(`[Inquire] chain complete at depth ${MAXD} — she stops asking and keeps what she learned.\n`); } catch { /* nf */ }
+          }
+        } catch { /* the follow-up must never break the answer bind */ }
         this.storeEpisode('curiosity', 'answer-learned', concept, text);
       } catch (e) {
         if (!this._followupErrLogged) { this._followupErrLogged = true; console.warn(`[Brain] curiosity follow-up bind failed: ${e?.message || e}`); }
