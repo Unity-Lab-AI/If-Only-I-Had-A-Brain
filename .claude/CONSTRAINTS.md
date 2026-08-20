@@ -590,6 +590,51 @@ If Gee catches that the clear didn't run:
 
 ---
 
+# LAW — RE-PRICE THE WALK BEFORE REMOVING A GATE (Gee, 2026-08-20)
+
+**No gate, bound, or dedup that keeps the walk finite may be removed, bypassed, or weakened until `corpus × reps × scale × visits` has been recomputed and written down.**
+
+Gee removed the phase budget the same day it shipped — *"no we dont want a budget, some cells are big they take the length of time they take, as long as you coded them correctly"* — and that is his call to make. The LAW is not "keep the gate". The LAW is **do the multiplication before you touch it**, because the multiplication is the thing nobody performed the first time.
+
+## The arithmetic that was never done
+
+| Term | The value that surprised us | Where it came from |
+|------|-----------------------------|--------------------|
+| corpus | 2,888 sentences → 11,436 word→word transitions | the corpus grew, sanely, over months |
+| reps | 100 (bumped 30→100 with a sound in-comment rationale) | a deliberate depth increase |
+| scale | ~47ms per pair-teach at 12M neurons (20–45× the wall it was calibrated against) | the language-cortex hop |
+| visits | 114 (6 subjects × 19 grades — `STRUCTURE-REFRESH` runs in EVERY cell) | the shape of the walk |
+| **product** | **14.9h in ONE call · 21.2h per cell · ~100 days of refresh alone** | nobody multiplied them together |
+
+Each change was individually justified. The product was never evaluated. `art/kindergarten` then held one phase for **21.2 hours** and could not complete, because the gate that follows it never ran.
+
+## Required actions
+
+| Required | Why |
+|----------|-----|
+| Before removing/weakening any bound, compute the product and state it in the commit + the ledger | The failure mode is arithmetic, not code — it is invisible in a diff |
+| Name what is holding the walk finite AFTER your change | As of 2026-08-20 that is the consolidation gate ALONE (`_mechanicsProbeRate`: full on first teach / regression / every 10th visit) — the budget is off and `STRUCTURE_DOSE` is back to 1.0 |
+| Distinguish WASTE removal from TRAINING removal, out loud | Dedup of literal duplicates with frequency preserved = waste. A dose multiplier = less teaching. The first is always allowed; the second needs Gee |
+| Re-price on any change to corpus size, rep counts, brain scale, or visit count | All four are live terms; a change to any one re-prices the whole walk |
+
+## Forbidden actions
+
+| Banned | Reason |
+|--------|--------|
+| Removing the consolidation gate without re-pricing | It is the only thing standing between the current walk and ~100 days of structure-refresh |
+| A bound whose "disable" value does not disable | `DREAM_PHASE_BUDGET_MS=0` computed `Date.now() + 0` — truthy, instantly expired — so "disable" produced the HARSHEST cut (one rep per phase) while the log said the bound was off. Verify an escape hatch by running it, never by reading its comment |
+| Silent caps of any kind | If a bound trims training it must print what it trimmed and why. A silent cap reads as "covered everything" when it did not |
+| Treating a per-unit cost as small because one unit is small | 32s per unit × per-word invocation × hundreds of words = 70 min per cell. Multiply by the call site's real frequency, not by one |
+
+## Failure recovery
+
+1. Stop before the press. A mis-priced walk is discovered in DAYS, not minutes.
+2. Recompute the product with live numbers (`teachProfile`, the phase profiler, the live cortex size).
+3. Write the number in the ledger next to the change, with the terms shown.
+4. If the product is unwalkable, the fix is a gate on REPETITION (don't re-teach an identical lesson N times) — never a quiet reduction of the lesson itself.
+
+---
+
 # MATCH DOC FORMAT
 
 **When updating any doc, edit IN PLACE within its existing structure.**

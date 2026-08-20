@@ -40,6 +40,8 @@ Every LAW below is BINDING. Full body, examples, violation log, failure-recovery
 
 - **Clear stale state before telling operator to test.** Auto-enforced at `node brain-server.js` boot via `autoClearStaleState()`. Clears brain-weights v0-v4 + conversations.json + episodic-memory.db*. `DREAM_KEEP_STATE=1` opts out with a WARN. `js/app.bundle.js` is NOT auto-cleared (racing the rebuild broke the UI). → `CONSTRAINTS.md §CLEAR STALE STATE`
 
+- ⛔ **RE-PRICE THE WALK BEFORE REMOVING A GATE.** No gate/bound/dedup that keeps the walk finite may be removed or weakened until `corpus × reps × scale × visits` is recomputed and written down. As of 2026-08-20 the **consolidation gate is the ONLY thing keeping the walk finite** (budget off, dose back to 1.0): ~24 days of structure-refresh with it, **~100 days without**. Verify an escape hatch by RUNNING it — `DREAM_PHASE_BUDGET_MS=0` was documented as "disables the bound" and actually produced the harshest cut possible. → `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE`
+
 - **No tests ever.** Code it right the first time. Read the code, understand the system, verify by reading output. Manual verification > automated testing. → `CONSTRAINTS.md §NO TESTS POLICY`
 
 - **800-line read standard.** Read full file in 800-line chunks before any edit. No partial reads before editing. → `CONSTRAINTS.md §800-LINE READ`

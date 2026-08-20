@@ -96387,6 +96387,26 @@ var Curriculum = class _Curriculum {
       cellPhasesCompleted: currentCellPassedPhases,
       cellPhasesStarted: currentCellPassedPhases + (cluster?._outermostPhase ? 1 : 0),
       cellPhasesTotal: declaredNow ? declaredNow.size : null,
+      // SELFFRAME OBSERVABILITY (2026-08-20) — the board must be able to answer
+      // "is she learning in first person?" without reading the console. Every
+      // field here is a COUNT of work that actually landed, not a flag saying the
+      // feature is enabled: `units` only increments after a frame is taught,
+      // `capped` says the per-cell budget stopped further reframing (so an
+      // unexpectedly low `units` has a stated reason), and `dose`/`budgetMs`
+      // report the two levers Gee set. This exists because the whole
+      // lying-instrument family started with features nobody could see running.
+      selfFrame: {
+        on: !(typeof process !== "undefined" && process.env && process.env.DREAM_SELF_FRAME === "0"),
+        units: this._selfFramedUnits | 0,
+        lines: this._selfFramedLines | 0,
+        unitsThisCell: this._sfUnitsThisCell | 0,
+        capPerCell: typeof process !== "undefined" && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0 ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16,
+        capped: !!this._sfCapLogged,
+        corpusCursor: this._sfCorpusCursor | 0,
+        structureDose: STRUCTURE_DOSE,
+        phaseBudgetMs: PHASE_BUDGET_MS
+        // 0 === no budget (Gee 2026-08-20)
+      },
       vocabProgress: this._vocabProgress ? {
         label: this._vocabProgress.label,
         taught: this._vocabProgress.taught | 0,

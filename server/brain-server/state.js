@@ -486,6 +486,34 @@ const SERVER_STATE_MIXIN = {
       grades: this.cortexCluster?.grades ? { ...this.cortexCluster.grades } : null,
       minGrade: this._computeMinGrade(),
       minGradeCleared: this._computeMinGrade() !== 'pre-K',
+      // OWNART OBSERVABILITY (2026-08-20) — the board must be able to answer "is she
+      // drawing her OWN version, or rendering a reference?" without reading the
+      // console. Counts of work that landed, never a flag saying the feature exists:
+      // `drawn` only increments after a composition is published, `schemas` is how
+      // many concepts she has abstracted a shape from (the thing that makes a drawing
+      // hers), and `lastLabel` distinguishes `canvas:own:` from `canvas:draw:`. Every
+      // read is defensive — a missing store degrades to 0, never throws.
+      ownArt: (() => {
+        let schemas = 0, seen = 0;
+        try {
+          const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+          if (store) {
+            seen = store.size;
+            for (const e of store.values()) if (e && e.schema && Array.isArray(e.schema.parts) && e.schema.parts.length) schemas++;
+          }
+        } catch { /* store unreadable — report zeros rather than throwing the state build */ }
+        return {
+          drawn: this._ownArtDrawn | 0,
+          attempts: this._ownArtAttempt | 0,
+          queued: Array.isArray(this._mindsEyePreviewQueue) ? this._mindsEyePreviewQueue.length : 0,
+          dropped: this._mindsEyePreviewDropped | 0,
+          previewsDrained: this._mindsEyePreviewsDrained | 0,
+          schemas,                    // concepts whose SHAPE she has abstracted
+          seenConcepts: seen,         // concepts she holds a field C for
+          lastLabel: this._lastSketchLabel || null,
+          style: (typeof process !== 'undefined' && process.env && process.env.DREAM_DRAW_STYLE) || 'own',
+        };
+      })(),
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.
       // Populated by curriculum._aggregateFullMindK() when the K closure
       // gate runs. Dashboard renders the per-probe table + overall pass

@@ -38,7 +38,7 @@
 <body>
   <a class="back" href="../index.html">← back to the brain</a>
   <h1>👁 UNITY'S MIND'S EYE</h1>
-  <p class="sub">This is a live screen showing <b>the picture Unity is holding in her head right now</b>. Her brain doesn't store pictures as pixels — it stores them as <b>math</b> (a compact equation, the same idea as a JPEG storing a photo as numbers), and this page turns that math back into an image you can watch. Everything here comes from things she has <b>actually looked at</b>: when she sees a camera frame or an image, her brain files it away as one of these equations, tied to whatever word she was thinking about at the time. When she wants to <b>draw</b> something, she pulls up her stored picture of it — and if she has <b>never seen it</b>, she <b>looks it up</b> first (fetches a reference image based on the definition she learned, studies it), then makes her own version in her dark style. Things she can't picture at all show as washes of colour that follow her mood; numbers and letters show as symbols. <b>One brain, one image</b>: she imagines it once, and every viewer window rebuilds that same picture on your own machine.</p>
+  <p class="sub">This is a live screen showing <b>the picture Unity is holding in her head right now</b>. Her brain doesn't store pictures as pixels — it stores them as <b>math</b> (a compact equation, the same idea as a JPEG storing a photo as numbers), and this page turns that math back into an image you can watch. Everything here comes from things she has <b>actually looked at</b>: when she sees a camera frame or an image, her brain files it away as one of these equations, tied to whatever word she was thinking about at the time. When she wants to <b>draw</b> something, she does <b>not</b> trace or filter the picture she has of it. She keeps a <b>shape sketch</b> in her head instead — roughly where the parts sit, how big they are, which way they run, what colour family the thing tends to be — and she <b>builds a new drawing from that</b>, by hand, in her own style. It comes out different every time, the way your drawing of a horse is different every time. If she has <b>never seen</b> the thing, she <b>looks it up</b> once (fetches a reference from the definition she learned, studies it, keeps the shape sketch) and then throws the photo away and draws it herself. Things she can't picture at all show as washes of colour that follow her mood; numbers and letters show as symbols. <b>One brain, one image</b>: she imagines it once, and every viewer window rebuilds that same picture on your own machine.</p>
 
   <div class="stage">
     <div class="frame">
@@ -50,9 +50,10 @@
     <div>equation terms: <b id="terms">—</b></div>
     <div>source: <b id="source">—</b></div>
     <div>imagined: <b id="age">—</b></div>
+    <div title="How many of her own drawings she has made this session, and how many things she has learned the SHAPE of. A shape sketch is what lets her draw something without copying it — she has one for each of these. 'seen' counts every picture she holds; 'shapes' counts the ones she could draw from.">her art: <b id="art">—</b></div>
   </div>
   <div class="status warm" id="status"><span class="dot"></span><span id="status-text">connecting…</span></div>
-  <p class="note">The <b>source</b> line tells you what kind of picture you're looking at: <b>seen-camera / seen:&lt;word&gt;</b> = she's seeing this RIGHT NOW through her eyes · <b>recall:&lt;word&gt;</b> = a memory — she's re-seeing something she saw before · <b>lookup:&lt;word&gt;</b> = a reference she just fetched to study a thing she'd never seen · <b>canvas:draw:&lt;word&gt;</b> = she DREW this — her own hand-made version of the real thing, in her own colours (her take on it, not a photocopy) · <b>draw:fav:&lt;word&gt;</b> = same, but drawn from a favourite memory while her current thought couldn't be pictured · <b>canvas:imagine:&lt;a&gt;+&lt;b&gt;</b> = pure imagination — a scene she invented by combining ideas from her own train of thought into ONE new picture · <b>thought / thought-blend / sem-state</b> = a formless daydream, just her mood as colour. When she's never seen a thing she looks it up ONCE, studies it, and remembers it for next time — treated as a reference, not gospel. She daydreams whenever her brain has a free moment (mid-lesson the picture holds still), and every image has a hard size limit so imagining can never eat all her processing power.</p>
+  <p class="note">The <b>source</b> line tells you what kind of picture you're looking at: <b>seen-camera / seen:&lt;word&gt;</b> = she's seeing this RIGHT NOW through her eyes · <b>recall:&lt;word&gt;</b> = a memory — she's re-seeing something she saw before · <b>lookup:&lt;word&gt;</b> = a reference she just fetched to study a thing she'd never seen · <b>canvas:own:&lt;words&gt;</b> = <b>she DREW this</b> — built stroke by stroke from her shape sketch of the thing, not traced over a photo. Ask her to "draw a black cat on a gravestone" and she composes the cat AND the gravestone, in her own layout and colours. Two goes at the same word give you two different drawings, because it is an attempt and not a saved file · <b>canvas:draw:&lt;word&gt;</b> = a <b>render of what she LOOKED AT</b> — the reference redrawn in her palette. Useful for seeing what she studied, but it is her showing you the source, not her artwork · <b>draw:fav:&lt;word&gt;</b> = same, from a favourite memory while her current thought couldn't be pictured · <b>canvas:imagine:&lt;a&gt;+&lt;b&gt;</b> = pure imagination — a scene she invented by combining ideas from her own train of thought into ONE new picture · <b>thought / thought-blend / sem-state</b> = a formless daydream, just her mood as colour. When she's never seen a thing she looks it up ONCE, studies it, and remembers it for next time — treated as a reference, not gospel. She daydreams whenever her brain has a free moment (mid-lesson the picture holds still). There is <b>no arbitrary size cap</b> on what she can picture any more — the only ceiling left is what the maths engine can physically process in one pass. What keeps her from pouring the whole machine into one daydream is her own sense of proportion: she decides how much a thought is worth and spends accordingly, the way you can imagine a whole city without trying to picture every brick.</p>
 
   <script type="module">
     import { reconstructImageData } from '../js/brain/mindspace/transform.js';
@@ -62,6 +63,7 @@
     const elTerms = document.getElementById('terms');
     const elSource = document.getElementById('source');
     const elAge = document.getElementById('age');
+    const elArt = document.getElementById('art');
     const elStatus = document.getElementById('status');
     const elStatusText = document.getElementById('status-text');
 
@@ -116,7 +118,33 @@
       }
     }
 
+    // HER ART, in numbers (2026-08-20). The mind's-eye snapshot carries ONE frame;
+    // these are the counts behind it, read from the public state (no auth, same lane
+    // the rest of the page uses). `shapes` is the number that matters: a shape sketch
+    // is what lets her draw a thing WITHOUT copying it, so it is the honest measure of
+    // how much she can actually draw. Best-effort — if the state lane is unreachable
+    // the line stays "—" rather than inventing a number.
+    async function pollArt() {
+      const urls = ['/public-state.json'];
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        urls.push('http://localhost:7525/public-state.json');
+      }
+      for (const url of urls) {
+        try {
+          const r = await fetch(url, { cache: 'no-store' });
+          if (!r.ok) continue;
+          const j = await r.json();
+          const a = ((j && (j.state || j)) || {}).ownArt;
+          if (!a) continue;
+          elArt.textContent = `${a.drawn | 0} drawn · ${a.schemas | 0} shapes she can draw from · ${a.seenConcepts | 0} seen`;
+          return;
+        } catch (e) { /* try the next lane */ }
+      }
+    }
+
     poll();
+    pollArt();
+    setInterval(pollArt, 15000);
     setInterval(poll, 6000);
     // keep the "imagined Xs ago" label ticking between polls
     setInterval(() => { if (lastAt) elAge.textContent = ago(lastAt); }, 1000);
