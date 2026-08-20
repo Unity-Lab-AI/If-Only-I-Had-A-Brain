@@ -6,12 +6,12 @@
 
 | | count |
 |---|---|
-| | count |
-|---|---|
-| **TOTAL OPEN** | **21** |
-| pending `[ ]` | 16 |
+| **TOTAL OPEN** | **34** |
+| pending `[ ]` | 29 |
 | in progress `[~]` | 5 (`CELLBOUND.A–E`, riding the one press) |
-| closed on the board | 73 |
+| closed on the board | 103 |
+
+*Counts re-derived from the board 2026-08-20 after the PAGESTALE + TEACHMIRROR batch. A duplicated header row was removed from this table in the same pass — a table that renders its own header twice is the mildest possible version of the disease this file tracks.*
 
 **⚠ THIS FILE IS ONE BATCH BEHIND ITSELF.** It was written when 82 items were open. Since then the **FINISH THE BOARD** batch (2026-08-20, second pass) built nine items and closed 47 stale ones with verdicts, so **the entries under TIER 4 and TIER 5 below are CLOSED** — they are kept as the closed record, and their live status lives on `docs/TODO.md` as `[x]` + a closure verdict. Tiers 0–3 entries that shipped are marked in `docs/BOARD.md` with ✅. **The 21 still genuinely open, each with the reason it is not done:**
 
@@ -34,6 +34,8 @@
 | `WORDEMIT.4` | fresh-walk decision — Gee's, explicitly NOT forced |
 | `GRANT.2` | applications are Gee's to fire |
 | `GRANT.3` | the trajectory asset is only worth building if GRANT.2 fires |
+| `TEACHMIRROR.3` | a MEASUREMENT, filed not scheduled — 21% VRAM and 9% utilisation are a latency + disk ceiling (205ms RTT per sparse op, 88s per 5.4GB checkpoint), so the work it implies is op batching and a closer region, which is its own programme |
+| `SCALEAUDIT.2/.4/.5` | the geometry ceiling, the syllabus depth gap and the 73-site dose sweep — each filed with numbers, each its own multi-batch programme |
 
 *Verify any count with `grep -cE "^- \[ \] \*\*" docs/TODO.md` (21), `grep -cE "^- \[~\] \*\*" docs/TODO.md` (5), `grep -cE "^- \[x\]" docs/TODO.md` (66). When this file and the board disagree, **the board wins.***
 
@@ -172,7 +174,7 @@
   - <sub>`docs/TODO.md:263` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
 - [ ] **RUNPOD.12** **OPEN - carry into the retry: the two known handicaps are UNCHANGED by a fresh walk.** (a) RUNPOD.5 - CUDA still dead on driver 570.x (`CUDA_ERROR_UNSUPPORTED_PTX_VERSION`), so the replica will compute on the SLOWER wgpu/Vulkan path even when it does get weights. (b) RUNPOD.7 - the wgpu path advertises a 2047MB binding cap vs the intra matrix ~2.9GB; whether DF.7 can actually place that matrix on a 2047MB-binding replica is STILL UNPROVEN and the fresh walk is the first honest test of it. Read the boot log for an admission/rejection verdict on `cortex_intraSynapses` specifically - do not infer success from `registered`.
   - <sub>`docs/TODO.md:264` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
-- [ ] **RUNPOD.13** ⏳ **GEE: tag `donor-v0.3.21`** - that is the only remaining step to land the CUDA fix. CI (`.forgejo/workflows/donor-release.yml`) guards that `donor-app/Cargo.toml` version == the tag, which is already bumped to 0.3.21; the workflow then builds Linux + Windows, publishes both binaries, and auto-bumps the download links in `html/compute.html` + `html/legend.html` on main (which triggers the Pages redeploy). Donor binaries + tags are GEE's territory - the artifact is built and verified, the push is his.
+- [x] **RUNPOD.13** ✅ **CLOSED on the board** (`docs/TODO.md`) — the tag landed and the donor attaches on the CUDA path. ⛔ **AND THE PARENTHETICAL BELOW IS FALSE, corrected 2026-08-20 (`PAGESTALE.1`):** the auto-bump commit is pushed with the Actions token, which **cannot** trigger `deploy.yml`, so it never triggered a Pages redeploy — `donor-v0.3.23` shipped correctly and the download page served `.22` for hours. The release job now rsyncs the frontend itself. Original filing: ⏳ **GEE: tag `donor-v0.3.21`** - that is the only remaining step to land the CUDA fix. CI (`.forgejo/workflows/donor-release.yml`) guards that `donor-app/Cargo.toml` version == the tag, which is already bumped to 0.3.21; the workflow then builds Linux + Windows, publishes both binaries, and auto-bumps the download links in `html/compute.html` + `html/legend.html` on main (which triggers the Pages redeploy). Donor binaries + tags are GEE's territory - the artifact is built and verified, the push is his.
   - <sub>`docs/TODO.md:268` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
 - [ ] **RUNPOD.14** ⏳ VERIFY after the tag lands: relaunch the RunPod pod (template `4u68iuvsnz`, it self-resolves the newest release from public-state.json so no template edit is needed) and read the donor log for `[donor] backends: <card> [cuda]` - NOT `[wgpu]`. Registration must advertise the card's REAL VRAM (a 4090 reads ~24564 MB, not 2047 MB). Brain side: `minDonorMB` / `communityComputeMB` must reflect real VRAM instead of the 2GB Vulkan ceiling, which is what clears the 11810 MB running floor. THAT is the honest close of RUNPOD.7 as well - the binding-cap problem and the PTX problem were always the same bug wearing two hats.
   - <sub>`docs/TODO.md:269` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>

@@ -22,8 +22,17 @@
 #      binary — we refuse before building instead of after),
 #   2. builds + attaches both binaries (below), then
 #   3. bumps the site download links (html/compute.html + html/legend.html) to the
-#      new tag and commits them to `main`, which triggers deploy.yml to redeploy the
-#      public Pages site. No manual link edit, no forgotten bump.
+#      new tag and commits them to `main`, then
+#   4. rsyncs the static frontend to the pages web root ITSELF.
+#
+# PAGESTALE — step 4 exists because step 3 CANNOT trigger deploy.yml. The bump is
+# pushed with secrets.GITHUB_TOKEN, and a push authenticated by the Actions token
+# does not fire another workflow (the recursion guard every Forgejo/Gitea/GitHub
+# instance applies). This was documented here as "triggers deploy.yml" and was
+# never true: donor-v0.3.23 built, tagged, attached and bumped correctly, and the
+# public download page kept serving 0.3.22 links because the site lane silently
+# never ran. Doing the rsync in this job is the only way the release is actually
+# self-contained — no manual link edit, no forgotten bump, no forgotten DEPLOY.
 # NOTE: it deliberately does NOT touch DREAM_MIN_DONOR_VERSION (the brain's minimum
 # COMPATIBLE donor version) — that's a compatibility decision per protocol change,
 # not "every release", so it stays a manual edit in server/brain-server.js.
@@ -159,8 +168,39 @@ jobs:
           # Push over HTTPS with the Actions token. host = server_url minus scheme.
           host="${SERVER_URL#https://}"; host="${host#http://}"
           if git push "https://x-access-token:${TOKEN}@${host}/${REPO}.git" HEAD:main; then
-            echo "Pushed link bump to main — deploy.yml will redeploy the Pages site with ${TAG} links."
+            echo "Pushed link bump to main. NOTE: this push does NOT trigger deploy.yml (Actions-token pushes never do) — the rsync step below is what publishes it."
           else
             echo "::error::Built + attached the ${TAG} binaries, but pushing the site-link bump to main FAILED. Bump html/compute.html + html/legend.html to ${TAG} by hand (or check the Actions token's contents:write + main push rights)."
             exit 1
           fi
+
+      # PAGESTALE — publish the frontend from THIS job. The working tree is on main
+      # with the bumped links (the step above checked out `main` and committed into
+      # it), so this rsync ships exactly what deploy.yml would have shipped had the
+      # token push been able to trigger it. Byte-identical exclude list to
+      # deploy.yml's — if that list ever changes, change it in BOTH places or the
+      # two lanes publish different sites. `if: always()` is deliberately NOT used:
+      # a failed bump means there is nothing new worth publishing.
+      - name: Deploy static frontend to the pages web root (the bump cannot trigger deploy.yml)
+        env:
+          HOST: ${{ secrets.PAGES_DEPLOY_HOST }}
+          USER: ${{ secrets.PAGES_DEPLOY_USER }}
+          KEY: ${{ secrets.PAGES_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEY:-}" ] || [ -z "${HOST:-}" ] || [ -z "${USER:-}" ]; then
+            echo "::error::PAGES_DEPLOY_KEY / _HOST / _USER not available to this job — the ${TAG} links are committed to main but NOT published. Run the 'deploy' workflow manually (workflow_dispatch) to publish them."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s' "$KEY" | base64 -d > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          REPO_LC="$(echo "${{ github.event.repository.name }}" | tr 'A-Z' 'a-z')"
+          rsync -az --delete \
+            --exclude='.git' --exclude='.forgejo' --exclude='.gitea' \
+            --exclude='.claude' --exclude='server' --exclude='corpora' \
+            --exclude='node_modules' --exclude='scripts' --exclude='deploy' \
+            --exclude='docs' --exclude='*.md' --exclude='donor-app' \
+            --exclude='package.json' --exclude='package-lock.json' \
+            -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
+            ./ "${USER}@${HOST}:${REPO_LC}/"
+          echo "Published the frontend with ${TAG} download links."

@@ -2069,6 +2069,28 @@ const SERVER_GPU_MIXIN = {
     // _teachAssociationPairs; counting these is what makes the
     // dispatch-rate metric meaningful at biological scale.
     this._recordGpuDispatch();
+    // TEACHMIRROR — PER-DONOR teach-lane counter. `_recordGpuDispatch` above is
+    // a GLOBAL rate; it cannot say WHICH card is working, which is the only
+    // question the Clients table is asked.
+    //
+    // The gap this closes: `gneuronsPerSec` and `stepsComputed` both come from
+    // the donor and both advance ONLY on `compute_batch` completion
+    // (donor.rs:675). The curriculum walk does not send compute_batch — it
+    // sends Hebbian/propagate frames, i.e. THIS function. So a card teaching
+    // flat out reports 0 Gn/s and 0 steps, MIRRORID.5 reads that as no
+    // proof-of-work, and the row renders `idle (last 0Gn/s)` on a GPU that is
+    // saturated. Every instrument was honest and the board still said "dead".
+    //
+    // The donor already counts this (`teach_ops`, donor.rs:118) — for its own
+    // GUI, and it never ships it in the telemetry payload (donor.rs:877 sends
+    // gneurons_per_sec + steps_computed only). Counting it here instead of
+    // adding a telemetry field is deliberate: WE send these frames, so the
+    // count is exact, it needs no donor rebuild, and it does not cost a
+    // primary-kill + full 17-matrix re-upload to deploy (DONORKILL.2).
+    if (this.clients) {
+      const _tc = this.clients.get(ws);
+      if (_tc && _tc.isGPU) { _tc.teachOps = (_tc.teachOps || 0) + 1; _tc.teachOpsAt = Date.now(); }
+    }
     // Backpressure-aware send. A retest after the earlier fix got
     // past _teachLetterCaseBinding and into _teachPhonemeBlending
     // (1029 K words × 10 reps = 10,290 word-emission iterations).
@@ -2758,7 +2780,32 @@ const SERVER_GPU_MIXIN = {
       console.log(`[Brain] DELTAIDX ${name} — colIdx ${(_deltaRawBytes / 1048576).toFixed(1)}MB raw -> ${(_deltaEncBytes / 1048576).toFixed(1)}MB delta-varint (${_savedPct.toFixed(1)}% saved, ${(_deltaEncBytes / Math.max(1, nnz)).toFixed(2)} bytes/entry)`);
     }
     console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack`);
-    return promise;
+    // TEACHMIRROR — RECORD RESIDENCY ON THE ACK, FOR BOTH LANES.
+    //
+    // `heldMatrices` was populated in exactly one place: the replica-sync loop
+    // (_syncReplicaToDonor). The PRIMARY never goes through that loop — it gets
+    // its weights from the canonical upload, i.e. THIS function — so the master
+    // card's Set stayed empty forever and its row read `0/17 mx` while the
+    // console on the very same boot said "GPU proxy ready: 17/17 matrices
+    // uploaded". PARTMIRROR.4's denominator was right; the numerator was never
+    // wired for the one donor that holds the brain.
+    //
+    // Recording it HERE, on the resolved ack, is what makes the number mean the
+    // same thing on every card: a non-null ack is the donor confirming it holds
+    // the matrix (the replica loop's own comment at the `_res !== null` check
+    // makes the same argument). A null/timeout ack records NOTHING — the whole
+    // point is that a donor is never credited with a matrix it did not take.
+    // Set semantics make the replica loop's own add a harmless no-op.
+    return promise.then((_ack) => {
+      if (_ack !== null && _ack !== undefined && this.clients) {
+        const _hc = this.clients.get(ws);
+        if (_hc && _hc.isGPU) {
+          if (!(_hc.heldMatrices instanceof Set)) _hc.heldMatrices = new Set();
+          _hc.heldMatrices.add(name);
+        }
+      }
+      return _ack;
+    });
   },
 
   /**

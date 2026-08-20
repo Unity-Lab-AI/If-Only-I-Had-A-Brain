@@ -47,6 +47,10 @@ jobs:
           USER: ${{ secrets.PAGES_DEPLOY_USER }}
         run: |
           REPO="$(echo "${{ github.event.repository.name }}" | tr 'A-Z' 'a-z')"
+          # PAGESTALE — donor-release.yml runs a BYTE-IDENTICAL copy of this rsync
+          # (its own final step), because its Actions-token push to main cannot
+          # trigger this workflow. If the exclude list below changes, change it
+          # there too or the two lanes publish different sites.
           # Frontend only — exclude backend, training data, deps, internals, docs.
           # NOTE: assets/ (incl. assets/social/*.png per-page social images) DOES ship.
           rsync -az --delete \
