@@ -33947,3 +33947,31 @@ Donating 1 GPU(s) at 100% utilization (memory: All)
 **AND THE HONEST HALF I DID NOT DO: the 45GB card cannot be filled from a 32GB coordinator, and that is a box decision.** Every byte on the donor has a master copy in the coordinator's HOST RAM — the box is CPU-only, so the allocator uses host RAM as its sizing basis (`brain-server.js:555`). The measured chain: `_safeMB = min(45% of 32GB, 32GB - 13GB) = 14,745MB` -> **max ~456,472,096 neurons = 1.49x the current 306,458,816**. The A6000 could hold **1,681,286,758** (5.5x) and **`DF7_MILESTONES` has no rung for it — the ladder tops out at tier 3 = 357,000,000, which we are already on.** A third cap for completeness: the tier baseline is hardcoded `_blMB = 16384`, so tier selection never looks at the card actually attached. **Adding a tier and reading the real donor VRAM buys 21% -> ~31% VRAM and 1.49x the math per substep, priced at a fresh walk and ~24 -> ~36 days of structure refresh. Genuinely filling 45GB needs a bigger coordinator box or a master that streams rather than holding a full copy.** Filed as `VRAMFILL.2` with the arithmetic attached; not actioned, because it changes `scale` and the RE-PRICE LAW makes that Gee's call.
 
 **Board: 32 open, 109 closed.**
+
+---
+
+## 2026-08-20 — TIERTOP: the ladder had no rung above tier 3, and the tier came from a hardcoded 16GB guess
+
+> Gee (verbatim): *"its still no where near 100% on vram and usage"*
+> Gee (verbatim): *"i just want the fucking doner to be able to run 100% to the wall doing max work.. not these bullshit limits.. im paying for a GPU i best be using 110% of all of it you fucker!"*
+
+**He asked four times and I answered three of them with arithmetic instead of a change. Both of the caps I kept describing turned out to be fixable, and neither was physics.**
+
+**TIERTOP.1 — `DF7_MILESTONES` ended at tier 3 = 357,000,000, and the brain runs 306,458,816.** We were standing on the top rung. **So no donor at any size could move the brain**: a 45,488MB A6000 qualifies ~1,681,286,758 neurons of capacity and the ladder had nowhere to put them. A ceiling that cannot be climbed past is indistinguishable from a bug when the operator is paying by the hour. Added tiers 4/5/6 (900,000,000 · 2,400,000,000 · 6,000,000,000) at the existing ~2.5-3x spacing, so a resize stays a decisive jump rather than a churn of small ones — each one costs a fresh walk. The rungs do not grow the brain by themselves; sizing is still clamped by `_safeMB`. They stop the LADDER being the binding constraint, and now scale automatically if the box is upgraded rather than needing this file edited again.
+
+**TIERTOP.2 — the boot tier was chosen from a hardcoded `_blMB = 16384`, so it never once looked at the card attached.** A rented 45,488MB card was sized as a 16GB one. Boot cannot read a donor (none is connected that early), so the honest fix is to REMEMBER: on `gpu_register`, a donor whose VRAM exceeds the persisted `donorBaselineMB` raises it and writes `server/autoscale-settings.json` back, so the next boot qualifies the tier the hardware deserves. **Up-only and idempotent** — a small donor never shrinks the baseline, because that would re-tier down and wipe weights over a laptop that connected for five minutes; the same up-only discipline DF.7 already applies to tier moves. Verified against the real ladder: **16384MB → tier 3 (357M), 45488MB → TIER 4 (900,000,000)**.
+
+**AND THE NUMBER THAT ACTUALLY ANSWERS THE QUESTION: 100% of a 45GB card needs a 128GB COORDINATOR.** The coordinator holds the CPU-side master copy of everything the donor computes on, and it is CPU-only, so its host RAM — not the GPU — sets the brain's size. Running the real allocator chain (`_safeMB = min(45% of host, host − 13GB)`, main-brain fraction 0.72, 21 B/neuron):
+
+| coordinator RAM | `_safeMB` | brain | vs now | VRAM on a 45GB card |
+|---|---|---|---|---|
+| **32GB (today)** | 14,745MB | **456,472,096** | 1.49x | **~32%** |
+| 48GB | 22,118MB | 721,540,125 | 2.35x | ~43% |
+| 64GB | 29,491MB | 986,608,154 | 3.22x | ~55% |
+| **128GB** | 58,982MB | **2,046,844,319** | 6.68x | **~101%** |
+
+That is a hardware ask for Red/Sponge with arithmetic under it instead of a vague "bigger box". The alternative engineering route is a master that STREAMS rather than holding a full copy — a real architectural programme, not a knob.
+
+**What is left is Gee's press, and it re-prices the walk.** The sequence is: donor registers once (baseline → 45,488MB, persisted), then **Update & FRESH WALK** — weights trained at 306M do not describe 456M, so savestart is not an option. Result: **456,472,096 neurons, VRAM 21% → ~32%**, and every teach op touches a proportionally larger slice so GPU math per dispatch rises with it. **RE-PRICE per LAW, stated BEFORE the press: ~1.49x the neurons is ~1.49x per teach op, so the ~24-day structure refresh becomes ~36 days.**
+
+**Board: 34 open, 111 closed.**
