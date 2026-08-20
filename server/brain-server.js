@@ -10381,6 +10381,51 @@ try {
   console.warn(`[LoopWatchdog] could not start the watchdog thread (${e && e.message}) — a hard freeze will leave only the LOOPNAME.7 breadcrumb.`);
 }
 
+// ── WDCLEAN.1 (2026-08-20) — THE CLEAN-EXIT STAMP. Found auditing the watchdog
+// the day it shipped: the SIGTERM handler and the restart paths save weights
+// BEFORE process.exit, and the 5.4GB save pins the loop for ~112s — so the
+// watchdog TRUTHFULLY writes `state: STALLED` during the save, the process then
+// exits ON PURPOSE, and the artifact's documented reading ("STALLED after a
+// reboot = the process never came back") is forged on every clean savestart.
+// Truthful at write time, a lie at read time — the exact failure family this
+// instrument was built against.
+//
+// `'exit'` is the precise discriminator this needs: it fires on every
+// deliberate `process.exit()` — the SIGTERM path, the restart's exit(42), the
+// Ctrl+C path — and NEVER on SIGKILL / OOM-kill / power loss. Stamping here
+// converts a shutdown-window stall into CLEAN_EXIT while leaving the true
+// positives (hard deaths) on disk as STALLED, which is what makes the surviving
+// STALLED file MEAN something again.
+//
+// Two guards, both load-bearing:
+//   • state must be STALLED — a RECOVERED file is already truthful, touch nothing.
+//   • observedAt must fall inside THIS process's lifetime — a STALLED file left
+//     by a PREVIOUS boot's hard death is the evidence this artifact exists to
+//     preserve, and a later clean exit stamping it would destroy exactly that.
+// Residual race: the watchdog thread could rewrite between this stamp and
+// process death, but it writes only on its 10s repeat cadence, so the window is
+// microseconds against ten seconds. Handler is sync-only per 'exit' rules, and
+// wrapped so a stamp failure can never block an exit.
+const _wdBootWallMs = Date.now();
+process.on('exit', (code) => {
+  try {
+    const _fzPath = path.join(__dirname, '.loop-freeze.json');
+    if (!fs.existsSync(_fzPath)) return;
+    const f = JSON.parse(fs.readFileSync(_fzPath, 'utf8'));
+    if (!f || f.state !== 'STALLED') return;
+    const obs = Date.parse(f.observedAt || '');
+    if (!Number.isFinite(obs) || obs < _wdBootWallMs) return;   // a previous process's evidence — leave it
+    f.state = 'CLEAN_EXIT';
+    f.cleanExitAt = new Date().toISOString();
+    f.exitCode = code;
+    f.note = 'WDCLEAN.1 — this process exited DELIBERATELY (process.exit ran) while the watchdog had an open stall: '
+      + 'almost always the shutdown save pinning the loop. The stall fields above are kept as history. '
+      + 'A file still reading STALLED after a reboot now really does mean a hard death (SIGKILL / OOM / power), '
+      + 'because every clean exit rewrites it to CLEAN_EXIT.';
+    fs.writeFileSync(_fzPath, JSON.stringify(f, null, 2));
+  } catch { /* an exit stamp must never block the exit */ }
+});
+
 let _lagAnchor = process.hrtime.bigint();
 const _lagTimer = setInterval(() => {
   const now = process.hrtime.bigint();
