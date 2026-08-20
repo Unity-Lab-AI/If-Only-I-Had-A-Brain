@@ -781,6 +781,65 @@ function writeBrainCodeHash(hash) {
   }
 }
 
+// ─── LOOPNAME.13 (2026-08-20) — BUNDLE FRESHNESS, CHECKED NOT REMEMBERED ─────
+//
+// `js/app.bundle.js` is built from the same `js/brain/*` sources this server
+// imports directly. Nothing enforced that the two agree: an edit followed by a
+// push without a local `npm run build` ships a browser bundle that silently
+// disagrees with the server it talks to, and the box cannot self-correct because
+// there is no esbuild on it — the rsync deploy just publishes the stale artifact.
+// It has already cost a session: the rebuild was remembered by hand, twice.
+//
+// So the server checks it at boot, against the SAME file list the code-hash uses
+// (one list, so a new brain file cannot be added to one check and forgotten in
+// the other). mtime, not content, because the bundle is minified and its inputs
+// are not — a hash comparison would need a rebuild to answer, which is the very
+// thing we cannot do here. A stale bundle is REPORTED, loudly, on the box and in
+// the state payload; the fix stays local (`cd server && npm run build`).
+const BUNDLE_FILE = path.join(__dirname, '..', 'js', 'app.bundle.js');
+function checkBundleFreshness() {
+  try {
+    if (!fs.existsSync(BUNDLE_FILE)) {
+      return { ok: false, reason: 'js/app.bundle.js is MISSING — the browser has no client code to load at all.', bundleMtime: null, newestInput: null, staleByMs: null };
+    }
+    const bundleMs = fs.statSync(BUNDLE_FILE).mtimeMs;
+    let newestMs = 0;
+    let newestName = null;
+    for (const f of BRAIN_CODE_FILES) {
+      // brain-server.js is server-only — it is not an input to the browser
+      // bundle, so editing it must never read as a stale bundle.
+      if (f === __filename) continue;
+      try {
+        if (!fs.existsSync(f)) continue;
+        const ms = fs.statSync(f).mtimeMs;
+        if (ms > newestMs) { newestMs = ms; newestName = path.basename(f); }
+      } catch { /* unreadable input is not evidence either way */ }
+    }
+    if (!newestMs) return { ok: true, reason: 'no readable brain sources to compare against', bundleMtime: new Date(bundleMs).toISOString(), newestInput: null, staleByMs: 0 };
+    const staleByMs = newestMs - bundleMs;
+    // 2s slack: a build writes the bundle within a second or two of the edit
+    // that triggered it, and filesystem timestamp granularity varies.
+    const ok = staleByMs <= 2000;
+    return {
+      ok,
+      reason: ok
+        ? `bundle is newer than every brain source (newest input ${newestName})`
+        : `${newestName} is ${(staleByMs / 1000).toFixed(0)}s NEWER than js/app.bundle.js — the browser is running code that predates it`,
+      bundleMtime: new Date(bundleMs).toISOString(),
+      newestInput: newestName ? { file: newestName, mtime: new Date(newestMs).toISOString() } : null,
+      staleByMs: Math.max(0, staleByMs),
+    };
+  } catch (e) {
+    return { ok: null, reason: `freshness check failed: ${e.message}`, bundleMtime: null, newestInput: null, staleByMs: null };
+  }
+}
+const BUNDLE_FRESHNESS = checkBundleFreshness();
+if (BUNDLE_FRESHNESS.ok === false) {
+  console.warn(`[Brain] ⛔ STALE BROWSER BUNDLE — ${BUNDLE_FRESHNESS.reason}. The server imports js/brain/* directly; the browser (dashboard + compute donor) loads js/app.bundle.js. They are NOT the same code right now. Fix locally with \`cd server && npm run build\` and redeploy — the box has no esbuild and cannot rebuild itself.`);
+} else if (BUNDLE_FRESHNESS.ok === true) {
+  console.log(`[Brain] bundle freshness OK — ${BUNDLE_FRESHNESS.reason}.`);
+}
+
 // #38 — WEIGHT-COMPATIBILITY VERSION. Bump this ONLY when a code change alters
 // the saved weight FORMAT or brain TOPOLOGY such that previously-saved weights
 // can no longer be loaded (serialization layout, projection structure, cluster
@@ -2028,6 +2087,89 @@ class ServerBrain {
         } else {
           console.warn(`[Brain] WMB FLOOR SKIPPED — target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} blocked by ${_targetVram > WMB_VRAM_SAFETY_BYTES ? `real VRAM ${(_targetVram/1e9).toFixed(2)}GB > ${(WMB_VRAM_SAFETY_BYTES/1e9).toFixed(0)}GB ceiling` : `RAM/V8 floor ${_ramFloor.toLocaleString()}`}; staying at ${langCortexSize.toLocaleString()}.`);
         }
+      }
+      // ─── LANGRAM.6 (2026-08-20) — THE GEOMETRY PIN ─────────────────────────
+      //
+      // Every bound above is derived from `os.freemem()` AT BOOT, so the
+      // vocabulary ceiling was a coin flip on whatever else happened to be
+      // resident: the same box came up at 12,000,000 on a quiet boot and at
+      // 349,155 on a busy one, and the only symptom was one warn line buried in
+      // a 40-line boot banner. That is not a tuning problem, it is a geometry
+      // that changes underneath weights sized for the old one — word_motor is 6%
+      // of the cortex, so the small outcome silences every word past index
+      // ~20,950 of a ~60,000-word target, and the saved matrices no longer
+      // describe the brain that is booting.
+      //
+      // So the size is PINNED to disk and the pin WINS. Once weights exist, the
+      // geometry they were trained against is the contract; a boot-time RAM dip
+      // does not get to rewrite it silently. The per-neuron coefficient already
+      // carries ~1.7x safety over the measured ~590 B/neuron, so honouring the
+      // pin is the safer failure than shrinking into a brain whose vocabulary
+      // band no longer matches its weights.
+      //
+      // A geometry CHANGE is therefore always an explicit act, and always loud:
+      //   - `DREAM_LANG_CORTEX=<n>`  — deliberate resize (already existed); the
+      //                                pin is rewritten to the new size.
+      //   - `DREAM_LANG_UNPIN=1`     — ignore the pin for this boot and re-derive
+      //                                from the live bounds; the pin is rewritten.
+      //   - a fresh walk             — start.bat wipes the weights, and the pin
+      //                                is only authoritative while weights exist,
+      //                                so a fresh walk re-derives naturally.
+      const LANG_GEOM_FILE = path.join(__dirname, 'lang-geometry.json');
+      const _autoDerivedSize = langCortexSize;
+      const _explicitResize = Number.isFinite(envOverride) && envOverride > 0;
+      const _unpinRequested = process.env.DREAM_LANG_UNPIN === '1';
+      let _weightsOnDisk = false;
+      try {
+        _weightsOnDisk = fs.existsSync(WEIGHTS_FILE.replace(/\.json$/, '.bin')) || fs.existsSync(WEIGHTS_FILE);
+      } catch { /* unreadable state dir — treat as fresh */ }
+      let _pinnedGeom = null;
+      try {
+        if (fs.existsSync(LANG_GEOM_FILE)) {
+          const _p = JSON.parse(fs.readFileSync(LANG_GEOM_FILE, 'utf8'));
+          if (_p && Number.isFinite(Number(_p.langCortexSize)) && Number(_p.langCortexSize) > 0) _pinnedGeom = _p;
+        }
+      } catch (e) {
+        console.warn(`[Brain] LANGRAM.6 — lang-geometry.json unreadable (${e.message}); the pin is treated as absent and this boot re-derives.`);
+      }
+      if (_pinnedGeom && !_explicitResize && !_unpinRequested && _weightsOnDisk) {
+        const _pinSize = Math.floor(Number(_pinnedGeom.langCortexSize));
+        if (_pinSize !== langCortexSize) {
+          console.warn(
+            `[Brain] ⛔ LANGRAM.6 GEOMETRY PIN HELD — this boot's live bounds would have sized the language cortex at ${langCortexSize.toLocaleString()}, but the weights on disk were trained at ${_pinSize.toLocaleString()} (pinned ${_pinnedGeom.writtenAt || 'unknown date'}). BOOTING AT THE PINNED SIZE. ` +
+            `A silent resize would move word_motor (6% of the cortex → ${(Math.floor(_pinSize) - Math.floor(_pinSize * 0.940)).toLocaleString()} vs ${(Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940)).toLocaleString()} emittable word buckets) and orphan every trained matrix. ` +
+            `The difference is boot-time free RAM (${(freeRamBytes / 1e9).toFixed(1)}GB × ${(LANG_RAM_FRACTION * 100).toFixed(0)}% → ${ramBasedMax.toLocaleString()} neurons), not a decision anyone made. ` +
+            `To CHANGE the geometry on purpose: DREAM_LANG_CORTEX=<n> (resize + repin), DREAM_LANG_UNPIN=1 (re-derive + repin), or a fresh walk (start.bat wipes the weights and the pin stops applying).`
+          );
+          langCortexSize = _pinSize;
+        } else {
+          console.log(`[Brain] LANGRAM.6 — geometry pin CONFIRMED: ${_pinSize.toLocaleString()} neurons, matching this boot's derived size. The vocabulary ceiling cannot flip run to run.`);
+        }
+      }
+      // Write / refresh the pin. Explicit acts repin loudly; a fresh box pins on
+      // its first boot so the SECOND boot is already protected.
+      try {
+        const _pinPayload = {
+          langCortexSize,
+          writtenAt: new Date().toISOString(),
+          reason: _explicitResize ? 'DREAM_LANG_CORTEX explicit resize'
+            : _unpinRequested ? 'DREAM_LANG_UNPIN re-derive'
+            : (_pinnedGeom && _weightsOnDisk) ? 'held existing pin'
+            : 'derived from live bounds',
+          derivedThisBoot: _autoDerivedSize,
+          freeRamGB: Number((freeRamBytes / 1e9).toFixed(2)),
+          ramFraction: LANG_RAM_FRACTION,
+          weightsOnDisk: _weightsOnDisk,
+        };
+        const _prevSize = _pinnedGeom ? Math.floor(Number(_pinnedGeom.langCortexSize)) : null;
+        fs.writeFileSync(LANG_GEOM_FILE, JSON.stringify(_pinPayload, null, 2));
+        if (_prevSize !== null && _prevSize !== langCortexSize) {
+          console.warn(`[Brain] LANGRAM.6 — geometry pin REWRITTEN ${_prevSize.toLocaleString()} → ${langCortexSize.toLocaleString()} (${_pinPayload.reason}). This is a GEOMETRY CHANGE: matrices trained at the old size do not describe the new one, so a fresh walk is the honest next step.`);
+        } else if (_prevSize === null) {
+          console.log(`[Brain] LANGRAM.6 — geometry pinned at ${langCortexSize.toLocaleString()} neurons (${_pinPayload.reason}) → server/lang-geometry.json. Later boots hold this size instead of re-deriving it from free RAM.`);
+        }
+      } catch (e) {
+        console.warn(`[Brain] LANGRAM.6 — could not write lang-geometry.json (${e.message}); the geometry is UNPINNED this boot and can still flip on the next one.`);
       }
       const langMemGb = (langCortexSize * LANG_CLUSTER_BYTES_PER_NEURON / 1e9).toFixed(2);
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
@@ -4841,6 +4983,22 @@ class ServerBrain {
             // re-run every phase from scratch on every boot even though
             // cross-projection weights were preserved on disk.
             passedPhases: Array.isArray(cortex.passedPhases) ? [...cortex.passedPhases] : null,
+            // CELLBOUND.H (2026-08-20) — the phase DEFERRAL CURSOR, persisted
+            // beside the phase markers because it answers the same question one
+            // level down: not "did this phase finish?" but "how much of its
+            // dose is still owed?". A budget stop banks the owed rep count
+            // under `<phaseName>::<teachLabel>`; without this line the bank was
+            // in-memory only and a reboot re-taught reps that had already
+            // landed. Bounded at 512 keys (the whole K→PhD walk has ~114 phase
+            // visits, so this is headroom, not a cap in practice) and only
+            // non-zero entries are written, so a fully-paid walk persists {}.
+            phaseRepCursor: (cortex._phaseRepCursor && typeof cortex._phaseRepCursor === 'object')
+              ? Object.fromEntries(
+                  Object.entries(cortex._phaseRepCursor)
+                    .filter(([, v]) => Number.isFinite(v) && v > 0)
+                    .slice(0, 512)
+                )
+              : null,
             // Persist K-vocab prefetch flag so brain
             // restart doesn't re-warm the dictionary cache on every
             // grade=K transition (saves ~1 min per restart).
@@ -5377,6 +5535,24 @@ class ServerBrain {
     const _stamp = (stage) => {
       const now = Date.now();
       if (this._saveStage) _laps.push(`${this._saveStage}=${now - _stageT0}ms`);
+      // LOOPMAX.8 (2026-08-20) — BANK THE OUTGOING STAGE, same fix teachStage
+      // needed. The lag monitor is a 1000ms setInterval, so it reports AFTER
+      // the loop frees; the save resumes first and overwrites the breadcrumb.
+      // That race is what made `teachStage=hebbian:substrate(+44ms)` the tag on
+      // a 215-SECOND block — the instrument was measuring the recovery. This
+      // stamp had the identical shape and was never audited for it: banking the
+      // held duration against the OUTGOING stage name cannot be raced away,
+      // because the same call that would destroy the evidence writes it down.
+      // A large saveStageMax on a long block names the guilty save stage; a
+      // small one proves the pin was NOT inside a marked save stage, which is
+      // equally decisive.
+      if (this._saveStage && this._saveStageAt) {
+        const held = now - this._saveStageAt;
+        if (held > (this._saveStageMaxMs || 0)) {
+          this._saveStageMaxMs = held;
+          this._saveStageMaxName = this._saveStage;
+        }
+      }
       this._saveStage = stage || null;
       this._saveStageAt = now;
       _stageT0 = now;
@@ -5806,6 +5982,25 @@ class ServerBrain {
           cortex.passedPhases = [...pending.passedPhases];
           if (cortex.passedPhases.length > 0) {
             console.log(`[Brain] passedPhases restored: ${cortex.passedPhases.length} phase markers (T31 phase-level resume active)`);
+          }
+        }
+        // CELLBOUND.H — restore the phase deferral cursor on the same contract
+        // as passedPhases above (start.bat wipes both, Savestart preserves both,
+        // one JSON.stringify writes both, so a restored cursor always describes
+        // the binary weights beside it). Values are sanitised on the way in: a
+        // corrupt or negative entry would otherwise shrink a real dose to 1 rep,
+        // which is exactly the kind of silent under-training this whole family
+        // of items exists to prevent.
+        if (pending.phaseRepCursor && typeof pending.phaseRepCursor === 'object') {
+          const _cur = {};
+          for (const [k, v] of Object.entries(pending.phaseRepCursor)) {
+            if (typeof k === 'string' && k && Number.isFinite(v) && v > 0) _cur[k] = Math.floor(v);
+          }
+          cortex._phaseRepCursor = _cur;
+          const _n = Object.keys(_cur).length;
+          if (_n > 0) {
+            const _owed = Object.values(_cur).reduce((a, b) => a + b, 0);
+            console.log(`[Brain] phaseRepCursor restored: ${_n} phase(s) carrying ${_owed} deferred rep(s) — those visits RESUME the remainder instead of re-teaching the whole dose (CELLBOUND.H).`);
           }
         }
         if (pending.probeHistory && typeof pending.probeHistory === 'object') {
@@ -6854,6 +7049,10 @@ const httpServer = http.createServer((req, res) => {
       lastSave: brain._lastSave || null,
       bootMode,
       lastBootReason,
+      // LOOPNAME.13 — is the browser running the same code as this server?
+      // `ok: false` means the deployed bundle predates a brain source and the
+      // dashboard/donor are on stale client code (fix locally, redeploy).
+      bundleFreshness: BUNDLE_FRESHNESS,
       checkpointSlots: CHECKPOINT_SLOTS,
       keepStateFlag: keepState,
       forceClearFlag: forceClear,
@@ -8690,7 +8889,32 @@ wss.on('connection', (ws, req) => {
             const lb = brain._neuronLeaderboard[_lbKey] || { name: client.donorName || null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
             const now = Date.now();
             const dt = Math.min(10, Math.max(0, (now - (lb._lastTs || now)) / 1000));
-            lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
+            // MIRRORID.6 (2026-08-20, Gee's call: "credit real work only") — GATE
+            // THE ACCRUAL ON WORK ACTUALLY DONE. `gneuronsPerSec` is a PERSISTENT
+            // donor-side field: it keeps its last value forever, so this line
+            // used to bank credit for a card that had stopped computing entirely
+            // — earning for as long as it stayed connected. Same disease as
+            // MIRRORID.5 one layer down, in the accounting instead of the
+            // display. `stepsComputed` is the honest signal (verified monotonic
+            // in BOTH donor backends, incremented only on batch completion), and
+            // MIRRORID.5 already tracks it per client — so the condition is: the
+            // step counter moved since the last telemetry frame. A computing
+            // donor is completely unaffected. An idle one earns nothing and its
+            // ALREADY-BANKED total is untouched (this credits work, it does not
+            // claw back). First frame from a donor has no previous count to
+            // compare, so it establishes the baseline and accrues nothing —
+            // worth at most one frame of credit, which is the correct rounding
+            // direction for a number people compete on.
+            const _stepsNow = Number(msg.stepsComputed) || 0;
+            const _stepsPrev = Number(lb._lastSteps);
+            const _stepsAdvanced = Number.isFinite(_stepsPrev) ? (_stepsNow > _stepsPrev) : false;
+            if (_stepsAdvanced) {
+              lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
+              lb._lastComputeTs = now;
+            } else {
+              lb._idleFrames = (lb._idleFrames || 0) + 1;   // visible in the row: connected but not computing
+            }
+            lb._lastSteps = _stepsNow;
             lb._lastTs = now;
             lb.lastSeen = now;
             if (client.donorName) lb.name = client.donorName;
@@ -9254,7 +9478,11 @@ const _lagTimer = setInterval(() => {
     // SAVE-STAGE EYES — a pin during a weights save names the guilty save
     // stage (the 5.4GB save carried two ~112s pins the completion line
     // denied; same conviction pattern as chatStage=).
-    const _saveStageTag = brain._saveStage ? ` saveStage=${brain._saveStage}` : '';
+    // LOOPMAX.8 — and its AGE, for the same reason chatStage prints one: a save
+    // stage with no age cannot be told apart from a stale stamp left by a save
+    // that finished minutes ago.
+    const _ssAge = brain._saveStage ? (Date.now() - (brain._saveStageAt || 0)) : -1;
+    const _saveStageTag = brain._saveStage ? ` saveStage=${brain._saveStage}(+${(_ssAge / 1000).toFixed(1)}s)` : '';
     // LOOPNAME — name the innermost teach sub-op AND its age. The age is the point:
     // if it matches the block duration, that sub-op IS the block. A 279,318ms block
     // reported phase=_teachHebbian and nothing else — every other tag was absent, so
@@ -9273,10 +9501,23 @@ const _lagTimer = setInterval(() => {
     const _teachMaxTag = brain._teachStageMaxMs
       ? ` teachStageMax=${brain._teachStageMaxName}(${brain._teachStageMaxMs}ms)`
       : '';
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_saveStageTag}${_teachStageTag}${_teachMaxTag}`);
+    // LOOPMAX.8 (2026-08-20) — the same banked maximum for the OTHER two
+    // attribution tags. chatStage and saveStage were never audited for the race
+    // teachStage v1 lost, so both could print the recovery instead of the stall.
+    // Their stamps now bank the held duration of the outgoing stage and it
+    // prints here beside the current one.
+    const _chatMaxTag = brain._chatStageMaxMs
+      ? ` chatStageMax=${brain._chatStageMaxName}(${brain._chatStageMaxMs}ms)`
+      : '';
+    const _saveMaxTag = brain._saveStageMaxMs
+      ? ` saveStageMax=${brain._saveStageMaxName}(${brain._saveStageMaxMs}ms)`
+      : '';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_chatMaxTag}${_saveStageTag}${_saveMaxTag}${_teachStageTag}${_teachMaxTag}`);
     // Reset the window so the NEXT block reports ITS own longest stage, not a
-    // high-water mark inherited from an older one.
+    // high-water mark inherited from an older one. All three maxima, same law.
     brain._teachStageMaxMs = 0; brain._teachStageMaxName = null;
+    brain._chatStageMaxMs = 0; brain._chatStageMaxName = null;
+    brain._saveStageMaxMs = 0; brain._saveStageMaxName = null;
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));
