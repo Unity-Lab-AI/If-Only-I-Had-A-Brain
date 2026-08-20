@@ -101,6 +101,44 @@ const SERVER_CHAT_MIXIN = {
   async _drainMindsEyePreview() {
     if (!Array.isArray(this._mindsEyePreviewQueue) || this._mindsEyePreviewQueue.length === 0) return false;
     const job = this._mindsEyePreviewQueue.shift();
+    // DRAWCTX — an OWN-ART job: she composes her own drawing of what the message
+    // named, here on the walk lane, and publishes it to the mind's eye. Separate
+    // branch from the preview because there is no prompt and no reference involved:
+    // the whole point is that nothing from a generator reaches the canvas.
+    if (job && job.kind === 'own' && job.text) {
+      try {
+        const made = await this._drawOwnCreation(job.text);
+        if (made && made.rec) {
+          const now = Date.now();
+          this._lastGroundedEyeAt = now;
+          this._mindsEyeJson = JSON.stringify({
+            type: 'mindsEye', rec: made.rec, terms: made.rec.equation_count || 0,
+            source: made.source, at: now,
+          });
+          // Tell the viewers something new is on her page.
+          try {
+            if (this.clients && this.clients.size > 0) {
+              const p = JSON.stringify({ type: 'imagine', terms: made.rec.equation_count || 0, source: made.source, ts: now });
+              for (const [ws] of this.clients) { if (ws.readyState === 1) { try { ws.send(p); } catch { /* nf */ } } }
+            }
+          } catch { /* publish best-effort */ }
+          // She remembers making it — the drawing rides the emission bus so the
+          // dream cycle can consolidate "I drew this" as an episode.
+          try {
+            const _c = this.cortexCluster;
+            if (_c && typeof _c.pushEmission === 'function') {
+              _c.pushEmission({ source: 'own-art', text: (made.plan && made.plan.subjects ? made.plan.subjects.join(' ') : 'drawing'), ts: now });
+            }
+          } catch { /* non-fatal */ }
+          this._ownArtDrawn = (this._ownArtDrawn || 0) + 1;
+          return true;
+        }
+        try { process.stdout.write(`[OwnArt] nothing drawable understood in "${String(job.text).slice(0, 60)}" — honest no-drawing rather than a fake shape.\n`); } catch { /* nf */ }
+      } catch (e) {
+        if (!this._ownArtErrLogged) { this._ownArtErrLogged = true; console.warn(`[OwnArt] own-art drain failed: ${e?.message || e}`); }
+      }
+      return false;
+    }
     const imgPrompt = job && job.prompt;
     if (!imgPrompt) return false;
     try {
@@ -217,6 +255,34 @@ const SERVER_CHAT_MIXIN = {
     // turns the prompt into an actual image via Pollinations.
     if (text) {
       this._chatStamp('img-detect');
+      // ── DRAWCTX (Gee 2026-08-20) — "DRAW" MEANS *HER HAND*, NOT A GENERATOR ────
+      //
+      // Gee: *"when Unity is told to 'draw' she should draw the topic, thing, place,
+      // person, in context in the message from the user"* — and the deepest form of
+      // his complaint about filtered photos was right here: `VISUAL` matched the word
+      // `draw`, so "draw me a cat on a gravestone" was routed to Pollinations and the
+      // returned PHOTO was presented as her drawing. Her hand was never involved.
+      //
+      // A DRAW verb now goes to `_drawOwnCreation`, which composes her own marks from
+      // the shape schemas she has learned (see OWNART) for EVERY drawable noun in the
+      // message plus the place named in it. A picture/photo/image/generate ask still
+      // goes to the generator — that is a different thing and it is honest about it.
+      //
+      // It rides the WALK LANE, not the reply path: today's SURPRISECPU.2 measured an
+      // inline mind's-eye preview at 4,925ms, and a full composition is heavier. She
+      // answers in words immediately and her drawing lands on the mind's eye a beat
+      // later — the same discipline as every other piece of chat-time work.
+      if (this._detectDrawRequest(text)) {
+        try {
+          if (!Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue = [];
+          this._mindsEyePreviewQueue.push({ kind: 'own', text: String(text).slice(0, 400), at: Date.now() });
+          while (this._mindsEyePreviewQueue.length > 8) {
+            this._mindsEyePreviewQueue.shift();
+            this._mindsEyePreviewDropped = (this._mindsEyePreviewDropped || 0) + 1;
+          }
+          try { process.stdout.write(`[OwnArt] 🖐 draw asked — queued HER OWN composition of "${String(text).slice(0, 80)}" (walk lane; the reply is not held for it).\n`); } catch { /* nf */ }
+        } catch { /* queueing must never break the reply */ }
+      }
       const imgRequest = this._detectImageRequest(text);
       // TU.29.7 — the detected request is the INTENT; the PROMPT is hers.
       // TU.29.9 — EXCEPT a selfie: _detectImageRequest returns her curated
@@ -1529,7 +1595,22 @@ const SERVER_CHAT_MIXIN = {
     // for a single concept — it's a fallback only if the field render can't build,
     // and it's what imagination composition uses (strokes can't overlap as images).
     // Caller may still force a style via opts.style.
-    const style = (typeof opts.style === 'string') ? opts.style : 'field';
+    // OWNART (Gee 2026-08-20) — HER OWN VERSION IS NOW THE DEFAULT for every
+    // internal draw call too (practice, favourites, spontaneous art), not just the
+    // chat ask. `field` and `lineart` remain reachable via `opts.style` because they
+    // are still useful for SHOWING WHAT SHE SAW — they are just not a drawing, and
+    // nothing calls them a drawing any more. `DREAM_DRAW_STYLE` can pin the old
+    // behaviour on a box if it is ever needed for comparison.
+    const style = (typeof opts.style === 'string')
+      ? opts.style
+      : (process.env.DREAM_DRAW_STYLE || 'own');
+    if (style === 'own') {
+      const own = await this._drawOwnCreation(seed, { ...opts, label: opts.label });
+      if (own) return own;
+      // She could not build a schema for anything in it — fall through to the
+      // reference-render styles rather than returning nothing, and the label says
+      // plainly which one it was (`canvas:draw:` = a render of what she saw).
+    }
 
     // FIELD style returns a FINISHED drawn rec (no tracing/sketch) — the detailed
     // "immaculate" mode: a posterized full-res render of the reference in her own
@@ -1579,6 +1660,299 @@ const SERVER_CHAT_MIXIN = {
     // from (recall/ref/lookup) published itself separately, so the viewer shows the
     // reference she saw THEN her drawing of it, distinctly.
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style };
+  },
+
+  // ── OWNART (Gee 2026-08-20) — SHE DRAWS HER OWN VERSION, NOT A FILTERED PHOTO ──
+  //
+  // Gee, verbatim: *"she needs to not just copy it completely only to add filters to
+  // them and say she drew them, instead she will attemp completely new creations
+  // trying to replicate similar types of images but in ther own unique style outlay
+  // and apperance, NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and
+  // calling it a draw... Unity needs to create new and her owen versions xcompletely
+  // unique learning from what shes seen and understands via dictionary and
+  // apperances of the word"*.
+  //
+  // HE IS RIGHT ABOUT THE OLD PATH. `_drawConcept`'s default style was `field` →
+  // `stylizeField(rec)`, a 7-band posterize of the perceived reference; the
+  // alternative was `traceLineArt(rec)`, an edge-trace of the same frame. Both are
+  // transforms OF a downloaded image, published as `canvas:draw:<word>`. That is a
+  // filter, not a drawing, and no amount of palette choice changes it.
+  //
+  // THIS path never touches the reference's field C at render time. The ONLY thing
+  // that crosses from looking to drawing is the SHAPE SCHEMA (`_learnShapeSchema`):
+  // ≤9 coarse part cells with {cx, cy, w, h, ang, weight}, an aspect ratio, and a
+  // colour family — a few dozen numbers, ~1-2% of the reference's information. She
+  // then CONSTRUCTS marks from that understanding: her own stroke counts, her own
+  // arcs, her own palette, her own layout, varied per attempt by a seeded RNG so two
+  // drawings of the same word are genuinely different attempts rather than one cached
+  // output. Copying is not merely discouraged here, it is IMPOSSIBLE — the pixels are
+  // not in scope.
+  //
+  // What makes it a LIKENESS rather than noise is the same thing that makes a human
+  // sketch one: layout knowledge (mass low-centre, limbs at the bottom, head upper),
+  // proportion, and the definition's part-words contributing their own schemas.
+  //
+  // Variation is STYLE, never tremor — no hand-wobble, no child-mimicry, no skill
+  // floor (that law stands: her grade shows in what she KNOWS, never in an applied
+  // filter that degrades her hand).
+  // DRAWCTX — is this an ask for HER HAND? The DRAW verbs mean she makes marks
+  // (draw / sketch / doodle / illustrate / paint-by-hand). The GENERATOR words
+  // (picture / photo / image / render / generate) mean she asks Pollinations for a
+  // picture, which is a different act and stays honest about being one. "Paint" is
+  // hers — a painter uses a hand. Input classification only: verbs from the user's
+  // own message, no model, no keyword table of subjects.
+  _detectDrawRequest(text) {
+    const t = String(text || '').toLowerCase();
+    if (!t) return false;
+    if (!/\b(draw|drawing|sketch|sketching|doodle|doodling|illustrate|paint|painting)\b/.test(t)) return false;
+    // "send me a drawing of a photo" style asks still count — the verb is hers.
+    // But a pure generator ask that merely mentions the word (e.g. "generate a
+    // painting-style photo") should stay with the generator.
+    if (/\b(generate|render)\b/.test(t) && !/\b(draw|sketch|doodle|illustrate)\b/.test(t)) return false;
+    return true;
+  },
+
+  async _drawOwnCreation(text, opts = {}) {
+    if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
+    const plan = await this._drawPlanFromMessage(text, opts);
+    if (!plan || !plan.subjects.length) return null;
+
+    // Per-attempt seed: the words + her live mood + the attempt counter. Same words
+    // on a different day (or a different mood) compose differently — that is her
+    // having a style rather than a cache.
+    this._ownArtAttempt = (this._ownArtAttempt || 0) + 1;
+    const seedStr = plan.subjects.map(s => s.word).join('|')
+      + '|' + Math.round((this.arousal ?? 0.5) * 7)
+      + '|' + Math.round((this.valence ?? 0.5) * 7)
+      + '|' + this._ownArtAttempt;
+    const rnd = this._ownArtRng(seedStr);
+
+    const side = Number(process.env.DREAM_OWNART_CANVAS) > 0
+      ? Number(process.env.DREAM_OWNART_CANVAS)
+      : ((typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 512);
+
+    const strokes = [];
+    // GROUND / PLACE first (behind everything), if the message named a place.
+    if (plan.place) {
+      const g = 0.68 + 0.10 * (rnd() - 0.5);
+      strokes.push({ type: 'line', x0: 0.02, y0: g, x1: 0.98, y1: g + 0.02 * (rnd() - 0.5), rgb: this._ownArtInk(plan.place.schema, 0.55, rnd) });
+      const tufts = 5 + Math.floor(rnd() * 7);
+      for (let i = 0; i < tufts; i++) {
+        const x = 0.05 + rnd() * 0.9, hh = 0.02 + rnd() * 0.05;
+        strokes.push({ type: 'line', x0: x, y0: g, x1: x + 0.02 * (rnd() - 0.5), y1: g - hh, rgb: this._ownArtInk(plan.place.schema, 0.45, rnd) });
+      }
+    }
+    // SUBJECTS — main one centred and largest; companions flank it, smaller.
+    const layout = this._ownArtLayout(plan.subjects.length, rnd);
+    for (let i = 0; i < plan.subjects.length; i++) {
+      const s = plan.subjects[i];
+      const box = layout[i];
+      const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word);
+      for (const st of built) strokes.push(st);
+    }
+    if (strokes.length < 4) return null;   // nothing she understood well enough → honest no-drawing
+
+    // Her hand writes what she drew (her existing trained glyphs, no wobble).
+    if (opts.label !== false) {
+      try { for (const g of this._labelStrokes(plan.subjects[0].word)) strokes.push(g); } catch { /* label best-effort */ }
+    }
+
+    let drawn = null;
+    try {
+      drawn = await this.mindSpace.sketch(strokes, {
+        maxSide: side,
+        mood: { arousal: this.arousal, valence: this.valence },
+      });
+    } catch { return null; }
+    if (!drawn) return null;
+    const label = 'canvas:own:' + plan.subjects.map(s => s.word).join('+');
+    this._lastSketchLabel = label;
+    const known = plan.subjects.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
+    try { process.stdout.write(`[OwnArt] ✍ HER OWN version of "${plan.subjects.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} — ${strokes.length} marks she constructed, attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.\n`); } catch { /* nf */ }
+    return { rec: drawn, label, source: label, from: 'own:' + plan.subjects.map(s => s.word).join('+'), style: 'own', plan: { subjects: plan.subjects.map(s => s.word), place: plan.place ? plan.place.word : null } };
+  },
+
+  // DRAWCTX (Gee 2026-08-20: *"when Unity is told to 'draw' she should draw the
+  // topic, thing, place, person, in context in the message from the user"*).
+  //
+  // The old path took `_vmContentTokens(seed)[0]` — the FIRST content word — so
+  // "draw a black cat sitting on a gravestone" drew whatever "black" or "cat"
+  // resolved to and threw the rest away. This reads the WHOLE message: every
+  // drawable noun in order, the PLACE if one is named, and the modifiers that
+  // belong to each. Drawability is the existing dictionary POS check (`noun` sense
+  // required), so it stays her own learned dictionary — no text model, no keyword
+  // table.
+  async _drawPlanFromMessage(text, opts = {}) {
+    const raw = String(text || '');
+    if (!raw.trim()) return null;
+    // Strip the command framing but KEEP the subject and its context.
+    const body = raw
+      .replace(/^[\s,]*(hey|yo|ok|okay|unity|can you|could you|would you|will you|please|pls)\b/gi, ' ')
+      .replace(/\b(a picture of|an image of|a photo of|a drawing of|a painting of|picture of|image of|photo of|pic of|drawing of|painting of)\b/gi, ' ')
+      .replace(/\b(draw|sketch|paint|render|illustrate|generate|create|make|show me|give me|for me)\b/gi, ' ')
+      .replace(/[\s,]+/g, ' ')
+      .trim();
+    if (!body) return null;
+    // PLACE cue — the prepositional tail names where the thing IS, which is context,
+    // not another subject ("on a gravestone", "in the woods", "at school").
+    let placeWord = null;
+    const pm = body.match(/\b(?:on|in|at|under|inside|beside|near|by|over|behind|against)\s+(?:a|an|the)?\s*([a-z][a-z'-]{2,})/i);
+    if (pm) placeWord = pm[1].toLowerCase();
+    const tokens = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(body) : body.toLowerCase().split(/\s+/);
+    const seen = new Set();
+    const subjects = [];
+    const MAX_SUBJ = Number(process.env.DREAM_OWNART_MAX_SUBJECTS) > 0 ? Number(process.env.DREAM_OWNART_MAX_SUBJECTS) : 3;
+    for (const t of tokens) {
+      if (seen.has(t) || t === placeWord) continue;
+      seen.add(t);
+      let drawable = true;
+      try { if (typeof this._conceptIsDrawable === 'function') drawable = await this._conceptIsDrawable(t); } catch { drawable = true; }
+      if (!drawable) continue;
+      const schema = await this._ownArtSchemaFor(t, opts);
+      subjects.push({ word: t, schema });
+      if (subjects.length >= MAX_SUBJ) break;
+    }
+    if (subjects.length === 0) return null;
+    let place = null;
+    if (placeWord) {
+      const ps = await this._ownArtSchemaFor(placeWord, { ...opts, allowFetch: false });   // a place need not cost a look-up
+      place = { word: placeWord, schema: ps };
+    }
+    return { subjects, place, body };
+  },
+
+  // The schema she will draw FROM: what she already learned, else learn one from a
+  // percept she already holds, else (optionally) one look-up. Never returns pixels.
+  async _ownArtSchemaFor(word, opts = {}) {
+    try {
+      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const e = store && store.get(word);
+      if (e && e.schema && Array.isArray(e.schema.parts) && e.schema.parts.length) return e.schema;
+      // She HAS seen it but never abstracted it — learn the schema now, from the
+      // percept she already holds (no fetch, no pollen).
+      if (e && e.rec && typeof this._learnShapeSchema === 'function') {
+        const s = await this._learnShapeSchema(word, e.rec);
+        if (s) return s;
+      }
+      // Never seen it: one definition-driven look, then abstract THAT and throw the
+      // frame away. The look-up is how she learns an appearance; it is not the canvas.
+      if (opts.allowFetch !== false && typeof this._fetchReferenceAndGround === 'function') {
+        const rec = await this._fetchReferenceAndGround(word);
+        if (rec && typeof this._learnShapeSchema === 'function') return await this._learnShapeSchema(word, rec);
+      }
+    } catch { /* schema best-effort — a subject with no schema still draws from its definition */ }
+    return null;
+  },
+
+  // Deterministic small RNG (xorshift32) seeded from a string. Same seed → same
+  // drawing; the seed carries her mood + attempt number, so her hand VARIES without
+  // being random noise.
+  _ownArtRng(seedStr) {
+    let h = 2166136261 >>> 0;
+    const s = String(seedStr || 'unity');
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    let x = (h || 123456789) >>> 0;
+    return function next() {
+      x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0;
+      return x / 4294967296;
+    };
+  },
+
+  // Where each subject sits on her page. One subject = centred and big; two = side by
+  // side; three = a triangle. Her composition, not the reference's framing.
+  _ownArtLayout(n, rnd) {
+    const j = () => 0.03 * (rnd() - 0.5);
+    if (n <= 1) return [{ cx: 0.5 + j(), cy: 0.52 + j(), w: 0.62, h: 0.62 }];
+    if (n === 2) return [
+      { cx: 0.34 + j(), cy: 0.54 + j(), w: 0.42, h: 0.50 },
+      { cx: 0.70 + j(), cy: 0.52 + j(), w: 0.38, h: 0.46 },
+    ];
+    return [
+      { cx: 0.36 + j(), cy: 0.58 + j(), w: 0.38, h: 0.44 },
+      { cx: 0.68 + j(), cy: 0.60 + j(), w: 0.32, h: 0.38 },
+      { cx: 0.52 + j(), cy: 0.32 + j(), w: 0.30, h: 0.32 },
+    ];
+  },
+
+  // HER INK. Starts from her own register (goth: near-black lines, bone-white and a
+  // pink accent) and leans a little toward the learned colour family so a lemon is
+  // yellow-ish and a raven is not. The lean is deliberately partial — the thing's
+  // colour is knowledge, the rendering is hers.
+  _ownArtInk(schema, strength, rnd) {
+    const base = [
+      [228, 226, 230],   // bone
+      [36, 34, 40],       // near-black
+      [214, 88, 140],     // her pink
+    ][Math.floor(rnd() * 3) % 3];
+    const fam = (schema && Array.isArray(schema.palette) && schema.palette.length)
+      ? schema.palette[Math.floor(rnd() * schema.palette.length) % schema.palette.length]
+      : null;
+    if (!fam) return base;
+    const k = Math.max(0, Math.min(1, strength ?? 0.5)) * 0.6;   // never more than 60% the learned colour
+    return [
+      Math.round(base[0] * (1 - k) + fam[0] * k),
+      Math.round(base[1] * (1 - k) + fam[1] * k),
+      Math.round(base[2] * (1 - k) + fam[2] * k),
+    ];
+  },
+
+  // CONSTRUCT the marks for one subject inside its box. This is the actual drawing:
+  // every stroke is generated from the schema's numbers, never sampled from an image.
+  // A part with more weight gets more marks (that is where the thing's mass is), and
+  // each mark is an ARC she draws across the part rather than a traced contour.
+  _ownArtStrokesFromSchema(schema, box, rnd, word) {
+    const out = [];
+    const put = (pts, rgb) => out.push({ type: 'poly', pts, rgb });
+    // NO SCHEMA — she has never seen it and could not look it up. She still draws
+    // SOMETHING honest: a construction from the word's own shape-in-her-mind (letter
+    // count → mass, vowel ratio → roundness). Crude on purpose, and it is HER guess
+    // rather than a fake likeness or a filtered stock photo.
+    if (!schema || !Array.isArray(schema.parts) || schema.parts.length === 0) {
+      const w = String(word || 'thing');
+      const vowels = (w.match(/[aeiou]/g) || []).length / Math.max(1, w.length);
+      const lobes = 3 + (w.length % 4);
+      for (let i = 0; i < lobes; i++) {
+        const a0 = (i / lobes) * Math.PI * 2, a1 = a0 + Math.PI * 2 / lobes;
+        const r = 0.5 * (0.55 + 0.45 * vowels) * (0.85 + 0.3 * rnd());
+        const pts = [];
+        for (let t = 0; t <= 4; t++) {
+          const a = a0 + (a1 - a0) * (t / 4);
+          pts.push([
+            box.cx + Math.cos(a) * r * box.w * 0.5,
+            box.cy + Math.sin(a) * r * box.h * 0.5,
+          ]);
+        }
+        put(pts, this._ownArtInk(null, 0.3, rnd));
+      }
+      return out;
+    }
+    // WITH A SCHEMA — place each part where she learned it sits, at her own scale,
+    // and draw it as a small bundle of arcs oriented the way that part runs.
+    const fx = schema.frame && schema.frame.w ? schema.frame : { x: 0, y: 0, w: 1, h: 1 };
+    for (const p of schema.parts) {
+      // part centre, mapped from the learned frame into HER box (this is where her
+      // proportions replace the photo's framing)
+      const u = (p.cx - fx.x) / Math.max(1e-3, fx.w);
+      const v = (p.cy - fx.y) / Math.max(1e-3, fx.h);
+      const cx = box.cx + (u - 0.5) * box.w;
+      const cy = box.cy + (v - 0.5) * box.h;
+      const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+      const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+      const marks = 2 + Math.round(p.weight * 14);
+      for (let m = 0; m < marks; m++) {
+        // an arc across the part, along its learned orientation, bowed by her own
+        // hand this attempt
+        const ang = p.ang + (rnd() - 0.5) * 0.5;
+        const len = (0.5 + 0.5 * rnd()) * Math.max(pw, ph);
+        const bow = (rnd() - 0.5) * 0.45 * Math.min(pw, ph);
+        const ox = (rnd() - 0.5) * pw * 0.55, oy = (rnd() - 0.5) * ph * 0.55;
+        const ax = cx + ox - Math.cos(ang) * len * 0.5, ay = cy + oy - Math.sin(ang) * len * 0.5;
+        const bx = cx + ox + Math.cos(ang) * len * 0.5, by = cy + oy + Math.sin(ang) * len * 0.5;
+        const mx = (ax + bx) / 2 - Math.sin(ang) * bow, my = (ay + by) / 2 + Math.cos(ang) * bow;
+        put([[ax, ay], [mx, my], [bx, by]], this._ownArtInk(schema, 0.35 + 0.4 * p.weight, rnd));
+      }
+    }
+    return out;
   },
 
   // IMAGINATIVE DRAWING (Gee: "she needs to imagine too and draw things not always
