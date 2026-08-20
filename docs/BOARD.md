@@ -1,0 +1,89 @@
+# BOARD — triaged task list (2026-08-20)
+
+> Gee (verbatim): *"okay we have alot in the todo still open i want you to build the full task list in the cli so i can follow along with any and all items still open in the todo...(mind you , you need to be smart about it, as some of these are related to what ive told you and some u just added yourself, so we need to make sure that what needs to be done get s done and what doesnt need to be done doesnt get done"*
+
+**86 open items on `docs/TODO.md` triaged by two axes: WHO it came from (Gee's directive vs my own addition) and whether it is STILL LIVE.** Nothing is deleted by this file — `docs/TODO.md` stays the record. This is the reading order.
+
+**Headline: only ~29 of the 86 are real remaining work. ~40 are stale press-riders already answered by later presses, and ~11 are retrospective lessons I wrote that are not tasks at all.**
+
+---
+
+## TIER 0 — BLOCKING. Everything else waits on this.
+
+| # | id | what |
+|---|----|------|
+| 1 | **CELLBOUND.F** | ⏳ **ONE Update & Savestart.** Server+bundle only, weights preserved, art/K resumes from checkpoint. Verdict in one look: `phaseChain` names the full live chain · `cellPhasesCompleted` moves off 14/16 · `_gateArtKReal` finally runs · `phaseWork` no longer reads `done > total`. **A budget-stop line is EXPECTED, not a failure.** |
+
+---
+
+## TIER 1 — REAL WORK, FROM YOUR DIRECTIVES
+
+| # | id | what | why it's yours |
+|---|----|------|----------------|
+| 2 | **GATFILE.1/.2/.3** | Port the GATGUARD fixes into `scripts/Gattling Gun Savestart Forced.txt` — fetch guard never auto-restores (ate your Update button once), 2xx counted as a win, and the build guard pinned to `3efc220` makes the spotter declare victory on its FIRST poll and kill the barrels. | *"mark that thing u spotted in the todo"* |
+| 3 | **SURPRISECPU.2** | The second offender from the same split: `generate=17,941ms` and `img-detect=4,925ms`. Both now visible per-stage. | *"did u catch that doner crash?"* |
+| 4 | **FIRSTPIN.1** | Instrument the respond stage sub-stages; no fix until the split names the resident. | drop-on-speak war |
+| 5 | **FIRSTPIN.2** | The curiosity-followup landmine — `chat.js` awaits `_teachAssociationPairs` INLINE, the exact concurrent-teach crime CHATQUEUE was built to kill, alive in a branch that didn't fire in rounds 4–5. **Real latent bug.** | drop-on-speak war |
+| 6 | **FIRSTPIN.3** | WATCH (read-only): Oja active-set inflates to ~2.4–2.6M rows during chat windows. | drop-on-speak war |
+| 7 | **LG.6 / LG.7** | Language-cortex hops → ~20M, then 12–20% (the April target). ⛔ LG.6 has a hard prerequisite: at ~20M the intra rowPtr alone (~80MB) exceeds the donor's 64MiB message cap — needs a segmented-rowPtr donor release first. | your scale target |
+| 8 | **GRANT.2 / GRANT.3** | (a) Emergent Ventures application, (b) NSF Project Pitch — both free, zero-barrier, fire whenever you want. (c) The documented developmental trajectory as the real asset. | *"search online for grant available for this type of project"* |
+
+---
+
+## TIER 2 — REAL WORK I ADDED. Kept because it is proven, not speculative.
+
+**⚠ THREE of these bit us TODAY.** That is the argument for them, not my opinion.
+
+| # | id | what | evidence it's real |
+|---|----|------|--------------------|
+| 9 | **DASHDEAD.4** | An auth failure renders as a BRAIN failure. "Brain server unreachable" on a brain teaching 4,257/min. The dashboard can read `/public-state.json` with NO auth — it should probe that before blaming the backend and say *"admin lane not authenticated — brain is UP"*. | **cost us a full diagnostic round today** |
+| 10 | **MIRRORID.5** | Donor Gn/s is a persistent field — it shows a rate earned minutes ago while computing nothing. Must decay or read `idle`. | **I read `0.00 Gn/s` on a healthy new donor today and had to caveat it** |
+| 11 | **DONORKILL.2** | Nothing outside the brain shows WHICH GPU is primary. RunPod pod list, Clients table and leaderboard all show a card without showing it's load-bearing. | **I terminated her primary today** |
+| 12 | **LOOPNAME.13** | Nothing enforces bundle freshness. A `js/brain/*` edit without a local rebuild ships a browser bundle that silently disagrees with the server. A pre-push mtime/hash check fixes it. | **I had to remember it manually this session** |
+| 13 | **CELLBOUND.G** | The same unbounded rep-loop shape lives in **~58 other teach methods**. Sweep once CELLBOUND.F proves the shape on the convicted one. | measured |
+| 14 | **CELLBOUND.H** | The deferral cursor is IN-MEMORY only — across a reboot deferred work repeats rather than resumes. Persist it beside `passedPhases`. | stated at build time |
+| 15 | **SYNCEMPTY.3** | The REAL sync fix is not shipped. Registration-sync fires on a fixed 1.5s timer and races the server's own registry. Should GATE on a populated registry. ⛔ **Two theories already wrong here — do not guess a third; the next boot line decides.** | open root cause |
+| 16 | **LOOPMAX.8** | `saveStage` and `chatStage` have the SAME timer race `teachStage` v1 had and were never audited. Apply the banked-maximum pattern. | proven pattern |
+| 17 | **RESYNCDUTY.9** | `_gateSciKReal` isn't wrapped in `_phasedTeach`, so a 20.7-minute gate reads `activePhase: null` — indistinguishable from a hang. | cost a forensic dig |
+| 18 | **LOOPNAME.7** | Every diagnostic lane (admin WS, public-state, console ring) rides the event loop under investigation. We go blind exactly when we need eyes. | structural |
+| 19 | **SYNCPARTIAL.7** | Donor UI should show coverage ("holds 1/17 matrices") not just counters — "21 batches · 0 teach ops" is true but reads as a fault. | your own question raised it |
+| 20 | **CANSPEAK.4 / .8** | Retire `canSpeak` from status summaries (it's `minGrade !== 'pre-K'`, pure grade arithmetic); report `matrixDrivenPct` + `word_motor.everFired` instead. | you caught me misreporting it |
+| 21 | **RUNPOD.6** | `main.rs:49` enumerates wgpu unconditionally and `:88` hard-exits when empty — a CUDA-capable host with no Vulkan stack can never donate. Kills the whole GLVND/X11 package pile. | blocks a cheap donor fleet |
+| 22 | **LANGRAM.6** | Sizing a load-bearing geometry off `os.freemem()` means the vocabulary ceiling can differ run to run. Pin it or make a size change a loud acknowledged event. | it already flip-flopped once |
+| 23 | **SYNCPARTIAL.6 / DF7SYNC.7** | Root cause not established + the sync-window deadlock is narrowed, not eliminated. | honest open |
+
+---
+
+## TIER 3 — YOUR DECISION, not work
+
+| # | id | the call |
+|---|----|----------|
+| 24 | **WORDEMIT.4** | Fresh walk or not. **NOT forced.** Cheapest next step costs nothing: let art/K finish, talk to her, read `matrixDrivenPct`. |
+| 25 | **RUNPOD.8** | Community placement refused 3× at $0.34/hr; every pod lands SECURE at $0.74 (~$533/mo at 24/7). Retry community, accept secure, or switch card (A40 secure $0.44/hr, 48GB, HIGH stock). |
+| 26 | **RUNPOD.7** | ⚠ Likely already closed — the CUDA fix landed and today's pod advertised **24,210MB**, not the 2047MB Vulkan cap. Confirm and close. |
+
+---
+
+## TIER 4 — CLOSE THESE. Stale press-riders, already answered.
+
+**All are "⏳ GEE: Update & Savestart, then verify X" written 08-18/08-19. Those presses HAPPENED — repeatedly — and the outcomes are in FINALIZED and in today's live reads (3 names on the leaderboard, CUDA path at 24GB, blocks 250-440ms, teach/min ~4,100, drops/sheds 0/0, 4 cells passed).**
+
+`RAMP17.3` · `PRECELL.3` · `TPROF.1` · `DROPCHAT.3` · `SAVEPIN.2` · `SAVEPACE.3` · `V0319.2` · `REPLYPIN.3` · `GATESTEP.3` · `GENPIN.3` · `BAND1300.1` (superseded — V0318 took l1b 2,700ms→40ms) · `RUNPOD.11` · `RUNPOD.12` · `RUNPOD.13` (tag landed; template pins v0.3.22) · `RUNPOD.14` (verified today: `[CUDA]` @ 24,210MB) · `DF7SYNC.6` · `PACEDSYNC.5` · `SYNCSERIAL.5` · `DELTAIDX.8` · `QUEUEDEADLINE.4` · `ALIASFIX.4` · `INCREMENTAL.6` · `WORKSHARE.5` · `BUFFLOOR.4` · `PARTMIRROR.3` · `ALLINIT.4` · `MIRRORDIAG.3` · `INITFIT.5` · `MIRRORID.4` · `RESYNCDUTY.6` · `LOOPNAME.5` · `LOOPNAME.6` · `LOOPMAX.6` · `LOOPMAX.7` (answered by LANGRAM: RAM floor, fixed, 12M confirmed) · `LOOPMAX.9` (superseded — CELLBOUND named the real cost) · `SYNCPARTIAL.5` · `LANGRAM.5` (risk MATERIALIZED and was recorded in LANGRAM.9) · `GATGUARD.5` (moot — dashboard is back)
+
+⚠ **`DELTAIDX.9` is NOT in this list and must not be closed** — DELTAIDX is still **DISABLED** and its corruption cause was never found.
+
+---
+
+## TIER 5 — NOT TASKS. Retrospective lessons I wrote into the board.
+
+These are things I learned, written as if they were work. They belong in memory/docs, not on a task board where they inflate the count and hide the real 29.
+
+`ALIASFIX.5` · `WORKSHARE.6` · `PARTMIRROR.4` · `ALLINIT.5` · `INITFIT.6` · `RESYNCDUTY.7` · `SYNCEMPTY.4` · `WORDEMIT.5` · `GATGUARD.6` · `DONORKILL.1` · `DELTAIDX.9`(the ceiling note; the DISABLED status stays live in Tier 2 terms)
+
+---
+
+## Reading order if you only do three things
+
+1. **CELLBOUND.F** — press. Unblocks the walk.
+2. **Tier 2 #9/#10/#11** — the three that bit us today. The board still cannot answer *"is it working?"*
+3. **FIRSTPIN.2** — a real latent concurrent-teach bug sitting in an unfired branch.
