@@ -2427,7 +2427,61 @@ class ServerBrain {
       // model — NOT the tiny budget slice) fits a safe VRAM ceiling AND stays under
       // the true RAM/V8 bounds. This bypasses only the under-sized budget slice; the
       // real VRAM/RAM/V8 safety still governs. DREAM_LANG_CORTEX overrides outright.
-      const WMB_VRAM_SAFETY_BYTES = 6 * 1024 * 1024 * 1024;   // ~4.8GB real at the 12M hop-1 target ⟹ headroom under this ceiling, and the 16GB donor still holds main-brain LIF (~3.7GB) + this at ~8.5GB total with >7GB free
+      // ── WMBCEIL (2026-08-20) — DERIVED FROM THE CARD WE ACTUALLY HAVE, not a
+      // ── constant sized for a 16GB one.
+      //
+      // This was a hardcoded 6GB, chosen (per its original note) so that "the
+      // 16GB donor still holds main-brain LIF (~3.7GB) + this at ~8.5GB total".
+      // Sound reasoning against a 16GB card. But it is the second prerequisite
+      // of `LG.6` that nobody wrote down (`SCALEAUDIT.2`): with the corrected
+      // estimator a 20,000,000 language cortex prices at **7.649GB**, so a
+      // 20M hop would SILENTLY take the `else` branch below — "WMB FLOOR
+      // SKIPPED" — and land wherever the under-provisioned budget slice allows.
+      // That is the exact failure WMB exists to bypass, reintroduced by a
+      // constant that outlived its hardware.
+      //
+      // NOT simply raised. Today proved what happens when a VRAM bound is
+      // treated as an annoyance: `PRIMARYFLOOR` — a donor 1.5GB under the floor
+      // took no matrices at all and cost an afternoon. This bound is real and it
+      // stays; it is now DERIVED from the largest donor actually seen
+      // (`autoscale-settings.json.donorBaselineMB`, learned at `gpu_register`
+      // by `TIERTOP.2`) instead of assumed. Arithmetic: the card's usable share
+      // (75%, matching the DF.7 capacity formula) minus the main-brain LIF this
+      // boot will place on it (`TOTAL_NEURONS × 21B`) minus a 4GB working
+      // reserve for transient upload buffers. Floored at the historical 6GB so
+      // this can never be LESS permissive than before, and capped at 24GB so a
+      // huge card cannot green-light an unpriced geometry by itself.
+      //
+      // RE-PRICED per LAW: this changes no size on its own. `langCortexSize` is
+      // still `min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX)` and the target is
+      // unchanged at 12,000,000, so `corpus × reps × scale × visits` is
+      // untouched by this commit. What it does is stop a stale constant from
+      // silently vetoing a FUTURE deliberate hop — and any such hop still has to
+      // be priced on its own terms before the target moves.
+      const WMB_VRAM_SAFETY_BYTES = (() => {
+        const _HIST = 6 * 1024 * 1024 * 1024;       // the historical floor — never regress below it
+        const _CAP = 24 * 1024 * 1024 * 1024;       // and never hand out more than this on a claim alone
+        try {
+          let _baseMB = 0;
+          const _asPath = path.join(__dirname, 'autoscale-settings.json');
+          if (fs.existsSync(_asPath)) {
+            _baseMB = Number((JSON.parse(fs.readFileSync(_asPath, 'utf8')) || {}).donorBaselineMB) || 0;
+          }
+          if (!(_baseMB > 0)) return _HIST;         // nothing learned yet — behave exactly as before
+          const _usableBytes = _baseMB * 0.75 * 1024 * 1024;
+          const _mainLifBytes = TOTAL_NEURONS * 21;
+          const _reserveBytes = 4 * 1024 * 1024 * 1024;
+          const _derived = _usableBytes - _mainLifBytes - _reserveBytes;
+          const _out = Math.max(_HIST, Math.min(_CAP, _derived));
+          if (_out !== _HIST) {
+            console.log(`[Brain] WMBCEIL — language-cortex VRAM ceiling DERIVED from the largest donor seen (${_baseMB}MB): usable 75% = ${(_usableBytes / 1e9).toFixed(1)}GB − main-brain LIF ${(_mainLifBytes / 1e9).toFixed(1)}GB − 4GB reserve = ${(_derived / 1e9).toFixed(1)}GB → ceiling ${(_out / 1e9).toFixed(1)}GB (was a hardcoded 6.0GB sized for a 16GB card). This does not resize anything; it stops a stale constant silently vetoing a deliberate hop.`);
+          }
+          return _out;
+        } catch (e) {
+          console.warn(`[Brain] WMBCEIL — could not derive the ceiling (${e && e.message ? e.message : e}); using the historical 6GB.`);
+          return _HIST;
+        }
+      })();
       let langCortexSize = (Number.isFinite(envOverride) && envOverride > 0)
         ? envOverride
         : Math.min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX);
