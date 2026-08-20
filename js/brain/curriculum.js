@@ -3458,6 +3458,26 @@ export class Curriculum {
       cellPhasesCompleted: currentCellPassedPhases,
       cellPhasesStarted: currentCellPassedPhases + (cluster?._outermostPhase ? 1 : 0),
       cellPhasesTotal: declaredNow ? declaredNow.size : null,
+      // SELFFRAME OBSERVABILITY (2026-08-20) — the board must be able to answer
+      // "is she learning in first person?" without reading the console. Every
+      // field here is a COUNT of work that actually landed, not a flag saying the
+      // feature is enabled: `units` only increments after a frame is taught,
+      // `capped` says the per-cell budget stopped further reframing (so an
+      // unexpectedly low `units` has a stated reason), and `dose`/`budgetMs`
+      // report the two levers Gee set. This exists because the whole
+      // lying-instrument family started with features nobody could see running.
+      selfFrame: {
+        on: !(typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0'),
+        units: this._selfFramedUnits | 0,
+        lines: this._selfFramedLines | 0,
+        unitsThisCell: this._sfUnitsThisCell | 0,
+        capPerCell: (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0)
+          ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16,
+        capped: !!this._sfCapLogged,
+        corpusCursor: this._sfCorpusCursor | 0,
+        structureDose: STRUCTURE_DOSE,
+        phaseBudgetMs: PHASE_BUDGET_MS,   // 0 === no budget (Gee 2026-08-20)
+      },
       vocabProgress: this._vocabProgress
         ? {
             label: this._vocabProgress.label,
@@ -15451,8 +15471,28 @@ export class Curriculum {
     //
     // B — the authored 100/80/60 reps were sized when the language cortex was
     // 349K–1.5M. At 12M each pair-teach measures ~47ms, so the identical rep
-    // count costs 20–45× the wall it was calibrated against. STRUCTURE_DOSE is
-    // that recalibration as ONE explicit, logged, reversible number.
+    // count costs 20–45× the wall it was calibrated against. STRUCTURE_DOSE was
+    // that recalibration as ONE explicit, logged, reversible number — and it is
+    // back to 1.0 (full authored reps) per Gee 2026-08-20.
+    //
+    // ⛔⛔⛔ READ THIS BEFORE YOU TOUCH THE GATE BELOW. ⛔⛔⛔
+    //
+    // As of 2026-08-20 the phase budget is OFF by default and STRUCTURE_DOSE is
+    // 1.0, which makes THIS GATE THE ONLY THING KEEPING THE WALK FINITE. Remove
+    // it, bypass it, or let `_mechanicsProbeRate` go permanently undefined, and
+    // the walk returns to ~100 DAYS of structure-refresh alone:
+    //
+    //     corpus 11,436 transitions × reps 100 × ~47ms @12M × 114 visits
+    //       = 14.9h in ONE call · 21.2h per cell · ~2,417h ≈ 100 days
+    //
+    // Measured, not estimated — `art/kindergarten` sat in one phase for 21.2
+    // HOURS on 2026-08-20 for exactly this reason. With the gate: ~24 days.
+    //
+    // LAW (`.claude/CONSTRAINTS.md` §RE-PRICE THE WALK BEFORE REMOVING A GATE):
+    // recompute `corpus × reps × scale × visits` and WRITE THE NUMBER DOWN before
+    // weakening any bound. Every one of those four terms is live — a corpus
+    // addition, a rep bump, a cortex hop or a new grade re-prices the whole walk.
+    // The failure mode is arithmetic, and arithmetic is invisible in a diff.
     const _probeRate = cluster._mechanicsProbeRate;
     const _consolidated = typeof _probeRate === 'number' && _probeRate >= 0.4;
     const _visit = (cluster._structureRefreshVisits = (cluster._structureRefreshVisits | 0) + 1);
