@@ -53,11 +53,38 @@ jobs:
           # there too or the two lanes publish different sites.
           # Frontend only — exclude backend, training data, deps, internals, docs.
           # NOTE: assets/ (incl. assets/social/*.png per-page social images) DOES ship.
+          # ── PUBDOCS (2026-08-20) — html/docs.html WAS OFFERING EIGHT BROKEN LINKS.
+          # It renders `../docs/<NAME>.md` from a whitelist in its own source, but
+          # `--exclude='docs'` + `--exclude='*.md'` meant NONE of those files were
+          # ever deployed. Public nginx answers an unknown route with the SPA shell
+          # at HTTP 200, so every one of them fetched 54KB of index HTML instead of
+          # the document and rendered garbage — a "200-with-HTML is a lie" failure,
+          # invisible unless you read the BODY rather than the status code.
+          #
+          # Fixed by deploying EXACTLY the page's own whitelist and nothing else.
+          # rsync applies filters in order, first match wins, so these includes must
+          # precede the excludes below — and `--include='docs/'` is required or rsync
+          # never descends into the directory to see the file rules at all.
+          #
+          # Internal docs (TODO, FINALIZED, RESUME, NOW, the syllabus, the specs) stay
+          # excluded on purpose: the frontend-only rule is deliberate, and this is a
+          # whitelist of the eight public documents, not a change of policy. Adding a
+          # doc to `DOC_PATHS` in html/docs.html now REQUIRES adding it here too, or
+          # it silently 200s with HTML again.
           rsync -az --delete \
+            --include='docs/' \
+            --include='docs/ARCHITECTURE.md' \
+            --include='docs/EQUATIONS.md' \
+            --include='docs/ROADMAP.md' \
+            --include='docs/SKILL_TREE.md' \
+            --include='docs/SENSORY.md' \
+            --include='docs/WEBSOCKET.md' \
+            --include='docs/SETUP.md' \
+            --include='README.md' \
             --exclude='.git' --exclude='.forgejo' --exclude='.gitea' \
             --exclude='.claude' --exclude='server' --exclude='corpora' \
             --exclude='node_modules' --exclude='scripts' --exclude='deploy' \
-            --exclude='docs' --exclude='*.md' --exclude='donor-app' \
+            --exclude='docs/**' --exclude='docs' --exclude='*.md' --exclude='donor-app' \
             --exclude='package.json' --exclude='package-lock.json' \
             -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
             ./ "${USER}@${HOST}:${REPO}/"

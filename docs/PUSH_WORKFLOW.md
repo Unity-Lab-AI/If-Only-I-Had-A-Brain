@@ -1,5 +1,37 @@
 # Push Workflow — Deploy Versioning
 
+## ⛔ LAW — NEVER PUSH WITH SUPPRESSED OUTPUT. VERIFY WITH `git ls-remote` (2026-08-20)
+
+**This cost Gee two fresh walks — hours of training thrown away — and it was invisible for nine consecutive pushes.**
+
+I pushed with `git push -q "$remote" "$branch" 2>/dev/null`. The quiet flag plus a discarded stderr makes **a rejection and a success byte-identical in the output**, so I reported "pushed" nine times on the strength of an exit code I had thrown away.
+
+### The mechanism, and why nothing local reveals it
+
+`.forgejo/workflows/donor-release.yml` commits the site-link bump to `main` **and pushes it to Forgejo only** (`origin`). Local `main` never has that commit, so from that moment every `origin` push is a **non-fast-forward and is refused** — while **`github` keeps accepting, because the CI never pushes there.** The two remotes silently disagree, and `deploy/self-update.sh` does `git clone --depth 1 --branch main <Forgejo>` — so **the box faithfully redeploys whatever Forgejo's `main` says**, which was stale code. Two presses of Update & Fresh Walk built the wrong brain before anyone noticed. It then recurred the same day and was caught **only** because the output was no longer suppressed.
+
+### The rule
+
+1. **Push LOUDLY.** No `-q`, no `2>/dev/null`, on any push. A rejection must be visible.
+2. **Verify against the remote, not the exit code:**
+   ```bash
+   git push origin main            # loud
+   git push github main            # loud
+   git rev-parse --short=8 main
+   git ls-remote origin refs/heads/main   # must match
+   git ls-remote github refs/heads/main   # must match
+   ```
+3. **Expect CI-authored commits on `origin/main`.** After any `donor-v*` tag, `fetch` and merge before pushing:
+   ```bash
+   git fetch origin main && git log --oneline main..FETCH_HEAD && git merge --no-ff FETCH_HEAD
+   ```
+4. **A claim of "pushed" is only true if the remote says the same SHA.** Anything else is a guess.
+
+### The corollary that caught a second bug
+
+A failed shell line means **later `&&`-chained commands never ran.** A heredoc quoting error caused `git checkout -b` to be skipped, so edits and a commit landed **directly on `main`** — three times in one session. **After any command that errors, re-check `git branch --show-current` before committing.**
+
+
 ## LAW — Docs before push, no patches (Gee, 2026-04-14)
 
 **Gee's exact words on 2026-04-14:**

@@ -1,6 +1,8 @@
 # `server/brain-server/` — per-concern split of brain-server.js
 
-Per the per-concern split directive — break the 9,555-line brain-server.js into focused modules attached to `ServerBrain.prototype` via `Object.assign` mixin pattern (same approach as `js/brain/curriculum/` per-grade split + `js/brain/cluster/` per-module split).
+Per the per-concern split directive — break the (then) 9,555-line brain-server.js into focused modules attached to `ServerBrain.prototype`
+<!-- Drift check 2026-08-20: brain-server.js is now 10,945 lines. It has GROWN since the split, which is expected — the split moved concerns OUT into this directory while the remaining file kept absorbing new server-side work (the VRAM/tier allocator, the adaptive substep controller, the upload watchdogs, the geometry-pin logic). The number above is kept as the historical baseline the split was measured against; this note is the current figure. -->
+ via `Object.assign` mixin pattern (same approach as `js/brain/curriculum/` per-grade split + `js/brain/cluster/` per-module split).
 
 ## Target layout (per-concern files)
 
