@@ -1,6 +1,38 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — FINISH THE BOARD: nine real items built, 47 stale ones closed with verdicts, 49 dead scripts + 14MB of debris deleted, and the written task list Gee asked for seven times
+> ## ⭐⭐⭐ 2026-08-20 (latest) — VERIFY BEFORE BUILDING: the board is down to **20 open**, and the verification pass contradicted the board four times
+>
+> **PICK-UP STATE.** Branch `feature/verify-remaining-0820` off main (the two earlier branches are merged + cascaded). **`CELLBOUND.F` is STILL the one blocking press.** The box reads `85a01904` — behind ALL THREE of today's batches. **21 open / 73 closed.**
+>
+> ⚠ **`SCRIPTKILL.4` — the two hook fixes in this pass are not version-controlled.** `.claude/` is excluded from this repo by the IP-boundary LAW, so the `scripts/` hygiene report and the usage-ledger byte ceiling exist only on this machine; a `/unity-update` framework refresh reverts both silently. The framework repo is not cloned here — it needs an upstream port.
+>
+> ### ⛔ READ THIS BEFORE PICKING UP WORK — what the checks proved
+>
+> Gee: *"still open items to do, make sure they are really needed before you do them"*. Four answers changed:
+>
+> 1. **`RUNPOD.7` is CLOSED on live data, not inference.** `/public-state.json` (body parsed as JSON — a 200-with-HTML is a known lie on this origin): `maxBindMB 24210`, `community.sizeDriverMB 24210`, `computeInsufficient false`, `32.45 Gn/s`. The 2047MB Vulkan cap it was filed about is gone with CUDA restored.
+> 2. **`RUNPOD.6` was TWO gates.** The documented one (`main.rs` exits on empty wgpu enumeration) and the undocumented one that actually mattered: `MultiEngine::new` needs a wgpu adapter at the slot AND finds the CUDA ordinal by NAME-MATCHING it. Both fixed; compile-verified on all three feature combos.
+> 3. **`LG.6`'s hard prerequisite was a client-side default.** 76.3MB rowPtr vs tungstenite's DEFAULT 64MiB `max_message_size` — while the server has accepted `maxPayload: 2GB` all along. One config call (512MiB/64MiB receive ceiling). **The segmented-rowPtr protocol redesign is now optional, not required.** The hop is still Gee's call (geometry ⟹ fresh walk).
+> 4. **`CELLBOUND.G` is 73 sites, not ~58** — the per-grade curriculum files had never been grepped. Still sequenced after F.
+>
+> ### 🔧 SHIPPED IN THIS PASS
+>
+> - **`RUNPOD.6`** — CUDA-only hosts can donate: `cuda_only_gpus()` + new `cuda::device_vram_mb()` (one driver query, no context/NVRTC) + CUDA-by-ordinal when a slot has no wgpu adapter. No more GLVND/X11 package pile on a rented pod.
+> - **`LG.6` prerequisite** — donor receive ceiling 64MiB → 512MiB message / 64MiB frame via `connect_async_with_config`.
+> - **`DF7SYNC.7` prerequisite** — every replica sweep prints `held Xs · window=<idle/dream|DURING TEACH (paced)|…> · N matrices ≈ Y MB (Z MB/s)`. Duration WITH payload, because 8 minutes for 3GB and for 40MB are different diagnoses.
+> - **`SCRIPTKILL.2`** — `.session-usage.jsonl` bounded: byte trigger (1MB, `UNITY_USAGE_MAX_BYTES`), whole-line tail kept (2000, `UNITY_USAGE_KEEP_LINES`), temp-file+rename. **My first cut capped lines but triggered on bytes and enforced nothing — the test caught it.**
+> - **`SCRIPTKILL.1`** — session-start names untracked / patcher-shaped files in `scripts/`. A REPORT, not a blocker, on purpose.
+> - **Closed as RULES → memory:** `TASKLIST.2`, `TASKLIST.3`, `SCRIPTKILL.3`. A standing instruction on a task board can never be finished.
+> - **New `RUNPOD.15`** — ⏳ Gee: ONE donor tag ships RUNPOD.6 + the LG.6 ceiling. Filed separately so DONE is never confused with LIVE (that conflation made the 38 stale riders).
+>
+> ### 📌 THE 20 OPEN, AND WHY EACH ONE IS NOT DONE
+>
+> `CELLBOUND.A–E` (built, riding the press) · `CELLBOUND.F` (**the press**) · `CELLBOUND.G` (73 sites, after F) · `RESYNCDUTY.9` (held — same counter F verifies) · `DELTAIDX.9` (⛔ DISABLED, cause unknown, must not be closed) · `SYNCPARTIAL.6` (its own rule: no code until the next boot line) · `LOOPNAME.7` (structural; LOOPMAX.8 covers the common case now) · `FIRSTPIN.3` (watch; rule out FIRSTPIN.2's old inline teach first) · `DF7SYNC.7` (waiting on a real measurement) · `RUNPOD.15` (Gee's tag) · `LG.6`/`LG.7` (Gee's fresh-walk call) · `RUNPOD.8` (spend) · `WORDEMIT.4` (not forced) · `GRANT.2`/`GRANT.3` (his to fire; .3 only matters if .2 does).
+>
+> ### METHOD NOTE
+> Every one of the four corrections came from reading the thing instead of quoting the board: a live JSON body, two call sites in Rust, a tungstenite default, a second grep path. And the `SCRIPTKILL.2` miss is the same lesson pointed inward — **a gate that reads correct and enforces nothing is the failure mode of this entire ledger**, so it got a behaviour test rather than a claim.
+
+> ## ⭐⭐⭐ 2026-08-20 (prior) — FINISH THE BOARD: nine real items built, 47 stale ones closed with verdicts, 49 dead scripts + 14MB of debris deleted, and the written task list Gee asked for seven times
 >
 > **PICK-UP STATE.** Branch `feature/finish-the-board-0820` off main (the earlier `feature/open-task-list-0820` is already merged + cascaded). **`CELLBOUND.F` is STILL the one blocking press** and nothing in either of today's batches changes what it verifies. Board went **82 open → 26** (21 pending + 5 `CELLBOUND.A–E` riding that press), 66 closed.
 >

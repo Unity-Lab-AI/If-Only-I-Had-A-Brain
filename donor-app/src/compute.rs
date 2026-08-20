@@ -890,9 +890,42 @@ impl MultiEngine {
         let mut drivers: Vec<String> = Vec::with_capacity(indices.len());
         let mut ccs: Vec<String> = Vec::with_capacity(indices.len());
         for (k, &idx) in indices.iter().enumerate() {
-            let adapter = adapters
-                .get_mut(idx)
-                .and_then(|o| o.take())
+            let adapter_slot = adapters.get_mut(idx).and_then(|o| o.take());
+            // RUNPOD.6 — the CUDA path used to REQUIRE a wgpu adapter twice over: once for this
+            // lookup, and again because the CUDA ordinal was found by NAME-MATCHING the adapter.
+            // On a CUDA-only host (no Vulkan/DX adapter at all — most cloud GPU containers) both
+            // failed, so a perfectly good card could never compute. With no adapter at this slot,
+            // go straight to CUDA by ordinal. wgpu-visible hosts never reach this branch, so the
+            // name-matched preference below (which keeps two identical cards mapped 1:1) is
+            // unchanged. Driver string and wgpu backend tag are genuinely unavailable here — they
+            // are reported empty rather than guessed.
+            #[cfg(feature = "cuda")]
+            if adapter_slot.is_none() {
+                match crate::cuda::CudaEngine::new(idx) {
+                    Ok(e) => {
+                        let cap = e.binding_mb();
+                        let cc = e.compute_capability().to_string();
+                        let nm = e.adapter_name().to_string();
+                        println!("[multi] GPU slot {idx} '{nm}' → CUDA-ONLY host (no wgpu adapter; ordinal {idx}, {cap} MB cap, no 2GB binding limit, cc {})", if cc.is_empty() { "?" } else { &cc });
+                        if idx < cuda_names.len() {
+                            cuda_names[idx] = None;
+                        }
+                        binding_mb.push(cap);
+                        backends.push("cuda".to_string());
+                        drivers.push(String::new());
+                        ccs.push(cc);
+                        engines.push(Backend::Cuda(e));
+                        util.push((utils.get(k).copied().unwrap_or(10) as f64).clamp(1.0, 100.0));
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(format!(
+                            "no GPU adapter at index {idx} and CUDA ordinal {idx} failed to init ({e}) — nothing can compute on this slot"
+                        ));
+                    }
+                }
+            }
+            let adapter = adapter_slot
                 .ok_or_else(|| format!("no GPU adapter at index {idx} (or selected twice)"))?;
             // Capture adapter info BEFORE the wgpu path consumes the adapter — driver string +
             // wgpu backend tag are valid for the CUDA card too (same physical NVIDIA driver).
