@@ -33975,3 +33975,33 @@ That is a hardware ask for Red/Sponge with arithmetic under it instead of a vagu
 **What is left is Gee's press, and it re-prices the walk.** The sequence is: donor registers once (baseline → 45,488MB, persisted), then **Update & FRESH WALK** — weights trained at 306M do not describe 456M, so savestart is not an option. Result: **456,472,096 neurons, VRAM 21% → ~32%**, and every teach op touches a proportionally larger slice so GPU math per dispatch rises with it. **RE-PRICE per LAW, stated BEFORE the press: ~1.49x the neurons is ~1.49x per teach op, so the ~24-day structure refresh becomes ~36 days.**
 
 **Board: 34 open, 111 closed.**
+
+---
+
+## 2026-08-20 — RAMHEAD: the cap on Unity's size was an arbitrary 45%, not the Forgejo reserve
+
+> Gee (verbatim): *"oh much can we push it we still have some box ram dont we?"*
+> Gee (verbatim): *"leave enough for forgio but i want the doner pod running as dfast as possible with out crashing the server from ram lock up"*
+
+**He asked whether there was headroom. There was, and the thing eating it was a round number.** `_safeMB` was `min(45% of host, host - 13312)`. Both clauses existed to protect Forgejo; **only the second was ever reasoned** — *"leave >=13 GB for Forgejo + OS + page cache"*. The 45% fraction has no derivation behind it, and on this 31,831MB box it is the smaller of the two (14,323MB vs 18,519MB), so **an arbitrary number rather than the Forgejo reserve was deciding how big Unity could be.**
+
+**MEASURED ON THE LIVE BOX BEFORE CHANGING ANYTHING** (`/public-state.json` profiling block): host total **31,831MB**, host used **10,091MB (32%)**, brain process RSS **6,069MB**. Everything that is not the brain — Forgejo, the OS, page cache — measures **~4,000MB against a 13,312MB reserve, i.e. 30% of it.** So the reserve is genuinely generous and it is left **completely untouched**; only the redundant clause goes.
+
+| | budget | neurons | vs now | donor VRAM | brain RSS | box free |
+|---|---|---|---|---|---|---|
+| before (45% clause bound) | 14,323MB | 441,300,699 | 1.44x | ~30% | ~8.7GB | ~19.1GB |
+| **after (Forgejo reserve only)** | **18,519MB** | **592,151,838** | **1.93x** | **~41%** | ~11.7GB | ~16.1GB |
+
+**RE-PRICED per LAW, because this moves `scale`:** teach cost scales with the brain, so ~1.93x the neurons is ~1.93x per teach op and the **~24-day structure refresh becomes ~46 days**. Written down before the bound moved, which is what the LAW actually requires.
+
+**DELIBERATELY NOT TAKEN FURTHER.** `host-10GB` (2.29x, ~48% VRAM) and `host-8GB` (2.53x, ~53%) are both reachable on paper. They spend a reserve whose **peak** matters rather than its average, and the heaviest thing this box does is a **Forgejo Actions Rust cross-build during a donor release** — a peak nobody has measured. Spending someone else's headroom against an unmeasured peak is how git and the public site go down together. Filed as `RAMHEAD.5`: watch `state.hostRam.freeMB` across one real donor-release CI run and the last 0.6x becomes a decision instead of a gamble.
+
+**THE OTHER HALF OF THE ASK — "without crashing the server from ram lock up" — as a guard, not a bigger number.** Raising the budget makes the **checkpoint** the sharpest remaining OOM edge: the binary save assembles multi-GB section buffers, the single moment the process asks the OS for the most memory at once, and those buffers now grow with the brain. So a checkpoint **DEFERS** when host free RAM is under 3,072MB (`DREAM_SAVE_MIN_FREE_MB`, 0 disables).
+
+**And my first cut of that guard was wrong — the file's own comment caught it.** I wrote a bare early `return`, which would have SKIPPED the checkpoint with nothing to retry it. Six lines below, the SAVE PACING block states the contract outright — *"durability is deferred minutes, never dropped"* — and latches a retry timer for exactly this situation. Rewritten to latch the same way (2min, unref'd), with the pacing branch gated on the same flag so the two cannot both fire. **Not a capability fallback under the NO-FALLBACKS law:** the save path is unchanged, there is no second-best writer, and this is defensive I/O scheduling of the same class as the existing paced/drip write.
+
+**AND THE GUARD IS ON THE BOARD, because a protection that fires silently is one nobody trusts.** `state.hostRam` publishes `freeMB` / `totalMB` / `usedPct` / `saveFloorMB` / **`headroomAboveFloorMB`** / `underFloor` / `checkpointsDeferred` / `lastDeferAtFreeMB` / `lastDeferAgoSec`. The deferral counter is what makes the guard **visibly idle rather than assumed idle** — the same distinction TEACHMIRROR, MIRRORID and PARTMIRROR were all about earlier today. Headroom above the floor at the new size: ~13,032MB.
+
+**Left for Gee: Update & FRESH WALK.** Weights trained at 306,458,816 do not describe 592,151,838. The donor registers once (TIERTOP.2 persists the 45,488MB baseline), then the fresh walk boots at the new budget — look for `main-brain sized to the RAM-safe budget base: 592,151,838 neurons`.
+
+**Board: 36 open, 114 closed.**
