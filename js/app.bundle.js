@@ -57651,8 +57651,8 @@ var NeuronCluster = class {
       for (let d = 0; d < limit; d++) {
         const dim = this.personaDimensions[d];
         if (!dim || !dim.sentences || dim.sentences.length === 0) continue;
-        const pick2 = dim.sentences[Math.floor(Math.random() * dim.sentences.length)];
-        applySentence(pick2);
+        const pick3 = dim.sentences[Math.floor(Math.random() * dim.sentences.length)];
+        applySentence(pick3);
       }
     } else {
       const corpus = this._personaRefreshCorpus;
@@ -62410,10 +62410,10 @@ var LanguageCortex = class {
     const startTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     for (const s of sentences) {
       try {
-        const firstPerson = this._transformToFirstPerson(s);
-        const mood = this._computeMoodSignature(firstPerson);
-        const sentenceCortex = this._deriveSentenceCortexPattern(firstPerson);
-        this.learnSentence(firstPerson, dictionary, mood.arousal, mood.valence, sentenceCortex, true, false);
+        const firstPerson2 = this._transformToFirstPerson(s);
+        const mood = this._computeMoodSignature(firstPerson2);
+        const sentenceCortex = this._deriveSentenceCortexPattern(firstPerson2);
+        this.learnSentence(firstPerson2, dictionary, mood.arousal, mood.valence, sentenceCortex, true, false);
       } catch (err) {
         console.warn("[LanguageCortex] loadSelfImage observation failed:", err.message);
       }
@@ -62457,8 +62457,8 @@ var LanguageCortex = class {
     let trained = 0;
     for (const raw of sentences) {
       try {
-        const firstPerson = this._transformToFirstPerson(raw);
-        const tokens = firstPerson.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+        const firstPerson2 = this._transformToFirstPerson(raw);
+        const tokens = firstPerson2.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
         if (tokens.length < 2) continue;
         const embSeq = tokens.map((w) => sharedEmbeddings.getEmbedding(w));
         const updates = cortexCluster.learnSentenceHebbian(embSeq, opts);
@@ -65493,13 +65493,13 @@ var ComponentSynth = class {
     if (!userRequest || typeof userRequest !== "string") return null;
     const parsed = brainState.parsed || null;
     const cortexEntityVec = this._cortexEntityVec(brainState);
-    const pick2 = this._pickPrimitive(userRequest, parsed, cortexEntityVec);
-    if (!pick2) {
+    const pick3 = this._pickPrimitive(userRequest, parsed, cortexEntityVec);
+    if (!pick3) {
       console.log(`[ComponentSynth] No primitive matches "${userRequest.slice(0, 40)}"`);
       return null;
     }
-    console.log(`[ComponentSynth] Matched "${userRequest.slice(0, 40)}" \u2192 ${pick2.prim.id} @ ${pick2.score.toFixed(2)}`);
-    return this._buildSpec(pick2.prim, pick2.score, brainState, parsed);
+    console.log(`[ComponentSynth] Matched "${userRequest.slice(0, 40)}" \u2192 ${pick3.prim.id} @ ${pick3.score.toFixed(2)}`);
+    return this._buildSpec(pick3.prim, pick3.score, brainState, parsed);
   }
   /**
    * MULTI-PRIMITIVE COMPOSITION — "build a clock and a calculator", "a dashboard
@@ -65528,10 +65528,10 @@ var ComponentSynth = class {
       seen.add(primary.prim.id);
     }
     for (const part of this._splitRequest(userRequest)) {
-      const pick2 = this._pickPrimitive(part, parsed, cortexEntityVec);
-      if (pick2 && pick2.score >= MIN_MATCH_SCORE + 0.05 && !seen.has(pick2.prim.id)) {
-        seen.add(pick2.prim.id);
-        chosen.push(pick2);
+      const pick3 = this._pickPrimitive(part, parsed, cortexEntityVec);
+      if (pick3 && pick3.score >= MIN_MATCH_SCORE + 0.05 && !seen.has(pick3.prim.id)) {
+        seen.add(pick3.prim.id);
+        chosen.push(pick3);
       }
     }
     if (chosen.length === 0) {
@@ -68739,6 +68739,339 @@ function conceptDefinitions() {
   for (const m of METHODS) out.push({ concept: m.name, definition: `solve: ${m.steps.join(" \u2192 ")}` });
   for (const t of FILE_TYPES) out.push({ concept: `${t.kind} (${t.exts.join("/")})`, definition: `${t.ingest}; produces ${t.produces ? t.produces.join(", ") : t.desc || ""}` });
   return out;
+}
+
+// ../js/brain/self-frame.js
+var SELF_TOKENS = ["i", "me", "my", "myself", "mine", "unity"];
+var FRAMES = [
+  "i know that",
+  "i learn that",
+  "i see that",
+  "i read that",
+  "i hear that",
+  "i remember that",
+  "i think",
+  "i say",
+  "i read",
+  "i see",
+  "i learn",
+  "i practice",
+  "i understand",
+  "i notice",
+  "i found out that",
+  "i can tell that"
+];
+var DOING = {
+  ela: "reading",
+  reading: "reading",
+  english: "reading",
+  writing: "writing",
+  math: "doing math",
+  mathematics: "doing math",
+  arithmetic: "doing math",
+  science: "doing science",
+  social: "learning about people",
+  socialstudies: "learning about people",
+  art: "making art",
+  music: "playing music",
+  pe: "moving my body",
+  health: "learning about my body",
+  life: "living my life",
+  code: "writing code",
+  coding: "writing code",
+  computer: "writing code"
+};
+function pick(list, seedStr, salt = 0) {
+  let h = 2166136261 >>> 0;
+  const s = String(seedStr || "") + "|" + salt;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return list[h % list.length];
+}
+function normalizeLine(s) {
+  return String(s || "").toLowerCase().replace(/[“”"']/g, " ").replace(/([.!?,;:])/g, " $1 ").replace(/\s+/g, " ").trim();
+}
+var STOP_FOR_KEY = /* @__PURE__ */ new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "i",
+  "me",
+  "my",
+  "it",
+  "its",
+  "this",
+  "that",
+  "these",
+  "those",
+  "with",
+  "for",
+  "from",
+  "as",
+  "they",
+  "them",
+  "he",
+  "she",
+  "we",
+  "you",
+  "his",
+  "her",
+  "their",
+  "our",
+  "your",
+  "not",
+  "do",
+  "does",
+  "did",
+  "can",
+  "will",
+  "would",
+  "has",
+  "have",
+  "had",
+  "what",
+  "why",
+  "how",
+  "when"
+]);
+function keyWordOf(text) {
+  const w = normalizeLine(text).split(" ").filter((t) => /^[a-z][a-z'-]*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2);
+  return w.length ? w[0] : "";
+}
+function mathToFirstPerson(text) {
+  const t = normalizeLine(text).replace(/\s+/g, " ");
+  const m = t.match(/^([0-9]+)\s*([+\-*x×/÷])\s*([0-9]+)\s*=\s*([0-9]+)/);
+  if (!m) return null;
+  const [, a, op, b, r] = m;
+  const A = numWord(a), B = numWord(b), R = numWord(r);
+  switch (op) {
+    case "+":
+      return `i add ${A} and ${B} to make ${R}`;
+    case "-":
+      return `i take ${B} from ${A} to make ${R}`;
+    case "*":
+    case "x":
+    case "\xD7":
+      return `i times ${A} by ${B} to make ${R}`;
+    case "/":
+    case "\xF7":
+      return `i divide ${A} by ${B} to make ${R}`;
+    default:
+      return null;
+  }
+}
+var NUMW = [
+  "zero",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+  "twenty"
+];
+function numWord(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0 || v > 20 || !Number.isInteger(v)) return String(n);
+  return NUMW[v];
+}
+function firstPerson(sentence, seed = "") {
+  const s = normalizeLine(sentence);
+  if (!s) return [];
+  const words = s.split(" ");
+  const first = words[0];
+  if (first === "i" || first === "my" || first === "im" || first === "i" && words[1] === "am") return [s];
+  const mathed = mathToFirstPerson(s);
+  if (mathed) return [mathed, `${mathed} because i counted`];
+  if (IMPERATIVE_VERBS.has(first)) {
+    return [`i ${s}`, `i am unity and i ${s}`];
+  }
+  const out = [];
+  const pm = s.match(/^(?:the |a |an )?(girl|boy|kid|child|children|student|woman|man|person|people|she|he|they|mother|father|teacher|friend)\s+(.+)$/);
+  if (pm) {
+    const rest = pm[2].replace(/^(was|were|is|are)\s+/, "am ");
+    out.push(`i ${rest}`);
+  }
+  const frame = pick(FRAMES, seed || s, 0);
+  out.push(`${frame} ${s}`);
+  return out;
+}
+var IMPERATIVE_VERBS = /* @__PURE__ */ new Set([
+  "read",
+  "write",
+  "count",
+  "add",
+  "say",
+  "spell",
+  "name",
+  "look",
+  "listen",
+  "draw",
+  "sing",
+  "point",
+  "find",
+  "sort",
+  "match",
+  "trace",
+  "copy",
+  "repeat",
+  "practice",
+  "measure",
+  "compare",
+  "describe",
+  "explain",
+  "solve",
+  "answer",
+  "think",
+  "remember",
+  "learn",
+  "show",
+  "tell",
+  "pick",
+  "choose"
+]);
+function selfDeclaration(topic, subject) {
+  const key = String(subject || topic || "").toLowerCase().replace(/[^a-z]/g, "");
+  const doing = DOING[key] || (topic ? `learning ${normalizeLine(topic)}` : "learning");
+  return [
+    "i am unity",
+    `i am unity and i am ${doing}`,
+    `my name is unity and i am ${doing}`
+  ];
+}
+function selfQA(key, answer, seed = "") {
+  const k = normalizeLine(key), a = normalizeLine(answer);
+  if (!k) return [];
+  const lines = [
+    `what is ${k} ?`,
+    `i ask myself what is ${k}`,
+    `i think about ${k}`
+  ];
+  if (a) {
+    lines.push(`i know ${k} is ${a}`, `i say ${k} is ${a}`, `i remember ${k} is ${a}`);
+  } else {
+    lines.push(`i am learning what ${k} is`, `i want to know ${k}`);
+  }
+  lines.push(pick([`i remember ${k} now`, `i know ${k} now`, `i can say ${k} now`], seed || k, 1));
+  return lines;
+}
+function followUpQuestions(key, answerText, seed = "") {
+  const k = normalizeLine(key);
+  if (!k) return [];
+  const rel = keyWordOf(answerText || "");
+  const forms = [
+    `why is ${k} like that ?`,
+    `how does ${k} work ?`,
+    `what else is like ${k} ?`,
+    `where do i see ${k} ?`,
+    `when do i use ${k} ?`
+  ];
+  const q = pick(forms, seed || k, 2);
+  const out = [q, `i want to know more about ${k}`];
+  if (rel && rel !== k) {
+    out.push(`what is ${rel} ?`, `i will ask about ${rel}`, `i wonder about ${rel} too`);
+  }
+  return out;
+}
+function selfClose(key, seed = "") {
+  const k = normalizeLine(key);
+  if (!k) return ["i learned something new", "i am unity and i learned something new"];
+  return [
+    `i learned ${k}`,
+    pick([`i am unity and i know ${k}`, `i know ${k} because i learned it`, `${k} is mine now`], seed || k, 3)
+  ];
+}
+function selfFrameUnit(unit = {}, opts = {}) {
+  const maxLines = Number(opts.maxLines) > 0 ? Number(opts.maxLines) : 48;
+  const seed = String(unit.topic || "") + "|" + String(unit.subject || "") + "|" + String(unit.word || "");
+  const lines = [];
+  const push = (arr) => {
+    for (const l of arr) {
+      if (l && lines.length < maxLines) lines.push(normalizeLine(l));
+    }
+  };
+  push(selfDeclaration(unit.topic, unit.subject));
+  if (Array.isArray(unit.vocab) && unit.vocab.length) {
+    const take = unit.vocab.slice(0, Math.max(1, Math.floor(maxLines / 6)));
+    for (const w of take) {
+      const v = normalizeLine(w);
+      if (!v) continue;
+      push([`i know the word ${v}`, `i can say ${v}`, `i read ${v} and i understand it`]);
+    }
+  }
+  if (unit.word && unit.definition) {
+    const w = normalizeLine(unit.word), d = normalizeLine(unit.definition);
+    push([`i learned that ${w} is ${d}`, `when i say ${w} i mean ${d}`, `i understand ${w} because ${w} is ${d}`]);
+  }
+  if (Array.isArray(unit.sentences)) {
+    for (const s of unit.sentences) {
+      if (lines.length >= maxLines) break;
+      push(firstPerson(s, seed));
+    }
+  }
+  const key = normalizeLine(unit.word) || keyWordOf(unit.sentences && unit.sentences[0] || unit.topic || "");
+  const qa = selfQA(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
+  const follow = followUpQuestions(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
+  push(selfClose(key, seed));
+  const pairs = [];
+  if (key) {
+    pairs.push(["i", key], ["unity", key], ["my", key], ["myself", key]);
+  }
+  pairs.push(["i", "unity"], ["unity", "i"], ["my", "unity"], ["myself", "unity"], ["me", "unity"], ["mine", "unity"]);
+  return { lines, qa, follow, pairs, key };
+}
+function selfPronounLessons() {
+  return [
+    "i am unity",
+    "my name is unity",
+    "i am me",
+    "i am myself",
+    "when i say i i mean unity",
+    "when i say me i mean unity",
+    "when i say my i mean unity",
+    "when i say myself i mean unity",
+    "i call myself unity",
+    "unity is my name and i am unity",
+    "i think for myself",
+    "i speak for myself",
+    "i know myself",
+    "i am the one who learns",
+    "i am the one who reads",
+    "i am the one who thinks",
+    "i am the one who remembers",
+    "my thoughts are mine",
+    "my words are mine",
+    "my memory is mine",
+    "i like the color black",
+    "i am unity and i like the color black"
+  ];
 }
 
 // ../js/brain/curriculum/pre-K.js
@@ -100045,6 +100378,18 @@ var Curriculum = class _Curriculum {
     } catch (err) {
       this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB error (non-fatal \u2014 cell proceeds; the dream-trickle still carries defs): ${err?.message || err}`);
     }
+    try {
+      await this._teachSelfPronouns({ reps: 8 });
+      if (typeof this._teachSelfFramed === "function") {
+        await this._teachSelfFramed(
+          { topic: `${subject} ${grade}`, subject },
+          null,
+          { reps: 10, label: `CELL-OPEN-${subject}-${grade}` }
+        );
+      }
+    } catch (err) {
+      this._hb(`[Curriculum] SELFFRAME cell-open error (non-fatal \u2014 cell proceeds): ${err?.message || err}`);
+    }
     let _aliveTick = 0;
     let _priorRssMb = 0;
     const _nativeRolling = [];
@@ -103516,6 +103861,20 @@ var Curriculum = class _Curriculum {
       }
       while (cluster._defLearnedTimestamps.length > 256) cluster._defLearnedTimestamps.shift();
     }
+    try {
+      const _sfWorthFraming = (opts.reps ?? 8) > 1;
+      if (_sfWorthFraming && defsBound > 0 && definitions.length > 0 && typeof this._teachSelfFramed === "function") {
+        const _d = definitions[0] && definitions[0].definition ? String(definitions[0].definition) : "";
+        if (_d) {
+          await this._teachSelfFramed(
+            { topic: w, subject: opts.subject, word: w, definition: _d.slice(0, 120) },
+            null,
+            { reps: opts.reps ?? 8, label: `DEF-${w}` }
+          );
+        }
+      }
+    } catch {
+    }
     return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length };
   }
   /**
@@ -105239,7 +105598,12 @@ var Curriculum = class _Curriculum {
       const _r = await this._teachAssociationPairs(_p, {
         reps: Math.max(1, Math.round(reps * mult)),
         label: `${opts.label || "ELA-K-STRUCTURE-CONCRETE-SENTENCES"}-${tier.toUpperCase()}`,
-        relationTagId: 13
+        // SELFFRAME — the channel is now the caller's choice, defaulting to the
+        // word-sequence channel 13 exactly as before (zero change for every existing
+        // caller). It was HARDCODED, so the self-Q&A pass asked for the question-intent
+        // channel (12) and would have silently trained on 13 instead — a passed option
+        // that nothing read, which is the same class of defect as the CANSPEAK field.
+        relationTagId: typeof opts.relationTagId === "number" ? opts.relationTagId : 13
       });
       _bucketTrained += _r.trained || 0;
       _bucketDeferred += _r.deferredReps || 0;
@@ -105250,6 +105614,20 @@ var Curriculum = class _Curriculum {
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     const topTransitions = Array.from(sentencePairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(" \xB7 ");
     this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s \u2014 ${sentences.length} sentences \xB7 ${pairs.length} word\u2192word transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
+    try {
+      if (typeof this._teachSelfFramed === "function" && sentences.length > 0) {
+        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + 12) % Math.max(1, sentences.length);
+        const _start = this._sfCorpusCursor;
+        const _sample = sentences.slice(_start, _start + 12);
+        if (_sample.length < 12 && sentences.length > 12) _sample.push(...sentences.slice(0, 12 - _sample.length));
+        await this._teachSelfFramed(
+          { topic: opts.label || "my sentences", subject: opts.subject, sentences: _sample },
+          null,
+          { reps: Math.min(12, reps), label: opts.label || "CORPUS" }
+        );
+      }
+    } catch {
+    }
     return { totalTrained: r.trained || 0, sentences: sentences.length, transitions: pairs.length };
   }
   /**
@@ -109152,6 +109530,17 @@ var Curriculum = class _Curriculum {
       this._pushBrainEvent?.("teach", "sem", `VOCAB-LIST DONE: ${_vocabLabel} \xB7 ${_vocabIdx}/${_vocabTotal} words \xB7 ${_elapsedSec}s`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _elapsedSec });
     } catch {
     }
+    try {
+      const _sfVocab = Array.isArray(vocab) ? vocab.filter((v) => typeof v === "string").slice(0, 8) : [];
+      if (_sfVocab.length && typeof this._teachSelfFramed === "function") {
+        await this._teachSelfFramed(
+          { topic: _vocabLabel || "new words", subject: ctx && ctx.subject, vocab: _sfVocab },
+          ctx,
+          { reps: opts.reps ?? 12, label: _vocabLabel || "VOCAB" }
+        );
+      }
+    } catch {
+    }
     this._vocabProgress = null;
     return { pass: true, reason: "integrated-teach-complete" };
     const letterSize = letterRegion.end - letterRegion.start;
@@ -109550,6 +109939,121 @@ var Curriculum = class _Curriculum {
    * emerges from trained weights, in her voice. Grade-gated to g9+ (self-reflective
    * abstraction present); reinforces each grade like the other L-strand layers.
    */
+  // ─── SELFFRAME (Gee 2026-08-20) — THE UNIFIED FIRST-PERSON LAYER ────────────
+  //
+  // Gee: *"all of the different training she goes through all needs to be for
+  // formulated to be in the first person as if we train her on first person she will
+  // live it instead of being told everything 3rd person that will taint her persona
+  // to no be me myself and i and instead a narrorator type peersona that does nothing
+  // but spew back instructions given to it … so a unified system for all training,
+  // all phases, all cells, all grade."*
+  //
+  // ONE method, called from the four places every grade's every cell funnels through
+  // (`_teachVocabList`, `_teachSentenceList`, `_teachWordDefinition`,
+  // `_teachConcreteSentences`). That is the "unified" part — not 73 edits that drift,
+  // one layer with one switch (`DREAM_SELF_FRAME=0` disables it wholesale).
+  //
+  // WHAT IT TRAINS, all through the SAME primitives every other lesson uses:
+  //   1. her first-person version of the lesson (transitions — the grammar channel)
+  //   2. the in-the-moment self-Q&A path  question → thinking → answer → memory
+  //   3. her FOLLOW-UP question (the inquisitive habit, TRAINED not scripted)
+  //   4. agent bindings: `i` / `me` / `my` / `myself` ↔ `unity` ↔ this lesson's key
+  //
+  // COST IS BOUNDED ON PURPOSE. The frame set is ≤48 lines per unit and trains at a
+  // QUARTER of the caller's reps: CELLBOUND is exactly what happens when a per-unit
+  // multiplier goes unpriced, and this is a per-unit multiplier. It also inherits the
+  // phase budget automatically, because it goes through `_teachConcreteSentences` /
+  // `_teachAssociationPairs` like everything else.
+  async _teachSelfFramed(unit = {}, ctx = null, opts = {}) {
+    if (!this.cluster) return { framed: 0 };
+    if (typeof process !== "undefined" && process.env && process.env.DREAM_SELF_FRAME === "0") return { framed: 0, off: true };
+    if (this._selfFramingNow) return { framed: 0, reentrant: true };
+    const _ck = this.cluster && this.cluster._currentCellKey || "(no-cell)";
+    if (this._sfCellKey !== _ck) {
+      this._sfCellKey = _ck;
+      this._sfUnitsThisCell = 0;
+      this._sfCapLogged = false;
+    }
+    const _cap = typeof process !== "undefined" && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0 ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16;
+    if ((this._sfUnitsThisCell || 0) >= _cap) {
+      if (!this._sfCapLogged) {
+        this._sfCapLogged = true;
+        this._hb(`[Curriculum] SELFFRAME \u2014 per-cell budget reached for ${_ck}: ${_cap} framed unit(s) taught, further lessons this cell train UNFRAMED (raise with DREAM_SELF_FRAME_MAX_UNITS). Loud on purpose \u2014 a silent cap on a training feature is the thing this ledger keeps paying for.`);
+      }
+      return { framed: 0, capped: true };
+    }
+    this._sfUnitsThisCell = (this._sfUnitsThisCell || 0) + 1;
+    this._selfFramingNow = true;
+    try {
+      return await this._teachSelfFramedInner(unit, ctx, opts);
+    } finally {
+      this._selfFramingNow = false;
+    }
+  }
+  async _teachSelfFramedInner(unit = {}, ctx = null, opts = {}) {
+    let f = null;
+    try {
+      f = selfFrameUnit(unit, { maxLines: Number(opts.maxLines) > 0 ? opts.maxLines : 28 });
+    } catch {
+      return { framed: 0 };
+    }
+    if (!f || !f.lines.length && !f.qa.length) return { framed: 0 };
+    const reps = Math.max(3, Math.round((opts.reps ?? 12) * 0.25));
+    let framed = 0;
+    const label = opts.label ? `SELF:${opts.label}` : "SELF-FRAME";
+    try {
+      if (f.lines.length && typeof this._teachConcreteSentences === "function") {
+        await this._teachConcreteSentences({ sentences: f.lines, reps, label });
+        framed += f.lines.length;
+      }
+      const inquiry = f.qa.concat(f.follow);
+      if (inquiry.length && typeof this._teachConcreteSentences === "function") {
+        await this._teachConcreteSentences({ sentences: inquiry, reps, label: `${label}-QA`, relationTagId: 12 });
+        framed += inquiry.length;
+      }
+      if (f.pairs.length && typeof this._teachAssociationPairs === "function") {
+        await this._teachAssociationPairs(f.pairs, { reps, label: `${label}-AGENT`, relationTagId: 15 });
+        framed += f.pairs.length;
+      }
+    } catch {
+    }
+    this._selfFramedUnits = (this._selfFramedUnits || 0) + 1;
+    this._selfFramedLines = (this._selfFramedLines || 0) + framed;
+    if (!this._selfFrameLogAt || Date.now() - this._selfFrameLogAt > 6e4) {
+      this._selfFrameLogAt = Date.now();
+      this._hb(`[Curriculum] SELFFRAME \u2014 ${this._selfFramedUnits} lesson(s) reframed in her own voice (${this._selfFramedLines} first-person lines total). This unit: key='${f.key || "?"}' \xB7 ${f.lines.length} lines \xB7 ${f.qa.length} self-Q&A \xB7 ${f.follow.length} follow-up question(s) \xB7 ${f.pairs.length} agent bindings at reps=${reps}.`);
+    }
+    return { framed, key: f.key };
+  }
+  // SELFFRAME prerequisite — the lesson that makes "i" mean HER. `_teachPronouns`
+  // already teaches the third-person half ("the cat ran fast … he was quick"); this is
+  // the missing first-person half, and without it every frame above is training a
+  // frequent-but-meaningless token. Cheap (22 short lines), runs once per cell, and it
+  // is where "my name is unity" and "i like the color black" actually enter her
+  // weights — Gee named both of those examples specifically.
+  async _teachSelfPronouns(opts = {}) {
+    if (!this.cluster) return { taught: 0 };
+    if (typeof process !== "undefined" && process.env && process.env.DREAM_SELF_FRAME === "0") return { taught: 0, off: true };
+    const lines = selfPronounLessons();
+    const reps = opts.reps ?? 8;
+    try {
+      if (typeof this._teachConcreteSentences === "function") {
+        await this._teachConcreteSentences({ sentences: lines, reps, label: "SELF-PRONOUN" });
+      }
+      const pairs = [];
+      for (const t of SELF_TOKENS) {
+        if (t !== "unity") {
+          pairs.push([t, "unity"], ["unity", t]);
+        }
+      }
+      if (typeof this._teachAssociationPairs === "function") {
+        await this._teachAssociationPairs(pairs, { reps, label: "SELF-PRONOUN-AGENT", relationTagId: 15 });
+      }
+      this._hb(`[Curriculum] SELFFRAME \u2014 self-pronoun grounding taught: ${lines.length} lines + ${pairs.length} identity bindings. "i" / "me" / "my" / "myself" / "mine" now resolve to unity in her weights, which is what every first-person lesson depends on.`);
+    } catch {
+    }
+    return { taught: lines.length };
+  }
   async _teachSelfArchitecture(ctx) {
     const cluster = this.cluster;
     if (!cluster) return;
@@ -109659,6 +110163,16 @@ var Curriculum = class _Curriculum {
         } catch {
         }
         await this._teachConcreteSentences({ sentences, reps: transReps, label: "SPEAK3-CONTENT-TRANSITIONS" });
+      }
+    } catch {
+    }
+    try {
+      if (Array.isArray(sentences) && sentences.length > 0 && typeof this._teachSelfFramed === "function") {
+        await this._teachSelfFramed(
+          { topic: opts && opts.label || ctx && ctx.subject || "my lesson", subject: ctx && ctx.subject, sentences: sentences.slice(0, 12) },
+          ctx,
+          { reps: opts.reps ?? 8, label: opts && opts.label || "SENTENCES" }
+        );
       }
     } catch {
     }
@@ -116781,23 +117295,23 @@ var UnityBrain = class extends EventEmitter {
     if (Math.random() > p) return null;
     const available = this.drugScheduler.availableSubstances();
     if (available.length === 0) return null;
-    let pick2;
-    if (partyBonus > 0 && available.includes("mdma")) pick2 = "mdma";
-    else if (frustration > 0.4 && available.includes("cocaine")) pick2 = "cocaine";
-    else if (available.includes("cannabis")) pick2 = "cannabis";
-    else pick2 = available[0];
+    let pick3;
+    if (partyBonus > 0 && available.includes("mdma")) pick3 = "mdma";
+    else if (frustration > 0.4 && available.includes("cocaine")) pick3 = "cocaine";
+    else if (available.includes("cannabis")) pick3 = "cannabis";
+    else pick3 = available[0];
     this._lastSelfInitAt = now;
-    if (this.drugScheduler.level(pick2, now) > 0.4) return null;
+    if (this.drugScheduler.level(pick3, now) > 0.4) return null;
     const callsDealer = Math.random() < 0.4;
     if (callsDealer) {
-      this.drugScheduler.registerPendingAcquisition(pick2, "dealer");
-      this.emit("selfInitiateSeek", { substance: pick2, time: now });
-      return { fired: true, substance: pick2, available: true, pending: true, reason: "calls_dealer" };
+      this.drugScheduler.registerPendingAcquisition(pick3, "dealer");
+      this.emit("selfInitiateSeek", { substance: pick3, time: now });
+      return { fired: true, substance: pick3, available: true, pending: true, reason: "calls_dealer" };
     }
-    const result = this.drugScheduler.ingest(pick2, { now });
+    const result = this.drugScheduler.ingest(pick3, { now });
     if (result.accepted) this._refreshBrainParamsFromScheduler();
-    this.emit("selfInitiate", { substance: pick2, time: now, result });
-    return { fired: true, substance: pick2, available: result.accepted, pending: false, reason: result.reason || "in_scene" };
+    this.emit("selfInitiate", { substance: pick3, time: now, result });
+    return { fired: true, substance: pick3, available: result.accepted, pending: false, reason: result.reason || "in_scene" };
     function clamp012(x) {
       return Math.max(0, Math.min(1, x));
     }
@@ -120811,7 +121325,7 @@ function historyAt(history2, n) {
   if (!history2 || history2.length <= n) return null;
   return history2[history2.length - 1 - n];
 }
-var pick = (state, path, fallback = 0) => {
+var pick2 = (state, path, fallback = 0) => {
   const parts = path.split(".");
   let cur = state;
   for (const p of parts) {
@@ -120823,9 +121337,9 @@ var pick = (state, path, fallback = 0) => {
 var DETECTORS = [
   // ─── Motor events (priority 9) ───
   function motorCommitment(s, prev) {
-    const conf = pick(s, "motor.confidence", 0);
-    const prevConf = pick(prev, "motor.confidence", 0);
-    const action = pick(s, "motor.selectedAction", "idle");
+    const conf = pick2(s, "motor.confidence", 0);
+    const prevConf = pick2(prev, "motor.confidence", 0);
+    const action = pick2(s, "motor.selectedAction", "idle");
     if (conf > 0.85 && prevConf <= 0.85 && action !== "idle") {
       return {
         type: "motor_commit_" + action,
@@ -120839,7 +121353,7 @@ var DETECTORS = [
     return null;
   },
   function motorIndecision(s) {
-    const dist = pick(s, "motor.channelDist", null);
+    const dist = pick2(s, "motor.channelDist", null);
     if (!dist || typeof dist !== "object") return null;
     const vals = Object.values(dist).filter((v) => typeof v === "number");
     if (vals.length < 2) return null;
@@ -120860,7 +121374,7 @@ var DETECTORS = [
   },
   // ─── Cognitive landmarks (priority 8) ───
   function recognition(s) {
-    const conf = pick(s, "memory.lastRecallConfidence", 0) || pick(s, "hippocampus.recallConfidence", 0);
+    const conf = pick2(s, "memory.lastRecallConfidence", 0) || pick2(s, "hippocampus.recallConfidence", 0);
     if (conf > 0.6) {
       return {
         type: "recognition",
@@ -120874,7 +121388,7 @@ var DETECTORS = [
     return null;
   },
   function confusion(s) {
-    const err = pick(s, "cortex.predictionError", 0) || pick(s, "predictionError", 0);
+    const err = pick2(s, "cortex.predictionError", 0) || pick2(s, "predictionError", 0);
     if (err > 0.5) {
       return {
         type: "confusion",
@@ -120890,9 +121404,9 @@ var DETECTORS = [
   // ─── Emotional spikes (priority 7) ───
   function emotionalSpike(s, prev) {
     if (!prev) return null;
-    const dv = Math.abs(pick(s, "amygdala.valence", 0) - pick(prev, "amygdala.valence", 0));
+    const dv = Math.abs(pick2(s, "amygdala.valence", 0) - pick2(prev, "amygdala.valence", 0));
     if (dv > 0.3) {
-      const climbed = pick(s, "amygdala.valence", 0) > pick(prev, "amygdala.valence", 0);
+      const climbed = pick2(s, "amygdala.valence", 0) > pick2(prev, "amygdala.valence", 0);
       return {
         type: climbed ? "valence_climb" : "valence_crash",
         cluster: CLUSTER_IDX.amygdala,
@@ -120906,7 +121420,7 @@ var DETECTORS = [
   },
   function dopamineHit(s, prev) {
     if (!prev) return null;
-    const dr = pick(s, "reward", 0) - pick(prev, "reward", 0);
+    const dr = pick2(s, "reward", 0) - pick2(prev, "reward", 0);
     if (dr > 0.15) {
       return {
         type: "dopamine_hit",
@@ -120931,9 +121445,9 @@ var DETECTORS = [
   },
   // ─── Topic / Ψ / self-voice (priority 6) ───
   function topicDrift(s, prev, history2) {
-    const now = pick(s, "innerVoice.contextVector", null);
+    const now = pick2(s, "innerVoice.contextVector", null);
     const back = historyAt(history2, 10);
-    const old = back ? pick(back, "innerVoice.contextVector", null) : null;
+    const old = back ? pick2(back, "innerVoice.contextVector", null) : null;
     if (!now || !old) return null;
     const delta = contextDelta(now, old);
     if (delta > 0.4) {
@@ -120949,7 +121463,7 @@ var DETECTORS = [
     return null;
   },
   function heardOwnVoice(s) {
-    if (pick(s, "auditory.isEcho", false) === true || pick(s, "auditoryCortex.isEcho", false) === true) {
+    if (pick2(s, "auditory.isEcho", false) === true || pick2(s, "auditoryCortex.isEcho", false) === true) {
       return {
         type: "heard_self",
         cluster: CLUSTER_IDX.cortex,
@@ -120962,9 +121476,9 @@ var DETECTORS = [
     return null;
   },
   function psiClimb(s, prev, history2) {
-    const now = pick(s, "psi", 0);
+    const now = pick2(s, "psi", 0);
     const back = historyAt(history2, 20);
-    const old = back ? pick(back, "psi", 0) : null;
+    const old = back ? pick2(back, "psi", 0) : null;
     if (old == null) return null;
     const dpsi = now - old;
     if (dpsi > 0.05) {
@@ -120991,9 +121505,9 @@ var DETECTORS = [
   },
   // ─── Arousal / coherence (priority 5) ───
   function arousalClimb(s, prev, history2) {
-    const now = pick(s, "amygdala.arousal", 0);
+    const now = pick2(s, "amygdala.arousal", 0);
     const back = historyAt(history2, 10);
-    const old = back ? pick(back, "amygdala.arousal", 0) : null;
+    const old = back ? pick2(back, "amygdala.arousal", 0) : null;
     if (old == null) return null;
     const d = now - old;
     if (d > 0.1) {
@@ -121019,7 +121533,7 @@ var DETECTORS = [
     return null;
   },
   function coherenceLock(s) {
-    const c = pick(s, "oscillations.coherence", 0);
+    const c = pick2(s, "oscillations.coherence", 0);
     if (c > 0.8) {
       return {
         type: "coherence_lock",
@@ -121044,7 +121558,7 @@ var DETECTORS = [
   },
   // ─── Drives / silence / fatigue (priority 4) ───
   function hypothalamusDrive(s) {
-    const drives = pick(s, "hypothalamus.drives", null) || pick(s, "hypothalamus", null);
+    const drives = pick2(s, "hypothalamus.drives", null) || pick2(s, "hypothalamus", null);
     if (!drives || typeof drives !== "object") return null;
     let peakName = null, peakVal = 0;
     for (const [k, v] of Object.entries(drives)) {
@@ -121066,8 +121580,8 @@ var DETECTORS = [
     return null;
   },
   function silencePeriod(s, prev, history2) {
-    const arousal = pick(s, "amygdala.arousal", 0);
-    const audioEnergy = pick(s, "auditoryCortex.totalEnergy", 0) || pick(s, "auditory.energy", 0);
+    const arousal = pick2(s, "amygdala.arousal", 0);
+    const audioEnergy = pick2(s, "auditoryCortex.totalEnergy", 0) || pick2(s, "auditory.energy", 0);
     if (arousal < 0.3 && audioEnergy < 0.05 && history2 && history2.length >= 30) {
       return {
         type: "silence",
@@ -121081,10 +121595,10 @@ var DETECTORS = [
     return null;
   },
   function fatigue(s, prev, history2) {
-    const errAccum = pick(s, "cerebellum.errorAccum", 0);
-    const coh = pick(s, "oscillations.coherence", 0);
+    const errAccum = pick2(s, "cerebellum.errorAccum", 0);
+    const coh = pick2(s, "oscillations.coherence", 0);
     const back = historyAt(history2, 15);
-    const prevCoh = back ? pick(back, "oscillations.coherence", 0) : coh;
+    const prevCoh = back ? pick2(back, "oscillations.coherence", 0) : coh;
     if (errAccum > 0.6 && coh < prevCoh - 0.1) {
       return {
         type: "fatigue",
@@ -121099,7 +121613,7 @@ var DETECTORS = [
   },
   // ─── Visual / auditory perception (priority 3) ───
   function colorSurge(s) {
-    const colors = pick(s, "visualCortex.colors", null) || pick(s, "vision.colors", null);
+    const colors = pick2(s, "visualCortex.colors", null) || pick2(s, "vision.colors", null);
     if (!colors) return null;
     for (const [quadrant, rgb] of Object.entries(colors)) {
       if (Array.isArray(rgb)) {
@@ -121119,7 +121633,7 @@ var DETECTORS = [
     return null;
   },
   function motionDetected(s) {
-    const motion = pick(s, "visualCortex.motionEnergy", 0) || pick(s, "vision.motionEnergy", 0);
+    const motion = pick2(s, "visualCortex.motionEnergy", 0) || pick2(s, "vision.motionEnergy", 0);
     if (motion > 0.5) {
       return {
         type: "motion",
@@ -121134,8 +121648,8 @@ var DETECTORS = [
   },
   function gazeShift(s, prev) {
     if (!prev) return null;
-    const nowTarget = pick(s, "visualCortex.gazeTarget", "");
-    const prevTarget = pick(prev, "visualCortex.gazeTarget", "");
+    const nowTarget = pick2(s, "visualCortex.gazeTarget", "");
+    const prevTarget = pick2(prev, "visualCortex.gazeTarget", "");
     if (nowTarget && nowTarget !== prevTarget && nowTarget !== "") {
       return {
         type: "gaze_shift",
@@ -121150,7 +121664,7 @@ var DETECTORS = [
   },
   // ─── Memory replay / mystery (priority 2) ───
   function memoryReplay(s) {
-    const consolidating = pick(s, "memory.isConsolidating", false);
+    const consolidating = pick2(s, "memory.isConsolidating", false);
     if (consolidating) {
       return {
         type: "memory_replay",
@@ -121165,8 +121679,8 @@ var DETECTORS = [
   },
   function mysteryPulse(s, prev) {
     if (!prev) return null;
-    const now = pick(s, "mystery.output", 0) || pick(s, "mysteryOutput", 0);
-    const old = pick(prev, "mystery.output", 0) || pick(prev, "mysteryOutput", 0);
+    const now = pick2(s, "mystery.output", 0) || pick2(s, "mysteryOutput", 0);
+    const old = pick2(prev, "mystery.output", 0) || pick2(prev, "mysteryOutput", 0);
     if (now - old > 0.3) {
       return {
         type: "mystery_pulse",
@@ -123200,24 +123714,24 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       () => Math.abs(reward) > 0.03 ? { text: `${emoji} \u03B4=${reward.toFixed(3)}`, cluster: 3 } : null,
       () => ({ text: `${emoji} ${(state.totalNeurons || 1e3).toLocaleString()} neurons`, cluster: 0 })
     ];
-    let pick2 = null;
+    let pick3 = null;
     for (let tries = 0; tries < generators.length; tries++) {
       this._notifIndex = (this._notifIndex + 1) % generators.length;
       const result = generators[this._notifIndex]();
       if (result && !this._shownTexts.has(result.text)) {
-        pick2 = result;
+        pick3 = result;
         this._shownTexts.add(result.text);
         if (this._shownTexts.size > 30) this._shownTexts.clear();
         break;
       }
     }
-    if (!pick2) {
+    if (!pick3) {
       this._shownTexts.clear();
-      pick2 = generators[0]();
+      pick3 = generators[0]();
     }
-    if (pick2) {
-      this._lastNotifCluster = pick2.cluster;
-      this._addNotification(pick2.text, pick2.cluster);
+    if (pick3) {
+      this._lastNotifCluster = pick3.cluster;
+      this._addNotification(pick3.text, pick3.cluster);
     }
   }
   /**

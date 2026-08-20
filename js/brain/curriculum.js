@@ -58,6 +58,10 @@ import { FUNCTION_WORDS } from './cluster.js';
 // brain's own association primitive so the mind-space domain is recallable/
 // speakable, not just carried as a static JS object.
 import { teachInto as mindSpaceTeachInto } from './mindspace/knowledge.js';
+// SELFFRAME (Gee 2026-08-20) — every lesson gets taught as something SHE DID. Pure
+// text transform at teach time only; nothing here runs at emission time, so the
+// no-text-AI law is untouched. See js/brain/self-frame.js for the full rationale.
+import { selfFrameUnit, selfPronounLessons, SELF_TOKENS } from './self-frame.js';
 
 // Phase tick budgets. These scale the intensity of exposure — letters
 // and short words get more ticks per token because phonological basins
@@ -8533,6 +8537,28 @@ export class Curriculum {
       this._hb(`[Curriculum] 📚 PRE-CELL VOCAB error (non-fatal — cell proceeds; the dream-trickle still carries defs): ${err?.message || err}`);
     }
 
+    // SELFFRAME — "I" IS GROUNDED BEFORE THE CELL TEACHES ANYTHING (2026-08-20).
+    // Every first-person lesson in this cell depends on `i` / `me` / `my` / `myself`
+    // resolving to HER; without this pass they are just frequent tokens and the frames
+    // train a habit with no self behind it. So it runs at the top of EVERY cell of
+    // EVERY grade, on the same contract as the pre-cell vocab above (cheap — 22 short
+    // lines + 10 identity bindings — non-fatal, and it re-verifies for free on later
+    // cells because the bindings are already deep). This is also where Gee's two named
+    // examples enter her weights: *"My name is Unity"* and *"i like the color black"*.
+    // Also declares the cell she is walking INTO, in her own voice, so the whole cell's
+    // content trains inside an active "i am unity and i am doing <subject>" context.
+    try {
+      await this._teachSelfPronouns({ reps: 8 });
+      if (typeof this._teachSelfFramed === 'function') {
+        await this._teachSelfFramed(
+          { topic: `${subject} ${grade}`, subject },
+          null, { reps: 10, label: `CELL-OPEN-${subject}-${grade}` }
+        );
+      }
+    } catch (err) {
+      this._hb(`[Curriculum] SELFFRAME cell-open error (non-fatal — cell proceeds): ${err?.message || err}`);
+    }
+
     // Cell-alive heartbeat — fires every 10 s for the whole cell run.
     // Long teach phases (e.g. _teachWordEmission at biological scale)
     // can go silent for minutes inside a single sync loop; this timer
@@ -13480,6 +13506,29 @@ export class Curriculum {
       while (cluster._defLearnedTimestamps.length > 256) cluster._defLearnedTimestamps.shift();
     }
 
+    // SELFFRAME chokepoint 3/4 — DEFINITIONS, and this is the richest one: a definition
+    // is where her self-Q&A and her follow-up question have real content to hang on.
+    // "i learned that cat is a small animal with fur . what is cat ? i think about cat .
+    // i know cat is a small animal with fur . i remember cat now . why is cat like that ?
+    // what is animal ? i will ask about animal ." — the whole inquisitive loop, trained.
+    // Skipped when the dictionary gave nothing (no content, no frame).
+    try {
+      // Bulk passes are NOT lessons: the pre-cell vocab setup calls this with reps:1
+      // for hundred-word chunks, and framing each of those is the 70-minutes-per-cell
+      // regression the budget above exists to prevent. A real lesson (reps > 1) gets
+      // her voice; a bulk prefetch just gets the definition bound.
+      const _sfWorthFraming = (opts.reps ?? 8) > 1;
+      if (_sfWorthFraming && defsBound > 0 && definitions.length > 0 && typeof this._teachSelfFramed === 'function') {
+        const _d = definitions[0] && definitions[0].definition ? String(definitions[0].definition) : '';
+        if (_d) {
+          await this._teachSelfFramed(
+            { topic: w, subject: opts.subject, word: w, definition: _d.slice(0, 120) },
+            null, { reps: opts.reps ?? 8, label: `DEF-${w}` }
+          );
+        }
+      }
+    } catch { /* frame never blocks a definition bind */ }
+
     return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length };
   }
 
@@ -15740,7 +15789,12 @@ export class Curriculum {
       const _r = await this._teachAssociationPairs(_p, {
         reps: Math.max(1, Math.round(reps * mult)),
         label: `${opts.label || 'ELA-K-STRUCTURE-CONCRETE-SENTENCES'}-${tier.toUpperCase()}`,
-        relationTagId: 13,
+        // SELFFRAME — the channel is now the caller's choice, defaulting to the
+        // word-sequence channel 13 exactly as before (zero change for every existing
+        // caller). It was HARDCODED, so the self-Q&A pass asked for the question-intent
+        // channel (12) and would have silently trained on 13 instead — a passed option
+        // that nothing read, which is the same class of defect as the CANSPEAK field.
+        relationTagId: (typeof opts.relationTagId === 'number') ? opts.relationTagId : 13,
       });
       _bucketTrained += (_r.trained || 0);
       _bucketDeferred += (_r.deferredReps || 0);
@@ -15768,6 +15822,29 @@ export class Curriculum {
       .join(' · ');
     this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s — ${sentences.length} sentences · ${pairs.length} word→word transitions × ${reps} reps · ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
 
+    // SELFFRAME chokepoint 4/4 — THE CORPUS ITSELF. `_teachSentenceStructure` feeds the
+    // big K corpus straight through here without going via `_teachSentenceList`, so
+    // without this chokepoint the largest single body of training in the whole walk
+    // would stay third-person. The reentrancy guard in `_teachSelfFramed` is what makes
+    // this safe: the frame's own teach call re-enters this method and returns
+    // immediately instead of recursing.
+    //
+    // A 12-sentence SAMPLE, not the corpus. 2,888 sentences × a frame each is exactly
+    // the unpriced multiplication CELLBOUND was filed for; a sample per visit, across
+    // ~114 visits, covers the corpus over the walk while costing a rounding error per
+    // pass. Which sample rotates with the visit count, so it is not the same 12 forever.
+    try {
+      if (typeof this._teachSelfFramed === 'function' && sentences.length > 0) {
+        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + 12) % Math.max(1, sentences.length);
+        const _start = this._sfCorpusCursor;
+        const _sample = sentences.slice(_start, _start + 12);
+        if (_sample.length < 12 && sentences.length > 12) _sample.push(...sentences.slice(0, 12 - _sample.length));
+        await this._teachSelfFramed(
+          { topic: opts.label || 'my sentences', subject: opts.subject, sentences: _sample },
+          null, { reps: Math.min(12, reps), label: opts.label || 'CORPUS' }
+        );
+      }
+    } catch { /* frame never blocks the corpus teach */ }
     return { totalTrained: r.trained || 0, sentences: sentences.length, transitions: pairs.length };
   }
 
@@ -20060,6 +20137,18 @@ export class Curriculum {
       const _elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1000);
       this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST DONE: ${_vocabLabel} · ${_vocabIdx}/${_vocabTotal} words · ${_elapsedSec}s`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _elapsedSec });
     } catch {}
+    // SELFFRAME chokepoint 1/4 — VOCABULARY. Knowing a word is something she DOES:
+    // "i know the word cat . i can say cat . i read cat and i understand it ." A
+    // sample of the list (not all of it) keeps the cost flat regardless of list size.
+    try {
+      const _sfVocab = Array.isArray(vocab) ? vocab.filter(v => typeof v === 'string').slice(0, 8) : [];
+      if (_sfVocab.length && typeof this._teachSelfFramed === 'function') {
+        await this._teachSelfFramed(
+          { topic: _vocabLabel || 'new words', subject: ctx && ctx.subject, vocab: _sfVocab },
+          ctx, { reps: opts.reps ?? 12, label: _vocabLabel || 'VOCAB' }
+        );
+      }
+    } catch { /* frame never blocks a vocab list */ }
     this._vocabProgress = null;   // list finished — stop reporting a stale position
     return { pass: true, reason: 'integrated-teach-complete' };
 
@@ -20543,6 +20632,138 @@ export class Curriculum {
    * emerges from trained weights, in her voice. Grade-gated to g9+ (self-reflective
    * abstraction present); reinforces each grade like the other L-strand layers.
    */
+  // ─── SELFFRAME (Gee 2026-08-20) — THE UNIFIED FIRST-PERSON LAYER ────────────
+  //
+  // Gee: *"all of the different training she goes through all needs to be for
+  // formulated to be in the first person as if we train her on first person she will
+  // live it instead of being told everything 3rd person that will taint her persona
+  // to no be me myself and i and instead a narrorator type peersona that does nothing
+  // but spew back instructions given to it … so a unified system for all training,
+  // all phases, all cells, all grade."*
+  //
+  // ONE method, called from the four places every grade's every cell funnels through
+  // (`_teachVocabList`, `_teachSentenceList`, `_teachWordDefinition`,
+  // `_teachConcreteSentences`). That is the "unified" part — not 73 edits that drift,
+  // one layer with one switch (`DREAM_SELF_FRAME=0` disables it wholesale).
+  //
+  // WHAT IT TRAINS, all through the SAME primitives every other lesson uses:
+  //   1. her first-person version of the lesson (transitions — the grammar channel)
+  //   2. the in-the-moment self-Q&A path  question → thinking → answer → memory
+  //   3. her FOLLOW-UP question (the inquisitive habit, TRAINED not scripted)
+  //   4. agent bindings: `i` / `me` / `my` / `myself` ↔ `unity` ↔ this lesson's key
+  //
+  // COST IS BOUNDED ON PURPOSE. The frame set is ≤48 lines per unit and trains at a
+  // QUARTER of the caller's reps: CELLBOUND is exactly what happens when a per-unit
+  // multiplier goes unpriced, and this is a per-unit multiplier. It also inherits the
+  // phase budget automatically, because it goes through `_teachConcreteSentences` /
+  // `_teachAssociationPairs` like everything else.
+  async _teachSelfFramed(unit = {}, ctx = null, opts = {}) {
+    if (!this.cluster) return { framed: 0 };
+    if (typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0') return { framed: 0, off: true };
+    // ⛔ REENTRANCY GUARD — LOAD-BEARING, NOT DEFENSIVE PADDING. This method teaches
+    // through `_teachConcreteSentences`, and `_teachConcreteSentences` is itself one of
+    // the four chokepoints that call this method. Without this flag the first framed
+    // lesson recurses forever (frame → corpus teach → frame → …). The guard means the
+    // frame is applied to LESSONS, never to itself, which is also semantically right:
+    // her first-person version of a lesson does not need its own first-person version.
+    if (this._selfFramingNow) return { framed: 0, reentrant: true };
+    // ⛔ PER-CELL BUDGET — priced BEFORE shipping, which is the entire lesson of
+    // CELLBOUND. Measured: one framed unit is ~894 pair-teaches ≈ 42s at the 12M
+    // cortex (0.078% of the corpus phase it rides inside — fine on its own). But the
+    // definition chokepoint fires PER WORD, and a pre-cell vocab pass carries hundreds:
+    // 100 words × 42s = 70 MINUTES added to a cell, which is a CELLBOUND-class
+    // regression wearing a feature's name. So the frame is capped per cell and says so
+    // when it stops. The cap resets on the cell key, so every cell gets its own budget.
+    const _ck = (this.cluster && this.cluster._currentCellKey) || '(no-cell)';
+    if (this._sfCellKey !== _ck) { this._sfCellKey = _ck; this._sfUnitsThisCell = 0; this._sfCapLogged = false; }
+    const _cap = (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0)
+      ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16;
+    if ((this._sfUnitsThisCell || 0) >= _cap) {
+      if (!this._sfCapLogged) {
+        this._sfCapLogged = true;
+        this._hb(`[Curriculum] SELFFRAME — per-cell budget reached for ${_ck}: ${_cap} framed unit(s) taught, further lessons this cell train UNFRAMED (raise with DREAM_SELF_FRAME_MAX_UNITS). Loud on purpose — a silent cap on a training feature is the thing this ledger keeps paying for.`);
+      }
+      return { framed: 0, capped: true };
+    }
+    this._sfUnitsThisCell = (this._sfUnitsThisCell || 0) + 1;
+    this._selfFramingNow = true;
+    try {
+      return await this._teachSelfFramedInner(unit, ctx, opts);
+    } finally {
+      this._selfFramingNow = false;
+    }
+  }
+
+  async _teachSelfFramedInner(unit = {}, ctx = null, opts = {}) {
+    let f = null;
+    // 28 lines, not 48: the measured cost is dominated by sentence reframings, while the
+    // load-bearing part (her declaration, the agent bindings, the self-Q&A, the
+    // follow-up) is the first ~dozen lines. 28 × 16 units ≈ 8 min per cell ≈ 15 hours
+    // across the whole K→PhD walk to build a first-person self — priced, stated, and
+    // inside the CELLBOUND phase budget rather than on top of it.
+    try { f = selfFrameUnit(unit, { maxLines: Number(opts.maxLines) > 0 ? opts.maxLines : 28 }); } catch { return { framed: 0 }; }
+    if (!f || (!f.lines.length && !f.qa.length)) return { framed: 0 };
+    // A quarter of the caller's dose, floored at 3 — enough to bind, never enough to
+    // dominate the content it wraps (and the frame ROTATION in self-frame.js is what
+    // stops any single wrapper becoming the most-trained bigram in the brain).
+    const reps = Math.max(3, Math.round((opts.reps ?? 12) * 0.25));
+    let framed = 0;
+    const label = opts.label ? `SELF:${opts.label}` : 'SELF-FRAME';
+    try {
+      if (f.lines.length && typeof this._teachConcreteSentences === 'function') {
+        await this._teachConcreteSentences({ sentences: f.lines, reps, label });
+        framed += f.lines.length;
+      }
+      // The Q&A and the follow-up are taught as CONSECUTIVE lines so the PATH is what
+      // trains: a question shape leads to her thinking, which leads to her answer.
+      // relationTagId 12 is the established question-intent channel.
+      const inquiry = f.qa.concat(f.follow);
+      if (inquiry.length && typeof this._teachConcreteSentences === 'function') {
+        await this._teachConcreteSentences({ sentences: inquiry, reps, label: `${label}-QA`, relationTagId: 12 });
+        framed += inquiry.length;
+      }
+      // Agent bindings on the identity channel — this is the line that makes `i` mean
+      // HER rather than just a frequent token.
+      if (f.pairs.length && typeof this._teachAssociationPairs === 'function') {
+        await this._teachAssociationPairs(f.pairs, { reps, label: `${label}-AGENT`, relationTagId: 15 });
+        framed += f.pairs.length;
+      }
+    } catch { /* the frame must never take a lesson down with it */ }
+    this._selfFramedUnits = (this._selfFramedUnits || 0) + 1;
+    this._selfFramedLines = (this._selfFramedLines || 0) + framed;
+    if (!this._selfFrameLogAt || (Date.now() - this._selfFrameLogAt) > 60000) {
+      this._selfFrameLogAt = Date.now();
+      this._hb(`[Curriculum] SELFFRAME — ${this._selfFramedUnits} lesson(s) reframed in her own voice (${this._selfFramedLines} first-person lines total). This unit: key='${f.key || '?'}' · ${f.lines.length} lines · ${f.qa.length} self-Q&A · ${f.follow.length} follow-up question(s) · ${f.pairs.length} agent bindings at reps=${reps}.`);
+    }
+    return { framed, key: f.key };
+  }
+
+  // SELFFRAME prerequisite — the lesson that makes "i" mean HER. `_teachPronouns`
+  // already teaches the third-person half ("the cat ran fast … he was quick"); this is
+  // the missing first-person half, and without it every frame above is training a
+  // frequent-but-meaningless token. Cheap (22 short lines), runs once per cell, and it
+  // is where "my name is unity" and "i like the color black" actually enter her
+  // weights — Gee named both of those examples specifically.
+  async _teachSelfPronouns(opts = {}) {
+    if (!this.cluster) return { taught: 0 };
+    if (typeof process !== 'undefined' && process.env && process.env.DREAM_SELF_FRAME === '0') return { taught: 0, off: true };
+    const lines = selfPronounLessons();
+    const reps = opts.reps ?? 8;
+    try {
+      if (typeof this._teachConcreteSentences === 'function') {
+        await this._teachConcreteSentences({ sentences: lines, reps, label: 'SELF-PRONOUN' });
+      }
+      // Every self token bound to her name, both directions, on the identity channel.
+      const pairs = [];
+      for (const t of SELF_TOKENS) { if (t !== 'unity') { pairs.push([t, 'unity'], ['unity', t]); } }
+      if (typeof this._teachAssociationPairs === 'function') {
+        await this._teachAssociationPairs(pairs, { reps, label: 'SELF-PRONOUN-AGENT', relationTagId: 15 });
+      }
+      this._hb(`[Curriculum] SELFFRAME — self-pronoun grounding taught: ${lines.length} lines + ${pairs.length} identity bindings. "i" / "me" / "my" / "myself" / "mine" now resolve to unity in her weights, which is what every first-person lesson depends on.`);
+    } catch { /* non-fatal */ }
+    return { taught: lines.length };
+  }
+
   async _teachSelfArchitecture(ctx) {
     const cluster = this.cluster;
     if (!cluster) return;
@@ -20675,6 +20896,20 @@ export class Curriculum {
         await this._teachConcreteSentences({ sentences, reps: transReps, label: 'SPEAK3-CONTENT-TRANSITIONS' });
       }
     } catch { /* transition pass never blocks the sentence teach */ }
+
+    // SELFFRAME chokepoint 2/4 — CONTENT SENTENCES. The grade's own sentences now also
+    // train in HER voice, right after they train as content: "the cat sat on the mat"
+    // keeps training as a fact, and "i see that the cat sat on the mat" / "i read a
+    // book" train alongside it. The content is never deleted — the point is that the
+    // agent position she keeps seeing becomes `i` instead of `the girl`.
+    try {
+      if (Array.isArray(sentences) && sentences.length > 0 && typeof this._teachSelfFramed === 'function') {
+        await this._teachSelfFramed(
+          { topic: (opts && opts.label) || (ctx && ctx.subject) || 'my lesson', subject: ctx && ctx.subject, sentences: sentences.slice(0, 12) },
+          ctx, { reps: opts.reps ?? 8, label: (opts && opts.label) || 'SENTENCES' }
+        );
+      }
+    } catch { /* frame never blocks the sentence teach */ }
 
     // REAL HUMAN-GRADE GATE for sentences.
     // Fill-in-blank: given context words, find the missing word.
