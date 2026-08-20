@@ -105770,10 +105770,14 @@ var Curriculum = class _Curriculum {
     this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s \u2014 ${sentences.length} sentences \xB7 ${pairs.length} word\u2192word transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
     try {
       if (typeof this._teachSelfFramed === "function" && sentences.length > 0) {
-        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + 12) % Math.max(1, sentences.length);
+        const SF_TARGET_VISITS = 114;
+        const _sfSample = Math.max(12, Math.min(48, Math.ceil(sentences.length / SF_TARGET_VISITS)));
+        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + _sfSample) % Math.max(1, sentences.length);
         const _start = this._sfCorpusCursor;
-        const _sample = sentences.slice(_start, _start + 12);
-        if (_sample.length < 12 && sentences.length > 12) _sample.push(...sentences.slice(0, 12 - _sample.length));
+        const _sample = sentences.slice(_start, _start + _sfSample);
+        if (_sample.length < _sfSample && sentences.length > _sfSample) {
+          _sample.push(...sentences.slice(0, _sfSample - _sample.length));
+        }
         await this._teachSelfFramed(
           { topic: opts.label || "my sentences", subject: opts.subject, sentences: _sample },
           null,

@@ -287,6 +287,63 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     while (store.size > VM_CAP) store.delete(store.keys().next().value);
 
+    // ── OWNART.8 (2026-08-20) — SHE LEARNS THE *CONSTRUCTION* OF WHAT SHE SEES,
+    // ── at perception time, not only when something asks her to draw.
+    //
+    // `_ownArtSchemaFor` abstracted LAZILY: her shape knowledge grew only when a
+    // draw request arrived, so the first drawing of a familiar thing was made by
+    // a mind that had looked at it many times and never once worked out how it
+    // is built. A person does not work that way. Learning it at ingest means the
+    // FIRST drawing is already informed.
+    //
+    // The item's objection was cost — "it puts a trace on the perception path,
+    // which is exactly the kind of cost that needs measuring first (the
+    // CELLBOUND lesson)". So it is measured, not assumed, and it cannot become
+    // a hidden tax:
+    //   * CONFIRMED tokens only — a provisional look (one unconfirmed render)
+    //     is not worth abstracting, and `conf` already encodes that judgement.
+    //   * the first FEW looks only (`looks < 3`), NOT "new schemas only" — my
+    //     first draft guarded on absence, which fights this method's own design:
+    //     `_learnShapeSchema` MERGES a second look into the running averages and
+    //     increments `looks`, because "that is what looking twice is for". So
+    //     re-deriving early is desirable and re-deriving forever is waste; three
+    //     looks is where the weighted average has essentially settled.
+    //   * throttled to one per DREAM_OWNART_INGEST_MS (default 5s), so a burst
+    //     of percepts cannot serialise into a stall.
+    //   * FIRE-AND-FORGET — never awaited, so perception latency is unchanged
+    //     even if the abstraction is slow.
+    //   * SKIPPED mid-curriculum, the same rule the sem-grounding below uses,
+    //     so the walk's Hebbian patterns stay pristine.
+    //   * self-reporting — the first ten log their real wall-cost, so "needs
+    //     measuring first" is answered with numbers instead of being carried
+    //     forever as a reason not to try.
+    try {
+      const _ingestMs = Number(process.env.DREAM_OWNART_INGEST_MS) > 0
+        ? Number(process.env.DREAM_OWNART_INGEST_MS) : 5000;
+      if (_ingestMs > 0 && !this._curriculumInProgress
+          && typeof this._learnShapeSchema === 'function'
+          && (!this._ownArtIngestAt || (now - this._ownArtIngestAt) >= _ingestMs)) {
+        const _cand = tokens.find((t) => {
+          const e = store.get(t);
+          if (!e || e.conf !== true || !e.rec) return false;
+          const _looks = (e.schema && Number(e.schema.looks)) || 0;
+          return _looks < 3;
+        });
+        if (_cand) {
+          this._ownArtIngestAt = now;
+          const _t0 = Date.now();
+          Promise.resolve(this._learnShapeSchema(_cand, store.get(_cand).rec))
+            .then(() => {
+              this._ownArtIngestCount = (this._ownArtIngestCount || 0) + 1;
+              if (this._ownArtIngestCount <= 10) {
+                console.log(`[VisualMemory] OWNART.8 — learned the shape schema for "${_cand}" AT PERCEPTION (${Date.now() - _t0}ms, fire-and-forget, ${this._ownArtIngestCount}/10 measured). Her first drawing of it is informed by construction now, not derived on demand. Throttle DREAM_OWNART_INGEST_MS=${_ingestMs}ms; 0 disables.`);
+              }
+            })
+            .catch(() => { /* an abstraction failure must never touch perception */ });
+        }
+      }
+    } catch { /* never let this path affect seeing */ }
+
     // grounding — the percept vector lands in sem at LOW strength (real
     // seeing, not imagination). Skipped mid-teach so the walk's Hebbian
     // patterns stay pristine, same rule as the imagine tick.

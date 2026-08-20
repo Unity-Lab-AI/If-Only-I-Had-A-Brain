@@ -15956,10 +15956,37 @@ export class Curriculum {
     // pass. Which sample rotates with the visit count, so it is not the same 12 forever.
     try {
       if (typeof this._teachSelfFramed === 'function' && sentences.length > 0) {
-        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + 12) % Math.max(1, sentences.length);
+        // ── SELFFRAME.9 (2026-08-20) — THE SAMPLE IS DERIVED, so ONE walk covers
+        // ── the corpus instead of ~47% of it.
+        //
+        // It was a hardcoded 12. The arithmetic nobody ran: ~2,888 corpus
+        // sentences at 12 per visit needs ~241 visits to cover once, and the
+        // walk makes ~114 — so **no walk ever completed a single pass**, and
+        // more than half the corpus stayed third-person for the entire
+        // curriculum. That is the defect SELFFRAME exists to fix, surviving
+        // inside the fix.
+        //
+        // The item priced the lever at ~2.7s per extra sentence per visit, so
+        // the size is now derived from the work rather than guessed:
+        // `ceil(corpusLength / SF_TARGET_VISITS)` covers the corpus in one walk
+        // BY CONSTRUCTION, and stays correct if the corpus or the walk length
+        // changes — a hardcoded 12 could not.
+        //
+        // RE-PRICED per LAW, because this is a rep-count increase: 2,888 / 114
+        // ≈ 26 per visit, i.e. 14 more than before at ~2.7s each ≈ **+38s per
+        // visit, ~+72 min across the whole 114-visit walk** — for going from
+        // ~47% first-person corpus coverage to 100%. Bounded at both ends: a
+        // floor of 12 (never regress) and a ceiling of 48 (~2min/visit) so a
+        // corpus that grows tenfold cannot silently turn one phase into an
+        // afternoon, which is the CELLBOUND lesson.
+        const SF_TARGET_VISITS = 114;   // the K→PhD cell count the walk actually makes
+        const _sfSample = Math.max(12, Math.min(48, Math.ceil(sentences.length / SF_TARGET_VISITS)));
+        this._sfCorpusCursor = ((this._sfCorpusCursor || 0) + _sfSample) % Math.max(1, sentences.length);
         const _start = this._sfCorpusCursor;
-        const _sample = sentences.slice(_start, _start + 12);
-        if (_sample.length < 12 && sentences.length > 12) _sample.push(...sentences.slice(0, 12 - _sample.length));
+        const _sample = sentences.slice(_start, _start + _sfSample);
+        if (_sample.length < _sfSample && sentences.length > _sfSample) {
+          _sample.push(...sentences.slice(0, _sfSample - _sample.length));
+        }
         await this._teachSelfFramed(
           { topic: opts.label || 'my sentences', subject: opts.subject, sentences: _sample },
           null, { reps: Math.min(12, reps), label: opts.label || 'CORPUS' }
