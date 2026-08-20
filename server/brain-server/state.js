@@ -1144,6 +1144,28 @@ const SERVER_STATE_MIXIN = {
             computeSteps: isGPU ? _steps : null,
             computeAdvancedAgoSec: _advancedAgoSec,
             computeIdle: _computeIdle,
+            // TEACHMIRROR — THE OTHER LANE, and during the walk it is the ONLY
+            // lane. `computeSteps` / `gneuronsPerSec` advance solely on
+            // compute_batch completion; the curriculum sends Hebbian/propagate
+            // frames instead, so a card teaching flat out reports zero on both
+            // and `computeIdle` goes true. Live cost: an A6000 holding all 17
+            // matrices and taking teach frames continuously rendered as
+            // `idle (last 0Gn/s)`, and the row was read as a dead card.
+            //
+            // Counted server-side in `_sparseSendBinary` (we send the frames, so
+            // the count is exact and needs no donor build). Read the two lanes
+            // TOGETHER: compute-idle + teach-active = teaching, which is the
+            // normal state of a walking brain, not a fault.
+            teachOps: isGPU ? (Number(c.teachOps) || 0) : null,
+            teachAdvancedAgoSec: (isGPU && c.teachOpsAt)
+              ? Math.round((now - c.teachOpsAt) / 1000) : null,
+            // One field the board can render without having to reason about the
+            // pair. 30s matches the compute-lane staleness window above.
+            workState: !isGPU ? null : (
+              (c.teachOpsAt && (now - c.teachOpsAt) <= 30000) ? 'teaching'
+                : (_computeIdle === false ? 'computing'
+                  : ((Number(c.teachOps) || 0) > 0 || _steps > 0) ? 'idle' : 'no work yet')
+            ),
             // F9 — WebGPU storage-binding cap + capability flag, so the dashboard can
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
             maxBindMB: isGPU ? (Number(c.maxBindMB || (tele && tele.maxBindMB)) || null) : null,
