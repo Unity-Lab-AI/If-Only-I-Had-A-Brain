@@ -2668,11 +2668,37 @@ export class Curriculum {
     // Non-teach methods that still benefit from phase-tracking for
     // visibility but should NOT auto-skip (operator needs fresh
     // readings on each gate probe).
-    const TRACKED_NO_SKIP = new Set(['_runStudentBattery', '_measureEmissionCapability']);
-    for (const name of Object.getOwnPropertyNames(proto)) {
-      if (typeof proto[name] !== 'function') continue;
-      if (TRACKED_NO_SKIP.has(name)) TRACKED_NO_SKIP.add(name);
-    }
+    // GATEPHASE — THE CELL-TERMINAL GATES BELONG HERE, and they were missing.
+    //
+    // A gate ran with NO phase token at all, so for its entire duration the
+    // board read `activePhase: null` with started === completed — which is
+    // BYTE-IDENTICAL to a hang. A 20.7-minute science gate cost a console-ring
+    // forensic dig to tell apart from a dead process, when a glance should have
+    // done it. This set is the right mechanism and not `_phasedTeach`: that one
+    // SKIPS a phase already in `passedPhases` and returns `undefined`, and a
+    // gate's return value IS the cell's pass/fail verdict — a skipped gate
+    // would hand its runner `undefined` and silently fail the cell. The wrapper
+    // below returns `await original(...)` untouched and carries `ledger: false`,
+    // so a gate becomes visible without being counted as a phase or skippable.
+    //
+    // AN EXPLICIT LIST, NOT A `_gate*` PATTERN, and the call-site counts are
+    // why: of the 17 `_gate*` methods, twelve are cell-terminal (1-2 call sites
+    // each) and five are inner helpers called constantly —
+    // `_gateSubjectProduction` **104**, `_gateComprehension` 26,
+    // `_gateVocabList` 12, `_gateConceptTeach` 3, `_gateSentenceList` 2.
+    // Wrapping those would churn `_activePhase` many times a second and bury
+    // the real gate, which is exactly the failure the auto-wrap comment above
+    // records for primitives like `_teachHebbian`. The name cannot distinguish
+    // them; the counts can.
+    const TRACKED_NO_SKIP = new Set([
+      '_runStudentBattery', '_measureEmissionCapability',
+      // K — the six per-subject real gates
+      '_gateLifeKReal', '_gateArtKReal', '_gateSocKReal',
+      '_gateSciKReal', '_gateMathKReal', '_gateElaKReal',
+      // grade-level + post-K gates
+      '_gateKindergarten', '_gateGrade1', '_gateGrade4_5', '_gateCollege',
+      '_gateMathG1Real', '_gateMathG2Real',
+    ]);
     const buildPhaseKey = (name) => {
       const cellKey = this.cluster?._currentCellKey;
       return cellKey ? `${cellKey}:${name}` : null;

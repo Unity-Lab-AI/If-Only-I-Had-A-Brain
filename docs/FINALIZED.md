@@ -34005,3 +34005,34 @@ That is a hardware ask for Red/Sponge with arithmetic under it instead of a vagu
 **Left for Gee: Update & FRESH WALK.** Weights trained at 306,458,816 do not describe 592,151,838. The donor registers once (TIERTOP.2 persists the 45,488MB baseline), then the fresh walk boots at the new budget — look for `main-brain sized to the RAM-safe budget base: 592,151,838 neurons`.
 
 **Board: 36 open, 114 closed.**
+
+---
+
+## 2026-08-20 — PUSHDIVERGE: two fresh walks were pressed on code that did not contain today's work, because my pushes were being rejected in silence
+
+> Gee (verbatim): *"okay check and fix all of that and get to any changes now that need to be done if we need another update walk"*
+> Gee (verbatim): *"make sure when its all done everything is push cascade to main"*
+
+**This is the worst process error of the session and it is mine.** Gee pressed Update & Fresh Walk twice; both times the box came up on `081fb034` — a commit from before SUBSTEPS.2, TIERTOP and RAMHEAD. The reason was not the deploy script and not the box:
+
+**every push to `origin` (Forgejo) after the CI's own link-bump was being REJECTED as non-fast-forward, and I never saw one of them.** I pushed with `git push -q "$r" "$b" 2>/dev/null` — quiet flag plus a discarded stderr — which makes a reject and a success **byte-identical in my output**. I then reported "pushed" nine times over on the strength of an exit code I had thrown away.
+
+**The mechanism, and why only the box noticed.** The `donor-release` CI commits the site-link bump straight to `main` and pushes it to **Forgejo only** (`081fb034`). My local `main` never contained it, so from that moment on every `origin` push diverged and was refused — while **GitHub kept accepting, because the CI never pushes there.** That is precisely why the two remotes disagreed and nothing in my own workspace could reveal it. `deploy/self-update.sh` does `git clone --depth 1 --branch main git@git.unityailab.com:...` — it clones **Forgejo** — so the box was faithfully redeploying exactly what Forgejo's `main` said, twice.
+
+**Fixed** by merging `081fb034` (verified all five `.24` links survived), pushing **loudly**, and confirming with `git ls-remote` that local / `origin` / `github` all report the same SHA. **A claim of "pushed" is now backed by the remote's own answer.** RULE, and it belongs in muscle memory: never push with suppressed output; verify with `git ls-remote`.
+
+---
+
+## 2026-08-20 — GATEPHASE + BUNDLEFIX: a gate that reads exactly like a hang, and a bundle rebuild that never once ran
+
+**GATEPHASE.1 — supersedes `RESYNCDUTY.9`, and the defect is twelve gates, not the one the item names.** `RESYNCDUTY.9` filed `_gateSciKReal` as invisible to the phase counter. In fact **all six K gates plus six grade-level gates** were unwrapped, each reading `activePhase: null` with `started === completed` for its whole duration — **byte-identical to a hang**. That ambiguity is the entire reason a 20.7-minute science gate once cost a console-ring forensic dig instead of a glance at the board.
+
+**The obvious fix would have broken pass/fail.** `_phasedTeach` skips a phase already present in `passedPhases` and returns `undefined` — and a gate's return value **is** the cell's verdict, so a skipped gate would hand its runner `undefined` and silently fail the cell. The right mechanism already existed: **`TRACKED_NO_SKIP`**, whose wrapper sets `_activePhase`, carries `ledger: false` so it is never counted as a phase, and **returns `await original(...)` untouched**.
+
+**An explicit list rather than a `_gate*` pattern, and the call-site counts are the argument:** of the 17 `_gate*` methods, twelve are cell-terminal (1-2 call sites each) and five are inner helpers called constantly — `_gateSubjectProduction` **104**, `_gateComprehension` 26, `_gateVocabList` 12, `_gateConceptTeach` 3, `_gateSentenceList` 2. Wrapping those would churn `_activePhase` many times a second and bury the real gate, which is exactly the failure the auto-wrap comment already records for primitives like `_teachHebbian`. The name cannot tell them apart; the counts can. Verified with `node --check`, an **ESM `import()`** (which `node --check` cannot catch), and a set-membership assertion proving all twelve terminal gates are in and none of the five helpers are.
+
+**GATEPHASE.2 — a dead loop sat immediately beside it.** `for (const name of …) { if (TRACKED_NO_SKIP.has(name)) TRACKED_NO_SKIP.add(name); }` re-added names the set already held: a pure no-op. It reads as though it was meant to match a pattern the way the `_teach*` loop above it does, so whatever it was intended to catch, it never caught anything. Removed.
+
+**BUNDLEFIX.1 — the launcher's bundle rebuild has been failing on EVERY launch.** `linux/start.sh` step 6/7 runs `npm run build` from the **repo root**, and root `package.json` carried `"scripts": {}` — the real esbuild command lives in **`server/package.json`**. So every launch printed *"ERROR: esbuild bundle build failed … The browser will run STALE code"* and continued anyway. Found by hand while rebuilding the bundle for GATEPHASE, not by reading the launcher. Root now delegates (`npm --prefix server run build`), fixing **both** launchers without editing either and keeping `server/package.json` as the single source of the esbuild flags. Verified by running it from root. Also corrected: `start.sh:235` claims the bundle is gitignored — `git check-ignore` says it is **tracked**, which is what lets `deploy.yml` rsync it at all.
+
+**Board: 36 open, 119 closed.**

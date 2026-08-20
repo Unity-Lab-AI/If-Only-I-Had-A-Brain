@@ -95866,11 +95866,24 @@ var Curriculum = class _Curriculum {
       if (!name.startsWith("_teach")) continue;
       TRACKED.add(name);
     }
-    const TRACKED_NO_SKIP = /* @__PURE__ */ new Set(["_runStudentBattery", "_measureEmissionCapability"]);
-    for (const name of Object.getOwnPropertyNames(proto)) {
-      if (typeof proto[name] !== "function") continue;
-      if (TRACKED_NO_SKIP.has(name)) TRACKED_NO_SKIP.add(name);
-    }
+    const TRACKED_NO_SKIP = /* @__PURE__ */ new Set([
+      "_runStudentBattery",
+      "_measureEmissionCapability",
+      // K — the six per-subject real gates
+      "_gateLifeKReal",
+      "_gateArtKReal",
+      "_gateSocKReal",
+      "_gateSciKReal",
+      "_gateMathKReal",
+      "_gateElaKReal",
+      // grade-level + post-K gates
+      "_gateKindergarten",
+      "_gateGrade1",
+      "_gateGrade4_5",
+      "_gateCollege",
+      "_gateMathG1Real",
+      "_gateMathG2Real"
+    ]);
     const buildPhaseKey = (name) => {
       const cellKey = this.cluster?._currentCellKey;
       return cellKey ? `${cellKey}:${name}` : null;
