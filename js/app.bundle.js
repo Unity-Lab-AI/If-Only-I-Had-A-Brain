@@ -96545,6 +96545,11 @@ var Curriculum = class _Curriculum {
               const brain2 = this.cluster && this.cluster._brain;
               const uploading = !!(brain2 && brain2._cortexUploadInFlight);
               const notReady = !!(this.cluster && this.cluster._gpuProxy && this.cluster._cortexFullyReady !== true);
+              const _graceMin = Number(process.env.DREAM_UPLOAD_GRACE_MIN) > 0 ? Number(process.env.DREAM_UPLOAD_GRACE_MIN) : 3;
+              if ((uploading || notReady) && Number(idleMin) >= _graceMin && !uploading) {
+                console.error(`[Curriculum] \u26D4 runner quiet ${idleMin} min \u2014 this is NOT "by design" any more. The cortex GPU state has been not-ready for ${idleMin} minutes with NO upload in flight, so the walk is DEADLOCKED, not waiting. gpuProxy=${!!(this.cluster && this.cluster._gpuProxy)} cortexFullyReady=${!!(this.cluster && this.cluster._cortexFullyReady)} uploadInFlight=false \u2014 the upload trigger needs _cortexGpuInitStarted false, and it is set BEFORE the upload runs, so a donor drop mid-upload leaves it stuck true forever. The server-side UPLOADWD watchdog should force a re-arm; if this message keeps repeating, that watchdog is not firing either. Grace window: DREAM_UPLOAD_GRACE_MIN=${_graceMin}min.${cacheInfo}`);
+                return;
+              }
               if (uploading || notReady) {
                 console.warn(`[Curriculum] runner quiet ${idleMin} min \u2014 EXPECTED: ${uploading ? "the canonical sparse upload is IN FLIGHT (multi-GB at the 12M cortex \u2248 12+ min per donor connect; the walk waits for _cortexFullyReady by design)" : "cortex GPU state not fully ready yet (upload/rebind still settling) \u2014 the walk waits by design"}.${cacheInfo} Not a stall; the watchdog resumes normal checks once teaching starts.`);
                 return;
