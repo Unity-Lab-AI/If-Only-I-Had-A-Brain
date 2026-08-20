@@ -95309,6 +95309,15 @@ function _magnitudeFeatureForNumber(n) {
   return out;
 }
 var PRE_K_FALLBACK_CAP = 5;
+var PHASE_BUDGET_MS = Number(
+  typeof process !== "undefined" && process.env && process.env.DREAM_PHASE_BUDGET_MS || 20 * 60 * 1e3
+);
+var STRUCTURE_DOSE = Math.max(
+  0.05,
+  Math.min(1, Number(
+    typeof process !== "undefined" && process.env && process.env.DREAM_STRUCTURE_DOSE || 0.4
+  ) || 0.4)
+);
 var Curriculum = class _Curriculum {
   static PRE_K_FALLBACK_CAP = PRE_K_FALLBACK_CAP;
   /**
@@ -95417,8 +95426,12 @@ var Curriculum = class _Curriculum {
         );
         _nested.delete(_n);
         this._teachNestedTotal[_n] = _nested.size;
+        if (!this._teachNestedSet) this._teachNestedSet = {};
+        this._teachNestedSet[_n] = _nested;
       } catch {
         this._teachNestedTotal[_n] = 0;
+        if (!this._teachNestedSet) this._teachNestedSet = {};
+        this._teachNestedSet[_n] = null;
       }
     }
     for (const name of TRACKED) {
@@ -95444,8 +95457,12 @@ var Curriculum = class _Curriculum {
           this._phaseWorkName = name;
           this._phaseWorkSeen = /* @__PURE__ */ new Set();
           this._phaseWorkTotal = this._teachNestedTotal && this._teachNestedTotal[name] || 0;
+          this._phaseWorkExpect = this._teachNestedSet && this._teachNestedSet[name] || null;
+          cl._phaseDeadlineAt = Date.now() + PHASE_BUDGET_MS;
+          cl._phaseDeadlineName = name;
         }
         const workSeen = isCellPhase ? null : this._phaseWorkSeen;
+        const workExpect = isCellPhase ? null : this._phaseWorkExpect;
         if (isCellPhase) {
           const _ck = cl._currentCellKey || "";
           if (this._cellPhasesStartedKey !== _ck) {
@@ -95506,7 +95523,10 @@ var Curriculum = class _Curriculum {
             this._phaseWorkName = null;
             this._phaseWorkSeen = null;
             this._phaseWorkTotal = 0;
-          } else if (workSeen) {
+            this._phaseWorkExpect = null;
+            cl._phaseDeadlineAt = 0;
+            cl._phaseDeadlineName = null;
+          } else if (workSeen && (!workExpect || workExpect.has(name))) {
             workSeen.add(name);
           }
         }
@@ -95865,6 +95885,17 @@ var Curriculum = class _Curriculum {
         name: cluster._outermostPhase.name,
         elapsedMs: Date.now() - cluster._outermostPhase.startAt
       } : null,
+      // CELLBOUND.E - THE FULL LIVE CALL CHAIN.
+      //
+      // `activePhase` names only the INNERMOST primitive and `outermostPhase`
+      // only the DECLARED cell phase. The mid-level pass between them - the one
+      // that can hold the cell for hours - was nameable NOWHERE, and
+      // `teachProfile` cannot cover it: a method is recorded only when it
+      // EXITS, so an in-flight multi-hour pass contributes exactly zero ms and
+      // is invisible by construction. Measured 2026-08-20: art/kindergarten sat
+      // 21.2h on `_teachSentenceStructure` with ~6.1h of it unattributable to
+      // any published field. The stack already existed; nothing ever read it.
+      phaseChain: Array.isArray(cluster && cluster._phaseStack) ? cluster._phaseStack.map((t) => ({ name: t.name, elapsedMs: Date.now() - t.startAt })) : null,
       // WITHIN-PHASE WORK - what makes the bar move DURING a phase instead of
       // sitting at 0% for its whole duration and then jumping.
       //
@@ -104534,6 +104565,12 @@ var Curriculum = class _Curriculum {
     }
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { trained, skipped };
+      if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
+        const _deferred = reps - rep;
+        const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1e3).toFixed(0);
+        console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || "?"}' spent its ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
+        return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
+      }
       cluster._teachIntermediateRep = rep < reps - 1;
       cluster._teachFinalRepSampleEveryN = rep === reps - 1 ? 5 : 0;
       for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
@@ -104848,6 +104885,14 @@ var Curriculum = class _Curriculum {
     const t0 = Date.now();
     let totalTrained = 0;
     let passes = 0;
+    const _probeRate = cluster._mechanicsProbeRate;
+    const _consolidated = typeof _probeRate === "number" && _probeRate >= 0.4;
+    const _visit = cluster._structureRefreshVisits = (cluster._structureRefreshVisits | 0) + 1;
+    const _periodicFull = _visit % 10 === 1;
+    const _mode = !_consolidated || _periodicFull ? "FULL" : "TOPUP";
+    const _dose = STRUCTURE_DOSE * (_mode === "FULL" ? 1 : 0.15);
+    const R = (n) => Math.max(1, Math.round(n * _dose));
+    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND \u2014 visit #${_visit} \xB7 mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === "number" ? _probeRate.toFixed(2) : "never probed"}${_periodicFull ? " \xB7 periodic re-deepen" : ""}) \xB7 STRUCTURE_DOSE=${STRUCTURE_DOSE} \u2192 effective dose \xD7${_dose.toFixed(3)} \xB7 phase budget ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min. Authored reps are scaled, NOT skipped; anything the budget defers resumes on the next visit.`);
     const slotPairs = [
       // Pronouns — high-prior subject fillers
       ["i", "subject"],
@@ -104938,7 +104983,7 @@ var Curriculum = class _Curriculum {
       ["so", "conjunction"]
     ];
     const r1 = await this._teachAssociationPairs(slotPairs, {
-      reps: 80,
+      reps: R(80),
       label: "ELA-K-STRUCTURE-SLOTS",
       relationTagId: 8
     });
@@ -104968,7 +105013,7 @@ var Curriculum = class _Curriculum {
       ["fish", "swim"]
     ];
     const r4 = await this._teachAssociationPairs(agreementPairs, {
-      reps: 80,
+      reps: R(80),
       label: "ELA-K-STRUCTURE-AGREEMENT",
       relationTagId: 10
     });
@@ -104995,7 +105040,7 @@ var Curriculum = class _Curriculum {
       ["ant", "an"]
     ];
     const r5 = await this._teachAssociationPairs(articlePairs, {
-      reps: 80,
+      reps: R(80),
       label: "ELA-K-STRUCTURE-ARTICLES",
       relationTagId: 11
     });
@@ -105004,11 +105049,11 @@ var Curriculum = class _Curriculum {
     if (typeof this._teachConcreteSentences !== "function") {
       throw new Error("_teachSentenceStructure: _teachConcreteSentences missing on this Curriculum instance \u2014 class wiring bug");
     }
-    const rConcrete = await this._teachConcreteSentences({ reps: 100 });
+    const rConcrete = await this._teachConcreteSentences({ reps: R(100) });
     totalTrained += rConcrete.totalTrained || 0;
     passes += 1;
     if (typeof this._teachQuestionProduction === "function") {
-      const rQ = await this._teachQuestionProduction({ reps: 100 });
+      const rQ = await this._teachQuestionProduction({ reps: R(100) });
       totalTrained += rQ.totalTrained || 0;
       passes += 1;
     }
@@ -105094,6 +105139,7 @@ var Curriculum = class _Curriculum {
     }
     const pairs = [];
     const sentencePairs = /* @__PURE__ */ new Map();
+    const uniquePairs = /* @__PURE__ */ new Map();
     for (const s of sentences) {
       const words = s.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
       for (let i = 0; i < words.length - 1; i++) {
@@ -105103,6 +105149,9 @@ var Curriculum = class _Curriculum {
         pairs.push([a, b]);
         const key = `${a}\u2192${b}`;
         sentencePairs.set(key, (sentencePairs.get(key) || 0) + 1);
+        const u = uniquePairs.get(key);
+        if (u) u.count += 1;
+        else uniquePairs.set(key, { a, b, count: 1 });
       }
     }
     if (pairs.length === 0) {
@@ -105110,16 +105159,28 @@ var Curriculum = class _Curriculum {
       return { totalTrained: 0, sentences: 0, transitions: 0 };
     }
     const t0 = Date.now();
-    const r = await this._teachAssociationPairs(pairs, {
-      reps,
-      label: opts.label || "ELA-K-STRUCTURE-CONCRETE-SENTENCES",
-      relationTagId: 13
-      // new sequence-step channel
-      // Concrete sentence transitions are the load-bearing grammar
-      // training — these MUST drive sem→sem evolution at runtime, so
-      // we want the strongest signal: motor-WTA off (motor side is
-      // unused for sem→sem transitions), default Oja parameters.
-    });
+    const _bucket = { lo: [], mid: [], hi: [] };
+    for (const u of uniquePairs.values()) {
+      if (u.count >= 8) _bucket.hi.push([u.a, u.b]);
+      else if (u.count >= 3) _bucket.mid.push([u.a, u.b]);
+      else _bucket.lo.push([u.a, u.b]);
+    }
+    let _bucketTrained = 0;
+    let _bucketDeferred = 0;
+    for (const [tier, mult] of [["lo", 1], ["mid", 1.5], ["hi", 2]]) {
+      const _p = _bucket[tier];
+      if (!_p.length) continue;
+      const _r = await this._teachAssociationPairs(_p, {
+        reps: Math.max(1, Math.round(reps * mult)),
+        label: `${opts.label || "ELA-K-STRUCTURE-CONCRETE-SENTENCES"}-${tier.toUpperCase()}`,
+        relationTagId: 13
+      });
+      _bucketTrained += _r.trained || 0;
+      _bucketDeferred += _r.deferredReps || 0;
+      if (_r.budgetStopped) break;
+    }
+    this._hb(`[Curriculum] _teachConcreteSentences CELLBOUND.C - ${uniquePairs.size} unique of ${pairs.length} transitions (${(100 * (pairs.length - uniquePairs.size) / Math.max(1, pairs.length)).toFixed(1)}% were literal duplicates) trained in 3 frequency buckets (lo ${_bucket.lo.length} x${reps} / mid ${_bucket.mid.length} x${Math.round(reps * 1.5)} / hi ${_bucket.hi.length} x${reps * 2})${_bucketDeferred ? ` \xB7 ${_bucketDeferred} rep(s) DEFERRED by the phase budget` : ""}.`);
+    const r = { trained: _bucketTrained, deferredReps: _bucketDeferred };
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     const topTransitions = Array.from(sentencePairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(" \xB7 ");
     this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s \u2014 ${sentences.length} sentences \xB7 ${pairs.length} word\u2192word transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
