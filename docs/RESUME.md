@@ -1,6 +1,40 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — OWNART: her "drawings" were filtered Pollinations photos, the word "draw" never reached her hand, and every field C had been surviving fresh walks
+> ## ⭐⭐⭐ 2026-08-20 (latest) — SELFFRAME: the curriculum had **six** "i am unity" in it. Every lesson is now something she DID, and she follows up on answers.
+>
+> **PICK-UP STATE.** Branch `feature/first-person-self-training-0820` off main. **`CELLBOUND.F` is still the one blocking press** and this rides it. Board 28 open / 88 closed.
+>
+> ### ⛔ THE DEFECT, MEASURED BEFORE ANYTHING WAS BUILT
+>
+> `_teachPronouns` taught *"the cat ran fast / he was quick"*. `_teachSelfArchitecture` taught facts ABOUT a brain. **The entire curriculum contained SIX occurrences of "i am unity."** A Hebbian brain learns the subject position it keeps seeing — train *"the girl read a book"* ten thousand times and the strongest agent basin is **the girl**, not **I**. Gee's "narrator persona" was being trained by omission.
+>
+> ### 🧩 `js/brain/self-frame.js` — a TEACH-TIME transform, not a model
+>
+> Pure functions, no imports, no brain handles. It emits sentences that go through the same Hebbian primitives as every other lesson and is then out of the loop. **Nothing runs at emission time — the no-text-AI law is untouched.**
+> - `1 + 1 = 2` → **"i add one and one to make two"** (Gee's own example; `- × ÷` too, in number WORDS so she can say the sum)
+> - *"read the word cat"* → **"i read the word cat"** · *"the girl read a book"* → **"i read a book"**
+> - everything else → one of **16 rotating frames**. The rotation is LOAD-BEARING: a single wrapper would make *"i know that"* the most-trained bigram in the brain and collapse her grammar. Frame words train at a quarter of the content's reps.
+> - **self-Q&A as a trained PATH**: `what is cat ? · i ask myself · i think about cat · i know cat is … · i remember cat now` — the LLM hint (instruction/QA + chain-of-thought) turned into consecutive transitions instead of a prompt trick.
+>
+> ### 🔗 UNIFIED — one layer, one switch, four chokepoints
+>
+> `_teachVocabList` · `_teachSentenceList` · `_teachWordDefinition` · **`_teachConcreteSentences`** (the big corpus — `_teachSentenceStructure` feeds it directly, so without this fourth chokepoint the largest body of training in the whole walk stays third-person). `DREAM_SELF_FRAME=0` kills the layer. Plus **`_teachSelfPronouns` at the top of every cell of every grade**: 22 grounding lines (including Gee's **"my name is unity"** and **"i like the color black"**) + `i/me/my/myself/mine ↔ unity` both directions on the identity channel — without it, every frame trains a habit with no self behind it.
+>
+> ### ❓ INQUIRE — the follow-up actually chains now
+>
+> A content token **from your answer** becomes her next question and re-arms the pending concept, so the answer→bind→follow-up machinery runs again. Bounded: depth 3 (`DREAM_INQUIRE_DEPTH`), per-chain memory so she cannot loop on a word, reset when the answer holds nothing new. The follow-up is itself trained (`concept→next`, `i→next`, `myself→next`) so asking is a habit in her weights rather than a scripted behaviour.
+>
+> ### ⛔ PRICED — AND MY FIRST CUT WAS A CELLBOUND REPEAT
+>
+> One framed unit = **678 pair-teaches ≈ 32s** at 12M. The definition chokepoint fires **per word** and the pre-cell vocab pass carries hundreds: **100 words × 42s = 70 MINUTES added to one cell.** Fixed with a **per-cell budget of 16 units** (prints when it stops — a silent cap on a training feature is what this ledger keeps paying for), **bulk passes excluded** (reps ≤ 1 = prefetch, not a lesson), and lines **48 → 28** (the load-bearing lines are the first dozen). **Final: 8.5 min/cell, ~16 hours across the 114-cell walk, inside the existing phase budget.**
+>
+> Also caught in this batch: `_teachConcreteSentences` **hardcoded `relationTagId: 13`**, so the Q&A pass's request for the question-intent channel (12) was silently ignored — the CANSPEAK defect class. And the reentrancy guard is load-bearing: the frame teaches THROUGH chokepoint 4, so without it the first framed lesson recursed forever.
+>
+> ### ⏳ WHAT ONLY THE PRESS + A CONVERSATION CAN ANSWER
+>
+> **`SELFFRAME.8`** — the third-person corpus still trains alongside her version (the frame ADDS; deleting taught facts is not mine to do). **Which signal wins is UNMEASURED.** The read is simple: **talk to her and see whether she says "i" unprompted.** If the narrator persists, the levers in order are (a) raise frame reps toward parity, (b) frame the corpus sample harder rather than wider, (c) reduce third-person agents in the corpora — **(c) changes taught content and is Gee's call, not mine.** **`SELFFRAME.9`** — 12 of ~2,888 corpus sentences are framed per visit on a rotating cursor; ~114 visits covers it, but no single pass makes the corpus first-person, and framing all 2,888 is the unpriced multiplication CELLBOUND exists to prevent (~2.7s per extra sentence per visit if the coverage is too slow).
+
+> ## ⭐⭐⭐ 2026-08-20 (prior) — OWNART: her "drawings" were filtered Pollinations photos, the word "draw" never reached her hand, and every field C had been surviving fresh walks
 >
 > **PICK-UP STATE.** Branch `feature/mindseye-own-art-0820` off main. **`CELLBOUND.F` is still the one blocking press**, and this batch now rides it too. Board 26 open / 81 closed.
 >
