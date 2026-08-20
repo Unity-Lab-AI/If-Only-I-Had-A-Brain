@@ -35567,3 +35567,39 @@ Both **VERBATIM MATCH**. Search `BEGIN VERBATIM BOARD ARCHIVE 2026-08-20` / `BEG
 **Dangling references cleaned rather than left to rot:** `docs/TODO.md`'s template now records both as deleted with a pointer to the archives and the instruction **"This file is the only board. Do not re-create a second one."**; `docs/RESUME.md` carries a banner marking every mention of them as historical. FINALIZED's own earlier references stay as-is — this file is a historical record and its past entries are supposed to describe what was true when written.
 
 **Board: 0 open, 171 closed. One board file.**
+
+---
+
+## 2026-08-20 — THREE INSTRUMENT FIXES, all three mine, one needing two attempts
+
+> Gee (verbatim): *"fix them all now!"*
+
+I had flagged three flaws and proposed leaving them until the next session. He said fix them. **All three were authored by me today, while fixing other people's lying instruments** — which is the pattern worth naming.
+
+**SUBSTEPS.4 — the tier label slandered a healthy donor.** It inferred the tier by comparing `_substepsThisTick` against `SUBSTEPS_NATIVE`, which held only while the value sat exactly on the floor. The moment SUBSTEPS.2's controller climbed (24 → 36 → 54) the comparison failed and it announced **"conservative tier: browser donor, or a version we cannot read"** about a native v0.3.25 donor. The detection was never wrong — `substepsForDonor` had already resolved the tier correctly — the LABEL was, in the one line an operator reads to check tiering. Now it asks the tier resolver instead of guessing from the number, and prints both the floor and the live value so movement reads as movement.
+
+**SUBSTEPS.5 — `best` was an all-time high-water mark on a phase-dependent signal: two bugs in one number.** Observed live: `teach is holding (0.0/s vs best 0.0/s)` while `teachOps` climbed past 2,000.
+
+*(a)* **The brake was inert.** Early windows land during the canonical upload when no teach frames flow, so `teachRate` is legitimately 0, `best` never rises, and with `best === 0` the starvation test can never fire. The controller grew with **no working safety half** — it reached a sane 54 only because the 2,000ms target governed it, not because the brake agreed.
+
+*(b)* **Worse, once armed it would MISFIRE.** Teach rate varies hugely by phase, so an all-time maximum becomes a threshold that normal variation cannot meet.
+
+**And my first fix was insufficient — the harness caught it.** I decayed `best` 3% per window and tested: with teach alternating 40/s ↔ 12/s (exactly `_teachHebbian` versus a gate probe) the decay could not keep up, every low window read as starvation, and the controller walked **121 → 24, straight to the floor.** It would have throttled the card for doing nothing wrong. The real discriminator is not "teach dropped" but **"is the batch big enough to be the cause"** — starvation means the batch is eating the donor's single worker thread, and the evidence is a LONG batch. So the brake now requires `teachRate > 0` **and** `teachRate < best*0.7` **and** `batchMs > target/2`: a 630ms batch can never be blamed for a teach dip.
+
+Re-tested against the real measured numbers (630ms batch, 54 substeps, 20.18 Gn/s):
+
+| scenario | before | after |
+|---|---|---|
+| upload (rate 0) then teach 40/s | 121 stable | 121 stable |
+| **phase variation 40 ↔ 12** | **collapsed to 24** | **holds 75** |
+| severe variation 40 ↔ 2 | would collapse | holds 72 |
+| genuine starvation (big batch kills teach) | brake inert | **121 → 79, engages** |
+| batch MISS at 100 | — | 84, ceiling held, stable |
+
+⚠ Residual: mild flapping in the 72–79 band under sustained variation — bounded, safe, self-correcting, and vastly better than collapsing to the floor. ⚠ And honest about method: these are DECISION-LOGIC tests on the verbatim code block fed real measurements. The WIRING is separately proven live (substeps climbed to 54 on the box), which matters because **`SUBSTEPS.3`'s whole lesson was that a mock cannot catch wiring.**
+
+**LANGRAM.9 — the geometry decision now always announces itself.** A fresh-walk boot produced **zero `LANGRAM` lines**: no `pin CONFIRMED`, no `PIN HELD`, no `FRESH-WALK GEOMETRY FLOOR`, no `geometry pinned at …`. Every one of those logs sits inside a branch, and the combination of (pin present? weights present? explicit? degraded?) landed in a gap — so **the single most consequential decision a boot makes, how many neurons her language cortex has, happened in total silence.** `LANGRAM.6/.7` exist precisely because that number silently flip-flopping between 12,000,000 and 349,155 orphaned trained matrices, and their own protection was unverifiable. Rather than keep guessing which branch was skipped, the STATE is reported unconditionally — pin contents, weights-on-disk, explicit override, and **which of them actually decided the size**. A branch can be missed; this cannot.
+
+**Deployment:** all three are server-side and land on the next **Update & SAVESTART** — weights kept, walk resumes, no fresh walk needed.
+
+**Board: 0 open, 171 closed.**

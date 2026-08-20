@@ -1669,10 +1669,45 @@ function adaptSubsteps(brain, ws, floorValue) {
   // adaptation started, so it is measured but never allowed to BE the baseline.
   // Without this, one unrepresentative window becomes an unbeatable `best`.
   brain._adaptSamples = (brain._adaptSamples || 0) + 1;
-  if (brain._adaptSamples > 1 && teachRate > brain._adaptBestTeachRate) {
-    brain._adaptBestTeachRate = teachRate;
+  // ── SUBSTEPS.5 — `best` WAS AN ALL-TIME HIGH-WATER MARK ON A PHASE-DEPENDENT
+  // ── SIGNAL, WHICH IS TWO BUGS IN ONE NUMBER.
+  //
+  // Observed live (build f66986d1): `teach is holding (0.0/s vs best 0.0/s)`
+  // while `teachOps` climbed past 2,000. Two distinct problems behind that:
+  //
+  //   (a) THE BRAKE WAS INERT. Early windows land while the canonical upload is
+  //       still running and no teach frames are flowing, so `teachRate` is
+  //       legitimately 0 and `best` never rises above 0. With `best === 0` the
+  //       growth test short-circuits true and the starvation test
+  //       (`teachRate < best * 0.7`) can never fire — so the controller grew
+  //       with NO working safety half. It reached a sane 54 only because the
+  //       2,000ms target governed it, not because the brake agreed.
+  //
+  //   (b) WORSE, ONCE IT ARMED IT WOULD MISFIRE. Teach rate is strongly
+  //       phase-dependent — `_teachHebbian`, `_teachAssociationPairs` and a gate
+  //       probe do wildly different amounts of dispatch — so an ALL-TIME maximum
+  //       becomes a threshold that normal phase variation cannot meet. The brake
+  //       would then read an ordinary phase change as starvation and shrink,
+  //       repeatedly. A high-water mark is the wrong statistic for a signal that
+  //       legitimately oscillates.
+  //
+  // Fixed as one change: `best` now DECAYS toward the observed rate (EMA-style,
+  // 3% per window) so it tracks recent capability instead of the best minute
+  // this process ever had, and the starvation branch additionally requires
+  // teach to be genuinely FLOWING (`teachRate > 0` and a warmed baseline)
+  // before it is allowed to conclude starvation. A rate of zero during an
+  // upload is not starvation — it is a phase with no teach in it.
+  if (brain._adaptSamples > 1) {
+    if (teachRate > brain._adaptBestTeachRate) {
+      brain._adaptBestTeachRate = teachRate;                       // rise immediately
+    } else if (brain._adaptBestTeachRate > 0) {
+      brain._adaptBestTeachRate *= 0.97;                           // decay slowly toward reality
+    }
   }
-  const best = brain._adaptSamples > 1 ? brain._adaptBestTeachRate : 0;
+  // A baseline is only usable once teach has actually been seen moving; until
+  // then it is an absence of data, not a measurement of zero.
+  const best = (brain._adaptSamples > 1 && brain._adaptBestTeachRate > 0)
+    ? brain._adaptBestTeachRate : 0;
   const prev = brain._adaptSubsteps;
   let next = prev, why = '';
 
@@ -1683,7 +1718,32 @@ function adaptSubsteps(brain, ws, floorValue) {
     next = brain._adaptCeiling;
     brain._adaptCooldown = 2;
     why = `a compute_batch MISSED at ${prev} substeps — that is the real limit, not a guess. Ceiling recorded at ${brain._adaptCeiling}`;
-  } else if (best > 0 && teachRate < best * 0.7) {
+    // ── SUBSTEPS.5 — STARVATION NEEDS A PLAUSIBLE CAUSE, NOT JUST A SYMPTOM.
+    //
+    // Three conditions, and the third is the one that took two attempts:
+    //
+    //   `teachRate > 0`  — a window with zero teach dispatches is a phase with
+    //     no teach in it (canonical upload, gate probe, idle stretch), not the
+    //     batch starving the donor.
+    //
+    //   `teachRate < best * 0.7` — the symptom.
+    //
+    //   `batchMs > target/2` — THE CAUSE. Starvation means the batch is eating
+    //     the donor's single worker thread, and the evidence for that is the
+    //     BATCH BEING LONG, not merely teach being low. My first fix relied on
+    //     decaying `best` instead, and the harness proved it insufficient:
+    //     with teach legitimately alternating 40/s ↔ 12/s (exactly what
+    //     `_teachHebbian` versus a gate probe looks like) a 3%-per-window decay
+    //     could not keep up, every low window read as starvation, and the
+    //     controller walked 121 → 24 straight to the floor. It would have
+    //     throttled the card for doing nothing wrong.
+    //
+    //     With this condition a 630ms batch can never be blamed for a teach dip
+    //     — only a batch approaching the target is even a candidate — so phase
+    //     variation is attributed to the phase, and the brake still arms for the
+    //     case it exists for.
+  } else if (best > 0 && teachRate > 0 && teachRate < best * 0.7
+             && batchMs > SUBSTEPS_TARGET_MS * 0.5) {
     next = Math.max(floorValue, Math.floor(prev * 0.7));
     brain._adaptCooldown = 2;
     why = `teach throughput fell to ${teachRate.toFixed(1)}/s from a best of ${best.toFixed(1)}/s — the batch is starving the donor's single worker thread, so backing off. GPU utilisation that costs teach is not work`;
@@ -2693,6 +2753,37 @@ class ServerBrain {
         if (!(e && e._withheld)) {
           console.warn(`[Brain] LANGRAM.6 — could not write lang-geometry.json (${e && e.message ? e.message : e}); the geometry is UNPINNED this boot and can still flip on the next one.`);
         }
+      }
+      // ── LANGRAM.9 (2026-08-20) — THE GEOMETRY DECISION NOW ALWAYS ANNOUNCES
+      // ── ITSELF. One line, unconditional, whatever happened.
+      //
+      // A fresh-walk boot on build f66986d1 produced **ZERO `LANGRAM` lines** —
+      // no `pin CONFIRMED`, no `PIN HELD`, no `FRESH-WALK GEOMETRY FLOOR`, no
+      // `geometry pinned at …`. Every one of those logs sits inside a branch, so
+      // when the combination of (pin present? weights present? explicit? degraded?)
+      // lands in a gap, **the single most consequential decision this boot makes
+      // — how many neurons her language cortex has, i.e. her vocabulary ceiling —
+      // happens in total silence.** `LANGRAM.6/.7` exist precisely because that
+      // number silently flip-flopping between 12,000,000 and 349,155 is what
+      // orphaned trained matrices, and their own protection was unverifiable.
+      //
+      // Rather than keep guessing which branch was skipped, the STATE is now
+      // reported unconditionally: what the pin says, whether weights were on
+      // disk, whether an explicit override was in play, and which of those
+      // actually decided the size. A branch can be missed; this cannot.
+      try {
+        const _pinSizeNow = _pinnedGeom ? Math.floor(Number(_pinnedGeom.langCortexSize)) : null;
+        const _decidedBy = _explicitResize ? 'DREAM_LANG_CORTEX override'
+          : _unpinRequested ? 'DREAM_LANG_UNPIN re-derive'
+          : (_pinnedGeom && _weightsOnDisk && _pinSizeNow === langCortexSize) ? 'the PIN (weights present, sizes agree)'
+          : (_pinnedGeom && _weightsOnDisk) ? 'the PIN, overriding this boot\'s derived size'
+          : (_pinnedGeom && !_weightsOnDisk && _pinSizeNow === langCortexSize) ? 'the LANGRAM.7 fresh-walk floor'
+          : 'this boot\'s live RAM/V8/VRAM bounds (no pin applied)';
+        console.log(`[Brain] LANGRAM.9 GEOMETRY VERDICT — langCortex = ${langCortexSize.toLocaleString()} neurons, decided by ${_decidedBy}. `
+          + `pinFile=${_pinSizeNow === null ? 'ABSENT' : _pinSizeNow.toLocaleString()} · weightsOnDisk=${_weightsOnDisk} · explicitOverride=${_explicitResize} · unpinRequested=${_unpinRequested} · target=${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()}. `
+          + `This line is UNCONDITIONAL: every earlier LANGRAM log lives in a branch, and a fresh-walk boot hit a gap between them and reported nothing at all — leaving the vocabulary ceiling decided in silence.`);
+      } catch (e) {
+        console.warn('[Brain] LANGRAM.9 — could not summarise the geometry verdict:', e && e.message ? e.message : e);
       }
       const langMemGb = (langCortexSize * LANG_CLUSTER_BYTES_PER_NEURON / 1e9).toFixed(2);
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
@@ -5301,7 +5392,27 @@ class ServerBrain {
             this._substepsLastTick = _substepsThisTick;
             if (_substepsThisTick !== this._lastSubstepsLogged) {
               this._lastSubstepsLogged = _substepsThisTick;
-              console.log(`[Brain] SUBSTEPS.1 — ${_substepsThisTick} brain-steps per donor round-trip (${_substepsThisTick === SUBSTEPS_NATIVE && SUBSTEPS_NATIVE !== SUBSTEPS ? 'NATIVE tier: this donor drains its socket during a batch — priority lane + dedicated compute thread' : 'conservative tier: browser donor, or a version we cannot read'}) → ${Math.round(1000 / BRAIN_TICK_MS * _substepsThisTick)} brain-steps/sec. Override with DREAM_SUBSTEPS.`);
+              // SUBSTEPS.4 — LABEL THE DONOR'S TIER, NOT THE CURRENT VALUE.
+              //
+              // This inferred the tier by comparing `_substepsThisTick` against
+              // `SUBSTEPS_NATIVE`, which was true only while the value sat
+              // exactly on the floor. The moment SUBSTEPS.2's controller climbed
+              // (24 → 36 → 54) the comparison failed and the line announced
+              // **"conservative tier: browser donor, or a version we cannot
+              // read"** about a native v0.3.25 donor. Live on build f66986d1.
+              //
+              // The detection was never wrong — `substepsForDonor` had already
+              // resolved the tier correctly; the LABEL was wrong, and it slandered
+              // a healthy donor in the one line an operator reads to check tiering.
+              // Exactly the class of instrument this whole day was spent killing,
+              // this time authored by me while fixing the others.
+              //
+              // Fixed by asking the tier resolver instead of guessing from the
+              // number, and by printing BOTH the floor and the live value so the
+              // controller's movement is visible rather than confusing.
+              const _tierFloor = substepsForDonor(this, this._gpuClient);
+              const _isNative = SUBSTEPS_NATIVE !== SUBSTEPS && _tierFloor === SUBSTEPS_NATIVE;
+              console.log(`[Brain] SUBSTEPS.1 — ${_substepsThisTick} brain-steps per donor round-trip (${_isNative ? `NATIVE tier, floor ${SUBSTEPS_NATIVE}: this donor drains its socket during a batch — priority lane + dedicated compute thread` : `conservative tier, floor ${SUBSTEPS}: browser donor, or a version we cannot read`}${_substepsThisTick !== _tierFloor ? ` · SUBSTEPS.2 has since adapted ${_tierFloor} → ${_substepsThisTick}` : ''}) → ${Math.round(1000 / BRAIN_TICK_MS * _substepsThisTick)} brain-steps/sec. Override with DREAM_SUBSTEPS.`);
             }
             const batchResult = await this._gpuBatch(_substepsThisTick, clusterParams);
 
