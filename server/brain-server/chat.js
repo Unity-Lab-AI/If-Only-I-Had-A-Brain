@@ -64,9 +64,89 @@ const SERVER_CHAT_MIXIN = {
       if (!Array.isArray(this._chatLaps)) this._chatLaps = [];
       this._chatLaps.push(`${this._chatStage}=${now - this._chatStageT0}ms`);
     }
+    // LOOPMAX.8 (2026-08-20) — BANK THE OUTGOING STAGE. Same race teachStage
+    // v1 lost: the lag monitor is a 1000ms setInterval that reports after the
+    // loop frees, and the reply path resumes first — so a 174s pin could be
+    // tagged with whatever stage happened to be current 40ms later. The laps
+    // above only print on the ChatPin line (reply pass > 2s); the BLOCKED line
+    // gets nothing from them. Banking the held duration against the OUTGOING
+    // stage name cannot be raced away, and a small chatStageMax on a long
+    // block is the equally-decisive negative: the pin was not inside any
+    // marked chat stage. Reset by the reporter so each block reports its own.
+    if (this._chatStage && this._chatStageAt) {
+      const held = now - this._chatStageAt;
+      if (held > (this._chatStageMaxMs || 0)) {
+        this._chatStageMaxMs = held;
+        this._chatStageMaxName = this._chatStage;
+      }
+    }
     this._chatStage = stage || null;
     this._chatStageT0 = now;
     this._chatStageAt = now;
+  },
+
+  /**
+   * SURPRISECPU.2 — the mind's-eye image preview, drained OFF the reply path.
+   *
+   * Moved verbatim out of `_processAndRespondInner`'s img-detect stage, where it
+   * measured 4,925ms inline. The curriculum's compute-substrate gate calls this
+   * one job per teach-call boundary, serialized into the walk's own chain — the
+   * same lane the chat pairs, the chat-teach jobs and the salience walk ride,
+   * and for the same reason: a single teacher, and the human never waits on
+   * bookkeeping.
+   *
+   * Returns true when a preview was produced (for the caller's telemetry).
+   * Everything inside is best-effort; a failure loses a preview, never a reply.
+   */
+  async _drainMindsEyePreview() {
+    if (!Array.isArray(this._mindsEyePreviewQueue) || this._mindsEyePreviewQueue.length === 0) return false;
+    const job = this._mindsEyePreviewQueue.shift();
+    const imgPrompt = job && job.prompt;
+    if (!imgPrompt) return false;
+    try {
+      if (this.mindSpace && typeof this.mindSpace.imagineFromState === 'function'
+          && this.sharedEmbeddings && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
+        // TU.29.5 — RECALL FIRST: if she has SEEN this concept (visual-memory
+        // field C bound at perception time), the preview is the real remembered
+        // percept — recombined via morphField when two concepts match. Only an
+        // unseen concept falls to the de-novo abstract/symbol plane.
+        let rec = null;
+        if (typeof this._recallVisualMemory === 'function') {
+          try {
+            const hit = this._recallVisualMemory(imgPrompt);
+            if (hit) rec = hit.rec;
+          } catch { /* recall best-effort */ }
+        }
+        if (!rec) {
+          const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
+          rec = await this.mindSpace.imagineFromState(emb, {
+            maxSide: 192, text: imgPrompt,
+            mood: { arousal: this.arousal, valence: this.valence },
+            priority: 0.4, value: 0.6,
+          });
+        }
+        if (rec) {
+          const percept = await this.mindSpace.describe(rec);
+          if (percept && this.cortexCluster && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
+            this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.12);
+          }
+          // show what she pictured on the public Mind's-Eye viewer
+          this._lastGroundedEyeAt = Date.now();   // SEE.6 — previews are grounded frames
+          this._mindsEyeJson = JSON.stringify({
+            type: 'mindsEye', rec, terms: rec.equation_count || 0,
+            source: 'image-preview', at: Date.now(),
+          });
+          this._mindsEyePreviewsDrained = (this._mindsEyePreviewsDrained || 0) + 1;
+          return true;
+        }
+      }
+    } catch (e) {
+      if (!this._mindsEyePreviewErrLogged) {
+        this._mindsEyePreviewErrLogged = true;
+        console.warn(`[Brain] mind's-eye preview drain failed: ${e?.message || e}`);
+      }
+    }
+    return false;
   },
 
   async processAndRespond(text, userId) {
@@ -156,42 +236,26 @@ const SERVER_CHAT_MIXIN = {
         // (UVM-INT.3, bounded forward-9-7), read the percept, inject it into sem so
         // she's aware of what she's about to make, and surface it on the Mind's-Eye
         // viewer. Best-effort + bounded — never blocks the image from going out.
+        // SURPRISECPU.2 (2026-08-20) — OFF THE REPLY PATH. This block used to
+        // run INLINE here and the split convicted it: `img-detect=4,925ms` on a
+        // live pass. Two awaits (mind-space imagine + describe) on the reply
+        // path means the human waits five seconds for a preview of an image the
+        // client renders anyway, and — the part that actually kills things —
+        // the event loop is held for that whole stretch, so donor keepalives
+        // starve exactly like the 143s salience monster and the concurrent
+        // teach did. Identical remedy, third time: the work is ENQUEUED and the
+        // walk drains it at a teach-call boundary (see _drainMindsEyePreview +
+        // the curriculum gate). She still sees what she made and the viewer
+        // still updates — a beat later, off the critical path. Bounded at 8,
+        // drop-oldest, and the drop is counted.
         try {
-          if (this.mindSpace && typeof this.mindSpace.imagineFromState === 'function'
-              && this.sharedEmbeddings && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
-            // TU.29.5 — RECALL FIRST: if she has SEEN this concept (visual-memory
-            // field C bound at perception time), the preview is the real remembered
-            // percept — recombined via morphField when two concepts match. Only an
-            // unseen concept falls to the de-novo abstract/symbol plane.
-            let rec = null;
-            if (typeof this._recallVisualMemory === 'function') {
-              try {
-                const hit = this._recallVisualMemory(imgPrompt);
-                if (hit) rec = hit.rec;
-              } catch { /* recall best-effort */ }
-            }
-            if (!rec) {
-              const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
-              rec = await this.mindSpace.imagineFromState(emb, {
-                maxSide: 192, text: imgPrompt,
-                mood: { arousal: this.arousal, valence: this.valence },
-                priority: 0.4, value: 0.6,
-              });
-            }
-            if (rec) {
-              const percept = await this.mindSpace.describe(rec);
-              if (percept && this.cortexCluster && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
-                this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.12);
-              }
-              // show what she pictured on the public Mind's-Eye viewer
-              this._lastGroundedEyeAt = Date.now();   // SEE.6 — previews are grounded frames
-              this._mindsEyeJson = JSON.stringify({
-                type: 'mindsEye', rec, terms: rec.equation_count || 0,
-                source: 'image-preview', at: Date.now(),
-              });
-            }
+          if (!Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue = [];
+          this._mindsEyePreviewQueue.push({ prompt: imgPrompt, at: Date.now() });
+          while (this._mindsEyePreviewQueue.length > 8) {
+            this._mindsEyePreviewQueue.shift();
+            this._mindsEyePreviewDropped = (this._mindsEyePreviewDropped || 0) + 1;
           }
-        } catch { /* mind's-eye preview is best-effort — never blocks the image */ }
+        } catch { /* queueing a preview must never block the image */ }
         // SPEAK.6b — image→experience learning loop. Generated images were
         // fire-and-forget: this path returns BEFORE the chat-time Hebbian below,
         // so what she MAKES was never remembered. Push it onto the unified
@@ -598,6 +662,11 @@ const SERVER_CHAT_MIXIN = {
       // "she hasn't graduated yet". Only a truly fresh brain (zero
       // training, zero cells passed, all subGrades 'fresh') gets the
       // "pre_training" silent reason.
+      // FIRSTPIN.1 — the silence path gets its own stamp. It reads
+      // `getTrainedCapability()` (a live scan of buckets + passed cells), so
+      // an honest-silence reply is NOT a free exit and must not be charged
+      // to the generic `respond` stage.
+      this._chatStamp('respond:silence-gate');
       const minGrade = this._computeMinGrade();
       const trainedCap = (this.cortexCluster && typeof this.cortexCluster.getTrainedCapability === 'function')
         ? this.cortexCluster.getTrainedCapability()
@@ -656,9 +725,36 @@ const SERVER_CHAT_MIXIN = {
           .filter(w => /^[a-z]{2,}$/.test(w)).slice(0, 8);
         if (curric && typeof curric._teachAssociationPairs === 'function' && answerTokens.length > 0) {
           const pairs = answerTokens.map(t => [concept, t]);
-          // relationTagId=23 = definition/grounding channel — the answer
-          // grounds the concept, same shape as _teachWordDefinition.
-          await curric._teachAssociationPairs(pairs, { reps: 12, label: 'CURIOSITY-FOLLOWUP-ANSWER', relationTagId: 23 });
+          // ONE TEACHER AT A TIME, HERE TOO (2026-08-20). This awaited
+          // _teachAssociationPairs INLINE — 8 pairs x 12 reps on the
+          // definition channel, on the reply path, on the same cluster and
+          // scratch buffers the walk is teaching into. It is the identical
+          // concurrent-teach crime the chat-pair queue was built to kill,
+          // surviving in a branch that only fires when she asked a question
+          // last tick (which is why rounds 4-5 never caught it: the branch
+          // did not run). It ENQUEUES now, and the walk's drain teaches it
+          // serialized at a teach-call boundary.
+          //
+          // A JOB queue, not the tag-30 pair queue: that drain trains
+          // reps=1 / relationTagId=30, and folding these in would silently
+          // demote a 12-rep definition binding to a 1-rep chat-time one.
+          // The job carries its own opts so the definition channel is
+          // preserved exactly as it was. Bounded at 32 jobs, drop-oldest,
+          // and the drop is counted — no silent loss.
+          if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+          this._chatTeachJobQueue.push({
+            pairs,
+            opts: { reps: 12, label: 'CURIOSITY-FOLLOWUP-ANSWER', relationTagId: 23 },
+          });
+          if (!this._chatTimeHebbianStats) {
+            this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null, lastWarnTs: 0 };
+          }
+          while (this._chatTeachJobQueue.length > 32) {
+            this._chatTeachJobQueue.shift();
+            this._chatTimeHebbianStats.jobsDroppedOldest = (this._chatTimeHebbianStats.jobsDroppedOldest || 0) + 1;
+          }
+          this._chatTimeHebbianStats.jobsQueued = this._chatTeachJobQueue.length;
+          this._chatTimeHebbianStats.jobsEnqueued = (this._chatTimeHebbianStats.jobsEnqueued || 0) + 1;
         }
         this.storeEpisode('curiosity', 'answer-learned', concept, text);
       } catch (e) {
@@ -687,6 +783,11 @@ const SERVER_CHAT_MIXIN = {
     // Motor action routing — the generated text can still signal
     // image / build intent by its content, same as the client handles
     // code blocks in responses.
+    // FIRSTPIN.1 — the tail is its own stamp. Everything from here to the
+    // return used to be charged to `respond:history-push`, so a slow
+    // JSON.parse of a long emission or a slow route decision would have
+    // been reported as history bookkeeping. Now the split names it.
+    this._chatStamp('respond:route-return');
     if (response.startsWith('[IMAGE]')) {
       return { text: response.slice(7).trim(), action: 'generate_image' };
     }

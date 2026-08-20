@@ -1,6 +1,38 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐ 2026-08-20 (latest) — THE BOARD STOPS LYING: 7 of the 8 "the board cannot answer *is it working?*" items shipped in one batch — **none of them needed a press**
+> ## ⭐⭐⭐ 2026-08-20 (latest) — FINISH THE BOARD: nine real items built, 47 stale ones closed with verdicts, 49 dead scripts + 14MB of debris deleted, and the written task list Gee asked for seven times
+>
+> **PICK-UP STATE.** Branch `feature/finish-the-board-0820` off main (the earlier `feature/open-task-list-0820` is already merged + cascaded). **`CELLBOUND.F` is STILL the one blocking press** and nothing in either of today's batches changes what it verifies. Board went **82 open → 26** (21 pending + 5 `CELLBOUND.A–E` riding that press), 66 closed.
+>
+> ### ⛔ THE STANDING ORDER THAT CHANGED TODAY — NO SCRIPTS TO EDIT FILES
+>
+> Gee (verbatim): *"STOP using scripts to do everything and get rid of all these shit scripts we dont use and were only for fixing,editing, temp use. They are taking up space for shit we will never use again, and in the future delet them asfter u use them, but like i said stop using scripts to edit code, files,and the stack"*. **Edit/Write tools only. CRLF is not an excuse — single-line `old_string` anchors work on every CRLF doc in this repo, which is how `TODO.md` / `FINALIZED.md` / `BOARD.md` / `OPEN-TASKS.md` / `package.json` were edited after the ban.** Filed as persistent memory `feedback_no_scripts_for_edits`; the old CRLF memory that told me to reach for Python was rewritten. `scripts/` went **55 → 6** (gatling ×2, `stamp-version`, `unity-chat-hold`, `unity-say-live`, `vox-build-bank`); `.claude/` lost 14MB of debris; `.claude/vox-bank-wavs` (87MB regenerable intermediate) and 7 orphaned docs are gone. `pollinations-user.json`, settings, hooks, skills, agents, memory-templates all untouched.
+>
+> ### 📋 THE TASK LIST — `docs/OPEN-TASKS.md`
+>
+> `TaskCreate` / `TaskUpdate` / `TodoWrite` are **still absent** — tested with `ToolSearch` twice today, and `todoFeatureEnabled: true` was already in settings from 06:22, so that key alone is not the lever (needs a CLI relaunch to know). So the list is a DOC: every open board item, body copied byte-for-byte off its TODO line with a `docs/TODO.md:<line>` backlink, tiered per `docs/BOARD.md`. **Hand-maintained now** — the generator was deleted under the ban. Two derived-count bugs were caught by re-counting against the board rather than trusting the view: `BAND1300.1` was invisible to the ID pattern (extra text inside the bold ID), and **`DELTAIDX.9` was sitting in the close pile because BOARD.md's own warning sentence about it got parsed as tier membership.** It stays OPEN — still DISABLED, corruption cause never found.
+>
+> ### 🔧 NINE BUILT, NONE NEEDING A PRESS TO LAND (all `node --check` + ESM `import()` + bundle rebuilt 4.0mb)
+>
+> - **FIRSTPIN.2** — the LAST inline concurrent teacher. `chat.js` awaited `_teachAssociationPairs` **inline** (8 pairs × 12 reps, relationTagId=23) whenever she had asked a question last tick — the exact crime CHATQUEUE exists to kill, in a branch that never fired in rounds 4–5. Now enqueued on a NEW **job** queue (`_chatTeachJobQueue`) carrying its own opts, because the tag-30 pair queue would have silently demoted a 12-rep definition binding to a 1-rep chat-time one. Drained one job per teach boundary.
+> - **SURPRISECPU.2** — `img-detect=4,925ms` was never detection: an **inline mind's-eye preview** (imagine + describe) on the reply path. Moved to `_drainMindsEyePreview()` on the walk lane (third resident evicted, after the 143s salience walk and the concurrent teach). `generate=17,941ms` is now **split** — a reply is the primary sentence PLUS up to two continuations, each a full emission with its own rerank candidates, up to seven behind one stage name; stamps read `generate:primary(Ncand)` / `generate:continuation-K(Ncand)`.
+> - **FIRSTPIN.1** — `respond:silence-gate` + `respond:route-return`, the two stretches whose cost was being charged to other stages.
+> - **CELLBOUND.H** — the deferral cursor **persisted** beside `passedPhases`, keyed `<phaseName>::<teachLabel>`, storing reps STILL OWED. A resumed phase trains the remainder instead of repeating the whole dose; sanitised on load so a corrupt entry can't shrink a real dose to 1 rep.
+> - **LOOPMAX.8** — `chatStage` and `saveStage` had the identical race `teachStage` v1 lost (a 1000ms timer reports after the loop frees, so the tag names the recovery). Both now bank the outgoing stage's held duration; the BLOCKED line prints all three maxima and `saveStage` finally has an AGE.
+> - **LANGRAM.6** — **the geometry PIN.** `server/lang-geometry.json` holds the size the weights were trained at, and **the pin wins** over a boot-time `os.freemem()` dip (the coin flip that put the same box at 12,000,000 one boot and 349,155 the next, silencing every word past ~20,950). Changing geometry is now always explicit and always loud: `DREAM_LANG_CORTEX`, `DREAM_LANG_UNPIN=1`, or a fresh walk.
+> - **LOOPNAME.13** — bundle freshness **checked at boot** against the same file list the code-hash uses (minus `brain-server.js`, which is not a bundle input), reported as `⛔ STALE BROWSER BUNDLE` and on the state payload as `bundleFreshness`. mtime not hash, because comparing content would need the rebuild the box cannot do.
+> - **SYNCEMPTY.3** — the **registry gate**. The sweep fired on a 1.5s timer into a registry that was still empty 38s after boot, then announced "a FULL brain replica" over 0 of 0. **This does not claim why the registry was late** — it removes the race, logs what it waits for, and its wait-duration line is the instrument that will settle the theory.
+> - **MIRRORID.6** — Gee chose *"Credit real work only"*: accrual now requires `stepsComputed` to have ADVANCED, so an idle-but-connected card stops banking Gn·s off a stale rate. Banked totals untouched; idle frames counted. **Answers WORKSHARE.6 too** — mirrored work still counts, it is real GPU time.
+>
+> ### ⏳ WHAT THE NEXT PRESS SHOULD ALSO SHOW (on top of CELLBOUND.F's own verdict)
+>
+> `phaseRepCursor restored: N phase(s) carrying M deferred rep(s)` · `bundle freshness OK` (or the ⛔ stale line) · `LANGRAM.6 — geometry pin CONFIRMED/HELD` · a `DF.7 SYNCEMPTY` wait/populated line if a replica connects · `generate:primary` / `generate:continuation-K` in the next ChatPin split · `chatStageMax` / `saveStageMax` on the next BLOCKED line.
+>
+> ### 📌 STILL OPEN AND WHY
+>
+> `CELLBOUND.F` (the press) · `CELLBOUND.G` (~58 more unbounded rep-loops — deliberately after F proves the shape) · `RESYNCDUTY.9` (held: it edits the same phase counter F is verifying) · `DELTAIDX.9` (⛔ DISABLED, cause unknown) · `LG.6/.7` (needs a segmented-rowPtr donor release — Gee's territory) · `RUNPOD.6/.7/.8` · `GRANT.2/.3` · `FIRSTPIN.3` (read-only watch) · `LOOPNAME.7` · `SYNCPARTIAL.6` · `DF7SYNC.7` · `WORDEMIT.4` (Gee's call, not forced) · `TASKLIST.2/.3` · `SCRIPTKILL.1/.2/.3`.
+
+> ## ⭐ 2026-08-20 (prior) — THE BOARD STOPS LYING: 7 of the 8 "the board cannot answer *is it working?*" items shipped in one batch — **none of them needed a press**
 >
 > **PICK-UP STATE.** Branch `feature/gatfile-observability` off `develop`. Nothing here changes the walk, the geometry, or the weights. **CELLBOUND.F is still the one blocking press** and this batch does not touch it.
 >

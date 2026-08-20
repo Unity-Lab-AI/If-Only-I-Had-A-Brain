@@ -6,15 +6,16 @@
 
 | | count |
 |---|---|
-| **TOTAL OPEN** | **82** |
-| pending `[ ]` | 73 |
-| in progress `[~]` | 9 |
-| **real remaining work** (tiers 0–2) | **31** |
-| stale press-riders (tier 4) | 39 |
-| not-tasks (tier 5) | 9 |
-| untriaged | 0 |
+| | count |
+|---|---|
+| **TOTAL OPEN** | **26** |
+| pending `[ ]` | 21 |
+| in progress `[~]` | 5 (`CELLBOUND.A–E`, riding the one press) |
+| closed on the board | 66 |
 
-*Counts as of the SCRIPTKILL batch: `TASKLIST.1` migrated to `docs/FINALIZED.md`, `SCRIPTKILL.1/.2/.3` filed, and `BAND1300.1` added after it turned out to be invisible to the ID pattern (see the Tier 4 note). Verify with `grep -cE "^- \[ \] \*\*" docs/TODO.md` (73) and `grep -cE "^- \[~\] \*\*" docs/TODO.md` (9).*
+**⚠ THIS FILE IS ONE BATCH BEHIND ITSELF.** It was written when 82 items were open. Since then the **FINISH THE BOARD** batch (2026-08-20, second pass) built nine items and closed 47 stale ones with verdicts, so **the entries under TIER 4 and TIER 5 below are CLOSED** — they are kept as the closed record, and their live status lives on `docs/TODO.md` as `[x]` + a closure verdict. Tiers 0–3 entries that shipped are marked in `docs/BOARD.md` with ✅. **The 26 still genuinely open:** `CELLBOUND.A`–`E` (built, riding the press) · `CELLBOUND.F` (the press) · `CELLBOUND.G` (the ~58-site sweep, deliberately after F) · `LG.6` · `LG.7` · `FIRSTPIN.3` · `GRANT.2` · `GRANT.3` · `RUNPOD.6` · `RUNPOD.7` · `RUNPOD.8` · `DF7SYNC.7` · `DELTAIDX.9` (⛔ still DISABLED, cause never found — must not be closed) · `RESYNCDUTY.9` (held until F reports) · `LOOPNAME.7` · `SYNCPARTIAL.6` · `WORDEMIT.4` · `TASKLIST.2` · `TASKLIST.3` · `SCRIPTKILL.1` · `SCRIPTKILL.2` · `SCRIPTKILL.3`.
+
+*Verify any count with `grep -cE "^- \[ \] \*\*" docs/TODO.md` (21), `grep -cE "^- \[~\] \*\*" docs/TODO.md` (5), `grep -cE "^- \[x\]" docs/TODO.md` (66). When this file and the board disagree, **the board wins.***
 
 ---
 
@@ -121,7 +122,7 @@
 
 ---
 
-## TIER 4 — STALE PRESS-RIDERS (candidates to close)  (39)
+## TIER 4 — ✅ ALL 38 CLOSED 2026-08-20 (the record, kept)  (was 39; `DELTAIDX.9` stays OPEN)
 
 > Verify-after-press items whose press has since happened, or whose question a later press already answered. Closing them needs Gee's approval — nothing is migrated off the board unilaterally.
 >
@@ -208,7 +209,7 @@
 
 ---
 
-## TIER 5 — NOT TASKS (retrospective lessons)  (9)
+## TIER 5 — ✅ ALL 9 CLOSED 2026-08-20 as lessons (the record, kept)
 
 > Written as tasks, but they are lessons/rules with no deliverable. They belong in the ledger, not on the board.
 
