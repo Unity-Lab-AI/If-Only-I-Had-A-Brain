@@ -6,6 +6,8 @@
 
 **Headline: only ~29 of the 86 are real remaining work. ~40 are stale press-riders already answered by later presses, and ~11 are retrospective lessons I wrote that are not tasks at all.**
 
+> **UPDATE 2026-08-20 — 7 of those closed in one batch (✅ rows below), so ~22 real items remain.** The whole **"the board cannot answer *is it working?*"** family shipped together: GATFILE.1/.2/.3, DASHDEAD.4, MIRRORID.5, DONORKILL.2, SYNCPARTIAL.7, PARTMIRROR.4, CANSPEAK.4/.8. **None of them needed a press** — that is why they were picked. One new item was filed from the reading (**MIRRORID.6**, Tier 2 #27) and **RESYNCDUTY.9 was deliberately left open**: it touches the same phase counter CELLBOUND.A–E already changed, so landing it before the CELLBOUND.F verdict would confound the exact read that press exists to produce. Ledger: `docs/FINALIZED.md` §2026-08-20 THE BOARD STOPS LYING.
+
 ---
 
 ## TIER 0 — BLOCKING. Everything else waits on this.
@@ -20,7 +22,7 @@
 
 | # | id | what | why it's yours |
 |---|----|------|----------------|
-| 2 | **GATFILE.1/.2/.3** | Port the GATGUARD fixes into `scripts/Gattling Gun Savestart Forced.txt` — fetch guard never auto-restores (ate your Update button once), 2xx counted as a win, and the build guard pinned to `3efc220` makes the spotter declare victory on its FIRST poll and kill the barrels. | *"mark that thing u spotted in the todo"* |
+| 2 | ✅ **GATFILE.1/.2/.3** | Port the GATGUARD fixes into `scripts/Gattling Gun Savestart Forced.txt` — fetch guard never auto-restores (ate your Update button once), 2xx counted as a win, and the build guard pinned to `3efc220` makes the spotter declare victory on its FIRST poll and kill the barrels. **SHIPPED 2026-08-20 (v5):** baseline read off the live box at arm time (`build.short` OR `build.bootedAt` change = the win), fetch guard auto-restores in 5s, win only on `armed`, both copies byte-identical. **Nothing needs hand-editing before firing any more.** | *"mark that thing u spotted in the todo"* |
 | 3 | **SURPRISECPU.2** | The second offender from the same split: `generate=17,941ms` and `img-detect=4,925ms`. Both now visible per-stage. | *"did u catch that doner crash?"* |
 | 4 | **FIRSTPIN.1** | Instrument the respond stage sub-stages; no fix until the split names the resident. | drop-on-speak war |
 | 5 | **FIRSTPIN.2** | The curiosity-followup landmine — `chat.js` awaits `_teachAssociationPairs` INLINE, the exact concurrent-teach crime CHATQUEUE was built to kill, alive in a branch that didn't fire in rounds 4–5. **Real latent bug.** | drop-on-speak war |
@@ -36,21 +38,22 @@
 
 | # | id | what | evidence it's real |
 |---|----|------|--------------------|
-| 9 | **DASHDEAD.4** | An auth failure renders as a BRAIN failure. "Brain server unreachable" on a brain teaching 4,257/min. The dashboard can read `/public-state.json` with NO auth — it should probe that before blaming the backend and say *"admin lane not authenticated — brain is UP"*. | **cost us a full diagnostic round today** |
-| 10 | **MIRRORID.5** | Donor Gn/s is a persistent field — it shows a rate earned minutes ago while computing nothing. Must decay or read `idle`. | **I read `0.00 Gn/s` on a healthy new donor today and had to caveat it** |
-| 11 | **DONORKILL.2** | Nothing outside the brain shows WHICH GPU is primary. RunPod pod list, Clients table and leaderboard all show a card without showing it's load-bearing. | **I terminated her primary today** |
+| 9 | ✅ **DASHDEAD.4** | An auth failure renders as a BRAIN failure. "Brain server unreachable" on a brain teaching 4,257/min. The dashboard can read `/public-state.json` with NO auth — it should probe that before blaming the backend and say *"admin lane not authenticated — brain is UP"*. **SHIPPED 2026-08-20:** every WS close now probes the public snapshot and, when live state answers, rewrites the banner to **"Admin lane not authenticated — the brain is UP"** with live teach/min · cell · build · uptime · donors, and says *do not restart a healthy service*. The probe judges the BODY, not the status code (a 200-with-HTML is a lie on this origin). Probe-failed → old copy stands + the reason is appended. | **cost us a full diagnostic round today** |
+| 10 | ✅ **MIRRORID.5** | Donor Gn/s is a persistent field — it shows a rate earned minutes ago while computing nothing. Must decay or read `idle`. **SHIPPED 2026-08-20:** freshness comes off `stepsComputed` (verified monotonic in BOTH donor backends, incremented only on batch completion) → new `computeSteps` / `computeAdvancedAgoSec` / `computeIdle` per row; the table renders `idle 47s (last 9.3Gn/s)` in red instead of a live-looking green number. | **I read `0.00 Gn/s` on a healthy new donor today and had to caveat it** |
+| 11 | ✅ **DONORKILL.2** | Nothing outside the brain shows WHICH GPU is primary. RunPod pod list, Clients table and leaderboard all show a card without showing it's load-bearing. **SHIPPED 2026-08-20:** every donor row carries `pauseIfKilled` stating the consequence in words (primary → the walk pauses with no compute substrate until another donor is promoted and re-uploaded; replica → it just drops its share), rendered as a ★ + row tooltip. | **I terminated her primary today** |
 | 12 | **LOOPNAME.13** | Nothing enforces bundle freshness. A `js/brain/*` edit without a local rebuild ships a browser bundle that silently disagrees with the server. A pre-push mtime/hash check fixes it. | **I had to remember it manually this session** |
 | 13 | **CELLBOUND.G** | The same unbounded rep-loop shape lives in **~58 other teach methods**. Sweep once CELLBOUND.F proves the shape on the convicted one. | measured |
 | 14 | **CELLBOUND.H** | The deferral cursor is IN-MEMORY only — across a reboot deferred work repeats rather than resumes. Persist it beside `passedPhases`. | stated at build time |
 | 15 | **SYNCEMPTY.3** | The REAL sync fix is not shipped. Registration-sync fires on a fixed 1.5s timer and races the server's own registry. Should GATE on a populated registry. ⛔ **Two theories already wrong here — do not guess a third; the next boot line decides.** | open root cause |
 | 16 | **LOOPMAX.8** | `saveStage` and `chatStage` have the SAME timer race `teachStage` v1 had and were never audited. Apply the banked-maximum pattern. | proven pattern |
-| 17 | **RESYNCDUTY.9** | `_gateSciKReal` isn't wrapped in `_phasedTeach`, so a 20.7-minute gate reads `activePhase: null` — indistinguishable from a hang. | cost a forensic dig |
+| 17 | **RESYNCDUTY.9** | `_gateSciKReal` isn't wrapped in `_phasedTeach`, so a 20.7-minute gate reads `activePhase: null` — indistinguishable from a hang. ⛔ **HELD 2026-08-20, sequenced AFTER CELLBOUND.F:** it edits the same phase counter CELLBOUND.A–E already changed and F has not reported yet. Two unverified changes to `cellPhasesCompleted` / `phaseWork` on one press would confound the exact read F exists to produce. | cost a forensic dig |
 | 18 | **LOOPNAME.7** | Every diagnostic lane (admin WS, public-state, console ring) rides the event loop under investigation. We go blind exactly when we need eyes. | structural |
-| 19 | **SYNCPARTIAL.7** | Donor UI should show coverage ("holds 1/17 matrices") not just counters — "21 batches · 0 teach ops" is true but reads as a fault. | your own question raised it |
-| 20 | **CANSPEAK.4 / .8** | Retire `canSpeak` from status summaries (it's `minGrade !== 'pre-K'`, pure grade arithmetic); report `matrixDrivenPct` + `word_motor.everFired` instead. | you caught me misreporting it |
+| 19 | ✅ **SYNCPARTIAL.7** | Donor UI should show coverage ("holds 1/17 matrices") not just counters — "21 batches · 0 teach ops" is true but reads as a fault. **SHIPPED 2026-08-20:** `df7TotalMatrices` gives the fraction (`1/17 mx`) and `clusterCoverage` / `clusterCoverageCount` / `clusterTotal` give the compute fraction (`2/8 cl`), both rendered with tooltips explaining WHY a partly-synced or small card is honest work. A fraction cannot tell the "1 matrices pushed = a FULL brain replica" lie. | your own question raised it |
+| 20 | ✅ **CANSPEAK.4 / .8** | Retire `canSpeak` from status summaries (it's `minGrade !== 'pre-K'`, pure grade arithmetic); report `matrixDrivenPct` + `word_motor.everFired` instead. **SHIPPED 2026-08-20:** field RENAMED to `minGradeCleared` (the name of what it computes) and its one consumer updated — zero chat-path consumers, so nothing degrades. New `state.voice` block answers the real question off evidence: word_motor size/everFired/pct, oracle vs matrix hits, `matrixDrivenPct`, last emit rejection **with its age**, and a verdict that says `unmeasured` in words rather than implying she cannot speak. | you caught me misreporting it |
 | 21 | **RUNPOD.6** | `main.rs:49` enumerates wgpu unconditionally and `:88` hard-exits when empty — a CUDA-capable host with no Vulkan stack can never donate. Kills the whole GLVND/X11 package pile. | blocks a cheap donor fleet |
 | 22 | **LANGRAM.6** | Sizing a load-bearing geometry off `os.freemem()` means the vocabulary ceiling can differ run to run. Pin it or make a size change a loud acknowledged event. | it already flip-flopped once |
 | 23 | **SYNCPARTIAL.6 / DF7SYNC.7** | Root cause not established + the sync-window deadlock is narrowed, not eliminated. | honest open |
+| 27 | **MIRRORID.6** | *(new, filed 2026-08-20 from the MIRRORID.5 read — not swept in.)* The SAME disease one layer down, in the ACCOUNTING: `gpu_telemetry` accrues `gneuronsPerSec × dt` into the leaderboard on EVERY frame, and that rate is the persistent field — so a donor doing nothing keeps BANKING Gn·s for as long as it stays connected. One condition fixes it (accrue only when `stepsComputed` advanced, which MIRRORID.5 already tracks), but it lives in a 9,737-line file and it changes what the leaderboard MEANS — decide it together with WORKSHARE.6, not separately. | found while reading, filed not guessed |
 
 ---
 
@@ -78,12 +81,12 @@
 
 These are things I learned, written as if they were work. They belong in memory/docs, not on a task board where they inflate the count and hide the real 29.
 
-`ALIASFIX.5` · `WORKSHARE.6` · `PARTMIRROR.4` · `ALLINIT.5` · `INITFIT.6` · `RESYNCDUTY.7` · `SYNCEMPTY.4` · `WORDEMIT.5` · `GATGUARD.6` · `DONORKILL.1` · `DELTAIDX.9`(the ceiling note; the DISABLED status stays live in Tier 2 terms)
+`ALIASFIX.5` · `WORKSHARE.6` · ✅ `PARTMIRROR.4` (turned out to BE work — shipped 2026-08-20 as the `N/M cl` coverage cell + tooltip, so a small card's proportionally lower rate reads as honest work instead of a dud GPU) · `ALLINIT.5` · `INITFIT.6` · `RESYNCDUTY.7` · `SYNCEMPTY.4` · `WORDEMIT.5` · `GATGUARD.6` · `DONORKILL.1` · `DELTAIDX.9`(the ceiling note; the DISABLED status stays live in Tier 2 terms)
 
 ---
 
 ## Reading order if you only do three things
 
-1. **CELLBOUND.F** — press. Unblocks the walk.
-2. **Tier 2 #9/#10/#11** — the three that bit us today. The board still cannot answer *"is it working?"*
+1. **CELLBOUND.F** — press. Unblocks the walk. *(Still #1. Nothing in the 2026-08-20 batch needed it, and nothing in that batch changes it.)*
+2. ~~**Tier 2 #9/#10/#11** — the three that bit us today. The board still cannot answer *"is it working?"*~~ → **DONE 2026-08-20**, along with #19, #20, #2 and PARTMIRROR.4. The board answers it now. Next in this slot: **FIRSTPIN.1** (instrument the respond stage before touching it).
 3. **FIRSTPIN.2** — a real latent concurrent-teach bug sitting in an unfired branch.

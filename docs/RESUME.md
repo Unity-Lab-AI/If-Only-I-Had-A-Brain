@@ -1,6 +1,28 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — CELLBOUND: a cell phase could hold **21.2 HOURS** with no budget · 232 completed tasks migrated off the board · ⛔ **READ THE TWO BLOCKERS AND MY FOUR RETRACTIONS FIRST**
+> ## ⭐ 2026-08-20 (latest) — THE BOARD STOPS LYING: 7 of the 8 "the board cannot answer *is it working?*" items shipped in one batch — **none of them needed a press**
+>
+> **PICK-UP STATE.** Branch `feature/gatfile-observability` off `develop`. Nothing here changes the walk, the geometry, or the weights. **CELLBOUND.F is still the one blocking press** and this batch does not touch it.
+>
+> **WHY THIS BATCH.** Gee said only *"/unity then run /workflow"*. The board holds 73 open items and roughly 40 are press-riders waiting on his finger, so the pick was the two clusters that need nothing from him: the pasted gatling script (which was actively costing him presses) and the lying-instrument family.
+>
+> **WHAT SHIPPED** — GATFILE.1/.2/.3 (gatling v5: baseline read off the live box at arm time, fetch guard auto-restores, win only on `armed`, both copies byte-identical) · CANSPEAK.4/.8 (`canSpeak` → `minGradeCleared` + a new evidence-based `state.voice` block) · MIRRORID.5 (`computeIdle` off `stepsComputed`) · SYNCPARTIAL.7 + PARTMIRROR.4 (`N/M mx` + `N/M cl` denominators) · DONORKILL.2 (`pauseIfKilled` + ★ on the primary) · DASHDEAD.4 (probe the public snapshot before blaming the backend). Full ledger: `docs/FINALIZED.md` §2026-08-20 THE BOARD STOPS LYING.
+>
+> **THREE THINGS TO KNOW BEFORE YOU TOUCH THIS CODE:**
+>
+> **1. `canSpeak` no longer exists in the payload.** If any monitoring script or ledger habit reads it, it will read `undefined` — use `minGradeCleared` for the grade fact and `state.voice` for the speech question. `state.voice.verdict.status` is one of `matrix-driven` / `oracle-carried` / `oracle-only` / `unmeasured`, and **`unmeasured` is not a claim she cannot speak** — it means no emission sample exists since boot. That distinction is the whole lesson of CANSPEAK and WORDEMIT; do not undo it by summarising it away.
+>
+> **2. `state.voice` sits AFTER `utilization` in the object literal on purpose.** Its word_motor counts come off the bitset walk the `utilization` lap refreshes on a 5s cadence, so moving it earlier silently serves a staler snapshot than the rest of the payload. There is a comment saying so at the site.
+>
+> **3. The gatling script needs no hand-editing before firing, and that is the point.** Every previous version carried a hardcoded build string that had to be updated or the spotter declared victory on its first poll. If you find yourself editing a constant before pasting it, something regressed.
+>
+> **HELD DELIBERATELY — RESYNCDUTY.9.** It wraps `_gateSciKReal` so a 20.7-minute gate stops reading `activePhase: null` (indistinguishable from a hang). Correct fix, wrong moment: it edits the same phase counter CELLBOUND.A–E already changed, and CELLBOUND.F has not reported. Two unverified changes to `cellPhasesCompleted` / `phaseWork` riding one press would confound exactly the read F exists to produce. Sequence it AFTER F.
+>
+> **FILED, NOT SWEPT — MIRRORID.6.** Found while reading for MIRRORID.5: `gpu_telemetry` accrues `gneuronsPerSec × dt` into the leaderboard on EVERY frame, and that rate is the persistent field — so a donor doing nothing keeps BANKING Gn·s while connected. One condition fixes it (accrue only when `stepsComputed` advanced, already tracked per client), but it lives in a 9,737-line file, it was not on the board, and **four source-reasoned fixes in a row already cost Gee four presses this week.** It also changes what the leaderboard MEANS, so decide it together with WORKSHARE.6.
+>
+> **ONE CORRECTION I MADE TO MYSELF MID-BATCH, recorded so it is not re-learned:** the first draft of the gatling spotter read `state.bootedAt`. It is `state.build.bootedAt` (`brain-server.js:3938` builds it from `_startedAt` at boot). Caught by reading the source before shipping rather than after — which is the only reason it is a footnote and not a sixth lying instrument.
+
+> ## ⭐⭐⭐ 2026-08-20 (prior) — CELLBOUND: a cell phase could hold **21.2 HOURS** with no budget · 232 completed tasks migrated off the board · ⛔ **READ THE TWO BLOCKERS AND MY FOUR RETRACTIONS FIRST**
 >
 > ### ⛔⛔ START HERE — TWO THINGS THAT WILL WASTE YOUR FIRST HOUR IF YOU MISS THEM
 >
