@@ -553,7 +553,19 @@ export class MindSpaceGPU {
     const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
     // Image side: scales with how much the thought is worth, hard-bounded so the transform stays
     // loop-safe regardless of state length or grant (a 96² plane padded is still tiny for CDF 9/7).
-    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 128, 192));   // MS.EXT — cap raised 96→192 (CPU CDF 9/7 on a padded 256² plane is still ms; no-fractalize intact)
+    // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye
+    // are not limited"*). The 192 hard ceiling was a POSTURE, not an engine bound:
+    // the only real bound is MAX_LINE (2048), above which the transform falls to
+    // CPU by design. Ceiling raised to MAX_LINE so nothing in her imagination is
+    // clipped by a number someone picked defensively; the DEFAULT rises 128→512
+    // (a de-novo field is a real image now, not a thumbnail) and the governor still
+    // modulates WITHIN the band — that is her judgment about spend, which Gee's own
+    // directive keeps ("morals not a cap"). DREAM_MINDSEYE_MAX_SIDE moves the
+    // ceiling for a smaller box.
+    const _ceil = (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0)
+      ? Math.min(Number(process.env.DREAM_MINDSEYE_MAX_SIDE), MAX_LINE)
+      : MAX_LINE;
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 512, _ceil));
     // TU.29.1/.2 — TEXT MODE + COLOR: when the caller passes the thought's TEXT, the plane
     // renders the actual words/letters/numbers (glyph raster over a state texture tinted by
     // a named color word or her live mood) instead of painting the raw vector as grayscale
@@ -574,7 +586,7 @@ export class MindSpaceGPU {
       // MS.EXT — exact-side override: morphField requires identical canvas/pad
       // dims, so a caller anchoring a de-novo field onto a stored percept passes
       // side = memory.width and the planes match (bounded, never fractalize).
-      side = Math.max(16, Math.min(Math.round(opts.side), 512));
+      side = Math.max(16, Math.min(Math.round(opts.side), _ceil));   // NOLIMIT — was a flat 512
     } else if (hasGlyphs) {
       side = Math.max(96, Math.round(maxSide * (0.75 + 0.25 * ratio)));   // legibility floor
     } else {
@@ -611,7 +623,14 @@ export class MindSpaceGPU {
     // POSTURE, not an engine limit — MAX_LINE is 2048 and the CPU CDF 9/7 on
     // a padded 512² plane is still milliseconds. Callers pass the grade-gated
     // side (server chat.js _drawCanvasSide); no-fractalize invariant intact.
-    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 512));
+    // NOLIMIT (Gee 2026-08-20) — her CANVAS is not capped at 512 either. Same
+    // reasoning as the imagine plane: MAX_LINE is the only real bound (oversized
+    // planes route to CPU), and a drawing she cares about should be able to use the
+    // whole page. Default unchanged (96) so casual callers are unaffected.
+    const _sketchCeil = (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0)
+      ? Math.min(Number(process.env.DREAM_MINDSEYE_MAX_SIDE), MAX_LINE)
+      : MAX_LINE;
+    const side = Math.max(16, Math.min(opts.maxSide ?? 96, _sketchCeil));
     const W = side, H = side, N = W * H;
     const data = new Uint8ClampedArray(N * 4);
     // DRAW.3 — background is PAPER (her dark sketchbook page), not a mood

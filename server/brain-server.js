@@ -1079,6 +1079,56 @@ function autoClearStaleState() {
     path.join(__dirname, 'mindspace-memory.json'),
   ];
 
+  // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
+  //
+  // Gee: *"they shall not persist through a fresh walk, so that all image
+  // equations drawing canvas and word image gens from pollinations are all
+  // fresh and none persist through a fresh walk"*.
+  //
+  // The list above named `visual-memory.json` — and NOTHING WRITES THAT FILE.
+  // The live store is `visual-memory-v3.json` (`VM_FILE` in
+  // brain-server/visual-memory.js), so every field C she had ever perceived
+  // SURVIVED a fresh walk while the wipe reported success on a 298KB relic.
+  // `visual-memory-v2.json` was orphaned the same way. The root cause is that
+  // the store's filename carries a VERSION and the wipe list carried a literal
+  // — so the fix is not "add v3", it is to stop naming versions at all: sweep
+  // the state dir by PATTERN, and a future v4 is covered the day it is written.
+  // Atomic-write `.tmp` siblings are swept too (a crash mid-save leaves one, and
+  // a restored .tmp is the same stale state wearing a different extension).
+  try {
+    const _imgPat = /^(visual-memory|mindspace-memory|minds-eye|realized-art|drawing-canvas)[-.\w]*\.json(\.tmp)?$/i;
+    for (const f of fs.readdirSync(__dirname)) {
+      if (_imgPat.test(f)) {
+        const p = path.join(__dirname, f);
+        if (!targets.includes(p)) targets.push(p);
+      }
+    }
+  } catch (e) {
+    console.warn(`[Brain] FRESHEYES — could not scan the state dir for image stores (${e.message}); only the literally-named files will be cleared.`);
+  }
+  // Pollinations renders she has fetched (the reference look-ups + generated
+  // images) are the "word image gens" Gee named: they are experiential input,
+  // not identity, and a fresh walk must not inherit a previous walk's pictures.
+  // The OUTPUT dir is emptied; the API KEY file (`.claude/pollinations-user.json`)
+  // is NEVER touched — that is a standing LAW and it lives outside this tree.
+  const _pollDir = path.join(__dirname, '..', 'pollinations-output');
+  let _pollCleared = 0;
+  try {
+    if (fs.existsSync(_pollDir)) {
+      const _rmTree = (dir) => {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          const p = path.join(dir, e.name);
+          if (e.isDirectory()) { _rmTree(p); try { fs.rmdirSync(p); } catch { /* non-empty/locked */ } }
+          else { try { fs.unlinkSync(p); _pollCleared++; } catch { /* locked */ } }
+        }
+      };
+      _rmTree(_pollDir);
+      if (_pollCleared > 0) console.log(`[Brain] FRESHEYES — cleared ${_pollCleared} generated image file(s) from pollinations-output/ (the API key file is never touched).`);
+    }
+  } catch (e) {
+    console.warn(`[Brain] FRESHEYES — pollinations-output sweep failed (${e.message}); generated images from a previous walk may persist.`);
+  }
+
   // iter13 T13.16 — identity-core.json (Tier 3 identity-bound permanent
   // attractors) is EXPLICITLY EXCLUDED from this wipe list. Unity's
   // core identity (name, biographical anchors, persona traits, master/

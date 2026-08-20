@@ -124509,12 +124509,13 @@ var MindSpaceGPU = class {
       value: opts.value
     });
     const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
-    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 128, 192));
+    const _ceil = typeof process !== "undefined" && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0 ? Math.min(Number(process.env.DREAM_MINDSEYE_MAX_SIDE), MAX_LINE) : MAX_LINE;
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 512, _ceil));
     const glyphText = symbolGlyphText(opts.text);
     const hasGlyphs = glyphText.length > 0;
     let side;
     if (opts.side) {
-      side = Math.max(16, Math.min(Math.round(opts.side), 512));
+      side = Math.max(16, Math.min(Math.round(opts.side), _ceil));
     } else if (hasGlyphs) {
       side = Math.max(96, Math.round(maxSide * (0.75 + 0.25 * ratio)));
     } else {
@@ -124539,7 +124540,8 @@ var MindSpaceGPU = class {
   // equational substrate as perception/imagination, so what she draws is a real
   // image she can then re-see, morph, or remember. No fractalize, hard side cap.
   sketch(strokes, opts = {}) {
-    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 512));
+    const _sketchCeil = typeof process !== "undefined" && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0 ? Math.min(Number(process.env.DREAM_MINDSEYE_MAX_SIDE), MAX_LINE) : MAX_LINE;
+    const side = Math.max(16, Math.min(opts.maxSide ?? 96, _sketchCeil));
     const W = side, H = side, N = W * H;
     const data = new Uint8ClampedArray(N * 4);
     const bg = moodTint(opts.mood);
