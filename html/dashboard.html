@@ -2204,9 +2204,21 @@
         // primary — and that hid a bug where EVERY mirrored batch was silently
         // dropped, for hours. computeIdle comes off stepsComputed, which
         // advances only on a real completion.
+        // TEACHMIRROR — DO NOT SAY "idle" WHILE THE CARD IS TEACHING.
+        // compute_batch is one of TWO work lanes and during the curriculum walk
+        // it is the quiet one: teach frames (Hebbian/propagate) carry the walk
+        // and they touch neither gneuronsPerSec nor stepsComputed. So the
+        // compute lane going idle is the EXPECTED reading mid-walk, and showing
+        // it in red as the only verdict turned a saturated A6000 — 17/17
+        // matrices, teach frames landing continuously — into a row everyone
+        // read as a dead card. `workState` resolves the pair server-side; the
+        // Gn/s value stays visible but demoted to what it is, a last-earned
+        // number from a lane that is not running right now.
         const rateCell = (x.gneuronsPerSec == null) ? ''
-          : (x.computeIdle
-              ? ` · <span style="color:#ef4444" title="No batch has completed ${x.computeAdvancedAgoSec == null ? 'at all this session' : 'in ' + x.computeAdvancedAgoSec + 's'}. The Gn/s shown is the LAST value this donor earned - not a live rate.">idle${x.computeAdvancedAgoSec == null ? '' : ' ' + x.computeAdvancedAgoSec + 's'} <span style="color:#6b7280">(last ${num(x.gneuronsPerSec, 1)}Gn/s)</span></span>`
+          : (x.workState === 'teaching'
+              ? ` · <span style="color:#22c55e" title="TEACHING — ${num(x.teachOps || 0)} teach frames dispatched to this donor, last one ${x.teachAdvancedAgoSec == null ? 'just now' : x.teachAdvancedAgoSec + 's ago'}. Hebbian/propagate work does not produce compute_batch steps, so Gn/s reads 0 while the card is busy — that is the normal state of a walking brain, not a fault.">teaching <span style="color:#6b7280">(${num(x.teachOps || 0)} ops${x.gneuronsPerSec > 0 ? `, compute lane idle at ${num(x.gneuronsPerSec, 1)}Gn/s` : ', compute lane quiet'})</span></span>`
+              : x.computeIdle
+              ? ` · <span style="color:#ef4444" title="No batch has completed ${x.computeAdvancedAgoSec == null ? 'at all this session' : 'in ' + x.computeAdvancedAgoSec + 's'}, and no teach frame in the last 30s either — this donor is doing NOTHING. The Gn/s shown is the LAST value it earned, not a live rate.${(x.teachOps ? ' Lifetime teach ops: ' + num(x.teachOps) + '.' : ' It has never taken a teach frame.')}">idle${x.computeAdvancedAgoSec == null ? '' : ' ' + x.computeAdvancedAgoSec + 's'} <span style="color:#6b7280">(last ${num(x.gneuronsPerSec, 1)}Gn/s)</span></span>`
               : ` · <span style="color:#22c55e">${num(x.gneuronsPerSec, 1)}Gn/s</span>`);
         // SYNCPARTIAL.7 — the DENOMINATOR. "holds 1" reads as a fault; "1/17
         // mx" reads as a sync in progress. Teach dispatch is per-matrix, so a

@@ -220,6 +220,28 @@ late, which is work, not a fault (a hard-working solo donor showed a permanent 3
 RTT red row with an empty buffer); stale and backed-up donors still flag. Aggregates:
 totals per type, avg RTT, max buffered, total connections ever.
 
+**⚠ `Gn/s > 0` IS NOT "is it working" — read the WORK STATE (2026-08-20, TEACHMIRROR).**
+There are TWO work lanes and during the curriculum walk the busy one is invisible to
+`Gn/s`. `gneuronsPerSec` and `computeSteps` come from the donor and advance **only** on
+`compute_batch` completion; the walk sends Hebbian/propagate frames instead, so a card
+teaching flat out reports **zero on both**. An A6000 holding all 17 matrices, taking
+teach frames continuously, rendered as red `idle (last 0Gn/s)` and was read as dead.
+The row now shows what the card is actually doing:
+
+| reads | means |
+|---|---|
+| `teaching (N ops, compute lane quiet)` — green | Hebbian/propagate frames landing. **The normal state of a walking brain.** `N` = frames dispatched to THIS donor |
+| `<rate> Gn/s` — green | `compute_batch` completing; the tick loop is stepping neurons |
+| `idle Ns (last <rate> Gn/s)` — red | **BOTH lanes quiet** — it really is doing nothing. Tooltip says so and carries lifetime teach ops |
+| `no work yet` | connected, never took either kind of work — a sync or gating problem |
+
+`teachOps` / `teachAdvancedAgoSec` / `workState` are counted **server-side** in
+`_sparseSendBinary` (we send those frames, so the count is exact and no donor rebuild
+is needed). The donor has its own `teach_ops` counter but has never shipped it in the
+telemetry payload. **Also fixed in the same pass:** `N/17 mx` now counts the PRIMARY's
+matrices too — residency is recorded on the upload ack for both lanes, where before
+only the replica-sync path recorded it and the master card always read `0/17`.
+
 **Data path:** `server/brain-server/state.js` `_getProfilingState()` → `state.profiling`,
 broadcast on the existing WS state lane (admin) / `/public-state.json` (public — but the
 panel is `admin-only`, so viewers never render it). Per-client byte/RTT counters are

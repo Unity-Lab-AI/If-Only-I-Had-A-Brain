@@ -381,6 +381,18 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 
 **Verify after the next real donor tag:** the Actions run shows the guard passing, both uploads, then `Pushed link bump to main …`; `main` gets a `site(donor): bump download links -> donor-vX.Y.Z [auto donor-release]` commit; the live download pages (`…/html/compute.html`, `…/html/legend.html`) point at the new tag. Dry-run proof at authoring time: the `sed` rewrote exactly the 5 version tokens (2 in compute.html, 3 in legend.html) and nothing else.
 
+> ### ⚠ 2026-08-20 — that verify RAN, and step (c) above was WRONG. Corrected below.
+>
+> **`donor-v0.3.23` exercised the whole flow for real and the last hop silently did nothing.** Guard passed, both binaries attached, `sed` bumped all 5 tokens, `7ac0db15` landed on `main` — and the public download page kept serving `.22` links for hours. Gee caught it off the page, not off the log, because *every log line was green*.
+>
+> **Cause:** the bump is pushed with `secrets.GITHUB_TOKEN`, and **a push authenticated by the Actions token does not trigger another workflow** — the recursion guard every Forgejo/Gitea/GitHub instance applies. `deploy.yml` (trigger: `push` → `main`) therefore never ran for that commit. Step (c)'s "which triggers `deploy.yml`" was an assumption that read as a fact for six weeks, and this was the first release that actually depended on it. Note that the original entry even flagged the runtime path as *"unverifiable until the next real donor tag is pushed"* — the boundary was called correctly; the guess inside it was not.
+>
+> **Fix:** `donor-release.yml` now rsyncs the frontend **itself**, as its own final step, using the same `PAGES_DEPLOY_*` secrets and a byte-identical exclude list to `deploy.yml`'s. The release job no longer depends on triggering anything. Both files carry a cross-reference: change one exclude list and you must change the other, or the two lanes publish different sites.
+>
+> **What was NEVER wrong:** the release itself. Tag, release, both assets and the running binary were all `.23` throughout — the RunPod template's `PIN` and its `releases/latest` lookup both resolved `donor-v0.3.23`, and the pod's own boot log self-reported `unity-donor 0.3.23`. A stale download page is not a stale donor; check `--version` on the host before redeploying anything.
+>
+> **Verify next tag (updated):** the Actions run must now end on `Published the frontend with donor-vX.Y.Z download links.` — if that line is absent the page is stale no matter how green the rest of the run looks. Fallback if the secrets are ever unavailable to that job: it fails LOUD telling you to run `deploy` via `workflow_dispatch`, which is still wired.
+
 ---
 
 ## 2026-07-06 — /minds-eye.json + /public-state.json are PROXIED by design (mind's-eye "brain offline" fix)
