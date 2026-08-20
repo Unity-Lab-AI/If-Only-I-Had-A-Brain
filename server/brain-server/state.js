@@ -1058,6 +1058,36 @@ const SERVER_STATE_MIXIN = {
       };
     } catch (err) { out.network = { error: err.message }; }
 
+    // ── RAMHEAD — HOST-RAM HEADROOM, ON THE BOARD ──
+    // RAMHEAD handed the brain the Forgejo reserve's slack (1.93x the neurons),
+    // so "how close is this box to lock-up" stopped being a background question
+    // and became the number that decides whether the growth was safe. The
+    // checkpoint guard already DEFERS a save under pressure, but a protection
+    // that fires silently is one nobody trusts — and this whole day has been
+    // about boards that could not answer "is it working?". Free MB, the floor
+    // it is measured against, and how many checkpoints have actually been
+    // deferred, so the guard is visibly idle rather than merely assumed idle.
+    try {
+      const _os = require('os');
+      const _freeMB = Math.floor(_os.freemem() / 1048576);
+      const _totalMB = Math.floor(_os.totalmem() / 1048576);
+      const _floor = process.env.DREAM_SAVE_MIN_FREE_MB !== undefined
+        ? Number(process.env.DREAM_SAVE_MIN_FREE_MB) : 3072;
+      out.hostRam = {
+        freeMB: _freeMB,
+        totalMB: _totalMB,
+        usedPct: _totalMB > 0 ? Math.round(100 * (_totalMB - _freeMB) / _totalMB) : null,
+        saveFloorMB: Number.isFinite(_floor) ? _floor : null,
+        // headroom ABOVE the floor — the number that says how much margin the
+        // guard is actually holding, which a raw free-MB reading cannot.
+        headroomAboveFloorMB: Number.isFinite(_floor) ? (_freeMB - _floor) : null,
+        underFloor: Number.isFinite(_floor) && _floor > 0 ? _freeMB < _floor : false,
+        checkpointsDeferred: Number(this._ramGuardSkips) || 0,
+        lastDeferAtFreeMB: (this._ramGuardLastFreeMB != null) ? this._ramGuardLastFreeMB : null,
+        lastDeferAgoSec: this._ramGuardLastAt ? Math.round((now - this._ramGuardLastAt) / 1000) : null,
+      };
+    } catch (err) { out.hostRam = { error: err.message }; }
+
     // ── clients (per-connection health — client↔brain) ──
     try {
       const list = [];

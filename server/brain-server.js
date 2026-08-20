@@ -555,10 +555,41 @@ const BRAIN_VRAM_ALLOC = (function () {
   if (!(RESOURCES.gpu && RESOURCES.gpu.vram > 0)) {
     const _hostRamMB = Math.floor(os.totalmem() / 1048576);
     const _envBudget = Number(process.env.DREAM_BRAIN_BUDGET_MB) || 0;
-    const _safeMB = Math.max(1024, Math.min(
-      Math.floor(_hostRamMB * 0.45),     // never more than 45% of host RAM
-      _hostRamMB - 13312,                // always leave ≥13 GB for Forgejo + OS + page cache
-    ));
+    // ── RAMHEAD (2026-08-20) — THE 45% CLAUSE WAS THE BINDING CAP AND IT WAS ──
+    // ── ARBITRARY. The 13GB reserve is the one with a REASON behind it.       ──
+    //
+    // Gee: "leave enough for forgio but i want the doner pod running as dfast as
+    // possible with out crashing the server from ram lock up". Both clauses
+    // below existed to protect Forgejo; only the second one was ever REASONED
+    // ("leave >=13 GB for Forgejo + OS + page cache"). The 45% fraction is a
+    // round number, and on this 31,831MB box it is the smaller of the two —
+    // 14,323MB vs 18,519MB — so it, not the Forgejo reserve, was deciding how
+    // big Unity could be.
+    //
+    // MEASURED ON THE LIVE BOX before changing anything (`/public-state.json`
+    // profiling block): host total 31,831MB, host USED 10,091MB (32%), brain
+    // process RSS 6,069MB. So everything that is NOT the brain — Forgejo, the
+    // OS, page cache — measures ~4,000MB against a 13,312MB reserve. The
+    // reserve is ~3.3x actual usage, which is exactly the kind of margin a
+    // shared box should keep, and it is left UNTOUCHED here.
+    //
+    // So the 45% clause is dropped and the Forgejo reserve becomes the single
+    // governor. Effect on this box: budget 14,323MB -> 18,519MB, brain
+    // 441,300,699 -> 592,151,838 neurons (1.93x), donor VRAM ~30% -> ~41%.
+    //
+    // RE-PRICED per LAW, because this moves `scale`: teach cost scales with the
+    // brain, so ~1.93x the neurons is ~1.93x per teach op and the ~24-day
+    // structure refresh becomes ~46 days. Recorded here because the LAW says
+    // the arithmetic gets written down BEFORE the bound moves, not after.
+    //
+    // NOT taken further on purpose. host-10GB (2.29x, ~48% VRAM) and host-8GB
+    // (2.53x, ~53%) are both reachable on paper, but they eat into a reserve
+    // whose peak — not average — is what matters, and the heaviest thing this
+    // box does is a Forgejo Actions Rust cross-build during a donor release.
+    // That peak has never been measured. Spending someone else's headroom on an
+    // unmeasured peak is how you take down git and the public site together.
+    // DREAM_BRAIN_BUDGET_MB still overrides for a deliberate experiment.
+    const _safeMB = Math.max(1024, _hostRamMB - 13312);
     // #112.2 — DONOR-COMPUTE SIZING. On the DEPLOYED box (UAL_PROXY_AUTH=1) the
     // brain's real compute lives on DONOR browser GPUs, not host RAM. Sizing the
     // BOOT brain to 45% of a 32 GB host (→306M) seeded a brain a single modest
@@ -5652,6 +5683,59 @@ class ServerBrain {
         // synchronous path: the process must not exit before the write
         // lands, and a pin is irrelevant at shutdown.
         const _binSync = /clean-shutdown|savererun-pre-reset/.test(String((opts && opts.trigger) || ''));
+        // ── RAMHEAD — HOST-RAM PRESSURE GUARD, the other half of "don't crash ──
+        // ── the server from ram lock up". ──
+        //
+        // RAMHEAD raised the brain's budget by handing it the Forgejo reserve's
+        // slack, which makes the checkpoint the sharpest remaining OOM edge:
+        // this path assembles multi-GB section buffers, so it is the single
+        // moment the process asks the OS for the most memory at once. A bigger
+        // brain means bigger buffers, on a box shared with Forgejo.
+        //
+        // So a checkpoint YIELDS when the host is genuinely tight. Skipping one
+        // costs at most the interval's training since the last save (the walk
+        // keeps running, weights stay in RAM, the next checkpoint takes them);
+        // OOM-killing the process costs everything since the last save AND
+        // takes Forgejo — git and the public site — down with it. That is not a
+        // close call.
+        //
+        // NOT a capability fallback (the NO-FALLBACKS law): the save path is
+        // unchanged and there is no second-best writer. This is defensive I/O
+        // scheduling — the same class as the existing paced/drip write.
+        // Threshold is free-MB, not a percentage, because what the allocator
+        // needs is absolute headroom. DREAM_SAVE_MIN_FREE_MB tunes it; 0 off.
+        // DEFERRED, NOT DROPPED — the same contract the SAVE PACING block below
+        // states in its own comment ("durability is deferred minutes, never
+        // dropped"). A bare early return here would have SKIPPED the
+        // checkpoint outright with nothing to retry it, which is strictly worse
+        // than the behaviour this file already establishes for "cannot save
+        // right now". So pressure LATCHES a retry exactly like pacing does, and
+        // a save always writes the CURRENT live weights when it finally lands.
+        let _ramTight = false;
+        if (!_binSync) {
+          const _minFree = process.env.DREAM_SAVE_MIN_FREE_MB !== undefined
+            ? Number(process.env.DREAM_SAVE_MIN_FREE_MB) : 3072;
+          if (Number.isFinite(_minFree) && _minFree > 0) {
+            const _freeMB = Math.floor(os.freemem() / 1048576);
+            if (_freeMB < _minFree) {
+              _ramTight = true;
+              this._ramGuardSkips = (this._ramGuardSkips || 0) + 1;
+              this._ramGuardLastFreeMB = _freeMB;
+              this._ramGuardLastAt = Date.now();
+              if (!this._ramGuardLogAt || (Date.now() - this._ramGuardLogAt) > 60000) {
+                this._ramGuardLogAt = Date.now();
+                console.warn(`[Brain] ⛔ RAMHEAD GUARD — checkpoint DEFERRED: host free RAM ${_freeMB}MB is under the ${_minFree}MB floor. The binary save assembles multi-GB buffers and is the sharpest OOM edge on a box shared with Forgejo; deferring costs nothing but time, an OOM would cost the process AND take git + the public site down with it. Retrying in 2min; the walk continues and weights stay in RAM. Deferrals so far: ${this._ramGuardSkips}. Tune with DREAM_SAVE_MIN_FREE_MB (0 disables).`);
+              }
+              if (!this._binSavePendingTimer) {
+                this._binSavePendingTimer = setTimeout(() => {
+                  this._binSavePendingTimer = null;
+                  this.saveWeights({ force: true, trigger: 'ramhead-guard-retry' });
+                }, 120000);
+                if (this._binSavePendingTimer && typeof this._binSavePendingTimer.unref === 'function') this._binSavePendingTimer.unref();
+              }
+            }
+          }
+        }
         const BIN_FILE_R = WEIGHTS_FILE.replace(/\.json$/, '.bin');
         const _binBackupFile = BIN_FILE_R.replace(/\.bin$/, `-v${this._saveVersion % CHECKPOINT_SLOTS}.bin`);
         if (_binSync) {
@@ -5661,7 +5745,7 @@ class ServerBrain {
           } catch (err) {
             console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
           }
-        } else if (!this._binSaveInFlight) {
+        } else if (!this._binSaveInFlight && !_ramTight) {
           // SAVE PACING — the save-stage eyes' first-boot conviction: forced
           // cell-checkpoint saves fired every ~5min, each writing ~16GB of
           // disk traffic (5.4GB tmp + rename writeback + a full-file v-copy),
