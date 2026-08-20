@@ -35734,4 +35734,22 @@ Because `.claude/` is excluded from this repo by the IP-boundary LAW and the `ua
 
 Two claims in the 7-item filing were wrong and are corrected above: `TZSTAMP.3`'s *"1 pins Denver"* (that hit was a comment, not code) and its *"11 stamps"* (10 formatters + 3 unformatted passthroughs). And `RUNPOD.17` was filed as never-run while the binary was running in production at the moment I filed it.
 
-**Board: 2 open, 176 closed.**
+### POST-PRESS VERDICTS — Gee pressed Update & Savestart, then reset the pod, then *"i just reset it again, fresh start"*
+
+The press landed the batch above and the box booted on **`8ece6297`** at 21:55:13Z, closing the 15-commit gap. Three things were confirmed on that boot that could not be confirmed before it.
+
+**`LANGRAM.10` — CLOSED, and the verdict does NOT say stop.** The line printed, unconditional, exactly as designed:
+
+> `LANGRAM.9 GEOMETRY VERDICT — langCortex = 12,000,000 neurons, decided by the LANGRAM.7 fresh-walk floor. pinFile=12,000,000 · weightsOnDisk=false · explicitOverride=false · unpinRequested=false · target=12,000,000`
+
+**12,000,000, not 349,155.** ⭐ **The line ABOVE it is the real find:** the GPU budget slice computed **468,508** neurons — `8235MB = 50.0% of 16471MB brain budget → 468,508 AFTER geometric rescale` — and `WMB FLOOR` raised it to 12,000,000, *"bypassing the under-provisioned 8636MB budget slice"*. So **without `LANGRAM.7` this fresh walk would have begun on a 468,508-neuron language cortex**: not the 349,155 number we were watching for, but the same starved-ceiling failure, arrived at by the same route. This is the first time that floor has been observed doing its job on a live fresh walk, and it is the reason a fresh walk was safe to press. `word_motor` came up at 720,000 cells against a ~60,000 vocab target.
+
+**`LOOPNAME.8` — CONFIRMED LIVE on its first real boot.** `state.profiling.throughput.loopFreeze` reads `{episodes: 0, worstMs: 0}` — **non-null**, which is the proof the watchdog thread constructed and is reporting; a failure would have left it `null` and rendered `watchdog off`. No `[LoopWatchdog]` error warn in the console ring either. ⚠ **Worth knowing for next time: the watchdog's own "armed" line is NOT in the console ring, and that is correct** — the ring captures `console.*`, and every byte the watchdog emits goes out on a raw fd precisely so it cannot be queued behind the loop it watches. **The state field is the only in-band evidence the watchdog is alive**; its log lives in stderr/journalctl. And the zero is not an empty reading: it covers the entire **2,928MB / 480-chunk** canonical upload, historically the worst window on this box for event-loop blocks.
+
+**Walk healthy after the fresh start:** donor back as **PRIMARY**, `17/17 mx` in ~157s, `workState: teaching`, 3,366 teach/min, `substratePause: null`, RTT 194ms (Montreal, known).
+
+**`SUBSTEPS.6` STILL BLOCKED, unchanged and for the same reason:** `batchPaused: probe-gate`, `sinceLastBatchMs: 27733`. The batch lane is parked again for this cell, so the substep controller still has no input to flap with. Not guessed at.
+
+**⚠ FILED FROM THIS BOOT — `SCALEDOC.1`:** she came up at **411,216,550** neurons while `RESUME.md` / `ARCHITECTURE.md` / `NOW.md` all state **425,436,550** as though it were fixed. Both figures are post-`RAMHEAD`; the delta is boot-time free RAM. A number that will not reproduce, stated without its condition, is the documentation version of the lying-instrument pattern this ledger is about. The docs should say the count is derived at boot and varies with free RAM, and quote a figure with the boot that produced it.
+
+**Board: 2 open, 177 closed** — `LANGRAM.10` closed (176 → 177), leaving `SUBSTEPS.6`, and `SCALEDOC.1` filed above joins it.

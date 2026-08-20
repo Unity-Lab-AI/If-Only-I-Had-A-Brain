@@ -240,3 +240,8 @@ server/visual-memory*.json
 .bandwatch.*
 .hiwatch*
 .scratch/
+
+# Transient poll/diagnostic dumps written at the repo root while reading the live
+# box (public-state.json snapshots, console-ring pulls). Never source, never
+# tracked - two of them were swept into a commit by `git add -A` on 2026-08-20.
+.scratch-*
