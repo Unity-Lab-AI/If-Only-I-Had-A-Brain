@@ -1597,9 +1597,36 @@ function adaptSubsteps(brain, ws, floorValue) {
   const teachOps = (c && Number(c.teachOps)) || 0;
   const teachRate = Math.max(0, (teachOps - brain._adaptTeachOps) / (dt / 1000));
   const missed = (brain._gpuMisses || 0) > brain._adaptMisses;
-  // Batch cost: stepTimeMs is the whole tick, which IS the batch plus overhead —
-  // the number the target is expressed against, and the one the operator sees.
-  const batchMs = Number(brain._perfStats && brain._perfStats.stepTimeMs) || 0;
+  // ── SUBSTEPS.3 (2026-08-20) — THIS READ THE WRONG NUMBER AND SILENTLY PINNED ──
+  // ── THE CONTROLLER AT ITS FLOOR. ──
+  //
+  // It used `_perfStats.stepTimeMs`, on the stated assumption that the tick IS
+  // "the batch plus overhead". That is false on a teach-bound walk: the tick is
+  // dominated by CPU-side Hebbian grind, NOT by the donor round-trip. Live on
+  // build 200824d6 the tick measured ~4,000ms (`stepsPerSec 6` at 24 substeps)
+  // while the ACTUAL `compute_batch` round-trip was **663ms** — the TICK-GAP
+  // line had been printing it the whole time.
+  //
+  // Consequence: 4,000ms > the 2,400ms shrink threshold, so every 12s window
+  // took the SHRINK branch, `Math.max(floorValue, …)` clamped it back to 24, and
+  // `next === prev` meant it never logged. The controller looked absent. It ran
+  // perfectly and decided "too slow, back off" forever, against a card that was
+  // idling — the exact opposite of what Gee asked for, invisibly.
+  //
+  // WHY THE SIMULATION MISSED IT, and this is the lesson worth keeping: I fed
+  // the harness `mathMs + OVERHEAD` as `stepTimeMs`, i.e. I mocked the very
+  // assumption under test. A model that encodes the belief it is meant to check
+  // cannot fail. Same family as `feedback_verify_esm_with_import_not_node_check`
+  // — the tool agreed with me because I had told it what to think.
+  //
+  // `_batchTiming.roundTripEmaMs` (gpu.js:451) is the send→reply stopwatch,
+  // EMA-smoothed over real completions, and it is what the 2,000ms target was
+  // always meant to be measured against. Falls back to the tick only when no
+  // batch has completed yet, which is the one case where the tick is all we have.
+  const _bt = brain._batchTiming;
+  const batchMs = (_bt && Number(_bt.roundTripEmaMs) > 0)
+    ? Number(_bt.roundTripEmaMs)
+    : (Number(brain._perfStats && brain._perfStats.stepTimeMs) || 0);
 
   brain._adaptAt = now;
   brain._adaptTeachOps = teachOps;
