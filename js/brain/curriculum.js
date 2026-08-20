@@ -2451,9 +2451,26 @@ const PRE_K_FALLBACK_CAP = 5;
 // cell (~114 visits across K→PhD), so a deferred remainder is taught, just
 // spread. Raise it to trade walk latency for per-visit depth; set 0 to disable
 // the bound entirely and restore the pre-CELLBOUND unbounded behaviour.
-const PHASE_BUDGET_MS = Number(
-  (typeof process !== 'undefined' && process.env && process.env.DREAM_PHASE_BUDGET_MS) || 20 * 60 * 1000,
-);
+// ⛔ NO BUDGET BY DEFAULT (Gee 2026-08-20, verbatim): *"no we dont want a budget, some
+// cells are big they take the length of time they take, as long as you coded them
+// correctly"*. The 20-minute default is GONE — a phase now runs to completion and the
+// walk takes the time the training takes. The mechanism survives as OPT-IN only
+// (`DREAM_PHASE_BUDGET_MS=<ms>`), because it is genuinely useful as a diagnostic when
+// hunting a runaway phase; unset or <= 0 means the deadline is never armed at all.
+//
+// ⛔ AND THE OLD "0 DISABLES" ESCAPE HATCH WAS A LIE — verified, not assumed. With
+// `PHASE_BUDGET_MS = 0` the arm site computed `_phaseDeadlineAt = Date.now() + 0`, which
+// is a real timestamp that is instantly in the past AND truthy, so the guard
+// `rep > 0 && _phaseDeadlineAt && Date.now() > _phaseDeadlineAt` fired on rep 1 of every
+// pair phase. Setting 0 to "disable the bound" would therefore have produced the most
+// aggressive cut possible — one rep per phase — while the console line printed
+// *"0 disables the bound"*. That is the same lying-instrument class as the rest of this
+// ledger, in code written earlier the same day. The arm site is now gated so nothing is
+// armed unless a positive budget was explicitly asked for.
+const PHASE_BUDGET_MS = (() => {
+  const raw = Number((typeof process !== 'undefined' && process.env && process.env.DREAM_PHASE_BUDGET_MS) || 0);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;   // 0 === no budget, and it truly means it
+})();
 // STRUCTURE_DOSE — an explicit, logged multiplier on the authored rep counts of
 // the sentence-structure passes. The authored 100/80/60 were tuned when the
 // language cortex was 349K–1.5M; at 12M each pair-teach measures ~47ms, so the
@@ -2461,11 +2478,26 @@ const PHASE_BUDGET_MS = Number(
 // TRAINING MASS — it is a real cut, explicitly authorised by Gee 2026-08-20
 // ("All of the above + recalibrate reps"), kept as ONE number so it can be
 // turned straight back up: DREAM_STRUCTURE_DOSE=1 restores the authored dose.
+// ⛔ THE CUT IS REVERTED (Gee 2026-08-20). He authorised `0.4` this morning as part of
+// *"All of the above + recalibrate reps"*, then set the governing principle: *"no we dont
+// want a budget, some cells are big they take the length of time they take, as long as you
+// coded them correctly"* — and when the two were put side by side he chose **restore the
+// dose, keep the gate**. So she gets the FULL authored rep count on the structure passes
+// again: 1.0, not 0.4. This is the standing rule doing its job — we fix waste, training
+// stays whole; a dose multiplier was never waste, it was less teaching.
+//
+// What KEEPS the walk finite is now the consolidation gate (CELLBOUND.D) alone: the same
+// structure lesson is not re-taught at full depth in all 114 cells, it goes full on the
+// first teach / on a regression / every 10th visit, with a cheap top-up otherwise. That is
+// waste removal (not re-teaching an identical lesson 114 times), not a reduction of what
+// she learns in the lesson. Measured cost of this choice: ~24 days of structure-refresh
+// across the whole K→PhD walk, against ~9.7 at 0.4 and ~100 with no gate either.
+// `DREAM_STRUCTURE_DOSE=<0..1>` can still scale it for a diagnostic run.
 const STRUCTURE_DOSE = Math.max(
   0.05,
   Math.min(1, Number(
-    (typeof process !== 'undefined' && process.env && process.env.DREAM_STRUCTURE_DOSE) || 0.4,
-  ) || 0.4),
+    (typeof process !== 'undefined' && process.env && process.env.DREAM_STRUCTURE_DOSE) || 1,
+  ) || 1),
 );
 
 export class Curriculum {
@@ -2787,7 +2819,12 @@ export class Curriculum {
           // phase that runs in EVERY cell (114 of them). The deadline does NOT
           // discard training - a pass that hits it stops on a clean rep
           // boundary and reports its remainder, which the next visit resumes.
-          cl._phaseDeadlineAt = Date.now() + PHASE_BUDGET_MS;
+          // NO BUDGET (Gee 2026-08-20) — the deadline is armed ONLY when a positive
+          // budget was explicitly requested. Unset/0 leaves `_phaseDeadlineAt` at 0, which
+          // makes the rep-loop guard falsy, so a phase runs to completion. This is also
+          // the fix for the old `Date.now() + 0` bug that turned "disable" into
+          // "stop after one rep".
+          cl._phaseDeadlineAt = PHASE_BUDGET_MS > 0 ? (Date.now() + PHASE_BUDGET_MS) : 0;
           cl._phaseDeadlineName = name;
         }
         // The tally this call will be credited to when it finishes - captured
@@ -15423,7 +15460,7 @@ export class Curriculum {
     const _mode = (!_consolidated || _periodicFull) ? 'FULL' : 'TOPUP';
     const _dose = STRUCTURE_DOSE * (_mode === 'FULL' ? 1 : 0.15);
     const R = (n) => Math.max(1, Math.round(n * _dose));
-    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND — visit #${_visit} · mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === 'number' ? _probeRate.toFixed(2) : 'never probed'}${_periodicFull ? ' · periodic re-deepen' : ''}) · STRUCTURE_DOSE=${STRUCTURE_DOSE} → effective dose ×${_dose.toFixed(3)} · phase budget ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min. Authored reps are scaled, NOT skipped; anything the budget defers resumes on the next visit.`);
+    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND — visit #${_visit} · mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === 'number' ? _probeRate.toFixed(2) : 'never probed'}${_periodicFull ? ' · periodic re-deepen' : ''}) · STRUCTURE_DOSE=${STRUCTURE_DOSE} → effective dose ×${_dose.toFixed(3)} · ${PHASE_BUDGET_MS > 0 ? `phase budget ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min (opt-in via DREAM_PHASE_BUDGET_MS; anything it defers resumes next visit)` : 'NO PHASE BUDGET — this phase runs to completion however long it takes (Gee 2026-08-20)'}. Authored reps are scaled, NOT skipped.`);
 
     // ─── I.1 + I.2 — Slot-position primitives + word-type → slot bindings ───
     // Each (word, slot_tag) trains sem(word) → fineType(slot_tag) via
