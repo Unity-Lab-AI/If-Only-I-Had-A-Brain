@@ -199,7 +199,23 @@ A dedicated **Profiling** card on the admin dashboard (`html/dashboard.html`, sc
   V8 heap used/limit %, external/arrayBuffers, context switches, uptime.
 - **Throughput / Speed** — step time + steps/sec, event-loop lag + delay histogram
   (mean/p50/p99/max via `perf_hooks.monitorEventLoopDelay`), GPU dispatch/sec
-  (+hits/misses), spikes, defs/hr, frame count.
+  (+hits/misses), spikes, defs/hr, frame count, and the **loop freezes** row
+  (`LOOPNAME.8`).
+  - **Why the freeze row is separate from `loop delay max` directly above it.**
+    `max` is a since-boot high-water mark with **no count and no recency**, so a
+    single 58,418 ms reading cannot be told apart from one bad moment during boot.
+    The freeze row is counted by `server/loop-watchdog.js` — a **separate thread**
+    — which is why it can report a stall the main loop was too jammed to report at
+    all. `episodes · worst Nms` in amber, `none` in green, and **`watchdog off`**
+    when the thread failed to start, because a missing instrument must say so
+    rather than render a reassuring zero.
+  - Each episode was also written to **stderr while it was happening** (raw
+    `fs.writeSync`, not `console.log` — worker stdio is piped through the parent's
+    event loop, the very thing under investigation), and the last one is on the box
+    at `server/.loop-freeze.json`. **If that file reads `state: STALLED` after a
+    reboot, the previous process never recovered from it.** It is excluded from the
+    deploy overlay's `--delete`, so a redeploy cannot erase the evidence of the
+    freeze that prompted the redeploy.
 - **Network** — WS bytes in/out totals + live KB/s rates, message counts, GPU
   buffered vs 500 MB threshold, WS drops + drop rate, donor count + VRAM, aggregate
   Gneurons/sec, GPU-shadow-dirty flag.
@@ -283,6 +299,8 @@ each is listed with what it actually costs.
 | `DREAM_SAVE_MIN_FREE_MB` | 3072 (`0` disables) | Host free-RAM floor below which a binary checkpoint DEFERS (retry in 2min — deferred, never dropped). The save assembles multi-GB buffers, so it is the sharpest OOM edge on a box shared with Forgejo |
 | `DREAM_OWNART_INGEST_MS` | 5000 (`0` disables) | Throttle for learning a shape schema AT PERCEPTION time rather than only when asked to draw. Confirmed looks only, fire-and-forget, skipped mid-curriculum, first ten log their real cost |
 | `DREAM_DF7_REGISTRY_WAIT_MS` | 15min | How long a replica sync waits for a populated matrix registry instead of sweeping 0 of 0 and calling it a full replica |
+| `DREAM_LOOP_LAG_WARN_MS` | 250 | Threshold for the in-process `[EventLoop] BLOCKED <ms>` warn. Note what it structurally cannot do: it is a `setInterval` **on the loop it measures**, so it only ever prints *after* the block ends — a freeze that never returns prints nothing |
+| `DREAM_LOOP_FREEZE_WARN_MS` | **5000** | Threshold for the `LOOPNAME.8` watchdog **thread** (`server/loop-watchdog.js`). It polls a `SharedArrayBuffer` heartbeat every 500ms from off the main loop, so it reports a stall **while it is still happening** and keeps a count + worst-case that the row above cannot produce. Lower it to catch shorter stalls; each episode costs one stderr line plus one small JSON write, and nothing at all while the loop is healthy |
 | `UNITY_USAGE_MAX_BYTES` / `UNITY_USAGE_KEEP_LINES` | 1MB / 2000 | Rotation for `.claude/.session-usage.jsonl` (it grew unbounded to 2.5MB) |
 
 > ⚠ **There is no `DREAM_REWALK`.** One was written on 2026-08-20 and removed the same

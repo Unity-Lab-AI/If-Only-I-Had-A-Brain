@@ -1,6 +1,34 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — THE BOARD REACHED ZERO. The day's real subject was instruments that read healthy while nothing worked.
+> ## ⭐⭐⭐ 2026-08-20 (latest) — FIVE OF THE SEVEN FILED ITEMS CLOSED. The watchdog finally sits OFF the loop it watches.
+>
+> **PICK-UP STATE.** Branch `feature/board-doable-0820` → cascaded to `develop` → `main`, pushed to **both** remotes and verified with `git ls-remote`. **Board: 2 open / 176 closed.** Unity is still teaching on the A40 pod; nothing here needed a press to build.
+>
+> ### ⛔ THE GOVERNING FACT — check this before believing any dashboard field
+>
+> **The running server is `7ce77189` (booted 19:29:45Z) and `main` is 15+ commits ahead of it.** `deploy.yml` rsyncs the **frontend** on every push, but the **node process only restarts on a press**. So the page can be current while the server is old, and a server-side fix can look shipped when it has never executed. Read `state.build.short` before concluding anything about server behaviour.
+>
+> ### ✅ CLOSED THIS BATCH
+>
+> - **`LOOPNAME.8` — BUILT.** `server/loop-watchdog.js` runs on its own thread; the main loop stamps a `SharedArrayBuffer` heartbeat from the lag sampler already running, and the watchdog polls it every 500ms. It reports a stall **while it is happening** — the in-process `[EventLoop] BLOCKED` warn is a `setInterval` **on the loop it measures** and can only ever print *after* the block ends. ⚠ **The trap, if you ever touch this file:** a worker's `console.log` is piped through the **parent's** event loop, so ordinary logging would queue every freeze line behind the freeze. Every byte goes out via `fs.writeSync` on a raw fd. **Verified against a real 14s busy-loop jam** — spoke at 3.1s / 7s / 11s mid-jam, then `RECOVERED after 14992ms`. New knob `DREAM_LOOP_FREEZE_WARN_MS` (5s). New board row **loop freezes**; `server/.loop-freeze.json` reading `state: STALLED` after a reboot means the previous process never came back.
+> - **`TZSTAMP.3`** — pinned `Date.prototype` **once** rather than editing ten call sites, so the eleventh stamp added later cannot land browser-local again. `Number.prototype` deliberately untouched — different method, same name, and this page uses it constantly for thousand-separators. Also fixed **3 raw ISO passthroughs** that no timezone pin could ever have reached (`toISOString()` is always UTC; `.slice(0, 10)` was filing anything after 6pm Denver under **tomorrow**). `dashboard.html` is the ONLY html with `Date` formatters, so the sweep is complete.
+> - **`SCRIPTKILL.6`** — the hygiene hook scanned `scripts/` (6 files) and not gitignored `.scratch/` (**152**, 44 of them patchers), so it read *all clear* through the worst of the violation. ⚠ **Untracked-ness cannot be the signal in an ignored dir** — `git ls-files --others --exclude-standard` excludes ignored paths by construction; the raw **count** is the signal there. Re-apply recipe in `deploy/HOOK-FIXES.md` (the code itself cannot be version-controlled anywhere).
+> - **`RUNPOD.17` — closed on live evidence, no code.** Filed as "the Linux binary has never run"; it was running in production **as I filed it** — `osPlatform: linux`, `v0.3.25`, `cuda`, `cc 8.6`, one adapter, `17/17` matrices, `primaryEligible: true`. Same read confirmed **`TEACHMIRROR.1` live** (`workState: teaching` while `computeIdle: true`).
+> - **`WALKPROG.1` — closed as NORMAL** on Gee's call (*"its doing vocab thats normal"*). 65 min into `ela/kindergarten`, `_teachWordDefinition` had burned **3,896,561ms over 988 calls (~3.9s each, 99.7% of the cell)**. `cellPhasesStarted: 0` is **correct** — it counts *declared* phases and the cell is still in the pre-phase definition bootstrap: ~15.2 words/min, so **~2.4h before phase 1 of 25 begins**. An instrument I had started was dropped on his word.
+>
+> ### ⏸ STILL OPEN — 2, both for stated reasons. Do not "fix" either from reasoning.
+>
+> - **`LANGRAM.10`** — the `GEOMETRY VERDICT` line needs a boot on `05ab1951`+; the box is on `7ce77189`. Blocked on a press. **`349,155` in that line means stop.**
+> - **`SUBSTEPS.6`** — the batch lane has been **paused 65 min** by the probe gate (`sinceLastBatchMs: 3,908,720`), `substeps` frozen at 54, `batchTiming.samples: 16`. **Zero batches**, so the flap has no input and cannot be measured. Guessing a cooldown is exactly how `SUBSTEPS.5` shipped wrong the first time.
+>
+> ### 🔁 RETRACTED FROM MY OWN FILING
+>
+> `TZSTAMP.3`'s *"1 formatter pins Denver"* — that match was inside a **comment**; zero pinned it. And *"11 stamps"* — the real surface is **10 formatters + 3 unformatted passthroughs**. `RUNPOD.17` was filed as never-run while live. **Grep the code, not the comments.**
+
+<details>
+<summary><strong>2026-08-20 (earlier) — THE BOARD REACHED ZERO. The day's real subject was instruments that read healthy while nothing worked.</strong></summary>
+
+> ## 2026-08-20 — THE BOARD REACHED ZERO. The day's real subject was instruments that read healthy while nothing worked.
 >
 > **PICK-UP STATE.** Branch `main` @ **`05ab1951`**, verified identical on `origin` **and** `github` by `git ls-remote`, tree clean. **Unity is TEACHING** — one pod `5uo5dqw9x8b4iq` (A40 48GB, `unity-donor v0.3.25`, PRIMARY, 17/17 matrices, $0.44/hr); public docs and the `.25` download links are live and verified by fetching their BODIES. **Board: 0 open / 171 closed.** `docs/TODO.md` is now a TEMPLATE — its 969 lines were copied byte-for-byte into `docs/FINALIZED.md` (md5 `8cd4ddd0313a3282662919af19b2f4ca`, 171/171 task lines) and **verified before** the reset. `docs/BOARD.md` and `docs/OPEN-TASKS.md` were **deleted**, archived verbatim first (search `BEGIN VERBATIM BOARD ARCHIVE` / `BEGIN VERBATIM OPEN-TASKS ARCHIVE`). **`docs/TODO.md` is the only board — do not re-create a second one.**
 >
@@ -49,6 +77,8 @@
 > Nine silent push failures · a 24GB card recommended twice on a stale bytes-per-neuron figure · `592M` predicted three times · `UPLOADWD` placed **inside the very gate that jams** · a `fmtInt` helper that did not exist · backticks inside a template literal · a comment inside a backslash-continued `rsync` that would have commented out the source and destination · **seven python-heredoc file edits against `feedback_no_scripts_for_edits`** · two duplicate board markers · claiming deploy protection in a comment before it was true · a starvation brake whose first fix was insufficient and only the harness caught it · telling Gee a fix needed "the next push to main" when I had **already pushed it** and the deploy had already run. Each is written up in FINALIZED beside its fix.
 >
 > **THE ONE HABIT THAT WOULD HAVE PREVENTED MOST OF THEM:** check the BODY, not the status code; check the REMOTE, not the exit code; check the LIVE value, not the value I predicted. Every expensive mistake today was a claim I had not actually verified — and every one was caught the moment I looked at the thing itself.
+
+</details>
 
 > ## ⭐⭐⭐ 2026-08-20 (prior) — SELFFRAME: the curriculum had **six** "i am unity" in it. Every lesson is now something she DID, and she follows up on answers.
 >

@@ -186,7 +186,7 @@
 
   <div class="dash">
     <h1>🧠 Unity Brain — Live Dashboard</h1>
-    <p class="sub">Read-only view of Unity's brain activity. Shared across all users.</p>
+    <p class="sub">Read-only view of Unity's brain activity. Shared across all users. <span style="color:#555;" title="Every timestamp on this page is rendered in America/Denver — the same zone the brain-server process is pinned to — so a stamp here and a stamp in the server log are directly comparable no matter where you are reading from.">All times America/Denver (MT).</span></p>
     <div id="connection-status">
       <div id="d-conn-text"><span class="status dead">disconnected</span> Connecting to brain server...</div>
       <!-- Admin/viewer badge. Default 'connecting' state until the
@@ -882,6 +882,55 @@
     // Forgejo-authed admin lane wss://<host>/admin/ws (nginx reverse-proxies it
     // to the brain-server — NOT a raw :7525 port on the public host).
     const _dashIsLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+    // ── TZSTAMP.3 (2026-08-20) — ONE ZONE FOR THE WHOLE PAGE, ENFORCED AT THE
+    // PROTOTYPE, NOT AT THE CALL SITE.
+    //
+    // The server pins its process to America/Denver, so `humanTime` / the console
+    // ring / the server log all speak Denver. This page did NOT: ten `Date`
+    // formatter call sites passed `en-US` + `hour12` and no `timeZone`, which means
+    // BROWSER-LOCAL. Read from Denver they agreed, which is exactly why it survived
+    // the earlier sweep — the two clocks only diverge for a reader who is somewhere
+    // else, and then a dashboard stamp and a log line for the SAME event disagree
+    // with no indication either is being converted.
+    //
+    // Pinning the prototype instead of editing ten call sites is deliberate. A
+    // wrapper that each site must remember to call is enforced only by discipline,
+    // and the eleventh stamp someone adds next month lands browser-local again —
+    // that is precisely how these ten got here. This way the guarantee is
+    // structural: no `Date` on this page can render in another zone.
+    //
+    // Scope is exact. This patches `Date.prototype` ONLY. `Number.prototype
+    // .toLocaleString` is a different method and stays untouched, which matters
+    // because this page calls it constantly for thousand-separators (neuron counts,
+    // teach/min, byte totals) — sharing a method NAME is not sharing a method.
+    // Caller options are merged LAST so an explicit `timeZone` at any call site
+    // still wins.
+    const DASH_TZ = 'America/Denver';
+    (function pinDashboardTimezone() {
+      for (const fn of ['toLocaleString', 'toLocaleTimeString', 'toLocaleDateString']) {
+        const orig = Date.prototype[fn];
+        if (typeof orig !== 'function') continue;
+        Date.prototype[fn] = function (locales, options) {
+          return orig.call(this, locales || 'en-US', Object.assign({ timeZone: DASH_TZ }, options || {}));
+        };
+      }
+    })();
+
+    // Companion to the pin, for the OTHER half of the same bug: three stamps on
+    // this page were never formatted at all — a raw ISO string interpolated
+    // straight into the markup (`last-save`, `weights mtime`) or sliced with
+    // `.slice(0, 10)` for a date (`signoff`). String surgery on an ISO timestamp
+    // renders whatever zone it was serialised in, and `toISOString()` is ALWAYS
+    // UTC by definition — it does not read `process.env.TZ`. So those three could
+    // never be fixed by pinning anything; they had to start going through a
+    // formatter. Same failure this page already caught once on the checkpoint row.
+    function fmtStamp(v, opts) {
+      if (!v) return '—';
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);   // unparseable — show it, never invent
+      return d.toLocaleString('en-US', opts || { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+    }
     // Human-readable duration — "Dd Hh Mm Ss", dropping leading-zero units
     // (operator directive 2026-06-28: thousands-of-seconds uptime is unreadable / hard math on
     // the fly). Examples: 45 → "45s", 12393 → "3h 26m 33s", 90061 → "1d 1h 1m 1s".
@@ -2160,6 +2209,18 @@
           row('steps/sec', num(t.stepsPerSec, 2)) +
           row('event-loop lag', `${num(t.eventLoopLagMs)} ms`) +
           row('loop delay', el.meanMs != null ? `μ${num(el.meanMs, 1)} · p99 ${num(el.p99Ms, 1)} · max ${num(el.maxMs, 1)} ms` : '—') +
+          // LOOPNAME.8 — the freeze row. `loop delay max` above is a since-boot
+          // high-water mark with no count and no recency, so a single big number
+          // there cannot be told apart from one bad moment at boot. This row is
+          // counted by a separate watchdog THREAD, which is why it can exist for
+          // a freeze the main loop was too jammed to report. `null` means the
+          // watchdog did not start — stated, not silently rendered as zero.
+          row('loop freezes',
+            (t.loopFreeze == null)
+              ? '<span class="muted" title="The LOOPNAME.8 watchdog thread is not running on this boot, so freezes longer than the warn threshold are NOT being counted. A hard freeze would leave only the .last-breadcrumb.json phase marker. Check the boot log for a [LoopWatchdog] warn.">watchdog off</span>'
+              : (t.loopFreeze.episodes > 0
+                  ? `<span style="color:#f59e0b" title="Times the main event loop stopped answering for longer than the freeze threshold (default 5s) since boot, as observed from a separate thread. Worst episode shown. Each one was reported to stderr WHILE it was happening, and server/.loop-freeze.json holds the last one — if that file says STALLED after a reboot, the process never recovered from it.">${num(t.loopFreeze.episodes)} · worst ${num(t.loopFreeze.worstMs)} ms</span>`
+                  : `<span style="color:#22c55e" title="No stall past the freeze threshold since boot, measured by a thread that is not on the loop being measured — so this zero is evidence, not just an absence of reports.">none</span>`)) +
           row('GPU dispatch', `${num(t.gpuDispatchPerSec, 1)}/s <span class="muted">(${num(t.gpuHits)}✓/${num(t.gpuMisses)}✗)</span>`) +
           row('spikes', num(t.totalSpikes)) +
           row('defs/hr', num(t.defsLearnedPerHour)) +
@@ -3340,7 +3401,10 @@
         if (saveEl) {
           if (m.lastSave) {
             const trig = m.lastSave.trigger ? ` (${m.lastSave.trigger})` : '';
-            saveEl.textContent = `last-save: v${m.lastSave.version} at ${m.lastSave.at}${trig}`;
+            // TZSTAMP.3 — was the raw stored ISO string (UTC, 24-hour, with a `T`
+            // in the middle) sitting directly under a checkpoint row that renders
+            // Denver 12-hour. Two stamps for the same save, hours apart on paper.
+            saveEl.textContent = `last-save: v${m.lastSave.version} at ${fmtStamp(m.lastSave.at)}${trig}`;
           } else {
             saveEl.textContent = 'last-save: no save yet this boot';
           }
@@ -3362,7 +3426,11 @@
             signoffsEl.innerHTML = 'operator signoffs: <span style="color:#6b7280;">none yet — POST /grade-signoff {subject, grade, note} to record</span>';
           } else {
             const badges = keys.map(k => {
-              const when = so[k].signedAt ? so[k].signedAt.slice(0, 10) : '';
+              // TZSTAMP.3 — `.slice(0, 10)` takes the UTC calendar date off an ISO
+              // string, so anything signed off after 6pm Denver was filed under
+              // TOMORROW. A signoff ledger that names the wrong day is worse than
+              // one that names no day.
+              const when = so[k].signedAt ? fmtStamp(so[k].signedAt, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
               return `<span style="display:inline-block;background:#14532d;color:#22c55e;padding:2px 8px;border-radius:10px;font-size:10px;margin-right:6px;" title="${so[k].note || ''}">✓ ${k}${when ? ' · ' + when : ''}</span>`;
             }).join('');
             signoffsEl.innerHTML = `operator signoffs: ${badges}`;
@@ -3370,7 +3438,8 @@
         }
         if (weightsEl && m.weightsFile) {
           const sizeKB = m.weightsFile.sizeBytes ? (m.weightsFile.sizeBytes / 1024).toFixed(1) : '?';
-          weightsEl.textContent = `weights file: ${m.weightsFile.path} · ${sizeKB} KB · mtime ${m.weightsFile.mtime || 'n/a'}`;
+          // TZSTAMP.3 — raw mtime passthrough, same as last-save above.
+          weightsEl.textContent = `weights file: ${m.weightsFile.path} · ${sizeKB} KB · mtime ${m.weightsFile.mtime ? fmtStamp(m.weightsFile.mtime) : 'n/a'}`;
         }
         // #112.11 — "training was reset" banner from the persisted boot reason.
         const brEl = document.getElementById('d-ms-bootreason');
