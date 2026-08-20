@@ -90,8 +90,16 @@ log "deploy identity: ${DEPLOYED_SHORT} (${GIT_BRANCH}) sha=${DEPLOYED_SHA}"
 # `.last-boot-reason.json` is the boot-reason history the diagnostics read.
 #
 # All six are RUNTIME STATE, not code — exactly what this exclude list is for.
+#
+# `.loop-freeze.json` joined the list with LOOPNAME.8. It is the watchdog
+# thread's artifact, and its whole value is surviving the event it records: a
+# `state: STALLED` file still sitting there after a reboot is the proof that the
+# previous process never came back. A deploy deleting it would erase exactly the
+# evidence of the freeze that prompted the deploy.
+#
 # THE RULE: anything the server writes under `__dirname` belongs in this list,
-# or a deploy eats it. NOTE FOR EDITORS: this comment lives ABOVE the command on
+# or a deploy eats it — and that includes files written by its worker threads.
+# NOTE FOR EDITORS: this comment lives ABOVE the command on
 # purpose. A `#` line inside the backslash continuation would make the shell
 # comment out every remaining `--exclude` AND the source/dest arguments.
 #
@@ -150,6 +158,8 @@ rsync -a --delete \
   --exclude 'server/.last-boot-reason.json' \
   --exclude '.last-breadcrumb.json' \
   --exclude 'server/.last-breadcrumb.json' \
+  --exclude '.loop-freeze.json' \
+  --exclude 'server/.loop-freeze.json' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 

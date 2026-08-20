@@ -1007,6 +1007,21 @@ const SERVER_STATE_MIXIN = {
         stepsPerSec: r2(perf.stepsPerSec || 0),
         eventLoopLagMs: this._lastEventLoopLagMs || 0,
         eventLoopDelay: elDelay,
+        // LOOPNAME.8 — freeze episodes as counted by the WATCHDOG THREAD, not by
+        // the loop. `eventLoopDelay.maxMs` above is a since-boot high-water mark
+        // from `perf_hooks` with no count and no recency: one 58s reading tells
+        // you neither how many times it happened nor whether it was at boot. The
+        // watchdog's numbers come from a thread that is still running during a
+        // stall, so they exist even for a freeze the main loop never reported.
+        // Reads straight out of the shared buffer — no message port, so this is
+        // still truthful in a state snapshot built right after a recovery.
+        loopFreeze: (() => {
+          try {
+            const s = this._loopWatchdogSlots;
+            if (!s) return null;   // watchdog failed to start; say so by absence
+            return { episodes: Number(Atomics.load(s, 2)), worstMs: Number(Atomics.load(s, 3)) };
+          } catch { return null; }
+        })(),
         gpuDispatchPerSec,
         gpuHits: perf.gpuHits || 0,
         gpuMisses: perf.gpuMisses || 0,

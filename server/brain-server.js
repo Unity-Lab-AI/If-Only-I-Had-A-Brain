@@ -10339,6 +10339,48 @@ const _LAG_SAMPLE_MS = 1000;
 const _LAG_WARN_MS = Number(process.env.DREAM_LOOP_LAG_WARN_MS) > 0
   ? Number(process.env.DREAM_LOOP_LAG_WARN_MS)
   : 250;
+
+// ── LOOPNAME.8 (2026-08-20) — THE WATCHDOG THREAD.
+//
+// LOOPNAME.7 (the sync breadcrumb below) is post-mortem by construction: it says
+// where she WAS. It cannot say "she is stuck right now, and it has been 40
+// seconds", because the only thing that could say that is this very setInterval —
+// which does not run while the loop is blocked. Every diagnostic channel the brain
+// owns has that same defect: admin WS, /public-state.json, the console ring, and
+// this warn all ride the loop under investigation.
+//
+// So the observer is moved OFF the loop. The main thread stamps a heartbeat into a
+// SharedArrayBuffer on the sampler tick already running here — one Atomics.store,
+// no allocation, no I/O. `server/loop-watchdog.js` runs on its own thread and its
+// own event loop, polls that stamp, and reports a stall AS IT HAPPENS using raw
+// `fs.writeSync` (worker stdout is piped through the PARENT loop, so an ordinary
+// console.log from the watchdog would queue behind the very freeze it is
+// reporting — see that file's header).
+//
+// `.unref()` so the watchdog never holds the process open at shutdown, and the
+// whole block is try/guarded: a box where worker_threads is unavailable loses the
+// watchdog and keeps the brain, never the other way round.
+const _wdSlots = new BigInt64Array(new SharedArrayBuffer(4 * 8));
+try {
+  const { Worker: _WdWorker } = require('worker_threads');
+  Atomics.store(_wdSlots, 1, BigInt(Date.now()));   // slot 1 = boot time
+  const _wd = new _WdWorker(path.join(__dirname, 'loop-watchdog.js'), {
+    workerData: {
+      sab: _wdSlots.buffer,
+      pollMs: 500,
+      warnMs: Number(process.env.DREAM_LOOP_FREEZE_WARN_MS) > 0 ? Number(process.env.DREAM_LOOP_FREEZE_WARN_MS) : 5000,
+      repeatMs: 10000,
+      freezeFile: path.join(__dirname, '.loop-freeze.json'),
+      breadcrumbFile: path.join(__dirname, '.last-breadcrumb.json'),
+    },
+  });
+  _wd.unref();
+  _wd.on('error', (e) => console.warn(`[LoopWatchdog] watchdog thread errored — freeze reporting is DOWN for the rest of this boot: ${e && e.message}`));
+  brain._loopWatchdogSlots = _wdSlots;
+} catch (e) {
+  console.warn(`[LoopWatchdog] could not start the watchdog thread (${e && e.message}) — a hard freeze will leave only the LOOPNAME.7 breadcrumb.`);
+}
+
 let _lagAnchor = process.hrtime.bigint();
 const _lagTimer = setInterval(() => {
   const now = process.hrtime.bigint();
@@ -10346,6 +10388,10 @@ const _lagTimer = setInterval(() => {
   _lagAnchor = now;
   const lagMs = actualMs - _LAG_SAMPLE_MS;
   brain._lastEventLoopLagMs = lagMs > 0 ? Math.round(lagMs) : 0;
+  // LOOPNAME.8 — the heartbeat the watchdog thread watches. Deliberately the
+  // cheapest possible statement in this function; if the loop is alive enough to
+  // reach this line, the watchdog stays quiet.
+  Atomics.store(_wdSlots, 0, BigInt(Date.now()));
   // ── LOOPNAME.7 (2026-08-20) — THE PRE-BLOCK BREADCRUMB, flushed to disk.
   //
   // Every diagnostic channel we own — admin WS, `/public-state.json`, the
