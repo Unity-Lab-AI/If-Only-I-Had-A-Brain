@@ -3141,7 +3141,23 @@
         if (list.length === 0) { el.textContent = `checkpoints: none yet (keeping last ${cap})`; return; }
         const rows = list.map((s) => {
           const mb = s.binBytes ? ` · ${(s.binBytes / 1048576).toFixed(0)}MB` : '';
-          const when = s.savedAt ? ` · ${String(s.savedAt).replace('T', ' ').slice(0, 19)}` : '';
+          // ── TZSTAMP.2 (2026-08-20) — THIS ONE ESCAPED THE ORIGINAL SWEEP.
+          //
+          // It read `2026-08-20 20:13:46` — UTC, 24-hour — because it took the
+          // raw stored string and merely stripped the `T`. No `Date`, no locale,
+          // no formatter: string surgery on an ISO timestamp renders whatever
+          // timezone it was serialised in, and **`toISOString()` is ALWAYS UTC
+          // by definition — it ignores `process.env.TZ` entirely.** So pinning
+          // the process to `America/Denver` (brain-server.js:29) could never fix
+          // this line, and the TZSTAMP sweep that fixed the other eight stamps
+          // missed it precisely because it was not using a formatter to fix.
+          //
+          // Now parsed and rendered like every other stamp on this page:
+          // explicit `en-US` + `hour12: true`, date + time, so 20:13:46 UTC
+          // reads `Aug 20, 2:13:46 PM`.
+          const when = s.savedAt
+            ? ` · ${new Date(s.savedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}`
+            : '';
           return `<span style="display:inline-block;margin:2px 8px 2px 0;">v${s.slot} (#${s.version || '?'}${mb}${when}) <button data-rollback="v${s.slot}" style="font-size:9px;padding:1px 6px;cursor:pointer;background:#1a1020;color:#c084fc;border:1px solid #4c1d6b;border-radius:3px;">⏪ rollback</button></span>`;
         }).join('');
         el.innerHTML = `checkpoints (last ${cap}): ${rows}`;
@@ -3398,7 +3414,12 @@
             const pausedGrade = m.pausedAt?.grade || 'unknown';
             const nextGrade = m.nextGrade?.grade || null;
             const pausedWhen = m.pausedAt?.at
-              ? new Date(m.pausedAt.at).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
+              // TZSTAMP.2 — this one CONVERTED TO UTC on purpose and said so.
+              // Deliberate once, wrong now: every other stamp on the page is
+              // local 12-hour, so one UTC 24-hour outlier forces the reader to
+              // do timezone arithmetic against its neighbours. Same formatter
+              // as the rest.
+              ? new Date(m.pausedAt.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })
               : '';
             if (nextGrade) {
               advEl.innerHTML = `
