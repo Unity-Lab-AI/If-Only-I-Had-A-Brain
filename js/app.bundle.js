@@ -95766,14 +95766,15 @@ function _magnitudeFeatureForNumber(n) {
   return out;
 }
 var PRE_K_FALLBACK_CAP = 5;
-var PHASE_BUDGET_MS = Number(
-  typeof process !== "undefined" && process.env && process.env.DREAM_PHASE_BUDGET_MS || 20 * 60 * 1e3
-);
+var PHASE_BUDGET_MS = (() => {
+  const raw = Number(typeof process !== "undefined" && process.env && process.env.DREAM_PHASE_BUDGET_MS || 0);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+})();
 var STRUCTURE_DOSE = Math.max(
   0.05,
   Math.min(1, Number(
-    typeof process !== "undefined" && process.env && process.env.DREAM_STRUCTURE_DOSE || 0.4
-  ) || 0.4)
+    typeof process !== "undefined" && process.env && process.env.DREAM_STRUCTURE_DOSE || 1
+  ) || 1)
 );
 var Curriculum = class _Curriculum {
   static PRE_K_FALLBACK_CAP = PRE_K_FALLBACK_CAP;
@@ -95915,7 +95916,7 @@ var Curriculum = class _Curriculum {
           this._phaseWorkSeen = /* @__PURE__ */ new Set();
           this._phaseWorkTotal = this._teachNestedTotal && this._teachNestedTotal[name] || 0;
           this._phaseWorkExpect = this._teachNestedSet && this._teachNestedSet[name] || null;
-          cl._phaseDeadlineAt = Date.now() + PHASE_BUDGET_MS;
+          cl._phaseDeadlineAt = PHASE_BUDGET_MS > 0 ? Date.now() + PHASE_BUDGET_MS : 0;
           cl._phaseDeadlineName = name;
         }
         const workSeen = isCellPhase ? null : this._phaseWorkSeen;
@@ -105432,7 +105433,7 @@ var Curriculum = class _Curriculum {
     const _mode = !_consolidated || _periodicFull ? "FULL" : "TOPUP";
     const _dose = STRUCTURE_DOSE * (_mode === "FULL" ? 1 : 0.15);
     const R = (n) => Math.max(1, Math.round(n * _dose));
-    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND \u2014 visit #${_visit} \xB7 mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === "number" ? _probeRate.toFixed(2) : "never probed"}${_periodicFull ? " \xB7 periodic re-deepen" : ""}) \xB7 STRUCTURE_DOSE=${STRUCTURE_DOSE} \u2192 effective dose \xD7${_dose.toFixed(3)} \xB7 phase budget ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min. Authored reps are scaled, NOT skipped; anything the budget defers resumes on the next visit.`);
+    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND \u2014 visit #${_visit} \xB7 mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === "number" ? _probeRate.toFixed(2) : "never probed"}${_periodicFull ? " \xB7 periodic re-deepen" : ""}) \xB7 STRUCTURE_DOSE=${STRUCTURE_DOSE} \u2192 effective dose \xD7${_dose.toFixed(3)} \xB7 ${PHASE_BUDGET_MS > 0 ? `phase budget ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min (opt-in via DREAM_PHASE_BUDGET_MS; anything it defers resumes next visit)` : "NO PHASE BUDGET \u2014 this phase runs to completion however long it takes (Gee 2026-08-20)"}. Authored reps are scaled, NOT skipped.`);
     const slotPairs = [
       // Pronouns — high-prior subject fillers
       ["i", "subject"],
