@@ -30,8 +30,23 @@ pub struct Cli {
     #[arg(long, default_value = "0")]
     pub gpus: String,
 
-    /// Target compute utilization per GPU via duty-cycling: a percent 0-100, or "all" (=100).
-    #[arg(long, default_value = "10")]
+    /// Share of each GPU you are donating: a percent 0-100, or "all" (=100, the default).
+    ///
+    /// UTILDEFAULT (v0.3.24) — this defaulted to "10" and the old help text called it
+    /// "target compute utilization via duty-cycling". BOTH were wrong, and together they
+    /// throttled every donor that did not pass the flag:
+    ///
+    ///   * There is NO duty-cycling. Nothing in compute.rs or cuda.rs ever reads this
+    ///     value — the card always computes flat out. It is DECLARED to the brain, not
+    ///     enforced here.
+    ///   * What it actually does is shrink the capacity the brain will USE: the server
+    ///     sizes this donor at `fullVram * pct/100` (gpu.js `eff`). At the old default a
+    ///     24GB card announced itself as 2.4GB, could not hold the cortex, and was handed
+    ///     almost no work — a volunteer donating a whole GPU and seeing it sit idle.
+    ///
+    /// So the default is "all". Someone who wants to hold back says so explicitly, which
+    /// is the right way round: donating your card should not require a flag to work.
+    #[arg(long, default_value = "all")]
     pub utilization: String,
 
     /// GPU memory cap per GPU in MB, or "all" (no cap). Default: all.
