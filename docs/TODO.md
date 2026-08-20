@@ -69,3 +69,15 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 *(none — board at zero as of 2026-08-20)*
 
 <!-- New tasks go BELOW this line, appended in order, with Gee's verbatim words. -->
+
+## OPEN ISSUES — filed 2026-08-20 (found during the session, not yet fixed)
+
+> Gee (verbatim): *"fix the issues you found"* → *"never mind write the issues to the todo, quickly, no horse shit fucking around"*
+
+- [ ] **TZSTAMP.3** `tsLabel` (server, `humanTime`) is **always America/Denver** because the process TZ is pinned; the dashboard's own 11 stamps render **browser-local**. Identical from Denver, divergent from anywhere else. Fix = add `timeZone: 'America/Denver'` to the dashboard formatters so the two can never disagree. `TZSTAMP.1`'s documented choice was "the admin's own system time", so this is a deliberate reversal and needs Gee's word — he has since said "it denver time".
+- [ ] **SCRIPTKILL.6** `.claude/hooks/session-start-env-dump.cjs`'s hygiene report scans **`scripts/` only**. The real patcher hoard was in gitignored **`.scratch/`** (152 files, 44 of them `patch-*`/`fix-*`/`todo-*` editors). Fix = scan `.scratch/` too. Recorded as a known blind spot in `deploy/HOOK-FIXES.md`; the file itself is unversioned (`.claude/` is LAW-excluded, `ual-workflow` is off-limits), so the fix must be applied live AND written into that record.
+- [ ] **SUBSTEPS.6** Residual flap in the **72–79** substep band under sustained teach-rate variation. Bounded, safe, self-correcting, and far better than the pre-fix collapse to the floor — but not settled. Candidate: lengthen `_adaptCooldown` past 2 windows, or require two consecutive starvation windows before shrinking.
+- [ ] **RUNPOD.17** The **Linux** `v0.3.25` binary from CI has **never been executed**. I verified the de-dup on the Windows build only (`Detected 2 → Detected 1`). Reasoning says it is a no-op on a CUDA-only Linux host (`enumerate_adapters(PRIMARY)` returns zero, so the early return hands back the same empty list) — **but reasoning is not running, and RUNPOD.16 itself was found BY running the binary, not reading it.** Read the pod's `===LIST_GPUS===` on its next natural restart.
+- [ ] **LOOPNAME.8** The **separate diagnostic process/thread is NOT built.** `LOOPNAME.7`'s breadcrumb makes a freeze forensically legible *after the fact*; it gives no live eyes *during* one. Every diagnostic channel still rides the event loop under investigation.
+- [ ] **LANGRAM.10** The new unconditional `LANGRAM.9 GEOMETRY VERDICT` line has **not been observed on a real boot yet** — it ships in `05ab1951`+, and the box booted on `f66986d1`. Read it on the next restart; it names which of (pin / weights / override / live bounds) decided the vocabulary ceiling. **`349,155` in that line means stop.**
+- [ ] **WALKPROG.1** `cellsPassed` was still `None` an hour into the walk while `subPhases` climbed normally. Expected for a fresh K walk at 425M, but unverified — if it is still `None` after several hours, the cell-completion path needs looking at, not the teach path.
