@@ -48,7 +48,32 @@ const DF7_MILESTONES = [
   { minCommunityMB: 24_000,  minDonors: 3,  neurons: 40_000_000 },  // tier 1 — a few mid GPUs
   { minCommunityMB: 96_000,  minDonors: 6,  neurons: 150_000_000 }, // tier 2 — community momentum
   { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
-    ];
+  // ── TIERTOP (2026-08-20) — THE LADDER USED TO END HERE, AND THAT WAS THE CAP ──
+  //
+  // Gee, four times over, on a rented A6000 reading 21% VRAM: "im paying for a
+  // GPU i best be using 110% of all of it". Tier 3 was the last rung, we were
+  // already standing on it (306,458,816 after the host-RAM trim), so NO donor
+  // however large could move the brain — a 45,488MB card qualifies
+  // ~1,681,286,758 neurons of capacity and the ladder had nowhere to put them.
+  // A ceiling that cannot be climbed past is indistinguishable from a bug when
+  // the operator is paying by the hour.
+  //
+  // These rungs do NOT make the brain bigger by themselves. Sizing is still
+  // clamped by `_safeMB` in the boot allocator (45% of coordinator host RAM,
+  // always leaving >=13GB for Forgejo + OS), because the coordinator holds the
+  // CPU-side master copy of everything the donor computes on. The ladder simply
+  // stops being the binding constraint, so the brain grows to whatever the box
+  // can actually hold and KEEPS growing automatically if the box is ever
+  // upgraded — instead of needing this file edited again.
+  //
+  // Spacing keeps the ~2.5-3x step of the existing rungs so a resize is always
+  // a decisive jump (each one costs a fresh walk) rather than a churn of small
+  // ones. The top rung is deliberately past what any single card today can
+  // hold, so the ladder is not the thing anyone has to revisit next time.
+  { minCommunityMB: 640_000,   minDonors: 16, neurons: 900_000_000 },    // tier 4 — a full pro card (48GB class)
+  { minCommunityMB: 1_600_000, minDonors: 32, neurons: 2_400_000_000 },  // tier 5 — multi-card pool
+  { minCommunityMB: 4_000_000, minDonors: 64, neurons: 6_000_000_000 },  // tier 6 — headroom; NOT the limit, the box is
+];
 
 const SERVER_GPU_MIXIN = {
   async _gpuStep(clusterName) {
