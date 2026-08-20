@@ -33896,3 +33896,24 @@ So the ceiling became **per-donor**. `substepsForDonor()` gives 24 to a donor an
 **⏳ UTILDEFAULT.2 — GEE: tag `donor-v0.3.24`.** Cargo is bumped, the binary builds and self-reports; the CI guard requires tag == Cargo version. **This is also the first release that will publish its own download page**, since `PAGESTALE.1` added the rsync step — the `.24` links go live in the same run instead of silently staying behind.
 
 **Board: 37 open, 107 closed.**
+
+**ADDENDUM — donor v0.3.24 BUILT, RELEASED AND DEPLOYED, and PAGESTALE.1 proved itself on its first real release.**
+
+> Gee (verbatim): *"make sure u build and deploy the doner correctly and update the pod to use it"*
+> Gee (verbatim): *"kill pod and set it up to use the new binary"*
+> Gee (verbatim): *"update and fresh walk start, make sure the pod is correct"*
+
+Tag `donor-v0.3.24` pushed to both remotes; the CI guard passed (tag == Cargo version), both binaries published. **The site lane worked without being asked this time** — the `.24` download links went live automatically (`2` tokens in `html/compute.html`, `3` in `html/legend.html`, checked against the live host with `Cache-Control: no-cache`) and the CI bump commit `081fb034` landed on `main`. Yesterday that same lane silently published nothing while logging all-green; today it published itself. That is `PAGESTALE.1` verified by the only test that counts.
+
+Template `4u68iuvsnz` PIN moved `.23` → `.24` and the `args` string round-tripped **losslessly** — single element, escaping intact — which matters because `update-template` joins a multi-element array with spaces and would have shredded the command. Pod `sfi9nut1hx513u` terminated, **new pod `d8wnfb258p5ug3`** created (A6000, EU-SE-1, SECURE, $0.53/hr, CUDA 13.0). Correctness taken from the pod's OWN boot log rather than asserted:
+
+```
+unity-donor v0.3.24
+Donating 1 GPU(s) at 100% utilization (memory: All)
+  [0] NVIDIA RTX A6000 · max-buffer 45488 MB · max-binding 45488 MB
+[multi] GPU slot 0 → CUDA-ONLY host (no wgpu adapter; ordinal 0, 45488 MB cap, cc 8.6)
+[donor] registered as NVIDIA RTX A6000 (45488 MB binding cap) … Donating at 100% utilization.
+8/8 clusters gpu_init · langCortex — 12000000 neurons, 11 regions
+```
+
+**What the next press should print, and it is the read on three fixes at once:** `[Brain] SUBSTEPS.1 — 24 brain-steps per donor round-trip (NATIVE tier: this donor drains its socket during a batch …)` proves SUBSTEPS.1 engaged against a 0.3.24 donor (>= 0.3.12); `LANGRAM.6 — geometry pin CONFIRMED: 12,000,000` or `⛔ LANGRAM.7 FRESH-WALK GEOMETRY FLOOR` proves the fresh walk did not re-roll the geometry dice; and the donor row reading `teaching (N ops, compute lane quiet)` rather than red `idle` proves TEACHMIRROR's server half is live. A bare `Language cortex auto-scaled to 349,155` is the one line that means stop.
