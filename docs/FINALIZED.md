@@ -35642,3 +35642,26 @@ It had **zero** mention of the trap that cost two fresh walks. Now a LAW at the 
 `docs/ADMIN-CONTROLS.md` — **the eight env knobs added today were all undocumented**; each now has a row with its default and what it actually costs. `docs/ARCHITECTURE.md` — new banner carrying the scale, both sizing bugs, the coordinator ceiling ladder, donor v0.3.25's two changes, PRIMARY-by-VRAM, adaptive substeps and the new instruments. `docs/NOW.md` — current-state banner leading with the three failures rather than the wins.
 
 **Board: 0 open, 171 closed.**
+
+---
+
+## 2026-08-20 — TZSTAMP.2: the two stamps that escaped the timezone sweep, and WHY they escaped it
+
+> Gee (verbatim): *"why are these saying 20:13 and 20:20 i thought i told you to fix the time on this fucking thing thouroughly it denver time and AM PM not military time"*
+> Reported: `checkpoints (last 3): v0 (#12 · 2026-08-20 20:13:46) · v1 (#13 · 5460MB · 2026-08-20 20:18:47) · v2 (#14 · 2026-08-20 20:20:06)`
+
+**`TZSTAMP.1` was real and it worked — it pinned `process.env.TZ = 'America/Denver'` and converted eight dashboard stamps to explicit `en-US` + `hour12: true`. Two renderers survived it, and the reason is the useful part: neither was USING a formatter, so a sweep that fixed formatters could not find them.**
+
+**1. The checkpoint line** did `String(s.savedAt).replace('T', ' ').slice(0, 19)` — pure string surgery on an ISO timestamp. No `Date`, no locale, nothing to fix. And the deeper trap: **`savedAt` is written with `new Date().toISOString()`, which is ALWAYS UTC by definition and ignores `process.env.TZ` entirely.** So pinning the process timezone could never have reached this line — the fix that worked everywhere else was structurally incapable of touching it.
+
+**2. The paused-advance line** did `.toISOString().replace('T',' ').slice(0,19) + ' UTC'` — it converted to UTC *deliberately* and labelled it honestly. Defensible in isolation; wrong sitting beside eight local 12-hour stamps, because one UTC 24-hour outlier forces the reader to do timezone arithmetic against its neighbours.
+
+Both now use the same formatter as the rest of the page (`en-US`, `month`/`day`, `hour12: true`). Verified against the exact reported values: **`20:13:46Z → Aug 20, 2:13:46 PM`**, `20:18:47Z → 2:18:47 PM`, `20:20:06Z → 2:20:06 PM` (MDT = UTC−6). The epoch-milliseconds form of `savedAt` (there are two producers — `toISOString()` at two sites and `Date.now()` at another) parses identically through `new Date(...)`, so both storage shapes render correctly.
+
+**THE CONSOLE LOG WAS ALREADY CORRECT — checked, not assumed.** The ring ships `nowLabel: "Aug 20, 2026, 2:24:01 PM"`, `tz: "America/Denver"`, and a pre-formatted per-line `tsLabel: "2:23:47 PM"`; the dashboard's console panel independently derives its own from the epoch `ts` with the same `en-US`/`hour12` formatter. Two independent paths, both 12-hour.
+
+**Sweep verified clean afterwards:** no `hour12: false`, no `' UTC'` labels, no raw-ISO renders left in any page. The `toLocaleString()` matches in `html/compute.html` are **number** formatting (thousands separators), and `brain-server.js:4188`'s `getHours()` is a numeric circadian-drive input, not a display stamp — both correctly left alone.
+
+⚠ **LATENT INCONSISTENCY, FLAGGED NOT SILENTLY CHANGED:** `tsLabel` is *always* Denver (the server's TZ is pinned), while the dashboard renders *browser-local*. Identical while viewing from Denver; they would disagree from another timezone. The documented `TZSTAMP.1` decision was "the admin's own system time", so that choice is preserved rather than quietly overridden — it needs Gee's call, not mine.
+
+**Board: 0 open, 171 closed.**
