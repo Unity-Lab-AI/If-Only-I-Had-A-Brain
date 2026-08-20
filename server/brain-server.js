@@ -9104,6 +9104,45 @@ wss.on('connection', (ws, req) => {
           // FIRST replica-sync, before the first telemetry frame arrives.
           client.maxBindMB = Number(msg.maxStorageBindingMB) || Number(msg.maxBindMB) || 0;
           client.gpuName = (msg.gpuName || 'unknown').toString().slice(0, 80);
+          // ── TIERTOP — LEARN THE REAL CARD, because boot cannot see one. ──
+          //
+          // The SELF-SEEDING BOOT picks its tier from `donorBaselineMB`, which
+          // defaulted to a HARDCODED 16384 — so tier selection never once
+          // looked at the card actually attached. A rented 45,488MB A6000 was
+          // sized as if it were a 16GB card, which is half of why the pod sat
+          // at 21% VRAM while Gee was paying by the hour for the other 79%.
+          //
+          // Boot genuinely cannot read a donor (none is connected yet), so the
+          // only honest fix is to REMEMBER: when a donor registers with more
+          // VRAM than the persisted baseline, raise the baseline and write it
+          // back, so the NEXT boot qualifies the tier this hardware deserves.
+          // UP-ONLY and idempotent — a small donor joining never shrinks the
+          // baseline (that would re-tier the brain down and wipe weights on a
+          // laptop connecting for five minutes), which is the same up-only
+          // discipline DF.7 already applies to tier moves.
+          //
+          // This does NOT resize anything by itself: the boot allocator still
+          // clamps to `_safeMB` (coordinator host RAM), and a tier change still
+          // costs a deliberate fresh walk. It only stops a hardcoded 16GB guess
+          // from being the ceiling on hardware we are renting.
+          try {
+            const _vram = Number(client.gpuVramMB) || 0;
+            if (_vram > 1024) {
+              const _asPath = path.join(__dirname, 'autoscale-settings.json');
+              let _as = {};
+              try { if (fs.existsSync(_asPath)) _as = JSON.parse(fs.readFileSync(_asPath, 'utf8')) || {}; } catch { _as = {}; }
+              const _prev = Number(_as.donorBaselineMB) || 16384;
+              if (_vram > _prev) {
+                _as.donorBaselineMB = Math.min(262144, Math.floor(_vram));
+                _as.donorBaselineFrom = client.gpuName;
+                _as.donorBaselineAt = new Date().toISOString();
+                fs.writeFileSync(_asPath, JSON.stringify(_as, null, 2));
+                console.log(`[Brain] TIERTOP — donor baseline RAISED ${_prev}MB → ${_as.donorBaselineMB}MB (learned from ${client.gpuName}). The boot tier was being chosen from a hardcoded 16384MB guess, so a bigger card could not move the brain. Takes effect on the NEXT boot, still clamped by coordinator host RAM; a tier change costs a fresh walk.`);
+              }
+            }
+          } catch (e) {
+            console.warn('[Brain] TIERTOP — could not persist the donor baseline (sizing unaffected this boot):', e && e.message ? e.message : e);
+          }
           // FLAP — platform/backend telemetry captured at register so a 0-Gn/s donor's
           // OS / compute backend / driver / compute-capability is visible in the Clients table
           // from the first frame (native donor sends these; the browser donor omits them → blank).
