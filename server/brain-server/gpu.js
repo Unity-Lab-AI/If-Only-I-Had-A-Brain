@@ -1702,6 +1702,16 @@ const SERVER_GPU_MIXIN = {
       let _resumedCount = 0;
       const reg = this._replicaMatrixRegistry;
       let synced = 0;
+      // DF7SYNC.7 — the measurement the item asks for BEFORE any chunked/interleaved
+      // rewrite is designed: how long a sync actually holds, and WHICH window it ran
+      // in. The deadlock is narrowed, not gone — a donor joining mid-teach waits for a
+      // dream window (the practical rule is still "attach every donor before pressing
+      // the walk"), and nobody has ever measured how long that window has to be. These
+      // three numbers (wall-clock, window, payload) are what turn "its own batch, do not
+      // guess at it" into a design with evidence under it.
+      const _syncT0 = Date.now();
+      const _syncStartedDuringTeach = !!this._curriculumInProgress;
+      let _syncedBytes = 0;
       // SYNCPARTIAL — per-matrix outcome tracking. Without these the sweep could not
       // tell the difference between "pushed 17" and "pushed 1 and lost 16 in silence".
       const _failed = [];
@@ -1738,6 +1748,18 @@ const SERVER_GPU_MIXIN = {
             // being handed work for a matrix it never received.
             if (_res !== null && _res !== undefined) {
               synced++;
+              // DF7SYNC.7 — count what actually crossed the wire. The item's own
+              // instruction was "instrument the dream-window sync duration first"
+              // before any interleaving rewrite is attempted, and duration without
+              // payload is unreadable: 8 minutes for 3GB and 8 minutes for 40MB
+              // are different diagnoses. nnz x 8B (value + colIdx) + rowPtr, the
+              // same arithmetic the VRAM estimator uses.
+              try {
+                const _m = entry.matrix;
+                const _nnz = (_m && _m.values && _m.values.length) || 0;
+                const _rows = (_m && _m.rows) || 0;
+                _syncedBytes += _nnz * 8 + (_rows + 1) * 4;
+              } catch { /* accounting must never break a sync */ }
               if (_cc) {
                 _cc.heldMatrices.add(name);
                 if (_cc.heldMatrices.size === 1) {
@@ -1817,6 +1839,19 @@ const SERVER_GPU_MIXIN = {
         console.warn(`[Brain] DF.7 SYNCPARTIAL — replica sync finished PARTIAL: ${synced}/${_attempted} matrices landed. STILL MISSING (${_failed.length}): ${_failed.map(f => f.name + " [" + f.why + "]").join("; ")}. Teach dispatch is matrix-scoped, so this donor is NOT eligible for teach batches touching those matrices — expect compute batches with ZERO teach ops until the next rebroadcast lands them.`);
       } else {
         console.log(`[Brain] DF.7 — replica sync complete: ${synced}/${_attempted} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(", ")}] — it shares compute for the clusters it holds)` : ". It now holds a FULL brain replica and shares compute (no longer idle standby)"}.`);
+      }
+      // DF7SYNC.7 — one line, three facts, on every outcome: how long the sweep held,
+      // which window it ran in, and how much actually crossed the wire. A sync that
+      // needs longer than a dream window lasts is the case the interleaving rewrite has
+      // to solve; without this line that claim was unmeasured.
+      {
+        const _heldS = (Date.now() - _syncT0) / 1000;
+        const _endedDuringTeach = !!this._curriculumInProgress;
+        const _win = _syncStartedDuringTeach
+          ? (_endedDuringTeach ? 'DURING TEACH (paced)' : 'started during teach, finished in an idle/dream window')
+          : (_endedDuringTeach ? 'started idle, the walk resumed under it' : 'IDLE / dream window');
+        const _mb = _syncedBytes / 1048576;
+        console.log(`[Brain] DF7SYNC.7 — sync window measured: held ${_heldS.toFixed(1)}s · window=${_win} · ${synced} matrices ≈ ${_mb.toFixed(1)}MB pushed${_heldS > 0 ? ` (${(_mb / Math.max(0.001, _heldS)).toFixed(2)} MB/s effective)` : ''}. This is the number the interleaved-sync design needs — a sweep that outlasts a dream window is the case to fix.`);
       }
     } catch (e) {
       if (_cc) _cc._df7Synced = false;

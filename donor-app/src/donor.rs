@@ -525,7 +525,27 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             set_status(&control, |s| { s.connected = false; s.note = "stopped".into(); });
             return Ok(());
         }
-        match tokio_tungstenite::connect_async(&cfg.server).await {
+        // LG.6 PREREQUISITE (2026-08-20) — RAISE THE RECEIVE CEILING.
+        //
+        // `connect_async` uses tungstenite's DEFAULTS: max_message_size 64 MiB,
+        // max_frame_size 16 MiB. That 64 MiB is the wall the language-cortex hop to
+        // ~20M neurons was filed as blocked on: a CSR rowPtr alone is (rows+1)x4 bytes
+        // = 76.3 MB at 20M rows, so the matrix could not arrive as one message and the
+        // board recorded "needs a segmented-rowPtr donor-side protocol change" as a hard
+        // prerequisite. Measured against the actual limit, the prerequisite is this
+        // config call — the protocol redesign is now an OPTION, not a requirement.
+        //
+        // 512 MiB message / 64 MiB frame. Chosen against what the brain can actually
+        // send: the server sheds above `DREAM_WS_SOFT_SHED_MB` (default 64 MB of
+        // BUFFERED bytes) and chunks large uploads, so this ceiling is headroom for a
+        // single large CSR component, not an invitation to stream gigabytes in one
+        // message. It is a RECEIVE limit — nothing changes until something big actually
+        // arrives, and an oversized frame is still REFUSED above the ceiling rather than
+        // being allowed to exhaust host memory.
+        let mut _ws_cfg = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default();
+        _ws_cfg.max_message_size = Some(512 << 20);
+        _ws_cfg.max_frame_size = Some(64 << 20);
+        match tokio_tungstenite::connect_async_with_config(&cfg.server, Some(_ws_cfg), false).await {
             Ok((ws, _resp)) => break ws,
             Err(e) => {
                 attempt += 1;

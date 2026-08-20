@@ -8,12 +8,32 @@
 |---|---|
 | | count |
 |---|---|
-| **TOTAL OPEN** | **26** |
-| pending `[ ]` | 21 |
+| **TOTAL OPEN** | **21** |
+| pending `[ ]` | 16 |
 | in progress `[~]` | 5 (`CELLBOUND.A–E`, riding the one press) |
-| closed on the board | 66 |
+| closed on the board | 73 |
 
-**⚠ THIS FILE IS ONE BATCH BEHIND ITSELF.** It was written when 82 items were open. Since then the **FINISH THE BOARD** batch (2026-08-20, second pass) built nine items and closed 47 stale ones with verdicts, so **the entries under TIER 4 and TIER 5 below are CLOSED** — they are kept as the closed record, and their live status lives on `docs/TODO.md` as `[x]` + a closure verdict. Tiers 0–3 entries that shipped are marked in `docs/BOARD.md` with ✅. **The 26 still genuinely open:** `CELLBOUND.A`–`E` (built, riding the press) · `CELLBOUND.F` (the press) · `CELLBOUND.G` (the ~58-site sweep, deliberately after F) · `LG.6` · `LG.7` · `FIRSTPIN.3` · `GRANT.2` · `GRANT.3` · `RUNPOD.6` · `RUNPOD.7` · `RUNPOD.8` · `DF7SYNC.7` · `DELTAIDX.9` (⛔ still DISABLED, cause never found — must not be closed) · `RESYNCDUTY.9` (held until F reports) · `LOOPNAME.7` · `SYNCPARTIAL.6` · `WORDEMIT.4` · `TASKLIST.2` · `TASKLIST.3` · `SCRIPTKILL.1` · `SCRIPTKILL.2` · `SCRIPTKILL.3`.
+**⚠ THIS FILE IS ONE BATCH BEHIND ITSELF.** It was written when 82 items were open. Since then the **FINISH THE BOARD** batch (2026-08-20, second pass) built nine items and closed 47 stale ones with verdicts, so **the entries under TIER 4 and TIER 5 below are CLOSED** — they are kept as the closed record, and their live status lives on `docs/TODO.md` as `[x]` + a closure verdict. Tiers 0–3 entries that shipped are marked in `docs/BOARD.md` with ✅. **The 21 still genuinely open, each with the reason it is not done:**
+
+| item | why it is still open |
+|---|---|
+| `CELLBOUND.A`–`E` (5) | built + verified, riding the one press |
+| `CELLBOUND.F` | **the press. Gee's finger.** |
+| `CELLBOUND.G` | the sweep — **73 sites measured** (58 in `curriculum.js` + 15 in `curriculum/kindergarten.js`), deliberately after F proves the shape |
+| `RESYNCDUTY.9` | held: it edits the same phase counter F is verifying |
+| `DELTAIDX.9` | ⛔ DELTAIDX is still DISABLED and its corruption cause was never found. **Must not be closed.** |
+| `SYNCPARTIAL.6` | its own rule — *"no further code until that line is read"*; the registry gate may change what that line says |
+| `LOOPNAME.7` | structural. LOOPMAX.8's banked maxima now cover the common case, so the residual gap is a process that DIES mid-pin — real, but not the emergency it was filed as |
+| `FIRSTPIN.3` | read-only watch. `FIRSTPIN.2`'s inline teach is the prime suspect to rule out FIRST — not asserted as the cause |
+| `DF7SYNC.7` | prerequisite instrument shipped; the interleaved-sync rewrite waits for a real measurement |
+| `RUNPOD.15` | ⏳ Gee: one donor tag ships RUNPOD.6 + the LG.6 receive ceiling |
+| `SCRIPTKILL.4` | today's two hook fixes live in the gitignored `.claude/` tree — a `/unity-update` refresh reverts them silently. Needs an upstream port; the framework repo isn't cloned here |
+| `LG.6` | the 64MiB blocker is GONE (client-side default, now 512MiB); the hop itself is a geometry change ⟹ fresh walk ⟹ Gee's call |
+| `LG.7` | gated on LG.6 landing |
+| `RUNPOD.8` | spend decision (community vs secure vs A40) — Gee's |
+| `WORDEMIT.4` | fresh-walk decision — Gee's, explicitly NOT forced |
+| `GRANT.2` | applications are Gee's to fire |
+| `GRANT.3` | the trajectory asset is only worth building if GRANT.2 fires |
 
 *Verify any count with `grep -cE "^- \[ \] \*\*" docs/TODO.md` (21), `grep -cE "^- \[~\] \*\*" docs/TODO.md` (5), `grep -cE "^- \[x\]" docs/TODO.md` (66). When this file and the board disagree, **the board wins.***
 

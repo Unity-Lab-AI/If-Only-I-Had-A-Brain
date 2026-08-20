@@ -52,6 +52,23 @@ pub fn device_names() -> Vec<String> {
     .unwrap_or_default()
 }
 
+/// Total VRAM (MB) for CUDA device `ordinal`, or 0 when the query fails. RUNPOD.6 needs this
+/// BEFORE any engine exists: on a CUDA-only host (no Vulkan/DX adapter at all — the default
+/// state of most datacenter GPU containers) the donor has to describe its cards to the brain
+/// without going through wgpu, and `CudaEngine::binding_mb()` is only available after a full
+/// engine + NVRTC compile. Same `total_mem` call the engine uses, same catch_unwind guard so a
+/// non-NVIDIA host returns 0 instead of crashing.
+pub fn device_vram_mb(ordinal: usize) -> u64 {
+    std::panic::catch_unwind(|| {
+        use cudarc::driver::result;
+        match result::device::get(ordinal as i32).and_then(|d| unsafe { result::device::total_mem(d) }) {
+            Ok(bytes) => (bytes as u64) / (1024 * 1024),
+            Err(_) => 0,
+        }
+    })
+    .unwrap_or(0)
+}
+
 /// CUDA compute capability for device `ordinal` as "major.minor" (e.g. "8.9"). Empty string on
 /// any failure (missing libcuda, query error). Wrapped in catch_unwind so a non-NVIDIA host or a
 /// driver-API mismatch can't crash the donor.
