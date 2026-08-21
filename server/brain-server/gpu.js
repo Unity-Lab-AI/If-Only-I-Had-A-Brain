@@ -3379,7 +3379,16 @@ const SERVER_GPU_MIXIN = {
       // No resident slice write needed at all (cleaner: nothing shed-able,
       // nothing stale-able), and the probe times out FAST (8s) to the CPU
       // path instead of 30s.
+      const _pT0 = Date.now();
       const out = await this.gpuSparsePropagate(matrixName, Uint32Array.from(sparseIndices), ws, 8_000);
+      // Probe-latency window stats — the instrument that would have named the
+      // 30s-timeout burn in one console read instead of a forensic dig.
+      const _s = this._gateProbeStats || (this._gateProbeStats = { ok: 0, miss: 0, msSum: 0, logAt: 0 });
+      if (out && out.length) { _s.ok++; _s.msSum += Date.now() - _pT0; } else { _s.miss++; }
+      if (Date.now() - _s.logAt > 30_000 && (_s.ok + _s.miss) > 0) {
+        console.log(`[Brain] gateProbe window — ok=${_s.ok} miss=${_s.miss} refused=${this._gateProbeRefused | 0} avg ok ${_s.ok ? Math.round(_s.msSum / _s.ok) : 0}ms (miss = fell to the CPU path)`);
+        _s.logAt = Date.now(); _s.ok = 0; _s.miss = 0; _s.msSum = 0;
+      }
       if (out && out.length) {
         this._gateProbeGpu = (this._gateProbeGpu || 0) + 1;
         if (!this._gateProbeLogOnce) {
@@ -3403,7 +3412,52 @@ const SERVER_GPU_MIXIN = {
     // primary (today's exact behavior). Result routing is by reqId, so an ACK
     // from any donor resolves correctly.
     const target = this._df7FanoutPropagate() ? this._nextPoolDonor(name) : null;
+    // PROPBOUND (2026-08-21) — the NATIVE donor never implemented the
+    // empty-pre bound read; that is BROWSER-donor protocol (compute.html
+    // reads its resident cluster buffer). The native donor's propagate is
+    // STANDALONE-only: zero + scatter the GIVEN indices — so an empty-pre
+    // frame propagates a ZERO pre vector and acks ALL-ZERO currents, which
+    // consumers cached as real signal (`currents.length > 0` passes on a
+    // zeros array). Convicted via GATEGPU's 30s-per-probe gate; the same
+    // dead form served every per-tick bound propagate. When the chosen
+    // donor is native, rebuild the bound semantics HONESTLY: the resident
+    // spike state it would have read is the server's own lastSpikes mirror
+    // — ship that src window's active indices as the standalone pre
+    // payload. No mirror to read → null (the caller's CPU path computes),
+    // never zeros wearing a success shape.
+    const _ws = (target && target.readyState === 1) ? target : this._gpuClient;
+    const _c = (this.clients && this.clients.get && _ws) ? this.clients.get(_ws) : null;
+    if (_c && _c.donorAppVersion) {
+      const pre = this._boundPreIndicesFor(name);
+      if (!pre || !pre.length) return null;
+      return this.gpuSparsePropagate(name, pre, target);
+    }
     return this.gpuSparsePropagate(name, new Uint32Array(0), target);
+  },
+
+  // PROPBOUND — the pre-index window a bound matrix would read donor-side,
+  // rebuilt from the server's own resident mirror (cluster.lastSpikes).
+  // Matrix-local coordinates: cross-projections are src-REGION-relative,
+  // the intra matrix is cluster-absolute.
+  _boundPreIndicesFor(name) {
+    const cluster = this.cortexCluster;
+    if (!cluster || !cluster.lastSpikes) return null;
+    const prefix = `${cluster.name}_`;
+    if (!name.startsWith(prefix)) return null;
+    const projKey = name.slice(prefix.length);
+    const spikes = cluster.lastSpikes;
+    if (projKey === 'intraSynapses') {
+      const idx = [];
+      for (let i = 0; i < spikes.length; i++) { if (spikes[i]) idx.push(i); }
+      return Uint32Array.from(idx);
+    }
+    const at = projKey.indexOf('_to_');
+    if (at < 0) return null;
+    const region = cluster.regions && cluster.regions[projKey.slice(0, at)];
+    if (!region) return null;
+    const idx = [];
+    for (let i = region.start; i < region.end; i++) { if (spikes[i]) idx.push(i - region.start); }
+    return Uint32Array.from(idx);
   },
 
   // TU.28.1 — shared soft-cap knob (same env knob as the TU.25.A hebbian
