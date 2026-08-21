@@ -52,12 +52,13 @@ const path = require('path');
 // monolithic JSON measured at 761ms pins @10k entries and hard-fails @100k).
 // The v4 json name never shipped a boot, so nothing migrates; v1-v3 json stay
 // on disk, orphaned. FRESHEYES sweeps `visual-memory*` by pattern (json AND db).
-// v4 → v5 (2026-08-21, operator: "do that thing again and clear the old .db
-// image file so her images are empty starting fresh") — the store's own
-// orphaning ritual, fourth time: v4 banked scratch-era imagery from before the
-// DRAWGATE + the art stack; v5 boots empty and re-grounds through gated looks.
-// Training lives in different files and is untouched by construction.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v5.db');
+// v5 → v6 (2026-08-21, operator: "we need to reset the image visual db again.
+// once all i have said is fixed") — the store's own orphaning ritual, fifth
+// time: v5 banked half a day of imagery from the fallback lanes (letter-guess
+// scribbles, neon-tint bodies, un-age-steered person look-ups), all fixed in
+// this same batch; v6 boots empty and re-grounds through the fixed lanes
+// only. Training lives in different files and is untouched by construction.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v6.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -907,7 +908,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // definitions constantly say "a child who…" / "an object for children
         // to…", and those human words riding the prompt made the generator
         // paint CHILDREN for non-person concepts (operator report 2026-08-21).
-        let words = d.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2 && w !== c);
+        let words = d.toLowerCase().split(/[^a-z]+/).filter(w2 => w2.length > 2 && w2 !== c);
         try {
           const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
           const conceptIsPerson = tax.primaryLex(c) === 18;
@@ -930,7 +931,22 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // colour stays, the cutesy stylization dies. POSITIVE terms ONLY (Gee: an
     // image model attends to the nouns — writing "no cartoon" PAINTS cartoons);
     // her own interpretation still happens on the DRAWING side, never here.
-    return `${c}${defTail}, realistic photograph, true to life, documentary photography, natural lighting, full color, richly detailed, single centered subject, plain uncluttered background`;
+    // AGESTEER (2026-08-21) — MEASURED root cause of the children look-ups:
+    // the generator's own prior resolves age-less role words toward the very
+    // young ("friend" alone → teen girls, "teacher" + our full documentary
+    // steering → a schoolgirl; def tails were CLEAN — 35/2207 carried a child
+    // word). POSITIVE steering, never a negative prompt: a person word that
+    // is NOT in WordNet's juvenile subtree rides "adult" (her own dictionary's
+    // framing — "woman: an ADULT female human"); boy/baby/child stay young
+    // because they ARE the juvenile subtree. Verified on pinned seeds:
+    // "friend, adult…" → an unmistakable adult on the same seed that gave
+    // teen girls.
+    let ageSteer = '';
+    try {
+      const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
+      if (tax.primaryLex(c) === 18 && typeof tax.descendsFromJuvenile === 'function' && !tax.descendsFromJuvenile(c)) ageSteer = ', adult';
+    } catch { /* taxonomy unavailable — the un-steered prompt stands */ }
+    return `${c}${ageSteer}${defTail}, realistic photograph, true to life, documentary photography, natural lighting, full color, richly detailed, single centered subject, plain uncluttered background`;
   },
 
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C

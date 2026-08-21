@@ -163,6 +163,68 @@ function knownOnlyNonNoun(word) {
   return _otherPos.has(w) && !(_index && _index.has(w));
 }
 
+// AGESTEER — does any noun sense of the word descend from juvenile.n.01
+// (WordNet's "young person" subtree: child, boy, girl, baby, toddler…)?
+// Used by the reference-prompt builder: a person word that is NOT juvenile-
+// descended gets "adult" ridden into the prompt as POSITIVE steering, because
+// the generator's own prior resolves age-less role words toward the very
+// young (measured live: "friend" → teen girls, "teacher" → a schoolgirl).
+// Words that SHOULD render young (boy, baby, child) are exactly the juvenile
+// subtree and are left alone.
+let _juvRoot = null;
+function _resolveJuvRoot() {
+  if (_juvRoot !== null) return _juvRoot;
+  const e = _index && _index.get('juvenile');
+  _juvRoot = (e && e.offs && e.offs[0]) ? String(parseInt(e.offs[0], 10)) : '';
+  return _juvRoot;
+}
+function _hypernymsOf(offsetStr) {
+  const o = parseInt(offsetStr, 10);
+  if (!Number.isFinite(o) || o < 0 || !_data || o >= _data.length) return [];
+  const nl = _data.indexOf(10, o);
+  const line = _data.toString('utf8', o, nl > o ? nl : Math.min(_data.length, o + 900));
+  const outs = [];
+  for (const m of line.matchAll(/@i? (\d{8}) n /g)) outs.push(String(parseInt(m[1], 10)));
+  return outs;
+}
+function _glossOf(offsetStr) {
+  const o = parseInt(offsetStr, 10);
+  if (!Number.isFinite(o) || o < 0 || !_data || o >= _data.length) return '';
+  const nl = _data.indexOf(10, o);
+  const line = _data.toString('utf8', o, nl > o ? nl : Math.min(_data.length, o + 900));
+  const bar = line.indexOf(' | ');
+  return bar > 0 ? line.slice(bar + 3) : '';
+}
+function descendsFromJuvenile(word) {
+  _load();
+  if (!_index) return false;
+  const w = String(word || '').toLowerCase().trim().replace(/\s+/g, '_');
+  const e = w && _index.get(w);
+  if (!e || !e.offs.length) return false;
+  // WordNet's tree files boy under male.n.02 (not juvenile), so the subtree
+  // walk alone misses boy/girl/baby — but WordNet's own curated GLOSS carries
+  // the age evidence ("a youthful male person", "a young woman", "a very
+  // young child"). Either witness counts: the juvenile subtree OR age words
+  // in the primary senses' glosses — both are the database's own knowledge.
+  const AGE = /\b(young|youthful|juvenile|child|children|infant|newborn|baby)\b/i;
+  for (const off of e.offs.slice(0, 3)) {
+    if (_senseInfo(off).lex === 18 && AGE.test(_glossOf(off))) return true;
+  }
+  const root = _resolveJuvRoot();
+  if (!root) return false;
+  const seen = new Set();
+  const queue = e.offs.map(x => String(parseInt(x, 10)));
+  let depth = 0;
+  while (queue.length && depth < 4000) {
+    const cur = queue.shift(); depth++;
+    if (cur === root) return true;
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    for (const h of _hypernymsOf(cur)) if (!seen.has(h)) queue.push(h);
+  }
+  return false;
+}
+
 // The word's noun reading is UNATTESTED (tagsense 0): it exists in the index
 // but never occurs as a noun in the tagged corpora. Callers cross-examine
 // such grants against the dictionary's grammar tags ("or" is granted by an
@@ -175,4 +237,4 @@ function unattestedNoun(word) {
   return !!(e && e.tag === 0);
 }
 
-module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun };
+module.exports = { drawableVerdict, primaryLex, knownDescriptor, knownOnlyNonNoun, unattestedNoun, descendsFromJuvenile };
