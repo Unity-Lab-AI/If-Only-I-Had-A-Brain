@@ -7640,7 +7640,24 @@ const httpServer = http.createServer((req, res) => {
   // mind's-eye viewers (html/minds-eye.html). PUBLIC (no auth), read-only. Viewers
   // reconstruct the image client-side from this one equation — no per-viewer
   // compute, no 1000 heavy copies. Same single-source idiom as /public-state.json.
-  if (req.url === '/minds-eye.json' && req.method === 'GET') {
+  if ((req.url === '/minds-eye.json' || req.url.startsWith('/minds-eye.json?')) && req.method === 'GET') {
+    // ARTJUDGE — the viewer's accept / reject / ban buttons ride this SAME
+    // whitelisted route as query params (the public nginx forwards only known
+    // routes — a new POST endpoint would be SPA-swallowed; the ?console=N
+    // tunnel proved query params pass). No param → the normal snapshot.
+    if (req.url.includes('?')) {
+      try {
+        const u = new URL(req.url, 'http://internal');
+        const fb = u.searchParams.get('feedback');
+        if (fb) {
+          let out = null;
+          try { out = brain._artFeedback(fb, u.searchParams.get('source') || ''); } catch (e) { out = { ok: false, why: e?.message || 'feedback failed' }; }
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify(out || { ok: false }));
+          return;
+        }
+      } catch { /* malformed query → fall through to the snapshot */ }
+    }
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2', 'Access-Control-Allow-Origin': '*' });
     res.end(brain._mindsEyeJson || JSON.stringify({ type: 'mindsEye', rec: null, terms: 0, at: 0, note: 'Unity has not imagined yet — her mind’s eye warms up once the brain is idle (not mid-teach).' }));
     return;
