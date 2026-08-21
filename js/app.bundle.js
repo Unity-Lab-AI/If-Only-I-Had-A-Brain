@@ -73655,9 +73655,6 @@ var K_MIXIN = {
             const phaseKey = `ela/kindergarten:${name}`;
             if (!cl.passedPhases.includes(phaseKey)) cl.passedPhases.push(phaseKey);
           }
-          if (typeof this._saveCheckpoint === "function") {
-            this._saveCheckpoint(`ela/kindergarten:phase:${name}`);
-          }
           if (typeof this._recordPhaseEpisode === "function") {
             this._recordPhaseEpisode("ela/kindergarten", name);
           }
@@ -98196,7 +98193,7 @@ var Curriculum = class _Curriculum {
                       if (idx < letterRegion.end) clusterInput[idx] = 1;
                     }
                   }
-                  const clusterOutput = cluster.synapses.propagate(clusterInput);
+                  const clusterOutput = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(clusterInput, { chunkRows: 65536 }) : cluster.synapses.propagate(clusterInput);
                   if (clusterOutput && clusterOutput.length > 0) {
                     const letterEnd = letterRegion.end;
                     const letterStart = letterRegion.start;
@@ -98729,10 +98726,14 @@ var Curriculum = class _Curriculum {
     const surpriseSamples = [];
     const coverageSamples = [];
     const sampleCount = Math.min(50, personaSentences.length);
+    const _surpBioScale = (cluster.size | 0) > 2e6;
     for (let i = 0; i < sampleCount; i++) {
       const s = personaSentences[Math.floor(Math.random() * personaSentences.length)];
-      surpriseSamples.push(cluster.computeTransitionSurprise(s));
+      surpriseSamples.push(_surpBioScale ? 0 : cluster.computeTransitionSurprise(s));
       coverageSamples.push(cluster.computeFineTypeCoverage(s));
+    }
+    if (_surpBioScale) {
+      this._hb("[Curriculum] Lock 1 surprise calibration SKIPPED at biological scale (sync surprise path refuses >2M) \u2014 using the uncalibrated default threshold, same value the refused calls produced.");
     }
     if (surpriseSamples.length > 0) {
       surpriseSamples.sort((a, b) => a - b);
@@ -107866,7 +107867,7 @@ var Curriculum = class _Curriculum {
         if (!inp || !inp.region || !inp.feat) continue;
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
-      const output = cluster.synapses.propagate(input);
+      const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 }) : cluster.synapses.propagate(input);
       const readout = this._tileReadVec(output, sample.expected.region, sample.expected.feat.length);
       if (this._cosine(readout, sample.expected.feat) > cosMin) pass++;
       if (Date.now() - _lastYield > 200) {
@@ -107897,7 +107898,7 @@ var Curriculum = class _Curriculum {
         if (!inp || !inp.region || !inp.feat) continue;
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
-      const output = cluster.synapses.propagate(input);
+      const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 }) : cluster.synapses.propagate(input);
       let bestName = null, bestSum = -Infinity;
       for (const bucket of sample.buckets) {
         let sum = 0;
@@ -107990,7 +107991,7 @@ var Curriculum = class _Curriculum {
       }
       let clusterOutput;
       try {
-        clusterOutput = cluster.synapses.propagate(clusterInput);
+        clusterOutput = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(clusterInput, { chunkRows: 65536 }) : cluster.synapses.propagate(clusterInput);
       } catch {
         return null;
       }
@@ -108146,14 +108147,15 @@ var Curriculum = class _Curriculum {
     } catch {
     }
     const q = (question || "").toLowerCase();
-    if (typeof cluster.readText === "function") {
-      const words = q.match(/[a-z]+/g) || [];
-      if (cluster.regions?.sem) {
-        for (const word of words) {
-          const emb = sharedEmbeddings.getEmbedding(word);
-          if (emb && emb.length > 0) cluster.injectEmbeddingToRegion("sem", emb, 0.35);
-        }
+    const _bioScale = (cluster.size | 0) > 2e6;
+    const words = q.match(/[a-z]+/g) || [];
+    if (cluster.regions?.sem) {
+      for (const word of words) {
+        const emb = sharedEmbeddings.getEmbedding(word);
+        if (emb && emb.length > 0) cluster.injectEmbeddingToRegion("sem", emb, 0.35);
       }
+    }
+    if (typeof cluster.readText === "function" && !_bioScale) {
       cluster.readText(q, { visualCortex, ticksPerChar });
     } else {
       for (const ch of q) {
