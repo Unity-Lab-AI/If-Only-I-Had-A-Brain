@@ -35982,3 +35982,15 @@ The 10-minute brain-wide gap was Gee's own 2026-07-17 rule from the KEYED-accoun
 Note for `VMSCALE`: `schema.trace` roughly doubles a schema-bearing entry (~16-20KB) — at the 25k cap the RAM map ceiling is ~400-500MB, still fine beside the brain; the `DREAM_VM_CAP` doc row carries the updated figure.
 
 **Board: 4 open, 200 closed** — PAINT.6 + PAINT.7 close.
+
+---
+
+## 2026-08-21 — PAINT.8: any background — the place becomes a full scene behind the subject
+
+> Gee (verbatim): *"okay but is she going to be able to draw anything in any style in any color owith any background?"*
+
+The first three axes were already shipped and proven (subjects via trace/definition, 8 rotating styles, pixel-true color). **Backgrounds were the honest gap** — a "place" rendered as a ground line with grass tufts. `_backdropStrokes` now paints the place as a full scene BEHIND the subjects, mirroring the subject pipeline's tiers exactly: a place she has **looked at** gets a horizon wash in the place's real palette plus her remembered trace of it, faint and full-canvas (alpha does the depth — scene sits back, subject pops); a place she only **knows** gets sky/ground washes tinted by the definition's color words; the humble ground line + tufts stay so a subject always stands on something; pencil-class styles keep bare paper.
+
+**Proven the same way as everything else today — rendered and looked at:** a real beach reference (189 trace strokes banked, sand/white palette) composed with the cat schema through the exact production layering. The picture is a SCENE: horizon bands, the beach's shoreline traces running behind, the cat in bright contrast-adaptive ink standing on the ground line. You can tell what it is at a glance.
+
+**Board: 4 open, 201 closed.**
