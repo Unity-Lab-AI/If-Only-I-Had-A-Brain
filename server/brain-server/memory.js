@@ -361,7 +361,18 @@ const SERVER_MEMORY_MIXIN = {
         // running 2 full CPU cortex ticks per letter (measured: 143s, donor dead).
         if (opts && typeof opts.surprise === 'number' && Number.isFinite(opts.surprise)) {
           surprise = opts.surprise;
-        } else if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurprise === 'function') {
+        } else if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurprise === 'function'
+                   && (this.cortexCluster.size | 0) <= 2000000) {
+          // SURPSYNC.1 (2026-08-21) — call the sync form ONLY below the bio-scale
+          // line it refuses itself at. Above it, the refused call returned 0 —
+          // the same value `surprise` already holds — while printing its REFUSED
+          // warn after EVERY phase pass, all night. So the fall-through bought
+          // nothing and cost a log line: every walk episode encodes surprise=0
+          // either way, and that 0 means UNMEASURED, not "she wasn't surprised".
+          // The honest fix (an async handoff via opts.surprise, computed on the
+          // donor like the chat path does) is the caller's work at each call
+          // site with an async context; until one exists, at least the number
+          // stops pretending it was measured and the warn stops firing.
           const s = this.cortexCluster.computeTransitionSurprise(inputText);
           if (typeof s === 'number' && Number.isFinite(s)) surprise = s;
         }

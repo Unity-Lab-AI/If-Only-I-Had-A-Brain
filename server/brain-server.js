@@ -4828,7 +4828,7 @@ class ServerBrain {
           if (_inWalk) console.warn(`[Consolidation] EMERGENCY pass despite active curriculum (no pass in ${Math.round(elapsedSincePassMs / 60000)}min) — expect a multi-minute loop pin; the donor may idle-timeout and reconnect (recovery is lossless).`);
           if (starved && (!ce._lastForceLogMs || (Date.now() - ce._lastForceLogMs) > 60000)) {
             ce._lastForceLogMs = Date.now();
-            console.log(`[Consolidation] starvation guard — FORCING a pass (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s; passCount=${ce.passCount || 0}). Bypasses the SEED skip so Tier 1→2→3 promotion resumes; bounded by DREAM_CONSOLIDATION_MAX_MS. Tune via DREAM_CONSOLIDATION_FORCE_MS. (Does NOT override DREAM_CONSOLIDATION_DISABLE=1.)`);
+            console.log(`[Consolidation] starvation guard — FORCING a pass (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s; passCount=${ce.passCount || 0}). Bypasses the SEED skip so Tier 1→2→3 promotion resumes; bounded by DREAM_CONSOLIDATION_FORCE_MAX_MS (120s default — CONSTARVE.1: the routine 45s cap aborted the once-per-2h pass at 48.5s with Tier-3 promotion unrun). Tune the cadence via DREAM_CONSOLIDATION_FORCE_MS. (Does NOT override DREAM_CONSOLIDATION_DISABLE=1.)`);
           }
           ce.runConsolidationPass(starved ? { forced: true } : {}).catch(err => {
             console.warn('[Consolidation] pass failed:', err?.message || err);
@@ -10519,6 +10519,43 @@ const _lagTimer = setInterval(() => {
       console.log(`[EventLoop] upload window closed — ${brain._lagUploadSuppressed} sub-5s blocks were rate-limited during it (worst ${brain._lagUploadWorstMs || 0}ms).`);
       brain._lagUploadSuppressed = 0;
       brain._lagUploadWorstMs = 0;
+    }
+    // ── BLOCKREAD.1 (2026-08-21) — THE TEACH-CHUNK WALL, SUMMARISED. Gee, on a
+    // night of these: "i dont like the page wall of blocked notices.. it looks
+    // like pages and pages of errors." He is right about the look and the wall
+    // is wrong about the meaning: a sub-2s block during an active teach phase
+    // is a CPU teach slab — the chunked Hebbian/Oja/propagate math landing just
+    // over the 250ms warn floor. It is real work, not an error, and printing an
+    // identical line for every chunk all night trains the operator to ignore
+    // this monitor (the upload window taught the same lesson and got the same
+    // cure above). One console.log summary per 60s window carries the count,
+    // the worst, the total, and the banked stage maxima — so the diagnosis
+    // survives, the wall does not.
+    //
+    // DETECTION IS UNTOUCHED where it matters: any block ≥ the summary ceiling
+    // (default 2s, DREAM_LOOP_LAG_SUMMARY_UNDER_MS) prints immediately in full,
+    // and any block with NO teach attribution prints immediately in full — a
+    // stall outside teaching is rare and interesting by definition. The off-loop
+    // LOOPNAME.8 watchdog and state.profiling.eventLoopLagMs see every block
+    // regardless of what this printer does.
+    const _teachAttributed = !!brain._teachStage
+      || !!(cc && (cc._outermostPhase || (cc._phaseStack && cc._phaseStack.length > 0)));
+    const _SUMMARY_UNDER_MS = Number(process.env.DREAM_LOOP_LAG_SUMMARY_UNDER_MS) > 0
+      ? Number(process.env.DREAM_LOOP_LAG_SUMMARY_UNDER_MS) : 2000;
+    if (_teachAttributed && lagMs < _SUMMARY_UNDER_MS) {
+      brain._lagTeachN = (brain._lagTeachN || 0) + 1;
+      brain._lagTeachWorst = Math.max(brain._lagTeachWorst || 0, Math.round(lagMs));
+      brain._lagTeachSumMs = (brain._lagTeachSumMs || 0) + Math.round(lagMs);
+      if (!brain._lagTeachLogMs) {
+        brain._lagTeachLogMs = Date.now();   // window opens silently; summary lands at its close
+      } else if (Date.now() - brain._lagTeachLogMs > 60000) {
+        const _tmx = brain._teachStageMaxMs ? ` teachStageMax=${brain._teachStageMaxName}(${brain._teachStageMaxMs}ms)` : '';
+        console.log(`[EventLoop] ${brain._lagTeachN} teach-chunk blocks in the last 60s — worst ${brain._lagTeachWorst}ms, ${(brain._lagTeachSumMs / 1000).toFixed(1)}s total. context: phase=${phase} cell=${cell}${_tmx}. CPU teach slabs over the ${_LAG_WARN_MS}ms floor, summary-limited (full detail resumes ≥${_SUMMARY_UNDER_MS}ms or outside teaching; DREAM_LOOP_LAG_SUMMARY_UNDER_MS tunes).`);
+        brain._lagTeachLogMs = Date.now();
+        brain._lagTeachN = 0; brain._lagTeachWorst = 0; brain._lagTeachSumMs = 0;
+        brain._teachStageMaxMs = 0; brain._teachStageMaxName = null;
+      }
+      return;
     }
     // CHAT-STAGE EYES (2026-08-18) — the third drop-on-speak strain pinned
     // the loop ~30s on a ONE-WORD message with the pair-learning skipped

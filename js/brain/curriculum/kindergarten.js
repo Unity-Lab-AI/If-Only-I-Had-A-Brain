@@ -3674,9 +3674,16 @@ export const K_MIXIN = {
             const phaseKey = `ela/kindergarten:${name}`;
             if (!cl.passedPhases.includes(phaseKey)) cl.passedPhases.push(phaseKey);
           }
-          if (typeof this._saveCheckpoint === 'function') {
-            this._saveCheckpoint(`ela/kindergarten:phase:${name}`);
-          }
+          // SAVEDOUBLE.1 (2026-08-21) — the checkpoint that used to fire HERE was a
+          // DUPLICATE. The GATEPHASE auto-wrap already saves on every declared
+          // phase completion (curriculum.js, trigger `cell-pass:<cell>:<phase>`),
+          // and this hook fired a SECOND full saveWeights({force:true}) ~1-2s
+          // later under `cell-pass:<cell>:phase:<phase>` — every pair in the live
+          // log (v163+v164, v171+v172, v173+v174, v175+v176) was one phase event
+          // saved twice. Cost: double the save I/O, and because rollback keeps
+          // the last N slots, HALF the time-depth of rollback coverage. The
+          // passedPhases push above stays (same key as the wrapper's, includes-
+          // guarded, and it is the resume tag — not the save).
           // iter20-H — Tier 1 episode for every completed teach phase
           if (typeof this._recordPhaseEpisode === 'function') {
             this._recordPhaseEpisode('ela/kindergarten', name);

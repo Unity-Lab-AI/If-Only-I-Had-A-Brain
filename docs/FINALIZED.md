@@ -35782,3 +35782,43 @@ Residual race noted in the comment: the watchdog thread could rewrite between th
 Docs amended in the same commit everywhere the old absolute reading was stated: `docs/ADMIN-CONTROLS.md`, `docs/ARCHITECTURE.md` (LOOPNAME.8 banner, persistence contract), `docs/RESUME.md`, `docs/NOW.md`, `.claude/CLAUDE.md`.
 
 **Board: 2 open, 179 closed** — `WDCLEAN.1` + `WDCLEAN.2` closed; `SUBSTEPS.6` (probe gate) and `SCALEDOC.1` remain.
+
+---
+
+## 2026-08-21 — THE BLOCK-WALL SEVEN: all fixed in one batch, and the wall itself was the seventh
+
+> Gee (verbatim): *"okay fix all those issues you found and commmit cascade once after doc push after all is fixed.. and yeah i dont like the page wall of blocked notices.. it looks like pages and pages of errors"*
+
+All seven findings from the block-wall investigation, fixed and verified in one atomic envelope. One correction to my own filing came out of the work — recorded below where it belongs.
+
+### `SAVEDOUBLE.1` — one saver owns phase checkpoints now
+
+The duplicate was kindergarten's own phase-done hook (`kindergarten.js`), firing a second full `saveWeights({force:true})` ~1-2s after the GATEPHASE auto-wrap's save for the same phase — every pair in the live log (`v163+v164` … `v175+v176`) was one event saved twice, 27 versions in ~70 minutes, rollback time-depth halved. The kindergarten save call is deleted; its `passedPhases` push (the resume tag — same key as the wrapper's, includes-guarded) and its Tier-1 phase episode stay. The wrapper's save is the one general path across all subjects.
+
+### `GATEPIN.1` + `LATANTI.1` — the real blocker was NOT what the stage tags said, and the fix was already in the tree
+
+**Correction to my own filing:** I attributed the multi-second slabs to `lateral:anti` / `hebbian:intra`. **The stage AGES falsify that** — `lateral:anti(+816s→+840s)` and `hebbian:intra(+1s→+303s)` climb monotonically across whole eras, and `_tstage` is never nulled, only overwritten: an age that climbs across many blocks means the stage is STALE and the blocker is **unmarked code**. The intra/anti Oja was already active-row-sliced (`_ojaUpdateChunked`) and could not be the slab.
+
+The real blocker: **synchronous `synapses.propagate` over the 360M-nnz intra CSR in the probe/gate lane** — the probes' own comment prices one call at "100ms-5s of synchronous CPU matmul", and they yielded only BETWEEN samples. Each 2.7-6.5s block in the gate/battery era was one propagate; the ~1s-every-2s duty in the spelling era, the same call on a younger matrix. **The sliced form already existed** (`SparseMatrix.propagateChunked`, SPEAK.4b — row-independent, self-converging ~30ms slices) and the predictive-error path was already using it; four probe-lane call sites simply never switched: `_probeCombinationCosine`, `_probeCombinationArgmaxTag`, `_deterministicAnswer`, `_studentTestProbe`. All four now call it. **Verified numerically: `propagate` vs `propagateChunked` on a real CSR, maxDiff = 0 — bit-identical.** The `activeSum 1.06B` lateral-scan observation stands as the Oja active-set inflation WATCH (unchanged, still open as a watch — measure before touching the math).
+
+### `BATTREAD.1` — the battery probes on all her senses again
+
+`typeof cluster.readText === 'function'` is always true, so the awaited GPU-safe fallback was dead code while `readText` no-opped at >2M neurons. The branch now tests **capability** (`size > 2,000,000`, the same threshold `readText` refuses at, so the two can never disagree): at bio scale the battery takes the awaited `injectLetter` + `stepAwait` path — letter-pipeline injection reaches her again during the instrument that grades her.
+
+### `SURPSYNC.1` — the walk's episodes stop pretending surprise was measured
+
+`memory.js` episode-encode called the sync surprise form on every phase pass; at bio scale it refused itself and returned 0 — the value `surprise` already held — while printing the REFUSED warn all night. The call is now gated to ≤2M neurons (the refusal's own line): identical number, no warn, and the comment states plainly that 0 means UNMEASURED until a caller with an async context hands in `opts.surprise`. Same guard on the Lock-1 calibration sampler (`curriculum.js`), where all 50 refused samples were falling through `(p95 || 0.3)` to the default anyway — same numeric outcome, now stated in a log line instead of stumbled into.
+
+### `CONSTARVE.1` — the emergency pass can finish its tail
+
+A **forced** pass (starvation guard, dream windows) now gets its own wall: `DREAM_CONSOLIDATION_FORCE_MAX_MS`, default 120s. The routine 45s cap had aborted the once-per-2h emergency pass at 48.5s with merge + schema-decay + **Tier-3 promotion** + episode-decay unrun — schemas were created all night, promotions never happened. Routine passes keep 45s unchanged (the 153s-runaway guard stands). The pass yields between stages (~250-340ms blocks measured during the live 48s pass), so the longer wall is more yielding work, not a longer pin. ⚠ RE-PRICE note: this **widens** a consolidation bound; no gate is removed or weakened — walk-finiteness pricing untouched. Verified: forced/routine × default/env = 4/4 correct selections.
+
+### `BLOCKREAD.1` — the wall becomes one line a minute
+
+Teach-attributed blocks under `DREAM_LOOP_LAG_SUMMARY_UNDER_MS` (2s) aggregate into **one `console.log` summary per 60s** — count, worst, total, banked `teachStageMax` — instead of a warn per chunk. Blocks ≥2s, and any block with no teach attribution, print immediately in full (a stall outside teaching is rare and interesting by definition). Detection is untouched where it matters: the LOOPNAME.8 watchdog thread and `state.profiling.eventLoopLagMs` see every block regardless of what this printer does. **Verified by harness:** 19 simulated era-B blocks produced exactly **2 summary lines**; a 2.5s block and a non-teach block both printed full detail. Era C's multi-second lines shrink organically — after GATEPIN they should mostly stop existing.
+
+### Verified before the one commit
+
+`node --check` on all six touched files · ESM link on `consolidation-engine.js` · **bundle rebuilt** (curriculum/cluster are bundle inputs — the LOOPNAME.13 freshness check would have flagged it) · propagate equivalence maxDiff=0 · the summary-window harness · the forced-wall selection table. New knobs documented in `docs/ADMIN-CONTROLS.md`.
+
+**Board: 3 open, 186 closed** — the seven close; `SUBSTEPS.6` (probe-gated), `SCALEDOC.1`, and `PHONPROG.1` remain, and the Oja active-set inflation WATCH stays a watch.

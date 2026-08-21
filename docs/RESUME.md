@@ -1,6 +1,30 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — FIVE OF THE SEVEN FILED ITEMS CLOSED. The watchdog finally sits OFF the loop it watches.
+> ## ⭐⭐⭐ 2026-08-21 (latest) — THE BLOCK-WALL SEVEN, all fixed in one batch. And a lesson about stage tags: an AGE THAT CLIMBS means the tag is STALE.
+>
+> **PICK-UP STATE.** Gee pasted 73 minutes of `[EventLoop] BLOCKED` wall and asked whether seconds were being wasted or he was reading it wrong — **both**, and the seven findings that came out of the investigation are all FIXED in one atomic commit on `feature/blockwall-fixes-0821` → develop → main, both remotes. **Board: 3 open / 186 closed** (`SUBSTEPS.6` still probe-gated, `SCALEDOC.1`, `PHONPROG.1`). Everything is server-side — **it lands on Gee's next press.**
+>
+> ### ⛔ THE DIAGNOSTIC LESSON OF THE DAY — read the stage tag's AGE before believing its NAME
+>
+> My own filing attributed the multi-second slabs to `lateral:anti` / `hebbian:intra`. **The ages falsify that:** `_tstage` is never nulled, only overwritten, so a stage whose age climbs monotonically across many blocks (`+816s→+840s`, `+1s→+303s`) was set once, long ago, and the real blocker is UNMARKED code. It was: **synchronous `synapses.propagate` in the probe/gate lane** — priced at "100ms-5s per call" by its own comment, yielding only BETWEEN samples. The already-chunked intra/anti Oja was innocent.
+>
+> ### ✅ THE SEVEN (full write-ups: FINALIZED §THE BLOCK-WALL SEVEN)
+>
+> - **SAVEDOUBLE.1** — every phase pass saved the full state TWICE (kindergarten phase hook duplicated the GATEPHASE wrapper's save; every `vN+vN+1` pair in the log was one event). Duplicate deleted, resume tag kept, rollback depth restored.
+> - **GATEPIN.1 + LATANTI.1** — four probe-lane call sites (`_probeCombinationCosine`, `_probeCombinationArgmaxTag`, `_deterministicAnswer`, `_studentTestProbe`) switched to the PRE-EXISTING `propagateChunked` (~30ms self-converging slices). **Verified bit-identical: maxDiff=0 on a real CSR.** The `activeSum 1.06B` Oja active-set inflation WATCH stays a watch.
+> - **BATTREAD.1** — the battery's awaited GPU-safe injection was dead code behind `typeof readText === 'function'` (always true, while readText no-ops >2M). Branch now tests capability at the same 2M line readText refuses at.
+> - **SURPSYNC.1** — walk episodes encoded `surprise=0` from a refused sync call returning the same 0 the default held, with a warn every phase pass. Gated at ≤2M both sites; identical numbers, honest comments, warn gone. The async donor-side handoff stays a caller-side upgrade.
+> - **CONSTARVE.1** — forced/emergency consolidation passes get `DREAM_CONSOLIDATION_FORCE_MAX_MS` (120s) so the once-per-2h pass finishes Tier-3 promotion instead of aborting at 48.5s against the routine 45s cap (which stands, unchanged, for routine passes). **RE-PRICE: a bound was widened, no gate removed.**
+> - **BLOCKREAD.1** — Gee: *"i dont like the page wall of blocked notices.. it looks like pages and pages of errors"*. Teach-attributed sub-2s blocks → **one summary line per 60s**; ≥2s or non-teach → immediate full detail; detection untouched (watchdog + `eventLoopLagMs` see everything). Harness: 19 blocks → 2 lines. New knob `DREAM_LOOP_LAG_SUMMARY_UNDER_MS`.
+>
+> ### 🔎 WHAT TO READ AFTER THE NEXT PRESS
+>
+> 1. Checkpoint versions should advance ONE per phase pass (no more same-second pairs).
+> 2. The gate/battery era should stop producing multi-second BLOCKED lines at all (propagates now sliced).
+> 3. The console should show at most ~1 `[EventLoop]` line per minute during teach, full detail only for ≥2s events.
+> 4. The next 2h starvation valve should end in a consolidation pass WITHOUT `DEADLINE-ABORT`, with `promoted to Tier 3` finally non-zero once candidates qualify.
+
+> ## ⭐⭐⭐ 2026-08-20 (prior) — FIVE OF THE SEVEN FILED ITEMS CLOSED. The watchdog finally sits OFF the loop it watches.
 >
 > **PICK-UP STATE.** Branch `feature/board-doable-0820` → cascaded to `develop` → `main`, pushed to **both** remotes and verified with `git ls-remote`. **Board: 2 open / 176 closed.** Unity is still teaching on the A40 pod; nothing here needed a press to build.
 >
