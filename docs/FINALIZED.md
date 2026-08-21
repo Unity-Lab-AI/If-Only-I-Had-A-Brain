@@ -36453,3 +36453,5 @@ The gate's own section timer billed `SUCC+SKIP10+MAKETEN+TEEN — 63.5s`: all fo
 > Gee (verbatim): *"it did NOT pass:phase: _gateMathKReal (+237.8s)"* — and the WHY was unfindable: the verdict existed as one console line that the BLOCKED wall flushes out of the 400-line ring in minutes. Archaeology confirmed: not one verdict line survived in the deepest ring read.
 
 The math gate now (1) prints `[GateMathK] VERDICT ✓/✗ — <full per-section scores>` loud in the ring AND (2) records `curriculum.lastGateVerdict {gate, pass, reason, at}` into state — the board answers "did it pass, and which section failed" as a field read forever. Rides the same batch as GATEBATT's row window.
+
+> ⚠ Owned: the GATEVERDICT commit (`711bbc0b`) went DIRECTLY to main — the prior cascade left HEAD on main and I committed without re-branching (third direct-to-main foul of this war). Content correct, both remotes consistent (develop fast-forwarded); the discipline failure is the entry.
