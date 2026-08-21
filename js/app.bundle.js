@@ -78902,6 +78902,44 @@ var K_MIXIN = {
     };
     const YIELD_SLICE_MS = 30;
     const _kScalesWM = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "word_motor") : null;
+    let gpuFires = 0;
+    const _mirrorAndDispatch = (pat, bStart, bEnd) => {
+      if (!semToWordMotor._gpuBound || !cluster._gpuProxyReady || !cluster._gpuProxy || typeof cluster._gpuProxy.writeSpikeSlice !== "function" || typeof cluster._gpuProxy.hebbianBound !== "function") return false;
+      const tmplOk = !!(cluster._brain && cluster._brain._tmplSpikeOk === true);
+      const gSizeSem = Math.max(1, Math.floor(semSize / pat.length));
+      const semVals = new Array(pat.length);
+      let semAny = false;
+      for (let d = 0; d < pat.length; d++) {
+        const on = pat[d] > 0 ? 1 : 0;
+        semVals[d] = on;
+        if (on) semAny = true;
+      }
+      if (!semAny) return false;
+      const semCarrier = [];
+      if (!tmplOk) {
+        for (let d = 0; d < pat.length; d++) {
+          if (!semVals[d]) continue;
+          for (let n = 0; n < gSizeSem; n++) {
+            const idx = d * gSizeSem + n;
+            if (idx < semSize) semCarrier.push(idx);
+          }
+        }
+      }
+      semCarrier._template = { rowStart: 0, groupSize: gSizeSem, values: semVals };
+      const wmCarrier = [];
+      if (!tmplOk) {
+        for (let n = bStart; n < bEnd; n++) wmCarrier.push(n);
+      }
+      wmCarrier._template = { rowStart: bStart, groupSize: bEnd - bStart, values: [1] };
+      try {
+        cluster._gpuProxy.writeSpikeSlice("sem", semCarrier);
+        cluster._gpuProxy.writeSpikeSlice("word_motor", wmCarrier);
+        cluster._gpuProxy.hebbianBound(`${cluster.name}_sem_to_word_motor`, lr);
+        return true;
+      } catch {
+        return false;
+      }
+    };
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       let sliceStart = Date.now();
@@ -78938,6 +78976,7 @@ var K_MIXIN = {
         } catch {
           skipped++;
         }
+        if (_mirrorAndDispatch(entry.pattern, bStart, bEnd)) gpuFires++;
         if (Date.now() - sliceStart >= YIELD_SLICE_MS) {
           await _microtask();
           sliceStart = Date.now();
@@ -78946,7 +78985,7 @@ var K_MIXIN = {
       await _microtask();
     }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachWordSpellingDirectFinal DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
+    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s \u2014 ${updates} CPU Oja updates \xB7 ${gpuFires} GPU bound dispatches \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
   },
   // ─── K-ELA legacy/orphan teach helpers — DEPRECATED, preserved for reference ───
   // Session 25 legacy direct-pattern alphabet teach. Superseded by the
