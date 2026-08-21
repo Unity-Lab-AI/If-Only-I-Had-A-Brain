@@ -7,13 +7,13 @@ tab-sleep drops, multi-GPU per machine, headless for servers/RunPod, plus a simp
 **Stack:** Rust + `wgpu` (runs the brain's WGSL shaders verbatim). See `BUILD-PLAN.md`
 for architecture, the protocol contract, and milestones.
 
-## Status: v0.3.25 — SHIPPING (M0–M4 all delivered)
+## Status: v0.3.26 — SHIPPING (M0–M4 all delivered)
 
 This said "M0 (scaffold)" for a long time after it stopped being true. Current reality:
 
 - **M1 WS donor loop** — supervised reconnect, half-open detection, send forensics.
 - **M2 GPU compute** — wgpu **and** a CUDA backend (`cudarc`, dynamic-loaded, so one binary runs on AMD/Intel too). On a CUDA-only Linux host with no Vulkan stack it donates over CUDA and skips wgpu entirely: `[gpu] no wgpu adapter found, but CUDA reports N device(s)`.
-- **M3 sparse frames** — binary teach/propagate, delta-varint colIdx, `hebbian_ranges`, batched Hebbian.
+- **M3 sparse frames** — binary teach/propagate, delta-varint colIdx, `hebbian_ranges`, batched Hebbian, and (v0.3.26) **masked bound plasticity** (SPRS type 13): pre from the resident bound spikes, post from a sparse row mask zeroed + scattered device-side (`scatter_ones.wgsl` on wgpu, `dev_zero_u32`/`dev_scatter_ones` on CUDA), same plasticity kernel, `reps` looped stream-ordered. See `RELEASE-0.3.26.md`.
 - **M4 GUI** — plus `--headless` for servers/RunPod.
 - **Mind-space ops** — `perceive` / `describe` / `stylizeField` / `traceLineArt` / audio field-A, on the priority lane.
 
