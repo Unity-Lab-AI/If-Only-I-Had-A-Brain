@@ -2906,6 +2906,11 @@ class ServerBrain {
         // lane open) so callers sample their CPU shadow only when the GPU
         // carried the mass.
         hebbianBoundMasked: (name, lr, reps, postIdx)       => this.gpuSparseHebbianBoundMasked(name, lr, reps, postIdx),
+        // GATEGPU — one gate probe on the donor: probe-pattern slice write +
+        // bound propagate pinned to the PRIMARY, currents back on the ack.
+        // Null on any honesty guard (lane busy / no donor / kill switch) —
+        // the caller's CPU chunked path grades instead.
+        gateProbe: (matrixName, srcRegion, indices)         => this.gpuGateProbe(matrixName, srcRegion, indices),
         // v0.3.18 — range-form plasticity: a whole N-rep band-pair dose as
         // ONE ~60-byte fire-and-forget frame. Self-contained (carries its
         // own pre/post ranges) — touches NO shared spike buffers, so no

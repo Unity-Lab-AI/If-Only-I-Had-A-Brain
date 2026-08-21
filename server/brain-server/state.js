@@ -1039,6 +1039,14 @@ const SERVER_STATE_MIXIN = {
           rangesSent: this._hebbianRangesSent | 0,
           maskedSent: this._hebbianMaskedSent | 0,
         },
+        // GATEGPU — gate probes relocated to the donor: gpu = graded on the
+        // card, refused = lane busy/no donor (CPU graded instead), nullAck =
+        // dispatch sent but no currents came back (CPU graded instead).
+        gateProbes: {
+          gpu: this._gateProbeGpu | 0,
+          refused: this._gateProbeRefused | 0,
+          nullAck: this._gateProbeNullAck | 0,
+        },
         // LOOPNAME.8 — freeze episodes as counted by the WATCHDOG THREAD, not by
         // the loop. `eventLoopDelay.maxMs` above is a since-boot high-water mark
         // from `perf_hooks` with no count and no recency: one 58s reading tells
