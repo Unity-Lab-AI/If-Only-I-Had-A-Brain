@@ -2850,13 +2850,10 @@ export const K_MIXIN = {
 
       // ─── READ: letter→phon propagate → 16d readout → cosine vs magnitude feat
       if (letterToPhon) {
-        // Chunked propagate (bit-identical, yields between row slices) — the
-        // synchronous form pinned the event loop for seconds per probe at the
-        // grown matrices, which starved the donor socket AND the upload pump.
+        // GATEGPU — donor-first via the shared probe helper (grades the FULL
+        // GPU training mass in one round trip; CPU chunked path on any null).
         this._tstage('gate:probe-read');   // LOOPNAME
-        const phonOutput = (typeof letterToPhon.propagateChunked === 'function')
-          ? await letterToPhon.propagateChunked(letterPat, { chunkRows: 250000 })
-          : letterToPhon.propagate(letterPat);
+        const phonOutput = await this._probePropagate('letter_to_phon', letterPat);
         const pGSize = Math.max(1, Math.floor(phonSize / MAG_DIM));
         const phonReadout = new Float64Array(MAG_DIM);
         for (let d = 0; d < MAG_DIM; d++) {
@@ -2896,9 +2893,7 @@ export const K_MIXIN = {
             if (idx < semSize) semPat[idx] = nameEmb[d];
           }
         }
-        const motorOutput = (typeof s2m.propagateChunked === 'function')
-          ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
-          : s2m.propagate(semPat);
+        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -3017,9 +3012,7 @@ export const K_MIXIN = {
             if (idx < letterSize) pat[idx] = 1.0;
           }
         }
-        return (typeof letterToFree.propagateChunked === 'function')
-          ? await letterToFree.propagateChunked(pat, { chunkRows: 250000 })
-          : letterToFree.propagate(pat);
+        return await this._probePropagate('letter_to_free', pat);
       };
       // ORDER loop — each iteration fires THREE readFree calls, each
       // one a full letter_to_free cross-projection propagate. 9 iters
@@ -4756,9 +4749,7 @@ export const K_MIXIN = {
         } else {
         const _readStart = Date.now();
         this._tstage('gate:probe-read');   // LOOPNAME
-        const phonOutput = (typeof letterToPhon.propagateChunked === 'function')
-          ? await letterToPhon.propagateChunked(letterPat, { chunkRows: 250000 })
-          : letterToPhon.propagate(letterPat);
+        const phonOutput = await this._probePropagate('letter_to_phon', letterPat);
         const _readMs = Date.now() - _readStart;
         if (_letterStart && _gateLetterIdx <= 3) {
           this._hb(`[Curriculum][K-DIAG] letter '${letter}' READ propagate ${_readMs}ms (phonOutput.length=${phonOutput.length})`);
@@ -4808,9 +4799,7 @@ export const K_MIXIN = {
             } else {
               const _talkStart = Date.now();
               this._tstage('gate:probe-talk');   // LOOPNAME
-              motorOutput = (typeof proj.propagateChunked === 'function')
-                ? await proj.propagateChunked(letterPat, { chunkRows: 250000 })
-                : proj.propagate(letterPat);
+              motorOutput = await this._probePropagate(pname, letterPat);
               if (_gateLetterIdx <= 3) {
                 this._hb(`[Curriculum][K-DIAG] letter '${letter}' TALK via ${pname} propagate ${Date.now() - _talkStart}ms`);
               }
@@ -4827,9 +4816,7 @@ export const K_MIXIN = {
           const semOutput = await this._probePropagate('letter_to_sem', letterPat);
           const semBinary = new Float64Array(semOutput.length);
           for (let i = 0; i < semOutput.length; i++) semBinary[i] = semOutput[i] > 0 ? 1 : 0;
-          motorOutput = (typeof semToMot.propagateChunked === 'function')
-            ? await semToMot.propagateChunked(semBinary, { chunkRows: 250000 })
-            : semToMot.propagate(semBinary);
+          motorOutput = await this._probePropagate('sem_to_motor', semBinary);
         }
       }
       if (motorOutput && motorRegion) {
@@ -5160,9 +5147,7 @@ export const K_MIXIN = {
             }
             // Propagate through learned sem_to_motor weights.
             this._tstage('gate:probe-dyn');   // LOOPNAME
-            motorOutput = (typeof dynSemToMotor.propagateChunked === 'function')
-              ? await dynSemToMotor.propagateChunked(semPattern, { chunkRows: 250000 })
-              : dynSemToMotor.propagate(semPattern);
+            motorOutput = await this._probePropagate('sem_to_motor', semPattern);
           } else {
             // Fallback path — use letter_to_motor with word's first letter.
             // Equivalent test: the trained motor argmax for letter(W[0])
@@ -5182,9 +5167,7 @@ export const K_MIXIN = {
                 letterPat[idx] = 1.0;
               }
             }
-            motorOutput = (typeof dynLetterToMotor.propagateChunked === 'function')
-              ? await dynLetterToMotor.propagateChunked(letterPat, { chunkRows: 250000 })
-              : dynLetterToMotor.propagate(letterPat);
+            motorOutput = await this._probePropagate('letter_to_motor', letterPat);
           }
           // Reduce motor output to 26 letter slots via group averaging.
           const readoutSize = Math.min(invSize_, LETTER_SLOTS);
@@ -7166,9 +7149,7 @@ export const K_MIXIN = {
               if (idx < letterSize) letterInput[idx] = 1;
             }
           }
-          const out = (typeof letterProj.propagateChunked === 'function')
-            ? await letterProj.propagateChunked(letterInput, { chunkRows: 250000 })
-            : letterProj.propagate(letterInput);
+          const out = await this._probePropagate('letter_to_motor', letterInput);
           if (!out || out.length === 0) { results.push(`${letter}→∅`); continue; }
           const readoutSize = Math.min(invSize, 26);
           const mGroup = Math.max(1, Math.floor(out.length / readoutSize));

@@ -73170,7 +73170,7 @@ var K_MIXIN = {
         }
         if (letterToPhon) {
           this._tstage("gate:probe-read");
-          const phonOutput = typeof letterToPhon.propagateChunked === "function" ? await letterToPhon.propagateChunked(letterPat, { chunkRows: 25e4 }) : letterToPhon.propagate(letterPat);
+          const phonOutput = await this._probePropagate("letter_to_phon", letterPat);
           const pGSize = Math.max(1, Math.floor(phonSize / MAG_DIM));
           const phonReadout = new Float64Array(MAG_DIM);
           for (let d = 0; d < MAG_DIM; d++) {
@@ -73206,7 +73206,7 @@ var K_MIXIN = {
               if (idx < semSize) semPat[idx] = nameEmb[d];
             }
           }
-          const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
+          const motorOutput = await this._probePropagate("sem_to_motor", semPat);
           const motorSize = motorRegion.end - motorRegion.start;
           const mGSize = Math.max(1, Math.floor(motorSize / invSize));
           const motorReadout = new Float64Array(invSize);
@@ -73304,7 +73304,7 @@ var K_MIXIN = {
               if (idx < letterSize) pat[idx] = 1;
             }
           }
-          return typeof letterToFree.propagateChunked === "function" ? await letterToFree.propagateChunked(pat, { chunkRows: 25e4 }) : letterToFree.propagate(pat);
+          return await this._probePropagate("letter_to_free", pat);
         };
         let _orderYield = Date.now();
         for (let i = 1; i < DIGITS.length - 1; i++) {
@@ -75831,7 +75831,7 @@ var K_MIXIN = {
           } else {
             const _readStart = Date.now();
             this._tstage("gate:probe-read");
-            const phonOutput = typeof letterToPhon.propagateChunked === "function" ? await letterToPhon.propagateChunked(letterPat, { chunkRows: 25e4 }) : letterToPhon.propagate(letterPat);
+            const phonOutput = await this._probePropagate("letter_to_phon", letterPat);
             const _readMs = Date.now() - _readStart;
             if (_letterStart && _gateLetterIdx <= 3) {
               this._hb(`[Curriculum][K-DIAG] letter '${letter}' READ propagate ${_readMs}ms (phonOutput.length=${phonOutput.length})`);
@@ -75870,7 +75870,7 @@ var K_MIXIN = {
               } else {
                 const _talkStart = Date.now();
                 this._tstage("gate:probe-talk");
-                motorOutput = typeof proj.propagateChunked === "function" ? await proj.propagateChunked(letterPat, { chunkRows: 25e4 }) : proj.propagate(letterPat);
+                motorOutput = await this._probePropagate(pname, letterPat);
                 if (_gateLetterIdx <= 3) {
                   this._hb(`[Curriculum][K-DIAG] letter '${letter}' TALK via ${pname} propagate ${Date.now() - _talkStart}ms`);
                 }
@@ -75886,7 +75886,7 @@ var K_MIXIN = {
             const semOutput = await this._probePropagate("letter_to_sem", letterPat);
             const semBinary = new Float64Array(semOutput.length);
             for (let i = 0; i < semOutput.length; i++) semBinary[i] = semOutput[i] > 0 ? 1 : 0;
-            motorOutput = typeof semToMot.propagateChunked === "function" ? await semToMot.propagateChunked(semBinary, { chunkRows: 25e4 }) : semToMot.propagate(semBinary);
+            motorOutput = await this._probePropagate("sem_to_motor", semBinary);
           }
         }
         if (motorOutput && motorRegion) {
@@ -76046,7 +76046,7 @@ var K_MIXIN = {
                 }
               }
               this._tstage("gate:probe-dyn");
-              motorOutput = typeof dynSemToMotor.propagateChunked === "function" ? await dynSemToMotor.propagateChunked(semPattern, { chunkRows: 25e4 }) : dynSemToMotor.propagate(semPattern);
+              motorOutput = await this._probePropagate("sem_to_motor", semPattern);
             } else {
               const firstLetter = p.word[0];
               const letterOneHot = encodeLetter(firstLetter);
@@ -76062,7 +76062,7 @@ var K_MIXIN = {
                   letterPat[idx] = 1;
                 }
               }
-              motorOutput = typeof dynLetterToMotor.propagateChunked === "function" ? await dynLetterToMotor.propagateChunked(letterPat, { chunkRows: 25e4 }) : dynLetterToMotor.propagate(letterPat);
+              motorOutput = await this._probePropagate("letter_to_motor", letterPat);
             }
             const readoutSize = Math.min(invSize_, LETTER_SLOTS);
             const motorReadout = new Float64Array(readoutSize);
@@ -77772,7 +77772,7 @@ var K_MIXIN = {
               if (idx < letterSize) letterInput[idx] = 1;
             }
           }
-          const out = typeof letterProj.propagateChunked === "function" ? await letterProj.propagateChunked(letterInput, { chunkRows: 25e4 }) : letterProj.propagate(letterInput);
+          const out = await this._probePropagate("letter_to_motor", letterInput);
           if (!out || out.length === 0) {
             results.push(`${letter}\u2192\u2205`);
             continue;
@@ -98187,7 +98187,7 @@ var Curriculum = class _Curriculum {
           }
           let motorOutput = null;
           try {
-            motorOutput = typeof letterToMotor.propagateChunked === "function" ? await letterToMotor.propagateChunked(letterPat, { chunkRows: 25e4 }) : letterToMotor.propagate(letterPat);
+            motorOutput = await this._probePropagate("letter_to_motor", letterPat);
           } catch {
             motorOutput = null;
           }
@@ -98413,7 +98413,7 @@ var Curriculum = class _Curriculum {
                       if (idx < letterSize) letterInput[idx] = 1;
                     }
                   }
-                  const phonOutput = typeof letterToPhon.propagateChunked === "function" ? await letterToPhon.propagateChunked(letterInput, { chunkRows: 25e4 }) : letterToPhon.propagate(letterInput);
+                  const phonOutput = await this._probePropagate("letter_to_phon", letterInput);
                   if (phonOutput && phonOutput.length > 0) {
                     const invAll = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
                     const azIndices = [];
@@ -103325,6 +103325,28 @@ var Curriculum = class _Curriculum {
     if (!cluster || !cluster.crossProjections) return null;
     const proj = cluster.crossProjections[projName];
     if (!proj) return null;
+    if (proj._gpuBound && (proj.rows | 0) > 0 && (proj.rows | 0) <= 4e6 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.gateProbe === "function") {
+      const idx = [];
+      for (let i = 0; i < srcVec.length; i++) {
+        if (srcVec[i] > 0) idx.push(i);
+      }
+      if (idx.length) {
+        if (idx[idx.length - 1] - idx[0] + 1 === idx.length) {
+          idx._template = { rowStart: idx[0], groupSize: idx.length, values: [1] };
+        }
+        const srcRegion = projName.slice(0, projName.indexOf("_to_"));
+        try {
+          this._tstage("gate:probe-gpu");
+          const out = await cluster._gpuProxy.gateProbe(`${cluster.name}_${projName}`, srcRegion, idx);
+          if (out && out.length) {
+            const o64 = new Float64Array(out.length);
+            for (let i = 0; i < out.length; i++) o64[i] = out[i];
+            return o64;
+          }
+        } catch {
+        }
+      }
+    }
     if (proj.values && proj.colIdx && proj.rowPtr && proj.values.length > 0) {
       this._tstage("gate:probe-prop");
       return typeof proj.propagateChunked === "function" ? await proj.propagateChunked(srcVec, { chunkRows: 25e4 }) : proj.propagate(srcVec);
@@ -107990,7 +108012,7 @@ var Curriculum = class _Curriculum {
           if (idx < semSize) semInput[idx] = 1;
         }
       }
-      const out = typeof proj.propagateChunked === "function" ? await proj.propagateChunked(semInput, { chunkRows: 25e4 }) : proj.propagate(semInput);
+      const out = await this._probePropagate("sem_to_motor", semInput);
       if (!out || out.length === 0) continue;
       let nrm = 0;
       for (let d = 0; d < out.length; d++) nrm += out[d] * out[d];
@@ -108256,8 +108278,7 @@ var Curriculum = class _Curriculum {
         }
         let phonOut;
         try {
-          const _l2p = cluster.crossProjections.letter_to_phon;
-          phonOut = typeof _l2p.propagateChunked === "function" ? await _l2p.propagateChunked(preLetter, { chunkRows: 25e4 }) : _l2p.propagate(preLetter);
+          phonOut = await this._probePropagate("letter_to_phon", preLetter);
         } catch {
           return null;
         }
@@ -110131,7 +110152,7 @@ var Curriculum = class _Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
+        const motorOutput = await this._probePropagate("sem_to_motor", semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -110677,7 +110698,7 @@ var Curriculum = class _Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
+        const motorOutput = await this._probePropagate("sem_to_motor", semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -111941,7 +111962,7 @@ var Curriculum = class _Curriculum {
       if (semToMotor && motorRegion && nameEmb && nameEmb.length > 0) {
         const semSize = semRegion.end - semRegion.start;
         const semPat = buildPattern(semSize, nameEmb);
-        const motorOutput = typeof semToMotor.propagateChunked === "function" ? await semToMotor.propagateChunked(semPat, { chunkRows: 25e4 }) : semToMotor.propagate(semPat);
+        const motorOutput = await this._probePropagate("sem_to_motor", semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -114852,7 +114873,7 @@ var Curriculum = class _Curriculum {
           if (idx < semSize) semPat[idx] = inputEmb[d];
         }
       }
-      const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
+      const motorOutput = await this._probePropagate("sem_to_motor", semPat);
       const mGSize = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / invSize));
       const motorReadout = new Float64Array(invSize);
       for (let d = 0; d < invSize; d++) {
