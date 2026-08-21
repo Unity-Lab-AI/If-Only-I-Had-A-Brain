@@ -273,3 +273,9 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 - [x] **GATECURSOR.1** Gee (verbatim): *"now tell me how much longer _gateMathKReal (+444.3s) has"* (the 4th ask against a blind instrument) → **✅** EXAM-VOCAB-TEACH start/every-chunk/done now `console.log` (ring-visible) with list size, live cursor, and a self-measured ETA per entry. PHONPROG.1 (the phoneme phase heartbeat) stays open — same pattern to apply. Ledger: FINALIZED §GATECURSOR.
 
 - [x] **GPUTEACH.0** Gee (verbatim): *"and did you fucking put the vocab all of it everywhere on the gpu side now? lioke we talked about"* → **✅ step 0 + A-hardening shipped; and the audit found A was ALREADY the architecture** (GPU-first since 2026-08-15: hebbianBound every rep, CPU shadow samples only). Fixed the real leak class: the batch cap's SILENT drop is now a synchronous flush (0 drops verified), and every lane stage is counted into `state.throughput.boundHebbian` so the next gate names any starving stage exactly. **B (worker threads) remains open under GPUTEACH.1.** Ledger: FINALIZED §GPUTEACH step 0.
+
+## GPUVERB — filed 2026-08-21
+
+> Gee (verbatim): *"THATS WHY I FUCKING SAID WE NEEDED A NEWW BINARY SO THE FUCKIONG GPUS TRAING THE VOCABAND ALL TRAINING THE CPU IS JUST THE CORDINATOR ALL TRAING ON THE GPUSS YOU MNOTHER FUCKER"*
+
+- [~] **GPUVERB.1** — new donor binary with a MASKED plasticity verb so ALL training math runs on the GPU and the CPU is the coordinator only: sparse-index pre/post masks ride the wire (~KB), the donor scatters them GPU-side and dispatches the existing plasticity kernel; empty pre-mask = read the resident bound spikes (the lateral:anti shape: pre=lastSpikes, post=synthetic cross-bucket mask). Targets, in order: `lateral:anti` (31.8s/window measured live), persona-corpus sequence Hebbian, the once-per-definition sem→sem secondary. Donor 0.3.25 → 0.3.26; server encoder + version gate + counters; CPU shadow kept per the DF.7 durability law.

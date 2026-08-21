@@ -495,6 +495,57 @@ impl CudaEngine {
         Ok(true)
     }
 
+    /// v0.3.26 — MASKED bound plasticity: pre reads the RESIDENT bound src-cluster
+    /// spikes at the bound offset (zero transfer), post is an explicit sparse row
+    /// mask zeroed + scattered device-side into the matrix's own post buffer
+    /// (the same dev_zero_u32 + dev_scatter_ones primitives the standalone hebbian
+    /// uses). The plasticity kernel runs unchanged with src_off = bound src start,
+    /// dst_off = 0 — the pre≠post shape neither hebbian_bound (pre==post on an
+    /// intra matrix) nor hebbian (ships both sides over the wire) can express.
+    /// `reps` loops the kernel stream-ordered (the v0.3.19 rep-dose pattern).
+    pub fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 || post_idx.is_empty() {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b.clone(), None => return Ok(false) };
+        let rows = m.rows;
+        // Pre window must fit the src cluster buffer (CUDA OOB = crash, not a
+        // validation error — same guard as hebbian_bound).
+        {
+            let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+            if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
+        }
+        // Zero-then-scatter the post mask, device-side, stream-ordered ahead of
+        // the plasticity launches below.
+        {
+            let m = self.sparse.get(name).unwrap();
+            self.dev_zero_u32(&m.post_spikes, 0, rows)?;
+            self.dev_scatter_ones(post_idx, &m.post_spikes, 0, rows)?;
+        }
+        let m = self.sparse.get(name).unwrap();
+        let src = self.clusters.get(&b.src_cluster).unwrap();
+        let (reward, w_min, w_max) = (1.0f32, -2.0f32, 2.0f32);
+        let (src_off, dst_off) = (b.src_start, 0u32);
+        for _ in 0..reps.max(1) {
+            let mut bld = self.stream.launch_builder(&self.f_hebb);
+            bld.arg(&rows)
+                .arg(&lr)
+                .arg(&reward)
+                .arg(&w_min)
+                .arg(&w_max)
+                .arg(&src_off)
+                .arg(&dst_off)
+                .arg(&m.values)
+                .arg(&m.col_idx)
+                .arg(&m.row_ptr)
+                .arg(&src.spikes)
+                .arg(&m.post_spikes);
+            unsafe { bld.launch(cfg(rows)) }.map_err(|e| format!("masked bound hebbian launch: {e}"))?;
+        }
+        Ok(true)
+    }
+
     pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
         let (start, end) = match self.region(cluster, region) { Some(r) => r, None => return Ok(()) };
         let len = end - start;

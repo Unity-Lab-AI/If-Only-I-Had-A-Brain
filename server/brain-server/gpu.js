@@ -3987,6 +3987,60 @@ const SERVER_GPU_MIXIN = {
     return this._tmplSpikeOk === true;
   },
 
+  /**
+   * v0.3.26 — does the PRIMARY donor speak MASKED bound plasticity (type 13)?
+   * Same TU.20.12 negotiation pattern as binTeach/template. The verb: pre reads
+   * the RESIDENT bound src-cluster spikes (zero wire), post is a sparse row mask
+   * scattered device-side — the pre≠post shape (lateral inhibition's live-spikes ×
+   * synthetic cross-bucket mask) that neither hebbian_bound (pre==post on intra)
+   * nor type-3 hebbian (ships the ~MB live pre index river) can express.
+   */
+  _donorMaskedHebbian() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._maskedHebbWs === ws) return this._maskedHebbOk === true;
+    this._maskedHebbWs = ws;
+    this._maskedHebbOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) this._maskedHebbOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3026; // 0.3.26
+    } catch { this._maskedHebbOk = false; }
+    try {
+      console.log(`[Brain] MASKED bound plasticity for PRIMARY donor: ${this._maskedHebbOk ? 'ON (SPRS 13)' : 'off'} (requires >= 0.3.26).`);
+    } catch { /* best-effort */ }
+    return this._maskedHebbOk === true;
+  },
+
+  /**
+   * v0.3.26 — dispatch masked bound plasticity: the GPU trains a bound matrix
+   * with pre = its RESIDENT bound src spikes and post = the given sparse row
+   * mask (matrix-row indices), lr < 0 = anti branch, `reps` kernel loops
+   * stream-ordered donor-side. Fire-and-forget, no ack (types 7-11 contract).
+   * Frame: 'SPRS' | 13 | reqId=0 | name | pad4 | lr f32 | reps u32 | count u32 | idx u32[].
+   * Layout contract: donor-app/src/frames.rs `hebbian_bound_masked_decodes`.
+   * Returns true when the frame was SENT (donor capable + lane open) so callers
+   * can sample their CPU shadow only when the GPU actually carried the mass.
+   */
+  gpuSparseHebbianBoundMasked(name, lr, reps, postIdx) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return false;
+    if (!this._donorMaskedHebbian()) return false;
+    const arr = Array.isArray(postIdx) ? postIdx : (postIdx && typeof postIdx.length === 'number') ? Array.from(postIdx) : [];
+    if (arr.length === 0) return false;
+    const hdr = this._encodeSparseHeader(13, 0, name);
+    const meta = Buffer.alloc(12);
+    meta.writeFloatLE(lr, 0);
+    meta.writeUInt32LE(Math.max(1, reps >>> 0), 4);
+    meta.writeUInt32LE(arr.length >>> 0, 8);
+    const ta = Uint32Array.from(arr);
+    const frame = Buffer.concat([hdr, meta, Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)]);
+    if (!this._donorPatternSendGated(frame)) return false;
+    this._countTeachOut(13, frame.length);
+    this._hebbianMaskedSent = (this._hebbianMaskedSent || 0) + 1;
+    return true;
+  },
+
   // Per-SOCKET last-sent teach payload cache ('type:name' -> Buffer). Dies with
   // the socket, so a reconnected donor always receives full frames first - the
   // donor's own cache is per-connection too, keeping both ends in lockstep.

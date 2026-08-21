@@ -644,6 +644,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::Repeat { name, .. } => format!("repeat {name}"),
                     Frame::WriteCurrentTemplate { cluster, region, .. } => format!("write_current(tmpl) {cluster}/{region}"),
                     Frame::WriteSpikeTemplate { cluster, region, .. } => format!("write_spike(tmpl) {cluster}/{region}"),
+                    Frame::HebbianBoundMasked { name, reps, .. } => format!("hebbian_masked {name} x{reps}"),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -680,7 +681,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::Frame(frame) => {
                     // Count teach work (propagate / Hebbian) so the GUI reflects the curriculum
                     // walk — the brain sends these, not compute_batch, during teaching.
-                    let is_teach = matches!(frame, Frame::Propagate { .. } | Frame::Hebbian { .. } | Frame::BatchedHebbian { .. });
+                    let is_teach = matches!(frame, Frame::Propagate { .. } | Frame::Hebbian { .. } | Frame::BatchedHebbian { .. } | Frame::HebbianBoundMasked { .. });
                     if let Some(ack) = handle_frame(&mut engine, &mut partials, frame) {
                         let _ = reply_tx.send(Out::Binary(ack));
                     }
@@ -1212,6 +1213,16 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
                 eprintln!("[donor] hebbian '{name}' failed: {e}");
             }
             Some(frames::ack_simple(3, req_id))
+        }
+        // v0.3.26 — masked bound plasticity: resident pre at the bound offset,
+        // sparse post mask scattered device-side. Fire-and-forget: no ack, same
+        // contract as the type-7-11 teach patterns.
+        Frame::HebbianBoundMasked { name, lr, reps, post_idx, .. } => {
+            match engine.hebbian_bound_masked(&name, lr, reps, &post_idx) {
+                Err(e) => eprintln!("[donor] masked bound hebbian '{name}' failed: {e}"),
+                Ok(_applied) => { /* Ok(false) = not resident/unbound yet — best-effort like region ops */ }
+            }
+            None
         }
         // v0.3.13 teach patterns are routed to Work items at receive and normally
         // never reach here; these arms keep the match exhaustive and, if one DOES

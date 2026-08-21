@@ -2898,6 +2898,14 @@ class ServerBrain {
         // without a new wire format or pipeline. |lr| is the magnitude;
         // the negative sign is strictly a mode selector for the shader.
         antiHebbianBound: (name, lr)                        => this.gpuSparseHebbianBound(name, -Math.abs(lr)),
+        // v0.3.26 — masked bound plasticity: pre = RESIDENT bound src spikes
+        // (zero wire), post = sparse row mask scattered device-side, lr < 0 =
+        // anti branch, reps loop donor-side. The pre≠post shape the lateral-
+        // inhibition teach needs (live spikes × synthetic cross-bucket mask).
+        // Returns true only when the frame was actually SENT (donor ≥ 0.3.26 +
+        // lane open) so callers sample their CPU shadow only when the GPU
+        // carried the mass.
+        hebbianBoundMasked: (name, lr, reps, postIdx)       => this.gpuSparseHebbianBoundMasked(name, lr, reps, postIdx),
         // v0.3.18 — range-form plasticity: a whole N-rep band-pair dose as
         // ONE ~60-byte fire-and-forget frame. Self-contained (carries its
         // own pre/post ranges) — touches NO shared spike buffers, so no

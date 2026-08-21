@@ -69,6 +69,17 @@ pub enum Frame {
     /// value > 0 sets spikes over rows [row_start + d*group_size, +group_size),
     /// clipped at the region end engine-side; non-positive dims are skipped.
     WriteSpikeTemplate { cluster: String, region: String, row_start: u32, group_size: u32, values: Vec<f32> },
+    /// v0.3.26 — MASKED bound plasticity (type 13): pre reads the RESIDENT bound
+    /// src-cluster spikes at the bound offset (zero wire — the state the teach-frame
+    /// twins keep current), post is an explicit sparse row mask scattered device-side
+    /// into the matrix's own post buffer. This is the pre≠post shape neither type 3
+    /// (ships BOTH sides — the pre side of a live cortex state is a ~MB index river)
+    /// nor type 5 (pre and post both read the SAME resident buffer on an intra matrix,
+    /// so pre==post always) can express — the lateral-inhibition teach (pre=live
+    /// spikes, post=synthetic cross-bucket mask) that pinned the coordinator CPU for
+    /// ~30s windows. `reps` loops the kernel stream-ordered (the v0.3.19 rep-dose
+    /// pattern). Fire-and-forget: no ack, same contract as types 7-11.
+    HebbianBoundMasked { req_id: u32, name: String, lr: f32, reps: u32, post_idx: Vec<u32> },
 }
 
 /// Cluster-slice binding for a sparse matrix (chunk flags bit 2): the matrix's pre
@@ -344,6 +355,14 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
             let orig_type = r.u8()?;
             Some(Frame::Repeat { req_id, orig_type, name })
         }
+        // v0.3.26 — masked bound plasticity: lr + reps + sparse post row mask.
+        13 => {
+            let lr = r.f32()?;
+            let reps = r.u32()?.max(1);
+            let count = r.u32()? as usize;
+            let post_idx = r.u32_vec(count)?;
+            Some(Frame::HebbianBoundMasked { req_id, name, lr, reps, post_idx })
+        }
         _ => None,
     }
 }
@@ -468,6 +487,40 @@ mod tests {
             r.delta_cols(10, encoded.len()).is_none(),
             "truncated stream must decode to None"
         );
+    }
+
+    /// v0.3.26 — type-13 masked bound plasticity decode. The byte vector below is
+    /// the layout contract with the server's `_encodeHebbianBoundMasked`
+    /// (server/brain-server/gpu.js) — same cross-language parity discipline as the
+    /// DELTAIDX test: if either side drifts, plasticity lands on the WRONG ROWS
+    /// with no loud failure.
+    #[test]
+    fn hebbian_bound_masked_decodes() {
+        let name = b"cortex_intraSynapses"; // 20 bytes
+        let mut f = Vec::new();
+        f.extend_from_slice(b"SPRS");
+        f.push(13);
+        f.extend_from_slice(&0u32.to_le_bytes()); // reqId (fire-and-forget, unused)
+        f.extend_from_slice(&(name.len() as u16).to_le_bytes());
+        f.extend_from_slice(name);
+        while f.len() % 4 != 0 {
+            f.push(0);
+        }
+        f.extend_from_slice(&(-0.003f32).to_bits().to_le_bytes()); // lr (anti)
+        f.extend_from_slice(&4u32.to_le_bytes()); // reps
+        f.extend_from_slice(&3u32.to_le_bytes()); // count
+        for idx in [5u32, 999, 80_927_416] {
+            f.extend_from_slice(&idx.to_le_bytes());
+        }
+        match decode(&f) {
+            Some(Frame::HebbianBoundMasked { name: n, lr, reps, post_idx, .. }) => {
+                assert_eq!(n, "cortex_intraSynapses");
+                assert_eq!(lr, -0.003f32);
+                assert_eq!(reps, 4);
+                assert_eq!(post_idx, vec![5u32, 999, 80_927_416]);
+            }
+            other => panic!("type-13 decode returned unexpected: {other:?}"),
+        }
     }
 
     /// The raw path must remain byte-identical for donors/servers that never set flag 4.
