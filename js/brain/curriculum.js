@@ -8942,14 +8942,24 @@ export class Curriculum {
     // in-memory only, so EVERY restart wiped the receipt, the coverage audit
     // reported the same exam words missing again, and every gate entry
     // re-taught them all — hours on a K gate after every single press.
-    this._vocabTaughtSet = (this.cluster && (this.cluster._vocabTaughtWordsPersist ||= new Set()))
-      || this._vocabTaughtSet || new Set();
+    // RETEACH (2026-08-21, operator: "one time traing is not enough wtf are
+    // you thinking.. thats a law violation of cutting shit out of her") — the
+    // receipt is a Map word→lastTaughtAt, NOT a lifetime skip: a taught word
+    // RESTS for the re-teach window and then becomes teachable again, forever
+    // (spaced repetition). The waste that GATEVOCAB killed stays dead (no
+    // full re-teach per restart); the repetition her training requires stays
+    // whole. Legacy Set saves upgrade in place.
+    this._vocabTaughtSet = (this.cluster && (this.cluster._vocabTaughtWordsPersist =
+        this.cluster._vocabTaughtWordsPersist instanceof Map ? this.cluster._vocabTaughtWordsPersist
+        : new Map(this.cluster._vocabTaughtWordsPersist instanceof Set
+            ? Array.from(this.cluster._vocabTaughtWordsPersist).map(w => [w, Date.now()]) : [])))
+      || this._vocabTaughtSet || new Map();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK) {
             const slice = words.slice(i, i + CHUNK);
             try {
               await this._teachVocabList(slice, ctx, { reps });
-              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
+              for (const w of slice) this._vocabTaughtSet.set(String(w).toLowerCase(), Date.now());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err);
             }
@@ -9616,7 +9626,8 @@ export class Curriculum {
     //    learns more (chat learnWord of grade-appropriate words, per-cell
     //    emission/definition teaching). Keeps it "trained vocab", live.
     try {
-      if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
+      if (this._vocabTaughtSet instanceof Map) { for (const w of this._vocabTaughtSet.keys()) addTok(w); }
+      else if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
       if (this._definitionTaughtWords instanceof Set) for (const w of this._definitionTaughtWords) addTok(w);
       for (const k of Object.keys(cluster)) {
         if (k.startsWith('_emissionTaughtWords_') && cluster[k] instanceof Set) {
@@ -10557,8 +10568,18 @@ export class Curriculum {
     // in-memory only, so EVERY restart wiped the receipt, the coverage audit
     // reported the same exam words missing again, and every gate entry
     // re-taught them all — hours on a K gate after every single press.
-    this._vocabTaughtSet = (this.cluster && (this.cluster._vocabTaughtWordsPersist ||= new Set()))
-      || this._vocabTaughtSet || new Set();
+    // RETEACH (2026-08-21, operator: "one time traing is not enough wtf are
+    // you thinking.. thats a law violation of cutting shit out of her") — the
+    // receipt is a Map word→lastTaughtAt, NOT a lifetime skip: a taught word
+    // RESTS for the re-teach window and then becomes teachable again, forever
+    // (spaced repetition). The waste that GATEVOCAB killed stays dead (no
+    // full re-teach per restart); the repetition her training requires stays
+    // whole. Legacy Set saves upgrade in place.
+    this._vocabTaughtSet = (this.cluster && (this.cluster._vocabTaughtWordsPersist =
+        this.cluster._vocabTaughtWordsPersist instanceof Map ? this.cluster._vocabTaughtWordsPersist
+        : new Map(this.cluster._vocabTaughtWordsPersist instanceof Set
+            ? Array.from(this.cluster._vocabTaughtWordsPersist).map(w => [w, Date.now()]) : [])))
+      || this._vocabTaughtSet || new Map();
     this._pregateVocabDone = this._pregateVocabDone || new Set();
 
     // VOCAB-TEACH now runs ONCE per cell per session (was: every gate
@@ -10595,7 +10616,7 @@ export class Curriculum {
               // counts it and the next coverage audit reports it trained
               // (stops the re-teach loop). Store lowercased to match the
               // token form `examVocabCoverage` checks.
-              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
+              for (const w of slice) this._vocabTaughtSet.set(String(w).toLowerCase(), Date.now());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err);
             }

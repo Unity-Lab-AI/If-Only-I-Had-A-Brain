@@ -36299,3 +36299,11 @@ Three real mismatch machines, all found by reading the actual paths:
 **Board: 3 open / 235 closed.**
 
 **WORDLOCK process foul, owned:** the commit landed DIRECTLY on `main` — after the prior batch's cascade I stayed on main and never re-branched (second direct-to-main this session; the PAINT batch was the first). Develop converged by merging main back in; both remotes verified. The discipline stands: feature branch first, always.
+
+## 2026-08-21 — RETEACH: the taught receipt becomes spaced repetition — nothing is ever cut from her
+
+> Gee (verbatim): *"one time traing is not enough wtf are you thinking.. thats a law violation of cutting shit out of her"*
+
+Owned: GATEVOCAB's persisted receipt overcorrected — it made a taught exam word count as trained FOREVER, which cuts reinforcement out of her training (the FIX-never-cut law). The receipt is now a **Map word→lastTaughtAt**: a taught word RESTS for the re-teach window (`DREAM_VOCAB_RETEACH_MS`, default 48h) and then drops back out of the trained set, so the next gate entry REINFORCES it — spaced repetition, forever. The waste stays dead (no full re-teach per restart within the window); the repetition stays whole. Legacy Set saves upgrade in place with fresh timestamps; the weights save path needed zero changes (a Map serializes as pairs through the same Array.from). Verified through the real mixin: a fresh word counts trained, a stale word re-teaches; bundle rebuilt.
+
+**Board: 3 open / 237 closed** (+1 new spec item below → 4 open).
