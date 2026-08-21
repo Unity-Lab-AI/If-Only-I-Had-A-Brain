@@ -39,7 +39,16 @@ const path = require('path');
 // renders looked like white pencil (Gee: "NO MORE PENCIL ART"). v3 orphans those
 // so she re-grounds every concept with the new COLOURFUL reference prompt. v2 stays
 // on disk, unused.
-const VM_FILE = path.join(__dirname, '..', 'visual-memory-v3.json');
+// 2026-08-21 — bumped to v4 (the one-time clear, operator-requested): everything
+// in v3 was learned under the pre-PAINT pipeline — v1 schemas with no contours,
+// scratch-era constructions — and the LOOKEYES + PAINT batches changed what a
+// look BANKS (contours, fillable outlines, v2 schemas). v4 starts her mind's-eye
+// imagery empty so every concept re-grounds through the FIXED look lane; the
+// brain weights / grades / phases / episodic memory live in entirely different
+// files and are untouched — imagery cleared, training kept, same contract as
+// the v1→v2→v3 bumps before it. v3 stays on disk, unused, and the FRESHEYES
+// pattern sweep (`visual-memory*`) covers v4 on future fresh walks automatically.
+const VM_FILE = path.join(__dirname, '..', 'visual-memory-v4.json');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
