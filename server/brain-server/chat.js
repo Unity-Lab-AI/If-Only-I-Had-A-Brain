@@ -1777,6 +1777,9 @@ const SERVER_CHAT_MIXIN = {
       + '|' + Math.round((this.valence ?? 0.5) * 7)
       + '|' + this._ownArtAttempt;
     const rnd = this._ownArtRng(seedStr);
+    // ARTSTYLE — one style per artwork, mood-weighted, never her last one.
+    // The whole piece (ground, every subject, label ink) rides the same hand.
+    const artStyle = (typeof this._artStylePick === 'function') ? this._artStylePick(rnd) : null;
 
     const side = Number(process.env.DREAM_OWNART_CANVAS) > 0
       ? Number(process.env.DREAM_OWNART_CANVAS)
@@ -1798,7 +1801,7 @@ const SERVER_CHAT_MIXIN = {
     for (let i = 0; i < plan.subjects.length; i++) {
       const s = plan.subjects[i];
       const box = layout[i];
-      const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word);
+      const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word, artStyle);
       for (const st of built) strokes.push(st);
     }
     if (strokes.length < 4) return null;   // nothing she understood well enough → honest no-drawing
@@ -1816,11 +1819,13 @@ const SERVER_CHAT_MIXIN = {
       });
     } catch { return null; }
     if (!drawn) return null;
-    const label = 'canvas:own:' + plan.subjects.map(s => s.word).join('+');
+    // ARTSTYLE — the style rides the label so the viewer SHOWS her changing it up.
+    const styleName = artStyle ? artStyle.name : 'poster';
+    const label = 'canvas:own:' + plan.subjects.map(s => s.word).join('+') + ':' + styleName;
     this._lastSketchLabel = label;
     const known = plan.subjects.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
-    try { process.stdout.write(`[OwnArt] ✍ HER OWN version of "${plan.subjects.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} — ${strokes.length} marks she constructed, attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.\n`); } catch { /* nf */ }
-    return { rec: drawn, label, source: label, from: 'own:' + plan.subjects.map(s => s.word).join('+'), style: 'own', plan: { subjects: plan.subjects.map(s => s.word), place: plan.place ? plan.place.word : null } };
+    try { console.log(`[OwnArt] ✍ HER OWN "${plan.subjects.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${strokes.length} marks, attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
+    return { rec: drawn, label, source: label, from: 'own:' + plan.subjects.map(s => s.word).join('+'), style: styleName, plan: { subjects: plan.subjects.map(s => s.word), place: plan.place ? plan.place.word : null } };
   },
 
   // DRAWCTX (Gee 2026-08-20: *"when Unity is told to 'draw' she should draw the
@@ -1951,9 +1956,114 @@ const SERVER_CHAT_MIXIN = {
   // every stroke is generated from the schema's numbers, never sampled from an image.
   // A part with more weight gets more marks (that is where the thing's mass is), and
   // each mark is an ARC she draws across the part rather than a traced contour.
-  _ownArtStrokesFromSchema(schema, box, rnd, word) {
+  // ── ARTSTYLE (2026-08-21) — THE STYLE ENGINE. She has one TOOLKIT but was
+  // painting in one STYLE. Each named style below is a parameterization of the
+  // same primitives (mass treatment, outline weight, ink mode, detail density,
+  // alpha) — her knowledge of the subject is identical across all of them; the
+  // HAND changes. The picker is mood-weighted and NEVER repeats her last style,
+  // so consecutive pieces come out visibly different — pencil one time, a
+  // watercolor wash the next, ink, dots, crayon scribble, a loose doodle.
+  _artStyles() {
+    return [
+      // mass: how the body of the thing goes down; ink: color source; outlineW/alpha; detailMul; scale
+      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0 },
+      { name: 'pencil',      mass: 'hatch',    ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0 },
+      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0 },
+      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0 },
+      { name: 'pointillism', mass: 'dots',     ink: 'palette',  outlineW: 0,     outlineA: 0.4, detailMul: 0.2, scale: 1.0 },
+      { name: 'crosshatch',  mass: 'xhatch',   ink: 'graphite', outlineW: 0.006, outlineA: 0.9, detailMul: 0.8, scale: 1.0 },
+      { name: 'crayon',      mass: 'scribble', ink: 'palette',  outlineW: 0.012, outlineA: 0.9, detailMul: 0.6, scale: 1.0 },
+      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55 },
+    ];
+  },
+  _artStylePick(rnd) {
+    const styles = this._artStyles();
+    const arousal = (typeof this.arousal === 'number') ? this.arousal : 0.5;
+    const valence = (typeof this.valence === 'number') ? this.valence : 0;
+    // Mood weights: high arousal favors bold (ink/poster/crayon), low valence
+    // favors graphite moods (pencil/crosshatch), dreaminess favors soft
+    // (watercolor/pointillism). All styles always possible — weights, not gates.
+    const w = styles.map(s => {
+      let wt = 1;
+      if (arousal > 0.65 && (s.name === 'ink' || s.name === 'poster' || s.name === 'crayon')) wt += 1.2;
+      if (valence < -0.1 && (s.name === 'pencil' || s.name === 'crosshatch')) wt += 1.2;
+      if (arousal < 0.45 && (s.name === 'watercolor' || s.name === 'pointillism')) wt += 1.2;
+      if (this._lastArtStyle === s.name) wt = 0;   // she always changes it up
+      return wt;
+    });
+    const total = w.reduce((a2, b2) => a2 + b2, 0) || 1;
+    let roll = rnd() * total;
+    let pick = styles[0];
+    for (let i = 0; i < styles.length; i++) { roll -= w[i]; if (roll <= 0) { pick = styles[i]; break; } }
+    this._lastArtStyle = pick.name;
+    return pick;
+  },
+  // Ink for a style: graphite = warm grays, mono = near-black, palette = the
+  // learned palette (via _ownArtInk) tinted by the definition color when known.
+  _artInk(style, schema, strength, rnd, defColor) {
+    if (style && style.ink === 'graphite') { const g = 70 + Math.round(rnd() * 70) + Math.round(strength * 40); return [g, g, Math.min(255, g + 6)]; }
+    // mono = LIGHT ink — her paper is a dark sketchbook page, so black ink is
+    // invisible on it (harness-caught: 0.1% coverage). A pale gel-pen line is
+    // the ink look that actually reads on her canvas.
+    if (style && style.ink === 'mono') { const g = 205 + Math.round(rnd() * 40); return [g, g, Math.min(255, g + 8)]; }
+    const base = this._ownArtInk(schema, strength, rnd);
+    if (defColor) return [Math.round(base[0] * 0.45 + defColor[0] * 0.55), Math.round(base[1] * 0.45 + defColor[1] * 0.55), Math.round(base[2] * 0.45 + defColor[2] * 0.55)];
+    return base;
+  },
+  // Mass treatments — every one built from the same primitives.
+  _artMass(out, style, cx, cy, pw, ph, ang, rgb, rnd) {
+    const m = style ? style.mass : 'fill';
+    if (m === 'none') return;
+    if (m === 'fill') { out.push({ type: 'blob', cx, cy, rx: pw * 0.55, ry: ph * 0.55, ang, rgb }); return; }
+    if (m === 'wash') {
+      // 2-3 overlapping translucent blobs, lightened — paint that mixes with the paper
+      const n = 2 + Math.floor(rnd() * 2);
+      for (let i = 0; i < n; i++) {
+        const lt = [Math.min(255, rgb[0] + 45), Math.min(255, rgb[1] + 45), Math.min(255, rgb[2] + 45)];
+        out.push({ type: 'blob', cx: cx + (rnd() - 0.5) * pw * 0.25, cy: cy + (rnd() - 0.5) * ph * 0.25, rx: pw * (0.45 + rnd() * 0.2), ry: ph * (0.45 + rnd() * 0.2), ang: ang + (rnd() - 0.5) * 0.4, rgb: lt, a: 0.30 + rnd() * 0.15 });
+      }
+      return;
+    }
+    if (m === 'hatch' || m === 'xhatch') {
+      const passes = m === 'xhatch' ? [ang, ang + Math.PI / 2.2] : [ang];
+      for (const pa of passes) {
+        const n = Math.max(3, Math.round(Math.max(pw, ph) * 30));
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5) / n - 0.5;
+          const ox = -Math.sin(pa) * t * ph, oy = Math.cos(pa) * t * pw;
+          const len = Math.max(pw, ph) * (0.7 + rnd() * 0.3);
+          out.push({ type: 'line', x0: cx + ox - Math.cos(pa) * len * 0.5, y0: cy + oy - Math.sin(pa) * len * 0.5, x1: cx + ox + Math.cos(pa) * len * 0.5, y1: cy + oy + Math.sin(pa) * len * 0.5, rgb, a: 0.65 });
+        }
+      }
+      return;
+    }
+    if (m === 'dots') {
+      const n = Math.max(12, Math.round(pw * ph * 2600));
+      for (let i = 0; i < n; i++) {
+        const a2 = rnd() * Math.PI * 2, rr = Math.sqrt(rnd());
+        out.push({ type: 'point', x: cx + Math.cos(a2) * rr * pw * 0.5, y: cy + Math.sin(a2) * rr * ph * 0.5, r: 1, rgb: [Math.max(0, rgb[0] + Math.round((rnd() - 0.5) * 50)), Math.max(0, rgb[1] + Math.round((rnd() - 0.5) * 50)), Math.max(0, rgb[2] + Math.round((rnd() - 0.5) * 50))] });
+      }
+      return;
+    }
+    if (m === 'scribble') {
+      // one continuous waxy zigzag filling the part — crayon pressure via alpha
+      const n = Math.max(6, Math.round(ph * 46));
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = i / n - 0.5;
+        pts.push([cx + (i % 2 === 0 ? -1 : 1) * pw * (0.42 + rnd() * 0.1), cy + t * ph]);
+      }
+      out.push({ type: 'poly', pts, rgb, w: 0.006, a: 0.85 });
+      return;
+    }
+  },
+
+  _ownArtStrokesFromSchema(schema, box, rnd, word, style) {
     const out = [];
     const put = (pts, rgb) => out.push({ type: 'poly', pts, rgb });
+    // ARTSTYLE — no style handed in (legacy caller) → poster, the pre-style behavior.
+    if (!style) style = this._artStyles()[0];
+    if (style.scale !== 1) box = { cx: box.cx, cy: box.cy, w: box.w * style.scale, h: box.h * style.scale };
     // NO SCHEMA — she has never seen it and could not look it up. She still draws
     // SOMETHING honest: a construction from the word's own shape-in-her-mind (letter
     // count → mass, vowel ratio → roundness). Crude on purpose, and it is HER guess
@@ -1966,17 +2076,16 @@ const SERVER_CHAT_MIXIN = {
       // schema NOR a definition does the letter-shape guess below run.
       if (typeof this._defDrivenStrokes === 'function') {
         try {
-          const defArt = this._defDrivenStrokes(word, box, rnd);
+          const defArt = this._defDrivenStrokes(word, box, rnd, style);
           if (defArt && defArt.length) return defArt;
         } catch { /* definition drawing best-effort — the guess below still stands */ }
       }
-      // PAINT.3 — even her honest guess gets MASS now: a filled body blob with
-      // a thick outline, not hairlines. Crude on purpose, still HER guess, but
-      // it reads as A THING on the page instead of scratch.
+      // PAINT.3 — even her honest guess gets MASS now, in the current style:
+      // crude on purpose, still HER guess, but it reads as A THING on the page.
       const w = String(word || 'thing');
       const vowels = (w.match(/[aeiou]/g) || []).length / Math.max(1, w.length);
       const r = 0.5 * (0.55 + 0.45 * vowels);
-      out.push({ type: 'blob', cx: box.cx, cy: box.cy, rx: r * box.w * 0.45, ry: r * box.h * 0.4 * (0.8 + 0.4 * rnd()), ang: (rnd() - 0.5) * 0.6, rgb: this._ownArtInk(null, 0.25, rnd) });
+      this._artMass(out, style, box.cx, box.cy, r * box.w * 0.9, r * box.h * 0.8 * (0.8 + 0.4 * rnd()), (rnd() - 0.5) * 0.6, this._artInk(style, null, 0.25, rnd, null), rnd);
       const lobes = 3 + (w.length % 4);
       for (let i = 0; i < lobes; i++) {
         const a0 = (i / lobes) * Math.PI * 2, a1 = a0 + Math.PI * 2 / lobes;
@@ -1989,7 +2098,7 @@ const SERVER_CHAT_MIXIN = {
             box.cy + Math.sin(a) * rr * box.h * 0.5,
           ]);
         }
-        out.push({ type: 'poly', pts, rgb: this._ownArtInk(null, 0.45, rnd), w: 0.008 });
+        out.push({ type: 'poly', pts, rgb: this._artInk(style, null, 0.45, rnd, null), w: Math.max(0.004, style.outlineW || 0.008), a: style.outlineA });
       }
       return out;
     }
@@ -2006,37 +2115,40 @@ const SERVER_CHAT_MIXIN = {
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
     const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
-    // ── LAYER 1: MASS — each learned part becomes a filled ellipse where she
-    // learned it sits, tinted by palette + definition. The body of the thing.
+    // ── LAYER 1: MASS — each learned part goes down in the STYLE's mass
+    // treatment (fill / wash / hatch / dots / scribble / none), tinted by
+    // palette + definition. The body of the thing, in whatever hand she's in.
     for (const p of schema.parts.slice(0, 12)) {
       const cx = mapX(p.cx), cy = mapY(p.cy);
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-      out.push({ type: 'blob', cx, cy, rx: pw * 0.55, ry: ph * 0.55, ang: p.ang, rgb: mixDef(this._ownArtInk(schema, 0.25 + 0.35 * p.weight, rnd)) });
+      this._artMass(out, style, cx, cy, pw * 1.1, ph * 1.1, p.ang, mixDef(this._artInk(style, schema, 0.25 + 0.35 * p.weight, rnd, defColor)), rnd);
     }
     // ── LAYER 2: CONTOUR — the outlines she kept from actually LOOKING at the
-    // thing (PAINT.2). Closed contours fill as shapes then take a thick outline;
-    // open ones draw as weighted strokes. This is where the drawing starts to
-    // READ as the thing rather than as marks.
+    // thing (PAINT.2), weighted and inked by the style. Closed contours fill
+    // only in filled styles; a pencil or ink piece keeps them as pure line.
     if (Array.isArray(schema.outlines)) {
+      const fillClosed = style.mass === 'fill' || style.mass === 'wash';
       for (const o of schema.outlines) {
         if (!o || !Array.isArray(o.pts) || o.pts.length < 3) continue;
         const pts = o.pts.map(pp => [mapX(pp[0]), mapY(pp[1])]);
-        if (o.closed) {
-          out.push({ type: 'fill', pts, rgb: mixDef(this._ownArtInk(schema, 0.5, rnd)) });
-          out.push({ type: 'poly', pts: pts.concat([pts[0]]), rgb: this._ownArtInk(schema, 0.85, rnd), w: 0.01 });
-        } else {
-          out.push({ type: 'poly', pts, rgb: this._ownArtInk(schema, 0.7, rnd), w: 0.007 });
+        if (o.closed && fillClosed) {
+          out.push({ type: 'fill', pts, rgb: mixDef(this._artInk(style, schema, 0.5, rnd, defColor)), a: style.mass === 'wash' ? 0.4 : 1 });
+        }
+        if (style.outlineW > 0) {
+          out.push({ type: 'poly', pts: o.closed ? pts.concat([pts[0]]) : pts, rgb: this._artInk(style, schema, 0.85, rnd, null), w: style.outlineW, a: style.outlineA });
+        } else if (style.outlineA > 0) {
+          out.push({ type: 'poly', pts: o.closed ? pts.concat([pts[0]]) : pts, rgb: this._artInk(style, schema, 0.6, rnd, null), a: style.outlineA });
         }
       }
     }
-    // ── LAYER 3: DETAIL — her hand's arcs on the heaviest parts, ON the part
-    // (OWNART.7's tight hand), thin over the filled masses. Texture, not scatter.
+    // ── LAYER 3: DETAIL — her hand's arcs on the heaviest parts, density set
+    // by the style (a pencil piece hatches busily; ink stays spare).
     for (const p of schema.parts.slice(0, 8)) {
       const cx = mapX(p.cx), cy = mapY(p.cy);
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-      const marks = 1 + Math.round(p.weight * 18);
+      const marks = Math.round((1 + Math.round(p.weight * 18)) * (style.detailMul ?? 1));
       for (let m = 0; m < marks; m++) {
         const ang = p.ang + (rnd() - 0.5) * 0.25;
         const len = (0.6 + 0.4 * rnd()) * Math.max(pw, ph);
@@ -2045,7 +2157,7 @@ const SERVER_CHAT_MIXIN = {
         const ax = cx + ox - Math.cos(ang) * len * 0.5, ay = cy + oy - Math.sin(ang) * len * 0.5;
         const bx = cx + ox + Math.cos(ang) * len * 0.5, by = cy + oy + Math.sin(ang) * len * 0.5;
         const mx = (ax + bx) / 2 - Math.sin(ang) * bow, my = (ay + by) / 2 + Math.cos(ang) * bow;
-        put([[ax, ay], [mx, my], [bx, by]], this._ownArtInk(schema, 0.55 + 0.3 * p.weight, rnd));
+        out.push({ type: 'poly', pts: [[ax, ay], [mx, my], [bx, by]], rgb: this._artInk(style, schema, 0.55 + 0.3 * p.weight, rnd, null), a: style.ink === 'graphite' ? 0.8 : 1 });
       }
     }
     return out;
@@ -2096,9 +2208,10 @@ const SERVER_CHAT_MIXIN = {
     if (has(/\b(petals?|flower)\b/)) parts.push('petals');
     return (colors.length || shape || parts.length) ? { colors, shape, parts } : null;
   },
-  _defDrivenStrokes(word, box, rnd) {
+  _defDrivenStrokes(word, box, rnd, style) {
     const attr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     if (!attr || (!attr.shape && !attr.colors.length)) return null;
+    if (!style) style = this._artStyles()[0];
     const out = [];
     const body = attr.colors[0] || this._ownArtInk(null, 0.35, rnd);
     const dark = [Math.round(body[0] * 0.55), Math.round(body[1] * 0.55), Math.round(body[2] * 0.55)];
@@ -2122,11 +2235,12 @@ const SERVER_CHAT_MIXIN = {
         out.push({ type: 'fill', pts, rgb: body });
         out.push({ type: 'poly', pts: pts.concat([pts[0]]), rgb: dark, w: 0.01 });
       } else {
-        // round / oval / long / color-only default: the filled mass + outline —
-        // Gee's literal recipe: "draw a circle fill it in with red".
-        out.push({ type: 'blob', cx, cy, rx, ry, ang, rgb: body });
+        // round / oval / long / color-only default: the mass in the current
+        // style (a filled circle in poster, a wash in watercolor, hatching in
+        // pencil), then the outline — the definition recipe, styled.
+        this._artMass(out, style, cx, cy, rx * 2, ry * 2, ang, body, rnd);
         const ring = []; for (let t = 0; t <= 20; t++) { const a = (t / 20) * Math.PI * 2; ring.push([cx + Math.cos(a + ang) * rx, cy + Math.sin(a + ang) * ry]); }
-        out.push({ type: 'poly', pts: ring, rgb: dark, w: 0.008 });
+        out.push({ type: 'poly', pts: ring, rgb: style.ink === 'graphite' || style.ink === 'mono' ? this._artInk(style, null, 0.8, rnd, null) : dark, w: Math.max(0.005, style.outlineW || 0.008), a: style.outlineA });
       }
       // "...and put a stem on it" — attach the parts the definition names.
       for (const p of attr.parts) {

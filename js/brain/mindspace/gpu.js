@@ -644,26 +644,44 @@ export class MindSpaceGPU {
     const paper = [26, 25, 29];
     for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(paper[0] * 0.9 + bg[0] * 0.1); data[o + 1] = Math.round(paper[1] * 0.9 + bg[1] * 0.1); data[o + 2] = Math.round(paper[2] * 0.9 + bg[2] * 0.1); data[o + 3] = 255; }
     const ink = opts.rgb || [Math.round(bg[0] * 0.4 + 255 * 0.6), Math.round(bg[1] * 0.4 + 255 * 0.6), Math.round(bg[2] * 0.4 + 255 * 0.6)];
-    const px = (x, y, rgb) => { const xi = Math.round(x * (W - 1)), yi = Math.round(y * (H - 1)); if (xi < 0 || xi >= W || yi < 0 || yi >= H) return; const o = (yi * W + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
-    const dot = (x, y, r, rgb) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb); };
+    // ARTSTYLE (2026-08-21) — per-stroke ALPHA. Every primitive accepts `a`
+    // (0..1, default 1 = opaque, exactly the old behavior): the pixel blends
+    // toward the stroke color instead of overwriting. This is the one primitive
+    // the style engine could not compose from the others — watercolor washes,
+    // soft graphite, translucent layering all need paint that mixes with what
+    // is already on the paper.
+    const px = (x, y, rgb, a) => {
+      const xi = Math.round(x * (W - 1)), yi = Math.round(y * (H - 1));
+      if (xi < 0 || xi >= W || yi < 0 || yi >= H) return;
+      const o = (yi * W + xi) * 4;
+      if (typeof a === 'number' && a > 0 && a < 1) {
+        data[o] = Math.round(data[o] * (1 - a) + rgb[0] * a);
+        data[o + 1] = Math.round(data[o + 1] * (1 - a) + rgb[1] * a);
+        data[o + 2] = Math.round(data[o + 2] * (1 - a) + rgb[2] * a);
+      } else {
+        data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2];
+      }
+      data[o + 3] = 255;
+    };
+    const dot = (x, y, r, rgb, a) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb, a); };
     // stroke.w = normalized thickness (label bold/silhouette — Gee: "not just
     // pencil style text"). Painted as discs along the sampled line so thick
     // strokes are FILLED, not 1px pencil. w absent → 1px exactly as before.
     const wRad = (w) => (typeof w === 'number' && w > 0) ? Math.max(1, Math.round(w * (W - 1) * 0.5)) : 0;
-    const line = (x0, y0, x1, y1, rgb, w) => {   // sampled DDA in normalized space
+    const line = (x0, y0, x1, y1, rgb, w, a) => {   // sampled DDA in normalized space
       const r = wRad(w);
       const steps = Math.max(2, Math.round(Math.hypot((x1 - x0) * W, (y1 - y0) * H)));
       for (let i = 0; i <= steps; i++) {
         const t = i / steps, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
-        if (r > 0) dot(x, y, r, rgb); else px(x, y, rgb);
+        if (r > 0) dot(x, y, r, rgb, a); else px(x, y, rgb, a);
       }
     };
     for (const s of (Array.isArray(strokes) ? strokes : [])) {
       if (!s) continue;
       const rgb = s.rgb || ink;
-      if (s.type === 'line') line(s.x0, s.y0, s.x1, s.y1, rgb, s.w);
-      else if (s.type === 'point') dot(s.x, s.y, Math.max(wRad(s.w), Math.max(0, Math.min(4, s.r ?? 1))), rgb);
-      else if (s.type === 'poly' && Array.isArray(s.pts)) { for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb, s.w); }
+      if (s.type === 'line') line(s.x0, s.y0, s.x1, s.y1, rgb, s.w, s.a);
+      else if (s.type === 'point') dot(s.x, s.y, Math.max(wRad(s.w), Math.max(0, Math.min(4, s.r ?? 1))), rgb, s.a);
+      else if (s.type === 'poly' && Array.isArray(s.pts)) { for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb, s.w, s.a); }
       else if (s.type === 'fill' && Array.isArray(s.pts) && s.pts.length >= 3) {
         // PAINT.1 (2026-08-21) — TRUE even-odd scanline polygon fill, part of
         // giving her hand a full toolkit (shapes, fills, line weights, colors)
@@ -685,10 +703,10 @@ export class MindSpaceGPU {
             const yi = P[i][1], yj = P[j][1];
             if ((yi > fy) !== (yj > fy)) xs.push(P[j][0] + (P[i][0] - P[j][0]) * (fy - yj) / (yi - yj));
           }
-          xs.sort((a, b) => a - b);
+          xs.sort((q, r2) => q - r2);
           for (let k = 0; k + 1 < xs.length; k += 2) {
             const xa = Math.max(0, Math.round(xs[k] * (W - 1))), xb2 = Math.min(W - 1, Math.round(xs[k + 1] * (W - 1)));
-            for (let xx = xa; xx <= xb2; xx++) { const o = (yy * W + xx) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; }
+            for (let xx = xa; xx <= xb2; xx++) px(xx / (W - 1), yy / (H - 1), rgb, s.a);
           }
         }
       }
@@ -708,7 +726,7 @@ export class MindSpaceGPU {
           for (let xx = xa; xx <= xb2; xx++) {
             const dx = xx / (W - 1) - bcx, dy = yy / (H - 1) - bcy;
             const u = (dx * bca + dy * bsa) / brx, v = (-dx * bsa + dy * bca) / bry;
-            if (u * u + v * v <= 1) { const o = (yy * W + xx) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; }
+            if (u * u + v * v <= 1) px(xx / (W - 1), yy / (H - 1), rgb, s.a);
           }
         }
       }
