@@ -36134,3 +36134,17 @@ Any already-poisoned entries on the box die with the v5 empty store at the press
 **Both cut:** a reject now deletes the concept's WHOLE store entry (a rejected look is a bad look — the forced fresh reference rebuilds it from zero), and `_artClearEyeIfShowing` swaps the on-screen frame for an honest note the moment the verdict lands — *"she tossed her <word> — fresh look-up, definition re-read and redraw on the way…"* (bans: *"she will never draw <word> again"*). The display obeys EVERY reject, even a relearn-paced repeat press; unrelated frames stay untouched. **7/7 harness checks on production code.**
 
 **Board: 3 open / 213 closed.**
+
+## 2026-08-21 — ARTLEARN: she learns from her drawing — your verdicts become her taste and her technique
+
+> Gee (verbatim): *"and learn from her drawing"*
+
+The reject side already unlearns (REJECTGONE: the whole memory dies and rebuilds from a fresh look). This closes the ACCEPT side — human approval turns into learning, three ways:
+
+- **STYLE TASTE, per concept:** an accepted `canvas:own:<word>:<style>` banks the winning style on the concept's entry (`e.art.styles`), and `_artStylePick` reads those verdicts whenever she draws that subject again — accepted hands weight the rotation up to 4× (the never-twice-in-a-row rule still holds, so she keeps variety). Verified: the accepted style's pick rate jumped 5/40 → 18/40 for that subject only.
+- **TECHNIQUE VALIDATION:** the concept's practiced skill params get `validated++` on accept — the human confirming what her own eye (the PAINT.5 cosine oracle) has been honing.
+- **PRACTICE REINFORCEMENT:** every accept queues a practice session on that word (the loop's own cooldown/schema gates make over-asking free) — approval means the subject is worth getting even better at.
+
+Verdicts were already riding the emission bus into her episodes; now they also shape the hand itself. **6/6 harness checks on production code.**
+
+**Board: 3 open / 214 closed.**
