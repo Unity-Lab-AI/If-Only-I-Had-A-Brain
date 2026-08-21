@@ -3529,6 +3529,10 @@ export class Curriculum {
       perSubject,
       passedCellsTotal: cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells.length : 0,
       subjects: SUBJECTS.slice(),
+      // GATEVERDICT — the last gate's verdict STICKS here (gate name, pass,
+      // the full per-section reason string, timestamp) so the board answers
+      // "did it pass and which section failed" without ring archaeology.
+      lastGateVerdict: this._lastGateVerdict || null,
     };
   }
 

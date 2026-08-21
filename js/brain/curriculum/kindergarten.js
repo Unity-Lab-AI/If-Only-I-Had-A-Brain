@@ -3311,11 +3311,19 @@ export const K_MIXIN = {
     _gsMark('SENTENCE-GEN');
     const sentenceGenRate = sentenceGen.rate || 0;
     const _mathKResult = {
+      // (verdict recorded onto the curriculum below — the reason line used to
+      // exist ONLY as one console line that scrolled out of the ring in
+      // minutes, so "did it pass and WHY NOT" required archaeology)
       pass,
       reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? ' [FAIL: ' + seqFails.join(', ') + ']' : ''}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
       metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('math', 'kindergarten', 'overall', pass, prodRate);
+    // GATEVERDICT — the verdict STICKS on the curriculum (state-visible) so
+    // "did it pass and which section failed" is a board read, not console
+    // archaeology against a ring the BLOCKED lines flush in minutes.
+    this._lastGateVerdict = { gate: 'math/kindergarten', pass, reason: _mathKResult.reason, at: Date.now() };
+    console.log(`[GateMathK] VERDICT ${pass ? '✓ PASS' : '✗ FAIL'} — ${_mathKResult.reason}`);
     return _mathKResult;
     } finally {
       cluster.noiseAmplitude = _savedProbeNoise;

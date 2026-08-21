@@ -36447,3 +36447,9 @@ Still filed: donor 0.3.27 candidates — a true donor-side bound read (src resid
 > Gee (verbatim): *"i just want to get past this fucking gate, but sure goahead and do that too"* → mid-build: *"holkd up finish what u were doing"*
 
 The gate's own section timer billed `SUCC+SKIP10+MAKETEN+TEEN — 63.5s`: all four arithmetic batteries ride `_probeCombinationCosine`, and its 39 samples each ran a FULL 12M-row intra propagate to read ONLY the expected region's rows (~1.5M). `propagateChunked` gained a ROW WINDOW (`rowStart`/`rowEnd` — bit-identical inside the window, harness maxDiff=0, outside rows untouched-zero which those callers never read), and the three region-read probe paths pass it: the cosine prober (expected.region), the argmax-tag prober (tagRegion), and the gate's SEQ probe (letter region — its 13.9s line shrinks the same way). Expected next bill: the 63.5s line → ~8s, SEQ → ~1s; the gate's cost center moves to the LAW-7 PRODUCTION + SENTENCE-GEN sections, which the timers already itemize.
+
+## 2026-08-21 — GATEVERDICT: a gate's pass/fail + per-section scores STICK in state
+
+> Gee (verbatim): *"it did NOT pass:phase: _gateMathKReal (+237.8s)"* — and the WHY was unfindable: the verdict existed as one console line that the BLOCKED wall flushes out of the 400-line ring in minutes. Archaeology confirmed: not one verdict line survived in the deepest ring read.
+
+The math gate now (1) prints `[GateMathK] VERDICT ✓/✗ — <full per-section scores>` loud in the ring AND (2) records `curriculum.lastGateVerdict {gate, pass, reason, at}` into state — the board answers "did it pass, and which section failed" as a field read forever. Rides the same batch as GATEBATT's row window.
