@@ -1786,15 +1786,11 @@ const SERVER_CHAT_MIXIN = {
       : ((typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 512);
 
     const strokes = [];
-    // GROUND / PLACE first (behind everything), if the message named a place.
+    // BACKDROP (PAINT.8) — the place is a full SCENE behind the subjects, not a
+    // ground line with tufts. Same law as the subjects: looked-at places redraw
+    // her remembered trace; known-but-unseen places paint from the definition.
     if (plan.place) {
-      const g = 0.68 + 0.10 * (rnd() - 0.5);
-      strokes.push({ type: 'line', x0: 0.02, y0: g, x1: 0.98, y1: g + 0.02 * (rnd() - 0.5), rgb: this._ownArtInk(plan.place.schema, 0.55, rnd) });
-      const tufts = 5 + Math.floor(rnd() * 7);
-      for (let i = 0; i < tufts; i++) {
-        const x = 0.05 + rnd() * 0.9, hh = 0.02 + rnd() * 0.05;
-        strokes.push({ type: 'line', x0: x, y0: g, x1: x + 0.02 * (rnd() - 0.5), y1: g - hh, rgb: this._ownArtInk(plan.place.schema, 0.45, rnd) });
-      }
+      for (const st of this._backdropStrokes(plan.place, artStyle, rnd)) strokes.push(st);
     }
     // SUBJECTS — main one centred and largest; companions flank it, smaller.
     const layout = this._ownArtLayout(plan.subjects.length, rnd);
@@ -2070,6 +2066,48 @@ const SERVER_CHAT_MIXIN = {
       out.push({ type: 'poly', pts, rgb, w: 0.006, a: 0.85 });
       return;
     }
+  },
+
+  // ── PAINT.8 (2026-08-21) — THE BACKDROP LAYER. Any background, three tiers,
+  // mirroring the subject pipeline exactly: (1) a place she has LOOKED AT
+  // paints as a horizon wash in the place's real palette plus her remembered
+  // trace of it, faint and full-canvas, behind everything; (2) a place she only
+  // KNOWS paints as sky/ground washes tinted by the definition's color words;
+  // (3) both keep the humble ground line + tufts so a subject always stands on
+  // something. Alpha does the depth: the scene sits back, the subject pops.
+  _backdropStrokes(place, style, rnd) {
+    const out = [];
+    if (!style) style = this._artStyles()[0];
+    const ps = place && place.schema;
+    const g = 0.68 + 0.10 * (rnd() - 0.5);   // horizon / ground height
+    const defAttr = this._defDrawAttributes ? this._defDrawAttributes(place && place.word) : null;
+    const defC = defAttr && defAttr.colors && defAttr.colors[0];
+    const pal = (ps && Array.isArray(ps.palette) && ps.palette.length) ? ps.palette : null;
+    // washes only for styles that paint mass — a pencil piece keeps bare paper
+    const paintsMass = style.mass !== 'none';
+    if (paintsMass) {
+      const skyC = pal ? pal[Math.min(1, pal.length - 1)] : (defC ? [Math.min(255, defC[0] + 60), Math.min(255, defC[1] + 60), Math.min(255, defC[2] + 60)] : null);
+      const gndC = pal ? pal[0] : defC;
+      if (skyC) out.push({ type: 'fill', pts: [[0, 0], [1, 0], [1, g], [0, g]], rgb: skyC, a: 0.30 });
+      if (gndC) out.push({ type: 'fill', pts: [[0, g], [1, g], [1, 1], [0, 1]], rgb: gndC, a: 0.38 });
+    }
+    // her remembered trace of the place, faint, full-canvas — the scene's read
+    if (ps && Array.isArray(ps.trace) && ps.trace.length >= 10) {
+      const ink = this._artInk(style, ps, 0.5, rnd, null);
+      const jit = () => (rnd() - 0.5) * 0.006;
+      for (const tp of ps.trace) {
+        if (!Array.isArray(tp) || tp.length < 2) continue;
+        out.push({ type: 'poly', pts: tp.map(pp => [pp[0] + jit(), pp[1] + jit()]), rgb: ink, a: 0.35 });
+      }
+    }
+    // the ground line + tufts stay — a subject stands ON something
+    out.push({ type: 'line', x0: 0.02, y0: g, x1: 0.98, y1: g + 0.02 * (rnd() - 0.5), rgb: this._ownArtInk(ps, 0.55, rnd), a: 0.8 });
+    const tufts = 5 + Math.floor(rnd() * 7);
+    for (let i = 0; i < tufts; i++) {
+      const x = 0.05 + rnd() * 0.9, hh = 0.02 + rnd() * 0.05;
+      out.push({ type: 'line', x0: x, y0: g, x1: x + 0.02 * (rnd() - 0.5), y1: g - hh, rgb: this._ownArtInk(ps, 0.45, rnd), a: 0.8 });
+    }
+    return out;
   },
 
   _ownArtStrokesFromSchema(schema, box, rnd, word, style) {
