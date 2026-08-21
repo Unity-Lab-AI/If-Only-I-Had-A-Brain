@@ -3275,10 +3275,12 @@ const SERVER_CHAT_MIXIN = {
     try { concept = (typeof this._sampleCurrentVocab === 'function' ? this._sampleCurrentVocab() : '') || ''; } catch { /* nf */ }
     // TU.29.7 — she composes this prompt too (concept + her associations + her
     // mood), instead of the retired canned template.
-    // MOODPOP — the empty-vocab fallback was 'goth aesthetic' (a whole goth
-    // image out of nowhere — another dark-image fountain); her mood tail
-    // already carries her state, the subject stays colorful
-    const prompt = this._composeImagePrompt(concept || 'colorful abstract shapes');
+    // NO FALLBACK SUBJECT (operator law) — a spontaneous image is HER urge
+    // about HER OWN thought. No trained vocab word sampled = she has nothing
+    // to say = no image this tick. A canned subject — goth aesthetic, shapes,
+    // anything — is a script wearing her name, not her thought.
+    if (!concept) return;
+    const prompt = this._composeImagePrompt(concept);
     if (this.clients && this.clients.size > 0) {
       const payload = JSON.stringify({ type: 'generate_image', prompt, spontaneous: true, seed: 'drive', ts: now });
       for (const [ws] of this.clients) { if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* nf */ } } }
