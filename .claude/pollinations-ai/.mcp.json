@@ -1,6 +1,0 @@
-{
-  "pollinations": {
-    "command": "python3",
-    "args": ["${CLAUDE_PLUGIN_ROOT}/servers/pollinations_server.py"]
-  }
-}
