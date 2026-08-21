@@ -35846,3 +35846,29 @@ The async save writes a ~5.4GB `.tmp` before its atomic rename and nothing check
 **Verified:** `node --check`, the three-scenario ring harness on real temp files, the statfs smoke. Docs: `ADMIN-CONTROLS` gains the `DREAM_SAVE_MIN_FREE_DISK_MB` + `DREAM_CHECKPOINT_SLOTS` rows.
 
 **Board: 3 open, 188 closed** — `CHECKROT.2` + `CHECKROT.3` close; `SUBSTEPS.6`, `SCALEDOC.1`, `PHONPROG.1` remain.
+
+---
+
+## 2026-08-21 — LOOKEYES: her eyes starved in silence for ten hours, and the budget burn was the accomplice
+
+> Gee (verbatim): *"okay we have a massive issue.... the minds eye is not showing any pollinastions look ups any more and she is \"trying\" to draw... i have put a .png in the root of the project folder for you to look at and its fucking obvious of what is the issue if u look at it... all the images are just chicken scratch lines, take a look at it... i mean wtf.. she is suppose to be mimicing the style and apperance of real images not just random lines on a image named tomato"*
+
+**The diagnosis, from the screenshot's own footer:** `her art: 0 drawn · 2 shapes she can draw` — and `state.ownArt` confirmed it: **113 draw attempts, 2 concepts ever seen** since the fresh walk, against a lookup budget that allowed ~60. The chicken scratch is the honest no-schema fallback (letters-in-her-mind), firing for everything because the LOOK lane — Pollinations reference → perceive → field C → shape schema — succeeded exactly twice in ten hours. **Pollinations itself is UP** (probed live: anonymous tier HTTP 200, image/jpeg, 2.1s).
+
+### `LOOKEYES.1` — why it starved invisibly, and the fix
+
+Read end-to-end, `_fetchReferenceAndGround` had three compounding sins:
+
+1. **The 10-minute GLOBAL budget and 6-hour per-concept cooldown were burned AT ENTRY, before the fetch ran** — so whatever stage was dying consumed the entire lookup budget forever. One broken stage = zero looks, permanently.
+2. **Every post-budget failure was silent by construction:** `mindSpace.perceive` died in a bare `catch { return null; }` (the ONLY fully unlogged post-budget stage — prime suspect), decode-null for unknown formats returned without a word, and the SUCCESS line went to `process.stdout.write` — which the console ring cannot capture (**the PHONPROG.1 blind spot, second occurrence**).
+3. The drawable gate rejected silently.
+
+Fixes, all shipped: **every exit now increments a named counter** surfaced at `state.ownArt.lookups` (`attempts / grounded / notDrawable / gapSkips / coolSkips / inFlightSkips / noPrompt / httpFails / fetchErrs / decodeFails / perceiveFails / blankRefs / lastErr WITH AGE / lastGroundedKey+At`) — the next "why isn't she looking" is a field read, not an afternoon. **A FAILED attempt rolls its burns back** — global retry in 60s, concept in 10min (storm protection intact; a hard-down generator still can't be hammered) — so a transient death no longer forfeits the budget; **harness-verified: post-failure retry windows 60s/600s exactly.** Perceive and decode failures now name themselves with throttled warns; the success line moved to `console.log` so the ring finally sees her look.
+
+### `OWNART.7` — the verdict landed ("chicken scratch"), the pre-agreed lever pulled
+
+The OWNART.7 filing said: *if the likeness is weak the lever is schema resolution (3×3→5×5) and marks-per-part, NOT a return to filtering.* Gee's verdict on a live tomato is the answer, so the lever is pulled: **learn side** — 5×5 grid (≤25 parts, `v: 2`), weight floor 0.02 → 0.008 so a stem or an eye survives; version-guarded merging (a v1 cell 4 is the 3×3 centre, a v2 cell 4 is the 5×5 top row — averaging them would smear the layout; a v1 prior is replaced by the finer look, and v1 schemas still DRAW fine since `cx/cy/w/h/ang` are grid-independent). **Construction side** — marks `2 + w×14 → 2 + w×40` with a much tighter hand (angle jitter 0.5→0.25 rad, offsets 0.55→0.3 of the part, bow 0.45→0.3), so strokes stay ON the part they belong to: **~72 structured strokes for a typical v2 schema where the scratch was ~24 scattered ones.** Still an abstraction at ~2-4% of the reference's information — a copy stays impossible, per the law. **Harness-verified:** 5×5 corners map 0/4/20/24, centre 12, 1000 random midpoints all in range.
+
+**What to watch after the press:** `state.ownArt.lookups` — `grounded` should climb within the first hour (one look per 10min), and whichever counter climbs INSTEAD names the dying stage in one read. Her next tomato should be round with a stem.
+
+**Board: 3 open, 190 closed** — `LOOKEYES.1` + the `OWNART.7` verdict close; `SUBSTEPS.6`, `SCALEDOC.1`, `PHONPROG.1` remain.

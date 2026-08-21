@@ -1515,7 +1515,11 @@ const SERVER_CHAT_MIXIN = {
     // drawings"). Non-drawable → don't fetch, don't draw; the tick shows a grounded
     // favorite instead. Gated at the source (the fetch path), so non-nouns never get
     // grounded in the first place.
-    if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(concept))) return;
+    if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(concept))) {
+      // LOOKEYES.1 — a silent gate is a suspect forever; a counted one is a field read.
+      try { if (typeof this._vmLook === 'function') this._vmLook().notDrawable++; } catch { /* nf */ }
+      return;
+    }
     let grounded = null;
     try { grounded = await this._fetchReferenceAndGround(concept); } catch { grounded = null; }
     if (!grounded) return;   // cooldown / gap / fetch-fail / blank ref → nothing new to draw
@@ -1985,14 +1989,22 @@ const SERVER_CHAT_MIXIN = {
       const cy = box.cy + (v - 0.5) * box.h;
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-      const marks = 2 + Math.round(p.weight * 14);
+      // OWNART.7 (2026-08-21, Gee's chicken-scratch verdict) — the marks-per-part
+      // half of the pre-agreed fidelity lever. With the finer 5×5 schema each part
+      // carries a smaller weight share, so the old 2+w*14 collapsed to ~2-3 marks
+      // scattered wide — the scatter WAS the scratch. More marks per part, and a
+      // much tighter hand: less angle jitter, offsets hugging the part instead of
+      // wandering 55% outside it, gentler bow. Same construction, same law (her
+      // layout, her ink, never the photo) — the strokes just stay ON the part
+      // they belong to, so the assembly reads as the THING.
+      const marks = 2 + Math.round(p.weight * 40);
       for (let m = 0; m < marks; m++) {
         // an arc across the part, along its learned orientation, bowed by her own
         // hand this attempt
-        const ang = p.ang + (rnd() - 0.5) * 0.5;
-        const len = (0.5 + 0.5 * rnd()) * Math.max(pw, ph);
-        const bow = (rnd() - 0.5) * 0.45 * Math.min(pw, ph);
-        const ox = (rnd() - 0.5) * pw * 0.55, oy = (rnd() - 0.5) * ph * 0.55;
+        const ang = p.ang + (rnd() - 0.5) * 0.25;
+        const len = (0.6 + 0.4 * rnd()) * Math.max(pw, ph);
+        const bow = (rnd() - 0.5) * 0.3 * Math.min(pw, ph);
+        const ox = (rnd() - 0.5) * pw * 0.3, oy = (rnd() - 0.5) * ph * 0.3;
         const ax = cx + ox - Math.cos(ang) * len * 0.5, ay = cy + oy - Math.sin(ang) * len * 0.5;
         const bx = cx + ox + Math.cos(ang) * len * 0.5, by = cy + oy + Math.sin(ang) * len * 0.5;
         const mx = (ax + bx) / 2 - Math.sin(ang) * bow, my = (ay + by) / 2 + Math.cos(ang) * bow;
