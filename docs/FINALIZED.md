@@ -36435,3 +36435,9 @@ The audit confirmed the worst version: `gpuSparsePropagateAuto` routes every BOU
 - Harness: native cross → region-relative actives exact; native intra → absolute actives exact; browser → empty-pre preserved; silent mirror → null with NOTHING sent.
 
 Still filed: donor 0.3.27 candidates — a true donor-side bound read (src resident window via the existing src_offset the hebbian kernel already uses) and priority-lane routing for self-contained propagates. Not needed for correctness now.
+
+## 2026-08-21 — GATEGPU LANDED (61ms probes, 158/158 on the donor) + GATEDOSE: the math gate gets section timers so the residual names itself
+
+> Gee (verbatim): *"soooo.....phase: _gateMathKReal (+154.0s)"*
+
+**The probe half is WON, read live on build b57c0228:** `GATE PROBES via donor: ON` at first success (276,000-row ack) and `gateProbe window — ok=158 miss=0 refused=0 avg ok 61ms` — every cross-projection exam runs on the A40 in one Montreal round trip, zero fallbacks, zero refusals. **The residual:** the gate still holds a stale `gate:probe-seq` tag for 130s+ stretches — and the map explains why the tag lies: the math gate has TWELVE MORE sections after the four I stamped (SUCC/SKIP10/MAKE-TEN/TEEN/ATTR/CLASSIFY/3×SHAPE + the LAW-7 PRODUCTION probes + SENTENCE-GEN — the last two drive real emission paths). Diagnosed three times now from block rhythms and stale tags — so the gate MEASURES ITSELF from here: `[GateMathK] section X — Ns (gate total Ns)` ring-visible lines at READ+TALK / SEQ probes (with fail count) / SEQ reinforce (+ `gate:reinforce` stage stamp) / ORDER / the arithmetic batteries / ATTR+shapes / PRODUCTION / SENTENCE-GEN. The next gate prints its own bill, per section, and the biggest number is the next target — no more forensic digs.
