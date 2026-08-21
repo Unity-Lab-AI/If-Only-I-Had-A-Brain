@@ -36184,3 +36184,13 @@ The old vocabulary fired fog on nearly every image because her baseline valence 
 **Board: 3 open / 218 closed.**
 
 **MOODPOP correction — Gee (verbatim): *"const prompt = this._composeImagePrompt(concept || 'colorful abstract shapes'); WTF!!!!!!!!! u cant just prompt her to make shapes all the time"*** — owned: I replaced one canned subject with another canned subject, the same disease as the word lists. The fallback is DELETED entirely: a spontaneous image is HER urge about HER OWN thought — no trained vocab word sampled means she has nothing to say and NO image fires that tick. A canned subject is a script wearing her name.
+
+## 2026-08-21 — GATEVOCAB: why _gateMathKReal ate hours after EVERY press — the taught receipt died at restart
+
+> Gee (verbatim): *"so how long is _gateMathKReal ???? Uniuty has been on this point for likehours each time we have done a n update... can u check how long is it suppose to take"*
+
+**The answer: the gate's PROBES are minutes** (10 digit read/talk propagates + sequence + count checks, yielding every 200ms). **The hours are EXAM-VOCAB-TEACH at gate entry** — every exam word the coverage audit reports missing × 4 reps, hundreds of words at biological scale. That teach is legitimate ONCE. The bug: the taught receipt (`_vocabTaughtSet`, the TU.24 fix that stopped the in-session infinite re-teach) was **in-memory only** — every Update & Savestart wiped it, the audit reported the SAME words missing again, and the gate re-taught the entire exam vocabulary from scratch. Hours per press, forever — exactly the observed pattern.
+
+**Fix (the `_definitionTaughtWords` pattern):** the taught-set now lives on the CLUSTER (`_vocabTaughtWordsPersist`), persists in the weights JSON on every save, restores at boot, and `_trainedVocabularySet` reads the restored receipt even before any pregate re-initializes. After the next press pays the teach cost once more, every subsequent press enters K gates in **minutes** (only genuinely-new words teach). Verified: node --check ×3, ESM import chain, bundle rebuilt, and the restored-receipt logic proven through the real mixin.
+
+**Board: 3 open / 221 closed.**

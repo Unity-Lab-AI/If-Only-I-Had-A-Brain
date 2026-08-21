@@ -8937,7 +8937,13 @@ export class Curriculum {
           // let both UPFRONT and pregate re-teach the SAME words every cell
           // (the "same words missing forever" re-drill class TU.24-FIX closed
           // for pregate only). Store lowercased to match `examVocabCoverage`.
-          this._vocabTaughtSet = this._vocabTaughtSet || new Set();
+          // GATEVOCAB (2026-08-21) — the taught-set LIVES ON THE CLUSTER so it
+    // persists through savestart (mirrors _definitionTaughtWords). It was
+    // in-memory only, so EVERY restart wiped the receipt, the coverage audit
+    // reported the same exam words missing again, and every gate entry
+    // re-taught them all — hours on a K gate after every single press.
+    this._vocabTaughtSet = (this.cluster && (this.cluster._vocabTaughtWordsPersist ||= new Set()))
+      || this._vocabTaughtSet || new Set();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK) {
             const slice = words.slice(i, i + CHUNK);
@@ -10546,7 +10552,13 @@ export class Curriculum {
     // `_trainedVocabularySet` so the audit clears); `_pregateVocabDone`
     // caps EXAM-VOCAB-TEACH to ONCE per cell per session. Teach once,
     // register, advance — we do NOT chase A+ coverage. She is what she is.
-    this._vocabTaughtSet = this._vocabTaughtSet || new Set();
+    // GATEVOCAB (2026-08-21) — the taught-set LIVES ON THE CLUSTER so it
+    // persists through savestart (mirrors _definitionTaughtWords). It was
+    // in-memory only, so EVERY restart wiped the receipt, the coverage audit
+    // reported the same exam words missing again, and every gate entry
+    // re-taught them all — hours on a K gate after every single press.
+    this._vocabTaughtSet = (this.cluster && (this.cluster._vocabTaughtWordsPersist ||= new Set()))
+      || this._vocabTaughtSet || new Set();
     this._pregateVocabDone = this._pregateVocabDone || new Set();
 
     // VOCAB-TEACH now runs ONCE per cell per session (was: every gate

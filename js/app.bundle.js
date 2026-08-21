@@ -75646,8 +75646,9 @@ var K_MIXIN = {
         }
       }
     }
-    if (this._vocabTaughtSet && this._vocabTaughtSet.size > 0) {
-      for (const w of this._vocabTaughtSet) vocab.add(w);
+    const taughtSets = [this._vocabTaughtSet, this.cluster && this.cluster._vocabTaughtWordsPersist];
+    for (const ts of taughtSets) {
+      if (ts instanceof Set && ts.size > 0) for (const w of ts) vocab.add(w);
     }
     return vocab;
   },
@@ -100657,7 +100658,7 @@ var Curriculum = class _Curriculum {
           const CHUNK2 = 25;
           const reps = opts.vocabReps ?? 4;
           this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (before cell teach phases)`);
-          this._vocabTaughtSet = this._vocabTaughtSet || /* @__PURE__ */ new Set();
+          this._vocabTaughtSet = this.cluster && (this.cluster._vocabTaughtWordsPersist ||= /* @__PURE__ */ new Set()) || this._vocabTaughtSet || /* @__PURE__ */ new Set();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK2) {
             const slice = words.slice(i, i + CHUNK2);
@@ -101701,7 +101702,7 @@ var Curriculum = class _Curriculum {
   async _pregateEnrichment(cellKey, opts = {}) {
     if (!cellKey) return;
     this._pregateCellsDone = this._pregateCellsDone || /* @__PURE__ */ new Set();
-    this._vocabTaughtSet = this._vocabTaughtSet || /* @__PURE__ */ new Set();
+    this._vocabTaughtSet = this.cluster && (this.cluster._vocabTaughtWordsPersist ||= /* @__PURE__ */ new Set()) || this._vocabTaughtSet || /* @__PURE__ */ new Set();
     this._pregateVocabDone = this._pregateVocabDone || /* @__PURE__ */ new Set();
     if (opts.force || !this._pregateVocabDone.has(cellKey)) {
       this._pregateVocabDone.add(cellKey);
