@@ -36334,3 +36334,14 @@ The EXAM-VOCAB-TEACH progress printed through `_hb` (raw stdout — invisible to
 - **B (worker-thread master-copy math — the wall-clock cure for the CPU slabs) stays specced on GPUTEACH.1**, next in line: it is a SharedArrayBuffer re-architecture of the matrix stores, not a patch.
 
 **Board: 4 open / 240 closed.**
+
+## 2026-08-21 — GPUTEACH A: the last CPU-only VOCAB lane joins the GPU dispatch
+
+> Gee (verbatim): *"so all vocab is now run on the doner GPU correctly? for all cells and all grades and all phases??"*
+
+Answered by grepping EVERY teach call site, not from memory. **Yes for everything riding the choke points** — `_crossRegionHebbian` / `_teachHebbianAsymmetric` dispatch `hebbianBound` every rep for all grades/cells/phases (definitions, associations, `_teachWordEmission`, ELA-K alphabet, the sem_to_motor emission layers, L1B pair-dose). **One vocab lane was NOT:** `_teachWordEmissionDirect` — the per-subject word-band drill fired by all 6 K cells — bypassed the choke on purpose (direct bucket-row `ojaUpdate` for frozen-band control) and so never dispatched to the GPU; its GPU-resident `sem_to_word_motor` copy only caught up on a full re-upload. Fixed as a PURE ADD:
+- Per (word, rep) visit: sem pattern + word_motor bucket mirrored to the GPU spike slices (`write_spike_slice` REPLACES the region slice donor-side, so no GPU clear needed; the bucket run collapses to the ~30-byte canonical template) then `hebbianBound('cortex_sem_to_word_motor', lr)` — the same wire the sem_to_motor lanes use. A shed slice write auto-suppresses the dependent dispatch via the stale guard (visible in `throughput.boundHebbian.suppressedStale`).
+- CPU Oja UNCHANGED — every rep, O(bucket); nothing cut.
+- The DONE log line had been announcing itself as `_teachWordSpellingDirectFinal` (copy-paste name from a different teach) — corrected, and it now reports CPU updates + GPU dispatches side by side.
+
+Harness on the real function via the real module chain: 6/6 CPU fires, 12/12 slice writes, 6/6 bound dispatches with the right matrix name + lr; expanded-fallback for non-template donors exact (525-idx sem, 4-idx bucket); GPU-unbound guard leaves CPU untouched with zero GPU traffic. Bundle rebuilt, wire confirmed in it. Residual CPU-only lanes are NON-vocab small doses: the letter drills + once-per-definition sem→sem secondary write land on the intra matrix, which is GPU-trainable only through its pseudo-init lane by design (T18.18); persona-corpus sequence Hebbian likewise. Those are B-territory (worker threads), still open on GPUTEACH.1.
