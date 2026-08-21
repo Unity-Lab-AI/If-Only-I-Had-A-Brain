@@ -1843,6 +1843,11 @@ const SERVER_CHAT_MIXIN = {
     // variation inside the subject builder.
     const layout = this._ownArtLayout(plan.subjects.length, rnd);
     const boxes = [];
+    // LABELTRUTH (2026-08-21, operator: "the word blow was added to a drawing
+    // of a cat") — only subjects that actually CONTRIBUTE strokes ride the
+    // label/log; a schema-less, definition-less word used to draw NOTHING yet
+    // still wear the artwork's name.
+    const contributed = [];
     for (let i = 0; i < plan.subjects.length; i++) {
       const s = plan.subjects[i];
       const b0 = layout[i];
@@ -1860,8 +1865,10 @@ const SERVER_CHAT_MIXIN = {
       const ss = artStyle && Number.isFinite(artStyle.scale) ? artStyle.scale : 1;
       strokes.push(this._groundShadow({ cx: box.cx, cy: box.cy, w: box.w * ss, h: box.h * ss }, rnd));
       const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word, artStyle);
+      if (built.length > 0) contributed.push(s);
       for (const st of built) { if (!st.layer) st.layer = 'subject'; strokes.push(st); }
     }
+    if (contributed.length === 0) return null;   // nothing real drew — no piece, no label
     if (strokes.length < 4) return null;   // nothing she understood well enough → honest no-drawing
 
     // PAINT.11 — HER REVISION PASS: step back, erase what hurts the picture.
@@ -1891,11 +1898,11 @@ const SERVER_CHAT_MIXIN = {
     this._ownArtDrawn = (this._ownArtDrawn | 0) + 1;
     // ARTSTYLE — the style rides the label so the viewer SHOWS her changing it up.
     const styleName = artStyle ? artStyle.name : 'poster';
-    const label = 'canvas:own:' + plan.subjects.map(s => s.word).join('+') + ':' + styleName;
+    const label = 'canvas:own:' + contributed.map(s => s.word).join('+') + ':' + styleName;
     this._lastSketchLabel = label;
-    const known = plan.subjects.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
-    try { console.log(`[OwnArt] ✍ HER OWN "${plan.subjects.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${finalStrokes.length} marks (revised: ${revised.erased} erased, ${revised.deduped} deduped), attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
-    return { rec: drawn, label, source: label, from: 'own:' + plan.subjects.map(s => s.word).join('+'), style: styleName, plan: { subjects: plan.subjects.map(s => s.word), place: plan.place ? plan.place.word : null } };
+    const known = contributed.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
+    try { console.log(`[OwnArt] ✍ HER OWN "${contributed.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${finalStrokes.length} marks (revised: ${revised.erased} erased, ${revised.deduped} deduped), attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
+    return { rec: drawn, label, source: label, from: 'own:' + contributed.map(s => s.word).join('+'), style: styleName, plan: { subjects: contributed.map(s => s.word), place: plan.place ? plan.place.word : null } };
   },
 
   // DRAWCTX (Gee 2026-08-20: *"when Unity is told to 'draw' she should draw the

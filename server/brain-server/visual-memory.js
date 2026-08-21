@@ -1096,16 +1096,48 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         return this._vmLookFail(key, 'blankRefs');
       }
       rec.fidelity = { psnr_db: null, source: 'reference-lookup' };
-      // BIND PROVISIONALLY (reference-not-fact) — conf:false on first sight;
-      // confirmed only when a later independent render agrees (cosine ≥ 0.45),
-      // exactly the _ingestVisualFrame noisy-oracle gate.
+      // LOOKTWICE (2026-08-21, operator: "the images are 80%ish of the time
+      // nothing like the atached word") — the generator is a NOISY oracle,
+      // and a single render bound-then-shown meant a random wrong image wore
+      // the word on the viewer and seeded her schema. A NEW concept now needs
+      // TWO independent renders (different seeds) that AGREE (percept cosine
+      // ≥ 0.45): the generator only converges across seeds when it actually
+      // knows the word, noise never agrees twice. Disagreement = no bind, no
+      // viewer frame, honest counter, retry later (burns rolled back).
+      let percept = null;
+      try { const _d = await this.mindSpace.describe(rec); if (_d) percept = Array.from(_d); } catch { percept = null; }
+      const _lkCos = (a, b) => { if (!a || !b) return 0; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
+      const _prevEntry = this._vmStore().get(key);
+      if (!(_prevEntry && _prevEntry.p) && percept && !opts.keyOverride) {
+        // first sight of this concept → the second, independent render
+        let rec2 = null, percept2 = null;
+        try {
+          const url2 = this._buildPollinationsImageUrl(prompt, { width: _refPx, height: _refPx });
+          const r2 = await fetch(url2);
+          if (r2 && r2.ok) {
+            const buf2 = Buffer.from(await r2.arrayBuffer());
+            const img2 = this._decodeImageToRGBA(buf2);
+            if (img2) {
+              const small2 = this._downsampleRGBA(img2, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+              rec2 = await this.mindSpace.perceive({ width: small2.w, height: small2.h, data: small2.data });
+              if (rec2 && rec2.channels) { const _d2 = await this.mindSpace.describe(rec2); if (_d2) percept2 = Array.from(_d2); }
+            }
+          }
+        } catch { rec2 = null; percept2 = null; }
+        if (!percept2) return this._vmLookFail(key, 'fetchErrs', 'second render unavailable for self-consistency');
+        const agree = _lkCos(percept, percept2);
+        if (agree < 0.45) {
+          console.log(`[VisualMemory] LOOK REJECTED for "${key}" — two independent renders DISAGREE (cosine ${agree.toFixed(2)} < 0.45): the generator does not know this word; nothing bound, nothing shown.`);
+          return this._vmLookFail(key, 'selfMismatch', `render self-consistency ${agree.toFixed(2)}`);
+        }
+      }
       try {
         const store = this._vmStore();
-        let percept = null;
-        try { const _d = await this.mindSpace.describe(rec); if (_d) percept = Array.from(_d); } catch { percept = null; }
         const prev = store.get(key);
-        const cos = (a, b) => { if (!a || !b) return 0; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
-        const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45);
+        const cos = _lkCos;
+        // two agreeing independent renders IS the confirmation standard —
+        // a first sight that passed LOOKTWICE binds CONFIRMED
+        const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45) || (!(prev && prev.p) && !!percept && !opts.keyOverride);
         store.delete(key);
         store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt });
         while (store.size > VM_CAP) store.delete(store.keys().next().value);
