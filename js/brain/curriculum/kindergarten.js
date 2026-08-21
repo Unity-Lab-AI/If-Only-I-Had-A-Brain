@@ -8590,6 +8590,65 @@ export const K_MIXIN = {
     // Constant for this projection pair; it was rebuilt per word per rep.
     const _kScalesWM = typeof cluster.buildKScalesForProjection === 'function'
       ? cluster.buildKScalesForProjection('sem', 'word_motor') : null;
+    // GPU TEACH WIRE (2026-08-21) — this drill was the last vocab lane with
+    // NO GPU dispatch: it bypasses _crossRegionHebbian on purpose (direct
+    // bucket-row ojaUpdate for frozen-band control), so the GPU-resident
+    // sem_to_word_motor copy never saw these drills and only caught up on a
+    // full re-upload. Fix: mirror the exact pre/post state to the GPU spike
+    // slices (write_spike_slice REPLACES the region slice donor-side —
+    // zero-fill + set — so no GPU-side clear is needed) and dispatch bound
+    // Hebbian, the same slice-write + hebbianBound wire the sem_to_motor
+    // emission lanes use. The CPU oja above/below is UNCHANGED (every rep —
+    // it is O(bucket) here, not the slab cost the sampled lanes dodge); the
+    // GPU wire is pure addition. A shed slice write auto-suppresses the
+    // dependent bound dispatch via the stale guard (counted in
+    // throughput.boundHebbian.suppressedStale), so a stale slice cannot
+    // train the wrong pattern.
+    let gpuFires = 0;
+    const _mirrorAndDispatch = (pat, bStart, bEnd) => {
+      if (!semToWordMotor._gpuBound || !cluster._gpuProxyReady || !cluster._gpuProxy
+          || typeof cluster._gpuProxy.writeSpikeSlice !== 'function'
+          || typeof cluster._gpuProxy.hebbianBound !== 'function') return false;
+      // Same-flag law as _writeTiledPattern: template carrier when the donor
+      // speaks type-11, expanded region-relative indices otherwise. The tag
+      // rides on every carrier so the encoder can stamp capability on the
+      // first tagged frame.
+      const tmplOk = !!(cluster._brain && cluster._brain._tmplSpikeOk === true);
+      // Sem slice: group-tiled active-flag template (identity = WHICH dims
+      // fire, magnitudes discarded — the same collapse every GPU spike-slice
+      // write performs).
+      const gSizeSem = Math.max(1, Math.floor(semSize / pat.length));
+      const semVals = new Array(pat.length);
+      let semAny = false;
+      for (let d = 0; d < pat.length; d++) {
+        const on = pat[d] > 0 ? 1 : 0;
+        semVals[d] = on;
+        if (on) semAny = true;
+      }
+      if (!semAny) return false;
+      const semCarrier = [];
+      if (!tmplOk) {
+        for (let d = 0; d < pat.length; d++) {
+          if (!semVals[d]) continue;
+          for (let n = 0; n < gSizeSem; n++) {
+            const idx = d * gSizeSem + n;
+            if (idx < semSize) semCarrier.push(idx);
+          }
+        }
+      }
+      semCarrier._template = { rowStart: 0, groupSize: gSizeSem, values: semVals };
+      // word_motor slice: one contiguous bucket run — collapses to the
+      // ~30-byte canonical template {rowStart, groupSize, values:[1]}.
+      const wmCarrier = [];
+      if (!tmplOk) { for (let n = bStart; n < bEnd; n++) wmCarrier.push(n); }
+      wmCarrier._template = { rowStart: bStart, groupSize: bEnd - bStart, values: [1] };
+      try {
+        cluster._gpuProxy.writeSpikeSlice('sem', semCarrier);
+        cluster._gpuProxy.writeSpikeSlice('word_motor', wmCarrier);
+        cluster._gpuProxy.hebbianBound(`${cluster.name}_sem_to_word_motor`, lr);
+        return true;
+      } catch { return false; }
+    };
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       let sliceStart = Date.now();
@@ -8616,6 +8675,10 @@ export const K_MIXIN = {
             _kScalesWM ? { kScales: _kScalesWM, activeRows } : { activeRows });
           updates++;
         } catch { skipped++; }
+        // GPU dispatch rides EVERY (word, rep) visit — the slice must be
+        // rewritten per visit because every other word in the rep loop
+        // replaces it in between. Template frames keep this ~KB each.
+        if (_mirrorAndDispatch(entry.pattern, bStart, bEnd)) gpuFires++;
         if ((Date.now() - sliceStart) >= YIELD_SLICE_MS) {
           await _microtask();
           sliceStart = Date.now();
@@ -8625,7 +8688,9 @@ export const K_MIXIN = {
     }
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachWordSpellingDirectFinal DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target)`);
+    // Log line previously announced itself as _teachWordSpellingDirectFinal —
+    // a copy-paste name from a different teach; corrected to the real lane.
+    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} CPU Oja updates · ${gpuFires} GPU bound dispatches · ${skipped} skipped (${words.length} words × ${reps} reps target)`);
   },
 
 
