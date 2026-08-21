@@ -36255,3 +36255,11 @@ Credit where due: an outside AI critique correctly caught that the base64 wrappe
 **Board: 3 open / 229 closed.**
 
 **BLOBSTORE addendum — the outside critique's page two, scored:** its boundary checklist conflated producers with exits (the three b64 producers — transform/gpu/audio — correctly KEEP producing base64: fresh recs are the wire form, only STORE-resident recs go binary; likewise the lookup/ingest/voice publishes carry fresh recs and were never at risk). But it pointed at exactly the right consumer class with the stats/detail paths: **`_recDetail` was a live silent bug** — it read only `val_b64`, runs on STORE recs (the recall floor at h.e.rec), and binary-resident entries would have scored 0 detail, silently refusing recall of every restored memory. Fixed with a bin-aware read, parity-checked on both payload forms (5 === 5). Its `Buffer.from(x,'base64')`-coercion mechanism guess was wrong for this build (bin recs DELETE val_b64, so those sites fail loud-or-skip, not silent) — right neighborhood, wrong mechanism, real save. Respect exchanged both ways.
+
+## 2026-08-21 — MITLICENSE: the license the page already claimed, made real
+
+> Gee (verbatim): *"lets add a proper MIT License file to go with the brain and put it in the pages page properly"*
+
+The index page has claimed "Fully open source under MIT" all along — **with no LICENSE file anywhere and the repo link pointing at the WRONG repo** (Unity-Lab-AI/Unity instead of If-Only-I-Had-A-Brain). Made honest: a standard `LICENSE` at the repo root (MIT, © 2026 Unity AI Lab), the page's claim now links the actual file and the correct repo, the credits footer carries `MIT License · © 2026 Unity AI Lab`, the equations page's footer fixed the same wrong link + gained the license link, and both package.json manifests declare `"license": "MIT"`. The deploy needs NO workflow change — the frontend rsync ships `./` and `LICENSE` matches no exclude, so it lands at the pages root (`/LICENSE`) on this push automatically.
+
+**Board: 3 open / 231 closed.**

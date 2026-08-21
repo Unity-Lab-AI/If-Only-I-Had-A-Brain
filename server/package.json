@@ -1,6 +1,7 @@
 {
   "name": "unity-brain-server",
   "version": "1.2.0",
+  "license": "MIT",
   "private": true,
   "description": "Unity's brain — always on, shared by everyone",
   "main": "brain-server.js",
