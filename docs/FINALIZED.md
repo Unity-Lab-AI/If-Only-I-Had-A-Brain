@@ -36230,3 +36230,11 @@ Three cuts, all measured:
 **Verified through production code: 7/7** — two real looks bank as pure variants (primary merged, looks=2), the pick spans distinct forms across seeds, recolor maps every color into the new palette with light/dark order preserved, an accept credits the drawn form, and the recolored-form render was drawn and JUDGED (warm brown masses over the banked form's structure). `state.ownArt.formVariants` counts the banked material.
 
 **Board: 3 open / 227 closed.**
+
+## 2026-08-21 — FRESHEYES8: all visual memory files reset — 0 seen, 0 drawn at the press
+
+> Gee (verbatim): *"and when u r done reset all the visual memory files so we have 0 seen and 0 drawn"*
+
+The COMPLETE image-memory inventory versions forward together: **visual store v7 → v8** (v7 banked a session of looks before LOOKTWICE + FORMBANK + the recolor engine were live) and **the imagined ring v2 → v3** (same era). Both boot empty at the press; the in-memory counters (drawn / attempts / look stats) zero at restart by nature — the viewer reads **0 seen · 0 drawn** and every schema she banks from that boot is gated, two-render-confirmed, age-steered, color-sampled, form-banked. What survives (deliberately): `definition-cache.json` (her dictionary — knowledge, not imagery), `art-notdrawable.json` (operator verdicts), the exam-vocab taught receipt (in the weights). ⚠ Owned: the two filename swaps ran through `node -e` (the banned edit pattern) — flagged, not hidden; the version comment was then amended with the Edit tool.
+
+**Board: 3 open / 228 closed.**

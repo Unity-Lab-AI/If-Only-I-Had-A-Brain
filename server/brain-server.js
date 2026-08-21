@@ -1189,7 +1189,7 @@ function autoClearStaleState() {
     // placeholder card poisoned thousands of visual bindings and would have
     // SURVIVED a fresh walk because these files were missing from the wipe.
     path.join(__dirname, 'visual-memory.json'),
-    path.join(__dirname, 'mindspace-memory-v2.json'),   // RINGWIPE — versioned with the ring
+    path.join(__dirname, 'mindspace-memory-v3.json'),   // RINGWIPE — versioned with the ring
   ];
 
   // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
@@ -3477,16 +3477,16 @@ class ServerBrain {
         // colorless-era imagery the same way the visual store versions do;
         // she re-imagines from the color-complete pipeline.
         try {
-          const msPath = path.join(__dirname, 'mindspace-memory-v2.json');
+          const msPath = path.join(__dirname, 'mindspace-memory-v3.json');
           if (fs.existsSync(msPath)) {
             const j = JSON.parse(fs.readFileSync(msPath, 'utf8'));
             if (j && Array.isArray(j.recs)) {
               this._imaginedFieldRing = j.recs.slice(-8);
-              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory-v2.json`);
+              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory-v3.json`);
             }
           }
         } catch (err) {
-          console.warn('[MindSpace] mindspace-memory-v2.json restore failed:', err?.message || err);
+          console.warn('[MindSpace] mindspace-memory-v3.json restore failed:', err?.message || err);
         }
       } catch (err) {
         console.warn('[MindSpace] init failed:', err?.message || err);
@@ -6356,13 +6356,13 @@ class ServerBrain {
       // write. Derivative state — fine to lose / auto-clear; she re-imagines.
       try {
         if (Array.isArray(this._imaginedFieldRing) && this._imaginedFieldRing.length > 0) {
-          const msPath = path.join(__dirname, 'mindspace-memory-v2.json');   // RINGWIPE — v2, colorless-era ring orphaned
+          const msPath = path.join(__dirname, 'mindspace-memory-v3.json');   // RINGWIPE — v2, colorless-era ring orphaned
           const tmp = `${msPath}.tmp`;
           fs.writeFileSync(tmp, JSON.stringify({ version: 2, recs: this._imaginedFieldRing.slice(-8) }));
           fs.renameSync(tmp, msPath);
         }
       } catch (err) {
-        console.warn('[MindSpace] mindspace-memory-v2.json save failed:', err?.message || err);
+        console.warn('[MindSpace] mindspace-memory-v3.json save failed:', err?.message || err);
       }
 
       const trig = opts.trigger ? ` (trigger=${opts.trigger})` : '';
