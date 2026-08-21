@@ -1821,7 +1821,8 @@ const SERVER_CHAT_MIXIN = {
     const rnd = this._ownArtRng(seedStr);
     // ARTSTYLE — one style per artwork, mood-weighted, never her last one.
     // The whole piece (ground, every subject, label ink) rides the same hand.
-    const artStyle = (typeof this._artStylePick === 'function') ? this._artStylePick(rnd) : null;
+    // ARTLEARN — the subjects' human-accepted styles weight the pick.
+    const artStyle = (typeof this._artStylePick === 'function') ? this._artStylePick(rnd, plan.subjects.map(s => s.word)) : null;
 
     const side = Number(process.env.DREAM_OWNART_CANVAS) > 0
       ? Number(process.env.DREAM_OWNART_CANVAS)
@@ -2038,10 +2039,25 @@ const SERVER_CHAT_MIXIN = {
       { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55 },
     ];
   },
-  _artStylePick(rnd) {
+  _artStylePick(rnd, subjectWords) {
     const styles = this._artStyles();
     const arousal = (typeof this.arousal === 'number') ? this.arousal : 0.5;
     const valence = (typeof this.valence === 'number') ? this.valence : 0;
+    // ARTLEARN — her LEARNED taste for these subjects: every human-accepted
+    // drawing banked its style per concept, and those verdicts weight the
+    // rotation for that subject from then on. Learning from her drawing —
+    // the critic's accepts become her style preferences.
+    const learned = {};
+    try {
+      if (Array.isArray(subjectWords) && subjectWords.length && typeof this._vmStore === 'function') {
+        const store = this._vmStore();
+        for (const sw of subjectWords) {
+          const e = store && store.get(String(sw).toLowerCase());
+          const st = e && e.art && e.art.styles;
+          if (st) for (const [k, n] of Object.entries(st)) learned[k] = (learned[k] | 0) + (n | 0);
+        }
+      }
+    } catch { /* no learned taste — mood weights stand alone */ }
     // Mood weights: high arousal favors bold (ink/poster/crayon), low valence
     // favors graphite moods (pencil/crosshatch), dreaminess favors soft
     // (watercolor/pointillism). All styles always possible — weights, not gates.
@@ -2055,6 +2071,7 @@ const SERVER_CHAT_MIXIN = {
       // weigh double and mass-less line styles stay the occasional change-up.
       if (s.mass === 'fill' || s.mass === 'wash') wt *= 2;
       else if (s.mass === 'none') wt *= 0.5;
+      if (learned[s.name]) wt *= 1 + Math.min(3, learned[s.name]);   // accepted hands lead for this subject
       if (this._lastArtStyle === s.name) wt = 0;   // she always changes it up
       return wt;
     });
@@ -2372,7 +2389,9 @@ const SERVER_CHAT_MIXIN = {
     const m = src.match(/^(?:canvas:own:|canvas:draw:|draw:fav:|lookup:)(.+)$/);
     if (!m) return { ok: false, why: 'not a judgeable frame' };
     // canvas:own labels are "<words>:<style>" — the style rides after the colon
-    const words = m[1].split(':')[0].split('+').map(w => w.trim().toLowerCase()).filter(w => w && w.length > 1).slice(0, 3);
+    const segs = m[1].split(':');
+    const words = segs[0].split('+').map(w => w.trim().toLowerCase()).filter(w => w && w.length > 1).slice(0, 3);
+    const styleName = (src.startsWith('canvas:own:') && segs.length > 1) ? String(segs[segs.length - 1]).toLowerCase() : null;
     if (!words.length) return { ok: false, why: 'no concept in label' };
     const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
     const relearned = [];
@@ -2409,10 +2428,28 @@ const SERVER_CHAT_MIXIN = {
           const a = e.art || { up: 0, down: 0 };
           if (verdict === 'accept') a.up = (a.up | 0) + 1; else a.down = (a.down | 0) + 1;
           a.lastVerdict = verdict; a.at = now;
+          // ARTLEARN (2026-08-21, operator: "and learn from her drawing") —
+          // an ACCEPT teaches her which HAND works for this subject: the
+          // winning style banks a per-concept preference the style picker
+          // reads, and her current technique params are marked validated.
+          if (verdict === 'accept' && styleName) {
+            a.styles = a.styles || {};
+            a.styles[styleName] = (a.styles[styleName] | 0) + 1;
+            if (e.skill) e.skill.validated = (e.skill.validated | 0) + 1;
+          }
           e.art = a;
           store.set(w, e);   // re-set → the sqlite store marks it dirty
         }
       } catch { /* verdict bookkeeping best-effort */ }
+      // ARTLEARN — an accepted subject is worth practicing MORE: queue a
+      // session (the loop's own cooldown/schema gates make over-asking free),
+      // so human approval turns into technique reinforcement.
+      if (verdict === 'accept') {
+        try {
+          if (!Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue = [];
+          this._mindsEyePreviewQueue.push({ kind: 'practice', word: w });
+        } catch { /* practice queue best-effort */ }
+      }
       if (verdict === 'reject') {
         // per-concept relearn pacing — reject-spam must not burn look-ups
         const GAPR = Number(process.env.DREAM_ART_RELEARN_GAP_MS) >= 0 ? Number(process.env.DREAM_ART_RELEARN_GAP_MS) : 600000;
