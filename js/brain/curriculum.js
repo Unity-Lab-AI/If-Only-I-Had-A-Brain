@@ -10606,12 +10606,23 @@ export class Curriculum {
           const ctx = { arousal: 0.7, valence: 0.2 };
           const CHUNK = 25;
           const reps = opts.vocabReps ?? 4;
-          this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START — ${words.length} missing exam words × ${reps} reps (chunked ${CHUNK})`);
+          // GATECURSOR (2026-08-21) — console.log, NOT _hb: _hb writes to raw
+          // stdout which the remote console ring cannot see (the PHONPROG
+          // blind spot), and the operator has now asked "how much longer"
+          // FOUR times against an instrument that couldn't answer. The START
+          // line names the list size; every chunk logs the live cursor with
+          // an ETA derived from this entry's own measured rate.
+          console.log(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START — ${words.length} missing exam words × ${reps} reps (chunked ${CHUNK})`);
+          const _gvT0 = Date.now();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK) {
             const slice = words.slice(i, i + CHUNK);
             try {
               await this._teachVocabList(slice, ctx, { reps });
+              const _gvDone = Math.min(i + CHUNK, words.length);
+              const _gvRate = _gvDone / Math.max(1, (Date.now() - _gvT0) / 60000);   // words/min this entry
+              const _gvEtaMin = _gvRate > 0 ? Math.round((words.length - _gvDone) / _gvRate) : -1;
+              console.log(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH ${_gvDone}/${words.length} words (${_gvRate.toFixed(1)}/min, ~${_gvEtaMin}min left this entry)`);
               // Register every taught word so `_trainedVocabularySet`
               // counts it and the next coverage audit reports it trained
               // (stops the re-teach loop). Store lowercased to match the
@@ -10624,7 +10635,7 @@ export class Curriculum {
             this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH progress — ${done}/${words.length} words taught`);
             await new Promise(resolve => setImmediate(resolve));
           }
-          this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH DONE — ${done}/${words.length} words taught`);
+          console.log(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH DONE — ${done}/${words.length} words taught`);   // GATECURSOR — ring-visible
           this._auditExamVocabulary(cellKey);
         }
       }

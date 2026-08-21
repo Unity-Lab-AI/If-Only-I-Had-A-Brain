@@ -36315,3 +36315,11 @@ Owned: GATEVOCAB's persisted receipt overcorrected — it made a taught exam wor
 Context: an IP complaint from Rev (ai-ministries). The audit found two truths — the BRAIN contributions (thalamic relay, active-row, prediction-error: 1,487 lines across Rev + Oslo, same org) were **submitted by them via PRs with authorship preserved in git** (not stolen, credited by the history itself), but their `pollinations-ai` CLI plugin (827 lines, in the repo since the initial release) had its README credit line **deliberately removed** by commit `777ef5dc` ("chore: remove Tolerable attributions"). The operator's resolution: **remove their non-brain property entirely.** `git rm -r .claude/pollinations-ai/` + `.claude/commands/pollinations-setup.md`; every doc reference scrubbed (CLAUDE.md plugin section → a removal note, WORKFLOW.md command row, quick-reference line). Verified before deleting: ZERO brain-code references to the plugin (the brain's own Pollinations use — the look lane, `_buildPollinationsImageUrl`, the client render — is entirely in-repo and independent); Rev's April-era non-brain artifacts (claude-proxy, OCLI bridge, EDNA response pool) were already deleted in prior no-text-AI purges. Kept: their BRAIN PRs (they are brain, attribution intact in history) and `.claude/pollinations-user.json` (operator law: never clear).
 
 **Board: 4 open / 238 closed.**
+
+## 2026-08-21 — GATECURSOR: the gate finally answers "how much longer" itself
+
+> Gee (verbatim, the FOURTH time the question hit a blind instrument): *"now tell me how much longer _gateMathKReal (+444.3s) has"*
+
+The EXAM-VOCAB-TEACH progress printed through `_hb` (raw stdout — invisible to the remote console ring, the PHONPROG blind-spot family). Now `console.log`, ring-visible: the START line names the missing-list size, **every 25-word chunk logs the live cursor with an ETA derived from this entry's own measured rate** (`EXAM-VOCAB-TEACH 350/1240 words (5.2/min, ~171min left this entry)`), and DONE is visible too. The next press makes "how long" a number the box states, not an estimate I derive. (PHONPROG.1 proper — the phoneme phase's own heartbeat — stays open; same pattern applies there.)
+
+**Board: 4 open / 239 closed.**
