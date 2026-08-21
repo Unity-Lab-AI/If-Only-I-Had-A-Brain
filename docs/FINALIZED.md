@@ -35912,3 +35912,13 @@ The example word had leaked into code comments along with his verbatim quotes �
 - **"Do we need to train her to draw creatively and professionally?"** The knowledge side is already training-driven (schemas from looks, definitions from the dictionary walk). The SKILL side — filed as **`PAINT.5`** (open): a practice loop where she perceives her own drawing, compares its percept against the reference's percept (cosine — the same noisy-oracle math as visual confirmation), and keeps the style-parameter nudges that measurably improve resemblance. Fully equational self-critique; her technique then literally improves with practice, per-concept, forever.
 
 **Board: 4 open, 194 closed** — PAINT.1-.4 close, `PAINT.5` files open; `SUBSTEPS.6`, `SCALEDOC.1`, `PHONPROG.1` remain.
+
+---
+
+## 2026-08-21 — VMBUMP: the one-time mind's-eye clear, training untouched
+
+> Gee (verbatim): *"we need to do something special a one time only thing that clears the image equations of the minds eye but keeps all of the training.. is that even possible?"*
+
+**Yes — and it is this file's own established pattern, done twice before.** The mind's-eye imagery (seen-concept field Cs + shape schemas) lives in `server/visual-memory-vN.json`, an entirely separate file from the brain weights / grades / phases / episodic memory. The store was ALREADY on v3 because v1 was orphaned when placeholder frames poisoned it (SEE.2) and v2 was orphaned when monochrome-era references made every render pencil. **This is bump #3: `VM_FILE` → `visual-memory-v4.json`.** On the next boot her imagery starts empty and every concept re-grounds through the FIXED look lane (LOOKEYES) banking the NEW schema format (PAINT.2 contours, v2 cells) — which is the whole point: everything in v3 was learned under the pre-PAINT pipeline, and it held only 2 entries anyway. v3 stays on disk, unused. Verified: v4 is the only live reference; the FRESHEYES sweep is regex-based (`^(visual-memory|…)`) so v4 is auto-covered on future fresh walks; the deploy overlay's `visual-memory*.json` exclude keeps it runtime state. **Training: untouched by construction — different files.**
+
+**Board: 4 open, 195 closed.**
