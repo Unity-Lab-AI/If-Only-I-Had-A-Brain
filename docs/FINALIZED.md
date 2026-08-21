@@ -36162,3 +36162,15 @@ Verdicts were already riding the emission bus into her episodes; now they also s
 Also read off the box while in there: the look lane is grinding through anonymous-tier 429s (15 httpFails vs 11 grounded — the failure-rollback is retrying correctly; grounding proceeds, just slower than the no-gap ideal).
 
 **Board: 3 open / 215 closed.**
+
+## 2026-08-21 — SCRIBBLEKILL: the pink notebook-paper piece decoded — the guesser dies, the bbox bars die, the gate hardens over three measured rounds
+
+> Gee (verbatim): *"and wtf she is still trying to draw things like "addition"and other words that arnt drawabvle and shit and other times she just scribles over the image with lines and note paper like writing lines at odd angles all lines parrallel like note book paper, i droped a 1.png in to root for you to see for your self"*
+
+**1.png decoded (`canvas:own:attic:crayon`, hot-pink parallel bars):** on the box the colorless schema (proxy gap era) fell back to the packed-chroma palette GUESSER — the same code that once painted a gray subject magenta — and crayon's mass treatment fell back to ONE whole-body-bbox scribble: guessed magenta × body-box bars = pink notebook paper. Three kills:
+- **The palette guesser is DELETED** (second magenta incident; no palette is honest, a guessed palette paints confident lies — no-fallbacks law).
+- **The whole-bbox mass fallback is DELETED** — texture is per-part in sampled colors or absent; a colorless schema draws underpaint + trace only. Verified: a colorless crayon piece renders 0 pink strokes, no bar field.
+- **Gate refinements, each measured in and out over three rounds:** the communication-primary guard DROPPED (it killed "book" while music/dance/consonant refuse on the main loop anyway); the unattested-noun guard now requires the word to be ATTESTED in another part of speech (spares "crayon" — a real artifact the corpus never tagged — while still refusing have/go/see/there, whose noun readings are dictionary artifacts); an attestation-dominance guard was TRIED and deleted (it killed book/table/fire — corpus sense-frequency cannot separate content-senses from physical ones). **Final battery 73/73.**
+- **The honest residual, named:** "addition" stays taxonomy-drawable — a building wing IS attested English ("they built an addition") and every rule that killed it also killed real objects. That word and its rare siblings are exactly what the viewer's 🚫 button is for: one press, banned forever, persisted.
+
+**Board: 3 open / 217 closed.**

@@ -645,7 +645,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     let _img = null;
     try { if (this.mindSpace && typeof this.mindSpace.imagine === 'function') _img = await this.mindSpace.imagine(rec, 0); } catch { _img = null; }
     try { palette = await this._schemaPaletteFromRec(rec, _img); } catch { palette = []; }
-    if (!palette.length) { try { palette = this._schemaPalette(rec); } catch { palette = []; } }
+    // SCRIBBLEKILL (2026-08-21) — the packed-chroma GUESSER fallback is GONE:
+    // it produced magenta for a gray subject once (PAINT.6) and did it again
+    // through the proxy gap (live: hot-pink crayon bars labeled as a room
+    // word). NO palette is honest — the painter goes neutral; a GUESSED
+    // palette paints confident lies. No-fallbacks law.
     if (_img && _img.data && _img.width) {
       const W2 = _img.width, H2 = _img.height;
       const px = (u, v) => {
