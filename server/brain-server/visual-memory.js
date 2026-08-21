@@ -103,7 +103,14 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         const db = new Database(VM_DB);
         db.pragma('journal_mode = WAL');
         db.pragma('synchronous = NORMAL');
-        db.exec('CREATE TABLE IF NOT EXISTS concepts (key TEXT PRIMARY KEY, entry TEXT NOT NULL, at INTEGER NOT NULL)');
+        // BLOBSTORE (2026-08-21) — the rec's coefficient payload lives in a
+        // BLOB beside the JSON skeleton instead of base64 inside it. Base64 is
+        // ASCII (4 chars per 3 bytes) and the parsed entries sit RESIDENT in
+        // the Map — so the wrapper tax landed on RAM, the axis that binds.
+        // Binary rows hold the same data at ~75% of the resident bytes. v8
+        // ships this shape from birth: no migration ever runs (v8 has never
+        // existed on any box).
+        db.exec('CREATE TABLE IF NOT EXISTS concepts (key TEXT PRIMARY KEY, entry TEXT NOT NULL, bin BLOB, at INTEGER NOT NULL)');
         this._vmDbConn = db;
       } catch (e) {
         this._vmDbConn = null;
@@ -129,10 +136,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         const db = this._vmDb();
         if (db) {
           const t0 = Date.now();
-          const rows = db.prepare('SELECT key, entry FROM concepts ORDER BY at ASC').all();
+          const rows = db.prepare('SELECT key, entry, bin FROM concepts ORDER BY at ASC').all();
           for (const r of rows.slice(-VM_CAP)) {
             try {
               const e = JSON.parse(r.entry);
+              if (r.bin) this._recAttachBin(e, r.bin);   // BLOBSTORE — reattach binary payload as Buffers
               if (e && e.rec && e.rec.channels) Map.prototype.set.call(this._visualMemory, r.key, e);
             } catch { /* one bad row never blocks the rest */ }
           }
@@ -174,13 +182,19 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         this._vmDirtyDeletes = new Set();
         const store = this._vmStore();
         const t0 = Date.now();
-        const put = db.prepare('INSERT OR REPLACE INTO concepts (key, entry, at) VALUES (?, ?, ?)');
+        const put = db.prepare('INSERT OR REPLACE INTO concepts (key, entry, bin, at) VALUES (?, ?, ?, ?)');
         const del = db.prepare('DELETE FROM concepts WHERE key = ?');
         const tx = db.transaction(() => {
           for (const k of dels) del.run(k);
           for (const k of ups) {
             const e = store.get(k);
-            if (e) put.run(k, JSON.stringify(e), e.at || Date.now());
+            if (!e) continue;
+            // BLOBSTORE — split the entry: coefficient payload → BLOB, the
+            // rest → JSON skeleton; then keep the LIVE entry in binary form
+            // too, reclaiming the resident base64 immediately.
+            const { json, bin } = this._recSplitBin(e);
+            put.run(k, json, bin, e.at || Date.now());
+            if (bin) this._recAttachBin(e, bin, true);
           }
         });
         tx();
@@ -188,6 +202,84 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (ms > 100) console.log(`[VisualMemory] flushed ${ups.size} upsert(s) + ${dels.size} delete(s) in ${ms}ms.`);
       } catch (e) { console.warn('[VisualMemory] save failed:', e?.message || e); }
     }, 5000);
+  },
+
+  // ── BLOBSTORE helpers ──────────────────────────────────────────────────────
+  // Split an entry for storage: every channel's base64 payload (val_b64 /
+  // pos_b64) decodes into ONE shared Buffer; the JSON skeleton keeps
+  // {val_ref:[off,len], pos_ref:[off,len]} in their place. Works on the rec
+  // whether it currently holds b64 strings or already-attached Buffers.
+  _recSplitBin(entry) {
+    try {
+      const rec = entry && entry.rec;
+      if (!rec || !rec.channels) return { json: JSON.stringify(entry), bin: null };
+      const segs = [];
+      let off = 0;
+      // Int16Array views require an EVEN byteOffset — pad before every value
+      // segment so the reattached view never throws on alignment.
+      const take = (buf, align2) => {
+        if (align2 && (off % 2)) { segs.push(Buffer.alloc(1)); off += 1; }
+        segs.push(buf); const r = [off, buf.length]; off += buf.length; return r;
+      };
+      const chansOut = {};
+      for (const [name, c] of Object.entries(rec.channels)) {
+        if (!c) continue;
+        const co = { ...c };
+        const valBuf = c.val_bin ? Buffer.from(c.val_bin.buffer || c.val_bin, c.val_bin.byteOffset || 0, c.val_bin.byteLength ?? c.val_bin.length)
+          : (c.val_b64 ? Buffer.from(c.val_b64, 'base64') : null);
+        const posBuf = c.pos_bin ? Buffer.from(c.pos_bin.buffer || c.pos_bin, c.pos_bin.byteOffset || 0, c.pos_bin.byteLength ?? c.pos_bin.length)
+          : (c.pos_b64 ? Buffer.from(c.pos_b64, 'base64') : null);
+        delete co.val_b64; delete co.pos_b64; delete co.val_bin; delete co.pos_bin;
+        if (valBuf) co.val_ref = take(valBuf, true);
+        if (posBuf) co.pos_ref = take(posBuf, false);
+        chansOut[name] = co;
+      }
+      if (segs.length === 0) return { json: JSON.stringify(entry), bin: null };
+      const bin = Buffer.concat(segs, off);
+      const json = JSON.stringify({ ...entry, rec: { ...rec, channels: chansOut } });
+      return { json, bin };
+    } catch { return { json: JSON.stringify(entry), bin: null }; }
+  },
+  // Reattach a row's BLOB onto the parsed skeleton as Buffer views (one Buffer
+  // per row, channels hold subarray views — no copies). With mutateRefsOnly
+  // the entry already has live channels (post-flush in-place conversion).
+  _recAttachBin(entry, bin, mutateRefsOnly) {
+    try {
+      const rec = entry && entry.rec;
+      if (!rec || !rec.channels || !bin) return;
+      const buf = Buffer.isBuffer(bin) ? bin : Buffer.from(bin);
+      if (mutateRefsOnly) {
+        // convert the LIVE entry: recompute refs the same way the split did
+        const { json } = this._recSplitBin(entry);
+        const skel = JSON.parse(json);
+        entry.rec = skel.rec;
+      }
+      for (const c of Object.values(entry.rec.channels)) {
+        if (!c) continue;
+        if (Array.isArray(c.val_ref)) { c.val_bin = buf.subarray(c.val_ref[0], c.val_ref[0] + c.val_ref[1]); delete c.val_ref; }
+        if (Array.isArray(c.pos_ref)) { c.pos_bin = buf.subarray(c.pos_ref[0], c.pos_ref[0] + c.pos_ref[1]); delete c.pos_ref; }
+      }
+    } catch { /* attach best-effort — a failed row simply stays skeleton-only and is skipped by consumers */ }
+  },
+  // A rec that must LEAVE the process as JSON (the mind's-eye viewer, the
+  // donor WS lane) converts its Buffers back to base64 — the wire format is
+  // unchanged, only the RESIDENT form went binary.
+  _recJsonSafe(rec) {
+    try {
+      if (!rec || !rec.channels) return rec;
+      let needs = false;
+      for (const c of Object.values(rec.channels)) if (c && (c.val_bin || c.pos_bin)) { needs = true; break; }
+      if (!needs) return rec;
+      const chans = {};
+      for (const [name, c] of Object.entries(rec.channels)) {
+        if (!c) continue;
+        const co = { ...c };
+        if (c.val_bin) { co.val_b64 = Buffer.from(c.val_bin.buffer || c.val_bin, c.val_bin.byteOffset || 0, c.val_bin.byteLength ?? c.val_bin.length).toString('base64'); delete co.val_bin; }
+        if (c.pos_bin) { co.pos_b64 = Buffer.from(c.pos_bin.buffer || c.pos_bin, c.pos_bin.byteOffset || 0, c.pos_bin.byteLength ?? c.pos_bin.length).toString('base64'); delete co.pos_bin; }
+        chans[name] = co;
+      }
+      return { ...rec, channels: chans };
+    } catch { return rec; }
   },
 
   // Content words only — binding a field C to "the"/"of" would make every
@@ -898,9 +990,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     try {
       for (const name of ['Y', 'Cb', 'Cr']) {
         const c = rec.channels[name];
-        if (!c || !c.val_b64) continue;
-        // decode base64 → int16 count of non-trivial magnitudes (>2 quant units)
-        const bin = Buffer.from(c.val_b64, 'base64');
+        // BLOBSTORE — this runs on STORE recs (the recall floor at h.e.rec),
+        // which are binary-resident after restore; reading only val_b64 here
+        // returned 0 for every restored memory and the recall lane silently
+        // refused all of them (outside critique pointed at this exact class
+        // of consumer — right neighborhood, and a real find).
+        if (!c || !(c.val_b64 || c.val_bin)) continue;
+        const bin = c.val_bin
+          ? Buffer.from(c.val_bin.buffer || c.val_bin, c.val_bin.byteOffset || 0, c.val_bin.byteLength ?? c.val_bin.length)
+          : Buffer.from(c.val_b64, 'base64');
         for (let i = 0; i + 1 < bin.length; i += 2) {
           const v = bin.readInt16LE(i);
           if (v > 2 || v < -2) n++;
