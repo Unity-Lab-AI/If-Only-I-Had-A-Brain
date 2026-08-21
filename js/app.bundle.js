@@ -53404,6 +53404,53 @@ var CLUSTER_TELEMETRY_MIXIN = {
 };
 
 // ../js/brain/cluster/hebbian.js
+var RANGE_MAX_RUNS = 512;
+var RANGE_MAX_TOTAL = 2e6;
+function denseActiveRanges(arr) {
+  const out = [];
+  let total = 0;
+  let runStart = -1;
+  const n = arr.length;
+  for (let i = 0; i < n; i++) {
+    if (arr[i]) {
+      if (runStart < 0) runStart = i;
+    } else if (runStart >= 0) {
+      const len = i - runStart;
+      total += len;
+      if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+      out.push([runStart, len]);
+      runStart = -1;
+    }
+  }
+  if (runStart >= 0) {
+    const len = n - runStart;
+    total += len;
+    if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+    out.push([runStart, len]);
+  }
+  return out.length ? out : null;
+}
+function indexRanges(sortedIdx) {
+  if (!sortedIdx || !sortedIdx.length) return null;
+  if (sortedIdx.length > RANGE_MAX_TOTAL) return null;
+  const out = [];
+  let runStart = sortedIdx[0];
+  let prev = sortedIdx[0];
+  for (let i = 1; i < sortedIdx.length; i++) {
+    const v = sortedIdx[i];
+    if (v === prev + 1) {
+      prev = v;
+      continue;
+    }
+    if (out.length >= RANGE_MAX_RUNS) return null;
+    out.push([runStart, prev - runStart + 1]);
+    runStart = v;
+    prev = v;
+  }
+  if (out.length >= RANGE_MAX_RUNS) return null;
+  out.push([runStart, prev - runStart + 1]);
+  return out;
+}
 var CLUSTER_HEBBIAN_MIXIN = {
   /**
    * MAY THIS BRAIN TEACH RIGHT NOW? (2026-08-14)
@@ -53918,7 +53965,26 @@ var CLUSTER_HEBBIAN_MIXIN = {
       for (let _i = 0; _i < post.length; _i++) {
         if (post[_i]) _act.push(_i);
       }
-      await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
+      let _gpuCarried = false;
+      if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === "function") {
+        try {
+          const _postRanges = indexRanges(_act);
+          const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
+          if (_preRanges && _postRanges) {
+            _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
+          }
+        } catch {
+          _gpuCarried = false;
+        }
+      }
+      this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
+      const _s = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0 });
+      if (_gpuCarried) _s.gpu += 1;
+      if (!_gpuCarried || this._intraOjaShadowCounter % 5 === 0) {
+        if (_gpuCarried) _s.cpuShadow += 1;
+        else _s.cpuFull += 1;
+        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
+      }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
         await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
@@ -78634,6 +78700,9 @@ var K_MIXIN = {
       this._hb(`[Curriculum] _teachLetterSequenceDirect SKIPPED \u2014 cluster.synapses.ojaUpdate not available`);
       return;
     }
+    const _gpuPairCarried = new Array(pairs).fill(false);
+    let gpuFires = 0;
+    let _seqVisit = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (let i = 0; i < pairs; i++) {
@@ -78645,6 +78714,20 @@ var K_MIXIN = {
           skipped++;
           continue;
         }
+        if (rep === 0 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === "function") {
+          try {
+            const preR = this._featRegionRanges(letterRegion, xOneHot, false);
+            const postR = this._featRegionRanges(letterRegion, yOneHot, false);
+            if (preR && postR) {
+              _gpuPairCarried[i] = cluster._gpuProxy.hebbianRanges(`${cluster.name}_intraSynapses`, lr, reps, preR, postR) === true;
+              if (_gpuPairCarried[i]) gpuFires++;
+            }
+          } catch {
+            _gpuPairCarried[i] = false;
+          }
+        }
+        _seqVisit++;
+        if (_gpuPairCarried[i] && _seqVisit % 5 !== 0) continue;
         const scratch = this._ensureScratchBuffers();
         const preFull = this._fillRegionPatternInto(scratch.pre, letterRegion, xOneHot, true);
         const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, yOneHot, true);
@@ -78663,7 +78746,7 @@ var K_MIXIN = {
       if ((rep & 7) === 7) await _microtask();
     }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${pairs} pairs \xD7 ${reps} reps target)`);
+    this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s \u2014 ${updates} CPU Oja updates \xB7 ${gpuFires} GPU rep-doses (\xD7${reps}) \xB7 ${skipped} skipped (${pairs} pairs \xD7 ${reps} reps target)`);
   },
   // iter11-J — Discriminative one-hot word→first-letter binding for
   // sem_to_motor. For every K-vocab word in the dictionary, write a
@@ -78812,6 +78895,9 @@ var K_MIXIN = {
       }
       return vec;
     };
+    const _gpuLetterCarried = new Array(ALPHABET.length).fill(false);
+    let gpuFires = 0;
+    let _nameVisit = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (let i = 0; i < ALPHABET.length; i++) {
@@ -78821,6 +78907,20 @@ var K_MIXIN = {
           skipped++;
           continue;
         }
+        if (rep === 0 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === "function") {
+          try {
+            const preR = this._featRegionRanges(letterRegion, oneHot, true);
+            const postR = this._featRegionRanges(motorRegion, oneHot, true);
+            if (preR && postR) {
+              _gpuLetterCarried[i] = cluster._gpuProxy.hebbianRanges(`${cluster.name}_letter_to_motor`, lr, reps, preR, postR) === true;
+              if (_gpuLetterCarried[i]) gpuFires++;
+            }
+          } catch {
+            _gpuLetterCarried[i] = false;
+          }
+        }
+        _nameVisit++;
+        if (_gpuLetterCarried[i] && _nameVisit % 5 !== 0) continue;
         const preLetter = buildRegionSizedOneHot(letterSize, oneHot);
         const postMotor = buildRegionSizedOneHot(motorSize, oneHot);
         try {
@@ -78834,7 +78934,7 @@ var K_MIXIN = {
       if ((rep & 7) === 7) await _microtask();
     }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (26 letters \xD7 ${reps} reps target)`);
+    this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s \u2014 ${updates} CPU Oja updates \xB7 ${gpuFires} GPU rep-doses (\xD7${reps}) \xB7 ${skipped} skipped (26 letters \xD7 ${reps} reps target)`);
     if (updates > 0 && typeof cluster.advanceSubGrade === "function") {
       const cellKey = cluster._currentCellKey || "";
       const subj = cellKey.split("/")[0];
@@ -103044,6 +103144,31 @@ var Curriculum = class _Curriculum {
   }
   // In-place variant — fills `target` instead of allocating. Caller
   // owns the buffer. Returns target for chaining.
+  // GPUVERB.2 (2026-08-21) — the [start,len] runs a tiled feat write produces,
+  // computed straight from the tiling law above (active dim d → run at
+  // region.start + d*gSize, len min(gSize, region-end clip)) so a GPU
+  // hebbian_ranges dispatch expands to EXACTLY the index set
+  // _fillRegionPatternInto/_buildRegionPattern set. `relative:true` emits
+  // region-relative starts (cross-projection matrices are matrix-local);
+  // absolute otherwise (the intra matrix is cluster-absolute). Returns null
+  // when the pattern won't fit the frame (the caller keeps its CPU pass —
+  // the donor expander silently skips oversized ranges, and truncated
+  // patterns trained on the GPU are wrong math with no loud failure).
+  _featRegionRanges(region, feat, relative = false) {
+    if (!region || !feat || feat.length === 0) return null;
+    const size = region.end - region.start;
+    const gSize = Math.max(1, Math.floor(size / feat.length));
+    const out = [];
+    for (let d = 0; d < feat.length; d++) {
+      if (feat[d] <= 0) continue;
+      const rel = d * gSize;
+      if (rel >= size) continue;
+      const len = Math.min(gSize, size - rel);
+      if (out.length >= 256) return null;
+      out.push([relative ? rel : region.start + rel, len]);
+    }
+    return out.length ? out : null;
+  }
   _fillRegionPatternInto(target, region, feat, binarize = true) {
     const cluster = this.cluster;
     if (!cluster || !target) return target;
@@ -104076,8 +104201,22 @@ var Curriculum = class _Curriculum {
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
             const lrK = (opts.lr ?? 0.01) * 0.25;
-            const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
-            cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
+            let _gpuCarried = false;
+            if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === "function") {
+              try {
+                const _semRanges = indexRanges(activeRows);
+                if (_semRanges) {
+                  _gpuCarried = cluster._gpuProxy.hebbianRanges(`${cluster.name}_intraSynapses`, lrK, 1, _semRanges, _semRanges) === true;
+                }
+              } catch {
+                _gpuCarried = false;
+              }
+            }
+            this._defSemSemShadowCounter = (this._defSemSemShadowCounter | 0) + 1;
+            if (!_gpuCarried || this._defSemSemShadowCounter % 5 === 0) {
+              const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
+              cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
+            }
           } catch {
           }
         }
