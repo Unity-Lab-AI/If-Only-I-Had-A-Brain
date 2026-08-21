@@ -481,18 +481,26 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       }
     }
     if (segs.length < 4) return null;
-    // PART CLUSTERING — a fixed 3x3 spatial grid over the subject's bbox. Deliberately
-    // COARSE: nine cells cannot encode a likeness, only a layout (mass low-centre,
-    // limbs bottom-left/right, head upper-middle). That coarseness is the whole point.
+    // PART CLUSTERING — a fixed spatial grid over the subject's bbox.
+    // OWNART.7 VERDICT (2026-08-21, Gee on a live tomato: "all the images are just
+    // chicken scratch lines ... she is suppose to be mimicing the style and
+    // apperance of real images"): the 3×3 grid was TOO coarse — nine cells gave
+    // her a layout but the constructions read as scatter, not as the thing. The
+    // pre-agreed lever from the OWNART.7 filing was schema resolution + marks-per-
+    // part, NOT a return to filtering — so the grid is now 5×5 (≤25 parts) and
+    // the weight floor drops so fine parts survive. Still an ABSTRACTION (~2-4%
+    // of the reference's information — a copy stays impossible); just enough
+    // structure that a tomato reads round with a stem instead of as hatching.
+    const GRID = 5;
     let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
     for (const g of segs) { x0 = Math.min(x0, g[0], g[2]); x1 = Math.max(x1, g[0], g[2]); y0 = Math.min(y0, g[1], g[3]); y1 = Math.max(y1, g[1], g[3]); }
     const bw = Math.max(1e-3, x1 - x0), bh = Math.max(1e-3, y1 - y0);
     const cells = new Map();
     for (const [ax, ay, bx, by] of segs) {
       const mx = (ax + bx) / 2, my = (ay + by) / 2;
-      const gx = Math.max(0, Math.min(2, Math.floor(((mx - x0) / bw) * 3)));
-      const gy = Math.max(0, Math.min(2, Math.floor(((my - y0) / bh) * 3)));
-      const k = gy * 3 + gx;
+      const gx = Math.max(0, Math.min(GRID - 1, Math.floor(((mx - x0) / bw) * GRID)));
+      const gy = Math.max(0, Math.min(GRID - 1, Math.floor(((my - y0) / bh) * GRID)));
+      const k = gy * GRID + gx;
       const len = Math.hypot(bx - ax, by - ay);
       const ang = Math.atan2(by - ay, bx - ax);
       let c = cells.get(k);
@@ -514,7 +522,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         density: +(c.n / segs.length).toFixed(4),
         weight: +(c.len / totalLen).toFixed(4),
       }))
-      .filter(p => p.weight > 0.02)
+      .filter(p => p.weight > 0.008)   // OWNART.7 — floor lowered with the finer grid so small parts (a stem, an eye) survive
       .sort((a, b) => b.weight - a.weight);
     if (parts.length === 0) return null;
     // PALETTE — the reference's dominant chroma, 4 entries. She is free to use, shift
@@ -523,8 +531,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     let palette = [];
     try { palette = this._schemaPalette(rec); } catch { palette = []; }
     const schema = {
-      v: 1,
-      parts: parts.slice(0, 9),
+      v: 2,   // OWNART.7 — v2 = 5×5 cell indices; v1 (3×3) schemas still DRAW fine (cx/cy/w/h/ang are grid-independent) but must never CELL-MERGE with v2
+      parts: parts.slice(0, 25),
       palette,
       aspect: +(bw / bh).toFixed(3),
       frame: { x: +x0.toFixed(3), y: +y0.toFixed(3), w: +bw.toFixed(3), h: +bh.toFixed(3) },
@@ -540,7 +548,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       const e = store.get(key);
       if (e) {
         const prev = e.schema;
-        if (prev && prev.v === 1 && Array.isArray(prev.parts)) {
+        // Merge by cell index ONLY within the same schema version — a v1 cell 4
+        // (3×3 centre) and a v2 cell 4 (5×5 top row) are different places, and
+        // averaging them would smear the layout. A v1 prior is simply replaced
+        // by the finer v2 look (the new look carries more structure anyway).
+        if (prev && prev.v === schema.v && Array.isArray(prev.parts)) {
           const byCell = new Map(prev.parts.map(p => [p.cell, p]));
           for (const p of schema.parts) {
             const q = byCell.get(p.cell);
@@ -655,6 +667,53 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // oracle discipline as _ingestVisualFrame. Node fetch + jpeg-js/pngjs decode
   // (server deps, auto-installed on the box). Cooldown-gated (never hammer the
   // generator for one word), global-paced, in-flight-guarded, best-effort.
+  // ── LOOKEYES.1 (2026-08-21) — the look lane gets EYES ON ITSELF. Live symptom:
+  // 113 draw attempts, 2 concepts ever seen in ~10h, zero log evidence — because
+  // every post-budget failure in this function was silent by construction
+  // (perceive died in a bare `catch { return null; }`, decode-null returned
+  // without a word, the success line went to process.stdout.write which the
+  // console ring cannot see), and the 10-minute GLOBAL budget plus the 6-hour
+  // per-concept cooldown were burned AT ENTRY — so whatever stage was dying ate
+  // the entire lookup budget forever and left nothing behind. Her eyes starved
+  // in silence and the mind's eye fell back to letter-scratch "drawings".
+  //
+  // Two rules now: EVERY exit increments a named counter (surfaced at
+  // state.ownArt.lookups so the dashboard can answer "why isn't she looking"),
+  // and a FAILED attempt ROLLS ITS BURNS BACK — global retry in 60s, concept
+  // retry in 10min — so one broken stage no longer forfeits the whole budget.
+  // A SUCCESS keeps the full burns exactly as before (storm protection intact).
+  _vmLook() {
+    if (!this._vmLookStats) {
+      this._vmLookStats = {
+        attempts: 0, grounded: 0, notDrawable: 0, gapSkips: 0, coolSkips: 0,
+        inFlightSkips: 0, noPrompt: 0, httpFails: 0, fetchErrs: 0, decodeFails: 0,
+        perceiveFails: 0, blankRefs: 0, lastErr: null, lastErrAt: 0, lastGroundedKey: null, lastGroundedAt: 0,
+      };
+    }
+    return this._vmLookStats;
+  },
+  // Named-stage failure: counter + throttled warn (ring-visible) + burn ROLLBACK.
+  _vmLookFail(key, stage, detail) {
+    const st = this._vmLook();
+    st[stage] = (st[stage] || 0) + 1;
+    st.lastErr = `${stage}:${key}${detail ? ' — ' + String(detail).slice(0, 120) : ''}`;
+    st.lastErrAt = Date.now();
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 600000;
+    const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;
+    // Roll the entry burns back to short retry windows: the budget was spent on
+    // nothing, so most of it comes back. 60s global / 10min concept still stops
+    // a hard-down generator from being hammered.
+    try {
+      this._vmLastRefFetchAt = Date.now() - Math.max(0, GAP - 60000);
+      if (this._vmRefFetchAt) this._vmRefFetchAt.set(key, Date.now() - Math.max(0, COOL - 600000));
+    } catch { /* rollback best-effort */ }
+    if (!this._vmLookWarnAt || Date.now() - this._vmLookWarnAt > 60000) {
+      this._vmLookWarnAt = Date.now();
+      console.warn(`[VisualMemory] LOOK FAILED at stage=${stage} for "${key}"${detail ? ` (${String(detail).slice(0, 120)})` : ''} — budget rolled back (global retry 60s, concept 10min). Totals: ${st.attempts} attempts, ${st.grounded} grounded.`);
+    }
+    return null;
+  },
+
   async _fetchReferenceAndGround(concept, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return null;
     if (typeof this._buildPollinationsImageUrl !== 'function') return null;
@@ -670,31 +729,32 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // per-concept refetch cooldown — never spam the generator for the same word
     const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;   // 6h
     if (!this._vmRefFetchAt) this._vmRefFetchAt = new Map();
-    if (!opts.force && (now - (this._vmRefFetchAt.get(key) || 0)) < COOL) return null;
+    if (!opts.force && (now - (this._vmRefFetchAt.get(key) || 0)) < COOL) { this._vmLook().coolSkips++; return null; }
     // in-flight guard (per concept) + global pacing so a flood of unseen concepts
     // can't trigger a fetch storm
     if (!this._vmRefInFlight) this._vmRefInFlight = new Set();
-    if (this._vmRefInFlight.has(key)) return null;
+    if (this._vmRefInFlight.has(key)) { this._vmLook().inFlightSkips++; return null; }
     // GLOBAL look-up budget (Gee 2026-07-17: "lets make the brain only able to
     // do a look up once ever 10 minutes.. she is killing my accoutn pollen
     // doing multiple a minute"). Every render costs real pollen; one fetch per
     // 10 minutes brain-wide. Recalls (visual-memory hits) are free and
     // unlimited — this gates only NEW outbound generations.
     const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 600000;
-    if (!opts.force && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) return null;
+    if (!opts.force && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
     this._vmRefInFlight.add(key);
     this._vmLastRefFetchAt = now;
     this._vmRefFetchAt.set(key, now);
+    this._vmLook().attempts++;
     try {
       const prompt = opts.promptOverride || this._referenceImagePrompt(concept);
-      if (!prompt) return null;
+      if (!prompt) return this._vmLookFail(key, 'noPrompt');
       let url = '';
       // NOLIMIT — request a 512² reference (was 256²). One fetch per 10min brain-wide
       // is unchanged, so this costs no extra pollen; it just means the ONE look she
       // gets carries enough detail to learn an appearance from.
       const _refPx = Number(process.env.DREAM_REF_RENDER_PX) > 0 ? Number(process.env.DREAM_REF_RENDER_PX) : 512;
-      try { url = this._buildPollinationsImageUrl(prompt, { width: _refPx, height: _refPx }); } catch { return null; }
-      if (!url) return null;
+      try { url = this._buildPollinationsImageUrl(prompt, { width: _refPx, height: _refPx }); } catch (e) { return this._vmLookFail(key, 'urlBuild', e && e.message); }
+      if (!url) return this._vmLookFail(key, 'urlBuild', 'builder returned empty');
       let buf;
       try {
         const ctrl = new AbortController();
@@ -708,27 +768,32 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         clearTimeout(to);
         if (!r || !r.ok) {
           if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image (verify the Pollinations key on the box).`); }
-          return null;
+          return this._vmLookFail(key, 'httpFails', 'HTTP ' + (r ? r.status : '?'));
         }
         buf = Buffer.from(await r.arrayBuffer());
       } catch (e) {
         if (!this._vmRefFetchErrAt || now - this._vmRefFetchErrAt > 60000) { this._vmRefFetchErrAt = now; console.warn(`[VisualMemory] reference fetch failed for "${key}": ${e?.message || e}`); }
-        return null;
+        return this._vmLookFail(key, 'fetchErrs', e && e.message);
       }
       const img = this._decodeImageToRGBA(buf);
-      if (!img) return null;
+      // decode-null was SILENT for unknown formats (the decode helper only warns
+      // on exceptions) — a generator handing back HTML or webp died invisibly.
+      if (!img) return this._vmLookFail(key, 'decodeFails', `unknown/undecodable image (${buf ? buf.length : 0} bytes)`);
       // NOLIMIT — a reference is what she LEARNS the appearance from, so 128px was
       // throwing away the detail her shape-schema is built out of. 320 default
       // (env-tunable), which is still a downsample of a 256-1024px render but keeps
       // the contours and part proportions that OWNART reads.
       const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
       let rec;
-      try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); } catch { return null; }
-      if (!rec || !rec.channels) return null;
+      // perceive was the ONLY post-budget stage with a fully bare catch — a dead
+      // mind-space worker killed every look with zero evidence. It names itself now.
+      try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); }
+      catch (e) { return this._vmLookFail(key, 'perceiveFails', e && e.message); }
+      if (!rec || !rec.channels) return this._vmLookFail(key, 'perceiveFails', 'perceive returned empty rec');
       // reject a degenerate (blank/uniform) reference — a flat field is not a look
       if (typeof this._recDetail === 'function' && this._recDetail(rec) < (Number(process.env.DREAM_REF_MIN_DETAIL) || 200)) {
         if (!this._vmRefBlankLogAt || now - this._vmRefBlankLogAt > 60000) { this._vmRefBlankLogAt = now; console.log(`[VisualMemory] reference for "${key}" came back near-uniform (no detail) — not binding.`); }
-        return null;
+        return this._vmLookFail(key, 'blankRefs');
       }
       rec.fidelity = { psnr_db: null, source: 'reference-lookup' };
       // BIND PROVISIONALLY (reference-not-fact) — conf:false on first sight;
@@ -760,8 +825,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             for (const [ws] of this.clients) { if (ws.readyState === 1) { try { ws.send(_p); } catch { /* nf */ } } }
           }
         } catch { /* viewer publish best-effort */ }
-        try { process.stdout.write(`[VisualMemory] 🔎 looked up "${key}" → reference field C (${rec.equation_count} terms, ${confirmed ? 'CONFIRMED' : 'provisional'}) — SEEING it + can draw it now.\n`); } catch { /* nf */ }
+        // LOOKEYES.1 — console.log, NOT process.stdout.write: the console ring
+        // only captures console.*, so every successful look was invisible to
+        // remote diagnosis (the PHONPROG.1 blind spot, second occurrence).
+        try { console.log(`[VisualMemory] 🔎 looked up "${key}" → reference field C (${rec.equation_count} terms, ${confirmed ? 'CONFIRMED' : 'provisional'}) — SEEING it + can draw it now.`); } catch { /* nf */ }
       } catch { /* bind best-effort — the rec still returns for immediate drawing */ }
+      { const st = this._vmLook(); st.grounded++; st.lastGroundedKey = key; st.lastGroundedAt = Date.now(); }
       return rec;
     } finally {
       this._vmRefInFlight.delete(key);
