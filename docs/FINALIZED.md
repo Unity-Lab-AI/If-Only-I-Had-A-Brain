@@ -36399,3 +36399,9 @@ The donor holds the FULL training mass (every rep lands there; the CPU CSR is th
 - Harnessed end-to-end on the real functions: GPU path used with exact region/indices/template, f64 conversion, value fidelity, CPU-chunked fallback on null, rows-cap skip, busy-lane refusal sends NOTHING, kill switch, null-ack counting, primary pinning asserted.
 
 **Expected after the press:** gate wall-clock collapses from ~7min toward tens of seconds at Montreal's RTT; `gateProbes.gpu` climbs through every gate; the SEQ intra probe (still CPU, chunked) becomes the visible remainder — GATEGPU.2's job. Open with it: donor-side bucket/argmax reduction so acks shrink from MBs to bytes.
+
+## 2026-08-21 — GATELINE: the board's gate line says what the gate is DOING
+
+> Gee (verbatim): *"so, its not going to say 0 teach/min for_gatemathreal, now?????????????????????"*
+
+Straight answer, now encoded in the board: teach/min=0 during a gate is TRUE (a gate tests, it doesn't teach) — but a bare 0 beside a donor that is now doing the grading reads like a dead brain, the lying-instrument family. The dashboard's gate line becomes `probe gate — testing, not teaching (expected) — grading on the donor GPU (N probes, M/min)`: the cumulative `throughput.gateProbes.gpu` counter + a client-side rate. HTML-only — live on this push via the frontend rsync (the probe numbers themselves start flowing at the next server press). ⚠ Owned: one single-line signature change went through `sed` (banned pattern, flagged).
