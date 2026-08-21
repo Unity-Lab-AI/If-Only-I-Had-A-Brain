@@ -521,6 +521,9 @@ const SERVER_STATE_MIXIN = {
           // ARTJUDGE — the viewer's accept/reject/ban verdicts on her drawings,
           // plus how many words the operator has taught her never to draw.
           feedback: this._artFeedbackStats || null,
+          // FORMBANK — banked form variants across all concepts (the raw
+          // material of "draw a brown one standing").
+          formVariants: (() => { try { let n = 0; for (const e2 of (this._vmStore && this._vmStore().values()) || []) if (e2 && Array.isArray(e2.schemaBank)) n += e2.schemaBank.length; return n; } catch { return 0; } })(),
           notDrawableWords: (() => { try { return this._artBanSet().size; } catch { return 0; } })(),
           // LOOKEYES.1 — the look lane's own ledger: every stage a look-up can
           // die at, counted, plus the last error WITH ITS AGE. Built because the
