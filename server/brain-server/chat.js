@@ -2683,19 +2683,18 @@ const SERVER_CHAT_MIXIN = {
         out.push({ type: 'fill', pts: sPts.map(pp => [pp[0] + (rnd() - 0.5) * 0.02, pp[1] + (rnd() - 0.5) * 0.02]), rgb: bodyInk, a: 0.3 });
       } else if (style.mass !== 'none') {
         // COLORART — textured styles (hatch/dots/xhatch/scribble) mass PER
-        // PART in the part's own sampled color when the schema carries them:
-        // small correctly-placed colored texture instead of one giant body-box
-        // hatch (the whole-bbox scribble read as bars across the piece).
+        // PART in the part's own sampled color when the schema carries them.
+        // SCRIBBLEKILL — the whole-body-bbox fallback is GONE: one giant
+        // scribble/hatch across the silhouette box rendered as parallel bars
+        // at odd angles over the piece ("like note book paper" — judged live
+        // on a hot-pink crayon piece). A colorless schema draws underpaint +
+        // trace only; texture is earned by knowing where the colors go.
         const coloredNF = schema.parts.filter(p => Array.isArray(p.rgb));
-        if (coloredNF.length) {
-          for (const p of coloredNF) {
-            const cx = mapX(p.cx), cy = mapY(p.cy);
-            const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
-            const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-            this._artMass(out, style, cx, cy, pw, ph, mAng(p.ang), p.rgb, rnd);
-          }
-        } else {
-          this._artMass(out, style, (sx0 + sx1) / 2, (sy0 + sy1) / 2, (sx1 - sx0), (sy1 - sy0), 0.3, bodyInk, rnd);
+        for (const p of coloredNF) {
+          const cx = mapX(p.cx), cy = mapY(p.cy);
+          const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+          const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+          this._artMass(out, style, cx, cy, pw, ph, mAng(p.ang), p.rgb, rnd);
         }
       }
       // COLORART — COLOR LAYERS + DEPTH: when the schema carries per-part
