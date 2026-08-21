@@ -2169,14 +2169,36 @@ const SERVER_CHAT_MIXIN = {
       return;
     }
     if (m === 'scribble') {
-      // one continuous waxy zigzag filling the part — crayon pressure via alpha
-      const n = Math.max(6, Math.round(ph * 46));
-      const pts = [];
-      for (let i = 0; i <= n; i++) {
-        const t = i / n - 0.5;
-        pts.push([cx + (i % 2 === 0 ? -1 : 1) * pw * (0.42 + rnd() * 0.1), cy + t * ph]);
+      // ZIGZAGKILL (2026-08-21, operator: "these zighzag lines… look like 3
+      // V's really close together… really off putting") — the old treatment
+      // was ONE continuous zigzag bouncing across the part, which read as
+      // tight V-chains scattered over every crayon piece. Real crayon lays
+      // SHORT OVERLAPPING STROKES: dense rounded near-parallel marks with
+      // angle wobble and waxy pressure (varying alpha), two loose passes so
+      // the coverage looks hand-colored, never machine-jagged.
+      // strokes run along the part's LONG axis (how a hand colors a shape),
+      // and each stroke's length clamps to the part's real extent in its own
+      // direction — an overshooting stroke on a thin part wove back into the
+      // very zigzag chains this replaces (caught on the first render).
+      const longAxis = ph > pw ? ang + Math.PI / 2 : ang;
+      for (let pass = 0; pass < 2; pass++) {
+        const pa = longAxis + (pass ? 0.25 : 0) + (rnd() - 0.5) * 0.12;
+        const extent = Math.abs(Math.cos(pa)) * pw + Math.abs(Math.sin(pa)) * ph;
+        const across = Math.abs(Math.sin(pa)) * pw + Math.abs(Math.cos(pa)) * ph;
+        const n = Math.max(5, Math.round(across * 40));
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5) / n - 0.5;
+          const ox = -Math.sin(pa) * t * across + (rnd() - 0.5) * pw * 0.06;
+          const oy = Math.cos(pa) * t * across + (rnd() - 0.5) * ph * 0.06;
+          const len = extent * (0.55 + rnd() * 0.3);
+          out.push({
+            type: 'line',
+            x0: cx + ox - Math.cos(pa) * len * 0.5, y0: cy + oy - Math.sin(pa) * len * 0.5,
+            x1: cx + ox + Math.cos(pa) * len * 0.5, y1: cy + oy + Math.sin(pa) * len * 0.5,
+            rgb, w: 0.005, a: 0.45 + rnd() * 0.35,
+          });
+        }
       }
-      out.push({ type: 'poly', pts, rgb, w: 0.006, a: 0.85 });
       return;
     }
   },
