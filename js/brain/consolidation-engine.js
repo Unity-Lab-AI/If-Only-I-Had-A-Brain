@@ -108,9 +108,29 @@ export class ConsolidationEngine {
     // promotion) were cut on every single pass ("0 promoted" chronically).
     // 45s finishes the pass; the env knob is unchanged for ops tuning,
     // and the cap still guards against the original 153s+ runaway passes.
-    const maxMs = Number(process.env.DREAM_CONSOLIDATION_MAX_MS) > 0
-      ? Number(process.env.DREAM_CONSOLIDATION_MAX_MS)
-      : 45000;
+    // CONSTARVE.1 (2026-08-21) — a FORCED pass gets a longer wall than a routine
+    // one. Live, inside a multi-hour K cell: mid-walk passes are idle-only by
+    // design and the walk is never idle, so consolidation starved the full 2-hour
+    // emergency valve — and when the starvation guard finally forced a pass, it
+    // DEADLINE-ABORTed at 45,000ms having run 48,581ms of work, skipping the tail
+    // (merge + schema-decay + Tier-3 promotion + episode-decay). Net: inside long
+    // cells, consolidation got ≤45s of work per 2 HOURS and its tail never ran —
+    // schemas were created all night, promotions never happened.
+    //
+    // A forced pass fires at most once per DREAM_CONSOLIDATION_FORCE_MS (2h) or
+    // from an explicit dream window, and the pass yields between stages (the live
+    // log shows only ~250-340ms loop blocks DURING the 48s pass), so a longer
+    // wall is more yielding work, not a longer pin. Routine passes keep the 45s
+    // cap unchanged — the original 153s-runaway guard stands where passes are
+    // frequent. ⚠ RE-PRICE note: this WIDENS a consolidation bound rather than
+    // removing any gate — the walk-finiteness pricing is untouched.
+    const maxMs = opts.forced
+      ? (Number(process.env.DREAM_CONSOLIDATION_FORCE_MAX_MS) > 0
+          ? Number(process.env.DREAM_CONSOLIDATION_FORCE_MAX_MS)
+          : 120000)
+      : (Number(process.env.DREAM_CONSOLIDATION_MAX_MS) > 0
+          ? Number(process.env.DREAM_CONSOLIDATION_MAX_MS)
+          : 45000);
     this._consolidationDeadlineMs = Date.now() + maxMs;
     // iter20-A — harden gate. Operator caught (verbatim 2026-05-05
     // "fix it all thouroughly"): 102 consolidation passes in 67s

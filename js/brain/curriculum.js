@@ -5789,7 +5789,10 @@ export class Curriculum {
                       if (idx < letterRegion.end) clusterInput[idx] = 1;
                     }
                   }
-                  const clusterOutput = cluster.synapses.propagate(clusterInput);
+                  // GATEPIN.1 — sliced propagate; same fix as the probe pair above.
+                  const clusterOutput = (typeof cluster.synapses.propagateChunked === 'function')
+                    ? await cluster.synapses.propagateChunked(clusterInput, { chunkRows: 65536 })
+                    : cluster.synapses.propagate(clusterInput);
                   if (clusterOutput && clusterOutput.length > 0) {
                     // EQUATION FIX iter9 — read LETTER REGION argmax,
                     // not motor. Operator caught it iter8 verbatim
@@ -6533,10 +6536,20 @@ export class Curriculum {
     const surpriseSamples = [];
     const coverageSamples = [];
     const sampleCount = Math.min(50, personaSentences.length);
+    // SURPSYNC.1 (2026-08-21) — at biological scale the sync surprise form
+    // refuses itself and returns 0, so all 50 samples came back 0 and the p95
+    // fell through `(p95 || 0.3)` to the default anyway. Same numeric outcome,
+    // now stated instead of stumbled into: above 2M neurons the threshold IS
+    // the uncalibrated default, and the refused calls (plus their warn) are
+    // skipped rather than made 50 times for a number we already know.
+    const _surpBioScale = (cluster.size | 0) > 2000000;
     for (let i = 0; i < sampleCount; i++) {
       const s = personaSentences[Math.floor(Math.random() * personaSentences.length)];
-      surpriseSamples.push(cluster.computeTransitionSurprise(s));
+      surpriseSamples.push(_surpBioScale ? 0 : cluster.computeTransitionSurprise(s));
       coverageSamples.push(cluster.computeFineTypeCoverage(s));
+    }
+    if (_surpBioScale) {
+      this._hb('[Curriculum] Lock 1 surprise calibration SKIPPED at biological scale (sync surprise path refuses >2M) — using the uncalibrated default threshold, same value the refused calls produced.');
     }
     if (surpriseSamples.length > 0) {
       surpriseSamples.sort((a, b) => a - b);
@@ -18027,7 +18040,16 @@ export class Curriculum {
         if (!inp || !inp.region || !inp.feat) continue;
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
-      const output = cluster.synapses.propagate(input);
+      // GATEPIN.1 (2026-08-21) — the sliced propagate, not the sync one. The
+      // comment above already priced a single sync propagate at "100ms-5s of
+      // synchronous CPU matmul", and the between-sample yield below cannot help
+      // DURING one: each probe sample WAS one 2.7-6.5s [EventLoop] BLOCKED line
+      // in the gate/battery wall. propagateChunked is bit-identical math (rows
+      // are independent) self-converging to ~30ms slices — the same call the
+      // predictive-error path already made years of blocks shorter with.
+      const output = (typeof cluster.synapses.propagateChunked === 'function')
+        ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 })
+        : cluster.synapses.propagate(input);
       const readout = this._tileReadVec(output, sample.expected.region, sample.expected.feat.length);
       if (this._cosine(readout, sample.expected.feat) > cosMin) pass++;
       if (Date.now() - _lastYield > 200) {
@@ -18064,7 +18086,10 @@ export class Curriculum {
         if (!inp || !inp.region || !inp.feat) continue;
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
-      const output = cluster.synapses.propagate(input);
+      // GATEPIN.1 — sliced propagate; see _probeCombinationCosine above.
+      const output = (typeof cluster.synapses.propagateChunked === 'function')
+        ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 })
+        : cluster.synapses.propagate(input);
       let bestName = null, bestSum = -Infinity;
       for (const bucket of sample.buckets) {
         let sum = 0;
@@ -18164,7 +18189,13 @@ export class Curriculum {
         }
       }
       let clusterOutput;
-      try { clusterOutput = cluster.synapses.propagate(clusterInput); }
+      // GATEPIN.1 — sliced propagate; a sync intra propagate at 12M is a
+      // multi-second loop pin per call, and this runs inside the battery.
+      try {
+        clusterOutput = (typeof cluster.synapses.propagateChunked === 'function')
+          ? await cluster.synapses.propagateChunked(clusterInput, { chunkRows: 65536 })
+          : cluster.synapses.propagate(clusterInput);
+      }
       catch { return null; }
       if (!clusterOutput || clusterOutput.length === 0) return null;
       const invSize = (typeof inventorySize === 'function') ? inventorySize() : 26;
@@ -18341,16 +18372,29 @@ export class Curriculum {
 
     // STEP 2 — inject question through full sensory pipeline
     const q = (question || '').toLowerCase();
-    if (typeof cluster.readText === 'function') {
-      const words = q.match(/[a-z]+/g) || [];
-      if (cluster.regions?.sem) {
-        for (const word of words) {
-          const emb = sharedEmbeddings.getEmbedding(word);
-          if (emb && emb.length > 0) cluster.injectEmbeddingToRegion('sem', emb, 0.35);
-        }
+    // BATTREAD.1 (2026-08-21) — branch on CAPABILITY, not existence. `readText`
+    // always exists, so the old `typeof` test always took the first branch —
+    // and at biological scale `readText` REFUSES itself (GATESTEP, >2M neurons,
+    // returns null having done nothing). Net effect on every battery probe at
+    // 12M: the sem-embedding priming below landed, but the letter/visual/
+    // auditory pipeline the question is supposed to ride was silently absent,
+    // and the awaited GPU-safe fallback written for exactly this case was DEAD
+    // CODE. The battery is the instrument that grades her — it was probing on
+    // half its senses. Same 2M threshold readText itself refuses at, so the
+    // two can never disagree about which side of the line a brain is on.
+    const _bioScale = (cluster.size | 0) > 2000000;
+    const words = q.match(/[a-z]+/g) || [];
+    if (cluster.regions?.sem) {
+      for (const word of words) {
+        const emb = sharedEmbeddings.getEmbedding(word);
+        if (emb && emb.length > 0) cluster.injectEmbeddingToRegion('sem', emb, 0.35);
       }
+    }
+    if (typeof cluster.readText === 'function' && !_bioScale) {
       cluster.readText(q, { visualCortex, ticksPerChar });
     } else {
+      // The awaited form — letter injection + GPU-stepped ticks. This is the
+      // path the refusal message has been pointing at all along.
       for (const ch of q) {
         if (/[a-z0-9]/.test(ch)) cluster.injectLetter(ch, 1.0);
         for (let t = 0; t < ticksPerChar; t++) await cluster.stepAwait(0.001);
