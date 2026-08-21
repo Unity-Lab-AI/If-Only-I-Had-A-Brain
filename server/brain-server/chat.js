@@ -2050,6 +2050,11 @@ const SERVER_CHAT_MIXIN = {
       if (arousal > 0.65 && (s.name === 'ink' || s.name === 'poster' || s.name === 'crayon')) wt += 1.2;
       if (valence < -0.1 && (s.name === 'pencil' || s.name === 'crosshatch')) wt += 1.2;
       if (arousal < 0.45 && (s.name === 'watercolor' || s.name === 'pointillism')) wt += 1.2;
+      // COLORART — color-mass hands lead the rotation: the judged complaint
+      // was monotone line-only pieces, so the styles that PAINT (fill/wash)
+      // weigh double and mass-less line styles stay the occasional change-up.
+      if (s.mass === 'fill' || s.mass === 'wash') wt *= 2;
+      else if (s.mass === 'none') wt *= 0.5;
       if (this._lastArtStyle === s.name) wt = 0;   // she always changes it up
       return wt;
     });
@@ -2202,13 +2207,19 @@ const SERVER_CHAT_MIXIN = {
         out.push({ type: 'line', x0: x, y0: y, x1: x + lean, y1: y - hh, rgb: this._ownArtInk(ps, 0.45, rnd), a: 0.5 + 0.3 * depth });
       }
     }
-    // her remembered trace of the place, faint, full-canvas — the scene's read
+    // her remembered trace of the place, faint, full-canvas — the scene's read.
+    // COLORART — scenery strokes render in the colors the place really had
+    // there (per-stroke sampled), so a backdrop reads as a colored scene
+    // instead of monotone squiggles all over the page (judged live).
     if (ps && Array.isArray(ps.trace) && ps.trace.length >= 10) {
       const ink = this._artInk(style, ps, 0.5, rnd, null);
       const jit = () => (rnd() - 0.5) * 0.006;
-      for (const tp of ps.trace) {
+      const hasC = Array.isArray(ps.traceRgb) && ps.traceRgb.length;
+      for (let i = 0; i < ps.trace.length; i++) {
+        const tp = ps.trace[i];
         if (!Array.isArray(tp) || tp.length < 2) continue;
-        out.push({ type: 'poly', pts: tp.map(pp => [pp[0] + jit(), pp[1] + jit()]), rgb: ink, a: 0.35, layer: 'backdrop' });
+        const rc = hasC ? ps.traceRgb[i] : null;
+        out.push({ type: 'poly', pts: tp.map(pp => [pp[0] + jit(), pp[1] + jit()]), rgb: Array.isArray(rc) ? rc : ink, a: 0.35, layer: 'backdrop' });
       }
     }
     for (const s of out) if (!s.layer) s.layer = 'backdrop';
@@ -2620,16 +2631,51 @@ const SERVER_CHAT_MIXIN = {
         out.push({ type: 'fill', pts: sPts, rgb: [Math.min(255, bodyInk[0] + 35), Math.min(255, bodyInk[1] + 35), Math.min(255, bodyInk[2] + 35)], a: 0.4 });
         out.push({ type: 'fill', pts: sPts.map(pp => [pp[0] + (rnd() - 0.5) * 0.02, pp[1] + (rnd() - 0.5) * 0.02]), rgb: bodyInk, a: 0.3 });
       } else if (style.mass !== 'none') {
-        this._artMass(out, style, (sx0 + sx1) / 2, (sy0 + sy1) / 2, (sx1 - sx0), (sy1 - sy0), 0.3, bodyInk, rnd);
-      }
-      // interior form shading — the 3 heaviest parts, subtle, filled styles only
-      if (style.mass === 'fill' || style.mass === 'wash') {
-        for (const p of schema.parts.slice(0, 3)) {
-          const cx = mapX(p.cx), cy = mapY(p.cy);
-          const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
-          const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-          out.push({ type: 'blob', cx, cy, rx: pw * 0.4, ry: ph * 0.4, ang: mAng(p.ang), rgb: [Math.max(0, bodyInk[0] - 40), Math.max(0, bodyInk[1] - 40), Math.max(0, bodyInk[2] - 40)], a: 0.3 });
+        // COLORART — textured styles (hatch/dots/xhatch/scribble) mass PER
+        // PART in the part's own sampled color when the schema carries them:
+        // small correctly-placed colored texture instead of one giant body-box
+        // hatch (the whole-bbox scribble read as bars across the piece).
+        const coloredNF = schema.parts.filter(p => Array.isArray(p.rgb));
+        if (coloredNF.length) {
+          for (const p of coloredNF) {
+            const cx = mapX(p.cx), cy = mapY(p.cy);
+            const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+            const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+            this._artMass(out, style, cx, cy, pw, ph, mAng(p.ang), p.rgb, rnd);
+          }
+        } else {
+          this._artMass(out, style, (sx0 + sx1) / 2, (sy0 + sy1) / 2, (sx1 - sx0), (sy1 - sy0), 0.3, bodyInk, rnd);
         }
+      }
+      // COLORART — COLOR LAYERS + DEPTH: when the schema carries per-part
+      // sampled colors (where the colors GO), every part paints a mass in ITS
+      // OWN color over the underpaint — the regional color layers a real
+      // image has, the light and dark in the right places. Falls back to the
+      // old 3-part single-ink shading for pre-color schemas.
+      if (style.mass === 'fill' || style.mass === 'wash') {
+        const colored = schema.parts.filter(p => Array.isArray(p.rgb));
+        if (colored.length) {
+          // each part = THREE offset soft blobs at low alpha, not one crisp
+          // ellipse — a single blob per cell rendered as an obvious column of
+          // circles (judged live, the very artifact this layer replaces)
+          for (const p of colored) {
+            const cx = mapX(p.cx), cy = mapY(p.cy);
+            const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+            const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+            for (let bi = 0; bi < 3; bi++) {
+              out.push({
+                type: 'blob',
+                cx: cx + (rnd() - 0.5) * pw * 0.35, cy: cy + (rnd() - 0.5) * ph * 0.35,
+                rx: pw * (0.38 + rnd() * 0.22), ry: ph * (0.34 + rnd() * 0.2),
+                ang: mAng(p.ang) + (rnd() - 0.5) * 0.5, rgb: p.rgb,
+                a: 0.16 + Math.min(0.12, p.weight),
+              });
+            }
+          }
+        }
+        // (the old darkened-ink shading blobs for colorless schemas are GONE —
+        // judged live as "weird circles… in random places"; a pre-color schema
+        // now reads underpaint + trace, clean)
       }
     } else {
       // no silhouette captured — the part-cell masses remain the honest fallback
@@ -2663,14 +2709,26 @@ const SERVER_CHAT_MIXIN = {
       // learn time, so the first ~30% are the long structural reads — those
       // ALWAYS draw. Every shorter stroke draws with p=0.85, a different hand
       // each attempt. Same memory, different piece.
+      // COLORART — each stroke redraws in the color the real thing HAD there
+      // (per-stroke sampled at learn time), slightly deepened so the contour
+      // still reads over its own color layer. Mono ink (her one deliberate
+      // monochrome hand) and pre-color schemas keep the single-ink line.
       const tN = schema.trace.length;
       const structural = Math.max(10, Math.ceil(tN * 0.3));
+      const useRealC = style.ink !== 'mono' && Array.isArray(schema.traceRgb) && schema.traceRgb.length;
       for (let ti = 0; ti < tN; ti++) {
         const tp = schema.trace[ti];
         if (!Array.isArray(tp) || tp.length < 2) continue;
         if (ti >= structural && rnd() > skill.keepP) continue;
         const pts = tp.map(pp => [mapX(pp[0]) + jit(), mapY(pp[1]) + jit()]);
-        out.push({ type: 'poly', pts, rgb: traceInk, w: tw, a: style.outlineA });
+        // the STRUCTURAL strokes keep the contrast ink — the read must never
+        // sink into its own color layer (judged live: the outline went mushy
+        // when everything wore real colors); the detail TAIL wears the real
+        // colors, which is where the fine-contour color lives anyway.
+        let ink = traceInk;
+        const rc = (useRealC && ti >= structural) ? schema.traceRgb[ti] : null;
+        if (Array.isArray(rc)) ink = [Math.round(rc[0] * 0.75), Math.round(rc[1] * 0.75), Math.round(rc[2] * 0.75)];
+        out.push({ type: 'poly', pts, rgb: ink, w: tw, a: style.outlineA });
       }
     } else if (Array.isArray(schema.outlines)) {
       const fillClosed = style.mass === 'fill' || style.mass === 'wash';
@@ -2689,9 +2747,11 @@ const SERVER_CHAT_MIXIN = {
     }
     // ── LAYER 3: DETAIL — her hand's arcs on the heaviest parts, density set
     // by the style (a pencil piece hatches busily; ink stays spare).
-    // PAINT.7 — with a full trace carrying the read, random arcs are CLUTTER,
-    // not texture: only high-detail styles (pencil/crosshatch) keep their hatch.
-    const _skipDetail = Array.isArray(schema.trace) && schema.trace.length >= 10 && (style.detailMul ?? 1) * skill.detailMul <= 1;
+    // COLORART — with a full trace carrying the read, the random arcs are
+    // CLUTTER for EVERY style (judged live: "weird line like shadowing in
+    // random places that is not part of the image"). The trace IS the detail
+    // now; this layer survives only for trace-less schemas.
+    const _skipDetail = Array.isArray(schema.trace) && schema.trace.length >= 10;
     for (const p of _skipDetail ? [] : schema.parts.slice(0, 8)) {
       const cx = mapX(p.cx), cy = mapY(p.cy);
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
