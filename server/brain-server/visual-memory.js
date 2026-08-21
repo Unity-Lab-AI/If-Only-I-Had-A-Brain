@@ -632,8 +632,34 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // she just perceived (ImageData polyfilled server-side now) and histogram
     // the CENTER region — the subject, not the backdrop — into her 4 colors.
     let palette = [];
-    try { palette = await this._schemaPaletteFromRec(rec); } catch { palette = []; }
+    // COLORART (2026-08-21) — ONE reconstruction, sampled three ways: the
+    // global palette, a color PER PART (where the colors GO — the layer the
+    // drawings were missing), and a color PER TRACE STROKE (fine contours in
+    // their real colors instead of one monotone ink). Operator: "she isnt
+    // using any color in the image like real images have... there are color
+    // layers depth detail fine contoners".
+    let _img = null;
+    try { if (this.mindSpace && typeof this.mindSpace.imagine === 'function') _img = await this.mindSpace.imagine(rec, 0); } catch { _img = null; }
+    try { palette = await this._schemaPaletteFromRec(rec, _img); } catch { palette = []; }
     if (!palette.length) { try { palette = this._schemaPalette(rec); } catch { palette = []; } }
+    if (_img && _img.data && _img.width) {
+      const W2 = _img.width, H2 = _img.height;
+      const px = (u, v) => {
+        const x = Math.max(0, Math.min(W2 - 1, Math.round(u * W2)));
+        const y = Math.max(0, Math.min(H2 - 1, Math.round(v * H2)));
+        const o = (y * W2 + x) * 4;
+        return [_img.data[o], _img.data[o + 1], _img.data[o + 2]];
+      };
+      // per-part REGION color: mean over a 3×3 grid inside the part's box
+      for (const p of parts) {
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let gy = -1; gy <= 1; gy++) for (let gx = -1; gx <= 1; gx++) {
+          const c = px(p.cx + gx * p.w * 0.25, p.cy + gy * p.h * 0.25);
+          r += c[0]; g += c[1]; b += c[2]; n++;
+        }
+        p.rgb = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+      }
+    }
     // PAINT.2 (2026-08-21) — CONTOURS, not just boxes: the understanding of how
     // subjects actually look, kept from her own looks.
     // The trace already extracts the reference's real outlines; the schema used
@@ -706,11 +732,30 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (dec.length >= 2) trace.push(dec);
       }
     } catch { /* the trace is an enrichment — schema stands without it */ }
+    // COLORART — a color per trace stroke, sampled along the stroke's own
+    // points from the same reconstruction: her contours redraw in the colors
+    // the real thing had there, not one monotone ink.
+    const traceRgb = [];
+    if (_img && _img.data && _img.width) {
+      const W3 = _img.width, H3 = _img.height;
+      for (const tp of trace) {
+        let r = 0, g = 0, b = 0, n = 0;
+        const step = Math.max(1, Math.floor(tp.length / 6));
+        for (let i = 0; i < tp.length; i += step) {
+          const x = Math.max(0, Math.min(W3 - 1, Math.round(tp[i][0] * W3)));
+          const y = Math.max(0, Math.min(H3 - 1, Math.round(tp[i][1] * H3)));
+          const o = (y * W3 + x) * 4;
+          r += _img.data[o]; g += _img.data[o + 1]; b += _img.data[o + 2]; n++;
+        }
+        traceRgb.push(n ? [Math.round(r / n), Math.round(g / n), Math.round(b / n)] : null);
+      }
+    }
     const schema = {
       v: 2,   // OWNART.7 — v2 = 5×5 cell indices; v1 (3×3) schemas still DRAW fine (cx/cy/w/h/ang are grid-independent) but must never CELL-MERGE with v2
       parts: parts.slice(0, 25),
       outlines,
       trace,
+      traceRgb,   // COLORART — per-stroke sampled colors, aligned with trace by index
       palette,
       aspect: +(bw / bh).toFixed(3),
       frame: { x: +x0.toFixed(3), y: +y0.toFixed(3), w: +bw.toFixed(3), h: +bh.toFixed(3) },
@@ -763,10 +808,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // histogram the center 60% (the subject; the edges are backdrop) into the 4
   // dominant color families, 32-level quantized. This is knowledge about the
   // THING's coloring, ~48 bytes — not pixels, not a copy.
-  async _schemaPaletteFromRec(rec) {
+  async _schemaPaletteFromRec(rec, imgOpt) {
     try {
-      if (!this.mindSpace || typeof this.mindSpace.imagine !== 'function') return [];
-      const img = await this.mindSpace.imagine(rec, 0);
+      let img = imgOpt;   // COLORART — the caller may hand in the reconstruction it already paid for
+      if (!img) {
+        if (!this.mindSpace || typeof this.mindSpace.imagine !== 'function') return [];
+        img = await this.mindSpace.imagine(rec, 0);
+      }
       if (!img || !img.data || !img.width) return [];
       const W = img.width, H = img.height;
       const x0 = Math.floor(W * 0.2), x1 = Math.ceil(W * 0.8);

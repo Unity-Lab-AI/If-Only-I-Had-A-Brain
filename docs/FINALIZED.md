@@ -36070,3 +36070,23 @@ Three buttons on `html/minds-eye.html`, shown only on judgeable frames (`canvas:
 Every verdict rides the emission bus (*"they liked my drawing of…"* / *"…is not something to draw"*) so the dream cycle can consolidate the critique as episodes, and `state.ownArt.feedback` + `notDrawableWords` let the board answer. **Verified by running production code: 18/18 harness checks** — label parsing through the style suffix, verdict persistence, pacing (global 1.5s + per-concept relearn gap), the full relearn chain (dictionary re-read → forced fresh look → redraw queued) through the real drain, ban persistence across a simulated restart, gate refusal of banned words, junk labels/verdicts refused, route query parse. Buttons land on the site at push (frontend rsync); the server side answers after the next press — until then the page honestly reports "she didn't hear that".
 
 **Board: 3 open / 208 closed.**
+
+## 2026-08-21 — COLORART: color layers, depth, colored contours — and the random artifacts die
+
+> Gee (verbatim): *"and it looks like she is just trying to trace them all and it looks like shit as all the backgrounds end up being just sqwiggle lines all over the place becasue she isnt using any color in the image like real images have. she is just make line out lines(dont get me wrong they are okay) but she just isnt able to image the subject as it all looks like a mono tone schicken scratch with only one color used that is the outline line color.. its like shes not even trying to recreate the image as it exists there are color layers depth detail fine contoners and shit that needs to be handled correctly"*
+> Gee (verbatim): *"and alot of the images have weird artifacts in them like circles and werid line like shadowing in random places that is not part of the image she is tryting to draw"*
+
+**The diagnosis:** her schema knew WHAT colors a thing has (4 global swatches) but not WHERE they go — so every piece was one ink over one wash. And two whole layers were producing the artifacts: the darkened-ink shading blobs ("weird circles") and the random detail arcs ("weird line like shadowing in random places").
+
+**Learn side (`_learnShapeSchema`) — ONE reconstruction, sampled three ways:** the global palette (as before), a **color PER PART** (3×3 mean inside each 5×5 cell — where the colors go), and a **color PER TRACE STROKE** (sampled along the stroke's own points — fine contours in their real colors). Additive fields (`parts[i].rgb`, `traceRgb`); pre-color schemas still draw.
+
+**Paint side (`_ownArtStrokesFromSchema`):**
+- **COLOR LAYERS + DEPTH** — every colored part paints a soft mass in ITS OWN color over the underpaint: three offset low-alpha blobs per part (one crisp ellipse per cell re-created the circle artifact IN COLOR on the first render — judged and fixed in-batch), light and dark landing where the real image had them.
+- **COLORED CONTOURS with the read protected** — the structural 30% of the trace keeps the CONTRAST ink (first render judged: the outline sank into its own color layer), and the detail tail wears the real sampled colors at 0.75 value. Mono ink stays her one deliberate monochrome hand.
+- **THE ARTIFACTS DIE** — the darkened shading blobs are deleted, and the random detail arcs are skipped for EVERY style whenever a trace exists (the trace IS the detail); textured styles (hatch/dots/xhatch/scribble) now mass PER PART in the part's color instead of one giant body-box hatch (the bars across the beach piece).
+- **BACKDROPS IN COLOR** — scenery trace strokes render in the colors the place really had there, so a background reads as a colored scene instead of monotone squiggles all over the page.
+- **COLOR-FIRST ROTATION** — fill/wash hands weigh double in the style picker, mass-less line styles become the occasional change-up.
+
+**Judged on renders through production code:** poster = instantly readable subject with pink ears, warm interior color patches, dark facial details in real colors; the composed scene = colored shore strokes + sky bands + shadow; pencil = a colored-pencil sketch. Two in-batch corrections caught by looking (the color-circle column, the sunken outline). Server-only — lands on the next press, and the v5 empty store means every NEW look banks colors from the first day.
+
+**Board: 3 open / 209 closed.**
