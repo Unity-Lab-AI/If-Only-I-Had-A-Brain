@@ -2082,7 +2082,11 @@ const SERVER_CHAT_MIXIN = {
     const fam = (schema && Array.isArray(schema.palette) && schema.palette.length)
       ? schema.palette[Math.floor(rnd() * schema.palette.length) % schema.palette.length]
       : null;
-    const base = this._ownArtInk(null, strength, rnd);
+    // NEONKILL — no learned palette and no definition color = a NEUTRAL sketch
+    // tone, never her pink tint on the subject's own body (operator: neon-pink
+    // on a subject whose real colors she has simply not looked up yet).
+    const base = (fam || defColor) ? this._ownArtInk(null, strength, rnd)
+      : [142 + Math.round(rnd() * 24), 132 + Math.round(rnd() * 20), 118 + Math.round(rnd() * 18)];
     let ink = base;
     if (fam) {
       const k = 0.75;
@@ -2505,43 +2509,24 @@ const SERVER_CHAT_MIXIN = {
     // candidate when the practice loop itself is scoring a nudge).
     const skill = skillOverride || this._skillFor(word);
     if (style.scale !== 1) box = { cx: box.cx, cy: box.cy, w: box.w * style.scale, h: box.h * style.scale };
-    // NO SCHEMA — she has never seen it and could not look it up. She still draws
-    // SOMETHING honest: a construction from the word's own shape-in-her-mind (letter
-    // count → mass, vowel ratio → roundness). Crude on purpose, and it is HER guess
-    // rather than a fake likeness or a filtered stock photo.
+    // NO SCHEMA — she has never seen it. DRAW FROM THE DEFINITION (the form,
+    // fill color and attached parts come straight out of what the word MEANS —
+    // any definition she has been taught is a drawing recipe), or DON'T DRAW.
+    // SCRATCHKILL (2026-08-21, operator law after three strikes): the letter-
+    // shape guess is DEAD — post-press with the fresh empty store it filled
+    // the mind's eye with "white lines that dont decern anything… random
+    // purple and pink where ever the lines make an enclosure… random circles
+    // and parrallel lines like notebook paper". An honest no-drawing (the
+    // caller falls to a grounded favorite or a mood wash) beats a scribble
+    // that claims to be the thing.
     if (!schema || !Array.isArray(schema.parts) || schema.parts.length === 0) {
-      // PAINT.4 — no schema? DRAW FROM THE DEFINITION FIRST: the form, fill
-      // color and attached parts come straight out of what the word MEANS.
-      // This covers every word she hasn't looked at yet — any definition she
-      // has been taught is a drawing recipe. Only when she has neither a
-      // schema NOR a definition does the letter-shape guess below run.
       if (typeof this._defDrivenStrokes === 'function') {
         try {
           const defArt = this._defDrivenStrokes(word, box, rnd, style);
           if (defArt && defArt.length) return defArt;
-        } catch { /* definition drawing best-effort — the guess below still stands */ }
+        } catch { /* definition drawing best-effort — no-drawing below */ }
       }
-      // PAINT.3 — even her honest guess gets MASS now, in the current style:
-      // crude on purpose, still HER guess, but it reads as A THING on the page.
-      const w = String(word || 'thing');
-      const vowels = (w.match(/[aeiou]/g) || []).length / Math.max(1, w.length);
-      const r = 0.5 * (0.55 + 0.45 * vowels);
-      this._artMass(out, style, box.cx, box.cy, r * box.w * 0.9, r * box.h * 0.8 * (0.8 + 0.4 * rnd()), (rnd() - 0.5) * 0.6, this._artInk(style, null, 0.25, rnd, null), rnd);
-      const lobes = 3 + (w.length % 4);
-      for (let i = 0; i < lobes; i++) {
-        const a0 = (i / lobes) * Math.PI * 2, a1 = a0 + Math.PI * 2 / lobes;
-        const rr = r * (0.85 + 0.3 * rnd());
-        const pts = [];
-        for (let t = 0; t <= 4; t++) {
-          const a = a0 + (a1 - a0) * (t / 4);
-          pts.push([
-            box.cx + Math.cos(a) * rr * box.w * 0.5,
-            box.cy + Math.sin(a) * rr * box.h * 0.5,
-          ]);
-        }
-        out.push({ type: 'poly', pts, rgb: this._artInk(style, null, 0.45, rnd, null), w: Math.max(0.004, style.outlineW || 0.008), a: style.outlineA });
-      }
-      return out;
+      return out;   // empty — honest no-drawing, never a letter-shape scribble
     }
     // WITH A SCHEMA — PAINT.3 (2026-08-21): she paints in LAYERS the way a
     // person does — big filled masses first, then the contours she traced from
@@ -2821,7 +2806,13 @@ const SERVER_CHAT_MIXIN = {
     if (!attr || (!attr.shape && !attr.colors.length)) return null;
     if (!style) style = this._artStyles()[0];
     const out = [];
-    const body = attr.colors[0] || this._ownArtInk(null, 0.35, rnd);
+    // NEONKILL (2026-08-21, operator: "she is using neon pink to draw a
+    // leopaard... she needs to match colors up correctly not just use nothing
+    // but hot pink neon") — when the definition names NO color, the body is a
+    // NEUTRAL sketch tone: an honest "I don't know its colors yet". Her pink
+    // is identity ink for labels and accents, never a claim about a subject's
+    // color. The real palette takes over the moment she LOOKS at the thing.
+    const body = attr.colors[0] || [142, 132, 118];
     const dark = [Math.round(body[0] * 0.55), Math.round(body[1] * 0.55), Math.round(body[2] * 0.55)];
     const green = [70, 150, 60];
     // Sometimes she draws MORE THAN ONE (Gee: "or draw multiple tomotoes").
