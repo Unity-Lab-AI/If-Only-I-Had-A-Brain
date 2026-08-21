@@ -36263,3 +36263,11 @@ Credit where due: an outside AI critique correctly caught that the base64 wrappe
 The index page has claimed "Fully open source under MIT" all along — **with no LICENSE file anywhere and the repo link pointing at the WRONG repo** (Unity-Lab-AI/Unity instead of If-Only-I-Had-A-Brain). Made honest: a standard `LICENSE` at the repo root (MIT, © 2026 Unity AI Lab), the page's claim now links the actual file and the correct repo, the credits footer carries `MIT License · © 2026 Unity AI Lab`, the equations page's footer fixed the same wrong link + gained the license link, and both package.json manifests declare `"license": "MIT"`. The deploy needs NO workflow change — the frontend rsync ships `./` and `LICENSE` matches no exclude, so it lands at the pages root (`/LICENSE`) on this push automatically.
 
 **Board: 3 open / 231 closed.**
+
+## 2026-08-21 — ZIGZAGKILL: the V-chain generator found and replaced with a real crayon hand
+
+> Gee (verbatim): *"and whats up with these zighzag lines she is using they look like 3 V's really close together and she uses them alot in the draws and it looks like shit.. like there is some kind of tooltip or line generator thats making zigzag lines that are really off putting"*
+
+There WAS a line generator doing it: `_artMass`'s crayon treatment — its own comment confessed *"one continuous waxy zigzag filling the part"* — bounced left-right every step down a part, and on tall thin parts that is literally chained V's; since COLORART it fired per part, scattering them across every crayon piece. **Replaced with how a hand actually colors:** short overlapping strokes running along the part's LONG axis, two loose passes with angle wobble and waxy pressure (varying alpha), each stroke's length CLAMPED to the part's real extent in its own direction — the first replacement draft let strokes overshoot thin parts and weave back into zigzag, caught on the render and fixed before shipping. Judged on three part shapes (tall-thin, wide, square): all read as hand-colored crayon patches, no V-chains.
+
+**Board: 3 open / 232 closed.**
