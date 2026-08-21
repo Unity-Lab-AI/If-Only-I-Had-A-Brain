@@ -1793,23 +1793,47 @@ const SERVER_CHAT_MIXIN = {
       for (const st of this._backdropStrokes(plan.place, artStyle, rnd)) strokes.push(st);
     }
     // SUBJECTS — main one centred and largest; companions flank it, smaller.
+    // PAINT.12 — placement/scale WOBBLE per attempt: the composition itself
+    // shifts a little between pieces, on top of the mirror + stroke-subset
+    // variation inside the subject builder.
     const layout = this._ownArtLayout(plan.subjects.length, rnd);
+    const boxes = [];
     for (let i = 0; i < plan.subjects.length; i++) {
       const s = plan.subjects[i];
-      const box = layout[i];
+      const b0 = layout[i];
+      const box = {
+        cx: Math.min(0.85, Math.max(0.15, b0.cx + (rnd() - 0.5) * 0.06)),
+        cy: Math.min(0.85, Math.max(0.15, b0.cy + (rnd() - 0.5) * 0.04)),
+        w: b0.w * (0.9 + rnd() * 0.2),
+        h: b0.h * (0.9 + rnd() * 0.2),
+      };
+      boxes.push(box);
+      // PAINT.10 — grounding shadow FIRST (under the subject), so it stands
+      // on the ground instead of floating. The shadow rides the STYLE-SCALED
+      // footprint (a doodle draws small inside its box; judged live — the
+      // shadow floated below the feet on the raw box).
+      const ss = artStyle && Number.isFinite(artStyle.scale) ? artStyle.scale : 1;
+      strokes.push(this._groundShadow({ cx: box.cx, cy: box.cy, w: box.w * ss, h: box.h * ss }, rnd));
       const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word, artStyle);
-      for (const st of built) strokes.push(st);
+      for (const st of built) { if (!st.layer) st.layer = 'subject'; strokes.push(st); }
     }
     if (strokes.length < 4) return null;   // nothing she understood well enough → honest no-drawing
 
+    // PAINT.11 — HER REVISION PASS: step back, erase what hurts the picture.
+    // Backdrop lines running through a subject get erased (occlusion — the
+    // subject is in FRONT); near-duplicate strokes collapse.
+    let revised = { strokes, erased: 0, deduped: 0 };
+    try { revised = this._reviseComposition(strokes, boxes); } catch { /* revision best-effort — the unrevised piece still stands */ }
+    const finalStrokes = revised.strokes;
+
     // Her hand writes what she drew (her existing trained glyphs, no wobble).
     if (opts.label !== false) {
-      try { for (const g of this._labelStrokes(plan.subjects[0].word)) strokes.push(g); } catch { /* label best-effort */ }
+      try { for (const g of this._labelStrokes(plan.subjects[0].word)) finalStrokes.push(g); } catch { /* label best-effort */ }
     }
 
     let drawn = null;
     try {
-      drawn = await this.mindSpace.sketch(strokes, {
+      drawn = await this.mindSpace.sketch(finalStrokes, {
         maxSide: side,
         mood: { arousal: this.arousal, valence: this.valence },
       });
@@ -1820,7 +1844,7 @@ const SERVER_CHAT_MIXIN = {
     const label = 'canvas:own:' + plan.subjects.map(s => s.word).join('+') + ':' + styleName;
     this._lastSketchLabel = label;
     const known = plan.subjects.map(s => `${s.word}(${s.schema ? (s.schema.looks || 1) + ' look' + ((s.schema.looks || 1) === 1 ? '' : 's') + ', ' + s.schema.parts.length + ' parts' : 'no schema — drawn from definition only'})`).join(', ');
-    try { console.log(`[OwnArt] ✍ HER OWN "${plan.subjects.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${strokes.length} marks, attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
+    try { console.log(`[OwnArt] ✍ HER OWN "${plan.subjects.map(s => s.word).join(' + ')}"${plan.place ? ' in ' + plan.place.word : ''} in ${styleName.toUpperCase()} — ${finalStrokes.length} marks (revised: ${revised.erased} erased, ${revised.deduped} deduped), attempt #${this._ownArtAttempt}. Learned from: ${known}. No reference pixels used.`); } catch { /* nf */ }
     return { rec: drawn, label, source: label, from: 'own:' + plan.subjects.map(s => s.word).join('+'), style: styleName, plan: { subjects: plan.subjects.map(s => s.word), place: plan.place ? plan.place.word : null } };
   },
 
@@ -2079,17 +2103,62 @@ const SERVER_CHAT_MIXIN = {
     const out = [];
     if (!style) style = this._artStyles()[0];
     const ps = place && place.schema;
-    const g = 0.68 + 0.10 * (rnd() - 0.5);   // horizon / ground height
+    // ── PAINT.9 — SCENE SPACE. A real painter sets the SPACE first: a horizon,
+    // a vanishing point, and (indoors) the wall/floor junction with floor lines
+    // converging in perspective. Both vary per attempt — the same place drawn
+    // twice sits in a slightly different space, like a person choosing a view.
+    const g = 0.62 + 0.14 * rnd();                       // horizon / wall-floor junction
+    const vpx = 0.35 + 0.3 * rnd();                      // vanishing point x on the horizon
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(place && place.word) : null;
     const defC = defAttr && defAttr.colors && defAttr.colors[0];
     const pal = (ps && Array.isArray(ps.palette) && ps.palette.length) ? ps.palette : null;
-    // washes only for styles that paint mass — a pencil piece keeps bare paper
-    const paintsMass = style.mass !== 'none';
+    // interior? — by word class or by the definition naming a room/indoor space
+    const pw = String((place && place.word) || '').toLowerCase();
+    const INTERIOR = /^(room|kitchen|bedroom|bathroom|office|hall|hallway|classroom|library|attic|basement|garage|studio|interior)$/.test(pw)
+      || (() => { try { const cx2 = this.cortexCluster; const d = cx2 && typeof cx2.lookupDefinitionSync === 'function' ? cx2.lookupDefinitionSync(pw) : null; return !!(d && /\b(room|indoor|interior|inside a building|of a house)\b/i.test(d)); } catch { return false; } })();
+    const paintsMass = style.mass !== 'none';   // pencil-class styles keep bare paper
+    const skyC = pal ? pal[Math.min(1, pal.length - 1)] : (defC ? [Math.min(255, defC[0] + 60), Math.min(255, defC[1] + 60), Math.min(255, defC[2] + 60)] : [96, 104, 120]);
+    const gndC = pal ? pal[0] : (defC || [88, 84, 76]);
+    const dark = (c, k) => [Math.max(0, Math.round(c[0] * k)), Math.max(0, Math.round(c[1] * k)), Math.max(0, Math.round(c[2] * k))];
     if (paintsMass) {
-      const skyC = pal ? pal[Math.min(1, pal.length - 1)] : (defC ? [Math.min(255, defC[0] + 60), Math.min(255, defC[1] + 60), Math.min(255, defC[2] + 60)] : null);
-      const gndC = pal ? pal[0] : defC;
-      if (skyC) out.push({ type: 'fill', pts: [[0, 0], [1, 0], [1, g], [0, g]], rgb: skyC, a: 0.30 });
-      if (gndC) out.push({ type: 'fill', pts: [[0, g], [1, g], [1, 1], [0, 1]], rgb: gndC, a: 0.38 });
+      if (INTERIOR) {
+        // WALLS above the junction, FLOOR painted below — the floor gets two
+        // value bands (near = lighter, far = darker) so the plane reads.
+        out.push({ type: 'fill', pts: [[0, 0], [1, 0], [1, g], [0, g]], rgb: skyC, a: 0.35 });
+        out.push({ type: 'fill', pts: [[0, g], [1, g], [1, 1], [0, 1]], rgb: dark(gndC, 0.85), a: 0.45 });
+        out.push({ type: 'fill', pts: [[0, (g + 1) / 2], [1, (g + 1) / 2], [1, 1], [0, 1]], rgb: gndC, a: 0.3 });
+      } else {
+        // EXTERIOR: full sky in two graded bands (deeper up top), full ground
+        // in two graded bands (darker toward the horizon = distance).
+        out.push({ type: 'fill', pts: [[0, 0], [1, 0], [1, g * 0.55], [0, g * 0.55]], rgb: dark(skyC, 0.8), a: 0.35 });
+        out.push({ type: 'fill', pts: [[0, g * 0.55], [1, g * 0.55], [1, g], [0, g]], rgb: skyC, a: 0.35 });
+        out.push({ type: 'fill', pts: [[0, g], [1, g], [1, (g + 1) / 2], [0, (g + 1) / 2]], rgb: dark(gndC, 0.8), a: 0.35 });
+        out.push({ type: 'fill', pts: [[0, (g + 1) / 2], [1, (g + 1) / 2], [1, 1], [0, 1]], rgb: gndC, a: 0.4 });
+      }
+    }
+    // wall/floor junction (interior) or horizon line (exterior)
+    out.push({ type: 'line', x0: 0.02, y0: g, x1: 0.98, y1: g + (INTERIOR ? 0 : 0.015 * (rnd() - 0.5)), rgb: this._ownArtInk(ps, 0.55, rnd), a: 0.75 });
+    if (INTERIOR) {
+      // perspective floor lines converging on the vanishing point + a corner
+      const nfl = 4 + Math.floor(rnd() * 3);
+      for (let i = 0; i <= nfl; i++) {
+        const xb = i / nfl;   // where the line meets the bottom edge
+        out.push({ type: 'line', x0: xb, y0: 1, x1: vpx, y1: g, rgb: this._ownArtInk(ps, 0.4, rnd), a: 0.45 });
+      }
+      const cornerX = rnd() < 0.5 ? 0.12 + rnd() * 0.1 : 0.78 + rnd() * 0.1;
+      out.push({ type: 'line', x0: cornerX, y0: 0.04, x1: cornerX, y1: g, rgb: this._ownArtInk(ps, 0.5, rnd), a: 0.6 });
+    } else {
+      // PAINT.9 — depth-graded ground texture: strokes shrink and crowd toward
+      // the horizon (perspective), lean toward the vanishing point.
+      const tufts = 10 + Math.floor(rnd() * 8);
+      for (let i = 0; i < tufts; i++) {
+        const y = g + rnd() * (1 - g);
+        const depth = (y - g) / Math.max(1e-3, 1 - g);   // 0 at horizon → 1 near
+        const x = 0.05 + rnd() * 0.9;
+        const hh = (0.008 + 0.05 * depth) * (0.7 + 0.6 * rnd());
+        const lean = (vpx - x) * 0.05 * (1 - depth);
+        out.push({ type: 'line', x0: x, y0: y, x1: x + lean, y1: y - hh, rgb: this._ownArtInk(ps, 0.45, rnd), a: 0.5 + 0.3 * depth });
+      }
     }
     // her remembered trace of the place, faint, full-canvas — the scene's read
     if (ps && Array.isArray(ps.trace) && ps.trace.length >= 10) {
@@ -2097,17 +2166,80 @@ const SERVER_CHAT_MIXIN = {
       const jit = () => (rnd() - 0.5) * 0.006;
       for (const tp of ps.trace) {
         if (!Array.isArray(tp) || tp.length < 2) continue;
-        out.push({ type: 'poly', pts: tp.map(pp => [pp[0] + jit(), pp[1] + jit()]), rgb: ink, a: 0.35 });
+        out.push({ type: 'poly', pts: tp.map(pp => [pp[0] + jit(), pp[1] + jit()]), rgb: ink, a: 0.35, layer: 'backdrop' });
       }
     }
-    // the ground line + tufts stay — a subject stands ON something
-    out.push({ type: 'line', x0: 0.02, y0: g, x1: 0.98, y1: g + 0.02 * (rnd() - 0.5), rgb: this._ownArtInk(ps, 0.55, rnd), a: 0.8 });
-    const tufts = 5 + Math.floor(rnd() * 7);
-    for (let i = 0; i < tufts; i++) {
-      const x = 0.05 + rnd() * 0.9, hh = 0.02 + rnd() * 0.05;
-      out.push({ type: 'line', x0: x, y0: g, x1: x + 0.02 * (rnd() - 0.5), y1: g - hh, rgb: this._ownArtInk(ps, 0.45, rnd), a: 0.8 });
-    }
+    for (const s of out) if (!s.layer) s.layer = 'backdrop';
     return out;
+  },
+
+  // ── PAINT.10 — THE GROUNDING SHADOW. The oldest trick in drawing: a squashed
+  // dark ellipse where the subject meets the ground makes it STAND THERE
+  // instead of floating. Light direction varies per attempt.
+  _groundShadow(box, rnd) {
+    const lightX = (rnd() - 0.5) * 0.5;
+    return {
+      type: 'blob',
+      cx: box.cx + lightX * box.w * 0.15,
+      cy: box.cy + box.h * 0.44,
+      rx: box.w * (0.34 + rnd() * 0.08),
+      ry: box.h * 0.05,
+      ang: 0,
+      rgb: [16, 15, 19],
+      a: 0.35,
+      layer: 'backdrop',
+    };
+  },
+
+  // ── PAINT.11 — THE ERASER (her revision pass). A painter doesn't only add —
+  // she steps back and REMOVES what hurts the picture. Two revisions, both
+  // spatial understanding rather than decoration: (1) OCCLUSION — backdrop
+  // lines must not run THROUGH a subject, so every backdrop stroke is split
+  // and the segments inside any subject's box are erased (the subject is in
+  // FRONT of the scene); (2) DE-CLUTTER — near-duplicate strokes (same span,
+  // same place) collapse to one.
+  _reviseComposition(strokes, subjectBoxes) {
+    const inside = (x, y) => {
+      for (const b of subjectBoxes) {
+        if (Math.abs(x - b.cx) < b.w * 0.45 && Math.abs(y - b.cy) < b.h * 0.48) return true;
+      }
+      return false;
+    };
+    const out = [];
+    const seen = new Set();
+    let erased = 0, deduped = 0;
+    for (const s of strokes) {
+      if (!s) continue;
+      if (s.layer === 'backdrop' && subjectBoxes.length) {
+        if (s.type === 'line') {
+          if (inside((s.x0 + s.x1) / 2, (s.y0 + s.y1) / 2)) { erased++; continue; }
+        } else if (s.type === 'poly' && Array.isArray(s.pts)) {
+          // split the polyline at subject boundaries; keep the outside runs
+          let run = [];
+          let kept = false;
+          for (const pp of s.pts) {
+            if (inside(pp[0], pp[1])) {
+              if (run.length >= 2) { out.push({ ...s, pts: run }); kept = true; }
+              if (run.length) erased++;
+              run = [];
+            } else run.push(pp);
+          }
+          if (run.length >= 2) { out.push({ ...s, pts: run }); kept = true; }
+          else if (run.length && !kept) erased++;
+          continue;
+        }
+        // fills stay — the subject paints over them, they ARE the space
+      }
+      // de-clutter: two strokes with the same coarse signature collapse to one
+      if (s.type === 'poly' && Array.isArray(s.pts) && s.pts.length >= 2) {
+        const a2 = s.pts[0], b2 = s.pts[s.pts.length - 1];
+        const key = s.layer + '|' + Math.round(a2[0] * 40) + ',' + Math.round(a2[1] * 40) + '-' + Math.round(b2[0] * 40) + ',' + Math.round(b2[1] * 40) + '|' + s.pts.length;
+        if (seen.has(key)) { deduped++; continue; }
+        seen.add(key);
+      }
+      out.push(s);
+    }
+    return { strokes: out, erased, deduped };
   },
 
   _ownArtStrokesFromSchema(schema, box, rnd, word, style) {
@@ -2162,7 +2294,15 @@ const SERVER_CHAT_MIXIN = {
     // thing. The definition supplies what the palette can't: a definition
     // naming a color tints the masses correctly even before her palette settles.
     const fx = schema.frame && schema.frame.w ? schema.frame : { x: 0, y: 0, w: 1, h: 1 };
-    const mapX = (x) => box.cx + (((x - fx.x) / Math.max(1e-3, fx.w)) - 0.5) * box.w;
+    // PAINT.12 — NEVER THE SAME DRAWING TWICE. Same memory, different piece:
+    // half her attempts MIRROR the pose, and (below) she draws a different
+    // random subset of her remembered strokes each time — the longest 30%
+    // always (the read), the rest sampled. With the style rotation and the
+    // hand jitter, two asks for the same subject give two different artworks
+    // from one understanding — which is what an artist is.
+    const mirror = rnd() < 0.5;
+    const mAng = (a2) => (mirror ? -a2 : a2);
+    const mapX = (x) => { let u = (x - fx.x) / Math.max(1e-3, fx.w); if (mirror) u = 1 - u; return box.cx + (u - 0.5) * box.w; };
     const mapY = (y) => box.cy + (((y - fx.y) / Math.max(1e-3, fx.h)) - 0.5) * box.h;
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
@@ -2242,7 +2382,7 @@ const SERVER_CHAT_MIXIN = {
           const cx = mapX(p.cx), cy = mapY(p.cy);
           const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
           const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-          out.push({ type: 'blob', cx, cy, rx: pw * 0.4, ry: ph * 0.4, ang: p.ang, rgb: [Math.max(0, bodyInk[0] - 40), Math.max(0, bodyInk[1] - 40), Math.max(0, bodyInk[2] - 40)], a: 0.3 });
+          out.push({ type: 'blob', cx, cy, rx: pw * 0.4, ry: ph * 0.4, ang: mAng(p.ang), rgb: [Math.max(0, bodyInk[0] - 40), Math.max(0, bodyInk[1] - 40), Math.max(0, bodyInk[2] - 40)], a: 0.3 });
         }
       }
     } else {
@@ -2251,7 +2391,7 @@ const SERVER_CHAT_MIXIN = {
         const cx = mapX(p.cx), cy = mapY(p.cy);
         const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
         const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-        this._artMass(out, style, cx, cy, pw * 1.1, ph * 1.1, p.ang, mixDef(this._artInk(style, schema, 0.25 + 0.35 * p.weight, rnd, defColor)), rnd);
+        this._artMass(out, style, cx, cy, pw * 1.1, ph * 1.1, mAng(p.ang), mixDef(this._artInk(style, schema, 0.25 + 0.35 * p.weight, rnd, defColor)), rnd);
       }
     }
     // ── LAYER 2: THE READ — PAINT.7. When the schema carries her full vector
@@ -2273,8 +2413,16 @@ const SERVER_CHAT_MIXIN = {
         traceInk = lum > 120 ? [30, 26, 34] : [226, 222, 230];
       }
       const tw = style.outlineW > 0 ? Math.min(style.outlineW, 0.006) : undefined;
-      for (const tp of schema.trace) {
+      // PAINT.12 — per-attempt STROKE SUBSET: the trace is length-sorted at
+      // learn time, so the first ~30% are the long structural reads — those
+      // ALWAYS draw. Every shorter stroke draws with p=0.85, a different hand
+      // each attempt. Same memory, different piece.
+      const tN = schema.trace.length;
+      const structural = Math.max(10, Math.ceil(tN * 0.3));
+      for (let ti = 0; ti < tN; ti++) {
+        const tp = schema.trace[ti];
         if (!Array.isArray(tp) || tp.length < 2) continue;
+        if (ti >= structural && rnd() > 0.85) continue;
         const pts = tp.map(pp => [mapX(pp[0]) + jit(), mapY(pp[1]) + jit()]);
         out.push({ type: 'poly', pts, rgb: traceInk, w: tw, a: style.outlineA });
       }
@@ -2304,7 +2452,7 @@ const SERVER_CHAT_MIXIN = {
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
       const marks = Math.round((1 + Math.round(p.weight * 18)) * (style.detailMul ?? 1));
       for (let m = 0; m < marks; m++) {
-        const ang = p.ang + (rnd() - 0.5) * 0.25;
+        const ang = mAng(p.ang) + (rnd() - 0.5) * 0.25;
         const len = (0.6 + 0.4 * rnd()) * Math.max(pw, ph);
         const bow = (rnd() - 0.5) * 0.3 * Math.min(pw, ph);
         const ox = (rnd() - 0.5) * pw * 0.3, oy = (rnd() - 0.5) * ph * 0.3;
