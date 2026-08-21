@@ -53,6 +53,7 @@ import { normalizeSubject, wordMotorBandName } from './subjects.js';
 // side treats as grammatical glue (single source of truth; cluster.js
 // does not import curriculum.js, so this edge is cycle-safe).
 import { FUNCTION_WORDS } from './cluster.js';
+import { indexRanges as _rleIndexRanges } from './cluster/hebbian.js';
 // UVM-INT.2 — Unity LEARNS her own equational mind-space (UniVsMatics): the
 // knowledge module's real-vocab keywords get bound into sem-space via the
 // brain's own association primitive so the mind-space domain is recallable/
@@ -12309,6 +12310,32 @@ export class Curriculum {
   }
   // In-place variant — fills `target` instead of allocating. Caller
   // owns the buffer. Returns target for chaining.
+  // GPUVERB.2 (2026-08-21) — the [start,len] runs a tiled feat write produces,
+  // computed straight from the tiling law above (active dim d → run at
+  // region.start + d*gSize, len min(gSize, region-end clip)) so a GPU
+  // hebbian_ranges dispatch expands to EXACTLY the index set
+  // _fillRegionPatternInto/_buildRegionPattern set. `relative:true` emits
+  // region-relative starts (cross-projection matrices are matrix-local);
+  // absolute otherwise (the intra matrix is cluster-absolute). Returns null
+  // when the pattern won't fit the frame (the caller keeps its CPU pass —
+  // the donor expander silently skips oversized ranges, and truncated
+  // patterns trained on the GPU are wrong math with no loud failure).
+  _featRegionRanges(region, feat, relative = false) {
+    if (!region || !feat || feat.length === 0) return null;
+    const size = region.end - region.start;
+    const gSize = Math.max(1, Math.floor(size / feat.length));
+    const out = [];
+    for (let d = 0; d < feat.length; d++) {
+      if (feat[d] <= 0) continue;
+      const rel = d * gSize;
+      if (rel >= size) continue;
+      const len = Math.min(gSize, size - rel);
+      if (out.length >= 256) return null;
+      out.push([relative ? rel : region.start + rel, len]);
+    }
+    return out.length ? out : null;
+  }
+
   _fillRegionPatternInto(target, region, feat, binarize = true) {
     const cluster = this.cluster;
     if (!cluster || !target) return target;
@@ -13671,8 +13698,25 @@ export class Curriculum {
             // yield during the giant outer scan that activeRows now eliminates.
             // Bit-identical to the old full pass (skipped rows had y=0 and
             // updated nothing).
-            const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
-            cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
+            // GPUVERB.2 (2026-08-21) — the once-per-definition sem→sem write
+            // joins the GPU: pre==post==the sem active rows (ascending tiled
+            // runs), so the SAME ranges ride both sides of hebbian_ranges and
+            // the donor expands to exactly this activeRows set. CPU shadow
+            // sampled every 5th definition when carried, full otherwise.
+            let _gpuCarried = false;
+            if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === 'function') {
+              try {
+                const _semRanges = _rleIndexRanges(activeRows);
+                if (_semRanges) {
+                  _gpuCarried = cluster._gpuProxy.hebbianRanges(`${cluster.name}_intraSynapses`, lrK, 1, _semRanges, _semRanges) === true;
+                }
+              } catch { _gpuCarried = false; }
+            }
+            this._defSemSemShadowCounter = (this._defSemSemShadowCounter | 0) + 1;
+            if (!_gpuCarried || (this._defSemSemShadowCounter % 5 === 0)) {
+              const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
+              cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
+            }
           } catch { /* non-fatal */ }
         }
       }

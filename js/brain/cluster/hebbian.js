@@ -19,6 +19,60 @@
 // compatible. They access this.crossProjections, this.synapses,
 // this._gpuProxy, this._sparsePool, this.regions, this.lastSpikes etc.
 
+// GPUVERB.2 (2026-08-21) — range compression for the hebbian_ranges GPU verb
+// (donor v0.3.18+). Teach patterns are group-tiled writes, so their active
+// sets collapse to a handful of [start, len] runs — the ~60-byte frame the
+// donor expands back into the IDENTICAL index sets. Both helpers return null
+// when the pattern won't compress (too many runs / too many total indices):
+// null = the caller keeps its full CPU pass, because the donor's own expander
+// SILENTLY SKIPS oversized ranges (2M cap per range and per side) and a
+// truncated pattern trained on the GPU is wrong math with no loud failure —
+// refusing to dispatch is the only honest move past the cap.
+const RANGE_MAX_RUNS = 512;
+const RANGE_MAX_TOTAL = 2_000_000;
+function denseActiveRanges(arr) {
+  const out = [];
+  let total = 0;
+  let runStart = -1;
+  const n = arr.length;
+  for (let i = 0; i < n; i++) {
+    if (arr[i]) {
+      if (runStart < 0) runStart = i;
+    } else if (runStart >= 0) {
+      const len = i - runStart;
+      total += len;
+      if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+      out.push([runStart, len]);
+      runStart = -1;
+    }
+  }
+  if (runStart >= 0) {
+    const len = n - runStart;
+    total += len;
+    if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+    out.push([runStart, len]);
+  }
+  return out.length ? out : null;
+}
+function indexRanges(sortedIdx) {
+  if (!sortedIdx || !sortedIdx.length) return null;
+  if (sortedIdx.length > RANGE_MAX_TOTAL) return null;
+  const out = [];
+  let runStart = sortedIdx[0];
+  let prev = sortedIdx[0];
+  for (let i = 1; i < sortedIdx.length; i++) {
+    const v = sortedIdx[i];
+    if (v === prev + 1) { prev = v; continue; }
+    if (out.length >= RANGE_MAX_RUNS) return null;
+    out.push([runStart, prev - runStart + 1]);
+    runStart = v; prev = v;
+  }
+  if (out.length >= RANGE_MAX_RUNS) return null;
+  out.push([runStart, prev - runStart + 1]);
+  return out;
+}
+export { denseActiveRanges, indexRanges };
+
 export const CLUSTER_HEBBIAN_MIXIN = {
   /**
    * MAY THIS BRAIN TEACH RIGHT NOW? (2026-08-14)
@@ -1067,7 +1121,33 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // Oja so the result is BIT-IDENTICAL.
       const _act = [];
       for (let _i = 0; _i < post.length; _i++) { if (post[_i]) _act.push(_i); }
-      await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
+      // GPUVERB.2 (2026-08-21) — the intra pass joins the GPU. T18.18 removed
+      // the old dispatch because gpuSparseHebbian densified pre/post into
+      // ~856MB frames; hebbian_ranges (donor v0.3.18) ships the SAME index
+      // sets as a handful of [start,len] runs (~60 bytes) — teach patterns
+      // are group-tiled writes, so they compress; a pattern that doesn't
+      // compress (null ranges) keeps the full CPU pass because the donor's
+      // expander silently skips oversized ranges and truncated-pattern math
+      // is wrong with no loud failure. When the GPU carries, the CPU shadow
+      // runs every 5th call (the emission lanes' trained-equivalent posture);
+      // when it can't, the CPU pass runs in full — nothing is ever dropped.
+      let _gpuCarried = false;
+      if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === 'function') {
+        try {
+          const _postRanges = indexRanges(_act);
+          const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
+          if (_preRanges && _postRanges) {
+            _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
+          }
+        } catch { _gpuCarried = false; }
+      }
+      this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
+      const _s = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0 });
+      if (_gpuCarried) _s.gpu += 1;
+      if (!_gpuCarried || (this._intraOjaShadowCounter % 5 === 0)) {
+        if (_gpuCarried) _s.cpuShadow += 1; else _s.cpuFull += 1;
+        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
+      }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
         // Pool path keeps bare Hebbian (external worker RPC doesn't
