@@ -1197,7 +1197,10 @@ function autoClearStaleState() {
   // Atomic-write `.tmp` siblings are swept too (a crash mid-save leaves one, and
   // a restored .tmp is the same stale state wearing a different extension).
   try {
-    const _imgPat = /^(visual-memory|mindspace-memory|minds-eye|realized-art|drawing-canvas)[-.\w]*\.json(\.tmp)?$/i;
+    // VMSCALE (2026-08-21) — the visual store is sqlite now (visual-memory-v4.db
+    // + WAL sidecars); the pattern covers json AND db families so FRESHEYES
+    // keeps its contract on the new medium.
+    const _imgPat = /^(visual-memory|mindspace-memory|minds-eye|realized-art|drawing-canvas)[-.\w]*\.(json|db)(\.tmp|-wal|-shm)?$/i;
     for (const f of fs.readdirSync(__dirname)) {
       if (_imgPat.test(f)) {
         const p = path.join(__dirname, f);

@@ -48,7 +48,11 @@ const path = require('path');
 // files and are untouched — imagery cleared, training kept, same contract as
 // the v1→v2→v3 bumps before it. v3 stays on disk, unused, and the FRESHEYES
 // pattern sweep (`visual-memory*`) covers v4 on future fresh walks automatically.
-const VM_FILE = path.join(__dirname, '..', 'visual-memory-v4.json');
+// VMSCALE (2026-08-21) — the v4 store is SQLITE, not JSON (see the mixin header:
+// monolithic JSON measured at 761ms pins @10k entries and hard-fails @100k).
+// The v4 json name never shipped a boot, so nothing migrates; v1-v3 json stay
+// on disk, orphaned. FRESHEYES sweeps `visual-memory*` by pattern (json AND db).
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v4.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -56,7 +60,12 @@ const VM_FILE = path.join(__dirname, '..', 'visual-memory-v4.json');
 // LRU floor rather than a cage: the store is ~0.3-3KB per field C, so 4096 is a
 // few MB of state, and it is wiped on every fresh walk (FRESHEYES) so it can never
 // become stale identity.
-const VM_CAP = Number(process.env.DREAM_VM_CAP) > 0 ? Number(process.env.DREAM_VM_CAP) : 4096;
+// VMSCALE (2026-08-21, operator: ~10k concepts at full training, "the more the
+// better", sized against the 500GB box) — 4096 → 25,000 default, 2.5× the
+// stated target. With sqlite as the medium the DISK does not care; this cap is
+// the RAM bound on the hot in-memory Map (~10KB/entry ⟹ 25k ≈ 250MB beside the
+// brain on a shared box). DREAM_VM_CAP raises it whenever more RAM is available.
+const VM_CAP = Number(process.env.DREAM_VM_CAP) > 0 ? Number(process.env.DREAM_VM_CAP) : 25000;
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'of', 'in', 'on', 'at', 'to', 'is',
@@ -66,28 +75,82 @@ const VM_STOP = new Set([
 ]);
 
 const SERVER_VISUAL_MEMORY_MIXIN = {
-  // Lazy store init + one-time restore from disk. Map iteration order is
-  // insertion order — re-inserting on touch makes it a natural LRU.
+  // ── VMSCALE (2026-08-21) — THE STORE MOVES TO SQLITE. Operator directive:
+  // no meaningful cap on her image equations — ~10k+ concepts at full training,
+  // sized against the box's disk, "the more the better". The monolithic-JSON
+  // medium could not carry that, MEASURED: 10k entries = a 96.5MB string and a
+  // 761ms main-loop pin per save; 30k = 2.3s pins; at 100k `JSON.stringify`
+  // HARD-FAILS with RangeError (V8 string ceiling) — the old format had a
+  // structural cap far below the ask, and every save pinned the loop harder as
+  // she learned more. So the store now lives in better-sqlite3 — the SAME
+  // engine her episodic memory already trusts on this box: per-entry upserts
+  // in microseconds batched behind a 5s dirty-key flush, no giant string ever
+  // exists at any store size, WAL journal, and disk (500GB minus Forgejo) is
+  // the only real ceiling. The in-RAM Map stays — recall paths need hot reads —
+  // so DREAM_VM_CAP remains as the RAM bound (~10KB/entry ⟹ 25k ≈ 250MB), not
+  // a disk bound. The v4 JSON never shipped a boot, so there is nothing to
+  // migrate: this IS v4, on a medium that can hold what was asked of it.
+  _vmDb() {
+    if (this._vmDbConn === undefined) {
+      try {
+        const Database = require('better-sqlite3');
+        const db = new Database(VM_DB);
+        db.pragma('journal_mode = WAL');
+        db.pragma('synchronous = NORMAL');
+        db.exec('CREATE TABLE IF NOT EXISTS concepts (key TEXT PRIMARY KEY, entry TEXT NOT NULL, at INTEGER NOT NULL)');
+        this._vmDbConn = db;
+      } catch (e) {
+        this._vmDbConn = null;
+        console.warn('[VisualMemory] sqlite store unavailable — visual memory will NOT persist this boot:', e?.message || e);
+      }
+    }
+    return this._vmDbConn;
+  },
+  // Lazy store init + one-time restore from the DB. Map iteration order is
+  // insertion order — re-inserting on touch makes it a natural LRU, and the
+  // Map subclass hooks set/delete so EVERY existing call site persists without
+  // knowing the medium changed.
   _vmStore() {
     if (!this._visualMemory) {
-      this._visualMemory = new Map();
+      const self = this;
+      class VMMap extends Map {
+        set(k, v) { const r = super.set(k, v); try { self._vmMarkDirty(k, false); } catch { /* nf */ } return r; }
+        delete(k) { const had = super.delete(k); if (had) { try { self._vmMarkDirty(k, true); } catch { /* nf */ } } return had; }
+      }
+      this._visualMemory = new VMMap();
+      this._vmRestoring = true;   // restore must not mark its own inserts dirty-for-write
       try {
-        if (fs.existsSync(VM_FILE)) {
-          const j = JSON.parse(fs.readFileSync(VM_FILE, 'utf8'));
-          if (j && Array.isArray(j.entries)) {
-            for (const [w, e] of j.entries.slice(-VM_CAP)) {
-              if (typeof w === 'string' && e && e.rec && e.rec.channels) this._visualMemory.set(w, e);
-            }
-            if (this._visualMemory.size > 0) {
-              console.log(`[VisualMemory] restored ${this._visualMemory.size} seen-concept field(s) from visual-memory.json`);
-            }
+        const db = this._vmDb();
+        if (db) {
+          const t0 = Date.now();
+          const rows = db.prepare('SELECT key, entry FROM concepts ORDER BY at ASC').all();
+          for (const r of rows.slice(-VM_CAP)) {
+            try {
+              const e = JSON.parse(r.entry);
+              if (e && e.rec && e.rec.channels) Map.prototype.set.call(this._visualMemory, r.key, e);
+            } catch { /* one bad row never blocks the rest */ }
+          }
+          if (this._visualMemory.size > 0) {
+            console.log(`[VisualMemory] restored ${this._visualMemory.size} seen-concept field(s) from sqlite in ${Date.now() - t0}ms (${rows.length} rows on disk, cap ${VM_CAP}).`);
           }
         }
       } catch (e) { console.warn('[VisualMemory] load failed:', e?.message || e); }
+      this._vmRestoring = false;
     }
     return this._visualMemory;
   },
-
+  // Dirty-key tracking: a set() queues an upsert, a delete() queues a removal,
+  // a set() after a delete cancels the removal (LRU touch = delete+set of the
+  // same key nets to one upsert). Flush is debounced 5s and batched in ONE
+  // transaction — typically 1-20 rows of ~10KB each, microseconds-to-ms, at
+  // ANY store size. The O(store) full-serialize save is gone.
+  _vmMarkDirty(key, isDelete) {
+    if (this._vmRestoring) return;
+    if (!this._vmDirtyUpserts) { this._vmDirtyUpserts = new Set(); this._vmDirtyDeletes = new Set(); }
+    if (isDelete) { this._vmDirtyUpserts.delete(key); this._vmDirtyDeletes.add(key); }
+    else { this._vmDirtyDeletes.delete(key); this._vmDirtyUpserts.add(key); }
+    this._vmSaveSoon();
+  },
   // Debounced persistence — the seen-concept store is her visual episodic
   // medium; losing it on restart would blind her imagination back to
   // abstract fields until she re-sees everything.
@@ -96,12 +159,29 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     this._vmSaveTimer = setTimeout(() => {
       this._vmSaveTimer = null;
       try {
-        const entries = Array.from(this._vmStore().entries()).slice(-VM_CAP);
-        const tmp = VM_FILE + '.tmp';
-        fs.writeFileSync(tmp, JSON.stringify({ version: 1, entries }));
-        fs.renameSync(tmp, VM_FILE);
+        const db = this._vmDb();
+        if (!db) return;
+        const ups = this._vmDirtyUpserts || new Set();
+        const dels = this._vmDirtyDeletes || new Set();
+        if (ups.size === 0 && dels.size === 0) return;
+        this._vmDirtyUpserts = new Set();
+        this._vmDirtyDeletes = new Set();
+        const store = this._vmStore();
+        const t0 = Date.now();
+        const put = db.prepare('INSERT OR REPLACE INTO concepts (key, entry, at) VALUES (?, ?, ?)');
+        const del = db.prepare('DELETE FROM concepts WHERE key = ?');
+        const tx = db.transaction(() => {
+          for (const k of dels) del.run(k);
+          for (const k of ups) {
+            const e = store.get(k);
+            if (e) put.run(k, JSON.stringify(e), e.at || Date.now());
+          }
+        });
+        tx();
+        const ms = Date.now() - t0;
+        if (ms > 100) console.log(`[VisualMemory] flushed ${ups.size} upsert(s) + ${dels.size} delete(s) in ${ms}ms.`);
       } catch (e) { console.warn('[VisualMemory] save failed:', e?.message || e); }
-    }, 30000);
+    }, 5000);
   },
 
   // Content words only — binding a field C to "the"/"of" would make every
@@ -613,7 +693,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           if ((!schema.outlines || !schema.outlines.length) && Array.isArray(prev.outlines) && prev.outlines.length) schema.outlines = prev.outlines;
         }
         e.schema = schema;
-        this._vmSaveSoon();
+        // In-place mutation bypasses the Map set() hook — mark the key dirty
+        // explicitly so the learned schema reaches the DB.
+        this._vmMarkDirty(key, false);
       }
     } catch { /* schema storage best-effort — the schema still returns for immediate use */ }
     return schema;

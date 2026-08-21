@@ -291,7 +291,7 @@ each is listed with what it actually costs.
 | `DREAM_OWNART_CANVAS` | = draw canvas (512) | Canvas side for her own drawings |
 | `DREAM_OWNART_MAX_SUBJECTS` | 3 | How many drawable nouns from one message she composes |
 | `DREAM_DRAW_STYLE` | `own` | `own` = she constructs from a learned shape schema. `field` / `lineart` render what she SAW — useful, but they are not a drawing |
-| `DREAM_VM_CAP` | 4096 | Seen-concept field-C store size (was 384 — she was forgetting appearances while still learning words) |
+| `DREAM_VM_CAP` | **25000** | Seen-concept store size (384 → 4096 → 25,000; VMSCALE 2026-08-21, operator: ~10k concepts at full training, *"the more the better"*). The store is **sqlite now** (`visual-memory-v4.db`, WAL, same engine as episodic memory) because monolithic JSON measured 761ms loop pins @10k entries and hard-failed @100k. Disk no longer cares — this cap bounds the hot in-RAM Map (~10KB/entry ⟹ 25k ≈ 250MB beside the brain); raise it whenever RAM allows |
 | `DREAM_REF_MAXSIDE` / `DREAM_REF_RENDER_PX` | 320 / 512 | Reference look-up fidelity — what her shape schemas are learned from |
 | `DREAM_LANG_UNPIN` | unset | Ignore `server/lang-geometry.json` for this boot and re-derive the language-cortex size. The pin exists because free-RAM sizing flip-flopped 12,000,000 ↔ 349,155 between boots |
 | `DREAM_SUBSTEPS_NATIVE` | **24** | Brain-steps per donor round-trip for a NATIVE donor (>= 0.3.12, which puts `compute_batch` on its priority lane and computes on a dedicated OS thread, so a long batch cannot park its inbound socket). Browser donors keep the conservative 8 — their `onmessage` is serial and genuinely cannot. This is the FLOOR the adaptive controller climbs from |
