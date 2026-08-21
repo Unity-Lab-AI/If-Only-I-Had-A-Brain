@@ -743,18 +743,20 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     st[stage] = (st[stage] || 0) + 1;
     st.lastErr = `${stage}:${key}${detail ? ' — ' + String(detail).slice(0, 120) : ''}`;
     st.lastErrAt = Date.now();
-    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 600000;
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) > 0 ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 0;
     const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;
-    // Roll the entry burns back to short retry windows: the budget was spent on
-    // nothing, so most of it comes back. 60s global / 10min concept still stops
-    // a hard-down generator from being hammered.
+    // Roll the entry burns back to short retry windows: the attempt bought
+    // nothing, so most of the cooldown comes back — the concept retries in
+    // 10min instead of 6h (and if an ops-tuned global gap is armed, it retries
+    // in 60s instead of the full gap). Still enough back-off that a hard-down
+    // generator is never hammered per-tick for the same word.
     try {
       this._vmLastRefFetchAt = Date.now() - Math.max(0, GAP - 60000);
       if (this._vmRefFetchAt) this._vmRefFetchAt.set(key, Date.now() - Math.max(0, COOL - 600000));
     } catch { /* rollback best-effort */ }
     if (!this._vmLookWarnAt || Date.now() - this._vmLookWarnAt > 60000) {
       this._vmLookWarnAt = Date.now();
-      console.warn(`[VisualMemory] LOOK FAILED at stage=${stage} for "${key}"${detail ? ` (${String(detail).slice(0, 120)})` : ''} — budget rolled back (global retry 60s, concept 10min). Totals: ${st.attempts} attempts, ${st.grounded} grounded.`);
+      console.warn(`[VisualMemory] LOOK FAILED at stage=${stage} for "${key}"${detail ? ` (${String(detail).slice(0, 120)})` : ''} — cooldown rolled back (concept retries in 10min). Totals: ${st.attempts} attempts, ${st.grounded} grounded.`);
     }
     return null;
   },
@@ -779,13 +781,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // can't trigger a fetch storm
     if (!this._vmRefInFlight) this._vmRefInFlight = new Set();
     if (this._vmRefInFlight.has(key)) { this._vmLook().inFlightSkips++; return null; }
-    // GLOBAL look-up budget (Gee 2026-07-17: "lets make the brain only able to
-    // do a look up once ever 10 minutes.. she is killing my accoutn pollen
-    // doing multiple a minute"). Every render costs real pollen; one fetch per
-    // 10 minutes brain-wide. Recalls (visual-memory hits) are free and
-    // unlimited — this gates only NEW outbound generations.
-    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 600000;
-    if (!opts.force && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
+    // GLOBAL look-up gap — REVOKED by operator directive 2026-08-21 (default now
+    // 0 = no brain-wide gap). The 10-minute budget was a KEYED-ACCOUNT-era rule:
+    // renders cost real pollen then. The account keys are dead (2026-08-17 law)
+    // and every reference now rides the anonymous free tier, so the only pacing
+    // left is natural — the per-concept in-flight guard plus the 2-60s a look
+    // takes to fetch + decode + perceive, ~one look per tick cadence. The
+    // per-concept 6h cooldown above is NOT a rate limit and stays: it stops
+    // re-generating a word she already holds. Set DREAM_REF_FETCH_GAP_MS to a
+    // positive ms value to re-arm a global gap for ops tuning.
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) > 0 ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 0;
+    if (!opts.force && GAP > 0 && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
     this._vmRefInFlight.add(key);
     this._vmLastRefFetchAt = now;
     this._vmRefFetchAt.set(key, now);

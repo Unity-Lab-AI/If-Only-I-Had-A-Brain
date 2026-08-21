@@ -35922,3 +35922,13 @@ The example word had leaked into code comments along with his verbatim quotes �
 **Yes — and it is this file's own established pattern, done twice before.** The mind's-eye imagery (seen-concept field Cs + shape schemas) lives in `server/visual-memory-vN.json`, an entirely separate file from the brain weights / grades / phases / episodic memory. The store was ALREADY on v3 because v1 was orphaned when placeholder frames poisoned it (SEE.2) and v2 was orphaned when monochrome-era references made every render pencil. **This is bump #3: `VM_FILE` → `visual-memory-v4.json`.** On the next boot her imagery starts empty and every concept re-grounds through the FIXED look lane (LOOKEYES) banking the NEW schema format (PAINT.2 contours, v2 cells) — which is the whole point: everything in v3 was learned under the pre-PAINT pipeline, and it held only 2 entries anyway. v3 stays on disk, unused. Verified: v4 is the only live reference; the FRESHEYES sweep is regex-based (`^(visual-memory|…)`) so v4 is auto-covered on future fresh walks; the deploy overlay's `visual-memory*.json` exclude keeps it runtime state. **Training: untouched by construction — different files.**
 
 **Board: 4 open, 195 closed.**
+
+---
+
+## 2026-08-21 — NOGAP: the 10-minute look budget revoked — her eyes run at the generator's speed
+
+> Gee (verbatim): *"lets get rid of the 10 minute per pollinmations.. we can use it as fast as itll generate.. its the anonymous free"*
+
+The 10-minute brain-wide gap was Gee's own 2026-07-17 rule from the KEYED-account era (renders cost real pollen and she was doing several a minute). The keys are dead (2026-08-17 law) and every reference rides the anonymous free tier, so the rule's reason is gone and its author revoked it. `DREAM_REF_FETCH_GAP_MS` default 600000 → **0** (a positive env value re-arms it for ops). What still paces her, correctly: the per-concept in-flight guard, the real 2-60s cost of fetch + decode + perceive per look, the tick cadence, and the per-concept 6h cooldown — which stays because it is **de-duplication, not rate limiting** (never re-generate a word she already holds). The LOOKEYES failure-rollback and warn text updated to match. **Verified 4/4:** default → always fetch; env-armed → skips inside the window; `force` still bypasses. Net effect with LOOKEYES + VMBUMP: after the press her visual memory rebuilds at the speed she thinks instead of 6 concepts an hour.
+
+**Board: 4 open, 196 closed.**
