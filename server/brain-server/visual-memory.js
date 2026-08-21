@@ -622,7 +622,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // which is knowledge, not pixels.
     // PAINT.6 — palette from REAL PIXELS, not from a guess. The old
     // _schemaPalette read the first packed int16 of Cb/Cr as "the DC term" with
-    // an assumed scale — for a gray/cream cat it produced [255,0,255] pure
+    // an assumed scale — for a gray/cream subject it produced [255,0,255] pure
     // magenta, and every drawing of her went hot pink. Reconstruct the field
     // she just perceived (ImageData polyfilled server-side now) and histogram
     // the CENTER region — the subject, not the backdrop — into her 4 colors.
@@ -650,7 +650,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           return { pts: s.pts, len };
         })
         .sort((a, b) => b.len - a.len)
-        // PAINT.6 — 6→8 contours at 36 points each (was 20): the live cat test
+        // PAINT.6 — 6→8 contours at 36 points each (was 20): the live judged test
         // showed the length-sorted top-6 kept long body edges and DROPPED the
         // short triangles (the ears) that make the subject readable, and 20-pt
         // decimation smoothed what remained. Still a skeleton, never pixels.
@@ -666,7 +666,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         outlines.push({ pts: dec, closed, len: +pl.len.toFixed(3) });
       }
     } catch { /* outlines are an enrichment — the schema stands without them */ }
-    // PAINT.7 (2026-08-21) — THE FULL TRACE. Live judgment on the cat test:
+    // PAINT.7 (2026-08-21) — THE FULL TRACE. Live judgment on the subject test:
     // 8 edge fragments + a hull render as "a gray trapezoid with squiggles" —
     // the abstraction ceiling of boxes/fragments can never let the operator
     // determine the subject. But the tracer's FULL output IS a recognizable

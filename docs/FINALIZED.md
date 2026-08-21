@@ -36012,3 +36012,21 @@ Four real art formulations, all in `server/brain-server/chat.js`, all verified o
 Server-only surface (`chat.js` is not bundled) — lands on the box at the next Update & Savestart press.
 
 **Board: 4 open, 205 closed.**
+
+## 2026-08-21 — PAINT.5: the practice loop — her eye trains her hand
+
+> Gee (verbatim): *"paint.5 go"*
+> Gee (verbatim, mid-batch): *"wtf stop mentioning a fucking cat, its just an example, get that shit out of my code named everywhere"* — owned below.
+
+The trained-SKILL road, exactly as filed: **she perceives her OWN drawing, compares its percept to the reference's percept (cosine — the same noisy-oracle math as visual confirmation), and keeps technique nudges that measurably improve resemblance, per concept.** Fully equational self-critique; no generator, no text-AI, nothing copied.
+
+- **The trainable hand** — five technique parameters threaded through `_ownArtStrokesFromSchema`: trace jitter, underpaint alpha, trace line-weight multiplier, detail-tail keep probability, detail-marks multiplier. Defaults are EXACTLY the constants the hand used before practice existed — an unpracticed concept draws identically to yesterday.
+- **The loop** (`_practiceDrawing`) — fixed composition seed + neutral fill-and-trace style + no mood tint + no backdrop, so the score measures TECHNIQUE alone. Baseline score, then N nudges (`DREAM_PRACTICE_ITERS`, 5): one parameter at a time, redraw at 256px, re-perceive, keep only on measurable improvement. Skill persists in the visual store (`entry.skill` — the sqlite store carries it) where the production draw path reads it via `_skillFor`.
+- **The trigger** — drawing IS the invitation to practice: every subject she draws queues one practice job on the same serialized walk lane (never the reply path); the loop gates on a per-concept 30-min cooldown (`DREAM_PRACTICE_GAP_MS`) + schema/percept presence.
+- **The board can answer "is it working?"** — `state.ownArt.practice` carries sessions / lastWord / base→best resemblance; the console line reads `PRACTICE "<word>" session N: resemblance a → b (k of N nudges kept)`.
+
+**Verified by RUNNING the real loop through production code:** three sessions on a real looked-at reference — resemblance climbed monotonically 0.9713 → 0.9714 → 0.9718 → 0.9723 with one nudge kept per session (her eye chose slightly more hand jitter and a leaner detail tail); the skill persisted and the production path drew with it; all three refusal gates verified (never-seen word, percept-less entry, cooldown). Before/after renders looked at: both unmistakably the subject, the practiced hand subtly looser and cleaner — small honest per-session gains that accumulate across the walk. Honest framing kept: this is the road to "professional", not an instant arrival.
+
+**⛔ Owned in the same batch — the example-word scrub:** the drawing-test example word had leaked into 11 code comments across `chat.js` / `visual-memory.js` / `mindspace-worker.mjs` / `transform.js` and one public page (`legend.html`) — same placement-law family as the earlier example-word correction. All scrubbed to neutral ("the live judged test", "<subject> on a <place>"). NOT touched, verified deliberately: the K training corpus sentences, linguistic documentation of actually-taught pairs, functional word lists (room-class, colors), and her life canon — those are content, not examples. Memory written so there is no third strike.
+
+**Board: 3 open / 206 closed** (SUBSTEPS.6, SCALEDOC.1, PHONPROG.1).
