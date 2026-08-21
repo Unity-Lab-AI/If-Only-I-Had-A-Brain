@@ -245,3 +245,5 @@ server/visual-memory*.json
 # box (public-state.json snapshots, console-ring pulls). Never source, never
 # tracked - two of them were swept into a commit by `git add -A` on 2026-08-20.
 .scratch-*
+visual-memory*.db*
+server/visual-memory*.db*
