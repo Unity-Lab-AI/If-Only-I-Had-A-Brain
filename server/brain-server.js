@@ -7067,11 +7067,17 @@ class ServerBrain {
         if (Array.isArray(pending.definitionTaughtWords)) {
           cortex._definitionTaughtWords = new Set(pending.definitionTaughtWords);
         }
-        // GATEVOCAB — restore the exam-vocab taught receipt so a gate entry
-        // after a press teaches only genuinely-new words (minutes), not the
-        // whole exam vocabulary again (hours).
+        // GATEVOCAB + RETEACH — restore the exam-vocab taught receipt as a
+        // Map word→lastTaughtAt (spaced re-teach: a word rests for the window,
+        // then reinforces again — never once-forever). Legacy Set saves (bare
+        // strings) upgrade with a fresh timestamp.
         if (Array.isArray(pending.vocabTaughtWords)) {
-          cortex._vocabTaughtWordsPersist = new Set(pending.vocabTaughtWords);
+          const m = new Map();
+          for (const e of pending.vocabTaughtWords) {
+            if (Array.isArray(e) && e.length >= 2) m.set(String(e[0]), Number(e[1]) || Date.now());
+            else if (typeof e === 'string') m.set(e, Date.now());
+          }
+          cortex._vocabTaughtWordsPersist = m;
         }
         // Restore the donor neuron-compute leaderboard (persists across restart/
         // resume; a fresh walk via force-fresh wipes brain-weights so it starts

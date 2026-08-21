@@ -4561,12 +4561,19 @@ export const K_MIXIN = {
     // gate entry forever — the root cause of the science 7M-event
     // runaway. Now a taught word counts as trained and the coverage
     // audit clears, so the teach fires once and the cell advances.
-    // GATEVOCAB — read the CLUSTER-persisted set too: after a restart the
-    // taught receipt lives there (restored from the weights) before any
-    // pregate has re-initialized the curriculum-side reference.
+    // GATEVOCAB + RETEACH — read the CLUSTER-persisted receipt (restored from
+    // the weights before any pregate re-initializes the curriculum-side ref),
+    // but a taught word only counts as trained WITHIN THE RE-TEACH WINDOW:
+    // past it, the word drops out of the trained set and the next gate entry
+    // REINFORCES it (spaced repetition — one-time-forever was a law
+    // violation, "cutting shit out of her"). Legacy Sets count as fresh.
+    const WINDOW = Number(process.env.DREAM_VOCAB_RETEACH_MS) > 0
+      ? Number(process.env.DREAM_VOCAB_RETEACH_MS) : 172800000;   // 48h default
+    const nowTs = Date.now();
     const taughtSets = [this._vocabTaughtSet, this.cluster && this.cluster._vocabTaughtWordsPersist];
     for (const ts of taughtSets) {
-      if (ts instanceof Set && ts.size > 0) for (const w of ts) vocab.add(w);
+      if (ts instanceof Map) { for (const [w, at] of ts) if (nowTs - (Number(at) || 0) < WINDOW) vocab.add(w); }
+      else if (ts instanceof Set && ts.size > 0) for (const w of ts) vocab.add(w);
     }
     return vocab;
   },

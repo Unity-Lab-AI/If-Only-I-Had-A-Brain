@@ -75657,9 +75657,13 @@ var K_MIXIN = {
         }
       }
     }
+    const WINDOW = Number(process.env.DREAM_VOCAB_RETEACH_MS) > 0 ? Number(process.env.DREAM_VOCAB_RETEACH_MS) : 1728e5;
+    const nowTs = Date.now();
     const taughtSets = [this._vocabTaughtSet, this.cluster && this.cluster._vocabTaughtWordsPersist];
     for (const ts of taughtSets) {
-      if (ts instanceof Set && ts.size > 0) for (const w of ts) vocab.add(w);
+      if (ts instanceof Map) {
+        for (const [w, at] of ts) if (nowTs - (Number(at) || 0) < WINDOW) vocab.add(w);
+      } else if (ts instanceof Set && ts.size > 0) for (const w of ts) vocab.add(w);
     }
     return vocab;
   },
@@ -100669,13 +100673,13 @@ var Curriculum = class _Curriculum {
           const CHUNK2 = 25;
           const reps = opts.vocabReps ?? 4;
           this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (before cell teach phases)`);
-          this._vocabTaughtSet = this.cluster && (this.cluster._vocabTaughtWordsPersist ||= /* @__PURE__ */ new Set()) || this._vocabTaughtSet || /* @__PURE__ */ new Set();
+          this._vocabTaughtSet = this.cluster && (this.cluster._vocabTaughtWordsPersist = this.cluster._vocabTaughtWordsPersist instanceof Map ? this.cluster._vocabTaughtWordsPersist : new Map(this.cluster._vocabTaughtWordsPersist instanceof Set ? Array.from(this.cluster._vocabTaughtWordsPersist).map((w) => [w, Date.now()]) : [])) || this._vocabTaughtSet || /* @__PURE__ */ new Map();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK2) {
             const slice = words.slice(i, i + CHUNK2);
             try {
               await this._teachVocabList(slice, ctx2, { reps });
-              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
+              for (const w of slice) this._vocabTaughtSet.set(String(w).toLowerCase(), Date.now());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i / CHUNK2 | 0} failed:`, err?.message || err);
             }
@@ -101097,7 +101101,9 @@ var Curriculum = class _Curriculum {
     } catch {
     }
     try {
-      if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
+      if (this._vocabTaughtSet instanceof Map) {
+        for (const w of this._vocabTaughtSet.keys()) addTok(w);
+      } else if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
       if (this._definitionTaughtWords instanceof Set) for (const w of this._definitionTaughtWords) addTok(w);
       for (const k of Object.keys(cluster)) {
         if (k.startsWith("_emissionTaughtWords_") && cluster[k] instanceof Set) {
@@ -101713,7 +101719,7 @@ var Curriculum = class _Curriculum {
   async _pregateEnrichment(cellKey, opts = {}) {
     if (!cellKey) return;
     this._pregateCellsDone = this._pregateCellsDone || /* @__PURE__ */ new Set();
-    this._vocabTaughtSet = this.cluster && (this.cluster._vocabTaughtWordsPersist ||= /* @__PURE__ */ new Set()) || this._vocabTaughtSet || /* @__PURE__ */ new Set();
+    this._vocabTaughtSet = this.cluster && (this.cluster._vocabTaughtWordsPersist = this.cluster._vocabTaughtWordsPersist instanceof Map ? this.cluster._vocabTaughtWordsPersist : new Map(this.cluster._vocabTaughtWordsPersist instanceof Set ? Array.from(this.cluster._vocabTaughtWordsPersist).map((w) => [w, Date.now()]) : [])) || this._vocabTaughtSet || /* @__PURE__ */ new Map();
     this._pregateVocabDone = this._pregateVocabDone || /* @__PURE__ */ new Set();
     if (opts.force || !this._pregateVocabDone.has(cellKey)) {
       this._pregateVocabDone.add(cellKey);
@@ -101733,7 +101739,7 @@ var Curriculum = class _Curriculum {
               const slice = words.slice(i, i + CHUNK2);
               try {
                 await this._teachVocabList(slice, ctx, { reps });
-                for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
+                for (const w of slice) this._vocabTaughtSet.set(String(w).toLowerCase(), Date.now());
               } catch (err) {
                 console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i / CHUNK2 | 0} failed:`, err?.message || err);
               }
