@@ -36124,3 +36124,13 @@ Any already-poisoned entries on the box die with the v5 empty store at the press
 **Board: 3 open / 211 closed.**
 
 **VMBUMP3 addendum — Gee (verbatim): *"and we need to reset the image visual db again. once all i have said is fixed"*** → v5 → **v6 in this same batch**: everything named this session (AGESTEER, SCRATCHKILL, NEONKILL, CAMPOISON, COLORART, DRAWGATE) precedes the boot that creates v6, so the press lands the fixed lanes and the empty eyes together — v5's half-day of fallback-lane imagery orphans, and every schema she banks from the first look is gated, age-steered, colored, and scribble-free. FRESHEYES + deploy excludes cover v6 by pattern.
+
+## 2026-08-21 — REJECTGONE: a rejected drawing leaves the screen and her memory, immediately
+
+> Gee (verbatim): *"wtf she keeps displaying her drawings even tho i marked redraw"*
+
+**First, the verdicts WERE landing** — the live box read `rejects: 8, bans: 2, lastWords: ["orchard"]`, so the button pipeline worked. Two design gaps kept the old picture on screen: (1) reject deleted only the SCHEMA while the stored LOOK (rec + percept) survived, so the recall and favorite lanes kept re-displaying the rejected imagery while the relearn was in flight; (2) nothing touched the frame already ON screen during the 2-60s a fresh look takes.
+
+**Both cut:** a reject now deletes the concept's WHOLE store entry (a rejected look is a bad look — the forced fresh reference rebuilds it from zero), and `_artClearEyeIfShowing` swaps the on-screen frame for an honest note the moment the verdict lands — *"she tossed her <word> — fresh look-up, definition re-read and redraw on the way…"* (bans: *"she will never draw <word> again"*). The display obeys EVERY reject, even a relearn-paced repeat press; unrelated frames stay untouched. **7/7 harness checks on production code.**
+
+**Board: 3 open / 213 closed.**

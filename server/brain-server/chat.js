@@ -2347,6 +2347,20 @@ const SERVER_CHAT_MIXIN = {
     } catch (e) { console.warn(`[OwnArt] not-drawable set save failed: ${e?.message || e}`); }
   },
 
+  // REJECTGONE — swap the current mind's-eye frame for an honest note when it
+  // names any of the given words (the rejected/banned picture must not keep
+  // sitting on screen while its replacement is in flight).
+  _artClearEyeIfShowing(words, note) {
+    try {
+      if (!this._mindsEyeJson) return;
+      const cur = JSON.parse(this._mindsEyeJson);
+      const src = String((cur && cur.source) || '').toLowerCase();
+      if (words.some(w => src.includes(w))) {
+        this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: null, terms: 0, at: Date.now(), note });
+      }
+    } catch { /* display swap best-effort */ }
+  },
+
   _artFeedback(verdict, sourceLabel) {
     if (verdict !== 'accept' && verdict !== 'reject' && verdict !== 'ban') return { ok: false, why: 'bad verdict' };
     const now = Date.now();
@@ -2383,6 +2397,8 @@ const SERVER_CHAT_MIXIN = {
         if (_c && typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'art-feedback', text: words.join(' and ') + ' is not something to draw', ts: now });
       } catch { /* emission best-effort */ }
       try { console.log(`[OwnArt] 🚫 NOT DRAWABLE: "${words.join('+')}" — banned from her subjects (${bans.size} total), imagery dropped.`); } catch { /* nf */ }
+      // REJECTGONE — a banned word's frame leaves the screen immediately too
+      this._artClearEyeIfShowing(words, `she will never draw ${words.join(' + ')} again`);
       return { ok: true, verdict: 'ban', words };
     }
     for (const w of words) {
@@ -2403,14 +2419,27 @@ const SERVER_CHAT_MIXIN = {
         if (!this._artRelearnAt) this._artRelearnAt = new Map();
         if ((now - (this._artRelearnAt.get(w) || 0)) < GAPR) continue;
         this._artRelearnAt.set(w, now);
-        // the bad SHAPE memory dies — the fresh look banks a new one
-        try { const e = store && store.get(w); if (e && e.schema) { delete e.schema; store.set(w, e); } } catch { /* schema drop best-effort */ }
+        // REJECTGONE (2026-08-21, operator: "she keeps displaying her drawings
+        // even tho i marked redraw") — the WHOLE memory of the word dies, not
+        // just the schema: the stored look (rec/percept) survived the first
+        // build and the recall/favorite lanes kept re-displaying the rejected
+        // imagery while the relearn was still in flight. A rejected look is a
+        // bad look — the forced fresh reference rebuilds the entry from zero.
+        try { if (store && store.has(w)) store.delete(w); } catch { /* entry drop best-effort */ }
         try {
           if (!Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue = [];
           this._mindsEyePreviewQueue.push({ kind: 'relearn', word: w });
           relearned.push(w);
         } catch { /* queue best-effort */ }
       }
+    }
+    // REJECTGONE — if the frame on screen right now names a rejected word,
+    // clear it IMMEDIATELY to an honest in-progress note instead of letting
+    // the rejected picture sit there while the fresh look-up runs. Cleared on
+    // EVERY reject (even a relearn-paced repeat press) — the display must
+    // always obey the verdict even when the expensive look doesn't re-fire.
+    if (verdict === 'reject') {
+      this._artClearEyeIfShowing(words, `she tossed her ${words.join(' + ')} — fresh look-up, definition re-read and redraw on the way…`);
     }
     this._artFeedbackStats = {
       accepts: ((this._artFeedbackStats && this._artFeedbackStats.accepts) | 0) + (verdict === 'accept' ? 1 : 0),
