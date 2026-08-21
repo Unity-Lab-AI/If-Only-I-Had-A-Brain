@@ -2865,7 +2865,7 @@ const SERVER_GPU_MIXIN = {
    * Dispatch sparse propagate via binary frame: currents = matrix @ preSpikes.
    * Returns Float32Array (or null on timeout).
    */
-  async gpuSparsePropagate(name, preSpikes, targetWs = null) {
+  async gpuSparsePropagate(name, preSpikes, targetWs = null, timeoutMs = 30_000) {
     const pre = preSpikes instanceof Uint32Array ? preSpikes
       : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
       : new Uint32Array(preSpikes || []);
@@ -2889,7 +2889,7 @@ const SERVER_GPU_MIXIN = {
     lenBuf.writeUInt32LE(pre.length, 0);
     const preBuf = Buffer.from(pre.buffer, pre.byteOffset, pre.byteLength);
     const full = Buffer.concat([hdr, lenBuf, preBuf]);
-    const result = await this._sparseSendBinary(full, reqId, 30_000, targetWs);
+    const result = await this._sparseSendBinary(full, reqId, timeoutMs, targetWs);
     if (!result || !result.currents) return null;
     return result.currents; // Float32Array assembled by ack handler
   },
@@ -3368,13 +3368,23 @@ const SERVER_GPU_MIXIN = {
     }
     if (!sparseIndices || !sparseIndices.length) return null;
     try {
-      this._gpuWriteCortexSpikeSlice(srcRegionName, sparseIndices);
-      const out = await this.gpuSparsePropagate(matrixName, new Uint32Array(0), ws);
+      // GATEGPU FIX (2026-08-21, convicted live: teachStageMax=gate:probe-gpu
+      // at 35.2s/window with zero successes — every probe burned the full ack
+      // timeout and fell to CPU, stretching one gate past 18 minutes). The
+      // empty-pre BOUND propagate is a browser-donor form; the NATIVE donor's
+      // propagate is STANDALONE-only (zero + scatter the GIVEN indices into
+      // the matrix's own pre buffer, offsets 0) and never answers the bound
+      // shape. So ship the probe pattern AS the type-2 pre payload — the
+      // matrix-local standalone form both donors have executed since v0.3.11.
+      // No resident slice write needed at all (cleaner: nothing shed-able,
+      // nothing stale-able), and the probe times out FAST (8s) to the CPU
+      // path instead of 30s.
+      const out = await this.gpuSparsePropagate(matrixName, Uint32Array.from(sparseIndices), ws, 8_000);
       if (out && out.length) {
         this._gateProbeGpu = (this._gateProbeGpu || 0) + 1;
         if (!this._gateProbeLogOnce) {
           this._gateProbeLogOnce = true;
-          console.log(`[Brain] GATE PROBES via donor: ON — probe patterns write the resident slice, the bound propagate reads the FULL GPU training mass, currents ride the ack (${out.length.toLocaleString()} rows this first read). Kill switch: DREAM_GATE_GPU_PROBES=0.`);
+          console.log(`[Brain] GATE PROBES via donor: ON — probe indices ride the type-2 standalone propagate against the FULL GPU training mass, currents ride the ack (${out.length.toLocaleString()} rows this first read). Kill switch: DREAM_GATE_GPU_PROBES=0.`);
         }
         return out;
       }
