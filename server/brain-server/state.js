@@ -518,6 +518,10 @@ const SERVER_STATE_MIXIN = {
           // practiced, and the base→best resemblance of that session. `null`
           // means she has never practiced (not "the feature is off").
           practice: this._practiceStats || null,
+          // ARTJUDGE — the viewer's accept/reject/ban verdicts on her drawings,
+          // plus how many words the operator has taught her never to draw.
+          feedback: this._artFeedbackStats || null,
+          notDrawableWords: (() => { try { return this._artBanSet().size; } catch { return 0; } })(),
           // LOOKEYES.1 — the look lane's own ledger: every stage a look-up can
           // die at, counted, plus the last error WITH ITS AGE. Built because the
           // lane starved for ~10h (2 grounds against a ~60-look budget) with
