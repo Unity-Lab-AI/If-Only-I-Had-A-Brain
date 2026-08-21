@@ -8204,6 +8204,15 @@ export const K_MIXIN = {
       this._hb(`[Curriculum] _teachLetterSequenceDirect SKIPPED — cluster.synapses.ojaUpdate not available`);
       return;
     }
+    // GPUVERB.2 (2026-08-21) — the alphabet pairs join the GPU: each pair's
+    // one-hot tile pair collapses to ONE [start,len] run per side (absolute —
+    // the intra matrix is cluster-local), and hebbian_ranges carries the WHOLE
+    // rep dose in a ~60-byte frame (donor v0.3.18 rep-dose: pattern written
+    // once, kernel looped). CPU shadow runs every 5th (pair,rep) visit when
+    // the GPU carried that pair's dose, full pass otherwise — nothing dropped.
+    const _gpuPairCarried = new Array(pairs).fill(false);
+    let gpuFires = 0;
+    let _seqVisit = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (let i = 0; i < pairs; i++) {
@@ -8212,6 +8221,18 @@ export const K_MIXIN = {
         const xOneHot = encodeLetter(X);
         const yOneHot = encodeLetter(Y);
         if (!xOneHot || !yOneHot || xOneHot.length === 0 || yOneHot.length === 0) { skipped++; continue; }
+        if (rep === 0 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === 'function') {
+          try {
+            const preR = this._featRegionRanges(letterRegion, xOneHot, false);
+            const postR = this._featRegionRanges(letterRegion, yOneHot, false);
+            if (preR && postR) {
+              _gpuPairCarried[i] = cluster._gpuProxy.hebbianRanges(`${cluster.name}_intraSynapses`, lr, reps, preR, postR) === true;
+              if (_gpuPairCarried[i]) gpuFires++;
+            }
+          } catch { _gpuPairCarried[i] = false; }
+        }
+        _seqVisit++;
+        if (_gpuPairCarried[i] && (_seqVisit % 5 !== 0)) continue; // GPU carries the dose; CPU shadow sampled
         const scratch = this._ensureScratchBuffers();
         const preFull = this._fillRegionPatternInto(scratch.pre, letterRegion, xOneHot, true);
         const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, yOneHot, true);
@@ -8230,7 +8251,7 @@ export const K_MIXIN = {
       if ((rep & 7) === 7) await _microtask();
     }
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${pairs} pairs × ${reps} reps target)`);
+    this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s — ${updates} CPU Oja updates · ${gpuFires} GPU rep-doses (×${reps}) · ${skipped} skipped (${pairs} pairs × ${reps} reps target)`);
   },
 
   // iter11-J — Discriminative one-hot word→first-letter binding for
@@ -8425,12 +8446,32 @@ export const K_MIXIN = {
       return vec;
     };
 
+    // GPUVERB.2 (2026-08-21) — letter naming joins the GPU: cross-projection
+    // matrices are matrix-local, so the ranges are REGION-RELATIVE (pre = the
+    // letter tile run, post = the motor tile run) and hebbian_ranges carries
+    // each letter's whole rep dose in one ~60-byte frame. CPU shadow sampled
+    // every 5th visit when carried, full pass otherwise — nothing dropped.
+    const _gpuLetterCarried = new Array(ALPHABET.length).fill(false);
+    let gpuFires = 0;
+    let _nameVisit = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (let i = 0; i < ALPHABET.length; i++) {
         const letter = ALPHABET[i];
         const oneHot = encodeLetter(letter);
         if (!oneHot || oneHot.length === 0) { skipped++; continue; }
+        if (rep === 0 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === 'function') {
+          try {
+            const preR = this._featRegionRanges(letterRegion, oneHot, true);
+            const postR = this._featRegionRanges(motorRegion, oneHot, true);
+            if (preR && postR) {
+              _gpuLetterCarried[i] = cluster._gpuProxy.hebbianRanges(`${cluster.name}_letter_to_motor`, lr, reps, preR, postR) === true;
+              if (_gpuLetterCarried[i]) gpuFires++;
+            }
+          } catch { _gpuLetterCarried[i] = false; }
+        }
+        _nameVisit++;
+        if (_gpuLetterCarried[i] && (_nameVisit % 5 !== 0)) continue; // GPU carries the dose; CPU shadow sampled
         const preLetter = buildRegionSizedOneHot(letterSize, oneHot);
         const postMotor = buildRegionSizedOneHot(motorSize, oneHot);
         try {
@@ -8445,7 +8486,7 @@ export const K_MIXIN = {
     }
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (26 letters × ${reps} reps target)`);
+    this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s — ${updates} CPU Oja updates · ${gpuFires} GPU rep-doses (×${reps}) · ${skipped} skipped (26 letters × ${reps} reps target)`);
 
     // once 26-letter direct writes land, advance the
     // calling subject's subGrade to 'letters'. _teachLetterNamingDirect

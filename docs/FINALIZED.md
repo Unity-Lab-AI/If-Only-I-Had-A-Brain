@@ -36357,3 +36357,16 @@ He called the binary road twice and was right. Shipped **SPRS type 13 `HebbianBo
 - **Release:** `donor-v0.3.26` tag → the hands-off pipeline builds Linux+Windows, attaches assets, bumps the download links, rsyncs the frontend (the KI-22 lane).
 
 Open next (same order, GPUVERB.2): the letter drills + the once-per-def sem→sem secondary ride `hebbian_ranges` (v0.3.18 — already deployed); the generic `_teachHebbian` intra pass + persona-corpus sequence lane get the same treatment with per-lane exactness harnesses.
+
+## 2026-08-21 — GPUVERB.2: every remaining tiled training lane rides hebbian_ranges (deployed verb, no new binary needed)
+
+> Gee (verbatim): *"all training is done by the doner GPUS!!!!!"*
+
+The audit + wiring pass after the 0.3.26 tag. `hebbian_ranges` (donor v0.3.18 — ALREADY on the running pod) carries any teach whose pattern collapses to [start,len] runs, and teach patterns are group-tiled writes, so they collapse. Shipped, each with a mock-proxy harness proving the shipped ranges re-expand to EXACTLY the index sets the CPU math used:
+- **`intraSynapsesHebbian` bio-scale intra pass** (fired per pair per rep by every teach; T18.18 had removed the old dispatch because dense frames hit ~856MB): `denseActiveRanges(pre)` + `indexRanges(activeRows)` → one ~60-byte frame; null-compression = full CPU pass (the donor's expander silently skips oversized ranges — refusing to dispatch is the only honest move). Harness: 10/10 GPU, 2/10 sampled shadow, 10/10 CPU donor-off; ranges exact.
+- **`_teachLetterSequenceDirect`** (alphabet pairs, intra): one range per side per pair, whole rep dose in one frame (25 frames replace 25×reps CPU passes). Exactness proven against the real `_fillRegionPatternInto`.
+- **`_teachLetterNamingDirect`** (letter_to_motor): region-relative ranges (cross matrices are matrix-local). Exactness proven against the drill's own builder for a/m/z.
+- **once-per-definition sem→sem secondary** (curriculum.js): pre==post==the sem active runs, same ranges both sides.
+- All four keep the house dual-write: CPU shadow sampled every 5th visit when the GPU carried, FULL when it didn't — nothing dropped, old donors byte-identical.
+
+**The final classification (every plasticity call site in the tree):** GPU-carried — all cross-projection teach (choke points), sem_to_motor layers 3/3b/4, L1B pair-dose, word-emission drills, alphabet drills, sem→sem secondary, intra Oja pass, lateral:anti (0.3.26 masked verb), intra pre==post==lastSpikes lanes (bound fast path). NOT walk lanes — `learnSentenceHebbian` (GATESTEP refuses >2M neurons, browser-tier only), `learn()` per-tick (browser engine), the `hebbianUpdate` else-branches (dead fallbacks — the mixin is always attached), consolidation replay CPU write (`_skipCpuReplay` gates it at scale). **Remaining CPU, filed as GPUVERB.3:** the two SIGNED-magnitude plain-Hebbian writes (predictive-error delta, WM encode) — the GPU's 0/1 u32 spike model cannot express them; they need a float-mask kernel (donor 0.3.27). BCM is default-off with no kernel.
