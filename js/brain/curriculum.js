@@ -18201,8 +18201,11 @@ export class Curriculum {
       // in the gate/battery wall. propagateChunked is bit-identical math (rows
       // are independent) self-converging to ~30ms slices — the same call the
       // predictive-error path already made years of blocks shorter with.
+      // ROW WINDOW — the cosine readout reads ONLY expected.region's rows, so
+      // only those rows are computed (12M-row full passes → ~1.5M-row region
+      // passes; the gate's own section timer billed the difference at 63.5s).
       const output = (typeof cluster.synapses.propagateChunked === 'function')
-        ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 })
+        ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536, rowStart: sample.expected.region.start, rowEnd: sample.expected.region.end })
         : cluster.synapses.propagate(input);
       const readout = this._tileReadVec(output, sample.expected.region, sample.expected.feat.length);
       if (this._cosine(readout, sample.expected.feat) > cosMin) pass++;
@@ -18241,8 +18244,9 @@ export class Curriculum {
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
       // GATEPIN.1 — sliced propagate; see _probeCombinationCosine above.
+      // ROW WINDOW — the argmax reads ONLY tagRegion's rows.
       const output = (typeof cluster.synapses.propagateChunked === 'function')
-        ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 })
+        ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536, rowStart: sample.tagRegion.start, rowEnd: sample.tagRegion.end })
         : cluster.synapses.propagate(input);
       let bestName = null, bestSum = -Infinity;
       for (const bucket of sample.buckets) {

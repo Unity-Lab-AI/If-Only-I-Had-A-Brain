@@ -2953,8 +2953,9 @@ export const K_MIXIN = {
       // SEQ pair (measured live as the unmarked ~3s blocks with a stale
       // teachStage). Chunked is bit-identical and lets the loop breathe.
       this._tstage('gate:probe-seq');   // LOOPNAME
+      // ROW WINDOW — the SEQ readout reads ONLY the letter region's rows.
       const output = (typeof cluster.synapses.propagateChunked === 'function')
-        ? await cluster.synapses.propagateChunked(input, { chunkRows: 250000 })
+        ? await cluster.synapses.propagateChunked(input, { chunkRows: 250000, rowStart: letterRegion.start, rowEnd: letterRegion.end })
         : cluster.synapses.propagate(input);
       const letterOut = new Float64Array(invSize);
       for (let d = 0; d < invSize; d++) {

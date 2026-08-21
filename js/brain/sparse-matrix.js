@@ -643,7 +643,16 @@ export class SparseMatrix {
     const yieldMacro = (typeof setImmediate === 'function')
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
-    for (let base = 0; base < rows; ) {
+    // ROW WINDOW (2026-08-21) — callers that read ONLY one region of the
+    // output (the gate probes: cosine readout over expected.region, argmax
+    // over tagRegion, SEQ over the letter region) pass rowStart/rowEnd and
+    // pay for exactly those rows. Bit-identical inside the window; rows
+    // outside stay 0 in I, which those callers never read. The math-K gate's
+    // 39-sample arithmetic battery was 39 FULL 12M-row propagates (63.5s,
+    // billed by the gate's own section timer) to read a 1.5M-row region.
+    const _rLo = Math.max(0, (opts.rowStart | 0) || 0);
+    const _rHi = (opts.rowEnd > 0) ? Math.min(rows, opts.rowEnd) : rows;
+    for (let base = _rLo; base < _rHi; ) {
       const chunk = this._propChunkRows;
       const end = Math.min(rows, base + chunk);
       const t0 = Date.now();

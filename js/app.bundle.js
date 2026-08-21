@@ -526,7 +526,9 @@ var init_sparse_matrix = __esm({
         const FLOOR = Math.min(CEIL, 16384);
         if (!this._propChunkRows || this._propChunkRows > CEIL) this._propChunkRows = CEIL;
         const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-        for (let base = 0; base < rows; ) {
+        const _rLo = Math.max(0, opts.rowStart | 0 || 0);
+        const _rHi = opts.rowEnd > 0 ? Math.min(rows, opts.rowEnd) : rows;
+        for (let base = _rLo; base < _rHi; ) {
           const chunk = this._propChunkRows;
           const end = Math.min(rows, base + chunk);
           const t0 = Date.now();
@@ -73253,7 +73255,7 @@ var K_MIXIN = {
           }
         }
         this._tstage("gate:probe-seq");
-        const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 25e4 }) : cluster.synapses.propagate(input);
+        const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 25e4, rowStart: letterRegion.start, rowEnd: letterRegion.end }) : cluster.synapses.propagate(input);
         const letterOut = new Float64Array(invSize);
         for (let d = 0; d < invSize; d++) {
           let sum = 0;
@@ -108126,7 +108128,7 @@ var Curriculum = class _Curriculum {
         if (!inp || !inp.region || !inp.feat) continue;
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
-      const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 }) : cluster.synapses.propagate(input);
+      const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536, rowStart: sample.expected.region.start, rowEnd: sample.expected.region.end }) : cluster.synapses.propagate(input);
       const readout = this._tileReadVec(output, sample.expected.region, sample.expected.feat.length);
       if (this._cosine(readout, sample.expected.feat) > cosMin) pass++;
       if (Date.now() - _lastYield > 200) {
@@ -108157,7 +108159,7 @@ var Curriculum = class _Curriculum {
         if (!inp || !inp.region || !inp.feat) continue;
         this._tileWriteVec(input, inp.region, inp.feat, inp.binarize !== false);
       }
-      const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536 }) : cluster.synapses.propagate(input);
+      const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 65536, rowStart: sample.tagRegion.start, rowEnd: sample.tagRegion.end }) : cluster.synapses.propagate(input);
       let bestName = null, bestSum = -Infinity;
       for (const bucket of sample.buckets) {
         let sum = 0;
