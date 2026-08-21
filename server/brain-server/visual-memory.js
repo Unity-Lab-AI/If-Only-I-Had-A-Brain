@@ -406,28 +406,18 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       }
     } catch { /* repeat gate best-effort — intake proceeds */ }
 
-    // concept binding — label first (image prompts name what she made).
-    // CAMPOISON (2026-08-21, operator law): an unlabeled CAMERA frame binds to
-    // NOTHING. It used to fuse with whatever word she was THINKING in that
-    // moment — so a virtual-webcam placeholder card became the TRUSTED,
-    // CONFIRMED visual memory of an unrelated thought word (live incident: the
-    // "connect your webcam" card bound to a thought word and showed on the
-    // viewer as her memory of it). A camera cannot know what she is thinking
-    // about; only a labeled frame names what it shows. She still EXPERIENCES
-    // the seeing (sem grounding below) — she just never files it under a word.
-    let tokens = this._vmContentTokens(msg.label);
-    if (tokens.length === 0 && !fromCamera) {
-      try {
-        const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
-        const last = chain.length ? chain[chain.length - 1] : null;
-        tokens = this._vmContentTokens(typeof last === 'string' ? last : (last && last.sentence) || '');
-        if (tokens.length === 0 && this.cortexCluster && this.cortexCluster._globalWorkspace
-            && typeof this.cortexCluster._globalWorkspace.getBroadcast === 'function') {
-          const b = this.cortexCluster._globalWorkspace.getBroadcast();
-          tokens = this._vmContentTokens(b && b.label ? String(b.label).replace(/^cortex:/, '') : '');
-        }
-      } catch { /* binding is best-effort — an unbound frame still grounds sem below */ }
-    }
+    // concept binding — the LABEL names what the frame shows, and NOTHING
+    // else ever does. CAMPOISON cut camera frames from fusing with her
+    // thoughts; WORDLOCK (2026-08-21, operator: "there is still something
+    // wrong that not lining up between the word [she] is drawing or imagining
+    // and what is put into the url") finishes the job: an unlabeled frame of
+    // ANY source binds to NOTHING — the thought-chain fallback fused
+    // unlabeled generated images with whatever word she happened to be
+    // thinking, the single biggest word/image mismatch machine. She still
+    // EXPERIENCES every frame (sem grounding below); she only FILES the ones
+    // whose label says what they are. Labels are capped to the first 3
+    // content words — a subject is a couple of words, never a sentence.
+    const tokens = this._vmContentTokens(msg.label).slice(0, 3);
     const store = this._vmStore();
     // GENERATED-IMAGE CONFIRMATION GATE (operator directive) — an image
     // generator is a NOISY oracle: "drag" can come back a balloon; an
@@ -1185,7 +1175,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     this._vmRefFetchAt.set(key, now);
     this._vmLook().attempts++;
     try {
-      const prompt = opts.promptOverride || this._referenceImagePrompt(concept);
+      // WORDLOCK (2026-08-21, operator: "there is still something wrong that
+      // not lining up between the word [she] is drawing or imagining and what
+      // is put into the url for pollinations") — the prompt built from the
+      // FULL concept (often a whole thought sentence) while the store bound
+      // under only its FIRST content word: the URL asked for one thing, the
+      // label claimed another. The prompt now builds from the KEY — the exact
+      // word the image will be bound to and shown under. One word in, one
+      // word bound, one word labeled.
+      const prompt = opts.promptOverride || this._referenceImagePrompt(key);
       if (!prompt) return this._vmLookFail(key, 'noPrompt');
       let url = '';
       // NOLIMIT — request a 512² reference (was 256²). One fetch per 10min brain-wide

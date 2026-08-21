@@ -36284,3 +36284,16 @@ There WAS a line generator doing it: `_artMass`'s crayon treatment — its own c
 - **FRESHEYES9:** store v8 → v9 (v8's session predates all of the above); operator's example images + every test render deleted.
 
 **Board: 3 open / 234 closed.**
+
+## 2026-08-21 — WORDLOCK: the word, the URL, and the binding are finally the SAME word
+
+> Gee (verbatim): *"there is still something wrong that not lining up between the word [she] is drawing or imagining and what is put into the url for pollinations"*
+
+Three real mismatch machines, all found by reading the actual paths:
+- **The look-up lane:** the Pollinations prompt built from the FULL concept (often a whole thought sentence) while the store bound under only its FIRST content word — the URL asked for one thing, the label claimed another. The prompt now builds from the KEY: one word in, one word bound, one word labeled.
+- **The generated-image return lane, bug A:** the browser's label decoder matched only the LEGACY `/image/` URL path — current `/prompt/` renders came back with NULL labels, and the server's fallback **fused them with whatever word she happened to be thinking** (the webcam-poison mechanism, alive and well for generated images — likely THE biggest source of "the image is nothing like the word").
+- **Bug B:** when the decoder did match, the label was the WHOLE prompt — subject + association words + mood words — and the server bound the image under up to SIX of them ("vibrant" could own a skull-ring image and later surface as `draw:fav:vibrant`).
+
+**The lock:** both URL shapes decode; the label is the SUBJECT ONLY (the prompt's first comma-segment — every steering/mood tail lives after commas by construction); the server binds a frame ONLY to its label's words, capped at 3 — **the thought-chain fallback is deleted for every source** (CAMPOISON cut camera; WORDLOCK cuts the rest). She still experiences every frame; she only FILES the ones whose label says what they are. Verified: both URL shapes → subject-only labels, unknown URLs → null, null label → zero bindings, "skull ring" → exactly [skull, ring]. The mismatched bindings sitting in the live store die with the already-staged v9 fresh eyes at the press.
+
+**Board: 3 open / 235 closed.**

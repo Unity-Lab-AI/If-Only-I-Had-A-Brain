@@ -144,9 +144,18 @@ let _lastImageAt = 0;
 
 function promptFromUrl(url) {
   try {
-    const m = /\/image\/([^?]+)/.exec(url);
+    // WORDLOCK (2026-08-21) — two label bugs made images bind to the wrong
+    // words: (1) only the legacy /image/ path matched, so current /prompt/
+    // renders returned NULL labels and the server fused them with whatever
+    // word she was THINKING; (2) the label was the WHOLE prompt — subject +
+    // association words + mood words — and the server bound the image under
+    // up to six of them. Both URL shapes match now, and the label is the
+    // SUBJECT ONLY: the prompt's first comma-segment (the request base —
+    // every steering/mood tail lives after commas by construction).
+    const m = /\/(?:image|prompt)\/([^?]+)/.exec(url);
     if (!m) return null;
-    return decodeURIComponent(m[1]).replace(/\+/g, ' ').slice(0, 160);
+    const full = decodeURIComponent(m[1]).replace(/\+/g, ' ');
+    return full.split(',')[0].trim().slice(0, 80) || null;
   } catch { return null; }
 }
 
