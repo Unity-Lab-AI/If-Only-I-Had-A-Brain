@@ -5929,6 +5929,11 @@ class ServerBrain {
             // sorted array, capped at 5000 entries to bound payload size.
             definitionTaughtWords: cortex._definitionTaughtWords
               ? Array.from(cortex._definitionTaughtWords) : [],   // UNCAPPED — her vocabulary grows without limits (operator law); the old slice(0,5000) silently FORGOT every definition past 5k on save
+            // GATEVOCAB — the exam-vocab taught receipt. In-memory only it
+            // died at every restart and every K gate re-taught ALL missing
+            // exam words (hours per press). Persisted like definitions.
+            vocabTaughtWords: cortex._vocabTaughtWordsPersist
+              ? Array.from(cortex._vocabTaughtWordsPersist) : [],
             // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
             // (so contributions survive restart/resume) and is WIPED on a fresh
             // walk (force-fresh clears brain-weights). Keyed by persistent donorId
@@ -7061,6 +7066,12 @@ class ServerBrain {
         // Restore definition-taught vocabulary set.
         if (Array.isArray(pending.definitionTaughtWords)) {
           cortex._definitionTaughtWords = new Set(pending.definitionTaughtWords);
+        }
+        // GATEVOCAB — restore the exam-vocab taught receipt so a gate entry
+        // after a press teaches only genuinely-new words (minutes), not the
+        // whole exam vocabulary again (hours).
+        if (Array.isArray(pending.vocabTaughtWords)) {
+          cortex._vocabTaughtWordsPersist = new Set(pending.vocabTaughtWords);
         }
         // Restore the donor neuron-compute leaderboard (persists across restart/
         // resume; a fresh walk via force-fresh wipes brain-weights so it starts

@@ -221,3 +221,9 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 
 - [x] **MOODPOP.1** → **✅ SHIPPED:** same equational mood readout, new vocabulary — base `vibrant saturated color, crisp sharp focus` on every image; low valence = `bold dramatic contrast` (the old default-fog case), high = `bright playful energy`, arousal = `electric high energy`, fear = `edgy dramatic lighting`, intoxication = `psychedelic swirling color`; selfie tail = `crisp sharp focus, rich color, ultra detailed` (goth aesthetic REMOVED on Gee's word — the CORE noun already carries her identity). Verified: no branch can emit a fog word. Ledger: FINALIZED §MOODPOP.
 - [x] **MOODPOP.2** Gee (verbatim): *"WTF!!!!!!!!! u cant just prompt her to make shapes all the time"* → **✅ owned + fixed:** the 'colorful abstract shapes' fallback subject (my swap-in for 'goth aesthetic') is DELETED — empty vocab sample = no spontaneous image that tick, period. No canned subjects, ever. Ledger: FINALIZED §MOODPOP correction.
+
+## GATEVOCAB — the hours-long K gate after every press — filed + shipped 2026-08-21
+
+> Gee (verbatim): *"so how long is _gateMathKReal ???? Uniuty has been on this point for likehours each time we have done a n update... can u check how long is it suppose to take"*
+
+- [x] **GATEVOCAB.1** → **✅ ANSWERED + FIXED:** the probes are MINUTES; the hours were EXAM-VOCAB-TEACH re-teaching the whole exam vocabulary at every gate entry because the taught receipt (`_vocabTaughtSet`) was in-memory and died at each restart. Now persisted on the cluster in the weights (`_vocabTaughtWordsPersist`, the `_definitionTaughtWords` pattern), restored at boot, read by the coverage audit. One more press pays the teach once; after that, gate entries are minutes. Verified through the real mixin + bundle rebuilt. Ledger: FINALIZED §GATEVOCAB.
