@@ -36271,3 +36271,16 @@ The index page has claimed "Fully open source under MIT" all along — **with no
 There WAS a line generator doing it: `_artMass`'s crayon treatment — its own comment confessed *"one continuous waxy zigzag filling the part"* — bounced left-right every step down a part, and on tall thin parts that is literally chained V's; since COLORART it fired per part, scattering them across every crayon piece. **Replaced with how a hand actually colors:** short overlapping strokes running along the part's LONG axis, two loose passes with angle wobble and waxy pressure (varying alpha), each stroke's length CLAMPED to the part's real extent in its own direction — the first replacement draft let strokes overshoot thin parts and weave back into zigzag, caught on the render and fixed before shipping. Judged on three part shapes (tall-thin, wide, square): all read as hand-colored crayon patches, no V-chains.
 
 **Board: 3 open / 232 closed.**
+
+## 2026-08-21 — COLORLINE + STYLECULL + FRESHEYES9: color-true outlines, scenery-proof parts, two ugly hands retired
+
+> Gee (verbatim): *"okay she is still using white lines to outline when she should be using the colors of the image that the outline is made of"*
+> Gee (verbatim): *"okay i put two examples of the images with shitty draw styles one is the zigzags i talked about before and the other is just a cloud of dots.. these draw styles need to be removed"* · *"and dont forget to clear the visual memory again"* · *"get rid of all these poor images"*
+
+- **COLORLINE:** every trace stroke now wears its sampled REAL color — the mono-ink exception included. The read is protected by shifting VALUE, never abandoning hue: a structural stroke keeps its own color but goes darker on a light body / lighter on a dark one (the mushy-outline failure that created the old white ink stays fixed, with the image's colors). Judged on renders: dark warm-gray contours from the subject's real edges, pale paws in their true light tones — no white.
+- **TRACE SCENERY FILTER:** the hull decontamination never covered the trace — frame-spanning backdrop strokes drew as big bars straight through the subject (judged: two black bars). The same rule now filters trace strokes at draw time.
+- **BGPART:** parts wearing the BACKDROP's color (or spanning the frame — two w=0.99 gray bands measured live) paint no mass; the backdrop probe samples an 8-point border band INSET past the reconstruction's black corner padding (the corner probe measured [0,0,0] — a miss caught by printing the numbers) with per-channel median. Verified: 8/16 parts correctly flagged on the reference; the pale bleeding blobs are gone from the render.
+- **STYLECULL:** pointillism ("just a cloud of dots") and crosshatch (X-hash clusters) are REMOVED from the roster on the operator's two example images; the dead 'dots' treatment deleted. Crayon survives — its hand was rebuilt (ZIGZAGKILL). Roster: poster · pencil · ink · watercolor · crayon · doodle.
+- **FRESHEYES9:** store v8 → v9 (v8's session predates all of the above); operator's example images + every test render deleted.
+
+**Board: 3 open / 234 closed.**

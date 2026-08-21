@@ -2054,8 +2054,11 @@ const SERVER_CHAT_MIXIN = {
       { name: 'pencil',      mass: 'hatch',    ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0 },
       { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0 },
       { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0 },
-      { name: 'pointillism', mass: 'dots',     ink: 'palette',  outlineW: 0,     outlineA: 0.4, detailMul: 0.2, scale: 1.0 },
-      { name: 'crosshatch',  mass: 'xhatch',   ink: 'graphite', outlineW: 0.006, outlineA: 0.9, detailMul: 0.8, scale: 1.0 },
+      // STYLECULL (2026-08-21, operator's two example images): pointillism
+      // ("just a cloud of dots") and crosshatch (X-hash clusters read as
+      // zigzag scratch) are REMOVED from the roster — judged as shit on live
+      // pieces, twice. Crayon survives because its hand was rebuilt
+      // (ZIGZAGKILL: short overlapping long-axis strokes).
       { name: 'crayon',      mass: 'scribble', ink: 'palette',  outlineW: 0.012, outlineA: 0.9, detailMul: 0.6, scale: 1.0 },
       { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55 },
     ];
@@ -2080,8 +2083,10 @@ const SERVER_CHAT_MIXIN = {
       }
     } catch { /* no learned taste — mood weights stand alone */ }
     // Mood weights: high arousal favors bold (ink/poster/crayon), low valence
-    // favors graphite moods (pencil/crosshatch), dreaminess favors soft
-    // (watercolor/pointillism). All styles always possible — weights, not gates.
+    // favors graphite moods (pencil), dreaminess favors soft (watercolor).
+    // All styles always possible — weights, not gates. (STYLECULL: the
+    // pointillism/crosshatch weights below are inert since those styles left
+    // the roster; kept as name checks that simply never match.)
     const w = styles.map(s => {
       let wt = 1;
       if (arousal > 0.65 && (s.name === 'ink' || s.name === 'poster' || s.name === 'crayon')) wt += 1.2;
@@ -2160,14 +2165,8 @@ const SERVER_CHAT_MIXIN = {
       }
       return;
     }
-    if (m === 'dots') {
-      const n = Math.max(12, Math.round(pw * ph * 2600));
-      for (let i = 0; i < n; i++) {
-        const a2 = rnd() * Math.PI * 2, rr = Math.sqrt(rnd());
-        out.push({ type: 'point', x: cx + Math.cos(a2) * rr * pw * 0.5, y: cy + Math.sin(a2) * rr * ph * 0.5, r: 1, rgb: [Math.max(0, rgb[0] + Math.round((rnd() - 0.5) * 50)), Math.max(0, rgb[1] + Math.round((rnd() - 0.5) * 50)), Math.max(0, rgb[2] + Math.round((rnd() - 0.5) * 50))] });
-      }
-      return;
-    }
+    // (STYLECULL — the 'dots' treatment is gone with pointillism: "just a
+    // cloud of dots", judged on a live piece.)
     if (m === 'scribble') {
       // ZIGZAGKILL (2026-08-21, operator: "these zighzag lines… look like 3
       // V's really close together… really off putting") — the old treatment
@@ -2794,7 +2793,7 @@ const SERVER_CHAT_MIXIN = {
         // at odd angles over the piece ("like note book paper" — judged live
         // on a hot-pink crayon piece). A colorless schema draws underpaint +
         // trace only; texture is earned by knowing where the colors go.
-        const coloredNF = schema.parts.filter(p => Array.isArray(p.rgb));
+        const coloredNF = schema.parts.filter(p => Array.isArray(p.rgb) && !p.bg);   // BGPART
         for (const p of coloredNF) {
           const cx = mapX(p.cx), cy = mapY(p.cy);
           const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
@@ -2808,7 +2807,7 @@ const SERVER_CHAT_MIXIN = {
       // image has, the light and dark in the right places. Falls back to the
       // old 3-part single-ink shading for pre-color schemas.
       if (style.mass === 'fill' || style.mass === 'wash') {
-        const colored = schema.parts.filter(p => Array.isArray(p.rgb));
+        const colored = schema.parts.filter(p => Array.isArray(p.rgb) && !p.bg);   // BGPART — backdrop-colored cells paint no mass
         if (colored.length) {
           // each part = THREE offset soft blobs at low alpha, not one crisp
           // ellipse — a single blob per cell rendered as an obvious column of
@@ -2870,19 +2869,50 @@ const SERVER_CHAT_MIXIN = {
       // monochrome hand) and pre-color schemas keep the single-ink line.
       const tN = schema.trace.length;
       const structural = Math.max(10, Math.ceil(tN * 0.3));
-      const useRealC = style.ink !== 'mono' && Array.isArray(schema.traceRgb) && schema.traceRgb.length;
+      // COLORLINE (2026-08-21, operator: "she is still using white lines to
+      // outline when she should be using the colors of the image that the
+      // outline is made of") — EVERY stroke wears its sampled real color, the
+      // mono exception included. The read is protected by shifting VALUE, not
+      // by abandoning hue: a structural stroke keeps its own color but goes
+      // darker on a light body / lighter on a dark one, so the outline is the
+      // image's color AND still separates from the underpaint (the mushy-
+      // outline failure that created the old white ink stays fixed).
+      const useRealC = Array.isArray(schema.traceRgb) && schema.traceRgb.length;
+      let bodyLum = 60;   // no underpaint = her dark paper
+      if (style.mass === 'fill' || style.mass === 'wash') {
+        const bp = this._artInk(style, schema, 0.6, rnd, defColor);
+        bodyLum = 0.299 * bp[0] + 0.587 * bp[1] + 0.114 * bp[2];
+      }
+      const clamp255 = (v) => Math.max(0, Math.min(255, Math.round(v)));
       for (let ti = 0; ti < tN; ti++) {
         const tp = schema.trace[ti];
         if (!Array.isArray(tp) || tp.length < 2) continue;
         if (ti >= structural && rnd() > skill.keepP) continue;
+        // SCENERY FILTER — the hull decontamination never covered the TRACE:
+        // frame-spanning strokes (a backdrop edge, a table line) drew as big
+        // bars straight through her subject (judged on the color-line render).
+        // Same rule as the hull: a stroke spanning most of the frame in one
+        // axis while staying flat in the other is scenery, not the subject.
+        {
+          let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+          for (const pp of tp) { mnx = Math.min(mnx, pp[0]); mxx = Math.max(mxx, pp[0]); mny = Math.min(mny, pp[1]); mxy = Math.max(mxy, pp[1]); }
+          const wSpan = mxx - mnx, hSpan = mxy - mny;
+          if ((wSpan > 0.7 && hSpan < 0.08) || (hSpan > 0.7 && wSpan < 0.08)) continue;
+        }
         const pts = tp.map(pp => [mapX(pp[0]) + jit(), mapY(pp[1]) + jit()]);
-        // the STRUCTURAL strokes keep the contrast ink — the read must never
-        // sink into its own color layer (judged live: the outline went mushy
-        // when everything wore real colors); the detail TAIL wears the real
-        // colors, which is where the fine-contour color lives anyway.
         let ink = traceInk;
-        const rc = (useRealC && ti >= structural) ? schema.traceRgb[ti] : null;
-        if (Array.isArray(rc)) ink = [Math.round(rc[0] * 0.75), Math.round(rc[1] * 0.75), Math.round(rc[2] * 0.75)];
+        const rc = useRealC ? schema.traceRgb[ti] : null;
+        if (Array.isArray(rc)) {
+          if (ti < structural) {
+            // hue his, contrast hers: value-shift the stroke's own color away
+            // from the body it sits on
+            const k = bodyLum > 120 ? 0.45 : 1.6;
+            const floor = bodyLum > 120 ? 0 : 46;
+            ink = [clamp255(rc[0] * k + floor), clamp255(rc[1] * k + floor), clamp255(rc[2] * k + floor)];
+          } else {
+            ink = [clamp255(rc[0] * 0.75), clamp255(rc[1] * 0.75), clamp255(rc[2] * 0.75)];
+          }
+        }
         out.push({ type: 'poly', pts, rgb: ink, w: tw, a: style.outlineA });
       }
     } else if (Array.isArray(schema.outlines)) {
