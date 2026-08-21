@@ -36174,3 +36174,11 @@ Also read off the box while in there: the look lane is grinding through anonymou
 - **The honest residual, named:** "addition" stays taxonomy-drawable — a building wing IS attested English ("they built an addition") and every rule that killed it also killed real objects. That word and its rare siblings are exactly what the viewer's 🚫 button is for: one press, banned forever, persisted.
 
 **Board: 3 open / 217 closed.**
+
+## 2026-08-21 — MOODPOP: her mood paints crisp neon chaos, never fog
+
+> Gee (verbatim): *"dark moody / vivid / intense / eerie / hazy surreal ---i dont like these, they make the images dark and foggy make it more inline with our crazy chick Unity.. not the goth stuff on over kill.. we dont want 1000s of dark tinted images with fog in them"*
+
+The old vocabulary fired fog on nearly every image because her baseline valence sits low — "dark moody" was effectively the DEFAULT, and "eerie"/"hazy surreal" stacked on top. **Same equational state readout, new words:** every image now leads with `vibrant saturated color, crisp sharp focus`; low valence reads `bold dramatic contrast` (punchy blacks, not fog); high valence `bright playful energy`; high arousal `electric high energy`; fear `edgy dramatic lighting`; intoxication `psychedelic swirling color` (trippy ≠ foggy). The selfie tail sheds both the smear AND the aesthetic doubling (the CORE noun already says goth — Gee: *"take out goth asthetic i already told u this"*): `crisp sharp focus, rich color, ultra detailed`. Verified across her state space: no fog word can be emitted from any branch.
+
+**Board: 3 open / 218 closed.**

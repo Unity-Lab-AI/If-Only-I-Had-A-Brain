@@ -214,3 +214,9 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 
 - [x] **SCRIBBLEKILL.1** → **✅** 1.png = colorless schema + palette GUESSER (magenta, incident #2 — DELETED) + whole-bbox crayon scribble (the parallel bars — DELETED; texture is per-part or absent). Colorless-crayon render verified: no bars, no pink. Ledger: FINALIZED §SCRIBBLEKILL.
 - [x] **SCRIBBLEKILL.2** words like "addition" → **✅ gate hardened over three MEASURED rounds** (communication-primary guard dropped — killed "book"; unattested-noun guard requires other-POS attestation — spares "crayon", refuses have/go/see/there; attestation-dominance tried and deleted — killed book/table/fire). Battery 73/73. Honest residual: "addition" is attested English for a building wing — that's what the 🚫 button is for. Ledger: FINALIZED §SCRIBBLEKILL.
+
+## MOODPOP — crazy-chick color, no fog — filed + shipped 2026-08-21
+
+> Gee (verbatim): *"dark moody / vivid / intense / eerie / hazy surreal ---i dont like these, they make the images dark and foggy make it more inline with our crazy chick Unity.. not the goth stuff on over kill.. we dont want 1000s of dark tinted images with fog in them"*
+
+- [x] **MOODPOP.1** → **✅ SHIPPED:** same equational mood readout, new vocabulary — base `vibrant saturated color, crisp sharp focus` on every image; low valence = `bold dramatic contrast` (the old default-fog case), high = `bright playful energy`, arousal = `electric high energy`, fear = `edgy dramatic lighting`, intoxication = `psychedelic swirling color`; selfie tail = `crisp sharp focus, rich color, ultra detailed` (goth aesthetic REMOVED on Gee's word — the CORE noun already carries her identity). Verified: no branch can emit a fog word. Ledger: FINALIZED §MOODPOP.

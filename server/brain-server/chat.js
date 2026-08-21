@@ -3275,7 +3275,10 @@ const SERVER_CHAT_MIXIN = {
     try { concept = (typeof this._sampleCurrentVocab === 'function' ? this._sampleCurrentVocab() : '') || ''; } catch { /* nf */ }
     // TU.29.7 — she composes this prompt too (concept + her associations + her
     // mood), instead of the retired canned template.
-    const prompt = this._composeImagePrompt(concept || 'goth aesthetic');
+    // MOODPOP — the empty-vocab fallback was 'goth aesthetic' (a whole goth
+    // image out of nowhere — another dark-image fountain); her mood tail
+    // already carries her state, the subject stays colorful
+    const prompt = this._composeImagePrompt(concept || 'colorful abstract shapes');
     if (this.clients && this.clients.size > 0) {
       const payload = JSON.stringify({ type: 'generate_image', prompt, spontaneous: true, seed: 'drive', ts: now });
       for (const [ws] of this.clients) { if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* nf */ } } }
@@ -3378,16 +3381,25 @@ const SERVER_CHAT_MIXIN = {
         }
       }
     } catch { /* association enrichment is best-effort — bare concept stands */ }
-    // live-affect style tail — equational readout of her state, not cognition
+    // live-affect style tail — equational readout of her state, not cognition.
+    // MOODPOP (2026-08-21, operator: "i dont like these, they make the images
+    // dark and foggy make it more inline with our crazy chick Unity.. not the
+    // goth stuff on over kill.. we dont want 1000s of dark tinted images with
+    // fog in them") — the old vocabulary ("dark moody"/"eerie"/"hazy surreal")
+    // fired fog on nearly every image because her baseline valence sits low.
+    // Same state readout, NEW WORDS: crisp, saturated, electric — her chaos is
+    // neon-on-black energy, never fog. Every branch keeps "crisp"/"clean"
+    // steering so no mood can smear the picture.
     try {
-      const style = [];
+      const style = ['vibrant saturated color, crisp sharp focus'];
       const arousal = (typeof this.arousal === 'number') ? this.arousal : 0.4;
       const valence = (typeof this.valence === 'number') ? this.valence : 0;
       const fear = (typeof this.fear === 'number') ? this.fear : 0;
-      if (valence < 0.15) style.push('dark moody'); else style.push('vivid');
-      if (arousal > 0.7) style.push('intense');
-      if (fear > 0.5) style.push('eerie');
-      try { if (typeof this._drugStateLabel === 'function' && this._drugStateLabel() !== 'sober') style.push('hazy surreal'); } catch { /* sober default */ }
+      if (valence < 0.15) style.push('bold dramatic contrast');   // dark mood = punchy blacks, not fog
+      else style.push('bright playful energy');
+      if (arousal > 0.7) style.push('electric high energy');
+      if (fear > 0.5) style.push('edgy dramatic lighting');
+      try { if (typeof this._drugStateLabel === 'function' && this._drugStateLabel() !== 'sober') style.push('psychedelic swirling color'); } catch { /* sober default */ }
       parts.push(style.join(', '));
     } catch { /* style tail best-effort */ }
     const prompt = parts.filter(Boolean).join(', ').slice(0, 220);
@@ -3481,7 +3493,10 @@ const SERVER_CHAT_MIXIN = {
         'black crop top and plaid mini skirt',
         'black velvet dress and silver jewelry',
       ];
-      const TAIL = 'dark moody aesthetic, ultra detailed';
+      // MOODPOP — the CORE noun already carries her identity; the tail only
+      // steers image quality: crisp + rich color, never smeared, no aesthetic
+      // doubling (operator: "take out goth asthetic i already told u this")
+      const TAIL = 'crisp sharp focus, rich color, ultra detailed';
       // her stated wear — INCLUDING bare skin / named body parts — replaces
       // the wardrobe entirely so clothing never collides with exposed skin
       // ("bare breasts" used to render in the leather because the outfit was
