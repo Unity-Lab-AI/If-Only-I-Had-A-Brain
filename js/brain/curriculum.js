@@ -5544,7 +5544,13 @@ export class Curriculum {
           // Direct propagate. No ticks, no Rulkov, no sem→motor.
           let motorOutput = null;
           try {
-            motorOutput = letterToMotor.propagate(letterPat);
+            // Chunked propagate (bit-identical, yields between row slices) —
+            // the synchronous form pinned the event loop for seconds per
+            // probe at the grown matrices, starving the donor socket AND the
+            // upload pump (UPLINK.1's other half).
+            motorOutput = (typeof letterToMotor.propagateChunked === 'function')
+              ? await letterToMotor.propagateChunked(letterPat, { chunkRows: 250000 })
+              : letterToMotor.propagate(letterPat);
           } catch { motorOutput = null; }
           if (motorOutput && motorOutput.length > 0) {
             // Group-mean per letter bucket → argmax → decode.
@@ -5877,7 +5883,9 @@ export class Curriculum {
                       if (idx < letterSize) letterInput[idx] = 1;
                     }
                   }
-                  const phonOutput = letterToPhon.propagate(letterInput);
+                  const phonOutput = (typeof letterToPhon.propagateChunked === 'function')
+                    ? await letterToPhon.propagateChunked(letterInput, { chunkRows: 250000 })
+                    : letterToPhon.propagate(letterInput);
                   if (phonOutput && phonOutput.length > 0) {
                     // Same a-z inventory clamp as Template 0 — phon
                     // basins should map to letter sounds, not digits
@@ -12511,9 +12519,14 @@ export class Curriculum {
     if (!cluster || !cluster.crossProjections) return null;
     const proj = cluster.crossProjections[projName];
     if (!proj) return null;
-    // Fast path: CPU CSR alive.
+    // Fast path: CPU CSR alive. Chunked (bit-identical, yields between row
+    // slices) — this is THE shared probe helper every grade's gates ride, and
+    // its synchronous propagate was a multi-second loop pin at grown matrices.
     if (proj.values && proj.colIdx && proj.rowPtr && proj.values.length > 0) {
-      return proj.propagate(srcVec);
+      this._tstage('gate:probe-prop');   // LOOPNAME
+      return (typeof proj.propagateChunked === 'function')
+        ? await proj.propagateChunked(srcVec, { chunkRows: 250000 })
+        : proj.propagate(srcVec);
     }
     // GPU proxy fallback for freed CSR on non-whitelisted probe paths.
     if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.propagate === 'function') {
@@ -13010,7 +13023,7 @@ export class Curriculum {
             })
             .filter(Boolean);
           if (pseudoPairs.length >= 2) {
-            const quickSep = this._checkSemBasinSeparation(pseudoPairs, {
+            const quickSep = await this._checkSemBasinSeparation(pseudoPairs, {
               semRegion, motorRegion, overloadMax: 0.40, sampleSize: 4,
             });
             if (quickSep && typeof quickSep.meanCos === 'number'
@@ -13189,7 +13202,7 @@ export class Curriculum {
           }
         }
         if (qaPseudoPairs.length >= 2) {
-          const qaSep = this._checkSemBasinSeparation(qaPseudoPairs, {
+          const qaSep = await this._checkSemBasinSeparation(qaPseudoPairs, {
             semRegion, motorRegion, overloadMax: 0.40, sampleSize: qaPseudoPairs.length,
           });
           if (qaSep && typeof qaSep.meanCos === 'number') {
@@ -15250,7 +15263,7 @@ export class Curriculum {
       // mostly fight the rescale + top-K-prune that fires post-loop.
       if (rep >= 1 && pairs.length >= 2) {
         try {
-          const quickSep = this._checkSemBasinSeparation(pairs, {
+          const quickSep = await this._checkSemBasinSeparation(pairs, {
             semRegion, motorRegion, overloadMax, sampleSize: 4,
             semWTA, semTopK,
           });
@@ -15360,7 +15373,7 @@ export class Curriculum {
         // trained against top-K (sparse, lower-overlap) — sep-probe
         // would systematically overestimate mean-cos and fire spurious
         // ⚠OVERLOAD warnings even when training actually discriminates.
-        sepResult = this._checkSemBasinSeparation(pairs, {
+        sepResult = await this._checkSemBasinSeparation(pairs, {
           semRegion, motorRegion, overloadMax, sampleSize: 8,
           semWTA, semTopK,
         });
@@ -17980,7 +17993,7 @@ export class Curriculum {
    * cosine > ~0.3 signals sem-region overload — patterns collapsed
    * into indistinguishable superpositions, probe can't discriminate.
    */
-  _checkSemBasinSeparation(pairs, opts = {}) {
+  async _checkSemBasinSeparation(pairs, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
     const proj = cluster.crossProjections.sem_to_motor;
@@ -18046,7 +18059,9 @@ export class Curriculum {
           if (idx < semSize) semInput[idx] = 1;
         }
       }
-      const out = proj.propagate(semInput);
+      const out = (typeof proj.propagateChunked === 'function')
+        ? await proj.propagateChunked(semInput, { chunkRows: 250000 })
+        : proj.propagate(semInput);
       if (!out || out.length === 0) continue;
       // out is motor-sized (proj.rows). L2-normalize the vector so
       // cosine is a pure direction comparison (magnitude-free).
@@ -18351,7 +18366,12 @@ export class Curriculum {
           }
         }
         let phonOut;
-        try { phonOut = cluster.crossProjections.letter_to_phon.propagate(preLetter); }
+        try {
+          const _l2p = cluster.crossProjections.letter_to_phon;
+          phonOut = (typeof _l2p.propagateChunked === 'function')
+            ? await _l2p.propagateChunked(preLetter, { chunkRows: 250000 })
+            : _l2p.propagate(preLetter);
+        }
         catch { return null; }
         if (!phonOut || phonOut.length === 0) return null;
         // Phon argmax → letter (the 26-letter inventory backed phoneme buckets)
@@ -20717,7 +20737,9 @@ export class Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = s2m.propagate(semPat);
+        const motorOutput = (typeof s2m.propagateChunked === 'function')
+          ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
+          : s2m.propagate(semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -21353,7 +21375,9 @@ export class Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = s2m.propagate(semPat);
+        const motorOutput = (typeof s2m.propagateChunked === 'function')
+          ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
+          : s2m.propagate(semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -22784,7 +22808,9 @@ export class Curriculum {
       if (semToMotor && motorRegion && nameEmb && nameEmb.length > 0) {
         const semSize = semRegion.end - semRegion.start;
         const semPat = buildPattern(semSize, nameEmb);
-        const motorOutput = semToMotor.propagate(semPat);
+        const motorOutput = (typeof semToMotor.propagateChunked === 'function')
+          ? await semToMotor.propagateChunked(semPat, { chunkRows: 250000 })
+          : semToMotor.propagate(semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -26656,7 +26682,7 @@ export class Curriculum {
    * @param {Array<{input: string, expectTopics: string[]}>} exchanges
    * @returns {{pass, reason}}
    */
-  _gateConversation(exchanges) {
+  async _gateConversation(exchanges) {
     const cluster = this.cluster;
     const allProjs = cluster.crossProjections || {};
     const semRegion = cluster.regions?.sem;
@@ -26707,7 +26733,9 @@ export class Curriculum {
           if (idx < semSize) semPat[idx] = inputEmb[d];
         }
       }
-      const motorOutput = s2m.propagate(semPat);
+      const motorOutput = (typeof s2m.propagateChunked === 'function')
+        ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
+        : s2m.propagate(semPat);
       const mGSize = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / invSize));
       const motorReadout = new Float64Array(invSize);
       for (let d = 0; d < invSize; d++) {
