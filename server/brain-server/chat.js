@@ -1959,48 +1959,85 @@ const SERVER_CHAT_MIXIN = {
     // count → mass, vowel ratio → roundness). Crude on purpose, and it is HER guess
     // rather than a fake likeness or a filtered stock photo.
     if (!schema || !Array.isArray(schema.parts) || schema.parts.length === 0) {
+      // PAINT.4 — no schema? DRAW FROM THE DEFINITION FIRST: the form, fill
+      // color and attached parts come straight out of what the word MEANS.
+      // This covers every word she hasn't looked at yet — any definition she
+      // has been taught is a drawing recipe. Only when she has neither a
+      // schema NOR a definition does the letter-shape guess below run.
+      if (typeof this._defDrivenStrokes === 'function') {
+        try {
+          const defArt = this._defDrivenStrokes(word, box, rnd);
+          if (defArt && defArt.length) return defArt;
+        } catch { /* definition drawing best-effort — the guess below still stands */ }
+      }
+      // PAINT.3 — even her honest guess gets MASS now: a filled body blob with
+      // a thick outline, not hairlines. Crude on purpose, still HER guess, but
+      // it reads as A THING on the page instead of scratch.
       const w = String(word || 'thing');
       const vowels = (w.match(/[aeiou]/g) || []).length / Math.max(1, w.length);
+      const r = 0.5 * (0.55 + 0.45 * vowels);
+      out.push({ type: 'blob', cx: box.cx, cy: box.cy, rx: r * box.w * 0.45, ry: r * box.h * 0.4 * (0.8 + 0.4 * rnd()), ang: (rnd() - 0.5) * 0.6, rgb: this._ownArtInk(null, 0.25, rnd) });
       const lobes = 3 + (w.length % 4);
       for (let i = 0; i < lobes; i++) {
         const a0 = (i / lobes) * Math.PI * 2, a1 = a0 + Math.PI * 2 / lobes;
-        const r = 0.5 * (0.55 + 0.45 * vowels) * (0.85 + 0.3 * rnd());
+        const rr = r * (0.85 + 0.3 * rnd());
         const pts = [];
         for (let t = 0; t <= 4; t++) {
           const a = a0 + (a1 - a0) * (t / 4);
           pts.push([
-            box.cx + Math.cos(a) * r * box.w * 0.5,
-            box.cy + Math.sin(a) * r * box.h * 0.5,
+            box.cx + Math.cos(a) * rr * box.w * 0.5,
+            box.cy + Math.sin(a) * rr * box.h * 0.5,
           ]);
         }
-        put(pts, this._ownArtInk(null, 0.3, rnd));
+        out.push({ type: 'poly', pts, rgb: this._ownArtInk(null, 0.45, rnd), w: 0.008 });
       }
       return out;
     }
-    // WITH A SCHEMA — place each part where she learned it sits, at her own scale,
-    // and draw it as a small bundle of arcs oriented the way that part runs.
+    // WITH A SCHEMA — PAINT.3 (2026-08-21): she paints in LAYERS the way a
+    // person does — big filled masses first, then the contours she traced from
+    // real references, then detail marks — using the rasterizer's FULL toolkit
+    // (blob fill, polygon fill, line weight) that the old construction never
+    // picked up; loose unweighted arcs alone read as scatter, never as the
+    // thing. The definition supplies what the palette can't: a definition
+    // naming a color tints the masses correctly even before her palette settles.
     const fx = schema.frame && schema.frame.w ? schema.frame : { x: 0, y: 0, w: 1, h: 1 };
-    for (const p of schema.parts) {
-      // part centre, mapped from the learned frame into HER box (this is where her
-      // proportions replace the photo's framing)
-      const u = (p.cx - fx.x) / Math.max(1e-3, fx.w);
-      const v = (p.cy - fx.y) / Math.max(1e-3, fx.h);
-      const cx = box.cx + (u - 0.5) * box.w;
-      const cy = box.cy + (v - 0.5) * box.h;
+    const mapX = (x) => box.cx + (((x - fx.x) / Math.max(1e-3, fx.w)) - 0.5) * box.w;
+    const mapY = (y) => box.cy + (((y - fx.y) / Math.max(1e-3, fx.h)) - 0.5) * box.h;
+    const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
+    const defColor = defAttr && defAttr.colors && defAttr.colors[0];
+    const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
+    // ── LAYER 1: MASS — each learned part becomes a filled ellipse where she
+    // learned it sits, tinted by palette + definition. The body of the thing.
+    for (const p of schema.parts.slice(0, 12)) {
+      const cx = mapX(p.cx), cy = mapY(p.cy);
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-      // OWNART.7 (2026-08-21, Gee's chicken-scratch verdict) — the marks-per-part
-      // half of the pre-agreed fidelity lever. With the finer 5×5 schema each part
-      // carries a smaller weight share, so the old 2+w*14 collapsed to ~2-3 marks
-      // scattered wide — the scatter WAS the scratch. More marks per part, and a
-      // much tighter hand: less angle jitter, offsets hugging the part instead of
-      // wandering 55% outside it, gentler bow. Same construction, same law (her
-      // layout, her ink, never the photo) — the strokes just stay ON the part
-      // they belong to, so the assembly reads as the THING.
-      const marks = 2 + Math.round(p.weight * 40);
+      out.push({ type: 'blob', cx, cy, rx: pw * 0.55, ry: ph * 0.55, ang: p.ang, rgb: mixDef(this._ownArtInk(schema, 0.25 + 0.35 * p.weight, rnd)) });
+    }
+    // ── LAYER 2: CONTOUR — the outlines she kept from actually LOOKING at the
+    // thing (PAINT.2). Closed contours fill as shapes then take a thick outline;
+    // open ones draw as weighted strokes. This is where the drawing starts to
+    // READ as the thing rather than as marks.
+    if (Array.isArray(schema.outlines)) {
+      for (const o of schema.outlines) {
+        if (!o || !Array.isArray(o.pts) || o.pts.length < 3) continue;
+        const pts = o.pts.map(pp => [mapX(pp[0]), mapY(pp[1])]);
+        if (o.closed) {
+          out.push({ type: 'fill', pts, rgb: mixDef(this._ownArtInk(schema, 0.5, rnd)) });
+          out.push({ type: 'poly', pts: pts.concat([pts[0]]), rgb: this._ownArtInk(schema, 0.85, rnd), w: 0.01 });
+        } else {
+          out.push({ type: 'poly', pts, rgb: this._ownArtInk(schema, 0.7, rnd), w: 0.007 });
+        }
+      }
+    }
+    // ── LAYER 3: DETAIL — her hand's arcs on the heaviest parts, ON the part
+    // (OWNART.7's tight hand), thin over the filled masses. Texture, not scatter.
+    for (const p of schema.parts.slice(0, 8)) {
+      const cx = mapX(p.cx), cy = mapY(p.cy);
+      const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+      const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+      const marks = 1 + Math.round(p.weight * 18);
       for (let m = 0; m < marks; m++) {
-        // an arc across the part, along its learned orientation, bowed by her own
-        // hand this attempt
         const ang = p.ang + (rnd() - 0.5) * 0.25;
         const len = (0.6 + 0.4 * rnd()) * Math.max(pw, ph);
         const bow = (rnd() - 0.5) * 0.3 * Math.min(pw, ph);
@@ -2008,7 +2045,111 @@ const SERVER_CHAT_MIXIN = {
         const ax = cx + ox - Math.cos(ang) * len * 0.5, ay = cy + oy - Math.sin(ang) * len * 0.5;
         const bx = cx + ox + Math.cos(ang) * len * 0.5, by = cy + oy + Math.sin(ang) * len * 0.5;
         const mx = (ax + bx) / 2 - Math.sin(ang) * bow, my = (ay + by) / 2 + Math.cos(ang) * bow;
-        put([[ax, ay], [mx, my], [bx, by]], this._ownArtInk(schema, 0.35 + 0.4 * p.weight, rnd));
+        put([[ax, ay], [mx, my], [bx, by]], this._ownArtInk(schema, 0.55 + 0.3 * p.weight, rnd));
+      }
+    }
+    return out;
+  },
+
+  // ── PAINT.4 (2026-08-21) — DEFINITION-DRIVEN DRAWING, fully word-generic.
+  // A definition IS a drawing recipe: its shape words say the form, its color
+  // words say the fill, its part words say what to attach — for ANY word whose
+  // definition she holds (multi-def, Hebbian-bound since the dictionary
+  // integration). One generic attribute table over trained knowledge — the same
+  // architecture as the phoneme tables driving her speech, no text-AI anywhere,
+  // and nothing here is specific to any particular word.
+  _defDrawAttributes(word) {
+    const w = String(word || '').toLowerCase().trim();
+    if (!w) return null;
+    let text = '';
+    try {
+      const cx = this.cortexCluster;
+      const d = (cx && typeof cx.lookupDefinitionSync === 'function') ? cx.lookupDefinitionSync(w) : null;
+      if (d && typeof d === 'string') text = d.toLowerCase();
+    } catch { /* no definition cached — attributes come back empty, caller falls through */ }
+    if (!text) return null;
+    const COLORS = {
+      red: [205, 55, 45], green: [70, 150, 60], blue: [60, 90, 200], yellow: [230, 200, 60],
+      orange: [235, 140, 40], purple: [140, 70, 180], pink: [235, 130, 170], brown: [130, 85, 50],
+      black: [35, 32, 38], white: [235, 232, 238], gray: [130, 128, 135], grey: [130, 128, 135],
+      gold: [212, 175, 55], golden: [212, 175, 55], silver: [180, 180, 190], tan: [190, 160, 120],
+    };
+    const colors = [];
+    for (const [name, rgb] of Object.entries(COLORS)) if (new RegExp(`\\b${name}\\b`).test(text)) colors.push(rgb);
+    const has = (re) => re.test(text);
+    const shape =
+      has(/\b(round|rounded|circular|spherical|globular|ball)\b/) ? 'round'
+      : has(/\b(oval|egg-shaped|ovoid)\b/) ? 'oval'
+      : has(/\b(long|elongated|slender|cylindrical)\b/) ? 'long'
+      : has(/\b(flat|thin)\b/) ? 'flat'
+      : has(/\b(square|rectangular|box)\b/) ? 'square'
+      : has(/\b(pointed|conical|triangular)\b/) ? 'pointed'
+      : null;
+    const parts = [];
+    if (has(/\b(stem|stalk)\b/)) parts.push('stem');
+    if (has(/\b(leaf|leaves)\b/)) parts.push('leaves');
+    if (has(/\b(legs?)\b/)) parts.push('legs');
+    if (has(/\b(tail)\b/)) parts.push('tail');
+    if (has(/\b(wings?)\b/)) parts.push('wings');
+    if (has(/\b(ears?)\b/)) parts.push('ears');
+    if (has(/\b(handle)\b/)) parts.push('handle');
+    if (has(/\b(petals?|flower)\b/)) parts.push('petals');
+    return (colors.length || shape || parts.length) ? { colors, shape, parts } : null;
+  },
+  _defDrivenStrokes(word, box, rnd) {
+    const attr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
+    if (!attr || (!attr.shape && !attr.colors.length)) return null;
+    const out = [];
+    const body = attr.colors[0] || this._ownArtInk(null, 0.35, rnd);
+    const dark = [Math.round(body[0] * 0.55), Math.round(body[1] * 0.55), Math.round(body[2] * 0.55)];
+    const green = [70, 150, 60];
+    // Sometimes she draws MORE THAN ONE (Gee: "or draw multiple tomotoes").
+    const count = rnd() < 0.3 ? 2 + Math.floor(rnd() * 2) : 1;
+    for (let i = 0; i < count; i++) {
+      const scale = count === 1 ? 1 : 0.55 + 0.15 * rnd();
+      const cx = count === 1 ? box.cx : box.cx + (i - (count - 1) / 2) * box.w * 0.42;
+      const cy = count === 1 ? box.cy : box.cy + (rnd() - 0.5) * box.h * 0.15;
+      let rx = box.w * 0.32 * scale, ry = box.h * 0.3 * scale, ang = 0;
+      if (attr.shape === 'oval') ry *= 1.25;
+      else if (attr.shape === 'long') { rx *= 1.5; ry *= 0.45; ang = (rnd() - 0.5) * 0.4; }
+      else if (attr.shape === 'flat') { rx *= 1.3; ry *= 0.3; }
+      if (attr.shape === 'square') {
+        const pts = [[cx - rx, cy - ry], [cx + rx, cy - ry], [cx + rx, cy + ry], [cx - rx, cy + ry]];
+        out.push({ type: 'fill', pts, rgb: body });
+        out.push({ type: 'poly', pts: pts.concat([pts[0]]), rgb: dark, w: 0.01 });
+      } else if (attr.shape === 'pointed') {
+        const pts = [[cx, cy - ry], [cx + rx, cy + ry], [cx - rx, cy + ry]];
+        out.push({ type: 'fill', pts, rgb: body });
+        out.push({ type: 'poly', pts: pts.concat([pts[0]]), rgb: dark, w: 0.01 });
+      } else {
+        // round / oval / long / color-only default: the filled mass + outline —
+        // Gee's literal recipe: "draw a circle fill it in with red".
+        out.push({ type: 'blob', cx, cy, rx, ry, ang, rgb: body });
+        const ring = []; for (let t = 0; t <= 20; t++) { const a = (t / 20) * Math.PI * 2; ring.push([cx + Math.cos(a + ang) * rx, cy + Math.sin(a + ang) * ry]); }
+        out.push({ type: 'poly', pts: ring, rgb: dark, w: 0.008 });
+      }
+      // "...and put a stem on it" — attach the parts the definition names.
+      for (const p of attr.parts) {
+        if (p === 'stem') {
+          out.push({ type: 'poly', pts: [[cx, cy - ry], [cx + rx * 0.06, cy - ry - box.h * 0.09 * scale]], rgb: green, w: 0.012 });
+        } else if (p === 'leaves' || p === 'petals') {
+          const n = p === 'petals' ? 6 : 3;
+          for (let k = 0; k < n; k++) {
+            const a = p === 'petals' ? (k / n) * Math.PI * 2 : -Math.PI / 2 + (k - 1) * 0.6;
+            out.push({ type: 'blob', cx: cx + Math.cos(a) * rx * (p === 'petals' ? 1.15 : 0.35), cy: (p === 'petals' ? cy : cy - ry) + Math.sin(a) * ry * (p === 'petals' ? 1.15 : 0.35), rx: rx * 0.22, ry: ry * 0.12, ang: a, rgb: p === 'petals' ? (attr.colors[1] || body) : green });
+          }
+        } else if (p === 'legs') {
+          for (let k = 0; k < 4; k++) out.push({ type: 'poly', pts: [[cx - rx * 0.6 + k * rx * 0.4, cy + ry * 0.8], [cx - rx * 0.6 + k * rx * 0.4, cy + ry * 0.8 + box.h * 0.14 * scale]], rgb: dark, w: 0.012 });
+        } else if (p === 'tail') {
+          out.push({ type: 'poly', pts: [[cx + rx * 0.9, cy], [cx + rx * 1.3, cy - ry * 0.6], [cx + rx * 1.5, cy - ry * 1.1]], rgb: dark, w: 0.01 });
+        } else if (p === 'ears') {
+          for (const s of [-1, 1]) out.push({ type: 'fill', pts: [[cx + s * rx * 0.5, cy - ry * 0.85], [cx + s * rx * 0.85, cy - ry * 1.45], [cx + s * rx * 0.2, cy - ry * 1.05]], rgb: body });
+        } else if (p === 'wings') {
+          for (const s of [-1, 1]) out.push({ type: 'blob', cx: cx + s * rx * 1.1, cy, rx: rx * 0.55, ry: ry * 0.3, ang: s * 0.5, rgb: dark });
+        } else if (p === 'handle') {
+          const arc = []; for (let t = 0; t <= 10; t++) { const a = Math.PI * (t / 10); arc.push([cx + rx * 1.05 + Math.cos(a) * rx * 0.3, cy - Math.sin(a) * ry * 0.5]); }
+          out.push({ type: 'poly', pts: arc, rgb: dark, w: 0.01 });
+        }
       }
     }
     return out;

@@ -125258,21 +125258,51 @@ var MindSpaceGPU = class {
       else if (s.type === "poly" && Array.isArray(s.pts)) {
         for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb, s.w);
       } else if (s.type === "fill" && Array.isArray(s.pts) && s.pts.length >= 3) {
-        let mnx = 1, mny = 1, mxx = 0, mxy = 0;
-        for (const p of s.pts) {
-          if (p[0] < mnx) mnx = p[0];
+        const P = s.pts;
+        let mny = 1, mxy = 0;
+        for (const p of P) {
           if (p[1] < mny) mny = p[1];
-          if (p[0] > mxx) mxx = p[0];
           if (p[1] > mxy) mxy = p[1];
         }
-        const xa = Math.round(mnx * (W - 1)), xb = Math.round(mxx * (W - 1)), ya = Math.round(mny * (H - 1)), yb = Math.round(mxy * (H - 1));
-        for (let yy = ya; yy <= yb; yy++) for (let xx = xa; xx <= xb; xx++) {
-          if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
-          const o = (yy * W + xx) * 4;
-          data[o] = rgb[0];
-          data[o + 1] = rgb[1];
-          data[o + 2] = rgb[2];
-          data[o + 3] = 255;
+        const ya = Math.max(0, Math.round(mny * (H - 1))), yb = Math.min(H - 1, Math.round(mxy * (H - 1)));
+        for (let yy = ya; yy <= yb; yy++) {
+          const fy = yy / (H - 1);
+          const xs = [];
+          for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+            const yi = P[i][1], yj = P[j][1];
+            if (yi > fy !== yj > fy) xs.push(P[j][0] + (P[i][0] - P[j][0]) * (fy - yj) / (yi - yj));
+          }
+          xs.sort((a, b) => a - b);
+          for (let k = 0; k + 1 < xs.length; k += 2) {
+            const xa = Math.max(0, Math.round(xs[k] * (W - 1))), xb2 = Math.min(W - 1, Math.round(xs[k + 1] * (W - 1)));
+            for (let xx = xa; xx <= xb2; xx++) {
+              const o = (yy * W + xx) * 4;
+              data[o] = rgb[0];
+              data[o + 1] = rgb[1];
+              data[o + 2] = rgb[2];
+              data[o + 3] = 255;
+            }
+          }
+        }
+      } else if (s.type === "blob") {
+        const bcx = s.cx ?? 0.5, bcy = s.cy ?? 0.5;
+        const brx = Math.max(1e-3, s.rx ?? 0.1), bry = Math.max(1e-3, s.ry ?? (s.rx ?? 0.1));
+        const bca = Math.cos(s.ang || 0), bsa = Math.sin(s.ang || 0);
+        const rMax = Math.max(brx, bry);
+        const xa = Math.max(0, Math.floor((bcx - rMax) * (W - 1))), xb2 = Math.min(W - 1, Math.ceil((bcx + rMax) * (W - 1)));
+        const ya = Math.max(0, Math.floor((bcy - rMax) * (H - 1))), yb = Math.min(H - 1, Math.ceil((bcy + rMax) * (H - 1)));
+        for (let yy = ya; yy <= yb; yy++) {
+          for (let xx = xa; xx <= xb2; xx++) {
+            const dx = xx / (W - 1) - bcx, dy = yy / (H - 1) - bcy;
+            const u = (dx * bca + dy * bsa) / brx, v = (-dx * bsa + dy * bca) / bry;
+            if (u * u + v * v <= 1) {
+              const o = (yy * W + xx) * 4;
+              data[o] = rgb[0];
+              data[o + 1] = rgb[1];
+              data[o + 2] = rgb[2];
+              data[o + 3] = 255;
+            }
+          }
         }
       }
     }

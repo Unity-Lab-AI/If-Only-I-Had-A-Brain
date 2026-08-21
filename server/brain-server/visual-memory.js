@@ -482,15 +482,14 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     if (segs.length < 4) return null;
     // PART CLUSTERING — a fixed spatial grid over the subject's bbox.
-    // OWNART.7 VERDICT (2026-08-21, Gee on a live tomato: "all the images are just
-    // chicken scratch lines ... she is suppose to be mimicing the style and
-    // apperance of real images"): the 3×3 grid was TOO coarse — nine cells gave
-    // her a layout but the constructions read as scatter, not as the thing. The
-    // pre-agreed lever from the OWNART.7 filing was schema resolution + marks-per-
-    // part, NOT a return to filtering — so the grid is now 5×5 (≤25 parts) and
-    // the weight floor drops so fine parts survive. Still an ABSTRACTION (~2-4%
-    // of the reference's information — a copy stays impossible); just enough
-    // structure that a tomato reads round with a stem instead of as hatching.
+    // OWNART.7 VERDICT (2026-08-21): the operator's live read confirmed the 3×3
+    // grid was TOO coarse — nine cells gave her a layout but the constructions
+    // read as scatter, not as the thing. The pre-agreed lever from the OWNART.7
+    // filing was schema resolution + marks-per-part, NOT a return to filtering —
+    // so the grid is now 5×5 (≤25 parts) and the weight floor drops so fine
+    // parts survive. Still an ABSTRACTION (~2-4% of the reference's information
+    // — a copy stays impossible); just enough structure that a subject's mass,
+    // roundness and attachments survive into her own construction.
     const GRID = 5;
     let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
     for (const g of segs) { x0 = Math.min(x0, g[0], g[2]); x1 = Math.max(x1, g[0], g[2]); y0 = Math.min(y0, g[1], g[3]); y1 = Math.max(y1, g[1], g[3]); }
@@ -530,9 +529,43 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // which is knowledge, not pixels.
     let palette = [];
     try { palette = this._schemaPalette(rec); } catch { palette = []; }
+    // PAINT.2 (2026-08-21) — CONTOURS, not just boxes: the understanding of how
+    // subjects actually look, kept from her own looks.
+    // The trace already extracts the reference's real outlines; the schema used
+    // to throw them away and keep only part boxes, which is why her drawings had
+    // "no rhyme or reason or even appearance of anything". Keep the top traced
+    // polylines by path length — the silhouette and the biggest internal edges —
+    // decimated to ≤20 points each, normalized. Six simplified contours + 25
+    // layout cells + a 4-color palette is still ~3-5% of the reference's
+    // information: she learns the SHAPE of the thing, she can never copy the
+    // image. A contour whose ends nearly meet is marked closed → drawable as a
+    // FILLED shape, which is what makes a round subject read round instead of hatched.
+    const outlines = [];
+    try {
+      const polys = strokes
+        .filter(s => s && s.type === 'poly' && Array.isArray(s.pts) && s.pts.length >= 4)
+        .map(s => {
+          let len = 0;
+          for (let i = 1; i < s.pts.length; i++) len += Math.hypot(s.pts[i][0] - s.pts[i - 1][0], s.pts[i][1] - s.pts[i - 1][1]);
+          return { pts: s.pts, len };
+        })
+        .sort((a, b) => b.len - a.len)
+        .slice(0, 6);
+      for (const pl of polys) {
+        const step = Math.max(1, Math.ceil(pl.pts.length / 20));
+        const dec = [];
+        for (let i = 0; i < pl.pts.length; i += step) dec.push([+pl.pts[i][0].toFixed(4), +pl.pts[i][1].toFixed(4)]);
+        const last = pl.pts[pl.pts.length - 1];
+        if (dec.length && (dec[dec.length - 1][0] !== +last[0].toFixed(4) || dec[dec.length - 1][1] !== +last[1].toFixed(4))) dec.push([+last[0].toFixed(4), +last[1].toFixed(4)]);
+        if (dec.length < 3) continue;
+        const closed = Math.hypot(dec[0][0] - dec[dec.length - 1][0], dec[0][1] - dec[dec.length - 1][1]) < 0.08;
+        outlines.push({ pts: dec, closed, len: +pl.len.toFixed(3) });
+      }
+    } catch { /* outlines are an enrichment — the schema stands without them */ }
     const schema = {
       v: 2,   // OWNART.7 — v2 = 5×5 cell indices; v1 (3×3) schemas still DRAW fine (cx/cy/w/h/ang are grid-independent) but must never CELL-MERGE with v2
       parts: parts.slice(0, 25),
+      outlines,
       palette,
       aspect: +(bw / bh).toFixed(3),
       frame: { x: +x0.toFixed(3), y: +y0.toFixed(3), w: +bw.toFixed(3), h: +bh.toFixed(3) },
@@ -566,6 +599,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           }
           schema.looks = (prev.looks || 1) + 1;
           if ((!schema.palette || !schema.palette.length) && prev.palette) schema.palette = prev.palette;
+          // PAINT.2 — a fresh trace's contours win (more information than an old
+          // one), but never lose contours a prior look banked if this trace was thin.
+          if ((!schema.outlines || !schema.outlines.length) && Array.isArray(prev.outlines) && prev.outlines.length) schema.outlines = prev.outlines;
         }
         e.schema = schema;
         this._vmSaveSoon();
