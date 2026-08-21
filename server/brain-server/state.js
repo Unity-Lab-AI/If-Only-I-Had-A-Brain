@@ -512,6 +512,11 @@ const SERVER_STATE_MIXIN = {
           seenConcepts: seen,         // concepts she holds a field C for
           lastLabel: this._lastSketchLabel || null,
           style: (typeof process !== 'undefined' && process.env && process.env.DREAM_DRAW_STYLE) || 'own',
+          // LOOKEYES.1 — the look lane's own ledger: every stage a look-up can
+          // die at, counted, plus the last error WITH ITS AGE. Built because the
+          // lane starved for ~10h (2 grounds against a ~60-look budget) with
+          // zero remotely-visible evidence — every failure path was silent.
+          lookups: this._vmLookStats || null,
         };
       })(),
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.
