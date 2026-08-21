@@ -9,6 +9,20 @@
 // so governState → governTick → imagineFromState sequencing is preserved
 // without the caller awaiting the governor calls.
 import { parentPort } from 'node:worker_threads';
+// PAINT.6 (2026-08-21) — Node has no ImageData, and the CPU reconstruct path
+// (`transform.js reconstructImageData`, reached via `imagine()`) constructs one.
+// Any server-side caller of imagine() crashed with "ImageData is not defined"
+// before this — which is why the schema palette was being GUESSED from two
+// packed coefficients (the magenta-cat bug) instead of read from real pixels.
+// Minimal structural polyfill: both constructor forms, plain fields only.
+if (typeof globalThis.ImageData === 'undefined') {
+  globalThis.ImageData = class ImageData {
+    constructor(a, b, c) {
+      if (typeof a === 'number') { this.width = a; this.height = b; this.data = new Uint8ClampedArray(a * b * 4); }
+      else { this.data = a; this.width = b; this.height = c; }
+    }
+  };
+}
 import { MindSpaceGPU } from '../js/brain/mindspace/gpu.js';
 
 const ms = new MindSpaceGPU();

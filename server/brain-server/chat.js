@@ -2006,9 +2006,23 @@ const SERVER_CHAT_MIXIN = {
     // invisible on it (harness-caught: 0.1% coverage). A pale gel-pen line is
     // the ink look that actually reads on her canvas.
     if (style && style.ink === 'mono') { const g = 205 + Math.round(rnd() * 40); return [g, g, Math.min(255, g + 8)]; }
-    const base = this._ownArtInk(schema, strength, rnd);
-    if (defColor) return [Math.round(base[0] * 0.45 + defColor[0] * 0.55), Math.round(base[1] * 0.45 + defColor[1] * 0.55), Math.round(base[2] * 0.45 + defColor[2] * 0.55)];
-    return base;
+    // PAINT.6 — THE SUBJECT'S COLOR DOMINATES. The live cat test rendered a
+    // gray/cream cat HOT PINK because _ownArtInk caps the learned palette at
+    // strength×0.6 (typically 15-30%) against base inks that include her pink.
+    // For subject paint, the LEARNED color family leads at 75%; her hand keeps
+    // a 25% tint. Her goth identity lives in the paper, the ink accents and the
+    // style choice — not in repainting every subject pink.
+    const fam = (schema && Array.isArray(schema.palette) && schema.palette.length)
+      ? schema.palette[Math.floor(rnd() * schema.palette.length) % schema.palette.length]
+      : null;
+    const base = this._ownArtInk(null, strength, rnd);
+    let ink = base;
+    if (fam) {
+      const k = 0.75;
+      ink = [Math.round(base[0] * (1 - k) + fam[0] * k), Math.round(base[1] * (1 - k) + fam[1] * k), Math.round(base[2] * (1 - k) + fam[2] * k)];
+    }
+    if (defColor) return [Math.round(ink[0] * 0.45 + defColor[0] * 0.55), Math.round(ink[1] * 0.45 + defColor[1] * 0.55), Math.round(ink[2] * 0.45 + defColor[2] * 0.55)];
+    return ink;
   },
   // Mass treatments — every one built from the same primitives.
   _artMass(out, style, cx, cy, pw, ph, ang, rgb, rnd) {
@@ -2115,19 +2129,118 @@ const SERVER_CHAT_MIXIN = {
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
     const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
-    // ── LAYER 1: MASS — each learned part goes down in the STYLE's mass
-    // treatment (fill / wash / hatch / dots / scribble / none), tinted by
-    // palette + definition. The body of the thing, in whatever hand she's in.
-    for (const p of schema.parts.slice(0, 12)) {
-      const cx = mapX(p.cx), cy = mapY(p.cy);
-      const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
-      const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-      this._artMass(out, style, cx, cy, pw * 1.1, ph * 1.1, p.ang, mixDef(this._artInk(style, schema, 0.25 + 0.35 * p.weight, rnd, defColor)), rnd);
+    // ── LAYER 1: MASS — SILHOUETTE-FIRST (PAINT.6). The live cat test showed
+    // part-cell blobs render as "a column of circles": the grid is a LAYOUT,
+    // not a shape. But the schema HOLDS the shape — the traced silhouette —
+    // so when a closed (or near-closed) outline exists, THE BODY IS THAT
+    // POLYGON, filled in the style's treatment with the subject's own colors.
+    // The form on the page is then the form she actually saw. Part-cell
+    // masses only run as the fallback when no silhouette was captured.
+    let silhouette = null;
+    if (Array.isArray(schema.outlines) && schema.outlines.length) {
+      // biggest closed outline by traced length when one exists…
+      const closed = schema.outlines.filter(o => o && o.closed && Array.isArray(o.pts) && o.pts.length >= 3);
+      silhouette = closed.sort((a2, b2) => (b2.len || 0) - (a2.len || 0))[0] || null;
+      // …but the tracer usually hands back OPEN edge fragments (live cat test:
+      // closed: 0 of 8), and force-closing one edge makes a degenerate sliver
+      // that fills nothing. When nothing closes, the body is the CONVEX HULL of
+      // every point she traced — a real closed polygon around the subject.
+      // Concavities (a neck dip) are lost to the hull, but the interior contour
+      // lines drawn on top carve those back visually.
+      if (!silhouette) {
+        const all = [];
+        // PAINT.7 — hull DECONTAMINATION: the first hull swallowed backdrop
+        // edges and rendered as a trapezoid (live-judged). Points hugging the
+        // frame border, and strokes that span most of the frame in one axis
+        // (the ground line, backdrop gradients), are scenery — not the subject.
+        const src = (Array.isArray(schema.trace) && schema.trace.length >= 10)
+          ? schema.trace.map(pts => ({ pts }))
+          : schema.outlines;
+        for (const o of src) {
+          if (!o || !Array.isArray(o.pts)) continue;
+          let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+          for (const pp of o.pts) { mnx = Math.min(mnx, pp[0]); mxx = Math.max(mxx, pp[0]); mny = Math.min(mny, pp[1]); mxy = Math.max(mxy, pp[1]); }
+          const wSpan = mxx - mnx, hSpan = mxy - mny;
+          if ((wSpan > 0.7 && hSpan < 0.08) || (hSpan > 0.7 && wSpan < 0.08)) continue;   // frame-spanning line = scenery
+          for (const pp of o.pts) {
+            if (pp[0] < 0.03 || pp[0] > 0.97 || pp[1] < 0.03 || pp[1] > 0.97) continue;   // border-hugging = scenery
+            all.push(pp);
+          }
+        }
+        if (all.length >= 3) {
+          // Andrew monotone chain
+          const pts = all.slice().sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+          const cross = (O, A, B) => (A[0] - O[0]) * (B[1] - O[1]) - (A[1] - O[1]) * (B[0] - O[0]);
+          const lower = [];
+          for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+          const upper = [];
+          for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+          const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+          if (hull.length >= 3) silhouette = { pts: hull, closed: true, len: 0, hull: true };
+        }
+      }
     }
-    // ── LAYER 2: CONTOUR — the outlines she kept from actually LOOKING at the
-    // thing (PAINT.2), weighted and inked by the style. Closed contours fill
-    // only in filled styles; a pencil or ink piece keeps them as pure line.
-    if (Array.isArray(schema.outlines)) {
+    if (silhouette) {
+      const sPts = silhouette.pts.map(pp => [mapX(pp[0]), mapY(pp[1])]);
+      // silhouette bounds drive non-fill mass treatments (hatch/dots/scribble)
+      let sx0 = 1, sy0 = 1, sx1 = 0, sy1 = 0;
+      for (const pp of sPts) { sx0 = Math.min(sx0, pp[0]); sx1 = Math.max(sx1, pp[0]); sy0 = Math.min(sy0, pp[1]); sy1 = Math.max(sy1, pp[1]); }
+      const bodyInk = mixDef(this._artInk(style, schema, 0.6, rnd, defColor));
+      // PAINT.7 — when the full trace will carry the read, the body fill is an
+      // UNDERPAINT (translucent) so the drawing reads as lines-over-wash, not a
+      // solid slab with lines lost inside it.
+      const hasTrace = Array.isArray(schema.trace) && schema.trace.length >= 10;
+      if (style.mass === 'fill') {
+        out.push({ type: 'fill', pts: sPts, rgb: bodyInk, a: hasTrace ? 0.55 : 1 });
+      } else if (style.mass === 'wash') {
+        out.push({ type: 'fill', pts: sPts, rgb: [Math.min(255, bodyInk[0] + 35), Math.min(255, bodyInk[1] + 35), Math.min(255, bodyInk[2] + 35)], a: 0.4 });
+        out.push({ type: 'fill', pts: sPts.map(pp => [pp[0] + (rnd() - 0.5) * 0.02, pp[1] + (rnd() - 0.5) * 0.02]), rgb: bodyInk, a: 0.3 });
+      } else if (style.mass !== 'none') {
+        this._artMass(out, style, (sx0 + sx1) / 2, (sy0 + sy1) / 2, (sx1 - sx0), (sy1 - sy0), 0.3, bodyInk, rnd);
+      }
+      // interior form shading — the 3 heaviest parts, subtle, filled styles only
+      if (style.mass === 'fill' || style.mass === 'wash') {
+        for (const p of schema.parts.slice(0, 3)) {
+          const cx = mapX(p.cx), cy = mapY(p.cy);
+          const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+          const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+          out.push({ type: 'blob', cx, cy, rx: pw * 0.4, ry: ph * 0.4, ang: p.ang, rgb: [Math.max(0, bodyInk[0] - 40), Math.max(0, bodyInk[1] - 40), Math.max(0, bodyInk[2] - 40)], a: 0.3 });
+        }
+      }
+    } else {
+      // no silhouette captured — the part-cell masses remain the honest fallback
+      for (const p of schema.parts.slice(0, 12)) {
+        const cx = mapX(p.cx), cy = mapY(p.cy);
+        const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
+        const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
+        this._artMass(out, style, cx, cy, pw * 1.1, ph * 1.1, p.ang, mixDef(this._artInk(style, schema, 0.25 + 0.35 * p.weight, rnd, defColor)), rnd);
+      }
+    }
+    // ── LAYER 2: THE READ — PAINT.7. When the schema carries her full vector
+    // trace, SHE REDRAWS IT: every remembered stroke in her current ink, at her
+    // current scale, with her hand's per-attempt jitter. This is the layer that
+    // makes the piece READ as the subject — the fragments/hull alone rendered
+    // as "a gray trapezoid with squiggles" (live-judged). Falls back to the
+    // 8-contour layer for schemas learned before the trace existed.
+    if (Array.isArray(schema.trace) && schema.trace.length >= 10) {
+      const jit = () => (rnd() - 0.5) * 0.006;
+      // PAINT.7 — CONTRAST-ADAPTIVE trace ink on filled styles: palette-gray
+      // lines over a palette-gray underpaint vanished (live-judged on the
+      // poster cat). Over an underpaint, the trace goes dark on a bright body
+      // and pale on a dark one; line styles keep their own ink.
+      let traceInk = this._artInk(style, schema, 0.9, rnd, null);
+      if (style.mass === 'fill' || style.mass === 'wash') {
+        const bodyProbe = this._artInk(style, schema, 0.6, rnd, defColor);
+        const lum = 0.299 * bodyProbe[0] + 0.587 * bodyProbe[1] + 0.114 * bodyProbe[2];
+        traceInk = lum > 120 ? [30, 26, 34] : [226, 222, 230];
+      }
+      const tw = style.outlineW > 0 ? Math.min(style.outlineW, 0.006) : undefined;
+      for (const tp of schema.trace) {
+        if (!Array.isArray(tp) || tp.length < 2) continue;
+        const pts = tp.map(pp => [mapX(pp[0]) + jit(), mapY(pp[1]) + jit()]);
+        out.push({ type: 'poly', pts, rgb: traceInk, w: tw, a: style.outlineA });
+      }
+    } else if (Array.isArray(schema.outlines)) {
       const fillClosed = style.mass === 'fill' || style.mass === 'wash';
       for (const o of schema.outlines) {
         if (!o || !Array.isArray(o.pts) || o.pts.length < 3) continue;
@@ -2144,7 +2257,10 @@ const SERVER_CHAT_MIXIN = {
     }
     // ── LAYER 3: DETAIL — her hand's arcs on the heaviest parts, density set
     // by the style (a pencil piece hatches busily; ink stays spare).
-    for (const p of schema.parts.slice(0, 8)) {
+    // PAINT.7 — with a full trace carrying the read, random arcs are CLUTTER,
+    // not texture: only high-detail styles (pencil/crosshatch) keep their hatch.
+    const _skipDetail = Array.isArray(schema.trace) && schema.trace.length >= 10 && (style.detailMul ?? 1) <= 1;
+    for (const p of _skipDetail ? [] : schema.parts.slice(0, 8)) {
       const cx = mapX(p.cx), cy = mapY(p.cy);
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
