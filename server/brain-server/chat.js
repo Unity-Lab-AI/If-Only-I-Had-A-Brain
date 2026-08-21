@@ -2050,17 +2050,25 @@ const SERVER_CHAT_MIXIN = {
   _artStyles() {
     return [
       // mass: how the body of the thing goes down; ink: color source; outlineW/alpha; detailMul; scale
-      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0 },
-      { name: 'pencil',      mass: 'hatch',    ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0 },
-      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0 },
-      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0 },
+      // ARTZIG2 (2026-08-21) — traceBudget: how many remembered strokes this
+      // hand redraws. The tracer hands back up to 260 strokes and the tail is
+      // tiny jagged edge-follow FRAGMENTS from busy references; redrawing all
+      // of them buried the subject in scratch (reproduced + judged on renders:
+      // the doodle was a hairball, the watercolor colored garbage over pale
+      // washes; the same subject with a clean trace was legible in every
+      // hand). Structural strokes always draw; the rest fill the budget
+      // longest-first. Line-art hands earn bigger budgets — a doodle is LOOSE.
+      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0,  traceBudget: 90 },
+      { name: 'pencil',      mass: 'hatch',    ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 150 },
+      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0,  traceBudget: 120 },
+      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0,  traceBudget: 40 },
       // STYLECULL (2026-08-21, operator's two example images): pointillism
       // ("just a cloud of dots") and crosshatch (X-hash clusters read as
       // zigzag scratch) are REMOVED from the roster — judged as shit on live
       // pieces, twice. Crayon survives because its hand was rebuilt
       // (ZIGZAGKILL: short overlapping long-axis strokes).
-      { name: 'crayon',      mass: 'scribble', ink: 'palette',  outlineW: 0.012, outlineA: 0.9, detailMul: 0.6, scale: 1.0 },
-      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55 },
+      { name: 'crayon',      mass: 'scribble', ink: 'palette',  outlineW: 0.012, outlineA: 0.9, detailMul: 0.6, scale: 1.0,  traceBudget: 70 },
+      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 22 },
     ];
   },
   _artStylePick(rnd, subjectWords) {
@@ -2727,6 +2735,7 @@ const SERVER_CHAT_MIXIN = {
     // The form on the page is then the form she actually saw. Part-cell
     // masses only run as the fallback when no silhouette was captured.
     let silhouette = null;
+    let _bodyInkUsed = null;   // ARTZIG2 — the ink the underpaint actually used
     if (Array.isArray(schema.outlines) && schema.outlines.length) {
       // biggest closed outline by traced length when one exists…
       const closed = schema.outlines.filter(o => o && o.closed && Array.isArray(o.pts) && o.pts.length >= 3);
@@ -2776,6 +2785,11 @@ const SERVER_CHAT_MIXIN = {
       let sx0 = 1, sy0 = 1, sx1 = 0, sy1 = 0;
       for (const pp of sPts) { sx0 = Math.min(sx0, pp[0]); sx1 = Math.max(sx1, pp[0]); sy0 = Math.min(sy0, pp[1]); sy1 = Math.max(sy1, pp[1]); }
       const bodyInk = mixDef(this._artInk(style, schema, 0.6, rnd, defColor));
+      // ARTZIG2 — remember the ink the underpaint ACTUALLY used, so the trace
+      // layer's contrast decision reads the real body instead of re-rolling a
+      // random palette pick (the mismatch lightened strokes over a light body
+      // — garish pale strands, judged on the doodle render).
+      _bodyInkUsed = bodyInk;
       // PAINT.7 — when the full trace will carry the read, the body fill is an
       // UNDERPAINT (translucent) so the drawing reads as lines-over-wash, not a
       // solid slab with lines lost inside it.
@@ -2854,7 +2868,8 @@ const SERVER_CHAT_MIXIN = {
       // and pale on a dark one; line styles keep their own ink.
       let traceInk = this._artInk(style, schema, 0.9, rnd, null);
       if (style.mass === 'fill' || style.mass === 'wash') {
-        const bodyProbe = this._artInk(style, schema, 0.6, rnd, defColor);
+        // ARTZIG2 — same real-underpaint read as the per-stroke contrast below.
+        const bodyProbe = _bodyInkUsed || this._artInk(style, schema, 0.6, rnd, defColor);
         const lum = 0.299 * bodyProbe[0] + 0.587 * bodyProbe[1] + 0.114 * bodyProbe[2];
         traceInk = lum > 120 ? [30, 26, 34] : [226, 222, 230];
       }
@@ -2869,6 +2884,50 @@ const SERVER_CHAT_MIXIN = {
       // monochrome hand) and pre-color schemas keep the single-ink line.
       const tN = schema.trace.length;
       const structural = Math.max(10, Math.ceil(tN * 0.3));
+      // ARTZIG2 (2026-08-21) — FRAGMENT GATE + STYLE TRACE BUDGET. The trace's
+      // tail is tiny jagged edge-follow fragments from busy references;
+      // redrawn as-is they buried the subject in zigzag scratch (reproduced +
+      // judged: a 200-fragment tail turned the doodle into a hairball and the
+      // watercolor into colored garbage, while the same subject with a clean
+      // trace read fine in every hand). Two rules, applied to NON-structural
+      // strokes only (the long structural third always draws — it IS the read):
+      //  1. a stroke that is both SHORT (< 2.5% of the frame diagonal) and
+      //     JAGGED (mean turn > ~70°/vertex) is tracer noise, never a feature —
+      //     dropped. Whiskers (short, straight) and ears (one clean turn) pass.
+      //  2. the style's traceBudget caps how many strokes this hand redraws,
+      //     longest-first — a doodle is loose by definition.
+      // The gate judges EVERY stroke — a fragment sitting inside the "longest
+      // 30%" of a fragment-bloated trace is still a fragment (first render of
+      // this fix leaked exactly that way: 30% of 220 strokes force-drew 46
+      // fragments and the doodle stayed a hairball). Structural = the first
+      // slice of the SURVIVORS, capped absolute.
+      const _fw = Math.max(1e-3, fx.w), _fh = Math.max(1e-3, fx.h);
+      const _diag = Math.hypot(_fw, _fh);
+      const _keepIdx = [];
+      for (let ti = 0; ti < tN; ti++) {
+        const tp = schema.trace[ti];
+        if (!Array.isArray(tp) || tp.length < 2) continue;
+        let L = 0, turns = 0, nTurn = 0;
+        for (let i = 1; i < tp.length; i++) {
+          L += Math.hypot(tp[i][0] - tp[i - 1][0], tp[i][1] - tp[i - 1][1]);
+          if (i >= 2) {
+            const a1 = Math.atan2(tp[i - 1][1] - tp[i - 2][1], tp[i - 1][0] - tp[i - 2][0]);
+            const a2 = Math.atan2(tp[i][1] - tp[i - 1][1], tp[i][0] - tp[i - 1][0]);
+            let da = Math.abs(a2 - a1); if (da > Math.PI) da = 2 * Math.PI - da;
+            turns += da; nTurn++;
+          }
+        }
+        const short2 = L < _diag * 0.025;
+        const jagged = nTurn > 0 && (turns / nTurn) > 1.22;
+        if (short2 && jagged) continue;   // tracer noise — not a feature
+        _keepIdx.push(ti);
+      }
+      // budget: structural survivors always; the rest longest-first (the trace
+      // is length-sorted DESC at learn time, so kept order IS longest-first).
+      const _structN = Math.min(40, Math.max(10, Math.ceil(_keepIdx.length * 0.3)));
+      const _budget = Math.max(_structN, (style.traceBudget | 0) || 120);
+      const _drawSet = new Set(_keepIdx.slice(0, _budget));
+      const _structSet = new Set(_keepIdx.slice(0, _structN));
       // COLORLINE (2026-08-21, operator: "she is still using white lines to
       // outline when she should be using the colors of the image that the
       // outline is made of") — EVERY stroke wears its sampled real color, the
@@ -2880,14 +2939,18 @@ const SERVER_CHAT_MIXIN = {
       const useRealC = Array.isArray(schema.traceRgb) && schema.traceRgb.length;
       let bodyLum = 60;   // no underpaint = her dark paper
       if (style.mass === 'fill' || style.mass === 'wash') {
-        const bp = this._artInk(style, schema, 0.6, rnd, defColor);
+        // ARTZIG2 — read the ink the underpaint ACTUALLY used; re-rolling a
+        // random palette pick here mismatched the real body and lightened
+        // strokes over a light underpaint (garish pale strands, judged live).
+        const bp = _bodyInkUsed || this._artInk(style, schema, 0.6, rnd, defColor);
         bodyLum = 0.299 * bp[0] + 0.587 * bp[1] + 0.114 * bp[2];
       }
       const clamp255 = (v) => Math.max(0, Math.min(255, Math.round(v)));
       for (let ti = 0; ti < tN; ti++) {
         const tp = schema.trace[ti];
         if (!Array.isArray(tp) || tp.length < 2) continue;
-        if (ti >= structural && rnd() > skill.keepP) continue;
+        if (!_drawSet.has(ti)) continue;   // ARTZIG2 — fragment gate + budget
+        if (!_structSet.has(ti) && rnd() > skill.keepP) continue;
         // SCENERY FILTER — the hull decontamination never covered the TRACE:
         // frame-spanning strokes (a backdrop edge, a table line) drew as big
         // bars straight through her subject (judged on the color-line render).
@@ -2903,12 +2966,15 @@ const SERVER_CHAT_MIXIN = {
         let ink = traceInk;
         const rc = useRealC ? schema.traceRgb[ti] : null;
         if (Array.isArray(rc)) {
-          if (ti < structural) {
+          if (_structSet.has(ti)) {
             // hue his, contrast hers: value-shift the stroke's own color away
-            // from the body it sits on
-            const k = bodyLum > 120 ? 0.45 : 1.6;
-            const floor = bodyLum > 120 ? 0 : 46;
-            ink = [clamp255(rc[0] * k + floor), clamp255(rc[1] * k + floor), clamp255(rc[2] * k + floor)];
+            // from the body it sits on. ARTZIG2 — the lighten side LERPS
+            // toward white (hue-preserving); the old ×1.6+46 pushed orange
+            // strokes to YELLOW (channel clipping distorts hue — judged as
+            // garish yellow webbing on the doodle render).
+            ink = bodyLum > 120
+              ? [clamp255(rc[0] * 0.45), clamp255(rc[1] * 0.45), clamp255(rc[2] * 0.45)]
+              : [clamp255(rc[0] + (255 - rc[0]) * 0.55), clamp255(rc[1] + (255 - rc[1]) * 0.55), clamp255(rc[2] + (255 - rc[2]) * 0.55)];
           } else {
             ink = [clamp255(rc[0] * 0.75), clamp255(rc[1] * 0.75), clamp255(rc[2] * 0.75)];
           }

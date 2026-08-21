@@ -297,3 +297,10 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 
 - [~] **GATEGPU.1** — cross-projection gate probes run on the donor: `gpuGateProbe(matrixName, srcRegion, indices)` (pattern write + bound propagate + currents readback, honest null on any shed/lane-closed so the CPU chunked path grades instead), wired through `_probePropagate` (the shared helper every grade's gates ride) + the direct gate call sites. Matrix-rows cap ≤4M (the readback ack is rows×4B — intra at 12M rows = a 48MB ack, excluded). Counters + kill switch `DREAM_GATE_GPU_PROBES=0`.
 - [ ] **GATEGPU.2** — the intra SEQ probe + donor-side readout REDUCTION (bucket/argmax computed on the card so the ack is bytes, not megabytes) — unlocks the 12M-row intra probe and shrinks every ack.
+
+## ARTZIG2 — filed 2026-08-21
+
+> Gee (verbatim): *"something is up with her drawing... she is still using the zig zag patterning or scratch like patterning in her doodles and when she does water colors it all garbage images"*
+
+- [~] **ARTZIG2.1** — doodle still zigzags/scratches; watercolor renders garbage. Method per the intelligibility law: render both hands through the production pipeline to PNG, judge by eye, fix the named generator, re-render until legible.
+- [x] **ARTZIG2.1** → **✅ FIXED over four judged render rounds** — the scratch was the trace's fragment tail (reproduced exactly with a 200-fragment synthetic tail; clean traces were legible in every hand): fragment gate (short+jagged = tracer noise) judging EVERY stroke with structural picked from survivors, per-style trace budgets (doodle 22 … pencil 150), the contrast probe reads the real underpaint ink, and lighten lerps to white instead of clipping orange→yellow. Ledger: FINALIZED §ARTZIG2.
