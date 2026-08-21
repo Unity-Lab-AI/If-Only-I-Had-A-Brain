@@ -60649,6 +60649,16 @@ function b64i16(s) {
   const b = b64bytes(s);
   return new Int16Array(b.buffer, b.byteOffset, b.byteLength >> 1);
 }
+function chanVal(c) {
+  if (c && c.val_bin) {
+    const u = c.val_bin instanceof Uint8Array ? c.val_bin : new Uint8Array(c.val_bin);
+    return new Int16Array(u.buffer, u.byteOffset, u.byteLength >> 1);
+  }
+  return b64i16(c.val_b64);
+}
+function chanHasVal(c) {
+  return !!(c && (c.val_b64 || c.val_bin));
+}
 function bytesToB64(arr) {
   let s = "";
   const CH = 32768;
@@ -60694,7 +60704,8 @@ function decPos(u8, count) {
   return out;
 }
 function decodePositions(c, count) {
-  return c.pos_enc === "dv1" ? decPos(b64bytes(c.pos_b64), count) : b64u32(c.pos_b64);
+  const posBytes = c.pos_bin ? c.pos_bin instanceof Uint8Array ? c.pos_bin : new Uint8Array(c.pos_bin) : b64bytes(c.pos_b64);
+  return c.pos_enc === "dv1" ? decPos(posBytes, count) : c.pos_bin ? new Uint32Array(posBytes.buffer, posBytes.byteOffset, posBytes.byteLength >> 2) : b64u32(c.pos_b64);
 }
 function inv1d(get, set, N, tmp) {
   const sizes = [];
@@ -60858,7 +60869,7 @@ function reconstructImageData(rec, dev) {
   const f = Math.max(0, Math.min(1, dev || 0));
   const chans = {};
   for (const name of ["Y", "Cb", "Cr"]) {
-    const c = rec.channels[name], val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+    const c = rec.channels[name], val = chanVal(c), qs = c.qscale, pos = decodePositions(c, val.length);
     let mx = 0;
     if (f > 0) for (let i = 0; i < val.length; i++) {
       const a = Math.abs(val[i] * qs);
@@ -60899,10 +60910,10 @@ function describeEquational(rec, dim) {
   let loEnergy = 0, hiEnergy = 0;
   for (let ci = 0; ci < 3; ci++) {
     const c = rec.channels[names[ci]];
-    if (!c || !c.val_b64) continue;
+    if (!c || !chanHasVal(c)) continue;
     let val, pos;
     try {
-      val = b64i16(c.val_b64);
+      val = chanVal(c);
       pos = decodePositions(c, val.length);
     } catch (e) {
       continue;
@@ -60943,10 +60954,10 @@ function describeEquationalAudio(rec, bins) {
   const W2 = rec.pad_w || rec.width || 1;
   for (const name of ["Y", "Cb", "Cr"]) {
     const c = rec.channels[name];
-    if (!c || !c.val_b64) continue;
+    if (!c || !chanHasVal(c)) continue;
     let val, pos;
     try {
-      val = b64i16(c.val_b64);
+      val = chanVal(c);
       pos = decodePositions(c, val.length);
     } catch (e) {
       continue;
@@ -60986,7 +60997,7 @@ function abstract(rec, dev) {
   for (const name of ["Y", "Cb", "Cr"]) {
     const c = rec.channels[name];
     if (!c) continue;
-    const val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+    const val = chanVal(c), qs = c.qscale, pos = decodePositions(c, val.length);
     let mx = 0;
     for (let i = 0; i < val.length; i++) mx = Math.max(mx, Math.abs(val[i] * qs));
     const thr = f * mx * 0.6;
@@ -61011,11 +61022,11 @@ function morphField(recA, recB, t) {
     const a = recA.channels[name], b = recB.channels[name];
     const m = /* @__PURE__ */ new Map();
     if (a) {
-      const v = b64i16(a.val_b64), qs = a.qscale, p = decodePositions(a, v.length);
+      const v = chanVal(a), qs = a.qscale, p = decodePositions(a, v.length);
       for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + (1 - u) * v[i] * qs);
     }
     if (b) {
-      const v = b64i16(b.val_b64), qs = b.qscale, p = decodePositions(b, v.length);
+      const v = chanVal(b), qs = b.qscale, p = decodePositions(b, v.length);
       for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + u * v[i] * qs);
     }
     const keys = Array.from(m.keys()).sort((x, y) => x - y);
@@ -61060,7 +61071,7 @@ function traceField(rec, opts = {}) {
     const c = rec.channels[name];
     const flat = new Float64Array(W2 * H2);
     if (c && c.val_b64) {
-      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      const val = chanVal(c), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
       for (let i = 0; i < pos.length; i++) {
         const p = pos[i];
         if (p >= 0 && p < SIZE) flat[p] = val[i] * qs;
@@ -61145,7 +61156,7 @@ function _fieldToGrid(rec, target) {
     const c = rec.channels[name];
     const flat = new Float64Array(W2 * H2);
     if (c && c.val_b64) {
-      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      const val = chanVal(c), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
       for (let i = 0; i < pos.length; i++) {
         const p = pos[i];
         if (p >= 0 && p < SIZE) flat[p] = val[i] * qs;
@@ -125100,7 +125111,7 @@ var MindSpaceGPU = class {
     const f = Math.max(0, Math.min(1, dev || 0));
     const chans = {};
     for (const name of ["Y", "Cb", "Cr"]) {
-      const c = rec.channels[name], val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+      const c = rec.channels[name], val = chanVal(c), qs = c.qscale, pos = decodePositions(c, val.length);
       let mx = 0;
       if (f > 0) for (let i = 0; i < val.length; i++) {
         const a = Math.abs(val[i] * qs);
