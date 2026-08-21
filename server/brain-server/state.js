@@ -1025,6 +1025,19 @@ const SERVER_STATE_MIXIN = {
         stepsPerSec: r2(perf.stepsPerSec || 0),
         eventLoopLagMs: this._lastEventLoopLagMs || 0,
         eventLoopDelay: elDelay,
+        // GPUTEACH step-0 — the bound-Hebbian TEACH LANE, every stage counted
+        // so "0 teach/min" can never lie again: enqueued (ops asked), flushed
+        // frames/ops (ops that actually left), capFlushes (mid-slab forced
+        // flushes that used to be SILENT DROPS), suppressedStale (pattern-lane
+        // refusals), rangesSent (the batched range verb).
+        boundHebbian: {
+          enqueued: this._boundHebbianEnqueued | 0,
+          flushedFrames: this._boundHebbianFlushedFrames | 0,
+          flushedOps: this._boundHebbianFlushedOps | 0,
+          capFlushes: this._boundHebbianCapFlushes | 0,
+          suppressedStale: this._hebbianSuppressedStale | 0,
+          rangesSent: this._hebbianRangesSent | 0,
+        },
         // LOOPNAME.8 — freeze episodes as counted by the WATCHDOG THREAD, not by
         // the loop. `eventLoopDelay.maxMs` above is a since-boot high-water mark
         // from `perf_hooks` with no count and no recency: one 58s reading tells
