@@ -3160,8 +3160,17 @@ const SERVER_GPU_MIXIN = {
     // firing while a batch is mid-flight to GPU.
     const BATCHED_HEBBIAN_QUEUE_CAP = 1024;
     if (batch.ops.length >= BATCHED_HEBBIAN_QUEUE_CAP) {
-      return Promise.resolve(null);
+      // GPUTEACH step-0/A (2026-08-21) — the cap used to DROP silently, and
+      // during gate-era CPU slabs (3s of synchronous teach math) the 20ms
+      // flush timer never fires mid-slab: the queue filled and every op past
+      // 1024 was LOST, per slab — the real reason the donor read 0 teach/min
+      // through whole gates while the design was GPU-first. ws.send only
+      // buffers, so flushing synchronously mid-slab is safe: ship the full
+      // batch NOW and keep enqueueing. Nothing drops; the counter proves it.
+      this._boundHebbianCapFlushes = (this._boundHebbianCapFlushes || 0) + 1;
+      this._flushBoundHebbianBatch();
     }
+    this._boundHebbianEnqueued = (this._boundHebbianEnqueued || 0) + 1;
     return new Promise((resolve, reject) => {
       batch.ops.push({ name, lr, resolve, reject });
       if (batch.ops.length >= BATCHED_HEBBIAN_MAX_OPS) {
@@ -3209,6 +3218,9 @@ const SERVER_GPU_MIXIN = {
       return;
     }
     batch.ops = [];
+    // GPUTEACH step-0 — every stage counted so the lane can never lie again
+    this._boundHebbianFlushedFrames = (this._boundHebbianFlushedFrames || 0) + 1;
+    this._boundHebbianFlushedOps = (this._boundHebbianFlushedOps || 0) + ops.length;
 
     // DF.7 — the bound-Hebbian batch is the BULK of teach GPU work. With fan-out
     // ON, round-robin each batch to the next donor so the teach load actually
