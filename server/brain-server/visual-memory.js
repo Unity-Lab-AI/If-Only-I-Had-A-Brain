@@ -52,12 +52,13 @@ const path = require('path');
 // monolithic JSON measured at 761ms pins @10k entries and hard-fails @100k).
 // The v4 json name never shipped a boot, so nothing migrates; v1-v3 json stay
 // on disk, orphaned. FRESHEYES sweeps `visual-memory*` by pattern (json AND db).
-// v6 → v7 (2026-08-21, PROXYCOLOR) — v6 spent its whole life banking
-// COLORLESS schemas through the missing proxy imagine() (the color sampler
-// silently returned nothing on the box), so every v6 schema draws monotone
-// even after the proxy fix. v7 boots empty behind the COMPLETE color
-// pipeline. Training lives in different files and is untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v7.db');
+// v7 → v8 (2026-08-21, FRESHEYES8, operator: "reset all the visual memory
+// files so we have 0 seen and 0 drawn") — v7 banked a session of looks
+// BEFORE the day's full art stack (LOOKTWICE self-consistency, FORMBANK
+// variants, the recolor engine) was live; v8 boots at 0 seen / 0 drawn with
+// every schema earned through the complete pipeline. (v6 before it was the
+// colorless proxy-gap era.) Training lives in different files, untouched.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v8.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
