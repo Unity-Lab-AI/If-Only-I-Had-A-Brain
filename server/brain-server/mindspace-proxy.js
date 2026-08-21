@@ -90,9 +90,30 @@ class MindSpaceWorkerProxy {
 
   sketch(...args) { return this._call('sketch', args); }
 
+  // BLOBSTORE — the donor lane serializes recs to JSON over the WS; resident
+  // store recs hold binary Buffers, so convert to the base64 wire form at
+  // this boundary (a Buffer inside JSON.stringify becomes a bloated numeric
+  // object the donor's browser decoder cannot read).
+  _recWireSafe(rec) {
+    try {
+      if (!rec || !rec.channels) return rec;
+      let needs = false;
+      for (const c of Object.values(rec.channels)) if (c && (c.val_bin || c.pos_bin)) { needs = true; break; }
+      if (!needs) return rec;
+      const chans = {};
+      for (const [name, c] of Object.entries(rec.channels)) {
+        if (!c) { continue; }
+        const co = { ...c };
+        if (c.val_bin) { co.val_b64 = Buffer.from(c.val_bin.buffer || c.val_bin, c.val_bin.byteOffset || 0, c.val_bin.byteLength ?? c.val_bin.length).toString('base64'); delete co.val_bin; }
+        if (c.pos_bin) { co.pos_b64 = Buffer.from(c.pos_bin.buffer || c.pos_bin, c.pos_bin.byteOffset || 0, c.pos_bin.byteLength ?? c.pos_bin.length).toString('base64'); delete co.pos_bin; }
+        chans[name] = co;
+      }
+      return { ...rec, channels: chans };
+    } catch { return rec; }
+  }
   async describe(rec, dim) {
     if (this._viaDonor('describe')) {
-      const r = await this._donorDispatch('describe', { rec, dim });
+      const r = await this._donorDispatch('describe', { rec: this._recWireSafe(rec), dim });
       if (r && r.percept_b64) {
         const buf = Buffer.from(r.percept_b64, 'base64');
         return new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4)).slice();
@@ -160,7 +181,7 @@ class MindSpaceWorkerProxy {
   // old traceField-forward bug class).
   async traceLineArt(rec, opts) {
     if (this._viaDonor('traceLineArt')) {
-      const r = await this._donorDispatch('traceLineArt', { rec, opts: opts || {} });
+      const r = await this._donorDispatch('traceLineArt', { rec: this._recWireSafe(rec), opts: opts || {} });
       if (r && Array.isArray(r.strokes)) return r.strokes;
     }
     return (this._local && typeof this._local.traceLineArt === 'function')

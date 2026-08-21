@@ -1532,7 +1532,10 @@ const SERVER_CHAT_MIXIN = {
     const _publishEye = _groundedEye || process.env.DREAM_EYE_SHOW_THOUGHT === '1';
     if (!_publishEye) return;
     try {
-      this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec, terms: rec.equation_count || 0, source, at: now });
+      // BLOBSTORE — recall frames carry STORE recs whose payload is resident
+      // binary; the viewer's wire format stays base64, so convert at the door.
+      const wireRec = (typeof this._recJsonSafe === 'function') ? this._recJsonSafe(rec) : rec;
+      this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, terms: rec.equation_count || 0, source, at: now });
     } catch { /* non-fatal */ }
     if (this.clients && this.clients.size > 0) {
       const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0, source, ts: now });

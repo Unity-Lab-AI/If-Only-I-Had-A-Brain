@@ -28,6 +28,18 @@ export function isTrusted() { return TRUSTED; }
 function b64bytes(s) { const bin = atob(s), n = bin.length, u = new Uint8Array(n); for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i); return u; }
 function b64u32(s) { const b = b64bytes(s); return new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2); }
 function b64i16(s) { const b = b64bytes(s); return new Int16Array(b.buffer, b.byteOffset, b.byteLength >> 1); }
+// BLOBSTORE — channel accessors: the server's resident store holds channel
+// payloads as BINARY views (val_bin/pos_bin, Buffers = Uint8Array subclass)
+// instead of base64 strings; fresh recs still carry b64. ONE choke point
+// reads either form so every consumer above stays payload-agnostic.
+export function chanVal(c) {
+  if (c && c.val_bin) {
+    const u = c.val_bin instanceof Uint8Array ? c.val_bin : new Uint8Array(c.val_bin);
+    return new Int16Array(u.buffer, u.byteOffset, u.byteLength >> 1);
+  }
+  return b64i16(c.val_b64);
+}
+export function chanHasVal(c) { return !!(c && (c.val_b64 || c.val_bin)); }
 function bytesToB64(arr) {
   let s = ''; const CH = 0x8000;
   for (let i = 0; i < arr.length; i += CH) s += String.fromCharCode.apply(null, arr.slice(i, i + CH));
@@ -59,7 +71,11 @@ function decPos(u8, count) {
   return out;
 }
 function decodePositions(c, count) {
-  return c.pos_enc === 'dv1' ? decPos(b64bytes(c.pos_b64), count) : b64u32(c.pos_b64);
+  const posBytes = c.pos_bin
+    ? (c.pos_bin instanceof Uint8Array ? c.pos_bin : new Uint8Array(c.pos_bin))
+    : b64bytes(c.pos_b64);
+  return c.pos_enc === 'dv1' ? decPos(posBytes, count)
+    : (c.pos_bin ? new Uint32Array(posBytes.buffer, posBytes.byteOffset, posBytes.byteLength >> 2) : b64u32(c.pos_b64));
 }
 
 // ---- 1-D multi-level 9/7 INVERSE lifting (rec → signal) ----
@@ -194,7 +210,7 @@ export function reconstructImageData(rec, dev) {
   const f = Math.max(0, Math.min(1, dev || 0));
   const chans = {};
   for (const name of ['Y', 'Cb', 'Cr']) {
-    const c = rec.channels[name], val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+    const c = rec.channels[name], val = chanVal(c), qs = c.qscale, pos = decodePositions(c, val.length);
     let mx = 0; if (f > 0) for (let i = 0; i < val.length; i++) { const a = Math.abs(val[i] * qs); if (a > mx) mx = a; }
     const thr = f > 0 ? f * mx * 0.6 : 0;
     const flat = new Float64Array(W2 * H2), SIZE = W2 * H2;
@@ -212,7 +228,7 @@ export function termsAboveThreshold(rec, dev) {
   const f = Math.max(0, Math.min(1, dev || 0));
   let n = 0;
   for (const name of ['Y', 'Cb', 'Cr']) {
-    const c = rec.channels[name], val = b64i16(c.val_b64), qs = c.qscale;
+    const c = rec.channels[name], val = chanVal(c), qs = c.qscale;
     if (!f) { n += val.length; continue; }
     let mx = 0; for (let i = 0; i < val.length; i++) { const a = Math.abs(val[i] * qs); if (a > mx) mx = a; }
     const thr = f * mx * 0.6;
@@ -237,9 +253,9 @@ export function describeEquational(rec, dim) {
   let loEnergy = 0, hiEnergy = 0;
   for (let ci = 0; ci < 3; ci++) {
     const c = rec.channels[names[ci]];
-    if (!c || !c.val_b64) continue;
+    if (!c || !chanHasVal(c)) continue;
     let val, pos;
-    try { val = b64i16(c.val_b64); pos = decodePositions(c, val.length); } catch (e) { continue; }
+    try { val = chanVal(c); pos = decodePositions(c, val.length); } catch (e) { continue; }
     const qs = c.qscale || 1, base = bandBase[ci];
     const coarse = (ci === 0) ? [] : null;
     let mAbs = 0;
@@ -277,9 +293,9 @@ export function describeEquationalAudio(rec, bins) {
   const W2 = rec.pad_w || rec.width || 1;
   for (const name of ['Y', 'Cb', 'Cr']) {
     const c = rec.channels[name];
-    if (!c || !c.val_b64) continue;
+    if (!c || !chanHasVal(c)) continue;
     let val, pos;
-    try { val = b64i16(c.val_b64); pos = decodePositions(c, val.length); } catch (e) { continue; }
+    try { val = chanVal(c); pos = decodePositions(c, val.length); } catch (e) { continue; }
     const qs = c.qscale || 1;
     for (let i = 0; i < val.length; i++) {
       const p = pos[i] | 0; if (p < 0) continue;
@@ -316,7 +332,7 @@ export function abstract(rec, dev) {
   const channels = {}; let total = 0;
   for (const name of ['Y', 'Cb', 'Cr']) {
     const c = rec.channels[name]; if (!c) continue;
-    const val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+    const val = chanVal(c), qs = c.qscale, pos = decodePositions(c, val.length);
     let mx = 0; for (let i = 0; i < val.length; i++) mx = Math.max(mx, Math.abs(val[i] * qs));
     const thr = f * mx * 0.6;
     const keepPos = [], keepVal = [];
@@ -336,8 +352,8 @@ export function morphField(recA, recB, t) {
   for (const name of ['Y', 'Cb', 'Cr']) {
     const a = recA.channels[name], b = recB.channels[name];
     const m = new Map();
-    if (a) { const v = b64i16(a.val_b64), qs = a.qscale, p = decodePositions(a, v.length); for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + (1 - u) * v[i] * qs); }
-    if (b) { const v = b64i16(b.val_b64), qs = b.qscale, p = decodePositions(b, v.length); for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + u * v[i] * qs); }
+    if (a) { const v = chanVal(a), qs = a.qscale, p = decodePositions(a, v.length); for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + (1 - u) * v[i] * qs); }
+    if (b) { const v = chanVal(b), qs = b.qscale, p = decodePositions(b, v.length); for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + u * v[i] * qs); }
     const keys = Array.from(m.keys()).sort((x, y) => x - y);
     const keepPos = [], keepVal = [];
     for (const p of keys) { const v = m.get(p); if (Math.abs(v) > 1e-9) { keepPos.push(p); keepVal.push(v); } }
@@ -391,7 +407,7 @@ export function traceField(rec, opts = {}) {
     const c = rec.channels[name];
     const flat = new Float64Array(W2 * H2);
     if (c && c.val_b64) {
-      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      const val = chanVal(c), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
       for (let i = 0; i < pos.length; i++) { const p = pos[i]; if (p >= 0 && p < SIZE) flat[p] = val[i] * qs; }
       idwt2(flat, H2, W2);
     }
@@ -467,7 +483,7 @@ function _fieldToGrid(rec, target) {
     const c = rec.channels[name];
     const flat = new Float64Array(W2 * H2);
     if (c && c.val_b64) {
-      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      const val = chanVal(c), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
       for (let i = 0; i < pos.length; i++) { const p = pos[i]; if (p >= 0 && p < SIZE) flat[p] = val[i] * qs; }
       idwt2(flat, H2, W2);
     }

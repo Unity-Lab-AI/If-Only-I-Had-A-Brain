@@ -485,7 +485,7 @@ export class MindSpaceGPU {
     const f = Math.max(0, Math.min(1, dev || 0));
     const chans = {};
     for (const name of ['Y', 'Cb', 'Cr']) {
-      const c = rec.channels[name], val = CPU.b64i16(c.val_b64), qs = c.qscale, pos = CPU.decodePositions(c, val.length);
+      const c = rec.channels[name], val = CPU.chanVal(c), qs = c.qscale, pos = CPU.decodePositions(c, val.length);
       let mx = 0; if (f > 0) for (let i = 0; i < val.length; i++) { const a = Math.abs(val[i] * qs); if (a > mx) mx = a; }
       const thr = f > 0 ? f * mx * 0.6 : 0;
       const flat = new Float32Array(SIZE);
