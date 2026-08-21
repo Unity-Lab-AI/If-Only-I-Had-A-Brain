@@ -52,7 +52,12 @@ const path = require('path');
 // monolithic JSON measured at 761ms pins @10k entries and hard-fails @100k).
 // The v4 json name never shipped a boot, so nothing migrates; v1-v3 json stay
 // on disk, orphaned. FRESHEYES sweeps `visual-memory*` by pattern (json AND db).
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v4.db');
+// v4 → v5 (2026-08-21, operator: "do that thing again and clear the old .db
+// image file so her images are empty starting fresh") — the store's own
+// orphaning ritual, fourth time: v4 banked scratch-era imagery from before the
+// DRAWGATE + the art stack; v5 boots empty and re-grounds through gated looks.
+// Training lives in different files and is untouched by construction.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v5.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -841,8 +846,21 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       const cx = this.cortexCluster;
       const d = (cx && typeof cx.lookupDefinitionSync === 'function') ? cx.lookupDefinitionSync(c) : null;
       if (d && typeof d === 'string') {
-        const stop = new Set(['the', 'a', 'an', 'of', 'to', 'and', 'or', 'in', 'on', 'for', 'with', 'that', 'which', 'who', 'whom', 'is', 'are', 'was', 'were', 'be', 'been', 'as', 'by', 'at', 'it', 'its', 'this', 'these', 'those', 'from', 'used', 'uses', 'using', 'having', 'being', 'one', 'any', 'some', 'such', 'other', 'more', 'most', 'very', 'into', 'about', 'when', 'where', 'also', 'not', 'can', 'may']);
-        const words = d.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2 && !stop.has(w) && w !== c);
+        // TAXONOMY-BUILT TAIL — no stop-word list, no person list (operator
+        // law 2026-08-21: word lists cannot cover the real world). A tail word
+        // survives only if WordNet KNOWS it as a noun or adjective — function
+        // words, inflections and glue are absent from those indexes and fall
+        // away by themselves. And a word whose PRIMARY sense files under
+        // noun.person drops unless the concept itself is a person: teaching-age
+        // definitions constantly say "a child who…" / "an object for children
+        // to…", and those human words riding the prompt made the generator
+        // paint CHILDREN for non-person concepts (operator report 2026-08-21).
+        let words = d.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2 && w !== c);
+        try {
+          const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
+          const conceptIsPerson = tax.primaryLex(c) === 18;
+          words = words.filter(w => tax.knownDescriptor(w) && (conceptIsPerson || tax.primaryLex(w) !== 18));
+        } catch { /* taxonomy unavailable — the raw tail stands */ }
         if (words.length) defTail = ' ' + [...new Set(words)].slice(0, 6).join(' ');
       }
     } catch { /* bare concept prompt */ }

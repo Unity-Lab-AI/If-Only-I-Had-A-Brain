@@ -1390,10 +1390,17 @@ const SERVER_CHAT_MIXIN = {
         // she's already seen). This is what keeps the viewer full of her drawings.
         if (!rec && this._visualMemory && this._visualMemory.size > 0) {
           try {
+            // DRAWGATE — the favorite must pass the same thing/person/place/animal
+            // gate as everything else: the store can hold abstract keys (thought
+            // words banked as lookup frames), and drawing one traces to garbage.
+            // A few random tries, each gated; none pass → no favorite this tick.
             const _favKeys = Array.from(this._visualMemory.keys());
-            const _fav = _favKeys[Math.floor(Math.random() * _favKeys.length)];
-            const drawnFav = await this._drawConcept(_fav, { allowFetch: false });
-            if (drawnFav && drawnFav.rec) { rec = drawnFav.rec; _seedSource = 'draw:fav:' + _fav; }
+            for (let _ft = 0; _ft < 4 && !rec; _ft++) {
+              const _fav = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+              if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(_fav))) continue;
+              const drawnFav = await this._drawConcept(_fav, { allowFetch: false });
+              if (drawnFav && drawnFav.rec) { rec = drawnFav.rec; _seedSource = 'draw:fav:' + _fav; }
+            }
           } catch { /* favorite best-effort — de-novo field below (view-only, not published) */ }
         }
       }
@@ -1898,7 +1905,7 @@ const SERVER_CHAT_MIXIN = {
       if (seen.has(t) || t === placeWord) continue;
       seen.add(t);
       let drawable = true;
-      try { if (typeof this._conceptIsDrawable === 'function') drawable = await this._conceptIsDrawable(t); } catch { drawable = true; }
+      try { if (typeof this._conceptIsDrawable === 'function') drawable = await this._conceptIsDrawable(t); } catch { drawable = false; }   // DRAWGATE — a gate error refuses; scribbling at an unverified word never is honest
       if (!drawable) continue;
       const schema = await this._ownArtSchemaFor(t, opts);
       subjects.push({ word: t, schema });
@@ -2885,15 +2892,107 @@ const SERVER_CHAT_MIXIN = {
   // be read from the reference image (coherence, plain-bg fraction, and cross-seed
   // stability all fail to separate concrete from abstract) — it is SEMANTIC (POS).
   // Dictionary miss → permissive (draw it; genuinely-unknown words are rare).
+  // DRAWGATE (2026-08-21) — a word is drawable ONLY when it is a THING, PERSON,
+  // PLACE, or ANIMAL, per the operator's law. The old gate was any-noun-sense,
+  // which waved through numbers, speech sounds, qualities and events — all of
+  // which trace to garbage scatter because there is no picture of them to
+  // ground. Evidence-based from HER OWN definitions (the same trained
+  // dictionary every other recipe reads — no text-AI, no per-word list):
+  //   1. a banked shape schema = she has SEEN it → drawable, no lookup needed;
+  //   2. otherwise a noun sense must carry CONCRETE evidence (creature / plant /
+  //      object / place / material / body-part markers) and not open as an
+  //      ABSTRACT head-noun (quality / act / number / sound / feeling / ...);
+  //   3. no dictionary entry, or no concrete noun sense → NOT drawable.
+  // The default flipped permissive→strict on purpose: refusing to draw an
+  // abstraction is honest; scribbling letter-shapes at it never is.
   async _conceptIsDrawable(word) {
     const w = (typeof this._vmContentTokens === 'function') ? (this._vmContentTokens(word)[0] || '') : String(word || '').toLowerCase().trim();
     if (!w || w.length < 2) return false;
-    if (!this.cortexCluster || typeof this.cortexCluster.lookupDefinitionFull !== 'function') return true;
+    // THE TAXONOMY IS THE JUDGE — no word lists anywhere (operator law,
+    // 2026-08-21: lists cannot cover the real world). WordNet's lexicographer
+    // categories file every English noun sense at build time:
+    //   'concrete' → some sense is a thing/person/place/animal → DRAWABLE.
+    //   'abstract' → WordNet knows the word and NO sense is one → REFUSED.
+    //     (Numbers file under quantity, sounds under communication/event,
+    //      qualities under attribute, function words are simply absent.)
+    //   'unknown'  → not in WordNet (new words, slang, proper nouns) → judge
+    //     by the word's DICTIONARY DEFINITION below, which is fetched live on
+    //     a cache miss — so brand-new words she has never been trained on are
+    //     judged the moment they arrive.
+    try {
+      if (!this._drawTaxonomy) this._drawTaxonomy = require('../drawable-taxonomy.js');
+      const v = this._drawTaxonomy.drawableVerdict(w);
+      if (v === 'concrete') {
+        // an UNATTESTED grant (the noun reading never occurs in tagged
+        // corpora) is cross-examined by the dictionary's own grammar tags —
+        // "or" is granted only by an unattested heraldry sense, and its
+        // dictionary entry declares conjunction
+        if (!this._drawTaxonomy.unattestedNoun(w)) return true;
+        let xdefs = null;
+        if (this.cortexCluster && typeof this.cortexCluster.lookupDefinitionFull === 'function') {
+          try { xdefs = await this.cortexCluster.lookupDefinitionFull(w); } catch { xdefs = null; }
+        }
+        if (Array.isArray(xdefs)) {
+          for (const d of xdefs) {
+            const pos = String(d.partOfSpeech || '').toLowerCase();
+            if (pos === 'conjunction' || pos === 'preposition' || pos === 'pronoun' || pos === 'interjection' || pos === 'determiner' || pos === 'article' || pos === 'particle' || pos === 'numeral') return false;
+          }
+        }
+        return true;
+      }
+      if (v === 'abstract') return false;
+    } catch { /* taxonomy unavailable — the definition evidence stands alone */ }
+    // A word WordNet knows ONLY as adjective/verb/adverb is not a thing —
+    // curated verdict; keeps crowd-dictionary slang noun senses from making
+    // qualities drawable ("strange" carries one slang noun entry).
+    try { if (this._drawTaxonomy && this._drawTaxonomy.knownOnlyNonNoun(w)) return false; } catch { /* fall through */ }
     let defs = null;
-    try { defs = await this.cortexCluster.lookupDefinitionFull(w); } catch { defs = null; }
-    if (!Array.isArray(defs) || defs.length === 0) return true;   // unknown to the dictionary → permissive
-    for (const d of defs) { if (String(d.partOfSpeech || '').toLowerCase() === 'noun') return true; }
-    return false;   // known word with NO noun sense → an action/relation, not an object
+    if (this.cortexCluster && typeof this.cortexCluster.lookupDefinitionFull === 'function') {
+      try { defs = await this.cortexCluster.lookupDefinitionFull(w); } catch { defs = null; }
+    }
+    if (Array.isArray(defs) && defs.length > 0) {
+      // the dictionary's OWN grammar declaration: a word carrying a
+      // function-word or numeral part-of-speech tag is grammar, not a thing
+      for (const d of defs) {
+        const pos = String(d.partOfSpeech || '').toLowerCase();
+        if (pos === 'conjunction' || pos === 'preposition' || pos === 'pronoun' || pos === 'interjection' || pos === 'determiner' || pos === 'article' || pos === 'particle' || pos === 'numeral') return false;
+      }
+      return this._defsSayConcrete(defs);
+    }
+    // No taxonomy entry and no definition — her banked shape is the only
+    // witness left: she LOOKED at something real under this word once.
+    try {
+      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const e = store && store.get(w);
+      if (e && e.schema && Array.isArray(e.schema.parts) && e.schema.parts.length) return true;
+    } catch { /* store unreadable — strict default below */ }
+    return false;
+  },
+  // The evidence test for words the TAXONOMY does not know (new words, slang,
+  // proper nouns): dictionary definitions are GENUS-FIRST ("a large feline
+  // that hunts…"), so take the definition's HEAD CLAUSE — pure grammar, split
+  // before the differentia — and ask the TAXONOMY about each head word.
+  // "floofdoodle: a small fluffy dog kept as a pet" → head "a small fluffy
+  // dog…" → "dog" files under noun.animal → drawable. No marker lists, no
+  // abstract/concrete regexes: the same taxonomy judges the genus words.
+  // ANY noun sense with a concrete genus qualifies (multi-def law).
+  _defsSayConcrete(defs) {
+    let tax = null;
+    try { tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js')); } catch { return false; }
+    if (!tax || typeof tax.drawableVerdict !== 'function') return false;
+    // the head clause: the genus phrase before the differentia begins (grammar
+    // structure of a dictionary definition, not subject knowledge)
+    const headOf = (t) => String(t).split(/[,;:.()]| that | which | who | whom | whose | used | for | with | having | characterized | typically | especially | such as /i)[0].slice(0, 90);
+    for (const d of defs) {
+      if (String(d.partOfSpeech || '').toLowerCase() !== 'noun') continue;
+      const text = String(d.definition || '').trim();
+      if (!text) continue;
+      const words = headOf(text).toLowerCase().replace(/[^a-z\s-]/g, ' ').split(/\s+/).filter(x => x.length > 2).slice(0, 6);
+      for (const gw of words) {
+        if (tax.drawableVerdict(gw) === 'concrete') return true;
+      }
+    }
+    return false;
   },
 
   // DRAW.7 _practiceDrawFromMemory + DRAW.4 _drawFromMemoryStrokes — RETIRED
