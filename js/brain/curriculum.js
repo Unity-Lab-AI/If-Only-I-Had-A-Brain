@@ -5544,13 +5544,8 @@ export class Curriculum {
           // Direct propagate. No ticks, no Rulkov, no sem→motor.
           let motorOutput = null;
           try {
-            // Chunked propagate (bit-identical, yields between row slices) —
-            // the synchronous form pinned the event loop for seconds per
-            // probe at the grown matrices, starving the donor socket AND the
-            // upload pump (UPLINK.1's other half).
-            motorOutput = (typeof letterToMotor.propagateChunked === 'function')
-              ? await letterToMotor.propagateChunked(letterPat, { chunkRows: 250000 })
-              : letterToMotor.propagate(letterPat);
+            // GATEGPU — donor-first via the shared probe helper.
+            motorOutput = await this._probePropagate('letter_to_motor', letterPat);
           } catch { motorOutput = null; }
           if (motorOutput && motorOutput.length > 0) {
             // Group-mean per letter bucket → argmax → decode.
@@ -5883,9 +5878,7 @@ export class Curriculum {
                       if (idx < letterSize) letterInput[idx] = 1;
                     }
                   }
-                  const phonOutput = (typeof letterToPhon.propagateChunked === 'function')
-                    ? await letterToPhon.propagateChunked(letterInput, { chunkRows: 250000 })
-                    : letterToPhon.propagate(letterInput);
+                  const phonOutput = await this._probePropagate('letter_to_phon', letterInput);
                   if (phonOutput && phonOutput.length > 0) {
                     // Same a-z inventory clamp as Template 0 — phon
                     // basins should map to letter sounds, not digits
@@ -12519,6 +12512,40 @@ export class Curriculum {
     if (!cluster || !cluster.crossProjections) return null;
     const proj = cluster.crossProjections[projName];
     if (!proj) return null;
+    // GATEGPU (2026-08-21) — DONOR-FIRST. The GPU holds the FULL training
+    // mass (every rep lands there; the CPU CSR is the sampled shadow), so a
+    // probe on the donor is both ~100× faster (one ~KB pattern + one round
+    // trip vs seconds of CPU matmul) and TRUER — it grades the real weights.
+    // Rows capped at 4M: the ack carries rows×4B of currents, and the 12M-row
+    // intra would be a 48MB ack per probe (that one waits for donor-side
+    // readout reduction). Any null (no donor / lane busy / kill switch /
+    // timeout) falls through to the CPU chunked path — a probe is never
+    // skipped, only relocated.
+    if (proj._gpuBound && (proj.rows | 0) > 0 && (proj.rows | 0) <= 4_000_000
+        && cluster._gpuProxyReady && cluster._gpuProxy
+        && typeof cluster._gpuProxy.gateProbe === 'function') {
+      const idx = [];
+      for (let i = 0; i < srcVec.length; i++) { if (srcVec[i] > 0) idx.push(i); }
+      if (idx.length) {
+        // Single contiguous run (the tiled one-hot shape) → ~30-byte template
+        // carrier; scattered actives ship as raw u32 indices.
+        if (idx[idx.length - 1] - idx[0] + 1 === idx.length) {
+          idx._template = { rowStart: idx[0], groupSize: idx.length, values: [1] };
+        }
+        const srcRegion = projName.slice(0, projName.indexOf('_to_'));
+        try {
+          this._tstage('gate:probe-gpu');   // LOOPNAME
+          const out = await cluster._gpuProxy.gateProbe(`${cluster.name}_${projName}`, srcRegion, idx);
+          if (out && out.length) {
+            // f32 ack → f64 so downstream probe arithmetic is uniform with
+            // the CPU path output (same conversion the legacy branch does).
+            const o64 = new Float64Array(out.length);
+            for (let i = 0; i < out.length; i++) o64[i] = out[i];
+            return o64;
+          }
+        } catch { /* fall through to the CPU path */ }
+      }
+    }
     // Fast path: CPU CSR alive. Chunked (bit-identical, yields between row
     // slices) — this is THE shared probe helper every grade's gates ride, and
     // its synchronous propagate was a multi-second loop pin at grown matrices.
@@ -18059,9 +18086,7 @@ export class Curriculum {
           if (idx < semSize) semInput[idx] = 1;
         }
       }
-      const out = (typeof proj.propagateChunked === 'function')
-        ? await proj.propagateChunked(semInput, { chunkRows: 250000 })
-        : proj.propagate(semInput);
+      const out = await this._probePropagate('sem_to_motor', semInput);
       if (!out || out.length === 0) continue;
       // out is motor-sized (proj.rows). L2-normalize the vector so
       // cosine is a pure direction comparison (magnitude-free).
@@ -18366,12 +18391,7 @@ export class Curriculum {
           }
         }
         let phonOut;
-        try {
-          const _l2p = cluster.crossProjections.letter_to_phon;
-          phonOut = (typeof _l2p.propagateChunked === 'function')
-            ? await _l2p.propagateChunked(preLetter, { chunkRows: 250000 })
-            : _l2p.propagate(preLetter);
-        }
+        try { phonOut = await this._probePropagate('letter_to_phon', preLetter); }
         catch { return null; }
         if (!phonOut || phonOut.length === 0) return null;
         // Phon argmax → letter (the 26-letter inventory backed phoneme buckets)
@@ -20737,9 +20757,7 @@ export class Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = (typeof s2m.propagateChunked === 'function')
-          ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
-          : s2m.propagate(semPat);
+        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -21375,9 +21393,7 @@ export class Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = (typeof s2m.propagateChunked === 'function')
-          ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
-          : s2m.propagate(semPat);
+        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -22808,9 +22824,7 @@ export class Curriculum {
       if (semToMotor && motorRegion && nameEmb && nameEmb.length > 0) {
         const semSize = semRegion.end - semRegion.start;
         const semPat = buildPattern(semSize, nameEmb);
-        const motorOutput = (typeof semToMotor.propagateChunked === 'function')
-          ? await semToMotor.propagateChunked(semPat, { chunkRows: 250000 })
-          : semToMotor.propagate(semPat);
+        const motorOutput = await this._probePropagate('sem_to_motor', semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -26733,9 +26747,7 @@ export class Curriculum {
           if (idx < semSize) semPat[idx] = inputEmb[d];
         }
       }
-      const motorOutput = (typeof s2m.propagateChunked === 'function')
-        ? await s2m.propagateChunked(semPat, { chunkRows: 250000 })
-        : s2m.propagate(semPat);
+      const motorOutput = await this._probePropagate('sem_to_motor', semPat);
       const mGSize = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / invSize));
       const motorReadout = new Float64Array(invSize);
       for (let d = 0; d < invSize; d++) {

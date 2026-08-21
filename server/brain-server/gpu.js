@@ -3339,6 +3339,53 @@ const SERVER_GPU_MIXIN = {
    * bound dst region offset. Returns post-region currents Float32Array
    * same as standalone path (shape = dstRegion size).
    */
+  /**
+   * GATEGPU (2026-08-21) — one gate probe on the donor: write the probe
+   * pattern into the src region's resident spike slice, then run the bound
+   * forward propagate and return the currents. The donor holds the FULL
+   * training mass (the CPU CSR is the sampled shadow), so probing there is
+   * both ~100× faster (one ~KB template + one round trip vs seconds of CPU
+   * matmul at grown matrices) and TRUER — it grades the real weights.
+   *
+   * Honesty guards, each an immediate null (the caller's CPU chunked path
+   * grades instead — a probe is never skipped, only relocated):
+   *  - kill switch DREAM_GATE_GPU_PROBES=0;
+   *  - no live primary socket;
+   *  - >256KB already buffered on the socket — the pattern write below rides
+   *    the shed-able fire-and-forget lane, and a shed write + a bound
+   *    propagate would grade her against STALE spikes; below 256KB the lane
+   *    governors admit everything, so a shed is not possible;
+   *  - the propagate is PINNED to the PRIMARY (same socket the write went
+   *    down — never a pool replica whose mirror may have shed the write).
+   */
+  async gpuGateProbe(matrixName, srcRegionName, sparseIndices) {
+    if (process.env.DREAM_GATE_GPU_PROBES === '0') return null;
+    const ws = this._gpuClient;
+    if (!ws || ws.readyState !== 1) { this._gateProbeRefused = (this._gateProbeRefused || 0) + 1; return null; }
+    if (typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 256 * 1024) {
+      this._gateProbeRefused = (this._gateProbeRefused || 0) + 1;
+      return null;
+    }
+    if (!sparseIndices || !sparseIndices.length) return null;
+    try {
+      this._gpuWriteCortexSpikeSlice(srcRegionName, sparseIndices);
+      const out = await this.gpuSparsePropagate(matrixName, new Uint32Array(0), ws);
+      if (out && out.length) {
+        this._gateProbeGpu = (this._gateProbeGpu || 0) + 1;
+        if (!this._gateProbeLogOnce) {
+          this._gateProbeLogOnce = true;
+          console.log(`[Brain] GATE PROBES via donor: ON — probe patterns write the resident slice, the bound propagate reads the FULL GPU training mass, currents ride the ack (${out.length.toLocaleString()} rows this first read). Kill switch: DREAM_GATE_GPU_PROBES=0.`);
+        }
+        return out;
+      }
+      this._gateProbeNullAck = (this._gateProbeNullAck || 0) + 1;
+      return null;
+    } catch {
+      this._gateProbeNullAck = (this._gateProbeNullAck || 0) + 1;
+      return null;
+    }
+  },
+
   async gpuSparsePropagateBound(name) {
     // DF.7 — when fan-out is ON, spread the bound propagate round-robin across
     // the pool so the idle replica GPUs compute (their resident state is kept
