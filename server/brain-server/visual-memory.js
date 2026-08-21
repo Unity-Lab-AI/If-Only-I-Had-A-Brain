@@ -777,6 +777,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     try {
       const store = this._vmStore();
       const e = store.get(key);
+      // FORMBANK — snapshot the fresh look BEFORE the merge mutates its part
+      // positions: the bank holds looks as seen, never averages of averages.
+      const _pureLook = { ...schema, parts: schema.parts.map(p => ({ ...p })) };
       if (e) {
         const prev = e.schema;
         // Merge by cell index ONLY within the same schema version — a v1 cell 4
@@ -800,6 +803,28 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           // PAINT.2 — a fresh trace's contours win (more information than an old
           // one), but never lose contours a prior look banked if this trace was thin.
           if ((!schema.outlines || !schema.outlines.length) && Array.isArray(prev.outlines) && prev.outlines.length) schema.outlines = prev.outlines;
+        }
+        // FORMBANK (2026-08-21, operator: "she can look at an orange cat and a
+        // black cat sitting, then she can draw a browen cat standing") — the
+        // weighted merge smears every look into ONE average form; the BANK
+        // keeps each look's schema as a distinct VARIANT (a distinct pose/
+        // form of the thing) so drawing can pick a form and recombine colors.
+        // Cap 3 FIFO; only PURE looks bank (the fresh look snapshotted before
+        // the merge mutated it, plus look #1 which the prior still is at look
+        // #2), deduped by coarse layout so a re-look of the same pose can't
+        // fill the bank with copies.
+        if (prev && prev.v === schema.v && Array.isArray(prev.parts) && prev.parts.length) {
+          e.schemaBank = Array.isArray(e.schemaBank) ? e.schemaBank : [];
+          const lay = (s) => s.parts.map(p => `${p.cell}:${Math.round(p.cx * 20)},${Math.round(p.cy * 20)}`).join('|');
+          const bankIfNew = (s) => {
+            if (!s || !Array.isArray(s.parts) || !s.parts.length) return;
+            const L = lay(s);
+            if (e.schemaBank.some(b => lay(b) === L)) return;
+            e.schemaBank.push(s);
+            while (e.schemaBank.length > 3) e.schemaBank.shift();
+          };
+          if ((prev.looks || 1) === 1) bankIfNew(prev);   // look #1, still pure
+          bankIfNew(_pureLook);                            // this look, pre-merge
         }
         e.schema = schema;
         // In-place mutation bypasses the Map set() hook — mark the key dirty

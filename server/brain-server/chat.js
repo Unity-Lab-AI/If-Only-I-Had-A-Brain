@@ -1850,6 +1850,10 @@ const SERVER_CHAT_MIXIN = {
     const contributed = [];
     for (let i = 0; i < plan.subjects.length; i++) {
       const s = plan.subjects[i];
+      // FORMBANK — the drawn form is a per-attempt PICK from the concept's
+      // banked variants (verdict-weighted), possibly recolored from another
+      // look or the definition — never automatically the merged average.
+      try { const picked = this._formPick(s.word, rnd); if (picked) s.schema = picked; } catch { /* the plan's schema stands */ }
       const b0 = layout[i];
       const box = {
         cx: Math.min(0.85, Math.max(0.15, b0.cx + (rnd() - 0.5) * 0.06)),
@@ -2330,6 +2334,61 @@ const SERVER_CHAT_MIXIN = {
     return { strokes: out, erased, deduped };
   },
 
+  // ── FORMBANK (2026-08-21) — FORM GENERALIZATION: pick a FORM from the
+  // concept's banked variants (each a distinct pose/look), then optionally
+  // RECOLOR it from another look's palette or the definition's color — form
+  // from one experience, colors from another: "look at an orange cat and a
+  // black cat sitting, draw a brown cat standing". Accepted pieces (ARTLEARN)
+  // bump the winning variant so her best forms lead.
+  _formPick(word, rnd) {
+    try {
+      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const e = store && store.get(String(word || '').toLowerCase());
+      if (!e || !e.schema) return e && e.schema;
+      const bank = Array.isArray(e.schemaBank) ? e.schemaBank : [];
+      const candidates = [e.schema, ...bank.filter(b => b && Array.isArray(b.parts) && b.parts.length)];
+      if (candidates.length === 0) return e.schema;
+      // verdict-weighted pick: an accepted variant leads without monopolizing
+      const w = candidates.map(c => 1 + Math.min(3, (c.wins | 0)));
+      const total = w.reduce((a, b) => a + b, 0);
+      let roll = rnd() * total;
+      let idx = 0;
+      for (let i = 0; i < candidates.length; i++) { roll -= w[i]; if (roll <= 0) { idx = i; break; } }
+      let form = candidates[idx];
+      // remember which form drew this word — an ARTLEARN accept credits it
+      if (!this._lastFormPick) this._lastFormPick = new Map();
+      this._lastFormPick.set(String(word || '').toLowerCase(), idx);
+      // COLOR RECOMBINATION — 60% the form's own colors; 25% another look's
+      // palette (when one exists); 15% the definition's color when known.
+      const r = rnd();
+      if (r < 0.25 && candidates.length > 1) {
+        const other = candidates[(idx + 1 + Math.floor(rnd() * (candidates.length - 1))) % candidates.length];
+        if (other && Array.isArray(other.palette) && other.palette.length) form = this._recolorSchema(form, other.palette);
+      } else if (r < 0.40) {
+        const attr = (typeof this._defDrawAttributes === 'function') ? this._defDrawAttributes(word) : null;
+        if (attr && attr.colors && attr.colors.length) form = this._recolorSchema(form, attr.colors);
+      }
+      return form;
+    } catch { return null; }
+  },
+  // Recolor a form with a new palette, PRESERVING its light/dark structure:
+  // every part/stroke color maps to the palette entry closest in LUMINANCE,
+  // so the form's shading survives while the hues become the new source's —
+  // the equational version of "same cat, different coat".
+  _recolorSchema(form, palette) {
+    if (!form || !Array.isArray(palette) || !palette.length) return form;
+    const lum = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+    const nearest = (c) => {
+      let best = palette[0], bd = Infinity;
+      for (const p of palette) { const d = Math.abs(lum(p) - lum(c)); if (d < bd) { bd = d; best = p; } }
+      return [best[0], best[1], best[2]];
+    };
+    const out = { ...form, palette: palette.map(p => [p[0], p[1], p[2]]) };
+    if (Array.isArray(form.parts)) out.parts = form.parts.map(p => Array.isArray(p.rgb) ? { ...p, rgb: nearest(p.rgb) } : { ...p });
+    if (Array.isArray(form.traceRgb)) out.traceRgb = form.traceRgb.map(c => Array.isArray(c) ? nearest(c) : c);
+    return out;
+  },
+
   // ── PAINT.5 — HER TRAINED TECHNIQUE. The hand has tunable parameters; practice
   // (below) nudges them per concept and keeps only what measurably improves the
   // resemblance of her drawing to her remembered percept. Defaults are exactly
@@ -2450,6 +2509,13 @@ const SERVER_CHAT_MIXIN = {
             a.styles = a.styles || {};
             a.styles[styleName] = (a.styles[styleName] | 0) + 1;
             if (e.skill) e.skill.validated = (e.skill.validated | 0) + 1;
+          }
+          // FORMBANK — an accept credits the FORM that drew the piece, so her
+          // best variants of this subject lead future picks.
+          if (verdict === 'accept' && this._lastFormPick && this._lastFormPick.has(w)) {
+            const fi = this._lastFormPick.get(w) | 0;
+            const cands = [e.schema, ...(Array.isArray(e.schemaBank) ? e.schemaBank : [])];
+            if (cands[fi]) cands[fi].wins = (cands[fi].wins | 0) + 1;
           }
           e.art = a;
           store.set(w, e);   // re-set → the sqlite store marks it dirty

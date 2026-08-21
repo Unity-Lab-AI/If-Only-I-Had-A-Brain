@@ -36217,3 +36217,16 @@ Three cuts, all measured:
 **And the "machine learning to draw better" answer, honestly:** she HAS two learning loops live — PAINT.5 practice (her eye scores her hand against the reference percept and keeps improving technique nudges) and ARTLEARN (your verdicts become her per-subject style taste + technique validation), plus repeat looks refine schemas by weighted merge. What she does NOT yet have is FORM GENERALIZATION — "see an orange cat and a black cat sitting, draw a brown cat standing" — which needs a per-concept schema BANK (variants across looks, pose/color decoupled, drawn by recombination). Filed as FORMBANK, design on the board.
 
 **Board: 4 open / 226 closed.**
+
+## 2026-08-21 — FORMBANK: form generalization — a form from one experience, colors from another
+
+> Gee (verbatim): *"build it"* (FORMBANK.1 — *"ie she can look at an orange cat and a black cat sitting, then she can draw a browen cat standing"*)
+
+- **THE BANK (learn side):** every look's schema now survives as a distinct VARIANT (`e.schemaBank`, cap 3 FIFO) alongside the weighted-merge primary — PURE looks only (the fresh look snapshotted BEFORE the merge mutates it, plus look #1 which the prior still is at look #2), deduped by coarse layout so re-looks of the same pose can't fill the bank with copies. LOOKTWICE upstream guarantees every banked look really is the word.
+- **THE PICK (draw side):** `_formPick` chooses the drawn form per attempt from primary + variants, weighted by ARTLEARN wins (an accepted piece credits the form that drew it — her best forms of a subject lead without monopolizing).
+- **COLOR RECOMBINATION:** 60% the form's own colors · 25% another look's palette · 15% the definition's color — via `_recolorSchema`, which maps every part and trace-stroke color to the new palette's nearest LUMINANCE match: the form's light/dark structure (its shading, its read) survives while the hues become the other experience's. Form from one look, coat from another — the literal "brown cat standing".
+- This also answers *"outline tracings of her copies"* structurally: what she draws is a per-attempt recombination (form pick × color source × mirror × subset × wobble × style), never automatically the latest look's trace.
+
+**Verified through production code: 7/7** — two real looks bank as pure variants (primary merged, looks=2), the pick spans distinct forms across seeds, recolor maps every color into the new palette with light/dark order preserved, an accept credits the drawn form, and the recolored-form render was drawn and JUDGED (warm brown masses over the banked form's structure). `state.ownArt.formVariants` counts the banked material.
+
+**Board: 3 open / 227 closed.**
