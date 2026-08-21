@@ -943,6 +943,43 @@ function _reportLastBreadcrumb() {
   } catch { /* diagnostics never block a boot */ }
 }
 
+// ── CHECKROT.2 (2026-08-21) — THE SLOT RING, ON ITS OWN COUNTER. ──
+//
+// The slot index used to be `_saveVersion % CHECKPOINT_SLOTS`, computed at copy
+// time — but the big v-copy is HOURLY-gated while `_saveVersion` advances on
+// EVERY save. Whenever the number of saves between two copies is a multiple of
+// 3 — and the steady cadences ARE (periodic checkpoints at 5min = 12/hour,
+// 12 % 3 = 0) — every hourly copy landed in the SAME slot: the newest backup
+// overwritten again and again while the other two slots froze as fossils, and
+// the dashboard's "checkpoints (last 3)" read healthy the whole time.
+//
+// A ring must advance ONCE PER COPY, so the counter lives here and increments
+// only when a copy actually happens. It initialises from DISK, not from zero:
+// the next copy should overwrite the OLDEST existing slot (empty slots first),
+// otherwise every restart would stomp whichever slot happened to be newest.
+// One counter drives BOTH files of a slot (-vN.bin AND -vN.json, copied at the
+// same moment) — the old scheme wrote the json slot on every save and the bin
+// slot hourly, so a slot's json said "2 minutes ago" while the bin beside it
+// was 50 minutes old, and a rollback restored that mismatched pair.
+function _nextCheckpointSlot(brain) {
+  if (brain._vCopySlot == null) {
+    let pick = 0;
+    let oldestMs = Infinity;
+    for (let i = 0; i < CHECKPOINT_SLOTS; i++) {
+      const f = path.join(__dirname, `brain-weights-v${i}.bin`);
+      try {
+        if (!fs.existsSync(f)) { pick = i; break; }   // fill empty slots first
+        const m = fs.statSync(f).mtimeMs;
+        if (m < oldestMs) { oldestMs = m; pick = i; }
+      } catch { pick = i; break; }
+    }
+    brain._vCopySlot = pick;
+  }
+  const s = ((brain._vCopySlot | 0) % CHECKPOINT_SLOTS + CHECKPOINT_SLOTS) % CHECKPOINT_SLOTS;
+  brain._vCopySlot = (s + 1) % CHECKPOINT_SLOTS;
+  return s;
+}
+
 function _pruneStaleCheckpointSlots() {
   for (let i = CHECKPOINT_SLOTS; i <= 9; i++) {
     for (const ext of ['json', 'bin']) {
@@ -6016,9 +6053,15 @@ class ServerBrain {
       };
       fs.writeFileSync(WEIGHTS_FILE, JSON.stringify(data, null, 2));
 
-      // Keep versioned backups (last CHECKPOINT_SLOTS — #112.11, was fixed 5)
-      const backupFile = WEIGHTS_FILE.replace('.json', `-v${this._saveVersion % CHECKPOINT_SLOTS}.json`);
-      fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
+      // CHECKROT.3 (2026-08-21) — the -vN.json slot copy no longer writes here.
+      // It used to be written on EVERY save (ungated, a second full serialize),
+      // while the -vN.bin beside it rotated at most hourly — so the copy was
+      // both redundant I/O that grows with the walk (wordFreq + gateHistory +
+      // dictionary all scale K→PhD) AND it desynced the slot pair a rollback
+      // restores. Both slot files now rotate TOGETHER in the v-copy block below
+      // (bin cadence, one ring counter — CHECKROT.2). The main WEIGHTS_FILE
+      // write above is untouched: durability per save is unchanged, only the
+      // duplicate is gone.
 
       // Stamp save metadata on `this` so the dashboard's milestone panel
       // (+ the /milestone HTTP endpoint) can read fresh values without
@@ -6105,16 +6148,57 @@ class ServerBrain {
             }
           }
         }
+        // ── CHECKROT.3 — FREE-DISK GUARD, RAMHEAD's twin. The async save writes a
+        // 5.4GB .tmp before the atomic rename, and NOTHING checked the disk first:
+        // ENOSPC is survivable (tmp+rename means the main file can never be half-
+        // written, weights stay in RAM) but from that point every save fails with
+        // a warn until someone notices. Same contract as RAMHEAD directly above —
+        // DEFERRED, NEVER DROPPED, retry in 2min, shutdown-class syncs exempt
+        // (a shutdown must try regardless). `statfsSync` guarded by typeof: it
+        // exists from Node 18.15; where absent the guard is silently off, which
+        // is exactly the pre-guard behaviour. Threshold is free-MB absolute
+        // (default 8192 — a 5.4GB tmp plus slack), DREAM_SAVE_MIN_FREE_DISK_MB
+        // tunes, 0 disables.
+        let _diskTight = false;
+        if (!_binSync && !_ramTight) {
+          const _minDiskMB = process.env.DREAM_SAVE_MIN_FREE_DISK_MB !== undefined
+            ? Number(process.env.DREAM_SAVE_MIN_FREE_DISK_MB) : 8192;
+          if (Number.isFinite(_minDiskMB) && _minDiskMB > 0 && typeof fs.statfsSync === 'function') {
+            try {
+              const _stf = fs.statfsSync(__dirname);
+              const _freeDiskMB = Math.floor((Number(_stf.bavail) * Number(_stf.bsize)) / 1048576);
+              if (_freeDiskMB < _minDiskMB) {
+                _diskTight = true;
+                this._diskGuardSkips = (this._diskGuardSkips || 0) + 1;
+                if (!this._diskGuardLogAt || (Date.now() - this._diskGuardLogAt) > 60000) {
+                  this._diskGuardLogAt = Date.now();
+                  console.warn(`[Brain] ⛔ DISK GUARD — checkpoint DEFERRED: ${_freeDiskMB}MB free on the weights volume is under the ${_minDiskMB}MB floor (the save writes a ~5.4GB .tmp before its atomic rename, and this box also hosts Forgejo). Retrying in 2min; the walk continues and weights stay in RAM. Deferrals so far: ${this._diskGuardSkips}. Tune with DREAM_SAVE_MIN_FREE_DISK_MB (0 disables).`);
+                }
+                if (!this._binSavePendingTimer) {
+                  this._binSavePendingTimer = setTimeout(() => {
+                    this._binSavePendingTimer = null;
+                    this.saveWeights({ force: true, trigger: 'disk-guard-retry' });
+                  }, 120000);
+                  if (this._binSavePendingTimer && typeof this._binSavePendingTimer.unref === 'function') this._binSavePendingTimer.unref();
+                }
+              }
+            } catch { /* statfs unavailable on this platform — guard off, pre-guard behaviour */ }
+          }
+        }
         const BIN_FILE_R = WEIGHTS_FILE.replace(/\.json$/, '.bin');
-        const _binBackupFile = BIN_FILE_R.replace(/\.bin$/, `-v${this._saveVersion % CHECKPOINT_SLOTS}.bin`);
         if (_binSync) {
           this._saveBinaryWeightsSync();
           try {
-            if (fs.existsSync(BIN_FILE_R)) fs.copyFileSync(BIN_FILE_R, _binBackupFile);
+            // CHECKROT.2 — slot from the ring, both files of the pair together.
+            if (fs.existsSync(BIN_FILE_R)) {
+              const _slotS = _nextCheckpointSlot(this);
+              fs.copyFileSync(BIN_FILE_R, BIN_FILE_R.replace(/\.bin$/, `-v${_slotS}.bin`));
+              try { fs.copyFileSync(WEIGHTS_FILE, WEIGHTS_FILE.replace('.json', `-v${_slotS}.json`)); } catch { /* pair json best-effort */ }
+            }
           } catch (err) {
             console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
           }
-        } else if (!this._binSaveInFlight && !_ramTight) {
+        } else if (!this._binSaveInFlight && !_ramTight && !_diskTight) {
           // SAVE PACING — the save-stage eyes' first-boot conviction: forced
           // cell-checkpoint saves fired every ~5min, each writing ~16GB of
           // disk traffic (5.4GB tmp + rename writeback + a full-file v-copy),
@@ -6162,11 +6246,23 @@ class ServerBrain {
                   this._lastVCopyMs = Date.now();
                   this._saveStage = 'v-copy'; this._saveStageAt = Date.now();
                   const _ct = Date.now();
+                  // CHECKROT.2 — the slot comes from the ring, HERE, only when a
+                  // copy actually fires. Computing it from _saveVersion at call
+                  // time was the pinning bug: 12 saves/hour % 3 slots = 0, so
+                  // every hourly copy hit the same slot. Both files of the pair
+                  // copy together so a rollback restores a coherent snapshot.
+                  const _slot = _nextCheckpointSlot(this);
+                  const _binBackupFile = BIN_FILE_R.replace(/\.bin$/, `-v${_slot}.bin`);
                   fs.copyFile(BIN_FILE_R, _binBackupFile, (err) => {
                     this._saveStage = null;
                     if (err) console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
-                    else console.log(`[SavePin] v-copy=${Date.now() - _ct}ms (${path.basename(_binBackupFile)})`);
+                    else console.log(`[SavePin] v-copy=${Date.now() - _ct}ms (${path.basename(_binBackupFile)}) — slot from the CHECKROT.2 ring, advances only on a real copy`);
                   });
+                  try {
+                    fs.copyFile(WEIGHTS_FILE, WEIGHTS_FILE.replace('.json', `-v${_slot}.json`), (err) => {
+                      if (err) console.warn('[Brain] JSON slot pair copy failed:', err?.message || err);
+                    });
+                  } catch { /* pair json best-effort */ }
                 } else if (fs.existsSync(BIN_FILE_R)) {
                   console.log('[SavePin] v-copy SKIPPED (hourly rotation — each copy duplicates the full weights file on disk).');
                 }
@@ -7579,7 +7675,10 @@ const httpServer = http.createServer((req, res) => {
     try {
       brain.saveWeights({ force: true, trigger: 'manual-dashboard' });
       const ver = brain._saveVersion || 0;
-      res.end(JSON.stringify({ ok: true, version: ver, slot: `v${ver % CHECKPOINT_SLOTS}`, at: brain._lastSave?.at || null }));
+      // CHECKROT.2 — no slot claim here: the slot is assigned by the ring AT
+      // COPY TIME (hourly-gated), so `ver % SLOTS` would name a slot this save
+      // may never touch. /versions reads the real slots.
+      res.end(JSON.stringify({ ok: true, version: ver, at: brain._lastSave?.at || null }));
     } catch (err) {
       res.end(JSON.stringify({ ok: false, error: err && err.message }));
     }
