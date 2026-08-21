@@ -82,18 +82,31 @@ function drawableVerdict(word) {
   const e = _index.get(w);
   if (!e || !e.offs.length) return 'unknown';
   // UNATTESTED-NOUN GUARD: a word whose noun reading never occurs in the
-  // tagged corpora (tagsense 0) while the word lives in the verb/adjective/
-  // adverb indexes is a verb or adjective wearing a dictionary artifact —
-  // "have" ("the haves") must not become drawable.
+  // tagged corpora (tagsense 0) while the SAME word IS attested as a verb/
+  // adjective/adverb is really that other thing wearing a dictionary-artifact
+  // noun ("have" → the haves, "go" → the board game, "see" → a diocese,
+  // "there" → that place). Requiring the OTHER side to be attested is what
+  // spares "crayon" — a real artifact that simply never made the corpus in
+  // ANY part of speech. Measured in, three rounds.
   _loadOtherPos();
-  if (e.tag === 0 && _otherPos && _otherPos.has(w)) return 'abstract';
   const senses = e.offs.map(_senseInfo).filter(s => !s.inst);
   if (!senses.length) return 'abstract';
+  if (e.tag === 0 && _otherPosTag && (_otherPosTag.get(w) | 0) > 0) return 'abstract';
   // PRIMARY-SENSE GUARD: a word whose most-frequent real sense is a QUANTITY
-  // (23) or a linguistic/communication unit (10) is not a drawing subject even
-  // when a card game borrowed it — "seven" stays a number despite "a card
-  // bearing seven pips".
-  if (senses[0].lex === 23 || senses[0].lex === 10) return 'abstract';
+  // (23) is not a drawing subject even when a card game borrowed it — "seven"
+  // stays a number despite "a card bearing seven pips". (Communication-primary
+  // was guarded here too and MEASURED OUT: it killed "book" — communication
+  // primary, physical volume senses very real — while every word it was meant
+  // to catch (music, dance, consonant) has no concrete sense and refuses on
+  // the main loop anyway.)
+  if (senses[0].lex === 23) return 'abstract';
+  // (An attestation guard was TRIED here and deleted after measuring: corpus
+  // sense-frequency kills book/table/fire — their content/event senses
+  // out-attest their physical ones in any tagged corpus — while "addition"
+  // survives every honest cut because a building wing IS attested English.
+  // Residuals like "addition" are exactly what the viewer's 🚫 not-drawable
+  // button is for: one press bans the word permanently, persisted across
+  // walks. A rule that lies about books to catch one math word is worse.)
   for (const s of senses) if (CONCRETE_LEX.has(s.lex)) return 'concrete';
   return 'abstract';
 }
@@ -142,19 +155,27 @@ function knownDescriptor(word) {
 // it protects the definition-evidence lane from crowd-dictionary slang noun
 // senses ("strange" is adjective/verb everywhere except one slang entry).
 let _otherPos = null;
+let _otherPosTag = null;   // Map<lemma, max tagsense across verb/adj/adv>
 function _loadOtherPos() {
   if (_otherPos || _loadFailed) return;
   try {
     const dict = require('wordnet-db').path;
     _otherPos = new Set();
+    _otherPosTag = new Map();
     for (const f of ['index.adj', 'index.verb', 'index.adv']) {
       const txt = fs.readFileSync(path.join(dict, f), 'utf8');
       for (const line of txt.split('\n')) {
         if (!line || line[0] === ' ') continue;
-        _otherPos.add(line.slice(0, line.indexOf(' ')));
+        const parts = line.trim().split(/\s+/);
+        const lemma = parts[0];
+        if (!lemma) continue;
+        _otherPos.add(lemma);
+        const n = parseInt(parts[2], 10) || 0;
+        const tag = parseInt(parts[parts.length - n - 1], 10) || 0;   // tagsense_cnt sits before the offsets
+        if (tag > (_otherPosTag.get(lemma) | 0)) _otherPosTag.set(lemma, tag);
       }
     }
-  } catch { _otherPos = null; }
+  } catch { _otherPos = null; _otherPosTag = null; }
 }
 function knownOnlyNonNoun(word) {
   _load(); _loadOtherPos();
