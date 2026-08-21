@@ -36323,3 +36323,14 @@ Context: an IP complaint from Rev (ai-ministries). The audit found two truths �
 The EXAM-VOCAB-TEACH progress printed through `_hb` (raw stdout — invisible to the remote console ring, the PHONPROG blind-spot family). Now `console.log`, ring-visible: the START line names the missing-list size, **every 25-word chunk logs the live cursor with an ETA derived from this entry's own measured rate** (`EXAM-VOCAB-TEACH 350/1240 words (5.2/min, ~171min left this entry)`), and DONE is visible too. The next press makes "how long" a number the box states, not an estimate I derive. (PHONPROG.1 proper — the phoneme phase's own heartbeat — stays open; same pattern applies there.)
 
 **Board: 4 open / 239 closed.**
+
+## 2026-08-21 — GPUTEACH step 0 + A-hardening: the teach lane can't lie and can't silently drop
+
+> Gee (verbatim): *"and did you fucking put the vocab all of it everywhere on the gpu side now? lioke we talked about"*
+
+**The architecture truth, read out of the code's own comments: the vocab teach has been GPU-FIRST since 2026-08-15** — `hebbianBound` fires EVERY rep as the primary training mass while the CPU runs a shadow sample on the final rep of every 5th call ("the GPU-only change removed the CPU teach path… a dropped bound-Hebbian is a LOST update"). The operator's instinct was already the design. What was broken: **the lane could lose ops in silence** — the batch queue's 1024 cap DROPPED overflow with no counter, the stale-pattern suppression and chat-priority delays were invisible remotely, and "0 teach/min" couldn't say WHICH stage starved. Shipped:
+- **No silent drops:** at the cap the batch now FLUSHES synchronously (ws.send only buffers — safe mid-slab) and keeps enqueueing; verified 1030 enqueues → 0 drops.
+- **Every stage counted into `state.throughput.boundHebbian`:** enqueued · flushedFrames · flushedOps · capFlushes · suppressedStale · rangesSent. The next boot's numbers NAME the starving stage if the donor still reads 0 during a gate.
+- **B (worker-thread master-copy math — the wall-clock cure for the CPU slabs) stays specced on GPUTEACH.1**, next in line: it is a SharedArrayBuffer re-architecture of the matrix stores, not a patch.
+
+**Board: 4 open / 240 closed.**
