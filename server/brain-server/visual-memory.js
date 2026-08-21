@@ -314,10 +314,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       }
     } catch { /* repeat gate best-effort — intake proceeds */ }
 
-    // concept binding — label first (image prompts name what she made); an
-    // unlabeled camera frame fuses with what she is THINKING in this moment.
+    // concept binding — label first (image prompts name what she made).
+    // CAMPOISON (2026-08-21, operator law): an unlabeled CAMERA frame binds to
+    // NOTHING. It used to fuse with whatever word she was THINKING in that
+    // moment — so a virtual-webcam placeholder card became the TRUSTED,
+    // CONFIRMED visual memory of an unrelated thought word (live incident: the
+    // "connect your webcam" card bound to a thought word and showed on the
+    // viewer as her memory of it). A camera cannot know what she is thinking
+    // about; only a labeled frame names what it shows. She still EXPERIENCES
+    // the seeing (sem grounding below) — she just never files it under a word.
     let tokens = this._vmContentTokens(msg.label);
-    if (tokens.length === 0) {
+    if (tokens.length === 0 && !fromCamera) {
       try {
         const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
         const last = chain.length ? chain[chain.length - 1] : null;
@@ -450,20 +457,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     } catch { /* non-fatal */ }
 
     // she SEES it — swap the shared mind's-eye snapshot to the live percept
-    // so the viewer shows the eye receiving. BALANCED: camera frames arrive
-    // every ~8s but the viewer belongs to IMAGINATION — a camera-seen swap
-    // lands at most once per 60s (first sight immediate) so daydreams and
-    // recalls own the display between glances. Her creations (generated
-    // images, rare) always swap. Binding/grounding above are UNTHROTTLED —
-    // she still perceives and remembers every frame; only the display paces.
-    const _eyeSwapOk = !fromCamera
-      || !this._vmLastEyeSwapAt || (now - this._vmLastEyeSwapAt) > 60000;
-    if (_eyeSwapOk) try {
+    // so the viewer shows the eye receiving. CAMPOISON (operator law):
+    // seen-camera frames NEVER appear on the mind's eye — the viewer belongs
+    // to her imagination, memories and artwork, and a webcam placeholder card
+    // on that page reads as her mind when it is just a device's screen.
+    // Labeled seen frames (her own creations coming back) still swap.
+    if (!fromCamera) try {
       this._vmLastEyeSwapAt = now;
       this._lastGroundedEyeAt = now;   // SEE.6 — a seen frame is a grounded frame
       this._mindsEyeJson = JSON.stringify({
         type: 'mindsEye', rec, terms: rec.equation_count || 0,
-        source: (fromCamera ? 'seen-camera' : 'seen') + (tokens.length ? ':' + tokens[0] : ''),
+        source: 'seen' + (tokens.length ? ':' + tokens[0] : ''),
         at: now,
       });
     } catch { /* non-fatal */ }
