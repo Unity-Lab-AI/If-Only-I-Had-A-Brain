@@ -156,7 +156,9 @@ const SERVER_CHAT_MIXIN = {
               _c.pushEmission({ source: 'own-art', text: (made.plan && made.plan.subjects ? made.plan.subjects.join(' ') : 'drawing'), ts: now });
             }
           } catch { /* non-fatal */ }
-          this._ownArtDrawn = (this._ownArtDrawn || 0) + 1;
+          // DRAWNCOUNT — the increment moved INTO _drawOwnCreation (the birth
+          // of every piece): counting only this drain lane read "0 drawn"
+          // while the mind's-eye tick published artwork all day.
           // PAINT.5 — drawing IS the trigger to practice: each subject she just
           // drew gets one queued practice session (the loop itself gates on the
           // per-concept cooldown + schema/percept presence, so this is cheap to
@@ -1882,6 +1884,11 @@ const SERVER_CHAT_MIXIN = {
       });
     } catch { return null; }
     if (!drawn) return null;
+    // DRAWNCOUNT (2026-08-21, operator: "her art: 0 drawn... why does this say
+    // zero? she has 25+ seen") — count every born piece HERE, at the single
+    // point all lanes flow through. The old counter lived in one drain lane
+    // while the mind's-eye tick published art all day: 0 drawn, 56 attempts.
+    this._ownArtDrawn = (this._ownArtDrawn | 0) + 1;
     // ARTSTYLE — the style rides the label so the viewer SHOWS her changing it up.
     const styleName = artStyle ? artStyle.name : 'poster';
     const label = 'canvas:own:' + plan.subjects.map(s => s.word).join('+') + ':' + styleName;
