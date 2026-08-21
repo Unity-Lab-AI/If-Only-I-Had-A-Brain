@@ -1189,7 +1189,7 @@ function autoClearStaleState() {
     // placeholder card poisoned thousands of visual bindings and would have
     // SURVIVED a fresh walk because these files were missing from the wipe.
     path.join(__dirname, 'visual-memory.json'),
-    path.join(__dirname, 'mindspace-memory.json'),
+    path.join(__dirname, 'mindspace-memory-v2.json'),   // RINGWIPE — versioned with the ring
   ];
 
   // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
@@ -3470,17 +3470,23 @@ class ServerBrain {
         console.log(`[MindSpace] server equational mind-space ready (${this.mindSpace.available ? 'GPU' : 'CPU reference'} path, worker thread — off the event loop) — de-novo imagination wired`);
         // UVM-INT.4 — restore the persisted imagined field-C ring (.uvme-medium
         // memory) so her mental imagery has continuity across reboot.
+        // RINGWIPE (2026-08-21) — v1 → v2: the ring is IMAGE-EQUATION memory,
+        // and it was the lane that carried the old drawings straight through
+        // every visual-store reset (operator: "why did all her old visions and
+        // drawings persist through the save start"). The rename orphans the
+        // colorless-era imagery the same way the visual store versions do;
+        // she re-imagines from the color-complete pipeline.
         try {
-          const msPath = path.join(__dirname, 'mindspace-memory.json');
+          const msPath = path.join(__dirname, 'mindspace-memory-v2.json');
           if (fs.existsSync(msPath)) {
             const j = JSON.parse(fs.readFileSync(msPath, 'utf8'));
             if (j && Array.isArray(j.recs)) {
               this._imaginedFieldRing = j.recs.slice(-8);
-              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory.json`);
+              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory-v2.json`);
             }
           }
         } catch (err) {
-          console.warn('[MindSpace] mindspace-memory.json restore failed:', err?.message || err);
+          console.warn('[MindSpace] mindspace-memory-v2.json restore failed:', err?.message || err);
         }
       } catch (err) {
         console.warn('[MindSpace] init failed:', err?.message || err);
@@ -6345,13 +6351,13 @@ class ServerBrain {
       // write. Derivative state — fine to lose / auto-clear; she re-imagines.
       try {
         if (Array.isArray(this._imaginedFieldRing) && this._imaginedFieldRing.length > 0) {
-          const msPath = path.join(__dirname, 'mindspace-memory.json');
+          const msPath = path.join(__dirname, 'mindspace-memory-v2.json');   // RINGWIPE — v2, colorless-era ring orphaned
           const tmp = `${msPath}.tmp`;
-          fs.writeFileSync(tmp, JSON.stringify({ version: 1, recs: this._imaginedFieldRing.slice(-8) }));
+          fs.writeFileSync(tmp, JSON.stringify({ version: 2, recs: this._imaginedFieldRing.slice(-8) }));
           fs.renameSync(tmp, msPath);
         }
       } catch (err) {
-        console.warn('[MindSpace] mindspace-memory.json save failed:', err?.message || err);
+        console.warn('[MindSpace] mindspace-memory-v2.json save failed:', err?.message || err);
       }
 
       const trig = opts.trigger ? ` (trigger=${opts.trigger})` : '';

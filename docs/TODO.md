@@ -200,3 +200,10 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 > Gee (verbatim): *"and learn from her drawing"*
 
 - [x] **ARTLEARN.1** → **✅ SHIPPED:** accepts teach — the winning style banks per concept (`e.art.styles`) and weights the style picker for that subject (verified 5/40 → 18/40, rotation preserved); the practiced technique marks `validated`; every accept queues a practice session (reinforcement); rejects already unlearn via REJECTGONE (whole memory rebuilds). Verdicts ride the emission bus into episodes as before. 6/6 harness checks. Ledger: FINALIZED §ARTLEARN.
+
+## PROXYCOLOR + RINGWIPE — the monotone mystery + the persisting visions — filed + shipped 2026-08-21
+
+> Gee (verbatim): *"why did all her old visions and drawings persist through the save start and why are the only monotone outlines?"*
+
+- [x] **PROXYCOLOR.1** why are the only monotone outlines → **✅ ROOT-CAUSED + FIXED:** `MindSpaceWorkerProxy` had NO `imagine()` — the color sampler's typeof guard silently returned no colors on the box, so every v6 schema banked colorless and COLORART never fired in production while every harness (engine-direct) showed full color. One passthrough added; **verified through the real worker thread** (perceive → imagine → real pixels over the box's exact channel). Store bumped v6 → v7 (v6's schemas are all colorless). Memory `feedback_harness_production_wiring` written. Ledger: FINALIZED §PROXYCOLOR.
+- [x] **RINGWIPE.1** why did all her old visions and drawings persist through the save start → **✅** the imagined-field ring (`mindspace-memory.json`, restored at every boot, wiped only on fresh walk) replayed old fields through every reset — versioned v1 → v2, wipe-list/regex/deploy-excludes updated; the colorless-era ring orphans at the press. Ledger: FINALIZED §PROXYCOLOR.

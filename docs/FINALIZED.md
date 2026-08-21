@@ -36148,3 +36148,17 @@ The reject side already unlearns (REJECTGONE: the whole memory dies and rebuilds
 Verdicts were already riding the emission bus into her episodes; now they also shape the hand itself. **6/6 harness checks on production code.**
 
 **Board: 3 open / 214 closed.**
+
+## 2026-08-21 — PROXYCOLOR + RINGWIPE: the monotone mystery solved — the proxy was color-blind, and the imagined ring carried the old visions
+
+> Gee (verbatim): *"why did all her old visions and drawings persist through the save start and why are the only monotone outlines?"*
+
+**Read off the live box first (build a96324c6, booted 12:54Z — the press DID land, and the v6 store DID reset: 13 seen / 4 schemas rebuilt from zero).** Then both answers:
+
+- **THE MONOTONE OUTLINES — the worker proxy had no `imagine()`.** The box routes `this.mindSpace` through `MindSpaceWorkerProxy`, which exposes a hand-picked method list — and the COLOR pipeline's sampler guards with `typeof mindSpace.imagine === 'function'`. On the box that was false, so every schema silently banked with NO palette, NO part colors, NO stroke colors → COLORART never fired → neutral body + pale contrast trace = monotone neutral outlines. **Every harness this session ran the ENGINE directly and showed full color — production CODE, not production WIRING.** Owned: memory `feedback_harness_production_wiring` written. Fix: one generic passthrough (`imagine()` — the worker dispatch is `ms[method]`), **verified through the REAL worker thread**: perceive → imagine returned real pixels over the exact postMessage channel the box uses (Uint8ClampedArray survives the clone).
+- **THE PERSISTING OLD VISIONS — the imagined-field ring.** `mindspace-memory.json` (the ≤8-rec `_imaginedFieldRing`) restores at EVERY boot and dies only on a fresh walk — the visual-store resets never touched it, so old drawing/look fields kept replaying on the viewer through every savestart. **RINGWIPE: v1 → v2** (`mindspace-memory-v2.json`) — the same orphaning ritual as the visual store; the colorless-era ring dies at the press; FRESHEYES regex + the explicit wipe-list entry + deploy excludes all updated (`mindspace-memory*.json`).
+- **And the visual store bumps v6 → v7:** v6 spent its whole life banking colorless schemas through the broken proxy — even with the proxy fixed, v6's schemas would keep drawing monotone. v7 boots empty behind the COMPLETE color pipeline.
+
+Also read off the box while in there: the look lane is grinding through anonymous-tier 429s (15 httpFails vs 11 grounded — the failure-rollback is retrying correctly; grounding proceeds, just slower than the no-gap ideal).
+
+**Board: 3 open / 215 closed.**
