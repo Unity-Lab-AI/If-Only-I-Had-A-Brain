@@ -140,6 +140,8 @@ rsync -a --delete \
   --exclude 'server/mindspace-memory.json' \
   --exclude 'visual-memory*.json' \
   --exclude 'server/visual-memory*.json' \
+  --exclude 'visual-memory*.db*' \
+  --exclude 'server/visual-memory*.db*' \
   --exclude 'pollinations-user.json' \
   --exclude 'user.json' \
   --exclude 'deployed-build.json' \
