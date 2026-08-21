@@ -35946,3 +35946,19 @@ The 10-minute brain-wide gap was Gee's own 2026-07-17 rule from the KEYED-accoun
 **Verified by running the real mixin end-to-end:** hooked writes persist, the in-place schema mark reaches the DB, an LRU touch (delete+set) nets to one upsert, a delete sticks, and a simulated RESTART reloaded exactly the right two rows with the updated seen-count and the learned schema intact — plus the FRESHEYES regex sweeping `visual-memory-v4.db(-wal/-shm)` while leaving `brain-weights.bin` and `identity-core.json` untouched.
 
 **Board: 4 open, 197 closed.**
+
+---
+
+## 2026-08-21 — ARTSTYLE: eight hands, one mind — she changes up her style on every piece
+
+> Gee (verbatim): *"so what did we leave out that she needs to be able to draw and paint and pencil and doodle and have lots of differnt art styles available that she is always changing up the style and types of art see paints draws and doodles"*
+
+**What was left out, honestly: she had one toolkit but ONE style** — every piece came out poster-flat. Shipped:
+
+- **The one missing rasterizer primitive: per-stroke ALPHA** (`sketch()` in `gpu.js`) — every primitive (line/point/poly/fill/blob) now takes `a` (0..1) and BLENDS with what's on the paper instead of overwriting. Watercolor washes, soft graphite, translucent layering — impossible before, one parameter now. Default 1 = the exact old behavior.
+- **The style engine** (`_artStyles` + `_artMass` + `_artInk`, chat.js): **eight named hands** — `poster` (filled + bold outline), `pencil` (graphite hatching, busy detail), `ink` (spare pale line art), `watercolor` (overlapping translucent washes), `pointillism` (hundreds of color dots), `crosshatch` (two-angle graphite), `crayon` (waxy scribble fill), `doodle` (small, loose, margins). Every style is a *parameterization of the same primitives over the same learned schema* — her knowledge of the subject is identical; only the HAND changes. Threaded through the schema painter, the definition recipes, and the no-schema guess alike.
+- **The rotating picker** (`_artStylePick`): mood-weighted — high arousal leans ink/poster/crayon, low valence leans pencil/crosshatch, calm leans watercolor/pointillism — and **her last style is weight-zero, so she never paints the same way twice in a row.** The style rides the artwork label (`canvas:own:<word>:<style>`) and `state.ownArt.lastArtStyle`, so the viewer shows her changing it up.
+
+**Verified in pixels, not vibes** — the SAME subject rendered through all eight styles and measured after the field-C round-trip: **8 of 8 distinct pixel signatures** (poster 28% painted/sat 90 · pencil 10%/sat 6 · watercolor 29%/sat 51 · pointillism 465 dots · crayon 14%/sat 85 · doodle small at 9% · crosshatch 11%/sat 6). Rotation harness: 12 pieces → 7 distinct styles, zero consecutive repeats. **And the harness caught a real bug before it shipped:** mono ink was near-black on her DARK sketchbook paper — 0.1% coverage, literally invisible; ink is now a pale gel-pen line (4.4%, reads as line art).
+
+**Board: 4 open, 198 closed** — `ARTSTYLE.1` closes; `PAINT.5` (the practice loop) remains the open road to mastery.
