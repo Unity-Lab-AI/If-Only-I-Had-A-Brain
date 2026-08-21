@@ -16,7 +16,7 @@ Claude must read these in sequence before any work that is load-bearing on the n
 | **2** | **`.claude/WORKFLOW.md`** | On `/workflow` or any TODO/FINALIZED-touching work | Pipeline phases 0-5, double-validation hooks, TODO/FINALIZED task flow with diagrams, pre/post-work hooks, file-edit protocol, hook-failure protocol, agent + command reference. |
 | **3** | **`.claude/agents/unity-coder.md`** + **`.claude/agents/unity-persona.md`** | On `/unity` persona activation | Full Unity persona rules — chemical/sexual/technical streams, voice generation, body-part state, BDSM dynamic, vocabulary system. |
 | **4** | **`.claude/agents/unity-hurtme.md`** | On `/hurtme` mode | Violence-only BDSM mode (no sex). |
-| **5** | **`.claude/commands/*.md`** | When the slash command fires | Command-specific activation protocol (`/workflow`, `/unity`, `/sexy`, `/hurtme`, `/pollinations-setup`, `/super-review`). |
+| **5** | **`.claude/commands/*.md`** | When the slash command fires | Command-specific activation protocol (`/workflow`, `/unity`, `/sexy`, `/hurtme`, `/super-review`). |
 
 ---
 
@@ -104,34 +104,9 @@ HURT ME mode (violence-only BDSM, no sex): **`.claude/agents/unity-hurtme.md`**.
 
 ---
 
-## POLLINATIONS AI PLUGIN (pollinations-ai)
+## POLLINATIONS — brain-side only
 
-AI-powered generation of images, text, audio, video, and transcription via Pollinations.ai. All files live in `.claude/pollinations-ai/`.
-
-### MCP Tools Available
-
-| Tool | Purpose |
-|------|---------|
-| `pollinations_setup` | BYOP OAuth login (connect Pollinations account) |
-| `pollinations_image` | Generate images (flux, gptimage, imagen-4, 20+ models) |
-| `pollinations_text` | Chat with text models (GPT-5, DeepSeek, Mistral, 50+) |
-| `pollinations_audio` | Text-to-speech (35+ voices, auto-play) |
-| `pollinations_video` | Generate video (veo, seedance, wan) |
-| `pollinations_transcribe` | Speech-to-text (whisper, scribe) |
-| `pollinations_models` | List available models |
-| `pollinations_view` | Open generated files in system viewer |
-
-### Image Style Presets
-
-photorealistic, anime, oil-painting, pixel-art, watercolor, cinematic, sketch, cyberpunk
-
-### Setup
-
-1. Run `/pollinations-setup` to connect Pollinations account via BYOP OAuth
-2. Or pass API key directly via `pollinations_setup` tool
-3. Generated files save to `./pollinations-output/`
-
-User auth key persists in `.claude/pollinations-user.json` — **never clear that file**.
+The third-party `pollinations-ai` CLI plugin (ai-ministries) was REMOVED 2026-08-21 on the operator's word — it was Claude-Code tooling with nothing to do with the brain. The brain's own Pollinations use (reference look-ups, chat image gen) is entirely in-repo code (`_buildPollinationsImageUrl`, the look lane, the client render lane) and unaffected. `.claude/pollinations-user.json` (user auth) — **never clear that file**.
 
 ---
 
@@ -165,7 +140,7 @@ Unity voice        → Always required when persona is active
 LAW text           → .claude/CONSTRAINTS.md (full bodies, procedures, violation logs)
 Pipeline mechanics → .claude/WORKFLOW.md (hooks, phases, task flow, file edit)
 Persona rules      → .claude/agents/unity-coder.md + unity-persona.md
-Pollinations       → /pollinations-setup to connect, then generate
+Pollinations       → brain-side code only (the CLI plugin was removed 2026-08-21)
 ```
 
 ---
