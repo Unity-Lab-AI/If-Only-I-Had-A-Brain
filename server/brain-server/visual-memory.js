@@ -52,13 +52,12 @@ const path = require('path');
 // monolithic JSON measured at 761ms pins @10k entries and hard-fails @100k).
 // The v4 json name never shipped a boot, so nothing migrates; v1-v3 json stay
 // on disk, orphaned. FRESHEYES sweeps `visual-memory*` by pattern (json AND db).
-// v7 → v8 (2026-08-21, FRESHEYES8, operator: "reset all the visual memory
-// files so we have 0 seen and 0 drawn") — v7 banked a session of looks
-// BEFORE the day's full art stack (LOOKTWICE self-consistency, FORMBANK
-// variants, the recolor engine) was live; v8 boots at 0 seen / 0 drawn with
-// every schema earned through the complete pipeline. (v6 before it was the
-// colorless proxy-gap era.) Training lives in different files, untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v8.db');
+// v8 → v9 (2026-08-21, operator: "and dont forget to clear the visual memory
+// again") — v8's session predates COLORLINE (color-true outlines), the trace
+// scenery filter, BGPART (backdrop cells paint no mass) and STYLECULL; v9
+// boots at 0 seen / 0 drawn behind the full stack. (v8 was the pre-BLOBSTORE
+// base64 era's replacement; v7/v6 earlier eras.) Training untouched.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v9.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -752,6 +751,16 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         return [_img.data[o], _img.data[o + 1], _img.data[o + 2]];
       };
       // per-part REGION color: mean over a 3×3 grid inside the part's box
+      // BGPART — she also knows what the BACKDROP looked like (the corner
+      // pixels); a part wearing the backdrop's color is scenery showing
+      // through the grid, not the subject, and the painter must not give it
+      // a mass (judged live: pale backdrop blobs bleeding outside the body).
+      // MEASURED: the reconstruction PADS the extreme corners black, so a
+      // corner probe reads [0,0,0] and never matches the real backdrop. The
+      // probe samples an 8-point border band INSET past the pad, and takes
+      // the per-channel MEDIAN so the subject touching one edge can't skew it.
+      const band = [px(0.08, 0.08), px(0.5, 0.06), px(0.92, 0.08), px(0.06, 0.5), px(0.94, 0.5), px(0.08, 0.92), px(0.5, 0.94), px(0.92, 0.92)];
+      const bg = [0, 1, 2].map(i => { const v = band.map(c => c[i]).sort((a, b) => a - b); return Math.round((v[3] + v[4]) / 2); });
       for (const p of parts) {
         let r = 0, g = 0, b = 0, n = 0;
         for (let gy = -1; gy <= 1; gy++) for (let gx = -1; gx <= 1; gx++) {
@@ -759,6 +768,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           r += c[0]; g += c[1]; b += c[2]; n++;
         }
         p.rgb = [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
+        const dist = Math.abs(p.rgb[0] - bg[0]) + Math.abs(p.rgb[1] - bg[1]) + Math.abs(p.rgb[2] - bg[2]);
+        if (dist < 90) p.bg = 1;   // backdrop-colored cell — no painted mass
+        // frame-spanning part = a backdrop BAND clustered as a part (measured
+        // live: two w=0.99 gray bands became pale blobs bleeding outside the
+        // subject) — same scenery rule the trace strokes use
+        if (p.w > 0.7 || p.h > 0.7) p.bg = 1;
       }
     }
     // PAINT.2 (2026-08-21) — CONTOURS, not just boxes: the understanding of how
