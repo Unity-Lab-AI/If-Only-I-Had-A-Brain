@@ -35822,3 +35822,27 @@ Teach-attributed blocks under `DREAM_LOOP_LAG_SUMMARY_UNDER_MS` (2s) aggregate i
 `node --check` on all six touched files · ESM link on `consolidation-engine.js` · **bundle rebuilt** (curriculum/cluster are bundle inputs — the LOOPNAME.13 freshness check would have flagged it) · propagate equivalence maxDiff=0 · the summary-window harness · the forced-wall selection table. New knobs documented in `docs/ADMIN-CONTROLS.md`.
 
 **Board: 3 open, 186 closed** — the seven close; `SUBSTEPS.6` (probe-gated), `SCALEDOC.1`, and `PHONPROG.1` remain, and the Oja active-set inflation WATCH stays a watch.
+
+---
+
+## 2026-08-21 — CHECKROT: the checkpoint ring gets its own counter, the slot pair gets coherent, and the disk gets a guard
+
+> Gee (verbatim): *"are the checkpoints cycled out... it should only keep the most recent 3 as we dont want a bunch of 5000MB checkpoint saves on the box"* → *"do checkrot.2"* → *"and fix checkrot.3"*
+
+The investigation's verdict stood — rotation exists, the cap is already 3 — and the two nits it filed are now fixed.
+
+### `CHECKROT.2` — the ring advances only when a copy actually happens
+
+The slot index was `_saveVersion % CHECKPOINT_SLOTS` computed at copy time; the big v-copy is hourly-gated while `_saveVersion` advances on every save, so whenever the saves-per-hour count was a multiple of 3 — and the steady cadence IS: 5-minute checkpoints = 12/hour, 12 % 3 = 0 — **every hourly copy landed in the same slot**: the newest backup overwritten repeatedly, the other two slots frozen fossils, the dashboard's `checkpoints (last 3)` reading healthy throughout. `_nextCheckpointSlot()` now owns the index: it increments **only on a real copy**, and it initialises from DISK — empty slots first, then the oldest by mtime — so a restart resumes the ring instead of stomping whichever slot happened to be newest. **Harness-verified against real files:** the old scheme's `[12,24,36] % 3 → [0,0,0]` (pinned) vs the ring's `[0,1,2]` (rotates); a fresh process with v1 oldest on disk picked v1 → v2 → v0; a missing v2 was filled first.
+
+### The pair-coherence half, found while fixing it
+
+`/versions` and rollback treat `-vN.json` + `-vN.bin` as a PAIR — but the json slot was written on **every save** while the bin slot rotated hourly, so a slot's json said "2 minutes ago" beside a bin from 50 minutes earlier, **and a rollback restored that mismatched pair.** Both files of a slot now copy together, at the same moment, under the same ring index — the every-save json slot write is deleted (`CHECKROT.3`'s redundant-I/O half: it was a second full serialize per save, growing with `wordFreq` + `gateHistory` + the dictionary across the walk). The main `WEIGHTS_FILE.json` still writes every save — durability unchanged, only the duplicate is gone. The `/checkpoint` endpoint also stops claiming `slot: v{ver % 3}` — a slot this save may never touch; `/versions` reads the real ones.
+
+### `CHECKROT.3` — the disk guard, RAMHEAD's twin
+
+The async save writes a ~5.4GB `.tmp` before its atomic rename and nothing checked free space first. Now: `DREAM_SAVE_MIN_FREE_DISK_MB` (default 8192, `0` disables) — under the floor the checkpoint **DEFERS with a 2-minute retry, never dropped**, the same contract as the RAM guard beside it; shutdown-class syncs are exempt (a shutdown must try regardless). Sensor is `fs.statfsSync` (Node ≥18.15), `typeof`-guarded so an older platform gets the exact pre-guard behaviour rather than a crash. Smoke-tested live on this volume (249,281MB free → no defer).
+
+**Verified:** `node --check`, the three-scenario ring harness on real temp files, the statfs smoke. Docs: `ADMIN-CONTROLS` gains the `DREAM_SAVE_MIN_FREE_DISK_MB` + `DREAM_CHECKPOINT_SLOTS` rows.
+
+**Board: 3 open, 188 closed** — `CHECKROT.2` + `CHECKROT.3` close; `SUBSTEPS.6`, `SCALEDOC.1`, `PHONPROG.1` remain.
