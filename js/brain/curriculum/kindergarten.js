@@ -4561,8 +4561,12 @@ export const K_MIXIN = {
     // gate entry forever — the root cause of the science 7M-event
     // runaway. Now a taught word counts as trained and the coverage
     // audit clears, so the teach fires once and the cell advances.
-    if (this._vocabTaughtSet && this._vocabTaughtSet.size > 0) {
-      for (const w of this._vocabTaughtSet) vocab.add(w);
+    // GATEVOCAB — read the CLUSTER-persisted set too: after a restart the
+    // taught receipt lives there (restored from the weights) before any
+    // pregate has re-initialized the curriculum-side reference.
+    const taughtSets = [this._vocabTaughtSet, this.cluster && this.cluster._vocabTaughtWordsPersist];
+    for (const ts of taughtSets) {
+      if (ts instanceof Set && ts.size > 0) for (const w of ts) vocab.add(w);
     }
     return vocab;
   },
