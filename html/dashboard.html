@@ -1460,7 +1460,7 @@
       // Current-training card — subject + grade + description + phase
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
-      renderCurriculumStatus(s.curriculum || null);
+      renderCurriculumStatus(s.curriculum || null, (s.throughput && s.throughput.gateProbes) || null);
       renderLeaderboard(s.leaderboard || null);
 
       // Full-Mind K Gate panel — 23-probe pass-instrument for K closure.
@@ -2553,7 +2553,7 @@
         + rows;
     }
 
-    function renderCurriculumStatus(c) {
+    function renderCurriculumStatus(c, gateProbes) {
       const $ = id => document.getElementById(id);
       if (!c) {
         $('d-curr-subject').textContent = 'no cell active';
@@ -2703,9 +2703,27 @@
         const alive = rate > 0 || (sinceS !== null && sinceS < 30)
           || emitRate > 0 || (sinceEmitS !== null && sinceEmitS < 30);
         const colour = alive ? '#4ade80' : '#f87171';
-        const gate = lv.probeGateActive
-          ? ' &middot; <span style="color:#fbbf24;">spikes paused &mdash; probe gate (expected)</span>'
-          : '';
+        // GATEGPU — a gate PROBES (tests), it doesn't teach, so teach/min=0 is
+        // TRUE during one; but the donor is now doing the grading, and a bare
+        // 0 beside a busy GPU reads like a dead brain — the lying-instrument
+        // family. Say what the gate is actually doing, with the donor-probe
+        // count + a live rate off the cumulative counter.
+        let gate = '';
+        if (lv.probeGateActive) {
+          let probeBit = '';
+          const gpTotal = gateProbes ? (gateProbes.gpu | 0) : 0;
+          if (gpTotal > 0) {
+            const nowMs = Date.now();
+            if (!renderCurriculumStatus._gp) renderCurriculumStatus._gp = { n: gpTotal, t: nowMs, rate: 0 };
+            const g = renderCurriculumStatus._gp;
+            if (nowMs - g.t > 3000) {
+              g.rate = Math.max(0, Math.round((gpTotal - g.n) / ((nowMs - g.t) / 60000)));
+              g.n = gpTotal; g.t = nowMs;
+            }
+            probeBit = ` &mdash; <span style="color:#4ade80;">grading on the donor GPU (${gpTotal.toLocaleString()} probes${g.rate > 0 ? `, ${g.rate.toLocaleString()}/min` : ''})</span>`;
+          }
+          gate = ` &middot; <span style="color:#fbbf24;">probe gate &mdash; testing, not teaching (expected)</span>${probeBit}`;
+        }
         const emitBit = emitRate > 0
           ? ` &middot; <span style="color:#a78bfa;">${emitRate.toLocaleString()} emit-ticks/min (emission phase)</span>`
           : '';
