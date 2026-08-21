@@ -101733,12 +101733,17 @@ var Curriculum = class _Curriculum {
             const ctx = { arousal: 0.7, valence: 0.2 };
             const CHUNK2 = 25;
             const reps = opts.vocabReps ?? 4;
-            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (chunked ${CHUNK2})`);
+            console.log(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (chunked ${CHUNK2})`);
+            const _gvT0 = Date.now();
             let done = 0;
             for (let i = 0; i < words.length; i += CHUNK2) {
               const slice = words.slice(i, i + CHUNK2);
               try {
                 await this._teachVocabList(slice, ctx, { reps });
+                const _gvDone = Math.min(i + CHUNK2, words.length);
+                const _gvRate = _gvDone / Math.max(1, (Date.now() - _gvT0) / 6e4);
+                const _gvEtaMin = _gvRate > 0 ? Math.round((words.length - _gvDone) / _gvRate) : -1;
+                console.log(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH ${_gvDone}/${words.length} words (${_gvRate.toFixed(1)}/min, ~${_gvEtaMin}min left this entry)`);
                 for (const w of slice) this._vocabTaughtSet.set(String(w).toLowerCase(), Date.now());
               } catch (err) {
                 console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i / CHUNK2 | 0} failed:`, err?.message || err);
@@ -101747,7 +101752,7 @@ var Curriculum = class _Curriculum {
               this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH progress \u2014 ${done}/${words.length} words taught`);
               await new Promise((resolve) => setImmediate(resolve));
             }
-            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH DONE \u2014 ${done}/${words.length} words taught`);
+            console.log(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH DONE \u2014 ${done}/${words.length} words taught`);
             this._auditExamVocabulary(cellKey);
           }
         }
