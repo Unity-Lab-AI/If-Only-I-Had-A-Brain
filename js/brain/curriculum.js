@@ -12099,22 +12099,48 @@ export class Curriculum {
     const inhibitLr = Math.abs(lr) * 0.3;
     const _lp2 = Date.now();
     this._tstage('lateral:anti');   // LOOPNAME
-    if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
-      await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
-    } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === 'function') {
-      cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
+    // MASKED BOUND PLASTICITY (donor v0.3.26) — this anti pass was the biggest
+    // measured CPU slab in the K gates (teachStageMax=lateral:anti at ~31.8s per
+    // 60s window, read live): its pre≠post shape (pre = live spikes, post = the
+    // synthetic cross-bucket mask) could not ride hebbian_bound (pre==post on the
+    // intra matrix) and type-3 hebbian would ship the live pre state as a ~MB
+    // index river. The masked verb reads pre from the RESIDENT bound spikes
+    // (zero wire — the teach-frame twins keep the pseudo-cluster current) and
+    // ships only the cross-bucket rows (~KB). When the GPU carries the mass the
+    // CPU shadow runs SAMPLED (every 5th call — the same trained-equivalent
+    // posture every emission lane uses: GPU weights fully current, CPU sees
+    // enough of the updates for probes and saves); when the donor can't take
+    // the frame (old binary / lane closed / not resident) the CPU pass runs in
+    // full, exactly as before — nothing is ever dropped.
+    let _gpuCarried = false;
+    if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianBoundMasked === 'function') {
+      try {
+        _gpuCarried = cluster._gpuProxy.hebbianBoundMasked(`${cluster.name}_intraSynapses`, -inhibitLr, 1, crossActiveRows) === true;
+      } catch { _gpuCarried = false; }
+    }
+    this._lateralShadowCounter = (this._lateralShadowCounter | 0) + 1;
+    const _runCpuShadow = !_gpuCarried || (this._lateralShadowCounter % 5 === 0);
+    if (_runCpuShadow) {
+      if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
+        await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
+      } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === 'function') {
+        cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
+      }
     }
     // STAGE PROFILE — substrate-wait / bucket-scan-and-build / anti-update,
     // cumulative, read off liveness.stageProfile. `active` tracks the mean
     // cross-bucket row count so the anti stage's cost has its size next to it.
+    // `gpu` counts masked dispatches so the board can prove where the mass runs.
     {
       const sp = this._teachStageProfile || (this._teachStageProfile = {});
-      const e = sp.lateral || (sp.lateral = { calls: 0, substrateMs: 0, scanMs: 0, antiMs: 0, activeSum: 0 });
+      const e = sp.lateral || (sp.lateral = { calls: 0, substrateMs: 0, scanMs: 0, antiMs: 0, activeSum: 0, gpu: 0, cpuShadow: 0 });
       e.calls += 1;
       e.substrateMs += (_lp1 - _lp0);
       e.scanMs += (_lp2 - _lp1);
       e.antiMs += (Date.now() - _lp2);
       e.activeSum += crossCount;
+      if (_gpuCarried) e.gpu = (e.gpu || 0) + 1;
+      if (_runCpuShadow) e.cpuShadow = (e.cpuShadow || 0) + 1;
     }
   }
 

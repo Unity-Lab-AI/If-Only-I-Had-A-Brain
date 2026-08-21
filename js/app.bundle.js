@@ -102896,19 +102896,33 @@ var Curriculum = class _Curriculum {
     const inhibitLr = Math.abs(lr) * 0.3;
     const _lp2 = Date.now();
     this._tstage("lateral:anti");
-    if (typeof cluster.intraSynapsesAntiHebbian === "function") {
-      await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
-    } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === "function") {
-      cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
+    let _gpuCarried = false;
+    if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianBoundMasked === "function") {
+      try {
+        _gpuCarried = cluster._gpuProxy.hebbianBoundMasked(`${cluster.name}_intraSynapses`, -inhibitLr, 1, crossActiveRows) === true;
+      } catch {
+        _gpuCarried = false;
+      }
+    }
+    this._lateralShadowCounter = (this._lateralShadowCounter | 0) + 1;
+    const _runCpuShadow = !_gpuCarried || this._lateralShadowCounter % 5 === 0;
+    if (_runCpuShadow) {
+      if (typeof cluster.intraSynapsesAntiHebbian === "function") {
+        await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
+      } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === "function") {
+        cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
+      }
     }
     {
       const sp = this._teachStageProfile || (this._teachStageProfile = {});
-      const e = sp.lateral || (sp.lateral = { calls: 0, substrateMs: 0, scanMs: 0, antiMs: 0, activeSum: 0 });
+      const e = sp.lateral || (sp.lateral = { calls: 0, substrateMs: 0, scanMs: 0, antiMs: 0, activeSum: 0, gpu: 0, cpuShadow: 0 });
       e.calls += 1;
       e.substrateMs += _lp1 - _lp0;
       e.scanMs += _lp2 - _lp1;
       e.antiMs += Date.now() - _lp2;
       e.activeSum += crossCount;
+      if (_gpuCarried) e.gpu = (e.gpu || 0) + 1;
+      if (_runCpuShadow) e.cpuShadow = (e.cpuShadow || 0) + 1;
     }
   }
   /**

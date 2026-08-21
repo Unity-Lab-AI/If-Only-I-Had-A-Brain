@@ -1037,6 +1037,7 @@ const SERVER_STATE_MIXIN = {
           capFlushes: this._boundHebbianCapFlushes | 0,
           suppressedStale: this._hebbianSuppressedStale | 0,
           rangesSent: this._hebbianRangesSent | 0,
+          maskedSent: this._hebbianMaskedSent | 0,
         },
         // LOOPNAME.8 — freeze episodes as counted by the WATCHDOG THREAD, not by
         // the loop. `eventLoopDelay.maxMs` above is a since-boot high-water mark

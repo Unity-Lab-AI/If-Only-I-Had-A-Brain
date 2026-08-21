@@ -11,7 +11,7 @@ use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 use crate::frames::Binding;
-use crate::gpu::{LIF_SHADER, PLASTICITY_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
+use crate::gpu::{LIF_SHADER, PLASTICITY_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -63,6 +63,14 @@ struct HebbParams {
     dst_offset: u32,
 }
 
+/// v0.3.26 — uniform block for the masked-scatter pass (scatter_ones.wgsl).
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct ScatterParams {
+    count: u32,
+    limit: u32,
+}
+
 /// A standalone CSR sparse matrix resident on the GPU (cross-projection or intra-synapse).
 /// Cluster-bound mode (src/dst offsets into cluster slices) is a later refinement; MVP
 /// uses standalone pre-spike / post-current buffers.
@@ -105,6 +113,7 @@ pub struct ComputeEngine {
     spike_pipeline: wgpu::ComputePipeline,
     propagate_pipeline: wgpu::ComputePipeline,
     plasticity_pipeline: wgpu::ComputePipeline,
+    scatter_pipeline: wgpu::ComputePipeline,
     clusters: HashMap<String, Cluster>,
     sparse: HashMap<String, SparseMatrix>,
 }
@@ -154,6 +163,7 @@ impl ComputeEngine {
         let spike_pipeline = build_pipeline(&device, "spike_count", SPIKE_COUNT_SHADER);
         let propagate_pipeline = build_pipeline(&device, "synapse_propagate", SYNAPSE_PROPAGATE_SHADER);
         let plasticity_pipeline = build_pipeline(&device, "plasticity", PLASTICITY_SHADER);
+        let scatter_pipeline = build_pipeline(&device, "scatter_ones", SCATTER_ONES_SHADER);
 
         Ok(Self {
             device,
@@ -163,6 +173,7 @@ impl ComputeEngine {
             spike_pipeline,
             propagate_pipeline,
             plasticity_pipeline,
+            scatter_pipeline,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
         })
@@ -497,6 +508,85 @@ impl ComputeEngine {
         Ok(true)
     }
 
+    /// v0.3.26 — MASKED bound plasticity: pre reads the RESIDENT bound src-cluster
+    /// spikes at the bound offset (the state the teach-frame twins keep current —
+    /// zero transfer), post is an explicit sparse row mask scattered device-side
+    /// into the matrix's own post buffer (clear_buffer zero-fill + scatter kernel;
+    /// no dense host vector at any size). The plasticity kernel runs unchanged with
+    /// src_offset = bound src start, dst_offset = 0 — the pre≠post shape neither
+    /// hebbian_bound (pre==post on an intra matrix) nor hebbian (ships both sides
+    /// over the wire) can express. `reps` loops the kernel stream-ordered in ONE
+    /// encoder (the v0.3.19 rep-dose pattern: pattern written once, kernel looped).
+    pub fn hebbian_bound_masked(&self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 || post_idx.is_empty() {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        // Pre window must fit the src cluster buffer (same guard as hebbian_bound).
+        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+
+        // Mask index list → small storage buffer (~4B per masked row).
+        let idx_buf = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("masked-post-idx"),
+            contents: bytemuck::cast_slice(post_idx),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+        let sp = ScatterParams { count: post_idx.len() as u32, limit: m.rows };
+        let sp_ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("masked-scatter-params"),
+            contents: bytemuck::bytes_of(&sp),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let scatter_bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("masked-scatter-bg"),
+            layout: &self.scatter_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: sp_ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: idx_buf.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.post_spikes.as_entire_binding() },
+            ],
+        });
+
+        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-masked-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("hebb-masked-bg"),
+            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
+            ],
+        });
+        let scatter_wg = ((post_idx.len() as u32).div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound-masked") });
+        // Zero-then-scatter the post mask, all device-side. WebGPU orders
+        // same-resource work within a queue submission, so the plasticity
+        // dispatches below read exactly this mask.
+        enc.clear_buffer(&m.post_spikes, 0, None);
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("masked-scatter"), timestamp_writes: None });
+            cp.set_pipeline(&self.scatter_pipeline);
+            cp.set_bind_group(0, &scatter_bg, &[]);
+            cp.dispatch_workgroups(scatter_wg, 1, 1);
+        }
+        for _ in 0..reps.max(1) {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-masked"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
+        // Fire-and-forget: no blocking readback, same contract as hebbian_bound.
+        Ok(true)
+    }
+
     /// Scatter sparse spike indices into a dense u32 buffer (set 1 at each index).
     fn write_dense_spikes(&self, buf: &wgpu::Buffer, n: u32, indices: &[u32]) {
         let mut dense = vec![0u32; n.max(1) as usize];
@@ -773,6 +863,14 @@ impl Backend {
             Backend::Wgpu(e) => e.hebbian_bound(name, lr),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.hebbian_bound(name, lr),
+        }
+    }
+    /// v0.3.26 — masked bound plasticity (resident pre, explicit sparse post mask).
+    fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.hebbian_bound_masked(name, lr, reps, post_idx),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.hebbian_bound_masked(name, lr, reps, post_idx),
         }
     }
     fn propagate(&mut self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
@@ -1102,6 +1200,13 @@ impl MultiEngine {
     pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
         self.engines[g].hebbian_bound(name, lr)
+    }
+
+    /// v0.3.26 — masked bound plasticity for a type-13 frame. Routes to the engine
+    /// holding the matrix; Ok(false) = skipped (not resident / unbound), never an error.
+    pub fn hebbian_bound_masked(&mut self, name: &str, lr: f32, reps: u32, post_idx: &[u32]) -> Result<bool, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
+        self.engines[g].hebbian_bound_masked(name, lr, reps, post_idx)
     }
 
     pub fn propagate(&mut self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
