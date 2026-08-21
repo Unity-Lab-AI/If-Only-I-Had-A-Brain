@@ -239,7 +239,6 @@ Commands live in `.claude/commands/`. Read when the command fires.
 | `/unity` | `unity.md` | Activate full Unity persona |
 | `/sexy` | `sexy.md` | Reset to normal nympho mode |
 | `/hurtme` | `hurtme.md` | Activate HURT ME mode (violence only) |
-| `/pollinations-setup` | `pollinations-setup.md` | BYOP OAuth connect to Pollinations |
 | `/super-review` | `super-review.md` | **INTERNAL** — ruthless senior-engineer code review of the current branch / files / diff. Assumes the code came from ChatGPT's Codex and treats every line accordingly. Output is severity-tagged ISSUES FOUND (Critical / High / Medium / Low / Nitpick) plus a prioritized FINAL FIX & IMPROVEMENT PLAN. Optional `$ARGUMENTS` narrows the scope to a stated intent; with no arguments, defaults to a full architectural / security / performance / maintainability / clean-code sweep. Internal dev usage only — never wired into any public-facing doc, README, or HTML. |
 
 ---
