@@ -101,6 +101,13 @@ const SERVER_CHAT_MIXIN = {
   async _drainMindsEyePreview() {
     if (!Array.isArray(this._mindsEyePreviewQueue) || this._mindsEyePreviewQueue.length === 0) return false;
     const job = this._mindsEyePreviewQueue.shift();
+    // PAINT.5 — a queued PRACTICE session: one bounded self-critique pass
+    // (~ITERS sketch+perceive cycles at 256px) on this same serialized walk
+    // lane. The human never waits on her practicing.
+    if (job && job.kind === 'practice' && job.word) {
+      try { await this._practiceDrawing(job.word); } catch (e) { if (!this._practiceErrLogged) { this._practiceErrLogged = true; console.warn(`[OwnArt] practice failed: ${e?.message || e}`); } }
+      return false;
+    }
     // DRAWCTX — an OWN-ART job: she composes her own drawing of what the message
     // named, here on the walk lane, and publishes it to the mind's eye. Separate
     // branch from the preview because there is no prompt and no reference involved:
@@ -131,6 +138,15 @@ const SERVER_CHAT_MIXIN = {
             }
           } catch { /* non-fatal */ }
           this._ownArtDrawn = (this._ownArtDrawn || 0) + 1;
+          // PAINT.5 — drawing IS the trigger to practice: each subject she just
+          // drew gets one queued practice session (the loop itself gates on the
+          // per-concept cooldown + schema/percept presence, so this is cheap to
+          // over-ask). Queued, not inline — one bounded job per drain tick.
+          try {
+            if (made.plan && Array.isArray(made.plan.subjects)) {
+              for (const w of made.plan.subjects) this._mindsEyePreviewQueue.push({ kind: 'practice', word: w });
+            }
+          } catch { /* practice enqueue best-effort */ }
           return true;
         }
         try { process.stdout.write(`[OwnArt] nothing drawable understood in "${String(job.text).slice(0, 60)}" — honest no-drawing rather than a fake shape.\n`); } catch { /* nf */ }
@@ -260,7 +276,7 @@ const SERVER_CHAT_MIXIN = {
       // Gee: *"when Unity is told to 'draw' she should draw the topic, thing, place,
       // person, in context in the message from the user"* — and the deepest form of
       // his complaint about filtered photos was right here: `VISUAL` matched the word
-      // `draw`, so "draw me a cat on a gravestone" was routed to Pollinations and the
+      // `draw`, so "draw me a <subject> on a <place>" was routed to Pollinations and the
       // returned PHOTO was presented as her drawing. Her hand was never involved.
       //
       // A DRAW verb now goes to `_drawOwnCreation`, which composes her own marks from
@@ -1852,7 +1868,7 @@ const SERVER_CHAT_MIXIN = {
   // topic, thing, place, person, in context in the message from the user"*).
   //
   // The old path took `_vmContentTokens(seed)[0]` — the FIRST content word — so
-  // "draw a black cat sitting on a gravestone" drew whatever "black" or "cat"
+  // "draw a <modifier> <subject> sitting on a <place>" drew whatever the modifier
   // resolved to and threw the rest away. This reads the WHOLE message: every
   // drawable noun in order, the PLACE if one is named, and the modifiers that
   // belong to each. Drawability is the existing dictionary POS check (`noun` sense
@@ -2026,8 +2042,8 @@ const SERVER_CHAT_MIXIN = {
     // invisible on it (harness-caught: 0.1% coverage). A pale gel-pen line is
     // the ink look that actually reads on her canvas.
     if (style && style.ink === 'mono') { const g = 205 + Math.round(rnd() * 40); return [g, g, Math.min(255, g + 8)]; }
-    // PAINT.6 — THE SUBJECT'S COLOR DOMINATES. The live cat test rendered a
-    // gray/cream cat HOT PINK because _ownArtInk caps the learned palette at
+    // PAINT.6 — THE SUBJECT'S COLOR DOMINATES. The live judged test rendered a
+    // gray/cream subject HOT PINK because _ownArtInk caps the learned palette at
     // strength×0.6 (typically 15-30%) against base inks that include her pink.
     // For subject paint, the LEARNED color family leads at 75%; her hand keeps
     // a 25% tint. Her goth identity lives in the paper, the ink accents and the
@@ -2242,11 +2258,103 @@ const SERVER_CHAT_MIXIN = {
     return { strokes: out, erased, deduped };
   },
 
-  _ownArtStrokesFromSchema(schema, box, rnd, word, style) {
+  // ── PAINT.5 — HER TRAINED TECHNIQUE. The hand has tunable parameters; practice
+  // (below) nudges them per concept and keeps only what measurably improves the
+  // resemblance of her drawing to her remembered percept. Defaults are exactly
+  // the constants the hand used before practice existed — a concept she has
+  // never practiced draws identically to yesterday.
+  _skillDefaults() {
+    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0 };
+  },
+  _skillFor(word) {
+    const d = this._skillDefaults();
+    try {
+      const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const e = store && word ? store.get(String(word).toLowerCase()) : null;
+      if (e && e.skill && e.skill.params) return { ...d, ...e.skill.params };
+    } catch { /* defaults are the untrained hand */ }
+    return d;
+  },
+
+  // ── PAINT.5 — THE PRACTICE LOOP. Fully equational self-critique, the same
+  // noisy-oracle math as visual confirmation: she draws the subject with her
+  // current technique, PERCEIVES her own drawing (describe → percept vector),
+  // and scores it against the percept she banked when she LOOKED at the real
+  // thing (cosine). Then she nudges one technique parameter at a time, redraws
+  // the SAME composition (fixed seed — only the technique varies), re-perceives,
+  // and keeps the nudge only if the resemblance measurably improved. Nothing is
+  // copied and no generator is involved: her eye judges her hand, per concept,
+  // and the skill persists in the visual store. Runs on the walk lane only —
+  // never on the reply path.
+  async _practiceDrawing(word) {
+    if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function' || typeof this.mindSpace.describe !== 'function') return null;
+    const key = String(word || '').toLowerCase().trim();
+    if (!key) return null;
+    const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+    const e = store && store.get(key);
+    // practice needs both halves of the judgment: her memory of the shape
+    // (schema with the trace) and her memory of the look (the percept vector)
+    if (!e || !e.schema || !Array.isArray(e.schema.trace) || e.schema.trace.length < 10 || !Array.isArray(e.p) || !e.p.length) return null;
+    const GAP = Number(process.env.DREAM_PRACTICE_GAP_MS) >= 0 ? Number(process.env.DREAM_PRACTICE_GAP_MS) : 1800000;
+    if (e.skill && e.skill.at && (Date.now() - e.skill.at) < GAP) return null;   // she practiced this recently
+    const ITERS = Number(process.env.DREAM_PRACTICE_ITERS) > 0 ? Number(process.env.DREAM_PRACTICE_ITERS) : 5;
+    const cos = (a, b) => { let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
+    // fixed neutral setup: poster (fill + trace — the most information-dense
+    // hand), centered box, FIXED seed, no mood tint, no backdrop, no label —
+    // the score measures TECHNIQUE, not composition or mood.
+    const style = this._artStyles()[0];
+    const box = { cx: 0.5, cy: 0.5, w: 0.72, h: 0.72 };
+    const score = async (params) => {
+      const rnd = this._ownArtRng('practice|' + key);
+      const strokes = this._ownArtStrokesFromSchema(e.schema, box, rnd, key, style, params);
+      const rec = await this.mindSpace.sketch(strokes, { maxSide: 256 });
+      if (!rec) return -1;
+      const d = await this.mindSpace.describe(rec);
+      return d ? cos(Array.from(d), e.p) : -1;
+    };
+    const RANGES = {
+      jitter:    [0.002, 0.012, 0.002],
+      underA:    [0.35, 0.85, 0.06],
+      traceW:    [0.7, 1.4, 0.12],
+      keepP:     [0.75, 0.97, 0.04],
+      detailMul: [0.5, 1.5, 0.2],
+    };
+    const params = { ...this._skillDefaults(), ...(e.skill && e.skill.params) };
+    const sessions = (e.skill && e.skill.sessions) || 0;
+    let best;
+    try { best = await score(params); } catch { return null; }
+    if (best < 0) return null;
+    const base = best;
+    const keys = Object.keys(RANGES);
+    const prnd = this._ownArtRng('nudge|' + key + '|' + sessions);   // deterministic per session, different every session
+    let kept = 0;
+    for (let i = 0; i < ITERS; i++) {
+      const k = keys[Math.floor(prnd() * keys.length) % keys.length];
+      const [lo, hi, step] = RANGES[k];
+      const cand = { ...params, [k]: Math.min(hi, Math.max(lo, params[k] + (prnd() < 0.5 ? -1 : 1) * step)) };
+      if (cand[k] === params[k]) continue;   // already at the range wall in that direction
+      let s;
+      try { s = await score(cand); } catch { continue; }
+      if (s > best + 1e-4) { best = s; params[k] = cand[k]; kept++; }
+    }
+    e.skill = { params, cos: +best.toFixed(4), sessions: sessions + 1, at: Date.now() };
+    try { store.set(key, e); } catch { /* persist best-effort — the session still counted in state */ }
+    this._practiceStats = {
+      sessions: ((this._practiceStats && this._practiceStats.sessions) || 0) + 1,
+      lastWord: key, lastBase: +base.toFixed(4), lastBest: +best.toFixed(4), lastKept: kept, at: Date.now(),
+    };
+    try { console.log(`[OwnArt] 🎨 PRACTICE "${key}" session ${sessions + 1}: resemblance ${base.toFixed(4)} → ${best.toFixed(4)} (${kept} of ${ITERS} nudges kept)${kept ? ' — technique improved and saved' : ' — no nudge beat her current hand'}`); } catch { /* nf */ }
+    return { word: key, base, best, kept };
+  },
+
+  _ownArtStrokesFromSchema(schema, box, rnd, word, style, skillOverride) {
     const out = [];
     const put = (pts, rgb) => out.push({ type: 'poly', pts, rgb });
     // ARTSTYLE — no style handed in (legacy caller) → poster, the pre-style behavior.
     if (!style) style = this._artStyles()[0];
+    // PAINT.5 — the practiced hand: per-concept technique params (or a practice
+    // candidate when the practice loop itself is scoring a nudge).
+    const skill = skillOverride || this._skillFor(word);
     if (style.scale !== 1) box = { cx: box.cx, cy: box.cy, w: box.w * style.scale, h: box.h * style.scale };
     // NO SCHEMA — she has never seen it and could not look it up. She still draws
     // SOMETHING honest: a construction from the word's own shape-in-her-mind (letter
@@ -2307,7 +2415,7 @@ const SERVER_CHAT_MIXIN = {
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
     const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
-    // ── LAYER 1: MASS — SILHOUETTE-FIRST (PAINT.6). The live cat test showed
+    // ── LAYER 1: MASS — SILHOUETTE-FIRST (PAINT.6). The live judged test showed
     // part-cell blobs render as "a column of circles": the grid is a LAYOUT,
     // not a shape. But the schema HOLDS the shape — the traced silhouette —
     // so when a closed (or near-closed) outline exists, THE BODY IS THAT
@@ -2319,7 +2427,7 @@ const SERVER_CHAT_MIXIN = {
       // biggest closed outline by traced length when one exists…
       const closed = schema.outlines.filter(o => o && o.closed && Array.isArray(o.pts) && o.pts.length >= 3);
       silhouette = closed.sort((a2, b2) => (b2.len || 0) - (a2.len || 0))[0] || null;
-      // …but the tracer usually hands back OPEN edge fragments (live cat test:
+      // …but the tracer usually hands back OPEN edge fragments (live judged test:
       // closed: 0 of 8), and force-closing one edge makes a degenerate sliver
       // that fills nothing. When nothing closes, the body is the CONVEX HULL of
       // every point she traced — a real closed polygon around the subject.
@@ -2369,7 +2477,7 @@ const SERVER_CHAT_MIXIN = {
       // solid slab with lines lost inside it.
       const hasTrace = Array.isArray(schema.trace) && schema.trace.length >= 10;
       if (style.mass === 'fill') {
-        out.push({ type: 'fill', pts: sPts, rgb: bodyInk, a: hasTrace ? 0.55 : 1 });
+        out.push({ type: 'fill', pts: sPts, rgb: bodyInk, a: hasTrace ? skill.underA : 1 });
       } else if (style.mass === 'wash') {
         out.push({ type: 'fill', pts: sPts, rgb: [Math.min(255, bodyInk[0] + 35), Math.min(255, bodyInk[1] + 35), Math.min(255, bodyInk[2] + 35)], a: 0.4 });
         out.push({ type: 'fill', pts: sPts.map(pp => [pp[0] + (rnd() - 0.5) * 0.02, pp[1] + (rnd() - 0.5) * 0.02]), rgb: bodyInk, a: 0.3 });
@@ -2401,10 +2509,10 @@ const SERVER_CHAT_MIXIN = {
     // as "a gray trapezoid with squiggles" (live-judged). Falls back to the
     // 8-contour layer for schemas learned before the trace existed.
     if (Array.isArray(schema.trace) && schema.trace.length >= 10) {
-      const jit = () => (rnd() - 0.5) * 0.006;
+      const jit = () => (rnd() - 0.5) * skill.jitter;
       // PAINT.7 — CONTRAST-ADAPTIVE trace ink on filled styles: palette-gray
       // lines over a palette-gray underpaint vanished (live-judged on the
-      // poster cat). Over an underpaint, the trace goes dark on a bright body
+      // poster piece). Over an underpaint, the trace goes dark on a bright body
       // and pale on a dark one; line styles keep their own ink.
       let traceInk = this._artInk(style, schema, 0.9, rnd, null);
       if (style.mass === 'fill' || style.mass === 'wash') {
@@ -2412,7 +2520,7 @@ const SERVER_CHAT_MIXIN = {
         const lum = 0.299 * bodyProbe[0] + 0.587 * bodyProbe[1] + 0.114 * bodyProbe[2];
         traceInk = lum > 120 ? [30, 26, 34] : [226, 222, 230];
       }
-      const tw = style.outlineW > 0 ? Math.min(style.outlineW, 0.006) : undefined;
+      const tw = style.outlineW > 0 ? Math.min(style.outlineW, 0.006) * skill.traceW : undefined;
       // PAINT.12 — per-attempt STROKE SUBSET: the trace is length-sorted at
       // learn time, so the first ~30% are the long structural reads — those
       // ALWAYS draw. Every shorter stroke draws with p=0.85, a different hand
@@ -2422,7 +2530,7 @@ const SERVER_CHAT_MIXIN = {
       for (let ti = 0; ti < tN; ti++) {
         const tp = schema.trace[ti];
         if (!Array.isArray(tp) || tp.length < 2) continue;
-        if (ti >= structural && rnd() > 0.85) continue;
+        if (ti >= structural && rnd() > skill.keepP) continue;
         const pts = tp.map(pp => [mapX(pp[0]) + jit(), mapY(pp[1]) + jit()]);
         out.push({ type: 'poly', pts, rgb: traceInk, w: tw, a: style.outlineA });
       }
@@ -2445,12 +2553,12 @@ const SERVER_CHAT_MIXIN = {
     // by the style (a pencil piece hatches busily; ink stays spare).
     // PAINT.7 — with a full trace carrying the read, random arcs are CLUTTER,
     // not texture: only high-detail styles (pencil/crosshatch) keep their hatch.
-    const _skipDetail = Array.isArray(schema.trace) && schema.trace.length >= 10 && (style.detailMul ?? 1) <= 1;
+    const _skipDetail = Array.isArray(schema.trace) && schema.trace.length >= 10 && (style.detailMul ?? 1) * skill.detailMul <= 1;
     for (const p of _skipDetail ? [] : schema.parts.slice(0, 8)) {
       const cx = mapX(p.cx), cy = mapY(p.cy);
       const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
       const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-      const marks = Math.round((1 + Math.round(p.weight * 18)) * (style.detailMul ?? 1));
+      const marks = Math.round((1 + Math.round(p.weight * 18)) * (style.detailMul ?? 1) * skill.detailMul);
       for (let m = 0; m < marks; m++) {
         const ang = mAng(p.ang) + (rnd() - 0.5) * 0.25;
         const len = (0.6 + 0.4 * rnd()) * Math.max(pw, ph);

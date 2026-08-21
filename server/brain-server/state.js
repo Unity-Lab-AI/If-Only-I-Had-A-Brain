@@ -514,6 +514,10 @@ const SERVER_STATE_MIXIN = {
           style: (typeof process !== 'undefined' && process.env && process.env.DREAM_DRAW_STYLE) || 'own',
           // ARTSTYLE — the hand she used on her latest piece; rotates every artwork.
           lastArtStyle: this._lastArtStyle || null,
+          // PAINT.5 — the practice loop's ledger: sessions run, the last word
+          // practiced, and the base→best resemblance of that session. `null`
+          // means she has never practiced (not "the feature is off").
+          practice: this._practiceStats || null,
           // LOOKEYES.1 — the look lane's own ledger: every stage a look-up can
           // die at, counted, plus the last error WITH ITS AGE. Built because the
           // lane starved for ~10h (2 grounds against a ~60-look budget) with

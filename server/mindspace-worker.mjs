@@ -13,7 +13,7 @@ import { parentPort } from 'node:worker_threads';
 // (`transform.js reconstructImageData`, reached via `imagine()`) constructs one.
 // Any server-side caller of imagine() crashed with "ImageData is not defined"
 // before this — which is why the schema palette was being GUESSED from two
-// packed coefficients (the magenta-cat bug) instead of read from real pixels.
+// packed coefficients (the magenta-palette bug) instead of read from real pixels.
 // Minimal structural polyfill: both constructor forms, plain fields only.
 if (typeof globalThis.ImageData === 'undefined') {
   globalThis.ImageData = class ImageData {

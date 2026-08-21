@@ -570,7 +570,7 @@ export function traceLineArt(rec, opts = {}) {
 
 // ── traceColorFill(rec, opts) — FLAT COLOUR REGIONS (one of her draw styles) ──
 // "She colours it in": coarse blocks averaged from the reference, each filled in
-// the block's ACTUAL colour (an orange cat stays orange), background paper left
+// the block's ACTUAL colour (an orange subject stays orange), background paper left
 // bare. Emits type:'fill' strokes (sketch bbox-fills them). ONE of many styles
 // (Gee) — a poster / cut-paper look, distinct from the line-art sketch.
 export function traceColorFill(rec, opts = {}) {
