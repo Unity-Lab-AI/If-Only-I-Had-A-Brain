@@ -2610,6 +2610,10 @@ const SERVER_GPU_MIXIN = {
     // context, and the whole card forced down to wgpu at a 2047MB cap. A local scratch
     // keeps the one-alloc-per-upload benefit (the UPLOAD GC lesson) with zero cross-talk.
     let _deltaScratch = null;
+    // UPLINK.1 — measure the ACTUAL wire rate per upload so "how fast is the
+    // link" is a console read, not an archaeology dig through comments.
+    const _upT0 = Date.now();
+    let _upBytes = 0;
     for (let seq = 0; seq < totalChunks; seq++) {
       const start = seq * CHUNK_NNZ;
       const end = Math.min(start + CHUNK_NNZ, nnz);
@@ -2688,6 +2692,7 @@ const SERVER_GPU_MIXIN = {
         for (const p of pieces) { p.copy(this._uploadChunkScratch, _off); _off += p.length; }
       }
       const frame = this._uploadChunkScratch.subarray(0, _frameLen);
+      _upBytes += _frameLen;
       if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB${frame.length > 15 * 1024 * 1024 ? ` — FRAGMENTED into ${Math.ceil(frame.length / (15 * 1024 * 1024))} WS continuation frames (native donor frame ceiling ~16MiB; message reassembles up to 64MiB)` : ' (under the ~16MiB native frame ceiling — sent whole)'}.`);
       // Send chunk. WebSocket preserves order. Wait for the send
       // callback so we don't flood the send buffer with hundreds of
@@ -2711,7 +2716,23 @@ const SERVER_GPU_MIXIN = {
       // a genuinely dead link. Tunable via DREAM_UPLOAD_PACE_LOWATER_MB.
       {
         const _loMbEnv = Number(process.env.DREAM_UPLOAD_PACE_LOWATER_MB);
-        const _loBytes = (Number.isFinite(_loMbEnv) && _loMbEnv > 0 ? _loMbEnv : 8) * 1024 * 1024;
+        // UPLINK.1 (2026-08-21) — the 8MB low-water is sized for BROWSER donors,
+        // whose busy main thread can't drain its own socket (the DONOR-FIX above).
+        // A NATIVE donor drains on a dedicated receive thread, and the server
+        // loop that pumps this chunk loop gets pinned by 3-4s teach/gate slabs —
+        // with only ~14MB in flight (low-water + one chunk) the wire drained in
+        // the first fraction of each slab and sat IDLE for the rest: ~14MB per
+        // ~3.5s loop cycle ≈ the measured "4MB/s uplink" on a port rated far
+        // higher. The pipe was never the limit; the pump was. Keep enough in
+        // flight to ride through a slab: 96MB default for native donors
+        // (drains in seconds on the real port; still under the pace cap even
+        // at worst-case 4MB/s), browser donors keep the 8MB protection.
+        let _loDefMb = 8;
+        try {
+          const _c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+          if (_c && _c.donorAppVersion) _loDefMb = 96;
+        } catch { /* browser default stands */ }
+        const _loBytes = (Number.isFinite(_loMbEnv) && _loMbEnv > 0 ? _loMbEnv : _loDefMb) * 1024 * 1024;
         let _pacedMs = 0;
         const _paceCapMs = 150000; // < the upload timeoutMs; hard timeout still applies if link is truly dead
         while (ws && ws.readyState === 1 && typeof ws.bufferedAmount === 'number'
@@ -2804,7 +2825,14 @@ const SERVER_GPU_MIXIN = {
       const _savedPct = 100 * (1 - _deltaEncBytes / Math.max(1, _deltaRawBytes));
       console.log(`[Brain] DELTAIDX ${name} — colIdx ${(_deltaRawBytes / 1048576).toFixed(1)}MB raw -> ${(_deltaEncBytes / 1048576).toFixed(1)}MB delta-varint (${_savedPct.toFixed(1)}% saved, ${(_deltaEncBytes / Math.max(1, nnz)).toFixed(2)} bytes/entry)`);
     }
-    console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack`);
+    {
+      // UPLINK.1 — the honest number. Elapsed covers build+send+drain of every
+      // chunk (bufferedAmount may still hold the tail, but the low-water pacing
+      // bounds that to one window), so this is the pump's real end-to-end rate.
+      const _upSecs = Math.max(0.001, (Date.now() - _upT0) / 1000);
+      const _upMBs = (_upBytes / 1048576) / _upSecs;
+      console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack — UPLINK measured ${(_upBytes / 1048576).toFixed(1)}MB in ${_upSecs.toFixed(1)}s = ${_upMBs.toFixed(2)}MB/s (pump-limited if far below the port rating; DREAM_UPLOAD_PACE_LOWATER_MB tunes in-flight)`);
+    }
     // TEACHMIRROR — RECORD RESIDENCY ON THE ACK, FOR BOTH LANES.
     //
     // `heldMatrices` was populated in exactly one place: the replica-sync loop

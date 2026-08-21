@@ -73169,7 +73169,8 @@ var K_MIXIN = {
           }
         }
         if (letterToPhon) {
-          const phonOutput = letterToPhon.propagate(letterPat);
+          this._tstage("gate:probe-read");
+          const phonOutput = typeof letterToPhon.propagateChunked === "function" ? await letterToPhon.propagateChunked(letterPat, { chunkRows: 25e4 }) : letterToPhon.propagate(letterPat);
           const pGSize = Math.max(1, Math.floor(phonSize / MAG_DIM));
           const phonReadout = new Float64Array(MAG_DIM);
           for (let d = 0; d < MAG_DIM; d++) {
@@ -73205,7 +73206,7 @@ var K_MIXIN = {
               if (idx < semSize) semPat[idx] = nameEmb[d];
             }
           }
-          const motorOutput = s2m.propagate(semPat);
+          const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
           const motorSize = motorRegion.end - motorRegion.start;
           const mGSize = Math.max(1, Math.floor(motorSize / invSize));
           const motorReadout = new Float64Array(invSize);
@@ -73244,7 +73245,8 @@ var K_MIXIN = {
             if (idx < letterRegion.end) input[idx] = 1;
           }
         }
-        const output = cluster.synapses.propagate(input);
+        this._tstage("gate:probe-seq");
+        const output = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(input, { chunkRows: 25e4 }) : cluster.synapses.propagate(input);
         const letterOut = new Float64Array(invSize);
         for (let d = 0; d < invSize; d++) {
           let sum = 0;
@@ -73291,7 +73293,7 @@ var K_MIXIN = {
       const letterToFree = allProjs["letter_to_free"];
       if (letterToFree && freeRegion) {
         const freeSize = freeRegion.end - freeRegion.start;
-        const readFree = (digit) => {
+        const readFree = async (digit) => {
           const oh = encodeLetter(digit);
           const pat = new Float64Array(letterSize);
           const gS = Math.max(1, Math.floor(letterSize / oh.length));
@@ -73302,7 +73304,7 @@ var K_MIXIN = {
               if (idx < letterSize) pat[idx] = 1;
             }
           }
-          return letterToFree.propagate(pat);
+          return typeof letterToFree.propagateChunked === "function" ? await letterToFree.propagateChunked(pat, { chunkRows: 25e4 }) : letterToFree.propagate(pat);
         };
         let _orderYield = Date.now();
         for (let i = 1; i < DIGITS.length - 1; i++) {
@@ -73310,9 +73312,10 @@ var K_MIXIN = {
             await new Promise((resolve) => setImmediate(resolve));
             _orderYield = Date.now();
           }
-          const readI = readFree(DIGITS[i]);
-          const readPrev = readFree(DIGITS[i - 1]);
-          const readDistant = readFree(DIGITS[0]);
+          this._tstage("gate:probe-order");
+          const readI = await readFree(DIGITS[i]);
+          const readPrev = await readFree(DIGITS[i - 1]);
+          const readDistant = await readFree(DIGITS[0]);
           if (!readI || !readPrev || !readDistant) continue;
           const cosAdj = cosine(readI, readPrev);
           const cosDist = cosine(readI, readDistant);
@@ -75827,7 +75830,8 @@ var K_MIXIN = {
             console.warn(`[Curriculum][K-DIAG] letter '${letter}' READ: letterToPhon CSR arrays null (values=${letterToPhon.values?.length || "null"}, colIdx=${letterToPhon.colIdx?.length || "null"}, rowPtr=${letterToPhon.rowPtr?.length || "null"}) \u2014 skipping READ probe`);
           } else {
             const _readStart = Date.now();
-            const phonOutput = letterToPhon.propagate(letterPat);
+            this._tstage("gate:probe-read");
+            const phonOutput = typeof letterToPhon.propagateChunked === "function" ? await letterToPhon.propagateChunked(letterPat, { chunkRows: 25e4 }) : letterToPhon.propagate(letterPat);
             const _readMs = Date.now() - _readStart;
             if (_letterStart && _gateLetterIdx <= 3) {
               this._hb(`[Curriculum][K-DIAG] letter '${letter}' READ propagate ${_readMs}ms (phonOutput.length=${phonOutput.length})`);
@@ -75865,7 +75869,8 @@ var K_MIXIN = {
                 console.warn(`[Curriculum][K-DIAG] letter '${letter}' TALK: ${pname} CSR arrays null \u2014 skipping TALK direct`);
               } else {
                 const _talkStart = Date.now();
-                motorOutput = proj.propagate(letterPat);
+                this._tstage("gate:probe-talk");
+                motorOutput = typeof proj.propagateChunked === "function" ? await proj.propagateChunked(letterPat, { chunkRows: 25e4 }) : proj.propagate(letterPat);
                 if (_gateLetterIdx <= 3) {
                   this._hb(`[Curriculum][K-DIAG] letter '${letter}' TALK via ${pname} propagate ${Date.now() - _talkStart}ms`);
                 }
@@ -75881,7 +75886,7 @@ var K_MIXIN = {
             const semOutput = await this._probePropagate("letter_to_sem", letterPat);
             const semBinary = new Float64Array(semOutput.length);
             for (let i = 0; i < semOutput.length; i++) semBinary[i] = semOutput[i] > 0 ? 1 : 0;
-            motorOutput = semToMot.propagate(semBinary);
+            motorOutput = typeof semToMot.propagateChunked === "function" ? await semToMot.propagateChunked(semBinary, { chunkRows: 25e4 }) : semToMot.propagate(semBinary);
           }
         }
         if (motorOutput && motorRegion) {
@@ -76040,7 +76045,8 @@ var K_MIXIN = {
                   semPattern[idx] = val;
                 }
               }
-              motorOutput = dynSemToMotor.propagate(semPattern);
+              this._tstage("gate:probe-dyn");
+              motorOutput = typeof dynSemToMotor.propagateChunked === "function" ? await dynSemToMotor.propagateChunked(semPattern, { chunkRows: 25e4 }) : dynSemToMotor.propagate(semPattern);
             } else {
               const firstLetter = p.word[0];
               const letterOneHot = encodeLetter(firstLetter);
@@ -76056,7 +76062,7 @@ var K_MIXIN = {
                   letterPat[idx] = 1;
                 }
               }
-              motorOutput = dynLetterToMotor.propagate(letterPat);
+              motorOutput = typeof dynLetterToMotor.propagateChunked === "function" ? await dynLetterToMotor.propagateChunked(letterPat, { chunkRows: 25e4 }) : dynLetterToMotor.propagate(letterPat);
             }
             const readoutSize = Math.min(invSize_, LETTER_SLOTS);
             const motorReadout = new Float64Array(readoutSize);
@@ -77766,7 +77772,7 @@ var K_MIXIN = {
               if (idx < letterSize) letterInput[idx] = 1;
             }
           }
-          const out = letterProj.propagate(letterInput);
+          const out = typeof letterProj.propagateChunked === "function" ? await letterProj.propagateChunked(letterInput, { chunkRows: 25e4 }) : letterProj.propagate(letterInput);
           if (!out || out.length === 0) {
             results.push(`${letter}\u2192\u2205`);
             continue;
@@ -98181,7 +98187,7 @@ var Curriculum = class _Curriculum {
           }
           let motorOutput = null;
           try {
-            motorOutput = letterToMotor.propagate(letterPat);
+            motorOutput = typeof letterToMotor.propagateChunked === "function" ? await letterToMotor.propagateChunked(letterPat, { chunkRows: 25e4 }) : letterToMotor.propagate(letterPat);
           } catch {
             motorOutput = null;
           }
@@ -98407,7 +98413,7 @@ var Curriculum = class _Curriculum {
                       if (idx < letterSize) letterInput[idx] = 1;
                     }
                   }
-                  const phonOutput = letterToPhon.propagate(letterInput);
+                  const phonOutput = typeof letterToPhon.propagateChunked === "function" ? await letterToPhon.propagateChunked(letterInput, { chunkRows: 25e4 }) : letterToPhon.propagate(letterInput);
                   if (phonOutput && phonOutput.length > 0) {
                     const invAll = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
                     const azIndices = [];
@@ -103320,7 +103326,8 @@ var Curriculum = class _Curriculum {
     const proj = cluster.crossProjections[projName];
     if (!proj) return null;
     if (proj.values && proj.colIdx && proj.rowPtr && proj.values.length > 0) {
-      return proj.propagate(srcVec);
+      this._tstage("gate:probe-prop");
+      return typeof proj.propagateChunked === "function" ? await proj.propagateChunked(srcVec, { chunkRows: 25e4 }) : proj.propagate(srcVec);
     }
     if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.propagate === "function") {
       try {
@@ -103682,7 +103689,7 @@ var Curriculum = class _Curriculum {
             return kt && ans ? [kt, ans] : null;
           }).filter(Boolean);
           if (pseudoPairs.length >= 2) {
-            const quickSep = this._checkSemBasinSeparation(pseudoPairs, {
+            const quickSep = await this._checkSemBasinSeparation(pseudoPairs, {
               semRegion,
               motorRegion,
               overloadMax: 0.4,
@@ -103792,7 +103799,7 @@ var Curriculum = class _Curriculum {
           }
         }
         if (qaPseudoPairs.length >= 2) {
-          const qaSep = this._checkSemBasinSeparation(qaPseudoPairs, {
+          const qaSep = await this._checkSemBasinSeparation(qaPseudoPairs, {
             semRegion,
             motorRegion,
             overloadMax: 0.4,
@@ -105449,7 +105456,7 @@ var Curriculum = class _Curriculum {
       await _microtask();
       if (rep >= 1 && pairs.length >= 2) {
         try {
-          const quickSep = this._checkSemBasinSeparation(pairs, {
+          const quickSep = await this._checkSemBasinSeparation(pairs, {
             semRegion,
             motorRegion,
             overloadMax,
@@ -105500,7 +105507,7 @@ var Curriculum = class _Curriculum {
     const probeMotorPath = diagProjKeys.includes("sem_to_motor");
     if (runSeparationProbe && probeMotorPath && pairs.length >= 2) {
       try {
-        sepResult = this._checkSemBasinSeparation(pairs, {
+        sepResult = await this._checkSemBasinSeparation(pairs, {
           semRegion,
           motorRegion,
           overloadMax,
@@ -107952,7 +107959,7 @@ var Curriculum = class _Curriculum {
    * cosine > ~0.3 signals sem-region overload — patterns collapsed
    * into indistinguishable superpositions, probe can't discriminate.
    */
-  _checkSemBasinSeparation(pairs, opts = {}) {
+  async _checkSemBasinSeparation(pairs, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
     const proj = cluster.crossProjections.sem_to_motor;
@@ -107983,7 +107990,7 @@ var Curriculum = class _Curriculum {
           if (idx < semSize) semInput[idx] = 1;
         }
       }
-      const out = proj.propagate(semInput);
+      const out = typeof proj.propagateChunked === "function" ? await proj.propagateChunked(semInput, { chunkRows: 25e4 }) : proj.propagate(semInput);
       if (!out || out.length === 0) continue;
       let nrm = 0;
       for (let d = 0; d < out.length; d++) nrm += out[d] * out[d];
@@ -108249,7 +108256,8 @@ var Curriculum = class _Curriculum {
         }
         let phonOut;
         try {
-          phonOut = cluster.crossProjections.letter_to_phon.propagate(preLetter);
+          const _l2p = cluster.crossProjections.letter_to_phon;
+          phonOut = typeof _l2p.propagateChunked === "function" ? await _l2p.propagateChunked(preLetter, { chunkRows: 25e4 }) : _l2p.propagate(preLetter);
         } catch {
           return null;
         }
@@ -110123,7 +110131,7 @@ var Curriculum = class _Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = s2m.propagate(semPat);
+        const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -110669,7 +110677,7 @@ var Curriculum = class _Curriculum {
             if (idx < semSize) semPat[idx] = wordEmb[d];
           }
         }
-        const motorOutput = s2m.propagate(semPat);
+        const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -111933,7 +111941,7 @@ var Curriculum = class _Curriculum {
       if (semToMotor && motorRegion && nameEmb && nameEmb.length > 0) {
         const semSize = semRegion.end - semRegion.start;
         const semPat = buildPattern(semSize, nameEmb);
-        const motorOutput = semToMotor.propagate(semPat);
+        const motorOutput = typeof semToMotor.propagateChunked === "function" ? await semToMotor.propagateChunked(semPat, { chunkRows: 25e4 }) : semToMotor.propagate(semPat);
         const motorSize = motorRegion.end - motorRegion.start;
         const mGSize = Math.max(1, Math.floor(motorSize / invSize));
         const motorReadout = new Float64Array(invSize);
@@ -114796,7 +114804,7 @@ var Curriculum = class _Curriculum {
    * @param {Array<{input: string, expectTopics: string[]}>} exchanges
    * @returns {{pass, reason}}
    */
-  _gateConversation(exchanges) {
+  async _gateConversation(exchanges) {
     const cluster = this.cluster;
     const allProjs = cluster.crossProjections || {};
     const semRegion = cluster.regions?.sem;
@@ -114844,7 +114852,7 @@ var Curriculum = class _Curriculum {
           if (idx < semSize) semPat[idx] = inputEmb[d];
         }
       }
-      const motorOutput = s2m.propagate(semPat);
+      const motorOutput = typeof s2m.propagateChunked === "function" ? await s2m.propagateChunked(semPat, { chunkRows: 25e4 }) : s2m.propagate(semPat);
       const mGSize = Math.max(1, Math.floor((motorRegion.end - motorRegion.start) / invSize));
       const motorReadout = new Float64Array(invSize);
       for (let d = 0; d < invSize; d++) {
