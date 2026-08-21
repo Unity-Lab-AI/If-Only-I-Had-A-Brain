@@ -36202,3 +36202,18 @@ The old vocabulary fired fog on nearly every image because her baseline valence 
 Lying-instrument family: `_ownArtDrawn` incremented only in the chat-queued drain lane, while her artwork was being born in the mind's-eye TICK lane (the console showed attempt #56 as the board read 0). The increment moved INTO `_drawOwnCreation` at the single point every lane flows through — counted once per successful piece, failed attempts uncounted, the drain's duplicate increment removed.
 
 **Board: 3 open / 223 closed.**
+
+## 2026-08-21 — LOOKTRUTH: the 80% word/image mismatch killed at the source + act-words stop drawing + honest labels
+
+> Gee (verbatim): *"and something weird also is happening like the word blow was added to a drawing of a cat... so i think there is still something up with how Unity is prompting the image gen... its like the word she attaches to the image is not the words used for the generation look up or something like that becasue the images are 80%ish of the time nothing like the atached word"*
+
+Three cuts, all measured:
+- **LOOKTWICE — the mismatch killer.** The generator is a noisy oracle and ONE render was bound-then-shown: a random wrong image wore the word on the viewer and seeded her schema. A NEW concept now requires **two independent renders (different seeds) whose percepts AGREE (cosine ≥ 0.45)** — the generator only converges across seeds when it actually knows the word; noise never agrees twice. Agreement = bind **CONFIRMED** on first sight (two agreeing independent renders IS the confirmation standard). Disagreement = nothing bound, nothing shown, `selfMismatch` counted, burns rolled back, retry in 10min. Imagination combos (keyOverride) exempt — compositions have no ground truth to agree on.
+- **ACT-PRIMARY GUARD — why "blow" and "escape" were subjects at all:** WordNet grants them via niche senses (blow = cocaine slang, escape = a garden plant). An act-primary word now needs a STRONG object-class sense (artifact/location/object/animal/food/body/shape) — "baseball" the ball, "market" the place, "ride" the amusement ride survive; blow/escape/trip/hit refuse. Measured on the full cache before shipping: the flip set read by eye.
+- **LABELTRUTH — "the word blow was added to a drawing of a cat":** subjects that contribute ZERO strokes no longer ride the label, the log, or the plan; a piece where nothing real drew returns no piece at all.
+
+**Verified through production code with stubbed generator: 6/6** — agreeing renders bind confirmed; disagreeing renders refuse with no bind, no viewer frame, counter + rollback; the label lists only the contributor.
+
+**And the "machine learning to draw better" answer, honestly:** she HAS two learning loops live — PAINT.5 practice (her eye scores her hand against the reference percept and keeps improving technique nudges) and ARTLEARN (your verdicts become her per-subject style taste + technique validation), plus repeat looks refine schemas by weighted merge. What she does NOT yet have is FORM GENERALIZATION — "see an orange cat and a black cat sitting, draw a brown cat standing" — which needs a per-concept schema BANK (variants across looks, pose/color decoupled, drawn by recombination). Filed as FORMBANK, design on the board.
+
+**Board: 4 open / 226 closed.**

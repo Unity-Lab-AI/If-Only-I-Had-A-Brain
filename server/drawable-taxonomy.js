@@ -100,6 +100,16 @@ function drawableVerdict(word) {
   // to catch (music, dance, consonant) has no concrete sense and refuses on
   // the main loop anyway.)
   if (senses[0].lex === 23) return 'abstract';
+  // ACT-PRIMARY GUARD (measured on the full cache): a word whose primary
+  // sense is an ACT ("blow", "escape", "trip", "hit") is not a subject unless
+  // a STRONG object-class sense exists — artifact/location/object/animal/
+  // food/body/shape ("baseball" the ball, "market" the place, "ride" the
+  // amusement ride survive). Niche plant/substance/person side-senses cannot
+  // rescue an act — WordNet's cocaine slang must not make "blow" drawable.
+  if (senses[0].lex === 4) {
+    const STRONG = [5, 6, 8, 13, 15, 17, 25];
+    return senses.some(s => STRONG.includes(s.lex)) ? 'concrete' : 'abstract';
+  }
   // (An attestation guard was TRIED here and deleted after measuring: corpus
   // sense-frequency kills book/table/fire — their content/event senses
   // out-attest their physical ones in any tagged corpus — while "addition"
