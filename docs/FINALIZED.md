@@ -36055,3 +36055,18 @@ Wired everywhere: the mind's-eye draw tick, the FAV picker (was ungated — now 
 **⛔ Owned:** the build initially shipped exactly what was banned — a closed-class word set, marker regexes, and a stop-word set — and Gee had to correct it three times before every list died. Memory `feedback_no_word_lists_use_taxonomy` written. The three evidence screenshots deleted after judging.
 
 **Board: 3 open / 207 closed.**
+
+## 2026-08-21 — ARTJUDGE: accept / reject / not-drawable buttons on the mind's eye — human critique closes her art loop
+
+> Gee (verbatim): *"i think the minds eye needs an accept and a reject button where the accept being pressed(denotes its a good image creation) and reject denotes its bad and needs to be relooked up and dictionary read and redraw.. otherwise an accept holds the drawing as a good one. this way Unity can have information about the quality of the images and weither she should re look it up and remake redraw the image"*
+> Gee (verbatim, mid-build): *"and a button for a bad word to not use again"* · *"ie a none drawanble image"*
+
+Three buttons on `html/minds-eye.html`, shown only on judgeable frames (`canvas:own:` / `canvas:draw:` / `draw:fav:` / `lookup:`), riding the already-whitelisted `/minds-eye.json` route as query params (the public nginx forwards only known routes — the `?console=N` tunnel precedent):
+
+- **✓ good — keep it:** the verdict is HELD per concept on the visual-store entry (`e.art.up/lastVerdict`, sqlite-persisted) — she has quality information about her own drawings alongside the shapes.
+- **✗ bad — relook & redraw:** the bad SHAPE memory dies (`e.schema` deleted), a `relearn` job runs on the serialized walk lane — **dictionary definition re-read (live fetch), FRESH reference fetched with `force` (the 6h cooldown is bypassed — a human said the old one was bad) banking a new schema, then the REDRAW queued** so a new attempt lands on the page. Per-concept relearn pacing (`DREAM_ART_RELEARN_GAP_MS`, 10min) so reject-spam can't burn look-ups; the verdict still counts even when the relearn is paced.
+- **🚫 not a drawable word:** the word joins her operator-taught NOT-DRAWABLE set — consulted FIRST by `_conceptIsDrawable`, ahead of the taxonomy — her imagery of it is dropped, and she never draws it again. Persisted in `server/art-notdrawable.json` (survives fresh walks — an operator verdict is not training state; deploy-excluded, gitignored). This is her learned per-word experience data, not a code word list: it starts empty and only a human press adds to it.
+
+Every verdict rides the emission bus (*"they liked my drawing of…"* / *"…is not something to draw"*) so the dream cycle can consolidate the critique as episodes, and `state.ownArt.feedback` + `notDrawableWords` let the board answer. **Verified by running production code: 18/18 harness checks** — label parsing through the style suffix, verdict persistence, pacing (global 1.5s + per-concept relearn gap), the full relearn chain (dictionary re-read → forced fresh look → redraw queued) through the real drain, ban persistence across a simulated restart, gate refusal of banned words, junk labels/verdicts refused, route query parse. Buttons land on the site at push (frontend rsync); the server side answers after the next press — until then the page honestly reports "she didn't hear that".
+
+**Board: 3 open / 208 closed.**

@@ -142,6 +142,8 @@ rsync -a --delete \
   --exclude 'server/visual-memory*.json' \
   --exclude 'visual-memory*.db*' \
   --exclude 'server/visual-memory*.db*' \
+  --exclude 'art-notdrawable.json' \
+  --exclude 'server/art-notdrawable.json' \
   --exclude 'pollinations-user.json' \
   --exclude 'user.json' \
   --exclude 'deployed-build.json' \

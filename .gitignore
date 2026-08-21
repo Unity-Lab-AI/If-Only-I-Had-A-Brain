@@ -247,3 +247,4 @@ server/visual-memory*.json
 .scratch-*
 visual-memory*.db*
 server/visual-memory*.db*
+art-notdrawable.json

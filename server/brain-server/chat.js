@@ -108,6 +108,25 @@ const SERVER_CHAT_MIXIN = {
       try { await this._practiceDrawing(job.word); } catch (e) { if (!this._practiceErrLogged) { this._practiceErrLogged = true; console.warn(`[OwnArt] practice failed: ${e?.message || e}`); } }
       return false;
     }
+    // ARTJUDGE — a REJECT verdict's relearn chain, on this same serialized
+    // lane: re-read the dictionary definition (live fetch on a cache miss),
+    // fetch a FRESH reference (force = the 6h cooldown is bypassed — a human
+    // said the old one produced a bad drawing), which banks a new shape
+    // schema, then queue the REDRAW so a new attempt lands on the page.
+    if (job && job.kind === 'relearn' && job.word) {
+      try {
+        if (this.cortexCluster && typeof this.cortexCluster.lookupDefinition === 'function') {
+          try { await this.cortexCluster.lookupDefinition(job.word); } catch { /* definition re-read best-effort */ }
+        }
+        if (typeof this._fetchReferenceAndGround === 'function') {
+          await this._fetchReferenceAndGround(job.word, { force: true });
+        }
+      } catch (e) {
+        if (!this._relearnErrLogged) { this._relearnErrLogged = true; console.warn(`[OwnArt] relearn failed for "${job.word}": ${e?.message || e}`); }
+      }
+      this._mindsEyePreviewQueue.push({ kind: 'own', text: job.word });
+      return false;
+    }
     // DRAWCTX — an OWN-ART job: she composes her own drawing of what the message
     // named, here on the walk lane, and publishes it to the mind's eye. Separate
     // branch from the preview because there is no prompt and no reference involved:
@@ -2283,6 +2302,118 @@ const SERVER_CHAT_MIXIN = {
     return d;
   },
 
+  // ── ARTJUDGE (2026-08-21) — HUMAN CRITIQUE ON THE MIND'S EYE. The viewer
+  // page carries ACCEPT / REJECT buttons: accept marks the drawing GOOD and
+  // the verdict is held per concept; reject means it is bad and the concept is
+  // RE-LOOKED-UP (fresh reference, cooldown force-bypassed), the dictionary
+  // definition re-read, and the word REDRAWN — a fresh attempt lands on the
+  // page. Verdicts persist on the visual-store entry (`e.art`), so she holds
+  // quality information about her own drawings alongside the shapes.
+  // The operator-taught NOT-DRAWABLE set: words judged "bad word, do not use
+  // again — a non-drawable image" from the viewer's 🚫 button. This is HER
+  // LEARNED experience data (per-word verdicts, like schemas), not a code
+  // word list: it starts empty and only a human press adds to it. Persisted in
+  // its own file so it survives fresh walks — an operator verdict is not
+  // training state.
+  _artBanSet() {
+    if (this._artBans) return this._artBans;
+    this._artBans = new Set();
+    try {
+      const fs = require('fs'); const path = require('path');
+      const f = path.join(__dirname, '..', 'art-notdrawable.json');
+      if (fs.existsSync(f)) { const j = JSON.parse(fs.readFileSync(f, 'utf8')); if (Array.isArray(j)) for (const w of j) this._artBans.add(String(w)); }
+    } catch { /* empty set — bans re-teachable */ }
+    return this._artBans;
+  },
+  _artBanSave() {
+    try {
+      const fs = require('fs'); const path = require('path');
+      fs.writeFileSync(path.join(__dirname, '..', 'art-notdrawable.json'), JSON.stringify([...this._artBanSet()].sort(), null, 1));
+    } catch (e) { console.warn(`[OwnArt] not-drawable set save failed: ${e?.message || e}`); }
+  },
+
+  _artFeedback(verdict, sourceLabel) {
+    if (verdict !== 'accept' && verdict !== 'reject' && verdict !== 'ban') return { ok: false, why: 'bad verdict' };
+    const now = Date.now();
+    // global pacing — a button, not a firehose
+    if (this._artFbAt && (now - this._artFbAt) < 1500) return { ok: false, why: 'too fast' };
+    this._artFbAt = now;
+    // parse the concept words out of the frame's source label
+    const src = String(sourceLabel || '');
+    const m = src.match(/^(?:canvas:own:|canvas:draw:|draw:fav:|lookup:)(.+)$/);
+    if (!m) return { ok: false, why: 'not a judgeable frame' };
+    // canvas:own labels are "<words>:<style>" — the style rides after the colon
+    const words = m[1].split(':')[0].split('+').map(w => w.trim().toLowerCase()).filter(w => w && w.length > 1).slice(0, 3);
+    if (!words.length) return { ok: false, why: 'no concept in label' };
+    const store = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+    const relearned = [];
+    // 🚫 BAN — the word itself is a bad subject ("a bad word to not use
+    // again, ie a none drawanble image"): remembered forever, gate consults
+    // it first, her imagery of it dropped, never relearned or redrawn.
+    if (verdict === 'ban') {
+      const bans = this._artBanSet();
+      for (const w of words) {
+        bans.add(w);
+        try { if (store && store.has(w)) store.delete(w); } catch { /* imagery drop best-effort */ }
+      }
+      this._artBanSave();
+      this._artFeedbackStats = {
+        accepts: (this._artFeedbackStats && this._artFeedbackStats.accepts) | 0,
+        rejects: (this._artFeedbackStats && this._artFeedbackStats.rejects) | 0,
+        bans: ((this._artFeedbackStats && this._artFeedbackStats.bans) | 0) + 1,
+        lastWords: words, lastVerdict: 'ban', at: now,
+      };
+      try {
+        const _c = this.cortexCluster;
+        if (_c && typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'art-feedback', text: words.join(' and ') + ' is not something to draw', ts: now });
+      } catch { /* emission best-effort */ }
+      try { console.log(`[OwnArt] 🚫 NOT DRAWABLE: "${words.join('+')}" — banned from her subjects (${bans.size} total), imagery dropped.`); } catch { /* nf */ }
+      return { ok: true, verdict: 'ban', words };
+    }
+    for (const w of words) {
+      // the verdict is held on the concept's visual-store entry
+      try {
+        const e = store && store.get(w);
+        if (e) {
+          const a = e.art || { up: 0, down: 0 };
+          if (verdict === 'accept') a.up = (a.up | 0) + 1; else a.down = (a.down | 0) + 1;
+          a.lastVerdict = verdict; a.at = now;
+          e.art = a;
+          store.set(w, e);   // re-set → the sqlite store marks it dirty
+        }
+      } catch { /* verdict bookkeeping best-effort */ }
+      if (verdict === 'reject') {
+        // per-concept relearn pacing — reject-spam must not burn look-ups
+        const GAPR = Number(process.env.DREAM_ART_RELEARN_GAP_MS) >= 0 ? Number(process.env.DREAM_ART_RELEARN_GAP_MS) : 600000;
+        if (!this._artRelearnAt) this._artRelearnAt = new Map();
+        if ((now - (this._artRelearnAt.get(w) || 0)) < GAPR) continue;
+        this._artRelearnAt.set(w, now);
+        // the bad SHAPE memory dies — the fresh look banks a new one
+        try { const e = store && store.get(w); if (e && e.schema) { delete e.schema; store.set(w, e); } } catch { /* schema drop best-effort */ }
+        try {
+          if (!Array.isArray(this._mindsEyePreviewQueue)) this._mindsEyePreviewQueue = [];
+          this._mindsEyePreviewQueue.push({ kind: 'relearn', word: w });
+          relearned.push(w);
+        } catch { /* queue best-effort */ }
+      }
+    }
+    this._artFeedbackStats = {
+      accepts: ((this._artFeedbackStats && this._artFeedbackStats.accepts) | 0) + (verdict === 'accept' ? 1 : 0),
+      rejects: ((this._artFeedbackStats && this._artFeedbackStats.rejects) | 0) + (verdict === 'reject' ? 1 : 0),
+      bans: (this._artFeedbackStats && this._artFeedbackStats.bans) | 0,
+      lastWords: words, lastVerdict: verdict, at: now,
+    };
+    // she KNOWS — the verdict rides the emission bus into her episodes
+    try {
+      const _c = this.cortexCluster;
+      if (_c && typeof _c.pushEmission === 'function') {
+        _c.pushEmission({ source: 'art-feedback', text: (verdict === 'accept' ? 'they liked my drawing of ' : 'they did not like my drawing of ') + words.join(' and '), ts: now });
+      }
+    } catch { /* emission best-effort */ }
+    try { console.log(`[OwnArt] 🖤 ${verdict.toUpperCase()} on "${words.join('+')}"${relearned.length ? ` — relearning: ${relearned.join(', ')} (fresh look + dictionary + redraw queued)` : verdict === 'accept' ? ' — held as a good one' : ' (relearn paced — recently relearned)'}`); } catch { /* nf */ }
+    return { ok: true, verdict, words, relearn: relearned };
+  },
+
   // ── PAINT.5 — THE PRACTICE LOOP. Fully equational self-critique, the same
   // noisy-oracle math as visual confirmation: she draws the subject with her
   // current technique, PERCEIVES her own drawing (describe → percept vector),
@@ -2908,6 +3039,9 @@ const SERVER_CHAT_MIXIN = {
   async _conceptIsDrawable(word) {
     const w = (typeof this._vmContentTokens === 'function') ? (this._vmContentTokens(word)[0] || '') : String(word || '').toLowerCase().trim();
     if (!w || w.length < 2) return false;
+    // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
+    // subject; that verdict outranks every other judge.
+    try { if (this._artBanSet().has(w)) return false; } catch { /* ban set best-effort */ }
     // THE TAXONOMY IS THE JUDGE — no word lists anywhere (operator law,
     // 2026-08-21: lists cannot cover the real world). WordNet's lexicographer
     // categories file every English noun sense at build time:
