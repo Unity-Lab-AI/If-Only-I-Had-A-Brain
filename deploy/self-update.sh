@@ -136,7 +136,7 @@ rsync -a --delete \
   --exclude 'server/auto-advance.json' \
   --exclude 'definition-cache.json' \
   --exclude 'server/definition-cache.json' \
-  --exclude 'mindspace-memory.json' \
+  --exclude 'mindspace-memory*.json' \
   --exclude 'server/mindspace-memory.json' \
   --exclude 'visual-memory*.json' \
   --exclude 'server/visual-memory*.json' \

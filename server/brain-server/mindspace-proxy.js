@@ -113,6 +113,15 @@ class MindSpaceWorkerProxy {
   }
 
   morph(...args) { return this._call('morph', args); }
+  // PROXYCOLOR (2026-08-21) — reconstruct a rec to pixels. The COLOR pipeline
+  // (palette + per-part + per-stroke sampling) checks `typeof imagine ===
+  // 'function'` before sampling — this method was MISSING from the proxy, so
+  // on the box every schema silently banked with NO colors and every drawing
+  // rendered as monotone neutral outlines while the harness (which ran the
+  // engine directly) showed full color. The worker dispatch is generic, the
+  // engine has imagine() — one passthrough completes the pipeline in
+  // production.
+  imagine(...args) { return this._call('imagine', args); }
 
   // Governor state lives with the engine; call sites stay sync-shaped.
   governState(...args) { this._call('governState', args).catch(() => {}); }
