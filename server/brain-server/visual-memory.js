@@ -555,8 +555,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (!key) return null;
     let strokes = null;
     try {
+      // PAINT.7b — finer trace: 192→256 trace side and a lower min-length so the
+      // schema's vector memory carries the SHORT strokes (whiskers, eye rings,
+      // toe lines) that turn "readable" into "detailed". Live-judged: 61 kept
+      // strokes read as the subject but thin; the detail lives in the tail.
       strokes = await this.mindSpace.traceLineArt(rec, {
-        traceSide: 192, maxStrokes: 400, edgeThresh: 0.13, minLenFrac: 0.04, simplify: 1.0, ink: [255, 255, 255],
+        traceSide: 256, maxStrokes: 700, edgeThresh: 0.11, minLenFrac: 0.025, simplify: 1.0, ink: [255, 255, 255],
       });
     } catch { return null; }
     if (!Array.isArray(strokes) || strokes.length < 4) return null;
@@ -616,8 +620,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // PALETTE — the reference's dominant chroma, 4 entries. She is free to use, shift
     // or ignore it; storing it means "this is roughly the colour family of the thing",
     // which is knowledge, not pixels.
+    // PAINT.6 — palette from REAL PIXELS, not from a guess. The old
+    // _schemaPalette read the first packed int16 of Cb/Cr as "the DC term" with
+    // an assumed scale — for a gray/cream cat it produced [255,0,255] pure
+    // magenta, and every drawing of her went hot pink. Reconstruct the field
+    // she just perceived (ImageData polyfilled server-side now) and histogram
+    // the CENTER region — the subject, not the backdrop — into her 4 colors.
     let palette = [];
-    try { palette = this._schemaPalette(rec); } catch { palette = []; }
+    try { palette = await this._schemaPaletteFromRec(rec); } catch { palette = []; }
+    if (!palette.length) { try { palette = this._schemaPalette(rec); } catch { palette = []; } }
     // PAINT.2 (2026-08-21) — CONTOURS, not just boxes: the understanding of how
     // subjects actually look, kept from her own looks.
     // The trace already extracts the reference's real outlines; the schema used
@@ -639,9 +650,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           return { pts: s.pts, len };
         })
         .sort((a, b) => b.len - a.len)
-        .slice(0, 6);
+        // PAINT.6 — 6→8 contours at 36 points each (was 20): the live cat test
+        // showed the length-sorted top-6 kept long body edges and DROPPED the
+        // short triangles (the ears) that make the subject readable, and 20-pt
+        // decimation smoothed what remained. Still a skeleton, never pixels.
+        .slice(0, 8);
       for (const pl of polys) {
-        const step = Math.max(1, Math.ceil(pl.pts.length / 20));
+        const step = Math.max(1, Math.ceil(pl.pts.length / 36));
         const dec = [];
         for (let i = 0; i < pl.pts.length; i += step) dec.push([+pl.pts[i][0].toFixed(4), +pl.pts[i][1].toFixed(4)]);
         const last = pl.pts[pl.pts.length - 1];
@@ -651,10 +666,46 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         outlines.push({ pts: dec, closed, len: +pl.len.toFixed(3) });
       }
     } catch { /* outlines are an enrichment — the schema stands without them */ }
+    // PAINT.7 (2026-08-21) — THE FULL TRACE. Live judgment on the cat test:
+    // 8 edge fragments + a hull render as "a gray trapezoid with squiggles" —
+    // the abstraction ceiling of boxes/fragments can never let the operator
+    // determine the subject. But the tracer's FULL output IS a recognizable
+    // line drawing (it ships as the 'lineart' render style already). So the
+    // schema keeps her complete VECTOR memory of the shape — up to 120
+    // simplified strokes, ≤16 points each (~6-10KB, vectors not pixels, redrawn
+    // by her hand with her ink + per-attempt jitter — mimicry of appearance,
+    // per the operator's explicit directive, never a pixel copy).
+    const trace = [];
+    try {
+      const all = strokes
+        .map(s => {
+          if (!s) return null;
+          if (s.type === 'line' && Number.isFinite(s.x0)) return [[s.x0, s.y0], [s.x1, s.y1]];
+          if (s.type === 'poly' && Array.isArray(s.pts) && s.pts.length >= 2) return s.pts;
+          return null;
+        })
+        .filter(Boolean)
+        .map(pts => {
+          let len = 0;
+          for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+          return { pts, len };
+        })
+        .sort((a, b) => b.len - a.len)
+        .slice(0, 260);   // PAINT.7b — 120→260 kept strokes: the read lives in the long ones, the RICHNESS in the tail
+      for (const tl of all) {
+        const step = Math.max(1, Math.ceil(tl.pts.length / 20));
+        const dec = [];
+        for (let i = 0; i < tl.pts.length; i += step) dec.push([+tl.pts[i][0].toFixed(4), +tl.pts[i][1].toFixed(4)]);
+        const last = tl.pts[tl.pts.length - 1];
+        if (dec.length && (dec[dec.length - 1][0] !== +last[0].toFixed(4))) dec.push([+last[0].toFixed(4), +last[1].toFixed(4)]);
+        if (dec.length >= 2) trace.push(dec);
+      }
+    } catch { /* the trace is an enrichment — schema stands without it */ }
     const schema = {
       v: 2,   // OWNART.7 — v2 = 5×5 cell indices; v1 (3×3) schemas still DRAW fine (cx/cy/w/h/ang are grid-independent) but must never CELL-MERGE with v2
       parts: parts.slice(0, 25),
       outlines,
+      trace,
       palette,
       aspect: +(bw / bh).toFixed(3),
       frame: { x: +x0.toFixed(3), y: +y0.toFixed(3), w: +bw.toFixed(3), h: +bh.toFixed(3) },
@@ -703,6 +754,33 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
 
   // Dominant chroma of a field C, read from the reconstructed thumbnail. 4 colours,
   // coarse — a colour FAMILY, not a lookup table of the reference's pixels.
+  // PAINT.6 — the pixel-true palette: reconstruct the perceived field and
+  // histogram the center 60% (the subject; the edges are backdrop) into the 4
+  // dominant color families, 32-level quantized. This is knowledge about the
+  // THING's coloring, ~48 bytes — not pixels, not a copy.
+  async _schemaPaletteFromRec(rec) {
+    try {
+      if (!this.mindSpace || typeof this.mindSpace.imagine !== 'function') return [];
+      const img = await this.mindSpace.imagine(rec, 0);
+      if (!img || !img.data || !img.width) return [];
+      const W = img.width, H = img.height;
+      const x0 = Math.floor(W * 0.2), x1 = Math.ceil(W * 0.8);
+      const y0 = Math.floor(H * 0.2), y1 = Math.ceil(H * 0.8);
+      const bins = new Map();
+      for (let y = y0; y < y1; y += 2) {
+        for (let x = x0; x < x1; x += 2) {
+          const o = (y * W + x) * 4, r = img.data[o], g = img.data[o + 1], b = img.data[o + 2];
+          const k = ((r >> 5) << 10) | ((g >> 5) << 5) | (b >> 5);
+          let e = bins.get(k);
+          if (!e) { e = { n: 0, r: 0, g: 0, b: 0 }; bins.set(k, e); }
+          e.n++; e.r += r; e.g += g; e.b += b;
+        }
+      }
+      return [...bins.values()].sort((a, b) => b.n - a.n).slice(0, 4)
+        .map(e => [Math.round(e.r / e.n), Math.round(e.g / e.n), Math.round(e.b / e.n)]);
+    } catch { return []; }
+  },
+
   _schemaPalette(rec) {
     if (!this.mindSpace || typeof this.mindSpace.reconstructSync !== 'function') {
       // No sync reconstruct available: derive from the packed chroma DC terms, which

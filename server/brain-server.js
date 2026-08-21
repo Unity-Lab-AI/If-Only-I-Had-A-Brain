@@ -172,6 +172,18 @@ function _buildPollinationsImageUrl(prompt, opts = {}) {
   if (key) url += `&key=${encodeURIComponent(key)}`;
   return url;
 }
+// PAINT.6 — Node has no ImageData; the mind-space CPU reconstruct path
+// constructs one (transform.js reconstructImageData via imagine()). Same
+// structural polyfill as mindspace-worker.mjs so any main-process caller of a
+// reconstruct-dependent path cannot crash on the missing browser global.
+if (typeof globalThis.ImageData === 'undefined') {
+  globalThis.ImageData = class ImageData {
+    constructor(a, b, c) {
+      if (typeof a === 'number') { this.width = a; this.height = b; this.data = new Uint8ClampedArray(a * b * 4); }
+      else { this.data = a; this.width = b; this.height = c; }
+    }
+  };
+}
 const { SparseMatmulPool } = require('./worker-pool.js');
 const { learnFromWeb } = require('./world-knowledge.js');
 // Live dictionary API service (dictionaryapi.dev wrapper).
