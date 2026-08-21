@@ -36090,3 +36090,19 @@ Every verdict rides the emission bus (*"they liked my drawing of…"* / *"…is 
 **Judged on renders through production code:** poster = instantly readable subject with pink ears, warm interior color patches, dark facial details in real colors; the composed scene = colored shore strokes + sky bands + shadow; pencil = a colored-pencil sketch. Two in-batch corrections caught by looking (the color-circle column, the sunken outline). Server-only — lands on the next press, and the v5 empty store means every NEW look banks colors from the first day.
 
 **Board: 3 open / 209 closed.**
+
+## 2026-08-21 — CAMPOISON: seen-camera never binds to her thoughts and never shows on the mind's eye
+
+> Gee (verbatim): *"seen-camera:happen --- this should never appear in the mind's eye... it poisons her,,, especially when it says connect ur irvan webcame on the screen becasue of the webcam i use"*
+
+**The poison chain, decoded:** an unlabeled camera frame FUSED with whatever word she was thinking in that moment, and camera frames bound TRUSTED (`conf:true`, no confirmation gate) — so the virtual webcam's "connect your webcam" placeholder card became the confirmed visual memory of the thought word and showed on the viewer as `seen-camera:happen`. The existing static-source lockout needed 4 identical frames to arm, so the first cards always landed.
+
+**The fix (`_ingestVisualFrame`), two cuts:**
+- **A camera frame binds to NOTHING.** The thought-chain/workspace fallback now runs only for non-camera frames — a camera cannot know what she is thinking about; only a labeled frame names what it shows. She still EXPERIENCES the seeing (sem grounding unchanged), she just never files it under a word.
+- **A camera frame never becomes the mind's-eye snapshot.** The `seen-camera` swap is deleted — the viewer belongs to her imagination, memories and artwork. Labeled `seen:<word>` frames (her own creations coming back) still swap; the page's legend text updated to match.
+
+Any already-poisoned entries on the box die with the v5 empty store at the press. **Verified by running the real ingest: 6/6 harness checks** — camera frame with a live thought chain binds nothing, publishes nothing, still grounds sem; labeled frame still binds and publishes `seen:<label>`.
+
+**Plus the ARTJUDGE visibility fix (Gee: *"i dont see the buttons on the minds eye page"*):** the buttons WERE live (verified on the live site — the bare `/minds-eye.html` URL is the nginx SPA-swallow serving the index; the real page is `/html/minds-eye.html` and carries all three) but they VANISHED on non-judgeable frames, and the old server build mostly publishes daydreams. The row is now ALWAYS visible — dimmed with an honest "buttons arm when one of her drawings or look-ups is on screen" note on non-judgeable frames, armed on her pieces; verdict notes hold 4s before the idle note returns.
+
+**Board: 3 open / 210 closed.**
