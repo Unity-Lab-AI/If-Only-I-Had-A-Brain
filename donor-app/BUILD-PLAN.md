@@ -9,7 +9,7 @@
 > (GUI) + `tokio` + `tokio-tungstenite` (WS) + `serde` (JSON) + `bytemuck` (binary
 > frames). Confirmed with Sponge 2026-06-22.
 >
-> **Status:** scaffolding (M0). Multi-stage build — see milestones.
+> **Status:** SHIPPING — v0.3.26 (M0–M4 delivered; this line said "scaffolding (M0)" long after it stopped being true — see `README.md` for current reality). Latest protocol addition: SPRS type 13 masked bound plasticity (`RELEASE-0.3.26.md`).
 
 ---
 

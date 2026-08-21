@@ -1204,7 +1204,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         const r = await fetch(url, { signal: ctrl.signal });
         clearTimeout(to);
         if (!r || !r.ok) {
-          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image (verify the Pollinations key on the box).`); }
+          // Honest message (2026-08-21): the box runs the ANONYMOUS Pollinations
+          // tier by design (keys dead since 2026-08-17) — a 429 is the free
+          // tier's rate limit, EXPECTED and self-healing (the look lane rolls
+          // its burns back and retries on cooldown). The old text said "verify
+          // the Pollinations key", sending the operator hunting a key that
+          // does not exist.
+          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image${r && r.status === 429 ? ' (anonymous-tier rate limit — expected; retries on cooldown)' : ''}.`); }
           return this._vmLookFail(key, 'httpFails', 'HTTP ' + (r ? r.status : '?'));
         }
         buf = Buffer.from(await r.arrayBuffer());
