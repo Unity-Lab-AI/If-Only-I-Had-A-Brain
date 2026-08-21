@@ -2828,6 +2828,15 @@ export const K_MIXIN = {
     // digit; 10 digits × 2 propagates = 20 propagates without yield
     // used to lock the event loop for ~30-60s mid-gate. Yield every
     // 200ms so heartbeats + dashboard + WS broadcasts get air time.
+    // GATE SECTION TIMERS (2026-08-21) — one ring-visible line per section
+    // with its wall-clock, because this gate has now been diagnosed three
+    // times from stale stage tags and block rhythms. Measured, not inferred.
+    const _gsT = { t0: Date.now(), last: Date.now() };
+    const _gsMark = (label) => {
+      const now = Date.now();
+      console.log(`[GateMathK] section ${label} — ${((now - _gsT.last) / 1000).toFixed(1)}s (gate total ${((now - _gsT.t0) / 1000).toFixed(1)}s)`);
+      _gsT.last = now;
+    };
     let _readTalkYield = Date.now();
     for (let i = 0; i < DIGITS.length; i++) {
       if (Date.now() - _readTalkYield > 200) {
@@ -2916,6 +2925,7 @@ export const K_MIXIN = {
 
     const thinkPass = DIGITS.length; // always 100%
 
+    _gsMark('READ+TALK');
     // SEQ: direct matrix probe through cluster.synapses.
     // Each iteration fires one full-cluster propagate (6.6M+ neurons
     // at bio scale) — same yield discipline as READ/TALK above so the
@@ -2973,12 +2983,14 @@ export const K_MIXIN = {
         seqFails.push(`${DIGITS[i]}→${expectedNext} (got ${bestDigit || '?'})`);
       }
     }
+    _gsMark(`SEQ probes (${seqFails.length} fails)`);
     // Anti-Hebbian pair reinforcement for failing digit
     // transitions. Strengthen correct, weaken wrong — without the
     // negative half the wrong basin never fades. Primitive lives on
     // NeuronCluster so every grade's sequence learning can reuse it
     // instead of copy-pasting the loop.
     for (const failStr of seqFails) {
+      this._tstage('gate:reinforce');   // LOOPNAME
       // Parse "6→7 (got 8)"
       const srcDigit = failStr[0];
       const srcIdx = DIGITS.indexOf(srcDigit);
@@ -2995,6 +3007,7 @@ export const K_MIXIN = {
       });
     }
 
+    _gsMark('SEQ reinforce');
     // ORDER: direct matrix probe through letter→free cross-projection
     let orderPass = 0;
     let orderTotal = 0;
@@ -3063,6 +3076,7 @@ export const K_MIXIN = {
     const fineThirdG = Math.floor(fineTypeSizeG / 3);
     const fineHalfG = Math.floor(fineTypeSizeG / 2);
 
+    _gsMark('ORDER');
     // ─── 1. SUCCESSOR (K.CC count-to-100) ───────────────────────────
     // Non-multiples of 10 to avoid collision with skip-count.
     const succResult = await this._probeCombinationCosine(
@@ -3099,6 +3113,7 @@ export const K_MIXIN = {
     });
     const teenResult = await this._probeCombinationCosine(teenSamples);
 
+    _gsMark('SUCC+SKIP10+MAKETEN+TEEN');
     // ─── 5. ATTRIBUTE COMPARE (K.MD — argmax tag) ───────────────────
     const attrBuckets = [
       { name: 'greater', start: 0,               end: fineThirdG },
@@ -3197,6 +3212,7 @@ export const K_MIXIN = {
     const shapeComposeResult = await this._probeCombinationCosine(shapeComposeSamples);
 
     // ═════════════════════════════════════════════════════════════════
+    _gsMark('ATTR+CLASSIFY+SHAPES');
     // MATH-K PRODUCTION PROBES (LAW 7)
     // Real-world style probes matching TODO test phrasings verbatim.
     // Each question routes through visual→letter→phon→sem pipeline
@@ -3284,12 +3300,14 @@ export const K_MIXIN = {
     // STRUCTURE-REFRESH writes are validated. Math vocab is sparse
     // (digits + counting words) so this primarily measures the structure
     // mechanism more than vocab depth.
+    _gsMark('PRODUCTION probes');
     let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
     try {
       sentenceGen = await this._probeSentenceGeneration({ subject: 'math' });
     } catch (err) {
       console.warn('[Curriculum] _probeSentenceGeneration[math] threw:', err?.message || err);
     }
+    _gsMark('SENTENCE-GEN');
     const sentenceGenRate = sentenceGen.rate || 0;
     const _mathKResult = {
       pass,

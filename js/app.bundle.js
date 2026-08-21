@@ -73151,6 +73151,12 @@ var K_MIXIN = {
       const allProjs = cluster.crossProjections || {};
       let readPass = 0;
       let talkPass = 0;
+      const _gsT = { t0: Date.now(), last: Date.now() };
+      const _gsMark = (label) => {
+        const now = Date.now();
+        console.log(`[GateMathK] section ${label} \u2014 ${((now - _gsT.last) / 1e3).toFixed(1)}s (gate total ${((now - _gsT.t0) / 1e3).toFixed(1)}s)`);
+        _gsT.last = now;
+      };
       let _readTalkYield = Date.now();
       for (let i = 0; i < DIGITS.length; i++) {
         if (Date.now() - _readTalkYield > 200) {
@@ -73226,6 +73232,7 @@ var K_MIXIN = {
         }
       }
       const thinkPass = DIGITS.length;
+      _gsMark("READ+TALK");
       let seqPass = 0;
       const seqFails = [];
       let _seqYield = Date.now();
@@ -73274,7 +73281,9 @@ var K_MIXIN = {
           seqFails.push(`${DIGITS[i]}\u2192${expectedNext} (got ${bestDigit || "?"})`);
         }
       }
+      _gsMark(`SEQ probes (${seqFails.length} fails)`);
       for (const failStr of seqFails) {
+        this._tstage("gate:reinforce");
         const srcDigit = failStr[0];
         const srcIdx = DIGITS.indexOf(srcDigit);
         if (srcIdx < 0 || srcIdx >= DIGITS.length - 1) continue;
@@ -73288,6 +73297,7 @@ var K_MIXIN = {
           wrongOneHot: wrongDigit ? encodeLetter(wrongDigit) : null
         });
       }
+      _gsMark("SEQ reinforce");
       let orderPass = 0;
       let orderTotal = 0;
       const letterToFree = allProjs["letter_to_free"];
@@ -73339,6 +73349,7 @@ var K_MIXIN = {
       const fineTypeSizeG = fineTypeRegionG ? fineTypeRegionG.end - fineTypeRegionG.start : 0;
       const fineThirdG = Math.floor(fineTypeSizeG / 3);
       const fineHalfG = Math.floor(fineTypeSizeG / 2);
+      _gsMark("ORDER");
       const succResult = await this._probeCombinationCosine(
         [3, 7, 13, 17, 23, 27, 43, 67, 83, 97].map((n) => ({
           inputs: [{ region: freeRegion, feat: _magnitudeFeatureForNumber(n) }],
@@ -73366,6 +73377,7 @@ var K_MIXIN = {
         expected: { region: semRegion, feat: _magnitudeFeatureForNumber(10 + n) }
       });
       const teenResult = await this._probeCombinationCosine(teenSamples);
+      _gsMark("SUCC+SKIP10+MAKETEN+TEEN");
       const attrBuckets = [
         { name: "greater", start: 0, end: fineThirdG },
         { name: "less", start: fineThirdG, end: 2 * fineThirdG },
@@ -73470,6 +73482,7 @@ var K_MIXIN = {
         });
       }
       const shapeComposeResult = await this._probeCombinationCosine(shapeComposeSamples);
+      _gsMark("ATTR+CLASSIFY+SHAPES");
       const mathKProductionSamples = [
         // K.CC successor (TODO: "What number comes after 7?" → 8)
         { question: "what number comes after seven", expected: ["8", "eight"] },
@@ -73520,12 +73533,14 @@ var K_MIXIN = {
       const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && seqRate >= SEQ_MIN && orderRate >= ORDER_MIN && succRate >= PATH_MIN && skipRate >= PATH_MIN && makeTenRate >= PATH_MIN && teenRate >= PATH_MIN && attrRate >= PATH_MIN && classifyRate >= PATH_MIN && shapeSidesRate >= PATH_MIN && shapeDimRate >= PATH_MIN && shapeComposeRate >= PATH_MIN && prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      _gsMark("PRODUCTION probes");
       let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
       try {
         sentenceGen = await this._probeSentenceGeneration({ subject: "math" });
       } catch (err) {
         console.warn("[Curriculum] _probeSentenceGeneration[math] threw:", err?.message || err);
       }
+      _gsMark("SENTENCE-GEN");
       const sentenceGenRate = sentenceGen.rate || 0;
       const _mathKResult = {
         pass,
