@@ -36417,3 +36417,9 @@ Method per the intelligibility law — rendered through the REAL pipeline (produ
 - **Hue-preserving lighten:** the ×1.6+46 value shift clipped orange strokes to YELLOW (the garish webbing); the lighten side now lerps toward white, hue intact; darken stays ×0.45.
 
 Final renders: all hands legible, the noisy-trace doodle reads as a small animal with light peach marks, watercolor as a soft washed figure. Server-only (chat.js, unbundled) — lands on the next press. Harness + render PNGs deleted per scratch hygiene.
+
+## 2026-08-21 — GATEGPU FIX: my bound-probe form never answered on the native donor — convicted live, replaced with the proven standalone form
+
+> Gee (verbatim): *"so how long?????:_gateMathKReal (+1090.6s)"* — 18 minutes, WORSE than before GATEGPU. Owned: mine.
+
+The box convicted it in one line: `teachStageMax=gate:probe-gpu(35247ms)` with the `GATE PROBES via donor: ON` first-success line ABSENT — every GPU probe attempt burned the full 30s ack timeout and fell to CPU, so each gate probe cost 30s + the CPU pass. Root cause: the empty-pre BOUND propagate is a browser-donor form — the NATIVE donor's `propagate` is STANDALONE-only (zero + scatter the GIVEN indices into the matrix-local pre buffer, offsets 0) and never answers the bound shape. Fix: the probe indices now ride AS the type-2 pre payload — matrix-local standalone, the form both donors have executed since v0.3.11 — no resident slice write at all (nothing shed-able, nothing stale-able), probes fail FAST (8s, was 30s) to the CPU chunked path, and `gpuSparsePropagate` gained a timeout param. Harness re-run: indices in the payload, pinned primary, 8s timeout, no write. **Filed with it (PROPBOUND suspicion):** `gpuSparsePropagateAuto` routes ALL bound-matrix propagates through the same bound form on the same reasoning — every consumer of that router on a native donor deserves the same audit. Lands on the next press; until then running gates pay the timeout tax.
