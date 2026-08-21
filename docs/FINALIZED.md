@@ -36194,3 +36194,11 @@ The old vocabulary fired fog on nearly every image because her baseline valence 
 **Fix (the `_definitionTaughtWords` pattern):** the taught-set now lives on the CLUSTER (`_vocabTaughtWordsPersist`), persists in the weights JSON on every save, restores at boot, and `_trainedVocabularySet` reads the restored receipt even before any pregate re-initializes. After the next press pays the teach cost once more, every subsequent press enters K gates in **minutes** (only genuinely-new words teach). Verified: node --check ×3, ESM import chain, bundle rebuilt, and the restored-receipt logic proven through the real mixin.
 
 **Board: 3 open / 221 closed.**
+
+## 2026-08-21 — DRAWNCOUNT: "0 drawn" while she painted all day — the counter watched the wrong lane
+
+> Gee (verbatim): *"her art: 0 drawn... why does this say zero? she has 25+ seen"*
+
+Lying-instrument family: `_ownArtDrawn` incremented only in the chat-queued drain lane, while her artwork was being born in the mind's-eye TICK lane (the console showed attempt #56 as the board read 0). The increment moved INTO `_drawOwnCreation` at the single point every lane flows through — counted once per successful piece, failed attempts uncounted, the drain's duplicate increment removed.
+
+**Board: 3 open / 223 closed.**
