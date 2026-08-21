@@ -194,3 +194,9 @@ Everything codeable for these is shipped; each needs a call, not a commit:
 > Gee (verbatim): *"wtf she keeps displaying her drawings even tho i marked redraw"*
 
 - [x] **REJECTGONE.1** → **✅ SHIPPED** (verdicts were landing — live box read 8 rejects / 2 bans; the display was the gap): reject now deletes the concept's WHOLE store entry (the surviving rec/percept kept re-displaying via recall/fav lanes) and the on-screen frame swaps IMMEDIATELY to an honest "she tossed her <word> — fresh look-up, definition re-read and redraw on the way…" note (bans clear too; paced repeat rejects still clear; unrelated frames untouched). 7/7 harness checks. Ledger: FINALIZED §REJECTGONE.
+
+## ARTLEARN — she learns from her drawing — filed + shipped 2026-08-21
+
+> Gee (verbatim): *"and learn from her drawing"*
+
+- [x] **ARTLEARN.1** → **✅ SHIPPED:** accepts teach — the winning style banks per concept (`e.art.styles`) and weights the style picker for that subject (verified 5/40 → 18/40, rotation preserved); the practiced technique marks `validated`; every accept queues a practice session (reinforcement); rejects already unlearn via REJECTGONE (whole memory rebuilds). Verdicts ride the emission bus into episodes as before. 6/6 harness checks. Ledger: FINALIZED §ARTLEARN.
