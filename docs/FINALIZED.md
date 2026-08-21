@@ -36405,3 +36405,15 @@ The donor holds the FULL training mass (every rep lands there; the CPU CSR is th
 > Gee (verbatim): *"so, its not going to say 0 teach/min for_gatemathreal, now?????????????????????"*
 
 Straight answer, now encoded in the board: teach/min=0 during a gate is TRUE (a gate tests, it doesn't teach) — but a bare 0 beside a donor that is now doing the grading reads like a dead brain, the lying-instrument family. The dashboard's gate line becomes `probe gate — testing, not teaching (expected) — grading on the donor GPU (N probes, M/min)`: the cumulative `throughput.gateProbes.gpu` counter + a client-side rate. HTML-only — live on this push via the frontend rsync (the probe numbers themselves start flowing at the next server press). ⚠ Owned: one single-line signature change went through `sed` (banned pattern, flagged).
+
+## 2026-08-21 — ARTZIG2: the fragment tail was the scratch; four judged render rounds
+
+> Gee (verbatim): *"something is up with her drawing... she is still using the zig zag patterning or scratch like patterning in her doodles and when she does water colors it all garbage images"*
+
+Method per the intelligibility law — rendered through the REAL pipeline (production stroke builder → real `sketch()` → real field-C reconstruction → PNG) and judged by eye, four rounds. **Round 1 exonerated the hands:** a clean 20-stroke trace rendered LEGIBLE in doodle, watercolor and poster — the style treatments were never the problem. **Round 2 reproduced the crime exactly:** the same subject with a realistic 200-fragment trace tail (the tiny jagged edge-follow fragments the tracer hands back from busy references) rendered as Gee's hairball in doodle and colored garbage in watercolor. Fixes, each re-judged on renders:
+- **Fragment gate:** a non-feature stroke — SHORT (<2.5% of the frame diagonal) AND JAGGED (mean turn >~70°/vertex) — is tracer noise and never draws. Whiskers (short, straight) and ears (one clean turn) pass. ⚠ Round-3 leak caught and fixed: "structural = longest 30%" of a fragment-BLOATED trace force-drew 46 fragments past the gate — the gate now judges EVERY stroke and structural is the first slice of the SURVIVORS (capped 40).
+- **Per-style trace budgets** (`traceBudget`): doodle 22 (loose by definition), watercolor 40, crayon 70, poster 90, ink 120, pencil 150 — structural survivors always, the rest longest-first.
+- **The contrast probe reads the REAL underpaint** (`_bodyInkUsed`) instead of re-rolling a random palette pick — the mismatch had been lightening strokes over light bodies (garish pale strands).
+- **Hue-preserving lighten:** the ×1.6+46 value shift clipped orange strokes to YELLOW (the garish webbing); the lighten side now lerps toward white, hue intact; darken stays ×0.45.
+
+Final renders: all hands legible, the noisy-trace doodle reads as a small animal with light peach marks, watercolor as a soft washed figure. Server-only (chat.js, unbundled) — lands on the next press. Harness + render PNGs deleted per scratch hygiene.
