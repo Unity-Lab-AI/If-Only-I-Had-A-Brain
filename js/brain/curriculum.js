@@ -3240,6 +3240,32 @@ export class Curriculum {
         : gradeAt(sub);
       perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
     }
+    // GRADESCOPE (2026-08-22) — the phases/cells columns are scoped to THE
+    // ROW'S OWN GRADE. They were lifetime-cumulative (every grade's phases
+    // and cells summed), rendered beside a per-grade course name — so the
+    // moment Grade 1 opened, the board read "Foundational Reading · grade1 ·
+    // 24 phases · 1 cell" as if Grade 1 was already done, when all 24 phases
+    // and the cell were kindergarten's history. Each row now answers one
+    // question: how far along is THIS course at THIS grade. Lifetime totals
+    // stay available in passedCellsTotal + the FINALIZED ledger.
+    for (const sub of Object.keys(perSubject)) {
+      const ck = `${sub}/${perSubject[sub].grade}`;
+      perSubject[sub].cellsPassed = passedCellSet.has(ck) ? 1 : 0;
+      let scoped = 0;
+      if (cluster && Array.isArray(cluster.passedPhases)) {
+        let declared = null;
+        try { declared = this._declaredPhaseNames(ck); } catch { declared = null; }
+        for (const pk of cluster.passedPhases) {
+          const k = String(pk);
+          const colon = k.lastIndexOf(':');
+          if (colon < 0) continue;
+          if (k.slice(0, colon) !== ck) continue;
+          if (declared && !declared.has(k.slice(colon + 1))) continue;
+          scoped++;
+        }
+      }
+      perSubject[sub].phasesCompleted = scoped;
+    }
     const activePhase = cluster && cluster._activePhase ? {
       name: cluster._activePhase.name,
       elapsedMs: cluster._activePhase.startAt ? Date.now() - cluster._activePhase.startAt : 0,
