@@ -96471,16 +96471,15 @@ var Curriculum = class _Curriculum {
     }
     const passedCellSet = cluster && Array.isArray(cluster.passedCells) ? new Set(cluster.passedCells) : /* @__PURE__ */ new Set();
     const gradeAt = (sub) => {
-      for (const g of GRADE_ORDER) {
-        if (!passedCellSet.has(`${sub}/${g}`)) return g;
+      let last = -1;
+      for (let i = 0; i < GRADE_ORDER.length; i++) {
+        if (passedCellSet.has(`${sub}/${GRADE_ORDER[i]}`)) last = i;
       }
-      return GRADE_ORDER[GRADE_ORDER.length - 1];
+      return GRADE_ORDER[Math.min(last + 1, GRADE_ORDER.length - 1)];
     };
-    for (const sub of SUBJECTS2) {
-      if (perSubject[sub]) {
-        perSubject[sub].grade = gradeAt(sub);
-        perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
-      }
+    for (const sub of Object.keys(perSubject)) {
+      perSubject[sub].grade = sub === this._currentSubject && this._currentGrade ? this._currentGrade : gradeAt(sub);
+      perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
     }
     const activePhase = cluster && cluster._activePhase ? {
       name: cluster._activePhase.name,
@@ -96736,7 +96735,34 @@ var Curriculum = class _Curriculum {
       cellElapsedMs: this._currentCellStartAt ? Date.now() - this._currentCellStartAt : 0,
       perSubject,
       passedCellsTotal: cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells.length : 0,
-      subjects: SUBJECTS2.slice(),
+      // ROSTERROWS (2026-08-22) — the dashboard renders EXACTLY this list, so
+      // the static core-6 hid the PE/Music/Health rows even after the server
+      // built them (operator: "there also is no PE, heath and safty"). Core 6
+      // first in canonical order, then the real-school roster courses, then
+      // anything else a future grade introduces.
+      subjects: (() => {
+        const canon = [
+          ...SUBJECTS2,
+          "music",
+          "pe",
+          "health",
+          "language",
+          "cs",
+          "civics",
+          "economics",
+          "psychology",
+          "ap",
+          "major",
+          "genered",
+          "cstheory",
+          "cssystems",
+          "research"
+        ];
+        const have = Object.keys(perSubject);
+        const out = canon.filter((k) => have.includes(k));
+        for (const k of have) if (!out.includes(k)) out.push(k);
+        return out;
+      })(),
       // GATEVERDICT — the last gate's verdict STICKS here (gate name, pass,
       // the full per-section reason string, timestamp) so the board answers
       // "did it pass and which section failed" without ring archaeology.
