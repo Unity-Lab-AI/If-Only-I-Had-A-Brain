@@ -108485,6 +108485,7 @@ var Curriculum = class _Curriculum {
       }
     } catch {
     }
+    this._tstage("prod:inject");
     const q = (question || "").toLowerCase();
     const _bioScale = (cluster.size | 0) > 2e6;
     const words = q.match(/[a-z]+/g) || [];
@@ -108497,11 +108498,13 @@ var Curriculum = class _Curriculum {
     if (typeof cluster.readText === "function" && !_bioScale) {
       cluster.readText(q, { visualCortex, ticksPerChar });
     } else {
+      this._tstage("prod:read-ticks");
       for (const ch of q) {
         if (/[a-z0-9]/.test(ch)) cluster.injectLetter(ch, 1);
         for (let t = 0; t < ticksPerChar; t++) await cluster.stepAwait(1e-3);
       }
     }
+    this._tstage("prod:settle");
     let cumulativeSpikes = null;
     if (cluster.lastSpikes && cluster.lastSpikes.length === cluster.size) {
       cumulativeSpikes = new Uint8Array(cluster.size);
@@ -108522,6 +108525,7 @@ var Curriculum = class _Curriculum {
         if (cluster.lastSpikes[i]) preEmitSpikeCount++;
       }
     }
+    this._tstage("prod:emit");
     let emitted = "";
     let emissionPath = "none";
     let emissionError = null;
@@ -108612,6 +108616,20 @@ var Curriculum = class _Curriculum {
           failModeTag = ` FAIL_MODE=${fm}`;
         }
         this._hb(`[Curriculum][PROD] sample ${sampleIdx}/${samples.length} DONE ${tag} emitted="${emittedStr.slice(0, 30)}" expected="${String(result.expected ?? "").slice(0, 20)}"${failModeTag}`);
+      }
+      {
+        const _pp = this._prodProgress || (this._prodProgress = { t0: Date.now(), logAt: 0 });
+        if (sampleIdx === 1) {
+          _pp.t0 = Date.now();
+          _pp.logAt = 0;
+        }
+        const _now = Date.now();
+        if (_now - _pp.logAt > 45e3 && sampleIdx < samples.length) {
+          const _rate = sampleIdx / Math.max(1, (_now - _pp.t0) / 6e4);
+          const _etaMin = _rate > 0 ? Math.round((samples.length - sampleIdx) / _rate) : -1;
+          console.log(`[PROD] ${sampleIdx}/${samples.length} answered (${Math.round(sampleIdx / samples.length * 100)}%) \xB7 ${_rate.toFixed(1)}/min \xB7 ~${_etaMin}min left \xB7 pass ${pass}/${sampleIdx}`);
+          _pp.logAt = _now;
+        }
       }
       if (Date.now() - _lastYield > 250) {
         await new Promise((resolve) => setImmediate(resolve));
