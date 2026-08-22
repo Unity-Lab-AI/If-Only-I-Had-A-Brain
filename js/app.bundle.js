@@ -109848,11 +109848,83 @@ var Curriculum = class _Curriculum {
    * @param {object} opts — `prodMin` (default 0.95, K's bar),
    *   `gateSubjectTag` (short tag for _currentGateSubject, e.g. 'sci').
    */
+  /**
+   * SPEAKLOOP.3 (2026-08-22) — PRE-GATE SPEAK DRILL, the chokepoint the
+   * roster cells actually ride. SPEAKLOOP.2 closed the loop inside
+   * _teachQABinding — but PE/Music/Health (and every _gateSubjectProduction
+   * caller) teach through _teachSentenceList/_teachProductionStack and never
+   * touch QA-binding, so their gates met the hot buckets cold: the health
+   * gate opened 0/4 with the exact thief gang ("taste"/"vehicle"/"scheme"/
+   * "gosh") that stole PE and music. This drill runs at gate ENTRY (the same
+   * sanctioned teach-before-grading lane as _pregateEnrichment's exam-vocab
+   * teach): ask her each question off the FULL donor weights, contrast the
+   * measured thief when she's wrong, ask again — ≤rounds per question,
+   * budget-bounded, overflow LOGGED. The gate then grades what the drill
+   * left. Kill switch: DREAM_SPEAKLOOP=0.
+   */
+  async _drillGateSamples(samples, opts = {}) {
+    if (process.env.DREAM_SPEAKLOOP === "0") return null;
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.emitWordDirectDonor !== "function") return null;
+    const semRegion = cluster.regions && cluster.regions.sem;
+    if (!semRegion || !Array.isArray(samples) || samples.length === 0) return null;
+    const rounds = Number(process.env.DREAM_SPEAKLOOP_DRILL_ROUNDS) >= 0 ? Number(process.env.DREAM_SPEAKLOOP_DRILL_ROUNDS) : 2;
+    const budgetMs = Number(process.env.DREAM_SPEAKLOOP_DRILL_MAX_MS) > 0 ? Number(process.env.DREAM_SPEAKLOOP_DRILL_MAX_MS) : 48e4;
+    const t0 = Date.now();
+    let checked = 0, rightFirst = 0, reaimed = 0, stillWrong = 0, unverified = 0;
+    for (const s of samples) {
+      if (!s || !s.question) continue;
+      if (Date.now() - t0 > budgetMs) {
+        unverified++;
+        continue;
+      }
+      const expList = Array.isArray(s.expected) ? s.expected : [s.expected];
+      const expTok = String(expList.find((e) => String(e || "").trim().length > 1) ?? expList[0] ?? "").toLowerCase().trim().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t))[0] || "";
+      if (!expTok) continue;
+      const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(s.question) : null;
+      if (!qEmb || qEmb.length === 0) continue;
+      const kt = this._extractKeyToken(s.question);
+      const ke = kt ? this._dictionaryPatternFor(kt) : null;
+      const tid = this._classifyQuestionTemplate(s.question);
+      checked++;
+      for (let round = 0; round <= rounds; round++) {
+        this._clearSpikes();
+        this._writeTiledPattern(semRegion, qEmb, false);
+        if (ke && ke.length > 0) this._writeTiledPatternOffset(semRegion, ke, false, 0.5);
+        if (tid >= 0) this._writeQuestionTemplateTag(tid);
+        let said = "";
+        try {
+          said = await cluster.emitWordDirectDonor({ subject: opts.subject }) || "";
+        } catch {
+          said = "";
+        }
+        const saidNorm = String(said).toLowerCase().trim();
+        if (saidNorm === expTok) {
+          if (round === 0) rightFirst++;
+          else reaimed++;
+          break;
+        }
+        if (round === rounds) {
+          stillWrong++;
+          break;
+        }
+        await this._contrastAnswerBinding(s.question, expTok, saidNorm, { subject: opts.subject });
+      }
+    }
+    this._clearSpikes();
+    const dropped = unverified > 0 ? ` \xB7 ${unverified} past the ${Math.round(budgetMs / 6e4)}min budget left UNVERIFIED` : "";
+    this._hb(`[Curriculum][SPEAKLOOP] pre-gate drill \u2014 ${checked} questions asked off the full weights: ${rightFirst} right first ask \xB7 ${reaimed} re-aimed to correct in \u2264${rounds} contrast rounds \xB7 ${stillWrong} still wrong (gate grades honestly next)${dropped}`);
+    return { checked, rightFirst, reaimed, stillWrong, unverified };
+  }
   async _gateSubjectProduction(subject, grade, samples, opts = {}) {
     this._currentGateSubject = opts.gateSubjectTag ?? subject;
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment(`${subject}/${grade}`);
+    try {
+      await this._drillGateSamples(samples, { subject: this._currentGateSubject });
+    } catch {
+    }
     const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
