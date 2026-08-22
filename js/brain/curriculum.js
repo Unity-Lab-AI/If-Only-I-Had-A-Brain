@@ -3394,7 +3394,15 @@ export class Curriculum {
         return {
           teachCallsPerMin: rate,
           sinceLastTeachMs: this._lastTeachAtMs ? (now - this._lastTeachAtMs) : null,
-          probeGateActive: !!(cluster && cluster._probeGateActive),
+          // PROBEFLAG (2026-08-22) — `_probeGateActive` is a cell-wide
+          // GPU-ownership flag (set at cell entry, cleared at cell exit), so
+          // publishing it raw kept the "testing, not teaching" label on for
+          // ENTIRE cells — through whole grades of teaching. The published
+          // field now requires a real probe to have RUN in the last 30s
+          // (stamped at the probe chokepoints), so it reads "testing" only
+          // while she is actually being tested.
+          probeGateActive: !!(cluster && cluster._probeGateActive)
+            && (Date.now() - ((cluster && cluster._probeLastRunAt) || 0) < 30_000),
           emissionTicksPerMin: emitRate,
           sinceLastEmitTickMs: sinceEmit,
           teachProfile,
@@ -6155,12 +6163,20 @@ export class Curriculum {
       }
     }
     if (!anyMatch) {
+      // GRADERMATCH.2 (2026-08-22) — same word-level discipline as the
+      // production matcher: the old substring-anywhere `includes` passed
+      // any answer CONTAINING the variant mid-word. A variant now matches
+      // only a whole token of the answer (≤2 trailing chars of stemming).
+      const answerTokens = answer.split(/[^a-z0-9']+/).filter(Boolean);
       for (const v of expectedVariants) {
         // Skip contains check for single-char variants — strict cue
         // discipline (letter-cue questions need starts-with, not
         // anywhere-in-answer substring).
         if (v.length <= 1) continue;
-        if (answer.includes(v)) { out.match.contains = true; anyMatch = true; break; }
+        if (answerTokens.some(t => t === v
+            || (t.startsWith(v) && t.length - v.length <= 2))) {
+          out.match.contains = true; anyMatch = true; break;
+        }
       }
     }
     out.match.overall = anyMatch;
@@ -12548,6 +12564,12 @@ export class Curriculum {
   async _probePropagate(projName, srcVec) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
+    // PROBEFLAG (2026-08-22) — stamp every real probe run. The published
+    // "probe gate" liveness field derives from THIS freshness, not from the
+    // cell-wide GPU-ownership flag (which is deliberately on for the whole
+    // cell and made the dashboard read "testing, not teaching" through
+    // entire teach phases at thousands of teach calls per minute).
+    cluster._probeLastRunAt = Date.now();
     const proj = cluster.crossProjections[projName];
     if (!proj) return null;
     // GATEGPU (2026-08-21) — DONOR-FIRST. The GPU holds the FULL training
@@ -12876,6 +12898,76 @@ export class Curriculum {
       }
     }
   }
+  /**
+   * SPEAKLOOP (2026-08-22) — measured-thief contrast. The PE gate proved
+   * the failure shape: she answered "asteroids"/"above"/"taste" — globally
+   * hot word buckets with a walk's worth of accumulated mass outshouting a
+   * freshly-taught binding at argmax. Random-sibling anti-Hebbian
+   * (WORDCONTRAST) can never depress a thief it never samples. This helper
+   * takes the MEASURED wrong word (what she actually said) and, in the
+   * question's own teach geometry (sentence embedding + key-token tile +
+   * template tag — identical writes to _teachQABinding's passes):
+   *   depress  sem(question) → word_motor(thief bucket)
+   *   reinforce sem(question) → motor(answer letter) + word_motor(answer)
+   * for `reps` rounds. Pure push-pull on her existing machinery — no fact
+   * table, no oracle; the argmax still decides every word she ever says.
+   */
+  async _contrastAnswerBinding(question, expectedText, thiefWord, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.regions || !cluster.crossProjections) return false;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    if (!semRegion || !motorRegion) return false;
+    const expected = String(expectedText || '').toLowerCase().trim()
+      .split(/[,;\s]+/).filter(t => /^[a-z]+$/.test(t))[0] || '';
+    const thief = String(thiefWord || '').toLowerCase().trim()
+      .split(/[^a-z]+/).filter(Boolean)[0] || '';
+    if (!expected || thief === expected) return false;
+    const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
+      ? sharedEmbeddings.getSentenceEmbedding(question) : null;
+    if (!qEmb || qEmb.length === 0) return false;
+    const keyToken = this._extractKeyToken(question);
+    const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+    const templateId = this._classifyQuestionTemplate(question);
+    const reps = opts.reps ?? 6;
+    const lr = opts.lr ?? 0.05;
+    // Measured thief ⇒ harder push than WORDCONTRAST's random-sibling 0.3 —
+    // this negative is KNOWN guilty, not a sampled maybe.
+    const antiScale = opts.antiLrScale ?? 0.5;
+    const wl = this._qaBindingWhitelist(opts.subject);
+    const writeQuestionPattern = () => {
+      this._clearSpikes();
+      this._writeTiledPattern(semRegion, qEmb, false);
+      if (keyEmb && keyEmb.length > 0) this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
+      if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+    };
+    for (let r = 0; r < reps; r++) {
+      if (thief && /^[a-z]+$/.test(thief)) {
+        try {
+          writeQuestionPattern();
+          this._writeAnswerToWordMotor(thief, opts.subject);
+          await this._teachAntiHebbian(lr * antiScale, {
+            projectionsWhitelist: wl,
+            skipIntraSynapses: true,
+          });
+        } catch { /* non-fatal */ }
+      }
+      try {
+        writeQuestionPattern();
+        const letter = expected.charAt(0);
+        const motorPattern = letter ? encodeLetter(letter) : null;
+        if (motorPattern && motorPattern.length > 0) this._writeTiledPattern(motorRegion, motorPattern, false);
+        this._writeAnswerToWordMotor(expected, opts.subject);
+        await this._teachHebbian(lr, {
+          projectionsWhitelist: wl,
+          skipIntraSynapses: true,
+        });
+      } catch { /* non-fatal */ }
+    }
+    this._clearSpikes();
+    return true;
+  }
+
   async _teachQABinding(qaList, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
@@ -13330,6 +13422,66 @@ export class Curriculum {
         weightReport = ` · ${tag}`;
       }
     } catch { /* non-fatal */ }
+    // SPEAKLOOP.2 (2026-08-22) — CLOSED-LOOP SPEAK CHECK, the comprehensive
+    // half. After the reps land, every pair is verified by actually ASKING
+    // her: write the question's teach-geometry pattern, read her word
+    // straight off the FULL donor weights (emitWordDirectDonor — one probe
+    // ack, ~60ms), and when the argmax names a thief, run the measured-thief
+    // contrast and ask again. Bounded: DREAM_SPEAKLOOP_TEACH_ROUNDS contrast
+    // rounds per pair (default 2), DREAM_SPEAKLOOP_TEACH_MAX_MS total budget
+    // per call (default 10min — RE-PRICE: worst case ~150 pairs × 2 rounds
+    // × ~2-4s/contrast ≈ 20min unbounded, so the budget line exists; pairs
+    // past it are LOGGED as unverified, never silently skipped). A pair
+    // still wrong after the rounds is recorded and the walk continues —
+    // the gate-fail contrast at _probeProductionBatch catches it again
+    // with the gate's own measurement. Kill switch: DREAM_SPEAKLOOP=0.
+    if (process.env.DREAM_SPEAKLOOP !== '0'
+        && typeof cluster.emitWordDirectDonor === 'function'
+        && qaList.length >= 1) {
+      const _slRounds = Number(process.env.DREAM_SPEAKLOOP_TEACH_ROUNDS) >= 0
+        ? Number(process.env.DREAM_SPEAKLOOP_TEACH_ROUNDS) : 2;
+      const _slBudgetMs = Number(process.env.DREAM_SPEAKLOOP_TEACH_MAX_MS) > 0
+        ? Number(process.env.DREAM_SPEAKLOOP_TEACH_MAX_MS) : 600_000;
+      const _slT0 = Date.now();
+      let _slChecked = 0, _slRightFirst = 0, _slReaimed = 0, _slStillWrong = 0, _slUnverified = 0;
+      for (const entry of qaList) {
+        if (!entry || !entry.question || !entry.expectedAnswer) continue;
+        if (Date.now() - _slT0 > _slBudgetMs) { _slUnverified++; continue; }
+        const expTok = String(entry.expectedAnswer).toLowerCase().trim()
+          .split(/[,;\s]+/).filter(t => /^[a-z]+$/.test(t))[0] || '';
+        if (!expTok) continue;
+        const qEmb2 = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
+          ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
+        if (!qEmb2 || qEmb2.length === 0) continue;
+        const kt2 = this._extractKeyToken(entry.question);
+        const ke2 = kt2 ? this._dictionaryPatternFor(kt2) : null;
+        const tid2 = this._classifyQuestionTemplate(entry.question);
+        _slChecked++;
+        for (let round = 0; round <= _slRounds; round++) {
+          this._clearSpikes();
+          this._writeTiledPattern(semRegion, qEmb2, false);
+          if (keyTokenTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
+          if (tid2 >= 0) this._writeQuestionTemplateTag(tid2);
+          let said = '';
+          try { said = (await cluster.emitWordDirectDonor({ subject: opts.subject })) || ''; }
+          catch { said = ''; }
+          const saidNorm = String(said).toLowerCase().trim();
+          if (saidNorm === expTok) {
+            if (round === 0) _slRightFirst++; else _slReaimed++;
+            break;
+          }
+          if (round === _slRounds) { _slStillWrong++; break; }
+          await this._contrastAnswerBinding(entry.question, expTok, saidNorm, {
+            subject: opts.subject,
+          });
+        }
+        await _microtask();
+      }
+      this._clearSpikes();
+      const _slDropped = _slUnverified > 0 ? ` · ${_slUnverified} pairs past the ${Math.round(_slBudgetMs / 60000)}min budget left UNVERIFIED (gate-fail contrast still covers them)` : '';
+      this._hb(`[Curriculum][SPEAKLOOP] ${label} closed-loop speak check — ${_slChecked} pairs asked off the full weights: ${_slRightFirst} right first ask · ${_slReaimed} re-aimed to correct in ≤${_slRounds} contrast rounds · ${_slStillWrong} still wrong (recorded, walk continues)${_slDropped}`);
+    }
+
     const altReport = directPromptAlt ? ` · alt-fires=${altTrained}` : '';
     const antiReport = antiPairs ? ` · anti-fires=${antiFires}` : '';
     this._hb(`[Curriculum][${label}] DONE — ${trained} positive + ${altTrained} alt + ${antiFires} anti across ${qaList.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${altReport}${antiReport}${qaPruneReport}${qaNormReport}${qaRescaleReport}${qaSepReport}${weightReport}`);
@@ -18699,6 +18851,8 @@ export class Curriculum {
     let emissionPath = 'none';
     let emissionError = null;
     let templatedAnswer = null;
+    // PROBEFLAG — production emission is a real probe; stamp it.
+    if (cluster) cluster._probeLastRunAt = Date.now();
 
     try {
       templatedAnswer = await this._deterministicAnswer(question, opts);
@@ -18738,11 +18892,23 @@ export class Curriculum {
     const emittedNorm = String(emitted).toLowerCase().trim();
     const expected = Array.isArray(expectedAnswers) ? expectedAnswers : [expectedAnswers];
     let matched = null;
+    // GRADERMATCH.2 (2026-08-22) — the multi-char `includes` was still a
+    // substring-anywhere pass: PE gate graded "grouped" ✓ against "up"
+    // because "gro-UP-ed" contains it. Matching is now WORD-level: the
+    // emission is tokenized and an expectation matches only a whole token
+    // (light stemming kept: a token may extend the expectation by ≤2 chars
+    // from the START — "girls" passes "girl", "grouped" does NOT pass "up").
+    // Single-character expectations stay exact-equality (the letter era).
+    const emittedTokens = emittedNorm.split(/[^a-z0-9']+/).filter(Boolean);
     for (const e of expected) {
       if (!e) continue;
       const eNorm = String(e).toLowerCase().trim();
       if (eNorm.length === 0) continue;
-      if (eNorm.length === 1 ? emittedNorm === eNorm : emittedNorm.includes(eNorm)) {
+      const hit = eNorm.length === 1
+        ? emittedNorm === eNorm
+        : emittedTokens.some(t => t === eNorm
+            || (t.startsWith(eNorm) && t.length - eNorm.length <= 2));
+      if (hit) {
         matched = e;
         break;
       }
@@ -18863,6 +19029,34 @@ export class Curriculum {
         await new Promise(resolve => setImmediate(resolve));
         _lastYield = Date.now();
       }
+    }
+    // SPEAKLOOP.1 (2026-08-22) — GATE-FAIL CONTRAST at the ONE chokepoint
+    // every subject × grade production battery flows through. The gate just
+    // PAID for a perfect measurement: for each fail it holds the question,
+    // the expected answer, and the exact word that stole the argmax. Feed
+    // each one to the measured-thief contrast immediately — depress the
+    // thief in this question's context, reinforce the answer — so the next
+    // encounter (re-gate, next grade's drill, chat) meets a re-aimed basin.
+    // Bounded by DREAM_SPEAKLOOP_MAX_FAILS (default 20/batch, overflow
+    // LOGGED); kill switch DREAM_SPEAKLOOP=0.
+    if (process.env.DREAM_SPEAKLOOP !== '0' && fails.length > 0) {
+      const _gfCap = Number(process.env.DREAM_SPEAKLOOP_MAX_FAILS) > 0
+        ? Number(process.env.DREAM_SPEAKLOOP_MAX_FAILS) : 20;
+      let _gfDone = 0;
+      for (const f of fails) {
+        if (_gfDone >= _gfCap) break;
+        const expList = Array.isArray(f.expected) ? f.expected : [f.expected];
+        const expText = expList.find(e => String(e || '').trim().length > 1) ?? expList[0];
+        try {
+          const ok = await this._contrastAnswerBinding(f.q, expText, f.emitted, {
+            subject: this._currentGateSubject || opts.subject,
+          });
+          if (ok) _gfDone++;
+        } catch { /* non-fatal — the gate result stands either way */ }
+      }
+      const _gfOver = fails.length > _gfDone && fails.length > _gfCap
+        ? ` · ${fails.length - _gfDone} fails past the ${_gfCap}-cap left for the next pass` : '';
+      this._hb(`[Curriculum][SPEAKLOOP] gate-fail contrast — ${_gfDone}/${fails.length} measured thieves depressed + answers reinforced in their questions' own context${_gfOver}`);
     }
     return { pass, total: samples.length, fails };
   }
