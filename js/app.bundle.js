@@ -127391,7 +127391,17 @@ var unityAvatar = document.getElementById("unity-avatar");
 var brainIndicator = document.getElementById("brain-indicator");
 async function init() {
   storage = new UserStorage();
+  const RETIRED_POLL_KEYS = /* @__PURE__ */ new Set([
+    "sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3",
+    "sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW"
+  ]);
+  try {
+    const storedPoll = storage.getApiKey("pollinations");
+    if (storedPoll && RETIRED_POLL_KEYS.has(storedPoll)) storage.setApiKey("pollinations", "");
+  } catch {
+  }
   for (const [pid, key] of Object.entries(ENV_KEYS)) {
+    if (pid === "pollinations") continue;
     if (key && typeof key === "string" && !storage.getApiKey(pid)) {
       storage.setApiKey(pid, key);
     }

@@ -136,17 +136,14 @@ const { performance } = require('perf_hooks');
 // (then the client falls back to its own key / anonymous tier, unchanged).
 let _pollImageKeyCache = null;
 function _pollinationsImageKey() {
+  // ANONKEY (2026-08-22, operator law) — the brain uses the Pollinations
+  // ANONYMOUS free tier. The index.html DEFAULT_POLLINATIONS_KEY extraction
+  // is gone with the seeded default itself; the env var remains as the ops
+  // override lever only. Empty key ⇒ _buildPollinationsImageUrl omits the
+  // key param and image.pollinations.ai serves the anonymous tier.
   if (_pollImageKeyCache !== null) return _pollImageKeyCache;
-  let key = process.env.DREAM_POLLINATIONS_KEY || '';
-  if (!key) {
-    try {
-      const idx = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-      const m = idx.match(/DEFAULT_POLLINATIONS_KEY\s*=\s*'([^']*)'/);
-      if (m && m[1]) key = m[1];
-    } catch { /* no index.html on this box — leave empty, client falls back */ }
-  }
-  _pollImageKeyCache = key;
-  return key;
+  _pollImageKeyCache = process.env.DREAM_POLLINATIONS_KEY || '';
+  return _pollImageKeyCache;
 }
 function _buildPollinationsImageUrl(prompt, opts = {}) {
   const model = opts.model || 'flux';
