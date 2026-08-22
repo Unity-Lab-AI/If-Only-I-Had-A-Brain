@@ -624,15 +624,19 @@
     }
   </script>
 
-  <!-- Pollinations default key — runs BEFORE the bundle so its env-seed path
-       (which carries a retired key frozen at build time) can never win. Purges
-       the retired key from visitor storage (plain AND obfuscated forms) and
-       seeds the current default so image gen works out of the box; the setup
-       modal pre-fills from the same slot. Deploys via plain file overlay. -->
+  <!-- Pollinations key purge — ANONYMOUS TIER ONLY (operator law 2026-08-22).
+       This block used to force-seed a default key into visitor storage on
+       EVERY page load, so clearing the key never stuck. It is now purge-only:
+       every retired project key (plain AND obfuscated forms) is removed and
+       NOTHING is ever seeded — the brain runs the anonymous free tier. A
+       visitor's own personally-pasted key (not in the retired list) is left
+       untouched. Runs BEFORE the bundle so no later seed path can win. -->
   <script>
   (function () {
-    var DEFAULT_POLLINATIONS_KEY = 'sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW';   // current default key
-    var RETIRED_KEYS = ['sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3'];
+    var RETIRED_KEYS = [
+      'sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3',
+      'sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW',
+    ];
     try {
       var raw = localStorage.getItem('unity_brain_apikeys');
       var keys = raw ? JSON.parse(raw) : {};
@@ -648,10 +652,11 @@
           plain = out;
         } catch (e) { /* not base64 — leave as-is */ }
       }
-      if (RETIRED_KEYS.indexOf(plain) !== -1) { delete keys.pollinations; cur = plain = null; }
-      if (!plain && DEFAULT_POLLINATIONS_KEY) keys.pollinations = DEFAULT_POLLINATIONS_KEY;
-      localStorage.setItem('unity_brain_apikeys', JSON.stringify(keys));
-    } catch (e) { /* storage unavailable — bundle falls back to anonymous tier */ }
+      if (RETIRED_KEYS.indexOf(plain) !== -1) {
+        delete keys.pollinations;
+        localStorage.setItem('unity_brain_apikeys', JSON.stringify(keys));
+      }
+    } catch (e) { /* storage unavailable — anonymous tier regardless */ }
   })();
   </script>
   <!-- Visual intake — standalone module (NOT bundled): ships camera frames
