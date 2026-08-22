@@ -3563,8 +3563,46 @@ export class NeuronCluster {
    * dramatically faster, so language cortex can scale past the old
    * 200K neuron CPU ceiling.
    */
+  /**
+   * PROBELANE (2026-08-22) — at bio scale, only ONE propagate round may be
+   * in flight at a time. RHYTHM3S made ticks cheap, so the tick loop
+   * dispatched 15 propagates per tick faster than the donor could answer
+   * them — the donor-side queue grew minutes deep (the intra ack alone is
+   * ~48MB), every one-tick cache fill arrived long after its tick, and the
+   * emission gate probe timed out behind the backlog on EVERY production
+   * question (live: gateProbe ok=0 miss=1 through the whole 15-min gate,
+   * first success seconds after the section ended and the queue drained).
+   * The guard self-clocks dispatch to the donor's real round-trip rate:
+   * currents refresh every round (~1-3s), ticks in between consume the
+   * latest landed round (lagged-but-REAL — the one-tick-lag design's own
+   * philosophy), and the probe lane never waits behind more than one round.
+   * The 30s stale escape re-arms dispatch if a round's promises are lost.
+   */
+  _propRoundFree() {
+    if ((this.size | 0) <= 2_000_000) return true;
+    if ((this._propRoundPending | 0) === 0) return true;
+    if (Date.now() - (this._propRoundStartedAt || 0) > 30_000) {
+      this._propRoundPending = 0;
+      return true;
+    }
+    return false;
+  }
+
+  _propRoundTrack(p) {
+    if ((this.size | 0) <= 2_000_000) return p;
+    this._propRoundPending = (this._propRoundPending | 0) + 1;
+    this._propRoundStartedAt = Date.now();
+    return p.then(
+      () => { this._propRoundPending = Math.max(0, (this._propRoundPending | 0) - 1); },
+      () => { this._propRoundPending = Math.max(0, (this._propRoundPending | 0) - 1); },
+    );
+  }
+
   _dispatchGpuPropagates() {
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) return;
+    // PROBELANE — previous round still on the wire: skip this tick's
+    // dispatch entirely (the caches keep serving the last landed round).
+    if (!this._propRoundFree()) return;
     // Dispatch intra-cluster propagate (intra synapse sparse matmul).
     const spikes = this.lastSpikes;
     if (this.synapses && spikes) {
@@ -3574,9 +3612,12 @@ export class NeuronCluster {
       try {
         const p = this._gpuProxy.propagate(key, pSpikes);
         if (p && typeof p.then === 'function') {
-          p.then((currents) => {
-            if (currents && currents.length > 0) this._cachedIntraCurrents = currents;
-          }).catch(() => { /* non-fatal — CPU fallback on cache miss */ });
+          this._propRoundTrack(p.then((currents) => {
+            if (currents && currents.length > 0) {
+              this._cachedIntraCurrents = currents;
+              this._propCacheFilledAt = Date.now();
+            }
+          }).catch(() => { /* non-fatal — CPU fallback on cache miss */ }));
         }
       } catch { /* non-fatal */ }
     }
@@ -3612,9 +3653,12 @@ export class NeuronCluster {
           }
           if (p && typeof p.then === 'function') {
             const cache = this._cachedCrossCurrents;
-            p.then((currents) => {
-              if (currents && currents.length > 0) cache.set(name, currents);
-            }).catch(() => { /* non-fatal */ });
+            this._propRoundTrack(p.then((currents) => {
+              if (currents && currents.length > 0) {
+                cache.set(name, currents);
+                this._propCacheFilledAt = Date.now();
+              }
+            }).catch(() => { /* non-fatal */ }));
           }
         } catch { /* non-fatal */ }
       }
@@ -4122,13 +4166,30 @@ export class NeuronCluster {
       return _r;
     }
 
-    // Clear stale cache so we only honor promises from THIS tick.
-    this._cachedIntraCurrents = null;
-    if (this._cachedCrossCurrents) this._cachedCrossCurrents.clear();
-    else this._cachedCrossCurrents = new Map();
+    // PROBELANE (2026-08-22) — cache policy split by scale. Small/browser
+    // clusters keep the original per-tick semantics: clear + re-dispatch every
+    // tick (their round trips are sub-tick). At bio scale the caches are
+    // KEEP-LATEST: clearing every tick guaranteed the fills (which land a
+    // round-trip later) were wiped before any step() could consume them —
+    // permanent zero currents once the donor round lagged the tick rate.
+    // Fills now overwrite in place; ticks consume the newest landed round.
+    const _bioLag = (this.size | 0) > 2_000_000;
+    if (!_bioLag) {
+      // Clear stale cache so we only honor promises from THIS tick.
+      this._cachedIntraCurrents = null;
+      if (this._cachedCrossCurrents) this._cachedCrossCurrents.clear();
+      else this._cachedCrossCurrents = new Map();
+    } else if (!this._cachedCrossCurrents) {
+      this._cachedCrossCurrents = new Map();
+    }
     const cache = this._cachedCrossCurrents;
 
     const promises = [];
+
+    // PROBELANE — dispatch a new round only when the previous one has fully
+    // resolved (see _propRoundFree). This bounds the donor-side queue to ONE
+    // round, so the emission gate probe is never buried behind a backlog.
+    if (this._propRoundFree()) {
 
     // Intra-cluster propagate.
     if (this.synapses && this.lastSpikes) {
@@ -4137,9 +4198,12 @@ export class NeuronCluster {
       try {
         const p = this._gpuProxy.propagate(_intraName, pSpikes);
         if (p && typeof p.then === 'function') {
-          promises.push(p.then((currents) => {
-            if (currents && currents.length > 0) this._cachedIntraCurrents = currents;
-          }).catch(() => { /* GPU failed — will fall through to CPU */ }));
+          promises.push(this._propRoundTrack(p.then((currents) => {
+            if (currents && currents.length > 0) {
+              this._cachedIntraCurrents = currents;
+              this._propCacheFilledAt = Date.now();
+            }
+          }).catch(() => { /* GPU failed — will fall through to CPU */ })));
         }
       } catch { /* non-fatal */ }
     }
@@ -4162,13 +4226,18 @@ export class NeuronCluster {
         try {
           const p = this._gpuProxy.propagate(_projMatrix, pSpikes);
           if (p && typeof p.then === 'function') {
-            promises.push(p.then((currents) => {
-              if (currents && currents.length > 0) cache.set(projName, currents);
-            }).catch(() => { /* GPU failed — CPU fallback in _propagateCrossRegions */ }));
+            promises.push(this._propRoundTrack(p.then((currents) => {
+              if (currents && currents.length > 0) {
+                cache.set(projName, currents);
+                this._propCacheFilledAt = Date.now();
+              }
+            }).catch(() => { /* GPU failed — CPU fallback in _propagateCrossRegions */ })));
           }
         } catch { /* non-fatal */ }
       }
     }
+
+    } // PROBELANE round guard
 
     // Await all, with 1s timeout guard so a hung GPU doesn't hang the sim.
     if (promises.length > 0) {
@@ -4176,6 +4245,15 @@ export class NeuronCluster {
         Promise.all(promises),
         new Promise((r) => setTimeout(r, 1000)),
       ]);
+    }
+
+    // PROBELANE corpse guard — keep-latest must never serve a dead donor's
+    // last currents forever: if nothing has landed for 30s (donor drop /
+    // stall), clear the caches so step() honestly reads zero-this-tick.
+    if (_bioLag && this._propCacheFilledAt
+        && Date.now() - this._propCacheFilledAt > 30_000) {
+      this._cachedIntraCurrents = null;
+      cache.clear();
     }
 
     // T18.4.e — If the worker pool is available AND any GPU promise

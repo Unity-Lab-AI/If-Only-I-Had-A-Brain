@@ -54417,7 +54417,10 @@ var CLUSTER_EMIT_MIXIN = {
           if (this.lastSpikes[i]) idx.push(i - sem.start);
         }
         if (idx.length) {
-          const out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
+          let out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
+          if (!out || !out.length) {
+            out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
+          }
           if (out && out.length > 0) {
             const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
             s2.gpu++;
@@ -58135,8 +58138,46 @@ var NeuronCluster = class {
    * dramatically faster, so language cortex can scale past the old
    * 200K neuron CPU ceiling.
    */
+  /**
+   * PROBELANE (2026-08-22) — at bio scale, only ONE propagate round may be
+   * in flight at a time. RHYTHM3S made ticks cheap, so the tick loop
+   * dispatched 15 propagates per tick faster than the donor could answer
+   * them — the donor-side queue grew minutes deep (the intra ack alone is
+   * ~48MB), every one-tick cache fill arrived long after its tick, and the
+   * emission gate probe timed out behind the backlog on EVERY production
+   * question (live: gateProbe ok=0 miss=1 through the whole 15-min gate,
+   * first success seconds after the section ended and the queue drained).
+   * The guard self-clocks dispatch to the donor's real round-trip rate:
+   * currents refresh every round (~1-3s), ticks in between consume the
+   * latest landed round (lagged-but-REAL — the one-tick-lag design's own
+   * philosophy), and the probe lane never waits behind more than one round.
+   * The 30s stale escape re-arms dispatch if a round's promises are lost.
+   */
+  _propRoundFree() {
+    if ((this.size | 0) <= 2e6) return true;
+    if ((this._propRoundPending | 0) === 0) return true;
+    if (Date.now() - (this._propRoundStartedAt || 0) > 3e4) {
+      this._propRoundPending = 0;
+      return true;
+    }
+    return false;
+  }
+  _propRoundTrack(p) {
+    if ((this.size | 0) <= 2e6) return p;
+    this._propRoundPending = (this._propRoundPending | 0) + 1;
+    this._propRoundStartedAt = Date.now();
+    return p.then(
+      () => {
+        this._propRoundPending = Math.max(0, (this._propRoundPending | 0) - 1);
+      },
+      () => {
+        this._propRoundPending = Math.max(0, (this._propRoundPending | 0) - 1);
+      }
+    );
+  }
   _dispatchGpuPropagates() {
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) return;
+    if (!this._propRoundFree()) return;
     const spikes = this.lastSpikes;
     if (this.synapses && spikes) {
       const key = `${this.name}_intraSynapses`;
@@ -58145,10 +58186,13 @@ var NeuronCluster = class {
       try {
         const p = this._gpuProxy.propagate(key, pSpikes);
         if (p && typeof p.then === "function") {
-          p.then((currents) => {
-            if (currents && currents.length > 0) this._cachedIntraCurrents = currents;
+          this._propRoundTrack(p.then((currents) => {
+            if (currents && currents.length > 0) {
+              this._cachedIntraCurrents = currents;
+              this._propCacheFilledAt = Date.now();
+            }
           }).catch(() => {
-          });
+          }));
         }
       } catch {
       }
@@ -58174,10 +58218,13 @@ var NeuronCluster = class {
           }
           if (p && typeof p.then === "function") {
             const cache = this._cachedCrossCurrents;
-            p.then((currents) => {
-              if (currents && currents.length > 0) cache.set(name, currents);
+            this._propRoundTrack(p.then((currents) => {
+              if (currents && currents.length > 0) {
+                cache.set(name, currents);
+                this._propCacheFilledAt = Date.now();
+              }
             }).catch(() => {
-            });
+            }));
           }
         } catch {
         }
@@ -58484,43 +58531,56 @@ var NeuronCluster = class {
       this._useChunkedCache = false;
       return _r;
     }
-    this._cachedIntraCurrents = null;
-    if (this._cachedCrossCurrents) this._cachedCrossCurrents.clear();
-    else this._cachedCrossCurrents = /* @__PURE__ */ new Map();
+    const _bioLag = (this.size | 0) > 2e6;
+    if (!_bioLag) {
+      this._cachedIntraCurrents = null;
+      if (this._cachedCrossCurrents) this._cachedCrossCurrents.clear();
+      else this._cachedCrossCurrents = /* @__PURE__ */ new Map();
+    } else if (!this._cachedCrossCurrents) {
+      this._cachedCrossCurrents = /* @__PURE__ */ new Map();
+    }
     const cache = this._cachedCrossCurrents;
     const promises = [];
-    if (this.synapses && this.lastSpikes) {
-      const _intraName = `${this.name}_intraSynapses`;
-      const pSpikes = this._preSpikePayload(_intraName, this.lastSpikes);
-      try {
-        const p = this._gpuProxy.propagate(_intraName, pSpikes);
-        if (p && typeof p.then === "function") {
-          promises.push(p.then((currents) => {
-            if (currents && currents.length > 0) this._cachedIntraCurrents = currents;
-          }).catch(() => {
-          }));
-        }
-      } catch {
-      }
-    }
-    if (this.crossProjections) {
-      for (const [projName] of Object.entries(this.crossProjections)) {
-        const idx = projName.indexOf("_to_");
-        if (idx < 0) continue;
-        const src = projName.slice(0, idx);
-        if (!this.regions[src]) continue;
-        const _projMatrix = `${this.name}_${projName}`;
-        const _projBound = this._isBoundMatrix(_projMatrix);
-        const pSpikes = _projBound ? EMPTY_PRE_SPIKES : this._preSpikePayload(_projMatrix, this.regionSpikes(src));
+    if (this._propRoundFree()) {
+      if (this.synapses && this.lastSpikes) {
+        const _intraName = `${this.name}_intraSynapses`;
+        const pSpikes = this._preSpikePayload(_intraName, this.lastSpikes);
         try {
-          const p = this._gpuProxy.propagate(_projMatrix, pSpikes);
+          const p = this._gpuProxy.propagate(_intraName, pSpikes);
           if (p && typeof p.then === "function") {
-            promises.push(p.then((currents) => {
-              if (currents && currents.length > 0) cache.set(projName, currents);
+            promises.push(this._propRoundTrack(p.then((currents) => {
+              if (currents && currents.length > 0) {
+                this._cachedIntraCurrents = currents;
+                this._propCacheFilledAt = Date.now();
+              }
             }).catch(() => {
-            }));
+            })));
           }
         } catch {
+        }
+      }
+      if (this.crossProjections) {
+        for (const [projName] of Object.entries(this.crossProjections)) {
+          const idx = projName.indexOf("_to_");
+          if (idx < 0) continue;
+          const src = projName.slice(0, idx);
+          if (!this.regions[src]) continue;
+          const _projMatrix = `${this.name}_${projName}`;
+          const _projBound = this._isBoundMatrix(_projMatrix);
+          const pSpikes = _projBound ? EMPTY_PRE_SPIKES : this._preSpikePayload(_projMatrix, this.regionSpikes(src));
+          try {
+            const p = this._gpuProxy.propagate(_projMatrix, pSpikes);
+            if (p && typeof p.then === "function") {
+              promises.push(this._propRoundTrack(p.then((currents) => {
+                if (currents && currents.length > 0) {
+                  cache.set(projName, currents);
+                  this._propCacheFilledAt = Date.now();
+                }
+              }).catch(() => {
+              })));
+            }
+          } catch {
+          }
         }
       }
     }
@@ -58529,6 +58589,10 @@ var NeuronCluster = class {
         Promise.all(promises),
         new Promise((r) => setTimeout(r, 1e3))
       ]);
+    }
+    if (_bioLag && this._propCacheFilledAt && Date.now() - this._propCacheFilledAt > 3e4) {
+      this._cachedIntraCurrents = null;
+      cache.clear();
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;

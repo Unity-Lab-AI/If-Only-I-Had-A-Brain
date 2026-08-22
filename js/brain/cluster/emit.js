@@ -583,7 +583,15 @@ export const CLUSTER_EMIT_MIXIN = {
         const idx = [];
         for (let i = sem.start; i < sem.end; i++) { if (this.lastSpikes[i]) idx.push(i - sem.start); }
         if (idx.length) {
-          const out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, 'sem', idx);
+          // PROBELANE (2026-08-22) — one retry: the first attempt can land
+          // while the previous per-tick propagate round is still draining
+          // (the round guard bounds that wait to one round); a second probe
+          // rides the now-clear lane. Two timeouts = the donor genuinely
+          // cannot answer → CPU shadow, honestly.
+          let out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, 'sem', idx);
+          if (!out || !out.length) {
+            out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, 'sem', idx);
+          }
           if (out && out.length > 0) {
             const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
             s.gpu++;
