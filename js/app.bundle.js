@@ -96415,31 +96415,27 @@ var Curriculum = class _Curriculum {
   getCurriculumStatus() {
     const cluster = this.cluster;
     const perSubject = {};
+    const _rowSubjects = new Set(SUBJECTS2);
     if (this._perSubjectStats) {
-      for (const sub of SUBJECTS2) {
-        const s = this._perSubjectStats[sub] || null;
-        perSubject[sub] = s ? { ...s } : {
-          subject: sub,
-          label: SUBJECT_LABELS[sub] || sub,
-          grade: null,
-          phasesCompleted: 0,
-          cellsPassed: 0,
-          teachEvents: 0,
-          lastCellAt: null
-        };
+      for (const k of Object.keys(this._perSubjectStats)) _rowSubjects.add(k);
+    }
+    if (cluster && Array.isArray(cluster.passedCells)) {
+      for (const ck of cluster.passedCells) {
+        const sub = String(ck).split("/")[0];
+        if (sub) _rowSubjects.add(sub);
       }
-    } else {
-      for (const sub of SUBJECTS2) {
-        perSubject[sub] = {
-          subject: sub,
-          label: SUBJECT_LABELS[sub] || sub,
-          grade: null,
-          phasesCompleted: 0,
-          cellsPassed: 0,
-          teachEvents: 0,
-          lastCellAt: null
-        };
-      }
+    }
+    for (const sub of _rowSubjects) {
+      const s = this._perSubjectStats && this._perSubjectStats[sub] || null;
+      perSubject[sub] = s ? { ...s } : {
+        subject: sub,
+        label: SUBJECT_LABELS[sub] || sub,
+        grade: null,
+        phasesCompleted: 0,
+        cellsPassed: 0,
+        teachEvents: 0,
+        lastCellAt: null
+      };
     }
     if (cluster && Array.isArray(cluster.passedCells)) {
       for (const cellKey2 of cluster.passedCells) {
