@@ -1152,9 +1152,22 @@ const brainIndicator = document.getElementById('brain-indicator');
 async function init() {
   storage = new UserStorage();
 
-  // Seed env.js keys into storage on first load so later lookups
-  // (voice, image gen) can find them without re-reading env.
+  // ANONKEY (2026-08-22, operator law) — the brain runs the Pollinations
+  // ANONYMOUS tier. env.js seeding is what kept re-filling a cleared key
+  // every boot (a stale env.js can survive on a deploy box because it is
+  // gitignored and rsync never replaces it), so the pollinations slot is
+  // NEVER seeded from env — and any retired project key found in storage
+  // is actively purged here too (belt to index.html's pre-bundle purge).
+  const RETIRED_POLL_KEYS = new Set([
+    'sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3',
+    'sk_sGQDs3CwfDJRiUcGipueAfqI3U4xhMeW',
+  ]);
+  try {
+    const storedPoll = storage.getApiKey('pollinations');
+    if (storedPoll && RETIRED_POLL_KEYS.has(storedPoll)) storage.setApiKey('pollinations', '');
+  } catch { /* storage unavailable — anonymous regardless */ }
   for (const [pid, key] of Object.entries(ENV_KEYS)) {
+    if (pid === 'pollinations') continue;   // anonymous tier only — never seeded
     if (key && typeof key === 'string' && !storage.getApiKey(pid)) {
       storage.setApiKey(pid, key);
     }
