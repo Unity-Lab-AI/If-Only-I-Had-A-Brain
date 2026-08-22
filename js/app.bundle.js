@@ -54558,6 +54558,7 @@ var CLUSTER_EMIT_MIXIN = {
       }
       return "";
     }
+    this._matrixHits = (this._matrixHits || 0) + 1;
     if (!winnerIsFunctionWord) {
       const _emaAlpha = 0.05;
       this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
@@ -96598,7 +96599,14 @@ var Curriculum = class _Curriculum {
         return {
           teachCallsPerMin: rate,
           sinceLastTeachMs: this._lastTeachAtMs ? now - this._lastTeachAtMs : null,
-          probeGateActive: !!(cluster && cluster._probeGateActive),
+          // PROBEFLAG (2026-08-22) — `_probeGateActive` is a cell-wide
+          // GPU-ownership flag (set at cell entry, cleared at cell exit), so
+          // publishing it raw kept the "testing, not teaching" label on for
+          // ENTIRE cells — through whole grades of teaching. The published
+          // field now requires a real probe to have RUN in the last 30s
+          // (stamped at the probe chokepoints), so it reads "testing" only
+          // while she is actually being tested.
+          probeGateActive: !!(cluster && cluster._probeGateActive) && Date.now() - (cluster && cluster._probeLastRunAt || 0) < 3e4,
           emissionTicksPerMin: emitRate,
           sinceLastEmitTickMs: sinceEmit,
           teachProfile,
@@ -98753,9 +98761,10 @@ var Curriculum = class _Curriculum {
       }
     }
     if (!anyMatch) {
+      const answerTokens = answer.split(/[^a-z0-9']+/).filter(Boolean);
       for (const v of expectedVariants) {
         if (v.length <= 1) continue;
-        if (answer.includes(v)) {
+        if (answerTokens.some((t) => t === v || t.startsWith(v) && t.length - v.length <= 2)) {
           out.match.contains = true;
           anyMatch = true;
           break;
@@ -103476,6 +103485,7 @@ var Curriculum = class _Curriculum {
   async _probePropagate(projName, srcVec) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
+    cluster._probeLastRunAt = Date.now();
     const proj = cluster.crossProjections[projName];
     if (!proj) return null;
     if (proj._gpuBound && (proj.rows | 0) > 0 && (proj.rows | 0) <= 4e6 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.gateProbe === "function") {
@@ -103723,6 +103733,72 @@ var Curriculum = class _Curriculum {
         }
       }
     }
+  }
+  /**
+   * SPEAKLOOP (2026-08-22) — measured-thief contrast. The PE gate proved
+   * the failure shape: she answered "asteroids"/"above"/"taste" — globally
+   * hot word buckets with a walk's worth of accumulated mass outshouting a
+   * freshly-taught binding at argmax. Random-sibling anti-Hebbian
+   * (WORDCONTRAST) can never depress a thief it never samples. This helper
+   * takes the MEASURED wrong word (what she actually said) and, in the
+   * question's own teach geometry (sentence embedding + key-token tile +
+   * template tag — identical writes to _teachQABinding's passes):
+   *   depress  sem(question) → word_motor(thief bucket)
+   *   reinforce sem(question) → motor(answer letter) + word_motor(answer)
+   * for `reps` rounds. Pure push-pull on her existing machinery — no fact
+   * table, no oracle; the argmax still decides every word she ever says.
+   */
+  async _contrastAnswerBinding(question, expectedText, thiefWord, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.regions || !cluster.crossProjections) return false;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    if (!semRegion || !motorRegion) return false;
+    const expected = String(expectedText || "").toLowerCase().trim().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t))[0] || "";
+    const thief = String(thiefWord || "").toLowerCase().trim().split(/[^a-z]+/).filter(Boolean)[0] || "";
+    if (!expected || thief === expected) return false;
+    const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(question) : null;
+    if (!qEmb || qEmb.length === 0) return false;
+    const keyToken = this._extractKeyToken(question);
+    const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+    const templateId = this._classifyQuestionTemplate(question);
+    const reps = opts.reps ?? 6;
+    const lr = opts.lr ?? 0.05;
+    const antiScale = opts.antiLrScale ?? 0.5;
+    const wl = this._qaBindingWhitelist(opts.subject);
+    const writeQuestionPattern = () => {
+      this._clearSpikes();
+      this._writeTiledPattern(semRegion, qEmb, false);
+      if (keyEmb && keyEmb.length > 0) this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
+      if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+    };
+    for (let r = 0; r < reps; r++) {
+      if (thief && /^[a-z]+$/.test(thief)) {
+        try {
+          writeQuestionPattern();
+          this._writeAnswerToWordMotor(thief, opts.subject);
+          await this._teachAntiHebbian(lr * antiScale, {
+            projectionsWhitelist: wl,
+            skipIntraSynapses: true
+          });
+        } catch {
+        }
+      }
+      try {
+        writeQuestionPattern();
+        const letter = expected.charAt(0);
+        const motorPattern = letter ? encodeLetter(letter) : null;
+        if (motorPattern && motorPattern.length > 0) this._writeTiledPattern(motorRegion, motorPattern, false);
+        this._writeAnswerToWordMotor(expected, opts.subject);
+        await this._teachHebbian(lr, {
+          projectionsWhitelist: wl,
+          skipIntraSynapses: true
+        });
+      } catch {
+      }
+    }
+    this._clearSpikes();
+    return true;
   }
   async _teachQABinding(qaList, opts = {}) {
     const cluster = this.cluster;
@@ -104016,6 +104092,56 @@ var Curriculum = class _Curriculum {
         weightReport = ` \xB7 ${tag}`;
       }
     } catch {
+    }
+    if (process.env.DREAM_SPEAKLOOP !== "0" && typeof cluster.emitWordDirectDonor === "function" && qaList.length >= 1) {
+      const _slRounds = Number(process.env.DREAM_SPEAKLOOP_TEACH_ROUNDS) >= 0 ? Number(process.env.DREAM_SPEAKLOOP_TEACH_ROUNDS) : 2;
+      const _slBudgetMs = Number(process.env.DREAM_SPEAKLOOP_TEACH_MAX_MS) > 0 ? Number(process.env.DREAM_SPEAKLOOP_TEACH_MAX_MS) : 6e5;
+      const _slT0 = Date.now();
+      let _slChecked = 0, _slRightFirst = 0, _slReaimed = 0, _slStillWrong = 0, _slUnverified = 0;
+      for (const entry of qaList) {
+        if (!entry || !entry.question || !entry.expectedAnswer) continue;
+        if (Date.now() - _slT0 > _slBudgetMs) {
+          _slUnverified++;
+          continue;
+        }
+        const expTok = String(entry.expectedAnswer).toLowerCase().trim().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t))[0] || "";
+        if (!expTok) continue;
+        const qEmb2 = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
+        if (!qEmb2 || qEmb2.length === 0) continue;
+        const kt2 = this._extractKeyToken(entry.question);
+        const ke2 = kt2 ? this._dictionaryPatternFor(kt2) : null;
+        const tid2 = this._classifyQuestionTemplate(entry.question);
+        _slChecked++;
+        for (let round = 0; round <= _slRounds; round++) {
+          this._clearSpikes();
+          this._writeTiledPattern(semRegion, qEmb2, false);
+          if (keyTokenTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
+          if (tid2 >= 0) this._writeQuestionTemplateTag(tid2);
+          let said = "";
+          try {
+            said = await cluster.emitWordDirectDonor({ subject: opts.subject }) || "";
+          } catch {
+            said = "";
+          }
+          const saidNorm = String(said).toLowerCase().trim();
+          if (saidNorm === expTok) {
+            if (round === 0) _slRightFirst++;
+            else _slReaimed++;
+            break;
+          }
+          if (round === _slRounds) {
+            _slStillWrong++;
+            break;
+          }
+          await this._contrastAnswerBinding(entry.question, expTok, saidNorm, {
+            subject: opts.subject
+          });
+        }
+        await _microtask();
+      }
+      this._clearSpikes();
+      const _slDropped = _slUnverified > 0 ? ` \xB7 ${_slUnverified} pairs past the ${Math.round(_slBudgetMs / 6e4)}min budget left UNVERIFIED (gate-fail contrast still covers them)` : "";
+      this._hb(`[Curriculum][SPEAKLOOP] ${label} closed-loop speak check \u2014 ${_slChecked} pairs asked off the full weights: ${_slRightFirst} right first ask \xB7 ${_slReaimed} re-aimed to correct in \u2264${_slRounds} contrast rounds \xB7 ${_slStillWrong} still wrong (recorded, walk continues)${_slDropped}`);
     }
     const altReport = directPromptAlt ? ` \xB7 alt-fires=${altTrained}` : "";
     const antiReport = antiPairs ? ` \xB7 anti-fires=${antiFires}` : "";
@@ -108593,6 +108719,7 @@ var Curriculum = class _Curriculum {
     let emissionPath = "none";
     let emissionError = null;
     let templatedAnswer = null;
+    if (cluster) cluster._probeLastRunAt = Date.now();
     try {
       templatedAnswer = await this._deterministicAnswer(question, opts);
       if (templatedAnswer && templatedAnswer.length > 0) {
@@ -108614,11 +108741,13 @@ var Curriculum = class _Curriculum {
     const emittedNorm = String(emitted).toLowerCase().trim();
     const expected = Array.isArray(expectedAnswers) ? expectedAnswers : [expectedAnswers];
     let matched = null;
+    const emittedTokens = emittedNorm.split(/[^a-z0-9']+/).filter(Boolean);
     for (const e of expected) {
       if (!e) continue;
       const eNorm = String(e).toLowerCase().trim();
       if (eNorm.length === 0) continue;
-      if (eNorm.length === 1 ? emittedNorm === eNorm : emittedNorm.includes(eNorm)) {
+      const hit = eNorm.length === 1 ? emittedNorm === eNorm : emittedTokens.some((t) => t === eNorm || t.startsWith(eNorm) && t.length - eNorm.length <= 2);
+      if (hit) {
         matched = e;
         break;
       }
@@ -108698,6 +108827,24 @@ var Curriculum = class _Curriculum {
         await new Promise((resolve) => setImmediate(resolve));
         _lastYield = Date.now();
       }
+    }
+    if (process.env.DREAM_SPEAKLOOP !== "0" && fails.length > 0) {
+      const _gfCap = Number(process.env.DREAM_SPEAKLOOP_MAX_FAILS) > 0 ? Number(process.env.DREAM_SPEAKLOOP_MAX_FAILS) : 20;
+      let _gfDone = 0;
+      for (const f of fails) {
+        if (_gfDone >= _gfCap) break;
+        const expList = Array.isArray(f.expected) ? f.expected : [f.expected];
+        const expText = expList.find((e) => String(e || "").trim().length > 1) ?? expList[0];
+        try {
+          const ok = await this._contrastAnswerBinding(f.q, expText, f.emitted, {
+            subject: this._currentGateSubject || opts.subject
+          });
+          if (ok) _gfDone++;
+        } catch {
+        }
+      }
+      const _gfOver = fails.length > _gfDone && fails.length > _gfCap ? ` \xB7 ${fails.length - _gfDone} fails past the ${_gfCap}-cap left for the next pass` : "";
+      this._hb(`[Curriculum][SPEAKLOOP] gate-fail contrast \u2014 ${_gfDone}/${fails.length} measured thieves depressed + answers reinforced in their questions' own context${_gfOver}`);
     }
     return { pass, total: samples.length, fails };
   }
