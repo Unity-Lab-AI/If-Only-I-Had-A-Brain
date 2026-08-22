@@ -36455,3 +36455,15 @@ The gate's own section timer billed `SUCC+SKIP10+MAKETEN+TEEN — 63.5s`: all fo
 The math gate now (1) prints `[GateMathK] VERDICT ✓/✗ — <full per-section scores>` loud in the ring AND (2) records `curriculum.lastGateVerdict {gate, pass, reason, at}` into state — the board answers "did it pass, and which section failed" as a field read forever. Rides the same batch as GATEBATT's row window.
 
 > ⚠ Owned: the GATEVERDICT commit (`711bbc0b`) went DIRECTLY to main — the prior cascade left HEAD on main and I committed without re-branching (third direct-to-main foul of this war). Content correct, both remotes consistent (develop fast-forwarded); the discipline failure is the entry.
+
+## 2026-08-22 — SPEAKGPU.1: she speaks from her FULL weights
+
+> Gee (verbatim): *"this is a problem: 'the sem→word_motor speech binding was grabbing neighbors instead of answers.' what can we do to make a real fix so she answers correctly?"* → *"write the todo items then get to it"*
+
+The measured split that named it: the math-K verdict scored THINK/SEQ/ORDER/ATTR 100% (gate probes read the donor's full weights) against TALK 0/10 + PROD 0/17 with "four plus one equals"→"ribbon" — comprehension and speech were reading DIFFERENT MATRICES. Word emission argmaxed the CPU CSR, which since the GPU-first architecture receives only the SAMPLED shadow (~1-in-5 of training mass); across 2,000+ word buckets an undertrained shadow gives mushy near-ties that break toward noise = grab-a-neighbor. Shipped:
+- `emitWordDirect` accepts precomputed word-motor currents (`opts.wmOutOverride`) — the bucket argmax itself unchanged.
+- **`emitWordDirectDonor`** — fetches the sem→word_motor currents from the donor via the SAME standalone probe verb the gates use (sem-region-relative actives up, 720K-row currents ack ≈ 2.9MB at speech cadence), then runs the unchanged argmax on the FULL training mass. Any refusal/timeout/absence → the plain CPU path; a word is never skipped, only sourced honestly. One-shot `SPEAK via donor: ON` line + `_speakGpuStats {gpu, cpu}`.
+- All seven async emission call sites converted (gate TALK/production probes, student-test, WH-answer, definition emit, production emission, inner-voice `_thinkExternal`, language-cortex generate). `_thinkLegacy` (the SYNC browser-era tick — no donor exists on that path) keeps the CPU form with the reason written in.
+- Harness: donor path exact (region-relative actives, override flows into argmax, value fidelity), honest fallback, stats counting; bundle rebuilt (8 refs).
+
+Open next per the TODO: **WORDCONTRAST.1** (Layer-3b contrastive negatives on Q→A + arithmetic word teaching) and **RELDEPTH.1** (SUCC/MAKETEN/TEEN rep depth, measured per press via the sticking verdicts).

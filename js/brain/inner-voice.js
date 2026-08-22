@@ -326,7 +326,7 @@ export class InnerVoice {
       try {
         // gradeGate: inner-voice thoughts stay in grade-vocab too (same
         // corpus-bleed fix as chat). Merge so any caller emitOpts survive.
-        const word = cluster.emitWordDirect({ ...(opts.emitOpts || {}), gradeGate: true }) || '';
+        const word = (await cluster.emitWordDirectDonor({ ...(opts.emitOpts || {}), gradeGate: true })) || '';
         return {
           word,
           sentence: word,
@@ -433,6 +433,9 @@ export class InnerVoice {
     const wantsThought = shouldSpeak || (socialNeed * arousal > 0.25);
     if (wantsThought && cluster && typeof cluster.emitWordDirect === 'function') {
       try {
+        // (_thinkLegacy is the SYNC browser-era tick — no donor exists on that
+        // path, so the CPU form is the honest source here; the bio-scale
+        // _thinkExternal path above uses emitWordDirectDonor.)
         const word = cluster.emitWordDirect({ gradeGate: true }) || '';
         if (word && word.length > 0) {
           sentence = word;

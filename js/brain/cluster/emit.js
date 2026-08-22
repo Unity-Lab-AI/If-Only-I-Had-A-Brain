@@ -561,6 +561,43 @@ export const CLUSTER_EMIT_MIXIN = {
   // Returns the word string for the highest-scoring word bucket, or
   // empty string if word_motor projection / region missing or no
   // signal above noise floor.
+  /**
+   * SPEAKGPU (2026-08-22) — word emission that SPEAKS FROM HER FULL WEIGHTS.
+   * The sem→word_motor argmax used to read only the CPU CSR — the sampled
+   * shadow (~1-in-5 of training mass since the GPU-first architecture). For a
+   * discrimination across 2,000+ word buckets, the undertrained shadow gives
+   * mushy near-ties that break toward noise — the measured TALK 0/10 / PROD
+   * 0/17 "grab-a-neighbor" failure ("four plus one equals"→"ribbon") while
+   * the donor-probed comprehension sections scored 100%. This wrapper fetches
+   * the currents from the donor via the same standalone probe verb the gates
+   * use (720K rows ≈ 2.9MB ack at speech cadence), then runs the UNCHANGED
+   * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
+   * is never skipped, only sourced honestly.
+   */
+  async emitWordDirectDonor(opts = {}) {
+    const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
+    const sem = this.regions && this.regions.sem;
+    if (proj && sem && proj._gpuBound && this._gpuProxyReady && this._gpuProxy
+        && typeof this._gpuProxy.gateProbe === 'function' && this.lastSpikes) {
+      try {
+        const idx = [];
+        for (let i = sem.start; i < sem.end; i++) { if (this.lastSpikes[i]) idx.push(i - sem.start); }
+        if (idx.length) {
+          const out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, 'sem', idx);
+          if (out && out.length > 0) {
+            const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
+            s.gpu++;
+            if (!s.logged) { s.logged = true; console.log('[Cluster ' + this.name + '] SPEAK via donor: ON — word emission argmaxes the FULL GPU training mass (sem→word_motor currents ride the probe ack); CPU shadow only when the donor cannot answer.'); }
+            return this.emitWordDirect({ ...opts, wmOutOverride: out });
+          }
+        }
+      } catch { /* fall through to the CPU shadow */ }
+    }
+    const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
+    s.cpu++;
+    return this.emitWordDirect(opts);
+  },
+
   emitWordDirect(opts = {}) {
     if (!this.regions || !this.regions.word_motor || !this.regions.sem) return '';
     if (!this.crossProjections?.sem_to_word_motor) return '';
@@ -581,8 +618,19 @@ export const CLUSTER_EMIT_MIXIN = {
     }
 
     let wmOut;
-    try { wmOut = proj.propagate(preSem); }
-    catch { return ''; }
+    // SPEAKGPU (2026-08-22) — a caller that already fetched the word-motor
+    // currents from the donor's FULL weights hands them in here; the CPU CSR
+    // (the SAMPLED shadow — ~1-in-5 of training mass since the GPU-first
+    // architecture) is the no-donor path only. Measured reason: math-K verdict
+    // THINK/SEQ/ORDER 100% (gate probes read the donor) vs TALK 0/10 + PROD
+    // 0/17 ("four plus one equals"→"ribbon") — she knew more than the matrix
+    // she spoke from.
+    if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
+      wmOut = opts.wmOutOverride;
+    } else {
+      try { wmOut = proj.propagate(preSem); }
+      catch { return ''; }
+    }
     if (!wmOut || wmOut.length === 0) return '';
 
     // GlobalWorkspace bias: when a previous-tick ignition broadcast
