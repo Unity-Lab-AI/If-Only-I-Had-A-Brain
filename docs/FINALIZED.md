@@ -36467,3 +36467,11 @@ The measured split that named it: the math-K verdict scored THINK/SEQ/ORDER/ATTR
 - Harness: donor path exact (region-relative actives, override flows into argmax, value fidelity), honest fallback, stats counting; bundle rebuilt (8 refs).
 
 Open next per the TODO: **WORDCONTRAST.1** (Layer-3b contrastive negatives on Q→A + arithmetic word teaching) and **RELDEPTH.1** (SUCC/MAKETEN/TEEN rep depth, measured per press via the sticking verdicts).
+
+## 2026-08-22 — WORDCONTRAST.1 + RELDEPTH.1: the negatives her word buckets never got, and the depth her relations never had
+
+> Same order as SPEAKGPU (Gee: *"make a real fix so she answers correctly"*).
+
+**WORDCONTRAST.1 — two measured holes in the QA anti-Hebbian block:** (1) the negative pass wrote the wrong answer's first LETTER into motor but NEVER the wrong answer's WORD BUCKET — sem→word_motor was whitelisted for the depression but its post rows were silent, so word buckets lived on pure Oja with zero pushdown (basin superposition = grab-a-neighbor, the exact "ribbon" failure); (2) the letters-differ guard SKIPPED the entire negative when answers share a first letter — four/five, six/seven, two/three/ten collide constantly, so ARITHMETIC answers got the least contrast of anything she knows. Now: letter-anti still requires differing letters (a shared letter IS the correct letter), word-bucket anti fires whenever the WORDS differ, negatives drawn from the same qaList batch — her own lesson's sibling answers, never a list.
+
+**RELDEPTH.1 — depth set by the verdict's own numbers:** the compositional relations exist and mirror the probe shapes exactly; they were THIN. SUCC 1/10 at 4 reps (vs SKIP10 67% on a tenth of the facts) → 10 reps; MAKETEN 1/11 at 8 → 16; TEEN 0/9 at 16 → 24, with the interference hypothesis written in (its left/right free-half structure competes with 100 full-free successor facts on the same recurrent rows — if 0/9 persists at 24, interference is the finding, not depth). These intra doses ride the donor since the range-form dispatch, so depth is cheap; the sticking per-section verdict measures every delta per press.

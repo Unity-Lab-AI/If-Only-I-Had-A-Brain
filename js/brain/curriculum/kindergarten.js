@@ -5869,8 +5869,9 @@ export const K_MIXIN = {
         { region: semRegion,      feat: _magnitudeFeatureForDigit(String(10 - n)) },
       ]});
     }
-    await this._teachCombination(facts, { reps: 8 });
-    this._hb(`[Curriculum] _teachMakeTen: ${facts.length} pairs × 8 reps`);
+    // RELDEPTH (2026-08-22) — MAKETEN measured 1/11 at 8 reps; 8 → 16.
+    await this._teachCombination(facts, { reps: 16 });
+    this._hb(`[Curriculum] _teachMakeTen: ${facts.length} pairs × 16 reps`);
   },
 
   /**
@@ -5904,8 +5905,13 @@ export const K_MIXIN = {
     // REPS bumped 8 → 16 to compensate for consolidating forward+inverse
     // into a single symmetric-Hebbian pass. Net training events: 9 × 16 = 144
     // (matches the pre-refactor 9 × 2 × 8 = 144).
-    await this._teachCombination(facts, { reps: 16 });
-    this._hb(`[Curriculum] _teachTeenDecomposition: ${facts.length} teens × 16 reps (symmetric)`);
+    // RELDEPTH (2026-08-22) — TEEN measured 0/9 even at 16 reps: its
+    // left/right free-half structure competes with _teachCountToHundred's
+    // 100 full-free successor facts on the same recurrent rows. 16 → 24 to
+    // rebalance; the sticking verdict measures the delta next gate — if 0/9
+    // persists at 24, the interference (not depth) is the finding.
+    await this._teachCombination(facts, { reps: 24 });
+    this._hb(`[Curriculum] _teachTeenDecomposition: ${facts.length} teens × 24 reps (symmetric)`);
   },
 
   /**
@@ -5930,8 +5936,14 @@ export const K_MIXIN = {
         { region: semRegion,  feat: _magnitudeFeatureForNumber(n + 1) },
       ]});
     }
-    await this._teachCombination(facts, { reps: 4 });
-    this._hb(`[Curriculum] _teachCountToHundred: ${facts.length} successors × 4 reps`);
+    // RELDEPTH (2026-08-22, measured off the sticking math-K verdict: SUCC
+    // 1/10 at 4 reps while SKIP10 hit 67% on a tenth of the facts) — the
+    // successor signal was THIN: 100 smooth-overlapping magnitude facts × 4
+    // reps couldn't clear the probe's cosine floor. Reps 4 → 10; the intra
+    // dose rides the donor (range-form dispatch) so depth is cheap now, and
+    // the per-section verdict measures the delta on the next gate.
+    await this._teachCombination(facts, { reps: 10 });
+    this._hb(`[Curriculum] _teachCountToHundred: ${facts.length} successors × 10 reps`);
   },
 
   /**

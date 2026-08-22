@@ -76684,8 +76684,8 @@ var K_MIXIN = {
         { region: semRegion, feat: _magnitudeFeatureForDigit(String(10 - n)) }
       ] });
     }
-    await this._teachCombination(facts, { reps: 8 });
-    this._hb(`[Curriculum] _teachMakeTen: ${facts.length} pairs \xD7 8 reps`);
+    await this._teachCombination(facts, { reps: 16 });
+    this._hb(`[Curriculum] _teachMakeTen: ${facts.length} pairs \xD7 16 reps`);
   },
   /**
    * K.NBT TEEN DECOMPOSITION — 11 through 19 as "ten and some more".
@@ -76713,8 +76713,8 @@ var K_MIXIN = {
         { region: semRegion, feat: _magnitudeFeatureForNumber(10 + n) }
       ] });
     }
-    await this._teachCombination(facts, { reps: 16 });
-    this._hb(`[Curriculum] _teachTeenDecomposition: ${facts.length} teens \xD7 16 reps (symmetric)`);
+    await this._teachCombination(facts, { reps: 24 });
+    this._hb(`[Curriculum] _teachTeenDecomposition: ${facts.length} teens \xD7 24 reps (symmetric)`);
   },
   /**
    * K.CC UNIVERSAL SUCCESSOR — given magnitude(n), sem activates
@@ -76736,8 +76736,8 @@ var K_MIXIN = {
         { region: semRegion, feat: _magnitudeFeatureForNumber(n + 1) }
       ] });
     }
-    await this._teachCombination(facts, { reps: 4 });
-    this._hb(`[Curriculum] _teachCountToHundred: ${facts.length} successors \xD7 4 reps`);
+    await this._teachCombination(facts, { reps: 10 });
+    this._hb(`[Curriculum] _teachCountToHundred: ${facts.length} successors \xD7 10 reps`);
   },
   /**
    * K.CC SKIP-COUNT BY TENS — given magnitude(n) injected into PHON
@@ -103750,24 +103750,29 @@ var Curriculum = class _Curriculum {
           if (wrongEntry && wrongEntry.expectedAnswer) {
             const wrongAnswer = String(wrongEntry.expectedAnswer).toLowerCase();
             const wrongLetter = wrongAnswer.charAt(0);
-            if (wrongLetter && wrongLetter !== targetLetter) {
-              const wrongMotorPattern = encodeLetter(wrongLetter);
-              if (wrongMotorPattern && wrongMotorPattern.length > 0) {
-                try {
-                  this._clearSpikes();
-                  this._writeTiledPattern(semRegion, qEmb, false);
-                  if (keyTokenTile && keyEmb && keyEmb.length > 0) {
-                    this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
-                  }
-                  if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
-                  this._writeTiledPattern(motorRegion, wrongMotorPattern, false);
-                  await this._teachAntiHebbian(lr * antiLrScale, {
-                    projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
-                    skipIntraSynapses: true
-                  });
-                  antiFires++;
-                } catch {
+            const wordsDiffer = wrongAnswer !== String(answerText || "").toLowerCase();
+            const lettersDiffer = !!(wrongLetter && wrongLetter !== targetLetter);
+            if (wordsDiffer || lettersDiffer) {
+              try {
+                this._clearSpikes();
+                this._writeTiledPattern(semRegion, qEmb, false);
+                if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+                  this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
                 }
+                if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+                if (lettersDiffer) {
+                  const wrongMotorPattern = encodeLetter(wrongLetter);
+                  if (wrongMotorPattern && wrongMotorPattern.length > 0) {
+                    this._writeTiledPattern(motorRegion, wrongMotorPattern, false);
+                  }
+                }
+                if (wordsDiffer) this._writeAnswerToWordMotor(wrongAnswer, opts.subject);
+                await this._teachAntiHebbian(lr * antiLrScale, {
+                  projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+                  skipIntraSynapses: true
+                });
+                antiFires++;
+              } catch {
               }
             }
           }

@@ -13012,29 +13012,53 @@ export class Curriculum {
           if (wrongEntry && wrongEntry.expectedAnswer) {
             const wrongAnswer = String(wrongEntry.expectedAnswer).toLowerCase();
             const wrongLetter = wrongAnswer.charAt(0);
-            if (wrongLetter && wrongLetter !== targetLetter) {
-              const wrongMotorPattern = encodeLetter(wrongLetter);
-              if (wrongMotorPattern && wrongMotorPattern.length > 0) {
-                try {
-                  this._clearSpikes();
-                  this._writeTiledPattern(semRegion, qEmb, false);
-                  if (keyTokenTile && keyEmb && keyEmb.length > 0) {
-                    this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
+            // WORDCONTRAST (2026-08-22) — TWO holes in this block starved
+            // sem→word_motor of every negative it ever needed (measured:
+            // TALK 0/10 + PROD 0/17, "four plus one equals"→"ribbon" while
+            // comprehension scored 100%):
+            //  1. the anti pass wrote the wrong FIRST LETTER into motor but
+            //     NEVER the wrong answer's WORD BUCKET — the whitelist
+            //     includes sem_to_word_motor, but with word_motor silent the
+            //     depression had no post rows there. The positive side wrote
+            //     buckets; the negative side never did. Pure Oja without
+            //     pushdown = basin superposition = grab-a-neighbor.
+            //  2. the letters-differ guard SKIPPED the whole negative when
+            //     answers share a first letter — four/five, six/seven,
+            //     two/three/ten: the NUMBER words collide constantly, so
+            //     arithmetic answers got the least contrast of anything she
+            //     knows. Letter-anti still requires differing letters (a
+            //     shared letter is a correct letter); the word-bucket anti
+            //     requires only differing WORDS. Negatives come from the
+            //     same qaList batch — her own lesson's sibling answers,
+            //     never a list.
+            const wordsDiffer = wrongAnswer !== String(answerText || '').toLowerCase();
+            const lettersDiffer = !!(wrongLetter && wrongLetter !== targetLetter);
+            if (wordsDiffer || lettersDiffer) {
+              try {
+                this._clearSpikes();
+                this._writeTiledPattern(semRegion, qEmb, false);
+                if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+                  this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
+                }
+                if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
+                if (lettersDiffer) {
+                  const wrongMotorPattern = encodeLetter(wrongLetter);
+                  if (wrongMotorPattern && wrongMotorPattern.length > 0) {
+                    this._writeTiledPattern(motorRegion, wrongMotorPattern, false);
                   }
-                  if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
-                  this._writeTiledPattern(motorRegion, wrongMotorPattern, false);
-                  // iter22-F.1 — match positive-pair whitelist so anti-
-                  // Hebbian only depresses sem→motor + sem→word_motor +
-                  // subject-band, not letter_to_motor / letter_to_phon /
-                  // visual_to_letter. Closes the symmetric decay leak
-                  // iter22-D positive-side scoping left open.
-                  await this._teachAntiHebbian(lr * antiLrScale, {
-                    projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
-                    skipIntraSynapses: true,
-                  });
-                  antiFires++;
-                } catch { /* non-fatal */ }
-              }
+                }
+                if (wordsDiffer) this._writeAnswerToWordMotor(wrongAnswer, opts.subject);
+                // iter22-F.1 — match positive-pair whitelist so anti-
+                // Hebbian only depresses sem→motor + sem→word_motor +
+                // subject-band, not letter_to_motor / letter_to_phon /
+                // visual_to_letter. Closes the symmetric decay leak
+                // iter22-D positive-side scoping left open.
+                await this._teachAntiHebbian(lr * antiLrScale, {
+                  projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+                  skipIntraSynapses: true,
+                });
+                antiFires++;
+              } catch { /* non-fatal */ }
             }
           }
         }
