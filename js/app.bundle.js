@@ -58114,6 +58114,7 @@ var NeuronCluster = class {
       let inputs = null;
       if (useGpu) inputs = this._cachedCrossCurrents.get(name);
       if (!inputs) {
+        if ((this.size | 0) > 2e6) continue;
         const srcSpikes = this.regionSpikes(src);
         inputs = proj.propagate(srcSpikes);
       }
@@ -58240,6 +58241,8 @@ var NeuronCluster = class {
     let synapticCurrents;
     if ((this._gpuProxyReady || this._useChunkedCache) && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
       synapticCurrents = this._cachedIntraCurrents;
+    } else if ((size | 0) > 2e6) {
+      synapticCurrents = this._zeroSynCurrents && this._zeroSynCurrents.length === size ? this._zeroSynCurrents : this._zeroSynCurrents = new Float64Array(size);
     } else {
       synapticCurrents = synapses.propagate(neurons.getSpikes());
     }

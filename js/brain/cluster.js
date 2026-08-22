@@ -3534,6 +3534,13 @@ export class NeuronCluster {
       let inputs = null;
       if (useGpu) inputs = this._cachedCrossCurrents.get(name);
       if (!inputs) {
+        // RHYTHM3S (2026-08-22) — at bio scale a cache miss contributes ZERO
+        // this tick (one-tick-lag design; the CPU fallback here was 22.7% of
+        // main-thread self-time in the conviction profile, and PROPBOUND
+        // proved these currents were silently all-zero for a month anyway).
+        // Small/browser clusters keep the CPU fallback — their matmuls are
+        // cheap and they have no donor.
+        if ((this.size | 0) > 2_000_000) continue;
         // CPU fallback — GPU cache miss or GPU proxy not ready yet.
         const srcSpikes = this.regionSpikes(src);
         inputs = proj.propagate(srcSpikes);
@@ -3713,6 +3720,22 @@ export class NeuronCluster {
     let synapticCurrents;
     if ((this._gpuProxyReady || this._useChunkedCache) && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
       synapticCurrents = this._cachedIntraCurrents;
+    } else if ((size | 0) > 2_000_000) {
+      // RHYTHM3S (2026-08-22) — CONVICTED BY THE CPU PROFILE: this CPU
+      // fallback (`sparse-matrix.propagate`, 19.3% self-time) was the
+      // all-day ~3s loop block — a synchronous full-intra matmul (360M
+      // weights) on every cache-missing tick at bio scale. The one-tick-lag
+      // design already declares lagged currents biologically normal; a miss
+      // now contributes ZERO THIS TICK and the async donor dispatch keeps
+      // filling the cache for later ticks. Precedent, measured not assumed:
+      // PROPBOUND proved these very currents were silently ALL-ZERO for a
+      // month on native donors — every gate she passed and every grade she
+      // earned happened under exactly these tick dynamics. GATESTEP's law
+      // (no CPU cortex math at bio scale) finally reaches this last hold-out.
+      // Real fix filed (RHYTHM3S.2): langCortex steps donor-side, 0.3.27.
+      synapticCurrents = this._zeroSynCurrents && this._zeroSynCurrents.length === size
+        ? this._zeroSynCurrents
+        : (this._zeroSynCurrents = new Float64Array(size));
     } else {
       synapticCurrents = synapses.propagate(neurons.getSpikes());
     }
