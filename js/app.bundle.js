@@ -101145,6 +101145,8 @@ var Curriculum = class _Curriculum {
     this._memorySnapshotAndGc(`cell-exit ${subject}/${grade} pass=${!!(result && result.pass)}`);
     const _cellMs = Date.now() - _cellStart;
     const _cellPass = !!(result && result.pass);
+    this._lastGateVerdict = { gate: cellKey, pass: _cellPass, reason: String(result?.reason || "no reason recorded").slice(0, 4e3), at: Date.now() };
+    console.log(`[GateVerdict] ${_cellPass ? "\u2713 PASS" : "\u2717 FAIL"} ${cellKey} (${(_cellMs / 1e3).toFixed(1)}s) \u2014 ${String(result?.reason || "no reason recorded").slice(0, 1500)}`);
     this._hb(`[Curriculum] \u2550\u2550\u2550 CELL DONE \u2550\u2550\u2550 ${subject}/${grade} in ${(_cellMs / 1e3).toFixed(1)}s \u2014 pass=${_cellPass}${_cellPass ? "" : " (reason: " + String(result?.reason || "unknown").slice(0, 120) + ")"}`);
     try {
       if (cluster) {

@@ -9392,6 +9392,17 @@ export class Curriculum {
     this._memorySnapshotAndGc(`cell-exit ${subject}/${grade} pass=${!!(result && result.pass)}`);
     const _cellMs = Date.now() - _cellStart;
     const _cellPass = !!(result && result.pass);
+    // GATEVERDICT-ALL (2026-08-22, Gee: "why did you not do all phases, all
+    // cells, all grades, all ciriculum?") — every cell of EVERY subject and
+    // grade exits through this exact spot with its final adjudicated result
+    // (gate scores, battery blockers, advisory annotations, completion-pass),
+    // so the verdict is recorded HERE, once, for the whole curriculum —
+    // state-visible at curriculum.lastGateVerdict and LOUD in the ring, so a
+    // fail's per-section numbers never need archaeology again. The math
+    // gate's own earlier record keeps its raw pre-adjudication scores; this
+    // one lands last and carries the outcome that actually decided the grade.
+    this._lastGateVerdict = { gate: cellKey, pass: _cellPass, reason: String(result?.reason || 'no reason recorded').slice(0, 4000), at: Date.now() };
+    console.log(`[GateVerdict] ${_cellPass ? '✓ PASS' : '✗ FAIL'} ${cellKey} (${(_cellMs / 1000).toFixed(1)}s) — ${String(result?.reason || 'no reason recorded').slice(0, 1500)}`);
     this._hb(`[Curriculum] ═══ CELL DONE ═══ ${subject}/${grade} in ${(_cellMs / 1000).toFixed(1)}s — pass=${_cellPass}${_cellPass ? '' : ' (reason: ' + String(result?.reason || 'unknown').slice(0, 120) + ')'}`);
 
     // LEARNING-COVERAGE LEDGER — record whether this cell actually TAUGHT
