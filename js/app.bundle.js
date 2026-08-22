@@ -96669,7 +96669,12 @@ var Curriculum = class _Curriculum {
       // GATEVERDICT — the last gate's verdict STICKS here (gate name, pass,
       // the full per-section reason string, timestamp) so the board answers
       // "did it pass and which section failed" without ring archaeology.
-      lastGateVerdict: this._lastGateVerdict || null
+      lastGateVerdict: this._lastGateVerdict || null,
+      // EXAMTRANSCRIPT — the last 80 Q→A pairs from production probes +
+      // K-STUDENT batteries ({cell, kind, q, expected, got, pass, failMode?})
+      // so "what is she answering to which questions" is a field read.
+      // Bounded per the dashboard discipline; the in-memory ring keeps 300.
+      examTranscript: Array.isArray(this._examTranscript) ? this._examTranscript.slice(-80) : []
     };
   }
   /**
@@ -97991,6 +97996,18 @@ var Curriculum = class _Curriculum {
         r.difficulty = q.difficulty || 1;
         r.source = q.source || "authored";
         results.push(r);
+        if (!Array.isArray(this._examTranscript)) this._examTranscript = [];
+        this._examTranscript.push({
+          cell: this.cluster && this.cluster._currentCellKey || label || "?",
+          kind: "battery",
+          q: String(r.question || q.question || "").slice(0, 160),
+          expected: String(q.expectedAnswer ?? q.expected ?? "").slice(0, 80),
+          got: String(r.answer ?? "").slice(0, 80),
+          pass: (r.score || 0) >= 0.5,
+          standard: r.standard,
+          at: Date.now()
+        });
+        if (this._examTranscript.length > 300) this._examTranscript.splice(0, this._examTranscript.length - 300);
         if (r.score >= 0.5) pass++;
         if (q.methodology && typeof q.methodology === "object") {
           methoQuestions += 1;
@@ -108573,6 +108590,18 @@ var Curriculum = class _Curriculum {
       } else {
         fails.push({ q: s.question, emitted: result.emitted, expected: result.expected });
       }
+      if (!Array.isArray(this._examTranscript)) this._examTranscript = [];
+      this._examTranscript.push({
+        cell: this.cluster && this.cluster._currentCellKey || `${this._currentGateSubject || "?"}`,
+        kind: "production",
+        q: String(s.question).slice(0, 160),
+        expected: Array.isArray(s.expected) ? s.expected.slice(0, 6).join("|").slice(0, 80) : String(s.expected ?? "").slice(0, 80),
+        got: String(result.emitted ?? "").slice(0, 80),
+        pass: !!result.pass,
+        failMode: result.pass ? void 0 : result.failMode || void 0,
+        at: Date.now()
+      });
+      if (this._examTranscript.length > 300) this._examTranscript.splice(0, this._examTranscript.length - 300);
       if (typeof this._hb === "function" && samples.length >= 5) {
         const tag = result.pass ? "\u2713" : "\u2717";
         const emittedStr = String(result.emitted ?? "");
