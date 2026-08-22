@@ -5985,7 +5985,7 @@ export class Curriculum {
             // floor — that's our SILENCE branch (word-salad gate).
             let whAnswer = '';
             try {
-              whAnswer = cluster.emitWordDirect({ subject: this._currentGateSubject }) || '';
+              whAnswer = (await cluster.emitWordDirectDonor({ subject: this._currentGateSubject })) || '';
             } catch { whAnswer = ''; }
             if (whAnswer && whAnswer.length > 0) {
               // Reject obvious wrappers — the question's own WH-words
@@ -6079,7 +6079,7 @@ export class Curriculum {
           // iter22-D — pass current gate subject so word emit scopes to
           // that subject's word_motor sub-band. Without it the emit
           // returned random math vocab for ELA-K alphabet probes.
-          wordEmit = cluster.emitWordDirect({ subject: this._currentGateSubject }) || '';
+          wordEmit = (await cluster.emitWordDirectDonor({ subject: this._currentGateSubject })) || '';
         } catch { wordEmit = ''; }
       }
       if (wordEmit && wordEmit.length > 0) {
@@ -14742,7 +14742,7 @@ export class Curriculum {
       for (let i = 0; i < 6; i++) {
         let w = '';
         try {
-          w = cluster.emitWordDirect({ subject: this._currentGateSubject || null }) || '';
+          w = (await cluster.emitWordDirectDonor({ subject: this._currentGateSubject || null })) || '';
         } catch { w = ''; }
         if (!w) break;
         const lw = String(w).toLowerCase().trim();
@@ -18656,7 +18656,7 @@ export class Curriculum {
       emissionPath = 'emitWordDirect';
       try {
         // iter22-D — pass active gate subject for sub-band scoping.
-        emitted = cluster.emitWordDirect({ subject: this._currentGateSubject }) || '';
+        emitted = (await cluster.emitWordDirectDonor({ subject: this._currentGateSubject })) || '';
       } catch (err) {
         emitted = '';
         emissionError = err && err.message ? err.message.slice(0, 80) : 'throw';

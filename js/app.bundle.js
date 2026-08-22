@@ -54394,6 +54394,47 @@ var CLUSTER_EMIT_MIXIN = {
   // Returns the word string for the highest-scoring word bucket, or
   // empty string if word_motor projection / region missing or no
   // signal above noise floor.
+  /**
+   * SPEAKGPU (2026-08-22) — word emission that SPEAKS FROM HER FULL WEIGHTS.
+   * The sem→word_motor argmax used to read only the CPU CSR — the sampled
+   * shadow (~1-in-5 of training mass since the GPU-first architecture). For a
+   * discrimination across 2,000+ word buckets, the undertrained shadow gives
+   * mushy near-ties that break toward noise — the measured TALK 0/10 / PROD
+   * 0/17 "grab-a-neighbor" failure ("four plus one equals"→"ribbon") while
+   * the donor-probed comprehension sections scored 100%. This wrapper fetches
+   * the currents from the donor via the same standalone probe verb the gates
+   * use (720K rows ≈ 2.9MB ack at speech cadence), then runs the UNCHANGED
+   * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
+   * is never skipped, only sourced honestly.
+   */
+  async emitWordDirectDonor(opts = {}) {
+    const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
+    const sem = this.regions && this.regions.sem;
+    if (proj && sem && proj._gpuBound && this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.gateProbe === "function" && this.lastSpikes) {
+      try {
+        const idx = [];
+        for (let i = sem.start; i < sem.end; i++) {
+          if (this.lastSpikes[i]) idx.push(i - sem.start);
+        }
+        if (idx.length) {
+          const out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
+          if (out && out.length > 0) {
+            const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
+            s2.gpu++;
+            if (!s2.logged) {
+              s2.logged = true;
+              console.log("[Cluster " + this.name + "] SPEAK via donor: ON \u2014 word emission argmaxes the FULL GPU training mass (sem\u2192word_motor currents ride the probe ack); CPU shadow only when the donor cannot answer.");
+            }
+            return this.emitWordDirect({ ...opts, wmOutOverride: out });
+          }
+        }
+      } catch {
+      }
+    }
+    const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
+    s.cpu++;
+    return this.emitWordDirect(opts);
+  },
   emitWordDirect(opts = {}) {
     if (!this.regions || !this.regions.word_motor || !this.regions.sem) return "";
     if (!this.crossProjections?.sem_to_word_motor) return "";
@@ -54409,10 +54450,14 @@ var CLUSTER_EMIT_MIXIN = {
       preSem[i] = this.lastSpikes[sem.start + i] || 0;
     }
     let wmOut;
-    try {
-      wmOut = proj.propagate(preSem);
-    } catch {
-      return "";
+    if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
+      wmOut = opts.wmOutOverride;
+    } else {
+      try {
+        wmOut = proj.propagate(preSem);
+      } catch {
+        return "";
+      }
     }
     if (!wmOut || wmOut.length === 0) return "";
     let gwBoostWord = null;
@@ -63800,7 +63845,7 @@ var LanguageCortex = class {
               for (let i = 0; i < 6; i++) {
                 let w = "";
                 try {
-                  w = cluster.emitWordDirect({ gradeGate: true }) || "";
+                  w = await cluster.emitWordDirectDonor({ gradeGate: true }) || "";
                 } catch {
                   w = "";
                 }
@@ -64784,7 +64829,7 @@ var InnerVoice = class {
     }
     if (cluster && typeof cluster.emitWordDirect === "function") {
       try {
-        const word = cluster.emitWordDirect({ ...opts.emitOpts || {}, gradeGate: true }) || "";
+        const word = await cluster.emitWordDirectDonor({ ...opts.emitOpts || {}, gradeGate: true }) || "";
         return {
           word,
           sentence: word,
@@ -76121,7 +76166,7 @@ var K_MIXIN = {
                 if (typeof this.cluster.injectEmbeddingToRegion === "function") {
                   this.cluster.injectEmbeddingToRegion("sem", emb, 1);
                 }
-                wordDecoded = this.cluster.emitWordDirect({ subject: this._currentGateSubject }) || null;
+                wordDecoded = await this.cluster.emitWordDirectDonor({ subject: this._currentGateSubject }) || null;
                 if (wordDecoded && wordDecoded.length > 0) {
                   firstLetterFromWord = wordDecoded[0];
                 }
@@ -98515,7 +98560,7 @@ var Curriculum = class _Curriculum {
             }
             let whAnswer = "";
             try {
-              whAnswer = cluster.emitWordDirect({ subject: this._currentGateSubject }) || "";
+              whAnswer = await cluster.emitWordDirectDonor({ subject: this._currentGateSubject }) || "";
             } catch {
               whAnswer = "";
             }
@@ -98591,7 +98636,7 @@ var Curriculum = class _Curriculum {
       let wordEmit = "";
       if (typeof cluster.emitWordDirect === "function") {
         try {
-          wordEmit = cluster.emitWordDirect({ subject: this._currentGateSubject }) || "";
+          wordEmit = await cluster.emitWordDirectDonor({ subject: this._currentGateSubject }) || "";
         } catch {
           wordEmit = "";
         }
@@ -105221,7 +105266,7 @@ var Curriculum = class _Curriculum {
       for (let i = 0; i < 6; i++) {
         let w = "";
         try {
-          w = cluster.emitWordDirect({ subject: this._currentGateSubject || null }) || "";
+          w = await cluster.emitWordDirectDonor({ subject: this._currentGateSubject || null }) || "";
         } catch {
           w = "";
         }
@@ -108469,7 +108514,7 @@ var Curriculum = class _Curriculum {
     if (!emitted && typeof cluster.emitWordDirect === "function") {
       emissionPath = "emitWordDirect";
       try {
-        emitted = cluster.emitWordDirect({ subject: this._currentGateSubject }) || "";
+        emitted = await cluster.emitWordDirectDonor({ subject: this._currentGateSubject }) || "";
       } catch (err) {
         emitted = "";
         emissionError = err && err.message ? err.message.slice(0, 80) : "throw";
