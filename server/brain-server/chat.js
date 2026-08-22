@@ -2058,16 +2058,20 @@ const SERVER_CHAT_MIXIN = {
       // washes; the same subject with a clean trace was legible in every
       // hand). Structural strokes always draw; the rest fill the budget
       // longest-first. Line-art hands earn bigger budgets — a doodle is LOOSE.
+      // BRUSHCULL (2026-08-22, operator judged the isolated brush swatches):
+      // EVERY line-texture mass is DEAD — hatch, xhatch and the rebuilt
+      // crayon scribble all rendered as criss-cross scratch the moment two
+      // parts' stroke fields met at different angles (and were judged bad
+      // even in isolation). Pencil SURVIVES as the hand the operator kept:
+      // a pure graphite LINE style (mass 'none' — trace + outline carry the
+      // read on bare paper, which also stops pencil backdrops painting
+      // color masses, the PAINT.8 bare-paper intent). Crayon's whole
+      // identity was the scribble stroke, so it leaves the roster with its
+      // brush (STYLECULL precedent: pointillism + crosshatch).
       { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0,  traceBudget: 90 },
-      { name: 'pencil',      mass: 'hatch',    ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 150 },
+      { name: 'pencil',      mass: 'none',     ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 150 },
       { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0,  traceBudget: 120 },
       { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0,  traceBudget: 40 },
-      // STYLECULL (2026-08-21, operator's two example images): pointillism
-      // ("just a cloud of dots") and crosshatch (X-hash clusters read as
-      // zigzag scratch) are REMOVED from the roster — judged as shit on live
-      // pieces, twice. Crayon survives because its hand was rebuilt
-      // (ZIGZAGKILL: short overlapping long-axis strokes).
-      { name: 'crayon',      mass: 'scribble', ink: 'palette',  outlineW: 0.012, outlineA: 0.9, detailMul: 0.6, scale: 1.0,  traceBudget: 70 },
       { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 22 },
     ];
   },
@@ -2097,7 +2101,7 @@ const SERVER_CHAT_MIXIN = {
     // the roster; kept as name checks that simply never match.)
     const w = styles.map(s => {
       let wt = 1;
-      if (arousal > 0.65 && (s.name === 'ink' || s.name === 'poster' || s.name === 'crayon')) wt += 1.2;
+      if (arousal > 0.65 && (s.name === 'ink' || s.name === 'poster')) wt += 1.2;   // BRUSHCULL — crayon left the roster
       if (valence < -0.1 && (s.name === 'pencil' || s.name === 'crosshatch')) wt += 1.2;
       if (arousal < 0.45 && (s.name === 'watercolor' || s.name === 'pointillism')) wt += 1.2;
       // COLORART — color-mass hands lead the rotation: the judged complaint
@@ -2160,54 +2164,13 @@ const SERVER_CHAT_MIXIN = {
       }
       return;
     }
-    if (m === 'hatch' || m === 'xhatch') {
-      const passes = m === 'xhatch' ? [ang, ang + Math.PI / 2.2] : [ang];
-      for (const pa of passes) {
-        const n = Math.max(3, Math.round(Math.max(pw, ph) * 30));
-        for (let i = 0; i < n; i++) {
-          const t = (i + 0.5) / n - 0.5;
-          const ox = -Math.sin(pa) * t * ph, oy = Math.cos(pa) * t * pw;
-          const len = Math.max(pw, ph) * (0.7 + rnd() * 0.3);
-          out.push({ type: 'line', x0: cx + ox - Math.cos(pa) * len * 0.5, y0: cy + oy - Math.sin(pa) * len * 0.5, x1: cx + ox + Math.cos(pa) * len * 0.5, y1: cy + oy + Math.sin(pa) * len * 0.5, rgb, a: 0.65 });
-        }
-      }
-      return;
-    }
-    // (STYLECULL — the 'dots' treatment is gone with pointillism: "just a
-    // cloud of dots", judged on a live piece.)
-    if (m === 'scribble') {
-      // ZIGZAGKILL (2026-08-21, operator: "these zighzag lines… look like 3
-      // V's really close together… really off putting") — the old treatment
-      // was ONE continuous zigzag bouncing across the part, which read as
-      // tight V-chains scattered over every crayon piece. Real crayon lays
-      // SHORT OVERLAPPING STROKES: dense rounded near-parallel marks with
-      // angle wobble and waxy pressure (varying alpha), two loose passes so
-      // the coverage looks hand-colored, never machine-jagged.
-      // strokes run along the part's LONG axis (how a hand colors a shape),
-      // and each stroke's length clamps to the part's real extent in its own
-      // direction — an overshooting stroke on a thin part wove back into the
-      // very zigzag chains this replaces (caught on the first render).
-      const longAxis = ph > pw ? ang + Math.PI / 2 : ang;
-      for (let pass = 0; pass < 2; pass++) {
-        const pa = longAxis + (pass ? 0.25 : 0) + (rnd() - 0.5) * 0.12;
-        const extent = Math.abs(Math.cos(pa)) * pw + Math.abs(Math.sin(pa)) * ph;
-        const across = Math.abs(Math.sin(pa)) * pw + Math.abs(Math.cos(pa)) * ph;
-        const n = Math.max(5, Math.round(across * 40));
-        for (let i = 0; i < n; i++) {
-          const t = (i + 0.5) / n - 0.5;
-          const ox = -Math.sin(pa) * t * across + (rnd() - 0.5) * pw * 0.06;
-          const oy = Math.cos(pa) * t * across + (rnd() - 0.5) * ph * 0.06;
-          const len = extent * (0.55 + rnd() * 0.3);
-          out.push({
-            type: 'line',
-            x0: cx + ox - Math.cos(pa) * len * 0.5, y0: cy + oy - Math.sin(pa) * len * 0.5,
-            x1: cx + ox + Math.cos(pa) * len * 0.5, y1: cy + oy + Math.sin(pa) * len * 0.5,
-            rgb, w: 0.005, a: 0.45 + rnd() * 0.35,
-          });
-        }
-      }
-      return;
-    }
+    // BRUSHCULL (2026-08-22) — the hatch, xhatch AND scribble treatments are
+    // DELETED with their styles: the operator judged the isolated brush
+    // swatches and marked every line-texture mass bad (single-part and
+    // multi-part alike — the fields criss-crossed into X-scratch wherever
+    // two parts' angles met, and read as scratch even alone). The mass
+    // toolkit is fill / wash / none — paint, not weave. (The 'dots'
+    // treatment died earlier with pointillism, STYLECULL.)
   },
 
   // ── PAINT.8 (2026-08-21) — THE BACKDROP LAYER. Any background, three tiers,
@@ -2799,22 +2762,12 @@ const SERVER_CHAT_MIXIN = {
       } else if (style.mass === 'wash') {
         out.push({ type: 'fill', pts: sPts, rgb: [Math.min(255, bodyInk[0] + 35), Math.min(255, bodyInk[1] + 35), Math.min(255, bodyInk[2] + 35)], a: 0.4 });
         out.push({ type: 'fill', pts: sPts.map(pp => [pp[0] + (rnd() - 0.5) * 0.02, pp[1] + (rnd() - 0.5) * 0.02]), rgb: bodyInk, a: 0.3 });
-      } else if (style.mass !== 'none') {
-        // COLORART — textured styles (hatch/dots/xhatch/scribble) mass PER
-        // PART in the part's own sampled color when the schema carries them.
-        // SCRIBBLEKILL — the whole-body-bbox fallback is GONE: one giant
-        // scribble/hatch across the silhouette box rendered as parallel bars
-        // at odd angles over the piece ("like note book paper" — judged live
-        // on a hot-pink crayon piece). A colorless schema draws underpaint +
-        // trace only; texture is earned by knowing where the colors go.
-        const coloredNF = schema.parts.filter(p => Array.isArray(p.rgb) && !p.bg);   // BGPART
-        for (const p of coloredNF) {
-          const cx = mapX(p.cx), cy = mapY(p.cy);
-          const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
-          const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
-          this._artMass(out, style, cx, cy, pw, ph, mAng(p.ang), p.rgb, rnd);
-        }
       }
+      // BRUSHCULL — the per-part texture branch (hatch/xhatch/scribble in
+      // each part's own color) is GONE with the texture masses themselves:
+      // neighboring parts' stroke fields criss-crossed into X-scratch, the
+      // operator's standing complaint. mass 'none' styles read underpaint-
+      // less: trace + outline on bare paper.
       // COLORART — COLOR LAYERS + DEPTH: when the schema carries per-part
       // sampled colors (where the colors GO), every part paints a mass in ITS
       // OWN color over the underpaint — the regional color layers a real
