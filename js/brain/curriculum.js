@@ -3604,11 +3604,14 @@ export class Curriculum {
       if (s.indexOf('[Curriculum]') >= 0) {
         this._lastCurriculumLogTs = Date.now();
       }
-      if (typeof process !== 'undefined' && process.stdout && typeof process.stdout.write === 'function') {
-        process.stdout.write(s + '\n');
-      } else {
-        console.log(msg);
-      }
+      // HBRING (2026-08-22) — console.log, NOT process.stdout.write. The
+      // console ring (the operator's only remote eye) captures console.log
+      // and never sees raw stdout writes — the exact blind spot that hid
+      // the look-lane success line (LOOKEYES) and then hid every SPEAKLOOP
+      // gate-fail-contrast receipt: the fix fired after the music gate and
+      // its receipt went somewhere no instrument reads. One chokepoint:
+      // every curriculum heartbeat line is ring-visible from here on.
+      console.log(s);
     } catch {
       try { console.log(msg); } catch {}
     }

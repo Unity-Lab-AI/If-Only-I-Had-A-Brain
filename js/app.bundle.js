@@ -96789,11 +96789,7 @@ var Curriculum = class _Curriculum {
       if (s.indexOf("[Curriculum]") >= 0) {
         this._lastCurriculumLogTs = Date.now();
       }
-      if (typeof process !== "undefined" && process.stdout && typeof process.stdout.write === "function") {
-        process.stdout.write(s + "\n");
-      } else {
-        console.log(msg);
-      }
+      console.log(s);
     } catch {
       try {
         console.log(msg);
