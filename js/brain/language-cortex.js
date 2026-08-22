@@ -2163,7 +2163,7 @@ export class LanguageCortex {
                 // gradeGate: chat emission is grade-vocab-constrained so
                 // persona/dev/consciousness-corpus words can't win argmax
                 // in an early-grade reply (corpus-bleed fix 2026-07-10).
-                try { w = cluster.emitWordDirect({ gradeGate: true }) || ''; } catch { w = ''; }
+                try { w = (await cluster.emitWordDirectDonor({ gradeGate: true })) || ''; } catch { w = ''; }
                 if (!w) break;
                 const lw = String(w).toLowerCase().trim();
                 if (!lw) break;

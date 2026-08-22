@@ -5247,7 +5247,7 @@ export const K_MIXIN = {
               // this cell's word_motor sub-band. Without it the emit
               // returned random math-vocab words ("squares", "taller")
               // for ELA-K letter-naming probes.
-              wordDecoded = this.cluster.emitWordDirect({ subject: this._currentGateSubject }) || null;
+              wordDecoded = (await this.cluster.emitWordDirectDonor({ subject: this._currentGateSubject })) || null;
               if (wordDecoded && wordDecoded.length > 0) {
                 firstLetterFromWord = wordDecoded[0];
               }
