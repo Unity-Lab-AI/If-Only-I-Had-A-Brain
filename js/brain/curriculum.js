@@ -18718,14 +18718,24 @@ export class Curriculum {
       }
     }
 
-    // STEP 5 — match emission against expected substrings
+    // STEP 5 — match emission against expected substrings.
+    // GRADERMATCH (2026-08-22) — caught by the exam transcript's SECOND-EVER
+    // entry: "are you a boy or a girl" → emitted "dug" → graded ✓ against
+    // "girl|g", because bare `includes` gives a FREE PASS to any word
+    // containing the single-letter alternative ("dug" contains "g"). The
+    // letter alternates exist for the honest first-letter-answer era — they
+    // mean SHE SAID THE LETTER, so a single-character expectation now
+    // requires EXACT equality. Multi-character expectations keep `includes`
+    // (light stemming: "girls" passes "girl"). Scores will DROP where the
+    // free pass was propping them up — that drop is the truth arriving.
     const emittedNorm = String(emitted).toLowerCase().trim();
     const expected = Array.isArray(expectedAnswers) ? expectedAnswers : [expectedAnswers];
     let matched = null;
     for (const e of expected) {
       if (!e) continue;
       const eNorm = String(e).toLowerCase().trim();
-      if (eNorm.length > 0 && emittedNorm.includes(eNorm)) {
+      if (eNorm.length === 0) continue;
+      if (eNorm.length === 1 ? emittedNorm === eNorm : emittedNorm.includes(eNorm)) {
         matched = e;
         break;
       }
