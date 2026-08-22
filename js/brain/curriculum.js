@@ -3112,31 +3112,34 @@ export class Curriculum {
   getCurriculumStatus() {
     const cluster = this.cluster;
     const perSubject = {};
+    // #110 CLASS (2026-08-22) — the row set is the UNION of the core 6, every
+    // subject the runtime has actually taught (_perSubjectStats keys — this is
+    // where PE/Music/Health land), and every subject with a persisted passed
+    // cell. Iterating the static core-6 SUBJECTS here meant a roster subject's
+    // cell could run for its whole length — teach events counted, phases
+    // banked — with NO row on the board: PE taught invisibly while the
+    // operator asked "why dont i see any events for PE?".
+    const _rowSubjects = new Set(SUBJECTS);
     if (this._perSubjectStats) {
-      for (const sub of SUBJECTS) {
-        const s = this._perSubjectStats[sub] || null;
-        perSubject[sub] = s ? { ...s } : {
-          subject: sub,
-          label: SUBJECT_LABELS[sub] || sub,
-          grade: null,
-          phasesCompleted: 0,
-          cellsPassed: 0,
-          teachEvents: 0,
-          lastCellAt: null,
-        };
+      for (const k of Object.keys(this._perSubjectStats)) _rowSubjects.add(k);
+    }
+    if (cluster && Array.isArray(cluster.passedCells)) {
+      for (const ck of cluster.passedCells) {
+        const sub = String(ck).split('/')[0];
+        if (sub) _rowSubjects.add(sub);
       }
-    } else {
-      for (const sub of SUBJECTS) {
-        perSubject[sub] = {
-          subject: sub,
-          label: SUBJECT_LABELS[sub] || sub,
-          grade: null,
-          phasesCompleted: 0,
-          cellsPassed: 0,
-          teachEvents: 0,
-          lastCellAt: null,
-        };
-      }
+    }
+    for (const sub of _rowSubjects) {
+      const s = (this._perSubjectStats && this._perSubjectStats[sub]) || null;
+      perSubject[sub] = s ? { ...s } : {
+        subject: sub,
+        label: SUBJECT_LABELS[sub] || sub,
+        grade: null,
+        phasesCompleted: 0,
+        cellsPassed: 0,
+        teachEvents: 0,
+        lastCellAt: null,
+      };
     }
     // Overlay passedCells counts so the per-subject card shows cumulative
     // cell-pass totals even after a Savestart resume (passedCells
