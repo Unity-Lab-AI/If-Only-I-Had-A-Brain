@@ -108550,7 +108550,8 @@ var Curriculum = class _Curriculum {
     for (const e of expected) {
       if (!e) continue;
       const eNorm = String(e).toLowerCase().trim();
-      if (eNorm.length > 0 && emittedNorm.includes(eNorm)) {
+      if (eNorm.length === 0) continue;
+      if (eNorm.length === 1 ? emittedNorm === eNorm : emittedNorm.includes(eNorm)) {
         matched = e;
         break;
       }
