@@ -908,6 +908,13 @@ export const CLUSTER_EMIT_MIXIN = {
       }
       return '';
     }
+    // VOICEWIRE (2026-08-22) — count the accepted word-level emission. The
+    // voice verdict derives from _oracleHits + _matrixHits, but those only
+    // incremented on the ORACLE lookup path — emitWordDirect (the production
+    // path, pure trained-matrix argmax) never counted, so the panel claimed
+    // "nothing has attempted an emission since boot" right after a full
+    // 8-question gate battery spoke through this very function.
+    this._matrixHits = (this._matrixHits || 0) + 1;
     // Update EMA + sample count on every accepted CONTENT emission.
     // SPEAK.11 — function-word emissions are EXCLUDED from the adaptive
     // EMA: their naturally lower magnitude would drag the content-word
