@@ -10548,6 +10548,57 @@ try {
   console.warn(`[LoopWatchdog] could not start the watchdog thread (${e && e.message}) — a hard freeze will leave only the LOOPNAME.7 breadcrumb.`);
 }
 
+// ── RHYTHM3S (2026-08-22) — THE SELF CPU PROFILE. A ~3s-block-every-4s loop
+// rhythm shadowed every era of the gate war under STALE stage tags — measured
+// (life-gate production at 4.1min/question vs ~60s of real work) but never
+// NAMED, because every breadcrumb instrument only reports what code chose to
+// stamp. This one asks the VM itself: at +150s uptime (boot settled, the walk
+// in its steady rhythm), the inspector's sampling profiler runs on the main
+// thread for 45s and the TOP SELF-TIME functions print to the ring — the
+// thief gets named by file:line, not inferred from block cadence. One-shot
+// per boot; ~1ms sampling overhead for 45s; DREAM_CPU_PROFILE=0 disables.
+if (process.env.DREAM_CPU_PROFILE !== '0') {
+  setTimeout(() => {
+    try {
+      const inspector = require('inspector');
+      const session = new inspector.Session();
+      session.connect();
+      session.post('Profiler.enable', () => {
+        session.post('Profiler.start', () => {
+          console.log('[CPUProfile] sampling the main thread for 45s — top self-time functions print here when done (RHYTHM3S; DREAM_CPU_PROFILE=0 disables).');
+          setTimeout(() => {
+            session.post('Profiler.stop', (err, res) => {
+              try {
+                const profile = res && res.profile;
+                if (err || !profile) { console.warn('[CPUProfile] failed:', (err && err.message) || 'no profile'); session.disconnect(); return; }
+                const nodes = new Map((profile.nodes || []).map(n => [n.id, n]));
+                const selfUs = new Map();
+                const dt = profile.timeDeltas || [];
+                const samples = profile.samples || [];
+                for (let i = 0; i < samples.length; i++) {
+                  const n = nodes.get(samples[i]);
+                  if (!n || !n.callFrame) continue;
+                  const f = n.callFrame;
+                  const file = String(f.url || '').split(/[\\/]/).pop() || '(native)';
+                  const key = `${f.functionName || '(anon)'} @ ${file}:${(f.lineNumber | 0) + 1}`;
+                  selfUs.set(key, (selfUs.get(key) || 0) + (dt[i] || 0));
+                }
+                const total = [...selfUs.values()].reduce((a, b) => a + b, 0) || 1;
+                const top = [...selfUs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
+                console.log(`[CPUProfile] TOP SELF-TIME over 45s of main-thread samples (${(total / 1e6).toFixed(1)}s sampled):`);
+                for (const [k, us] of top) {
+                  console.log(`[CPUProfile]   ${(us / 1000).toFixed(0).padStart(6)}ms (${(us / total * 100).toFixed(1).padStart(4)}%) ${k}`);
+                }
+              } catch (e2) { console.warn('[CPUProfile] summarize failed:', e2 && e2.message); }
+              try { session.disconnect(); } catch { /* done */ }
+            });
+          }, 45_000);
+        });
+      });
+    } catch (e) { console.warn('[CPUProfile] unavailable:', e && e.message); }
+  }, 150_000);
+}
+
 // ── WDCLEAN.1 (2026-08-20) — THE CLEAN-EXIT STAMP. Found auditing the watchdog
 // the day it shipped: the SIGTERM handler and the restart paths save weights
 // BEFORE process.exit, and the 5.4GB save pins the loop for ~112s — so the

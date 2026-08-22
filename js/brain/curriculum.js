@@ -18588,6 +18588,7 @@ export class Curriculum {
     } catch { /* whole memory-prime block non-fatal — never block PROD probe */ }
 
     // STEP 2 — inject question through full sensory pipeline
+    this._tstage('prod:inject');   // RHYTHM3S — per-question stage split
     const q = (question || '').toLowerCase();
     // BATTREAD.1 (2026-08-21) — branch on CAPABILITY, not existence. `readText`
     // always exists, so the old `typeof` test always took the first branch —
@@ -18612,6 +18613,7 @@ export class Curriculum {
     } else {
       // The awaited form — letter injection + GPU-stepped ticks. This is the
       // path the refusal message has been pointing at all along.
+      this._tstage('prod:read-ticks');   // RHYTHM3S — 2 donor ticks per char
       for (const ch of q) {
         if (/[a-z0-9]/.test(ch)) cluster.injectLetter(ch, 1.0);
         for (let t = 0; t < ticksPerChar; t++) await cluster.stepAwait(0.001);
@@ -18631,6 +18633,7 @@ export class Curriculum {
     // FAIL_MODE=spikes_empty_pre_emit on every sample because the per-
     // tick instantaneous read sees the refractory tail, not the spike
     // history that drove the trained matrix.
+    this._tstage('prod:settle');   // RHYTHM3S — settle ticks + the 12M OR-copy per tick
     let cumulativeSpikes = null;
     if (cluster.lastSpikes && cluster.lastSpikes.length === cluster.size) {
       cumulativeSpikes = new Uint8Array(cluster.size);
@@ -18664,6 +18667,7 @@ export class Curriculum {
       }
     }
 
+    this._tstage('prod:emit');   // RHYTHM3S — the answer emission itself
     // STEP 4 — emit response. iter21-A makes word-level emission the
     // PRIMARY path. Operator 2026-05-05 "no fall back bullshit it works
     // period no fallbacks". Order:
@@ -18835,6 +18839,22 @@ export class Curriculum {
           failModeTag = ` FAIL_MODE=${fm}`;
         }
         this._hb(`[Curriculum][PROD] sample ${sampleIdx}/${samples.length} DONE ${tag} emitted="${emittedStr.slice(0, 30)}" expected="${String(result.expected ?? '').slice(0, 20)}"${failModeTag}`);
+      }
+      // RHYTHM3S — universal gate progress + ETA, ring-visible, at the ONE
+      // chokepoint every grade's production battery runs through (Gee: "make
+      // sure you fix all of the ciriculum gates, not just one" — this line is
+      // every gate's "% done" answer, no per-gate timers needed). Rate-limited
+      // ~45s so the ring keeps breathing.
+      {
+        const _pp = this._prodProgress || (this._prodProgress = { t0: Date.now(), logAt: 0 });
+        if (sampleIdx === 1) { _pp.t0 = Date.now(); _pp.logAt = 0; }
+        const _now = Date.now();
+        if (_now - _pp.logAt > 45_000 && sampleIdx < samples.length) {
+          const _rate = sampleIdx / Math.max(1, (_now - _pp.t0) / 60000);
+          const _etaMin = _rate > 0 ? Math.round((samples.length - sampleIdx) / _rate) : -1;
+          console.log(`[PROD] ${sampleIdx}/${samples.length} answered (${Math.round(sampleIdx / samples.length * 100)}%) · ${_rate.toFixed(1)}/min · ~${_etaMin}min left · pass ${pass}/${sampleIdx}`);
+          _pp.logAt = _now;
+        }
       }
       if (Date.now() - _lastYield > 250) {
         await new Promise(resolve => setImmediate(resolve));
