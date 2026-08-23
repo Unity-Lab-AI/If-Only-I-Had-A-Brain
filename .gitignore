@@ -97,6 +97,9 @@ server/deployed-build.json
 server/brain-weights*.json
 server/brain-weights*.bin
 server/conversations.json
+# Her imagined-field ring — runtime state, versioned like the visual store and
+# wiped on a fresh walk. Rode into a commit from a local boot on 2026-08-23.
+server/mindspace-memory-v*.json
 server/episodic-memory.db
 server/episodic-memory.db-wal
 server/episodic-memory.db-shm
