@@ -48,6 +48,27 @@ REM code-hash change since last run. DREAM_FORCE_CLEAR is explicitly
 REM rejected in this script -- this entry point is for resume only.
 set DREAM_KEEP_STATE=1
 set DREAM_FORCE_CLEAR=
+
+REM ── DONORDEFAULT (2026-08-23) — SAVESTART GETS THE SAME NATIVE-DONOR
+REM DEFAULT AS start.bat. The first pass of this fix only touched start.bat
+REM and start.sh, so resuming through Savestart still auto-launched the
+REM isolated Chrome compute.html donor and re-spawned it when closed —
+REM operator hit it immediately: "i savestart.bat ran it and the compute html
+REM doner opened auto like, i thought we fixed that". Two entry points, one
+REM behaviour: fix the launcher family, not the launcher you happened to run.
+REM /browser restores the browser donor; an explicit DREAM_NO_AUTO_GPU wins.
+if /i "%1"=="/browser" set DREAM_WANT_BROWSER_GPU=1
+if /i "%2"=="/browser" set DREAM_WANT_BROWSER_GPU=1
+if not defined DREAM_NO_AUTO_GPU (
+    if defined DREAM_WANT_BROWSER_GPU (
+        echo   [gpu] /browser -- auto-launching the isolated Chrome compute.html donor.
+    ) else (
+        set DREAM_NO_AUTO_GPU=1
+        echo   [gpu] native-donor mode: no browser auto-launch, no respawn loop.
+        echo         Attach compute with:  donor-app\target\release\unity-donor.exe --local
+        echo         Want the old browser donor instead?  Savestart.bat /browser
+    )
+)
 if /i "%1"=="/fresh" (
     echo   [!] /fresh rejected -- use start.bat /fresh for a wipe.
     echo       Savestart.bat is save-resume only.
