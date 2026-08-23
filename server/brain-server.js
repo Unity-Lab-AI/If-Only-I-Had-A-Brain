@@ -6655,9 +6655,36 @@ class ServerBrain {
       fs.writeSync(fd, hdr);
       for (const s of sections) {
         this._writeBinarySection(fd, s);
-        fs.writeSync(fd, Buffer.from(s.rowPtr.buffer, s.rowPtr.byteOffset, (s.rows + 1) * 4));
-        fs.writeSync(fd, Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
-        fs.writeSync(fd, Buffer.from(s.values.buffer, s.values.byteOffset, s.nnz * 8));
+        // ── BIGSAVE (2026-08-23) — A SINGLE WRITE CANNOT EXCEED 2GiB−1. ─────
+        //
+        // Caught on Gee's local brain the moment it grew big enough:
+        //   *"Binary weights save failed (previous checkpoint left intact):
+        //    The value of "length" is out of range. It must be >= 0 &&
+        //    <= 2147483647. Received 2880000000"*
+        //
+        // 2,880,000,000 = the intra matrix's 360,000,000 non-zeros × 8 bytes
+        // of Float64 values. The limit is Node's **I/O** cap on one write
+        // (kIoMaxLength, 2,147,483,647) — NOT `Buffer.MAX_LENGTH`, which is
+        // 9,007,199,254,740,991 on Node 22 and was my first wrong guess here;
+        // the harness disproved it, and the error names the `length`
+        // parameter of the write. Either way the save ABORTED and the brain
+        // fell back to its previous checkpoint, silently losing everything
+        // learned since. Every array written here is a view that grows with
+        // the brain, so this was a scale bomb waiting on a big-enough cortex.
+        //
+        // Chunked writes are byte-identical on disk — the file is a flat
+        // concatenation and `writeSync` appends at the current position — so
+        // the format is unchanged and existing checkpoints still load.
+        const _writeView = (arr, byteLen) => {
+          const CHUNK = 1 << 30;   // 1GiB, comfortably under the 2GiB-1 I/O cap
+          for (let off = 0; off < byteLen; off += CHUNK) {
+            const len = Math.min(CHUNK, byteLen - off);
+            fs.writeSync(fd, Buffer.from(arr.buffer, arr.byteOffset + off, len));
+          }
+        };
+        _writeView(s.rowPtr, (s.rows + 1) * 4);
+        _writeView(s.colIdx, s.nnz * 4);
+        _writeView(s.values, s.nnz * 8);
       }
       // fsync BEFORE the swap so the bytes are on the platter, not just in the
       // page cache — a power loss between rename and writeback would otherwise
@@ -6790,9 +6817,22 @@ class ServerBrain {
       for (const s of sections) {
         _stamp(`write:${s.name}`);
         this._writeBinarySection(fd, s);
-        await writeSliced(Buffer.from(s.rowPtr.buffer, s.rowPtr.byteOffset, (s.rows + 1) * 4));
-        await writeSliced(Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
-        await writeSliced(Buffer.from(s.values.buffer, s.values.byteOffset, s.nnz * 8));
+        // BIGSAVE (2026-08-23) — the same 2GiB−1 write cap reaches this path
+        // too. `writeSliced` paces for backpressure, but whether it slices per
+        // write or hands the whole view down, a 2,880,000,000-byte payload
+        // (360M non-zeros × 8) cannot cross a single write call. Chunk the
+        // views first, then let writeSliced pace each one exactly as before.
+        const _viewChunks = (arr, byteLen) => {
+          const CHUNK = 1 << 30;   // 1GiB, under the 2,147,483,647 I/O cap
+          const out = [];
+          for (let off = 0; off < byteLen; off += CHUNK) {
+            out.push(Buffer.from(arr.buffer, arr.byteOffset + off, Math.min(CHUNK, byteLen - off)));
+          }
+          return out;
+        };
+        for (const b of _viewChunks(s.rowPtr, (s.rows + 1) * 4)) await writeSliced(b);
+        for (const b of _viewChunks(s.colIdx, s.nnz * 4)) await writeSliced(b);
+        for (const b of _viewChunks(s.values, s.nnz * 8)) await writeSliced(b);
       }
       // Flush ALL dirty pages on the threadpool so the rename below has nothing
       // to write back (kills the ext4 flush-on-rename main-thread stall) AND the
