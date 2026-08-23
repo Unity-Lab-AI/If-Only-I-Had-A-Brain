@@ -9390,6 +9390,14 @@ wss.on('connection', (ws, req) => {
             const expectedLen = currentsOffset + currentsLen * 4;
             if (data.length < expectedLen) {
               pending.resolve({ error: 'truncated propagate response' });
+            } else if (pending.reuseKey) {
+              // COMP.1b — opted-in caller: copy into that matrix's persistent
+              // buffer instead of allocating a fresh 48MB array per round.
+              const e = brain._currentsReuseBuf(pending.reuseKey, currentsLen);
+              const src = new Float32Array(data.buffer, data.byteOffset + currentsOffset, currentsLen);
+              e.buf.set(src);
+              e.prevIdx = null; e.prevN = 0;   // dense write — nothing stale survives
+              pending.resolve({ currents: e.buf });
             } else {
               // Copy to a fresh Float32Array so we own the memory
               const currents = new Float32Array(data.buffer.slice(
@@ -9407,6 +9415,26 @@ wss.on('connection', (ws, req) => {
             const expectedLen = 20 + nnz * 8;
             if (data.length < expectedLen || postLen > 100_000_000) {
               pending.resolve({ error: 'truncated sparse propagate response' });
+            } else if (pending.reuseKey) {
+              // COMP.1b — the sparse form makes reuse genuinely cheap: zero only
+              // the indices the PREVIOUS round set (O(prev nnz)), then scatter
+              // this round's pairs. No 48MB allocation and no 12M-element clear.
+              const e = brain._currentsReuseBuf(pending.reuseKey, postLen);
+              const buf = e.buf;
+              if (e.prevIdx) {
+                for (let k = 0; k < e.prevN; k++) buf[e.prevIdx[k]] = 0;
+              } else {
+                buf.fill(0);   // previous round was dense (or first use) — full clear once
+              }
+              if (!e.prevIdx || e.prevIdx.length < nnz) e.prevIdx = new Uint32Array(Math.max(nnz, 1024));
+              for (let k = 0; k < nnz; k++) {
+                const o = 20 + k * 8;
+                const ci = data.readUInt32LE(o);
+                if (ci < postLen) { buf[ci] = data.readFloatLE(o + 4); e.prevIdx[k] = ci; }
+                else { e.prevIdx[k] = 0; }
+              }
+              e.prevN = nnz;
+              pending.resolve({ currents: buf });
             } else {
               const currents = new Float32Array(postLen);
               for (let k = 0; k < nnz; k++) {

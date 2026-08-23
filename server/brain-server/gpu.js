@@ -2080,7 +2080,33 @@ const SERVER_GPU_MIXIN = {
     }
   },
 
-  async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000, targetWs = null) {
+  /**
+   * COMP.1b (2026-08-23) — CURRENTS BUFFER REUSE, opt-in per request.
+   *
+   * The ack handler builds a fresh `Float32Array(postLen)` for every propagate
+   * response — 48MB per round at the 12M intra matrix. SPARSEACK removed those
+   * bytes from the WIRE; this removes them from the ALLOCATOR (the box runs
+   * ~7GB of arrayBuffers already, and that churn is pure GC pressure).
+   *
+   * Why opt-in rather than automatic: a consumer that holds the returned array
+   * ACROSS AN AWAIT would see it mutate under them when the next ack for the
+   * same matrix lands. Only the per-tick cache-fill path is safe — it hands the
+   * array straight to the keep-latest cache, where "the newest round wins" is
+   * already the declared semantics (PROBELANE). Probes and one-shot readers
+   * keep getting their own private array, which is why this is a caller
+   * decision and not a global switch.
+   */
+  _currentsReuseBuf(key, len) {
+    if (!this._currentsReuse) this._currentsReuse = new Map();
+    let e = this._currentsReuse.get(key);
+    if (!e || e.buf.length !== len) {
+      e = { buf: new Float32Array(len), prevIdx: null, prevN: 0 };
+      this._currentsReuse.set(key, e);
+    }
+    return e;
+  },
+
+  async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000, targetWs = null, reuseKey = null) {
     // DF.7 — dispatch to a chosen donor replica when given, else the primary.
     // The untargeted path (bound-Hebbian batch flush, standalone propagate to
     // primary) resolves `ws` to the primary = unchanged behavior. Response
@@ -2282,7 +2308,9 @@ const SERVER_GPU_MIXIN = {
           resolve(null);
         }
       }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
+      // COMP.1b — `reuseKey` (when the caller opted in) tells the ack handler it
+      // may scatter into that matrix's persistent buffer instead of allocating.
+      this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws, reuseKey }); // TU.25.D — target-tagged for cancel-on-disconnect
     });
   },
 
@@ -2865,7 +2893,7 @@ const SERVER_GPU_MIXIN = {
    * Dispatch sparse propagate via binary frame: currents = matrix @ preSpikes.
    * Returns Float32Array (or null on timeout).
    */
-  async gpuSparsePropagate(name, preSpikes, targetWs = null, timeoutMs = 30_000) {
+  async gpuSparsePropagate(name, preSpikes, targetWs = null, timeoutMs = 30_000, reuseKey = null) {
     const pre = preSpikes instanceof Uint32Array ? preSpikes
       : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
       : new Uint32Array(preSpikes || []);
@@ -2889,7 +2917,7 @@ const SERVER_GPU_MIXIN = {
     lenBuf.writeUInt32LE(pre.length, 0);
     const preBuf = Buffer.from(pre.buffer, pre.byteOffset, pre.byteLength);
     const full = Buffer.concat([hdr, lenBuf, preBuf]);
-    const result = await this._sparseSendBinary(full, reqId, timeoutMs, targetWs);
+    const result = await this._sparseSendBinary(full, reqId, timeoutMs, targetWs, reuseKey);
     if (!result || !result.currents) return null;
     return result.currents; // Float32Array assembled by ack handler
   },
@@ -3498,12 +3526,17 @@ const SERVER_GPU_MIXIN = {
     // never zeros wearing a success shape.
     const _ws = (target && target.readyState === 1) ? target : this._gpuClient;
     const _c = (this.clients && this.clients.get && _ws) ? this.clients.get(_ws) : null;
+    // COMP.1b — the BOUND propagate IS the per-tick cache-fill path: its result
+    // goes straight into `_cachedIntraCurrents` / `_cachedCrossCurrents`, whose
+    // declared semantics are already keep-latest, so reusing one persistent
+    // buffer per matrix is safe here and nowhere else. Key by matrix name so
+    // each projection keeps its own.
     if (_c && _c.donorAppVersion) {
       const pre = this._boundPreIndicesFor(name);
       if (!pre || !pre.length) return null;
-      return this.gpuSparsePropagate(name, pre, target);
+      return this.gpuSparsePropagate(name, pre, target, 30_000, `bound:${name}`);
     }
-    return this.gpuSparsePropagate(name, new Uint32Array(0), target);
+    return this.gpuSparsePropagate(name, new Uint32Array(0), target, 30_000, `bound:${name}`);
   },
 
   // PROPBOUND — the pre-index window a bound matrix would read donor-side,
