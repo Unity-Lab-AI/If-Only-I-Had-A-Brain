@@ -3434,6 +3434,46 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * GPUVERB.3 (donor v0.3.28) — PREDICTIVE-ERROR CORRECTION ON THE CARD.
+   *
+   * The last signed-magnitude CPU training lane. Its post term is a per-row
+   * FLOAT error in [-1,1], which no existing verb could carry (spike buffers
+   * are 0/1 u32) and which could not be shipped as a mask either — the error
+   * vector is DENSE, ~48MB per pair at the 12M cortex, worse than the CPU pass
+   * it would replace. So the donor computes the whole thing from its own
+   * resident bound spikes: propagate → max-normalise → clamp(target − p, ±1) →
+   * `w += lr·e·pre`, all in one dispatch chain. This frame carries no vectors:
+   * ~60 bytes for a full-matrix correction.
+   *
+   * Frame: 'SPRS' | 14 | reqId | name | pad4 | lr f32 | wMin f32 | wMax f32.
+   * Layout contract: donor-app/src/frames.rs case 14.
+   *
+   * Returns true only when the frame was actually SENT, so the caller runs its
+   * CPU pass in full whenever the GPU did not carry the mass — the same posture
+   * every other bound lane uses. Nothing is ever silently dropped.
+   */
+  gpuSparsePredictiveError(name, lr, wMin, wMax) {
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return false;
+    if (!this._donorBucketReadout()) return false;   // same >= 0.3.28 binary
+    try {
+      const hdr = this._encodeSparseHeader(14, 0, name);
+      const meta = Buffer.alloc(12);
+      meta.writeFloatLE(lr, 0);
+      meta.writeFloatLE(typeof wMin === 'number' ? wMin : -2.0, 4);
+      meta.writeFloatLE(typeof wMax === 'number' ? wMax : 2.0, 8);
+      const frame = Buffer.concat([hdr, meta]);
+      if (!this._donorPatternSendGated(frame)) return false;
+      this._countTeachOut(14, frame.length);
+      this._predErrSent = (this._predErrSent || 0) + 1;
+      if (!this._predErrLogOnce) {
+        this._predErrLogOnce = true;
+        console.log('[Brain] PREDICTIVE ERROR on the donor: ON (SPRS 14) — propagate + normalise + signed-error weight write all run on the card; the CPU keeps a sampled shadow.');
+      }
+      return true;
+    } catch { return false; }
+  },
+
+  /**
    * GATEGPU.2 (v0.3.28) — does the PRIMARY donor speak the REDUCED readout
    * (SPRS type 15: propagate + on-card bucket-mean reduction)?
    */

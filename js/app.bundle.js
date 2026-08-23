@@ -103221,6 +103221,21 @@ var Curriculum = class _Curriculum {
       target.fill(0);
       error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
+      let _peCarried = false;
+      if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.predictiveError === "function") {
+        try {
+          _peCarried = cluster._gpuProxy.predictiveError(
+            `${cluster.name}_intraSynapses`,
+            lr * 0.3,
+            cluster.synapses && typeof cluster.synapses.wMin === "number" && Number.isFinite(cluster.synapses.wMin) ? cluster.synapses.wMin : -2,
+            cluster.synapses && typeof cluster.synapses.wMax === "number" && Number.isFinite(cluster.synapses.wMax) ? cluster.synapses.wMax : 2
+          ) === true;
+        } catch {
+          _peCarried = false;
+        }
+      }
+      this._predErrShadowCounter = (this._predErrShadowCounter | 0) + 1;
+      if (_peCarried && this._predErrShadowCounter % 5 !== 0) return;
       const predicted = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 }) : cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
       let maxP = 1e-6;
