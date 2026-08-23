@@ -11,7 +11,7 @@ use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 use crate::frames::Binding;
-use crate::gpu::{BUCKET_MEAN_SHADER, LIF_SHADER, PLASTICITY_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
+use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -48,6 +48,30 @@ struct PropagateParams {
     nnz: u32,
     src_offset: u32,
     dst_offset: u32,
+}
+
+/// GPUVERB.3 (v0.3.28) — max-reduction params.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct MaxParams {
+    n: u32,
+    grid_x: u32,
+}
+
+/// GPUVERB.3 (v0.3.28) — predictive-error correction params.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct PredErrParams {
+    rows: u32,
+    nnz: u32,
+    lr: f32,
+    max_p: f32,
+    w_min: f32,
+    w_max: f32,
+    src_offset: u32,
+    dst_offset: u32,
+    grid_x: u32,
+    _pad: [u32; 3],
 }
 
 /// GATEGPU.2 (v0.3.28) — bucket-mean reduction params.
@@ -126,6 +150,9 @@ pub struct ComputeEngine {
     scatter_pipeline: wgpu::ComputePipeline,
     /// GATEGPU.2 (v0.3.28) — reduces post currents to per-word-bucket means on the card.
     bucket_mean_pipeline: wgpu::ComputePipeline,
+    /// GPUVERB.3 (v0.3.28) — max over post currents + the predictive-error write.
+    current_max_pipeline: wgpu::ComputePipeline,
+    predictive_error_pipeline: wgpu::ComputePipeline,
     clusters: HashMap<String, Cluster>,
     sparse: HashMap<String, SparseMatrix>,
 }
@@ -177,6 +204,8 @@ impl ComputeEngine {
         let plasticity_pipeline = build_pipeline(&device, "plasticity", PLASTICITY_SHADER);
         let scatter_pipeline = build_pipeline(&device, "scatter_ones", SCATTER_ONES_SHADER);
         let bucket_mean_pipeline = build_pipeline(&device, "bucket_mean", BUCKET_MEAN_SHADER);
+        let current_max_pipeline = build_pipeline(&device, "current_max", CURRENT_MAX_SHADER);
+        let predictive_error_pipeline = build_pipeline(&device, "predictive_error", PREDICTIVE_ERROR_SHADER);
 
         Ok(Self {
             device,
@@ -188,6 +217,8 @@ impl ComputeEngine {
             plasticity_pipeline,
             scatter_pipeline,
             bucket_mean_pipeline,
+            current_max_pipeline,
+            predictive_error_pipeline,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
         })
@@ -519,6 +550,141 @@ impl ComputeEngine {
         }
         self.queue.submit(std::iter::once(enc.finish()));
         // No blocking readback — same fire-and-forget contract as standalone hebbian.
+        Ok(true)
+    }
+
+    /// GPUVERB.3 (v0.3.28) — PREDICTIVE-ERROR CORRECTION, ENTIRELY ON THE CARD.
+    ///
+    /// The last signed-magnitude CPU training lane. Its post term is a per-row
+    /// FLOAT error in [-1,1] — no existing verb could carry it (every spike
+    /// buffer is 0/1 u32) and it could not be shipped as a mask either, because
+    /// the error vector is DENSE: ~48MB per pair at the 12M cortex, worse than
+    /// computing it on the CPU. So the whole three-step computation moves here
+    /// and the wire carries a ~60-byte command:
+    ///   1. propagate the resident bound spikes through the matrix,
+    ///   2. reduce max(currents) for the normaliser (floored at 1e-6, exactly
+    ///      like the server's `maxP` seed),
+    ///   3. per row, form `clamp(target - current/maxP, -1, 1)` and apply
+    ///      `w += lr·e·pre` clamped to [wMin, wMax].
+    /// All three chain in ONE encoder, so there is no host round trip between
+    /// them and nothing partially-applied can be observed.
+    ///
+    /// Fire-and-forget like every other bound plasticity verb. Returns false —
+    /// never an error — on any not-ready condition, so the caller runs its CPU
+    /// pass in full and nothing is ever silently dropped.
+    pub fn predictive_error(&self, name: &str, lr: f32, w_min: f32, w_max: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 { return Ok(false); }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        // Same window guards as hebbian_bound: the kernels read
+        // preSpikes[srcOffset + colIdx[k]] and postSpikes[dstOffset + i].
+        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
+
+        // ── 1. propagate the resident spikes into the matrix's own current buffer
+        let zeros = vec![0f32; m.rows.max(1) as usize];
+        self.queue.write_buffer(&m.post_currents, 0, bytemuck::cast_slice(&zeros));
+        let pparams = PropagateParams { rows: m.rows, cols: m.cols, nnz: m.nnz, src_offset: b.src_start, dst_offset: 0 };
+        let pub_ = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("pe-prop-params"), contents: bytemuck::bytes_of(&pparams), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let pbg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pe-prop-bg"),
+            layout: &self.propagate_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: pub_.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_currents.as_entire_binding() },
+            ],
+        });
+
+        // ── 2. max over the currents (u32 atomic over the bit pattern)
+        let max_buf = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("pe-max"),
+            contents: bytemuck::cast_slice(&[0u32]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+        });
+        let max_staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("pe-max-staging"), size: 4,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let (mdx, mdy, mgrid) = dispatch_dims(m.rows);
+        let mparams = MaxParams { n: m.rows, grid_x: mgrid };
+        let mub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("pe-max-params"), contents: bytemuck::bytes_of(&mparams), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let mbg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pe-max-bg"),
+            layout: &self.current_max_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: mub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.post_currents.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: max_buf.as_entire_binding() },
+            ],
+        });
+
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("predictive-error-a") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("pe-propagate"), timestamp_writes: None });
+            cp.set_pipeline(&self.propagate_pipeline);
+            cp.set_bind_group(0, &pbg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("pe-max"), timestamp_writes: None });
+            cp.set_pipeline(&self.current_max_pipeline);
+            cp.set_bind_group(0, &mbg, &[]);
+            cp.dispatch_workgroups(mdx, mdy, 1);
+        }
+        enc.copy_buffer_to_buffer(&max_buf, 0, &max_staging, 0, 4);
+        self.queue.submit(std::iter::once(enc.finish()));
+
+        // maxP must be a UNIFORM value for the error pass, so it is read back —
+        // 4 bytes, the only host round trip in the verb.
+        let (tx, rx) = std::sync::mpsc::channel();
+        max_staging.slice(..).map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        rx.recv().map_err(|_| "pe max channel dropped".to_string())?.map_err(|e| format!("pe max map failed: {e:?}"))?;
+        let bits = {
+            let d = max_staging.slice(..).get_mapped_range();
+            u32::from_le_bytes([d[0], d[1], d[2], d[3]])
+        };
+        max_staging.unmap();
+        // The server seeds `maxP = 1e-6` and only ever raises it, so the floor is
+        // part of the rule, not a guard against division by zero.
+        let max_p = f32::from_bits(bits).max(1e-6);
+
+        // ── 3. error + weight update
+        let (edx, edy, egrid) = dispatch_dims(m.rows);
+        let eparams = PredErrParams {
+            rows: m.rows, nnz: m.nnz, lr, max_p, w_min, w_max,
+            src_offset: b.src_start, dst_offset: b.dst_start, grid_x: egrid, _pad: [0; 3],
+        };
+        let eub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("pe-params"), contents: bytemuck::bytes_of(&eparams), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let ebg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pe-bg"),
+            layout: &self.predictive_error_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: eub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: dst.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 6, resource: m.post_currents.as_entire_binding() },
+            ],
+        });
+        let mut enc2 = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("predictive-error-b") });
+        {
+            let mut cp = enc2.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("pe-write"), timestamp_writes: None });
+            cp.set_pipeline(&self.predictive_error_pipeline);
+            cp.set_bind_group(0, &ebg, &[]);
+            cp.dispatch_workgroups(edx, edy, 1);
+        }
+        self.queue.submit(std::iter::once(enc2.finish()));
         Ok(true)
     }
 
@@ -969,6 +1135,16 @@ impl Backend {
         }
     }
     /// v0.3.15 — resident bound-hebbian (see engine impls).
+    /// GPUVERB.3 (v0.3.28) — predictive-error correction. CUDA has no kernel for
+    /// it yet, so it honestly reports "not carried" and the brain runs its CPU
+    /// pass in full rather than silently skipping the correction.
+    fn predictive_error(&mut self, name: &str, lr: f32, w_min: f32, w_max: f32) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.predictive_error(name, lr, w_min, w_max),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(_) => Ok(false),
+        }
+    }
     fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
         match self {
             Backend::Wgpu(e) => e.hebbian_bound(name, lr),
@@ -1334,6 +1510,12 @@ impl MultiEngine {
 
     /// v0.3.15 — resident bound-hebbian for a type-5 batch op. Routes to the engine
     /// holding the matrix; Ok(false) = skipped (not resident / unbound), never an error.
+    /// GPUVERB.3 (v0.3.28) — predictive-error correction on the engine holding the matrix.
+    pub fn predictive_error(&mut self, name: &str, lr: f32, w_min: f32, w_max: f32) -> Result<bool, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
+        self.engines[g].predictive_error(name, lr, w_min, w_max)
+    }
+
     pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
         self.engines[g].hebbian_bound(name, lr)
@@ -1514,6 +1696,87 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
     // Plasticity smoke: one Oja step shouldn't error or NaN the weights.
     eng.hebbian("probe", &[0, 2], &[0], 0.1)?;
 
-    println!("self-test: OK — Rulkov LIF + spike-count + sparse propagate + plasticity ran on the GPU.");
+    // ── GPUVERB.3 PARITY (v0.3.28) — the predictive-error verb writes WEIGHTS, so
+    // "it ran" is not verification. Compute the server's rule independently on the
+    // host and require the GPU to have produced the same matrix.
+    //
+    // Setup: a 4-neuron bound cluster whose spikes are the pre AND post state
+    // (the intra-matrix shape this verb exists for), and a known 4x4 CSR.
+    println!("self-test: predictive-error parity (GPUVERB.3)...");
+    {
+        let mut regions = HashMap::new();
+        regions.insert("all".to_string(), (0u32, 4u32));
+        eng.init_cluster("pecluster", 4, &regions, 0.0, 0.0);
+        eng.write_spike_slice("pecluster", "all", &[0, 2])?;   // target = [1,0,1,0]
+
+        let row_ptr = [0u32, 2, 3, 4, 5];
+        let values = [0.5f32, -0.25, 0.75, 1.5, -1.0];
+        let col_idx = [0u32, 2, 1, 3, 0];
+        let binding = crate::frames::Binding {
+            src_cluster: "pecluster".to_string(), dst_cluster: "pecluster".to_string(),
+            src_start: 0, src_end: 4, dst_start: 0, dst_end: 4,
+        };
+        eng.upload_sparse("pemat", 4, 4, &row_ptr, &values, &col_idx, Some(binding));
+
+        let lr = 0.1f32;
+        let (w_min, w_max) = (-2.0f32, 2.0f32);
+
+        // ── the server's rule, computed here on the host ──
+        let target = [1.0f32, 0.0, 1.0, 0.0];
+        let mut predicted = [0.0f32; 4];
+        for i in 0..4usize {
+            let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+            let mut sum = 0.0f32;
+            for k in s..e {
+                if target[col_idx[k] as usize] != 0.0 { sum += values[k]; }
+            }
+            predicted[i] = sum;
+        }
+        let mut max_p = 1e-6f32;
+        for v in predicted.iter() { if *v > max_p { max_p = *v; } }
+        let mut want = values;
+        for i in 0..4usize {
+            let mut err = target[i] - predicted[i] / max_p;
+            if err > 1.0 { err = 1.0; }
+            if err < -1.0 { err = -1.0; }
+            if err == 0.0 { continue; }
+            let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+            for k in s..e {
+                if target[col_idx[k] as usize] != 0.0 {
+                    let mut w = want[k] + lr * err;
+                    if w > w_max { w = w_max; }
+                    if w < w_min { w = w_min; }
+                    want[k] = w;
+                }
+            }
+        }
+
+        let carried = eng.predictive_error("pemat", lr, w_min, w_max)?;
+        if !carried { return Err("predictive_error refused a properly bound matrix".to_string()); }
+
+        // Read the weights back through propagate: with every pre neuron firing,
+        // currents[i] is row i's full sum, so all five stored values are covered.
+        // A second view with a partial pre set disambiguates within-row offsets.
+        let check = |pre: &[u32], eng: &ComputeEngine| -> Result<(), String> {
+            let got = eng.propagate("pemat", pre)?;
+            let mut exp = [0.0f32; 4];
+            for i in 0..4usize {
+                let (s, e) = (row_ptr[i] as usize, row_ptr[i + 1] as usize);
+                let mut sum = 0.0f32;
+                for k in s..e { if pre.contains(&col_idx[k]) { sum += want[k]; } }
+                exp[i] = sum;
+            }
+            let bad = got.len() != 4 || got.iter().zip(exp.iter()).any(|(a, b)| (a - b).abs() > 1e-4);
+            if bad { return Err(format!("predictive-error parity MISMATCH for pre={pre:?}: gpu={got:?} host={exp:?}")); }
+            println!("  pre={pre:?} -> {got:?} (host rule: {exp:?})");
+            Ok(())
+        };
+        check(&[0, 1, 2, 3], &eng)?;
+        check(&[0], &eng)?;
+        check(&[1, 3], &eng)?;
+        println!("  predictive-error parity OK — the card reproduced the server's rule exactly.");
+    }
+
+    println!("self-test: OK — Rulkov LIF + spike-count + sparse propagate + plasticity + predictive-error parity ran on the GPU.");
     Ok(())
 }

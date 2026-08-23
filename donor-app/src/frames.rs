@@ -44,6 +44,8 @@ pub enum Frame {
     /// GATEGPU.2 (v0.3.28) — propagate whose currents are reduced to per-word-bucket
     /// means on the card, so the ack is kilobytes instead of megabytes.
     PropagateBuckets { req_id: u32, name: String, bucket_size: u32, bucket_count: u32, pre: Vec<u32> },
+    /// GPUVERB.3 (v0.3.28) — the whole predictive-error correction on the card.
+    PredictiveError { req_id: u32, name: String, lr: f32, w_min: f32, w_max: f32 },
     Hebbian { req_id: u32, name: String, pre: Vec<u32>, post: Vec<u32>, lr: f32 },
     BatchedHebbian { req_id: u32, ops: Vec<(String, f32)> },
     /// v0.3.13 binary teach patterns (types 7-9). These replace the ~153KB JSON
@@ -357,6 +359,15 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
         12 => {
             let orig_type = r.u8()?;
             Some(Frame::Repeat { req_id, orig_type, name })
+        }
+        // GPUVERB.3 (v0.3.28) — predictive-error correction: lr + weight clamps.
+        // The pre/post state is the donor's own resident bound spikes, so the
+        // frame carries no vectors at all — ~60 bytes for a full-matrix pass.
+        14 => {
+            let lr = r.f32()?;
+            let w_min = r.f32()?;
+            let w_max = r.f32()?;
+            Some(Frame::PredictiveError { req_id, name, lr, w_min, w_max })
         }
         // GATEGPU.2 (v0.3.28) — propagate + on-card bucket-mean reduction:
         // bucketSize + bucketCount + sparse pre indices. Answered with an
