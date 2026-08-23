@@ -545,7 +545,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut _ws_cfg = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default();
         _ws_cfg.max_message_size = Some(512 << 20);
         _ws_cfg.max_frame_size = Some(64 << 20);
-        match tokio_tungstenite::connect_async_with_config(&cfg.server, Some(_ws_cfg), false).await {
+        // LOOPBACK — last-line normalization: a GUI-persisted `settings.json`
+        // can hand a `localhost` URL straight to the connect call without
+        // passing through DonorConfig::from_cli, and the brain is IPv4-only.
+        let _dial = crate::config::normalize_ws_host(&cfg.server);
+        match tokio_tungstenite::connect_async_with_config(&_dial, Some(_ws_cfg), false).await {
             Ok((ws, _resp)) => break ws,
             Err(e) => {
                 attempt += 1;
