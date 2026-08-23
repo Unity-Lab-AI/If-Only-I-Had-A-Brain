@@ -10925,6 +10925,43 @@ const _lagTimer = setInterval(() => {
   _lagAnchor = now;
   const lagMs = actualMs - _LAG_SAMPLE_MS;
   brain._lastEventLoopLagMs = lagMs > 0 ? Math.round(lagMs) : 0;
+  // ── LOOPSTARVE (2026-08-23) — CUMULATIVE LATENESS, because the INSTANT ──
+  // ── value cannot see starvation.                                       ──
+  //
+  // Measured on the deployed box while every existing instrument read
+  // healthy: static pages answered in 0.26s while `/public-state.json` and
+  // `/minds-eye.json` took **25-28 SECONDS**, four times running, all of it
+  // time-to-first-byte — and that route only hands back a PRE-CACHED string,
+  // so the wait is purely "the loop never got around to me". The minds-eye
+  // page sat on "connecting" forever because its fetch gives up long before
+  // 28s. Meanwhile: `loopFreezes: null`, 0 teach-chunks over the 250ms warn
+  // floor, and the off-thread watchdog silent.
+  //
+  // All three were RIGHT and all three were blind, because they answer "was
+  // there one long stall?" and this is thousands of short ones. A loop that
+  // is 200ms late on every 100ms sample never trips a max-stall threshold and
+  // is still unavailable two-thirds of the time.
+  //
+  // So accumulate. `loopStarvedMsPerMin` is the number that cannot hide: the
+  // total milliseconds per minute the loop owed and did not deliver. ~0 is
+  // healthy; approaching 60,000 means requests wait a minute. `loopServicePct`
+  // is the same fact as a percentage of the wall clock actually serviced.
+  {
+    const _s = brain._loopStarve || (brain._loopStarve = { lateMs: 0, windowStart: Date.now(), lastLateMs: 0, lastPct: 100 });
+    if (lagMs > 0) _s.lateMs += lagMs;
+    const _elapsed = Date.now() - _s.windowStart;
+    if (_elapsed >= 60_000) {
+      _s.lastLateMs = Math.round(_s.lateMs);
+      _s.lastPct = Math.max(0, Math.min(100, Math.round((1 - (_s.lateMs / _elapsed)) * 100)));
+      // Only shout when it is genuinely bad — a starved loop is invisible to
+      // every other channel, so it has to announce itself somewhere.
+      if (_s.lastPct < 50) {
+        console.warn(`[EventLoop] ⛔ STARVED — the loop was late ${(_s.lastLateMs / 1000).toFixed(1)}s out of the last ${(_elapsed / 1000).toFixed(0)}s (${_s.lastPct}% serviced). No single stall need exceed the ${_LAG_WARN_MS}ms floor for this: it is thousands of short ones. HTTP/WS callers wait this long — the dashboard, minds-eye and chat will look "disconnected" while teaching is fine.`);
+      }
+      _s.lateMs = 0;
+      _s.windowStart = Date.now();
+    }
+  }
   // LOOPNAME.8 — the heartbeat the watchdog thread watches. Deliberately the
   // cheapest possible statement in this function; if the loop is alive enough to
   // reach this line, the watchdog stays quiet.
