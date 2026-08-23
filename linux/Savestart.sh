@@ -52,6 +52,23 @@ fi
 export DREAM_KEEP_STATE=1
 unset DREAM_FORCE_CLEAR
 
+# ── DONORDEFAULT (2026-08-23) — same native-donor default as start.sh. The
+# first pass of this fix only touched start.sh/start.bat, so a Savestart
+# resume still auto-launched the browser donor and respawned it on close.
+# Two entry points, one behaviour. /browser restores the old path; an
+# explicit DREAM_NO_AUTO_GPU in the environment always wins.
+if [ -z "$DREAM_NO_AUTO_GPU" ]; then
+    if [[ "$1" == "/browser" || "$1" == "--browser" || "$2" == "/browser" || "$2" == "--browser" ]]; then
+        echo "  [gpu] /browser -- auto-launching the browser compute.html donor."
+    else
+        export DREAM_NO_AUTO_GPU=1
+        echo "  [gpu] native-donor mode: no browser auto-launch, no respawn loop."
+        echo "        Attach compute with:  unity-donor --local"
+        echo "        Want the old browser donor instead?  Savestart.sh /browser"
+    fi
+    echo ""
+fi
+
 if [[ "$1" == "/fresh" || "$1" == "/clear" || "$1" == "--fresh" || "$1" == "--clear" ]]; then
     echo "  [!] $1 rejected -- use start.sh /fresh for a wipe."
     echo "      Savestart.sh is save-resume only."
