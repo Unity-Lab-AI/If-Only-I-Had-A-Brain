@@ -78756,7 +78756,12 @@ var K_MIXIN = {
           const totalElapsed = ((_nowHb - _t18_13_startMs) / 1e3).toFixed(1);
           const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1e3;
           const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
-          this._hb(`[Curriculum] \u23F1 _teachPhonemeBlending heartbeat \u2014 rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length}, elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
+          const _pbTotal = Math.max(1, wordList.length * reps);
+          const _pbDone = Math.min(_pbTotal, rep * wordList.length + _wordIdx);
+          this._phaseWorkTotal = _pbTotal;
+          this._phaseWorkName = "_teachPhonemeBlending";
+          this._phaseWorkOverride = { done: _pbDone, total: _pbTotal, frac: _pbDone / _pbTotal };
+          this._hb(`[Curriculum] \u23F1 _teachPhonemeBlending heartbeat \u2014 rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length} (${Math.round(_pbDone / _pbTotal * 100)}% of ${_pbTotal.toLocaleString()} word-passes), elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
           _t18_13_lastHbMs = _nowHb;
           _t18_13_opsSinceHb = 0;
           await _microtask();
@@ -96279,6 +96284,7 @@ var Curriculum = class _Curriculum {
           this._phaseWorkName = name;
           this._phaseWorkSeen = /* @__PURE__ */ new Set();
           this._phaseWorkTotal = this._teachNestedTotal && this._teachNestedTotal[name] || 0;
+          this._phaseWorkOverride = null;
           this._phaseWorkExpect = this._teachNestedSet && this._teachNestedSet[name] || null;
           cl._phaseDeadlineAt = PHASE_BUDGET_MS > 0 ? Date.now() + PHASE_BUDGET_MS : 0;
           cl._phaseDeadlineName = name;
@@ -96675,8 +96681,18 @@ var Curriculum = class _Curriculum {
         if (this._teachProfile) {
           teachProfile = Object.entries(this._teachProfile).map(([n, p]) => ({ name: n, ms: p.ms | 0, calls: p.calls | 0 })).sort((a, b) => b.ms - a.ms).slice(0, 8);
         }
+        let chunkRate = 0;
+        if (cluster) {
+          const tc = cluster._teachChunkTotal | 0;
+          if (!this._chunkRateWindow) this._chunkRateWindow = { atMs: now, count: tc };
+          const cw = this._chunkRateWindow;
+          const cSpan = now - cw.atMs;
+          chunkRate = cSpan > 0 ? Math.round((tc - cw.count) * 6e4 / cSpan) : 0;
+          if (cSpan >= 6e4) this._chunkRateWindow = { atMs: now, count: tc };
+        }
         return {
           teachCallsPerMin: rate,
+          teachChunksPerMin: chunkRate,
           sinceLastTeachMs: this._lastTeachAtMs ? now - this._lastTeachAtMs : null,
           // PROBEFLAG (2026-08-22) — `_probeGateActive` is a cell-wide
           // GPU-ownership flag (set at cell entry, cleared at cell exit), so
@@ -96751,7 +96767,11 @@ var Curriculum = class _Curriculum {
       // list running inside the phase is within-phase work too, so its position
       // folds into the SAME fraction rather than becoming a second signal the UI
       // would have to choose between.
-      phaseWork: this._phaseWorkTotal > 0 ? (() => {
+      // PHONPROG.1a — a phase that knows its OWN cursor exactly (the phoneme
+      // loop walks a known word list × reps) publishes it directly and wins
+      // over the nested-unit estimate. Cleared by the phase wrapper on exit so
+      // a finished phase's cursor can never linger into the next one.
+      phaseWork: this._phaseWorkOverride ? { name: this._phaseWorkName || null, ...this._phaseWorkOverride } : this._phaseWorkTotal > 0 ? (() => {
         const done = this._phaseWorkSeen ? this._phaseWorkSeen.size : 0;
         const vp = this._vocabProgress;
         const vFrac = vp && vp.total > 0 ? Math.min(1, (vp.taught | 0) / vp.total) : 0;
