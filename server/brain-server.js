@@ -542,6 +542,32 @@ const BRAIN_VRAM_ALLOC = (function () {
     const _hwMB = RESOURCES.gpu.vram;
     const _hardReserveMB = Math.max(2048, Math.floor(_hwMB * 0.125));
     const _hardMaxMB = Math.max(1024, _hwMB - _hardReserveMB);
+    // ── LOCALSCALE (2026-08-23) — A STALE PIN MUST NOT OUT-RANK REAL HARDWARE ──
+    //
+    // Gee, booting locally on a 128GB / RTX 4070 Ti SUPER workstation: *"its not
+    // scalling right... if im hosting it locally on a GPUbox with much better cpu
+    // and 4x the RAM is should not be less nusrons it should be more"* — and he
+    // was right: that machine booted 230,087,532 neurons while the 32GB CPU-only
+    // deployed box boots 425M.
+    //
+    // Cause, read off his own boot log: `server/resource-config.json` is
+    // per-machine + gitignored and still held a hardware profile written
+    // 2026-05-05 — `"tier": "enthusiast-12gb", "vramCapMB": 11264` — while the
+    // card in the box reports 16,376MB. The pin silently won, so the budget was
+    // 11264 − 2048 = 9216MB and the brain sized to that. A cap written for
+    // hardware you no longer have is not a safety limit, it is a stale fact
+    // outranking a measurement — the same lying-instrument shape as a doc
+    // stating a neuron count that the box does not produce.
+    //
+    // A pin BELOW the hard-max is now treated as what it is: out of date. The
+    // hard reserve above still bounds everything (config can lower, never
+    // raise), so this can only ever recover capacity the card genuinely has.
+    // Set DREAM_RESPECT_VRAM_CAP=1 to keep honouring a deliberate low cap.
+    if (typeof cfg.vramCapMB === 'number' && cfg.vramCapMB < _hardMaxMB
+        && process.env.DREAM_RESPECT_VRAM_CAP !== '1') {
+      console.log(`[Brain] LOCALSCALE — resource-config.json pins vramCapMB=${cfg.vramCapMB}MB (tier "${cfg.tier || 'unknown'}", written ${cfg.updatedAt || 'unknown date'}) but the attached card reports ${_hwMB}MB. Using the detected hardware: budget ${vramMB}MB → ${_hardMaxMB}MB (card − ${_hardReserveMB}MB reserve). The pin was for different hardware; DREAM_RESPECT_VRAM_CAP=1 honours it anyway.`);
+      vramMB = _hardMaxMB;
+    }
     if (typeof cfg.vramCapMB !== 'number') {
       const _conservative = Math.floor(_hwMB * 0.75);
       if (vramMB > _conservative) {
@@ -553,6 +579,45 @@ const BRAIN_VRAM_ALLOC = (function () {
       console.log(`[Brain] VRAM HEADROOM — hard reserve enforced: budget ${vramMB}MB → ${_hardMaxMB}MB (card ${_hwMB}MB − reserve ${_hardReserveMB}MB). Config can lower this, never raise it.`);
       vramMB = _hardMaxMB;
     }
+    // ── LOCALSCALE — HOST RAM IS AN INPUT ON A GPU BOX TOO ──────────────────
+    //
+    // The whole SERVER-RAM SAFETY clause below is gated on having NO GPU, so on
+    // a GPU host the machine's RAM was never consulted at ALL — which is how a
+    // 128GB workstation ended up smaller than a 32GB server. That gate made
+    // sense when it was written (a GPU box's brain lives in VRAM) but it is
+    // only half true: her AUTHORITATIVE weights are the CPU CSR master copy in
+    // HOST RAM, and the card holds a mirror. So host RAM is a real ceiling and
+    // a real opportunity, on every machine.
+    //
+    // Two things happen here, and deliberately no more:
+    //
+    //  1. `DREAM_BRAIN_BUDGET_MB` — documented as THE override — was declared
+    //     inside the no-GPU branch and therefore did nothing on a GPU host.
+    //     That is why there was no lever to reach for. It works here now, and
+    //     it is bounded by what host RAM can actually back.
+    //
+    //  2. The host-RAM ceiling is applied. If RAM cannot back the VRAM-derived
+    //     budget, the budget comes DOWN (the master copy would not fit).
+    //
+    // What deliberately does NOT happen: the budget is not auto-raised to the
+    // full host-RAM maximum just because the RAM exists. Scale multiplies teach
+    // cost under the RE-PRICE LAW, so a 128GB box would silently become a ~2.6B
+    // neuron brain that teaches ~6x slower than the deployed one — the opposite
+    // of what a faster local box is for. Raising past the card is therefore an
+    // explicit, priced decision, and the line below prints the arithmetic so it
+    // can be made with numbers instead of vibes.
+    const _hostMB = Math.floor(os.totalmem() / 1048576);
+    const _hostSafeMB = Math.max(1024, _hostMB - 13312);
+    const _envMB = Number(process.env.DREAM_BRAIN_BUDGET_MB) || 0;
+    if (_envMB > 0) {
+      const _wanted = _envMB;
+      vramMB = Math.max(1024, Math.min(_envMB, _hostSafeMB));
+      console.log(`[Brain] LOCALSCALE — DREAM_BRAIN_BUDGET_MB=${_wanted}MB honoured on a GPU host: budget → ${vramMB}MB${_wanted > _hostSafeMB ? ` (host-RAM ceiling ${_hostSafeMB}MB applied — the CPU master copy has to fit in RAM)` : ''}. ⚠ RE-PRICE: teach cost scales with the brain, so ${(vramMB / _hardMaxMB).toFixed(2)}× the card-derived budget is ~${(vramMB / _hardMaxMB).toFixed(2)}× per teach op.`);
+    } else if (vramMB > _hostSafeMB) {
+      console.log(`[Brain] LOCALSCALE — host-RAM ceiling: budget ${vramMB}MB → ${_hostSafeMB}MB (host ${_hostMB}MB − 13312MB reserve). The authoritative weights are the CPU master copy, so RAM bounds the brain even on a GPU box.`);
+      vramMB = _hostSafeMB;
+    }
+    console.log(`[Brain] LOCALSCALE SIZING INPUTS — card ${_hwMB}MB (usable ${_hardMaxMB}MB) · host RAM ${_hostMB}MB (safe ${_hostSafeMB}MB) · config pin ${typeof cfg.vramCapMB === 'number' ? cfg.vramCapMB + 'MB' : 'none'} · CHOSEN ${vramMB}MB. Bigger brain than the card supports? Set DREAM_BRAIN_BUDGET_MB (RAM-bounded, and it costs teach time proportionally).`);
   }
   // SERVER-RAM SAFETY (shared box — Forgejo runs here too). The brain's
   // authoritative weights live in the HOST's RAM (the CPU CSR shadow), so on a
