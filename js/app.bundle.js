@@ -54416,6 +54416,7 @@ var CLUSTER_EMIT_MIXIN = {
         for (let i = sem.start; i < sem.end; i++) {
           if (this.lastSpikes[i]) idx.push(i - sem.start);
         }
+        this._lastEmitSemActive = idx.length;
         if (idx.length) {
           let out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
           if (!out || !out.length) {
@@ -54571,6 +54572,20 @@ var CLUSTER_EMIT_MIXIN = {
           bestWord = wordsList[b];
         }
       }
+    }
+    {
+      const top = [];
+      for (const c of candidates) {
+        if (top.length < 5) {
+          top.push(c);
+          top.sort((a, b) => b.mean - a.mean);
+        } else if (c.mean > top[4].mean) {
+          top[4] = c;
+          top.sort((a, b) => b.mean - a.mean);
+        }
+      }
+      this._lastEmitTop = top;
+      this._lastEmitCandidateCount = candidates.length;
     }
     const NOISE_FLOOR = 1e-3;
     if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
@@ -109997,6 +110012,18 @@ var Curriculum = class _Curriculum {
         }
         if (round === rounds) {
           stillWrong++;
+          if ((this._emitWhyLogged | 0) < 3) {
+            this._emitWhyLogged = (this._emitWhyLogged | 0) + 1;
+            const top = Array.isArray(cluster._lastEmitTop) ? cluster._lastEmitTop : [];
+            const topStr = top.map((c) => `${c.word}=${c.mean.toFixed(5)}`).join(" \xB7 ") || "none";
+            let expInfo = "ABSENT from candidates";
+            const hit = top.find((c) => c.word === expTok);
+            if (hit) expInfo = `rank\u22645 mean=${hit.mean.toFixed(5)}`;
+            else if (Array.isArray(cluster.wordBucketWords)) {
+              expInfo = cluster.wordBucketWords.includes(expTok) ? "has a bucket but scored outside the top-5" : "HAS NO BUCKET in the word map";
+            }
+            this._hb(`[Curriculum][EMITWHY] "${String(s.question).slice(0, 46)}" want "${expTok}" got "${saidNorm}" \xB7 semActive=${cluster._lastEmitSemActive | 0} \xB7 candidates=${cluster._lastEmitCandidateCount | 0} \xB7 top5: ${topStr} \xB7 expected: ${expInfo}`);
+          }
           break;
         }
         await this._contrastAnswerBinding(s.question, expTok, saidNorm, { subject: opts.subject });
