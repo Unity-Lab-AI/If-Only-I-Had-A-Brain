@@ -403,6 +403,49 @@ pub fn ack_propagate(req_id: u32, currents: &[f32]) -> Vec<u8> {
     v
 }
 
+/// SPARSEACK (v0.3.27) — type=6 ack: the SAME currents, encoded as (index, value)
+/// pairs instead of a dense f32 array.
+///
+/// Layout (byte-for-byte what the brain's SPRR handler already parses — the
+/// server has decoded this shape since the browser-donor CHAT.1 work, and it
+/// resolves pendings by reqId regardless of the REQUEST type, so a type=2
+/// propagate request may be answered with this frame):
+///   'SPRR' | 6 | pad(3) | reqId(u32 @8) | postLen(u32 @12) | nnz(u32 @16)
+///   | nnz × { idx(u32) , value(f32) } @20
+///
+/// `post_len` is the FULL dense length so the server rebuilds an identically-
+/// shaped Float32Array — same numbers, same length, only the wire encoding
+/// differs. Measured on the live brain: population firing sits near 0.19%, so
+/// the 12M-neuron intra propagate was shipping a ~48MB dense array that is
+/// >90% zeros, once per round, over a ~205ms-RTT link.
+pub fn ack_propagate_sparse(req_id: u32, post_len: u32, currents: &[f32]) -> Vec<u8> {
+    let nnz = currents.iter().filter(|c| **c != 0.0).count();
+    let mut v = Vec::with_capacity(20 + nnz * 8);
+    v.extend_from_slice(b"SPRR");
+    v.push(6);
+    v.extend_from_slice(&[0u8, 0, 0]); // pad bytes 5..7
+    v.extend_from_slice(&req_id.to_le_bytes()); // 8..11
+    v.extend_from_slice(&post_len.to_le_bytes()); // 12..15
+    v.extend_from_slice(&(nnz as u32).to_le_bytes()); // 16..19
+    for (i, c) in currents.iter().enumerate() {
+        if *c != 0.0 {
+            v.extend_from_slice(&(i as u32).to_le_bytes());
+            v.extend_from_slice(&c.to_bits().to_le_bytes());
+        }
+    }
+    v
+}
+
+/// SPARSEACK — is the sparse encoding actually SMALLER for these currents?
+/// Exact byte comparison, no guessing: sparse costs 20 + 8·nnz, dense costs
+/// 16 + 4·len. A dense-ish result (post-consolidation bursts, tiny matrices)
+/// keeps the dense frame, so this can never make a payload bigger.
+pub fn sparse_ack_is_smaller(currents: &[f32]) -> bool {
+    let nnz = currents.iter().filter(|c| **c != 0.0).count() as u64;
+    let len = currents.len() as u64;
+    20 + nnz * 8 < 16 + len * 4
+}
+
 /// Round-trip self-check used by `--self-test`: encode a type=1 upload + decode it back.
 pub fn self_check() -> Result<(), String> {
     // Build a type=1 SPRS frame for a tiny matrix and decode it.
@@ -435,14 +478,59 @@ pub fn self_check() -> Result<(), String> {
     }
     match decode(&f) {
         Some(Frame::Upload { req_id, name: n, rows: rr, values: v, col_idx: ci, .. }) => {
-            if req_id == 7 && n == name && rr == rows && v == values && ci == col_idx {
-                Ok(())
-            } else {
-                Err(format!("upload round-trip mismatch: req={req_id} name={n} rows={rr} v={v:?} ci={ci:?}"))
+            if !(req_id == 7 && n == name && rr == rows && v == values && ci == col_idx) {
+                return Err(format!("upload round-trip mismatch: req={req_id} name={n} rows={rr} v={v:?} ci={ci:?}"));
             }
         }
-        other => Err(format!("decode returned unexpected: {other:?}")),
+        other => return Err(format!("decode returned unexpected: {other:?}")),
     }
+
+    // SPARSEACK (v0.3.27) — verify the sparse ack decodes to the IDENTICAL
+    // dense currents the brain would have received from a type=2 frame, using
+    // the brain's own parse arithmetic (postLen@12, nnz@16, pairs@20). A wire
+    // format is only honest if the numbers survive it unchanged.
+    let sparse_currents: Vec<f32> = vec![0.0, 2.5, 0.0, 0.0, -1.25, 0.0, 0.0, 0.0];
+    if !sparse_ack_is_smaller(&sparse_currents) {
+        return Err("sparse_ack_is_smaller said dense for a 25%-dense vector".to_string());
+    }
+    let a = ack_propagate_sparse(99, sparse_currents.len() as u32, &sparse_currents);
+    if &a[0..4] != b"SPRR" || a[4] != 6 {
+        return Err("sparse ack magic/type wrong".to_string());
+    }
+    let rd_u32 = |o: usize| u32::from_le_bytes([a[o], a[o + 1], a[o + 2], a[o + 3]]);
+    if rd_u32(8) != 99 {
+        return Err(format!("sparse ack reqId wrong: {}", rd_u32(8)));
+    }
+    let post_len = rd_u32(12) as usize;
+    let nnz = rd_u32(16) as usize;
+    if post_len != sparse_currents.len() || nnz != 2 {
+        return Err(format!("sparse ack header wrong: postLen={post_len} nnz={nnz}"));
+    }
+    if a.len() != 20 + nnz * 8 {
+        return Err(format!("sparse ack length wrong: {} != {}", a.len(), 20 + nnz * 8));
+    }
+    let mut rebuilt = vec![0.0f32; post_len];
+    for k in 0..nnz {
+        let o = 20 + k * 8;
+        let ci = rd_u32(o) as usize;
+        let val = f32::from_bits(rd_u32(o + 4));
+        if ci < post_len {
+            rebuilt[ci] = val;
+        }
+    }
+    if rebuilt != sparse_currents {
+        return Err(format!("sparse ack round-trip mismatch: {rebuilt:?} != {sparse_currents:?}"));
+    }
+    // A dense-ish vector must REFUSE the sparse encoding (it would be bigger).
+    if sparse_ack_is_smaller(&[1.0, 2.0, 3.0, 4.0]) {
+        return Err("sparse_ack_is_smaller said sparse for a fully dense vector".to_string());
+    }
+    // Emit the frame in hex so the BRAIN'S OWN parser can be run against these
+    // exact bytes — a wire format verified only inside the language that wrote
+    // it is not verified at all.
+    let hex: String = a.iter().map(|b| format!("{b:02x}")).collect();
+    println!("self-test: sparse-ack frame hex = {hex}");
+    Ok(())
 }
 
 #[cfg(test)]
