@@ -10758,6 +10758,14 @@ const _lagTimer = setInterval(() => {
     const _SUMMARY_UNDER_MS = Number(process.env.DREAM_LOOP_LAG_SUMMARY_UNDER_MS) > 0
       ? Number(process.env.DREAM_LOOP_LAG_SUMMARY_UNDER_MS) : 2000;
     if (_teachAttributed && lagMs < _SUMMARY_UNDER_MS) {
+      // LIVETEACH (2026-08-23) — MONOTONIC teach-chunk counter for the liveness
+      // rate. `_lagTeachN` resets every 60s window, so it cannot answer "is she
+      // working right now"; this one only ever climbs and the curriculum's
+      // liveness block windows it. Gee: *"1 teach /min ewwwww! gross!"* — a
+      // 70-minute single-call phase (_teachTenseMorphology, _teachMorphology)
+      // completes ONE wrapped teach call, so the wrapped-call rate reads 0-1/min
+      // while 37 of these chunks per minute prove the math is grinding.
+      if (cc) cc._teachChunkTotal = (cc._teachChunkTotal | 0) + 1;
       brain._lagTeachN = (brain._lagTeachN || 0) + 1;
       brain._lagTeachWorst = Math.max(brain._lagTeachWorst || 0, Math.round(lagMs));
       brain._lagTeachSumMs = (brain._lagTeachSumMs || 0) + Math.round(lagMs);
