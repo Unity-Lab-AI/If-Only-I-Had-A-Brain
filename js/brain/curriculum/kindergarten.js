@@ -8081,7 +8081,20 @@ export const K_MIXIN = {
           const totalElapsed = ((_nowHb - _t18_13_startMs) / 1000).toFixed(1);
           const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1000;
           const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
-          this._hb(`[Curriculum] ⏱ _teachPhonemeBlending heartbeat — rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length}, elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
+          // PHONPROG.1a (2026-08-23) — PUBLISH the cursor, don't just print it.
+          // Gee asked for "a percentage of how far along it is" and the exact
+          // number existed here every 5 seconds while every remote channel saw
+          // nothing (part (b), the console-ring blind spot, is fixed by HBRING
+          // routing `_hb` through console.log). This is part (a): the same
+          // cursor as the `{done, total, frac}` field the cell-progress bar
+          // already renders, so the percentage is a FIELD READ, not a log hunt.
+          // Word-passes across all reps = the honest denominator.
+          const _pbTotal = Math.max(1, wordList.length * reps);
+          const _pbDone = Math.min(_pbTotal, rep * wordList.length + _wordIdx);
+          this._phaseWorkTotal = _pbTotal;
+          this._phaseWorkName = '_teachPhonemeBlending';
+          this._phaseWorkOverride = { done: _pbDone, total: _pbTotal, frac: _pbDone / _pbTotal };
+          this._hb(`[Curriculum] ⏱ _teachPhonemeBlending heartbeat — rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length} (${Math.round((_pbDone / _pbTotal) * 100)}% of ${_pbTotal.toLocaleString()} word-passes), elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
           _t18_13_lastHbMs = _nowHb;
           _t18_13_opsSinceHb = 0;
           await _microtask();

@@ -2829,6 +2829,10 @@ export class Curriculum {
           this._phaseWorkName = name;
           this._phaseWorkSeen = new Set();
           this._phaseWorkTotal = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+          // PHONPROG.1a — clear any self-published cursor from the PREVIOUS
+          // phase. A stale exact-looking percentage outliving its phase is the
+          // same lying-instrument shape this fix exists to remove.
+          this._phaseWorkOverride = null;
           // CELLBOUND.E - the SET, not just its size, so a nested unit is only
           // credited against a phase that actually declares it. `done` used to
           // count every nested `_teach*` that ran, including deep primitives
@@ -3429,8 +3433,25 @@ export class Curriculum {
             .sort((a, b) => b.ms - a.ms)
             .slice(0, 8);
         }
+        // LIVETEACH (2026-08-23) — TEACH-CHUNK rate beside the wrapped-call rate.
+        // `teachCallsPerMin` counts COMPLETED wrapped teach calls, so a phase
+        // that runs as one long call (tense/morphology at grade depth: 40-70
+        // minutes inside a single call) reads "0 teach/min · last teach 2415s
+        // ago" — indistinguishable from a stall — while the CPU is grinding 37
+        // teach chunks a minute. Same rolling-window pattern; the counter is the
+        // monotonic one the loop-lag sampler stamps per teach-attributed chunk.
+        let chunkRate = 0;
+        if (cluster) {
+          const tc = cluster._teachChunkTotal | 0;
+          if (!this._chunkRateWindow) this._chunkRateWindow = { atMs: now, count: tc };
+          const cw = this._chunkRateWindow;
+          const cSpan = now - cw.atMs;
+          chunkRate = cSpan > 0 ? Math.round(((tc - cw.count) * 60000) / cSpan) : 0;
+          if (cSpan >= 60000) this._chunkRateWindow = { atMs: now, count: tc };
+        }
         return {
           teachCallsPerMin: rate,
+          teachChunksPerMin: chunkRate,
           sinceLastTeachMs: this._lastTeachAtMs ? (now - this._lastTeachAtMs) : null,
           // PROBEFLAG (2026-08-22) — `_probeGateActive` is a cell-wide
           // GPU-ownership flag (set at cell entry, cleared at cell exit), so
@@ -3508,7 +3529,13 @@ export class Curriculum {
       // list running inside the phase is within-phase work too, so its position
       // folds into the SAME fraction rather than becoming a second signal the UI
       // would have to choose between.
-      phaseWork: (this._phaseWorkTotal > 0)
+      // PHONPROG.1a — a phase that knows its OWN cursor exactly (the phoneme
+      // loop walks a known word list × reps) publishes it directly and wins
+      // over the nested-unit estimate. Cleared by the phase wrapper on exit so
+      // a finished phase's cursor can never linger into the next one.
+      phaseWork: this._phaseWorkOverride
+        ? { name: this._phaseWorkName || null, ...this._phaseWorkOverride }
+        : (this._phaseWorkTotal > 0)
         ? (() => {
             const done = this._phaseWorkSeen ? this._phaseWorkSeen.size : 0;
             const vp = this._vocabProgress;

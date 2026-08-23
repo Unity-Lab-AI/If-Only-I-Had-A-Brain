@@ -2700,8 +2700,18 @@
         // teaching OR emitting, and the emitting rate is shown by name.
         const emitRate = lv.emissionTicksPerMin | 0;
         const sinceEmitS = (lv.sinceLastEmitTickMs == null) ? null : Math.round(lv.sinceLastEmitTickMs / 1000);
+        // LIVETEACH (2026-08-23) — TEACH CHUNKS are liveness too, and they are
+        // the third way this line lied. A grade-depth phase can run 40-70
+        // minutes inside ONE wrapped teach call, so `teach/min` reads 0-1 and
+        // `last teach` climbs into the thousands of seconds while the CPU
+        // grinds ~37 teach chunks a minute (Gee: "1 teach /min ewwwww! gross!"
+        // and "how can it not be teaching when shes doint 2700 teach/min").
+        // Alive = teaching OR emitting OR chunking, and the chunk rate is
+        // shown BY NAME so a long single call can never read as a stall.
+        const chunkRate = lv.teachChunksPerMin | 0;
         const alive = rate > 0 || (sinceS !== null && sinceS < 30)
-          || emitRate > 0 || (sinceEmitS !== null && sinceEmitS < 30);
+          || emitRate > 0 || (sinceEmitS !== null && sinceEmitS < 30)
+          || chunkRate > 0;
         const colour = alive ? '#4ade80' : '#f87171';
         // GATEGPU — a gate PROBES (tests), it doesn't teach, so teach/min=0 is
         // TRUE during one; but the donor is now doing the grading, and a bare
@@ -2727,7 +2737,13 @@
         const emitBit = emitRate > 0
           ? ` &middot; <span style="color:#a78bfa;">${emitRate.toLocaleString()} emit-ticks/min (emission phase)</span>`
           : '';
+        // LIVETEACH — when the wrapped-call rate is low but chunks are flowing,
+        // the chunk rate IS the answer to "is she working": say it in place.
+        const chunkBit = chunkRate > 0
+          ? ` &middot; <span style="color:#4ade80;">${chunkRate.toLocaleString()} teach-chunks/min${rate <= 1 ? ' (one long teach call in flight)' : ''}</span>`
+          : '';
         pctLabel += `<br><span style="color:${colour};">${rate.toLocaleString()} teach/min</span>`
+          + chunkBit
           + emitBit
           + (sinceS === null ? '' : ` &middot; last teach ${sinceS}s ago`)
           + gate;
