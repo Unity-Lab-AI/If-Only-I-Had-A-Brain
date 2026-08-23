@@ -20272,7 +20272,33 @@ export class Curriculum {
           if (round === 0) rightFirst++; else reaimed++;
           break;
         }
-        if (round === rounds) { stillWrong++; break; }
+        if (round === rounds) {
+          stillWrong++;
+          // EMITWHY (2026-08-23) — on the FINAL failure, print what the argmax
+          // actually saw. One line separates the remaining causes that all look
+          // identical from outside: semActive=0 means the question pattern never
+          // landed; the expected word ABSENT from the candidate list means it has
+          // no eligible bucket (capacity/gate/vocab), not a losing score; a rank-2
+          // expected word with a near-equal mean is a MARGIN problem; and an
+          // identical top-5 across different questions would mean the currents
+          // are question-independent. Bounded to the first few failures per drill
+          // so a bad cell cannot flood the ring.
+          if ((this._emitWhyLogged | 0) < 3) {
+            this._emitWhyLogged = (this._emitWhyLogged | 0) + 1;
+            const top = Array.isArray(cluster._lastEmitTop) ? cluster._lastEmitTop : [];
+            const topStr = top.map(c => `${c.word}=${c.mean.toFixed(5)}`).join(' · ') || 'none';
+            let expInfo = 'ABSENT from candidates';
+            const hit = top.find(c => c.word === expTok);
+            if (hit) expInfo = `rank≤5 mean=${hit.mean.toFixed(5)}`;
+            else if (Array.isArray(cluster.wordBucketWords)) {
+              expInfo = cluster.wordBucketWords.includes(expTok)
+                ? 'has a bucket but scored outside the top-5'
+                : 'HAS NO BUCKET in the word map';
+            }
+            this._hb(`[Curriculum][EMITWHY] "${String(s.question).slice(0, 46)}" want "${expTok}" got "${saidNorm}" · semActive=${cluster._lastEmitSemActive | 0} · candidates=${cluster._lastEmitCandidateCount | 0} · top5: ${topStr} · expected: ${expInfo}`);
+          }
+          break;
+        }
         await this._contrastAnswerBinding(s.question, expTok, saidNorm, { subject: opts.subject });
       }
     }
