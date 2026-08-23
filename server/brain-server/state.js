@@ -1025,6 +1025,18 @@ const SERVER_STATE_MIXIN = {
         stepsPerSec: r2(perf.stepsPerSec || 0),
         eventLoopLagMs: this._lastEventLoopLagMs || 0,
         eventLoopDelay: elDelay,
+        // LOOPSTARVE (2026-08-23) — the field the instant lag reading cannot
+        // give you. `lateMsPerMin` is total loop lateness per minute and
+        // `servicePct` the share of wall-clock actually serviced. Measured
+        // live: 25-28s time-to-first-byte on a route that returns a cached
+        // string, while eventLoopLagMs, the freeze watchdog and the
+        // teach-chunk counter all read healthy — because each individual
+        // stall was under every threshold and there were thousands of them.
+        loopStarve: {
+          lateMsPerMin: (this._loopStarve && this._loopStarve.lastLateMs) | 0,
+          servicePct: this._loopStarve && typeof this._loopStarve.lastPct === 'number'
+            ? this._loopStarve.lastPct : null,
+        },
         // GPUTEACH step-0 — the bound-Hebbian TEACH LANE, every stage counted
         // so "0 teach/min" can never lie again: enqueued (ops asked), flushed
         // frames/ops (ops that actually left), capFlushes (mid-slab forced
