@@ -705,6 +705,26 @@ export const CLUSTER_EMIT_MIXIN = {
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
+    // WORDNORM (2026-08-23) — HOMEOSTATIC BUCKET-MASS NORMALIZATION, the
+    // hot-bucket killer. Measured to exhaustion first: a handful of word
+    // buckets accumulated a whole walk's worth of incoming sem→word_motor
+    // mass, so ANY diffuse sem context summed biggest into them — the same
+    // thief words ("taste"/"asteroids"/"scheme"…) won gate after gate across
+    // unrelated questions, and the SPEAKLOOP drill receipt proved contrast
+    // doses cannot depress them (8/8 still wrong after measured-thief
+    // contrast ×2 rounds each: the mass differential is orders of magnitude).
+    // The biological fix is the read-side one — synaptic scaling: a bucket
+    // whose TOTAL incoming mass exceeds the average gets its score divided
+    // by (mass/avg)^alpha, so the CONTEXT-SPECIFIC signal decides the argmax,
+    // not accumulated popularity. Buckets at/below average are UNTOUCHED
+    // (factor clamped ≥1 — young words are never noise-boosted, the floor's
+    // honesty semantics survive intact). Mass reads the CPU CSR (the sampled
+    // shadow — proportional, which is all a ratio needs), cached 10 min.
+    // Kill switch DREAM_WORDNORM=0; exponent DREAM_WORDNORM_ALPHA (0.7).
+    const _wnEnv = (typeof process !== 'undefined' && process.env) ? process.env : {};
+    const _wnOn = _wnEnv.DREAM_WORDNORM !== '0';
+    const _wnAlpha = Number(_wnEnv.DREAM_WORDNORM_ALPHA) > 0 ? Number(_wnEnv.DREAM_WORDNORM_ALPHA) : 0.7;
+    let _wnMass = null;
     // WMB unify (2026-07-14) — ONE global word_motor band + umbrella word list.
     // Single pass (not a per-subject sub-band loop): every unique word occupies
     // exactly one bucket across the whole word_motor region, argmaxed globally,
@@ -725,6 +745,40 @@ export const CLUSTER_EMIT_MIXIN = {
       const bucketSize = (typeof this.wordBucketCellSizeFor === 'function')
         ? this.wordBucketCellSizeFor()
         : Math.max(1, Math.floor(subjSize / wordsList.length));
+      // WORDNORM — per-bucket incoming-mass profile (row-band |weight| sums
+      // over the post-major CSR), cached on the cluster, refreshed on vocab
+      // growth or 10-minute expiry.
+      if (_wnOn) {
+        const _c = this._wnMassCache;
+        if (_c && _c.n === wordsList.length && Date.now() - _c.at < 600_000) {
+          _wnMass = _c;
+        } else {
+          try {
+            const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
+            if (proj && proj.values && proj.rowPtr && proj.rowPtr.length > 1) {
+              const mass = new Float64Array(wordsList.length);
+              const rows = proj.rowPtr.length - 1;
+              let total = 0, hot = 0;
+              for (let b = 0; b < wordsList.length; b++) {
+                const r0 = Math.min(rows, subjStart + b * bucketSize);
+                const r1 = Math.min(rows, r0 + bucketSize);
+                let m = 0;
+                for (let r = r0; r < r1; r++) {
+                  for (let k = proj.rowPtr[r]; k < proj.rowPtr[r + 1]; k++) m += Math.abs(proj.values[k]);
+                }
+                mass[b] = m; total += m;
+              }
+              const avg = wordsList.length > 0 ? total / wordsList.length : 0;
+              if (avg > 0) { for (let b = 0; b < mass.length; b++) if (mass[b] > avg * 3) hot++; }
+              _wnMass = this._wnMassCache = { at: Date.now(), n: wordsList.length, mass, avg };
+              if (!this._wnLogOnce && avg > 0) {
+                this._wnLogOnce = true;
+                console.log(`[Cluster ${this.name}] WORDNORM: ON — homeostatic bucket-mass normalization at the emission argmax (avg bucket mass ${avg.toFixed(3)}, ${hot} buckets >3× avg get scaled, alpha ${_wnAlpha}). Kill switch: DREAM_WORDNORM=0.`);
+              }
+            }
+          } catch { _wnMass = null; /* no CSR readable — raw argmax, unchanged */ }
+        }
+      }
       for (let b = 0; b < wordsList.length; b++) {
         // Filler-token guard — a bucket whose token is empty, pure
         // whitespace, or carries no word character must never win argmax
@@ -793,6 +847,11 @@ export const CLUSTER_EMIT_MIXIN = {
         const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
         let mean = sum / cellCount;
+        // WORDNORM — divide an over-massed bucket's score by (mass/avg)^alpha;
+        // at/below-average buckets untouched (factor clamped to 1).
+        if (_wnMass && _wnMass.avg > 0 && _wnMass.mass[b] > _wnMass.avg) {
+          mean /= Math.pow(_wnMass.mass[b] / _wnMass.avg, _wnAlpha);
+        }
         // GW bias multiplier — boost the bucket whose word matches
         // the current workspace broadcast (continuity-of-thought
         // bias). Scales with ignition strength via

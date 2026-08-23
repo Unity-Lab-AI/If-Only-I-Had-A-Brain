@@ -54482,6 +54482,10 @@ var CLUSTER_EMIT_MIXIN = {
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
+    const _wnEnv = typeof process !== "undefined" && process.env ? process.env : {};
+    const _wnOn = _wnEnv.DREAM_WORDNORM !== "0";
+    const _wnAlpha = Number(_wnEnv.DREAM_WORDNORM_ALPHA) > 0 ? Number(_wnEnv.DREAM_WORDNORM_ALPHA) : 0.7;
+    let _wnMass = null;
     for (let _wmOnce = 0; _wmOnce < 1; _wmOnce++) {
       const subjStart = 0;
       const subjEnd = wordMotor.end - wordMotor.start;
@@ -54490,6 +54494,42 @@ var CLUSTER_EMIT_MIXIN = {
       const wordsList = this.wordBucketWords;
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
       const bucketSize = typeof this.wordBucketCellSizeFor === "function" ? this.wordBucketCellSizeFor() : Math.max(1, Math.floor(subjSize / wordsList.length));
+      if (_wnOn) {
+        const _c = this._wnMassCache;
+        if (_c && _c.n === wordsList.length && Date.now() - _c.at < 6e5) {
+          _wnMass = _c;
+        } else {
+          try {
+            const proj2 = this.crossProjections && this.crossProjections.sem_to_word_motor;
+            if (proj2 && proj2.values && proj2.rowPtr && proj2.rowPtr.length > 1) {
+              const mass = new Float64Array(wordsList.length);
+              const rows = proj2.rowPtr.length - 1;
+              let total = 0, hot = 0;
+              for (let b = 0; b < wordsList.length; b++) {
+                const r0 = Math.min(rows, subjStart + b * bucketSize);
+                const r1 = Math.min(rows, r0 + bucketSize);
+                let m = 0;
+                for (let r = r0; r < r1; r++) {
+                  for (let k = proj2.rowPtr[r]; k < proj2.rowPtr[r + 1]; k++) m += Math.abs(proj2.values[k]);
+                }
+                mass[b] = m;
+                total += m;
+              }
+              const avg = wordsList.length > 0 ? total / wordsList.length : 0;
+              if (avg > 0) {
+                for (let b = 0; b < mass.length; b++) if (mass[b] > avg * 3) hot++;
+              }
+              _wnMass = this._wnMassCache = { at: Date.now(), n: wordsList.length, mass, avg };
+              if (!this._wnLogOnce && avg > 0) {
+                this._wnLogOnce = true;
+                console.log(`[Cluster ${this.name}] WORDNORM: ON \u2014 homeostatic bucket-mass normalization at the emission argmax (avg bucket mass ${avg.toFixed(3)}, ${hot} buckets >3\xD7 avg get scaled, alpha ${_wnAlpha}). Kill switch: DREAM_WORDNORM=0.`);
+              }
+            }
+          } catch {
+            _wnMass = null;
+          }
+        }
+      }
       for (let b = 0; b < wordsList.length; b++) {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
@@ -54517,6 +54557,9 @@ var CLUSTER_EMIT_MIXIN = {
         const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
         let mean = sum / cellCount;
+        if (_wnMass && _wnMass.avg > 0 && _wnMass.mass[b] > _wnMass.avg) {
+          mean /= Math.pow(_wnMass.mass[b] / _wnMass.avg, _wnAlpha);
+        }
         const _isRecentContent = recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b]);
         if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecentContent) mean *= gwBoostMul;
         if (_isRecentContent) {
