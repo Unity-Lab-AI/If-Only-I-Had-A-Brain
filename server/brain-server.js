@@ -773,11 +773,61 @@ const BRAIN_VRAM_ALLOC = (function () {
     weights[k] = (Number(v) || 0) / (weightSum || 1);
   }
 
-  // Per-region VRAM budget in BYTES
+  // ── LANGVRAM (2026-08-23) — ON A GPU HOST, `language_cortex` MUST BE ──────
+  // ── BUDGETED BY ITS REAL VRAM FOOTPRINT, NOT BY ITS RAM SHARE.           ──
+  //
+  // Gee: *"thats not fucking correct!!!! 203M??????? the web version is fucking
+  // bigger... local run on its own system with no web should mean that"* — and
+  // the arithmetic proves him right. A 128GB / 16GB-card workstation was sizing
+  // to 230M neurons while the 32GB CPU-ONLY box sizes to 425M. Indefensible.
+  //
+  // The chain, all measured off his own boot log:
+  //   main-brain neurons = brainBudget × mainFrac ÷ 21 bytes
+  //   his box:  9216MB × 0.50 ÷ 21B  = 230,087,532   ← exactly what he saw
+  //   the site: 18519MB × 0.50 ÷ 21B ≈ 425M          ← exactly what it runs
+  //
+  // So the split is the whole story, and `language_cortex = 50%` is the reason.
+  // That weight is CORRECT for a CPU-only box, where the budget is really a
+  // HOST-RAM budget and the language cortex genuinely consumes ~12GB of RAM for
+  // its sparse CSR master copy. It is badly WRONG when the budget is VRAM,
+  // because the language cortex's GPU footprint is not 50% of the card — his
+  // own log prints it: *"Language cortex auto-scaled to 12,000,000 neurons
+  // (~12.00 GB RAM, projected 96MB GPU footprint)"*. **96MB.** Half a 16GB card
+  // was being held for a region that uses under a tenth of a gigabyte of it,
+  // and the main brain was starved to the other half.
+  //
+  // On a GPU host the language cortex is therefore given a real VRAM reserve
+  // (1GB — ~10× the measured footprint, so the estimator can be wrong by an
+  // order of magnitude and still fit) and everything it was hoarding goes to
+  // the clusters that actually live in VRAM at 21 bytes a neuron. Host RAM
+  // still has to back BOTH master copies, which the ceiling above enforces.
+  //
+  // On a CPU-only host nothing changes: the weight keeps its RAM meaning.
   const brainBudgetBytes = brainBudgetMB * 1024 * 1024;
   const perRegionBytes = {};
-  for (const [k, w] of Object.entries(weights)) {
-    perRegionBytes[k] = Math.floor(brainBudgetBytes * w);
+  const _gpuHost = !!(RESOURCES.gpu && RESOURCES.gpu.vram > 0);
+  const _langW = Number(weights.language_cortex) || 0;
+  const _langVramReserveMB = Number(process.env.DREAM_LANG_VRAM_RESERVE_MB) >= 0
+    ? Number(process.env.DREAM_LANG_VRAM_RESERVE_MB) : 1024;
+  if (_gpuHost && _langW > 0 && brainBudgetMB > _langVramReserveMB * 2) {
+    const _langBytes = _langVramReserveMB * 1024 * 1024;
+    const _freed = Math.max(0, Math.floor(brainBudgetBytes * _langW) - _langBytes);
+    const _mainWSum = Object.entries(weights)
+      .filter(([k]) => k !== 'language_cortex')
+      .reduce((s, [, w]) => s + w, 0) || 1;
+    for (const [k, w] of Object.entries(weights)) {
+      perRegionBytes[k] = k === 'language_cortex'
+        ? _langBytes
+        : Math.floor(brainBudgetBytes * w) + Math.floor(_freed * (w / _mainWSum));
+    }
+    const _mainBytes = Object.entries(perRegionBytes)
+      .filter(([k]) => k !== 'language_cortex')
+      .reduce((s, [, b]) => s + b, 0);
+    console.log(`[Brain] LANGVRAM — GPU host: language_cortex budgeted at its REAL VRAM footprint (${_langVramReserveMB}MB reserve; measured projection is ~96MB) instead of ${(_langW * 100).toFixed(0)}% of the card. ${(_freed / 1073741824).toFixed(2)}GB returned to the main brain → ~${Math.floor(_mainBytes / 21).toLocaleString()} neurons of LIF state (was ~${Math.floor(brainBudgetBytes * (1 - _langW) / 21).toLocaleString()}). Its ~12GB CSR master copy still lives in HOST RAM, which the ceiling above bounds. Tune with DREAM_LANG_VRAM_RESERVE_MB.`);
+  } else {
+    for (const [k, w] of Object.entries(weights)) {
+      perRegionBytes[k] = Math.floor(brainBudgetBytes * w);
+    }
   }
 
   return {
