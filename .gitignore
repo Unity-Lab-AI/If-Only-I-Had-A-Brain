@@ -224,6 +224,10 @@ server/.force-fresh
 
 # runtime state (written by the brain at boot/run — never commit)
 server/.last-boot-reason.json
+# Loop-watchdog freeze record — per-machine runtime state (STATEWIPE excludes it
+# deliberately so a hard death survives a reboot). Third runtime artifact to ride
+# in from a local boot on 2026-08-23.
+server/.loop-freeze.json
 # Runtime crash breadcrumb — written synchronously on every phase transition by the
 # loop watchdog, so it changes constantly and is per-machine. Same class as
 # .last-boot-reason.json above (which was already ignored); this one slipped in
