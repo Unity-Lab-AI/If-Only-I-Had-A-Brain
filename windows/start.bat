@@ -11,6 +11,8 @@ echo   ==============================
 echo.
 
 REM Optional env flags:
+REM   DREAM_NO_AUTO_GPU=1            no browser donor auto-launch (DEFAULT here;
+REM                                  use `start.bat /browser` to opt back in)
 REM   DREAM_FORCE_CLEAR=1            wipe brain state on boot (or /fresh)
 REM   DREAM_KEEP_STATE=1             preserve state (or use Savestart.bat)
 REM   DREAM_MAX_GRADE=phd            unset Pre-K + K cap
@@ -74,6 +76,32 @@ if /i "%1"=="/clear" set DREAM_FORCE_CLEAR=1
 if /i "%1"=="-y"     set DREAM_FORCE_CLEAR=1
 if /i "%1"=="--yes"  set DREAM_FORCE_CLEAR=1
 if /i "%1"=="/yes"   set DREAM_FORCE_CLEAR=1
+
+REM ── DONORDEFAULT (2026-08-23) — THE NATIVE DONOR IS THE DEFAULT COMPUTE PATH.
+REM
+REM The server used to auto-launch an isolated Chrome window on compute.html and
+REM treat that window CLOSING as a crash, so it respawned it (up to 3x per five
+REM minutes) — closing the tab fought the server instead of stopping it. That
+REM behaviour predates the native donor app; today the normal local setup is
+REM `unity-donor.exe --local`, and the deployed box has run with the browser
+REM launcher off since its donor went remote. So local runs now match the box:
+REM no browser, no respawn, the brain idles quietly until a donor attaches.
+REM
+REM Pass /browser to get the old isolated-Chrome donor back (a machine with no
+REM native donor build still needs it), and an explicit DREAM_NO_AUTO_GPU in the
+REM environment always wins over both.
+if /i "%1"=="/browser" set DREAM_WANT_BROWSER_GPU=1
+if /i "%2"=="/browser" set DREAM_WANT_BROWSER_GPU=1
+if not defined DREAM_NO_AUTO_GPU (
+    if defined DREAM_WANT_BROWSER_GPU (
+        echo   [gpu] /browser -- auto-launching the isolated Chrome compute.html donor.
+    ) else (
+        set DREAM_NO_AUTO_GPU=1
+        echo   [gpu] native-donor mode: no browser auto-launch, no respawn loop.
+        echo         Attach compute with:  donor-app\target\release\unity-donor.exe --local
+        echo         Want the old browser donor instead?  start.bat /browser
+    )
+)
 
 if defined DREAM_FORCE_CLEAR (
     echo   [!] DREAM_FORCE_CLEAR=1 -- will clear brain state on boot.

@@ -1,0 +1,1 @@
+{"at":"2026-08-23T07:52:57.784Z","phase":"curriculum","cell":null,"uptimeS":66,"lagMs":946,"rssMB":7086,"donors":0,"cortexFullyReady":false,"note":"LOOPNAME.7 — written SYNCHRONOUSLY on every phase change. If the process froze or was killed, THIS is where it was. Compare `at` against the process start to see how long it survived."}

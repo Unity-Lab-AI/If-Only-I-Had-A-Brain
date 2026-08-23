@@ -81,6 +81,26 @@ if [[ "$1" == "/fresh" || "$1" == "/clear" || "$1" == "--fresh" || "$1" == "--cl
     echo ""
 fi
 
+# ── DONORDEFAULT (2026-08-23) — THE NATIVE DONOR IS THE DEFAULT COMPUTE PATH.
+# The server used to auto-launch a browser donor and treat that window CLOSING
+# as a crash, respawning it up to 3x per five minutes — so closing the tab
+# fought the server instead of stopping it. That predates the native donor app;
+# today the normal setup is `unity-donor --local`, and the deployed box has run
+# with the launcher off since its donor went remote. Local runs now match the
+# box. Pass /browser (or --browser) for the old behaviour; an explicit
+# DREAM_NO_AUTO_GPU in the environment always wins.
+if [ -z "$DREAM_NO_AUTO_GPU" ]; then
+    if [[ "$1" == "/browser" || "$1" == "--browser" || "$2" == "/browser" || "$2" == "--browser" ]]; then
+        echo "  [gpu] /browser -- auto-launching the browser compute.html donor."
+    else
+        export DREAM_NO_AUTO_GPU=1
+        echo "  [gpu] native-donor mode: no browser auto-launch, no respawn loop."
+        echo "        Attach compute with:  unity-donor --local"
+        echo "        Want the old browser donor instead?  start.sh /browser"
+    fi
+    echo ""
+fi
+
 if [ -z "$DREAM_FORCE_CLEAR" ]; then
     # ────────────────────────────────────────────────────────────────
     # Y/N CONFIRMATION GATE (the operator 2026-05-08 LAW -- irreversible-loss warning)
