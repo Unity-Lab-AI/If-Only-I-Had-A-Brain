@@ -3405,6 +3405,77 @@ const SERVER_GPU_MIXIN = {
     }
   },
 
+  /**
+   * GATEGPU.2 (v0.3.28) — does the PRIMARY donor speak the REDUCED readout
+   * (SPRS type 15: propagate + on-card bucket-mean reduction)?
+   */
+  _donorBucketReadout() {
+    const ws = this._gpuClient;
+    if (!ws || ws.readyState !== 1) return false;
+    const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+    const v = c && c.donorAppVersion;
+    if (!v) return false;
+    if (this._bucketReadoutVer !== v) {
+      this._bucketReadoutVer = v;
+      const m = /^(\d+)\.(\d+)\.(\d+)/.exec(String(v));
+      this._bucketReadoutOk = !!m && ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3028; // 0.3.28
+      console.log(`[Brain] REDUCED word readout for PRIMARY donor: ${this._bucketReadoutOk ? 'ON (SPRS 15 — bucket means computed on the card)' : 'off'} (requires >= 0.3.28, saw ${v}).`);
+    }
+    return !!this._bucketReadoutOk;
+  },
+
+  /**
+   * GATEGPU.2 — ask the donor for sem→word_motor as PER-WORD-BUCKET MEANS.
+   *
+   * The emission argmax never wanted 720,000 raw currents (~2.9MB per spoken
+   * word); it wanted the ~2,500 bucket means it reduced them to. The donor now
+   * runs that reduction on the card and answers with an ordinary type=2 ack
+   * whose payload is the means, so no new ack parser exists anywhere.
+   *
+   * Frame: 'SPRS' | 15 | reqId | name | pad4 | bucketSize u32 | bucketCount u32
+   *        | count u32 | preIdx u32[].
+   * Layout contract: donor-app/src/frames.rs case 15.
+   *
+   * Null on any honesty guard (no donor / too old / lane busy / empty pre) —
+   * the caller then takes the full-current probe or its CPU shadow, exactly as
+   * before. A reduced readout is never a reason to skip a word.
+   */
+  async gpuGateProbeBuckets(matrixName, sparseIndices, bucketSize, bucketCount) {
+    if (process.env.DREAM_GATE_GPU_PROBES === '0') return null;
+    if (!this._donorBucketReadout()) return null;
+    const ws = this._gpuClient;
+    if (!ws || ws.readyState !== 1) return null;
+    if (typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > 256 * 1024) return null;
+    if (!sparseIndices || !sparseIndices.length) return null;
+    if (!(bucketSize > 0) || !(bucketCount > 0)) return null;
+    try {
+      const idx = Uint32Array.from(sparseIndices);
+      const reqId = this._nextSparseReqId();
+      const hdr = this._encodeSparseHeader(15, reqId, matrixName);
+      const meta = Buffer.alloc(12);
+      meta.writeUInt32LE(bucketSize >>> 0, 0);
+      meta.writeUInt32LE(bucketCount >>> 0, 4);
+      meta.writeUInt32LE(idx.length >>> 0, 8);
+      const frame = Buffer.concat([hdr, meta, Buffer.from(idx.buffer, idx.byteOffset, idx.byteLength)]);
+      const _t0 = Date.now();
+      const result = await this._sparseSendBinary(frame, reqId, 8_000, ws);
+      const out = result && result.currents ? result.currents : null;
+      if (out && out.length > 0) {
+        this._bucketProbeOk = (this._bucketProbeOk || 0) + 1;
+        if (!this._bucketProbeLogOnce) {
+          this._bucketProbeLogOnce = true;
+          console.log(`[Brain] REDUCED READOUT LIVE — sem→word_motor answered as ${out.length.toLocaleString()} bucket means in ${Date.now() - _t0}ms; the dense form would have shipped the full post-region every spoken word.`);
+        }
+        return out;
+      }
+      this._bucketProbeMiss = (this._bucketProbeMiss || 0) + 1;
+      return null;
+    } catch {
+      this._bucketProbeMiss = (this._bucketProbeMiss || 0) + 1;
+      return null;
+    }
+  },
+
   async gpuSparsePropagateBound(name) {
     // DF.7 — when fan-out is ON, spread the bound propagate round-robin across
     // the pool so the idle replica GPUs compute (their resident state is kept

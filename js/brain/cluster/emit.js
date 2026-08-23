@@ -583,6 +583,29 @@ export const CLUSTER_EMIT_MIXIN = {
         const idx = [];
         for (let i = sem.start; i < sem.end; i++) { if (this.lastSpikes[i]) idx.push(i - sem.start); }
         this._lastEmitSemActive = idx.length;   // EMITWHY — did the question pattern even land?
+        // GATEGPU.2 (2026-08-23) — ASK FOR THE REDUCTION, NOT THE RAW FIELD.
+        // The argmax below only ever wanted per-bucket means; pulling the whole
+        // post region (720K floats, ~2.9MB) per spoken word to compute them
+        // server-side was the readout waste this fix removes. A donor ≥0.3.28
+        // reduces on the card and answers with the means themselves. Every
+        // downstream rule (WORDNORM, repetition penalty, GW boost, function-word
+        // floor, capacity break, grade gate) runs UNCHANGED on those means.
+        if (idx.length && typeof this._gpuProxy.gateProbeBuckets === 'function'
+            && typeof this.wordBucketCellSizeFor === 'function'
+            && Array.isArray(this.wordBucketWords) && this.wordBucketWords.length > 0) {
+          try {
+            const means = await this._gpuProxy.gateProbeBuckets(
+              `${this.name}_sem_to_word_motor`, idx,
+              this.wordBucketCellSizeFor(), this.wordBucketWords.length,
+            );
+            if (means && means.length > 0) {
+              const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
+              s2.gpu++;
+              if (!s2.logged) { s2.logged = true; console.log('[Cluster ' + this.name + '] SPEAK via donor: ON (reduced readout) — the card returns per-word bucket means, not the raw post region.'); }
+              return this.emitWordDirect({ ...opts, wmBucketMeans: means });
+            }
+          } catch { /* fall through to the full-current probe */ }
+        }
         if (idx.length) {
           // PROBELANE (2026-08-22) — one retry: the first attempt can land
           // while the previous per-tick propagate round is still draining
@@ -620,10 +643,20 @@ export const CLUSTER_EMIT_MIXIN = {
     const semSize = sem.end - sem.start;
     const wmSize = wordMotor.end - wordMotor.start;
 
+    // GATEGPU.2 (2026-08-23) — PRE-REDUCED MEANS from the donor. When the card
+    // did the bucket reduction there is nothing to build a dense pre-vector for
+    // and nothing to sum: skip both. The dense paths below are untouched for
+    // every caller that still hands raw currents (or none).
+    const bucketMeans = (opts.wmBucketMeans && opts.wmBucketMeans.length > 0)
+      ? opts.wmBucketMeans : null;
+
     // Build sem-region input from current cluster spike state
-    const preSem = new Float64Array(semSize);
-    for (let i = 0; i < semSize; i++) {
-      preSem[i] = this.lastSpikes[sem.start + i] || 0;
+    let preSem = null;
+    if (!bucketMeans) {
+      preSem = new Float64Array(semSize);
+      for (let i = 0; i < semSize; i++) {
+        preSem[i] = this.lastSpikes[sem.start + i] || 0;
+      }
     }
 
     let wmOut;
@@ -634,13 +667,17 @@ export const CLUSTER_EMIT_MIXIN = {
     // THINK/SEQ/ORDER 100% (gate probes read the donor) vs TALK 0/10 + PROD
     // 0/17 ("four plus one equals"→"ribbon") — she knew more than the matrix
     // she spoke from.
-    if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
+    if (bucketMeans) {
+      wmOut = null;   // GATEGPU.2 — the means ARE the readout; no dense field exists
+    } else if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
       wmOut = opts.wmOutOverride;
     } else {
       try { wmOut = proj.propagate(preSem); }
       catch { return ''; }
     }
-    if (!wmOut || wmOut.length === 0) return '';
+    // GATEGPU.2 — the empty-readout guard applies to whichever form carries the
+    // readout: the dense field, or the pre-reduced bucket means.
+    if (!bucketMeans && (!wmOut || wmOut.length === 0)) return '';
 
     // GlobalWorkspace bias: when a previous-tick ignition broadcast
     // names a specific word (cortex's getWorkspaceCandidate label
@@ -830,7 +867,6 @@ export const CLUSTER_EMIT_MIXIN = {
               && !FUNCTION_WORDS.has(_bw)
               && !T14_TERMINATORS.has(_bw)) continue;
         }
-        let sum = 0;
         const bStart = subjStart + b * bucketSize;
         // SPEAK.1 — capacity overflow: index-ordered, so once a band starts
         // past the sub-band every higher word overflows too. Break, warn once.
@@ -846,8 +882,16 @@ export const CLUSTER_EMIT_MIXIN = {
         }
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
         const cellCount = Math.max(1, bEnd - bStart);
-        for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        let mean = sum / cellCount;
+        // GATEGPU.2 — the card already computed this exact quotient
+        // (sum over [bStart,bEnd) ÷ the bucket's REAL span); otherwise sum here.
+        let mean;
+        if (bucketMeans) {
+          mean = b < bucketMeans.length ? bucketMeans[b] : 0;
+        } else {
+          let sum = 0;
+          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
+          mean = sum / cellCount;
+        }
         // WORDNORM — divide an over-massed bucket's score by (mass/avg)^alpha;
         // at/below-average buckets untouched (factor clamped to 1).
         if (_wnMass && _wnMass.avg > 0 && _wnMass.mass[b] > _wnMass.avg) {

@@ -12,6 +12,8 @@ pub const SYNAPSE_PROPAGATE_SHADER: &str = include_str!("shaders/synapse_propaga
 pub const PLASTICITY_SHADER: &str = include_str!("shaders/plasticity.wgsl");
 /// v0.3.26 — device-side sparse scatter for the masked bound-plasticity verb.
 pub const SCATTER_ONES_SHADER: &str = include_str!("shaders/scatter_ones.wgsl");
+/// GATEGPU.2 (v0.3.28) — device-side bucket-mean reduction of post currents.
+pub const BUCKET_MEAN_SHADER: &str = include_str!("shaders/bucket_mean.wgsl");
 
 #[derive(Debug, Clone)]
 pub struct GpuInfo {

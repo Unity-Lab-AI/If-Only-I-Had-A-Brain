@@ -11,7 +11,7 @@ use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 use crate::frames::Binding;
-use crate::gpu::{LIF_SHADER, PLASTICITY_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
+use crate::gpu::{BUCKET_MEAN_SHADER, LIF_SHADER, PLASTICITY_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -48,6 +48,16 @@ struct PropagateParams {
     nnz: u32,
     src_offset: u32,
     dst_offset: u32,
+}
+
+/// GATEGPU.2 (v0.3.28) — bucket-mean reduction params.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct BucketParams {
+    bucket_count: u32,
+    bucket_size: u32,
+    rows: u32,
+    grid_x: u32,
 }
 
 #[repr(C)]
@@ -114,6 +124,8 @@ pub struct ComputeEngine {
     propagate_pipeline: wgpu::ComputePipeline,
     plasticity_pipeline: wgpu::ComputePipeline,
     scatter_pipeline: wgpu::ComputePipeline,
+    /// GATEGPU.2 (v0.3.28) — reduces post currents to per-word-bucket means on the card.
+    bucket_mean_pipeline: wgpu::ComputePipeline,
     clusters: HashMap<String, Cluster>,
     sparse: HashMap<String, SparseMatrix>,
 }
@@ -164,6 +176,7 @@ impl ComputeEngine {
         let propagate_pipeline = build_pipeline(&device, "synapse_propagate", SYNAPSE_PROPAGATE_SHADER);
         let plasticity_pipeline = build_pipeline(&device, "plasticity", PLASTICITY_SHADER);
         let scatter_pipeline = build_pipeline(&device, "scatter_ones", SCATTER_ONES_SHADER);
+        let bucket_mean_pipeline = build_pipeline(&device, "bucket_mean", BUCKET_MEAN_SHADER);
 
         Ok(Self {
             device,
@@ -174,6 +187,7 @@ impl ComputeEngine {
             propagate_pipeline,
             plasticity_pipeline,
             scatter_pipeline,
+            bucket_mean_pipeline,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
         })
@@ -646,6 +660,103 @@ impl ComputeEngine {
         Ok(out)
     }
 
+    /// GATEGPU.2 (v0.3.28) — PROPAGATE, THEN REDUCE ON THE CARD.
+    ///
+    /// Identical propagate to the method above, but the post currents are
+    /// reduced to per-word-bucket MEANS in a second dispatch and only those
+    /// means are read back. The brain's emission argmax consumed exactly this
+    /// reduction — after pulling the entire current vector over the wire: one
+    /// spoken word dragged 720,000 floats (~2.9MB) so the server could turn
+    /// them into ~2,500 bucket means. Now the ack is kilobytes.
+    ///
+    /// The divisor is each bucket's REAL span (the last bucket may be short),
+    /// matching the server's `sum / cellCount` exactly.
+    pub fn propagate_bucket_means(
+        &self,
+        name: &str,
+        pre_indices: &[u32],
+        bucket_size: u32,
+        bucket_count: u32,
+    ) -> Result<Vec<f32>, String> {
+        let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
+        let bc = bucket_count.max(1) as usize;
+        let bs = bucket_size.max(1);
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(vec![0.0; bc]);
+        }
+        self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
+        let zeros = vec![0f32; m.rows.max(1) as usize];
+        self.queue.write_buffer(&m.post_currents, 0, bytemuck::cast_slice(&zeros));
+
+        let params = PropagateParams { rows: m.rows, cols: m.cols, nnz: m.nnz, src_offset: 0, dst_offset: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("prop-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("prop-bg"),
+            layout: &self.propagate_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_currents.as_entire_binding() },
+            ],
+        });
+
+        // Reduction target + its readback staging — bucket_count floats, not rows.
+        let means_buf = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bucket-means"),
+            size: (bc as u64) * 4,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let means_staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("bucket-means-staging"),
+            size: (bc as u64) * 4,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let (bdx, bdy, bgrid) = dispatch_dims(bc as u32);
+        let bparams = BucketParams { bucket_count: bc as u32, bucket_size: bs, rows: m.rows, grid_x: bgrid };
+        let bub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("bucket-params"), contents: bytemuck::bytes_of(&bparams), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bbg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("bucket-bg"),
+            layout: &self.bucket_mean_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: bub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.post_currents.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: means_buf.as_entire_binding() },
+            ],
+        });
+
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("propagate-bucket") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("propagate"), timestamp_writes: None });
+            cp.set_pipeline(&self.propagate_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("bucket-mean"), timestamp_writes: None });
+            cp.set_pipeline(&self.bucket_mean_pipeline);
+            cp.set_bind_group(0, &bbg, &[]);
+            cp.dispatch_workgroups(bdx, bdy, 1);
+        }
+        enc.copy_buffer_to_buffer(&means_buf, 0, &means_staging, 0, (bc as u64) * 4);
+        self.queue.submit(std::iter::once(enc.finish()));
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        means_staging.slice(..).map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        rx.recv().map_err(|_| "map channel dropped".to_string())?.map_err(|e| format!("map failed: {e:?}"))?;
+        let data = means_staging.slice(..).get_mapped_range();
+        let out: Vec<f32> = bytemuck::cast_slice(&data[..bc * 4]).to_vec();
+        drop(data);
+        means_staging.unmap();
+        Ok(out)
+    }
+
     /// TU.19-D — read back a resident sparse matrix's weight digest for GPU↔CPU
     /// parity. Returns (nnz, FNV-1a-64 checksum over the bit-exact f32 value bytes,
     /// evenly-spaced (flat-index, value) samples). Copies the resident `values`
@@ -878,6 +989,32 @@ impl Backend {
             Backend::Wgpu(e) => e.propagate(name, pre),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.propagate(name, pre),
+        }
+    }
+    /// GATEGPU.2 (v0.3.28) — reduced readout. The CUDA backend has no bucket
+    /// kernel yet, so it propagates and reduces the SAME arithmetic on the host
+    /// (identical means; it saves the wire, not the CUDA readback) — an honest
+    /// equivalent rather than a silent capability gap that would make a
+    /// CUDA-donor emission disagree with a wgpu-donor emission.
+    fn propagate_bucket_means(&mut self, name: &str, pre: &[u32], bucket_size: u32, bucket_count: u32) -> Result<Vec<f32>, String> {
+        match self {
+            Backend::Wgpu(e) => e.propagate_bucket_means(name, pre, bucket_size, bucket_count),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => {
+                let currents = e.propagate(name, pre)?;
+                let bc = bucket_count.max(1) as usize;
+                let bs = bucket_size.max(1) as usize;
+                let rows = currents.len();
+                let mut means = vec![0.0f32; bc];
+                for (b, slot) in means.iter_mut().enumerate() {
+                    let start = b * bs;
+                    if start >= rows { break; }
+                    let end = (start + bs).min(rows);
+                    let sum: f32 = currents[start..end].iter().sum();
+                    *slot = sum / ((end - start) as f32);
+                }
+                Ok(means)
+            }
         }
     }
     fn hebbian(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
@@ -1214,6 +1351,14 @@ impl MultiEngine {
         // zero-contribution — matches the browser donor's gpuReady gate. No spam.
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(Vec::new()) };
         self.engines[g].propagate(name, pre)
+    }
+
+    /// GATEGPU.2 (v0.3.28) — propagate + on-card bucket-mean reduction. Same
+    /// not-resident posture as `propagate`: an empty Vec, which the brain reads
+    /// as "no answer" and grades on its own CPU path instead.
+    pub fn propagate_bucket_means(&mut self, name: &str, pre: &[u32], bucket_size: u32, bucket_count: u32) -> Result<Vec<f32>, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(Vec::new()) };
+        self.engines[g].propagate_bucket_means(name, pre, bucket_size, bucket_count)
     }
 
     pub fn hebbian(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {

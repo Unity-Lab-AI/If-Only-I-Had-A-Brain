@@ -2908,6 +2908,11 @@ class ServerBrain {
         // Null on any honesty guard (lane busy / no donor / kill switch) —
         // the caller's CPU chunked path grades instead.
         gateProbe: (matrixName, srcRegion, indices)         => this.gpuGateProbe(matrixName, srcRegion, indices),
+        // GATEGPU.2 (donor v0.3.28) — the REDUCED readout: the card reduces the
+        // post currents to per-word-bucket means, so a spoken word's ack is
+        // kilobytes instead of the whole post region. Null when the donor
+        // predates it and the caller takes the full-current probe instead.
+        gateProbeBuckets: (matrixName, indices, bucketSize, bucketCount) => this.gpuGateProbeBuckets(matrixName, indices, bucketSize, bucketCount),
         // v0.3.18 — range-form plasticity: a whole N-rep band-pair dose as
         // ONE ~60-byte fire-and-forget frame. Self-contained (carries its
         // own pre/post ranges) — touches NO shared spike buffers, so no

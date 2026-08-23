@@ -635,6 +635,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::Upload { name, .. } => format!("upload {name}"),
                     Frame::Chunk { name, chunk_seq, total_chunks, .. } => format!("upload-chunk {name} {}/{}", chunk_seq + 1, total_chunks),
                     Frame::Propagate { name, .. } => format!("propagate {name}"),
+                    Frame::PropagateBuckets { name, .. } => format!("propagate-buckets {name}"),
                     Frame::Hebbian { name, .. } => format!("hebbian {name}"),
                     Frame::BatchedHebbian { .. } => "batched-hebbian".to_string(),
                     // Routed to Work::WriteSpike/etc at receive; arms exist for exhaustiveness.
@@ -1227,6 +1228,21 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
                 Some(frames::ack_propagate(req_id, &[]))
             }
         },
+        // GATEGPU.2 (v0.3.28) — the reduced readout. Answered with the ordinary
+        // type=2 ack: the payload is bucketCount means instead of `rows`
+        // currents, so the brain's existing propagate-ack parser handles it
+        // unchanged and the wire carries kilobytes where it carried megabytes.
+        // An empty result (matrix not resident) acks empty, which the brain
+        // already reads as "no answer" and grades on its own CPU path.
+        Frame::PropagateBuckets { req_id, name, bucket_size, bucket_count, pre } => {
+            match engine.propagate_bucket_means(&name, &pre, bucket_size, bucket_count) {
+                Ok(means) => Some(frames::ack_propagate(req_id, &means)),
+                Err(e) => {
+                    eprintln!("[donor] propagate_buckets '{name}' failed: {e}");
+                    Some(frames::ack_propagate(req_id, &[]))
+                }
+            }
+        }
         Frame::Hebbian { req_id, name, pre, post, lr } => {
             if let Err(e) = engine.hebbian(&name, &pre, &post, lr) {
                 eprintln!("[donor] hebbian '{name}' failed: {e}");

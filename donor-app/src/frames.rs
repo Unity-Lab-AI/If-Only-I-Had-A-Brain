@@ -41,6 +41,9 @@ pub enum Frame {
         col_idx: Vec<u32>,
     },
     Propagate { req_id: u32, name: String, pre: Vec<u32> },
+    /// GATEGPU.2 (v0.3.28) — propagate whose currents are reduced to per-word-bucket
+    /// means on the card, so the ack is kilobytes instead of megabytes.
+    PropagateBuckets { req_id: u32, name: String, bucket_size: u32, bucket_count: u32, pre: Vec<u32> },
     Hebbian { req_id: u32, name: String, pre: Vec<u32>, post: Vec<u32>, lr: f32 },
     BatchedHebbian { req_id: u32, ops: Vec<(String, f32)> },
     /// v0.3.13 binary teach patterns (types 7-9). These replace the ~153KB JSON
@@ -354,6 +357,17 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
         12 => {
             let orig_type = r.u8()?;
             Some(Frame::Repeat { req_id, orig_type, name })
+        }
+        // GATEGPU.2 (v0.3.28) — propagate + on-card bucket-mean reduction:
+        // bucketSize + bucketCount + sparse pre indices. Answered with an
+        // ordinary type=2 ack whose payload is bucketCount means, so the brain
+        // needs no new ack parser for it.
+        15 => {
+            let bucket_size = r.u32()?.max(1);
+            let bucket_count = r.u32()?.max(1);
+            let count = r.u32()? as usize;
+            let pre = r.u32_vec(count)?;
+            Some(Frame::PropagateBuckets { req_id, name, bucket_size, bucket_count, pre })
         }
         // v0.3.26 — masked bound plasticity: lr + reps + sparse post row mask.
         13 => {
