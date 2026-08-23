@@ -10084,7 +10084,62 @@ export class Curriculum {
         for (const subject of subjectsForGrade(grade)) {
           if (!Array.isArray(passed[subject])) passed[subject] = [];
           if (!(subject in failed)) failed[subject] = null;
-          const currentIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || 'pre-K');
+          // ── WALKORDER (2026-08-23) — POSITION COMES FROM THE LEDGER, AND A ──
+          // ── SUBJECT CANNOT LAG BEHIND A GRADE IT WAS NEVER OFFERED.        ──
+          //
+          // Gee: *"why is it doing grade 2 when grade 1 isnt even done yet"* —
+          // measured on the live box: `ela/grade2` teaching while PE, Music and
+          // Health showed ZERO grade-1 phases. Not a display bug and not a
+          // missing runner (all nine grade-1 runners exist). The chain:
+          //
+          //   1. `cluster.grades` is seeded with the CORE FIVE only
+          //      (`{ela, math, science, social, art}`, see runAllSubjects head),
+          //      so pe / music / health — introduced at KINDERGARTEN — had no
+          //      entry at all on the live box.
+          //   2. A missing entry defaults to `'pre-K'` → currentIdx 0.
+          //   3. At grade1 (i=2) that trips the DESYNC guard below
+          //      (`0 < 1`) and the subject is skipped as "LAGGING".
+          //   4. The skip did NOT clear `allPassedThisGrade`, so the grade
+          //      reported itself complete and the walk advanced.
+          //
+          // A subject introduced at kindergarten can never legitimately be
+          // "lagging at pre-K" — it was never offered pre-K. So position now
+          // reads the AUTHORITATIVE LEDGER (`passedCells`, the same source the
+          // dashboard's grade pointer uses — `cluster.grades` and the ledger
+          // were measurably out of sync) and is floored at the grade the
+          // subject was first offered.
+          const _passedSet = (cluster && Array.isArray(cluster.passedCells))
+            ? new Set(cluster.passedCells) : new Set();
+          let _lastPassedIdx = -1;
+          for (let g = 0; g < GRADE_ORDER.length; g++) {
+            if (_passedSet.has(`${subject}/${GRADE_ORDER[g]}`)) _lastPassedIdx = g;
+          }
+          // First grade whose roster offers this subject — its floor.
+          let _introIdx = 0;
+          for (let g = 0; g < GRADE_ORDER.length; g++) {
+            let _roster = null;
+            try { _roster = subjectsForGrade(GRADE_ORDER[g]); } catch { _roster = null; }
+            if (Array.isArray(_roster) && _roster.includes(subject)) { _introIdx = g; break; }
+          }
+          // The ledger misses pre-K (it predates passedCells recording — see
+          // SCALEDOC.1), so fall back to the pointer when the ledger is blank
+          // rather than declaring a long-trained subject unstarted.
+          // THE LEDGER WINS WHEN THE TWO DISAGREE, and they measurably do: on
+          // the live box `cluster.grades.life === 'grade1'` (pointer claims the
+          // grade was cleared) while `passedCells` held no `life/grade1` and the
+          // board showed 2 phases / 0 cells — i.e. started, never finished. An
+          // optimistic pointer must not be able to mark a cell complete that
+          // the ledger never recorded; taking the max of the two (my first cut
+          // of this fix) let exactly that through, caught by the harness.
+          //
+          // The pointer is still the fallback for a subject with NO ledger
+          // entries at all, because pre-K passes predate `passedCells`
+          // recording (SCALEDOC.1) and a long-trained subject must not be
+          // declared unstarted just because its early history is unrecorded.
+          const _pointerIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || 'pre-K');
+          const currentIdx = _lastPassedIdx >= 0
+            ? _lastPassedIdx
+            : Math.max(_pointerIdx, _introIdx - 1);
           if (currentIdx >= i) continue; // already past this grade
           // DESYNC GUARD — a subject left behind (force-advance refused at a
           // lower grade) must NOT be taught the walk's current (too-high)
@@ -10095,7 +10150,17 @@ export class Curriculum {
           // subjects together); this only trips when a subject genuinely
           // can't clear a lower grade.
           if (currentIdx < i - 1) {
-            this._hb(`[Curriculum] ⏭ ${subject} LAGGING at '${cluster.grades[subject] || 'pre-K'}' while walk is at '${grade}' — holding (won't teach a skipped-ahead grade; catch it up via the per-subject walk or operator re-teach).`);
+            // WALKORDER — A HELD SUBJECT MUST NOT LET THE GRADE REPORT ITSELF
+            // COMPLETE. Gee's directive: *"finish every subject at a grade
+            // before advancing"*. This `continue` used to fall through without
+            // touching `allPassedThisGrade`, so a grade whose only outcome was
+            // "three subjects skipped" still advanced — which is exactly how
+            // Grade 1 ended with PE, Music and Health never taught. Clearing
+            // the flag keeps the grade's retry loop alive; it is BOUNDED by
+            // MAX_GRADE_ROUNDS and the force-advance block below, so a subject
+            // that genuinely cannot clear still cannot wedge the walk forever.
+            allPassedThisGrade = false;
+            this._hb(`[Curriculum] ⏭ ${subject} LAGGING at '${GRADE_ORDER[currentIdx] || 'pre-K'}' while walk is at '${grade}' — holding, and the grade will NOT report complete while it is owed (won't teach a skipped-ahead grade).`);
             continue;
           }
 
