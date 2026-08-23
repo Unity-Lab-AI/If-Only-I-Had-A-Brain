@@ -101719,10 +101719,30 @@ var Curriculum = class _Curriculum {
         for (const subject of subjectsForGrade(grade)) {
           if (!Array.isArray(passed[subject])) passed[subject] = [];
           if (!(subject in failed)) failed[subject] = null;
-          const currentIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || "pre-K");
+          const _passedSet = cluster && Array.isArray(cluster.passedCells) ? new Set(cluster.passedCells) : /* @__PURE__ */ new Set();
+          let _lastPassedIdx = -1;
+          for (let g = 0; g < GRADE_ORDER.length; g++) {
+            if (_passedSet.has(`${subject}/${GRADE_ORDER[g]}`)) _lastPassedIdx = g;
+          }
+          let _introIdx = 0;
+          for (let g = 0; g < GRADE_ORDER.length; g++) {
+            let _roster = null;
+            try {
+              _roster = subjectsForGrade(GRADE_ORDER[g]);
+            } catch {
+              _roster = null;
+            }
+            if (Array.isArray(_roster) && _roster.includes(subject)) {
+              _introIdx = g;
+              break;
+            }
+          }
+          const _pointerIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || "pre-K");
+          const currentIdx = _lastPassedIdx >= 0 ? _lastPassedIdx : Math.max(_pointerIdx, _introIdx - 1);
           if (currentIdx >= i) continue;
           if (currentIdx < i - 1) {
-            this._hb(`[Curriculum] \u23ED ${subject} LAGGING at '${cluster.grades[subject] || "pre-K"}' while walk is at '${grade}' \u2014 holding (won't teach a skipped-ahead grade; catch it up via the per-subject walk or operator re-teach).`);
+            allPassedThisGrade = false;
+            this._hb(`[Curriculum] \u23ED ${subject} LAGGING at '${GRADE_ORDER[currentIdx] || "pre-K"}' while walk is at '${grade}' \u2014 holding, and the grade will NOT report complete while it is owed (won't teach a skipped-ahead grade).`);
             continue;
           }
           let attempt = 0;
