@@ -1562,6 +1562,15 @@ export const CLUSTER_EMIT_MIXIN = {
             // sequencing tick-by-tick. Deliberate trade above pure
             // cortical-leak timing; constants are tunable and validated on
             // a live GPU emission run (headless can't exercise emission).
+            // Asymptotic bound WITH these constants: base × 1/(1−decay) =
+            // 0.24 / 0.08 = 3.0 worst-case magnitude on sem (vs 1.0 under
+            // the old 0.15/0.85), held below that live by per-tick cortical
+            // leak. This pair is the lever between topical word-salad (back-
+            // inject too weak → argmax follows the intent centroid, syntax
+            // scrambles) and grammatical-but-off-topic drift (too strong →
+            // prior-word transition drowns the intent anchor). FIRST knob to
+            // turn if the live walk reads grammatical yet wanders off the
+            // prompt's topic: lower BASE toward 0.18 and/or DECAY toward 0.88.
             const BACK_INJECT_BASE = 0.24;
             const BACK_INJECT_DECAY = 0.92;
             const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
