@@ -157,7 +157,20 @@ impl DonorApp {
         // highest-indexed card (usually a spare). Single-GPU machines just enable that one.
         let last = gpus.len().saturating_sub(1);
         let enabled: Vec<bool> = gpus.iter().enumerate().map(|(i, _)| i == last).collect();
-        let util: Vec<f32> = gpus.iter().map(|_| 10.0).collect();
+        // SOLOCARD (2026-08-23) — the GUI hardcoded every slider to 10%, silently
+        // contradicting the CLI contract right above it: `--utilization` defaults
+        // to "all" (=100) precisely BECAUSE the old default of 10 "never
+        // duty-cycled anything — it shrank the capacity the brain would USE, so a
+        // 24GB card announced itself as 2.4GB". That fix landed in the CLI and
+        // never reached the GUI, so a native donor still showed `@ 10%`.
+        //
+        // The display-GPU caution the old default was protecting is already
+        // handled by the `enabled` mask above (only the highest-indexed card is
+        // on by default, so a multi-GPU desktop still donates its spare, not its
+        // primary). On a SINGLE-GPU machine that mask necessarily selects the
+        // display card anyway — and someone who launched a donor on their only
+        // GPU has already made that decision. Honour what was actually asked for.
+        let util: Vec<f32> = gpus.iter().map(|_| cfg.utilization_pct as f32).collect();
         let server_mode = if cfg.server == PROD_SERVER {
             ServerMode::Live
         } else if cfg.server == LOCAL_SERVER {

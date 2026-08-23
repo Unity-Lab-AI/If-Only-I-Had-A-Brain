@@ -6,7 +6,35 @@ use serde::{Deserialize, Serialize};
 /// donates to the live brain out of the box.
 pub const PROD_SERVER: &str = "wss://if-only-i-had-a-brain.git.unityailab.com/ws";
 /// Local brain for testing (`--local`).
-pub const LOCAL_SERVER: &str = "ws://localhost:7525";
+///
+/// LOOPBACK (2026-08-23) — **127.0.0.1, NOT `localhost`.** The brain binds
+/// `BIND_HOST = 127.0.0.1` (IPv4 loopback only). On Windows `localhost`
+/// resolves to `::1` FIRST, and a native client that resolves to IPv6 gets a
+/// refused connection — while the operator's BROWSER on the very same machine
+/// loads `http://localhost:7525` fine, because browsers try both families
+/// (Happy Eyeballs) and silently fall back to IPv4.
+///
+/// That asymmetry is exactly what a local run looked like: the dashboard up in
+/// Chrome, and the donor beside it reporting *"NOT active — can't reach the
+/// brain"* on the same box. Naming the IPv4 loopback removes the ambiguity;
+/// `normalize_ws_host` below repairs already-saved `localhost` settings too.
+pub const LOCAL_SERVER: &str = "ws://127.0.0.1:7525";
+
+/// LOOPBACK — rewrite a `localhost` websocket host to `127.0.0.1`.
+///
+/// Applied to whatever server string finally reaches the connect call, so a
+/// persisted `settings.json` written before this fix (or a hand-typed URL)
+/// cannot strand a donor against an IPv4-only brain. Only the loopback name is
+/// touched — a real hostname is left exactly as given.
+pub fn normalize_ws_host(url: &str) -> String {
+    if let Some(rest) = url.strip_prefix("ws://localhost") {
+        return format!("ws://127.0.0.1{rest}");
+    }
+    if let Some(rest) = url.strip_prefix("wss://localhost") {
+        return format!("wss://127.0.0.1{rest}");
+    }
+    url.to_string()
+}
 
 /// Which GPUs to donate.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,9 +69,11 @@ pub struct DonorConfig {
 impl DonorConfig {
     pub fn from_cli(cli: &Cli) -> Result<Self, String> {
         // Precedence: explicit --server > --local > production default.
-        let server = cli.server.clone().unwrap_or_else(|| {
+        // LOOPBACK — normalize here so an explicit `--server ws://localhost:...`
+        // reaches an IPv4-only brain too, not just the `--local` default.
+        let server = normalize_ws_host(&cli.server.clone().unwrap_or_else(|| {
             if cli.local { LOCAL_SERVER.to_string() } else { PROD_SERVER.to_string() }
-        });
+        }));
         Ok(DonorConfig {
             server,
             name: cli.name.clone(),
