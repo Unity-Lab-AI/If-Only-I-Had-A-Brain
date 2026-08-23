@@ -14,6 +14,10 @@ pub const PLASTICITY_SHADER: &str = include_str!("shaders/plasticity.wgsl");
 pub const SCATTER_ONES_SHADER: &str = include_str!("shaders/scatter_ones.wgsl");
 /// GATEGPU.2 (v0.3.28) — device-side bucket-mean reduction of post currents.
 pub const BUCKET_MEAN_SHADER: &str = include_str!("shaders/bucket_mean.wgsl");
+/// GPUVERB.3 (v0.3.28) — max over post currents (predictive-error normaliser).
+pub const CURRENT_MAX_SHADER: &str = include_str!("shaders/current_max.wgsl");
+/// GPUVERB.3 (v0.3.28) — predictive-error correction, computed and applied on the card.
+pub const PREDICTIVE_ERROR_SHADER: &str = include_str!("shaders/predictive_error.wgsl");
 
 #[derive(Debug, Clone)]
 pub struct GpuInfo {

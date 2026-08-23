@@ -2913,6 +2913,10 @@ class ServerBrain {
         // kilobytes instead of the whole post region. Null when the donor
         // predates it and the caller takes the full-current probe instead.
         gateProbeBuckets: (matrixName, indices, bucketSize, bucketCount) => this.gpuGateProbeBuckets(matrixName, indices, bucketSize, bucketCount),
+        // GPUVERB.3 (donor v0.3.28) — the predictive-error correction runs on the
+        // card from its own resident spikes; the frame carries no vectors. Returns
+        // true only when SENT, so the caller knows whether to run its CPU pass.
+        predictiveError: (name, lr, wMin, wMax)             => this.gpuSparsePredictiveError(name, lr, wMin, wMax),
         // v0.3.18 — range-form plasticity: a whole N-rep band-pair dose as
         // ONE ~60-byte fire-and-forget frame. Self-contained (carries its
         // own pre/post ranges) — touches NO shared spike buffers, so no

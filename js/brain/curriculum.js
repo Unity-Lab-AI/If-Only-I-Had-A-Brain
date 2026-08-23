@@ -12108,6 +12108,30 @@ export class Curriculum {
       // multi-def). propagateChunked is bit-for-bit identical (rows are
       // independent) but yields the loop every chunk. Fall back to sync if
       // the chunked variant is unavailable.
+      // GPUVERB.3 (2026-08-23, donor v0.3.28) — THE WHOLE CORRECTION ON THE CARD.
+      // This was the last signed-magnitude CPU training lane: a full-matrix
+      // propagate PLUS a full-matrix weight write, once per pair, at 12M rows.
+      // Its float error vector is dense, so no mask could carry it — the donor
+      // computes the entire chain (propagate → max-normalise → clamp(target−p,
+      // ±1) → w += lr·e·pre) from its own resident bound spikes, on a ~60-byte
+      // frame, with the arithmetic parity-verified against this exact rule on
+      // real silicon. When the GPU carries it the CPU shadow runs SAMPLED (every
+      // 5th call — the same trained-equivalent posture as the lateral-inhibition
+      // lane); when the donor can't take it, the full CPU pass below runs
+      // unchanged and nothing is dropped.
+      let _peCarried = false;
+      if (cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.predictiveError === 'function') {
+        try {
+          _peCarried = cluster._gpuProxy.predictiveError(
+            `${cluster.name}_intraSynapses`, lr * 0.3,
+            (cluster.synapses && typeof cluster.synapses.wMin === 'number' && Number.isFinite(cluster.synapses.wMin)) ? cluster.synapses.wMin : -2.0,
+            (cluster.synapses && typeof cluster.synapses.wMax === 'number' && Number.isFinite(cluster.synapses.wMax)) ? cluster.synapses.wMax : 2.0,
+          ) === true;
+        } catch { _peCarried = false; }
+      }
+      this._predErrShadowCounter = (this._predErrShadowCounter | 0) + 1;
+      if (_peCarried && (this._predErrShadowCounter % 5 !== 0)) return;
+
       const predicted = (typeof cluster.synapses.propagateChunked === 'function')
         ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 })
         : cluster.synapses.propagate(target, this._predictPropagateScratch);
