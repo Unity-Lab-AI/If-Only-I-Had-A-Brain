@@ -1540,7 +1540,28 @@ let COMMUNITY_TIER_RUNNING = 0;
     console.warn('[Brain] community-tier.json read failed (using RAM-safe VRAM-derived size):', e.message);
   }
   const _curTotal = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
-  if (_communityTarget > 0 && _curTotal > _communityTarget) {
+  // ── LOCALTIER (2026-08-23) — THE COMMUNITY LADDER IS A PUBLIC-BRAIN ──────
+  // ── MECHANISM AND MUST NOT SHRINK A PRIVATE MACHINE.                     ──
+  //
+  // The comment directly above already states the rule — *"In LOCAL dev (no
+  // proxy-auth, no tier file) leave the host-VRAM-derived size untouched — the
+  // localhost walk runs at full scale"* — but the code only honoured it when NO
+  // tier file existed, and DF.7 writes one the moment a donor connects, even on
+  // a laptop. So a local run created its own clamp and then obeyed it.
+  //
+  // Measured on Gee's box: hardware sizing produced 562,036,734 neurons and the
+  // very next line read *"community tier 3 target ~357,000,000 neurons → scaled
+  // main-brain DOWN"*. The ladder's rungs are calibrated to a POOL of volunteer
+  // GPUs (tier 3 wants 256GB across 10 donors); applying that to one private
+  // card is meaningless — his 16GB card holds ~460M with everything resident,
+  // which is what the VRAM arithmetic above already worked out.
+  //
+  // The down-clamp is therefore deployed-only. Locally the hardware decides,
+  // which is what the comment promised all along.
+  const _deployedTierMode = process.env.UAL_PROXY_AUTH === '1';
+  if (!_deployedTierMode && _communityTarget > 0 && _curTotal > _communityTarget) {
+    console.log(`[Brain] LOCALTIER — ignoring the community tier ${COMMUNITY_TIER_RUNNING} target (~${_communityTarget.toLocaleString()}) on a LOCAL run: it is a donor-POOL ladder, not a statement about this machine. Keeping the hardware-derived ${_curTotal.toLocaleString()} neurons. (Set UAL_PROXY_AUTH=1 to run deployed semantics.)`);
+  } else if (_communityTarget > 0 && _curTotal > _communityTarget) {
     const _factor = _communityTarget / _curTotal;
     for (const _k of Object.keys(CLUSTER_SIZES)) {
       CLUSTER_SIZES[_k] = Math.max(1000, Math.floor(CLUSTER_SIZES[_k] * _factor));
