@@ -1202,7 +1202,26 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
             }
         }
         Frame::Propagate { req_id, name, pre } => match engine.propagate(&name, &pre) {
-            Ok(currents) => Some(frames::ack_propagate(req_id, &currents)),
+            // SPARSEACK (v0.3.27) — answer with the (index, value) form whenever
+            // it is genuinely smaller on the wire. Propagate acks are the single
+            // biggest thing this donor sends: the brain's 12M-neuron intra
+            // matrix returns a ~48MB dense f32 array EVERY round, and the live
+            // brain's population firing rate is ~0.19%, so the overwhelming
+            // majority of those bytes are zeros crossing a ~205ms-RTT link.
+            //
+            // Same numbers, smaller encoding — the brain rebuilds an identical
+            // Float32Array from the pairs (its SPRR handler has parsed this
+            // exact shape since the browser-donor work, and it routes pendings
+            // by reqId, not by request type, so a type=2 request is legitimately
+            // answered by this type=6 frame). `sparse_ack_is_smaller` compares
+            // real byte counts, so a dense result keeps the dense frame and this
+            // can never inflate a payload. All-zero currents stay all-zero
+            // (nnz=0, postLen unchanged) — exactly what the dense frame said.
+            Ok(currents) => Some(if frames::sparse_ack_is_smaller(&currents) {
+                frames::ack_propagate_sparse(req_id, currents.len() as u32, &currents)
+            } else {
+                frames::ack_propagate(req_id, &currents)
+            }),
             Err(e) => {
                 eprintln!("[donor] propagate '{name}' failed: {e}");
                 Some(frames::ack_propagate(req_id, &[]))
