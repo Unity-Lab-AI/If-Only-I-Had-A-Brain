@@ -54417,6 +54417,26 @@ var CLUSTER_EMIT_MIXIN = {
           if (this.lastSpikes[i]) idx.push(i - sem.start);
         }
         this._lastEmitSemActive = idx.length;
+        if (idx.length && typeof this._gpuProxy.gateProbeBuckets === "function" && typeof this.wordBucketCellSizeFor === "function" && Array.isArray(this.wordBucketWords) && this.wordBucketWords.length > 0) {
+          try {
+            const means = await this._gpuProxy.gateProbeBuckets(
+              `${this.name}_sem_to_word_motor`,
+              idx,
+              this.wordBucketCellSizeFor(),
+              this.wordBucketWords.length
+            );
+            if (means && means.length > 0) {
+              const s2 = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
+              s2.gpu++;
+              if (!s2.logged) {
+                s2.logged = true;
+                console.log("[Cluster " + this.name + "] SPEAK via donor: ON (reduced readout) \u2014 the card returns per-word bucket means, not the raw post region.");
+              }
+              return this.emitWordDirect({ ...opts, wmBucketMeans: means });
+            }
+          } catch {
+          }
+        }
         if (idx.length) {
           let out = await this._gpuProxy.gateProbe(`${this.name}_sem_to_word_motor`, "sem", idx);
           if (!out || !out.length) {
@@ -54449,12 +54469,18 @@ var CLUSTER_EMIT_MIXIN = {
     const wordMotor = this.regions.word_motor;
     const semSize = sem.end - sem.start;
     const wmSize = wordMotor.end - wordMotor.start;
-    const preSem = new Float64Array(semSize);
-    for (let i = 0; i < semSize; i++) {
-      preSem[i] = this.lastSpikes[sem.start + i] || 0;
+    const bucketMeans = opts.wmBucketMeans && opts.wmBucketMeans.length > 0 ? opts.wmBucketMeans : null;
+    let preSem = null;
+    if (!bucketMeans) {
+      preSem = new Float64Array(semSize);
+      for (let i = 0; i < semSize; i++) {
+        preSem[i] = this.lastSpikes[sem.start + i] || 0;
+      }
     }
     let wmOut;
-    if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
+    if (bucketMeans) {
+      wmOut = null;
+    } else if (opts.wmOutOverride && opts.wmOutOverride.length > 0) {
       wmOut = opts.wmOutOverride;
     } else {
       try {
@@ -54463,7 +54489,7 @@ var CLUSTER_EMIT_MIXIN = {
         return "";
       }
     }
-    if (!wmOut || wmOut.length === 0) return "";
+    if (!bucketMeans && (!wmOut || wmOut.length === 0)) return "";
     let gwBoostWord = null;
     let gwBoostMul = 1;
     if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === "function") {
@@ -54539,7 +54565,6 @@ var CLUSTER_EMIT_MIXIN = {
           const _allow = this._emissionAllowedVocab;
           if (_allow && _allow.size > 0 && !_allow.has(_bw.toLowerCase()) && !FUNCTION_WORDS.has(_bw) && !T14_TERMINATORS.has(_bw)) continue;
         }
-        let sum = 0;
         const bStart = subjStart + b * bucketSize;
         if (bStart >= subjEnd) {
           if (!this._wordBucketOverflowWarned) {
@@ -54556,8 +54581,14 @@ var CLUSTER_EMIT_MIXIN = {
         }
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
         const cellCount = Math.max(1, bEnd - bStart);
-        for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        let mean = sum / cellCount;
+        let mean;
+        if (bucketMeans) {
+          mean = b < bucketMeans.length ? bucketMeans[b] : 0;
+        } else {
+          let sum = 0;
+          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
+          mean = sum / cellCount;
+        }
         if (_wnMass && _wnMass.avg > 0 && _wnMass.mass[b] > _wnMass.avg) {
           mean /= Math.pow(_wnMass.mass[b] / _wnMass.avg, _wnAlpha);
         }
