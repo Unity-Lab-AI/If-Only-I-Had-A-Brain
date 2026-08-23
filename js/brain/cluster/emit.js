@@ -582,6 +582,7 @@ export const CLUSTER_EMIT_MIXIN = {
       try {
         const idx = [];
         for (let i = sem.start; i < sem.end; i++) { if (this.lastSpikes[i]) idx.push(i - sem.start); }
+        this._lastEmitSemActive = idx.length;   // EMITWHY — did the question pattern even land?
         if (idx.length) {
           // PROBELANE (2026-08-22) — one retry: the first attempt can land
           // while the previous per-tick propagate round is still draining
@@ -880,6 +881,23 @@ export const CLUSTER_EMIT_MIXIN = {
         candidates.push({ word: wordsList[b], mean });
         if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; }
       }
+    }
+
+    // EMITWHY (2026-08-23) — the decisive diagnostic. Two hypotheses for the
+    // repeating thief words died on measurement (accumulated bucket mass:
+    // WORDNORM found the profile nearly UNIFORM, avg 1.501 with 2 hot buckets;
+    // question-independent currents: the donor demonstrably scatters the passed
+    // pre indices). So record what the argmax ACTUALLY saw — the top candidates
+    // with their means — and let the caller ask where the expected word ranked.
+    // Cheap: a partial top-5 scan over an array we already built.
+    {
+      const top = [];
+      for (const c of candidates) {
+        if (top.length < 5) { top.push(c); top.sort((a, b) => b.mean - a.mean); }
+        else if (c.mean > top[4].mean) { top[4] = c; top.sort((a, b) => b.mean - a.mean); }
+      }
+      this._lastEmitTop = top;
+      this._lastEmitCandidateCount = candidates.length;
     }
 
     // ─── Acceptance gate: two-level signal threshold ───
