@@ -221,6 +221,11 @@ server/.force-fresh
 
 # runtime state (written by the brain at boot/run — never commit)
 server/.last-boot-reason.json
+# Runtime crash breadcrumb — written synchronously on every phase transition by the
+# loop watchdog, so it changes constantly and is per-machine. Same class as
+# .last-boot-reason.json above (which was already ignored); this one slipped in
+# from a local run on 2026-08-23.
+server/.last-breadcrumb.json
 server/resource-config.json
 server/auto-advance.json
 
