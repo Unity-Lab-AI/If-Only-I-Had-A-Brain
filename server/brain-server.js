@@ -762,7 +762,24 @@ const BRAIN_VRAM_ALLOC = (function () {
       vramMB = _budgetMB;
     }
   }
-  const osReserveMB = typeof cfg.osReserveVramMB === 'number' ? cfg.osReserveVramMB : 2048;
+  // DOUBLERESERVE (2026-08-23) — on a GPU host the card was paying the SAME
+  // headroom twice. `_hardMaxMB` above already subtracted `max(2GB, 12.5%)` from
+  // the card ("never budget above card − reserve"), and then this line subtracts
+  // another 2GB OS reserve from that result. On a 16,376MB card that is
+  // 16,376 → 14,328 → 12,280: **4GB withheld for one concern**, which is a
+  // quarter of the card gone before a single neuron is allocated.
+  //
+  // Both reserves exist for the same reason (leave the desktop/compositor and
+  // the driver room on a card that is also driving a display), so they are a
+  // MAX, not a sum. On a CPU-only host nothing is stacked and the OS reserve
+  // applies unchanged.
+  const _osReserveCfgMB = typeof cfg.osReserveVramMB === 'number' ? cfg.osReserveVramMB : 2048;
+  const _hardReserveAlreadyTakenMB = (RESOURCES.gpu && RESOURCES.gpu.vram > 0)
+    ? Math.max(0, RESOURCES.gpu.vram - vramMB) : 0;
+  const osReserveMB = Math.max(0, _osReserveCfgMB - _hardReserveAlreadyTakenMB);
+  if (_hardReserveAlreadyTakenMB > 0 && osReserveMB < _osReserveCfgMB) {
+    console.log(`[Brain] DOUBLERESERVE — the VRAM headroom reserve (${_hardReserveAlreadyTakenMB}MB) already covers the ${_osReserveCfgMB}MB OS reserve; charging the card once instead of twice (OS reserve ${_osReserveCfgMB}MB → ${osReserveMB}MB). Both protect the same thing on a display GPU.`);
+  }
   const brainBudgetMB = Math.max(1024, vramMB - osReserveMB);
 
   // Normalize biological weights — if config weights sum != 1.0, scale them.
@@ -807,8 +824,25 @@ const BRAIN_VRAM_ALLOC = (function () {
   const perRegionBytes = {};
   const _gpuHost = !!(RESOURCES.gpu && RESOURCES.gpu.vram > 0);
   const _langW = Number(weights.language_cortex) || 0;
+  // ⚠ LANGVRAM CORRECTION (2026-08-23, same day) — THE 1GB RESERVE WAS WRONG
+  // AND WOULD HAVE OVERFLOWED THE CARD.
+  //
+  // I read *"projected 96MB GPU footprint"* out of the boot log and concluded
+  // the language cortex needed almost no VRAM. That number covers its geometry
+  // estimate — NOT its seventeen sparse MATRICES, which are the actual GPU
+  // tenants. Measured off the same machine's upload log rather than guessed a
+  // second time: `UPLINK measured …MB` over the 17 chunked uploads sums to
+  // **3,969MB**, and the intra matrix alone keeps 4,165MB resident CPU-side.
+  //
+  // So the honest reserve is ~4GB, not 1GB. With 1GB the main brain would have
+  // been sized to ~562M neurons = 11.8GB of LIF state, plus ~4GB of matrices =
+  // ~15.8GB against 14.3GB usable — an overflow that only escaped detection
+  // because the DF.7 tier clamp happened to hold the brain at 357M.
+  //
+  // 5GB = the measured 3,969MB plus margin, and langCortexSize is PINNED at 12M
+  // by the WMB floor, so this footprint does not grow with the main brain.
   const _langVramReserveMB = Number(process.env.DREAM_LANG_VRAM_RESERVE_MB) >= 0
-    ? Number(process.env.DREAM_LANG_VRAM_RESERVE_MB) : 1024;
+    ? Number(process.env.DREAM_LANG_VRAM_RESERVE_MB) : 5120;
   if (_gpuHost && _langW > 0 && brainBudgetMB > _langVramReserveMB * 2) {
     const _langBytes = _langVramReserveMB * 1024 * 1024;
     const _freed = Math.max(0, Math.floor(brainBudgetBytes * _langW) - _langBytes);
