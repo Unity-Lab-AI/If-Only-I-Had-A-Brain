@@ -10156,7 +10156,37 @@ wss.on('connection', (ws, req) => {
           // mismatch warning. Counted so the mirrored work is visible rather than
           // invisible. The `ws !== primary` clause is belt-and-braces for any result
           // that reaches this handler from a non-primary socket.
-          if (msg.mirror || (brain._gpuClient && ws !== brain._gpuClient)) {
+          // ── MIRRORORPHAN (2026-08-23) — IDENTIFY A MIRROR BY ITS ID, NOT BY ──
+          // ── WHICH SOCKET IT CAME BACK ON.                                   ──
+          //
+          // Caught on a local run: `compute_batch_result batchId mismatch:
+          // expected 2, got 2000000002`, printed immediately after `DF.7 F4 —
+          // rebalancing PRIMARY → healthier donor`. Both are the same event.
+          //
+          // The old test was `msg.mirror || ws !== primary`, and BOTH clauses
+          // fail across a rebalance:
+          //   · `msg.mirror` is never set — the donor's `ComputeBatchResult`
+          //     (protocol.rs) echoes only msg_type / batch_id / per_cluster, so
+          //     the flag we send never comes back. That clause has always been
+          //     dead weight.
+          //   · `ws !== primary` was doing all the work, and it is evaluated at
+          //     RESULT time against a primary that may have changed since the
+          //     batch was SENT. When DF.7 promotes the mirrored donor, its
+          //     mirror result now arrives on the primary socket (so it is NOT
+          //     dropped, and trips the spurious mismatch warning) while the
+          //     AUTHORITATIVE result from the demoted donor arrives on a
+          //     non-primary socket and IS dropped — orphaning the tick promise
+          //     until its timeout. A rebalance therefore cost a whole tick, and
+          //     the only visible symptom was a confusing warning about the id.
+          //
+          // The batch id already carries the answer unambiguously: authoritative
+          // ids are a monotonic counter from 1, mirrors are that counter plus
+          // MIRROR_ID_BASE. Keying on the id makes the decision independent of
+          // promotion timing, and the exact-match check below still guarantees
+          // only the batch we are actually waiting on can resolve the tick.
+          const _MIRROR_ID_BASE = 2000000000;
+          if (msg.mirror === true
+              || (typeof msg.batchId === 'number' && msg.batchId >= _MIRROR_ID_BASE)) {
             brain._gpuMirrorBatches = (brain._gpuMirrorBatches || 0) + 1;
             break;
           }
