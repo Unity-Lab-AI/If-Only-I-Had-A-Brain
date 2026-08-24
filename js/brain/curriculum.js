@@ -9814,7 +9814,35 @@ export class Curriculum {
     // groundhog. Either the matrix learned at this iteration or it
     // didn't — either way Unity uses what she learned and we ship
     // structural fixes for the next iteration.
-    const MAX_GRADE_ROUNDS = 1;
+    //
+    // BOOTORDER.2 — that directive and "finish every subject at a grade before
+    // advancing" are BOTH the operator's, and they are reconciled by the BOUND,
+    // not by picking a winner. The groundhog he banned was an UNBOUNDED retry
+    // that re-ran identical passes; what ships here is a small finite budget in
+    // which each retry is a REAL re-teach (see the remediation call at the end
+    // of the round loop). Asked directly whether the grade-major block should
+    // hold permanently, he answered: "both but make sure it doensnt do something
+    // weird like lock up the training or create infinate loops".
+    //
+    // ⛔ RE-PRICE (required before weakening this gate; measured off the live box
+    // 2026-08-24, full working in docs/TODO.md §BOOTORDER.2): 20 grades × 9
+    // courses; a cell costs 90.4 min measured live and ~26 min averaged (21
+    // cells / 9.2 h uptime). R=1 ⇒ full walk ≈ 78 h ≈ 3.3 days. R=2 ⇒ ≈ 5 days
+    // worst case. R UNBOUNDED ⇒ **INFINITE** — the walk would wedge at grade1
+    // forever, because one course has passed zero cells in its entire existence
+    // and a block with no bound waits on it indefinitely. The bound IS the
+    // wedge-proofing: exhausting it records the cell and lets the walk proceed,
+    // and the BOOTORDER.1 resolver re-attempts that same cell on the next boot,
+    // so "cannot pass" degrades to "retried next boot", never to a hung walk.
+    const MAX_GRADE_ROUNDS = (() => {
+      // `typeof` guard, not optional chaining: this module is bundled for the
+      // BROWSER too, where `process` is an undeclared identifier — `process?.env`
+      // would throw ReferenceError rather than short-circuit.
+      const raw = Number((typeof process !== 'undefined' && process.env
+        && process.env.DREAM_GRADE_MAJOR_ROUNDS) || NaN);
+      if (Number.isFinite(raw) && raw >= 1 && raw <= 5) return Math.floor(raw);
+      return 2;
+    })();
 
     // T18.13.b — Pre-K + K ONLY cap. `DREAM_MAX_GRADE=phd` unsets the cap.
     const maxIdx = this._resolveMaxGradeIdx();
@@ -9826,13 +9854,75 @@ export class Curriculum {
     // the operator caught 2026-04-19 in the server log (`ela/kindergarten START`
     // with no `ela/pre-K START` before it). Fresh brains now walk pre-K
     // → K → ... and T18.12.c resume-skip handles already-passed cells.
-    for (let i = 0; i < GRADE_ORDER.length; i++) {
+    //
+    // BOOTORDER.1 — LOWEST GRADE + COURSE FIRST ON EVERY BOOT, UPDATE AND
+    // RESTART (operator directive 2026-08-24). Entry was ALREADY lowest-first
+    // (i=0 above) with per-cell resume-skip, but nothing ever NAMED the lowest
+    // cell still owed, so a course that never passed was indistinguishable on
+    // the board from one that had — the live box ran four courses up to grade3
+    // while `life` had completed zero cells in its entire existence
+    // (`lastCellAt: null`, 1,814 teach events against ELA's 361,341).
+    //
+    // Source of truth is the LEDGER (`passedCells`), NOT `cluster.grades`: the
+    // pointer reads 'grade1' for BOTH a course that cleared grade1 (art) and one
+    // that never ran it (life), so it physically cannot answer "is this owed?".
+    //
+    // ⛔ THE TRAP THIS GUARDS: `passedCells` recording POSTDATES the pre-K era
+    // (SCALEDOC.1 — the same blind spot documented at the DESYNC guard below),
+    // so a naive "first cell not in the ledger" scan reports `pre-K` as owed on
+    // a long-trained brain and restarts the entire walk from the bottom. The
+    // ledger therefore gets NO OPINION below its own earliest recorded grade:
+    // scanning starts at `_ledgerFloorIdx` and unrecorded history is treated as
+    // done, not owed. A brain with an empty ledger is genuinely fresh and
+    // correctly starts at GRADE_ORDER[0].
+    let _bootStartIdx = 0;
+    {
+      const _ledger = (cluster && Array.isArray(cluster.passedCells))
+        ? new Set(cluster.passedCells) : new Set();
+      let _ledgerFloorIdx = 0;
+      if (_ledger.size > 0) {
+        _ledgerFloorIdx = GRADE_ORDER.length;
+        for (let g = 0; g < GRADE_ORDER.length; g++) {
+          let _hit = false;
+          for (const _k of _ledger) {
+            if (typeof _k === 'string' && _k.endsWith(`/${GRADE_ORDER[g]}`)) { _hit = true; break; }
+          }
+          if (_hit) { _ledgerFloorIdx = g; break; }
+        }
+        if (_ledgerFloorIdx >= GRADE_ORDER.length) _ledgerFloorIdx = 0;
+      }
+      let _owed = null;
+      for (let g = _ledgerFloorIdx; g < GRADE_ORDER.length && !_owed; g++) {
+        if (maxIdx >= 0 && g > maxIdx) break;
+        let _roster = null;
+        try { _roster = subjectsForGrade(GRADE_ORDER[g]); } catch { _roster = null; }
+        if (!Array.isArray(_roster)) continue;
+        for (const _sub of _roster) {
+          if (!_ledger.has(`${_sub}/${GRADE_ORDER[g]}`)) {
+            _owed = { subject: _sub, grade: GRADE_ORDER[g], idx: g };
+            break;
+          }
+        }
+      }
+      if (_owed) {
+        _bootStartIdx = _owed.idx;
+        this._hb(`[Curriculum] ⤓ BOOTORDER — lowest cell still owed is '${_owed.subject}/${_owed.grade}' · walk starts at '${_owed.grade}' and nothing above it runs first (ledger: ${_ledger.size} cells passed, floor '${GRADE_ORDER[_ledgerFloorIdx]}').`);
+      } else {
+        this._hb(`[Curriculum] ⤓ BOOTORDER — no cell owed at or below the cap; walk enters at '${GRADE_ORDER[_bootStartIdx]}' (ledger: ${_ledger.size} cells passed).`);
+      }
+    }
+
+    for (let i = _bootStartIdx; i < GRADE_ORDER.length; i++) {
       const grade = GRADE_ORDER[i];
       if (maxIdx >= 0 && i > maxIdx) {
         this._hb(`[Curriculum] ⏹ T18.13 stop — reached grade cap '${GRADE_ORDER[maxIdx]}'. Unity sits at this level until DREAM_MAX_GRADE advances OR the operator signs off Part 2 + manually unsets.`);
         break;
       }
       let allPassedThisGrade = false;
+      // BOOTORDER.2 — set when the escalating re-teach ladder has already run for
+      // this grade inside the round loop, so the pre-force-advance call below does
+      // not run it a second time on the same failures.
+      let _remediatedThisGrade = false;
 
       // Per-grade vocab prefetch (G1→PhD) — fire-and-forget cache warm of
       // the grade's vocabulary corpus (grade-vocabulary.js registry → the
@@ -10286,6 +10376,27 @@ export class Curriculum {
             console.warn(`[Curriculum] ✗ ${subject}/${grade} — timed out after ${attempt} attempts (${Math.round(GRADE_TIMEOUT_MS / 60000)} min, round ${round + 1}) — ${result?.reason || 'fail'}`);
           }
         }
+
+        // BOOTORDER.2 — MAKE THE RETRY REAL. A second round is only worth its
+        // wall-clock if the weights actually moved between them: this file's own
+        // note at the attempt site records that the previous multi-attempt loop
+        // "fired identical results every time because passedPhases skipped
+        // re-teaching, so the matrix didn't move between attempts" — an
+        // unbounded repeat of an unchanged pass is the groundhog the operator
+        // banned. So before spending another round, run the escalating ladder
+        // (re-teach → +sleep → +inhibition) that already exists for the
+        // pre-force-advance path. Runs ONLY when another round is actually
+        // budgeted, so a single-round configuration behaves exactly as before.
+        if (!allPassedThisGrade && (round + 1) < MAX_GRADE_ROUNDS) {
+          const _owedNow = Object.keys(failed).filter((s) => failed[s] === grade);
+          this._hb(`[Curriculum] ⟳ BOOTORDER.2 — ${grade} still owes ${_owedNow.length} course(s) [${_owedNow.join(', ')}] after round ${round + 1}/${MAX_GRADE_ROUNDS} — running the re-teach ladder so round ${round + 2} is a REAL retry (weights move) rather than a repeat of an unchanged pass.`);
+          _remediatedThisGrade = true;
+          try {
+            await this._remediateGradeFailures(grade, i, opts);
+          } catch (err) {
+            this._hb(`[Curriculum] BOOTORDER.2 mid-round remediation error (non-fatal): ${err?.message || err}`);
+          }
+        }
       }
 
       if (!allPassedThisGrade) {
@@ -10296,7 +10407,14 @@ export class Curriculum {
         // in the ledger and have their grade pointer advanced anyway (mastery-gated,
         // but never blocks the walk). The force-advance block below then skips any
         // cell now at-grade (currentIdx >= i). DREAM_HELD_BACK=0 opts out.
-        try { await this._remediateGradeFailures(grade, i, opts); } catch (err) { this._hb(`[Curriculum] HELD-BACK remediation error (non-fatal): ${err?.message || err}`); }
+        // BOOTORDER.2 — skip when the round loop already ran the ladder on these
+        // same failures; drilling the identical cells twice back-to-back buys
+        // nothing and doubles the grade's tail cost.
+        if (_remediatedThisGrade) {
+          this._hb(`[Curriculum] HELD-BACK remediation already ran for ${grade} inside the round loop — not repeating it before force-advance.`);
+        } else {
+          try { await this._remediateGradeFailures(grade, i, opts); } catch (err) { this._hb(`[Curriculum] HELD-BACK remediation error (non-fatal): ${err?.message || err}`); }
+        }
         // 114.19fg.Tier10 — Capability-gated force-advance. Prior
         // implementation auto-promoted any cell with ≥1 teach phase
         // fired regardless of whether the brain actually emitted
