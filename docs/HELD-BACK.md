@@ -77,7 +77,31 @@ brain keeps variance that lands and prunes variance that fails.
 | Flag | Default | Effect |
 |------|---------|--------|
 | `DREAM_HELD_BACK=0` | on | Opt OUT of held-back remediation (walk force-advances fails as before). |
+| `DREAM_GRADE_MAJOR_ROUNDS=N` | **2** (was a hard-coded 1) | How many grade-major rounds a grade gets before force-advance. Accepts 1–5; anything else falls back to 2. `=1` restores the previous single-pass behaviour exactly — verified by running it, and at 1 the mid-round ladder call below is provably inert (`round + 1 < 1` is false). |
 | `DREAM_NOISE_GATE=1` | **OFF** | Enable the outcome-gated noise suppression in the surprise gate. **Ships dormant** — magnitudes (the 0.2 / 0.5 factors) want a live training run to tune, same posture as `DREAM_DF7_FANOUT`. With it OFF, plasticity is byte-identical to plain predictive coding. |
+
+## When the ladder runs (BOOTORDER.2, 2026-08-24)
+
+The ladder used to fire in exactly one place: after the grade's rounds were spent,
+immediately before force-advance. With the round budget raised above 1 that ordering
+would have been waste — the walker's own note records that the earlier multi-attempt
+loop *"fired identical results every time because passedPhases skipped re-teaching, so
+the matrix didn't move between attempts"*, i.e. extra rounds without a re-teach are the
+groundhog loop, not a second chance.
+
+So the ladder now also runs **between** rounds, and only when another round is actually
+budgeted:
+
+1. round *n* ends with courses still owed →
+2. ladder runs (re-teach → +sleep → +inhibition) so the weights actually move →
+3. round *n+1* is a real retry, not a repeat →
+4. budget exhausted → force-advance as before.
+
+The pre-force-advance call is skipped when the round loop already ran the ladder on the
+same failures, so a grade never drills the identical cells twice back to back. A cell
+that exhausts the budget is left **out of the `passedCells` ledger**, which is what makes
+the walk wedge-proof: the next boot's lowest-owed resolver finds that same cell and
+re-attempts it, so "cannot pass" degrades to "retried next boot" rather than a hung walk.
 
 ## Status / not-yet-verified
 
