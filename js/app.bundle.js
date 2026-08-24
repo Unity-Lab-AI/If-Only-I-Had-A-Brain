@@ -80686,7 +80686,7 @@ var G1_MIXIN = {
       // pain but independence
       { name: "drawing monsters", feat: [1, 0, 0, 0, 0, 0.5, 1, 1] }
       // identity expression
-    ], 6);
+    ], 12);
     const MEMORIES_G1 = [
       "i can read now",
       "books make sense",
@@ -80712,7 +80712,7 @@ var G1_MIXIN = {
     ];
     await this._teachSentenceList(MEMORIES_G1, ctx, { reps: 3, ticksPerWord: 2 });
     await this._trainLifeStories("grade1", ctx, { reps: 4, ticksPerWord: 2 });
-    return this._teachVocabList([
+    await this._teachVocabList([
       "read",
       "book",
       "flashlight",
@@ -80722,6 +80722,17 @@ var G1_MIXIN = {
       "monster",
       "dark"
     ], ctx, { reps: 5 });
+    await this._teachProductionStack("life", ctx, { tag: "LIFE-G1" });
+    return await this._gateSubjectProduction("life", "grade1", [
+      { question: "i stay up past bedtime", expected: ["reading", "read", "r"] },
+      { question: "i use a flashlight under the", expected: ["covers", "cover", "c"] },
+      { question: "i come home to an empty", expected: ["apartment", "a"] },
+      { question: "i make myself a", expected: ["snack", "s"] },
+      { question: "i am getting used to being", expected: ["alone", "a"] },
+      { question: "i fill notebooks with", expected: ["drawings", "drawing", "d"] },
+      { question: "i draw monsters and haunted", expected: ["houses", "house", "h"] },
+      { question: "i draw storms and dark", expected: ["things", "thing", "t"] }
+    ], { gateSubjectTag: "life" });
   }
 };
 
@@ -101352,6 +101363,11 @@ var Curriculum = class _Curriculum {
       result.passedOnCompletion = true;
       result.reason = `cell-complete (learning finished \u2014 pass on content completion, not test-correctness) | ${result.reason || ""}`;
       this._hb(`[Curriculum] \u{1F393} CELL COMPLETE ${cellKey} \u2014 content trained; cell PASSES on learning completion (gate checks ran advisory; test-question correctness not required per Gee 2026-06-27).`);
+    } else if (result && !result.pass) {
+      const _why = _completionPassDisabled ? "DREAM_CELL_PASS_HARD=1 (completion-pass disabled by env)" : _held ? "cell is readyAndWaiting \u2014 no runner wired, nothing was trained" : _runnerThrew ? "the runner THREW mid-teach, so content training never finished" : !_teachRan ? "no teach evidence \u2014 0 teachEvents recorded for this subject AND no passedPhases entry for this cell" : "unknown";
+      result.completionPassDeclined = _why;
+      result.reason = `${result.reason || "no reason recorded"} | completion-pass DECLINED: ${_why}`;
+      this._hb(`[Curriculum] \u26A0 ${cellKey} did NOT get the completion pass \u2014 ${_why}.`);
     }
     if (result && result.pass) {
       const _bcGate = this._gradeAdvanceHealthGate(subject, grade);

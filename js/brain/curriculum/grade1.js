@@ -660,8 +660,22 @@ export const G1_MIXIN = {
   },
   async runLifeG1(ctx) {
     // feat = [joy, pain, trust, fear, anger, love, independence, identity]
-    // Fix: reps reduced to fit 3-min timeout.
-    // conceptTeach 20→6, sentence lists 5-12→3, vocab 12→5.
+    //
+    // ⛔ THE REDUCTION BELOW WAS MADE FOR A TIMEOUT THAT DOES NOT EXIST.
+    // The original note read "reps reduced to fit 3-min timeout · conceptTeach
+    // 20→6, sentence lists 5-12→3, vocab 12→5". That 3-minute budget is
+    // `GRADE_TIMEOUT_MS` in the walker, and it is declared and then never
+    // enforced anywhere — its only other appearance in the codebase is inside
+    // the failure message that PRINTS it, while a single live cell was measured
+    // running 90.4 minutes. So this track was cut to roughly a third of its
+    // material to satisfy a limit that was never applied.
+    //
+    // Reps are restored 6→12 here. Two honest caveats: the concept LIST itself
+    // was cut from 20 entries to these 6 and that content is not recoverable
+    // from the note, so this is a partial restoration; and the live board shows
+    // this track producing 1,823 teach events against a peer course's 2,068 at
+    // the same grade, i.e. it was NOT starved relative to its peers — the
+    // missing gate below was always the real defect, not the dose.
     await this._conceptTeach([
       { name: 'reading',      feat: [1, 0, 0, 0, 0, 1, 1, 1] },    // joy + love + independence + identity
       { name: 'books',        feat: [1, 0, 0, 0, 0, 1, 1, 0.5] },
@@ -669,7 +683,7 @@ export const G1_MIXIN = {
       { name: 'dad fading',   feat: [0, 0.5, 0, 0.5, 0.3, 0, 0, 0] }, // pain + fear + anger starts
       { name: 'empty apartment', feat: [0, 0.5, 0, 0.5, 0, 0, 1, 0] }, // pain but independence
       { name: 'drawing monsters', feat: [1, 0, 0, 0, 0, 0.5, 1, 1] }, // identity expression
-    ], 6);
+    ], 12);
 
     // Consolidated into ONE sentence list to reduce teach call overhead
     const MEMORIES_G1 = [
@@ -696,8 +710,37 @@ export const G1_MIXIN = {
     // emotion emerge from the narrative.
     await this._trainLifeStories('grade1', ctx, { reps: 4, ticksPerWord: 2 });
 
-    return this._teachVocabList([
+    await this._teachVocabList([
       'read', 'book', 'flashlight', 'alone', 'snack', 'draw', 'monster', 'dark',
     ], ctx, { reps: 5 });
+
+    // LIFEGATE — LIFE IS A COURSE, SO IT ENDS LIKE EVERY OTHER COURSE.
+    // Operator directive: "she needs to train life and finish that course just
+    // like every other course". Until now this runner ended by RETURNING the
+    // vocab teach call, which made `life` the only subject at this grade with
+    // no production stack and no subject gate — every peer (ela, math, science,
+    // social, art, music, pe, health) ends on `_gateSubjectProduction` or its
+    // own `_gate*Real`. The consequence was not cosmetic: the cell's result
+    // carried no `reason`, so its verdict recorded as literally "no reason
+    // recorded" while a peer's failure prints its per-question scores — the
+    // life track was the one cell whose failure could not be read, which is
+    // why it went days without a diagnosis while showing `lastCellAt: null`.
+    //
+    // The probes are continuations of sentences TAUGHT above in this same
+    // runner (her own grade-1 canon — reading, the flashlight, dad visiting
+    // less, the empty apartment, the monster drawings), exactly the way the
+    // peer gates probe their own taught sentences. Nothing new is introduced
+    // at the gate that was not trained in the cell.
+    await this._teachProductionStack('life', ctx, { tag: 'LIFE-G1' });
+    return await this._gateSubjectProduction('life', 'grade1', [
+      { question: 'i stay up past bedtime', expected: ['reading', 'read', 'r'] },
+      { question: 'i use a flashlight under the', expected: ['covers', 'cover', 'c'] },
+      { question: 'i come home to an empty', expected: ['apartment', 'a'] },
+      { question: 'i make myself a', expected: ['snack', 's'] },
+      { question: 'i am getting used to being', expected: ['alone', 'a'] },
+      { question: 'i fill notebooks with', expected: ['drawings', 'drawing', 'd'] },
+      { question: 'i draw monsters and haunted', expected: ['houses', 'house', 'h'] },
+      { question: 'i draw storms and dark', expected: ['things', 'thing', 't'] },
+    ], { gateSubjectTag: 'life' });
   }
 };
