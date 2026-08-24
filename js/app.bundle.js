@@ -101595,17 +101595,67 @@ var Curriculum = class _Curriculum {
       failed[s] = null;
     }
     const GRADE_TIMEOUT_MS = 3 * 60 * 1e3;
-    const MAX_GRADE_ROUNDS = 1;
+    const MAX_GRADE_ROUNDS = (() => {
+      const raw = Number(typeof process !== "undefined" && process.env && process.env.DREAM_GRADE_MAJOR_ROUNDS || NaN);
+      if (Number.isFinite(raw) && raw >= 1 && raw <= 5) return Math.floor(raw);
+      return 2;
+    })();
     const maxIdx = this._resolveMaxGradeIdx();
     const capLabel = maxIdx >= 0 ? GRADE_ORDER[maxIdx] : "phd";
     this._hb(`[Curriculum] T18.13 grade cap = '${capLabel}' (set DREAM_MAX_GRADE env to change; defaults to 'kindergarten' per Pre-K + K ONLY LAW)`);
-    for (let i = 0; i < GRADE_ORDER.length; i++) {
+    let _bootStartIdx = 0;
+    {
+      const _ledger = cluster && Array.isArray(cluster.passedCells) ? new Set(cluster.passedCells) : /* @__PURE__ */ new Set();
+      let _ledgerFloorIdx = 0;
+      if (_ledger.size > 0) {
+        _ledgerFloorIdx = GRADE_ORDER.length;
+        for (let g = 0; g < GRADE_ORDER.length; g++) {
+          let _hit = false;
+          for (const _k of _ledger) {
+            if (typeof _k === "string" && _k.endsWith(`/${GRADE_ORDER[g]}`)) {
+              _hit = true;
+              break;
+            }
+          }
+          if (_hit) {
+            _ledgerFloorIdx = g;
+            break;
+          }
+        }
+        if (_ledgerFloorIdx >= GRADE_ORDER.length) _ledgerFloorIdx = 0;
+      }
+      let _owed = null;
+      for (let g = _ledgerFloorIdx; g < GRADE_ORDER.length && !_owed; g++) {
+        if (maxIdx >= 0 && g > maxIdx) break;
+        let _roster = null;
+        try {
+          _roster = subjectsForGrade(GRADE_ORDER[g]);
+        } catch {
+          _roster = null;
+        }
+        if (!Array.isArray(_roster)) continue;
+        for (const _sub of _roster) {
+          if (!_ledger.has(`${_sub}/${GRADE_ORDER[g]}`)) {
+            _owed = { subject: _sub, grade: GRADE_ORDER[g], idx: g };
+            break;
+          }
+        }
+      }
+      if (_owed) {
+        _bootStartIdx = _owed.idx;
+        this._hb(`[Curriculum] \u2913 BOOTORDER \u2014 lowest cell still owed is '${_owed.subject}/${_owed.grade}' \xB7 walk starts at '${_owed.grade}' and nothing above it runs first (ledger: ${_ledger.size} cells passed, floor '${GRADE_ORDER[_ledgerFloorIdx]}').`);
+      } else {
+        this._hb(`[Curriculum] \u2913 BOOTORDER \u2014 no cell owed at or below the cap; walk enters at '${GRADE_ORDER[_bootStartIdx]}' (ledger: ${_ledger.size} cells passed).`);
+      }
+    }
+    for (let i = _bootStartIdx; i < GRADE_ORDER.length; i++) {
       const grade = GRADE_ORDER[i];
       if (maxIdx >= 0 && i > maxIdx) {
         this._hb(`[Curriculum] \u23F9 T18.13 stop \u2014 reached grade cap '${GRADE_ORDER[maxIdx]}'. Unity sits at this level until DREAM_MAX_GRADE advances OR the operator signs off Part 2 + manually unsets.`);
         break;
       }
       let allPassedThisGrade = false;
+      let _remediatedThisGrade = false;
       if (grade !== "kindergarten" && grade !== "pre-K" && cluster && typeof cluster.prefetchDefinitions === "function") {
         if (!cluster._gradeVocabPrefetched) cluster._gradeVocabPrefetched = {};
         if (!cluster._gradeVocabPrefetched[grade]) {
@@ -101818,12 +101868,26 @@ var Curriculum = class _Curriculum {
             console.warn(`[Curriculum] \u2717 ${subject}/${grade} \u2014 timed out after ${attempt} attempts (${Math.round(GRADE_TIMEOUT_MS / 6e4)} min, round ${round + 1}) \u2014 ${result?.reason || "fail"}`);
           }
         }
+        if (!allPassedThisGrade && round + 1 < MAX_GRADE_ROUNDS) {
+          const _owedNow = Object.keys(failed).filter((s) => failed[s] === grade);
+          this._hb(`[Curriculum] \u27F3 BOOTORDER.2 \u2014 ${grade} still owes ${_owedNow.length} course(s) [${_owedNow.join(", ")}] after round ${round + 1}/${MAX_GRADE_ROUNDS} \u2014 running the re-teach ladder so round ${round + 2} is a REAL retry (weights move) rather than a repeat of an unchanged pass.`);
+          _remediatedThisGrade = true;
+          try {
+            await this._remediateGradeFailures(grade, i, opts);
+          } catch (err) {
+            this._hb(`[Curriculum] BOOTORDER.2 mid-round remediation error (non-fatal): ${err?.message || err}`);
+          }
+        }
       }
       if (!allPassedThisGrade) {
-        try {
-          await this._remediateGradeFailures(grade, i, opts);
-        } catch (err) {
-          this._hb(`[Curriculum] HELD-BACK remediation error (non-fatal): ${err?.message || err}`);
+        if (_remediatedThisGrade) {
+          this._hb(`[Curriculum] HELD-BACK remediation already ran for ${grade} inside the round loop \u2014 not repeating it before force-advance.`);
+        } else {
+          try {
+            await this._remediateGradeFailures(grade, i, opts);
+          } catch (err) {
+            this._hb(`[Curriculum] HELD-BACK remediation error (non-fatal): ${err?.message || err}`);
+          }
         }
         const cl = this.cluster;
         const pp = cl && Array.isArray(cl.passedPhases) ? cl.passedPhases : [];
