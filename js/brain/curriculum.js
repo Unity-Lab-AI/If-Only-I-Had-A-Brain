@@ -9454,6 +9454,24 @@ export class Curriculum {
       result.passedOnCompletion = true;
       result.reason = `cell-complete (learning finished — pass on content completion, not test-correctness) | ${result.reason || ''}`;
       this._hb(`[Curriculum] 🎓 CELL COMPLETE ${cellKey} — content trained; cell PASSES on learning completion (gate checks ran advisory; test-question correctness not required per Gee 2026-06-27).`);
+    } else if (result && !result.pass) {
+      // LIFEGATE — SAY WHY THE COMPLETION PASS DECLINED. This branch used to be
+      // absent, so a cell that failed its gate AND was refused the
+      // completion-pass produced one indistinguishable outcome: `pass=false`
+      // with whatever reason the runner happened to carry — and for a runner
+      // that returned no reason at all, the verdict read literally "no reason
+      // recorded". Five separate conditions can land here and the board could
+      // not tell them apart, which is how one track sat unexplained for days.
+      // Naming the blocker costs one string and ends that class of archaeology
+      // for EVERY subject and grade, not just the one that exposed it.
+      const _why = _completionPassDisabled ? 'DREAM_CELL_PASS_HARD=1 (completion-pass disabled by env)'
+        : _held ? 'cell is readyAndWaiting — no runner wired, nothing was trained'
+        : _runnerThrew ? 'the runner THREW mid-teach, so content training never finished'
+        : !_teachRan ? 'no teach evidence — 0 teachEvents recorded for this subject AND no passedPhases entry for this cell'
+        : 'unknown';
+      result.completionPassDeclined = _why;
+      result.reason = `${result.reason || 'no reason recorded'} | completion-pass DECLINED: ${_why}`;
+      this._hb(`[Curriculum] ⚠ ${cellKey} did NOT get the completion pass — ${_why}.`);
     }
 
     // BC — per-grade ADVANCE HEALTH GATE. Saturation / mode-collapse /
