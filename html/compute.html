@@ -19,18 +19,19 @@
 <meta name="twitter:description" content="Donate your WebGPU or the native desktop donor to Unity's brain. Full data-parallel replicas, 100% equational, live leaderboard.">
 <meta name="twitter:image" content="https://if-only-i-had-a-brain.git.unityailab.com/assets/social/compute.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
+<link rel="stylesheet" href="../css/tooltip.css">
 </head>
 <body style="background:#0a0a0a;color:#22c55e;font-family:monospace;padding:20px;">
 <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
 <h3>Unity GPU Compute Worker — donate your GPU to the brain</h3>
 <p style="font-size:12px;color:#888;line-height:1.6;max-width:780px;margin:6px 0 14px 0;">
-  This tab donates your browser's <b>WebGPU</b> to Unity's brain. Each donor holds a
-  <b>full brain replica</b> (data-parallel) — the server merges the Hebbian weight-deltas
+  This tab donates your browser's <b class="tip tip--below" tabindex="0" data-tip="The browser standard that lets a web page use your graphics card for general maths, not just for drawing. It is what makes donating from a tab possible at all. Most modern browsers have it; if yours does not, the WebGPU Setup page walks you through enabling it.">WebGPU</b> to Unity's brain. Each donor holds a
+  <b class="tip tip--below tip--wide" tabindex="0" data-tip="Your card holds a COMPLETE copy of the brain and runs it forward — it is not given a slice of someone else's job. The server periodically merges the learning changes from every donor and re-broadcasts the combined result. That means two things for you: more donors make the brain faster and more resilient rather than bigger, and if you close the tab nothing is lost, because no single machine is the brain.">full brain replica</b> (data-parallel) — the server merges the Hebbian weight-deltas
   every donor computes and re-broadcasts them, so more donors mean more aggregate compute
   <i>and</i> redundancy. The brain auto-scales its neuron count from the coordinator's free RAM —
   more donors add compute and redundancy, not neurons.
-  The work is <b>real neural matrix math</b> — Rulkov-map spiking + sparse cross-projections, 100%
-  equational, <b>no text-AI / no language model</b>. Leave the tab open to keep donating;
+  The work is <b class="tip tip--below" tabindex="0" data-tip="Rulkov spiking-neuron iterations, sparse synapse propagation, and Oja/Hebbian plasticity updates — the same equations in the neuroscience literature, run on your card. Not a rendering workload dressed up as science.">real neural matrix math</b> — Rulkov-map spiking + sparse cross-projections, 100%
+  equational, <b class="tip tip--below tip--wide" tabindex="0" data-tip="Literally true, and checked at boot. There is no GPT, no Claude, no transformer and no tokeniser anywhere in her thinking — the last of that code was deleted on 2026-08-25 and a startup guard now fails loudly if any of it reappears. Your card runs spiking-neuron maths and Hebbian weight updates. Every word she says falls out of live spike patterns, not out of a model predicting the next token.">no text-AI / no language model</b>. Leave the tab open to keep donating;
   one donor dropping off never downgrades the brain.
 </p>
 
@@ -39,7 +40,7 @@
   <div style="color:#22c55e;font-weight:bold;font-size:13px;margin-bottom:4px;">⬇ Native desktop donor &mdash; donate even more compute</div>
   <p style="font-size:11px;color:#888;line-height:1.6;margin:0 0 12px 0;">
     Prefer a compiled app over the browser tab? The native donor runs with a GUI or headless,
-    drives <b>every GPU in your machine as one unit</b>, and connects to this brain out of the box.
+    drives <b class="tip tip--below" tabindex="0" data-tip="If you have more than one card, the native donor uses them together rather than picking one. ⚠ One physical card is counted ONCE — an earlier version enumerated the same GPU per graphics backend (Vulkan and Dx12) and reported it as two donors, which told the brain it had two independent replicas when it had one.">every GPU in your machine as one unit</b>, and connects to this brain out of the box.
   </p>
   <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
     <a id="donor-dl-win" href="https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/releases/download/donor-v0.3.29/unity-donor-windows-x86_64.exe"
@@ -77,7 +78,7 @@
 </div>
 
 <p style="font-size:11px;color:#fbbf24;line-height:1.6;max-width:780px;margin:0 0 14px 0;border-left:2px solid #fbbf24;padding-left:8px;">
-  <b>Donating overnight?</b> This page now holds a screen <b>Wake Lock</b> and auto-recovers a lost
+  <b>Donating overnight?</b> This page now holds a screen <b class="tip" tabindex="0" data-tip="A browser feature that asks your operating system not to blank the screen. It keeps the tab awake so donation continues — it does NOT stop your machine sleeping on its own, which is the separate setting mentioned next to it.">Wake Lock</b> and auto-recovers a lost
   GPU device — but for an unattended run also: (1) <b>disable system sleep/hibernate</b> in your OS
   power settings (a wake lock only blocks <i>screen</i> sleep), (2) keep this tab <b>open and foreground</b>,
   and (3) in <code>chrome://discards</code> set this tab to <b>no auto-discard</b> so Chrome doesn't
@@ -320,7 +321,7 @@ function _installDeviceLostHandler() {
     wrap.style.cssText = 'margin:12px auto;max-width:520px;padding:10px;border:1px solid #333;border-radius:6px;font-size:12px;background:#0d0d0d;';
     wrap.innerHTML = '<div style="color:#22c55e;font-weight:bold;margin-bottom:6px;">🏆 Neuron Leaderboard</div>'
       + '<div style="margin-bottom:6px;">Your name: <input id="donor-name-input" maxlength="32" placeholder="(anonymous)" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:3px 6px;width:160px;"> <button id="donor-name-save" style="background:#1a1a1a;color:#22c55e;border:1px solid #333;border-radius:4px;padding:3px 8px;cursor:pointer;">save</button></div>'
-      + '<div id="donor-you" style="color:#a78bfa;margin-bottom:6px;">Your neurons created: —</div>'
+      + '<div id="donor-you" class="tip tip--wide" tabindex="0" data-tip="Neuron-seconds you have contributed, banked as you compute. ⚠ IF YOUR GPU LOOKS IDLE, IT PROBABLY IS NOT BROKEN. Low VRAM use and low utilisation percentages are EXPECTED here and are not a sign of a failed donation: the brain only asks for what it needs, and the real ceiling is round-trip network latency per operation plus checkpoint transfer time, not your card's speed. A remote card genuinely cannot be pegged at 100% by this workload. Credit is given for work actually completed, so the number below is the honest measure — not the percentage in your task manager." style="color:#a78bfa;margin-bottom:6px;display:inline-block;">Your neurons created: —</div>'
       + '<div id="donor-top" style="color:#bbb;line-height:1.5;"></div>';
     document.body.appendChild(wrap);
     const input = wrap.querySelector('#donor-name-input');
