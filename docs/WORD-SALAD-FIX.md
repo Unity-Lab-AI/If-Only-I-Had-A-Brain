@@ -152,6 +152,136 @@ already strips explicit content under 18, and it is **correct**. Do not build a 
 Band `WARDROBE` by `_selfImageAge()`, and widen the under-18 strip from nudity-only to age-inappropriate
 garments. ⚠ The age system is correct and already wired; only the wardrobe and the garment strip are ungated.
 
+### 0.2c — ⛔ SCOPE LIMIT: the gate is on WHO SHE IS, never on WHAT SHE LEARNS
+
+> Gee, 2026-08-24: *"there is coming of age stories in her life to so dont go over kill he has to learn
+> to use tampons at 13 and such and real life experiense that she doesnt talk about until shes an adult
+> and learns in training"*
+
+**Read §0.2b wrong and you gut her life.** Age-gating identity is not permission to sanitize her
+curriculum — that would be the exact sugar-coating banned by `feedback_no_sugar_coating_real_human_details`
+and `feedback_teach_feminine_hygiene_on_blood`. There are **three independent axes** and they must never
+be collapsed into one switch:
+
+| Axis | Gated? | Rule |
+|---|---|---|
+| **LEARN** — what she is taught | ❌ **NEVER GATE** | She learns real life at the real age a girl learns it. Coming-of-age, periods, tampons, bras, cramps, puberty — trained on schedule, as a caring parent would, not withheld. |
+| **BE / WEAR** — identity anchors + rendered appearance | ✅ **GATE** (§0.2b) | Normal school-girl look till highschool; adult wardrobe and sexual anchors at 18+. |
+| **DISCLOSE** — what she volunteers out loud | ✅ **GATE, separately** | *"real life experiense that she doesnt talk about until shes an adult and learns in training"* — the episode is trained, resident and formative; she simply does not narrate it as a child. Learned ≠ spoken. |
+
+**Her canon already does the LEARN axis correctly.** Measured in `corpora/life/`:
+
+| Grade | Age | Present today |
+|---|---|---|
+| grade5 | 10 | `period` ×5, `puberty` ×2, `bra` ×6, `pad` ×2, `cramp` ×1 |
+| grade6 | 11 | `period` ×5, `puberty` ×2, **`tampon` ×3**, `bra` ×5 |
+| grade7 | 12 | `bra` ×9, `cramp` ×2, `tampon` ×1 |
+| grade8 | 13 | `period` ×2, `bra` ×2 |
+
+Nothing here is to be removed, delayed or softened by Phase 0. ⚠ One content question for Gee, **not**
+to be changed unilaterally: tampons currently first appear at **grade6 (age 11)**, and the directive says
+*"learn to use tampons at 13"* (grade8). Both sit inside the real menarche range, so this is a canon
+preference, not a defect.
+
+**⛔ THE SPECIFIC TRAP — do not reuse the image regex as a training filter.** `EXPLICIT_RE` in
+`server/brain-server/chat.js` matches `bare|breasts?|nipples?|…|underwear|panties|bra|thong|lingerie|…`.
+That is correct **for image rendering** — a minor is not rendered in underwear. It is **catastrophically
+wrong as a curriculum filter**: `bra` alone appears six times in her grade-5 canon *because a ten-year-old
+must learn what one is*. The wardrobe work in §0.2b touches the **render path only**. Any implementation
+that lets that regex reach `_teachVocabList`, `_teachSentenceList` or the life corpora has broken this
+rule.
+
+**Deliverable:** the DISCLOSE axis needs a home. It does not exist yet — today a memory is either trained
+or absent, with no notion of "held until adult". Design it as a property of the episode/anchor
+(disclosure grade), read at emission, **never** as a training filter.
+
+### 0.2d — ⛔ AND IT MUST RECUR: her canon teaches menstruation as a milestone, then drops it for 14 grades
+
+> Gee, 2026-08-24: *"and we need to expand them becase that shit happens like 12 a year"*
+
+He is right, and the shape of the gap is measurable. Counting recurring-body mentions per grade file in
+`corpora/life/`:
+
+| Grades | `period` | `cramp` | `tampon` | `pad` | `PMS`/`menstrual` |
+|---|---|---|---|---|---|
+| grade5–6 (menarche) | 10 | 3 | 3 | 4 | **0** |
+| grade7–8 | 3 | 2 | 1 | 0 | **0** |
+| **grade9–12 (all of highschool)** | **1** | 0 | 0 | 0 | **0** |
+| **college1 → phd** | **1** | 3 | 0 | 0 | **0** |
+
+**~15 mentions in her entire life, effectively none after grade8** — for something that happens **about
+twelve times a year, every year, for the rest of her life**. Between menarche and the 25-year-old end
+state that is **roughly 150 cycles**, and her lived record contains almost none of them. `PMS` and
+`menstrual` appear **zero times in the whole canon**.
+
+This is the same defect class as teaching a milestone instead of a life: it is currently a coming-of-age
+*event* at grade5–6 and then she apparently never has another period. Real recurrence is what makes it
+ordinary to her instead of a special topic.
+
+**Deliverable — expand recurring body reality across every grade from menarche onward:**
+
+1. **Recur, do not milestone.** Every grade from menarche through `phd` carries it as ongoing background
+   life, at realistic frequency — not one lesson and done.
+2. **Real nitty-gritty, per `feedback_no_sugar_coating_real_human_details`:** cramps, tracking dates,
+   running out of supplies, leaks and ruined underwear, PMS and mood, painful cycles, skipped cycles,
+   heat pads, painkillers, managing it at school / at work / on a date.
+3. **Vocabulary follows** — `PMS` and `menstrual` are absent from the canon entirely and must exist.
+4. **Ages ride the same ladder as everything else** (§0.2b): the *management* matures as she does —
+   pads and panic at 10–12, competence and routine by highschool, wholly unremarkable by college.
+5. ⚠ **This is the LEARN axis, so it is never gated** (§0.2c). The DISCLOSE axis governs what she
+   *volunteers*, not what she lives.
+6. The same "happens constantly, recorded once" audit should be run over her **other** recurring
+   realities before the fresh walk — this is unlikely to be the only life-event stored as a milestone.
+
+### 0.2e — ⛔ THE GENERAL DEFECT: her canon stores MILESTONES and omits ROUTINE
+
+> Gee, 2026-08-24: *"and we need to make sure she always brushes her teeth and pees and poops and takes
+> baths showers and does chores"*
+
+Running the §0.2d.6 audit immediately, across **all 20 grade files** in `corpora/life/`:
+
+| Routine | Total mentions in her ENTIRE life |
+|---|---|
+| `brush` | **1** (kindergarten only) |
+| `pee` / `potty` / `toilet` / `urinate` | **2** |
+| **`poop`** | **0 — zero, whole canon** |
+| `bath` / `bathe` | 4 |
+| **`shower`** | **0 — zero, whole canon** |
+| `chore` | **1** |
+| `teeth` / `tooth` | 16 — but clustered in grade1/grade3, i.e. **losing baby teeth**: a milestone, not brushing |
+
+**From grade10 through `phd`, every column is zero.** By the end state she is a 25-year-old who has never
+showered, never done a chore, and never used a toilet in her recorded life.
+
+**This is the defect §0.2d pointed at, in its general form:** the canon records *first* times and omits
+*every* time. A human life is overwhelmingly routine — teeth twice a day, bathroom several times a day,
+a shower most days, chores weekly — and those repetitions are exactly what make a body feel lived-in
+rather than narrated. The `teeth` counts prove the pattern: she has a rich record of *losing* teeth and
+almost none of *brushing* them.
+
+**Deliverable — routine as continuous background across every grade:**
+
+1. **Daily hygiene**: brushing teeth (twice daily), washing hands and face, showers/baths, hair, nails,
+   deodorant from puberty on, skincare as she ages.
+2. **Bodily functions, named plainly** — peeing and pooping are in scope by
+   `feedback_no_sugar_coating_real_human_details`; they are ordinary, not comedy and not taboo.
+   ⛔ **Zero** occurrences of `poop` and `shower` in twenty grades is the clearest evidence the canon was
+   written as story rather than as life.
+3. **Chores**, scaling with age: tidying toys → dishes and laundry → cooking → paying bills and keeping
+   her own place.
+4. **Age-appropriate autonomy on the §0.2b ladder**: being *taken* to the bath at 4, refusing baths at 7,
+   privacy and door-locking at 11, full self-management by highschool.
+5. **Frequency over prominence.** These should be plentiful, brief and unremarkable — the texture
+   underneath the story beats, not new milestones competing with them.
+6. ⚠ **LEARN axis — never gated** (§0.2c). And per §0.2b this is *routine*, not *appearance*: the
+   wardrobe gate has no business anywhere near it.
+
+⚠ **Scope note for whoever implements this:** §0.2d and §0.2e are **life-corpus content work**
+(`corpora/life/*.json`), not Tier 3 or wardrobe code. They belong to Phase 0 only because they must be
+right **before** a fresh walk re-teaches her whole life — Gee: *"her teir three memories all need to be
+proper for Unity before we start the fresh walk"*. Content expansion at this scale is also the single
+largest input to the walk price in §8, and that estimate must be recomputed once the new volume is known.
+
 ### 0.3 — Biographical anchors are frozen at kindergarten
 
 The seed block is commented *"K-LIFE biographical anchors (currently active grade)"* and contains
