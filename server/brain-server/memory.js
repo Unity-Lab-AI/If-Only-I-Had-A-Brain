@@ -969,6 +969,24 @@ const SERVER_MEMORY_MIXIN = {
       stats.consolidation.replayRefused = this.consolidationEngine._gpuReplayRefused | 0;
       stats.consolidation.replayCursor = this.consolidationEngine._gpuReplayCursor | 0;
     }
+    // REPLAYOFF.5 — the surprise gate's own distribution, so "novelty is being
+    // throttled" becomes a number instead of a hunch. `atCeilingPct` near zero
+    // means the 1.5 ceiling was never the binding constraint and raising it
+    // would change nothing; a high value means it genuinely is clipping.
+    try {
+      const s = this.cortexCluster && this.cortexCluster._surpriseStats;
+      if (s && s.n > 0) {
+        stats.surpriseGate = {
+          samples: s.n,
+          mean: Number((s.sum / s.n).toFixed(3)),
+          max: Number(s.max.toFixed(3)),
+          ceiling: s.ceiling,
+          atCeilingPct: Number((100 * s.atCeiling / s.n).toFixed(1)),
+        };
+      }
+    } catch { /* telemetry must never break a stats read */ }
+    if (this.consolidationEngine) {
+    }
 
     // Working memory (existing field on this.memory). iter17: cap=null
     // signals unbounded — operator: "unity has a whole life ahead not

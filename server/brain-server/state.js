@@ -1795,8 +1795,62 @@ const SERVER_STATE_MIXIN = {
       // regression show at G4 instead of surfacing as G9 word salad.
       speechHealth: (() => {
         try {
+          // ── DORMANT.4 (2026-08-25) — SEPARABILITY HAD NO PRODUCER AT ALL ────
+          //
+          // This block read `cortex.wordMotorWeightMaxAbs_<subject>` for six
+          // per-subject bands. **Nothing anywhere writes those fields** — not a
+          // rename, a consumer with no producer — so `separability` has always
+          // serialised as `{}`. That matters more than an empty dashboard cell:
+          // this is the ONLY instrument that measures the emission margin
+          // directly, i.e. the exact quantity the whole word-salad diagnosis
+          // turns on, and `voice.emitRejection: "below-signal-floor"` is a
+          // margin symptom we have been reasoning about without ever measuring.
+          //
+          // The six per-subject bands are also gone: WMB UNIFY collapsed them
+          // into ONE global `word_motor` band with one bucket per word. So it
+          // is computed here, from the unified matrix, as a real number.
+          //
+          // ⛔ SAMPLED AND CACHED ON PURPOSE. This runs on the 10fps broadcast
+          // build; a full scan of a 720k-row matrix on that path is exactly the
+          // kind of unpriced per-tick cost that produced the loop-starvation
+          // work. 4,096 evenly-strided values, recomputed at most every 5s.
           const subj = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
           const sep = {};
+          const _now = Date.now();
+          if (!this._sepCache || (_now - this._sepCache.ts) > 5000) {
+            let unified = null;
+            try {
+              const xp = cortex && cortex.crossProjections;
+              const mx = xp && (xp.sem_to_word_motor || xp.sem_to_motor);
+              if (mx && mx.values && mx.values.length > 0) {
+                const v = mx.values;
+                const SAMPLE = 4096;
+                const stride = Math.max(1, Math.floor(v.length / SAMPLE));
+                let maxAbs = 0, sumAbs = 0, n = 0, nz = 0;
+                for (let i = 0; i < v.length; i += stride) {
+                  const a = Math.abs(v[i]);
+                  if (a > maxAbs) maxAbs = a;
+                  sumAbs += a; n++;
+                  if (a > 1e-9) nz++;
+                }
+                const meanAbs = n > 0 ? sumAbs / n : 0;
+                unified = {
+                  maxAbs: Number(maxAbs.toFixed(4)),
+                  meanAbs: Number(meanAbs.toFixed(4)),
+                  // The margin number. A LOW ratio means every word bucket
+                  // carries similar mass — nothing stands out, the argmax is
+                  // deciding on noise, and that is word salad measured rather
+                  // than inferred. A high ratio means real discrimination.
+                  ratio: meanAbs > 0 ? Number((maxAbs / meanAbs).toFixed(2)) : 0,
+                  nonZeroPct: n > 0 ? Number((100 * nz / n).toFixed(1)) : 0,
+                  sampled: n,
+                  cellSize: (cortex && cortex.wordBucketCellSize_unified) || 0,
+                };
+              }
+            } catch { unified = null; }
+            this._sepCache = { ts: _now, unified };
+          }
+          if (this._sepCache && this._sepCache.unified) sep.unified = this._sepCache.unified;
           for (const sj of subj) {
             const mx = cortex && cortex[`wordMotorWeightMaxAbs_${sj}`];
             const mn = cortex && cortex[`wordMotorWeightMeanAbs_${sj}`];

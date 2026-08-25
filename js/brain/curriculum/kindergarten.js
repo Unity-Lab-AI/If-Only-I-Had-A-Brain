@@ -8463,6 +8463,39 @@ export const K_MIXIN = {
   // shape the 37 call sites already pass, no new failure modes.
   async _teachWordSpellingDirectFinal(opts = {}) {
     if (typeof this._teachWordSpellingDirect !== 'function') return;
+    const cluster = this.cluster;
+
+    // ── DORMANT.1b (2026-08-25) — THE WIPE, ON A FRESH WALK ONLY ─────────────
+    //
+    // Operator decision: "Add the wipe, fresh walk only". The original comment
+    // always described this phase as a `scale(0)` wipe of `sem_to_motor`
+    // followed by a clean re-carve, and the intent is sound — the QA and
+    // battery phases write cross-region fan-out into this projection and blur
+    // the discriminative first-letter mapping, and Oja converges fastest on
+    // orthogonal one-hot pairs from a zero-weight start (exactly the reasoning
+    // `_teachLetterNamingDirect` already uses for `letter_to_motor`).
+    //
+    // ⛔ BUT IT IS DESTRUCTIVE AND HAS NEVER EXECUTED ONCE, so it is gated to
+    // the only boot where destroying this matrix is free: a FRESH WALK, where
+    // `autoClearStaleState` has already wiped the weights anyway. On a resumed
+    // brain (`DREAM_KEEP_STATE=1`, i.e. Savestart) it does NOT run, because
+    // wiping a projection that a trained brain is currently speaking from would
+    // throw away everything the QA phases did NOT damage along with what they
+    // did. Fresh walk decides; a resume is never surprised.
+    const _isFreshWalk = !(typeof process !== 'undefined' && process.env && process.env.DREAM_KEEP_STATE === '1');
+    const semToMotor = cluster && cluster.crossProjections && cluster.crossProjections.sem_to_motor;
+    if (_isFreshWalk && semToMotor && typeof semToMotor.scale === 'function') {
+      try {
+        semToMotor.scale(0);
+        this._wordSpellFinalWipes = (this._wordSpellFinalWipes || 0) + 1;
+        this._hb(`[Curriculum] WORD-SPELL-FINAL — sem→motor WIPED (scale(0)) before the re-carve. Fresh walk only; a resumed brain never takes this path. This wipe is running for the first time in the project's history (DORMANT.1b).`);
+      } catch (err) {
+        this._hb(`[Curriculum] WORD-SPELL-FINAL — wipe skipped, scale() threw (${err && err.message}); re-carving on top of existing weights instead.`);
+      }
+    } else if (!_isFreshWalk) {
+      this._hb('[Curriculum] WORD-SPELL-FINAL — resumed brain (DREAM_KEEP_STATE=1), so the sem→motor wipe is SKIPPED by design; re-carving constructively on top of the trained weights.');
+    }
+
     this._hb(`[Curriculum] WORD-SPELL-FINAL — re-carving sem→motor after the QA phases (subject=${opts.subject || 'all'}, reps=${opts.reps ?? 8}). This phase existed in name only until 2026-08-25; it is running for the first time.`);
     return this._teachWordSpellingDirect({ ...opts, label: 'WORD-SPELL-FINAL' });
   },

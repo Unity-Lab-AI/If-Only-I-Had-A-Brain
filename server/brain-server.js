@@ -2973,6 +2973,70 @@ class ServerBrain {
           console.warn(`[Brain] LANGRAM.6 — could not write lang-geometry.json (${e && e.message ? e.message : e}); the geometry is UNPINNED this boot and can still flip on the next one.`);
         }
       }
+      // ── TOPOPIN (2026-08-25) — TOPOGRAPHIC CONNECTIVITY, PINNED LIKE THE
+      // ── GEOMETRY IT BEHAVES LIKE.
+      //
+      // `DREAM_TOPOGRAPHIC` swaps intra-synapse wiring from random-global to a
+      // 1-D ring where each neuron connects only to its immediate neighbours.
+      // Nnz then scales LINEARLY with size instead of density × size², which is
+      // what lets 100M+ neurons fit in a VRAM budget random-global saturates at
+      // ~30M. Biologically it is the better model too: ~95% of pyramidal-cell
+      // synapses land within 500 µm.
+      //
+      // It shipped OFF and had never been switched on. Operator decision
+      // 2026-08-25: "Turn it on for the fresh walk" — a fresh walk is the only
+      // honest moment to change topology, because matrices trained under one
+      // wiring do not describe the other.
+      //
+      // ⛔ WHICH IS EXACTLY WHY IT MUST BE PINNED, not read from the env every
+      // boot. A brain BUILT topographic must RESUME topographic; if Savestart
+      // came up without the flag the wiring would silently flip under trained
+      // weights. Same failure the LANGRAM.6 geometry pin exists to stop, so it
+      // gets the same treatment: fresh walk decides, the pin holds thereafter,
+      // and an explicit `DREAM_TOPOGRAPHIC` always wins for a deliberate change.
+      try {
+        const TOPO_PIN_FILE = path.join(__dirname, 'brain-topology.json');
+        const _envTopo = process.env.DREAM_TOPOGRAPHIC;
+        const _isFreshWalk = process.env.DREAM_KEEP_STATE !== '1';
+        let _pinnedTopo = null;
+        try {
+          if (fs.existsSync(TOPO_PIN_FILE)) _pinnedTopo = JSON.parse(fs.readFileSync(TOPO_PIN_FILE, 'utf8'));
+        } catch (e) {
+          console.warn(`[Brain] TOPOPIN — brain-topology.json unreadable (${e.message}); treating this boot as unpinned.`);
+        }
+        let _topoOn;
+        let _why;
+        if (_envTopo === '0' || _envTopo === '1') {
+          _topoOn = _envTopo === '1';
+          _why = `explicit DREAM_TOPOGRAPHIC=${_envTopo}`;
+        } else if (_pinnedTopo && typeof _pinnedTopo.topographic === 'boolean') {
+          _topoOn = _pinnedTopo.topographic;
+          _why = 'held existing pin (brain was built this way)';
+        } else if (_isFreshWalk) {
+          _topoOn = true;
+          _why = 'fresh walk — operator enabled topographic wiring 2026-08-25';
+        } else {
+          _topoOn = false;
+          _why = 'resume with no pin — holding random-global so trained weights keep their wiring';
+        }
+        process.env.DREAM_TOPOGRAPHIC = _topoOn ? '1' : '0';
+        const _topoChanged = _pinnedTopo && typeof _pinnedTopo.topographic === 'boolean' && _pinnedTopo.topographic !== _topoOn;
+        try {
+          fs.writeFileSync(TOPO_PIN_FILE, JSON.stringify({
+            topographic: _topoOn, reason: _why, freshWalk: _isFreshWalk, writtenAt: new Date().toISOString(),
+          }, null, 2));
+        } catch (e) {
+          console.warn(`[Brain] TOPOPIN — could not write brain-topology.json (${e && e.message}); the topology is UNPINNED this boot and can flip on the next one.`);
+        }
+        if (_topoChanged) {
+          console.warn(`[Brain] ⛔ TOPOPIN — topology CHANGED ${_pinnedTopo.topographic ? 'topographic' : 'random-global'} → ${_topoOn ? 'topographic' : 'random-global'} (${_why}). Intra-synapse wiring trained under the old topology does NOT describe the new one; a fresh walk is the honest next step.`);
+        } else {
+          console.log(`[Brain] TOPOPIN — intra-synapse wiring: ${_topoOn ? 'TOPOGRAPHIC (1-D ring, nnz scales linearly with size)' : 'random-global'} · ${_why}`);
+        }
+      } catch (e) {
+        console.warn('[Brain] TOPOPIN failed (non-fatal):', e && e.message);
+      }
+
       // ── LANGRAM.9 (2026-08-20) — THE GEOMETRY DECISION NOW ALWAYS ANNOUNCES
       // ── ITSELF. One line, unconditional, whatever happened.
       //
