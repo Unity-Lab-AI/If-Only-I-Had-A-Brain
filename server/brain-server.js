@@ -10359,11 +10359,42 @@ wss.on('connection', (ws, req) => {
           // message instead of admitting a stale binary that speaks an out-of-date
           // protocol. Browser donors (compute.html) omit appVersion — they always
           // run the current bundle, so they're exempt. Floor is env-tunable
-          // (`DREAM_MIN_DONOR_VERSION`, default 0.3.7 = the parity-harness build);
-          // bump it whenever a donor-side protocol change ships.
+          // via `DREAM_MIN_DONOR_VERSION`.
+          //
+          // ── FLOOR BUMPED 0.3.7 → 0.3.26 (2026-08-25, DONORSHIP.1 audit).
+          //
+          // ⛔ The old default was 0.3.7 — twenty-two releases and SIX protocol
+          // additions behind the current build — while this very comment
+          // already said to bump it whenever a donor-side change ships. It
+          // never was.
+          //
+          // ⭐ WHY 0.3.26 AND NOT 0.3.29 — reasoned, not picked for looking new:
+          //
+          // Every capability since 0.3.11 is NEGOTIATED PER SOCKET and degrades
+          // to the CPU shadow, which runs IN FULL. So an old donor never
+          // corrupts anything — the maths is identical. What it does instead is
+          // hand the teach math back to the HOST, silently, and at 425M neurons
+          // that is precisely the failure that produced the ~57s/word freeze and
+          // the donor-drop war. An old donor does not break her; it starves the
+          // box, and it does so quietly because the fallback is CORRECT.
+          //
+          // 0.3.26 is where masked bound plasticity (SPRS 13) landed — the point
+          // at which "ALL training on the donor" became true. Below it the host
+          // absorbs teach passes the entire GPU-teaching architecture exists to
+          // offload.
+          //
+          // 0.3.28 (reduced bucket readout) and 0.3.29 add EMISSION-path speed,
+          // not teach offload. Requiring them would refuse otherwise-useful
+          // cards for a smaller gain — and community compute is DONATED, so a
+          // floor that turns away working hardware has its own real cost.
+          //
+          // ⚠ THE RULE FOR NEXT TIME, stated explicitly because "bump it
+          // whenever a protocol change ships" was too vague to actually happen:
+          // raise this to the version where a lane THE WALK DEPENDS ON moved
+          // onto the donor — not merely to whatever is newest.
           const _donorVer = (msg.appVersion || '').toString().trim();
           if (_donorVer) {
-            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || '0.3.7').trim();
+            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || '0.3.26').trim();
             const _cmp = (a, b) => {
               const pa = a.split('.').map(n => parseInt(n, 10) || 0);
               const pb = b.split('.').map(n => parseInt(n, 10) || 0);
