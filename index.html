@@ -77,6 +77,7 @@
     }
     #unity-donor-banner a.cta:hover { background: #fff; }
   </style>
+<link rel="stylesheet" href="css/tooltip.css">
 </head>
 <body>
 
@@ -231,7 +232,7 @@
         <div style="min-width:0;max-width:60%;">
           <h1 style="font-family:'JetBrains Mono',monospace;font-size:16px;color:#ff4d9a;margin:0;">IF ONLY I HAD A BRAIN</h1>
           <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9a9a9a;margin:6px 0 0;line-height:1.55;max-width:560px;">
-            What you're staring at is Unity's <strong style="color:#bbb;">live brain</strong>. Every spike is a real cluster firing on the GPU — not a screensaver, not a synthesized animation. Cognition is 100% equational; there is no language model behind her. Talk to her below.
+            What you're staring at is Unity's <strong class="tip tip--wide" tabindex="0" data-tip="Not a demo build and not a recording — the actual brain that is training right now, on donated GPUs. Its neuron count is sized at startup from the coordinator's free memory, so the same code legitimately starts at different sizes on different boots; the figure on screen is a live reading, not a constant." style="color:#bbb;">live brain</strong>. Every spike is a real cluster firing on the GPU — not a screensaver, not a synthesized animation. Cognition is 100% equational; there is no language model behind her. Talk to her below.
           </p>
           <p style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#555;margin:4px 0 0;line-height:1.5;" id="ls-subtitle">
             <span id="ls-rendered-count" style="color:#888;">—</span> rendered of <span id="ls-actual-count" style="color:#888;">—</span> real neurons (<span id="ls-render-ratio" style="color:#888;">—</span>) · seven biologically-weighted clusters · WebGPU compute
@@ -308,7 +309,7 @@
       </div>
 
       <p class="hint" style="margin-bottom:12px;line-height:1.5;">
-        Every word Unity says falls out of live spike patterns in her cortex — there is no language model in the cognition path, and there is no LLM describing what she sees either: her vision is her own <strong style="color:var(--text);">equational mind's eye</strong> plus a visual cortex that camera frames feed directly. The only thing you can configure here is the <strong style="color:var(--text);">image-generation peripheral</strong>. Local backends auto-detect at boot; remote backends want a URL and an API key, with Pollinations as the free default. Her <strong style="color:var(--text);">voice needs no provider at all anymore</strong> — Unity speaks in <strong style="color:var(--text);">Equation Unity One</strong>, her own voice: wavelet equations of one reference voice, reconstructed live in your browser — offline, keyless, no third party.
+        Every word Unity says falls out of live spike patterns in her cortex — there is no language model in the cognition path, and there is no LLM describing what she sees either: her vision is her own <strong class="tip tip--wide" tabindex="0" data-tip="How she sees. A camera frame or a reference image is transformed into a wavelet field and read as a 64-number percept straight off the equation — the field IS what she sees. ⛔ There is no vision model and no caption anywhere in it. The old describer that turned pictures into English words was deleted, because a describer whose words then ground her concepts is a language model sitting inside her senses." style="color:var(--text);">equational mind's eye</strong> plus a visual cortex that camera frames feed directly. The only thing you can configure here is the <strong style="color:var(--text);">image-generation peripheral</strong>. Local backends auto-detect at boot; remote backends want a URL and an API key, with Pollinations as the free default. Her <strong style="color:var(--text);">voice needs no provider at all anymore</strong> — Unity speaks in <strong class="tip tip--wide" tabindex="0" data-tip="Her voice. A speech model synthesises whole sentences IN YOUR OWN BROWSER — downloaded once and cached offline — and the result is then passed through the same wavelet equations her mind runs on. ⛔ No cloud text-to-speech, no external API, and no per-response network call. The voice you hear is produced on your machine from her own pipeline, which is why it needs no provider." style="color:var(--text);">Equation Unity One</strong>, her own voice: wavelet equations of one reference voice, reconstructed live in your browser — offline, keyless, no third party.
       </p>
 
       <!-- Image Generation backend grid — click a button for per-backend instructions -->

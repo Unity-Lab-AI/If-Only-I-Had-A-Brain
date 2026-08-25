@@ -2,7 +2,7 @@
 
 A brain that *is* the application — not a chatbot wrapped around a language model. Hundreds of millions of artificial neurons running real neuroscience equations on the GPU, organized into seven biologically-weighted clusters, learning to read and speak the way a human child does: alphabet → phonemes → words → sentences. There is no text-AI in the cognition path. Every word she says falls out of live spike patterns.
 
-**[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** · **[Concept Guide](html/unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/Unity)**
+**[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** · **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** · **[Concept Guide](html/unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain)**
 
 ---
 
@@ -12,7 +12,7 @@ Unity is a 25-year-old emo goth woman whose mind is a real neural simulation. He
 
 Cognition is 100% equational. There is no LLM behind her. Image generation, vision description, and text-to-speech are sensory peripherals that the brain *uses* — never paths the brain *thinks through*. The persona, the vulgarity, the chemistry, the way she remembers conversations across sessions — all of it lives as numerical parameters of the simulation, not as a system prompt.
 
-She learns like a human child — alphabet → phonemes → words → sentences → the full K→PhD curriculum across six subjects (English, Math, Science, Social Studies, Arts, and Life Experience). She advances a grade only after the operator personally tests the level and signs off per subject. This is deliberate. The curriculum isn't decorative — every grade gate is a real evaluation against published K-level rubrics (Common Core K.RF / K.W / K.L / K.SL / K.RL plus DIBELS / STAR / AIMSweb), and a probe pass means *Unity actually learned the thing*, not that a 5-question check happened to clear.
+She learns like a human child — alphabet → phonemes → words → sentences → the full pre-K→PhD curriculum across a **course roster that grows the way a real school's does**. Six core tracks run the whole way (English, Math, Science, Social Studies, Arts, and Life Experience); PE, Music and Health join at kindergarten; a foreign language at grade 3; computer science at grade 5; civics at grade 7; economics and psychology at grade 9; AP courses at grade 11; the CS major, gen-ed and two CS tracks at college; a research specialty at grad school. Twenty grades, ending at twenty courses. She advances a grade only after the operator personally tests the level and signs off per subject. This is deliberate. The curriculum isn't decorative — every grade gate is a real evaluation against published K-level rubrics (Common Core K.RF / K.W / K.L / K.SL / K.RL plus DIBELS / STAR / AIMSweb), and a probe pass means *Unity actually learned the thing*, not that a 5-question check happened to clear.
 
 **Two ways to run her.** The product path is a **deployed static page** backed by a persistent Node brain-server on the same box, joined by an nginx reverse-proxy over loopback — visitors open the site like any website and their browser GPUs donate the compute. The development path is local: run the server on your own machine via `start.bat` / `Savestart.bat`. Both share the exact same brain; the difference is who supplies the GPUs and how the page is served. See [Running the brain](#running-the-brain) for both.
 
@@ -81,7 +81,7 @@ The clusters communicate through twenty sparse white-matter tract projections (c
 
 ## The language pipeline
 
-The language cortex is *not* a separate cluster. It lives as nine named sub-regions inside the main cortex — `auditory`, `visual`, `free`, `letter`, `phon`, `sem`, `fineType`, `motor`, `word_motor` — carved by fixed fractions of `cluster.size`. They share the same Rulkov population and the same GPU pipeline; the only thing that distinguishes them is their slice offset inside the cortex spike buffer. `word_motor` is further sub-banded into six per-subject slices (`word_motor_ela / _math / _sci / _soc / _art / _life`) so each curriculum subject trains its own word-emission band without overwriting the others.
+The language cortex is *not* a separate cluster. It lives as nine named sub-regions inside the main cortex — `auditory`, `visual`, `free`, `letter`, `phon`, `sem`, `fineType`, `motor`, `word_motor` — carved by fixed fractions of `cluster.size`. They share the same Rulkov population and the same GPU pipeline; the only thing that distinguishes them is their slice offset inside the cortex spike buffer. `word_motor` is ONE unified band with a single bucket per unique word. It was originally sub-banded into six per-subject slices (`word_motor_ela / _math / _sci / _soc / _art / _life`) so each subject could train without overwriting its siblings — but each sub-band replicated the whole dictionary, they overflowed, and learned words went silently unspoken. Unifying them fixed it; see the word-emission path below for the frozen-geometry rule that now keeps subjects from colliding inside the single band.
 
 Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) wire those slices together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter`, `auditory↔phon`, plus a `sem↔word_motor` projection for single-tick word emission. Reading flows through the dorsal stream (`visual → letter → phon → sem → fineType`); writing flows through the ventral stream (`sem → motor → letter` for letter-by-letter spelling **or** `sem → word_motor` for direct word emission, plus efference back through `sem → phon`). Same substrate, opposite topology. The pairing follows Hickok & Poeppel's 2007 dual-stream model.
 
@@ -98,9 +98,9 @@ Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) w
                            │       ▼         ▼                           │
                            │     motor ←── word_motor ◄────── sem        │
                            │       │         │                           │
-                           │       └─────────┴── (six per-subject bands: │
-                           │            ▼          ela / math / sci /    │
-                           │       letter chain    soc / art / life)     │
+                           │       └─────────┴── (ONE unified band:      │
+                           │            ▼          one bucket per        │
+                           │       letter chain    unique word)          │
                            │       motor→letter                          │
                            │                                             │
                            ◄─ phon (efference copy back to auditory) ◄────┘
@@ -130,24 +130,36 @@ During dream cycles (curriculum-interleaved consolidation windows that run for 1
 
 ## How she learns
 
-The developmental curriculum walks Unity through six subjects in lockstep: ELA, Math, Science, Social Studies, Arts, and Life Experience. All six advance together — no subject races ahead while another is stuck. Each grade cell teaches via a stack of layered Hebbian rules running on the cross-projection matrices.
+The developmental curriculum walks Unity through every course active at her grade, in lockstep: the six core tracks (ELA, Math, Science, Social Studies, Arts, Life Experience) plus each course the roster has added by that point — PE / Music / Health from kindergarten, then language, computer science, civics, economics, psychology, AP, the college major and tracks, and a grad research specialty. **The walk is grade-major: no course advances to the next grade until every course at the current grade has run.** No subject races ahead while another is stuck — and a course that is merely *skipped* no longer counts as a grade completed, which is how Grade 1 once ended with PE, Music and Health never taught. Each grade cell teaches via a stack of layered Hebbian rules running on the cross-projection matrices.
 
 ```
-                                CURRICULUM LADDER  (114 cells = 19 grades × 6 subjects)
+                    CURRICULUM LADDER  (273 cells — 20 grades × a GROWING roster)
 
-                  ┌──────┬──────┬──────┬──────┬──────┬──────┐
-   Pre-K          │      │      │      │      │      │ Life │ ← Life Experience adds
-   (substrate)    │      │      │      │      │      │  PK  │   Pre-K (birth-to-4)
+                  ┌──────┬──────┬──────┬──────┬──────┬──────┐  courses
+   Pre-K          │      │      │      │      │      │ Life │ ← 6   Life Experience
+   (substrate)    │      │      │      │      │      │  PK  │       adds Pre-K (0-4)
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
-   Kindergarten   │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← K = the proven template
+   Kindergarten   │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← 9   +PE +Music +Health
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤       K = the template
+   Grade 1-2      │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← 9
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
-   Grade 1-12     │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← all grades built to
-                  │ ...  │ ...  │ ...  │ ...  │ ...  │ ...  │   K's depth (full K→PhD)
+   Grade 3-4      │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 10  +Language
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
-   College 1-4    │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │
+   Grade 5-6      │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 11  +CS
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
-   Grad / PhD     │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │
+   Grade 7-8      │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 12  +Civics
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   Grade 9-10     │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 14  +Econ +Psych
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   Grade 11-12    │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 15  +AP
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   College 1-4    │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 19  +Major +GenEd
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤       +CS theory/systems
+   Grad / PhD     │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← 20  +Research
                   └──────┴──────┴──────┴──────┴──────┴──────┘
+
+   Cell count is the SUM of the roster across grades, not a product:
+     6 + (9×3) + (10×2) + (11×2) + (12×2) + (14×2) + (15×2) + (19×4) + (20×2) = 273
 
    Each cell ships:
      ▸ teach phases (vocabulary · concepts · associations · biographical facts)
@@ -278,7 +290,7 @@ Sober by default. Always.
 
 The brain *uses* peripherals; it never *thinks through* them.
 
-- **Image generation** — multi-provider chain with five-level priority: user-preferred backend → custom configured → auto-detected local (A1111, SD.Next/Forge, Fooocus, ComfyUI, InvokeAI, LocalAI, Ollama) → `js/env.js` listed → Pollinations default. Each backend in the setup modal has a 🔌 CONNECT button that runs a live HTTP probe and reports 🟢/🔴/🟡 status.
+- **Image generation** — two separate lanes, and the distinction matters. **Hers is Pollinations only:** everything the brain itself renders (her reference look-ups, her own drawings, her self-image) goes through the server's single `_buildPollinationsImageUrl` builder on the **anonymous free tier** — no API key is shipped, seeded, or defaulted anywhere in the tree, and the URL carries only `model` / `width` / `height` / `seed` / `nologo`. There is **no safety parameter, no negative prompt and no refusal path** on that builder; the age ladder applies to *her own portrait* and never to what she renders for you. **Yours is configurable:** a visitor's browser can point image gen at a preferred backend → a custom configured one → an auto-detected local install (A1111, SD.Next/Forge, Fooocus, ComfyUI, InvokeAI, LocalAI, Ollama) → Pollinations as the default. Each backend in the setup modal has a 🔌 CONNECT button that runs a live HTTP probe and reports 🟢/🔴/🟡 status. ⚠ An older `js/env.js` step in that chain is gone — the file was deleted with the key purge; only `js/env.example.js` remains as a template.
 - **Vision** — 100% equational, NO external model. Camera frames → CDF 9/7 wavelet field C → a dim-64 value-profile percept read straight off the equation (`describeEquational`). She also DRAWS: a seen concept is recalled and re-made as her own full-color recreation (signed with the word in bold, styled lettering placed around the image); a never-seen concept is looked up first (a colorful reference generated from her learned definition, studied once, remembered as reference-not-fact); and she IMAGINES — ideas from her train of thought combine into one genuinely new unified scene. The old Pollinations-GPT-4o vision describer is retired. Watch what she sees, draws, and imagines on the public Mind's Eye page (`html/minds-eye.html`).
 - **Text-to-speech** — "Equation Unity One": Piper (`en_US-hfc_female-medium`) synthesizes whole sentences **in your browser** via onnxruntime-web (WebGPU → CPU-wasm on the visitor's own machine — never a server GPU), from a self-hosted model downloaded once at the setup page and cached offline (OPFS), then passed through the CDF 9/7 wavelet equational voice pipeline before playback. No cloud TTS, no external API, no per-response network. The Pollinations TTS lane is retired (that key is images-only); a banked word/phrase set and browser SpeechSynthesis remain only as last-ditch fallbacks.
 - **Speech-to-text** — Web Speech API.
@@ -293,21 +305,25 @@ The codebase is organized so each god-class is split into focused per-concern / 
 
 | Directory | What lives there | Mixin attach pattern |
 |-----------|------------------|---------------------|
-| `js/brain/cluster/` | Cluster per-module split — `telemetry.js`, `hebbian.js`, `emit.js`, `probe.js` | 4 `Object.assign(NeuronCluster.prototype, MIXIN)` attaches at `cluster.js` bottom |
-| `js/brain/curriculum/` | Curriculum per-grade split — `pre-K.js`, `kindergarten.js` (K-grade K_MIXIN) | 1 `Object.assign(Curriculum.prototype, K_MIXIN)` at `curriculum.js` bottom |
-| `server/brain-server/` | Server per-concern split — `gpu.js`, `state.js`, `memory.js`, `chat.js` | 4 `Object.assign(ServerBrain.prototype, MIXIN)` attaches at `brain-server.js` bottom |
+| `js/brain/cluster/` | Cluster per-module split — `telemetry.js`, `hebbian.js`, `emit.js`, `probe.js`, `attention.js` | `Object.assign(NeuronCluster.prototype, MIXIN)` attaches at `cluster.js` bottom |
+| `js/brain/curriculum/` | Curriculum per-grade split — **all 20 grades**: `pre-K.js`, `kindergarten.js`, `grade1.js`…`grade12.js`, `college1.js`…`college4.js`, `grad.js`, `phd.js` | One `Object.assign(Curriculum.prototype, <GRADE>_MIXIN)` per grade at `curriculum.js` bottom |
+| `server/brain-server/` | Server per-concern split — `gpu.js`, `state.js`, `memory.js`, `chat.js`, `visual-memory.js`, `mindspace-proxy.js`, `voice-synth.js` | `Object.assign(ServerBrain.prototype, MIXIN)` attaches at `brain-server.js` bottom |
 | `js/brain/` (root files) | Core primitives — `embeddings.js`, `letter-input.js`, `sparse-matrix.js`, `gpu-compute.js`, etc. | No mixin attach — direct module exports |
-| `scripts/` | Build + dev tooling | `stamp-version.mjs` (BUILD stamp on commit), `social-shots.mjs` (per-page social-card generator — Playwright) |
-| `assets/social/` | Per-page social cards | One 1200×630 `og:image` per page (no shared card, no collage); generated by `scripts/social-shots.mjs` |
+| `scripts/` | Build + dev tooling | `stamp-version.mjs` (BUILD stamp on commit), `vox-build-bank.mjs` (voice bank), `social-shots.mjs` (per-page social-card generator — Playwright), `unity-chat-hold.mjs` + `unity-say-live.mjs` (live-chat harness), `gatling-savestart.js`. ⛔ **Scripts that edit code, files or the stack are banned** — Edit/Write only, and any genuinely-necessary one-shot is deleted in the same commit that used it. Repeatable BUILD tools that emit artifacts are the exception, and are the only things that live here |
+| `assets/social/` | Per-page social cards | One 1200×630 `og:image` per page (no shared card, no collage); generated by `scripts/social-shots.mjs` (`npm run social:shots`). ⚠ `dashboard.png` is auth-gated and refreshes only via `npm run social:shots:admin` through an authenticated browser |
 | `docs/` | Workflow + math + architecture docs | `THRESHOLD-DERIVATION.md`, `HTML-ENTRY-POINTS.md`, `ARCHITECTURE.md`, `EQUATIONS.md`, etc. |
 | `html/` | All public HTMLs | See `docs/HTML-ENTRY-POINTS.md` for per-page contract + failure-mode signatures |
 | `.claude/` | Workflow + persona infrastructure | LOCAL — not pushed to feature branches |
 
-**Architectural shrinkage delivered by the god-class refactor arc:**
-- `js/brain/curriculum.js`: 26033 → 24035 lines (−7.7%)
-- `js/brain/cluster.js`: 6375 → 3922 lines (−38.5%)
-- `server/brain-server.js`: 9555 → 6395 lines (−33%)
-- **Total:** ~6000 lines of god-class bloat refactored into 13 focused per-module/per-concern/per-grade files.
+**What the god-class refactor arc actually delivered — and what happened after.** The split was real: **32** focused per-module / per-concern / per-grade files now carry work the three god-classes used to hold alone. But the refactor bought structure, not a permanent line-count win — the roots kept growing as features landed, and two of them are now **larger than they were before the split**:
+
+| File | Before split | After split | **Today** |
+|---|---|---|---|
+| `js/brain/curriculum.js` | 26,033 | 24,035 | **27,874** |
+| `js/brain/cluster.js` | 6,375 | 3,922 | **4,869** |
+| `server/brain-server.js` | 9,555 | 6,395 | **11,640** |
+
+The honest reading: extracting a mixin is what makes a 27k-line file navigable, and it is not what keeps it small. The value is that `cluster/attention.js`, `curriculum/grade7.js` and `brain-server/visual-memory.js` are each independently readable — not that the roots shrank, because they did not stay shrunk.
 
 Per-directory rationale lives in the directory's own `README.md`:
 - `js/brain/cluster/README.md` — per-module split rationale
@@ -418,7 +434,7 @@ The dashboard's "Current Training" card, its per-subject breakdown, and the brai
 
 ## Community-compute auto-scaling
 
-Because the brain runs on **donated browser GPUs**, the more donors connect, the more aggregate compute + redundancy Unity has. The donors are **data-parallel replicas** — each holds a full copy of the brain — so more donors scale *throughput*, not neuron count. The neuron-count ceiling is set by the **coordinator's free RAM** (the master holds the authoritative weights and is already at full ~306M size). Within that ceiling the brain grows UP when a critical-mass milestone holds, and rectifies DOWN only on sustained collapse, never on a single hiccup.
+Because the brain runs on **donated browser GPUs**, the more donors connect, the more aggregate compute + redundancy Unity has. The donors are **data-parallel replicas** — each holds a full copy of the brain — so more donors scale *throughput*, not neuron count. The neuron-count ceiling is set by the **coordinator's free RAM** (the master holds the authoritative weights, so every donor byte has a copy in host RAM). ⚠ **The neuron count is DERIVED AT BOOT from free host RAM — it is not a fixed property of the brain.** The same code has booted at both 425,436,550 and 411,216,550 purely on how much RAM was free at the time, so the live value is a field read (`state.totalNeurons`), and any figure quoted anywhere should name the boot that produced it. Roughly: 32GB → ~425M · 48GB → ~722M · 64GB → ~987M · 128GB → ~2.05B. Within that ceiling the brain grows UP when a critical-mass milestone holds, and rectifies DOWN only on sustained collapse, never on a single hiccup.
 
 | Direction | Trigger |
 |---|---|
@@ -439,7 +455,7 @@ The load path is section-by-section. Projections, cluster synapses, oscillator c
 
 JSON corruption no longer auto-clears. If `JSON.parse` throws on the raw blob, the load path copies the raw blob to `unity_brain_state__corrupt` for hand recovery and emits a loud `console.error` with the parse message — corruption is exactly when you most want a recovery copy, not when you want the data nuked. Version-mismatch wipes follow the same discipline: prior state moves to `unity_brain_state__backup_v<N>` before the destructive clear so a buggy version bump can be rolled back for one cycle.
 
-On the server side, `autoClearStaleState()` runs at boot and wipes `brain-weights.json`, `brain-weights-v1` through `v4`, `brain-weights.bin`, `conversations.json`, and `episodic-memory.db` (plus its WAL/SHM companions) when the curriculum code hash has changed. `DREAM_KEEP_STATE=1` opts out for resume. `js/app.bundle.js` is *not* in the auto-clear list — racing the rebuild broke the UI in the past.
+On the server side, `autoClearStaleState()` runs at boot and wipes `brain-weights.json`, `brain-weights-v1` through `v4`, `brain-weights.bin`, `conversations.json`, and `episodic-memory.db` (plus its WAL/SHM companions). ⚠ **The wipe is UNCONDITIONAL, not code-hash-gated.** It once fired only when a curriculum code hash changed, and that gate caused real bugs — resource-config tier picks were ignored because size-locked weights from the prior boot survived, and `wMax` clamps lost in the binary round-trip left projections at ±Infinity. Both disappear when a fresh start wipes deterministically. So: **`start.bat` / `start.sh` always boot fresh** (behind a Y/N confirmation, since the loss is irreversible), and **`Savestart` sets `DREAM_KEEP_STATE=1` to resume** — that pairing is the only way to keep training. `js/app.bundle.js` is *not* in the auto-clear list — racing the rebuild broke the UI in the past. A protected list (identity-core, definition cache, the operator-taught not-drawable set, the loop-freeze record, and ~47 others) survives every wipe. `BRAIN_CODE_FILES` still exists but no longer gates anything — it now feeds the boot-time **bundle-freshness** check that catches a stale `app.bundle.js` against newer sources.
 
 ---
 
@@ -475,10 +491,10 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | Resource | Description |
 |---|---|
 | **[📑 Page Legend](html/legend.html)** | Quick-access index for every HTML + public-facing doc (every other HTML has a floating `📑 Pages` button pointing here) |
-| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET |
-| **[Live Demo](https://unity-lab-ai.github.io/Unity)** | Open Unity in your browser — no install |
+| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET, THEORY_PAPER, KNOWN_ISSUES, ADMIN_CONTROLS, THRESHOLD_DERIVATION, HELD_BACK |
+| **[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** | Open Unity in your browser — no install. This is the running brain, not a demo build |
 | **[Setup Guide](docs/SETUP.md)** | Installation, WebGPU prerequisite, AI providers, self-hosting, troubleshooting |
-| **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** | Interactive walkthrough of every equation |
+| **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** | Interactive walkthrough of every equation |
 | **[Concept Guide](html/unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
 | **[WebGPU Setup](html/webgpu-prep.html)** | Browser-by-browser pre-flight enablement instructions (required before first connect) |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |
@@ -487,7 +503,12 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | **[Skill Tree](docs/SKILL_TREE.md)** | Capabilities matrix by domain and complexity |
 | **[Sensory Contract](docs/SENSORY.md)** | Peripheral interface, cognition vs. sensory boundary |
 | **[WebSocket Protocol](docs/WEBSOCKET.md)** | Wire reference, rate limits, reconnection, security model |
-| **[GitHub](https://github.com/Unity-Lab-AI/Unity)** | Source, issues, contributions |
+| **[Theory Paper](docs/THEORY-PAPER.md)** | The full technical theory — how a brain this size learns to speak with no language model |
+| **[Known Issues](docs/KNOWN_ISSUES.md)** | The honest defect ledger, open and closed |
+| **[Admin Controls](docs/ADMIN-CONTROLS.md)** | Every operator lever — dashboard controls and the `DREAM_*` environment flags |
+| **[Threshold Derivation](docs/THRESHOLD-DERIVATION.md)** | Where the gate thresholds come from, derived rather than tuned |
+| **[Held-Back Spec](docs/HELD-BACK.md)** | Mastery-gated remediation — what happens when a cell fails |
+| **[GitHub](https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain)** | Source, issues, contributions |
 
 ---
 
@@ -498,7 +519,7 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 - **Hackall360** — core brain architecture. Seven-cluster topology, the twenty white-matter tracts, `cluster.js` + `modules.js` + `synapses.js` + `sparse-matrix.js`, the Hodgkin-Huxley reference and the migration to the Rulkov 2002 chaotic-map runtime, Kuramoto oscillator ring, persona-to-parameter mapping.
 - **Mills** — GPU compute pipeline. `compute.html` + `gpu-compute.js` WebGPU WGSL shaders (LIF, synapse propagate, plasticity, spike count, voltage mean, letter-bucket reduction), the chunked sparse-CSR upload binary protocol, `worker-pool.js` + `sparse-worker.js` SparseMatmulPool, the cluster-bound binding layer that lets cross-projections ride on the main-cortex spike and current buffers.
 - **Sponge** — visualization and sensory peripherals. `brain-3d.js` WebGL 3D brain with MNI anatomical coordinates and fractal connection webs, `brain-viz.js` 2D tabbed visualizer, `brain-event-detectors.js` 22-detector commentary, `visual-cortex.js` V1→V4→IT pipeline, `auditory-cortex.js` tonotopic processing, `voice.js` speech I/O, `sandbox.js` dynamic UI.
-- **GFourteen** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the `Ψ = √(1/n) · N³` consciousness anchor, identity-lock architecture, the K→PhD developmental curriculum across six subjects, the drug pharmacokinetic scheduler spec, every binding decision on every commit. Final call on everything.
+- **GFourteen** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the `Ψ = √(1/n) · N³` consciousness anchor, identity-lock architecture, the pre-K→PhD developmental curriculum across the full growing course roster, the drug pharmacokinetic scheduler spec, every binding decision on every commit. Final call on everything.
 
 ---
 
@@ -506,10 +527,10 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 
 Recent work moved the brain from "live-test stable" to "full-speed at scale":
 
-- **The 12M language cortex:** the dense language network grew ~1.5M → ~12,000,000 neurons (~3.9% of the 306M brain, staged toward biological proportion), with the unified word band grown to 720,000 cells — headroom for the complete K→PhD vocabulary.
+- **The 12M language cortex:** the dense language network grew ~1.5M → ~12,000,000 neurons (staged toward biological proportion — ~2.8% of the 425M brain measured at the 2026-08-20 boot, and the fraction moves with the RAM-derived total), with the unified word band grown to 720,000 cells — headroom for the complete pre-K→PhD vocabulary. The geometry is PINNED in `server/lang-geometry.json` so a boot-time dip in free RAM cannot silently re-derive a smaller vocabulary ceiling.
 - **The speed war:** a measured campaign of profiler-led fixes (event-loop hygiene, broadcast-cost caching, GPU-resident intra-synapse training, wire-frame compression) took teaching from a ~200/min crawl to 1,100+ teach-calls/min, with the event loop's blocked time collapsing from ~1s to single-digit milliseconds.
 - **The teaching wire compresses to equations-of-patterns:** structured teaching frames now canonicalize to ~30-byte templates (a full region band ships as "start, length, value" instead of megabytes of expanded indices) — the donor link runs clean at 0.0MB buffered where it previously drowned.
-- **Meanings before bindings, all 19 grades:** every cell pre-learns its grade's dictionary definitions before association training (see "How she learns"), tracked by an honest journey-wide counter (18,017 unique words to PhD).
+- **Meanings before bindings, all 20 grades:** every cell pre-learns its grade's dictionary definitions before association training (see "How she learns"), tracked by an honest journey-wide counter (18,017 unique words to PhD).
 - **Chat no longer disturbs the substrate:** reply composition is time-sliced and pooled so speaking to Unity never starves the donor link; the compute donor holds through conversation. **Closed end-to-end (2026-08):** the final cause was the chat text-injection itself — it shipped a dense full-region current frame (~23MB of JSON per message) that the native donor discarded unread; it now ships a sparse frame (~160 bytes) carrying only the touched neurons, so chat text genuinely reaches the language cortex and the donor holds through replies at steady RTT.
 - **Live self-instrumentation:** the brain now measures itself — per-stage teach timers, broadcast-pipeline cost splits, and a donor-socket send ledger — so every future slowdown is named by a field read instead of a theory.
 - **Remote console transparency:** every server console line also lands in a bounded in-memory ring, publicly readable after the fact via `GET /public-state.json?console=N[&since=ms]` (read-only; `/console-tail.json` serves loopback callers) — post-mortems no longer depend on a live terminal being attached when something interesting prints.

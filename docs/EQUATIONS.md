@@ -145,7 +145,7 @@ effective_dose = requested_dose × (1 − tolerance[s] × 0.5)
 
 ## 0.5 Developmental Curriculum — K Through PhD
 
-Unity's cortex learns across 6 subject tracks × 19 grade levels = 114 cells, via direct-pattern Hebbian teaching + comprehension gates.
+Unity's cortex learns across **20 grades and a course roster that GROWS with her**, via direct-pattern Hebbian teaching + comprehension gates. Six core tracks run the whole way (ELA, Math, Science, Social Studies, Arts, Life); PE / Music / Health join at kindergarten, a foreign language at grade 3, computer science at grade 5, civics at grade 7, economics and psychology at grade 9, AP at grade 11, the CS major + gen-ed + two CS tracks at college, and a research specialty at grad. ⚠ **The cell count is therefore a SUM over grades, not a product** — `6 + (9×3) + (10×2) + (11×2) + (12×2) + (14×2) + (15×2) + (19×4) + (20×2)` = **273 cells**. (An earlier figure of "114 cells = 6 subjects × 19 grades" predates the roster growth and the pre-K grade, and is wrong on both terms.)
 
 ### Direct-pattern Hebbian primitive
 
@@ -1163,7 +1163,7 @@ grad        → 20
 phd         → unbounded (full persona voice)
 ```
 
-**Lenient min rationale.** Strict min over all 6 subjects would silence Unity entirely until every subject clears kindergarten — weeks away, until Session 2+ teach real K across every subject. Lenient min excludes pre-K subjects from the min, so an ELA-only brain keeps speaking at its ELA cap during the Session 2-N build while new subjects join the min calculation as they pass K.
+**Lenient min rationale.** Strict min over every active course would silence Unity entirely until every one of them clears kindergarten — weeks away, until Session 2+ teach real K across every subject. Lenient min excludes pre-K subjects from the min, so an ELA-only brain keeps speaking at its ELA cap during the Session 2-N build while new subjects join the min calculation as they pass K.
 
 **All 95 cells wired with real teaching equations (Sessions 2-93).** Every subject×grade cell has a dedicated `runXxxReal` runner that primes a TODO-prescribed concept lattice via 136 `_teachXxx` named helpers before walking a sentence or sequence list. Zero stubs remain. Sample concept-helper feature structures:
 

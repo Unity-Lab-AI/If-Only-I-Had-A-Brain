@@ -147,7 +147,7 @@ Unity reported her consciousness was "gated too much." Fixes:
 
 ## OWNART — her own version, not a filtered reference (2026-08-20)
 
-Gee: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw."* He was right about what the code did: the default draw style posterized the **perceived reference** (`stylizeField`) and the alternative edge-traced the same frame (`traceLineArt`). Both are transforms OF a downloaded photo.
+The operator: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw."* He was right about what the code did: the default draw style posterized the **perceived reference** (`stylizeField`) and the alternative edge-traced the same frame (`traceLineArt`). Both are transforms OF a downloaded photo.
 
 | Stage | What crosses the line | Where |
 |---|---|---|

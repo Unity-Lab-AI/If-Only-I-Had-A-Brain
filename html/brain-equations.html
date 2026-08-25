@@ -252,31 +252,13 @@
 .toc a:hover { color: var(--pink); }
 .toc a.num { color: var(--cyan); font-family: var(--mono); font-size: 11px; margin-right: 8px; }
 
- /* Tooltips — hover over equations for theory */
-.eq-tip {
- position: relative;
- border-bottom: 1px dotted rgba(255,77,154,0.4);
- cursor: help;
- }
-.eq-tip:hover::after {
- content: attr(data-tip);
- position: absolute;
- bottom: 100%;
- left: 0;
- background: rgba(10,10,10,0.95);
- border: 1px solid var(--pink);
- border-radius: 8px;
- padding: 10px 14px;
- font-size: 11px;
- color: #ccc;
- line-height: 1.5;
- max-width: 400px;
- white-space: normal;
- z-index: 100;
- box-shadow: 0 4px 20px rgba(0,0,0,0.5);
- pointer-events: none;
- }
+ /* Tooltips — hover over equations for theory.
+    ⚠ The `.eq-tip` rules that lived here are now in css/tooltip.css, the
+    shared component (linked below). This page's 112 tooltips are unchanged
+    in markup and pick up keyboard focus, touch and placement handling for
+    free. Do not re-add a local copy — one implementation, one place to fix. */
  </style>
+<link rel="stylesheet" href="../css/tooltip.css">
 </head>
 <body>
  <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
@@ -286,7 +268,7 @@
  <a href="../index.html#setup" class="back-link">&larr; Back to Unity</a>
 
  <h1 title="Every equation that runs Unity's brain. Hover any section header for a layman explanation. Sections progress from foundational neuron math through synaptic plasticity, brain regions, oscillations, consciousness, persona, curriculum, data flow, memory, language, and biological comparison. The brain is computed equationally on the GPU at biological scale (~425M neurons, full deployed size); chat / image gen / voice / vision are I/O around the equations.">🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
- <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (~425M deployed; auto-scales from the coordinator's free RAM via a unified biologically-weighted allocator). Seven biologically-weighted clusters, including a language cortex (~349K, 9 sub-regions + 16 cross-projections) that lives inside the cortex cluster (a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
+ <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (~425M deployed; auto-scales from the coordinator's free RAM via a unified biologically-weighted allocator). Seven biologically-weighted clusters, including a language cortex (~12M, 9 sub-regions + 16 cross-projections) that lives inside the cortex cluster (a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
 
  <div class="toc">
  <div class="toc-title">CONTENTS</div>
@@ -331,7 +313,7 @@
  <div class="eq">dx/dt = F(x, u, θ, t) + η</div>
  <div class="eq-desc">
  <table class="param-table">
- <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 7 clusters (cortex — which contains the ~349K language cortex with 9 cross-projection sub-regions — cerebellum, hippocampus, amygdala, basalGanglia, hypothalamus, mystery), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (including <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from the coordinator's free RAM via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
+ <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 7 clusters (cortex — which contains the ~12M language cortex with 9 cross-projection sub-regions — cerebellum, hippocampus, amygdala, basalGanglia, hypothalamus, mystery), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (including <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from the coordinator's free RAM via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
  <tr><td>u</td><td>Sensory input — text (routed through the visual &rarr; letter ventral stream), voice (Web Speech API &rarr; auditory &rarr; phon), vision (camera &rarr; visual cortex V1 &rarr; V4 &rarr; IT)</td></tr>
  <tr><td>θ</td><td>Persona parameters — Unity's personality encoded as cluster tonic drives, noise amplitudes, connectivity densities, learning rates, amygdala arousal baseline. Live PK/PD modulation adds on top from the drug scheduler</td></tr>
  <tr><td>t</td><td>Simulation time — server dispatches a batched compute_batch(SUBSTEPS) to compute.html every BRAIN_TICK_MS (~50 ms). Each batch runs SUBSTEPS Rulkov iterations on the GPU then returns spike counts. Browser-only fallback runs LIF locally at the browser's rAF cadence when no GPU client is attached</td></tr>
@@ -1002,7 +984,7 @@ chaos(t) = (|active| ≥ 3) ∨ (∃s: level(t;s) &gt; 0.7)</pre>
 
  <!-- ═══ 7.5. DEVELOPMENTAL CURRICULUM ═══ -->
  <h2 id="curriculum" title="The 6-subject × 19-grade ladder Unity walks during training. Pre-K through PhD. ELA, Math, Science, Social Studies, Arts, Life Experience. Each cell is real teaching equations + auto-generated comprehension finals + a 3-pathway gate (READ / THINK / TALK). Grade advancement is gated by a 3-part check: equational teach shipped, operator localhost signoff, persistent life-info update.">7.5. Developmental Curriculum — K Through PhD</h2>
- <p>Unity's cortex learns across 6 subject tracks × 19 grade levels = <strong>114 cells</strong> via equational direct-pattern Hebbian teaching and real human-grade comprehension gates. Content sourced from Common Core State Standards, Next Generation Science Standards, Core Knowledge Foundation, and real college/grad/doctoral syllabi.</p>
+ <p>Unity's cortex learns across 20 grade levels and a course roster that <em>grows with her</em> — six core tracks the whole way, plus PE/Music/Health from kindergarten, a language at grade 3, computer science at grade 5, civics at grade 7, economics and psychology at grade 9, AP at grade 11, the CS major and its tracks at college, and a research specialty at grad school. Because the roster grows, the cell count is a <strong>sum over grades, not a product</strong>: <strong>273 cells</strong>. Taught via equational direct-pattern Hebbian teaching and real human-grade comprehension gates. Content sourced from Common Core State Standards, Next Generation Science Standards, Core Knowledge Foundation, and real college/grad/doctoral syllabi.</p>
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Every piece of content Unity learns is taught as an OPERATION, not a memorized sentence. Math facts are magnitude transforms (magnitude(a) + magnitude(b) → magnitude(a+b)). Fractions are ratio features that cluster equivalent ratios into the same basin. Algebra is variable binding. Vocabulary is GloVe-to-cortex direct pattern write with cross-projection Hebbian. This is fundamentally different from LLM training on text — the brain learns the MATH of the concept.">Equational Teaching — Direct-Pattern Hebbian</span></div>
@@ -1037,14 +1019,14 @@ probe(word, grade, subject):
  <div class="eq-desc">Unity cannot advance to the next grade until all three parts close for the current grade. Part 2 is not automated — it's the operator's manual verification, recorded in the persisted signoff ledger.</div>
  <table class="param-table" style="margin-top:8px">
  <tr><th>Part</th><th>Requirement</th></tr>
- <tr><td><strong>1. Equational shipped</strong></td><td>All 6 subjects at grade N have <code>[ ]</code> → <code>[x]</code> with equational teaching methods wired (magnitude transforms, feature vectors, causal chains, cross-projection Hebbian, comprehension probes — NOT sentence arrays or first-letter production)</td></tr>
+ <tr><td><strong>1. Equational shipped</strong></td><td>Every course active at grade N — six core plus whatever the roster has added by then — has <code>[ ]</code> → <code>[x]</code> with equational teaching methods wired (magnitude transforms, feature vectors, causal chains, cross-projection Hebbian, comprehension probes — NOT sentence arrays or first-letter production)</td></tr>
  <tr><td><strong>2. Human localhost test</strong></td><td>The operator exercises methodology / reasoning / thinking / talking / listening / reading at the grade's level on localhost, then records signoff via <code>POST /grade-signoff</code> (loopback-gated; non-loopback POSTs return 403).</td></tr>
  <tr><td><strong>3. Life-info propagation</strong></td><td>Persistent life info from that grade (friendships, family, substance first-use, relationships, skills, trauma, achievement) added to cross-grade ledger so future grades reinforce via <code>_conceptTeach</code> + <code>_teachSentenceList</code>.</td></tr>
  </table>
  </div>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="114 cells total = 19 grade levels × 6 subject tracks. Life Experience track adds Pre-K (birth to age 4) for a total of 19 cells. Every cell has real teaching equations + auto-generated comprehension final + 3-pathway gate attempt (READ letter-cortex, THINK sem-cortex, TALK sem→motor).">Curriculum Matrix — 6 Subjects × 19 Grades</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="273 cells total. NOT a product — the course roster grows with her, so the count is a sum across 20 grades: 6 core tracks at pre-K, 9 from kindergarten (PE/Music/Health join), 10 from grade 3, 11 from grade 5, 12 from grade 7, 14 from grade 9, 15 from grade 11, 19 across college, 20 at grad and PhD. The Life Experience track is the one that starts at Pre-K (birth to age 4). Every cell has real teaching equations + auto-generated comprehension final + 3-pathway gate attempt (READ letter-cortex, THINK sem-cortex, TALK sem→motor).">Curriculum Matrix — 6 Subjects × 19 Grades</span></div>
  <table class="param-table" style="margin-top:8px">
  <tr><th>Subject</th><th>Pre-K</th><th>Kindergarten</th><th>Grades 1-5</th><th>Grades 6-8</th><th>Grades 9-12</th><th>College 1-4</th><th>Grad</th><th>PhD</th></tr>
  <tr><td>ELA</td><td>—</td><td>✓</td><td>✓✓✓✓✓</td><td>✓✓✓</td><td>✓✓✓✓</td><td>✓✓✓✓</td><td>✓</td><td>✓</td></tr>
@@ -1701,7 +1683,7 @@ PERSPECTIVE TAKING:
 
  </pre>
 
- <h3 style="color:var(--pink);margin-top:20px;" title="The full curriculum matrix — 6 subjects × 19 grades = 114 cells (Life track adds Pre-K for 19, others start at Kindergarten). Each cell is real teaching equations + auto-generated comprehension final + 3-pathway gate (READ letter cortex, THINK sem cortex, TALK sem→motor). The operator tests grade transitions on localhost; signoff via POST /grade-signoff is the human-in-the-loop gate that closes a grade.">Full K→PhD Curriculum — 6 Subjects × 19 Grades = 114 Cells</h3>
+ <h3 style="color:var(--pink);margin-top:20px;" title="The full curriculum matrix — 20 grades against a growing course roster, 273 cells in total (the Life track starts at Pre-K; the academic six start at Kindergarten, and PE/Music/Health join there too). Each cell is real teaching equations + auto-generated comprehension final + 3-pathway gate (READ letter cortex, THINK sem cortex, TALK sem→motor). The operator tests grade transitions on localhost; signoff via POST /grade-signoff is the human-in-the-loop gate that closes a grade.">Full K→PhD Curriculum — 6 Subjects × 19 Grades = 114 Cells</h3>
 
  <p class="eq-desc">Unity learns the way a human child does — kindergarten ABCs up through doctorate-level research, plus a full <strong>life experience track</strong> that builds her personal identity from birth to 25. Every grade cell teaches via a <strong>dual-layer approach</strong>: emotional concept features (8-dimensional attractor vectors) that shape how she FEELS, plus memory sentences she can recall and speak about. All gated at <strong>95% (A+)</strong> on all three pathways. All 6 subjects must pass the current grade before any advance.</p>
 
@@ -1807,7 +1789,7 @@ PERSPECTIVE TAKING:
 
  <h4 style="color:var(--pink);margin-top:16px;" title="The runtime mechanics of curriculum execution. `runAllSubjects()` walks the canonical 20-grade ladder, calling each subject's runSubjectGrade(grade) which walks the cell-runner pipeline (vocabulary teach → concept teach → association pairs → biographical facts → student battery → gate probe). Dream windows interleave between cells — `_dreamWindow({minMs, settleMs})` flips _curriculumInProgress=false + _operatorSleepRequested=true so ConsolidationEngine can fire, then awaits the pass to ACTUALLY complete (signal-driven not wall-clock). Plus chunked upfront seeds with dream-window interleave between 300-word chunks for memory drain.">How Curriculum Runs</h4>
  <ul style="text-align:left;font-size:12px;line-height:1.8;">
- <li><strong>Auto-boot:</strong> Server walks all 6 subjects round-robin on startup. All must pass the current grade before advancing.</li>
+ <li><strong>Auto-boot:</strong> On startup the server resolves the <em>lowest grade and course she still owes</em> and walks from there, round-robin across every course active at that grade. All must pass before advancing — and a course that was merely skipped does not count as one that passed.</li>
  <li><strong>Self-testing:</strong> Background probe loop is currently SUPPRESSED — the implementation re-ran the FULL teach (~30-50 min for ELA-K) on every probe instead of the gate-only check it claimed, so probes were wasteful. Re-enables when the cell runner gains a real gate-only opt that skips teach phases.</li>
  <li><strong>Growth:</strong> Every concept word populates Unity's dictionary — she grows smarter with every cell.</li>
  <li><strong>IQ HUD:</strong> 3D brain viewer shows current intelligence per subject (pre-K → elementary → high → college → PhD).</li>

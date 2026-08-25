@@ -234,6 +234,7 @@
 
   a { color: var(--cyan); }
 </style>
+<link rel="stylesheet" href="../css/tooltip.css">
 </head>
 <body>
 
@@ -255,7 +256,7 @@
 </section>
 
 <section>
-  <h2>🎚 Resource Tier — pick a preset</h2>
+  <h2>🎚 <span class="tip tip--below tip--wide" tabindex="0" data-tip="Presets that size the brain to the hardware. ⚠ The tier ladder used to END at tier 3 with the tier chosen from a hardcoded 16GB donor baseline — so no donor of any size could move it, and a bigger card changed nothing. It now runs further and LEARNS the largest donor it has seen. If a tier pick appears to be ignored, note that a resume boot keeps the previous size: a fresh start is what applies a new tier.">Resource Tier — pick a preset</span></h2>
   <p style="font-size: 12px; color: var(--text-dim); margin: 0 0 14px;">
     This admin tool sizes the <strong>local-dev brain</strong> your own GPU runs via <code>start.bat</code>. In the deployed model, visitors instead donate their browser GPU through the compute page and the brain trains/runs across those connected donor GPUs as data-parallel replicas — no tier file needed on the donor side. Tiers that exceed your detected hardware are greyed out and can't be selected. Pick the highest tier that fits. Each tier maps to a known-good neuron count. Click save when you're ready — config takes effect on the next <code>start.bat</code> / <code>node server/brain-server.js</code>.
   </p>
@@ -268,11 +269,11 @@
     </label>
     <div id="manual-fields" class="manual-fields">
       <div class="field-row">
-        <label for="manual-neurons">Neuron cap</label>
+        <label for="manual-neurons"><span class="tip tip--wide" tabindex="0" data-tip="A hard ceiling on how many neurons the brain will build. ⚠ Leave it unset and the size is DERIVED AT BOOT from free host RAM — which is why the neuron count legitimately differs between two boots of identical code. The real limit is the coordinator's RAM, not the GPU: every byte a donor holds has a master copy on the host. Roughly 32GB gives ~425M neurons, 64GB ~987M, 128GB ~2B.">Neuron cap</span></label>
         <input type="number" id="manual-neurons" min="1000" step="1000" placeholder="e.g. 5000000">
       </div>
       <div class="field-row">
-        <label for="manual-vram">VRAM cap (MB)</label>
+        <label for="manual-vram"><span class="tip tip--wide" tabindex="0" data-tip="How much of a donor card's memory the brain may claim. ⚠ This limits what the brain WILL USE, not what your card HAS — a related setting once defaulted to 10%, so a 24GB volunteer card announced itself as 2.4GB and donated a tenth of itself. If you want a card left partly free (because it also drives your display), exclude it instead; that is what the enabled-card mask is for.">VRAM cap (MB)</span></label>
         <input type="number" id="manual-vram" min="256" step="256" placeholder="e.g. 8192">
       </div>
       <div class="field-row">
