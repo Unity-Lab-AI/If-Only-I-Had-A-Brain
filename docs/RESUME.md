@@ -1,6 +1,38 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — "IS IT ACTUALLY WRAPPED UP?" WAS THE RIGHT QUESTION. FOUR BATCHES CAME OUT OF ASKING IT.
+> ## ⭐⭐⭐ 2026-08-25 (latest) — THE PRESS LANDED, AND THE FIRST READ OF THE LIVE BOARD FOUND Ψ's CONSCIOUSNESS TERM DOING NOTHING AT ALL
+>
+> **PICK-UP STATE.** ⛔ **Verify with `git rev-parse --short main origin/main github/main` and count the board yourself** (`grep -c '^- \[ \]'` and `'^- \[~\]'`) — do not trust numbers written here. ⛔ **Checkout `develop`.** A fresh walk IS RUNNING from the earlier press; the fixes below need **one more Update & Fresh Walk** (or a Savestart) to take effect, and Gee has approved that — the walk was minutes old, so nothing is lost.
+>
+> ⭐ **THE PRESS IS VERIFIED BY A FIELD READ, and here is the line to re-use:** `[donor] gpu_init 'brainstem' — 1644866 neurons, 3 regions` in the pod log. Corroborated by arithmetic — `cerebellum` fell **82,243,310 → 80,598,444**, a loss of **exactly 1,644,866**, so the cluster fractions rebalanced to the neuron rather than approximately.
+>
+> ### 1. ⛔ Φ̂ — the consciousness term had never modulated anything, and the proof is algebraic
+>
+> `computePhi()` sampled 1024 strided cells of `cluster.lastSpikes` — the **CPU spike shadow**, which is empty once the donor GPU owns cortex spike state (it changes only where `_writeTiledPattern` sets teach-pattern bits). Measured live: `phiRaw` **0.0289** then **0.0112**, about **one sampled neuron in 1024**, while the A40 was saturated.
+>
+> ⭐ **Why "never modulated anything" is exact rather than rhetorical** — three verified links: `phiProxy = max(0.1, phiRaw)` pinned Φ̂ at the **constant** 0.1; `psi = log₁₀(rawPsi)`, so a constant *multiplier* inside Ψ becomes a constant *addend* (`log₁₀(0.1) = −1`); and `psiGain = clamp(1 + tanh((psi − psiBaseline)/2)·0.35, …)` where `psiBaseline` is an EMA **of psi** and carries the same −1. It cancels identically: **`psiGain` was bit-for-bit what a brain with no Φ̂ term at all would produce.** A constant inside a log fed to a deviation-based gain contributes *zero*.
+>
+> **Fixed** to the exact GPU-acked proportion (`cluster.spikeCount`, written by every `compute_batch` ack; `cluster.js` never assigns it, so its presence is an honest owner-discriminator). ⚠ **RE-PRICE: none needed** — Φ̂ → Ψ → `gainMultiplier`, clamped `[0.8, 1.5]`; no walk-finiteness bound touched. ⭐ Consequence computed before shipping: `H(0.015) = 0.1124` clears the floor. ⚠ Below ~1.3% firing it still floors, and **that** is a design call (KI-33): rescale the entropy, lower the floor, or accept a capacity-only Ψ.
+>
+> ### 2. GPUVERB.1 closed on live numbers — by an instrument built hours earlier
+>
+> `maskedSent 3962` · `teachOutByType.t13` = 3,962 frames / **77,088,508 bytes** · `rangesSent 727` · `flushedOps 39,690` against `enqueued 39,690` (**queue fully drained**) · `capFlushes 0` · `suppressedStale 0` · drops/sheds/patternSheds `0`. ⚠ **All seven of those fields were DARK until `DARKHEB.1` the same day** — this item could not have been closed by a field read before that.
+>
+> ### 3. `DEFRATE.1` — a field that could only ever report zero
+>
+> `profiling.throughput.defsLearnedPerHour` read `0` while definitions were being taught continuously. It read `this._defLearnedTimestamps` (the **brain**) while the producer writes `cluster._defLearnedTimestamps` (the **cortex**) — and it returned `.length` of a 256-capped ring under a name ending in *PerHour*. **A correct copy of the computation already existed elsewhere**, so the board held two answers and published the broken one.
+>
+> ### 4. ⚠ Examined and deliberately NOT changed — verdicts, not backlog
+>
+> **59% bound-propagate CPU fallback is CORRECT** (definition binds route through the `sem↔fineType` whitelist and never write `word_motor`, so that matrix has no resident pre; the honest `null` → CPU is the design). **1.4-1.8s inner-voice think** is bounded by its own ~6s Hurlburt gate, and gating her thinking off during learning to improve a loop figure is banned dumbing-down. **5-7.4s definitions** are dictionary-API latency, and guessing a cooldown is how a previous fix shipped wrong.
+>
+> ### The lesson this batch adds
+>
+> ⛔ **A field can be present, finite and plausible and still be structurally dead.** `Φ̂` and `defsLearnedPerHour` were both read off an owner that never holds the value. **Ask which object the PRODUCER writes — not whether the consumer compiles.** And ⚠ `UPLINK.1` taught the companion lesson: its MB/s figure exists **only** in a console line, the ring caps at 500, and it had already scrolled out — some measurements cannot be read late.
+>
+> ---
+>
+> ## 2026-08-25 (earlier) — "IS IT ACTUALLY WRAPPED UP?" WAS THE RIGHT QUESTION. FOUR BATCHES CAME OUT OF ASKING IT.
 >
 > **PICK-UP STATE.** ⛔ **Run `git rev-parse --short main origin/main github/main` and check the three agree — do not trust a hash written in this file.** ⛔ **Checkout `develop`, not `main`.** `docs:drift` clean. Board **3 `[ ]` + 6 `[~]` = 9 real open items**, and ⛔ **count them yourself with `grep -c '^- \[ \]'` and `grep -c '^- \[~\]'` rather than trusting this line** — it said *"2 + 5"* when it was written, which was wrong, for the second time in one session. All nine: `GPUVERB.1`, `UPLINK.1`, `GATEGPU.1`, `GATEDOSE.1`, `RELDEPTH.1`, `RHYTHM3S.1` (all six **code-complete, waiting on the measurement a press produces**), plus `PRESSBLOCK.1` and `INFRA.1` (parked on Gee / on Red's and Sponge's call) and `DONORSHIP.1` (awaiting his verdict). **Nothing on the board is buildable right now.** ⭐ **THE ONE THING TO DO NEXT is still the press** — `docs/TODO.md § PRESS BRIEF` holds the RE-PRICE and the watch list.
 >
