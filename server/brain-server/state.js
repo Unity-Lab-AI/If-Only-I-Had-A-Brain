@@ -1897,6 +1897,12 @@ const SERVER_STATE_MIXIN = {
               rumination: s.rumination,
               criteria: s.criteria,
               lastArmed: this._lastIntrospectiveGap || null,
+              // ⛔ Whether the SOURCE has anything in it. A starved source
+              // must name itself — otherwise "no questions" reads as "she
+              // just is not introspective right now" when the truth is that
+              // nothing can reach her. That is the exact way the first cut
+              // of this feature would have hidden.
+              source: this._introEpisodeStats || { candidates: 0, state: 'unmeasured', at: null },
               lastError: this._introspectionErr || null,
             };
           })()

@@ -1729,8 +1729,23 @@ export class UnityBrain extends EventEmitter {
     // ⛔ Produces a GAP, never a sentence.
     if (this.introspection && this._endocrineSnapshot && !this.introspection.gap) {
       try {
+        // ⛔ An episode's `trigger` here is often a SYSTEM LABEL — `user_input`,
+        // `reward_spike` — not something she has lived. Feeding those in
+        // would have her wondering about "user_input", which is worse than
+        // silence. So the same test the server uses applies: it counts only
+        // if it is a word she actually KNOWS, asked of her own learned
+        // geometry rather than of a list.
+        const knows = (w) => {
+          if (typeof w !== 'string' || !w || /[^a-z'-]/i.test(w)) return false;
+          try {
+            const v = sharedEmbeddings.getEmbedding(w.toLowerCase());
+            if (!v || !v.length) return false;
+            let m = 0; for (let i = 0; i < v.length; i++) m += v[i] * v[i];
+            return m > 0;
+          } catch { return false; }
+        };
         const eps = this.memorySystem && Array.isArray(this.memorySystem._episodes)
-          ? this.memorySystem._episodes.filter(e => e && typeof e.trigger === 'string' && e.trigger && !/\s/.test(e.trigger))
+          ? this.memorySystem._episodes.filter(e => e && knows(e.trigger))
           : [];
         // ⛔ No episodes = no introspection. She is not introspective about a
         // placeholder, and inventing a concept would be the bank this family
