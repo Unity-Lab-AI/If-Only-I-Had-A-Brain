@@ -4,15 +4,33 @@ Per the per-concern split directive — break the (then) 9,555-line brain-server
 <!-- Drift check 2026-08-20: brain-server.js is now 10,945 lines. It has GROWN since the split, which is expected — the split moved concerns OUT into this directory while the remaining file kept absorbing new server-side work (the VRAM/tier allocator, the adaptive substep controller, the upload watchdogs, the geometry-pin logic). The number above is kept as the historical baseline the split was measured against; this note is the current figure. -->
  via `Object.assign` mixin pattern (same approach as `js/brain/curriculum/` per-grade split + `js/brain/cluster/` per-module split).
 
-## Target layout (per-concern files)
+## Actual layout (per-concern files)
+
+⚠ **This section previously listed four files and called itself a "target layout". Seven modules live here now** — the three additions arrived with the sensory work and were never added to this list, so the directory's own README documented barely half of it.
 
 ```
 server/brain-server/
-  ├── README.md         (this file)
-  ├── gpu.js            (GPU sparse comms — 20 methods, 1073 lines)
-  ├── state.js          (state broadcast / dashboard feed — deferred bite)
-  ├── memory.js         (episodic DB + persistence — deferred bite)
-  └── chat.js           (processAndRespond + chat-time learning — deferred bite)
+  ├── README.md            (this file)
+  ├── gpu.js               (GPU sparse comms — the donor wire, uploads, the
+  │                         adaptive substep controller)
+  ├── state.js             (state broadcast / dashboard feed — ⚠ every field
+  │                         the board can show is assembled HERE, and the board
+  │                         renders BY NAME, so a field added here without a row
+  │                         added there ships dark)
+  ├── memory.js            (episodic DB + persistence)
+  ├── chat.js              (processAndRespond + chat-time learning + her image
+  │                         composition and drawing lanes)
+  ├── visual-memory.js     (the seen/looked-up concept store — sqlite, WAL,
+  │                         binary blob rows; her reference look-up lane)
+  ├── mindspace-proxy.js   (⛔ the worker-thread proxy for the equational
+  │                         mind-space, with a HAND-PICKED method list — a
+  │                         method missing from it fails SILENTLY in
+  │                         production while engine-direct tests pass. A
+  │                         missing `imagine()` here banked every drawing
+  │                         colourless for a day. Add an engine method, grep
+  │                         this file in the same commit.)
+  └── voice-synth.js       (her own voice — the in-house Piper + wavelet
+                            pipeline, no cloud TTS anywhere)
 ```
 
 ## Mixin pattern
