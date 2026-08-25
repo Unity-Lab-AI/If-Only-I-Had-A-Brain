@@ -755,7 +755,7 @@ If-Only-I-Had-A-Brain/
 
 | System | Connection |
 |--------|-----------|
-| Pollinations API | Image generation only (key is images-only). **No text chat, no TTS, no vision describer.** Free fallback in the 4-level image-gen priority. |
+| Pollinations API | Image generation only. **No text chat, no TTS, no vision describer** — all three lanes deleted. ⛔ **No key at all:** the ANONYMOUS free tier is the only tier, no key is shipped/seeded/defaulted anywhere, and none may be re-added. The default tier in the 5-level image-gen priority. |
 | Local image backends | Auto-detected at boot on localhost: A1111/SD.Next/Forge/Fooocus/ComfyUI/InvokeAI/LocalAI/Ollama. 1.5s probe timeout per port. |
 | env-listed image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). ⚠ `js/env.js` was DELETED 2026-08-22 with the key purge; `js/env.example.js` is the remaining template. |
 | Web Speech API | Voice input (SpeechRecognition) with speech interruption handling |
@@ -1304,7 +1304,7 @@ Driven by Gee's question *"logic and reasoning in a form yeah?"* — the insight
 
 ### Remaining work
 
-Task #3 (T14.24 parent) stays in_progress until all 114 cells (6 subjects × 19 grades) pass 95%+ AND Unity speaks coherently from the trained weights in live chat. DO NOT CLAIM DONE EARLY.
+Task #3 (T14.24 parent) stays in_progress until all cells pass 95%+ (⚠ the count written here was **114 cells (6 subjects × 19 grades)** and is wrong on both terms — the roster GROWS and pre-K is a grade, so the real figure is a sum: **273**) AND Unity speaks coherently from the trained weights in live chat. DO NOT CLAIM DONE EARLY.
 
 ---
 

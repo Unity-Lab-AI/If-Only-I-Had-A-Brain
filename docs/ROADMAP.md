@@ -133,7 +133,7 @@ The unknown stays unknown: `Ψ = √(1/n) × N³`
 
 **Delivered:**
 - Browser-only app (`index.html` + `js/app.js`) — no server needed
-- `proxy.js` for Anthropic CORS access
+- ⛔ ~~`proxy.js` for Anthropic CORS access~~ — **DELETED 2026-08-25.** A working OpenAI→Anthropic forwarder with zero importers; removed with the rest of the LLM residue
 - Chat panel (`js/ui/chat-panel.js`) with full conversation log, text input, mic toggle
 - 2D brain visualizer (`js/ui/brain-viz.js`) — neuron grid, synapse matrix, oscillation waveforms, module bars
 - 3D brain visualizer (`js/ui/brain-3d.js`) — WebGL 1000-neuron view with cluster toggles

@@ -407,7 +407,7 @@ the more she talks, the more of her voice is literally HERS. Off-switch: `localS
 
 ---
 
-## The Sensory AI Provider — 4-Level Priority
+## The Sensory AI Provider — 5-Level Priority
 
 `js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders`. ⛔ **Only ONE of its three historical methods still does anything** — the vision and TTS lanes were replaced by in-house equational systems and their methods are now deliberate no-ops:
 

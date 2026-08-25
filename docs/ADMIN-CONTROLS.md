@@ -274,6 +274,26 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
+## 🕳 PUBLISHED BUT NOT RENDERED — five instruments the board does not show
+
+⛔ **The dashboard renders state fields BY NAME ONLY.** There is no generic walk over the state object — every value reaches the DOM through an explicit reference (24 `row(label, value)` calls in the profiling panel, plus per-panel interpolation). **Therefore: absence from `html/dashboard.html` is proof of non-rendering, not merely evidence of it.** That is worth stating because it makes the audit below decidable by grep instead of by opinion.
+
+Measured 2026-08-25 — published by `server/brain-server/state.js`, referenced **zero** times by the page:
+
+| State field | What it carries | Why its absence matters |
+|---|---|---|
+| **`state.voice`** | The evidence-based speech block: `status` (`matrix-driven` / `unmeasured` / …), a written `reason`, `matrixDrivenPct` (share of emissions that came from her trained weights rather than the dictionary oracle), `everFired` word_motor buckets, and the **last emit rejection WITH ITS AGE** | ⛔ **This block exists specifically because the board used to lie.** `canSpeak` was pure grade arithmetic wearing a capability name; it was renamed `minGradeCleared` and *replaced* by this evidence block. The replacement was built and then never surfaced — so the lying field was removed and the honest one is invisible. It even distinguishes *"no sample exists"* from *"she cannot speak"*, which is the exact distinction the board was previously incapable of |
+| **`state.voice.minGradeCleared`** | Grade arithmetic, correctly named now | Harmless alone; it is the field the old lie lived in, kept honest by its name |
+| **`state.profiling.loopStarve`** | `lateMsPerMin` (total ms/min the loop owed and did not deliver) + `servicePct` | ⛔ Built for a failure mode **every other channel is structurally blind to**: thousands of short stalls rather than one long one. A loop 200ms late on every 100ms sample never trips a max-stall threshold and is still unavailable two-thirds of the time. `loop freezes` **is** rendered and reads healthy during exactly that failure |
+| **`state.ownArt.practice` / `.feedback`** | Drawing-practice skill scores; accept/reject/ban verdict counts | Both systems shipped and work. Whether practice is improving her hand, and whether her verdicts are landing, are unanswerable from the board |
+| **`state.curiosity`** | Curiosity-gap counters — where low confidence should have produced a question | The inquisitive drive is opt-in and its uptake is unmeasurable |
+
+⚠ **`separability` and `lookups` ARE rendered** (`m.speechHealth` → `sh.separability`, and the look-up counters on the mind's-eye page) — they were in the same audit and came back clean. Listed so nobody re-checks them.
+
+⚠ **This is a filing, not a fix.** Adding the rows is UI work, not documentation work, and it is deliberately not bundled into a documentation sweep. What the sweep owes is an accurate statement of which instruments are dark, and that is the table above.
+
+---
+
 ## 🎛 Env knobs that change TRAINING (2026-08-20)
 
 Every one of these is opt-in with a stated default. **The buttons above are the normal
