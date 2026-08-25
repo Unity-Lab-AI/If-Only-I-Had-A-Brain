@@ -743,6 +743,13 @@
                were both unanswerable from this page. -->
           <div id="d-art-practice" style="font-size:10px;color:#777;margin-top:3px;"></div>
           <div id="d-art-feedback" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <!-- EYEPIN.3 — WHAT SHE IS LOOKING AT, AND WHY. The defect this row
+               exists for was invisible to every other counter on this card:
+               383/383 drawn with all error fields 0, while every frame was the
+               same subject. `pin` climbing is a finding about her THOUGHT
+               CHAIN, not her art. -->
+          <div id="d-art-eye" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-art-eye-recent" style="font-size:10px;color:#666;margin-top:2px;"></div>
         </div>
       </div>
     </div>
@@ -1804,6 +1811,39 @@
             $af.textContent = fb
               ? `your verdicts: ${num(fb.accepts)} good · ${num(fb.rejects)} redraw · ${num(fb.bans)} banned`
                 + (fb.lastVerdict ? ` · last "${fb.lastWords || ''}" → ${fb.lastVerdict}` : '')
+              : '';
+          }
+          // EYEPIN.3 — the subject picker's ledger. ⛔ `null` means the picker
+          // has not run yet and is rendered as SUCH: an absent instrument must
+          // never read as "no pin", which is the mistake that let the stall
+          // hide behind a wall of green counters in the first place.
+          const $eye = $('d-art-eye'), $eyeR = $('d-art-eye-recent');
+          if ($eye) {
+            const e = oa && oa.eye;
+            if (!e) {
+              $eye.textContent = 'eye: picker has not run yet — NOT a verdict on variety';
+              $eye.style.color = '#666';
+            } else {
+              // A pin is only interesting once it EXCEEDS the rotation
+              // threshold — one repeat is ordinary dwell on a thought.
+              const pinned = (e.pinTicks | 0) >= 2;
+              $eye.style.color = pinned ? '#f59e0b' : '#22c55e';
+              $eye.textContent = `eye: "${e.lastSubject || '—'}" via ${e.lastWhy || '—'}`
+                + ` · ${num(e.fromThought)} thought / ${num(e.fromAcquisition)} acquire / ${num(e.fromRecall)} recall`
+                + (e.none ? ` / ${num(e.none)} none` : '')
+                + ` · pin ${num(e.pinTicks)}${pinned ? ' ⚠ THOUGHT STALLED' : ''}`
+                + (e.maxPinTicks > 1 ? ` (max ${num(e.maxPinTicks)})` : '')
+                + ` · ${num(e.rotations)} rotations`;
+            }
+          }
+          if ($eyeR) {
+            const e = oa && oa.eye;
+            const rs = (e && Array.isArray(e.recentSubjects)) ? e.recentSubjects : [];
+            // ⭐ The recent list PROVES variety directly instead of asking a
+            // reader to trust a count — the count read healthy all along.
+            $eyeR.textContent = rs.length
+              ? `last drawn: ${rs.join(' · ')}`
+                + (e.taughtPool ? ` · taught pool ${num(e.taughtPool)} @${num(e.taughtCursor)}` : '')
               : '';
           }
         }
