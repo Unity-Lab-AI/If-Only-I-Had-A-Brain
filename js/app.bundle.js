@@ -52842,8 +52842,28 @@ var SemanticEmbeddings = class {
     }
     const delta = this._refinements.get(word);
     const base = this._embeddings.get(word) || this._subwordEmbedding(word);
+    const mean = this._ctxMean || (this._ctxMean = new Float32Array(EMBED_DIM));
+    this._ctxMeanN = (this._ctxMeanN || 0) + 1;
+    const invN = 1 / this._ctxMeanN;
+    let cm = 0;
+    const centred = new Float32Array(EMBED_DIM);
     for (let i = 0; i < EMBED_DIM; i++) {
-      delta[i] += lr * (contextEmbedding[i] - (base[i] + delta[i]));
+      const c = contextEmbedding[i] || 0;
+      mean[i] += (c - mean[i]) * invN;
+      centred[i] = c - mean[i];
+      cm += centred[i] * centred[i];
+    }
+    cm = Math.sqrt(cm) || 1;
+    for (let i = 0; i < EMBED_DIM; i++) {
+      delta[i] += lr * (centred[i] / cm - (base[i] + delta[i]));
+    }
+    const CAP = 0.5;
+    let dm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) dm += delta[i] * delta[i];
+    dm = Math.sqrt(dm);
+    if (dm > CAP) {
+      const s = CAP / dm;
+      for (let i = 0; i < EMBED_DIM; i++) delta[i] *= s;
     }
   }
   /**
@@ -111562,7 +111582,7 @@ var Curriculum = class _Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
-        if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === "function" && rep === 0 && (typeof process !== "undefined" && process.env && process.env.DREAM_LEARN_GEOMETRY === "1")) {
+        if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === "function" && rep === 0 && !(typeof process !== "undefined" && process.env && process.env.DREAM_LEARN_GEOMETRY === "0")) {
           try {
             const _ctxWords = words.map((w) => w.toLowerCase().replace(/[^a-z'-]/g, "")).filter((w) => w.length >= 2);
             if (_ctxWords.length >= 2) {

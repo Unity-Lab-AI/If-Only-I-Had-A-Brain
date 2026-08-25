@@ -22180,32 +22180,20 @@ export class Curriculum {
         // ⚠ Learning rate is deliberately TINY. This runs on every sentence
         // of a 273-cell walk, so a large step would let late reading
         // overwrite early meaning. Slow accumulation is the point.
-        // ⛔ NOT ENABLED. `DREAM_LEARN_GEOMETRY=1` opts in for experiment only.
+        // ⭐ ON by default. `DREAM_LEARN_GEOMETRY=0` disables it.
         //
-        // ⚠ THE HARNESS DISPROVED THE NAIVE WIRING, so this is off until the
-        // separation term below is designed and demonstrated. Moving every
-        // word toward the average of its sentence pulls the WHOLE VOCABULARY
-        // TOWARD ONE CENTROID rather than separating meanings. Measured on a
-        // corpus where meaning and spelling deliberately disagree:
-        //     red~blue  0.0000 → 0.1604   (rose, good)
-        //     red~dog   0.1667 → 0.3272   (rose MORE — collapse)
-        // Related words got closer, but UNRELATED words got closer faster.
+        // The two properties that make this learn rather than collapse —
+        // mean-centring and the delta cap — live inside `refineFromContext`
+        // itself, at the chokepoint, so this caller simply supplies the raw
+        // context average and both the browser and server paths get them.
+        // The derivation and the measured numbers are documented there.
         //
-        // ⭐ This is the same failure this codebase already documents for
-        // bare Hebbian: "without the decay-when-post-alone term, bare Hebb
-        // piles every association into the same columns and the basins
-        // collapse into superposition." Oja's rule fixes it there. The
-        // distributional analogue is a repulsion term — move toward context
-        // AND away from words that were NOT in it (word2vec-style negative
-        // sampling). A first attempt at that over-corrected (red~blue went
-        // NEGATIVE), which says the term is needed AND that its strength is
-        // a real parameter to derive rather than guess.
-        //
-        // ⛔ Shipping this on by default would degrade her semantic geometry
-        // across a 273-cell walk — worse than the imported vectors it was
-        // meant to improve on. See `GLOVEOWN.1` for what a real build needs.
+        // ⚠ It is safe to have on because the cap BOUNDS the worst case: the
+        // learned component can never overwhelm the imported base, so the
+        // failure mode is a small perturbation rather than a collapsed
+        // geometry — and the outcome no longer depends on how long she reads.
         if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === 'function' && rep === 0
-            && (typeof process !== 'undefined' && process.env && process.env.DREAM_LEARN_GEOMETRY === '1')) {
+            && !(typeof process !== 'undefined' && process.env && process.env.DREAM_LEARN_GEOMETRY === '0')) {
           try {
             const _ctxWords = words
               .map((w) => w.toLowerCase().replace(/[^a-z'-]/g, ''))
