@@ -37278,3 +37278,79 @@ Then I shipped **five batches** — glands, slow hormones, introspection, drug m
 **Caught by auditing, not by the check that was supposed to prevent it.** The honest lesson is that writing a rule into a task description does not enforce it.
 
 - ⚠ `recallByChemistry()` is **built and exported but has no consumer yet** — a deliberate seam, not an oversight: nothing in the chat or introspection path asks for state-dependent recall today, and wiring it into a lane before deciding *which* lane should use it is how a feature ships in the wrong place. Named here so it does not become the next unconsumed instrument.
+
+---
+
+## 2026-08-25 — BOARDPARITY: the DARKBOARD fix itself shipped half-dark - feature/endo-board-parity
+
+### Gee ask (verbatim per LAW #0)
+
+> *"lets make sure this is all wrapped up: \" 1. The doc sweep — 15 items, and the honest headline is that the outdated half found three claims that were false, not incomplete:
+>   THEORY-PAPER stating Ψ with N squared (the fourth conflicting version of that equation in the repo), the reward term called "dopaminergic" when it was persona constants — an analogy described as a mechanism — and README claiming caffeine arrived via a pattern when it arrived
+>   nowhere.
+>
+>   2. ⛔ DARKBOARD, by my own hand — I wrote the by-name-only rule into ENDO.14 and then shipped five batches with zero dashboard rows.
+>   Caught auditing docs, not by the check meant to prevent it.\""*
+
+**Closed: BOARDPARITY.1, BOARDPARITY.2.** He asked me to confirm two closures. **One was genuinely closed. The other was not, and checking is what found it.**
+
+### Item 1 — VERIFIED CLOSED, no work needed
+
+All three false claims are corrected in place, each carrying its own correction note rather than a silent rewrite:
+
+| Claim | Where | State |
+|---|---|---|
+| Ψ stated with **N²** | `THEORY-PAPER.md:376` | ✅ reads `√(1/n) · N³ · Φ̂ · [...]`; §9.4 note names it as one of **four** conflicting statements and that only the code was right |
+| reward term called **"dopaminergic"** | `THEORY-PAPER.md:163-167` | ✅ retracted as *"an analogy described as a mechanism"*, then made literal — VTA reading real reward **prediction error**, with the persona constants correctly re-described as the *baseline appetite* the deviation is measured against |
+| **caffeine** arrived via a pattern | `README.md:269-271` | ✅ caffeine is a defined substance; the note records the `morningCoffee` ritual was **2-of-2 steps dead and had never once fired** |
+
+### Item 2 — ⛔ NOT CLOSED. The same defect, one layer down.
+
+The panels exist. The renderers exist. The call sites exist. **So it looked landed** — and a producer/consumer parity check showed the board still could not read a third of the layer.
+
+**`js/brain/endocrine.js` `snapshot()` returns `puberty`, `cycle` and `allostatic`. `server/brain-server/state.js` forwarded none of them. `renderEndoPanel` read all three.** This is the `meanVoltage` shape exactly: a value computed every tick that nothing forwards under the name the consumer reads.
+
+⛔ **And it did not present as an empty row, which is why the eye missed it:**
+
+| Field | What the board actually showed |
+|---|---|
+| `allostatic` | **`allostatic 0.000/0.6 (restore α 0.0000)` forever, regardless of real load** — the renderer defaults a missing value to `{}`. A reassuring zero on the one quantity that says whether adversity is accumulating, four lines under a comment forbidding exactly that |
+| `cycle` | **Never drew at all** (gated on the field's presence) — cycle phase, cycles elapsed, and the progesterone-withdrawal PMS derivative all invisible |
+| `puberty` | The literal string **`puberty ? (age ?)`**, with the amber `ageYears === 'unknown'` branch — written so an unread age could not read as childhood — **unreachable** |
+
+**The other direction was dark too.** `contributions`, `counters` and `lastError` were forwarded on `endocrine`; `counters` and `lastError` on `introspection`; `nuclei` on top of that. **Nothing read any of them.**
+
+⛔ **The `lastError` pair is the one that stings.** `brain-server.js:4806` sets `_endocrineErr` under the comment *"Named, not swallowed. A dead endocrine tick must be visible as a dead endocrine tick."* **That comment was false** — the value reached the browser and nothing drew it. And `contributions` is the layer's entire **output**, so the panel could show ten healthy chemical levels while leaving *"is any of this reaching the brain?"* unanswerable.
+
+### What shipped
+
+**Producer** (`state.js`) — forwards `puberty`, `cycle`, `allostatic`, `scheduledCount`.
+
+**Consumer** (`dashboard.html`) — five new rows: brain-param deltas (sorted by magnitude, capped at 6 with the remainder counted, **sign coloured** because a tonic chemical below baseline pushes the *opposite* way rather than less hard), stage counters, and the error row on both panels.
+
+⭐ **Two helpers rather than two copies** — `fmtNamedCounters` and `renderTickError` are written once and used by both panels, because the counter shape is the thing that varies and a second copy is how the two drift apart. `fmtNamedCounters` handles introspection's nested `byKind` / `byLane` (a naive join renders `[object Object]`) and prints an empty breakdown as **`none yet`** instead of letting it vanish.
+
+⭐ **`nuclei` was consumed rather than deleted, and it improved the row it joined.** Lifetime evidence now sits beside the live state: a nucleus quiet *right now* that has **never fired once** is a different finding from one resting between fires, and the per-tick state alone cannot tell those apart — which is the whole reason its producer writes `everFired: 'never'` rather than `0`. The row also falls back to the cumulative map when `glands` is null, because **`glands: null` means "not asked this tick", not "the nuclei do not exist"** — reading it as the latter made the row say *"nuclei not reported"* while the lifetime stats sat in the same payload, unread.
+
+### Verification
+
+⭐ **The check is the deliverable here, not a formality — parity is now exact in BOTH directions:**
+
+```
+ENDO   renderer reads : allostatic chemicals chronicLoad contributions counters cycle
+                        glands glandsConsulted lastError nuclei puberty scheduledCount stress
+ENDO   forwarded      : allostatic chemicals chronicLoad contributions counters cycle
+                        glands glandsConsulted lastError nuclei puberty scheduledCount stress   13/13 ✅
+
+INTRO  renderer reads : counters criteria lastArmed lastError live rumination source
+INTRO  forwarded      : counters criteria lastArmed lastError live rumination source            7/7  ✅
+```
+
+**Every forwarded field has a row; every rendered field has a producer.** Plus: DOM id parity 16 referenced / 18 declared (the two extras are the styled container divs), `node --check` clean on `state.js`, div balance 481/481, `docs:drift` **No drift found**.
+
+### Owned
+
+- ⛔ **This is the second-order version of my own defect.** DARKBOARD was *"I wrote the rule and never added the rows."* This is *"I added the rows and never checked they were fed."* The lesson upgrade: **adding the row is not the check — the check is proving the field arrives.** A panel that renders is not a panel that reports.
+- ⚠ **`ADMIN-CONTROLS.md:556` was already asserting the fixed behaviour.** It listed *"cycle phase, chronic and allostatic load … Both render on the dashboard"* — true of the payload, **false of the board**. Corrected in place with the mechanism, rather than quietly made true by the code change.
+- ⚠ **One false alarm of mine, recorded so nobody re-checks it.** A `Grep` context render showed lines in `brainstem.js` and `endocrine.js` beginning with a bare `\` where `//` belonged, which would have been a **SyntaxError killing the whole gland layer**. It was a tool rendering artifact: `node --check` passes on both files and a direct read shows proper comments. **Retracted the moment it was tested** — but worth naming, because the correct response to "the gland layer may not parse" is to check it in one command, not to reason about it.
+- ⚠ **NOT VERIFIED LIVE.** Server + frontend both; the rows land on the next press. The frontend rsyncs on push, the `state.js` change needs the process restart.
