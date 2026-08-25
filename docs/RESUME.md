@@ -1,6 +1,14 @@
 # RESUME — Session Pickup Brief
 
-> ## 🚨 2026-08-25 (latest) — THE BOX IS DOWN, AND THE BUTTON THAT DID IT PROMISED IT WOULDN'T
+> ## ⛔ 2026-08-25 (latest) — THE "ABSENT" MESSAGE WAS THE LIE
+>
+> **`ENDODARK.1`.** The dashboard read `s.endocrine` / `s.introspection`; `getState()` publishes them **inside** `consciousness: this._getConsciousnessState()`, so the real path is `state.consciousness.endocrine`. Top-level was `undefined` **every boot, every box, since the panels shipped.** ⛔ **Worse than a dark panel:** the absence branch written days earlier to stop a blank card reading as a healthy zero instead emitted a **confident false diagnosis** — *"not wired this boot"* — about a layer that is running and fully populated. **ABSENT meaning "I looked in the wrong place" is the same lie as 0, just louder.** ⚠ A comment three lines up asserted the wrong path (*"Every field below exists in state.endocrine"*) — a claim, not evidence, and it is what let it survive. ⛔ **Fourth producer/consumer name mismatch** (`meanVoltage`, `separability`, `defsLearnedPerHour`, this) — **first one introduced inside the fix meant to prevent the class.** ⭐ Fixed by moving the READER, not by forwarding a duplicate to top level (two publication sites is how these drift); the verdict now **names the path it inspected**, and "no `consciousness` block yet" is a different message from "block present, layer missing". Verified **20/20 field parity against the LIVE payload**; divs 481/481.
+>
+> ⚠ **The memory panel is NOT broken — measured, not assumed.** Live: `working.items` **130**, `tier1.totalEpisodes` **6**, `tier3.identityCount` **30**, `lastInjectedAt` fresh. Renderer names match the producer exactly; `tier2` and `consolidation.passCount` are **genuinely** 0 (nothing promoted; 5-min interval vs ~4 min uptime). **A page still showing zeros after this lands is STALE — hard-refresh first**, and if it survives that, it is a separate hunt. ⚠ Owned: a 1500-char truncated dump briefly read as "`working`/`consolidation` have no producer" — **a truncated read is not a negative result.** Ledger: FINALIZED §ENDODARK.
+>
+> ---
+>
+> ## 🚨 2026-08-25 — THE BOX IS DOWN, AND THE BUTTON THAT DID IT PROMISED IT WOULDN'T
 >
 > **PICK-UP STATE.** ⛔ **The deployed brain is at 502** — `/public-state.json` dead, site root 200, so the node process is gone and nginx is not. Gee pressed **⏹ Stop Brain** by accident. ⛔ **The gatling cannot fix this** — it hammers `POST /admin/update`, which is served *by the dead process*. **There is no press that can fix a missing press.** Recovery is one command on the box and it needs Sponge: **`sudo systemctl start unity-brain`** — ⚠ **`start`, NOT `restart`.** The hand-off is at the top of `deploy/REDEPLOY-NOTES.md`. ⭐ **It resumes the walk** (`DREAM_KEEP_STATE=1` + the resume marker); **Fresh Walk would throw the training away.**
 >

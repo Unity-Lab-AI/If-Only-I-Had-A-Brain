@@ -359,10 +359,13 @@
 
     <!-- ENDO — the endocrine layer and the glands that fire it.
          ⛔ THE BOARD RENDERS BY NAME ONLY. Every field below exists in
-         state.endocrine because it was built with its instrument in the same
-         commit; without these rows the whole layer ships DARK, which is the
-         exact defect ENDO.14 was written to prevent and which this panel
-         exists because I committed anyway. -->
+         state.consciousness.endocrine because it was built with its instrument
+         in the same commit; without these rows the whole layer ships DARK,
+         which is the exact defect ENDO.14 was written to prevent and which this
+         panel exists because I committed anyway.
+         ⛔ ENDODARK.1 — this comment previously said `state.endocrine`, and so
+         did the reader. Naming a path in prose is not evidence it is the path;
+         the layer read ABSENT for a whole release on the strength of it. -->
     <div class="card" style="margin-top:12px;" title="Her endocrine system — ten chemicals on the same pharmacokinetic curve engine the substances use, released by six nuclei that SENSE their own firing rather than being told. Adrenaline and noradrenaline are the fast stress axis; cortisol is the slow half that makes stress last; serotonin and dopamine are TONIC (they set a floor, so a level BELOW baseline produces the inverse effect); oxytocin and endorphin are bonding and pain-damping; estrogen, progesterone and testosterone are CYCLIC, driven by a curriculum-time cycle clock where one cell pass is roughly one menstrual cycle. Chemistry is what makes consciousness a variable instead of a specification: without it, n only moves when input moves.">
       <div class="card-title">Endocrine — her chemistry</div>
       <div id="d-endo-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
@@ -1574,11 +1577,31 @@
 
       // ENDO / INTRO — the chemistry and the questions. ⛔ Called
       // UNCONDITIONALLY, including when the field is absent: the renderers
-      // report "layer ABSENT — not wired this boot" rather than leaving a
-      // stale panel, because a blank card and a dead layer must not look the
-      // same. This call is the whole reason the instruments are not dark.
-      renderEndoPanel(s.endocrine);
-      renderIntroPanel(s.introspection);
+      // report the absence rather than leaving a stale panel, because a blank
+      // card and a dead layer must not look the same.
+      //
+      // ⛔ ENDODARK.1 (2026-08-25) — THESE READ `s.endocrine` / `s.introspection`
+      // AND THE PRODUCER HAS NEVER PUBLISHED THERE. `getState()` attaches
+      // `consciousness: this._getConsciousnessState()`, and BOTH fields are
+      // returned from INSIDE that — so the wire path is
+      // `state.consciousness.endocrine`. The top-level reads were `undefined`
+      // on every boot, on every box, since the panels shipped.
+      //
+      // ⛔ Worse than a dark panel: the absence branch I wrote to PREVENT a
+      // reassuring zero was instead emitting a confident FALSE DIAGNOSIS —
+      // "not wired this boot" — about a layer that is wired and running. An
+      // instrument that says "absent" when it means "I looked in the wrong
+      // place" is the same lie as one that says 0, just louder.
+      //
+      // ⭐ Read the real path rather than forwarding a duplicate to the top
+      // level: one value with two publication sites is how these disagree in
+      // the first place. `consPresent` is passed separately so the renderers
+      // can tell "the broadcast carried no consciousness block at all" from
+      // "the block is here and this layer genuinely is not in it" — the two
+      // have different causes and must not share a message.
+      const _cons = s.consciousness || null;
+      renderEndoPanel(_cons ? _cons.endocrine : null, !!_cons);
+      renderIntroPanel(_cons ? _cons.introspection : null, !!_cons);
 
       // Emotional state — rendered from raw equation values, no lookups
       if (s.sharedMood) {
@@ -3215,19 +3238,25 @@
         + (ageS !== null ? ` <span style="color:#888;">(${ageS}s ago)</span>` : '');
     }
 
-    // ── ENDO panel renderer. Consumes state.endocrine.
+    // ── ENDO panel renderer. Consumes state.consciousness.endocrine.
     //
     // ⛔ RENDERS `unmeasured` AND `blind` AS THEMSELVES. A chemical that has
     // never fired is NOT 0, and a nucleus that cannot read its input is NOT
     // quiet — collapsing either into a tidy number is how an instrument
     // reports health while its producer is dead. Every one of those states
     // exists in the data precisely so it can be shown here.
-    function renderEndoPanel(e) {
+    function renderEndoPanel(e, consPresent) {
       const status = document.getElementById('d-endo-status');
       if (!status) return;
       if (!e) {
-        // ⛔ Absent layer is a FACT ABOUT THE WIRING, not about her.
-        status.textContent = 'endocrine layer ABSENT — not wired this boot';
+        // ⛔ Absent layer is a FACT ABOUT THE WIRING, not about her — and
+        // ENDODARK.1 proved the verdict must NAME WHERE IT LOOKED. For a whole
+        // release this line read "not wired this boot" while the layer ran
+        // fine and the reader was simply pointed at the wrong path. A claim
+        // that carries its own address can be checked in one glance.
+        status.textContent = consPresent
+          ? 'endocrine layer ABSENT — state.consciousness present, no .endocrine in it'
+          : 'no state.consciousness in this broadcast yet — NOT a verdict on the layer';
         status.style.color = '#f59e0b';
         return;
       }
@@ -3366,12 +3395,15 @@
       }
     }
 
-    // ── INTRO panel renderer. Consumes state.introspection.
-    function renderIntroPanel(i) {
+    // ── INTRO panel renderer. Consumes state.consciousness.introspection.
+    function renderIntroPanel(i, consPresent) {
       const status = document.getElementById('d-intro-status');
       if (!status) return;
       if (!i) {
-        status.textContent = 'introspective drive ABSENT — not wired this boot';
+        // ⛔ ENDODARK.1 — same lesson as the endo panel: name the address.
+        status.textContent = consPresent
+          ? 'introspective drive ABSENT — state.consciousness present, no .introspection in it'
+          : 'no state.consciousness in this broadcast yet — NOT a verdict on the drive';
         status.style.color = '#f59e0b';
         return;
       }
