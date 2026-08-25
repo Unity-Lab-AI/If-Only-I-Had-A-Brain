@@ -1,6 +1,24 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — THE PRESS LANDED, AND THE FIRST READ OF THE LIVE BOARD FOUND Ψ's CONSCIOUSNESS TERM DOING NOTHING AT ALL
+> ## ⭐⭐⭐ 2026-08-25 (latest) — 58% OF THE MAIN THREAD WAS FEEDING AN ARRAY NOTHING READS
+>
+> **PICK-UP STATE.** ⛔ **Verify with `git rev-parse --short main origin/main github/main`; count the board yourself.** ⛔ **Checkout `develop`.** A fresh walk is running on the previous press; **these fixes need one more Update & Fresh Walk**, which Gee has approved.
+>
+> ⭐ **`RHYTHM3S.1` paid for itself: its self-profile named the thief by the VM.** `injectEmbeddingToRegion` **34.9%**, `_clearSpikes` **23.0%** — 58% of main-thread self-time in two functions during the definition bootstrap. Both are O(region) loops that read as small in the source and grew ~55× when the cortex did.
+>
+> ⛔ **I had deferred the bigger half on a premise that was false.** I wrote that `stepAwait` could fall back to CPU for probes, so skipping the CPU array might silently zero a probe path. **It cannot** — `stepAwait` opens with an explicit bio-scale refusal (*"At biological scale a CPU step is FORBIDDEN, same law as the teach side"*) and its `this.step()` branch sits **below** that guard. **I deferred on a fallback that does not exist.** Gee rejected the deferral and was right to.
+>
+> ⭐ **Then every path was closed by READING, not inferring:** `externalCurrent` has exactly two readers, both inside `step()`; the server's main tick never calls `cluster.step()` for the cortex (the GPU steps it via `compute_batch`); and **all five** raw `this.step()` sites carry the identical `if (this.size > 2000000) return` refusal. `step()` is unreachable for the cortex at scale, so the **~13.7M-write expansion per injection fed an array nothing reads** — the **third** dead CPU shadow found in one day, after `lastSpikes` and Φ̂'s dead read. The donor never used it: the pattern travels as a compact `writeCurrentSlice` template.
+>
+> **Proven before shipping:** 72/72 donor-bound output **byte-identical** at bio scale (template values, `tmplNonZero`, forward index + value lists), 16/16 small-scale CPU arrays bit-identical, 144/144 on the memset substitutions. **Measured: 15.67ms → 0.041ms per injection (379×)**, clears **7.7×**, 24 per-element TypedArray walks → native memsets.
+>
+> ⚠ **The guard reuses the project's own law** — `size > 2_000_000` plus `DREAM_INNERVOICE_FORCE_CPU=1`, exactly as written at five other sites — and **requires the proxy**, so wherever the CPU path is the only path it stays authoritative. Small/browser instances are untouched.
+>
+> ⭐ **The check after the next press is free and specific:** the same profile re-runs at +150s, and **`injectEmbeddingToRegion` + `_clearSpikes` should fall out of the top of that list.** If they do not, the estimate was wrong and the profile will say so. Also still unverified from the previous press: **`phiState` should read `live`.**
+>
+> ---
+>
+> ## 2026-08-25 (earlier) — THE PRESS LANDED, AND THE FIRST READ OF THE LIVE BOARD FOUND Ψ's CONSCIOUSNESS TERM DOING NOTHING AT ALL
 >
 > **PICK-UP STATE.** ⛔ **Verify with `git rev-parse --short main origin/main github/main` and count the board yourself** (`grep -c '^- \[ \]'` and `'^- \[~\]'`) — do not trust numbers written here. ⛔ **Checkout `develop`.** A fresh walk IS RUNNING from the earlier press; the fixes below need **one more Update & Fresh Walk** (or a Savestart) to take effect, and Gee has approved that — the walk was minutes old, so nothing is lost.
 >
