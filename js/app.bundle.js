@@ -103988,10 +103988,14 @@ var Curriculum = class _Curriculum {
     const bucketSize = Math.max(1, Math.floor(motorSize / numBuckets));
     if (bucketSize * numBuckets > motorSize) return;
     const bucketCounts = new Array(numBuckets).fill(0);
+    const _actIdx = [];
+    const _actBucket = [];
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
         const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
         bucketCounts[b]++;
+        _actIdx.push(i);
+        _actBucket.push(b);
       }
     }
     let primaryBucket = 0;
@@ -104007,17 +104011,15 @@ var Curriculum = class _Curriculum {
       this._crossBucketPostScratch = new Uint8Array(cluster.size);
     }
     const crossBucketPost = this._crossBucketPostScratch;
-    for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
+    crossBucketPost.fill(0, motorRegion.start, motorRegion.end);
     let crossCount = 0;
     const crossActiveRows = [];
-    for (let i = 0; i < motorSize; i++) {
-      if (cluster.lastSpikes[motorRegion.start + i]) {
-        const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
-        if (b !== primaryBucket) {
-          crossBucketPost[motorRegion.start + i] = 1;
-          crossActiveRows.push(motorRegion.start + i);
-          crossCount++;
-        }
+    for (let a = 0; a < _actIdx.length; a++) {
+      if (_actBucket[a] !== primaryBucket) {
+        const _row = motorRegion.start + _actIdx[a];
+        crossBucketPost[_row] = 1;
+        crossActiveRows.push(_row);
+        crossCount++;
       }
     }
     if (crossCount === 0) return;
