@@ -2120,6 +2120,55 @@ export class NeuronCluster {
    * @returns {number} Φ proxy in [0, 1]
    */
   computePhi() {
+    // ⛔ PHISRC.1 (2026-08-25) — THIS SAMPLED THE CPU SPIKE SHADOW, WHICH IS
+    // EMPTY AT BIOLOGICAL SCALE, SO Φ̂ WAS NEVER MEASURING HER CORTEX.
+    //
+    // The GPU owns cortex spike state once the brain is donor-computed: the CPU
+    // `lastSpikes` array stays zero apart from the bits `_writeTiledPattern`
+    // sets for a teach pattern. A 1024-wide strided sample across ~82M neurons
+    // therefore almost never lands on a set bit, so `p → 0` and the entropy
+    // collapsed. Measured on the live post-press walk: `phiRaw` 0.0289 then
+    // 0.0112 — i.e. roughly ONE sampled neuron in 1024 — while the card was
+    // firing flat out. Φ̂ was reading teach-pattern residue, and Ψ has been
+    // multiplying by its 0.1 floor ever since the term was added.
+    //
+    // ⭐ The GPU-truthful count already exists and is exact: the server writes
+    // `cluster.spikeCount` from every `compute_batch` ack
+    // (`brain-server.js` ← `batchResult.perCluster[name].lastSpikeCount`), and
+    // `cluster.js` NEVER assigns that property — so its presence is an honest
+    // discriminator for "the GPU is the owner here", not a guess. The CPU path
+    // sets `lastSpikeCount` instead, which is the truth in browser/small-scale
+    // mode where `lastSpikes` really is populated.
+    //
+    // Using the count is also strictly BETTER than the sample it replaces: the
+    // 1024 figure existed to keep the binomial noise floor near 1.5%, and an
+    // exact proportion has no sampling noise at all.
+    //
+    // ⚠ RE-PRICE: none required, and stated rather than assumed. Φ̂ feeds Ψ,
+    // which feeds `gainMultiplier` — clamped to [0.8, 1.5]. It moves cluster
+    // gain, not `corpus × reps × scale × visits`, so no bound that keeps the
+    // walk finite is touched.
+    //
+    // ⚠ AND THIS DOES NOT BY ITSELF UN-FLOOR Φ̂ — the second half is a design
+    // question, not a bug: binary entropy of a SPARSE proportion is inherently
+    // small (H(0.015) ≈ 0.112, barely over the 0.1 floor), so sparse coding may
+    // still sit near it. The difference is that `phiRaw` now reports her real
+    // firing, so that decision can be made on a measurement instead of on an
+    // artifact. See KNOWN_ISSUES KI-33.
+    const _size = this.size || (this.lastSpikes ? this.lastSpikes.length : 0);
+    if (_size > 0) {
+      const _gpuCount = (typeof this.spikeCount === 'number' && Number.isFinite(this.spikeCount))
+        ? this.spikeCount
+        : ((typeof this.lastSpikeCount === 'number' && Number.isFinite(this.lastSpikeCount))
+            ? this.lastSpikeCount : null);
+      if (_gpuCount !== null && _gpuCount > 0) {
+        const pExact = Math.max(0, Math.min(1, _gpuCount / _size));
+        if (pExact === 0 || pExact === 1) return 0;
+        return -(pExact * Math.log2(pExact) + (1 - pExact) * Math.log2(1 - pExact));
+      }
+    }
+    // No reported count yet (pre-first-ack, or a genuinely silent cluster) —
+    // fall through to the CPU shadow, which is the real thing in browser mode.
     if (!this.lastSpikes || this.lastSpikes.length === 0) return 0;
     // Sample size 1024 chosen so the binomial-noise floor for spike
     // proportion estimation lands near 1.5% (~ 1/sqrt(N) per the

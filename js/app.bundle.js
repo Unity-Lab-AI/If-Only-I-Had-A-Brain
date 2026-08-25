@@ -57059,6 +57059,15 @@ var NeuronCluster = class {
    * @returns {number} Φ proxy in [0, 1]
    */
   computePhi() {
+    const _size = this.size || (this.lastSpikes ? this.lastSpikes.length : 0);
+    if (_size > 0) {
+      const _gpuCount = typeof this.spikeCount === "number" && Number.isFinite(this.spikeCount) ? this.spikeCount : typeof this.lastSpikeCount === "number" && Number.isFinite(this.lastSpikeCount) ? this.lastSpikeCount : null;
+      if (_gpuCount !== null && _gpuCount > 0) {
+        const pExact = Math.max(0, Math.min(1, _gpuCount / _size));
+        if (pExact === 0 || pExact === 1) return 0;
+        return -(pExact * Math.log2(pExact) + (1 - pExact) * Math.log2(1 - pExact));
+      }
+    }
     if (!this.lastSpikes || this.lastSpikes.length === 0) return 0;
     const N = Math.min(1024, this.lastSpikes.length);
     const step = Math.max(1, Math.floor(this.lastSpikes.length / N));
