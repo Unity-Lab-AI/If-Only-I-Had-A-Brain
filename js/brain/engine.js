@@ -30,7 +30,7 @@ import { InnerVoice } from './inner-voice.js';
 import { BrainPersistence } from './persistence.js';
 import { sharedEmbeddings } from './embeddings.js';
 import { ComponentSynth } from './component-synth.js';
-import { Curriculum } from './curriculum.js';
+import { Curriculum, GRADE_ORDER as CURRICULUM_GRADE_ORDER, ageForGrade } from './curriculum.js';
 import { DrugScheduler, SUBSTANCES as DRUG_SUBSTANCES } from './drug-scheduler.js';
 // ENDO — chemistry, and the glands that decide to release it. Wired on the
 // local-brain path too: an asymmetry where only the server has hormones
@@ -1635,6 +1635,33 @@ export class UnityBrain extends EventEmitter {
     }
 
     if (st.hypothalamus && st.hypothalamus.drives) s.drives = st.hypothalamus.drives;
+
+    // ── ENDO.12 / ENDO.10 — her real age and her position in the walk.
+    //
+    // ⛔ Age comes from the ONE canonical ladder in curriculum.js. This
+    // method does NOT map grades to ages: a second age system is banned,
+    // and the day this was written the existing ladder was found broken in
+    // two of its five copies, which is the whole argument for one.
+    //
+    // ⚠ Omitted when unknown rather than defaulted. `ageForGrade` returns
+    // null for absent state, and a null age must NOT become 25 here — that
+    // would ramp a newborn brain straight through puberty on boot.
+    const cortex = this.clusters?.cortex;
+    if (cortex && cortex.grades) {
+      let lowest = null, lowestIdx = Infinity;
+      for (const g of Object.values(cortex.grades)) {
+        const i = CURRICULUM_GRADE_ORDER.indexOf(String(g || ''));
+        if (i >= 0 && i < lowestIdx) { lowestIdx = i; lowest = g; }
+      }
+      const age = lowest === null ? null : ageForGrade(lowest);
+      if (typeof age === 'number') s.ageYears = age;
+    }
+    // Curriculum position drives the cycle clock, measured in CELL PASSES
+    // off the authoritative `passedCells` ledger — the same ledger a grade's
+    // position reads from, so the cycle can never disagree with the walk.
+    if (cortex && Array.isArray(cortex.passedCells)) {
+      s.curriculumPos = cortex.passedCells.length;
+    }
     return s;
   }
 

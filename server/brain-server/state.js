@@ -46,6 +46,45 @@ const definitionService = require('../definition-service.js');
 // runtime degrades to partial profiling instead of crashing the state build.
 let _v8 = null; try { _v8 = require('v8'); } catch { _v8 = null; }
 
+// ── AGEPIN.1 — ONE grade ladder and ONE age map, shared. ─────────────────
+//
+// These were copied into five places (`curriculum.js` canonical,
+// `drug-scheduler.js` documented local copy, `_computeMinGrade` here,
+// `_selfImageAge` in chat.js, `TIER3_GRADE_ORDER`/`TIER3_GRADE_AGE` in
+// hippocampal-schema.js) and the copies DISAGREED about the kindergarten
+// key — two said `'K'`, which the curriculum never emits. That is not a
+// typo class of bug, it is a duplication class of bug: the copies drifted
+// because nothing forced them to agree. Defined once here and consumed by
+// both server-side readers.
+//
+// Mirrors `GRADE_ORDER` in js/brain/curriculum.js. Same convention (and
+// same hazard) as the local copy in drug-scheduler.js — the server cannot
+// statically import a js/brain ESM module at this point in boot. If the
+// canonical order changes there, change it here too.
+const GRADE_LADDER = [
+  'pre-K', 'kindergarten',
+  'grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6',
+  'grade7', 'grade8', 'grade9', 'grade10', 'grade11', 'grade12',
+  'college1', 'college2', 'college3', 'college4', 'grad', 'phd',
+];
+
+// The age she IS at each grade. Single source for both her stated age and
+// her rendered age, so the two can never disagree.
+const GRADE_AGE = {
+  'pre-K': 4, 'kindergarten': 5,
+  grade1: 6, grade2: 7, grade3: 8, grade4: 9, grade5: 10, grade6: 11,
+  grade7: 12, grade8: 13, grade9: 14, grade10: 15, grade11: 16, grade12: 17,
+  college1: 18, college2: 19, college3: 20, college4: 21, grad: 23, phd: 25,
+};
+
+// `'K'` is accepted as a LEGACY ALIAS for grade state persisted before the
+// rename. It normalises an old input onto the one ladder — it is not a
+// second key with independent meaning, and nothing new should emit it.
+function normalizeGradeKey(g) {
+  const s = String(g || '');
+  return s === 'K' ? 'kindergarten' : s;
+}
+
 const SERVER_STATE_MIXIN = {
   /**
    * Get full brain state for broadcasting.
@@ -179,9 +218,27 @@ const SERVER_STATE_MIXIN = {
    */
   _computeMinGrade() {
     if (!this.cortexCluster || !this.cortexCluster.grades) return 'unknown';
-    const order = ['pre-K','K','grade1','grade2','grade3','grade4','grade5','grade6','grade7','grade8','grade9','grade10','grade11','grade12','college1','college2','college3','college4','grad','phd'];
+    // ⛔ AGEPIN.1 — THIS SEARCHED FOR `'K'`, A STRING THE CURRICULUM NEVER
+    // PRODUCES, AND SO RETURNED `'phd'` THROUGHOUT KINDERGARTEN.
+    //
+    // The canonical ladder (js/brain/curriculum.js GRADE_ORDER) is
+    // ['pre-K', 'kindergarten', 'grade1', …] and that is what lands in
+    // `cluster.grades`. The old array here said `'K'`, so
+    // `indexOf('kindergarten')` returned −1, the `iG >= 0` guard skipped
+    // that subject, and with every subject at kindergarten the seed
+    // `lo = 'phd'` was never displaced. Nothing failed loudly: the function
+    // returned a valid-looking grade that was simply the wrong one, which
+    // then flowed into `_selfImageAge()` and made a five-year-old picture
+    // herself as twenty-five — the exact outcome the age-gate law exists to
+    // prevent.
+    //
+    // Now uses the canonical strings, with `'K'` accepted as a LEGACY ALIAS
+    // for grade state saved before the rename. The alias normalises an old
+    // input to the one truth; it is not a second ladder.
+    const order = GRADE_LADDER;
     let lo = 'phd';
-    for (const g of Object.values(this.cortexCluster.grades)) {
+    for (const raw of Object.values(this.cortexCluster.grades)) {
+      const g = normalizeGradeKey(raw);
       const iLo = order.indexOf(lo);
       const iG  = order.indexOf(g);
       if (iG >= 0 && (iLo < 0 || iG < iLo)) lo = g;
@@ -2068,4 +2125,4 @@ const SERVER_STATE_MIXIN = {
   },
 };
 
-module.exports = { SERVER_STATE_MIXIN };
+module.exports = { SERVER_STATE_MIXIN, GRADE_LADDER, GRADE_AGE, normalizeGradeKey };
