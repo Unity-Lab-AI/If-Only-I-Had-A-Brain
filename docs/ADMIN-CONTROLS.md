@@ -55,7 +55,7 @@ ONLY through the Forgejo-authenticated admin lane.
 
 | Button | Endpoint | Exit | systemd behavior | Net effect |
 |---|---|---|---|---|
-| **⏹ Stop Brain** | `POST /shutdown` | **42** | `RestartPreventExitStatus=42` → **NOT revived** | True halt — stays down until a manual start |
+| **⏹ Stop Brain** *(localhost only — see below)* | `POST /shutdown` | **42** | `RestartPreventExitStatus=42` → **NOT revived** | True halt — stays down until a manual start |
 | **🔄 Restart (Savestart)** | `POST /restart` | 0 | `Restart=always` → revived | Restarts + auto-resumes trained state |
 | **♻ Reset (fresh)** | `POST /reset` | 0 | `Restart=always` → revived | Writes `.force-fresh` → boots a wiped brain (identity-core Tier-3 anchors preserved) |
 | **⬆ Update & Fresh Walk** | `POST /update` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code (git-archive) **and** writes `.force-fresh` → reboots into a WIPED fresh K→PhD walk |
@@ -88,6 +88,47 @@ symptom). The fix is systemd-native:
 **Bringing the brain back after a Stop** (it can't restart itself — the process is
 gone, so there's no dashboard to click): on the box run
 `sudo systemctl start unity-brain`; locally re-run `start.bat` / `Savestart.bat`.
+
+### STOPTRAP.1 — why Stop Brain is now localhost-only
+
+⛔ The paragraph above names the trap and the fix took two months to follow it:
+*"there's no dashboard to click"*. Recovery from a Stop **requires a shell**, and
+**the operator of the deployed box has none** — box changes are dashboard-only by
+standing rule. So the one control that could not be undone from the dashboard was
+sitting on the dashboard, one click from the buttons used routinely, styled
+identically to them.
+
+Two things then made it worse rather than safer:
+
+- The button's tooltip claimed *"On the deployed box systemd auto-resumes (clean
+  stop = resume marker)"* — flatly contradicted by the exit-42 row in the table
+  above, and by this file's own **verified-on-the-box** result below.
+- `.claude/DEPLOYED-ADMIN-GUIDE.md` said *"systemd brings it back"* and listed
+  ⏹ Stop Brain under **"Restart (keeps walk)"**.
+
+It fired on **2026-08-25**. The trained brain went to 502 and stayed there until
+the server admin ran `sudo systemctl start unity-brain`.
+
+**The fix is reachability, not behavior.** A true halt is correct and stays a true
+halt; `stop.bat` still uses `/shutdown`. But `wireGracefulStop()` in
+`html/dashboard.html` now checks `location.hostname` and **`.remove()`s the button
+outright** — removed, not hidden, so no stray handler or devtools unhide reaches
+it — unless the page is served from `localhost` / `127.0.0.1` / `::1`, where the
+operator has the shell that runs `Savestart.bat`.
+
+⭐ **The deployed box loses nothing:** `🔄 Restart (Savestart)` was already sitting
+beside it and is what that operator actually wants — force-save, resume marker,
+exit 0, revived, walk resumed. Repointing Stop at `/restart` was considered and
+rejected: it would have shipped two differently-labelled buttons doing the same
+thing, which is the same class of defect as the tooltip that caused this.
+
+Same commit, `deploy/unity-brain.service` gained **`RestartPreventExitStatus=42`**
+— cited by name in `server/brain-server.js` since the handler was written but
+**never actually present in the repo's unit file** (the box's installed copy has
+it; the 2026-06-22 verification below proves that, so the repo was the drift) —
+and **`StartLimitIntervalSec=0`**, because systemd's default limiter (5 starts in
+10s, then permanently dead) is a second way to strand a shell-less box: a
+boot-time crash loop would exhaust it in under a minute and never retry.
 
 ### Do the buttons work for "both versions"?
 
