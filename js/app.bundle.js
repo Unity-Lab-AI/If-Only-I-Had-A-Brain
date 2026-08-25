@@ -69684,6 +69684,285 @@ function _pronounLessonLines() {
   ];
 }
 
+// ../js/brain/endocrine-curriculum.js
+var ENDOCRINE_SYLLABUS = [
+  {
+    from: 4,
+    topic: "body-basics",
+    // Before anything else: the words for what a body feels like from inside.
+    words: [
+      "tired",
+      "hungry",
+      "thirsty",
+      "hurt",
+      "sick",
+      "sore",
+      "itchy",
+      "sleepy",
+      "awake",
+      "warm",
+      "cold",
+      "safe",
+      "scared"
+    ]
+  },
+  {
+    from: 5,
+    topic: "first-feelings",
+    words: [
+      "happy",
+      "sad",
+      "angry",
+      "lonely",
+      "excited",
+      "shy",
+      "sorry",
+      "jealous",
+      "proud",
+      "embarrassed"
+    ]
+  },
+  {
+    from: 7,
+    topic: "body-systems",
+    // She is learning that the feeling has machinery behind it.
+    words: [
+      "heart",
+      "lungs",
+      "breathe",
+      "pulse",
+      "blood",
+      "muscle",
+      "brain",
+      "nerve",
+      "sweat",
+      "shiver",
+      "blush",
+      "dizzy",
+      "sleep",
+      "dream"
+    ]
+  },
+  {
+    from: 8,
+    topic: "stress-response",
+    // ⭐ A child absolutely learns "adrenaline rush" at this age, and naming
+    // the fight-or-flight response is what turns it from something happening
+    // TO her into something she can recognise.
+    words: [
+      "adrenaline",
+      "panic",
+      "nervous",
+      "worried",
+      "calm",
+      "brave",
+      "freeze",
+      "startle",
+      "relax",
+      "breathing"
+    ]
+  },
+  {
+    from: 9,
+    topic: "puberty-before-it-happens",
+    // ⛔ LEARNED BEFORE IT HAPPENS. Menarche is gated at 12 in ENDO.10; this
+    // is at 9 ON PURPOSE. A girl who meets her first period without the words
+    // for it has been failed, and her canon already says to teach hygiene
+    // plainly rather than bandage the moment.
+    words: [
+      "puberty",
+      "hormone",
+      "period",
+      "menstruation",
+      "cramps",
+      "pad",
+      "tampon",
+      "bleeding",
+      "breast",
+      "hips",
+      "growing",
+      "private",
+      "hygiene",
+      "clean",
+      "shower",
+      "deodorant",
+      "normal"
+    ]
+  },
+  {
+    from: 11,
+    topic: "emotional-machinery",
+    words: [
+      "stress",
+      "anxiety",
+      "mood",
+      "overwhelmed",
+      "exhausted",
+      "crush",
+      "confidence",
+      "insecure",
+      "pressure",
+      "cope",
+      "comfort"
+    ]
+  },
+  {
+    from: 12,
+    topic: "the-chemicals-by-name",
+    // ⭐ She is running these. She should know what they are called. A
+    // teenager genuinely says "dopamine hit" and "running on adrenaline".
+    words: [
+      "cortisol",
+      "dopamine",
+      "serotonin",
+      "endorphin",
+      "oxytocin",
+      "estrogen",
+      "testosterone",
+      "chemical",
+      "reaction",
+      "trigger"
+    ]
+  },
+  {
+    from: 13,
+    topic: "mental-health-plainly",
+    words: [
+      "depression",
+      "therapy",
+      "counsellor",
+      "medication",
+      "diagnosis",
+      "burnout",
+      "insomnia",
+      "appetite",
+      "numb",
+      "grief",
+      "trauma"
+    ]
+  },
+  {
+    from: 13,
+    topic: "bodies-and-consent",
+    // Clinical, real, and at school age — because that is when it is taught
+    // and because not teaching it is the harm.
+    words: [
+      "consent",
+      "boundary",
+      "attraction",
+      "arousal",
+      "desire",
+      "contraception",
+      "condom",
+      "protection",
+      "infection",
+      "testing",
+      "doctor",
+      "nurse",
+      "appointment"
+    ]
+  },
+  {
+    from: 14,
+    topic: "substances-honestly",
+    // ⚠ Learning the words is not using them — the lifeGates in the drug
+    // scheduler decide what she ever takes. Knowing what a comedown IS before
+    // having one is protective, and pretending otherwise is the sugar-coating
+    // this project bans.
+    words: [
+      "alcohol",
+      "drunk",
+      "hangover",
+      "high",
+      "sober",
+      "addiction",
+      "dependence",
+      "overdose",
+      "comedown",
+      "tolerance",
+      "withdrawal",
+      "craving",
+      "dose",
+      "poison"
+    ]
+  },
+  {
+    from: 16,
+    topic: "the-long-view",
+    // The words for what a hard stretch does to a body over time — ENDO.13
+    // gives her the state; this gives her the language for it.
+    words: [
+      "chronic",
+      "recovery",
+      "resilience",
+      "baseline",
+      "relapse",
+      "adaptation",
+      "cycle",
+      "rhythm",
+      "balance"
+    ]
+  },
+  {
+    from: 18,
+    topic: "adult-body",
+    // ⚠ The syllabus originally STOPPED at 16, which meant a twenty-five-
+    // year-old had learned nothing about her body since she was a teenager.
+    // These are the things a person actually learns in their twenties —
+    // managing a body rather than discovering one.
+    words: [
+      "ovulation",
+      "fertility",
+      "libido",
+      "prescription",
+      "dosage",
+      "checkup",
+      "screening",
+      "symptom",
+      "diagnosis",
+      "referral",
+      "moderation",
+      "pacing",
+      "boundaries",
+      "burnout"
+    ]
+  }
+];
+function endocrineVocabularyFor(ageYears) {
+  if (typeof ageYears !== "number" || !Number.isFinite(ageYears)) return [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const band of ENDOCRINE_SYLLABUS) {
+    if (ageYears < band.from) continue;
+    for (const w of band.words) {
+      if (seen.has(w)) continue;
+      seen.add(w);
+      out.push(w);
+    }
+  }
+  return out;
+}
+function endocrineTopicFor(word) {
+  for (const band of ENDOCRINE_SYLLABUS) {
+    if (band.words.includes(word)) return { topic: band.topic, from: band.from };
+  }
+  return null;
+}
+async function teachEndocrineVocabulary(curriculum, ctx, ageYears) {
+  if (!curriculum || typeof curriculum._teachVocabList !== "function") {
+    return { taught: 0, skipped: 0, topics: [], reason: "no_teach_path" };
+  }
+  const all = endocrineVocabularyFor(ageYears);
+  if (all.length === 0) return { taught: 0, skipped: 0, topics: [], reason: "no_age" };
+  const cluster = curriculum.cluster;
+  const already = cluster && cluster._definitionTaughtWords instanceof Set ? cluster._definitionTaughtWords : null;
+  const todo = already ? all.filter((w) => !already.has(w)) : all;
+  if (todo.length === 0) return { taught: 0, skipped: all.length, topics: [] };
+  const topics = [...new Set(todo.map((w) => (endocrineTopicFor(w) || {}).topic).filter(Boolean))];
+  await curriculum._teachVocabList(todo, ctx, { relationTagId: 23 });
+  return { taught: todo.length, skipped: all.length - todo.length, topics };
+}
+
 // ../js/brain/curriculum/pre-K.js
 var PREK_MIXIN = {
   // ══════════════════════════════════════════════════════════════════
@@ -105448,6 +105727,15 @@ var Curriculum = class _Curriculum {
       return { trained: 0, reason: "no story data (cussing trained)" };
     }
     await this._ensureLifeMemoryVocabulary(grade, experiences);
+    try {
+      const _age = ageForGrade(grade);
+      const _endo = await teachEndocrineVocabulary(this, ctx, _age);
+      if (_endo && _endo.taught > 0) {
+        this._hb(`[Curriculum] ENDO-LIFE \u2014 ${grade} (age ${_age}): taught ${_endo.taught} body/chemistry words [${_endo.topics.join(", ")}], ${_endo.skipped} already known`);
+      }
+    } catch (err) {
+      this._hb(`[Curriculum] ENDO-LIFE \u2014 ${grade} vocabulary FAILED: ${err?.message || err}`);
+    }
     const brain2 = this.brain || cluster && cluster._brain;
     let sentenceCount = 0;
     let episodeCount = 0;

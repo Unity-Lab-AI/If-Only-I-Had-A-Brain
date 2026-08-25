@@ -57,6 +57,9 @@
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
+// ENDO-LIFE.1 — her real age at encode comes from the ONE grade ladder.
+// ⚠ state.js requires nothing from this file, so this does not close a cycle.
+const { GRADE_AGE, normalizeGradeKey } = require('./state.js');
 
 const SERVER_MEMORY_MIXIN = {
   _initEpisodicDB() {
@@ -113,7 +116,12 @@ const SERVER_MEMORY_MIXIN = {
         effective_salience REAL DEFAULT 0,
         promoted_at INTEGER,
         promoted_to_schema_id TEXT,
-        input_embedding BLOB
+        input_embedding BLOB,
+        -- ENDO-LIFE.1 — the chemistry a memory was laid down under. Also in
+        -- the ALTER TABLE migration below, so an existing DB gains them too.
+        endocrine_state TEXT,
+        drug_state TEXT,
+        age_at_encode REAL
       );
       CREATE INDEX IF NOT EXISTS idx_episodes_time ON episodes(brain_time);
       CREATE INDEX IF NOT EXISTS idx_episodes_type ON episodes(type);
@@ -154,6 +162,22 @@ const SERVER_MEMORY_MIXIN = {
         ['promoted_at', 'INTEGER'],
         ['promoted_to_schema_id', 'TEXT'],
         ['input_embedding', 'BLOB'],
+        // ── ENDO-LIFE.1 — THE CHEMISTRY THAT WAS RUNNING AT THE TIME.
+        //
+        // ⭐ Adrenergic and dopaminergic arousal is WHY vivid events are
+        // remembered vividly — ENDO.2 already wires that to encoding
+        // salience. So a memory should carry the endocrine state it was laid
+        // down under, and be findable by it. Not a tag saying "this was a
+        // party": the real thing — loud, crowded, high, wanted, sixteen.
+        //
+        // Stored as compact JSON rather than N columns because the chemical
+        // set will grow (the gonadal three arrived after the fast seven) and
+        // a schema that needs a migration per hormone would rot.
+        ['endocrine_state', 'TEXT'],
+        ['drug_state', 'TEXT'],
+        // Her real age at encode, from the ONE grade ladder. A memory
+        // without an age cannot be placed in a life.
+        ['age_at_encode', 'REAL'],
       ];
       for (const [name, type] of need) {
         if (!cols.includes(name)) {
@@ -173,9 +197,10 @@ const SERVER_MEMORY_MIXIN = {
         input_text, response_text, cortex_pattern,
         emotional_valence, arousal_at_encode, surprise, novelty,
         frequency_count, consolidation_count,
-        salience_score, effective_salience, input_embedding
+        salience_score, effective_salience, input_embedding,
+        endocrine_state, drug_state, age_at_encode
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // iter13 T13.3 — frequency-merge query: find episodes within last
@@ -307,6 +332,15 @@ const SERVER_MEMORY_MIXIN = {
       SELECT input_text, valence, arousal, timestamp
       FROM episodes
       WHERE input_text IS NOT NULL AND input_text <> ''
+      ORDER BY id DESC LIMIT ?
+    `);
+
+    // ENDO-LIFE.1 — episodes that actually RECORDED a chemistry, newest
+    // first. Ranking happens in JS because the distance is over a JSON blob;
+    // the NOT NULL filter is what keeps un-fingerprinted history out.
+    this._stmtChemistryScan = this._db.prepare(`
+      SELECT * FROM episodes
+      WHERE endocrine_state IS NOT NULL
       ORDER BY id DESC LIMIT ?
     `);
 
@@ -525,6 +559,10 @@ const SERVER_MEMORY_MIXIN = {
       salienceScore,            // salience_score
       effectiveSalience,        // effective_salience
       inputEmbeddingBuf,        // input_embedding BLOB (Float64Array bytes)
+      // ── ENDO-LIFE.1 — the chemistry running at the time.
+      this._encodeEndocrineFingerprint(),
+      this._encodeDrugFingerprint(),
+      this._ageAtEncode(),
     );
     // Row id surfaced so the caller can queue the deferred salience walk and
     // patch this exact episode when the number lands (_patchEpisodeSurprise).
@@ -678,6 +716,80 @@ const SERVER_MEMORY_MIXIN = {
     return this._stmtRecallByUser.all(userId, limit);
   },
 
+  // ─── ENDO-LIFE.1 — encoding the chemistry a memory was laid down under ───
+  //
+  // ⭐ Why this belongs on the episode and not in a separate table: adrenergic
+  // and dopaminergic arousal is the REASON vivid events are remembered
+  // vividly. The state at encode is part of what the memory IS, not metadata
+  // about it. A party memory should carry loud/crowded/high/wanted/sixteen,
+  // and be findable by that.
+  //
+  // ⚠ ROUTINE OVER MILESTONE. `_firstUse` in the drug scheduler records only
+  // FIRST times. A canon that keeps first times and omits every other time is
+  // the same defect as one that only records Big Events — and most parties
+  // are not the first party. This runs on EVERY episode, which is the point.
+
+  /**
+   * Compact JSON of her chemical state, or null if there is no endocrine
+   * layer. ⛔ Null means "not recorded", which is a different claim from
+   * "everything was at zero" — a reader must be able to tell a memory laid
+   * down before the endocrine layer existed from one laid down while calm.
+   */
+  _encodeEndocrineFingerprint() {
+    const e = this.endocrine;
+    if (!e || typeof e.level !== 'function') return null;
+    try {
+      const out = {};
+      const snap = typeof e.snapshot === 'function' ? e.snapshot() : null;
+      if (snap && snap.chemicals) {
+        for (const [name, c] of Object.entries(snap.chemicals)) {
+          if (typeof c.level === 'number') out[name] = Math.round(c.level * 1000) / 1000;
+        }
+      }
+      if (snap) {
+        if (typeof snap.chronicLoad === 'number') out._chronic = Math.round(snap.chronicLoad * 1000) / 1000;
+        if (snap.allostatic && typeof snap.allostatic.load === 'number') out._allostatic = Math.round(snap.allostatic.load * 1000) / 1000;
+        if (snap.cycle && snap.cycle.phase) out._cyclePhase = snap.cycle.phase;
+        // ⭐ The stress channel, if one is live. "I was frightened" is part of
+        // what a memory is, and freeze in particular is a state she would
+        // otherwise have no record of having been in.
+        if (snap.stress && snap.stress.channel) out._stress = snap.stress.channel;
+      }
+      return Object.keys(out).length ? JSON.stringify(out) : null;
+    } catch { return null; }
+  },
+
+  /** What she had taken, and how far into it — the party half of the memory. */
+  _encodeDrugFingerprint() {
+    const s = this.drugScheduler;
+    if (!s || typeof s.activeSubstances !== 'function') return null;
+    try {
+      const active = s.activeSubstances();
+      if (!active.length) return null;   // sober is the absence of this field, not a row of zeroes
+      return JSON.stringify(active.map(a => ({
+        s: a.substance,
+        l: Math.round(a.level * 100) / 100,
+        p: a.phase,
+      })));
+    } catch { return null; }
+  },
+
+  /**
+   * Her real age at encode, from the ONE grade ladder.
+   * ⛔ Returns null, never a default — a memory with a guessed age is worse
+   * than one with no age, because it can be placed confidently in the wrong
+   * part of her life.
+   */
+  _ageAtEncode() {
+    try {
+      if (typeof this._computeMinGrade !== 'function') return null;
+      const g = this._computeMinGrade();
+      if (!g || g === 'unknown') return null;
+      const a = GRADE_AGE[normalizeGradeKey(g)];
+      return typeof a === 'number' ? a : null;
+    } catch { return null; }
+  },
+
   /**
    * INTRO — the concepts she has actually lived, newest first, across
    * EVERYTHING she has experienced.
@@ -715,19 +827,84 @@ const SERVER_MEMORY_MIXIN = {
   },
 
   /**
+   * ⭐ ENDO-LIFE.1 — STATE-DEPENDENT RECALL. Episodes laid down under a
+   * chemistry like the CURRENT one, nearest first.
+   *
+   * This is a real phenomenon, not a flourish: what you learned drunk you
+   * recall better drunk, and a frightened state surfaces frightened
+   * memories. Now that every episode carries the chemistry it was encoded
+   * under, that becomes computable instead of aspirational.
+   *
+   * ⚠ Distance is over CHEMICALS ONLY — not text, not user. And episodes
+   * with no recorded fingerprint are EXCLUDED rather than treated as calm:
+   * a memory from before the endocrine layer existed has no state, and
+   * scoring it as though it were laid down at rest would quietly rank
+   * pre-history memories as matching every quiet moment.
+   *
+   * @param {number} [limit=8]
+   * @param {number} [scan=200] how many recent episodes to consider
+   * @returns {Array<{episode:object, distance:number}>}
+   */
+  recallByChemistry(limit = 8, scan = 200) {
+    if (!this._stmtChemistryScan) return [];
+    const nowFp = this._encodeEndocrineFingerprint();
+    if (!nowFp) return [];   // no current state to match against — no recall
+    let cur;
+    try { cur = JSON.parse(nowFp); } catch { return []; }
+
+    let rows;
+    try { rows = this._stmtChemistryScan.all(scan); } catch { return []; }
+
+    const scored = [];
+    for (const r of rows) {
+      let past;
+      try { past = JSON.parse(r.endocrine_state); } catch { continue; }
+      if (!past) continue;
+      // Euclidean over the chemicals both states recorded. Underscore-prefixed
+      // keys are categorical (cycle phase, stress channel) and are compared as
+      // equality bonuses rather than numerically.
+      let sum = 0, n = 0, bonus = 0;
+      for (const [k, v] of Object.entries(cur)) {
+        if (k.startsWith('_')) {
+          if (past[k] !== undefined) { if (past[k] === v) bonus += 0.15; }
+          continue;
+        }
+        if (typeof past[k] !== 'number') continue;
+        const d = v - past[k];
+        sum += d * d; n++;
+      }
+      if (n === 0) continue;
+      const distance = Math.max(0, Math.sqrt(sum / n) - bonus);
+      scored.push({ episode: r, distance });
+    }
+    scored.sort((a, b) => a.distance - b.distance);
+    return scored.slice(0, limit);
+  },
+
+  /**
    * INTRO — pull ONE concept out of an episode's text.
    *
-   * Returns the token she has the strongest learned representation for, or
+   * Returns the WORD she has the strongest learned representation for, or
    * null when she knows none of them — in which case there is no gap, which
    * is honest: she cannot wonder about a word she has never learned.
+   *
+   * ⛔ WORDS, NOT "TOKENS". Gee: *"why u saying token? thats llms shit"* —
+   * and he is right, it is not a style note. A token is what a TOKENIZER
+   * emits, and this brain's central honest claim is that there is no
+   * tokenizer and no text-AI anywhere in the cognition path. What she has
+   * are WORDS: concepts with learned representations bound in Hebbian
+   * weights. Writing "token" imports the exact mental model the project
+   * exists not to be, and a reader could reasonably infer a tokenizer is in
+   * here somewhere. The vocabulary in the comments has to match the
+   * architecture or the comments quietly undo the claim.
    *
    * @param {string} text
    * @returns {string|null}
    */
   _conceptFromEpisodeText(text) {
     if (typeof text !== 'string' || !text) return null;
-    const toks = text.toLowerCase().match(/[a-z][a-z'-]{1,}/g);
-    if (!toks || toks.length === 0) return null;
+    const words = text.toLowerCase().match(/[a-z][a-z'-]{1,}/g);
+    if (!words || words.length === 0) return null;
 
     // ⭐ THE STRONGEST SIGNAL IS WHAT SHE HAS ACTUALLY BEEN TAUGHT.
     //
@@ -748,7 +925,7 @@ const SERVER_MEMORY_MIXIN = {
       ? this.cortexCluster._definitionTaughtWords : null;
     let best = null, bestScore = -Infinity;
     const seen = new Set();
-    for (const t of toks) {
+    for (const t of words) {
       if (t.length > 32 || seen.has(t)) continue;
       seen.add(t);
       // ⭐ "Does she know this word, and how strongly?" — asked of her own
