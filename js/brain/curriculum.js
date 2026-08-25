@@ -11588,7 +11588,7 @@ export class Curriculum {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, sum] of facts) {
         // Clear lastSpikes
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Free first half: magnitude(a)
         const magA = buildMagPattern(freeHalf, a);
@@ -11672,7 +11672,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, diff] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Free first half: magnitude(a) — the minuend
         const magA = buildMagPattern(freeHalf, a);
@@ -11760,7 +11760,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, rel] of pairs) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         const magA = buildMagPattern(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) {
@@ -11909,7 +11909,7 @@ export class Curriculum {
     for (const nm of names) {
       const r = cluster.regions[nm];
       if (!r) continue;
-      for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+      cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
     }
   }
 
@@ -11930,14 +11930,18 @@ export class Curriculum {
       for (const name of regionNames) {
         const r = cluster.regions[name];
         if (!r) continue;
-        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
         if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice) {
           try { cluster._gpuProxy.clearSpikeSlice(name); } catch { /* non-fatal */ }
         }
       }
       return;
     }
-    for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+    // ⭐ SCALEWALK.1 — the FULL clear, and 11 of this function's 13 call sites
+    // take it. Same native-memset substitution; at 82M neurons a per-element
+    // JS loop here is the single most expensive thing the definition
+    // bootstrap does apart from the injection itself.
+    cluster.lastSpikes.fill(0);
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
       for (const regionName of Object.keys(cluster.regions)) {
         try { cluster._gpuProxy.clearSpikeSlice(regionName); } catch { /* non-fatal */ }
@@ -19144,7 +19148,7 @@ export class Curriculum {
     const settleTicks = opts.settleTicks ?? 15;
 
     // STEP 1 — clear spikes
-    for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+    cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
     // iter20-O — inject memory context BEFORE question. Operator caught
     // 2026-05-05: "are we sure that Unity is actually using her memory"
@@ -19584,7 +19588,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [cause, effect] of pairs) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Cause embedding into free region
         const causePat = buildEmbPattern(freeSize, cause);
@@ -19664,7 +19668,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const { item, features, category } of items) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Item features into free region
         const featPat = buildFeatPattern(freeSize, features);
@@ -19755,7 +19759,7 @@ export class Curriculum {
         // For each role: write the word embedding + role tag
 
         // SUBJECT: embedding in free, "subject" tag in fineType
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const subjPat = buildEmbPattern(freeSize, subj);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = subjPat[i] > 0 ? 1 : 0;
         const subjTag = roleTag('subject');
@@ -19765,7 +19769,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr);
 
         // VERB: embedding in sem, "verb" tag in fineType
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const verbPat = buildEmbPattern(semSize, verb);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = verbPat[i] > 0 ? 1 : 0;
         const verbTag = roleTag('verb');
@@ -19775,7 +19779,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr);
 
         // OBJECT: embedding in sem, "object" tag in fineType, subject in free for context
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const objPat = buildEmbPattern(semSize, obj);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = objPat[i] > 0 ? 1 : 0;
         const objTag = roleTag('object');
@@ -19826,7 +19830,7 @@ export class Curriculum {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, c] of chains) {
         // Teach A→B: A in free, B in sem
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const aPat = buildEmbPattern(freeSize, a);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = aPat[i] > 0 ? 1 : 0;
         const bPat = buildEmbPattern(semSize, b);
@@ -19834,7 +19838,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr);
 
         // Teach B→C: B in free, C in sem
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const bFreePat = buildEmbPattern(freeSize, b);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = bFreePat[i] > 0 ? 1 : 0;
         const cPat = buildEmbPattern(semSize, c);
@@ -19900,7 +19904,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const { situation, emotion, label } of mappings) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Situation into free region
         const sitPat = buildEmbPattern(freeSize, situation);
@@ -19954,7 +19958,7 @@ export class Curriculum {
     for (let rep = 0; rep < 4; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, prod] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const magA = buildMag(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = magA[i] > 0 ? 1 : 0;
         const magB = buildMag(freeSize - freeHalf, b);
@@ -20006,7 +20010,7 @@ export class Curriculum {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (let tens = 1; tens <= 9; tens++) {
         for (let ones = 0; ones <= 9; ones++) {
-          for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+          cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
           // Tens digit in first third of free
           const tensPat = buildMag(third, tens);
           for (let i = 0; i < third; i++) cluster.lastSpikes[freeRegion.start + i] = tensPat[i] > 0 ? 1 : 0;
@@ -20060,7 +20064,7 @@ export class Curriculum {
     for (let rep = 0; rep < 6; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [num, den] of fractions) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         // Numerator in free first half
         const numPat = buildMag(freeHalf, num);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = numPat[i] > 0 ? 1 : 0;
@@ -20114,7 +20118,7 @@ export class Curriculum {
     for (let rep = 0; rep < 4; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [x, b, c] of equations) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         // Result (c) in free first half — what we KNOW
         const cPat = buildMag(freeHalf, c);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = cPat[i] > 0 ? 1 : 0;
@@ -20177,13 +20181,13 @@ export class Curriculum {
           for (let n = 0; n < gSize; n++) { const idx = d * gSize + n; if (idx < semSize) targetPat[idx] = meanEmb[d] > 0 ? 1 : 0; }
         }
         // Sentence A → shared meaning
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const aPat = buildEmb(freeSize, sentA.split(/\s+/)[0]);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = aPat[i] > 0 ? 1 : 0;
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = targetPat[i];
         await cluster._crossRegionHebbian(lr);
         // Sentence B → SAME shared meaning
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const bPat = buildEmb(freeSize, sentB.split(/\s+/)[0]);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = bPat[i] > 0 ? 1 : 0;
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = targetPat[i];
@@ -20227,7 +20231,7 @@ export class Curriculum {
     for (let rep = 0; rep < 8; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const { predict, observe, match } of tests) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const predPat = buildEmb(freeSize, predict);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = predPat[i] > 0 ? 1 : 0;
         const obsPat = buildEmb(semSize, observe);
@@ -20285,7 +20289,7 @@ export class Curriculum {
       for (const { event, perspectives } of events) {
         const eventPat = buildEmb(semSize, event);
         for (const { viewpoint, features } of perspectives) {
-          for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+          cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
           // Event in sem
           for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = eventPat[i] > 0 ? 1 : 0;
           // Viewpoint embedding in free
@@ -20957,7 +20961,7 @@ export class Curriculum {
       for (const nm of names) {
         const r = cluster.regions && cluster.regions[nm];
         if (!r) continue;
-        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
       }
     };
 

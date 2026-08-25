@@ -56620,9 +56620,7 @@ var NeuronCluster = class {
     const fwdValues = haveProxy ? [] : null;
     const replaceMode = opts.replaceMode === true;
     if (replaceMode) {
-      for (let i = region.start; i < region.end; i++) {
-        this.externalCurrent[i] = 0;
-      }
+      this.externalCurrent.fill(0, region.start, region.end);
     }
     const tmplWire = haveProxy && !!(this._brain && this._brain._tmplTeachOk === true);
     const tmplValues = haveProxy ? [] : null;
@@ -56634,15 +56632,15 @@ var NeuronCluster = class {
         if (value !== 0) tmplNonZero = true;
       }
       const startNeuron = region.start + d * groupSize;
-      for (let n = 0; n < groupSize; n++) {
-        const idx = startNeuron + n;
-        if (idx >= region.end) break;
-        if (replaceMode) {
-          this.externalCurrent[idx] = value;
-        } else {
-          this.externalCurrent[idx] += value;
-        }
-        if (fwdIndices && !tmplWire && value !== 0) {
+      const _endIdx = Math.min(region.end, startNeuron + groupSize);
+      if (value === 0 && !replaceMode) continue;
+      if (replaceMode) {
+        this.externalCurrent.fill(value, startNeuron, _endIdx);
+      } else {
+        for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
+      }
+      if (fwdIndices && !tmplWire && value !== 0) {
+        for (let idx = startNeuron; idx < _endIdx; idx++) {
           fwdIndices.push(idx - region.start);
           fwdValues.push(value);
         }
@@ -103355,7 +103353,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [a, b, sum] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const magA = buildMagPattern(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) {
           cluster.lastSpikes[freeRegion.start + i] = magA[i] > 0 ? 1 : 0;
@@ -103420,7 +103418,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [a, b, diff] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const magA = buildMagPattern(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) {
           cluster.lastSpikes[freeRegion.start + i] = magA[i] > 0 ? 1 : 0;
@@ -103488,7 +103486,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [a, b, rel] of pairs) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const magA = buildMagPattern(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) {
           cluster.lastSpikes[freeRegion.start + i] = magA[i] > 0 ? 1 : 0;
@@ -103599,7 +103597,7 @@ var Curriculum = class _Curriculum {
     for (const nm of names) {
       const r = cluster.regions[nm];
       if (!r) continue;
-      for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+      cluster.lastSpikes.fill(0, r.start, r.end);
     }
   }
   _clearSpikes(regionNames = null) {
@@ -103609,7 +103607,7 @@ var Curriculum = class _Curriculum {
       for (const name of regionNames) {
         const r = cluster.regions[name];
         if (!r) continue;
-        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        cluster.lastSpikes.fill(0, r.start, r.end);
         if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice) {
           try {
             cluster._gpuProxy.clearSpikeSlice(name);
@@ -103619,7 +103617,7 @@ var Curriculum = class _Curriculum {
       }
       return;
     }
-    for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+    cluster.lastSpikes.fill(0);
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
       for (const regionName of Object.keys(cluster.regions)) {
         try {
@@ -109521,7 +109519,7 @@ var Curriculum = class _Curriculum {
     const visualCortex = opts.visualCortex || this.engine && this.engine.visualCortex || null;
     const ticksPerChar = opts.ticksPerChar ?? 2;
     const settleTicks = opts.settleTicks ?? 15;
-    for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+    cluster.lastSpikes.fill(0);
     try {
       const brain2 = this.brain || cluster && cluster._brain;
       if (brain2) {
@@ -109774,7 +109772,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [cause, effect] of pairs) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const causePat = buildEmbPattern(freeSize, cause);
         for (let i = 0; i < freeSize; i++) {
           cluster.lastSpikes[freeRegion.start + i] = causePat[i] > 0 ? 1 : 0;
@@ -109841,7 +109839,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const { item, features, category } of items) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const featPat = buildFeatPattern(freeSize, features);
         for (let i = 0; i < freeSize; i++) {
           cluster.lastSpikes[freeRegion.start + i] = featPat[i] > 0 ? 1 : 0;
@@ -109930,7 +109928,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [subj, verb, obj] of SVO_DATA) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const subjPat = buildEmbPattern(freeSize, subj);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = subjPat[i] > 0 ? 1 : 0;
         const subjTag = roleTag("subject");
@@ -109938,7 +109936,7 @@ var Curriculum = class _Curriculum {
         const verbSemPat = buildEmbPattern(semSize, verb);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = verbSemPat[i] > 0 ? 1 : 0;
         await cluster._crossRegionHebbian(lr);
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const verbPat = buildEmbPattern(semSize, verb);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = verbPat[i] > 0 ? 1 : 0;
         const verbTag = roleTag("verb");
@@ -109946,7 +109944,7 @@ var Curriculum = class _Curriculum {
         const subjFreePat = buildEmbPattern(freeSize, subj);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = subjFreePat[i] > 0 ? 1 : 0;
         await cluster._crossRegionHebbian(lr);
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const objPat = buildEmbPattern(semSize, obj);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = objPat[i] > 0 ? 1 : 0;
         const objTag = roleTag("object");
@@ -109991,13 +109989,13 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [a, b, c] of chains) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const aPat = buildEmbPattern(freeSize, a);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = aPat[i] > 0 ? 1 : 0;
         const bPat = buildEmbPattern(semSize, b);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = bPat[i] > 0 ? 1 : 0;
         await cluster._crossRegionHebbian(lr);
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const bFreePat = buildEmbPattern(freeSize, b);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = bFreePat[i] > 0 ? 1 : 0;
         const cPat = buildEmbPattern(semSize, c);
@@ -110057,7 +110055,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const { situation, emotion, label } of mappings) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const sitPat = buildEmbPattern(freeSize, situation);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = sitPat[i] > 0 ? 1 : 0;
         const emoPat = buildFeatPattern(phonSize, emotion);
@@ -110105,7 +110103,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < 4; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [a, b, prod] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const magA = buildMag(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = magA[i] > 0 ? 1 : 0;
         const magB = buildMag(freeSize - freeHalf, b);
@@ -110160,7 +110158,7 @@ var Curriculum = class _Curriculum {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (let tens = 1; tens <= 9; tens++) {
         for (let ones = 0; ones <= 9; ones++) {
-          for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+          cluster.lastSpikes.fill(0);
           const tensPat = buildMag(third, tens);
           for (let i = 0; i < third; i++) cluster.lastSpikes[freeRegion.start + i] = tensPat[i] > 0 ? 1 : 0;
           const onesPat = buildMag(third, ones);
@@ -110227,7 +110225,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < 6; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [num, den] of fractions) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const numPat = buildMag(freeHalf, num);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = numPat[i] > 0 ? 1 : 0;
         const denPat = buildMag(freeSize - freeHalf, den);
@@ -110279,7 +110277,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < 4; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const [x, b, c] of equations) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const cPat = buildMag(freeHalf, c);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = cPat[i] > 0 ? 1 : 0;
         const bPat = buildMag(freeSize - freeHalf, b);
@@ -110344,12 +110342,12 @@ var Curriculum = class _Curriculum {
             if (idx < semSize) targetPat[idx] = meanEmb[d] > 0 ? 1 : 0;
           }
         }
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const aPat = buildEmb(freeSize, sentA.split(/\s+/)[0]);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = aPat[i] > 0 ? 1 : 0;
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = targetPat[i];
         await cluster._crossRegionHebbian(lr);
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const bPat = buildEmb(freeSize, sentB.split(/\s+/)[0]);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = bPat[i] > 0 ? 1 : 0;
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = targetPat[i];
@@ -110394,7 +110392,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < 8; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const { predict, observe, match } of tests) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);
         const predPat = buildEmb(freeSize, predict);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = predPat[i] > 0 ? 1 : 0;
         const obsPat = buildEmb(semSize, observe);
@@ -110456,7 +110454,7 @@ var Curriculum = class _Curriculum {
       for (const { event, perspectives } of events) {
         const eventPat = buildEmb(semSize, event);
         for (const { viewpoint, features } of perspectives) {
-          for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+          cluster.lastSpikes.fill(0);
           for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = eventPat[i] > 0 ? 1 : 0;
           const vpPat = buildEmb(freeSize, viewpoint);
           for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = vpPat[i] > 0 ? 1 : 0;
@@ -110988,7 +110986,7 @@ var Curriculum = class _Curriculum {
       for (const nm of names) {
         const r = cluster.regions && cluster.regions[nm];
         if (!r) continue;
-        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        cluster.lastSpikes.fill(0, r.start, r.end);
       }
     };
     ensureLetters(letters);
