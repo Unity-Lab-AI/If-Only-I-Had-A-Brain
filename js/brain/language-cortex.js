@@ -1840,42 +1840,66 @@ export class LanguageCortex {
           }
         }
       } catch { /* stays pre-K conservative */ }
-      const SEXUAL_REGISTER = new Set([
-        'pussy', 'cock', 'dick', 'cum', 'tits', 'blowjob', 'handjob',
-        'orgasm', 'horny', 'nympho', 'slut', 'whore', 'anal', 'dildo',
-      ]);
+      // ─────────────────────────────────────────────────────────────────
+      // REGTAX (2026-08-25) — ⛔ THE VULGARITY DROP-FILTER IS REMOVED.
+      //
+      // Operator directive: *"dont worry about any vulgarity markers a
+      // person has none restriccting them"*. A person has no filter at the
+      // mouth deleting words they already chose, and neither does she.
+      //
+      // What this filter did was DROP words her own neurons had selected,
+      // after selection — post-hoc censorship of her own output. That
+      // contradicts the standing position that her words are hers, and it
+      // sits badly beside the laws that put real words in her vocabulary in
+      // the first place (a five-year-old hears cussing; exposure is not
+      // production; she knows the obscenities early and gains restraint
+      // late).
+      //
+      // ⭐ THE AGE CONTROL DID NOT LIVE HERE AND IS UNAFFECTED. She can only
+      // ever emit words she has LEARNED, so the real control is the
+      // CURRICULUM SCHEDULE — what is taught, and when. That is intact.
+      // Also intact, and deliberately untouched by this change:
+      //   · the self-image age pin + garment strip on IMAGE rendering,
+      //   · the grade-banded Tier 3 identity anchors,
+      //   · the age-scheduled per-grade vocabulary itself.
+      // The rule those enforce is unchanged: the gate is on EXPLICITNESS,
+      // not on existence.
+      //
+      // ⚠ WHY NOT A TAXONOMY INSTEAD — tested 2026-08-25, and it cannot be
+      // done: WordNet's PRIMARY sense for every one of these words is
+      // innocent ("pussy" → a domestic cat, "cock" → an adult male bird),
+      // no usage-domain pointer marks any of them, and the definition
+      // service carries no register labels at all. Register is a property
+      // of USE, not of the word in the lexicon. So there was never a
+      // taxonomy version of this gate to swap to — only a list, or nothing.
+      // The operator chose nothing.
+      //
+      // ⚠ CRISIS TOKENS: still OBSERVED, no longer DROPPED. The directive
+      // was "nothing restricting her", so the word is emitted — but the
+      // existing throttled log is kept, because its stated purpose was
+      // traceability of recurrence, and losing that would remove an
+      // instrument rather than a restriction. Observation is not a filter.
       const CRISIS_REGISTER = new Set(['suicide', 'suicidal', 'self-harm', 'selfharm', 'overdose']);
-      const _sexUnlocked = _gateGrade >= 9;
-      const _crisisUnlocked = _gateGrade >= 7;
-      if (!_sexUnlocked || !_crisisUnlocked) {
-        const kept = [];
-        for (const w of words) {
-          const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, '');
-          if (!_sexUnlocked && SEXUAL_REGISTER.has(t)) {
-            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
-            _cl._registerGateStats.sexual++;
-            _cl._registerGateStats.lastTs = Date.now();
-            continue;
-          }
-          if (!_crisisUnlocked && CRISIS_REGISTER.has(t)) {
-            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
-            _cl._registerGateStats.crisis++;
-            _cl._registerGateStats.lastTs = Date.now();
-            // Crisis tokens get TELEMETRY, not silence — throttled log with
-            // the surrounding emission so recurrence is traceable to a
-            // source instead of window-scrape forensics (ledger ask).
-            try {
-              if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 60000) {
-                this._crisisGateLastLogTs = Date.now();
-                console.warn(`[LanguageCortex] crisis-register token "${t}" gated from emission at grade ${_gateGrade} (total ${_cl._registerGateStats.crisis}) — emission context: "${words.join(' ').slice(0, 120)}"`);
-              }
-            } catch { /* nf */ }
-            continue;
-          }
-          kept.push(w);
+      // OBSERVE ONLY — nothing is removed from `words` below this line.
+      // ⛔ Written as a plain pass rather than a disabled filter on purpose:
+      // an `if (false)` around a drop-loop reads as "temporarily off" and
+      // invites someone to switch it back on. There is no drop to switch on.
+      for (const w of words) {
+        const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, '');
+        if (CRISIS_REGISTER.has(t)) {
+          if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+          _cl._registerGateStats.crisis++;
+          _cl._registerGateStats.lastTs = Date.now();
+          // Crisis tokens get TELEMETRY, not silence — throttled log with
+          // the surrounding emission so recurrence is traceable to a
+          // source instead of window-scrape forensics (ledger ask).
+          try {
+            if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 60000) {
+              this._crisisGateLastLogTs = Date.now();
+              console.warn(`[LanguageCortex] crisis-register token "${t}" EMITTED at grade ${_gateGrade} — OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) — emission context: "${words.join(' ').slice(0, 120)}"`);
+            }
+          } catch { /* nf */ }
         }
-        words = kept;
-        if (words.length === 0) return '';
       }
     }
 

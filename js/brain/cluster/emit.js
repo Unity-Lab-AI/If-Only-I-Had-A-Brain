@@ -83,6 +83,34 @@ export const CLUSTER_EMIT_MIXIN = {
 
   _dictionaryOracleEmit(intentSeed, opts = {}) {
     if (opts.skipDictionaryOracle === true) return null;
+
+    // GATEPURE — ⛔ THE ORACLE IS CLOSED WHILE A GATE IS BEING ANSWERED.
+    //
+    // A gate exists to measure what SHE produced. If the dictionary can
+    // answer for her, the gate is partly measuring the dictionary, and the
+    // pass rate is inflated by exactly the amount the oracle was carrying.
+    //
+    // ⚠ THIS IS THE CHOKEPOINT, and it is here rather than at the 17 call
+    // sites for one reason: a flag on the cluster closes paths that do not
+    // exist yet. `skipDictionaryOracle` has been an opt-out since it was
+    // written and NO CALLER ANYWHERE EVER SET IT — an opt-out nobody opts
+    // into is not a safeguard, it is a comment. This refuses by default for
+    // the one lane where the oracle is not merely unhelpful but invalidating.
+    //
+    // ⚠ Deliberately NOT keyed on `_probeGateActive`: that is a cell-wide
+    // GPU-ownership flag which stays true through entire cells of TEACHING,
+    // and gating on it would silence the oracle during teaching too.
+    // `_gateEmissionActive` is scoped to a single probe emission and cleared
+    // unconditionally, including on the error paths.
+    //
+    // ⭐ EXPECT PASS RATES TO DROP, and read that as the truth arriving
+    // rather than a regression. `state.voice.matrixDrivenPct` and the
+    // `oracleHits`/`matrixHits` pair show exactly how much was being carried,
+    // so the size of the drop is attributable instead of mysterious.
+    if (this._gateEmissionActive === true) {
+      this._oracleRefusedInGate = (this._oracleRefusedInGate | 0) + 1;
+      return null;
+    }
     const dictionary = opts.dictionary || this.dictionary;
     if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
     if (!intentSeed || intentSeed.length === 0) return null;

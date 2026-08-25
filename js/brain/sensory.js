@@ -373,10 +373,40 @@ export class SensoryProcessor {
         // Context = surrounding words
         const contextWords = words.filter((_, j) => j !== i).slice(0, 5);
         if (contextWords.length > 0) {
-          const contextEmbed = new Float32Array(50);
+          // ⛔ DIMENSION BUG, FIXED 2026-08-25. This built the context vector
+          // at a hardcoded 50 dimensions while embeddings are EMBED_DIM = 300.
+          // `refineFromContext` iterates all 300, so `contextEmbedding[i]` for
+          // i >= 50 read `undefined` off a Float32Array(50); `undefined - x`
+          // is NaN, and `delta[i] += lr * NaN` is NaN.
+          //
+          // Reproduced exactly: **250 of 300 dimensions became NaN**, and the
+          // refinement map is PERSISTED — so the poison was durable, and
+          // `getEmbedding` adds the delta then normalises, which turns the
+          // whole vector NaN rather than just the damaged tail.
+          //
+          // ⚠ Browser-brain only — `sensory.js` is imported by
+          // `js/brain/engine.js`, which only `js/app.js` loads. The deployed
+          // server never runs this path, so no trained state on the box was
+          // affected. Same blast radius as the dead vision subscriber.
+          //
+          // ⭐ The wider point for the learned-geometry work: this is the ONLY
+          // call site of `refineFromContext` in the entire tree. The machinery
+          // for "geometry she learns herself" already exists — it has simply
+          // never run anywhere that matters, and where it did run it produced
+          // NaN.
+          // ⚠ The dimension is DERIVED FROM A REAL VECTOR, not from a
+          // constant. A hardcoded number here is precisely what broke: this
+          // was written when the embedding dim genuinely WAS 50, and when it
+          // was lifted to 300 this call site was not updated. Reading the
+          // length off an actual embedding cannot go stale that way.
+          const probe = this._embeddings.getEmbedding(contextWords[0]);
+          const dim = (probe && probe.length) || 0;
+          if (!dim) continue;   // no usable vector — refine nothing rather than refine noise
+          const contextEmbed = new Float32Array(dim);
           for (const cw of contextWords) {
             const ce = this._embeddings.getEmbedding(cw);
-            for (let d = 0; d < 50; d++) contextEmbed[d] += ce[d] / contextWords.length;
+            const n = Math.min(dim, ce.length);
+            for (let d = 0; d < n; d++) contextEmbed[d] += ce[d] / contextWords.length;
           }
           this._embeddings.refineFromContext(words[i], contextEmbed, 0.005);
         }

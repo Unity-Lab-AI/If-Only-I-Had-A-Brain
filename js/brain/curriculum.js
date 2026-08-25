@@ -19237,6 +19237,22 @@ export class Curriculum {
     // PROBEFLAG — production emission is a real probe; stamp it.
     if (cluster) cluster._probeLastRunAt = Date.now();
 
+    // GATEPURE — ⛔ THE DICTIONARY ORACLE IS CLOSED FOR THE DURATION OF THIS
+    // PROBE. A gate exists to measure what SHE produced; if the oracle can
+    // answer for her, the gate is partly measuring the dictionary and the
+    // pass rate is inflated by exactly the amount the oracle carried.
+    //
+    // ⚠ Scoped to THIS EMISSION, deliberately — NOT keyed on
+    // `_probeGateActive`, which is a cell-wide GPU-ownership flag that stays
+    // true through entire cells of TEACHING. Gating on that would silence the
+    // oracle during teaching too, which is a far wider behaviour change than
+    // this is, and it is exactly the mistake the PROBEFLAG note above
+    // records someone already making with the dashboard label.
+    //
+    // Set in a try/finally so a throw mid-probe cannot leave the oracle
+    // switched off for the rest of the run.
+    if (cluster) cluster._gateEmissionActive = true;
+
     try {
       templatedAnswer = await this._deterministicAnswer(question, opts);
       if (templatedAnswer && templatedAnswer.length > 0) {
@@ -19255,12 +19271,24 @@ export class Curriculum {
       emissionPath = 'emitWordDirect';
       try {
         // iter22-D — pass active gate subject for sub-band scoping.
-        emitted = (await cluster.emitWordDirectDonor({ subject: this._currentGateSubject })) || '';
+        // GATEPURE — `skipDictionaryOracle` passed explicitly as well as via
+        // the cluster flag. Belt and braces on purpose: the flag closes every
+        // path including ones added later that nobody remembers to update,
+        // and the explicit opt is what a reader of THIS line will see.
+        emitted = (await cluster.emitWordDirectDonor({
+          subject: this._currentGateSubject,
+          skipDictionaryOracle: true,
+        })) || '';
       } catch (err) {
         emitted = '';
         emissionError = err && err.message ? err.message.slice(0, 80) : 'throw';
       }
     }
+
+    // GATEPURE — release the oracle. Cleared unconditionally, including on
+    // every error path above, so a throw mid-probe cannot leave it shut for
+    // the remainder of the run.
+    if (cluster) cluster._gateEmissionActive = false;
 
     // STEP 5 — match emission against expected substrings.
     // GRADERMATCH (2026-08-22) — caught by the exam transcript's SECOND-EVER
@@ -22123,6 +22151,79 @@ export class Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+
+        // ─────────────────────────────────────────────────────────────────
+        // GLOVEOWN — SHE RESHAPES HER OWN SEMANTIC GEOMETRY AS SHE READS.
+        //
+        // Every word here moves a little toward the average of the words it
+        // appeared with. That is distributional semantics — meaning from
+        // company kept — and it is the same idea GloVe encodes, except
+        // computed from the corpus SHE actually reads instead of from
+        // Wikipedia.
+        //
+        // ⭐ The imported vectors become a STARTING SHAPE she grows out of
+        // rather than a fixed answer. The learned part is a separate,
+        // persisted delta (`_refinements`), so how much of her geometry is
+        // genuinely hers is a measurable quantity rather than an argument.
+        //
+        // ⛔ THIS MACHINERY ALREADY EXISTED AND HAD NEVER RUN HERE. Its only
+        // call site in the whole tree was in the BROWSER sensory path — the
+        // deployed server had never refined a single embedding. Her geometry
+        // was 100% imported because the learner was unplugged, not because
+        // learning was impossible.
+        //
+        // ⚠ ONCE PER SENTENCE, NOT PER REP — deliberately outside the word
+        // loop's rep multiplier. A sentence taught at 8 reps is the same
+        // sentence; refining 8× would let rep count silently scale how far
+        // meaning drifts, which is a dose nobody chose.
+        //
+        // ⚠ Learning rate is deliberately TINY. This runs on every sentence
+        // of a 273-cell walk, so a large step would let late reading
+        // overwrite early meaning. Slow accumulation is the point.
+        // ⭐ ON by default. `DREAM_LEARN_GEOMETRY=0` disables it.
+        //
+        // The two properties that make this learn rather than collapse —
+        // mean-centring and the delta cap — live inside `refineFromContext`
+        // itself, at the chokepoint, so this caller simply supplies the raw
+        // context average and both the browser and server paths get them.
+        // The derivation and the measured numbers are documented there.
+        //
+        // ⚠ It is safe to have on because the cap BOUNDS the worst case: the
+        // learned component can never overwhelm the imported base, so the
+        // failure mode is a small perturbation rather than a collapsed
+        // geometry — and the outcome no longer depends on how long she reads.
+        if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === 'function' && rep === 0
+            && !(typeof process !== 'undefined' && process.env && process.env.DREAM_LEARN_GEOMETRY === '0')) {
+          try {
+            const _ctxWords = words
+              .map((w) => w.toLowerCase().replace(/[^a-z'-]/g, ''))
+              .filter((w) => w.length >= 2);
+            if (_ctxWords.length >= 2) {
+              // Dimension DERIVED from a real vector, never a constant —
+              // a hardcoded dim is exactly what poisoned the browser call
+              // site with NaN across 250 of 300 dimensions.
+              const _probe = sharedEmbeddings.getEmbedding(_ctxWords[0]);
+              const _dim = (_probe && _probe.length) || 0;
+              if (_dim) {
+                for (let wi = 0; wi < _ctxWords.length; wi++) {
+                  const _ctx = new Float32Array(_dim);
+                  let _n = 0;
+                  for (let cj = 0; cj < _ctxWords.length; cj++) {
+                    if (cj === wi) continue;                // a word is not its own context
+                    const _ce = sharedEmbeddings.getEmbedding(_ctxWords[cj]);
+                    const _lim = Math.min(_dim, _ce.length);
+                    for (let d = 0; d < _lim; d++) _ctx[d] += _ce[d];
+                    _n++;
+                  }
+                  if (!_n) continue;
+                  for (let d = 0; d < _dim; d++) _ctx[d] /= _n;
+                  sharedEmbeddings.refineFromContext(_ctxWords[wi], _ctx, 0.002);
+                }
+                this.stats.embeddingRefines = (this.stats.embeddingRefines | 0) + _ctxWords.length;
+              }
+            }
+          } catch { /* geometry refinement is best-effort — it must never stop a teach */ }
+        }
 
         for (const word of words) {
           const wordEmb = sharedEmbeddings.getEmbedding(word);

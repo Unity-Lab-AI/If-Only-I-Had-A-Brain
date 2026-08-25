@@ -1675,7 +1675,8 @@
               $d.innerHTML = `<span title="Share of emissions that came from her trained weights rather than the dictionary oracle.">matrix ${pct}</span>`
                 + ` · <span title="How many word_motor buckets have ever fired. Zero means the emission band has never produced a word.">${num(v.wordMotorEverFired)} buckets fired</span>`
                 + ` · <span title="Dictionary-cosine fallbacks. A retrieved word is the DICTIONARY speaking, not her — only legal on an untrained cortex now.">${num(w.retrieved)} retrieved</span>`
-                + ` · <span title="Times a TRAINED brain produced nothing and was allowed to stay quiet. Honest silence is a correct output, not a failure.">${num(w.honestSilence)} honest silence</span>`;
+                + ` · <span title="Times a TRAINED brain produced nothing and was allowed to stay quiet. Honest silence is a correct output, not a failure.">${num(w.honestSilence)} honest silence</span>`
+                + (v.oracleRefusedInGate ? ` · <span style="color:#f59e0b" title="Times the dictionary oracle was REFUSED inside a gate probe, because a gate must measure what SHE produced. This is exactly how often the dictionary would otherwise have answered a test question for her — so if pass rates dropped, this number is the size of the drop's cause. Truth arriving, not a regression.">${num(v.oracleRefusedInGate)} oracle refused in gate</span>` : '');
             }
           }
           if ($r) {
