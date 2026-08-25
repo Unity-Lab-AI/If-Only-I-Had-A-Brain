@@ -2384,6 +2384,13 @@ export class LanguageCortex {
                 subject: inferredSubject || undefined,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
+                // WORDSALAD.3 — the CONVERSATIONAL lane opts in to asking. When a
+                // reply composes to nothing and the argmax just missed a word by a
+                // hair, a person asks about it instead of going quiet. Opt-in by
+                // design: the ~30 gate/probe callers of this same method must keep
+                // returning silence, because a question scored as her answer would
+                // corrupt every gate that reads it.
+                curiosityAsk: true,
                 // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
                 // rerank candidate is a FULL sentence emission (~13s of GPU
                 // dispatches); 3 of them stacked on teach starved the event

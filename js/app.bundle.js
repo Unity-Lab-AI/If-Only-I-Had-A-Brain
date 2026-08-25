@@ -55107,7 +55107,7 @@ var CLUSTER_EMIT_MIXIN = {
         only.candidatesEvaluated = 1;
         only.coherenceSelected = false;
       }
-      return only;
+      return only || await this._askOnCuriosityGap(intentSeed, opts);
     }
     const onceOpts = Object.assign({}, opts, { _forceCoherenceScore: true });
     let best = null;
@@ -55150,7 +55150,61 @@ var CLUSTER_EMIT_MIXIN = {
         }
       }
     }
-    return best;
+    return best || await this._askOnCuriosityGap(intentSeed, opts);
+  },
+  // ── WORDSALAD.3 — WHEN SHE CANNOT SAY IT, SHE ASKS ABOUT IT ────────────────
+  //
+  // Operator: "being inqusitive asking questions and not just that but all
+  // learning needs it through her eyes". This is the consuming half of the
+  // curiosity gap recorded at the signal-floor rejection: the compose produced
+  // NOTHING, and a moment ago the argmax had a word it could not hold above the
+  // floor. Silence is the wrong output for that state — a person asks.
+  //
+  // ⛔ WHAT THIS IS NOT: not a template, not a canned "what is X?" string, not a
+  // text generator. It re-enters the SAME compose path with `questionMode`,
+  // which seeds a WH-frame embedding and lets the trained interrogative
+  // transitions (relationTagId=30, taught by `_teachQuestionProduction`) carry
+  // the sentence. If those weights have not been trained yet, this produces
+  // nothing and she stays silent — exactly as before. The question EMERGES or
+  // it does not; nothing here fabricates one.
+  //
+  // ⛔ OPT-IN, NOT OPT-OUT, AND THAT DIRECTION IS LOAD-BEARING. `composeSentence`
+  // has ~30 callers inside the gate and probe lanes, whose entire job is to
+  // measure WHAT SHE ANSWERS. If a probe that produced no answer instead
+  // returned a question, every one of those gates would score a question as her
+  // response and the measurement would be quietly corrupted — the exact class of
+  // lying instrument this ledger keeps paying for. So the default everywhere
+  // stays silence, and only the conversational lanes pass `curiosityAsk: true`.
+  //
+  // Bounded and honest besides: only fires on a gap seen in the last few
+  // seconds, never recurses (the retry runs with questionMode already set), and
+  // every ask is counted so "she asked" is a measurable event, not a claim.
+  async _askOnCuriosityGap(intentSeed, opts = {}) {
+    try {
+      if (!opts.curiosityAsk) return null;
+      if (opts.questionMode) return null;
+      const gap = this._curiosityGap;
+      if (!gap || !gap.word) return null;
+      const MAX_AGE_MS = 5e3;
+      if (!(Date.now() - gap.ts < MAX_AGE_MS)) return null;
+      const asked = await this._composeSentenceOnce(intentSeed, Object.assign({}, opts, {
+        questionMode: true,
+        intentConcept: gap.word,
+        // ask ABOUT the thing she could not say
+        curiosityAsk: false
+        // the retry must not re-enter this path
+      }));
+      if (asked) {
+        asked.fromCuriosityGap = true;
+        asked.curiosityWord = gap.word;
+        this._curiosityAskCount = (this._curiosityAskCount || 0) + 1;
+        this._lastCuriosityAsk = { word: gap.word, text: asked.sentence || "", ts: Date.now() };
+        this._curiosityGap = null;
+      }
+      return asked;
+    } catch {
+      return null;
+    }
   },
   /**
    * I.21 — ON-THE-FLY MEMORY DERIVATION (core mechanism). When chat hits a
@@ -64127,6 +64181,13 @@ var LanguageCortex = class {
                 subject: inferredSubject || void 0,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
+                // WORDSALAD.3 — the CONVERSATIONAL lane opts in to asking. When a
+                // reply composes to nothing and the argmax just missed a word by a
+                // hair, a person asks about it instead of going quiet. Opt-in by
+                // design: the ~30 gate/probe callers of this same method must keep
+                // returning silence, because a question scored as her answer would
+                // corrupt every gate that reads it.
+                curiosityAsk: true,
                 // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
                 // rerank candidate is a FULL sentence emission (~13s of GPU
                 // dispatches); 3 of them stacked on teach starved the event
