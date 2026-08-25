@@ -1470,13 +1470,43 @@ export class NeuronCluster {
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues  = haveProxy ? [] : null;
     const replaceMode = opts.replaceMode === true;
+    // ⛔ SCALEWALK.2 (2026-08-25) — AT BIOLOGICAL SCALE THE CPU `externalCurrent`
+    // EXPANSION FEEDS AN ARRAY NOTHING READS, so it is skipped. This is the
+    // 34.9%-of-main-thread half the profile named, and it is the SAME dead-CPU-
+    // shadow shape as `lastSpikes` and as Φ̂'s dead read.
+    //
+    // The claim is not an inference — every path was closed by reading:
+    //   • `externalCurrent` has exactly TWO readers, `step()`'s current sum and
+    //     its `*= 0.9` decay. Both are inside `step()`.
+    //   • The server's main tick never calls `cluster.step()` for the cortex;
+    //     the GPU steps it via `compute_batch` (the ack writes `spikeCount`).
+    //   • `stepAwait` ABORTS above 2M without a live GPU — *"At biological scale
+    //     a CPU step is FORBIDDEN, same law as the teach side"* — and its
+    //     `this.step()` branch sits BELOW that guard, so it is unreachable.
+    //   • All five raw `this.step()` sites (detectBoundaries, the letter/char/
+    //     word tick loops) carry the identical `if (this.size > 2000000) return`
+    //     refusal, with the same law quoted in each.
+    // ⭐ So `step()` cannot run on the cortex here, and the donor already has the
+    // pattern: it is shipped by `writeCurrentSlice` below, in the compact
+    // TEMPLATE form, which is the authoritative path at this scale.
+    //
+    // ⚠ The guard reuses the project's OWN threshold and opt-out rather than
+    // inventing one — `size > 2_000_000` and `DREAM_INNERVOICE_FORCE_CPU=1` are
+    // the same law already written at five other sites. It also REQUIRES the
+    // proxy: with no `writeCurrentSlice` there is nowhere else for the pattern
+    // to go, so the CPU write stays authoritative and is never skipped.
+    // Small/browser instances are completely unaffected.
+    const _bioSkipCpuCurrent = haveProxy
+      && (this.size | 0) > 2_000_000
+      && !(typeof process !== 'undefined' && process.env && process.env.DREAM_INNERVOICE_FORCE_CPU === '1');
     // When replacing, zero the WHOLE region first so any prior
     // injections in cells we won't overwrite (region cells beyond
     // emb.length * groupSize) also clear. This is the correct
     // "fresh intent state" semantic the caller asked for.
-    if (replaceMode) {
+    if (replaceMode && !_bioSkipCpuCurrent) {
       // ⭐ SCALEWALK.1 — native memset. Identical result by construction, and at
       // the 82M cortex this loop alone was `regionSize` writes (sem ≈ 13.7M).
+      // Skipped entirely at bio scale (SCALEWALK.2) — zeroing an unread array.
       this.externalCurrent.fill(0, region.start, region.end);
     }
     // TW S4 — when the donor wire speaks TEMPLATE current frames (v0.3.16,
@@ -1509,10 +1539,15 @@ export class NeuronCluster {
       // Additive mode still needs the read-modify-write, so it keeps the loop.
       const _endIdx = Math.min(region.end, startNeuron + groupSize);
       if (value === 0 && !replaceMode) continue;   // additive no-op — identical
-      if (replaceMode) {
-        this.externalCurrent.fill(value, startNeuron, _endIdx);
-      } else {
-        for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
+      // SCALEWALK.2 — the ~13.7M-write-per-injection dense expansion, skipped at
+      // bio scale where nothing reads it. The forward list below still builds,
+      // so the DONOR is fed exactly as before.
+      if (!_bioSkipCpuCurrent) {
+        if (replaceMode) {
+          this.externalCurrent.fill(value, startNeuron, _endIdx);
+        } else {
+          for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
+        }
       }
       // ⭐ SCALEWALK.1 — the forward-list condition is LOOP-INVARIANT, so it is
       // hoisted. Before this, the loop still ran `groupSize` iterations doing
