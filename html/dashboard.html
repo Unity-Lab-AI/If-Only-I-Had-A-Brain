@@ -2449,6 +2449,30 @@
                   : (t.loopStarve.servicePct < 90
                       ? `<span style="color:#f59e0b" title="The loop is running late enough to be noticeable. Page fetches may be slow to first byte even while step time and freeze count look normal.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`
                       : `<span style="color:#22c55e" title="The loop is answering close to on time. Total milliseconds per minute it owed and did not deliver.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`))) +
+          // PROPBOUND.2 — the bound-propagate lane, and the row exists in the
+          // SAME commit as its counter per the BOARDPARITY lesson. `null` says
+          // no bound propagate has been attempted this boot, which is NOT a
+          // claim the lane is healthy. A climbing `→CPU` share during a teach
+          // era is the finding; between teach writes it is correct behaviour.
+          row('bound propagate',
+            (t.boundPropagate == null)
+              ? '<span class="muted" title="No bound propagate has been attempted since boot. This is an absence of evidence, not a healthy lane.">unmeasured</span>'
+              : (() => {
+                  const bp = t.boundPropagate;
+                  const onCard = (bp.native | 0) + (bp.browserEmptyPre | 0);
+                  const toCpu = (bp.emptyMirror | 0) + (bp.noMirrorObject | 0);
+                  const tot = onCard + toCpu;
+                  if (tot === 0) return '<span class="muted" title="Counters exist but nothing has run yet.">none yet</span>';
+                  const pct = Math.round((toCpu / tot) * 100);
+                  // ⛔ A missing mirror OBJECT is a wiring fault and is called
+                  // out separately from an empty one, which is ordinary.
+                  const wiring = (bp.noMirrorObject | 0) > 0
+                    ? ` <span style="color:#ef4444" title="The server's lastSpikes mirror was ABSENT, not merely empty. That is a wiring fault, not an idle cortex.">wiring ${num(bp.noMirrorObject)}</span>` : '';
+                  const col = pct >= 90 ? '#ef4444' : (pct >= 50 ? '#f59e0b' : '#22c55e');
+                  return `<span style="color:${col}" title="How the bound forward propagate was served. on-card = the donor computed it (native donors get the pre-index window rebuilt from the server's own resident mirror; browser donors read their resident buffer via the empty-pre protocol). →CPU = the mirror was empty so the server refused and graded on the CPU instead — correct between teach writes, a finding if it stays high DURING teaching. Last refusal names its matrix.">`
+                    + `${num(onCard)} on-card · ${num(toCpu)} →CPU (${pct}%)</span>${wiring}`
+                    + (bp.lastEmptyName ? ` <span class="muted">last ${bp.lastEmptyName}${bp.lastEmptyAgeMs != null ? ` ${Math.round(bp.lastEmptyAgeMs / 1000)}s ago` : ''}</span>` : '');
+                })()) +
           row('GPU dispatch', `${num(t.gpuDispatchPerSec, 1)}/s <span class="muted">(${num(t.gpuHits)}✓/${num(t.gpuMisses)}✗)</span>`) +
           row('spikes', num(t.totalSpikes)) +
           row('defs/hr', num(t.defsLearnedPerHour)) +
