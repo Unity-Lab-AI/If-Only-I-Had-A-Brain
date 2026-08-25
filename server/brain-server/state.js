@@ -1870,6 +1870,21 @@ const SERVER_STATE_MIXIN = {
         chemicals: this._endocrineSnapshot.chemicals,
         chronicLoad: this._endocrineSnapshot.chronicLoad,
         stress: this._endocrineSnapshot.stress,
+        // ⛔ BOARDPARITY.1 — THESE THREE WERE PRODUCED, READ BY THE PANEL, AND
+        // NEVER FORWARDED. The same producer/consumer name failure as
+        // `meanVoltage`, and it did not read as an empty row: the renderer
+        // defaults `allostatic` to `{}`, so the load row rendered a healthy
+        // `0.000/0.6 (restore α 0.0000)` for the one quantity that says whether
+        // adversity is accumulating — a reassuring zero for a live number. The
+        // cycle row was gated on the field's presence and so never drew at all
+        // (phase, cycles elapsed, and the progesterone-withdrawal derivative
+        // all invisible), and `puberty` rendered the literal `? (age ?)` with
+        // its amber `unknown` branch unreachable — the branch that exists
+        // specifically so an unread age cannot read as childhood.
+        puberty: this._endocrineSnapshot.puberty,
+        cycle: this._endocrineSnapshot.cycle,
+        allostatic: this._endocrineSnapshot.allostatic,
+        scheduledCount: this._endocrineSnapshot.scheduledCount,
         contributions: this._endocrineSnapshot.contributions,
         counters: this._endocrineSnapshot.counters,
         // Whether the NUCLEI were consulted this tick. Distinguishes "the
