@@ -452,9 +452,31 @@ pub struct MindspaceOp {
 
 /// Tagged dispatch over the JSON messages a donor receives. Unknown types are ignored
 /// (forward-compat, matching the browser donor).
+/// The brain's greeting, sent on every connect BEFORE `gpu_register`.
+///
+/// ⭐ Carries the donor build this brain wants running against it, so a pod can
+/// upgrade ITSELF at its next disconnect rather than reconnecting on a stale
+/// binary. The donor has no HTTP client and needs none — it is already talking
+/// to the authority, so the authority simply says which version it wants.
+///
+/// ⚠ `recommended_donor_version` is NOT the hard floor. Below `min_donor_version`
+/// the brain refuses the connection outright (`IncompatibleVersion`); between the
+/// floor and the recommendation the donor keeps working normally and upgrades at
+/// its next natural disconnect — nobody is kicked mid-walk for being one release
+/// behind.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Welcome {
+    #[serde(rename = "recommendedDonorVersion", default)]
+    pub recommended_donor_version: String,
+    #[serde(rename = "minDonorVersion", default)]
+    pub min_donor_version: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
+    #[serde(rename = "welcome")]
+    Welcome(Welcome),
     #[serde(rename = "incompatible_version")]
     IncompatibleVersion(IncompatibleVersion),
     #[serde(rename = "gpu_init")]
