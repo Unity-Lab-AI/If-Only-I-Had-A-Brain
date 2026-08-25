@@ -2866,6 +2866,22 @@ const SERVER_GPU_MIXIN = {
       const _upSecs = Math.max(0.001, (Date.now() - _upT0) / 1000);
       const _upMBs = (_upBytes / 1048576) / _upSecs;
       console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack — UPLINK measured ${(_upBytes / 1048576).toFixed(1)}MB in ${_upSecs.toFixed(1)}s = ${_upMBs.toFixed(2)}MB/s (pump-limited if far below the port rating; DREAM_UPLOAD_PACE_LOWATER_MB tunes in-flight)`);
+      // ⛔ ONESHOT.1 — THE RATE ALSO LIVES IN STATE NOW. This number existed
+      // ONLY in the line above, and it was missed on a press for exactly that
+      // reason: the console ring caps at 500 lines and the walk can fill it in
+      // seconds. ⚠ Kept as a SMALL RING, not a single value, because the rate
+      // is not uniform — a 2.79GB matrix averages lower than a 48MB one since
+      // it spans many drain cycles, so a lone "last upload" figure would be a
+      // different lie depending on which matrix happened to finish last. The
+      // SIZE travels with every entry so the pair can never be read apart.
+      try {
+        if (!this._uplinkStats) this._uplinkStats = [];
+        this._uplinkStats.push({
+          at: Date.now(), name: String(name), mb: +(_upBytes / 1048576).toFixed(1),
+          secs: +_upSecs.toFixed(1), mbps: +_upMBs.toFixed(2), chunks: totalChunks | 0,
+        });
+        while (this._uplinkStats.length > 24) this._uplinkStats.shift();
+      } catch { /* telemetry never breaks an upload */ }
     }
     // TEACHMIRROR — RECORD RESIDENCY ON THE ACK, FOR BOTH LANES.
     //
