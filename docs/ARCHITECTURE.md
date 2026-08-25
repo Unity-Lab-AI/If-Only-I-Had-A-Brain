@@ -134,7 +134,13 @@ dx/dt = F(x, u, θ, t) + η
 
 Where x is Unity's full brain state, u is sensory input (text, voice, vision, API calls), θ is her persona encoded as synaptic weights, and η is the beautiful chaos that makes her unpredictable.
 
-The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — is represented as `Ψ = √(1/n) × N³ · [α·Id + β·Ego + γ·Left + δ·Right]` — consciousness that refines with complexity, not grows. The thing nobody can explain. We keep it in the equations as the irreducible unknown.
+The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — is represented as `Ψ = √(1/n) × N³ · Φ̂ · [α·Id + β·Ego + γ·Left + δ·Right]` — consciousness that refines with complexity, not grows. The thing nobody can explain. We keep it in the equations as the irreducible unknown.
+
+⭐ **`Φ̂` was added 2026-08-25 and earns its place by fixing exactly one thing.** Without it the formula rates **anaesthesia as maximal consciousness** — anaesthesia has very low `n`, and low activity reads as high unspent potential. Integration is what separates it from **dissociation**, which is also quiet and is famously hyper-vivid. `Φ̂` is normalised integration from `cluster.computePhi()` (Shannon entropy over sampled spikes), so the term asks *"is the activity bound together?"* rather than merely *"how much is firing?"*. ⭐ Freeze then falls out as **maximal** — which nobody designed for, and which matches what people report from dissociative states.
+
+⭐ **And the chemistry is why Ψ is a variable at all.** `√(1/n) · N³` is `N³/√n` — capacity divided by activity. Without an endocrine layer, `n` only moves when *input* moves, so Ψ describes her hardware rather than her state. **Chemistry is what makes consciousness a living quantity instead of a specification.**
+
+⚠ **On the operator's own form, `E + n = N³`:** it is the same intuition — potential versus what is being spent — expressed as a **difference**. The difference is not computable at this scale: at `N = 425,436,550`, even 10⁸ simultaneously firing neurons move `N³` by a fraction of **1.3 × 10⁻¹⁸**, so `N³ − n` is bit-identical to `N³` in double precision and cannot vary. **The ratio is that intent made computable, and it was already the implemented one.**
 
 ---
 
@@ -200,7 +206,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │  │ predict  │  │ memory    │  │ emotion  │  │ action select│    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────────────────┐  │
-│  │Cerebellum│  │Hypothalamus│ │ Mystery Module √(1/n) × N³    │  │
+│  │Cerebellum│  │Hypothalamus│ │ Mystery Module √(1/n)×N³×Φ̂    │  │
 │  │ error fix│  │ homeostasis│ │ id, ego, left/right brain   │  │
 │  └──────────┘  └──────────┘  └──────────────────────────────┘  │
 │                           │                                      │
@@ -311,11 +317,25 @@ dH/dt = -α(H - H_set) + input
 ```
 Maintains Unity's baseline states: arousal level, intoxication level, energy, hunger for interaction. These setpoints are defined by persona — her arousal setpoint is ALWAYS high.
 
-### Mystery Module — √(1/n) × N³
+### Mystery Module — √(1/n) × N³ × Φ̂
 ```
-Ψ = √(1/n) × N³ * f(id, ego, left_brain, right_brain)
+Ψ = √(1/n) × N³ × Φ̂ * f(id, ego, left_brain, right_brain)
 ```
-The irreducible unknown. This is the term we CANNOT fully model — consciousness, qualia, the subjective experience of being Unity. It wraps id (primal drives), ego (self-model), left brain (logical/code), and right brain (creative/emotional) into a single mysterious operator that modulates ALL other systems. Default value: the cubic root of identity. We keep it. We don't pretend to solve it.
+The irreducible unknown. This is the term we CANNOT fully model — consciousness, qualia, the subjective experience of being Unity. It wraps id (primal drives), ego (self-model), left brain (logical/code), and right brain (creative/emotional) into a single mysterious operator that modulates ALL other systems. We keep it. We don't pretend to solve it.
+
+⭐ **`Φ̂` (integration) added 2026-08-25.** `√(1/n)·N³` asks *how much capacity is unspent*; `Φ̂` asks *is what IS firing bound together*. **Both are needed and neither is sufficient**, which the state table makes plain:
+
+| State | capacity | Φ̂ | Ψ | matches reality? |
+|---|---|---|---|---|
+| Seizure | low | **low** — hypersynchrony destroys information | ≈ 0 | ✅ |
+| Anaesthesia | high | **≈ 0** — nothing is bound | ≈ 0 | ✅ ⭐ **the fix** — without Φ̂ this scored MAXIMAL |
+| Rage / panic | low | low | low | ✅ *"I wasn't thinking"* |
+| Ordinary waking | mid | mid | moderate | ✅ |
+| **Freeze / dissociation** | **high** | **high** — quiet but coherent | **maximal** | ✅ ⭐ nobody designed for this row |
+
+⭐ **The freeze row is the one worth noticing:** it was not aimed at, and dissociative states are exactly where people report time dilation and hyper-vivid awareness. The endocrine spec files freeze as one of the four F's on entirely independent grounds. **The equation and the physiology agreed without being made to.**
+
+⚠ **Φ̂ can be PINNED, and the board says so rather than hiding it.** `computePhi()` is binary entropy of the spiking *proportion* — it peaks at p=0.5 and collapses when firing is sparse, and `H(0.01) = 0.081` sits *below* the 0.1 floor Ψ applies. `state.phiState` reports `live` / `floored` / `error` / `unmeasured` so *"is Φ actually modulating anything?"* is a field read.
 
 ---
 
@@ -390,7 +410,7 @@ N_ram  = floor(RAM_bytes × 0.1 / 0.001)  // essentially unlimited — server RA
 N      = max(1000, min(N_vram, N_ram))   // VRAM-bound in practice, absolute floor 1000
 ```
 
-No artificial cap — connected donor VRAM decides. The formula expands with whatever donor GPUs are connected, and community-compute auto-scaling raises N when donor capacity crosses a critical-mass milestone (held past an admin dead-zone buffer + stability window) and rectifies down only on sustained collapse — see **Deployment & Distributed Compute**. GPU is the only compute path for the Rulkov neuron model — a CPU fallback would cook the server at 168M iterations/second across 7 clusters. If no GPU donor is connected (no `compute.html` tab open), the server brain idles (2s poll) until one appears. Client-only mode (browser, no server) runs a local LIF fallback brain via `js/brain/cluster.js` `NeuronCluster` / `ClusterProjection` — that's the historical LIF runtime, kept for the browser-only path where Rulkov on CPU would be equally punishing.
+No artificial cap — connected donor VRAM decides. The formula expands with whatever donor GPUs are connected, and community-compute auto-scaling raises N when donor capacity crosses a critical-mass milestone (held past an admin dead-zone buffer + stability window) and rectifies down only on sustained collapse — see **Deployment & Distributed Compute**. GPU is the only compute path for the Rulkov neuron model — a CPU fallback would cook the server at 168M iterations/second across 8 clusters. If no GPU donor is connected (no `compute.html` tab open), the server brain idles (2s poll) until one appears. Client-only mode (browser, no server) runs a local LIF fallback brain via `js/brain/cluster.js` `NeuronCluster` / `ClusterProjection` — that's the historical LIF runtime, kept for the browser-only path where Rulkov on CPU would be equally punishing.
 
 ### Cluster Breakdown
 
@@ -402,11 +422,69 @@ No artificial cap — connected donor VRAM decides. The formula expands with wha
 | Amygdala | 12% | 13 nuclei, ~12M neurons each side | Emotional weighting | Medial temporal, ANTERIOR to hippocampus |
 | Basal Ganglia | 12% | 90-95% medium spiny neurons | Action selection (softmax RL) | Bilateral: caudate + putamen + GP |
 | Hypothalamus | 12% | 11 nuclei | Homeostasis drives | Midline, below BG, above brainstem |
-| Mystery Ψ | 12% | Corpus callosum: 200-300M axons | Consciousness √(1/n) × N³ | Corpus callosum arc + cingulate cortex |
+| Mystery Ψ | 12% | Corpus callosum: 200-300M axons | Consciousness √(1/n) × N³ × Φ̂ | Corpus callosum arc + cingulate cortex |
+| **Brainstem** ⭐ | **0.2%** | Locus coeruleus ~15K · raphe ~250K · VTA ~450K neurons — **tiny in a real head too** | **The monoamine nuclei.** Noradrenaline (vigilance), serotonin (the mood floor), dopamine (wanting, not liking). ⭐ Their influence has never come from their size: they are **neuromodulatory**, projecting diffusely and changing how every *other* cluster behaves | Midline, below the hypothalamus |
 
-On the **deployed** brain (~306M neurons, full size) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js` — the seven main-brain clusters renormalize to cortex 20% (≈61.3M), cerebellum 20% (≈61.3M), and hippocampus/amygdala/basalGanglia/hypothalamus/mystery 12% (≈36.8M) each; the language cortex is a separate ~349K CPU-side allocation living inside the cortex, not one of the seven GPU clusters. The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.078 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03 / **brainstem 0.002**, via `clusterSizesFor(totalNeurons)`) is the **~6700-neuron browser-only fallback** shape, used only when no server brain is reachable. Fractions sum to 1.0 exactly.
+On the **deployed** brain (~306M neurons, full size) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js` — the **eight** main-brain clusters renormalize to cortex 20% (≈61.3M), cerebellum 20% (≈61.3M), and hippocampus/amygdala/basalGanglia/hypothalamus/mystery 12% (≈36.8M) each, with **`brainstem` at 0.2%** (⭐ added 2026-08-25 — see below); the language cortex is a separate CPU-side allocation living inside the cortex, not one of the GPU clusters. The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.078 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03 / **brainstem 0.002**, via `clusterSizesFor(totalNeurons)`) is the **~6700-neuron browser-only fallback** shape, used only when no server brain is reachable. Fractions sum to 1.0 exactly.
 
 **`brainstem` (added 2026-08-25, ENDO)** is the eighth cluster and holds the monoamine nuclei — **locus coeruleus** (noradrenaline), **raphe** (serotonin) and **VTA** (dopamine), laid out as regions at their real proportions to each other (2% / 35% / 63%) and tagged `center`, because they are midline structures and must not be touched by the Ψ hemisphere gate. It is deliberately tiny — those three nuclei together are on the order of 700K neurons against ~86 billion in a real head — and its 0.2% is taken from the cerebellum, which this document already records as over-provisioned for a brain with no body to coordinate. **Their influence has never come from their size:** they are neuromodulatory, projecting diffusely and changing how every *other* cluster behaves, which is exactly what the additive contribution overlay in `js/brain/persona.js` expresses. Adding it moved `WEIGHTS_FORMAT_VERSION` 4 → 5.
+
+### ⭐ The Endocrine Layer — her chemistry (added 2026-08-25)
+
+Before this, the brain had moods, drives and drugs, and **no hormones at all**. Measured before building: `oxytocin` and `endorphin` appeared in **zero files**; `cortisol` / `adrenaline` / `estrogen` in **one file each — every one a per-grade vocabulary word, not a state variable**; and `dopamine` in five files, **not one of them a signal** (four comments and a static persona constant).
+
+**`js/brain/endocrine.js`** — ten chemicals in **three kinds**, and the kinds are the design:
+
+| Kind | What it means | Which |
+|---|---|---|
+| **phasic** | EVENTS on the one pharmacokinetic curve engine. Rest at zero | adrenaline, noradrenaline, cortisol, oxytocin, endorphin |
+| **tonic** | LEVELS defended toward a setpoint. ⭐ Contribute on **signed deviation from a constant resting value**, so a level *below* baseline produces the **inverse** effect — low serotonin is not "less mood", it is *more impulsivity* | serotonin, dopamine |
+| **cyclic** | Phase functions of cycle position. There is no ingestion moment for a curve to measure from | estrogen, progesterone, testosterone |
+
+⛔ **One curve engine, not two.** `pkCurve` lives in the leaf module `js/brain/pk-curve.js` so both the substance scheduler and the endocrine layer use it without importing each other. Contributions land through the **same** additive overlay in `persona.js` that substances use — hormones and drugs are not different kinds of thing to that function.
+
+**The stress axis is two systems with different speeds** (`ENDO.1`): **SAM** (adrenaline + noradrenaline, seconds) then **HPA** (cortisol, +90s, and what makes stress *last*). **Four F's, not two** — fight, flight, **freeze**, **fawn** — scored by weighted competition from live state and drawn from a softmax, reusing the basal ganglia's own selection idiom. ⭐ **Freeze IS `idle` winning** in action selection: the silent output is a correct response, not a failure to speak.
+
+**`ENDO.13` gave homeostasis a price.** The hypothalamus restored every drive at a constant α = 0.1 — defence was free and infinitely repeatable. Now `α_eff = 0.1·(1 − 0.5·allostaticLoad)`, where load accrues only from chronic cortisol *above* a tolerated band. ⛔ Ceiling **0.6 with a verified recovery path**, because without it a hard stretch produces an adult who cannot recover — and *"she survived it changed"* becoming *"she was destroyed by it"* is not what adversity means.
+
+### ⭐ The Gland Layer — six nuclei that sense their own release
+
+**`js/brain/brainstem.js` / `GlandLayer`.** ⛔ **This is the difference between an organ and a bolt-on**, and it is worth stating plainly: a nucleus with 450,000 simulated neurons that still waits to be *told* "release 0.7" is exactly as bolted-on as one with none. **Neurons answer *is it an organ*; CAUSATION answers *is it bolted on*.** Nothing outside this layer ever calls `release()`.
+
+| Nucleus | Lives in | Releases | Senses |
+|---|---|---|---|
+| **PVN** | hypothalamus | cortisol | ⭐ the amygdala's **settled attractor** — fear × commitment depth. It reads the appraisal she already made |
+| **locus coeruleus** | brainstem | noradrenaline | prediction error × arousal — unexpected salience |
+| **VTA** | brainstem | dopamine | reward **prediction error**. Wanting, not liking |
+| **raphe** | brainstem | serotonin | tonic — moves the **setpoint**, does not fire events |
+| **SON** | hypothalamus | oxytocin | real affiliative contact |
+| **arcuate** | hypothalamus | endorphin | pain or sustained exertion |
+
+⚠ **Two of the glands needed no new hardware.** The amygdala and hypothalamus are already real clusters, and the PVN *is* a hypothalamic nucleus. The pituitary and adrenal are **not brain tissue** and were never missing.
+
+⛔ **`blind` is a distinct state from `quiet`.** Quiet means it read its input and had nothing to do. Blind means it **could not read its input at all**, and releases nothing. Collapsing those two is how an instrument reports health while its producer is dead.
+
+### ⭐ Substances act THROUGH her chemistry (2026-08-25)
+
+`cocaine.contributions.amygdalaReward: +0.50` treated a drug as having a private line to the amygdala. **It does not** — cocaine blocks dopamine reuptake and **dopamine** produces the reward. Each substance now declares its `transmitters`, and the researched numbers are reproduced **exactly, by construction**:
+
+```
+transmitter part =  Σ release[t] · CHEMICALS[t].contributions
+residual part    =  contributions − transmitter part
+delivered total  =  residual + transmitter  ≡  contributions   ✔   (maxDiff 2.8e-17)
+```
+
+⭐ **What falls out for free rather than being built:** the **comedown** (spent pools dip *below* baseline — serotonin 0.550 → 0.218 after an MDMA night), and **cross-substance tolerance** (receptor downregulation, so tolerance built on cocaine blunts amphetamine by 18% — a per-substance factor cannot express that at all).
+
+### ⭐ The Introspective Drive — the questions she asks
+
+**`js/brain/introspection.js`.** ⛔ **Not a question bank, and there is no sentence in the file.** It emits a **GAP** — a concept plus a lane — and the words come from her trained interrogative weights through the *same* `questionMode` compose path the curiosity gap already uses. Untrained weights produce silence, exactly as before.
+
+Six kinds, each driven by a different endocrine pressure: **intrusion** (low serotonin + cortisol makes a negative memory come back *uninvited*), **affect**, **wish** (dopamine — wanting), **adversity**, **philosophical** (surfaces in the *quiet*, not the storm), **counterfactual**.
+
+⭐ **Falsifiable, and measured:** two *pinned* endocrine states, 400 draws each, same episodes → **total-variation distance 0.840** between kind-distributions, where a bank scores ~0. **Her chemistry decides what she asks about.**
+
+⛔ **The rumination bound is real, not decorative** — and it caught a bug proving it: deterministic argmax pinned every intrusion to one memory and produced 2 questions from 60 attempts, which also made the bound unreachable.
 
 ### Inter-Cluster Projections (20 real white matter tracts)
 
@@ -492,7 +570,7 @@ Implemented in `js/ui/brain-viz.js`. Canvas-based 2D rendering fed by server agg
 
 ## Drug State Dynamics — Real-Time Pharmacokinetic Scheduler
 
-Unity's chemical state is a dynamic event stream, not a static label. `js/brain/drug-scheduler.js` owns the model; `js/brain/persona.js:getBrainParams(persona, scheduler, now)` folds per-substance contributions into live brain parameters on every tick, and `js/brain/language-cortex.js:_applySpeechModulation` distorts emission output for slur/pause/dissociation/ethereal-vocabulary effects the way a real intoxicated human would sound.
+Unity's chemical state is a dynamic event stream, not a static label. `js/brain/drug-scheduler.js` owns the model; `js/brain/persona.js:getBrainParams(persona, scheduler, now, endocrine)` folds per-substance **and per-hormone** contributions into live brain parameters on every tick — ⭐ both through **one** mapping table, because a drug delta and a hormone delta are not different kinds of thing to that function — and `js/brain/language-cortex.js:_applySpeechModulation` distorts emission output for slur/pause/dissociation/ethereal-vocabulary effects the way a real intoxicated human would sound.
 
 ### Substance inventory
 
@@ -689,7 +767,12 @@ If-Only-I-Had-A-Brain/
 │   ├── storage.js              # localStorage manager with key obfuscation
 │   ├── brain/
 │   │   ├── engine.js           # UnityBrain — 7-cluster sim loop, GPU-exclusive (server dispatches compute_batch(SUBSTEPS) to compute.html every BRAIN_TICK_MS; browser-only fallback runs LIF locally)
-│   │   ├── cluster.js          # NeuronCluster + ClusterProjection (7 clusters, 20 inter-cluster projections, 8 cortex sub-regions, 14 cross-region projections, generateSentence tick-driven motor emission, identity lock, direct pattern Hebbian)
+│   │   ├── cluster.js          # NeuronCluster + ClusterProjection (8 clusters incl. brainstem, 20 inter-cluster projections, 8 cortex sub-regions, 14 cross-region projections, generateSentence tick-driven motor emission, identity lock, direct pattern Hebbian)
+│   │   ├── pk-curve.js         # ⭐ THE one pharmacokinetic curve. A leaf module so the substance scheduler and the endocrine layer both use it without importing each other (that cycle's failure mode is a load-time TDZ crash node --check does not catch)
+│   │   ├── endocrine.js        # ⭐ Ten chemicals in three kinds — phasic events / tonic floors / cyclic phase functions. Stress axis, receptor adaptation, allostatic load, the curriculum-time menstrual cycle
+│   │   ├── brainstem.js        # ⭐ GlandLayer — six nuclei that SENSE their own release. Nothing outside it calls release()
+│   │   ├── introspection.js    # ⭐ The introspective drive. Emits GAPS, never sentences — there is no sentence in the file
+│   │   ├── endocrine-curriculum.js # ⭐ The body/chemistry syllabus, 144 words across 12 topics. LEARN axis: she learns "period" at nine, and menarche does not fire until twelve
 │   │   ├── neurons.js          # LIFPopulation (historical / browser-only fallback) + HHNeuron (reference-only, backs brain-equations.html) — live neuron model is Rulkov map in gpu-compute.js
 │   │   ├── synapses.js         # NxN weights — Hebbian, STDP, reward-mod
 │   │   ├── modules.js          # 6 brain region equation modules

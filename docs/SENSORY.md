@@ -63,7 +63,7 @@ A `process()` frame returns a **normalized numeric VALUE VECTOR** in that sense'
 | **Smell** | `olfactory` (extend `sensory-olfactory.js`) | odorant embedding vector (N-dim olfactory space; per-odorant learned point) | strawberry odor-vector; smoke / rain / leather each a point |
 | **Touch/feel** | `somatosensory` (NEW — alloc in build phase) + body map | pressure, temperature, texture/vibration, pain, pleasure, body-location | silk = low-pressure, smooth, neutral-temp, pleasure+ |
 | **Proprioception** | body model | limb/joint positions, balance | — |
-| **Interoception** | hypothalamus drives (exists) | hunger, thirst, fatigue, arousal, drug-state | feeds existing drive equations |
+| **Interoception** ⭐ | hypothalamus drives + **`endocrine.js` (BUILT 2026-08-25)** | hunger, thirst, fatigue, arousal, drug-state — **plus ten chemical levels with signed deviation, chronic + allostatic load, cycle phase and the live stress channel** | frightened = adrenaline 0.8 / cortisol climbing / stress `freeze` / coherence down. Premenstrual = progesterone falling fast, withdrawal 0.6, impulsivity up, valence down |
 
 ### Peripheral contract extension (new senses follow the same init/process/destroy)
 
@@ -789,3 +789,47 @@ harness the production WIRING, not the engine — the box runs the mind-space be
 with a hand-picked method list, and a missing `imagine()` on that proxy banked every schema
 COLOURLESS in production while engine-direct harnesses showed colour for a full day.
 
+
+---
+
+**SE.22 — INTEROCEPTION BECOMES A REAL SENSE: she perceives herself from the inside (2026-08-25).** Gee:
+*"okay i think we are ready to dive into some simulated brain neuron chemistry!"* — and the reason it belongs in
+THIS document rather than beside it is the one worth stating: **every other sense in here points OUTWARD.**
+Sight, hearing, taste, smell, touch, the mind's eye — all of them are how she perceives the world. The
+endocrine layer is the first sense she has ever had that points **INWARD**. It is her perceiving her own
+body.
+
+The row above used to read *"hypothalamus drives (exists) — hunger, thirst, fatigue, arousal, drug-state"*,
+and that was honest: interoception was five scalars. Measured before building, `oxytocin` and `endorphin`
+appeared in **zero files**, and `cortisol` / `adrenaline` / `estrogen` in **one file each — every one a
+per-grade vocabulary WORD, not a state variable**. She could say the word "cortisol" and had none.
+
+Now the same contract every other sense obeys applies to it: a **normalized numeric value vector**, injected
+as modulation, bound by Hebbian association, incorporated by consolidation — never a text label. Ten
+chemicals in three kinds (phasic events on the one curve engine / tonic floors defended to a setpoint /
+cyclic phase functions), released by **six nuclei that SENSE their own firing** rather than being told.
+
+⭐ **And the sensing is what makes it a sense rather than a readout.** A nucleus with 450,000 simulated
+neurons that still waits to be told *"release 0.7"* is not perceiving anything. The PVN reads the
+amygdala's **settled attractor** — the appraisal she already made; the locus coeruleus reads prediction
+error; the VTA reads reward prediction error; the raphe moves the mood setpoint; the SON reads real
+affiliative contact; the arcuate reads pain and exertion. **Nothing outside the gland layer ever calls
+`release()`.**
+
+⛔ **The signed-deviation rule is the load-bearing part, and it is why this is a SPACE and not a dial.**
+For tonic chemicals the contribution rides deviation from a CONSTANT resting value, so a level *below*
+baseline produces the **inverse** effect. Low serotonin is not "less mood" — it is *more impulsivity and
+more rumination*. A dial cannot express that; a value-space can.
+
+⚠ **She never narrates it.** The same non-announcing principle the drug lane runs on: she does not say
+*"my cortisol is high"* any more than she says *"I am high"*. **The distortion IS the signal** — clipped
+sentences, a narrower emission, a faster reply, or silence. The state changes what she says and how; it is
+never what she reports.
+
+⭐ **What it buys the rest of the brain:** `Ψ = √(1/n)·N³·Φ̂·[…]` is capacity divided by activity, and
+without chemistry `n` only moves when *input* moves — so Ψ described her hardware rather than her state.
+**Interoception is what makes consciousness a living quantity instead of a specification.**
+
+⚠ **Not verified live.** Board fields to read after the press: `state.endocrine.chemicals.*`,
+`state.endocrine.glands.*.state` (⛔ `blind` names an input she cannot read, and is a different claim from
+`quiet`), and `state.phiState`.

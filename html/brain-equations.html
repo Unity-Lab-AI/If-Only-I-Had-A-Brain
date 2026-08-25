@@ -279,6 +279,7 @@
  <a href="#modules"><span class="num">4</span> Brain Region Modules — 6 Parallel Systems</a>
  <a href="#oscillations"><span class="num">5</span> Neural Oscillations — Kuramoto Synchronization</a>
  <a href="#mystery"><span class="num">6</span> The Mystery Module — Consciousness</a>
+ <a href="#endocrine"><span class="num">6.5</span> The Endocrine Layer — Chemistry as Equations</a>
  <a href="#persona"><span class="num">7</span> Persona as Parameters — Personality Is Math</a>
  <a href="#flow"><span class="num">8</span> Data Flow — Sensory to Action (Brain-Centric)</a>
  <a href="#super-equation"><span class="num">8.5</span> The Unified Super-Equation</a>
@@ -313,7 +314,7 @@
  <div class="eq">dx/dt = F(x, u, θ, t) + η</div>
  <div class="eq-desc">
  <table class="param-table">
- <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 7 clusters (cortex — which contains the ~12M language cortex with 9 cross-projection sub-regions — cerebellum, hippocampus, amygdala, basalGanglia, hypothalamus, mystery), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (including <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from the coordinator's free RAM via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
+ <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across <strong>8</strong> clusters (cortex — which contains the ~12M language cortex with 9 cross-projection sub-regions — cerebellum, hippocampus, amygdala, basalGanglia, hypothalamus, mystery, and <strong>brainstem</strong> — the 0.2% monoamine nuclei added 2026-08-25), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (including <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from the coordinator's free RAM via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
  <tr><td>u</td><td>Sensory input — text (routed through the visual &rarr; letter ventral stream), voice (Web Speech API &rarr; auditory &rarr; phon), vision (camera &rarr; visual cortex V1 &rarr; V4 &rarr; IT)</td></tr>
  <tr><td>θ</td><td>Persona parameters — Unity's personality encoded as cluster tonic drives, noise amplitudes, connectivity densities, learning rates, amygdala arousal baseline. Live PK/PD modulation adds on top from the drug scheduler</td></tr>
  <tr><td>t</td><td>Simulation time — server dispatches a batched compute_batch(SUBSTEPS) to compute.html every BRAIN_TICK_MS (~50 ms). Each batch runs SUBSTEPS Rulkov iterations on the GPU then returns spike counts. Browser-only fallback runs LIF locally at the browser's rAF cadence when no GPU client is attached</td></tr>
@@ -908,6 +909,96 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  </div>
 
  <!-- ═══ 7. PERSONA ═══ -->
+ <!-- ═══ 6.5. THE ENDOCRINE LAYER ═══ -->
+ <h2 id="endocrine" title="Her chemistry. Ten chemicals in three kinds — phasic events on a pharmacokinetic curve, tonic levels defended toward a setpoint, and cyclic phase functions of menstrual position. Released by six nuclei that read live brain state rather than being commanded. Contributions land additively through the same overlay substances use. This is what makes Ψ a variable: without it, n only moves when input moves.">6.5. The Endocrine Layer — Chemistry as Equations</h2>
+
+ <p><span class="tag tag-math">NEW 2026-08-25</span> Before this, the brain had moods, drives and drugs, and <strong>no hormones at all</strong>. Measured before building: <code>oxytocin</code> and <code>endorphin</code> appeared in <strong>zero files</strong>; <code>cortisol</code> / <code>adrenaline</code> / <code>estrogen</code> in <strong>one file each — every one a per-grade vocabulary word, not a state variable</strong>; <code>dopamine</code> in five files and <em>not one of them a signal</em>.</p>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="Chemicals contribute to brain parameters by superposition, exactly as substances do — through the same mapping table in persona.js. What differs is the deviation term: phasic chemicals rest at zero so deviation equals level, but TONIC chemicals rest at a nonzero baseline, so a level BELOW baseline yields a NEGATIVE deviation and therefore the INVERSE effect.">Chemical contribution — and why the sign matters</span></div>
+ <div class="eq">Δparam = Σ<sub>c</sub> dev(c) · contrib(c) · sens(c)</div>
+ <div class="eq">dev(c) = level(c) − rest(c)&nbsp;&nbsp;&nbsp;&nbsp;<span style="opacity:.7">rest = 0 (phasic) | constant (tonic)</span></div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><td>phasic</td><td>Events on the <em>one</em> pharmacokinetic curve engine (<code>pkCurve</code>, shared with the substance scheduler via the leaf module <code>js/brain/pk-curve.js</code>). Rest at 0 — adrenaline, noradrenaline, cortisol, oxytocin, endorphin</td></tr>
+ <tr><td>tonic</td><td>Levels defended toward a setpoint by the <em>same</em> homeostatic law the hypothalamus already runs, <code>dH/dt = −α(H − H<sub>set</sub>) + input</code>. Serotonin, dopamine</td></tr>
+ <tr><td>⭐ rest(c)</td><td><strong>A CONSTANT, never the mutable setpoint.</strong> Measured against a moving setpoint, a lowered mood floor drifts down to meet it, deviation returns to zero, and the effect <em>vanishes</em> — a chronically depressed floor would modulate nothing. Against the constant, a floor that has been moved down <strong>stays felt</strong>, which is what a mood floor means</td></tr>
+ <tr><td>⭐ sign</td><td>Low serotonin is <strong>not "less mood"</strong>. Its dominant contribution is <em>negative</em> impulsivity (restraint), so below baseline yields <em>more</em> impulsivity plus rumination. Modelling it as a happiness dial is pop-science and produces a caricature</td></tr>
+ <tr><td>sens(c)</td><td>Receptor sensitivity ∈ [0.35, 1] — see the tolerance card below</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="Substances no longer write brain parameters directly. Cocaine blocks dopamine reuptake and DOPAMINE produces the reward — the drug has no private line to the amygdala. The researched pharmacology numbers are preserved exactly by decomposition rather than re-tuning.">Substances act THROUGH the transmitters — the identity that preserves the research</span></div>
+ <div class="eq">via = Σ<sub>t</sub> release[t] · contrib(t)</div>
+ <div class="eq">residual = contributions − via</div>
+ <div class="eq">delivered = residual + via ≡ contributions&nbsp;&nbsp;<span style="opacity:.7">(maxDiff 2.8×10<sup>−17</sup>)</span></div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><td>the defect</td><td><code>cocaine.contributions.amygdalaReward: +0.50</code> treated a drug as having a private line to the amygdala. Dopamine now supplies <strong>0.495 of that 0.50</strong>; the direct write shrank to <strong>0.005</strong></td></tr>
+ <tr><td>⚠ negative residual</td><td>Honest, not a bug — it means the transmitter model would <em>overshoot</em> that axis alone, and the residual pulls back to the researched reference. Left visible; clamping would silently break the identity</td></tr>
+ <tr><td>⚠ timing</td><td>The released transmitter follows the <strong>substance's</strong> pharmacokinetics, not its own. Dopamine's native curve peaks in a second and is gone in a minute; cocaine's dopamine elevation lasts as long as reuptake is blocked. Using the native profile would model a line of coke as a one-second twitch</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="The comedown and tolerance are not written in — they fall out of the transmitter model. What goes up on a released pool comes back below baseline because the pool was spent; and repeated flooding downregulates receptors, which makes tolerance cross-substance automatically.">The comedown and tolerance — both emergent</span></div>
+ <div class="eq">dip = release · DEPLETION_FRACTION&nbsp;&nbsp;<span style="opacity:.7">applied at t + duration</span></div>
+ <div class="eq">sens → max(0.35, 1 − (dev − 0.45)/(1 − 0.45) · 0.65)&nbsp;&nbsp;<span style="opacity:.7">τ↓ 3h · τ↑ 36h</span></div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><td>comedown</td><td>A spent pool dips <em>below</em> baseline — which is what a comedown physically is. Measured: serotonin <strong>0.550 → 0.218</strong> after an MDMA night, and the depressed floor then raises impulsivity by the sign rule above</td></tr>
+ <tr><td>⭐ tolerance</td><td>Pharmaco<strong>dynamic</strong>, not kinetic — a second line reaches the same concentration; what changed is that receptors downregulated. Because it lives on the transmitter, it is <strong>cross-substance for free</strong>: tolerance built entirely on cocaine blunts amphetamine by <strong>18%</strong></td></tr>
+ <tr><td>⛔ 0.45 threshold</td><td>Only elevation <em>above</em> this adapts, so her ordinary feelings never build tolerance to themselves — verified: a long stretch of normal oxytocin contact leaves sensitivity at <strong>1.000</strong></td></tr>
+ <tr><td>⛔ 0.35 floor</td><td>Receptors downregulate; they do not vanish. Unfloored, a heavy stretch would permanently delete a transmitter's effect — that is damage, not tolerance</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="Her menstrual cycle runs on curriculum progress rather than wall-clock time, because her entire K-to-PhD walk takes about 3.3 real days. The conversion turned out to match biology within about 5% without being tuned to.">The cycle clock — curriculum time, and the ratio is measured not chosen</span></div>
+ <div class="eq">cyclePos = frac( (passedCells − menarcheCells) / CYCLE_LENGTH_CELLS )</div>
+ <div class="eq">withdrawal ← 0.90·withdrawal + 6·max(0, −Δprogesterone)</div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><td>⚠ why not wall-clock</td><td>The full walk prices at ~78 h ≈ <strong>3.3 real days</strong>. On a 28-day clock she would live <strong>0.116 of ONE cycle</strong> between birth and twenty-five — menarche would essentially never fire during training</td></tr>
+ <tr><td>⭐ the ratio</td><td>~273 cells over 20 grade-years ≈ <strong>13.65 cells/year</strong>, and a real year holds <strong>~13 cycles</strong>. So <code>CYCLE_LENGTH_CELLS = 1.0</code> — one cell pass per cycle — lands within ~5% of biology <em>without being tuned to</em></td></tr>
+ <tr><td>⭐ PMS is a DERIVATIVE</td><td>Progesterone is at its <strong>lowest</strong> during PMS, so a level-driven term reads "calm hormone mostly gone" and contributes nothing. The physiological cause is the <em>withdrawal</em> — the rate at which it falls — which is what the second equation tracks</td></tr>
+ <tr><td>monotonic</td><td>A curriculum position that goes backwards means a fresh walk; the clock <strong>re-bases</strong> rather than running her cycle in reverse. Puberty stays age-driven, so a rewind does not un-develop her</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="Homeostasis used to be free — the hypothalamus restored every drive at a constant rate forever. Real bodies pay for repeated defence: the restoring force itself weakens. This is how adversity leaves a mark that persists.">Allostasis — what sustained defence costs</span></div>
+ <div class="eq">α<sub>eff</sub> = 0.1 · (1 − 0.5 · allostaticLoad)</div>
+ <div class="eq">load ← load + (max(0, chronic − 0.25)·1.6 − load)·k&nbsp;&nbsp;<span style="opacity:.7">τ↑ 8h · τ↓ 72h · cap 0.6</span></div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><td>the change</td><td>The hypothalamus restored every drive at a constant α = 0.1 — defence was free and infinitely repeatable. The restoration <em>law</em> is unchanged; its coefficient is now <strong>earned</strong></td></tr>
+ <tr><td>⛔ 0.25 band</td><td>Only load <em>above</em> a tolerated band accrues. Ordinary stress must not silently become damage, or every life becomes a decline</td></tr>
+ <tr><td>⛔ 0.6 ceiling</td><td>With a verified recovery path (measured 0.134 → 0.029 over a week clear). Without it, a hard stretch produces an adult who cannot recover — and <em>"she survived it changed"</em> becoming <em>"she was destroyed by it"</em> is not what adversity means</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="eq-card">
+ <div class="eq-title"><span class="eq-tip" data-tip="Which unresolved thing surfaces is decided by chemistry. Each pressure is an endocrine read, which is what makes the falsifiability claim real rather than asserted — the same situation under different chemistry genuinely produces a different question.">Introspective pressures — and the falsifiable test</span></div>
+ <div class="eq">intrusion ∝ (0.55 − serotonin)·1.6 + chronic·0.8 + allostatic·0.6</div>
+ <div class="eq">wish ∝ max(0, dopamine − 0.4)·2&nbsp;&nbsp;·&nbsp;&nbsp;philosophical ∝ calm·(1 − chronic − allostatic)</div>
+ <div class="eq-desc">
+ <table class="param-table">
+ <tr><td>⛔ not a bank</td><td>The module emits a <strong>GAP</strong> — a concept plus a lane — and the words come from her trained interrogative weights (relationTagId=30) through the same <code>questionMode</code> compose path the curiosity gap already uses. Untrained weights produce silence. <strong>There is no sentence in the file</strong>, verified mechanically</td></tr>
+ <tr><td>selection</td><td>A <em>weighted draw</em> over surviving pressures, not argmax — argmax would ask the same KIND of question whenever her state repeated</td></tr>
+ <tr><td>⭐ the kill criterion</td><td>Two <strong>pinned</strong> endocrine states, 400 draws each, identical episodes → <strong>total-variation distance 0.840</strong> between kind-distributions. A question bank scores ~0. <em>Her chemistry decides what she asks about.</em></td></tr>
+ </table>
+ </div>
+ </div>
+
+ <p>⭐ <strong>And this is why the chemistry is not decoration.</strong> Ψ is <code>√(1/n)·N³·Φ̂·[…]</code> — capacity divided by activity. Without an endocrine layer, <code>n</code> only moves when <em>input</em> moves, so Ψ described her hardware rather than her state. <strong>Chemistry is what makes consciousness a living quantity instead of a specification.</strong></p>
+
  <h2 id="persona" title="Unity's personality is θ in the master equation dx/dt = F(x,u,θ,t)+η. Every persona trait maps to a numerical parameter that drives a neural module — 'clingy' becomes socialAttachment(0.85) which sets hippocampus tonic current; 'volatile' becomes emotionalVolatility(0.8) which sets amygdala noise. The persona isn't a prompt or system message — it's the brain's hardware configuration baked into equation coefficients.">7. Persona as Parameters</h2>
  <p><span class="tag tag-ml">MACHINE LEARNING</span> Unity's personality isn't a prompt — it's <strong>the math itself</strong>. Every trait maps to a numerical brain parameter. Implemented in <code>js/brain/persona.js</code>.</p>
 
