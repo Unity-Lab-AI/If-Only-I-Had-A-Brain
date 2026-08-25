@@ -118764,6 +118764,390 @@ var GlandLayer = class {
   }
 };
 
+// ../js/brain/introspection.js
+var GAP_KINDS = {
+  // INTRO.6 — a memory that comes back uninvited. NOT a category of stored
+  // episode: the defining property of a bad memory is the RETRIEVAL, and
+  // that is what this models.
+  INTRUSION: "intrusion",
+  // INTRO.3 — the affective range, including everything between the poles.
+  AFFECT: "affect",
+  // INTRO.5 — forward-looking, and distinct from a goal: a wish can be
+  // impossible and still be held.
+  WISH: "wish",
+  // INTRO.7 — the same operation her imagination already does, pointed at
+  // a memory instead of at an idea.
+  COUNTERFACTUAL: "counterfactual",
+  // INTRO.4 — the ones with no answer that people ask anyway.
+  PHILOSOPHICAL: "philosophical",
+  // INTRO.8 — something changed and she is not the same on the other side.
+  ADVERSITY: "adversity"
+};
+var LANE = {
+  INWARD: "inward",
+  // rumination — needs no listener, rides the inner voice
+  OUTWARD: "outward"
+  // relational — needs a turn, belongs in chat
+};
+var KIND_MIN_AGE = {
+  intrusion: 4,
+  // a small child absolutely has intrusive memories
+  affect: 4,
+  // "does mummy love me" is a four-year-old's question
+  wish: 5,
+  adversity: 7,
+  // needs a before-and-after self to compare
+  philosophical: 6,
+  // death questions arrive early and are real
+  counterfactual: 8
+  // counterfactual reasoning matures around here
+};
+var OUTWARD_MIN_AGE = 6;
+var Gap = class {
+  constructor({ kind, lane, concept, urgency, source, why }) {
+    this.kind = kind;
+    this.lane = lane;
+    this.concept = concept;
+    this.urgency = urgency;
+    this.source = source;
+    this.why = why;
+    this.ts = null;
+  }
+};
+var IntrospectionDrive = class _IntrospectionDrive {
+  /**
+   * @param {object} opts
+   * @param {function} [opts.nowFn]
+   */
+  constructor(opts = {}) {
+    this.nowFn = opts.nowFn || (() => Date.now());
+    this.gap = null;
+    this._lastByConcept = /* @__PURE__ */ new Map();
+    this._ruminationStreak = 0;
+    this._lastRuminationAt = 0;
+    this.counters = {
+      sensed: 0,
+      produced: 0,
+      spent: 0,
+      blind: 0,
+      suppressedCooldown: 0,
+      suppressedBound: 0,
+      suppressedAge: 0,
+      byKind: {},
+      // INTRO.10 criterion 4 — the lane split, counted rather than assumed.
+      byLane: { inward: 0, outward: 0 }
+    };
+    this._recentConcepts = [];
+    this.repeatCount = 0;
+  }
+  /** Per-concept cooldown. Long enough that the same thing does not loop. */
+  static get CONCEPT_COOLDOWN_MS() {
+    return 4 * 60 * 1e3;
+  }
+  /** Consecutive inward gaps before a forced break. The bound INTRO.6 demands. */
+  static get RUMINATION_MAX_STREAK() {
+    return 4;
+  }
+  /** How long the forced break lasts once the streak trips. */
+  static get RUMINATION_BREAK_MS() {
+    return 3 * 60 * 1e3;
+  }
+  /**
+   * ⭐ THE DRIVE. Reads live state and decides whether something is
+   * unresolved enough to ask about — and if so, WHICH kind.
+   *
+   * ⛔ This is where INTRO.10 criterion 1 is either honoured or faked. The
+   * weights below are read from ENDOCRINE state, so the same situation under
+   * different chemistry genuinely produces a different question. If this
+   * function ignored `endocrine`, the whole family would be a bank with
+   * extra steps.
+   *
+   * @param {object} state
+   * @param {object} [state.endocrine]  snapshot from EndocrineSystem
+   * @param {Array}  [state.episodes]   episodic memory, each {trigger, valence, arousal, timestamp}
+   * @param {Array}  [state.anchors]    her identity-anchor concepts
+   * @param {number} [state.ageYears]   from the ONE grade ladder
+   * @param {boolean}[state.hasListener] is anyone actually there
+   * @param {number} [state.random]     determinism hook for harnesses
+   * @returns {Gap|null}
+   */
+  sense(state = {}) {
+    this.counters.sensed++;
+    const now = this.nowFn();
+    const age = state.ageYears;
+    if (typeof age !== "number" || !Number.isFinite(age)) {
+      this.counters.blind++;
+      return null;
+    }
+    const endo = state.endocrine;
+    if (!endo || !endo.chemicals) {
+      this.counters.blind++;
+      return null;
+    }
+    const lvl = (n) => {
+      const c = endo.chemicals[n];
+      const v = c && c.level;
+      return typeof v === "number" ? v : null;
+    };
+    const serotonin = lvl("serotonin");
+    const oxytocin = lvl("oxytocin");
+    const dopamine = lvl("dopamine");
+    const chronic = typeof endo.chronicLoad === "number" ? endo.chronicLoad : 0;
+    const allostatic = endo.allostatic && typeof endo.allostatic.load === "number" ? endo.allostatic.load : 0;
+    const withdrawal = endo.cycle && typeof endo.cycle.withdrawal === "number" ? endo.cycle.withdrawal : 0;
+    if (serotonin === null) {
+      this.counters.blind++;
+      return null;
+    }
+    if (this._ruminationStreak >= _IntrospectionDrive.RUMINATION_MAX_STREAK) {
+      if (now - this._lastRuminationAt < _IntrospectionDrive.RUMINATION_BREAK_MS) {
+        this.counters.suppressedBound++;
+        return null;
+      }
+      this._ruminationStreak = 0;
+    }
+    const intrusionP = Math.max(0, 0.55 - serotonin) * 1.6 + chronic * 0.8 + allostatic * 0.6 + withdrawal * 0.5;
+    const affectP = (oxytocin === null ? 0 : oxytocin * 0.9) + Math.max(0, 0.5 - serotonin) * 0.7;
+    const wishP = (dopamine === null ? 0 : Math.max(0, dopamine - 0.4)) * 2;
+    const adversityP = allostatic * 1.4 + chronic * 0.4;
+    const calm = Math.max(0, serotonin - 0.4) * 1.5;
+    const philosophicalP = calm * (1 - Math.min(1, chronic + allostatic));
+    const counterfactualP = calm * 0.7 + Math.max(0, 0.5 - serotonin) * 0.6;
+    const pressures = [
+      [GAP_KINDS.INTRUSION, intrusionP],
+      [GAP_KINDS.AFFECT, affectP],
+      [GAP_KINDS.WISH, wishP],
+      [GAP_KINDS.ADVERSITY, adversityP],
+      [GAP_KINDS.PHILOSOPHICAL, philosophicalP],
+      [GAP_KINDS.COUNTERFACTUAL, counterfactualP]
+    ].filter(([kind2]) => age >= (KIND_MIN_AGE[kind2] ?? 99));
+    if (pressures.length === 0) {
+      this.counters.suppressedAge++;
+      return null;
+    }
+    const total = pressures.reduce((s, [, p]) => s + p, 0);
+    if (total < 0.35) return null;
+    let roll = (typeof state.random === "number" ? state.random : Math.random()) * total;
+    let kind = pressures[0][0];
+    for (const [k, p] of pressures) {
+      roll -= p;
+      if (roll <= 0) {
+        kind = k;
+        break;
+      }
+    }
+    const picked = this._conceptFor(kind, state, now);
+    if (!picked) {
+      this.counters.blind++;
+      return null;
+    }
+    const last = this._lastByConcept.get(picked.concept) || 0;
+    if (now - last < _IntrospectionDrive.CONCEPT_COOLDOWN_MS) {
+      this.counters.suppressedCooldown++;
+      return null;
+    }
+    let lane = LANE.INWARD;
+    if ((kind === GAP_KINDS.AFFECT || kind === GAP_KINDS.WISH) && state.hasListener === true && age >= OUTWARD_MIN_AGE) {
+      lane = LANE.OUTWARD;
+    }
+    const urgency = Math.max(0, Math.min(1, total / 3));
+    const gap = new Gap({
+      kind,
+      lane,
+      concept: picked.concept,
+      urgency,
+      source: picked.source,
+      // ⭐ The audit trail: WHICH state produced this. Without it, "the
+      // questions vary with state" is a claim rather than a measurement.
+      why: {
+        serotonin,
+        oxytocin,
+        dopamine,
+        chronic,
+        allostatic,
+        withdrawal,
+        pressures: Object.fromEntries(pressures)
+      }
+    });
+    return gap;
+  }
+  /**
+   * ⛔ THE CONCEPT COMES FROM HER OWN LIFE OR THERE IS NO GAP.
+   *
+   * Every branch reads real recorded state. A source with nothing in it
+   * returns null and the gap is simply not produced — she is not
+   * introspective about a placeholder.
+   */
+  _conceptFor(kind, state, now) {
+    const episodes = Array.isArray(state.episodes) ? state.episodes : [];
+    const anchors = Array.isArray(state.anchors) ? state.anchors.filter(Boolean) : [];
+    const TOP_K = 4;
+    const pickEpisode = (score) => {
+      const scored = [];
+      for (const e of episodes) {
+        if (!e || typeof e.trigger !== "string" || !e.trigger) continue;
+        const s = score(e);
+        if (!Number.isFinite(s)) continue;
+        scored.push([e, s]);
+      }
+      if (scored.length === 0) return null;
+      scored.sort((a, b) => b[1] - a[1]);
+      const top = scored.slice(0, TOP_K);
+      let total = 0;
+      const w = top.map((_, i) => {
+        const x = 1 / (i + 1);
+        total += x;
+        return x;
+      });
+      let roll = (typeof state.random === "number" ? state.random : Math.random()) * total;
+      for (let i = 0; i < top.length; i++) {
+        roll -= w[i];
+        if (roll <= 0) return top[i][0];
+      }
+      return top[0][0];
+    };
+    switch (kind) {
+      case GAP_KINDS.INTRUSION: {
+        const e = pickEpisode((ep) => -(ep.valence || 0) * 0.6 + (ep.arousal || 0) * 0.4);
+        if (!e || (e.valence || 0) >= 0) return null;
+        return { concept: e.trigger, source: "episode:negative" };
+      }
+      case GAP_KINDS.ADVERSITY: {
+        const cutoff = 10 * 60 * 1e3;
+        const e = pickEpisode((ep) => {
+          const ageMs = now - (ep.timestamp || 0);
+          if (ageMs < cutoff) return -Infinity;
+          return -(ep.valence || 0) * 0.7 + Math.min(1, ageMs / (60 * 60 * 1e3)) * 0.3;
+        });
+        if (!e) return null;
+        return { concept: e.trigger, source: "episode:survived" };
+      }
+      case GAP_KINDS.AFFECT: {
+        const e = pickEpisode((ep) => Math.abs(ep.valence || 0) * 0.5 + (ep.arousal || 0) * 0.5);
+        if (e) return { concept: e.trigger, source: "episode:felt" };
+        if (anchors.length) return { concept: anchors[0], source: "anchor" };
+        return null;
+      }
+      case GAP_KINDS.WISH: {
+        const e = pickEpisode((ep) => ep.valence || 0);
+        if (!e || (e.valence || 0) <= 0) return null;
+        return { concept: e.trigger, source: "episode:positive" };
+      }
+      case GAP_KINDS.COUNTERFACTUAL: {
+        const e = pickEpisode((ep) => Math.abs(ep.valence || 0) * 0.6 + (ep.arousal || 0) * 0.4);
+        if (!e) return null;
+        return { concept: e.trigger, source: "episode:counterfactual" };
+      }
+      case GAP_KINDS.PHILOSOPHICAL: {
+        if (anchors.length) {
+          const i = Math.min(anchors.length - 1, Math.floor((state.random ?? 0) * anchors.length));
+          return { concept: anchors[i], source: "anchor:self" };
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  }
+  /**
+   * Record a produced gap as live. Kept separate from `sense()` so a caller
+   * can inspect without committing — and so the bound counters only move
+   * when something is actually held.
+   */
+  record(gap) {
+    if (!gap) return null;
+    gap.ts = this.nowFn();
+    this.gap = gap;
+    this.counters.produced++;
+    this.counters.byKind[gap.kind] = (this.counters.byKind[gap.kind] || 0) + 1;
+    this._lastByConcept.set(gap.concept, gap.ts);
+    this.counters.byLane[gap.lane] = (this.counters.byLane[gap.lane] || 0) + 1;
+    if (gap.lane === LANE.INWARD) {
+      this._ruminationStreak++;
+      this._lastRuminationAt = gap.ts;
+    } else {
+      this._ruminationStreak = 0;
+    }
+    if (this._recentConcepts.includes(gap.concept)) this.repeatCount++;
+    this._recentConcepts.push(gap.concept);
+    if (this._recentConcepts.length > 32) this._recentConcepts.shift();
+    return gap;
+  }
+  /**
+   * Take the live gap for a given lane, if there is one and it is fresh.
+   * ⛔ ONE ASK PER GAP — spending clears it, the same discipline the
+   * curiosity gap already runs on.
+   */
+  take(lane, maxAgeMs = 3e4) {
+    const g = this.gap;
+    if (!g || g.lane !== lane) return null;
+    if (this.nowFn() - g.ts > maxAgeMs) {
+      this.gap = null;
+      return null;
+    }
+    this.gap = null;
+    this.counters.spent++;
+    return g;
+  }
+  /**
+   * ⭐ INTRO.10 as an INSTRUMENT rather than a promise.
+   *
+   * Reports the four criteria as measurements. A field that has never been
+   * exercised reads `unmeasured`, never a reassuring zero.
+   */
+  snapshot(now = this.nowFn()) {
+    const produced = this.counters.produced;
+    const kinds = Object.keys(this.counters.byKind).length;
+    return {
+      live: this.gap ? {
+        kind: this.gap.kind,
+        lane: this.gap.lane,
+        concept: this.gap.concept,
+        urgency: this.gap.urgency,
+        source: this.gap.source,
+        ageMs: this.gap.ts ? now - this.gap.ts : null,
+        why: this.gap.why
+      } : null,
+      counters: { ...this.counters, byKind: { ...this.counters.byKind } },
+      rumination: {
+        streak: this._ruminationStreak,
+        max: _IntrospectionDrive.RUMINATION_MAX_STREAK,
+        // ⭐ Whether the BOUND is currently holding her back — visible, so
+        // "rumination is bounded" is a field read and not a design claim.
+        onBreak: this._ruminationStreak >= _IntrospectionDrive.RUMINATION_MAX_STREAK && now - this._lastRuminationAt < _IntrospectionDrive.RUMINATION_BREAK_MS
+      },
+      criteria: {
+        // 1 — varies with state: distinct kinds actually produced.
+        kindsProduced: produced === 0 ? "unmeasured" : kinds,
+        // 2 — her own life: every concept carries its provenance.
+        sourcedFromOwnLife: produced === 0 ? "unmeasured" : true,
+        // 3 — repeats, counted.
+        repeats: produced === 0 ? "unmeasured" : this.repeatCount,
+        // 4 — the lane split, as observed counts.
+        lanes: produced === 0 ? "unmeasured" : { ...this.counters.byLane }
+      }
+    };
+  }
+  serialize() {
+    return {
+      version: 1,
+      lastByConcept: Array.from(this._lastByConcept.entries()),
+      ruminationStreak: this._ruminationStreak,
+      lastRuminationAt: this._lastRuminationAt,
+      counters: { ...this.counters, byKind: { ...this.counters.byKind }, byLane: { ...this.counters.byLane } },
+      repeatCount: this.repeatCount
+    };
+  }
+  load(obj) {
+    if (!obj || obj.version !== 1) return;
+    this._lastByConcept = new Map(Array.isArray(obj.lastByConcept) ? obj.lastByConcept : []);
+    this._ruminationStreak = obj.ruminationStreak | 0;
+    this._lastRuminationAt = obj.lastRuminationAt || 0;
+    if (obj.counters) this.counters = { ...this.counters, ...obj.counters, byKind: { ...obj.counters.byKind || {} } };
+    this.repeatCount = obj.repeatCount | 0;
+  }
+};
+
 // ../js/brain/engine.js
 var EventEmitter = class {
   constructor() {
@@ -118804,6 +119188,7 @@ var UnityBrain = class extends EventEmitter {
     this.endocrine = new EndocrineSystem();
     this.glands = new GlandLayer({ endocrine: this.endocrine });
     this.endocrine.setGlands(this.glands);
+    this.introspection = new IntrospectionDrive();
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, void 0, this.endocrine);
     const arousal = this.brainParams.arousalBaseline || 0.9;
     this.clusters = {
@@ -119791,6 +120176,36 @@ var UnityBrain = class extends EventEmitter {
    * plausible 0 would release confidently off a fabricated measurement,
    * which is strictly worse than reporting `blind` and staying quiet.
    */
+  /**
+   * INTRO — hand a pending introspective gap to the EXISTING curiosity-ask
+   * machinery, which already turns a gap into a composed question.
+   *
+   * ⭐ Reuses `_askOnCuriosityGap` rather than adding a second asking path:
+   * it already seeds a WH-frame, rides the trained interrogative
+   * transitions, refuses to recurse, and is OPT-IN so gate and probe lanes
+   * can never score a question as her answer. Duplicating that would mean
+   * two asking paths that drift.
+   *
+   * @param {string} lane 'inward' | 'outward'
+   * @returns {boolean} whether a gap was armed
+   */
+  armIntrospectiveAsk(lane) {
+    const cortex = this.clusters?.cortex;
+    if (!this.introspection || !cortex) return false;
+    const gap = this.introspection.take(lane);
+    if (!gap) return false;
+    cortex._curiosityGap = {
+      word: gap.concept,
+      bestMean: 0,
+      floor: 0,
+      shortfall: gap.urgency,
+      ts: Date.now(),
+      introspective: gap.kind
+      // provenance — telemetry must never conflate the two
+    };
+    this._lastIntrospectiveGap = { kind: gap.kind, lane: gap.lane, concept: gap.concept, at: Date.now() };
+    return true;
+  }
   _endocrineBrainState() {
     const s = { clusters: this.clusters };
     const st = this.state;
@@ -119811,6 +120226,11 @@ var UnityBrain = class extends EventEmitter {
       if (Number.isFinite(rms)) s.predictionError = rms;
     }
     if (st.hypothalamus && st.hypothalamus.drives) s.drives = st.hypothalamus.drives;
+    if (typeof this._lastInputTime === "number") {
+      const sinceMs = performance.now() - this._lastInputTime;
+      const WINDOW = 5 * 60 * 1e3;
+      s.socialContact = sinceMs < WINDOW ? Math.max(0, 1 - sinceMs / WINDOW) : 0;
+    }
     const cortex = this.clusters?.cortex;
     if (cortex && cortex.grades) {
       let lowest = null, lowestIdx = Infinity;
@@ -119838,6 +120258,29 @@ var UnityBrain = class extends EventEmitter {
       }
     }
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, void 0, this.endocrine);
+    if (this.introspection && this._endocrineSnapshot && !this.introspection.gap) {
+      try {
+        const eps = this.memorySystem && Array.isArray(this.memorySystem._episodes) ? this.memorySystem._episodes.filter((e) => e && typeof e.trigger === "string" && e.trigger && !/\s/.test(e.trigger)) : [];
+        if (eps.length) {
+          const cortex = this.clusters?.cortex;
+          const g = this.introspection.sense({
+            endocrine: this._endocrineSnapshot,
+            episodes: eps,
+            anchors: Array.isArray(cortex?._identityAnchorWords) ? cortex._identityAnchorWords : [],
+            ageYears: this._endocrineBrainState().ageYears,
+            // A listener is a REAL recent turn, never assumed.
+            // ⚠ Reads `_lastInputTime`, the field the dreaming gate already
+            // uses — and it is on the `performance.now()` clock, NOT
+            // `Date.now()`. Mixing the two would have compared an epoch
+            // millisecond against a page-uptime millisecond and reported a
+            // listener present forever.
+            hasListener: typeof this._lastInputTime === "number" && performance.now() - this._lastInputTime < 2 * 60 * 1e3
+          });
+          if (g) this.introspection.record(g);
+        }
+      } catch {
+      }
+    }
     if (this.mystery?.setWeights) this.mystery.setWeights(this.brainParams.mysteryWeights);
     const arousal = this.brainParams.arousalBaseline || 0.9;
     const creativity = this.brainParams.creativity || 0;
