@@ -1154,6 +1154,25 @@ const SERVER_STATE_MIXIN = {
           rangesSent: this._hebbianRangesSent | 0,
           maskedSent: this._hebbianMaskedSent | 0,
         },
+        // PROPBOUND.2 — the BOUND-PROPAGATE lane, split by which protocol it
+        // actually took. `emptyMirror` is the fallback-to-CPU count and is the
+        // number RHYTHM3S.1 needs: it is EXPECTED between teach writes (an idle
+        // cortex has no resident pattern and refusing is correct) and becomes a
+        // finding only when it stays high DURING a teach era — a comparison the
+        // board can only make once the number exists. ⛔ `noMirrorObject` is
+        // split out because a MISSING mirror is a wiring fault and would
+        // otherwise hide behind the empty case, which is normal and constant.
+        boundPropagate: this._boundPropStats
+          ? {
+              native: this._boundPropStats.native | 0,
+              emptyMirror: this._boundPropStats.emptyMirror | 0,
+              noMirrorObject: this._boundPropStats.noMirrorObject | 0,
+              browserEmptyPre: this._boundPropStats.browserEmptyPre | 0,
+              lastEmptyName: this._boundPropStats.lastEmptyName || null,
+              lastEmptyAgeMs: this._boundPropStats.lastEmptyAt
+                ? Math.max(0, Date.now() - this._boundPropStats.lastEmptyAt) : null,
+            }
+          : null,
         // GATEGPU — gate probes relocated to the donor: gpu = graded on the
         // card, refused = lane busy/no donor (CPU graded instead), nullAck =
         // dispatch sent but no currents came back (CPU graded instead).
