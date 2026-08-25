@@ -686,6 +686,16 @@ const SERVER_STATE_MIXIN = {
             // are not trained yet — which is a training fact worth seeing, not a
             // bug to hide. Gate and probe lanes never ask by design, so this
             // counts conversation only.
+            // OWNWORDS.2 — how much of her speech is actually HERS. `retrieved`
+            // counts dictionary-cosine fallbacks (not her weights; only legal
+            // on an untrained cortex now) and `honestSilence` counts the times
+            // a TRAINED brain produced nothing and was allowed to say nothing.
+            // Before this, the fallback fired invisibly whenever her matrix came
+            // up empty, so the two were indistinguishable from the outside.
+            words: {
+              retrieved: (() => { try { return (this.cortexCluster?.innerVoice?.languageCortex?._dictRetrievalCount) | 0; } catch { return 0; } })(),
+              honestSilence: (() => { try { return (this.cortexCluster?.innerVoice?.languageCortex?._honestSilenceCount) | 0; } catch { return 0; } })(),
+            },
             curiosity: {
               gaps: (cc && cc._curiosityGapCount) | 0,
               asks: (cc && cc._curiosityAskCount) | 0,

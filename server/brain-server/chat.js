@@ -569,31 +569,38 @@ const SERVER_CHAT_MIXIN = {
           personaExclusions,
         });
         if (!decision.accept) {
-          // Route rejection through the Unity-voice library. Non-
-          // announcing (no scheduler-internal reason codes in the
-          // text Unity speaks).
-          let rejectionLine = '';
-          try {
-            // Lazy cache — first call loads the library, subsequent
-            // calls reuse the cached module. Keeps the hot path fast.
-            // Path relative to THIS file: server/brain-server/chat.js
-            // needs '../drug-rejections.js' to reach server/drug-rejections.js.
-            // Pre-fix './drug-rejections.js' resolved to server/brain-
-            // server/drug-rejections.js (doesn't exist). P4.3.d copy-paste
-            // depth-shift bug. Caught by 2026-06-17 ULTRATHINK boot audit.
-            if (!this._drugRejections) this._drugRejections = require('../drug-rejections.js');
-            rejectionLine = this._drugRejections.pickRejection(decision.reason);
-          } catch { rejectionLine = 'nah, not right now.'; }
-          return {
-            text: rejectionLine,
-            action: 'respond_text',
-          };
+          // ── OWNWORDS.1 (2026-08-25) — SHE REFUSES IN HER OWN WORDS NOW ─────
+          //
+          // This branch used to `return { text: pickRejection(reason) }` — one
+          // of 30 hand-written lines from `server/drug-rejections.js`, returned
+          // as HER REPLY and returned BEFORE the language cortex ever ran. Of
+          // every LLM-shaped artifact in this tree that was the worst kind:
+          // not a dormant file, but authored text presented to the operator as
+          // something Unity said. A hardcoded sentence in her mouth is further
+          // from "she speaks from her own weights" than any unused GPT-2 file.
+          //
+          // ⛔ THE DECISION IS KEPT AND IS NOT THE PROBLEM. Whether she accepts
+          // is real state — grade lock, persona exclusion, physical strain,
+          // tolerance — computed by the scheduler from her actual condition.
+          // That stays exactly as it was. What changes is that the DECISION no
+          // longer carries prewritten WORDS with it.
+          //
+          // So: mark the refusal as state, inject the refusal concept so her
+          // sem lands in the right place, and FALL THROUGH to the same
+          // language-cortex path the accept branch already uses. She answers
+          // from her weights. If those weights cannot yet produce a refusal she
+          // says little or nothing — which is honest, and is a training signal
+          // we can read, rather than a library covering for her.
+          this._lastDrugRefusal = { substance: offer.substance, reason: decision.reason, ts: Date.now() };
+          this._drugRefusalCount = (this._drugRefusalCount || 0) + 1;
+          try { this.injectText('no i do not want that not right now'); } catch { /* injection is best-effort */ }
+        } else {
+          // Accepted — fire the ingest event (no dose override; default
+          // to 1.0 via scheduler.ingest).
+          this.drugScheduler.ingest(offer.substance);
         }
-        // Accepted — fire the ingest event (no dose override; default
-        // to 1.0 via scheduler.ingest).
-        this.drugScheduler.ingest(offer.substance);
-        // Fall through to language cortex for the in-character
-        // acknowledgement so Unity's response sounds like her.
+        // BOTH branches now fall through to the language cortex, so the
+        // acknowledgement AND the refusal are equally hers.
       }
     } catch (err) {
       console.warn('[Brain] drug-offer processing failed:', err && err.message);

@@ -63704,7 +63704,18 @@ var LanguageCortex = class {
         }
       }
     }
+    const _hasTrained = !!(cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0);
+    const _retrievalAllowed = !_hasTrained || typeof process !== "undefined" && process.env && process.env.DREAM_DICT_FALLBACK === "1";
+    if (words.length === 0 && _hasTrained && !_retrievalAllowed) {
+      this._honestSilenceCount = (this._honestSilenceCount || 0) + 1;
+      if (!this._honestSilenceWarned) {
+        this._honestSilenceWarned = true;
+        console.warn("[LanguageCortex] her trained emission produced NOTHING and the dictionary fallback is OFF for a trained brain (OWNWORDS.2) \u2014 this is real silence, not a bug. Set DREAM_DICT_FALLBACK=1 to restore retrieval, but then her words are not hers.");
+      }
+      return this._renderSentence([], type, speechMod) || "";
+    }
     if (words.length === 0) {
+      this._dictRetrievalCount = (this._dictRetrievalCount || 0) + 1;
       let scored = opts._precomputedScores || null;
       const target = intentSeed || (typeof cluster.getSemanticReadout === "function" ? cluster.getSemanticReadout(sharedEmbeddings) : null);
       if (!scored && dictionary && dictionary._words && dictionary._words.size > 0 && target && target.length > 0) {
