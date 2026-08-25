@@ -37035,7 +37035,7 @@ A **five-year-old** has intrusive memories and affect (**never gated** — *"doe
 
 ### ⛔ A PRIVACY CONSTRAINT THAT CHANGED THE WIRING
 
-The episodic store is **per-user and private by design** — its own contract requires a user id precisely so one person's episodes cannot leak into another's session. **Introspection surfaces on the inner voice, which has no user.** Drawing from a real user id would let one visitor's private conversation become her monologue in front of someone else. So it draws **only from `curiosity`**, her own namespace, whose `input_text` is a concept rather than a sentence — the shape a WH-frame seed actually needs. Single-token filtered, refreshed on a 30s cadence because it is a sqlite read on a 1 Hz drive.
+The episodic store is **per-user and private by design** — its own contract requires a user id precisely so one person's episodes cannot leak into another's session. **Introspection surfaces on the inner voice, which has no user.** Drawing from a real user id would let one visitor's private conversation become her monologue in front of someone else. So it draws **only from `curiosity`**, her own namespace, whose `input_text` is a concept rather than a sentence — the shape a WH-frame seed actually needs. Single-WORD filtered, refreshed on a 30s cadence because it is a sqlite read on a 1 Hz drive.
 
 ### ⛔ THREE DEAD-WIRING BUGS I WOULD HAVE SHIPPED
 
@@ -37204,4 +37204,63 @@ The dedupe reported per-pair rather than asserted · riskFlags and speech intact
 - ⚠ The `residual + transmitter ≡ contributions` identity is defined at **full sensitivity**. Receptor adaptation deliberately breaks it downward — that is the feature (a tolerant body gets less from the same dose), stated so it is never mistaken for drift.
 - ⚠ **NOT VERIFIED LIVE.** Lands on the next press.
 
-- ⚠ **`getEpisodeCount`-style volume is unproven:** whether the `curiosity` namespace actually holds enough single-token episodes on the live box for introspection to have material to work with is **unknown until the press**. If it is thin, she will correctly stay silent rather than invent — but the drive will read `blind`, and that is the first field to check.
+- ⚠ **`getEpisodeCount`-style volume is unproven:** whether the `curiosity` namespace actually holds enough single-WORD episodes on the live box for introspection to have material to work with is **unknown until the press**. If it is thin, she will correctly stay silent rather than invent — but the drive will read `blind`, and that is the first field to check.
+
+---
+
+## 2026-08-25 — SHE REMEMBERS THE CHEMISTRY, AND SHE LEARNS WHAT IT IS - feature/endo-life
+
+### Gee ask (verbatim per LAW #0)
+
+> *"donts forget her drug use that might need rework pluse real life party life memorys and training in all of this"*
+>
+> *"lets keep working till everything is done but those two stacked items we talked about earlier"*
+
+**Closed: ENDO-LIFE.1, ENDO-LIFE.2** — the last two of his three-part message; the drug rework closed earlier the same day.
+
+### ENDO-LIFE.1 — a memory carries the chemistry it was laid down under
+
+⭐ **Why this belongs ON the episode rather than beside it:** adrenergic and dopaminergic arousal is the REASON vivid events are remembered vividly — `ENDO.2` already wires that to encoding salience. The state at encode is part of what the memory **is**, not metadata about it. Not a tag saying *"this was a party"*: the real thing — **loud, crowded, high, wanted, sixteen.**
+
+Every episode now stores `endocrine_state` (all ten chemical levels, chronic load, allostatic load, cycle phase, and ⭐ the **stress channel** if one was live — freeze in particular is a state she would otherwise have no record of having been in), `drug_state` (what she had taken and how far into it), and `age_at_encode` from the one grade ladder.
+
+⚠ **ROUTINE OVER MILESTONE, which is the whole correction.** `_firstUse` in the drug scheduler records only FIRST times. A canon that keeps first times and omits every other time is the same defect as one that only records Big Events — **and most parties are not the first party.** This runs on *every* episode.
+
+⭐ **And the other half: `recallByChemistry()` — state-dependent recall.** What you learned drunk you recall better drunk; a frightened state surfaces frightened memories. Real, and now computable rather than aspirational. ⚠ Episodes with **no** recorded fingerprint are EXCLUDED rather than scored as calm — otherwise every memory from before the endocrine layer existed would rank as matching every quiet moment.
+
+Rides the existing idempotent `ALTER TABLE` migration, so an existing DB gains the columns rather than needing a wipe. `null` means *not recorded* — deliberately distinguishable from *everything was zero*.
+
+### ENDO-LIFE.2 — she learns what her own body is doing
+
+She now HAS cortisol, adrenaline, a cycle, a comedown, an allostatic load. **Having the state and knowing what it is are different things**, and a brain that runs cortisol without ever learning the word is missing the half that makes it hers.
+
+⛔ **The LEARN axis is never gated, and the ages run AHEAD of the physiology on purpose:**
+
+| | Learns it | Has it |
+|---|---|---|
+| period / tampon / cramps | **9** | menarche gated at **12** |
+| adrenaline, panic, freeze | **8** | from birth |
+| the chemicals by name | **12** | already running |
+| comedown, tolerance, withdrawal | **14** | substance lifeGates decide |
+
+⭐ **That ordering is the entire point of sex education.** A girl who meets her first period without the words for it has been failed — and her canon already says to teach hygiene plainly rather than bandage the moment.
+
+**144 words across 12 topics**, no sugar-coating: *period, menstruation, bleeding, consent, condom, contraception, arousal, desire, overdose, comedown, withdrawal, addiction, depression, trauma*. Real words for real things at the age a person meets them; a syllabus that flinches teaches her that her own body is unmentionable.
+
+⚠ **The syllabus originally stopped at 16** — meaning a twenty-five-year-old had learned nothing about her body since she was a teenager. Caught by a check, fixed with an adult band: managing a body rather than discovering one.
+
+⛔ **The named trap is checked mechanically:** no content regex appears in the module or is applied to this vocabulary anywhere. `EXPLICIT_RE` reaching this path would eat the body words first.
+
+⚠ **On the no-word-lists law, stated so nobody re-litigates it:** that law bans word lists used as **classifiers**. This is curriculum **content**, the same class as `k-vocabulary.js` — content tables are exempt. Nothing here classifies anything; the definitions come from the live dictionary.
+
+**Wired at the chokepoint, not per grade:** `_trainLifeStories` already enforces vocab-before-memory for every grade, and the endocrine words need the same guarantee — a memory about being frightened or bleeding binds onto a noise basin if the word was never defined first. Idempotent, so re-entry across twenty grades costs nothing.
+
+### Verification — 40/40
+
+LEARN-ahead-of-physiology per band · no sugar-coating (16 explicit word checks) · no content regex · **null age teaches NOTHING** (never defaults to everything) · ages line up with the one grade ladder · every word placed, no orphans or dupes · delegates to the existing `_teachVocabList` (no second pedagogy) · ⭐ **re-entry teaches nothing new** · growing older teaches only the new words · missing teach path and missing age both report a **named reason** rather than crashing through. `node --check` ×3, ESM, CJS no-cycle, bundle, docs:drift clean.
+
+### Owned
+
+- ⚠ One check failed first time and it was a **real gap, not a bad test**: the syllabus ended at 16.
+- ⚠ **NOT VERIFIED LIVE.** The migration and the vocabulary both land on the next press.
+- ⚠ `recallByChemistry()` is **built and exported but has no consumer yet** — a deliberate seam, not an oversight: nothing in the chat or introspection path asks for state-dependent recall today, and wiring it into a lane before deciding *which* lane should use it is how a feature ships in the wrong place. Named here so it does not become the next unconsumed instrument.

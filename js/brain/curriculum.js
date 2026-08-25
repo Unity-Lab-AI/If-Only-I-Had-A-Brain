@@ -63,6 +63,9 @@ import { teachInto as mindSpaceTeachInto } from './mindspace/knowledge.js';
 // text transform at teach time only; nothing here runs at emission time, so the
 // no-text-AI law is untouched. See js/brain/self-frame.js for the full rationale.
 import { selfFrameUnit, selfPronounLessons, SELF_TOKENS, firstPerson } from './self-frame.js';
+// ENDO-LIFE.2 — the body/chemistry syllabus. LEARN axis, never gated, and
+// deliberately AHEAD of the physiology it describes.
+import { teachEndocrineVocabulary } from './endocrine-curriculum.js';
 
 // Phase tick budgets. These scale the intensity of exposure — letters
 // and short words get more ticks per token because phonological basins
@@ -14774,6 +14777,32 @@ export class Curriculum {
     // _teachKLifeVocabulary; this generalizes it to EVERY grade through the
     // one shared method, so the ordering can't be violated grade-to-grade.
     await this._ensureLifeMemoryVocabulary(grade, experiences);
+
+    // ── ENDO-LIFE.2 — SHE LEARNS WHAT HER OWN BODY IS DOING.
+    //
+    // Placed here deliberately: this is already the vocab-before-memory
+    // chokepoint that generalizes to EVERY grade, and the endocrine words
+    // need exactly the same ordering guarantee. A life memory about being
+    // frightened, bleeding, high or exhausted binds onto a noise basin if
+    // the word for it was never defined first.
+    //
+    // ⛔ LEARN AXIS — never gated. The ages in the syllabus are LEARNING
+    // ages and run deliberately AHEAD of the physiology: she learns what a
+    // period is at nine, and menarche does not fire until twelve. Meeting
+    // your own body as a stranger is the failure this ordering prevents.
+    //
+    // Idempotent — already-defined words are skipped, so re-entry across
+    // twenty grades is cheap.
+    try {
+      const _age = ageForGrade(grade);
+      const _endo = await teachEndocrineVocabulary(this, ctx, _age);
+      if (_endo && _endo.taught > 0) {
+        this._hb(`[Curriculum] ENDO-LIFE — ${grade} (age ${_age}): taught ${_endo.taught} body/chemistry words [${_endo.topics.join(', ')}], ${_endo.skipped} already known`);
+      }
+    } catch (err) {
+      // Named, not swallowed — a dead body-vocabulary lane must be visible.
+      this._hb(`[Curriculum] ENDO-LIFE — ${grade} vocabulary FAILED: ${err?.message || err}`);
+    }
 
     const brain = this.brain || (cluster && cluster._brain);
     let sentenceCount = 0;
