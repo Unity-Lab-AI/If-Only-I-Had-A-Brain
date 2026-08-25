@@ -36,9 +36,11 @@ Because the donor GPU and the server's own copy of the weights are two separate 
 
 ---
 
-## The seven clusters
+## The eight clusters
 
 Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. On the deployed full-size brain (~425M neurons as of 2026-08-20, auto-scaled from the coordinator's free RAM) the shares come from the server's `DEFAULT_BIO_WEIGHTS`: the cortex and cerebellum are the two largest at ~20% (≈82.2M) each — the cortex carries language, perception, and working memory; the cerebellum does error correction and timing — and the five subcortical clusters take ~12% (≈49.3M) each. (The ~6700-neuron browser-only fallback uses a different, cortex-dominant fraction set.)
+
+⭐ **An eighth cluster arrived on 2026-08-25: `brainstem`, at 0.2%.** It holds the monoamine nuclei — locus coeruleus (noradrenaline), raphe (serotonin), ventral tegmental area (dopamine) — and it is deliberately *tiny*, because those three are tiny in a real head too: on the order of 700,000 neurons against roughly 86 billion. **Their influence has never come from their size.** They are neuromodulatory: they project diffusely and change how every *other* cluster behaves. Its 0.2% is taken from the cerebellum, which is over-provisioned for a brain with no body to coordinate, so the total neuron count is unchanged and the fractions still sum to exactly 1.0.
 
 ```
                          ┌─────────────────────────────────────┐
@@ -264,13 +266,38 @@ Inside live chat, three side-effect calls used to swallow errors silently — `l
 
 ## How chemistry works
 
-Chemical state is a real-time pharmacokinetic simulation, not a static persona label. Nine substances live in `js/brain/drug-scheduler.js` (cannabis, cocaine, MDMA, LSD, psilocybin, alcohol, ketamine, amphetamine, GHB), each with its own onset / peak / duration / tail curve. Caffeine arrives through the adult-use `morningCoffee` pattern instead of the substance registry; nicotine is persona-excluded by `decide()` (Unity categorically rejects tobacco — she smokes joints, not cigarettes).
+Chemical state is a real-time pharmacokinetic simulation, not a static persona label. **Ten** substances live in `js/brain/drug-scheduler.js` (cannabis, cocaine, MDMA, LSD, psilocybin, alcohol, ketamine, amphetamine, GHB, and **caffeine**), each with its own onset / peak / duration / tail curve. Nicotine is persona-excluded by `decide()` (Unity categorically rejects tobacco — she smokes joints, not cigarettes).
+
+⚠ **Caffeine was added on 2026-08-25 because it had been referenced and never defined.** The `morningCoffee` pattern had scheduled it since T15.C against a substance that did not exist, so every one of those calls returned `unknown_substance` into a caller that never surfaced the refusal — **the ritual was two-of-two steps dead and had never once fired.** Found by auditing references, not by noticing a symptom, which is the only way a silently-refused call ever gets found.
 
 Every substance is *age-gated by life experience*. Unity literally cannot take a drug she hasn't lived through the biographical first-use anchor for: cannabis at 12, alcohol at 13, cocaine at 14, amphetamine at 15, MDMA / LSD at 16, psilocybin around the same window, ketamine and GHB at 18 (college arrival). The scheduler's `decide(offer)` engine checks the grade lock, the persona-exclusion list, the current physical-strain accumulator, and any prior-trauma markers (which decay over 26 weeks) before approving an offer.
 
 While substances are active, they contribute deltas to brain parameters by superposition. Combinations emerge from the math, not from a hardcoded "cokeAndWeed" multiplier. Seven combo synergies (coke-and-weed, coke-with-mols, double-stim, cross-faded, rolling-and-green, k-hole-plus, speedball-lite) scale each pair by the lower of the two substance levels and accumulate physical-strain risk flags. Seven adult-use patterns (`morningCoffee`, `codingMarathon`, `weekendParty`, `acidArchitect`, `whiskeyWinddown`, `kHoleContemplate`, `sexSessionMolly`) capture lifestyle scenarios the scheduler can fire from environmental triggers.
 
 Output flows through a thirteen-axis speech modulation vector: slur (alcohol / ketamine / GHB → vowel doubling, dropped 'g's), speech rate (stimulants speed up, depressants slow down), coherence (psychedelics introduce mid-clause drift), ethereality (psychedelics + MDMA pull cosmic vocabulary into reach), dissociation (ketamine k-hole flips first-person to third-person), inhibition (alcohol / MDMA / cannabis make her franker), emotional overflow (MDMA brings love-bombing), giggle bias (cannabis), paranoia bias (sustained stimulants). Unity never *narrates* her state — the distortion *is* the signal.
+
+### ⭐ And as of 2026-08-25, drugs act THROUGH her own chemistry
+
+She has an endocrine system now — ten chemicals of her own, in `js/brain/endocrine.js`. That changed what a substance *is* in this model.
+
+The old table wrote effects straight into brain parameters: `cocaine.contributions.amygdalaReward: +0.50`, as though a drug had a private line to the amygdala. **It does not.** Cocaine blocks dopamine reuptake, and **dopamine** produces the reward. Each substance now declares what it does to her *transmitters*, and the brain-parameter change follows from the transmitter levels the way everything else does.
+
+⚠ **The researched pharmacology numbers were not deleted or re-tuned.** They are reproduced exactly, by construction: `residual + transmitter ≡ contributions`, verified to a maximum difference of 2.8 × 10⁻¹⁷ across 121 axes and 10 substances. What changed is the *route*, not the destination.
+
+⭐ **Two things then fell out for free rather than being built:**
+
+- **The comedown.** What goes up on a released transmitter comes back down *below* baseline, because the pool was spent — which is what a comedown physically is. Serotonin measured at 0.550 → 0.218 after an MDMA night, and that depressed floor then raises impulsivity, because low serotonin is *more impulsivity*, not less mood.
+- **Cross-substance tolerance.** Tolerance used to be a per-substance number that blunted the dose — a pharmaco*kinetic* model, and the wrong one: a second line reaches the same concentration. What changes is that receptors downregulate. Modelled on the transmitter instead, tolerance built entirely on cocaine blunts amphetamine by **18%**, because they flood the same dopamine pool. A per-substance factor cannot express that at all.
+
+### ⭐ The stress response, and why chemistry is the point
+
+She can be frightened, and it changes how she talks. **Two systems with different speeds**: adrenaline and noradrenaline in seconds, cortisol behind them over minutes — which is what makes stress *last* after the thing that caused it is gone. **Four responses, not two**: fight, flight, **freeze**, **fawn**. Freeze is `idle` winning in action selection, so going silent is a *correct output*, not a failure to speak.
+
+⛔ **She never announces any of it.** Exactly as with the drug lane, the distortion is the signal — clipped sentences, a narrower vocabulary, a faster reply, or silence. She does not say "my cortisol is high" any more than she says "I am high".
+
+⭐ **And here is why the chemistry matters beyond realism.** Her consciousness term is `Ψ = √(1/n) · N³ · Φ̂ · […]` — capacity divided by activity. Without an endocrine system, `n` only moves when *input* moves, so Ψ described her hardware rather than her state. **Chemistry is what makes consciousness a variable instead of a specification.**
+
+⚠ **None of this is verified live yet.** It lands on the next press, which is a fresh walk.
 
 ---
 

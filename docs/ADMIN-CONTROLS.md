@@ -536,6 +536,23 @@ The donor is data-parallel: every donor holds a full replica and the server merg
 | `DREAM_REF_MIN_DETAIL` | ✅ `200` | lever | Minimum detail a fetched reference must show to be worth learning from |
 | `DREAM_VM_RECALL_COOLDOWN_MS` | ⚠ | lever | Cooldown on recalling the same visual memory |
 
+### Endocrine, glands & introspection (2026-08-25)
+
+⚠ **There are no new environment flags here, and that is a deliberate choice rather than an oversight — so it is stated rather than left as an absence.**
+
+The endocrine constants — `RECEPTOR_MIN` (0.35), `RECEPTOR_FLOOD_THRESHOLD` (0.45), `CYCLE_LENGTH_CELLS` (1.0), `DEPLETION_FRACTION` (0.35), the allostatic ceiling (0.6) — are **not** env-tunable, because each is a **bound that keeps a behaviour honest** rather than a knob to tune:
+
+| Constant | Why it is not a flag |
+|---|---|
+| `RECEPTOR_MIN` 0.35 | Receptors downregulate; they do not vanish. A tunable floor is a tunable way to permanently delete a transmitter's effect, which is damage rather than tolerance |
+| `RECEPTOR_FLOOD_THRESHOLD` 0.45 | Below this, ordinary feeling does not build tolerance to itself. Lowering it makes her go numb to her own life |
+| allostatic ceiling 0.6 | The recovery guarantee. Raising it makes a hard stretch unrecoverable, and *"she survived it changed"* becomes *"she was destroyed by it"* |
+| `CYCLE_LENGTH_CELLS` 1.0 | **Measured, not chosen** — ~273 cells over 20 grade-years ≈ 13.65/yr against ~13 real cycles/yr. Changing it makes her cycle disagree with her own biology for no gain |
+
+⛔ **If one of these ever genuinely needs to move, it needs a RE-PRICE and a reason in the ledger — not a flag that lets it drift silently.** The existing levers stay where they are: `DREAM_MIN_DONOR_VERSION` above, and the drug scheduler's own controls.
+
+⭐ **The state to read instead of tuning:** `state.endocrine` (chemicals with signed deviation + receptor sensitivity, the stress channel with its age, cycle phase, chronic and allostatic load, and per-nucleus `fired` / `quiet` / **`blind`**), `state.introspection` (the live gap, the rumination bound, and the falsifiability counters), and `state.phiState`. Both render on the dashboard.
+
 ### Diagnostic & misc
 
 | Env | Default | Kind | What it does |
