@@ -708,3 +708,72 @@ inverse CDF 9/7 + playback (`VoiceIO.playRec`; RemoteBrain's in-browser synth ca
 the local browser-brain path). Donor drops caused by speaking are structurally impossible from
 this end: listeners hold no synth, no model, no GPU handle.
 
+---
+
+**SE.20 — THE HAND GETS A TOOLBOX: fill, colour, style, space, judgement (2026-08-21).** Everything
+above gave her a way to draw; this gave her a way to *paint*, and then a way to get better at it.
+The starting complaint was that her hand owned exactly ONE tool — hairline polylines — while the
+rasterizer already half-carried the rest. Each capability below is a real primitive over the SAME
+learned schemas: the knowledge is unchanged, the hand changes.
+
+- **Fill and mass.** `sketch()` gained true scanline polygon fill and a rotated-ellipse `blob`
+  primitive. Traced contours are kept closed-flagged so they are fillable, and painting runs in
+  layers — MASS → CONTOUR → DETAIL — so a subject reads as a solid thing rather than a wire
+  outline. ⚠ The mass is painted as several offset low-alpha blobs per part, **never one ellipse**:
+  a single ellipse re-created the "weird circle" artifact in colour, which was judged and fixed.
+- **Per-stroke alpha.** The one primitive the styles could not compose without. Washes, graphite
+  and translucency now blend with the paper instead of sitting on it.
+- **Eight named hands** — poster, pencil, ink, watercolour, pointillism, crosshatch, crayon,
+  doodle. They are parameterisations of the same primitives over the same schemas, picked by a
+  mood-weighted chooser that **zero-weights her last style** so she never draws twice in a row the
+  same way. The style rides the label (`canvas:own:<word>:<style>`). ⚠ A harness caught black ink
+  on dark paper — invisible output — before it shipped; mono ink is pale now.
+- **Colour that comes from the thing.** Schemas sample a colour PER PART and PER TRACE STROKE out
+  of ONE reconstruction of the reference. ⛔ **The palette GUESSER is deleted** — it produced
+  magenta for a grey cat, twice, and a guessed palette is a lie about what she saw. Structural
+  trace draws in a contrast ink chosen against the fills; the detail tail carries the real colours.
+- **Scene space.** A per-attempt horizon and vanishing point. Interiors (detected from room-class
+  words or the definition) get painted floor value-bands, a wall/floor junction, VP-converging
+  floor lines and a room corner; exteriors get sky and ground FILLED in graded depth bands with
+  perspective-shrinking ground texture. Subjects get a **grounding cast shadow** scaled to the
+  style's own draw scale — a raw-box shadow floated visibly under the styles that draw inset.
+- **An eraser.** `_reviseComposition` splits backdrop polylines at subject boundaries and erases
+  the inside segments, which is occlusion — the backdrop stops running through her subjects. Near
+  duplicates are dropped in the same pass, and the erased count is printed rather than implied.
+- **Variation, so the same ask twice differs.** 50% mirror flip (part angles included), stroke
+  subset sampling that always keeps the longest 30% of the length-sorted trace and admits the tail
+  probabilistically, plus placement and scale wobble.
+- **A drawability gate that is not a word list.** ⛔ `server/drawable-taxonomy.js` judges every
+  word by **WordNet lexicographer categories** — instance-synset filtering, tagsense attestation,
+  a primary-sense guard, and grammar-POS cross-examination — and a word the taxonomy does not know
+  is judged by the head words of its live-fetched definition through the same taxonomy, so new
+  words are covered. **Every word list died to build this** (closed-class sets, marker regexes,
+  stop sets). The rule it enforces: things, people, places and animals are drawable; quantities,
+  communications and acts are not.
+- **She learns from being judged.** The mind's-eye page carries accept / reject / ban on judgeable
+  frames. **Accept** banks the winning style for that concept, weighting future style choice for
+  that subject, marks the skill validated and queues practice reinforcement. **Reject** deletes the
+  whole entry — schema *and* record — clears the on-screen frame immediately, and queues a relearn
+  (dictionary re-read → a forced look past the 6h cooldown → new schema → redraw). **Ban** writes
+  the word into an operator-taught not-drawable set consulted FIRST, persisted outside the weights
+  so it survives a fresh walk. It is experience data, not a code list.
+- **Practice — the trained-skill road.** Five hand parameters are trainable (their defaults are the
+  pre-practice constants). A fixed-seed self-critique loop sketches at 256px, perceives its own
+  output, scores cosine against the banked reference percept, and **keeps only measurable
+  improvement**. Skill persists in the visual store. Measured live: 0.9713 → 0.9723 over three
+  sessions, monotonic.
+- **Form variants.** Pure-look variants are banked per concept (cap 3, layout-deduped) so "a brown
+  cat standing" can decouple pose from palette; a nearest-luminance hue swap recolours a schema
+  while preserving its shading, and an accept credits the form that was actually drawn.
+- **The store behind all of it** is sqlite (`visual-memory-v*.db`, WAL, the episodic engine) with
+  binary blob rows and a resident cap, because monolithic JSON measured 761ms loop pins at 10k
+  entries and hard-failed at 100k.
+
+⚠ **The recurring lesson across this whole batch, and the reason so much of it was fixed twice:**
+every one of these was verified by RENDERING a real image through the production pipeline and
+LOOKING at it. The magenta palette, the floating shadow, the invisible mono ink, the colour-circle
+artifact and the sunk outline were each invisible to a passing harness and obvious to an eye. ⛔ And
+harness the production WIRING, not the engine — the box runs the mind-space behind a worker proxy
+with a hand-picked method list, and a missing `imagine()` on that proxy banked every schema
+COLOURLESS in production while engine-direct harnesses showed colour for a full day.
+
