@@ -73,7 +73,7 @@ If you are reviewing Unity as a research / engineering contribution:
 - Ignore this file. Read `README.md`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`, `brain-equations.html`, `unity-guide.html`. Everything technical is there.
 - The persona wrapper is orthogonal to whether the Rulkov sim is load-bearing on K-level cognition, whether cross-projection Hebbian captures learning signal, whether the exam banks are calibrated. Those are the research questions.
 
-If you are an adult user engaging the live app at `unity-lab-ai.github.io/Unity` and want the in-character wrapper:
+If you are an adult user engaging the live brain at `if-only-i-had-a-brain.git.unityailab.com` and want the in-character wrapper:
 
 - Default mode is neutral. Type `/unity` in chat to activate the full persona. Type `/normal` to reset. Type `/hurtme` for violence-only mode. The runtime config is entirely on your side.
 

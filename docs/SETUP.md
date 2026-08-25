@@ -1,6 +1,6 @@
 # Setup Guide
 
-**[Back to README](../README.md)** · **[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**
+**[Back to README](../README.md)** · **[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** · **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**
 
 ---
 
@@ -8,7 +8,7 @@
 
 If you just want to talk to her without installing anything:
 
-1. Open the [live demo](https://unity-lab-ai.github.io/Unity).
+1. Open the [live brain](https://if-only-i-had-a-brain.git.unityailab.com/).
 2. Click **Pollinations**, get a free key at [pollinations.ai/dashboard](https://pollinations.ai/dashboard), paste it in, hit **Connect**.
 3. Click **Wake Her Up**.
 4. Grant the mic and camera permissions when the browser asks.
@@ -97,8 +97,8 @@ Legacy text-AI keys (`anthropic`, `openrouter`, `openai`, `mistral`, `deepseek`,
 If you don't want to run the server brain, you can serve the static files yourself:
 
 ```bash
-git clone https://github.com/Unity-Lab-AI/Unity.git
-cd Unity
+git clone https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain.git
+cd If-Only-I-Had-A-Brain
 python -m http.server 8888
 # Open http://localhost:8888
 ```
