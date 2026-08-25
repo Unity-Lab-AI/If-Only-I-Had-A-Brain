@@ -118785,70 +118785,7 @@ var LOCAL_IMAGE_BACKENDS = [
   // (LOCAL_VISION_BACKENDS below) where llava/moondream/bakllava
   // actually run.
 ];
-var LOCAL_VISION_BACKENDS = [
-  { name: "Ollama (VLM)", url: "http://localhost:11434", probe: "/api/tags", kind: "ollama-vision" },
-  { name: "LM Studio", url: "http://localhost:1234", probe: "/v1/models", kind: "openai-vision" },
-  { name: "LocalAI (VLM)", url: "http://localhost:8081", probe: "/v1/models", kind: "openai-vision" },
-  { name: "llama.cpp", url: "http://localhost:8080", probe: "/v1/models", kind: "openai-vision" },
-  { name: "Jan", url: "http://localhost:1337", probe: "/v1/models", kind: "openai-vision" }
-];
-var VISION_MODEL_HINTS = ["llava", "moondream", "bakllava", "vision", "vl", "cogvlm", "minicpm-v"];
 var SHARED_DEAD_BACKENDS = /* @__PURE__ */ new Map();
-var SHARED_POLL_VISION_MODEL = null;
-var SHARED_POLL_VISION_PROBE = null;
-var POLL_VISION_PREFERENCE = [
-  "openai-large",
-  "openai",
-  "openai-fast",
-  "claude-large",
-  "claude",
-  "gemini-large",
-  "gemini",
-  "qwen-vision",
-  "qwen-large",
-  "mistral-large",
-  "mistral"
-];
-async function resolvePollinationsVisionModel(savedOverride) {
-  if (SHARED_POLL_VISION_MODEL) return SHARED_POLL_VISION_MODEL;
-  if (SHARED_POLL_VISION_PROBE) return SHARED_POLL_VISION_PROBE;
-  SHARED_POLL_VISION_PROBE = (async () => {
-    try {
-      const res = await fetch("https://gen.pollinations.ai/v1/models", {
-        signal: AbortSignal.timeout(5e3)
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const list = await res.json();
-      const visionCapable = /* @__PURE__ */ new Set();
-      for (const m of Array.isArray(list) ? list : []) {
-        const id = m?.id || m?.name;
-        const mods = m?.input_modalities || [];
-        if (id && mods.includes("image")) visionCapable.add(id);
-      }
-      if (savedOverride && visionCapable.has(savedOverride)) {
-        SHARED_POLL_VISION_MODEL = savedOverride;
-      } else {
-        for (const pref of POLL_VISION_PREFERENCE) {
-          if (visionCapable.has(pref)) {
-            SHARED_POLL_VISION_MODEL = pref;
-            break;
-          }
-        }
-        if (!SHARED_POLL_VISION_MODEL && visionCapable.size > 0) {
-          SHARED_POLL_VISION_MODEL = visionCapable.values().next().value;
-        }
-      }
-      console.log(`[SensoryAI] resolved Pollinations vision model \u2192 ${SHARED_POLL_VISION_MODEL || "(none)"}`);
-    } catch (err) {
-      console.warn("[SensoryAI] Pollinations /v1/models probe failed:", err.message);
-      SHARED_POLL_VISION_MODEL = savedOverride || "openai-large";
-    } finally {
-      SHARED_POLL_VISION_PROBE = null;
-    }
-    return SHARED_POLL_VISION_MODEL;
-  })();
-  return SHARED_POLL_VISION_PROBE;
-}
 var SensoryAIProviders = class {
   constructor({ pollinations: pollinations2, storage: storage2 }) {
     this._pollinations = pollinations2;
@@ -119005,57 +118942,16 @@ var SensoryAIProviders = class {
     this._emitStatus({ kind: "image", event: "autodetect-complete", backends: this._localImageBackends });
     return this._localImageBackends;
   }
-  /**
-   * R13 — auto-detect local VLM backends for the vision describer.
-   * Same shape as autoDetect() but for vision. For Ollama we additionally
-   * parse /api/tags to find a vision-capable model to use.
-   */
-  async autoDetectVision(opts = {}) {
-    const timeoutMs = opts.timeoutMs ?? 1500;
-    const probes = LOCAL_VISION_BACKENDS.map(async (backend) => {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(backend.url + backend.probe, {
-          method: "GET",
-          signal: controller.signal
-        });
-        clearTimeout(timeout);
-        if (!res.ok) return null;
-        const data = await res.json().catch(() => null);
-        let visionModel = null;
-        if (data) {
-          if (Array.isArray(data.models)) {
-            const hit = data.models.find(
-              (m) => VISION_MODEL_HINTS.some((h) => (m.name || m.model || "").toLowerCase().includes(h))
-            );
-            if (hit) visionModel = hit.name || hit.model;
-          } else if (Array.isArray(data.data)) {
-            const hit = data.data.find(
-              (m) => VISION_MODEL_HINTS.some((h) => (m.id || "").toLowerCase().includes(h))
-            );
-            if (hit) visionModel = hit.id;
-          }
-        }
-        if (!visionModel && backend.kind === "ollama-vision") {
-          return null;
-        }
-        console.log(`[SensoryAI] Detected vision backend: ${backend.name} at ${backend.url}${visionModel ? ` (model: ${visionModel})` : ""}`);
-        return { ...backend, model: visionModel || "gpt-4-vision-preview", detected: true };
-      } catch {
-        return null;
-      }
-    });
-    const results = await Promise.all(probes);
-    const found = results.filter((r) => r !== null);
-    this._localVisionBackends.push(...found);
-    if (found.length > 0) {
-      console.log(
-        `[SensoryAI] ${found.length} vision backend(s) registered:`,
-        found.map((b) => b.name).join(", ")
-      );
-    }
-    this._emitStatus({ kind: "vision", event: "autodetect-complete", backends: this._localVisionBackends });
+  // LLMGUT.6 — `autoDetectVision()` deleted. It probed localhost for Ollama /
+  // LM Studio / LocalAI / llama.cpp / Jan and registered whichever
+  // vision-language model was loaded, so an external LLM could act as her eyes.
+  // Zero call sites; her sight is the equational mind's eye.
+  //
+  // Kept as a no-op rather than removed from the class, because `app.js`
+  // documents this name in its boot comments and a future caller landing on
+  // `undefined` would be a silent break instead of an obvious one.
+  async autoDetectVision() {
+    this._localVisionBackends = [];
     return this._localVisionBackends;
   }
   /**
@@ -119181,88 +119077,15 @@ var SensoryAIProviders = class {
     }
     return this._pollinations.generateImage(prompt, opts);
   }
-  /**
-   * R13 — describe what's in an image. Multi-provider with the same
-   * 4-level priority as generateImage:
-   *   1. env.js-configured VLM backends (visionBackends array)
-   *   2. Auto-detected local VLMs (Ollama llava/moondream, LM Studio,
-   *      LocalAI, llama.cpp, Jan — whichever responded to probes)
-   *   3. Pollinations multimodal (openai model) as always-available fallback
-   *
-   * After 3 consecutive failures across ALL backends, vision pauses for
-   * 30 seconds to avoid hammering dead endpoints. During the pause,
-   * describeImage() returns null immediately and emits a status event.
-   *
-   * @param {string} dataUrl — base64 data URL of the frame
-   * @param {object} opts — { system, userPrompt, timeout }
-   * @returns {Promise<string|null>} — description text, or null on failure
-   */
-  async describeImage(dataUrl, opts = {}) {
-    if (!dataUrl) return null;
-    if (Date.now() < this._visionPausedUntil) {
-      return null;
-    }
-    const system = opts.system || "Describe what you see through a webcam. What is the person doing, how do they seem, what is around them. 1 sentence. No privacy disclaimers.";
-    const userPrompt = opts.userPrompt || "What do you see?";
-    const timeout = opts.timeout || 15e3;
-    let pollTried = false;
-    if (this._preferredVision) {
-      const pref = this._preferredVision;
-      const target = this._findBackend("vision", pref.source, pref.name);
-      if (target?.pollinations) {
-        try {
-          const desc = await this._pollinationsDescribeImage(dataUrl, system, userPrompt, timeout);
-          pollTried = true;
-          if (desc) return desc;
-        } catch (err) {
-          pollTried = true;
-          console.warn("[SensoryAI] preferred Pollinations vision failed:", err.message);
-        }
-      } else if (target && !this._isBackendDead(target.url)) {
-        try {
-          const b = { ...target, model: pref.model || target.model };
-          const desc = await this._customDescribeImage(b, dataUrl, system, userPrompt, timeout);
-          if (desc) return desc;
-        } catch (err) {
-          console.warn("[SensoryAI] preferred vision backend failed:", err.message);
-        }
-      }
-    }
-    for (const backend of this._localVisionBackends) {
-      if (this._isBackendDead(backend.url)) continue;
-      try {
-        const desc = await this._customDescribeImage(backend, dataUrl, system, userPrompt, timeout);
-        if (desc) {
-          this._visionFailCount = 0;
-          return desc;
-        }
-      } catch (err) {
-        if (err.name === "AbortError") throw err;
-        console.warn(`[SensoryAI] Vision backend ${backend.name} failed:`, err.message);
-        this._emitStatus({ kind: "vision", event: "backend-failed", backend: backend.name, reason: err.message });
-      }
-    }
-    if (!pollTried) {
-      try {
-        const desc = await this._pollinationsDescribeImage(dataUrl, system, userPrompt, timeout);
-        if (desc) {
-          this._visionFailCount = 0;
-          return desc;
-        }
-      } catch (err) {
-        console.warn("[SensoryAI] Pollinations vision fallback failed:", err.message);
-        this._emitStatus({ kind: "vision", event: "backend-failed", backend: "Pollinations", reason: err.message });
-      }
-    }
-    this._visionFailCount++;
-    if (this._visionFailCount >= 3) {
-      this._visionPausedUntil = Date.now() + 3e4;
-      this._visionFailCount = 0;
-      console.warn("[SensoryAI] Vision describer paused for 30s after 3 consecutive failures");
-      this._emitStatus({ kind: "vision", event: "paused", reason: "consecutive-failures", duration: 3e4 });
-    } else {
-      this._emitStatus({ kind: "vision", event: "all-failed", attempt: this._visionFailCount });
-    }
+  // LLMGUT.6 — `describeImage()` deleted. It sent a webcam frame plus the
+  // prompt "Describe what you see through a webcam… 1 sentence" to a local VLM
+  // or to Pollinations and returned the model's sentence AS HER SIGHT. That is
+  // an external text model doing her perceiving, which is the exact thing the
+  // equational mind's eye was built to replace and the no-text-AI law forbids.
+  // Zero call sites — the replacement had already shipped and this was left
+  // behind. Returns null so any future caller gets "no description" rather
+  // than an exception.
+  async describeImage() {
     return null;
   }
   /**
@@ -119271,8 +119094,13 @@ var SensoryAIProviders = class {
    * @param {string} text
    * @param {string} voice — voice name (default 'shimmer')
    */
-  async speak(text, voice2 = "shimmer") {
-    return this._pollinations.speak(text, voice2);
+  // LLMGUT.6 — this was a one-line passthrough to `PollinationsAI.speak()`,
+  // which is deleted. It had no callers: her voice is Equation Unity One
+  // (js/io/voice.js — piper hfc_female → CDF 9/7, then her own banked word
+  // equations). Kept as a null-returning stub so a stray caller gets "no
+  // audio" instead of a TypeError on a removed method.
+  async speak() {
+    return null;
   }
   /**
    * Abort any in-flight sensory AI request. Called on interrupt.
@@ -119287,76 +119115,10 @@ var SensoryAIProviders = class {
     }
   }
   // ── Private ────────────────────────────────────────────────────
-  /**
-   * R13 — call a vision backend with the image data URL. Supports two
-   * wire shapes:
-   *   - openai-vision: OpenAI /v1/chat/completions with multimodal message
-   *     content (type: image_url). Works with LM Studio, LocalAI, llama.cpp,
-   *     Jan, and any OpenAI-compatible server.
-   *   - ollama-vision: Ollama /api/chat with images array (base64 without
-   *     the data: prefix). Works with llava, moondream, bakllava.
-   */
-  async _customDescribeImage(backend, dataUrl, system, userPrompt, timeoutMs) {
-    const headers = { "Content-Type": "application/json" };
-    if (backend.key) headers["Authorization"] = `Bearer ${backend.key}`;
-    const signal = AbortSignal.timeout(timeoutMs);
-    if (backend.kind === "ollama-vision") {
-      const base64 = dataUrl.includes(",") ? dataUrl.split(",", 2)[1] : dataUrl;
-      const res = await fetch(backend.url + "/api/chat", {
-        method: "POST",
-        headers,
-        signal,
-        body: JSON.stringify({
-          model: backend.model,
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: userPrompt, images: [base64] }
-          ],
-          stream: false
-        })
-      });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 402 || res.status === 403) {
-          this._markBackendDead(backend.url);
-        }
-        return null;
-      }
-      const data = await res.json().catch(() => null);
-      return data?.message?.content || null;
-    }
-    const endpoints = ["/v1/chat/completions", "/chat/completions"];
-    for (const ep of endpoints) {
-      try {
-        const res = await fetch(backend.url + ep, {
-          method: "POST",
-          headers,
-          signal,
-          body: JSON.stringify({
-            model: backend.model,
-            messages: [
-              { role: "system", content: system },
-              { role: "user", content: [
-                { type: "text", text: userPrompt },
-                { type: "image_url", image_url: { url: dataUrl } }
-              ] }
-            ],
-            temperature: 0.3
-          })
-        });
-        if (res.ok) {
-          const data = await res.json().catch(() => null);
-          return data?.choices?.[0]?.message?.content || null;
-        }
-        if (res.status === 401 || res.status === 402 || res.status === 403) {
-          this._markBackendDead(backend.url);
-          return null;
-        }
-      } catch (err) {
-        if (err.name === "AbortError") throw err;
-      }
-    }
-    return null;
-  }
+  // LLMGUT.6 — `_customDescribeImage()` deleted. It POSTed a camera frame to
+  // Ollama's `/api/chat` (llava/moondream/bakllava) or to an OpenAI-compatible
+  // `/v1/chat/completions` with multimodal content, and returned the model's
+  // words as her perception. Unreachable once `describeImage()` went.
   /**
    * R13 — Pollinations multimodal fallback. Same call the old
    * app.js:1022 inline handler used, now centralized.
@@ -119367,45 +119129,15 @@ var SensoryAIProviders = class {
    * user saves the Pollinations vision backend in the setup modal).
    * Defaults to `'openai'` (Pollinations' GPT-4o multimodal endpoint).
    */
-  async _pollinationsDescribeImage(dataUrl, system, userPrompt, timeoutMs, modelOverride) {
-    const VISION_URL = "https://gen.pollinations.ai/v1/chat/completions";
-    if (this._isBackendDead(VISION_URL)) return null;
-    const headers = { "Content-Type": "application/json" };
-    if (this._pollinations?._apiKey) {
-      headers["Authorization"] = `Bearer ${this._pollinations._apiKey}`;
-    }
-    const resolved = SHARED_POLL_VISION_MODEL || await resolvePollinationsVisionModel(this._pollinationsVisionModel);
-    const model = modelOverride || resolved || "openai-large";
-    const res = await fetch(VISION_URL, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: [
-            { type: "text", text: userPrompt },
-            { type: "image_url", image_url: { url: dataUrl } }
-          ] }
-        ],
-        temperature: 0.3,
-        max_tokens: 200
-      }),
-      signal: AbortSignal.timeout(timeoutMs)
-    });
-    if (!res.ok) {
-      if (res.status >= 400 && res.status < 500) {
-        const bodyText = await res.text().catch(() => "");
-        this._markBackendDead(VISION_URL);
-        console.warn(
-          `[SensoryAI] Pollinations vision ${res.status} (model="${model}") \u2014 disabled for ${Math.round(this._deadCooldown / 6e4)}m.`,
-          bodyText ? `Server said: ${bodyText.slice(0, 500)}` : "(no body)"
-        );
-      }
-      return null;
-    }
-    const data = await res.json().catch(() => null);
-    return data?.choices?.[0]?.message?.content || null;
+  // LLMGUT.6 — `_pollinationsDescribeImage()` deleted (body removed below).
+  // It POSTed the frame to `gen.pollinations.ai/v1/chat/completions` with a
+  // multimodal message and returned GPT-4o's sentence as her sight. ⚠ Note the
+  // contrast with `js/io/voice.js`, which posts to the SAME URL and is KEPT:
+  // that one requests `modalities: ['text','audio']` and consumes the returned
+  // AUDIO, i.e. it is a voice executor, not a describer. Same endpoint, opposite
+  // roles — which is exactly why this strip had to be read rather than grepped.
+  async _pollinationsDescribeImage() {
+    return null;
   }
   _isBackendDead(url) {
     const deadTime = this._deadBackends.get(url);
@@ -119489,7 +119221,6 @@ var SensoryAIProviders = class {
 };
 
 // ../js/ai/pollinations.js
-var GEN_URL = "https://gen.pollinations.ai";
 var IMAGE_URL = "https://image.pollinations.ai";
 var PollinationsAI = class _PollinationsAI {
   constructor(apiKey = null) {
@@ -119509,57 +119240,22 @@ var PollinationsAI = class _PollinationsAI {
     }
     return h;
   }
-  // ── Text Generation ────────────────────────────────────────────────
-  /**
-   * Chat with a text model.
-   * @param {Array<{role:string, content:string}>} messages
-   * @param {Object} [options]
-   * @param {string} [options.model='openai']
-   * @param {number} [options.temperature=0.9]
-   * @returns {Promise<string|null>} response text or null on failure
-   */
-  /**
-   * R4 — chat() method kept as a multimodal wrapper so the vision
-   * describer at app.js:996 can still send image frames to
-   * Pollinations GPT-4o for scene description. That's a SENSORY
-   * call (vision input → text description), not cognition, so it
-   * stays under the refactor's "sensory AI allowed" rule.
-   *
-   * The old text-generation chat path (user talks to Unity via AI
-   * completion) is gone — Unity's cognition runs equationally via
-   * innerVoice.languageCortex.generate(), nothing routes through
-   * here for speech anymore.
-   *
-   * If you're tempted to call this from the brain/cognition path,
-   * DON'T. Use the language cortex. This method exists ONLY for
-   * the vision describer and any future sensory peripherals that
-   * need OpenAI-compatible multimodal.
-   */
-  async chat(messages, options = {}) {
-    const model = options.model || "openai";
-    const temperature = options.temperature ?? 0.9;
-    const body = JSON.stringify({ messages, model, temperature });
-    const headers = this._headers();
-    try {
-      const res = await fetch(`${GEN_URL}/v1/chat/completions`, {
-        method: "POST",
-        headers,
-        body,
-        signal: options.signal || AbortSignal.timeout(3e4)
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.choices?.[0]?.message?.content) {
-          return json.choices[0].message.content;
-        }
-      } else {
-        console.warn("[PollinationsAI] v1/chat/completions returned", res.status);
-      }
-    } catch (err) {
-      console.error("[PollinationsAI] v1/chat/completions failed:", err.message);
-    }
-    return null;
-  }
+  // LLMGUT.5 (2026-08-25) — THE TEXT LANE IS DELETED.
+  //
+  // `chat()` POSTed to `gen.pollinations.ai/v1/chat/completions`. Its own
+  // doc-comment said it was kept solely for the vision describer — and that
+  // describer is gone (`app.js` now reads "Vision-describer auto-detect
+  // removed — no LLM describer to probe"), replaced by her equational mind's
+  // eye. So it had ZERO call sites and was an OpenAI-shaped text-generation
+  // path sitting in the tree with nothing using it. `listModels()` went with
+  // it for the same reason. The endpoint also 401s on the anonymous tier now,
+  // so it was doubly dead.
+  //
+  // ⛔ THIS DELETION IS SURGICAL ON PURPOSE. The image lane below is
+  // LOAD-BEARING and stays: `image.pollinations.ai/prompt` is how she gets
+  // her reference look-ups and her generated images, it is verified unfiltered
+  // (WORDSALAD.1f), and gutting this file wholesale would have taken her eyes
+  // out along with the LLM.
   // ── Image Generation ───────────────────────────────────────────────
   /** Style presets that get appended to the prompt. */
   static STYLE_PRESETS = {
@@ -119603,52 +119299,17 @@ var PollinationsAI = class _PollinationsAI {
       return null;
     }
   }
-  // ── Text-to-Speech ─────────────────────────────────────────────────
-  /**
-   * Convert text to speech.
-   * @param {string} text
-   * @param {string} [voice='nova']
-   * @returns {Promise<Blob|null>} audio Blob or null on failure
-   */
-  async speak(text, voice2 = "nova") {
-    try {
-      const res = await fetch(`${GEN_URL}/v1/audio/speech`, {
-        method: "POST",
-        headers: this._headers(),
-        body: JSON.stringify({
-          model: "openai-audio",
-          input: text,
-          voice: voice2
-        })
-      });
-      if (!res.ok) {
-        console.error("[PollinationsAI] speak failed:", res.status, res.statusText);
-        return null;
-      }
-      return await res.blob();
-    } catch (err) {
-      console.error("[PollinationsAI] speak failed:", err.message);
-      return null;
-    }
-  }
-  // ── Models ─────────────────────────────────────────────────────────
-  /**
-   * List available text models.
-   * @returns {Promise<Array|null>}
-   */
-  async listModels() {
-    try {
-      const res = await fetch(`${GEN_URL}/v1/models`);
-      if (!res.ok) {
-        console.error("[PollinationsAI] listModels failed:", res.status);
-        return null;
-      }
-      return await res.json();
-    } catch (err) {
-      console.error("[PollinationsAI] listModels failed:", err.message);
-      return null;
-    }
-  }
+  // LLMGUT.5/.6 — `speak()` and `listModels()` DELETED.
+  //
+  // Operator: "we do not use pollinations tts we use the unity one
+  // equations". Correct — her voice is Equation Unity One (piper hfc_female
+  // through the CDF 9/7 round-trip) with her own banked word equations
+  // behind it. This was an external TTS lane that nothing reached any more,
+  // and it answered 401 on the anonymous tier regardless.
+  //
+  // With the text lane, the TTS lane and the model list all gone, this
+  // module does exactly ONE thing, which is the whole point: Pollinations is
+  // IMAGES. `GEN_URL` is retired with them; only `IMAGE_URL` remains.
 };
 
 // ../js/brain/mindspace/audio.js
@@ -120141,34 +119802,22 @@ var VoiceIO = class {
     }
   }
   /** Fetch ONE isolated word from the executor (same wire shape as speech). */
-  async _voxFetchWord(word) {
-    const preset = this._agePreset();
-    const headers = { "Content-Type": "application/json" };
-    if (this._apiKey) headers["Authorization"] = `Bearer ${this._apiKey}`;
-    const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: "openai-audio",
-        modalities: ["text", "audio"],
-        audio: { voice: this._voiceOverride || preset.voice, format: "mp3" },
-        messages: [
-          { role: "system", content: preset.style + " Say ONLY the single word the user gives you, naturally, nothing else." },
-          { role: "user", content: word }
-        ]
-      })
-    });
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 402 || res.status === 403) this._pollTtsDead = Date.now();
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    const b64 = data?.choices?.[0]?.message?.audio?.data;
-    if (!b64) throw new Error("no audio data");
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes.buffer;
+  // LLMGUT.6 — `_voxFetchWord()` deleted. It fetched a single word of audio
+  // from Pollinations so the word could be perceived into her equation bank.
+  //
+  // Operator: "we do not use pollinations tts we use the unity one equations".
+  // Correct — her voice is Equation Unity One: `_speakPiper` (piper hfc_female
+  // → CDF 9/7 round-trip) is tier 1, `_speakVox` (her own banked word
+  // equations) is tier 2, and Pollinations was only ever tier 3.
+  //
+  // ⚠ THE HONEST TRADE, stated rather than buried: this was the path that GREW
+  // the runtime bank beyond the offline VOXREF reference bank. Removing it
+  // means VOX covers the reference words only. That costs nothing in practice
+  // because it was ALREADY dead — `gen.pollinations.ai` returns 401 on the
+  // anonymous tier, and anonymous-only is the standing policy, so every call
+  // here had been failing before it was deleted.
+  async _voxFetchWord() {
+    throw new Error("vox external fetch removed \u2014 her voice is her own equations");
   }
   /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
   async _voxDecodeTo24kMono(arrayBuffer) {
@@ -120356,24 +120005,7 @@ var VoiceIO = class {
     } catch (err) {
       console.warn("[VoiceIO] VOX equational path failed, executor fallback:", err.message);
     }
-    let spoke = false;
-    for (let attempt = 0; attempt < 2 && !spoke; attempt++) {
-      try {
-        await this._speakPollinations(text, voice2);
-        spoke = true;
-      } catch (err) {
-        const msg = err.message || "";
-        if (msg.includes("dead (cooldown)")) break;
-        if (attempt === 0 && /HTTP 5\d\d/.test(msg)) {
-          await new Promise((r) => setTimeout(r, 1e3));
-          continue;
-        }
-        if (attempt === 0) {
-          console.warn(`[VoiceIO] Pollinations TTS failed: ${msg} \u2014 browser fallback`);
-        }
-        break;
-      }
-    }
+    const spoke = false;
     if (!spoke) {
       try {
         await this._speakBrowser(text);
@@ -120411,44 +120043,7 @@ var VoiceIO = class {
     if (this._pollTtsDead && Date.now() - this._pollTtsDead < 36e5) {
       throw new Error("Pollinations TTS dead (cooldown)");
     }
-    const preset = this._agePreset();
-    const url = "https://gen.pollinations.ai/v1/chat/completions";
-    const headers = { "Content-Type": "application/json" };
-    if (this._apiKey) {
-      headers["Authorization"] = `Bearer ${this._apiKey}`;
-    }
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: "openai-audio",
-        modalities: ["text", "audio"],
-        audio: { voice: voice2 || this._voiceOverride || preset.voice, format: "mp3" },
-        messages: [
-          { role: "system", content: preset.style + " Repeat the user text EXACTLY, verbatim, word for word. Do not add, remove, or change anything." },
-          { role: "user", content: text }
-        ]
-      })
-    });
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 402 || response.status === 403) {
-        this._pollTtsDead = Date.now();
-        console.warn(`[VoiceIO] Pollinations TTS ${response.status} \u2014 disabled for 1h, using browser SpeechSynthesis. Paste a Pollinations API key in Settings to re-enable.`);
-      }
-      throw new Error(`Pollinations TTS HTTP ${response.status}`);
-    }
-    const data = await response.json().catch(() => null);
-    const b64 = data?.choices?.[0]?.message?.audio?.data;
-    if (!b64) throw new Error("Pollinations TTS returned no audio data");
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const arrayBuffer = bytes.buffer;
-    try {
-      await this._playWithAudioContext(arrayBuffer.slice(0), preset.rate);
-    } catch (_) {
-      await this._playWithAudioElement(arrayBuffer, preset.rate);
-    }
+    throw new Error("pollinations tts removed \u2014 her voice is Equation Unity One");
   }
   async _playWithAudioContext(arrayBuffer, rate = 1) {
     if (!this._audioCtx) {
@@ -128417,8 +128012,7 @@ function showBackendForm(backendKey) {
       html += `<option value="a1111">a1111 \u2014 Automatic1111 /sdapi/v1/txt2img</option>`;
       html += `<option value="comfy">comfy \u2014 ComfyUI workflow</option>`;
     } else {
-      html += `<option value="openai-vision">openai-vision \u2014 /v1/chat/completions with image_url content blocks</option>`;
-      html += `<option value="ollama-vision">ollama-vision \u2014 /api/chat with images array</option>`;
+      html += `<option value="none">none \u2014 Unity's sight is her own equational mind's eye</option>`;
     }
     html += `</select>`;
   }
