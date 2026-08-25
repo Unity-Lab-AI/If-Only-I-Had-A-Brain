@@ -10487,6 +10487,64 @@ wss.on('connection', (ws, req) => {
           // so weak "STD" GPUs each hold a slice) is the next layer — this is
           // the non-breaking foundation it builds on.
           if (!brain._gpuClients) brain._gpuClients = new Set();
+
+          // ── PODARGS.3 — REAP THE CORPSE BEFORE DOING ANY WORK FOR THE NEW SOCKET.
+          //
+          // ⛔ MEASURED SYMPTOM: every donor start after a pod restart burned a
+          // FULL connect + 7-cluster init, died to `Connection reset without
+          // closing handshake` ~5s in, reconnected, and did all seven inits
+          // AGAIN. Timings off the live pod 2026-08-25: register 13:25:43 → 7
+          // inits → reset 13:25:48 → re-register 13:26:08 → inits again
+          // 13:26:20 → langCortex 13:26:46. ~60s of startup and seven wasted
+          // `gpu_init` dispatches at biological scale, on EVERY start.
+          //
+          // ⭐ THE CAUSE IS ALREADY DESCRIBED IN THIS FILE, in the heartbeat
+          // comment further down: a half-open socket cannot be detected by
+          // `readyState` or the close event, so a dead donor "keeps its slot and
+          // a fresh donor joins as an idle replica BEHIND A CORPSE" until a ping
+          // sweep reaps it — and that reap is the mid-init teardown. The reaper
+          // was working as designed. The defect is that the new donor was made
+          // to run a full init as a REPLICA first, against a primary that no
+          // longer exists.
+          //
+          // ⭐ THE DISCRIMINATOR IS `donorId`, and it is EXACT rather than
+          // heuristic: a donor process sends `gpu_register` EXACTLY ONCE PER
+          // CONNECTION. So a register arriving for a donorId that already holds
+          // a socket means that socket will never register again — it is the
+          // previous process's corpse. Reap it here, before a single init frame
+          // is dispatched, and the new donor comes up ONCE as PRIMARY instead of
+          // twice behind a dead one.
+          //
+          // ⚠ The one shape this would be wrong for is two live donor processes
+          // sharing an install (same data dir ⟹ same persistent id), which
+          // already collides on the leaderboard row and is not a supported
+          // layout — the launcher runs ONE process with `--gpus all` as one
+          // compute unit. `DREAM_NO_DONOR_ID_EVICT=1` opts out.
+          //
+          // ⚠ `terminate()`, not `close()`: a corpse cannot complete a closing
+          // handshake, which is exactly why the heartbeat sweep uses terminate
+          // too. It fires `ws.on('close')`, so the existing failover /
+          // standby-promotion path runs unchanged.
+          const _incomingDonorId = (msg.donorId && String(msg.donorId).slice(0, 64)) || null;
+          if (_incomingDonorId && process.env.DREAM_NO_DONOR_ID_EVICT !== '1') {
+            for (const _old of brain._gpuClients) {
+              if (_old === ws) continue;
+              const _oc = brain.clients && brain.clients.get ? brain.clients.get(_old) : null;
+              if (!_oc || _oc.donorId !== _incomingDonorId) continue;
+              const _ageMs = Date.now() - (_oc.lastSeen || 0);
+              console.warn(
+                `[Server] donor RE-REGISTER for donorId=${_incomingDonorId} — reaping the previous socket ${_oc.id} `
+                + `(last seen ${(_ageMs / 1000).toFixed(1)}s ago, was${brain._gpuClient === _old ? '' : ' NOT'} PRIMARY) `
+                + `BEFORE any init dispatch. A donor registers once per connection, so that socket is the old process's `
+                + `corpse; reaping it here is what stops the new donor initialising behind a dead primary and being torn `
+                + `down mid-init.`
+              );
+              brain._gpuClients.delete(_old);
+              if (brain._gpuClient === _old) brain._gpuClient = null;
+              try { _old.terminate(); } catch { /* already gone */ }
+            }
+          }
+
           brain._gpuClients.add(ws);
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
