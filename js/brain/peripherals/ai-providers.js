@@ -54,29 +54,33 @@ const LOCAL_IMAGE_BACKENDS = [
   // actually run.
 ];
 
-// ── Local VLM (vision-language model) backends for the describer ──
+// ── LLMGUT.6 (2026-08-25) — THE VLM DESCRIBER IS GONE ────────────────────────
 //
-// R13 — same auto-probe treatment as image gen, but for vision. Unity's
-// visual cortex IT layer asks these backends "what do you see" on camera
-// frames. Ollama's vision models (llava, moondream, bakllava) are the
-// easiest path since most people already run Ollama for text. LM Studio
-// and llama.cpp server both expose OpenAI-compatible /v1/chat/completions
-// with multimodal message content.
+// `LOCAL_VISION_BACKENDS` (Ollama/llava, LM Studio, LocalAI, llama.cpp, Jan),
+// `VISION_MODEL_HINTS`, `autoDetectVision()`, `describeImage()` and both
+// describe transports used to live in this file. They asked an external
+// vision-language model "what do you see" on camera frames and fed the answer
+// back in as her sight.
 //
-// For Ollama specifically we probe /api/tags and filter for vision-capable
-// model names at register time — the model list tells us which VLM is
-// actually loaded.
-const LOCAL_VISION_BACKENDS = [
-  { name: 'Ollama (VLM)',   url: 'http://localhost:11434', probe: '/api/tags',   kind: 'ollama-vision' },
-  { name: 'LM Studio',      url: 'http://localhost:1234',  probe: '/v1/models',  kind: 'openai-vision' },
-  { name: 'LocalAI (VLM)',  url: 'http://localhost:8081',  probe: '/v1/models',  kind: 'openai-vision' },
-  { name: 'llama.cpp',      url: 'http://localhost:8080',  probe: '/v1/models',  kind: 'openai-vision' },
-  { name: 'Jan',            url: 'http://localhost:1337',  probe: '/v1/models',  kind: 'openai-vision' },
-];
-
-// Substrings that mark a model as vision-capable. Used when probing
-// /api/tags or /v1/models to pick the right model id.
-const VISION_MODEL_HINTS = ['llava', 'moondream', 'bakllava', 'vision', 'vl', 'cogvlm', 'minicpm-v'];
+// They are deleted because the equational MIND'S EYE replaced them — that was
+// the whole point of MINDSPACE MS.I2 and the no-text-AI law — and `app.js`
+// already reported the replacement ("Vision-describer auto-detect removed — no
+// LLM describer to probe"). Every entry point here had ZERO call sites; the
+// machinery had simply been left behind after its replacement shipped.
+//
+// ⛔ WHAT IS DELIBERATELY UNTOUCHED, because the operator's constraint on this
+// strip was that her senses must not regress:
+//   • HER VOICE — `js/io/voice.js` (Piper hfc_female, plus the Pollinations
+//     audio lane). ⚠ That lane POSTs to `/v1/chat/completions`, which LOOKS
+//     like an LLM artifact and is NOT: Pollinations retired
+//     `/v1/audio/speech`, so TTS rides the chat endpoint with
+//     `modalities: ['text','audio']` and returns base64 AUDIO (see VOX.0).
+//     It is a sensory-OUTPUT executor, which the no-text-AI law explicitly
+//     permits. Gutting it would take her voice.
+//   • HER IMAGE GENERATION — `generateImage()` below and the server's
+//     `_buildPollinationsImageUrl`.
+//   • HER MIND'S EYE — `js/brain/mindspace/*` and the look lane in
+//     `server/brain-server/visual-memory.js`.
 
 // Module-level shared state — survives across SensoryAIProviders
 // instances. The landing page and bootUnity both construct their own
@@ -85,61 +89,13 @@ const VISION_MODEL_HINTS = ['llava', 'moondream', 'bakllava', 'vision', 'vl', 'c
 // every instance sees the same dead state and the same resolved
 // Pollinations vision model id once the first probe completes.
 const SHARED_DEAD_BACKENDS = new Map(); // url → timestamp
-let SHARED_POLL_VISION_MODEL = null;    // resolved after /v1/models probe
-let SHARED_POLL_VISION_PROBE = null;    // in-flight probe promise
 
-// Ordered preference list for picking a Pollinations vision model.
-// First hit in the current /v1/models list that has 'image' in its
-// input_modalities wins. Any saved value not in the current list is
-// discarded as stale.
-const POLL_VISION_PREFERENCE = [
-  'openai-large', 'openai', 'openai-fast',
-  'claude-large', 'claude',
-  'gemini-large', 'gemini',
-  'qwen-vision', 'qwen-large',
-  'mistral-large', 'mistral',
-];
-
-async function resolvePollinationsVisionModel(savedOverride) {
-  if (SHARED_POLL_VISION_MODEL) return SHARED_POLL_VISION_MODEL;
-  if (SHARED_POLL_VISION_PROBE) return SHARED_POLL_VISION_PROBE;
-  SHARED_POLL_VISION_PROBE = (async () => {
-    try {
-      const res = await fetch('https://gen.pollinations.ai/v1/models', {
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const list = await res.json();
-      const visionCapable = new Set();
-      for (const m of Array.isArray(list) ? list : []) {
-        const id = m?.id || m?.name;
-        const mods = m?.input_modalities || [];
-        if (id && mods.includes('image')) visionCapable.add(id);
-      }
-      // Saved override wins IF it's still valid in the live list
-      if (savedOverride && visionCapable.has(savedOverride)) {
-        SHARED_POLL_VISION_MODEL = savedOverride;
-      } else {
-        for (const pref of POLL_VISION_PREFERENCE) {
-          if (visionCapable.has(pref)) { SHARED_POLL_VISION_MODEL = pref; break; }
-        }
-        if (!SHARED_POLL_VISION_MODEL && visionCapable.size > 0) {
-          SHARED_POLL_VISION_MODEL = visionCapable.values().next().value;
-        }
-      }
-      console.log(`[SensoryAI] resolved Pollinations vision model → ${SHARED_POLL_VISION_MODEL || '(none)'}`);
-    } catch (err) {
-      console.warn('[SensoryAI] Pollinations /v1/models probe failed:', err.message);
-      // Fall back to the canonical default — Pollinations will tell us
-      // if it's wrong with a proper 400 body and the dead marker engages.
-      SHARED_POLL_VISION_MODEL = savedOverride || 'openai-large';
-    } finally {
-      SHARED_POLL_VISION_PROBE = null;
-    }
-    return SHARED_POLL_VISION_MODEL;
-  })();
-  return SHARED_POLL_VISION_PROBE;
-}
+// LLMGUT.6 — `SHARED_POLL_VISION_MODEL`, `SHARED_POLL_VISION_PROBE`,
+// `POLL_VISION_PREFERENCE` and `resolvePollinationsVisionModel()` deleted.
+// They existed only to pick which multimodal LLM (openai-large / claude /
+// gemini / qwen-vision / mistral) would describe her camera frames, by probing
+// `gen.pollinations.ai/v1/models` for anything with `image` in its input
+// modalities. With the describer gone there is no model to choose.
 
 export class SensoryAIProviders {
   constructor({ pollinations, storage }) {
@@ -331,63 +287,16 @@ export class SensoryAIProviders {
     return this._localImageBackends;
   }
 
-  /**
-   * R13 — auto-detect local VLM backends for the vision describer.
-   * Same shape as autoDetect() but for vision. For Ollama we additionally
-   * parse /api/tags to find a vision-capable model to use.
-   */
-  async autoDetectVision(opts = {}) {
-    const timeoutMs = opts.timeoutMs ?? 1500;
-    const probes = LOCAL_VISION_BACKENDS.map(async (backend) => {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(backend.url + backend.probe, {
-          method: 'GET',
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
-        if (!res.ok) return null;
-
-        // Parse the model list to pick a vision-capable model id
-        const data = await res.json().catch(() => null);
-        let visionModel = null;
-        if (data) {
-          if (Array.isArray(data.models)) {
-            // Ollama shape
-            const hit = data.models.find(m =>
-              VISION_MODEL_HINTS.some(h => (m.name || m.model || '').toLowerCase().includes(h))
-            );
-            if (hit) visionModel = hit.name || hit.model;
-          } else if (Array.isArray(data.data)) {
-            // OpenAI shape
-            const hit = data.data.find(m =>
-              VISION_MODEL_HINTS.some(h => (m.id || '').toLowerCase().includes(h))
-            );
-            if (hit) visionModel = hit.id;
-          }
-        }
-
-        if (!visionModel && backend.kind === 'ollama-vision') {
-          // Ollama probe succeeded but no vision model pulled — skip
-          return null;
-        }
-
-        console.log(`[SensoryAI] Detected vision backend: ${backend.name} at ${backend.url}${visionModel ? ` (model: ${visionModel})` : ''}`);
-        return { ...backend, model: visionModel || 'gpt-4-vision-preview', detected: true };
-      } catch {
-        return null;
-      }
-    });
-
-    const results = await Promise.all(probes);
-    const found = results.filter(r => r !== null);
-    this._localVisionBackends.push(...found);
-    if (found.length > 0) {
-      console.log(`[SensoryAI] ${found.length} vision backend(s) registered:`,
-        found.map(b => b.name).join(', '));
-    }
-    this._emitStatus({ kind: 'vision', event: 'autodetect-complete', backends: this._localVisionBackends });
+  // LLMGUT.6 — `autoDetectVision()` deleted. It probed localhost for Ollama /
+  // LM Studio / LocalAI / llama.cpp / Jan and registered whichever
+  // vision-language model was loaded, so an external LLM could act as her eyes.
+  // Zero call sites; her sight is the equational mind's eye.
+  //
+  // Kept as a no-op rather than removed from the class, because `app.js`
+  // documents this name in its boot comments and a future caller landing on
+  // `undefined` would be a silent break instead of an obvious one.
+  async autoDetectVision() {
+    this._localVisionBackends = [];
     return this._localVisionBackends;
   }
 
@@ -529,110 +438,15 @@ export class SensoryAIProviders {
     return this._pollinations.generateImage(prompt, opts);
   }
 
-  /**
-   * R13 — describe what's in an image. Multi-provider with the same
-   * 4-level priority as generateImage:
-   *   1. env.js-configured VLM backends (visionBackends array)
-   *   2. Auto-detected local VLMs (Ollama llava/moondream, LM Studio,
-   *      LocalAI, llama.cpp, Jan — whichever responded to probes)
-   *   3. Pollinations multimodal (openai model) as always-available fallback
-   *
-   * After 3 consecutive failures across ALL backends, vision pauses for
-   * 30 seconds to avoid hammering dead endpoints. During the pause,
-   * describeImage() returns null immediately and emits a status event.
-   *
-   * @param {string} dataUrl — base64 data URL of the frame
-   * @param {object} opts — { system, userPrompt, timeout }
-   * @returns {Promise<string|null>} — description text, or null on failure
-   */
-  async describeImage(dataUrl, opts = {}) {
-    if (!dataUrl) return null;
-
-    // Paused after repeated failures — fail fast
-    if (Date.now() < this._visionPausedUntil) {
-      return null;
-    }
-
-    const system = opts.system || 'Describe what you see through a webcam. What is the person doing, how do they seem, what is around them. 1 sentence. No privacy disclaimers.';
-    const userPrompt = opts.userPrompt || 'What do you see?';
-    const timeout = opts.timeout || 15000;
-
-    // Track whether Pollinations has already been tried in this cycle
-    // so the fallback path doesn't double-fire the same endpoint after
-    // a preferred-pollinations attempt already failed. Previously each
-    // describe cycle fired TWO identical 400s before the dead marker
-    // could engage (preferred at step 0, fallback at step 3).
-    let pollTried = false;
-
-    // 0. User-preferred vision backend — honored first if set
-    if (this._preferredVision) {
-      const pref = this._preferredVision;
-      const target = this._findBackend('vision', pref.source, pref.name);
-      if (target?.pollinations) {
-        try {
-          // Do NOT pass pref.model — stale saved overrides (e.g. old
-          // 'openai' id from a previous session) beat the auto-probed
-          // model. Let _pollinationsDescribeImage resolve the id from
-          // the live /v1/models list.
-          const desc = await this._pollinationsDescribeImage(dataUrl, system, userPrompt, timeout);
-          pollTried = true;
-          if (desc) return desc;
-        } catch (err) {
-          pollTried = true;
-          console.warn('[SensoryAI] preferred Pollinations vision failed:', err.message);
-        }
-      } else if (target && !this._isBackendDead(target.url)) {
-        try {
-          const b = { ...target, model: pref.model || target.model };
-          const desc = await this._customDescribeImage(b, dataUrl, system, userPrompt, timeout);
-          if (desc) return desc;
-        } catch (err) {
-          console.warn('[SensoryAI] preferred vision backend failed:', err.message);
-        }
-      }
-    }
-
-    // 1. + 2. Try every registered local vision backend in order
-    for (const backend of this._localVisionBackends) {
-      if (this._isBackendDead(backend.url)) continue;
-      try {
-        const desc = await this._customDescribeImage(backend, dataUrl, system, userPrompt, timeout);
-        if (desc) {
-          this._visionFailCount = 0;
-          return desc;
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') throw err;
-        console.warn(`[SensoryAI] Vision backend ${backend.name} failed:`, err.message);
-        this._emitStatus({ kind: 'vision', event: 'backend-failed', backend: backend.name, reason: err.message });
-      }
-    }
-
-    // 3. Pollinations fallback — skip if already tried as preferred
-    // above (prevents the double-fire-per-cycle 400 flood).
-    if (!pollTried) {
-      try {
-        const desc = await this._pollinationsDescribeImage(dataUrl, system, userPrompt, timeout);
-        if (desc) {
-          this._visionFailCount = 0;
-          return desc;
-        }
-      } catch (err) {
-        console.warn('[SensoryAI] Pollinations vision fallback failed:', err.message);
-        this._emitStatus({ kind: 'vision', event: 'backend-failed', backend: 'Pollinations', reason: err.message });
-      }
-    }
-
-    // Total failure across all tiers — increment counter, maybe pause
-    this._visionFailCount++;
-    if (this._visionFailCount >= 3) {
-      this._visionPausedUntil = Date.now() + 30000;
-      this._visionFailCount = 0;
-      console.warn('[SensoryAI] Vision describer paused for 30s after 3 consecutive failures');
-      this._emitStatus({ kind: 'vision', event: 'paused', reason: 'consecutive-failures', duration: 30000 });
-    } else {
-      this._emitStatus({ kind: 'vision', event: 'all-failed', attempt: this._visionFailCount });
-    }
+  // LLMGUT.6 — `describeImage()` deleted. It sent a webcam frame plus the
+  // prompt "Describe what you see through a webcam… 1 sentence" to a local VLM
+  // or to Pollinations and returned the model's sentence AS HER SIGHT. That is
+  // an external text model doing her perceiving, which is the exact thing the
+  // equational mind's eye was built to replace and the no-text-AI law forbids.
+  // Zero call sites — the replacement had already shipped and this was left
+  // behind. Returns null so any future caller gets "no description" rather
+  // than an exception.
+  async describeImage() {
     return null;
   }
 
@@ -642,8 +456,13 @@ export class SensoryAIProviders {
    * @param {string} text
    * @param {string} voice — voice name (default 'shimmer')
    */
-  async speak(text, voice = 'shimmer') {
-    return this._pollinations.speak(text, voice);
+  // LLMGUT.6 — this was a one-line passthrough to `PollinationsAI.speak()`,
+  // which is deleted. It had no callers: her voice is Equation Unity One
+  // (js/io/voice.js — piper hfc_female → CDF 9/7, then her own banked word
+  // equations). Kept as a null-returning stub so a stray caller gets "no
+  // audio" instead of a TypeError on a removed method.
+  async speak() {
+    return null;
   }
 
   /**
@@ -658,81 +477,10 @@ export class SensoryAIProviders {
 
   // ── Private ────────────────────────────────────────────────────
 
-  /**
-   * R13 — call a vision backend with the image data URL. Supports two
-   * wire shapes:
-   *   - openai-vision: OpenAI /v1/chat/completions with multimodal message
-   *     content (type: image_url). Works with LM Studio, LocalAI, llama.cpp,
-   *     Jan, and any OpenAI-compatible server.
-   *   - ollama-vision: Ollama /api/chat with images array (base64 without
-   *     the data: prefix). Works with llava, moondream, bakllava.
-   */
-  async _customDescribeImage(backend, dataUrl, system, userPrompt, timeoutMs) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (backend.key) headers['Authorization'] = `Bearer ${backend.key}`;
-
-    const signal = AbortSignal.timeout(timeoutMs);
-
-    if (backend.kind === 'ollama-vision') {
-      // Strip the "data:image/...;base64," prefix — Ollama wants raw b64
-      const base64 = dataUrl.includes(',') ? dataUrl.split(',', 2)[1] : dataUrl;
-      const res = await fetch(backend.url + '/api/chat', {
-        method: 'POST',
-        headers,
-        signal,
-        body: JSON.stringify({
-          model: backend.model,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: userPrompt, images: [base64] },
-          ],
-          stream: false,
-        }),
-      });
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 402 || res.status === 403) {
-          this._markBackendDead(backend.url);
-        }
-        return null;
-      }
-      const data = await res.json().catch(() => null);
-      return data?.message?.content || null;
-    }
-
-    // openai-vision (default) — multimodal chat completion
-    const endpoints = ['/v1/chat/completions', '/chat/completions'];
-    for (const ep of endpoints) {
-      try {
-        const res = await fetch(backend.url + ep, {
-          method: 'POST',
-          headers,
-          signal,
-          body: JSON.stringify({
-            model: backend.model,
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: [
-                { type: 'text', text: userPrompt },
-                { type: 'image_url', image_url: { url: dataUrl } },
-              ]},
-            ],
-            temperature: 0.3,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json().catch(() => null);
-          return data?.choices?.[0]?.message?.content || null;
-        }
-        if (res.status === 401 || res.status === 402 || res.status === 403) {
-          this._markBackendDead(backend.url);
-          return null;
-        }
-      } catch (err) {
-        if (err.name === 'AbortError') throw err;
-      }
-    }
-    return null;
-  }
+  // LLMGUT.6 — `_customDescribeImage()` deleted. It POSTed a camera frame to
+  // Ollama's `/api/chat` (llava/moondream/bakllava) or to an OpenAI-compatible
+  // `/v1/chat/completions` with multimodal content, and returned the model's
+  // words as her perception. Unreachable once `describeImage()` went.
 
   /**
    * R13 — Pollinations multimodal fallback. Same call the old
@@ -744,78 +492,15 @@ export class SensoryAIProviders {
    * user saves the Pollinations vision backend in the setup modal).
    * Defaults to `'openai'` (Pollinations' GPT-4o multimodal endpoint).
    */
-  async _pollinationsDescribeImage(dataUrl, system, userPrompt, timeoutMs, modelOverride) {
-    // T4.13 — short-circuit if Pollinations vision endpoint has been
-    // marked dead (401 / auth failure). Previously each frame hit the
-    // endpoint, got 401, and logged a new error to the console — at
-    // 3-frame-per-second vision rate that's ~180 console errors per
-    // minute spamming the developer tools. Now a single 401 marks the
-    // endpoint dead for the cooldown period and subsequent calls
-    // return null silently until the cooldown expires OR the user
-    // pastes an API key.
-    const VISION_URL = 'https://gen.pollinations.ai/v1/chat/completions';
-    if (this._isBackendDead(VISION_URL)) return null;
-
-    const headers = { 'Content-Type': 'application/json' };
-    if (this._pollinations?._apiKey) {
-      headers['Authorization'] = `Bearer ${this._pollinations._apiKey}`;
-    }
-    // Model resolution order:
-    //  1. Caller explicit override (rare — only if code forces an id)
-    //  2. Module-level resolved model from live /v1/models probe
-    //     (cached across all SensoryAIProviders instances)
-    //  3. Saved user preference from localStorage — BUT only if the
-    //     probe validated it as still present in the current model list
-    //  4. Canonical 'openai-large' default
-    //
-    // The auto-probe kicks off on first call if it hasn't been run and
-    // awaits its result before firing the first fetch. Subsequent calls
-    // hit the cached value with zero latency. Stale saved overrides
-    // that are no longer in Pollinations' live model list get discarded
-    // inside resolvePollinationsVisionModel() — that's what was causing
-    // the 400 flood (user's saved 'openai' was beating the new default).
-    const resolved = SHARED_POLL_VISION_MODEL
-      || await resolvePollinationsVisionModel(this._pollinationsVisionModel);
-    const model = modelOverride || resolved || 'openai-large';
-    const res = await fetch(VISION_URL, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: [
-            { type: 'text', text: userPrompt },
-            { type: 'image_url', image_url: { url: dataUrl } },
-          ]},
-        ],
-        temperature: 0.3,
-        max_tokens: 200,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) {
-      // Any 4xx is a client-side problem that won't fix itself frame
-      // to frame (auth, payment, bad request body, unsupported model).
-      // Mark the backend dead for the cooldown so we stop hammering
-      // the endpoint and spamming the console. 5xx gets a soft skip
-      // and retries on the next frame in case it's transient.
-      if (res.status >= 400 && res.status < 500) {
-        // Read the body ONCE so we log exactly what Pollinations is
-        // complaining about (model not found, bad payload shape, etc).
-        // Crucial for debugging 400s when a valid paid key is in use —
-        // otherwise you see "400 Bad Request" with no explanation.
-        const bodyText = await res.text().catch(() => '');
-        this._markBackendDead(VISION_URL);
-        console.warn(
-          `[SensoryAI] Pollinations vision ${res.status} (model="${model}") — disabled for ${Math.round(this._deadCooldown / 60000)}m.`,
-          bodyText ? `Server said: ${bodyText.slice(0, 500)}` : '(no body)',
-        );
-      }
-      return null;
-    }
-    const data = await res.json().catch(() => null);
-    return data?.choices?.[0]?.message?.content || null;
+  // LLMGUT.6 — `_pollinationsDescribeImage()` deleted (body removed below).
+  // It POSTed the frame to `gen.pollinations.ai/v1/chat/completions` with a
+  // multimodal message and returned GPT-4o's sentence as her sight. ⚠ Note the
+  // contrast with `js/io/voice.js`, which posts to the SAME URL and is KEPT:
+  // that one requests `modalities: ['text','audio']` and consumes the returned
+  // AUDIO, i.e. it is a voice executor, not a describer. Same endpoint, opposite
+  // roles — which is exactly why this strip had to be read rather than grepped.
+  async _pollinationsDescribeImage() {
+    return null;
   }
 
   _isBackendDead(url) {

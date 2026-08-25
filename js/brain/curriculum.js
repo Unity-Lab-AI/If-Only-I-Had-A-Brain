@@ -4122,10 +4122,24 @@ export class Curriculum {
             // tier1 store. Best-effort — fall through if memory not wired.
             let dreamSeed = null;
             try {
+              // DORMANT.2 (2026-08-25) — THIS REACH HAS ALWAYS COME BACK EMPTY.
+              // `MemorySystem` (engine.js:212) has no `tier1` property and
+              // `brain.tier1Store` is never assigned anywhere, so `tier1` is
+              // undefined, the guard fails, and `dreamSeed` stays null on every
+              // pass — her dream recombination has never been seeded from a real
+              // episode. That silence is why it looked like a working feature.
+              // Left unimplemented deliberately: wiring an episode sampler is a
+              // FEATURE (the episodic store is server-side sqlite and exposes no
+              // random-fetch), not a repair, and inventing one here would be the
+              // same guess-shaped mistake this ledger keeps paying for. What is
+              // fixed is the SILENCE — it now says so, once.
               const tier1 = brain.memorySystem?.tier1 || brain.tier1Store;
               if (tier1 && typeof tier1.getRandomEpisode === 'function') {
                 const ep = tier1.getRandomEpisode();
                 if (ep && ep.pattern) dreamSeed = ep.pattern;
+              } else if (!this._dreamSeedGapLogged) {
+                this._dreamSeedGapLogged = true;
+                this._hb('[Curriculum] ⚠ dream recombination has NO episode seed — no Tier 1 store exposes getRandomEpisode (MemorySystem has no .tier1, brain.tier1Store is never assigned). Dreams run from the fallback seed only. Filed as DORMANT.2.');
               }
             } catch { /* non-fatal */ }
             if (dreamSeed) {
@@ -18992,8 +19006,27 @@ export class Curriculum {
     // For "starts with X" (single letter): find K-vocab word starting with X.
     if (tplId === 5) {
       const q = question.toLowerCase();
+      // ── OWNWORDS.4 (2026-08-25) — THIS WAS A GRADE EARNED ON A STRING OP ──
+      //
+      // It used to be `return keyTok;` — for "spell cat", `_extractKeyToken`
+      // pulls "cat" out of the question and the answer WAS "cat", echoed
+      // straight back with **zero consultation of her weights**. The probe
+      // scored it correct, the cell passed on it, and the grade advanced on it.
+      //
+      // Every other template here at least propagates through trained synapses
+      // and reads an argmax — the template picks WHICH region to ask, and her
+      // matrix answers. This one skipped the brain entirely. It is the clearest
+      // case of the thing OWNWORDS was opened to find: a gate measuring string
+      // manipulation and reporting it as her knowing something.
+      //
+      // Returning null drops the probe through to `emitWordDirect`, so spelling
+      // is answered by the sem→word_motor mapping that `_teachWordSpellingDirect`
+      // spent every K cell carving. If she cannot spell the word yet, the probe
+      // fails honestly and that failure is a real training signal instead of a
+      // free point.
       if (/\bspell\b/.test(q) && /^[a-z]+$/.test(keyTok)) {
-        return keyTok; // emit the word itself as the spelling
+        this._spellEchoRefused = (this._spellEchoRefused || 0) + 1;
+        return null;
       }
       if (/\bstarts?\s+with\b/.test(q) && /^[a-z]$/.test(keyTok) && this.dictionary?._words) {
         // Find a K-vocab word starting with keyTok

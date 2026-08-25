@@ -11,16 +11,20 @@
 // but the refactored Unity ignores them for cognition.
 //
 // What Unity DOES read:
-//   - pollinations       — default image gen + TTS + vision describer
+//   - pollinations       — default image gen + TTS
 //   - imageBackends[]    — your own image gen servers (custom or local)
-//   - visionBackends[]   — your own VLM servers (Ollama llava, LM Studio, etc.)
+//   - visionBackends[]   — IGNORED, kept as an empty array only so older code
+//                          reading it doesn't hit `undefined` (LLMGUT.6). The
+//                          VLM describer is gone; her sight is her own
+//                          equational mind's eye.
 // ═══════════════════════════════════════════════════════════════
 
 export const ENV_KEYS = {
   // ── Sensory AI (the ONLY text / image / vision / audio backend
   //    Unity still reads after the R4 refactor) ────────────────
   pollinations: '',  // https://enter.pollinations.ai — sk_...
-                     // Default image gen + TTS + vision describer.
+                     // Default image gen + TTS. (No vision describer —
+                     // see the visionBackends note above.)
                      // Free tier works. Leave empty to use rate-limited
                      // public endpoint.
 

@@ -8432,6 +8432,41 @@ export const K_MIXIN = {
     this._hb(`[Curriculum] _teachWordSpellingDirect DONE in ${dt}s — ${updates} discriminative writes · ${skipped} skipped (${words.length} words × ${reps} reps target)`);
   },
 
+  // ── DORMANT.1 (2026-08-25) — THIS METHOD DID NOT EXIST ─────────────────────
+  //
+  // `_teachWordSpellingDirectFinal` had **37 references and ZERO definitions**.
+  // Every call site is written as
+  // `if (typeof this._teachWordSpellingDirectFinal === 'function')`, so it
+  // failed SILENTLY — the WORD-SPELL-FINAL phase in the ELA / LIFE / ART / SOC
+  // / SCI / MATH kindergarten cells has never run once. A near-miss on the real
+  // `_teachWordSpellingDirect` above (46 references), not a planned stub.
+  //
+  // WHY IT MATTERS: this pass is meant to run AFTER the QA / battery phases.
+  // Those train through `_crossRegionHebbian`, which writes fan-out into
+  // `sem_to_motor` and re-blurs exactly the discriminative first-letter mapping
+  // the constructive pass carved (the `r/u/u/z/r/t/z` bucket-stick failure
+  // documented above). Without the final re-carve, every K cell has been ending
+  // on a polluted matrix.
+  //
+  // ⛔ WHAT I DELIBERATELY DID **NOT** IMPLEMENT. The original comment at the
+  // ELA call site also describes a `scale(0)` WIPE of `sem_to_motor` before the
+  // re-carve. I am not inventing a destructive wipe from a comment: it has
+  // never executed, so its absence — not its presence — is the state every
+  // trained brain we have was built under, and a blind wipe right before a
+  // fresh walk could erase real learning. `_rectifySemMotor` already exists for
+  // the collapse case and runs on its own schedule. Whether the hard wipe
+  // should exist is a training-architecture decision, left as DORMANT.1b for
+  // the operator rather than silently shipped inside a bug fix.
+  //
+  // So this is the CONSTRUCTIVE half only: re-run the discriminative one-hot
+  // write so the cell ends on a clean mapping. Same primitive, same options
+  // shape the 37 call sites already pass, no new failure modes.
+  async _teachWordSpellingDirectFinal(opts = {}) {
+    if (typeof this._teachWordSpellingDirect !== 'function') return;
+    this._hb(`[Curriculum] WORD-SPELL-FINAL — re-carving sem→motor after the QA phases (subject=${opts.subject || 'all'}, reps=${opts.reps ?? 8}). This phase existed in name only until 2026-08-25; it is running for the first time.`);
+    return this._teachWordSpellingDirect({ ...opts, label: 'WORD-SPELL-FINAL' });
+  },
+
   // iter14-A — Direct letter→motor identity write that bypasses
   // cross-region Hebbian. Operator caught (2026-05-04 verbatim "fix
   // those fucking issues NOW!"): even with iter11-A reorder

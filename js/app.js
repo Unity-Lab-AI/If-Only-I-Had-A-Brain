@@ -1719,8 +1719,10 @@ function showBackendForm(backendKey) {
       html += `<option value="a1111">a1111 — Automatic1111 /sdapi/v1/txt2img</option>`;
       html += `<option value="comfy">comfy — ComfyUI workflow</option>`;
     } else {
-      html += `<option value="openai-vision">openai-vision — /v1/chat/completions with image_url content blocks</option>`;
-      html += `<option value="ollama-vision">ollama-vision — /api/chat with images array</option>`;
+      // LLMGUT.6 — the vision-backend kinds (openai-vision /v1/chat/completions,
+      // ollama-vision /api/chat) are gone with the describer they configured.
+      // Her sight is her own equational mind's eye; there is no VLM to point at.
+      html += `<option value="none">none — Unity's sight is her own equational mind's eye</option>`;
     }
     html += `</select>`;
   }

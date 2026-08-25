@@ -11,7 +11,9 @@
  * Works without an API key (free tier); BYOP key unlocks higher limits.
  */
 
-const GEN_URL = 'https://gen.pollinations.ai';
+// LLMGUT.5/.6 — `GEN_URL` ('https://gen.pollinations.ai') is retired. It served
+// the text lane, the TTS lane and the model list, all now deleted. This module
+// is images only.
 const IMAGE_URL = 'https://image.pollinations.ai';
 
 export class PollinationsAI {
@@ -38,59 +40,22 @@ export class PollinationsAI {
         return h;
     }
 
-    // ── Text Generation ────────────────────────────────────────────────
-
-    /**
-     * Chat with a text model.
-     * @param {Array<{role:string, content:string}>} messages
-     * @param {Object} [options]
-     * @param {string} [options.model='openai']
-     * @param {number} [options.temperature=0.9]
-     * @returns {Promise<string|null>} response text or null on failure
-     */
-    /**
-     * R4 — chat() method kept as a multimodal wrapper so the vision
-     * describer at app.js:996 can still send image frames to
-     * Pollinations GPT-4o for scene description. That's a SENSORY
-     * call (vision input → text description), not cognition, so it
-     * stays under the refactor's "sensory AI allowed" rule.
-     *
-     * The old text-generation chat path (user talks to Unity via AI
-     * completion) is gone — Unity's cognition runs equationally via
-     * innerVoice.languageCortex.generate(), nothing routes through
-     * here for speech anymore.
-     *
-     * If you're tempted to call this from the brain/cognition path,
-     * DON'T. Use the language cortex. This method exists ONLY for
-     * the vision describer and any future sensory peripherals that
-     * need OpenAI-compatible multimodal.
-     */
-    async chat(messages, options = {}) {
-        const model = options.model || 'openai';
-        const temperature = options.temperature ?? 0.9;
-        const body = JSON.stringify({ messages, model, temperature });
-        const headers = this._headers();
-
-        try {
-            const res = await fetch(`${GEN_URL}/v1/chat/completions`, {
-                method: 'POST',
-                headers,
-                body,
-                signal: options.signal || AbortSignal.timeout(30000),
-            });
-            if (res.ok) {
-                const json = await res.json();
-                if (json.choices?.[0]?.message?.content) {
-                    return json.choices[0].message.content;
-                }
-            } else {
-                console.warn('[PollinationsAI] v1/chat/completions returned', res.status);
-            }
-        } catch (err) {
-            console.error('[PollinationsAI] v1/chat/completions failed:', err.message);
-        }
-        return null;
-    }
+    // LLMGUT.5 (2026-08-25) — THE TEXT LANE IS DELETED.
+    //
+    // `chat()` POSTed to `gen.pollinations.ai/v1/chat/completions`. Its own
+    // doc-comment said it was kept solely for the vision describer — and that
+    // describer is gone (`app.js` now reads "Vision-describer auto-detect
+    // removed — no LLM describer to probe"), replaced by her equational mind's
+    // eye. So it had ZERO call sites and was an OpenAI-shaped text-generation
+    // path sitting in the tree with nothing using it. `listModels()` went with
+    // it for the same reason. The endpoint also 401s on the anonymous tier now,
+    // so it was doubly dead.
+    //
+    // ⛔ THIS DELETION IS SURGICAL ON PURPOSE. The image lane below is
+    // LOAD-BEARING and stays: `image.pollinations.ai/prompt` is how she gets
+    // her reference look-ups and her generated images, it is verified unfiltered
+    // (WORDSALAD.1f), and gutting this file wholesale would have taken her eyes
+    // out along with the LLM.
 
     // ── Image Generation ───────────────────────────────────────────────
 
@@ -160,53 +125,15 @@ export class PollinationsAI {
         }
     }
 
-    // ── Text-to-Speech ─────────────────────────────────────────────────
-
-    /**
-     * Convert text to speech.
-     * @param {string} text
-     * @param {string} [voice='nova']
-     * @returns {Promise<Blob|null>} audio Blob or null on failure
-     */
-    async speak(text, voice = 'nova') {
-        try {
-            const res = await fetch(`${GEN_URL}/v1/audio/speech`, {
-                method: 'POST',
-                headers: this._headers(),
-                body: JSON.stringify({
-                    model: 'openai-audio',
-                    input: text,
-                    voice
-                })
-            });
-            if (!res.ok) {
-                console.error('[PollinationsAI] speak failed:', res.status, res.statusText);
-                return null;
-            }
-            return await res.blob();
-        } catch (err) {
-            console.error('[PollinationsAI] speak failed:', err.message);
-            return null;
-        }
-    }
-
-    // ── Models ─────────────────────────────────────────────────────────
-
-    /**
-     * List available text models.
-     * @returns {Promise<Array|null>}
-     */
-    async listModels() {
-        try {
-            const res = await fetch(`${GEN_URL}/v1/models`);
-            if (!res.ok) {
-                console.error('[PollinationsAI] listModels failed:', res.status);
-                return null;
-            }
-            return await res.json();
-        } catch (err) {
-            console.error('[PollinationsAI] listModels failed:', err.message);
-            return null;
-        }
-    }
+    // LLMGUT.5/.6 — `speak()` and `listModels()` DELETED.
+    //
+    // Operator: "we do not use pollinations tts we use the unity one
+    // equations". Correct — her voice is Equation Unity One (piper hfc_female
+    // through the CDF 9/7 round-trip) with her own banked word equations
+    // behind it. This was an external TTS lane that nothing reached any more,
+    // and it answered 401 on the anonymous tier regardless.
+    //
+    // With the text lane, the TTS lane and the model list all gone, this
+    // module does exactly ONE thing, which is the whole point: Pollinations is
+    // IMAGES. `GEN_URL` is retired with them; only `IMAGE_URL` remains.
 }

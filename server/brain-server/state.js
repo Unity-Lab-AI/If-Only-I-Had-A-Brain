@@ -361,7 +361,18 @@ const SERVER_STATE_MIXIN = {
         // T18.4.c — GPU voltage-mean telemetry (Rulkov x, averaged across
         // every neuron in the cluster via GPU atomic reduction). Undefined
         // on first few ticks until compute.html reports it back.
-        meanVoltage: typeof cluster.meanVoltage === 'number' ? cluster.meanVoltage : null,
+        //
+        // DORMANT.3 (2026-08-25) — THIS READ NAMED THE WRONG FIELD, so all seven
+        // clusters reported `null` forever for a number that is computed on
+        // every tick. The cluster sets `this.lastMeanVoltage` (cluster.js:3988,
+        // `vSum / size`) and exposes it as `meanVoltage` only inside its own
+        // snapshot object; the live instance has no `meanVoltage` property, so
+        // the typeof test never passed. `lastMeanVoltage` is read first now,
+        // with the old name kept as a fallback for any caller that hands us a
+        // snapshot rather than the cluster itself.
+        meanVoltage: typeof cluster.lastMeanVoltage === 'number'
+          ? cluster.lastMeanVoltage
+          : (typeof cluster.meanVoltage === 'number' ? cluster.meanVoltage : null),
       };
     }
     // Emit language cortex sub-region activity as pseudo-clusters
@@ -675,6 +686,16 @@ const SERVER_STATE_MIXIN = {
             // are not trained yet — which is a training fact worth seeing, not a
             // bug to hide. Gate and probe lanes never ask by design, so this
             // counts conversation only.
+            // OWNWORDS.2 — how much of her speech is actually HERS. `retrieved`
+            // counts dictionary-cosine fallbacks (not her weights; only legal
+            // on an untrained cortex now) and `honestSilence` counts the times
+            // a TRAINED brain produced nothing and was allowed to say nothing.
+            // Before this, the fallback fired invisibly whenever her matrix came
+            // up empty, so the two were indistinguishable from the outside.
+            words: {
+              retrieved: (() => { try { return (this.cortexCluster?.innerVoice?.languageCortex?._dictRetrievalCount) | 0; } catch { return 0; } })(),
+              honestSilence: (() => { try { return (this.cortexCluster?.innerVoice?.languageCortex?._honestSilenceCount) | 0; } catch { return 0; } })(),
+            },
             curiosity: {
               gaps: (cc && cc._curiosityGapCount) | 0,
               asks: (cc && cc._curiosityAskCount) | 0,

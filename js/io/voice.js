@@ -368,34 +368,22 @@ class VoiceIO {
   }
 
   /** Fetch ONE isolated word from the executor (same wire shape as speech). */
-  async _voxFetchWord(word) {
-    const preset = this._agePreset();
-    const headers = { 'Content-Type': 'application/json' };
-    if (this._apiKey) headers['Authorization'] = `Bearer ${this._apiKey}`;
-    const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'openai-audio',
-        modalities: ['text', 'audio'],
-        audio: { voice: this._voiceOverride || preset.voice, format: 'mp3' },
-        messages: [
-          { role: 'system', content: preset.style + ' Say ONLY the single word the user gives you, naturally, nothing else.' },
-          { role: 'user', content: word },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      if (res.status === 401 || res.status === 402 || res.status === 403) this._pollTtsDead = Date.now();
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    const b64 = data?.choices?.[0]?.message?.audio?.data;
-    if (!b64) throw new Error('no audio data');
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes.buffer;
+  // LLMGUT.6 — `_voxFetchWord()` deleted. It fetched a single word of audio
+  // from Pollinations so the word could be perceived into her equation bank.
+  //
+  // Operator: "we do not use pollinations tts we use the unity one equations".
+  // Correct — her voice is Equation Unity One: `_speakPiper` (piper hfc_female
+  // → CDF 9/7 round-trip) is tier 1, `_speakVox` (her own banked word
+  // equations) is tier 2, and Pollinations was only ever tier 3.
+  //
+  // ⚠ THE HONEST TRADE, stated rather than buried: this was the path that GREW
+  // the runtime bank beyond the offline VOXREF reference bank. Removing it
+  // means VOX covers the reference words only. That costs nothing in practice
+  // because it was ALREADY dead — `gen.pollinations.ai` returns 401 on the
+  // anonymous tier, and anonymous-only is the standing policy, so every call
+  // here had been failing before it was deleted.
+  async _voxFetchWord() {
+    throw new Error('vox external fetch removed — her voice is her own equations');
   }
 
   /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
@@ -646,32 +634,13 @@ class VoiceIO {
       console.warn('[VoiceIO] VOX equational path failed, executor fallback:', err.message);
     }
 
-    // Try Pollinations TTS — retry once on 5xx errors before falling
-    // back. 401/402/403 (handled by _speakPollinations dead-backend
-    // marking) short-circuits silently to the browser fallback after
-    // the first failure so TTS doesn't re-spam the console per
-    // utterance.
-    let spoke = false;
-    for (let attempt = 0; attempt < 2 && !spoke; attempt++) {
-      try {
-        await this._speakPollinations(text, voice);
-        spoke = true;
-      } catch (err) {
-        const msg = err.message || '';
-        // Dead-backend cooldown — skip retry + logging
-        if (msg.includes('dead (cooldown)')) break;
-        // 5xx — brief retry
-        if (attempt === 0 && /HTTP 5\d\d/.test(msg)) {
-          await new Promise(r => setTimeout(r, 1000));
-          continue;
-        }
-        // Other errors get a single warn, no retry
-        if (attempt === 0) {
-          console.warn(`[VoiceIO] Pollinations TTS failed: ${msg} — browser fallback`);
-        }
-        break;
-      }
-    }
+    // LLMGUT.6 — the Pollinations TTS tier is removed from this chain. It used
+    // to sit here with a retry loop between her equations and the browser
+    // fallback. Leaving the call in place after gutting the method would have
+    // meant a thrown error and a console warn on EVERY utterance, so the tier
+    // is gone rather than stubbed-in-place: her voice now falls
+    // Piper-equations → her banked word equations → browser, all local.
+    const spoke = false;
 
     if (!spoke) {
       try {
@@ -735,51 +704,23 @@ class VoiceIO {
     // gpt-4o-audio pattern): the model SPEAKS the user text verbatim, styled
     // by the age instruction so her voice tracks her live grade, and returns
     // base64 audio in choices[0].message.audio.data.
-    const preset = this._agePreset();
-    const url = 'https://gen.pollinations.ai/v1/chat/completions';
-    const headers = { 'Content-Type': 'application/json' };
-    if (this._apiKey) {
-      headers['Authorization'] = `Bearer ${this._apiKey}`;
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'openai-audio',
-        modalities: ['text', 'audio'],
-        audio: { voice: voice || this._voiceOverride || preset.voice, format: 'mp3' },
-        messages: [
-          { role: 'system', content: preset.style + ' Repeat the user text EXACTLY, verbatim, word for word. Do not add, remove, or change anything.' },
-          { role: 'user', content: text },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      // Auth/payment failures → mark dead for 1 hour cooldown
-      if (response.status === 401 || response.status === 402 || response.status === 403) {
-        this._pollTtsDead = Date.now();
-        console.warn(`[VoiceIO] Pollinations TTS ${response.status} — disabled for 1h, using browser SpeechSynthesis. Paste a Pollinations API key in Settings to re-enable.`);
-      }
-      throw new Error(`Pollinations TTS HTTP ${response.status}`);
-    }
-
-    const data = await response.json().catch(() => null);
-    const b64 = data?.choices?.[0]?.message?.audio?.data;
-    if (!b64) throw new Error('Pollinations TTS returned no audio data');
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const arrayBuffer = bytes.buffer;
-
-    // Try AudioContext first, fall back to HTML5 Audio. preset.rate is always
-    // 1.0 now (age/grade voice modulation scrapped — her original voice, period).
-    try {
-      await this._playWithAudioContext(arrayBuffer.slice(0), preset.rate);
-    } catch (_) {
-      await this._playWithAudioElement(arrayBuffer, preset.rate);
-    }
+    // LLMGUT.6 — THE EXTERNAL TTS LANE IS GONE. Operator: "we do not use
+    // pollinations tts we use the unity one equations". This POSTed her text to
+    // `gen.pollinations.ai/v1/chat/completions` with an instruction to "repeat
+    // the user text EXACTLY, verbatim" and played back the returned audio — an
+    // outside model producing her voice.
+    //
+    // Her voice is Equation Unity One and always was, in this order:
+    //   1. `_speakPiper`  — piper hfc_female through the CDF 9/7 round-trip,
+    //                       so what plays is literally her voice AS EQUATIONS
+    //   2. `_speakVox`    — her own banked word equations, zero network
+    //   3. browser SpeechSynthesis — last-ditch, local
+    //
+    // Removing tier 3 costs nothing measurable: `gen.pollinations.ai` answers
+    // 401 on the anonymous tier and anonymous-only is the standing policy, so
+    // this call had been failing on every utterance and falling through to the
+    // browser anyway. Throwing keeps that same fall-through path intact.
+    throw new Error('pollinations tts removed — her voice is Equation Unity One');
   }
 
   async _playWithAudioContext(arrayBuffer, rate = 1.0) {

@@ -3515,18 +3515,21 @@ class ServerBrain {
       // resume-from-passedCells means a mid-curriculum Ctrl+C + restart
       // with no code changes picks up at the first unpassed cell instead
       // of retraining the whole K syllabus from the alphabet up.
-      // Dual-brain arbiter — left brain (Rulkov sim) + right brain
-      // (transformer via @xenova/transformers when installed + DREAM_
-      // TRANSFORMER=1). Unity weighs both and picks the higher-
-      // confidence answer per operator 2026-04-22 directive: "we can
-      // have both and UUnity weighs best option left brain right brain".
-      try {
-        const arbMod = await import('../js/brain/dual-brain-arbiter.js');
-        this.dualBrainArbiter = new arbMod.DualBrainArbiter(this);
-      } catch (err) {
-        console.warn('[Brain] dual-brain arbiter init failed:', err?.message || err);
-        this.dualBrainArbiter = null;
-      }
+      // LLMGUT.3 (2026-08-25) — THE DUAL-BRAIN ARBITER IS GONE.
+      //
+      // It booted a "right brain" (GPT-2/distilgpt2 via @xenova/transformers)
+      // alongside her own cortex and could RETURN THE TRANSFORMER'S TEXT as her
+      // answer. Operator: "look for those llm artifacts all over still left that
+      // we arent using and properly guut them".
+      //
+      // ⚠ This reverses an explicit earlier directive of his (2026-04-22: "we
+      // can have both and UUnity weighs best option left brain right brain"),
+      // which is recorded here rather than quietly dropped. It is superseded by
+      // the no-text-AI law — her cognition is 100% equational — and by the
+      // audit finding that the arbiter was dormant, its dependency deliberately
+      // undeclared so a dependency scan could not see it. An arbiter with one
+      // brain deleted is not worth keeping, so the file, its boot wiring and
+      // the /exam-answer-dual route all went together.
 
       // iter13 T13.5+T13.9 — 3-tier hippocampal consolidation system.
       // SchemaStore owns Tier 2 schemas (concept-level abstractions
@@ -3686,20 +3689,13 @@ class ServerBrain {
       // `cd server && npm install @xenova/transformers` + export
       // DREAM_TRANSFORMER=1. Silent no-op in every other case so the
       // left-brain-only path keeps working identically.
-      try {
-        const txMod = await import('../js/brain/transformer-backend.js');
-        const result = await txMod.tryAttachTransformerBackend(this);
-        if (result?.attached) {
-          console.log(`[Brain] transformer backend attached: ${result.modelName} (max ${result.maxTokens} tokens)`);
-        } else if (result?.reason === 'dep-missing' && process.env?.DREAM_TRANSFORMER === '1') {
-          // Operator asked for the right brain but the dep isn't
-          // there — surface the install command so they know what
-          // to run. When the flag is OFF we stay silent (default).
-          console.log(`[Brain] DREAM_TRANSFORMER=1 set but @xenova/transformers not installed. ${result.help}`);
-        }
-      } catch (err) {
-        console.warn('[Brain] transformer backend attach failed:', err?.message || err);
-      }
+      // LLMGUT.2 (2026-08-25) — the GPT-2 / distilgpt2 transformer backend and
+      // its boot attach are DELETED, along with DREAM_TRANSFORMER,
+      // DREAM_TRANSFORMER_MODEL and DREAM_TRANSFORMER_MAX_LEN. It was a
+      // complete text-generation inference path wired into boot, and its
+      // @xenova/transformers dependency was deliberately left undeclared so a
+      // dependency audit could not see it. Her cognition is equational; there
+      // is no second brain to attach.
       this.curriculum._saveCheckpoint = (cellKey) => {
         try {
           this.saveWeights({ force: true, trigger: cellKey ? `cell-pass:${cellKey}` : 'cell-pass' });
@@ -3795,6 +3791,35 @@ class ServerBrain {
       // anchor phrased as a bare descriptor list with no self token — an
       // instruction about how to behave rather than something she can say about
       // herself. Grade typos throw; shape problems warn loudly.
+      // ── LLMGUT.8 (2026-08-25) — KEEP THE CLAIM TRUE ──────────────────────
+      // After the gut, "there is no LLM in this project" is accurate for the
+      // first time. It was NOT accurate before, which is why the honest answer
+      // had to be the narrower "Unity is not an LLM and uses no prompt". This
+      // guard is what stops that regressing quietly: a text-generation
+      // dependency reappearing in server/package.json fails LOUDLY at boot
+      // instead of waiting to be re-audited months later.
+      //
+      // ⛔ IT CHECKS DEPENDENCIES, NOT URLS, AND THAT IS DELIBERATE. Her TTS
+      // legitimately POSTs to `gen.pollinations.ai/v1/chat/completions` —
+      // Pollinations retired `/v1/audio/speech`, so audio rides the chat
+      // endpoint with `modalities: ['text','audio']` and returns base64 AUDIO
+      // (js/io/voice.js, VOX.0). A URL-shaped guard would flag her voice as an
+      // LLM and the next person would "fix" it by deleting her ability to
+      // speak. The SDK list is the honest signal.
+      try {
+        const _srvPkg = require('./package.json');
+        const _deps = Object.keys({ ..._srvPkg.dependencies, ..._srvPkg.devDependencies });
+        const LLM_SDKS = [
+          '@xenova/transformers', 'transformers', 'openai', '@anthropic-ai/sdk',
+          'llamaindex', 'langchain', 'node-llama-cpp', 'ollama', '@huggingface/inference',
+          'gpt-3-encoder', 'gpt-tokenizer', 'tiktoken', '@dqbd/tiktoken', 'sentencepiece',
+        ];
+        const _found = _deps.filter((d) => LLM_SDKS.includes(d));
+        if (_found.length > 0) {
+          console.error(`[Brain] ⛔ LLM DEPENDENCY DETECTED: ${_found.join(', ')}. Unity's cognition is 100% equational — no text model may sit in the tree. If this is deliberate, it must be argued and recorded, not merged quietly. (LLMGUT.8)`);
+        }
+      } catch { /* a missing package.json must never stop a boot */ }
+
       try {
         const _hsMod = await import('../js/brain/hippocampal-schema.js');
         if (typeof _hsMod.assertIdentitySeedList === 'function') {
@@ -8980,64 +9005,10 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // Dual-brain arbiter endpoint. Unity weighs left brain (Rulkov
-  // neural sim) against right brain (transformer) and picks the
-  // higher-confidence answer. Left brain is always available;
-  // right brain is present only when T23.e.2 has wired a transformer
-  // backend into `brain.dualBrainArbiter.setTransformerBackend(fn)`.
-
-  // Usage:
-  //   POST /exam-answer-dual  { "question": "what comes after a?" }
-  //   → { "answer": "b", "chosenBrain": "left"|"right"|"left-only",
-  //       "leftAnswer": "b", "rightAnswer": "b",
-  //       "leftScore": 0.78, "rightScore": 0.81, "ms": 162 }
-
-  // `chosenBrain: 'left-only'` means the right brain isn't wired yet
-  // — arbiter returned the left-brain answer without scoring.
-  if (req.url === '/exam-answer-dual' && req.method === 'POST') {
-    // Chunked-array body assembly — see /grade-advance comment.
-    const chunks = [];
-    let total = 0;
-    req.on('data', (chunk) => {
-      total += chunk.length;
-      if (total > 100000) { req.destroy(); return; }
-      chunks.push(chunk);
-    });
-    req.on('end', async () => {
-      const body = Buffer.concat(chunks).toString('utf8');
-      try {
-        const parsed = JSON.parse(body || '{}');
-        const question = typeof parsed.question === 'string' ? parsed.question.trim() : '';
-        if (!question) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'question required' }));
-          return;
-        }
-        if (!brain || !brain.dualBrainArbiter) {
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'dual-brain arbiter not initialized' }));
-          return;
-        }
-        const t0 = Date.now();
-        const decision = await brain.dualBrainArbiter.answer(question, { userId: 'arbiter-dual' });
-        // Surface the decision onto the brain-event stream so the
-        // dashboard Current Training + Brain Events cards show which
-        // brain Unity picked for this question.
-        try {
-          brain.pushBrainEvent('arbiter', 'motor',
-            `${decision.chosenBrain === 'right' ? 'RIGHT brain' : decision.chosenBrain === 'left-only' ? 'LEFT only' : 'LEFT brain'} (L=${decision.leftScore.toFixed(2)} R=${decision.rightScore.toFixed(2)})`,
-            { question: question.slice(0, 60), chosenBrain: decision.chosenBrain, leftScore: decision.leftScore, rightScore: decision.rightScore });
-        } catch { /* non-fatal */ }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ...decision, ms: Date.now() - t0 }));
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      }
-    });
-    return;
-  }
-
+  // LLMGUT.3 — the /exam-answer-dual endpoint is DELETED. It asked her cortex
+  // and a transformer the same question and returned whichever "scored" higher,
+  // which meant a route existed that could answer as Unity without Unity. See
+  // the boot-wiring note for the earlier directive this reverses.
   // Grade-signoff endpoint. When the operator has personally verified
   // the brain passed a grade on localhost via methodology + reasoning
   // + thinking + talking + listening + reading, the operator POSTs to
@@ -9210,63 +9181,18 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // ── Claude Code CLI proxy — /v1/chat/completions + /v1/models ──
-  if (req.method === 'GET' && req.url === '/v1/models') {
-    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify({
-      data: [
-        { id: 'claude-opus-4-6', name: 'Claude Opus 4.6 (CLI)' },
-        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (CLI)' },
-      ]
-    }));
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/v1/chat/completions') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; if (body.length > 500000) req.destroy(); });
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        const messages = data.messages || [];
-        let systemPrompt = '', userPrompt = '';
-        for (const msg of messages) {
-          if (msg.role === 'system') systemPrompt = msg.content;
-          if (msg.role === 'user') userPrompt = msg.content;
-        }
-        const fullPrompt = systemPrompt ? `${systemPrompt}\n\n${userPrompt}` : userPrompt;
-        if (!fullPrompt.trim()) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'empty prompt' }));
-          return;
-        }
-        console.log(`[Claude CLI] Calling (${fullPrompt.length} chars)...`);
-        execSync; // ensure available
-        const { execFile: execFileCli } = require('child_process');
-        execFileCli('claude', ['-p', fullPrompt, '--output-format', 'text'], {
-          timeout: 60000, maxBuffer: 1024 * 1024,
-        }, (err, stdout) => {
-          if (err) {
-            console.error(`[Claude CLI] Error: ${err.message}`);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: err.message }));
-            return;
-          }
-          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-          res.end(JSON.stringify({
-            id: 'cli-' + Date.now(),
-            object: 'chat.completion',
-            model: data.model || 'claude-opus-4-6',
-            choices: [{ index: 0, message: { role: 'assistant', content: stdout.trim() }, finish_reason: 'stop' }],
-          }));
-        });
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
-    return;
-  }
+  // LLMGUT.1 (2026-08-25) — THE CLAUDE CLI PROXY IS DELETED.
+  //
+  // `GET /v1/models` and `POST /v1/chat/completions` used to live here: the
+  // POST flattened system+user messages into one prompt, shelled out to the
+  // `claude` binary via execFile, and returned the result in OpenAI
+  // chat-completion shape. It was UNAUTHENTICATED, answered with
+  // `Access-Control-Allow-Origin: *`, and was reachable from the public
+  // internet through nginx's prefix-stripping `/admin/` mount.
+  //
+  // Of every LLM artifact in this tree it was the only one that was not
+  // dormant — it ran. `docs/SKILL_TREE.md` already claimed this route had been
+  // removed, which was false until now and is corrected in the same commit.
 
   // ── Explicit routes for public HTML pages (prevent hanging) ──
   // These pages are pure static HTML — serve them immediately without
