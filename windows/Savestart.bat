@@ -17,6 +17,23 @@ echo.
 
 REM Optional env flags -- see start.bat header for full list. Most-relevant
 REM Savestart-side flags:
+REM
+REM !! TOPOLOGY ON A RESUME (2026-08-25). This entry point HOLDS the intra-
+REM synapse wiring recorded in server/brain-topology.json. That is the whole
+REM point of the pin: weights trained under one topology do not describe the
+REM other, so a resume must never flip it. A FRESH WALK (start.bat) is what
+REM re-decides -- and it now chooses TOPOGRAPHIC. If you resume a brain that
+REM was built random-global you stay random-global, and the boot line says so.
+REM DREAM_TOPOGRAPHIC=0/1 overrides, but on a resume that is a deliberate act
+REM with the same consequence as a geometry change: the trained matrices no
+REM longer match the wiring, and a fresh walk is the honest next step.
+REM
+REM Also inherited from start.bat and ON by default since 2026-08-25:
+REM   DREAM_INNERVOICE_GPU_GEN     -- her inner voice at biological scale
+REM                                   (=0 kills it)
+REM   DREAM_GEN_PROPAGATE_CHUNKED  -- yielding CPU propagate (=0 opts out)
+REM The WORD-SPELL-FINAL sem->motor wipe does NOT run on a resume by design --
+REM only on a fresh walk, where the weights are already being cleared.
 REM DREAM_DEFINITION_CACHE_FILE=path.json -- persistent dictionary cache survives
 REM                                          restart → no ~1 min re-warm.
 REM DREAM_COHERENCE_MIN=0.15 -- composeSentence cosine coherence floor (env-tunable).
