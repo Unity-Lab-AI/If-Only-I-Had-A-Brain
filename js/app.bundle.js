@@ -54150,6 +54150,10 @@ var CLUSTER_EMIT_MIXIN = {
   },
   _dictionaryOracleEmit(intentSeed, opts = {}) {
     if (opts.skipDictionaryOracle === true) return null;
+    if (this._gateEmissionActive === true) {
+      this._oracleRefusedInGate = (this._oracleRefusedInGate | 0) + 1;
+      return null;
+    }
     const dictionary = opts.dictionary || this.dictionary;
     if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
     if (!intentSeed || intentSeed.length === 0) return null;
@@ -60293,10 +60297,14 @@ var SensoryProcessor = class {
       for (let i = 0; i < words.length; i++) {
         const contextWords = words.filter((_, j) => j !== i).slice(0, 5);
         if (contextWords.length > 0) {
-          const contextEmbed = new Float32Array(50);
+          const probe = this._embeddings.getEmbedding(contextWords[0]);
+          const dim = probe && probe.length || 0;
+          if (!dim) continue;
+          const contextEmbed = new Float32Array(dim);
           for (const cw of contextWords) {
             const ce = this._embeddings.getEmbedding(cw);
-            for (let d = 0; d < 50; d++) contextEmbed[d] += ce[d] / contextWords.length;
+            const n = Math.min(dim, ce.length);
+            for (let d = 0; d < n; d++) contextEmbed[d] += ce[d] / contextWords.length;
           }
           this._embeddings.refineFromContext(words[i], contextEmbed, 5e-3);
         }
@@ -109227,6 +109235,7 @@ var Curriculum = class _Curriculum {
     let emissionError = null;
     let templatedAnswer = null;
     if (cluster) cluster._probeLastRunAt = Date.now();
+    if (cluster) cluster._gateEmissionActive = true;
     try {
       templatedAnswer = await this._deterministicAnswer(question, opts);
       if (templatedAnswer && templatedAnswer.length > 0) {
@@ -109239,12 +109248,16 @@ var Curriculum = class _Curriculum {
     if (!emitted && typeof cluster.emitWordDirect === "function") {
       emissionPath = "emitWordDirect";
       try {
-        emitted = await cluster.emitWordDirectDonor({ subject: this._currentGateSubject }) || "";
+        emitted = await cluster.emitWordDirectDonor({
+          subject: this._currentGateSubject,
+          skipDictionaryOracle: true
+        }) || "";
       } catch (err) {
         emitted = "";
         emissionError = err && err.message ? err.message.slice(0, 80) : "throw";
       }
     }
+    if (cluster) cluster._gateEmissionActive = false;
     const emittedNorm = String(emitted).toLowerCase().trim();
     const expected = Array.isArray(expectedAnswers) ? expectedAnswers : [expectedAnswers];
     let matched = null;

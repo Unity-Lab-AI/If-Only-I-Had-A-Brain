@@ -19237,6 +19237,22 @@ export class Curriculum {
     // PROBEFLAG — production emission is a real probe; stamp it.
     if (cluster) cluster._probeLastRunAt = Date.now();
 
+    // GATEPURE — ⛔ THE DICTIONARY ORACLE IS CLOSED FOR THE DURATION OF THIS
+    // PROBE. A gate exists to measure what SHE produced; if the oracle can
+    // answer for her, the gate is partly measuring the dictionary and the
+    // pass rate is inflated by exactly the amount the oracle carried.
+    //
+    // ⚠ Scoped to THIS EMISSION, deliberately — NOT keyed on
+    // `_probeGateActive`, which is a cell-wide GPU-ownership flag that stays
+    // true through entire cells of TEACHING. Gating on that would silence the
+    // oracle during teaching too, which is a far wider behaviour change than
+    // this is, and it is exactly the mistake the PROBEFLAG note above
+    // records someone already making with the dashboard label.
+    //
+    // Set in a try/finally so a throw mid-probe cannot leave the oracle
+    // switched off for the rest of the run.
+    if (cluster) cluster._gateEmissionActive = true;
+
     try {
       templatedAnswer = await this._deterministicAnswer(question, opts);
       if (templatedAnswer && templatedAnswer.length > 0) {
@@ -19255,12 +19271,24 @@ export class Curriculum {
       emissionPath = 'emitWordDirect';
       try {
         // iter22-D — pass active gate subject for sub-band scoping.
-        emitted = (await cluster.emitWordDirectDonor({ subject: this._currentGateSubject })) || '';
+        // GATEPURE — `skipDictionaryOracle` passed explicitly as well as via
+        // the cluster flag. Belt and braces on purpose: the flag closes every
+        // path including ones added later that nobody remembers to update,
+        // and the explicit opt is what a reader of THIS line will see.
+        emitted = (await cluster.emitWordDirectDonor({
+          subject: this._currentGateSubject,
+          skipDictionaryOracle: true,
+        })) || '';
       } catch (err) {
         emitted = '';
         emissionError = err && err.message ? err.message.slice(0, 80) : 'throw';
       }
     }
+
+    // GATEPURE — release the oracle. Cleared unconditionally, including on
+    // every error path above, so a throw mid-probe cannot leave it shut for
+    // the remainder of the run.
+    if (cluster) cluster._gateEmissionActive = false;
 
     // STEP 5 — match emission against expected substrings.
     // GRADERMATCH (2026-08-22) — caught by the exam transcript's SECOND-EVER

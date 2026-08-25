@@ -672,6 +672,12 @@ const SERVER_STATE_MIXIN = {
             oracleHits,
             matrixHits,
             matrixDrivenPct,
+            // GATEPURE — how many times the dictionary oracle was REFUSED
+            // inside a gate probe. ⭐ This is the number that explains a pass-
+            // rate drop: it is exactly how often the dictionary would have
+            // answered for her on a test. A rising count beside falling
+            // scores is the truth arriving, not a regression.
+            oracleRefusedInGate: (cc && cc._oracleRefusedInGate) | 0,
             emitRejection: rej
               ? {
                   reason: rej.reason || 'unknown',

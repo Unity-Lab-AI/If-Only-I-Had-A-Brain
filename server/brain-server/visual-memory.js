@@ -1109,6 +1109,14 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (!this._vmLookStats) {
       this._vmLookStats = {
         attempts: 0, grounded: 0, notDrawable: 0, gapSkips: 0, coolSkips: 0,
+        // LOOKORDER — the two lanes that now serve a concept WITHOUT a fetch.
+        // ⭐ These are the success counters of the whole change: `alreadyKnown`
+        // rising means her own memory answered, `definitionServed` rising means
+        // her own dictionary did. Together they are the measure of how much of
+        // what she knows things look like came from inside her rather than
+        // from a generator. Declared HERE rather than created on first use, so
+        // a lane that has never fired reads 0 instead of undefined.
+        alreadyKnown: 0, definitionServed: 0,
         inFlightSkips: 0, noPrompt: 0, httpFails: 0, fetchErrs: 0, decodeFails: 0,
         perceiveFails: 0, blankRefs: 0, lastErr: null, lastErrAt: 0, lastGroundedKey: null, lastGroundedAt: 0,
       };
@@ -1139,6 +1147,35 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     return null;
   },
 
+  /**
+   * LOOKORDER step 2 — can her own DICTIONARY carry this concept, so no
+   * generated image is needed at all?
+   *
+   * Delegates to `_defDrawAttributes` rather than re-deriving anything: that
+   * is the same reader the definition-driven painter already uses, and its
+   * consumer's own bar is "a shape OR at least one colour". Reusing the
+   * predicate means the two can never disagree about what is drawable from a
+   * definition — if this says yes, the painter can genuinely build it.
+   *
+   * ⚠ Deliberately SYNCHRONOUS and deliberately NOT calling the async
+   * drawability gate. Concrete attributes ARE the concreteness evidence: an
+   * abstract word's definition does not yield a shape or a colour, which is
+   * precisely why the painter uses this test. Adding an await here would put
+   * a second async hop in front of every look-up to re-answer a question the
+   * attributes already answer.
+   *
+   * ⚠ Cross-mixin call: `_defDrawAttributes` lives in the chat mixin, and
+   * both are Object.assign'd onto the same ServerBrain prototype. Guarded by
+   * typeof so a future split cannot turn this into a silent no-op.
+   */
+  _conceptDefinitionCanDraw(word) {
+    if (typeof this._defDrawAttributes !== 'function') return false;
+    let attr = null;
+    try { attr = this._defDrawAttributes(word); } catch { return false; }
+    if (!attr) return false;
+    return !!(attr.shape || (Array.isArray(attr.colors) && attr.colors.length > 0));
+  },
+
   async _fetchReferenceAndGround(concept, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return null;
     if (typeof this._buildPollinationsImageUrl !== 'function') return null;
@@ -1151,6 +1188,61 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     const key = opts.keyOverride || (this._vmContentTokens(concept)[0]) || String(concept || '').toLowerCase().trim();
     if (!key) return null;
     const now = Date.now();
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LOOKORDER — ⛔ MEMORY FIRST, THEN THE DICTIONARY, AND ONLY THEN FETCH.
+    //
+    // Operator directive: keep learning from a looked-up picture, but make a
+    // generated render the LAST resort rather than the first move. A child
+    // learns what a zebra looks like from a picture book someone else drew —
+    // and does not go and look at a new one every time they think "zebra".
+    //
+    // Three things this buys at once:
+    //   1. Fewer external renders shaping what she believes things look like.
+    //   2. No network on the common path — recall and definitions are local.
+    //   3. A stronger honest claim: MOST of what she knows things look like
+    //      comes from her own memory and her own dictionary.
+    //
+    // ⚠ `opts.force` bypasses this ENTIRELY and must keep doing so — it is
+    // what the ✗ reject button uses to deliberately re-look-up a bad drawing.
+    // Blocking force here would silently break operator feedback.
+    if (!opts.force) {
+      // STEP 1 — DOES SHE ALREADY REMEMBER IT?
+      // ⚠ CONFIRMED only (`conf === true`). A provisional entry is a single
+      // unverified render that has not yet been agreed by a second look, and
+      // treating one as a memory would let a one-off noisy image harden into
+      // belief — the exact failure the two-seed check exists to prevent.
+      // ⚠ This is distinct from the 6h cooldown below: that stops re-fetching
+      // for six hours, after which a concept she has genuinely SEEN would be
+      // fetched again forever. Memory has no expiry; a thing she knows the
+      // look of does not need looking up.
+      try {
+        const _store = this._vmStore();
+        const _known = _store && _store.get(key);
+        if (_known && _known.conf === true && _known.rec) {
+          this._vmLook().alreadyKnown = (this._vmLook().alreadyKnown | 0) + 1;
+          return null;
+        }
+      } catch { /* store unreadable — fall through to the fetch, never fail closed on a look */ }
+
+      // STEP 2 — CAN THE DICTIONARY CARRY IT?
+      // Definition-driven drawing already builds from `lookupDefinitionSync`
+      // (colours, shapes, part types read straight out of the definition), so
+      // a word whose definition describes it concretely needs no image at
+      // all. ⚠ Gated on the DRAWABILITY verdict rather than on the mere
+      // presence of a definition: an abstract word has a definition too, and
+      // it is exactly the class that traces to vector scatter. The bar is
+      // CONCRETE ATTRIBUTES — a definition that yields a shape or a colour is
+      // itself the concreteness evidence, which is why the painter uses the
+      // same test and why no second async drawability hop is needed here.
+      try {
+        if (typeof this._conceptDefinitionCanDraw === 'function'
+            && this._conceptDefinitionCanDraw(key)) {
+          this._vmLook().definitionServed = (this._vmLook().definitionServed | 0) + 1;
+          return null;
+        }
+      } catch { /* same posture — a judgement failure must not block a look */ }
+    }
     // per-concept refetch cooldown — never spam the generator for the same word
     const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;   // 6h
     if (!this._vmRefFetchAt) this._vmRefFetchAt = new Map();
