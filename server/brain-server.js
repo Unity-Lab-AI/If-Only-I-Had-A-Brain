@@ -3009,12 +3009,24 @@ class ServerBrain {
         if (_envTopo === '0' || _envTopo === '1') {
           _topoOn = _envTopo === '1';
           _why = `explicit DREAM_TOPOGRAPHIC=${_envTopo}`;
+        } else if (_isFreshWalk) {
+          // ⛔ A FRESH WALK RE-DECIDES AND THE PIN DOES NOT BIND IT.
+          //
+          // The pin exists for ONE job: stop a RESUME from flipping wiring under
+          // weights that were trained with the other topology. A fresh walk has
+          // no such weights — `autoClearStaleState` has already wiped them — so
+          // it is free to choose, and must be, or the flag can never turn on.
+          //
+          // This ordering is a bug fix on my own first cut, caught by walking
+          // the launcher sequence: Savestart first (no pin yet → writes
+          // `topographic:false`), then start.bat, and the fresh walk would have
+          // HELD that false pin forever. Topographic would have stayed off
+          // silently while the log claimed a pin was being honoured.
+          _topoOn = true;
+          _why = 'fresh walk — re-deciding (pin does not bind a wiped brain); operator enabled topographic 2026-08-25';
         } else if (_pinnedTopo && typeof _pinnedTopo.topographic === 'boolean') {
           _topoOn = _pinnedTopo.topographic;
           _why = 'held existing pin (brain was built this way)';
-        } else if (_isFreshWalk) {
-          _topoOn = true;
-          _why = 'fresh walk — operator enabled topographic wiring 2026-08-25';
         } else {
           _topoOn = false;
           _why = 'resume with no pin — holding random-global so trained weights keep their wiring';

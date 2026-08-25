@@ -24,6 +24,22 @@ echo ""
 
 # Optional env flags -- see start.sh header for full list. Most-relevant
 # Savestart-side flags:
+#
+# ⛔ TOPOLOGY ON A RESUME (2026-08-25). This entry point HOLDS the intra-
+# synapse wiring recorded in server/brain-topology.json. That is the whole
+# point of the pin: weights trained under one topology do not describe the
+# other, so a resume must never flip it. A FRESH WALK (start.sh) is what
+# re-decides -- and it now chooses TOPOGRAPHIC. If you resume a brain that was
+# built random-global you stay random-global, and the boot line says so.
+# DREAM_TOPOGRAPHIC=0/1 overrides, but on a resume that is a deliberate act
+# with the same consequence as a geometry change: the trained matrices no
+# longer match the wiring, and a fresh walk is the honest next step.
+#
+# Also inherited from start.sh and ON by default since 2026-08-25:
+#   DREAM_INNERVOICE_GPU_GEN     -- her inner voice at biological scale (=0 kills it)
+#   DREAM_GEN_PROPAGATE_CHUNKED  -- yielding CPU propagate (=0 opts out)
+# The WORD-SPELL-FINAL sem->motor wipe does NOT run on a resume by design --
+# only on a fresh walk, where the weights are already being cleared.
 # DREAM_DEFINITION_CACHE_FILE=path.json -- persistent dictionary cache survives
 #                                          restart → no ~1 min re-warm.
 # DREAM_COHERENCE_MIN=0.15 -- composeSentence cosine coherence floor (env-tunable).

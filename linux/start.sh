@@ -30,6 +30,48 @@ echo ""
 #   DREAM_LAMINATION=0             -- opt OUT of six-layer cortical lamination.
 #   DREAM_HUBS=0                   -- opt OUT of hub neurons + rich-club.
 #   DREAM_THETA_GAMMA=0            -- opt OUT of theta/gamma oscillations.
+#   DREAM_TOPOGRAPHIC=0/1          -- intra-synapse wiring. A FRESH WALK now
+#                                    turns this ON (1-D ring; nnz scales
+#                                    LINEARLY with size instead of density x
+#                                    size^2, so 100M+ neurons fit a budget
+#                                    random-global saturates near 30M).
+#                                    PINNED to server/brain-topology.json so a
+#                                    Savestart resume cannot flip the wiring
+#                                    under weights trained the other way; the
+#                                    pin binds RESUMES only, a fresh walk
+#                                    re-decides. =0/1 always wins.
+#
+#   -- 2026-08-25 additions ----------------------------------------------
+#   DREAM_INNERVOICE_GPU_GEN=0     -- kill switch for her inner voice at
+#                                    biological scale. DEFAULT ON now: it used
+#                                    to require an opt-in nobody set, so
+#                                    compose was skipped and every inner
+#                                    thought fell through to a vocab sample.
+#                                    Safety is donors-present + GPU-proxy-live,
+#                                    not this flag.
+#   DREAM_GEN_PROPAGATE_CHUNKED=0  -- opt OUT of chunked CPU propagate during
+#                                    generation. DEFAULT ON: identical math
+#                                    that yields between row slices, so the
+#                                    no-donor fallback cannot pin the loop.
+#   DREAM_SURPRISE_MAX=1.5         -- plasticity ceiling for the surprise gate
+#                                    (0.5-5). Default 1.5 = unchanged. Read
+#                                    memoryStats.surpriseGate.atCeilingPct
+#                                    BEFORE raising it -- near 0 means the
+#                                    ceiling was never the constraint.
+#   DREAM_GRADE_MAJOR_ROUNDS=2     -- grade-major rounds before force-advance
+#                                    (1-5). =1 restores the old single pass.
+#   DREAM_SELF_FRAME_LIGHT_MAX_UNITS=96
+#                                  -- per-cell budget for first-person framing
+#                                    of vocab/sentences. 0 disables.
+#   DREAM_CONSOLIDATION_GPU_REPLAY_MAX=64
+#                                  -- schemas replayed on the donor per
+#                                    consolidation pass. 0 = no replay (her
+#                                    sleep stops learning again).
+#   DREAM_DICT_FALLBACK=1          -- let dictionary retrieval speak when her
+#                                    TRAINED emission is empty. Default OFF
+#                                    for a trained brain -- silence is real
+#                                    now. Turning this on means her words are
+#                                    NOT hers.
 #   DREAM_GW_IGNITION=0.45         -- GlobalWorkspace ignition threshold
 #                                    in (0, 1). Default 0.45. Lower =
 #                                    more frequent ignitions (diffuse
