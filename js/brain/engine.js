@@ -32,7 +32,9 @@ import { sharedEmbeddings } from './embeddings.js';
 import { ComponentSynth } from './component-synth.js';
 import { Curriculum } from './curriculum.js';
 import { DrugScheduler, SUBSTANCES as DRUG_SUBSTANCES } from './drug-scheduler.js';
-import { detectOffer as detectDrugOffer } from './drug-detector.js';
+// (the `detectOffer` import lived here for the deleted vision-caption drug-cue
+//  subscriber — see the note further down; drug-detector.js itself is still
+//  used elsewhere and is untouched)
 
 // ── EventEmitter ────────────────────────────────────────────────────
 
@@ -274,60 +276,26 @@ export class UnityBrain extends EventEmitter {
     // Refresh brainParams now that the scheduler has a cluster reference.
     this.brainParams = getBrainParams(this.persona, this.drugScheduler);
 
-    // T15-C6 — drug-context detection from vision describer output.
-    // When the scene describer reports rolled paper on fire, white
-    // powder lines, pill shapes, shot glasses, bongs — it emits through
-    // the existing onDescribe pipeline. We subscribe here, run the
-    // text-offer detector over the description, and — if a substance is
-    // spotted — emit a `visualDrugCue` event that biases the
-    // self-initiation probe on the next tick. Vision alone never
-    // triggers ingestion; it only sets context for decision logic.
-    if (this.visualCortex && typeof this.visualCortex.onDescribe === 'function') {
-      this.visualCortex.onDescribe(desc => {
-        if (!desc || typeof desc !== 'string') return;
-        const cue = detectDrugOffer(desc);
-        if (cue && cue.substance) {
-          this._lastVisualDrugCue = { ...cue, at: Date.now() };
-          this.emit('visualDrugCue', this._lastVisualDrugCue);
-        }
-        // Experience-driven definition binding. Vision
-        // describer text becomes EQUATIONAL grounding: each content
-        // token's GloVe embedding gets Hebbian-bound into sem region
-        // alongside the current visual region snapshot. Words become
-        // grounded in actual sensory experience instead of just
-        // dictionary text. Real grounding > culturally inherited.
-        try {
-          if (this.cluster && typeof this.cluster.injectEmbeddingToRegion === 'function'
-              && this.cluster.regions?.sem
-              && typeof globalThis.__sharedEmbeddings === 'object') {
-            const sharedEmb = globalThis.__sharedEmbeddings;
-            const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
-            const tokens = desc.toLowerCase().match(/[a-z]+/g) || [];
-            const content = [];
-            const seen = new Set();
-            // Token cap bumped 6 → 16 so rich image descriptions
-            // (real captions hit 15-30 tokens) aren't truncated to a
-            // sparse skeleton. Per-token strength curve adjusted to
-            // keep total injection bounded — 0.30 → 0.05 over 16
-            // tokens (was 0.30 → 0.06 over 6). Sum-of-strengths stays
-            // similar (~2.4 vs ~1.0) so cortex doesn't get blasted.
-            for (const t of tokens) {
-              if (t.length < 3 || STOP.has(t) || seen.has(t)) continue;
-              seen.add(t);
-              content.push(t);
-              if (content.length >= 16) break;
-            }
-            for (let i = 0; i < content.length; i++) {
-              const emb = sharedEmb.getEmbedding ? sharedEmb.getEmbedding(content[i]) : null;
-              if (emb && emb.length > 0) {
-                const strength = Math.max(0.05, 0.30 - i * 0.0167);
-                this.cluster.injectEmbeddingToRegion('sem', emb, strength);
-              }
-            }
-          }
-        } catch { /* non-fatal — vision-grounding is best-effort */ }
-      });
-    }
+    // DELETED — an onDescribe subscriber lived here and had been dead code
+    // since vision went equational. It opened with a string type-guard, while
+    // all three publish sites emit an OBJECT ({vector, rec}) — so it
+    // early-returned on every single call, 100% of the time, while looking
+    // alive.
+    //
+    // It is deleted rather than repaired, deliberately. What it did was:
+    //   1. run a text offer-detector over the caption and emit a
+    //      `visualDrugCue` event — which NOTHING in the tree listens for; and
+    //   2. tokenise the English caption and inject each content word's
+    //      embedding into the sem region to "ground" concepts in vision.
+    // Both belong to the describer era. The percept is now a Float32Array,
+    // and a Float32Array cannot be tokenised — making the guard accept
+    // objects would resurrect caption-grounding, not restore a feature.
+    //
+    // NOTE: this never affected her sight. The visual region is driven on a
+    // different path entirely — salience + brightness + perceptVector x30,
+    // assembled into `currents` every tick in visual-cortex.js — which does
+    // not touch onDescribe at all.
+
     // R6.2 — equational component synthesizer. Loads templates from
     // docs/component-templates.txt (same corpus-loading pattern as
     // persona / baseline / coding). `loadTemplates` gets called from

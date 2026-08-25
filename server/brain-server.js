@@ -123,17 +123,19 @@ const os = require('os');
 const { execSync } = require('child_process');
 const { performance } = require('perf_hooks');
 
-// TU.29.10 — server-side Pollinations image-URL builder. The deployed client
-// bundle renders a server-sent `msg.url` if present (emit("image",{url,prompt}))
-// and ONLY falls back to building the URL from ITS OWN localStorage key when no
-// url is sent — which is why image gen worked in an operator-CONNECTed session
-// but failed in a fresh visitor browser whose key never loaded into the live
-// PollinationsAI instance. Building the full keyed URL here makes rendering
-// independent of the visitor's client key state. The key is the SAME published
-// default already seeded into every browser via index.html (not a new secret);
-// single source of truth is index.html's DEFAULT_POLLINATIONS_KEY, extracted
-// once + cached, overridable by env for ops. Returns '' if no key is available
-// (then the client falls back to its own key / anonymous tier, unchanged).
+// Server-side Pollinations image-URL builder. The deployed client bundle
+// renders a server-sent `msg.url` if present (emit("image",{url,prompt})) and
+// only falls back to building the URL itself when no url is sent — which is
+// why image gen used to work in a connected operator session and fail in a
+// fresh visitor's browser. Building the URL here makes rendering independent
+// of the visitor's client state entirely.
+//
+// ⛔ NO KEY. The brain uses the Pollinations ANONYMOUS free tier. An earlier
+// version of this comment described extracting a published default key that
+// was seeded into every browser via index.html — that seeding, that key, and
+// the file that held it are all DELETED, and no default key may be re-added.
+// The env var below is an ops override lever and nothing else; it defaults to
+// empty, and empty means the builder omits the key parameter entirely.
 let _pollImageKeyCache = null;
 function _pollinationsImageKey() {
   // ANONKEY (2026-08-22, operator law) — the brain uses the Pollinations
