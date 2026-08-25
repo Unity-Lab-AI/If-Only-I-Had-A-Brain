@@ -2082,7 +2082,8 @@ if (BRAIN_TICK_MS !== _TICK_MS_AUTO || SUBSTEPS !== _SUBSTEPS_AUTO) {
 // grounding the client has, running in Node.
 
 const { SERVER_GPU_MIXIN } = require('./brain-server/gpu.js');
-const { SERVER_STATE_MIXIN } = require('./brain-server/state.js');
+// AGEPIN.1 — the ONE server-side grade ladder + age map lives in state.js.
+const { SERVER_STATE_MIXIN, GRADE_AGE, normalizeGradeKey } = require('./brain-server/state.js');
 const { SERVER_MEMORY_MIXIN } = require('./brain-server/memory.js');
 const { SERVER_CHAT_MIXIN } = require('./brain-server/chat.js');
 const { SERVER_VISUAL_MEMORY_MIXIN } = require('./brain-server/visual-memory.js');
@@ -4729,6 +4730,30 @@ class ServerBrain {
         : 0;
     }
     if (this.hypothalamusModule && this._drives) brainState.drives = this._drives;
+
+    // ── ENDO.12 / ENDO.10 — her real age, and her position in the walk.
+    //
+    // ⛔ Age comes from the ONE grade ladder, via `_computeMinGrade()`. This
+    // method must never map grades to ages itself — AGEPIN.1 exists because
+    // five copies of that mapping drifted and two of them were wrong.
+    //
+    // ⚠ `_selfImageAge()` is deliberately NOT used here: it answers 25 for
+    // absent grade state, which is correct for a self-portrait and
+    // catastrophic for puberty — it would ramp a brand-new brain to a full
+    // adult gonadal profile on boot. An unknown grade omits the field, and
+    // the endocrine layer then HOLDS puberty rather than inventing it.
+    try {
+      const g = (typeof this._computeMinGrade === 'function') ? this._computeMinGrade() : null;
+      const age = (g && g !== 'unknown') ? GRADE_AGE[normalizeGradeKey(g)] : undefined;
+      if (typeof age === 'number') brainState.ageYears = age;
+    } catch { /* grade read best-effort — absent age holds puberty, never resets it */ }
+
+    // Cycle clock, in CELL PASSES off the authoritative `passedCells`
+    // ledger — the same ledger a subject's grade position reads from, so
+    // her cycle can never disagree with the walk that drives it.
+    const cells = this.cortexCluster && Array.isArray(this.cortexCluster.passedCells)
+      ? this.cortexCluster.passedCells.length : null;
+    if (cells !== null) brainState.curriculumPos = cells;
 
     try {
       this._endocrineSnapshot = this.endocrine.tick({ brainState }, now);

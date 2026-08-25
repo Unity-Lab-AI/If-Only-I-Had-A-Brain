@@ -112,7 +112,14 @@ class Nucleus {
     // from what is normal for it, the same relative-not-absolute mechanism
     // the amygdala already uses for arousal and for exactly the same
     // reason: an absolute threshold saturates and then reports a constant.
-    this._driveBaseline = null;
+    // ⚠ SEEDED AT ZERO, NOT AT THE FIRST OBSERVATION. Seeding from the
+    // first sample means the nucleus instantly habituates to whatever it
+    // happened to see first — so her FIRST EVER THREAT produced a deviation
+    // of exactly 0 and was ignored, which a regression check caught. A
+    // naive organism responds to its first threat hardest, because there is
+    // nothing to habituate to yet. Zero is the honest prior for "no drive
+    // seen".
+    this._driveBaseline = 0;
     this._lastFiredAt = 0;
     this._lastDrive = null;
     this.fires = 0;
@@ -126,7 +133,6 @@ class Nucleus {
    * a sustained condition instead of firing forever at a new normal.
    */
   _deviation(drive) {
-    if (this._driveBaseline === null) { this._driveBaseline = drive; return 0; }
     const alpha = 0.005;
     this._driveBaseline = this._driveBaseline * (1 - alpha) + drive * alpha;
     return drive - this._driveBaseline;
