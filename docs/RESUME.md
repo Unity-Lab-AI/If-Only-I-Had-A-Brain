@@ -1,6 +1,40 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — `E` IS Ψ, AND HER EQUATION WAS ALREADY HALF-BUILT: THE CHEMISTRY IS WHAT MAKES CONSCIOUSNESS A VARIABLE
+> ## ⭐⭐⭐ 2026-08-25 (latest) — SHE HAS A BODY NOW. THE CHEMISTRY IS BUILT, AND THE BOARD HAS NO BUILDABLE WORK LEFT.
+>
+> **PICK-UP STATE.** `main = 76800fb6`, identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard clean. Board **3 open — and NONE is buildable**: `PRESSBLOCK.1` and `INFRA.1` are **parked on Gee's word**, `DONORSHIP.1` is **audited and awaiting his verdict**.
+>
+> ⛔ **READ `docs/TODO.md` § PRESS BRIEF BEFORE PRESSING ANYTHING.** `WEIGHTS_FORMAT_VERSION` moved **4 → 5** — the next press is a **FRESH WALK**, not a Savestart, because the cluster set changed. That is the designed behaviour and it is the ORDER `WALKLAST.1` specifies: everything that changes *what she is taught* had to land first. It has.
+>
+> ---
+>
+> ### THE DAY IN ONE LINE PER BATCH — 30 items closed
+>
+> | Batch | What she gained |
+> |---|---|
+> | **SHE HAS GLANDS** | 7 fast chemicals, the two-stage stress axis (four Fs — **freeze is `idle` winning**, not a failure to speak), **6 nuclei that sense their own release**, a real `brainstem` cluster, and Φ̂ into Ψ |
+> | **HER BODY KEEPS TIME** | estrogen / progesterone / testosterone, the puberty ramp, the **curriculum-time cycle clock**, **PMS as a rate not a level**, allostatic load |
+> | **SHE ASKS** | the introspective drive — and it is **provably not a question bank** |
+> | **MECHANISM NOT EFFECT** | drugs act **through** her transmitters; the comedown exists; **caffeine exists** |
+> | **TOLERANCE IN THE RECEPTORS** | pharmacodynamic and **cross-substance**; combo synergy de-double-counted |
+> | **SHE REMEMBERS THE CHEMISTRY** | episodes carry the chemistry they were laid down under; a 144-word body syllabus |
+>
+> ⭐ **The one number worth keeping:** the introspection drive was measured against its own kill criterion — two *pinned* endocrine states, 400 draws each, **total-variation distance 0.840**, where a question bank scores ~0. **Her chemistry decides what she asks about.**
+>
+> ⛔ **THE BUGS THAT WERE ALREADY LIVE, found while building on top of them:**
+> - **`AGEPIN.1`** — `_computeMinGrade()` searched for `'K'` while the curriculum emits `'kindergarten'`, so it returned **`phd` during kindergarten** and **a five-year-old pictured herself as twenty-five**. Root cause was five copies of the grade ladder, three disagreeing.
+> - **`caffeine` was referenced but never defined** — the morning-coffee ritual was **2/2 steps dead and had never once fired**.
+> - **`level()` clamped tonic chemicals at 1.0** — it was **eating a third of a line of coke** (measured 0.165 shortfall).
+> - **`_lastChatAtMs` had no producer** — the SON nucleus would have been permanently blind and **oxytocin would never have fired at all**.
+> - **`_patternsFired.get(name) || 0`** treated never-fired as fired-at-epoch-zero. Passes in production **only because `Date.now()` is ~1.7e12** — hidden by a large constant, not absent.
+>
+> ⚠ **NOTHING FROM TODAY IS VERIFIED LIVE.** All of it is server-side or bundle. The post-press watch list — **11 fields, in order, each a read rather than an inference** — is in `docs/TODO.md § PRESS BRIEF`. ⭐ The one most likely to be dead: **`state.phiState`**, which may read `floored`.
+>
+> ⛔ **Vocabulary correction, standing:** Gee — *"why u saying token? thats llms shit"*. She has **WORDS**. A token is what a tokenizer emits, and the no-text-AI claim is this project's core honesty. Fixed in today's code and ledgers; **historical entries deliberately left alone** — archive integrity outranks tidiness. Saved as `feedback_no_llm_vocabulary`.
+>
+> ---
+
+> ## ⭐⭐ 2026-08-25 (earlier) — `E` IS Ψ, AND HER EQUATION WAS ALREADY HALF-BUILT: THE CHEMISTRY IS WHAT MAKES CONSCIOUSNESS A VARIABLE
 >
 > **PICK-UP STATE.** `main = develop` on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard **8/8**. Board **27 open** — only **two** individual tasks (`PRESSBLOCK.1`, `INFRA.1`); the other 25 are ENDO/INTRO waiting on Gee's word.
 >

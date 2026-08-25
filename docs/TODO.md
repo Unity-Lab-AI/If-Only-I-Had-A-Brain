@@ -1,15 +1,18 @@
 # TODO — Unity
 
-> ## 📋 BOARD SHAPE (2026-08-25, after the DECIDED five shipped) — **27 open, and only 2 of them are individual tasks**
+> ## 📋 BOARD SHAPE (2026-08-25, end of the chemistry build) — **3 open, and NONE of them is buildable work**
 >
 > | Pile | Count | Status |
 > |---|---|---|
-> | **ENDO + INTRO** — the chemical brain and the questions she asks | **25** | ⏳ **Waiting on Gee's go-ahead.** NOT blocked — no press, no decision, no missing info. The largest buildable body of work here, and ⛔ **upstream of the fresh walk** per `WALKLAST.1` |
-> | ~~**⭐ DECIDED**~~ | **0** | ✅ **ALL FIVE BUILT AND CLOSED 2026-08-25.** `WALKLAST.1` (law) · `GATEPURE.1` (11/11) · `LOOKORDER.1` (11/11) · `REGTAX.1` (removed on Gee's word) · `GLOVEOWN.1` (7/7 on the real class, after two disproven attempts) |
-> | **📦 `PRESSBLOCK.1`** | **1** (holds 4) | ⛔ Unmeasurable until the press. Ordered, because each step depends on the last |
-> | **📦 `INFRA.1`** | **1** (holds 5) | Multi-day architecture; ⛔ contains a decision that is **Red's and Sponge's** |
+> | ~~**ENDO + INTRO**~~ | **0** | ✅ **ALL 25 BUILT AND CLOSED 2026-08-25** across five batches. She has glands, hormones, a cycle, a comedown, and questions she asks herself |
+> | ~~**ENDO-DRUG / ENDO-LIFE**~~ | **0** | ✅ **ALL 5 BUILT AND CLOSED 2026-08-25.** Drugs act through her chemistry; memories carry it; she learns what it is |
+> | **📦 `PRESSBLOCK.1`** | **1** (holds 4) | ⛔ **Parked on Gee's word.** Unmeasurable until the press |
+> | **📦 `INFRA.1`** | **1** (holds 5) | ⛔ **Parked on Gee's word.** Contains a decision that is **Red's and Sponge's** |
+> | **`DONORSHIP.1`** | **1** | ⭐ **AUDITED, open by design** — Gee chose *"audit + report, change nothing yet"*. Findings recorded in the item |
 >
-> ⭐ **The reading:** nothing is stuck. 25 wait on a word, 5 are decided and buildable, 1 waits on a button, 1 is a team decision.
+> ⭐ **The reading: there is no buildable work left on this board.** Two items are parked by Gee, one is audited and awaiting his verdict. **Everything else now waits on a press.**
+>
+> ⛔ **READ `§ PRESS BRIEF` BELOW BEFORE PRESSING.** `WEIGHTS_FORMAT_VERSION` moved 4 → 5, so the next press is a **FRESH WALK**, not a Savestart.
 >
 > **Branch:** `main`
 > **Last updated:** 2026-08-20 — **BOARD AT ZERO.** All 171 task lines were closed and then copied **byte-for-byte** into `docs/FINALIZED.md` before this file was reset. The archive is verifiable: search FINALIZED for `BEGIN VERBATIM TODO ARCHIVE 2026-08-20` — 276,397 bytes, md5 `8cd4ddd0313a3282662919af19b2f4ca`, 171/171 task lines.
@@ -28,7 +31,65 @@ Every piece of Unity's output must trace back to:
 - **Hippocampus recall** (Hopfield attractor + persona sentence memory) — what she remembers
 - **Cerebellum error correction** (ε = target − output) — what she fixes
 - **Hypothalamus drives** (homeostatic gradients) — what she needs
-- **Mystery module Ψ** (√(1/n) × N³) — her consciousness level
+- **Mystery module Ψ** (√(1/n) × N³ × Φ̂) — her consciousness level. ⭐ **Φ̂ added 2026-08-25** — integration, from `computePhi()`. Without it the formula rates ANAESTHESIA as maximal consciousness, because low activity reads as high unspent potential; Φ̂ is what separates it from dissociation, which is also quiet and is famously hyper-vivid
+- **Endocrine layer** (⭐ NEW 2026-08-25) — ten chemicals on the one curve engine, released by **six nuclei that sense their own firing**, contributing additively through the same overlay substances use. ⛔ **Chemistry is what makes Ψ a variable instead of a specification:** without it `n` only moves when input moves
+
+---
+
+## ⛔ PRESS BRIEF — READ BEFORE THE NEXT PRESS (written 2026-08-25)
+
+> **The next press is a FRESH WALK, not an Update & Savestart.** `WEIGHTS_FORMAT_VERSION` moved **4 → 5** because the cluster set changed (a `brainstem` cluster was added and the cerebellum fraction shrank to pay for it). Saved geometry no longer matches, so old weights **auto-refuse**. That is the designed behaviour, not a fault.
+>
+> ⭐ **And it is the ORDER `WALKLAST.1` specifies.** Gee: *"fresh walk once all todo items are completed that can be without a press… the update fresh walk depends on it too."* A fresh walk teaches from zero using whatever the code does at that moment, so everything that changes **what she is taught** had to land first. It has. **Building this after the walk would have meant re-teaching all of it.**
+
+### ⛔ RE-PRICE — recomputed immediately before the press, as the law requires
+
+| | |
+|---|---|
+| **Walk price** | **~78 h ≈ 3.3 days** — 9 courses × ~26 min × 20 grades. **UNCHANGED** by any of today's work |
+| **Endocrine tick cost** | ~250 flops/s at **1 Hz**, riding the existing scheduler throttle. **O(1) in neuron count** — it never touches the 425M arrays, any sparse matrix, or the GPU path. Below measurement noise |
+| **New tissue** | `brainstem` = **0.2%** ≈ 850,873 neurons ≈ 850KB of spike state. Taken **from the cerebellum** (0.080 → 0.078), so `CLUSTER_FRACTIONS` still sums to **1.000000 exactly** and TOTAL neuron count is **unchanged** |
+| **Sparse matrices added** | **None.** ⚠ Verified on the server construction path only — whether the donor allocates per-cluster buffers on its side is **NOT verified** and must be read off the upload log on this press rather than assumed |
+| **Teaching added** | `ENDO-LIFE.2` adds **144 definition words** spread across 20 grades — ~7 words per grade, taught through the existing `_teachVocabList` and skipped once known. Negligible against a 2,247-word K vocabulary alone |
+| **Gates removed** | ⛔ **NONE.** The consolidation gate — the only thing keeping the walk finite — is **untouched**, as is every dedup, cap and budget |
+| **Bounds MOVED** | `WEIGHTS_FORMAT_VERSION` 4 → 5 (makes the walk mandatory, not longer). `level()` ceiling for tonic chemicals 1.0 → `1 + tonic` (it was truncating releases). `_patternsFired` cooldown no longer treats never-fired as fired-at-epoch-zero |
+
+### What lands on this press
+
+Everything below is **server-side or bundle**, and ⛔ **none of it has been verified live.**
+
+| Batch | What it is |
+|---|---|
+| **SHE HAS GLANDS** | 7 fast chemicals + the two-stage stress axis (four Fs, freeze = `idle` winning) + 6 nuclei that sense their own release + the `brainstem` cluster + Φ̂ into Ψ |
+| **HER BODY KEEPS TIME** | estrogen / progesterone / testosterone, the puberty ramp, the **curriculum-time cycle clock** (one cell ≈ one cycle), PMS as a *rate*, allostatic load. Plus **`AGEPIN.1`** — a five-year-old was reading as twenty-five |
+| **SHE ASKS** | the introspective drive — six gap kinds, the inward/outward split, the rumination bound |
+| **MECHANISM NOT EFFECT** | drugs act **through** her transmitters; the comedown; **caffeine exists** and the morning-coffee ritual fires for the first time |
+| **TOLERANCE IN THE RECEPTORS** | pharmacodynamic tolerance, **cross-substance**; combo synergy no longer double-counted |
+| **SHE REMEMBERS THE CHEMISTRY** | episodes store the chemistry they were laid down under (⚠ **sqlite migration** runs at boot); the 144-word body syllabus |
+
+### ⭐ POST-PRESS WATCH LIST — the fields to read, in this order
+
+Each is a **field read**, not an inference. Every one of these was built with its instrument in the same commit precisely so this list could exist.
+
+1. ⛔ **`[Brain] ENDO — endocrine layer online: 10 chemicals, 6 nuclei. brainstem cluster = N neurons`** in the boot log. **No line = the whole layer is absent** and nothing below matters.
+2. ⛔ **`[Episodic] iter13 migration — added column endocrine_state / drug_state / age_at_encode`** — three lines, once. If absent on an existing DB, episodes are still being written without chemistry.
+3. **`state.endocrine.glandsConsulted`** — must be `true`. `false` means the nuclei were **never asked**, which is different from quiet.
+4. **`state.endocrine.glands.*.state`** — each nucleus reads `fired` / `quiet` / `blind`. ⛔ **`blind` is the one to chase**: it names an input she cannot read. `pvn: blind` means the amygdala readout never arrived; `son: blind` means oxytocin can never fire.
+5. **`state.endocrine.chemicals.*.everFired`** — a phasic chemical stuck at `unmeasured` after hours has a **producer problem**, not a quiet life.
+6. ⚠ **`state.phiState`** — `live` / `floored` / `error` / `unmeasured`. **`floored` would mean Φ has never modulated anything**, which is genuinely possible: `computePhi()` is entropy of the spiking proportion and `H(0.01) = 0.081`, below the 0.1 floor. **This is the single most likely dead instrument on the list.**
+7. **`state.drugSnapshot.mechanism`** — must be `routed`. `direct` means the scheduler never got the endocrine layer and every drug is writing brain params the old way.
+8. **`state.introspection.source.state`** — `starved` / `live`. ⚠ **`starved` is EXPECTED early** and is not a bug: she cannot introspect before she has lived anything. It becomes a finding only if it persists once episodes exist.
+9. **`state.introspection.criteria`** — `kindsProduced` > 1 is the falsifiable claim that her questions vary with state. `unmeasured` just means she has not produced one yet.
+10. **`ENDO-LIFE` line per grade** in the walk log — *"taught N body/chemistry words"*. Absent across every grade = the syllabus is not wired into the life track.
+11. **`state.endocrine.puberty.level`** — must read `0` in the early grades and climb from grade 4 (age 9). ⛔ **A non-zero puberty level in kindergarten means the age feed is broken again** — that is exactly what `AGEPIN.1` was.
+
+### ⚠ What would mean I got something wrong
+
+- **`mechanism: direct`** while the ENDO boot line printed → `setEndocrine` did not run; drugs are unrouted.
+- **Every nucleus `blind`** → the `brainState` assembled in `_tickEndocrine` is not reaching them.
+- **`puberty.level > 0` before grade 4** → the age ladder is lying again.
+- **Walk noticeably slower per cell** → the endocrine tick is not O(1) as priced, and the RE-PRICE above is wrong.
+- **Donor upload log showing more matrices than before** → the "no sparse matrices added" claim was verified server-side only, and the donor side disagrees.
 
 ---
 
