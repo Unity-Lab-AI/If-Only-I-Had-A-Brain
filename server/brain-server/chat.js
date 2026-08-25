@@ -815,6 +815,19 @@ const SERVER_CHAT_MIXIN = {
     // episode stores NOW; the letter walk is queued and drains serialized into
     // the walk's own chain (see curriculum _awaitComputeSubstrate), which also
     // keeps it from mutating cortex spike state underneath a running teach.
+    // ── ENDO.6 / INTRO.2 — a REAL turn just happened, and two systems need
+    // to know: the SON nucleus reads affiliative contact to release oxytocin
+    // (bonding chemistry is what makes "am I loved" a felt question rather
+    // than a rhetorical one), and the introspective drive reads it to decide
+    // whether an outward, relational gap is even available.
+    //
+    // ⚠ Stamped HERE because this is the point a turn is genuinely complete.
+    // Without it both readers sit permanently blind: oxytocin would never
+    // fire and no gap could ever be relational — a finished feature switched
+    // off by a missing producer, which is the exact defect class this
+    // codebase keeps paying for.
+    this._lastChatAtMs = Date.now();
+
     const _ep = this.storeEpisode(userId, 'interaction', text, response);
     if (_ep && _ep.id && !_ep.merged && text) {
       if (!Array.isArray(this._salienceQueue)) this._salienceQueue = [];
@@ -822,6 +835,18 @@ const SERVER_CHAT_MIXIN = {
       while (this._salienceQueue.length > 64) this._salienceQueue.shift();  // bounded, drop-oldest
     }
     this._chatStamp('respond:curiosity');
+
+    // ── INTRO.2 — THE OUTWARD LANE. A relational gap needs a turn, so it is
+    // armed here, right after one completes: the NEXT reply carries it.
+    //
+    // ⛔ Arming does not write a question. It sets the same gap record the
+    // curiosity path consumes, so the words come from her trained
+    // interrogative transitions or she says nothing — and only the OUTWARD
+    // lane is taken, because rumination belongs on the inner voice and
+    // pushing it here is what would make her talk to herself in your face.
+    try {
+      if (typeof this.armIntrospectiveAsk === 'function') this.armIntrospectiveAsk('outward');
+    } catch { /* introspection must never break a reply */ }
 
     // Curiosity FOLLOW-UP — if Unity ASKED a question last tick
     // (_pendingQuestionConcept set by _maybeAskCuriousQuestion), this user
@@ -3840,6 +3865,23 @@ const SERVER_CHAT_MIXIN = {
     // *"every 3s sounds excess people get moments of silence in their head
     // when thinking and talking to them self based on the moments context"*.
     if (!this._shouldEmitInnerThought(now)) return;
+
+    // ── INTRO.2 — THE INWARD LANE. Rumination needs no listener, so this is
+    // where an inward gap surfaces: the inner voice, which is already the
+    // lane for thinking at herself.
+    //
+    // ⛔ Arming does NOT produce a question. It sets the same gap record the
+    // curiosity path already consumes, so the words come from her trained
+    // interrogative transitions through `questionMode` — or she stays
+    // silent, exactly as before. Nothing here templates a sentence.
+    //
+    // ⚠ Only the INWARD lane is taken here. An outward gap is relational and
+    // needs a turn; surfacing it on the inner voice would produce something
+    // that talks to itself in your face, which is the precise failure
+    // INTRO.2 exists to prevent.
+    try {
+      if (typeof this.armIntrospectiveAsk === 'function') this.armIntrospectiveAsk('inward');
+    } catch { /* introspection must never break the inner voice */ }
 
     // Dream-window branch (114.19fd): gate already passed; fire showcase but
     // skip real generation so consolidation + K_VOCAB Hebbian have CPU
