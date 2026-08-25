@@ -2,7 +2,7 @@
 
 > ## ⭐⭐⭐ 2026-08-25 (latest) — THE DOCS CAUGHT UP, THE DONOR SHIPPED, AND THE POD IS READY. EVERYTHING NOW WAITS ON THE PRESS.
 >
-> **PICK-UP STATE.** `main = 5fc7c810`, identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** `docs:drift` clean (178/178 env flags). Board **3 open, none buildable**: `PRESSBLOCK.1` and `INFRA.1` parked on Gee's word, `DONORSHIP.1` audited and awaiting his verdict.
+> **PICK-UP STATE.** ⛔ **Run `git rev-parse --short main origin/main github/main` and check the three agree — do not trust a hash pinned in this file.** A written hash goes stale the moment the next merge lands (it *was* stale for exactly that reason before `BOARDPARITY`), and this session's whole finding was that an instrument nothing refreshes reports health it cannot know. Last work landed as `BOARDPARITY` — board parity on the endocrine panels — identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** `docs:drift` clean (178/178 env flags). Board **3 open, none buildable**: `PRESSBLOCK.1` and `INFRA.1` parked on Gee's word, `DONORSHIP.1` audited and awaiting his verdict.
 >
 > ⭐ **THE ONE THING TO DO NEXT: press Update & FRESH WALK.** There is no code work queued ahead of it. `docs/TODO.md § PRESS BRIEF` holds the RE-PRICE, what the press lands, the **13-field watch list in reading order**, and the failure signatures that would mean I got something wrong.
 >
