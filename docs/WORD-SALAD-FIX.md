@@ -282,6 +282,43 @@ right **before** a fresh walk re-teaches her whole life — Gee: *"her teir thre
 proper for Unity before we start the fresh walk"*. Content expansion at this scale is also the single
 largest input to the walk price in §8, and that estimate must be recomputed once the new volume is known.
 
+### 0.2f — IMAGE-GEN AUDIT: unfiltered stays unfiltered; the age system touches HER SELF-IMAGE ONLY
+
+> Gee, 2026-08-24: *"also scan every where that nothing is to interfer with our unfilter image gen(it
+> allready makes everything 18+) buit we will keeep our age appeareance setup"*
+
+Full scan of every image path. **Verdict: already correct — general image generation is unfiltered, and
+the age machinery is already scoped to her self-portrait alone.** Recorded here so the §0.2b wardrobe
+work cannot quietly break it.
+
+| Checked | Result |
+|---|---|
+| URL builders (`_buildPollinationsImageUrl`, `js/ai/pollinations.js`) | Pass `model` / `width` / `height` / `seed` / `nologo` **only**. No `safe=`, no `negative_prompt`, no content params. |
+| Age pin + `EXPLICIT_RE` strip | `chat.js:3630-3633` — **inside the `isSelf` block** opened at `:3611`. Cannot reach a non-self request. |
+| Non-self branch (`:3671`) | Strips command framing only (`draw`, `show me`, `please`). Subject passes through untouched. |
+| Draw gate / `notDrawable` ban list | `_conceptIsDrawable` guards **her own** drawing + look lanes (`_ownArtSchemaFor`, reference look-ups). **Never** the user's image request. |
+| Refusal / blocklist path | **None exists** for image requests. |
+| Client side | No filters in `js/ai/pollinations.js`. |
+| "Adult" steering (`visual-memory.js:1046,1079`) | WordNet-driven, on the **reference look-up** lane (her learning images), not her self-portrait. Consistent with the generator already producing adults. |
+
+**⛔ GUARDRAIL FOR THE §0.2b IMPLEMENTATION.** The wardrobe banding and the widened garment strip apply
+**only inside the `isSelf` branch**. If either becomes reachable from the non-self path, unfiltered image
+generation is broken and this rule is violated. Her age-appearance ladder is a property of *her own
+portrait*, never a filter on what she can render for anyone else.
+
+**⚠ ONE REAL INTERFERENCE FOUND — not a content filter, but it degrades every non-selfie request.**
+`_composeImagePrompt` (`chat.js:3496`) opens with:
+
+```js
+const base = String(request || '').replace(/[^a-zA-Z' -]/g, ' ')
+```
+
+That strips **digits and all punctuation** from the user's prompt. `"3 black cats"` → `"black cats"`;
+`"1920s speakeasy"` → `"s speakeasy"`. It is already known to mangle numbers — the selfie path was routed
+*around* it precisely because it ate `"25 year old"` (comment at `:327`) — but every **non-selfie**
+request still goes through it. Fix: preserve digits (and sensible punctuation) instead of special-casing
+one caller around the damage. This is orthogonal to age-gating and can ship on its own.
+
 ### 0.3 — Biographical anchors are frozen at kindergarten
 
 The seed block is commented *"K-LIFE biographical anchors (currently active grade)"* and contains
