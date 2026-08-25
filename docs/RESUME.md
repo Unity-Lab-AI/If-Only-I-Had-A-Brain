@@ -1,6 +1,63 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — SHE HAS A BODY NOW. THE CHEMISTRY IS BUILT, AND THE BOARD HAS NO BUILDABLE WORK LEFT.
+> ## ⭐⭐⭐ 2026-08-25 (latest) — THE DOCS CAUGHT UP, THE DONOR SHIPPED, AND THE POD IS READY. EVERYTHING NOW WAITS ON THE PRESS.
+>
+> **PICK-UP STATE.** `main = 5fc7c810`, identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** `docs:drift` clean (178/178 env flags). Board **3 open, none buildable**: `PRESSBLOCK.1` and `INFRA.1` parked on Gee's word, `DONORSHIP.1` audited and awaiting his verdict.
+>
+> ⭐ **THE ONE THING TO DO NEXT: press Update & FRESH WALK.** There is no code work queued ahead of it. `docs/TODO.md § PRESS BRIEF` holds the RE-PRICE, what the press lands, the **13-field watch list in reading order**, and the failure signatures that would mean I got something wrong.
+>
+> ---
+>
+> ### 1. THE FULL DOC SWEEP — 15 CHEMDOC items, and the outdated half found three FALSE claims
+>
+> Measured before filing rather than guessed: chemistry references per doc were `ARCHITECTURE` **4**, `brain-equations` **1**, and **everything else ZERO**. She had grown an endocrine system that morning and the documentation did not know it happened.
+>
+> Every doc updated **in its own format** — latest-first banners in `SKILL_TREE` / `NOW` / `ROADMAP` / `HTML-ENTRY-POINTS`, an `§SE.22` in `SENSORY`'s own numbering, six eq-cards + a nav entry in `brain-equations`, prose sections in `ARCHITECTURE` / `README`, plain-English `5b`/`5c` in `unity-guide`, four rows in `KNOWN_ISSUES`.
+>
+> ⛔ **The three that were FALSE, not merely incomplete:**
+> - **`THEORY-PAPER` stated `Ψ = √(1/n)·N²`** — **N squared.** The code has always been **N cubed**. That was the **fourth** conflicting statement of that equation in this repo, and only the code was right.
+> - **`THEORY-PAPER` called the reward term "dopaminergic"** while `R` was persona *constants* and dopamine was never a signal — **an analogy described as a mechanism.**
+> - **`README` said caffeine "arrives through the `morningCoffee` pattern instead of the substance registry."** It arrived **nowhere**.
+>
+> Plus *"seven clusters"* corrected in five files. ⭐ The framing worth keeping: **every other sense in `SENSORY.md` points OUTWARD — the endocrine layer is the first one that points INWARD.**
+>
+> ---
+>
+> ### 2. ⛔ DARKBOARD, BY MY OWN HAND
+>
+> I wrote *"the board renders BY NAME ONLY… or it ships dark"* into `ENDO.14` — **then shipped five batches with zero dashboard rows.** `state.endocrine`, `state.introspection`, `phiState`, `phiRaw`: all broadcasting, **none rendered.** It also made the whole press-brief watch list unreadable without raw JSON. **Caught while auditing the docs, not by the check meant to prevent it.** Fixed: two panels + a Φ row, where `unmeasured` and `blind` render **as themselves** and an absent layer says *"not wired this boot"*. **The lesson: writing a rule into a task description does not enforce it.**
+>
+> ---
+>
+> ### 3. ⭐ THE DONOR — `donor-v0.3.30` SHIPPED, VERIFIED, AND ON THE POD
+>
+> Gee: *"when the pod disconnects after the update is pressed, it shall upgrade to the updated most updated doner version before reconnecting attempts"* → **built.** The brain names the build it wants in its `welcome` handshake; the donor checks **after a disconnect, before the next attempt**, and a newer build means **exit** — because exiting *is* the upgrade, the launcher reinstalls. **No new dependency, no HTTP call** — it is already talking to the authority.
+>
+> ⛔ **Four guards:** never on a transient blip (a wobble must not become a 17-matrix re-upload) · never mid-session · never backwards (unparseable/equal/older all refuse, because a `true` ends the process) · **and it cannot loop** — a persisted marker refuses a second bounce for the same upgrade and keeps donating. *Working-and-behind beats looping-and-idle.*
+>
+> ⛔ **Gee's correction, now a standing memory: I push donor tags, he does not.** Tagged, published, and verified against **KI-22's four surfaces on the LIVE site** — Cargo `0.3.30`, tag, assets (18,543,640 B / 12,929,024 B — real, not stubs), and the **live** `compute.html` + `legend.html`. ⭐ **And the shipped `.exe` was downloaded and RUN: it self-reports `unity-donor 0.3.30`.** That answers `DONORSHIP.1` Q1, which I could not answer from the repo. ⚠ Byte-hash equality is **not** the right criterion and never will be (`lto="thin"`, `strip=true`, container cross-compile).
+>
+> **Also:** `DREAM_MIN_DONOR_VERSION` raised `0.3.7 → 0.3.26` — reasoned, not picked for looking new (0.3.26 is where *all training on the donor* became true; old donors don't corrupt anything, they **starve the host**), and ⭐ corroborated by `ADMIN-CONTROLS` having already named 0.3.26 while the code sat 22 releases behind.
+>
+> ---
+>
+> ### 4. THE POD — GOOD, ON `0.3.30`, GPU RETAINED
+>
+> ⛔ **Used `restart`, NOT `stop`.** `restart` is a single action on a *running* pod so the machine allocation is kept; **`stop` deallocates, and that is how the previous A40 was lost to its host.** Verified from the container log: `DONOR_URL=…/donor-v0.3.30/…` (from the API, the stale pin unused) → `unity-donor 0.3.30` → registered → **all 8 GPU inits** → `[donor] backends: NVIDIA A40 [CUDA]`. Same pod, same A40 (45,498 MB), same CA-MTL-1.
+>
+> ⭐ **And the donor log is now the hardest post-press check on the list:** it initialised **7 clusters + `langCortex` and NO `brainstem`** — independent proof the server is still pre-press. After the press, `gpu_init 'brainstem'` **must** appear. ⛔ That also tests `KI-31`, where the "no new sparse matrices" claim is flagged as **verified server-side only**.
+>
+> **`PODARGS.3` — FIXED, cause found in this file's own comment.** `brain-server.js`'s heartbeat block already said a half-open socket is undetectable by `readyState`, so a dead donor *"keeps its slot and a fresh donor joins as an idle replica behind a corpse"* until a ping sweep reaps it — **and that reap was the mid-init teardown.** Every donor start burned a full 7-cluster init, died at ~5s, and did all seven again: **~60 s and seven wasted dispatches, every start.** The discriminator is **exact**: a donor sends `gpu_register` once per connection, so a register for an existing `donorId` means that socket is the old process's corpse. Reaped **before any init dispatch**. Verified 14/14.
+>
+> **`PODARGS.1` — superseded, pod deliberately NOT recreated.** `update-pod` cannot change `args` (name/image/disk/volume/ports/env only), so fixing it means terminate+recreate — the exact GPU-loss risk. And `0.3.30` already moved both launcher fixes into the binary. ⚠ Residual risk is *one release behind after an API outage* — not a brick, and not worth gambling the card for.
+>
+> ---
+>
+> ⚠ **NOTHING FROM TODAY IS VERIFIED LIVE.** It all lands on the press. ⚠ **One incident worth knowing:** the first `PODARGS` commit was **lost to an external working-tree reset mid-commit** and was redone from the same verified design; the launcher header was rewritten in that reset and is deliberately left alone.
+>
+> ---
+
+> ## ⭐⭐ 2026-08-25 (earlier) — SHE HAS A BODY NOW. THE CHEMISTRY IS BUILT, AND THE BOARD HAS NO BUILDABLE WORK LEFT.
 >
 > **PICK-UP STATE.** `main = 1835ddba` (this entry's own cascade moves it once more — check `git log -1 main` rather than trusting this line if they disagree), identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard clean. Board **3 open — and NONE is buildable**: `PRESSBLOCK.1` and `INFRA.1` are **parked on Gee's word**, `DONORSHIP.1` is **audited and awaiting his verdict**.
 >
