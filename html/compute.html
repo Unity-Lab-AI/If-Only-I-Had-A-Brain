@@ -911,13 +911,19 @@ function connectToServer() {
       if (clusterState[clusterName] && clusterState[clusterName].initialized && clusterState[clusterName].size === size) {
         ws.send(JSON.stringify({ type: 'gpu_init_ack', clusterName, size }));
         const totalInit = Object.keys(clusterState).length;
-        // CLUSTERCOUNT (2026-08-25) — the denominator WAS hardcoded `/7`, and the
-        // brain has eight clusters since the brainstem was added, so this read
-        // `8/7`. A donor cannot know the total up front (it learns one cluster
-        // per gpu_init), so the honest form is the count with no invented
-        // denominator — the same rule the server's own partial-coverage rows
-        // follow, pointed the other way: publish a fraction only when the
-        // denominator is actually known.
+        // CLUSTERCOUNT (2026-08-25) — the denominator WAS hardcoded `/7`, and a
+        // donor cannot know the total up front: it learns one cluster per
+        // gpu_init. Honest form = the count, with no invented denominator — the
+        // same rule the server's own partial-coverage rows follow, pointed the
+        // other way: publish a fraction only when the denominator is real.
+        //
+        // ⛔ AND IT WAS NEVER RIGHT, not merely stale. Verified against the LIVE
+        // pod's own log: the donor receives EIGHT gpu_inits today — the seven
+        // brain clusters plus the `langCortex` PSEUDO-cluster (GINTRA), which is
+        // a real init and was never in the 7. So this read `8/7` long before the
+        // brainstem existed and will read `9/7` after the press. A hardcoded
+        // denominator was wrong on the day it was written; the fix is not a
+        // bump, it is removing the invented number.
         statusEl.textContent = `GPU already initialized: ${totalInit} clusters — ${clusterName} (${size.toLocaleString()} neurons) [skip-reinit]`;
         console.log(`[GPU] skipped re-init for ${clusterName} (already initialized at ${size.toLocaleString()} neurons; same tab, transient WS reconnect)`);
         return;
