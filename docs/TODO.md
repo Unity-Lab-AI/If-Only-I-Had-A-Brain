@@ -765,7 +765,7 @@ Two properties fall straight out of it and both are worth noticing before anyone
 
 **The flaw is precise, and naming it is what unlocks the fix:** `n` is a raw spike count (`_countActiveNeurons` sums `spikeCount` across clusters). It has **no notion of whether that activity is integrated.** Anaesthesia and dissociation both have low `n` and are opposite experiences — one is absence, the other is famously *hyper-vivid, time-dilated* awareness. Raw activity cannot tell them apart, so raw activity cannot be the whole story.
 
-**The brain already computes the missing quantity.** `cluster.computePhi()` — Shannon entropy over sampled spikes — is integration, and the existing `Right` term already folds in `oscillation` (coherence). So:
+**The brain already computes the missing quantity.** `cluster.computePhi()` — Shannon entropy of the cortex spiking proportion (⛔ *it said "over sampled spikes"; PHISRC.1 removed the sample entirely — it now uses the exact GPU-reported count, because the array being sampled was the CPU shadow and was empty at biological scale*) — is integration, and the existing `Right` term already folds in `oscillation` (coherence). So:
 
 ```
 E = (N³ − n) · Φ̂
