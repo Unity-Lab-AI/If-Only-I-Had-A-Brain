@@ -4793,42 +4793,62 @@ class ServerBrain {
       // at a time, the same one-shot discipline the curiosity gap runs on.
       if (this.introspection.gap) return;
 
-      // ⛔ HER OWN EPISODES ONLY — NEVER A VISITOR'S.
+      // ── EVERYTHING SHE HAS LIVED — CONCEPTS, NEVER TRANSCRIPTS.
       //
-      // The episodic store is per-user and private by design; its own
-      // contract says any cognition path wanting recall must pass the
-      // triggering user's id, precisely so one person's episodes cannot
-      // leak into another's session. Introspection surfaces on the INNER
-      // VOICE, which has no user, so drawing from a real user id would let
-      // one visitor's private conversation become her monologue in front of
-      // someone else.
+      // ⚠ CORRECTED. The first cut restricted this to her own `curiosity`
+      // namespace on the reasoning that the episodic store is per-user and
+      // private. That was over-cautious against a permission the design
+      // already grants: the binding-consent modal every user must accept
+      // before their first word states plainly that *"what she LEARNS from
+      // conversation (words, patterns, associations) DOES propagate into her
+      // shared brain state, which serves every other user"*, and tells them
+      // to *"assume anything you say can shape what she says to anyone
+      // else"*. A brain whose introspection could only draw on its own
+      // monologue would contradict the thing it was consented under.
       //
-      // `curiosity` is HER namespace — episodes she wrote about her own
-      // learning, whose `input_text` is a concept rather than a sentence,
-      // which is exactly the shape a WH-frame seed needs.
+      // ⛔ The line that actually matters is TRANSCRIPT vs CONCEPT, not
+      // whose episode it is. Replaying one person's sentences at another
+      // person is leakage and the T6 user filter correctly prevents it; a
+      // single word she has experienced is what she LEARNED, which is
+      // exactly what consent covers.
       //
-      // Refreshed on a slow cadence: this is a sqlite read and the drive
-      // ticks at 1 Hz. Her memories do not change second to second.
+      // ⚠ AND THE FIRST CUT GOT THAT LINE RIGHT AND THE MECHANISM WRONG: it
+      // only accepted episodes whose ENTIRE TEXT was one word. Real turns
+      // are sentences, so it starved the drive to almost nothing while
+      // looking like a safeguard. Every episode is a candidate now and the
+      // concept is EXTRACTED from it — full breadth, and still only a word
+      // travels onward.
+      //
+      // Refreshed on a slow cadence: a sqlite read on a 1 Hz drive, and her
+      // memories do not change second to second.
       const REFRESH_MS = 30 * 1000;
       if (!this._introEpisodes || (now - (this._introEpisodesAt || 0)) > REFRESH_MS) {
         this._introEpisodesAt = now;
         this._introEpisodes = [];
-        if (typeof this.recallByUser === 'function') {
-          try {
-            for (const row of this.recallByUser('curiosity', 40)) {
-              const t = typeof row.input_text === 'string' ? row.input_text.trim() : '';
-              // Single token only — a concept, not a sentence. A multi-word
-              // seed is not something the WH-frame can be built around.
-              if (!t || /\s/.test(t)) continue;
-              this._introEpisodes.push({
-                trigger: t,
-                valence: typeof row.valence === 'number' ? row.valence : 0,
-                arousal: typeof row.arousal === 'number' ? row.arousal : 0,
-                timestamp: typeof row.timestamp === 'number' ? row.timestamp : 0,
-              });
-            }
-          } catch { /* a dead read leaves the list empty, which correctly means no introspection */ }
+        if (typeof this.livedConcepts === 'function' && typeof this._conceptFromEpisodeText === 'function') {
+          const seen = new Set();
+          for (const row of this.livedConcepts(120)) {
+            const concept = this._conceptFromEpisodeText(row.input_text);
+            // No known word in that episode = nothing she can wonder about.
+            // Skipped, not substituted.
+            if (!concept || seen.has(concept)) continue;
+            seen.add(concept);
+            this._introEpisodes.push({
+              trigger: concept,
+              valence: typeof row.valence === 'number' ? row.valence : 0,
+              arousal: typeof row.arousal === 'number' ? row.arousal : 0,
+              timestamp: typeof row.timestamp === 'number' ? row.timestamp : 0,
+            });
+          }
         }
+        this._introEpisodeStats = {
+          candidates: this._introEpisodes.length,
+          // ⛔ So a starved source NAMES ITSELF instead of reading as "she
+          // just is not introspective today" — which is exactly how the
+          // first cut would have hidden.
+          state: this._introEpisodes.length === 0 ? 'starved' : 'live',
+          at: now,
+        };
       }
       const episodes = this._introEpisodes;
       // ⛔ No episodes = no introspection. She is not introspective about a

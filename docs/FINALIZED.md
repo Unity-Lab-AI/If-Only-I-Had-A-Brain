@@ -37056,4 +37056,33 @@ No-sentences scan · blind-vs-silent · ⭐ the kill criterion (TV = 0.840) · c
 - ⚠ **Two of the first four failures were my harness, not the module** — the literal-scanner didn't strip trailing comments so it matched comment prose, and the bound test used only 5 episodes so the cooldown fired first. Said so rather than relaxing the checks.
 - ⚠ The argmax bug was **real** and I only found it because a bound refused to fire. A bound that never fires is decoration, and I nearly shipped one.
 - ⚠ **NOT VERIFIED LIVE.** Lands on the next press.
+### ⚠ CORRECTED SAME DAY — I NEUTERED THE SOURCE AND CALLED IT A SAFEGUARD
+
+> Gee: *"this is normal and ther is the warming to accept before talking to her"*
+>
+> Gee: *"how is she suppose to learn then wtf u are nuetering her"*
+
+**He was right on both counts, and they were two separate mistakes.**
+
+**First: the permission already existed.** The binding-consent modal every user must accept before their first word states plainly that *"what she **learns** from conversation (words, patterns, associations) **does** propagate into her shared brain state, which serves every other user"* and tells them to *"assume anything you say can shape what she says to anyone else."* I restricted her against a permission the design had already obtained and documented. The source is no longer user-scoped.
+
+⭐ **The line that actually matters is TRANSCRIPT vs CONCEPT, not whose episode it is.** Replaying one person's sentences at another person is leakage and the `T6` user filter correctly prevents it. A word she has lived is what she **learned**, which is exactly what consent covers.
+
+**Second, and worse: my "safe" query starved the drive.** It demanded `input_text NOT LIKE '% %'` — that the WHOLE EPISODE be a single word. **Real conversation turns are sentences**, so it would have returned almost nothing while looking principled. Measured in the harness: **the old rule accepted 0 of 3 real turns.**
+
+⚠ **Blast radius, stated precisely because it matters:** this fed exactly ONE thing — which concept the introspective drive forms a question around. Her **learning path was never touched**: `injectText` into Wernicke's, the Hebbian/Oja binding from conversation, `storeEpisode` (still stores full text), `recallByMood`, `recallByUser`, the curriculum — all unchanged. But the drive itself was genuinely crippled, and "it only broke one thing" is not a defence when that thing is the feature.
+
+**The fix:** every episode is a candidate, and the concept is **extracted from** the sentence rather than the sentence being refused. Full breadth; still only a word travels onward.
+
+⛔ **And extraction uses NO STOP-WORD LIST** — a textbook place to sneak one in, and banned. The content word is chosen by asking HER.
+
+⚠ **Two further defects found while proving it, both mine:**
+
+1. **Length overrode strength.** `score = known + length·0.01` let an 8-letter word beat a 3-letter word she knew *better* (0.92+0.08 > 0.93+0.03) while the comment claimed length "only breaks ties". Now strength decides and length is consulted only within an epsilon.
+2. ⭐ **Raw embedding magnitude was the wrong signal, and would have failed on live data.** **GloVe norms track FREQUENCY**, so `the` and `was` can carry a far larger vector than a rare, meaningful word — ranking on norm alone would have quietly handed her function words, the exact failure a stop list would have "fixed". The honest signal is **`_definitionTaughtWords`**: the words her own curriculum has actually DEFINED. Membership dominates; magnitude only orders within it. Verified against a deliberate frequency trap: without her taught vocabulary `the` wins on a **25× larger vector**; with it, `grandma` wins.
+
+**Also shipped:** `state.introspection.source` reports `candidates` and `starved`/`live`/`unmeasured` — ⛔ so a starved source **names itself** instead of reading as *"she just isn't introspective today"*, which is precisely how the first cut would have hidden. And the client's filter was accepting **system labels** (`user_input`) as concepts — she would have wondered about `user_input`; it now applies the same does-she-know-this-word test.
+
+**Verified 18/18** on the production mixin, including the frequency trap demonstrated rather than assumed.
+
 - ⚠ **`getEpisodeCount`-style volume is unproven:** whether the `curiosity` namespace actually holds enough single-token episodes on the live box for introspection to have material to work with is **unknown until the press**. If it is thin, she will correctly stay silent rather than invent — but the drive will read `blind`, and that is the first field to check.
