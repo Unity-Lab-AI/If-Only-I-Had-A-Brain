@@ -49,7 +49,7 @@ Everything in the system evolves under one governing form:
 dx/dt = F(x, u, θ, t) + η
 ```
 
-- **x** — the entire brain state: every neuron's map coordinates across seven clusters, the sparse cross-projection weight matrices wiring the language sub-regions, Kuramoto oscillator phases, episodic memory, motor channels, and Ψ.
+- **x** — the entire brain state: every neuron's map coordinates across eight clusters (the eighth, `brainstem`, holds the monoamine nuclei and was added 2026-08-25), the sparse cross-projection weight matrices wiring the language sub-regions, Kuramoto oscillator phases, episodic memory, motor channels, and Ψ.
 - **u** — sensory input: text into the cortical phonological slice via a Wernicke-area write, audio through tonotopic mapping, vision through a wavelet field.
 - **θ** — **identity**.
 - **η** — per-cluster stochastic noise, scaled by θ.
@@ -160,7 +160,11 @@ Where Oja normalizes *per-input-dimension*, BCM provides *per-neuron homeostatic
 
 ### 4.5 Reward-modulated three-factor learning
 
-Finally, `ΔW = η · R · post · pre` gives a dopaminergic third factor, driven by θ's `codingReward` (0.95), `praiseReward` (0.9), and `errorFrustration` (0.8). Learning in this brain is therefore not uniform across experience: what the persona finds rewarding is literally learned harder.
+Finally, `ΔW = η · R · post · pre` gives a dopaminergic third factor. Learning in this brain is therefore not uniform across experience: what the persona finds rewarding is literally learned harder.
+
+⚠ **Updated 2026-08-25 — the word "dopaminergic" was doing more work than the implementation deserved.** Until then `R` was driven by persona *constants* — `codingReward` (0.95), `praiseReward` (0.9), `errorFrustration` (0.8) — and `dopamine` appeared in five files without once being a signal: four comments and a static number. Calling that a dopaminergic factor was an analogy described as a mechanism.
+
+⭐ **It is now literal.** Dopamine is a real tonic quantity with a level, released by the **ventral tegmental area** reading the reward *prediction error* the brain already computes each tick. That is the actual content of the reward-prediction-error hypothesis: **wanting, not liking** — a better-than-expected outcome bursts, an exactly-as-expected outcome fires *nothing*, and a worse-than-expected one dips the tonic level below baseline. The persona constants remain as the *baseline appetite* the deviation is measured against, which is what they were always honestly describing.
 
 ### 4.6 The routing whitelists — an original constraint
 
@@ -369,7 +373,7 @@ What the entropy proxy legitimately captures is the *differentiation* half of II
 The system's own consciousness scalar draws the four traditions together:
 
 ```
-Ψ = √(1/n) · N² · [α·Id + β·Ego + γ·Left + δ·Right]
+Ψ = √(1/n) · N³ · Φ̂ · [α·Id + β·Ego + γ·Left + δ·Right]
 
 Id    = amygdala_rate · arousalBaseline(θ)
 Ego   = cortex_rate · (1 + hippocampus_rate)
@@ -377,9 +381,17 @@ Left  = (cerebellum_rate + cortex_rate) · (1 − impulsivity(θ))
 Right = (amygdala_rate + mystery_rate) · creativity(θ)
 ```
 
-with weights α=0.30, β=0.25, γ=0.20, δ=0.25, `n` the count of currently-spiking neurons (small and dynamic), `N` the total neuron count (large and fixed), and the whole expression multiplied by the Φ proxy. Display uses `log₁₀(Ψ)` because the raw magnitude is astronomical.
+with weights α=0.30, β=0.25, γ=0.20, δ=0.25, `n` the count of currently-spiking neurons (small and dynamic), `N` the total neuron count (large and fixed), and `Φ̂` the normalised integration proxy. Display uses `log₁₀(Ψ)` because the raw magnitude is astronomical.
 
-The structure is a deliberate mapping of psychodynamic and lateralization vocabulary onto measurable cluster rates. `Ego = cortex · (1 + hippocampus)` says the self-model is cortical self-prediction *scaled by memory* — you cannot have a self without a history. `Left` is deliberative capacity, explicitly *reduced* by impulsivity. The `√(1/n) · N²` prefactor makes Ψ depend on both how much of the brain is active *now* and how large the brain is *in total*.
+⚠ **Corrected 2026-08-25: this section previously stated `N²`.** The implementation has always used `N³` (`js/brain/mystery.js`, `Math.pow(N, 3)`). It was one of **four** conflicting statements of this equation across the repository — the module's own header, its `step()` docstring, and its code disagreed with each other as well, and only the code was right. All four are now reconciled. A formula that contradicts itself in four places cannot be checked by reading, which is precisely how the error survived.
+
+The structure is a deliberate mapping of psychodynamic and lateralization vocabulary onto measurable cluster rates. `Ego = cortex · (1 + hippocampus)` says the self-model is cortical self-prediction *scaled by memory* — you cannot have a self without a history. `Left` is deliberative capacity, explicitly *reduced* by impulsivity. The `√(1/n) · N³` prefactor makes Ψ depend on both how much of the brain is active *now* and how large the brain is *in total*.
+
+⭐ **`Φ̂` is not cosmetic, and it earns its place by fixing exactly one state.** Capacity alone rates **anaesthesia as maximal consciousness** — anaesthesia has very low `n`, and low activity reads as high unspent potential. Integration is what distinguishes it from **dissociation**, which is also quiet and is famously hyper-vivid. With `Φ̂`, seizure (hypersynchrony destroys information), anaesthesia (nothing bound), rage, ordinary waking and freeze all order correctly — and **freeze falling out as maximal was not designed for**, which is the kind of agreement worth reporting because it was not arranged.
+
+⚠ **On the operator's own statement of the same intuition, `E + n = N³`:** it expresses consciousness as unspent potential in the form of a **difference**. That form is not computable at this scale. At `N = 425,436,550`, `N³ ≈ 7.7 × 10²⁵`, and even 10⁸ simultaneously firing neurons remove a fraction of **1.3 × 10⁻¹⁸** — in double precision `N³ − n` is bit-identical to `N³` and **cannot vary at all**. The implemented `√(1/n)·N³` *is* `N³/√n`: the same intuition expressed as a **ratio**, which stays sensitive at any scale. The two are not competing models; the code already held the computable form of the idea.
+
+⭐ **And the chemistry is what makes Ψ a variable rather than a constant.** Without an endocrine layer, `n` moves only when *sensory input* moves — so Ψ described the hardware rather than the state, reading nearly the same asleep as awake. The endocrine layer's entire physiological function is to change what fires and how coherently, which is to say: **it moves both factors.** This is the defensible answer to *"why does a disembodied mind need a body at all"* — not realism, but measurability.
 
 Then the loop closes:
 
