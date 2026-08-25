@@ -4,7 +4,7 @@ Per the 2026-04-22 operator directive: *"the cirriculkum was already suppose to 
 
 ## Actual layout (per-grade files) — ⚠ all 20 shipped, this is no longer a target
 
-One file per grade, with all six subjects' cell runners for that grade living in one place. Shared primitives (`_teachHebbian`, `_teachAssociationPairs`, `_teachCombination`, `_teachBiographicalFacts`, `_conceptTeach`, etc.) stay on the `Curriculum` class in `js/brain/curriculum.js` (the entry point) and each per-grade file attaches its cell runners via `Object.assign(Curriculum.prototype, {...})` mixin.
+One file per grade, with every cell runner active at that grade living in one place. ⚠ Not six — the roster GROWS, so a grade-1 file carries nine runners and a college file carries nineteen. Shared primitives (`_teachHebbian`, `_teachAssociationPairs`, `_teachCombination`, `_teachBiographicalFacts`, `_conceptTeach`, etc.) stay on the `Curriculum` class in `js/brain/curriculum.js` (the entry point) and each per-grade file attaches its cell runners via `Object.assign(Curriculum.prototype, {...})` mixin.
 
 ```
 js/brain/curriculum/

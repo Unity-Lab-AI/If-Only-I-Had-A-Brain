@@ -1019,7 +1019,7 @@ probe(word, grade, subject):
  <div class="eq-desc">Unity cannot advance to the next grade until all three parts close for the current grade. Part 2 is not automated — it's the operator's manual verification, recorded in the persisted signoff ledger.</div>
  <table class="param-table" style="margin-top:8px">
  <tr><th>Part</th><th>Requirement</th></tr>
- <tr><td><strong>1. Equational shipped</strong></td><td>All 6 subjects at grade N have <code>[ ]</code> → <code>[x]</code> with equational teaching methods wired (magnitude transforms, feature vectors, causal chains, cross-projection Hebbian, comprehension probes — NOT sentence arrays or first-letter production)</td></tr>
+ <tr><td><strong>1. Equational shipped</strong></td><td>Every course active at grade N — six core plus whatever the roster has added by then — has <code>[ ]</code> → <code>[x]</code> with equational teaching methods wired (magnitude transforms, feature vectors, causal chains, cross-projection Hebbian, comprehension probes — NOT sentence arrays or first-letter production)</td></tr>
  <tr><td><strong>2. Human localhost test</strong></td><td>The operator exercises methodology / reasoning / thinking / talking / listening / reading at the grade's level on localhost, then records signoff via <code>POST /grade-signoff</code> (loopback-gated; non-loopback POSTs return 403).</td></tr>
  <tr><td><strong>3. Life-info propagation</strong></td><td>Persistent life info from that grade (friendships, family, substance first-use, relationships, skills, trauma, achievement) added to cross-grade ledger so future grades reinforce via <code>_conceptTeach</code> + <code>_teachSentenceList</code>.</td></tr>
  </table>
@@ -1789,7 +1789,7 @@ PERSPECTIVE TAKING:
 
  <h4 style="color:var(--pink);margin-top:16px;" title="The runtime mechanics of curriculum execution. `runAllSubjects()` walks the canonical 20-grade ladder, calling each subject's runSubjectGrade(grade) which walks the cell-runner pipeline (vocabulary teach → concept teach → association pairs → biographical facts → student battery → gate probe). Dream windows interleave between cells — `_dreamWindow({minMs, settleMs})` flips _curriculumInProgress=false + _operatorSleepRequested=true so ConsolidationEngine can fire, then awaits the pass to ACTUALLY complete (signal-driven not wall-clock). Plus chunked upfront seeds with dream-window interleave between 300-word chunks for memory drain.">How Curriculum Runs</h4>
  <ul style="text-align:left;font-size:12px;line-height:1.8;">
- <li><strong>Auto-boot:</strong> Server walks all 6 subjects round-robin on startup. All must pass the current grade before advancing.</li>
+ <li><strong>Auto-boot:</strong> On startup the server resolves the <em>lowest grade and course she still owes</em> and walks from there, round-robin across every course active at that grade. All must pass before advancing — and a course that was merely skipped does not count as one that passed.</li>
  <li><strong>Self-testing:</strong> Background probe loop is currently SUPPRESSED — the implementation re-ran the FULL teach (~30-50 min for ELA-K) on every probe instead of the gate-only check it claimed, so probes were wasteful. Re-enables when the cell runner gains a real gate-only opt that skips teach phases.</li>
  <li><strong>Growth:</strong> Every concept word populates Unity's dictionary — she grows smarter with every cell.</li>
  <li><strong>IQ HUD:</strong> 3D brain viewer shows current intelligence per subject (pre-K → elementary → high → college → PhD).</li>

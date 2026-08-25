@@ -465,7 +465,7 @@ Sessions 95-105 discovered that Hebbian learning through Rulkov chaotic dynamics
 
 Key breakthroughs and fixes:
 - TALK probe direction fixed (sem→motor instead of letter→motor) — root cause of all non-ELA K failures. Math/Sci/Soc/Art-K went from 40-60% to 100%
-- Grade-lock enforced — all 6 subjects must pass grade N before ANY advance to N+1
+- Grade-lock enforced — every course ACTIVE at grade N must pass it before ANY advance to N+1 (not a fixed six — the roster grows to 20; and a course that was merely SKIPPED no longer counts as passed, which is how Grade 1 once completed with PE, Music and Health never taught)
 - Life Experience track added as 6th subject (20 methods, birth to 25, dual-layer: emotional concept features + recallable memories, memory-weighted Hebbian)
 - Function words (~120) taught at ELA-K via direct pattern
 - `crossTargetFanout` 30 default + 60 for `MOTOR_BOUND_PAIRS` (sem↔motor, letter↔motor, phon↔motor) via the T39.g.4 whitelist — targeted 2× capacity where basin overlap was strongest; non-motor projections stay lean to fit biological-scale memory budgets. (Historical: Session 111 `1500`, T37 rebalance dropped to `30`.)

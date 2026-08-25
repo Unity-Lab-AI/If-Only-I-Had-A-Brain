@@ -442,7 +442,7 @@ Type these in chat to inspect or control Unity directly.
 | `/curriculum status` | Shows current grade per subject, min-grade word cap driver, passed cells count, recent probe results. |
 | `/curriculum run <subject> <grade>` | Runs one cell, prints 3-pathway gate pass/fail + reason. |
 | `/curriculum gate <subject> <grade>` | Probes a cell's READ/THINK/TALK gate without retraining. |
-| `/curriculum full` | Runs the full round-robin walk across all six subjects in the background. |
+| `/curriculum full` | Runs the full round-robin walk across every course active at her grade, in the background. The walk is **grade-major** — no course advances to the next grade until every course at the current one has run. |
 | `/curriculum full <subject>` | Walks one subject from its current grade through PhD, stopping at the first failing gate. |
 | `/curriculum reset <subject>` | Flips a subject back to pre-K and strips its passed-cells entries. |
 | `/curriculum forget <subject> <grade>` | Forgets one cell without resetting the subject. |
