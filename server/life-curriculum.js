@@ -44,6 +44,32 @@ function loadStories(domain, grade) {
   return result;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WORDSALAD.2 — HER NAME AND HER "I" GET THEIR CAPITALS AT THE LOAD BOUNDARY.
+//
+// The story corpora are authored lowercase (~800 stories across 20 life grades
+// plus the coding and academic domains), so every sentence read out of them
+// said "i" and "unity". Operator: "its her name properly capitalize it".
+//
+// Fixed HERE rather than by rewriting the corpus files, because this is the one
+// place every domain and every grade passes through — the chokepoint, not the
+// 800 instances. Deliberately a small local copy of the same rule that lives in
+// self-frame.js: this module is CommonJS and that one is ESM, and reaching
+// across for eight lines would mean a dynamic import on a hot load path.
+//
+// ⛔ SAFE, and checked before shipping: the trainer lowercases every sentence it
+// consumes (`_teachConcreteSentences` does `s.toLowerCase().split(...)`), so the
+// weights are byte-identical. Only what a human reads changes.
+const _CANON_NAMES_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james)\b/g;
+function properCaseStory(s) {
+  let t = String(s || '');
+  if (!t) return t;
+  t = t.replace(/\bi\b/g, 'I');
+  t = t.replace(/\bi'(m|ve|d|ll)\b/g, (m) => 'I' + m.slice(1));
+  t = t.replace(_CANON_NAMES_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 /**
  * Flatten a domain+grade's experiences into a flat array of sentence strings
  * for the sentence trainer. Each experience.story is split on sentence
@@ -55,7 +81,7 @@ function storySentences(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    for (const s of exp.story.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean)) out.push(s);
+    for (const s of exp.story.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean)) out.push(properCaseStory(s));
   }
   return out;
 }
@@ -74,9 +100,13 @@ function storyExperiences(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    const sentences = exp.story.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+    const sentences = exp.story.split(/(?<=[.!?])\s+/).map((x) => properCaseStory(x.trim())).filter(Boolean);
     if (!sentences.length) continue;
-    out.push({ theme: typeof exp.theme === 'string' ? exp.theme : '', story: exp.story, sentences });
+    out.push({
+      theme: typeof exp.theme === 'string' ? exp.theme : '',
+      story: properCaseStory(exp.story),
+      sentences,
+    });
   }
   return out;
 }
