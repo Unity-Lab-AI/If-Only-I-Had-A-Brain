@@ -52,8 +52,23 @@ A brain restart — the **Update & Fresh Walk** press — drops every donor. Bef
 - `cargo check` clean on **all three feature sets**: default (`gui`+`cuda`), `--no-default-features --features cuda`, and `--no-default-features`.
 - ⚠ **Not verified against a live brain.** The handshake field and the exit path land together on the next press.
 
-## Release
+## Release — ✅ SHIPPED AND VERIFIED
 
-Push the `donor-v0.3.30` tag → `.forgejo/workflows/donor-release.yml` builds Linux + Windows, publishes, attaches both binaries, and bumps the site download links.
+`donor-v0.3.30` tagged (annotated) and pushed to both remotes; `.forgejo/workflows/donor-release.yml` built Linux + Windows, published, attached both binaries and bumped the site download links.
 
-⚠ **`CURRENT_DONOR_VERSION` in `server/brain-server.js` is already `0.3.30`.** That is safe before the tag exists — only 0.3.30+ reads the field, and a donor can only run 0.3.30 if it was published. ⛔ But **bump it WITH the tag in future, never ahead of it**: the anti-loop guard is a net, not a licence.
+⛔ **Verified against KI-22's four surfaces, on the LIVE site rather than the repo** — because that incident was precisely a case where the tag, the release and the assets were all correct while the download page served the previous version for hours, and *every log line was green*:
+
+| Surface | Result |
+|---|---|
+| `Cargo.toml` | `0.3.30` |
+| Tag | `donor-v0.3.30` |
+| Release assets | Linux **18,543,640 B**, Windows **12,929,024 B** — real binaries, not stubs |
+| **Live** `compute.html` + `legend.html` | **`donor-v0.3.30`** ✅ |
+
+⭐ **And the shipped artifact was fetched from the published release and RUN** — it self-reports `unity-donor 0.3.30`. The binary on the download page *is* this code.
+
+⚠ **Byte-hash equality against a local build is not the right criterion and will never hold**: the release profile uses `lto = "thin"` and `strip = true`, and CI cross-compiles in a container. What the artifact reports about itself, plus the CI's tag == Cargo-version guard, is the evidence that means something.
+
+⚠ **`CURRENT_DONOR_VERSION` in `server/brain-server.js` is `0.3.30`** and the release now exists, so they agree. ⛔ **Bump it WITH the tag in future, never ahead of it** — the anti-loop guard is a net, not a licence.
+
+⛔ **Release ownership:** tagging and publishing the donor is done here as part of the work, not handed off. Older notes in the archive describe it as the operator's job; that was wrong and those entries are left as history rather than rewritten.
