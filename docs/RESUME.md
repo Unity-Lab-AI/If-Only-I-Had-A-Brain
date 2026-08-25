@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — THE DOCS CAUGHT UP, THE DONOR SHIPPED, AND THE POD IS READY. EVERYTHING NOW WAITS ON THE PRESS.
+> ## ⭐⭐⭐ 2026-08-25 (latest) — "IS IT ACTUALLY WRAPPED UP?" WAS THE RIGHT QUESTION. FOUR BATCHES CAME OUT OF ASKING IT.
+>
+> **PICK-UP STATE.** ⛔ **Run `git rev-parse --short main origin/main github/main` and check the three agree — do not trust a hash written in this file.** ⛔ **Checkout `develop`, not `main`.** `docs:drift` clean. Board **2 `[ ]` + 5 `[~]`**: everything left is press-blocked or parked on Gee. ⭐ **THE ONE THING TO DO NEXT is still the press** — `docs/TODO.md § PRESS BRIEF` holds the RE-PRICE and the watch list.
+>
+> ⚠ **And a correction to how I was reporting the board:** I said *"3 open"* for several turns while counting only `- [ ]` and reading past nine `- [~]` in-progress items. **Count both.** Of those nine, eight turned out to be **code-complete and waiting on the measurement a press produces** (verified individually: `GPUVERB.1`, `GATEGPU.1`, `GATEDOSE.1`, `RHYTHM3S.1`, `RELDEPTH.1`, `UPLINK.1`) — a number nobody re-derives is a number nobody should quote.
+>
+> ---
+>
+> ### 1. BOARDPARITY — the DARKBOARD fix shipped half-dark
+>
+> Gee asked whether two closures were actually wrapped up. **One was; one was not.** The panels, renderers and call sites all existed, so it *looked* landed — but `endocrine.js` returns `puberty`/`cycle`/`allostatic` and `state.js` forwarded **none of them** while the page read all three. The `meanVoltage` shape, one layer down.
+>
+> ⛔ **It didn't look like an empty row.** The renderer defaults a missing `allostatic` to `{}`, so the board printed **`allostatic 0.000/0.6 (restore α 0.0000)` forever regardless of real load** — a reassuring zero on the one quantity that says whether adversity is accumulating, four lines under a comment forbidding exactly that. The cycle row never drew; `puberty` printed a literal `? (age ?)`. **Parity is exact both ways now: 13/13 and 7/7.**
+>
+> ### 2. PROPBOUND — the walk is CLEAR, and the audit still paid for itself
+>
+> The hazard was real and had been **fixed on 2026-08-21**; this verified the fix four ways instead of trusting its comment — routing, the mirror being a genuine mirror (`_writeTiledPattern` writes the CPU shadow **and** the wire in the same call), coordinate conventions, and clear-parity. ⭐ **One caveat died to arithmetic:** the eight cortex fractions sum to **exactly 1.000**, so the regions tile completely and a full clear leaves no GPU-only residue. **Nothing here blocks the press.** Its one real gap was no instrument — `boundPropagate` now counts the CPU fallback **by lane**, which is the number `RHYTHM3S.1` is hunting.
+>
+> ### 3. ⛔ BOUNDCAP — a truthy string made two browser branches dead code
+>
+> I filed this as *"correct today, fragile by construction."* **Wrong — it was two live bugs**, and the cause is one line: `client.donorAppVersion = _donorVer || 'browser'`. A browser donor gets the truthy **string** `'browser'`, so `if (donorAppVersion)` — used at two sites to mean *"is this native"* — was true for **every** donor.
+>
+> **(1)** The bound-propagate router served browser donors the **native** protocol: indices where `compute.html` reads a dense array, and a non-empty `preLen` that also defeats the browser's own bound-mode trigger. **The PROPBOUND fix had become a mirror image of the bug it fixed.** **(2)** Found only by applying fix-the-chokepoint: the same test handed browser donors the **96MB** pump window, removing the 8MB protection its own comment three lines above promises — on the one donor type that **cannot service its own socket**.
+>
+> Fixed with one owner (`_donorIsNative()`, testing the sentinel) and an **advertised** `boundResidentRead` capability. ⚠ The unknown-donor case is **deliberately asymmetric** — it routes to the path that refuses with `null`, never the one that invents all-zero currents. ⭐ Every *other* capability gate was untouched because they regex-parse a semver and `'browser'` fails it: **version gates got browser-exclusion free; the two boolean checks did not.**
+>
+> ### 4. ⭐ ARTZIG2 + ARTGROW — the art got better by being LOOKED AT, and Gee stopped me capping her
+>
+> Rendered both failing hands through the production stroke builder and real `sketch()` to PNG, four rounds. **The zigzag was never the strokes:** both hands drew a **rectangular slab**, because the silhouette hull was fitted to the trace **raw** while the fragment gate governed only which strokes got *drawn* — the earlier fix suppressed the fragments' **ink while keeping their shape**. One owner for the survivor set, and the square became a real silhouette — ears, eyes, tail — on the next render. Colour blobs floating **outside** the body (visible only after that fix) are clipped to the silhouette now.
+>
+> ⛔ **Then my fix made it worse and Gee caught it before it shipped:** I kept the stroke budgets at their old **noise-defence** values (doodle 22) after the noise was fixed at the source. *"cant make a art work in only 20 strokes it should increase in ability as she learns in art and stuff"*. Budgets raised, and ⭐ **her stroke commitment is now a sixth TRAINABLE hand parameter** scored by cosine against her banked percept — doodle **101 strokes untrained → 235 practiced**. **When a defence becomes unnecessary, its cost stops being free.**
+>
+> ⚠ **What the renders cannot settle:** the schema was synthetic (empty store, no live box), so they prove the density is **not fragment-scratch** and **cannot judge whether a 235-stroke drawing from a real reference is good.** That is a post-press look.
+>
+> ### Owned across the batch
+>
+> - ⛔ *"Adding the row is not the check — the check is proving the field arrives."* Two of these four were my own instruments reporting health they could not know.
+> - ⛔ **When a test is `if (x)`, go read what writes `x`.** I reasoned about a field's intent and called a live protocol bug a fragility.
+> - ⚠ My first art harness was **stroke-poor** — it never exercised the layer where "zigzag" lives; I only noticed after the fix.
+> - ⚠ One false alarm retracted the moment it was tested: a Grep context render showed bare `\` where comment markers belong in `brainstem.js`, which would have killed the gland layer. `node --check` disproved it in one command.
+>
+> ---
+>
+> ## 2026-08-25 (earlier) — THE DOCS CAUGHT UP, THE DONOR SHIPPED, AND THE POD IS READY. EVERYTHING NOW WAITS ON THE PRESS.
 >
 > **PICK-UP STATE.** ⛔ **Run `git rev-parse --short main origin/main github/main` and check the three agree — do not trust a hash pinned in this file.** A written hash goes stale the moment the next merge lands (it *was* stale for exactly that reason before `BOARDPARITY`), and this session's whole finding was that an instrument nothing refreshes reports health it cannot know. Last work landed as `BOARDPARITY` — board parity on the endocrine panels — identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** `docs:drift` clean (178/178 env flags). Board **3 open, none buildable**: `PRESSBLOCK.1` and `INFRA.1` parked on Gee's word, `DONORSHIP.1` audited and awaiting his verdict.
 >
