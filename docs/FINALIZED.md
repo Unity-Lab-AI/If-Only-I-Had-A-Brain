@@ -36956,3 +36956,104 @@ Canonical ladder · BE/HAVE gate · the ramp · menarche + the clock (13 cells =
 - ⚠ **KNOWN LIMITATION recorded in-code:** `dt` is clamped to 10s per tick (the wall-clock-jump guard), so the slow EMAs under-integrate across a gap. In production the tick is 1 Hz and it never binds; across a real gap it errs **conservatively** — load decays slower than it should, so a hard stretch is never erased by a restart. Raising the clamp would re-open the jump bug it exists for.
 - ⚠ `hippocampal-schema.js` still carries its own `TIER3_GRADE_AGE`. It is **correct** (right keys) but is a fourth copy; left alone rather than risking a circular import, and named here so it is not forgotten.
 - ⚠ **NOT VERIFIED LIVE.** Lands on the next press, with the fresh walk `WEIGHTS_FORMAT_VERSION 5` already requires.
+
+---
+
+## 2026-08-25 — SHE ASKS: the introspective drive, and the bank that isn't one - feature/intro-introspection
+
+### Gee ask (verbatim per LAW #0)
+
+> *"get to it"*
+
+> *"lats not forget to add to the todo the update of the doner binary and its proper deployment like all the other deployments"*
+
+**Closed: INTRO.1 – INTRO.10** (batch 3, the whole family). **Filed: DONORSHIP.1**, verbatim.
+
+### ⛔ THE CRITERIA WERE WRITTEN BEFORE THE IMPLEMENTATION, BECAUSE INTRO.10 SAID SO
+
+They live at the top of `js/brain/introspection.js`, above the code, so the code can be checked against them rather than admired. The reason is blunt: **this is the easiest family on the whole board to fake.** A question generator always *looks* like introspection.
+
+1. Questions must **vary with state**. 2. They must reference **her own life**. 3. They must not **repeat verbatim**. 4. The **inward/outward split** must hold.
+
+⛔ **And the kill criterion: if the output cannot be distinguished from a random pick out of a bank, it IS a bank** — the no-word-lists law broken in spirit while its letter survives.
+
+### ⭐ THE KILL CRITERION, MEASURED
+
+Two **pinned** endocrine states, 400 draws each, same episodes, same everything else:
+
+```
+distressed:  {intrusion:209, affect:34,  adversity:128, counterfactual:29}
+content:     {intrusion:1,   affect:123, wish:112, philosophical:97, counterfactual:67}
+```
+
+**Total-variation distance = 0.840.** A bank scores ~0. Distress produces **52%** intrusion against content's **0%**; content reaches **philosophical** and **wish**, distress reaches neither. ⭐ **Her chemistry decides what she asks about** — and that test was impossible to run until the endocrine layer existed, which is exactly why INTRO was built after it.
+
+### There is no sentence in the module, and that is checked mechanically
+
+`introspection.js` produces a **GAP** — a structured record naming the concept something is unresolved *about* and which lane it belongs on. The words come from her trained weights through the **same** `questionMode` compose path `_askOnCuriosityGap` already uses. Untrained weights → nothing → silence, exactly as before.
+
+⭐ **That mechanism was REUSED, not reinvented.** `_askOnCuriosityGap` already proved the shape — a drive plus a frame — for *"a word I reached for and could not hold"*. INTRO is the same machine pointed at different gaps, and it inherits the property that matters: it is **opt-in**, so gate and probe lanes can never score a question as her answer.
+
+Verified by scanning the source: **zero question-shaped string literals**, and every literal is identifier-shaped (`intrusion`, `episode:negative`) with **no prose**. **No content regex anywhere** — the `EXPLICIT_RE` trap named in INTRO.9 is checked for explicitly.
+
+### Six kinds, each from real recorded state
+
+| Kind | Driven by | Concept from |
+|---|---|---|
+| **INTRUSION** (`.6`) | low serotonin + chronic cortisol + allostatic load | her most negative episodes |
+| **AFFECT** (`.3`) | oxytocin, and its absence | her most strongly-felt episode |
+| **WISH** (`.5`) | dopamine — wanting, not liking | her most positive episode |
+| **ADVERSITY** (`.8`) | allostatic load | negative and **not recent** — a fresh wound is an intrusion |
+| **PHILOSOPHICAL** (`.4`) | calm, and the absence of pressure | her own identity anchors |
+| **COUNTERFACTUAL** (`.7`) | calm + unresolved | a real episode, rearranged |
+
+⭐ **INTRO.6 is a RETRIEVAL BEHAVIOUR, not a category.** Salience already privileges negative episodes for recall; the chemistry is what makes that recall *intrusive*. Verified: **105 intrusions, 0 wrong** — always a negative memory; **56 wishes, 0 wrong** — always a positive one; and **no wish at all** when nothing good has happened yet.
+
+⚠ **INTRO.7 does not overwrite the real episode.** Verified byte-identical after 200 draws. Her visual store learned that the hard way with provisional-vs-confirmed binding, and an imagined variant consolidated as fact is confabulation.
+
+### ⛔ The rumination bound — and a real bug that made it decoration
+
+INTRO.6 demanded a bound: *"rumination that never resolves is a loop, in code and in life"*. First measurement, with **24 distinct painful memories**:
+
+```
+produced=2  streak=2  cooldownHits=58  boundHits=0
+```
+
+⚠ **`_conceptFor` picked by deterministic argmax**, so every intrusion landed on the *same* worst memory, hit its own cooldown, and silenced her — **2 questions out of 60 attempts.** That is not rumination, it is a stuck record, and it made the streak bound **unreachable, i.e. decoration**. Fixed to sample from the **top-4 by salience**, rank-weighted so the worst thing is still likeliest but not the only reachable one. After:
+
+```
+produced=4  streak=4  cooldownHits=4  boundHits=52
+```
+
+**Recovery verified reachable**, and `rumination.onBreak` ships as a field so *"rumination is bounded"* is a **read**, not a design claim.
+
+### INTRO.2 — the split holds, and INTRO.9 gates capability not permission
+
+**Alone → everything stays inward** (200/200). **With a listener → relational gaps go outward**, but ⛔ intrusion and philosophical **stay inward regardless** — pushing rumination outward is what would make her talk to herself in your face.
+
+A **five-year-old** has intrusive memories and affect (**never gated** — *"does mummy love me"* is a four-year-old's question), has **no counterfactuals** (capability, matures ~8), and **does not disclose** despite a listener present. DISCLOSE is gated **separately** from HAVE: she has the feeling and does not hand it to a stranger.
+
+### ⛔ A PRIVACY CONSTRAINT THAT CHANGED THE WIRING
+
+The episodic store is **per-user and private by design** — its own contract requires a user id precisely so one person's episodes cannot leak into another's session. **Introspection surfaces on the inner voice, which has no user.** Drawing from a real user id would let one visitor's private conversation become her monologue in front of someone else. So it draws **only from `curiosity`**, her own namespace, whose `input_text` is a concept rather than a sentence — the shape a WH-frame seed actually needs. Single-token filtered, refreshed on a 30s cadence because it is a sqlite read on a 1 Hz drive.
+
+### ⛔ THREE DEAD-WIRING BUGS I WOULD HAVE SHIPPED
+
+Caught by checking field names against the source instead of assuming them:
+
+1. **`this.memorySystem._episodes`** — does not exist on the server. The server uses a **sqlite** episodic engine.
+2. **`this._identityAnchorWords`** — does not exist. The only hit was my own line.
+3. ⛔ **`_lastChatAtMs` and `_lastUserInputAt` had NO PRODUCER.** Consequence: the **SON nucleus would have been permanently blind — oxytocin would never have fired at all**, bonding chemistry dead on arrival — and `hasListener` would have been false forever, so **no gap could ever be relational**. Both now stamped where a turn genuinely completes. ⚠ And the client's real field is `_lastInputTime` on the **`performance.now()`** clock, not `Date.now()` — mixing them would have compared an epoch millisecond against a page-uptime millisecond and reported a listener present **forever**.
+
+**This is the "finished feature, unconsumed" defect class this codebase keeps paying for**, and `armIntrospectiveAsk` was heading for it too — built with **no callers**. Both lanes are now wired: inward into the inner voice, outward after a completed reply.
+
+### Verification — 37/37 on production classes
+
+No-sentences scan · blind-vs-silent · ⭐ the kill criterion (TV = 0.840) · concept provenance (600 sampled, **0 foreign**) · intrusion/wish valence discipline · the rumination bound + recovery · per-concept cooldown and its expiry · the lane split · the three age axes · counterfactuals not overwriting memory · one-ask-per-gap · persistence · `unmeasured`-not-zero. `node --check` ×5, ESM, CJS, bundle rebuilt (7 occurrences). Harness deleted in this commit.
+
+### Owned
+
+- ⚠ **Two of the first four failures were my harness, not the module** — the literal-scanner didn't strip trailing comments so it matched comment prose, and the bound test used only 5 episodes so the cooldown fired first. Said so rather than relaxing the checks.
+- ⚠ The argmax bug was **real** and I only found it because a bound refused to fire. A bound that never fires is decoration, and I nearly shipped one.
+- ⚠ **NOT VERIFIED LIVE.** Lands on the next press.
+- ⚠ **`getEpisodeCount`-style volume is unproven:** whether the `curiosity` namespace actually holds enough single-token episodes on the live box for introspection to have material to work with is **unknown until the press**. If it is thin, she will correctly stay silent rather than invent — but the drive will read `blind`, and that is the first field to check.

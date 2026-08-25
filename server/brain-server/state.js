@@ -1880,6 +1880,27 @@ const SERVER_STATE_MIXIN = {
           ? this.glands.snapshot().nuclei : null,
         lastError: this._endocrineErr || null,
       } : null,
+      // ── INTRO — the introspective drive, rendered BY NAME.
+      // ⛔ `criteria` is the honest half: INTRO.10 demanded falsifiable
+      // measures agreed BEFORE the build, and these are them — kinds
+      // actually produced, repeats counted, the inward/outward split as
+      // observed counts. A drive that has produced nothing reads
+      // `unmeasured` on every one of them rather than a reassuring zero.
+      introspection: (this.introspection && typeof this.introspection.snapshot === 'function')
+        ? (() => {
+            const s = this.introspection.snapshot();
+            return {
+              live: s.live,
+              counters: s.counters,
+              // Whether the rumination BOUND is currently holding her back —
+              // visible, so "rumination is bounded" is a field read.
+              rumination: s.rumination,
+              criteria: s.criteria,
+              lastArmed: this._lastIntrospectiveGap || null,
+              lastError: this._introspectionErr || null,
+            };
+          })()
+        : null,
       // SPEAK.2/9-obs — speech-pipeline health. Per-subject word_motor basin
       // separability (weight-mass distribution: uniform = separable; from the
       // SPEAK.2 renorm probe) + frozen cellSize (SPEAK.1) + the reject-to-silence

@@ -2380,7 +2380,7 @@ class ServerBrain {
     console.log('[Brain] R3 — loading language subsystem (dictionary + language cortex + embeddings + component synth)...');
     const startMs = Date.now();
     try {
-      const [dictMod, lcMod, embedMod, csMod, modulesMod, clusterMod, curriculumMod, drugSchedulerMod, drugDetectorMod, olfactoryMod, sensoryTriggersMod, letterInputMod, endocrineMod, brainstemMod] = await Promise.all([
+      const [dictMod, lcMod, embedMod, csMod, modulesMod, clusterMod, curriculumMod, drugSchedulerMod, drugDetectorMod, olfactoryMod, sensoryTriggersMod, letterInputMod, endocrineMod, brainstemMod, introspectionMod] = await Promise.all([
         import('../js/brain/dictionary.js'),
         import('../js/brain/language-cortex.js'),
         import('../js/brain/embeddings.js'),
@@ -2399,6 +2399,9 @@ class ServerBrain {
         // ENDO — chemistry and the glands that decide to release it.
         import('../js/brain/endocrine.js'),
         import('../js/brain/brainstem.js'),
+        // INTRO — the introspective drive. Downstream of chemistry, because
+        // which question surfaces is decided by what her state cannot resolve.
+        import('../js/brain/introspection.js'),
       ]);
       this._letterInputMod = letterInputMod;
 
@@ -3910,6 +3913,12 @@ class ServerBrain {
       this.endocrine.setGlands(this.glands);
       console.log(`[Brain] ENDO — endocrine layer online: ${Object.keys(endocrineMod.CHEMICALS).length} chemicals, ${Object.keys(this.glands.nuclei).length} nuclei. brainstem cluster = ${(CLUSTER_SIZES.brainstem || 0).toLocaleString()} neurons (locus coeruleus / raphe / VTA).`);
 
+      // INTRO — the introspective drive. ⛔ Produces GAPS, never sentences:
+      // the words come from her trained weights through the same
+      // `questionMode` compose path the curiosity gap already uses.
+      this.introspection = new introspectionMod.IntrospectionDrive();
+      console.log('[Brain] INTRO — introspective drive online: gaps only, no question bank; words come from trained weights or she stays silent.');
+
       // Await GloVe embedding table load — must complete before corpus
       // training so persona words get real semantic patterns from the
       // start instead of hash-fallback vectors that would be wrong
@@ -4762,6 +4771,123 @@ class ServerBrain {
       // dead endocrine tick.
       this._endocrineErr = { message: err?.message || String(err), at: now };
     }
+
+    // ── INTRO — sense on the FRESH endocrine snapshot, in that order,
+    // because which unresolved thing surfaces is decided by chemistry. A
+    // stale snapshot here would mean her questions lag her state by a tick,
+    // which is exactly the correlation the whole family is measured on.
+    this._tickIntrospection(now, brainState);
+  }
+
+  /**
+   * INTRO — one introspective step.
+   *
+   * ⛔ Produces a GAP and nothing else. No sentence is constructed here, and
+   * none may ever be: the words come from her trained weights through the
+   * `questionMode` compose path, or she stays silent.
+   */
+  _tickIntrospection(now, brainState) {
+    if (!this.introspection || !this._endocrineSnapshot) return;
+    try {
+      // Only sense when nothing is already pending — one unresolved thing
+      // at a time, the same one-shot discipline the curiosity gap runs on.
+      if (this.introspection.gap) return;
+
+      // ⛔ HER OWN EPISODES ONLY — NEVER A VISITOR'S.
+      //
+      // The episodic store is per-user and private by design; its own
+      // contract says any cognition path wanting recall must pass the
+      // triggering user's id, precisely so one person's episodes cannot
+      // leak into another's session. Introspection surfaces on the INNER
+      // VOICE, which has no user, so drawing from a real user id would let
+      // one visitor's private conversation become her monologue in front of
+      // someone else.
+      //
+      // `curiosity` is HER namespace — episodes she wrote about her own
+      // learning, whose `input_text` is a concept rather than a sentence,
+      // which is exactly the shape a WH-frame seed needs.
+      //
+      // Refreshed on a slow cadence: this is a sqlite read and the drive
+      // ticks at 1 Hz. Her memories do not change second to second.
+      const REFRESH_MS = 30 * 1000;
+      if (!this._introEpisodes || (now - (this._introEpisodesAt || 0)) > REFRESH_MS) {
+        this._introEpisodesAt = now;
+        this._introEpisodes = [];
+        if (typeof this.recallByUser === 'function') {
+          try {
+            for (const row of this.recallByUser('curiosity', 40)) {
+              const t = typeof row.input_text === 'string' ? row.input_text.trim() : '';
+              // Single token only — a concept, not a sentence. A multi-word
+              // seed is not something the WH-frame can be built around.
+              if (!t || /\s/.test(t)) continue;
+              this._introEpisodes.push({
+                trigger: t,
+                valence: typeof row.valence === 'number' ? row.valence : 0,
+                arousal: typeof row.arousal === 'number' ? row.arousal : 0,
+                timestamp: typeof row.timestamp === 'number' ? row.timestamp : 0,
+              });
+            }
+          } catch { /* a dead read leaves the list empty, which correctly means no introspection */ }
+        }
+      }
+      const episodes = this._introEpisodes;
+      // ⛔ No episodes = no introspection. She is not introspective about a
+      // placeholder, and inventing a concept here would be the bank this
+      // whole family is built to avoid.
+      if (!episodes || episodes.length === 0) return;
+
+      // Identity anchors — her own resident self-concepts, the honest seed
+      // for a question about herself. Absent, philosophical gaps simply do
+      // not arise rather than being pointed at nothing.
+      const anchors = (this.cortexCluster && Array.isArray(this.cortexCluster._identityAnchorWords))
+        ? this.cortexCluster._identityAnchorWords : [];
+      // A listener is a REAL recent turn, not an assumption.
+      const hasListener = typeof this._lastChatAtMs === 'number'
+        && this._lastChatAtMs > 0 && (now - this._lastChatAtMs) < 2 * 60 * 1000;
+
+      const gap = this.introspection.sense({
+        endocrine: this._endocrineSnapshot,
+        episodes,
+        anchors,
+        ageYears: brainState.ageYears,
+        hasListener,
+      });
+      if (gap) this.introspection.record(gap);
+    } catch (err) {
+      this._introspectionErr = { message: err?.message || String(err), at: now };
+    }
+  }
+
+  /**
+   * INTRO — hand a pending introspective gap to the EXISTING curiosity-ask
+   * machinery, which already turns a gap into a composed question.
+   *
+   * ⭐ Deliberately reuses `_askOnCuriosityGap` rather than building a second
+   * asking path: that function already seeds a WH-frame, rides the trained
+   * interrogative transitions, refuses to recurse, and is opt-in so gate and
+   * probe lanes can never score a question as her answer. All of that is
+   * exactly what an introspective question needs, and duplicating it would
+   * mean two asking paths that drift.
+   *
+   * @param {string} lane 'inward' (inner voice) or 'outward' (chat)
+   * @returns {boolean} whether a gap was armed
+   */
+  armIntrospectiveAsk(lane) {
+    if (!this.introspection || !this.cortexCluster) return false;
+    const gap = this.introspection.take(lane);
+    if (!gap) return false;
+    // The curiosity-gap shape, carrying an introspective concept. `shortfall`
+    // is reused as urgency — same field, same meaning: how badly this presses.
+    this.cortexCluster._curiosityGap = {
+      word: gap.concept,
+      bestMean: 0,
+      floor: 0,
+      shortfall: gap.urgency,
+      ts: Date.now(),
+      introspective: gap.kind,   // provenance, so telemetry never conflates the two
+    };
+    this._lastIntrospectiveGap = { kind: gap.kind, lane: gap.lane, concept: gap.concept, at: Date.now() };
+    return true;
   }
 
   _updateDerivedState() {

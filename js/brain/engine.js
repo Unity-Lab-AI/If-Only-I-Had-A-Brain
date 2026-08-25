@@ -37,6 +37,9 @@ import { DrugScheduler, SUBSTANCES as DRUG_SUBSTANCES } from './drug-scheduler.j
 // would make `persistence.js`'s endocrine restore dead code on this lane.
 import { EndocrineSystem } from './endocrine.js';
 import { GlandLayer } from './brainstem.js';
+// INTRO — the introspective drive. Downstream of chemistry: which unresolved
+// thing surfaces is decided by what her state cannot settle.
+import { IntrospectionDrive } from './introspection.js';
 // (the `detectOffer` import lived here for the deleted vision-caption drug-cue
 //  subscriber — see the note further down; drug-detector.js itself is still
 //  used elsewhere and is untouched)
@@ -115,6 +118,7 @@ export class UnityBrain extends EventEmitter {
     this.endocrine = new EndocrineSystem();
     this.glands = new GlandLayer({ endocrine: this.endocrine });
     this.endocrine.setGlands(this.glands);
+    this.introspection = new IntrospectionDrive();
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, undefined, this.endocrine);
     const arousal = this.brainParams.arousalBaseline || 0.9;
 
@@ -1606,6 +1610,33 @@ export class UnityBrain extends EventEmitter {
    * plausible 0 would release confidently off a fabricated measurement,
    * which is strictly worse than reporting `blind` and staying quiet.
    */
+  /**
+   * INTRO — hand a pending introspective gap to the EXISTING curiosity-ask
+   * machinery, which already turns a gap into a composed question.
+   *
+   * ⭐ Reuses `_askOnCuriosityGap` rather than adding a second asking path:
+   * it already seeds a WH-frame, rides the trained interrogative
+   * transitions, refuses to recurse, and is OPT-IN so gate and probe lanes
+   * can never score a question as her answer. Duplicating that would mean
+   * two asking paths that drift.
+   *
+   * @param {string} lane 'inward' | 'outward'
+   * @returns {boolean} whether a gap was armed
+   */
+  armIntrospectiveAsk(lane) {
+    const cortex = this.clusters?.cortex;
+    if (!this.introspection || !cortex) return false;
+    const gap = this.introspection.take(lane);
+    if (!gap) return false;
+    cortex._curiosityGap = {
+      word: gap.concept, bestMean: 0, floor: 0,
+      shortfall: gap.urgency, ts: Date.now(),
+      introspective: gap.kind,   // provenance — telemetry must never conflate the two
+    };
+    this._lastIntrospectiveGap = { kind: gap.kind, lane: gap.lane, concept: gap.concept, at: Date.now() };
+    return true;
+  }
+
   _endocrineBrainState() {
     const s = { clusters: this.clusters };
     const st = this.state;
@@ -1635,6 +1666,16 @@ export class UnityBrain extends EventEmitter {
     }
 
     if (st.hypothalamus && st.hypothalamus.drives) s.drives = st.hypothalamus.drives;
+
+    // ENDO.6 — affiliative contact for the SON nucleus, decaying over the
+    // same window the dreaming gate uses. ⚠ `_lastInputTime` is on the
+    // `performance.now()` clock; comparing it against `Date.now()` would
+    // report contact forever.
+    if (typeof this._lastInputTime === 'number') {
+      const sinceMs = performance.now() - this._lastInputTime;
+      const WINDOW = 5 * 60 * 1000;
+      s.socialContact = sinceMs < WINDOW ? Math.max(0, 1 - sinceMs / WINDOW) : 0;
+    }
 
     // ── ENDO.12 / ENDO.10 — her real age and her position in the walk.
     //
@@ -1682,6 +1723,39 @@ export class UnityBrain extends EventEmitter {
       }
     }
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, undefined, this.endocrine);
+
+    // ── INTRO — sense AFTER the endocrine tick, on the FRESH snapshot,
+    // because which unresolved thing surfaces is decided by chemistry.
+    // ⛔ Produces a GAP, never a sentence.
+    if (this.introspection && this._endocrineSnapshot && !this.introspection.gap) {
+      try {
+        const eps = this.memorySystem && Array.isArray(this.memorySystem._episodes)
+          ? this.memorySystem._episodes.filter(e => e && typeof e.trigger === 'string' && e.trigger && !/\s/.test(e.trigger))
+          : [];
+        // ⛔ No episodes = no introspection. She is not introspective about a
+        // placeholder, and inventing a concept would be the bank this family
+        // exists to avoid.
+        if (eps.length) {
+          const cortex = this.clusters?.cortex;
+          const g = this.introspection.sense({
+            endocrine: this._endocrineSnapshot,
+            episodes: eps,
+            anchors: Array.isArray(cortex?._identityAnchorWords) ? cortex._identityAnchorWords : [],
+            ageYears: this._endocrineBrainState().ageYears,
+            // A listener is a REAL recent turn, never assumed.
+            // ⚠ Reads `_lastInputTime`, the field the dreaming gate already
+            // uses — and it is on the `performance.now()` clock, NOT
+            // `Date.now()`. Mixing the two would have compared an epoch
+            // millisecond against a page-uptime millisecond and reported a
+            // listener present forever.
+            hasListener: typeof this._lastInputTime === 'number'
+              && (performance.now() - this._lastInputTime) < 2 * 60 * 1000,
+          });
+          if (g) this.introspection.record(g);
+        }
+      } catch { /* introspection must never break the tick */ }
+    }
+
     if (this.mystery?.setWeights) this.mystery.setWeights(this.brainParams.mysteryWeights);
     const arousal = this.brainParams.arousalBaseline || 0.9;
     const creativity = this.brainParams.creativity || 0;
