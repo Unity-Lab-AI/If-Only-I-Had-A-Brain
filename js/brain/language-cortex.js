@@ -818,6 +818,29 @@ export class LanguageCortex {
    * Returns { pronoun, verb, noun, adj, conj, prep, det, qword }
    * All values 0-1. Highest score = most likely type.
    */
+  // ── DORMANT.2 (2026-08-25) — THIS METHOD DID NOT EXIST ─────────────────────
+  //
+  // `inner-voice.js:241` guards on
+  // `typeof languageCortex._sentenceEmbedding === 'function'` and, when it
+  // passes, blends the LAST thought's embedding into the next seed at 0.6/0.4.
+  // That blend is the whole mechanism of her stream-of-consciousness chain —
+  // one thought leading into the next instead of every inner thought starting
+  // cold. It has never run: the method was never defined, so the guard always
+  // failed and the chain silently degraded to independent thoughts.
+  //
+  // Another near-miss name, like `_teachWordSpellingDirectFinal`: the real
+  // embedder is `sharedEmbeddings.getSentenceEmbedding`, already imported at
+  // the top of this file. Returning a Float64Array of EMBED_DIM matches what
+  // the caller expects (it length-checks against `seed.pattern` before using
+  // the result, so a mismatch degrades safely rather than corrupting the seed).
+  _sentenceEmbedding(text) {
+    if (!text || typeof sharedEmbeddings?.getSentenceEmbedding !== 'function') return null;
+    try {
+      const emb = sharedEmbeddings.getSentenceEmbedding(String(text));
+      return (emb && emb.length) ? emb : null;
+    } catch { return null; }
+  }
+
   wordType(word) {
     const w = word.toLowerCase().replace(/[^a-z']/g, '');
     if (!w) return { pronoun: 0, verb: 0, noun: 0, adj: 0, conj: 0, prep: 0, det: 0, qword: 0 };
@@ -1669,7 +1692,41 @@ export class LanguageCortex {
     // generateAsync run the scoring loop async with event-loop
     // yields and hand the sorted array back in. When the opt is
     // present we skip the sync loop entirely.
+    // ── OWNWORDS.2 (2026-08-25) — THE SILENCE IS REAL NOW ──────────────────
+    //
+    // Everything below this point is DICTIONARY-COSINE RETRIEVAL: score ~3,700
+    // dictionary entries against a semantic target and softmax-sample the top
+    // K. It is not her trained weights. It fired whenever her motor emission
+    // came back empty — and a comment ~800 lines further down told the reader
+    // "Empty is HONEST silence … No backup path", which was false.
+    //
+    // That mattered more than any dormant file: it meant the moments her own
+    // matrix produced NOTHING were exactly the moments something else spoke
+    // for her, so the failure was invisible and the word-salad diagnosis was
+    // being taken on retrieved words rather than emitted ones.
+    //
+    // ⛔ IT IS KEPT FOR A GENUINELY UNTRAINED BRAIN, deliberately. A newborn
+    // cortex has no sem→word_motor mass at all; without a bootstrap voice a
+    // fresh walk starts mute and there is nothing to interact with. So the
+    // rule is: bootstrap yes, crutch no. Once she has trained cells, empty
+    // means EMPTY.
+    //
+    // And it is never silent about itself again — every retrieval is counted,
+    // so "how much of her speech is actually hers" is a field read instead of
+    // an argument.
+    const _hasTrained = !!(cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0);
+    const _retrievalAllowed = !_hasTrained
+      || (typeof process !== 'undefined' && process.env && process.env.DREAM_DICT_FALLBACK === '1');
+    if (words.length === 0 && _hasTrained && !_retrievalAllowed) {
+      this._honestSilenceCount = (this._honestSilenceCount || 0) + 1;
+      if (!this._honestSilenceWarned) {
+        this._honestSilenceWarned = true;
+        console.warn('[LanguageCortex] her trained emission produced NOTHING and the dictionary fallback is OFF for a trained brain (OWNWORDS.2) — this is real silence, not a bug. Set DREAM_DICT_FALLBACK=1 to restore retrieval, but then her words are not hers.');
+      }
+      return this._renderSentence([], type, speechMod) || '';
+    }
     if (words.length === 0) {
+      this._dictRetrievalCount = (this._dictRetrievalCount || 0) + 1;
       let scored = opts._precomputedScores || null;
       const target = intentSeed || (typeof cluster.getSemanticReadout === 'function'
         ? cluster.getSemanticReadout(sharedEmbeddings) : null);
@@ -2494,7 +2551,18 @@ export class LanguageCortex {
           // from the current state). Empty is HONEST silence — the
           // server-side silent-response handler in brain-server.js
           // (`silentReason: 'motor_unstable'`) surfaces it to the
-          // operator with diagnostic detail. No backup path.
+          // operator with diagnostic detail.
+          //
+          // ⛔ CORRECTION (OWNWORDS.2, 2026-08-25): this comment used to end
+          // "No backup path", and that was FALSE for as long as it stood.
+          // There WAS a backup path — the dictionary-cosine retrieval in
+          // `generate()` fired precisely when this came back empty, so the
+          // moments her own matrix produced nothing were the moments
+          // something else spoke for her. As of the OWNWORDS.2 fix the claim
+          // is true again for a TRAINED brain: retrieval now only bootstraps
+          // a cortex with zero passed cells, and `DREAM_DICT_FALLBACK=1` is
+          // the only way to put it back. A comment asserting an absence has
+          // to be re-checked whenever the thing it denies could return.
           preEmittedWords = composedWordsAsync;
         } catch (err) {
           // Await path failed — let generate() fall back to sync emission.
