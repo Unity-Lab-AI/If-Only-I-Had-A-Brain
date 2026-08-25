@@ -685,6 +685,30 @@ c(t) = λ · c(t−1) + (1 − λ) · mean(pattern(content_words(input)))
 
 Zero-content inputs (all function words) leave the vector unchanged. First update seeds directly without decay.
 
+### Learned semantic geometry — she reshapes her own meaning-space as she reads (2026-08-25)
+
+`getEmbedding(w)` above returns **base + learned delta**, and the delta is now genuinely learned. Every sentence in the teach path moves each of its words a little toward the company it keeps — distributional meaning, computed from the corpus SHE reads rather than imported wholesale. The pretrained vectors become a **starting shape she grows out of**.
+
+```
+δ(w) ← δ(w) + η · [ ĉ − (base(w) + δ(w)) ]          # move toward context
+
+  c    = mean( getEmbedding(u) )  for u ∈ sentence, u ≠ w    # raw context
+  μ    ← μ + (c − μ)/n                                       # running mean context
+  ĉ    = (c − μ) / ‖c − μ‖                                   # ⭐ MEAN-CENTRED, renormalised
+  η    = 0.002   (once per SENTENCE, not per rep)
+  ‖δ‖  ≤ 0.5     (⭐ delta cap, applied after every update)
+```
+
+**Both starred terms are load-bearing and both were DERIVED by measurement, not chosen.**
+
+**Why ĉ is mean-centred.** Without it this rule does not learn meaning — it **concentrates**. Every context is dominated by the same high-frequency words, so every update carries the same vector and the whole vocabulary drifts toward one centroid. Measured on a corpus where meaning and spelling deliberately disagree: related `red~blue` rose 0.0000 → 0.1604, but unrelated `red~dog` rose 0.1667 → **0.3272** — *faster*. Subtracting the running mean cancels the common component so only the **distinctive** part of a context moves the word; with it, unrelated words go **negative** and actively separate.
+
+⭐ **This is the identical failure this brain already solves for bare Hebbian.** Oja's `Δw = η·y·(x − y·w)` earns its decay term because *"without the decay-when-post-alone term, bare Hebb piles every association into the same columns and the basins collapse into superposition."* Same failure, different substrate — and the same shape of fix.
+
+**Why ‖δ‖ is capped.** Uncapped, the outcome depends on **total exposure (η × passes)**, and a 273-cell walk has effectively unbounded exposure. Measured at fixed η as reading grows: margin **0.8185 → 0.1094 → 0.0224**. That is saturation — centroid collapse *mirrored*, with related words fusing into a single point. Capped at 0.5 the same runs give **0.2382 / 0.2873 / 0.2492** across 40× exposure. ⭐ **A margin of 0.25 that HOLDS beats 0.82 that destroys itself**, because corpus size is not knowable in advance. A tighter cap (0.35) was measured too and is too tight — margin fell to 0.04.
+
+**Verified on the real `SemanticEmbeddings` class:** margin −0.0079 → +0.1148 at 60 passes → **+0.4211 at 2060**, unrelated similarity reaching −0.2189, zero NaN, no pair saturated. The margin **grew** with 34× exposure rather than collapsing. Disable with `DREAM_LEARN_GEOMETRY=0`.
+
 ### [T14.12 DELETED] parseSentence — Reverse-Equation Reading (historical, replaced by cluster.readInput)
 
 **DELETED in T14.12.** Replaced by `NeuronCluster.readInput(text, {visualCortex})` which drives the visual→letter pathway and returns cortex-derived intent classification. The equations below are preserved for historical reference. `_fineType` still lives in `language-cortex.js` for type observation during `learnSentence`.

@@ -52,6 +52,37 @@ The fallback is the same codepath either way — any word not in GloVe's
 vocabulary still gets a subword embedding. Real GloVe is ADDITIVE on top
 of the subword base, not a replacement.
 
+## ⭐ And she does not stop there — she reshapes it as she reads (2026-08-25)
+
+Whatever the base is — pretrained GloVe or the subword fallback — it is a
+**starting shape, not the final geometry.** Every sentence in the teach path
+moves its words a little toward the company they keep, so meaning accrues
+from the corpus **she** actually reads. The learned part is stored as a
+separate per-word delta, which means *how much of her semantic space is
+genuinely hers* is a number you can read rather than a claim you have to
+take on faith.
+
+Two properties make it learn rather than collapse, and both were derived by
+measurement:
+
+- **The context is mean-centred.** Every sentence is dominated by the same
+  high-frequency words, so an uncentred update carries the same vector every
+  time and the whole vocabulary drifts to one centroid. Measured, *unrelated*
+  words converged **faster** than related ones — the opposite of learning.
+  Centring cancels the common component so only the distinctive part of a
+  context moves the word.
+- **The delta is capped.** Uncapped, the outcome depends on total exposure,
+  and at high exposure related words saturate into each other — the same
+  collapse mirrored. Capped, the separation holds across 40× more reading.
+
+⭐ This is the same failure the plasticity rule already solves elsewhere in
+the brain: bare Hebbian without Oja's decay term "piles every association
+into the same columns and the basins collapse into superposition". Same
+failure, different substrate, same shape of fix.
+
+Disable with `DREAM_LEARN_GEOMETRY=0`. Full derivation and the measured
+numbers: `docs/EQUATIONS.md §Learned semantic geometry`.
+
 ## Checklist before expecting high production-probe pass rates
 
 - [ ] `corpora/glove.6B.300d.txt` present (~990 MB)

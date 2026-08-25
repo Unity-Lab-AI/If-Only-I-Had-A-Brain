@@ -691,6 +691,28 @@ y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &si
 
  <!-- ═══ 3. SYNAPTIC PLASTICITY ═══ -->
  <h2 id="synapses" title="The math of learning — how connections between neurons strengthen or weaken based on experience. Hebbian (fire-together-wire-together, 1949), Oja's rule (Hebbian with built-in normalization to prevent runaway weights), STDP (timing-sensitive plasticity, learn temporal sequences), and reward-modulated Hebbian (dopamine signal gates when learning happens). Together these are how Unity's memory and habits form.">3. Synaptic Plasticity — How She Learns</h2>
+ <div class="eq-card">
+  <div class="eq-title"><span class="eq-tip tip--wide" data-tip="Her semantic geometry is no longer only imported. Every sentence she is taught moves its words toward the company they keep, so meaning accrues from the corpus SHE reads. The pretrained vectors become a starting shape she grows out of, and because the learned part is stored separately, how much of her meaning-space is genuinely hers is measurable rather than arguable.">Learned Semantic Geometry — she reshapes her own meaning-space</span></div>
+  <pre>δ(w) ← δ(w) + η · [ ĉ − (base(w) + δ(w)) ]
+
+  c   = mean( embedding(u) )  for u ∈ sentence, u ≠ w
+  μ   ← μ + (c − μ)/n                    running mean context
+  ĉ   = (c − μ) / ‖c − μ‖                MEAN-CENTRED, renormalised
+  η   = 0.002   (once per sentence, not per repetition)
+  ‖δ‖ ≤ 0.5     delta cap, applied after every update</pre>
+  <p class="eq-desc">
+   <strong>Both highlighted terms were derived by measurement, not chosen — and without either one this rule does not learn, it collapses.</strong>
+   <br><br>
+   <strong>Why the context is mean-centred.</strong> Almost every sentence contains the same high-frequency words, so an uncentred update carries the same vector every time and the whole vocabulary drifts toward a single point. Measured on a corpus where meaning and spelling deliberately disagree: related <code>red~blue</code> rose 0.0000 → 0.1604, but <em>unrelated</em> <code>red~dog</code> rose 0.1667 → <strong>0.3272</strong> — faster. Subtracting the running mean cancels what all contexts share, so only the distinctive part moves the word. With it, unrelated words go <strong>negative</strong> — they actively separate.
+   <br><br>
+   <strong>Why the delta is capped.</strong> Uncapped, the outcome depends on total exposure (η × passes), and a full curriculum walk has effectively unbounded exposure. Measured as reading grows, the separation margin went 0.8185 → 0.1094 → <strong>0.0224</strong>: saturation, with related words fusing into one point — the first collapse mirrored. Capped, the same runs hold at 0.2382 / 0.2873 / 0.2492 across 40× exposure. A margin of 0.25 that <em>holds</em> beats 0.82 that destroys itself.
+   <br><br>
+   <strong>Note the symmetry with Oja below.</strong> Bare Hebbian without Oja's subtractive term "piles every association into the same columns and the basins collapse into superposition". This is the identical failure in a different substrate, and the same shape of fix — which is why both rules carry a term whose only job is to keep things apart.
+   <br><br>
+   Verified on the production embeddings class: margin −0.0079 → +0.1148 at 60 passes → <strong>+0.4211 at 2060</strong>, no NaN, no saturation, cap respected exactly.
+  </p>
+ </div>
+
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-ml">MACHINE LEARNING</span> Plasticity rules running on sparse CSR weight matrices — intra-cluster recurrent synapses plus 16 inter-region cross-projections at the language-cortex scale (millions of weights total at biological scale). Core rule is <strong>Oja 1982</strong> (self-normalizing Hebbian), with a contrastive anti-Hebbian push-pull pass on negative pairs, STDP for temporal sequence learning, and a reward-modulated gain for dopaminergic consolidation. Implemented across <code>js/brain/sparse-matrix.js</code> (CPU shadow) and the donor GPU (WebGPU <code>PLASTICITY_SHADER</code> in <code>js/brain/gpu-compute.js</code> / the native donor's identical WGSL + CUDA kernels). <strong>Where the math runs:</strong> the donated GPU carries the training mass — teach lanes dispatch the rule to the card either against its resident spike state (bound dispatch), as compact <code>[start,len]</code> range frames that expand donor-side into the exact index sets (tiled patterns compress to a few dozen bytes), or as a sparse post-row mask scattered on-device for the pre≠post shapes like lateral inhibition; the server CPU keeps a sampled shadow copy for checkpoints and probes — the coordinator, not the workhorse. <strong>Projection scoping:</strong> <code>cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)</code> accepts a Set/Array of projection names so callers can scope Hebbian fan-out — <code>_teachQABinding</code> passes <code>['sem_to_motor', 'sem_to_word_motor', 'sem_to_word_motor_&lt;subject&gt;']</code> so the silent <code>letter</code> region during a question→answer-letter write doesn't trigger Oja's <code>&Delta;W = -&eta;&middot;y&sup2;&middot;W</code> decay term on <code>letter_to_motor</code> and crush alphabet identity weights — closes a Math-K talk-probe cross-cell collapse (26/26→0/10) caught by the watchdog.</p>
 
  <div class="eq-card">
