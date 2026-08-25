@@ -6,6 +6,59 @@
 
 ---
 
+## 🚨 2026-08-25 — BOX IS DOWN (502). FOR SPONGE — READ THIS FIRST
+
+**Gee pressed the dashboard's `⏹ Stop Brain` button by accident. The box will NOT come back on its own, by design.** He has no shell access to the box, so this needs you.
+
+### The one command
+
+```bash
+sudo systemctl start unity-brain
+```
+
+⚠ **`start`, not `restart`** — the process already exited, so there is nothing to restart. The deploy user is pre-authorised for this in `/etc/sudoers.d/unity-brain-deploy` (NOPASSWD, set up by `bootstrap-backend.sh`), so **no root and no config change is needed.**
+
+### Then confirm it actually came back (do not trust the absence of an error)
+
+```bash
+systemctl status unity-brain --no-pager
+journalctl -u unity-brain -n 40 --no-pager
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7525/public-state.json   # want 200
+```
+
+⚠ **Boot is slow — it loads ~5.4 GB of weights before it binds the port**, so a 502 from outside for the first minute or two is normal. Poll until 200 rather than concluding it failed.
+
+### ⭐ It resumes the walk — do NOT reach for Fresh Walk
+
+The unit sets `DREAM_KEEP_STATE=1`, and `/shutdown` wrote a **resume marker** before exiting, so a plain `start` **auto-resumes the trained state**. This is a savestart. **Pressing Update & Fresh Walk instead would throw away the training.**
+
+### Why it did not self-heal (this is not a systemd misconfiguration)
+
+The unit has `Restart=always`, but `/shutdown` deliberately exits with code **42**, and the box's unit carries `RestartPreventExitStatus=42` so a *deliberate* halt is not fought by systemd. **That is correct behaviour for a stop button — the bug is that the button was reachable from a dashboard whose operator has no shell.**
+
+### Follow-up, at your convenience — NOT needed to bring it back
+
+`deploy/unity-brain.service` gained two directives in the same commit as this note. **Neither is required for the recovery above** — do it whenever it suits you.
+
+- **`RestartPreventExitStatus=42`** — `server/brain-server.js` has cited this by name since the `/shutdown` handler was written, but the directive **was never actually in the repo's unit file**. The code documented a contract the unit did not carry. Whatever the installed unit says today, the repo now states the intent explicitly.
+- **`StartLimitIntervalSec=0`** (in `[Unit]`) — ⚠ **this one is a real latent hazard.** systemd's default limiter gives up after 5 starts in 10s and leaves the unit dead permanently. A boot-time crash loop would burn that budget in under a minute and then never retry — **stranding the box exactly like today, with no dashboard left to press.** `0` disables the limiter so `RestartSec=5` retries forever and a fixed overlay recovers on its own.
+
+To apply:
+
+```bash
+sudo cp /opt/unity-brain/deploy/unity-brain.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart unity-brain
+```
+
+⚠ **Please tell us what the installed unit contained before you overwrote it** — if it already had `RestartPreventExitStatus=42`, someone hand-edited the box and the repo was drifting. Worth knowing either way.
+
+### Being fixed on our side (already committed, lands on the next frontend deploy)
+
+**The `⏹ Stop Brain` button is now removed entirely whenever the dashboard is served from anywhere but localhost.** It is a true halt by design; the bug was that it rendered on a box whose operator has no shell to undo it with, while its own tooltip claimed *"systemd auto-resumes"*. The savestart control (**`🔄 Restart (Savestart)`**) was already sitting next to it and does the right thing — force-save, resume marker, exit **0**, revived by `Restart=always`, resumes the walk. On the deployed box that is now the only stop-shaped button there is.
+
+---
+
 ## What auto-deploys vs what needs YOU
 
 - **Frontend (static)** — `index.html`, `html/*.html`, `js/*` (incl. the esbuild bundle `js/app.bundle.js`), `corpora/*` served to browsers — **auto-deploys** on push to `main` via `.forgejo/workflows/deploy.yml` (rsync to `/var/www/pages`). **You do nothing.**
