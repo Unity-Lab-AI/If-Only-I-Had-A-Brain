@@ -1475,9 +1475,9 @@ export class NeuronCluster {
     // emb.length * groupSize) also clear. This is the correct
     // "fresh intent state" semantic the caller asked for.
     if (replaceMode) {
-      for (let i = region.start; i < region.end; i++) {
-        this.externalCurrent[i] = 0;
-      }
+      // ⭐ SCALEWALK.1 — native memset. Identical result by construction, and at
+      // the 82M cortex this loop alone was `regionSize` writes (sem ≈ 13.7M).
+      this.externalCurrent.fill(0, region.start, region.end);
     }
     // TW S4 — when the donor wire speaks TEMPLATE current frames (v0.3.16,
     // negotiated per socket and cached on the brain as _tmplTeachOk), the
@@ -1494,17 +1494,34 @@ export class NeuronCluster {
       const value = emb[d] * INJECTION_GAIN * strength;
       if (tmplValues) { tmplValues.push(value); if (value !== 0) tmplNonZero = true; }
       const startNeuron = region.start + d * groupSize;
-      for (let n = 0; n < groupSize; n++) {
-        const idx = startNeuron + n;
-        if (idx >= region.end) break;
-        if (replaceMode) {
-          this.externalCurrent[idx] = value;
-        } else {
-          this.externalCurrent[idx] += value;
-        }
-        if (fwdIndices && !tmplWire && value !== 0) {
-          // Index relative to region start — matches main-cortex
-          // first-N sub-slice where Phase C pattern writes land.
+      // ⛔ SCALEWALK.1 — THIS INNER LOOP IS `emb.length × groupSize ≈ regionSize`
+      // WRITES PER CALL. At the 82M cortex a `sem` injection was ~13.7 MILLION
+      // float writes, and the profile named this function as **34.9% of
+      // main-thread self-time** during the definition bootstrap. The cost is
+      // invisible in the source — it reads like a small tiling loop — and it
+      // grew ~55× when the cortex did, without anyone re-pricing it.
+      //
+      // ⭐ Two exact, semantics-preserving cuts, no behaviour change:
+      //   1. A group whose value is 0 is a NO-OP in additive mode. Skipping it
+      //      is identical, and `+= 0` across ~45,000 cells is pure waste.
+      //   2. Every cell in a group receives the SAME value, so replaceMode is a
+      //      native memset over the run rather than a per-element JS loop.
+      // Additive mode still needs the read-modify-write, so it keeps the loop.
+      const _endIdx = Math.min(region.end, startNeuron + groupSize);
+      if (value === 0 && !replaceMode) continue;   // additive no-op — identical
+      if (replaceMode) {
+        this.externalCurrent.fill(value, startNeuron, _endIdx);
+      } else {
+        for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
+      }
+      // ⭐ SCALEWALK.1 — the forward-list condition is LOOP-INVARIANT, so it is
+      // hoisted. Before this, the loop still ran `groupSize` iterations doing
+      // nothing at all whenever the donor speaks the TEMPLATE wire — which is
+      // every current donor (≥0.3.16), i.e. the production case. Same pushes in
+      // the same order when it does apply; index is region-relative, matching
+      // the main-cortex first-N sub-slice where Phase C pattern writes land.
+      if (fwdIndices && !tmplWire && value !== 0) {
+        for (let idx = startNeuron; idx < _endIdx; idx++) {
           fwdIndices.push(idx - region.start);
           fwdValues.push(value);
         }
