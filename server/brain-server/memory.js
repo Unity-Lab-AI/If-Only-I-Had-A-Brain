@@ -957,6 +957,17 @@ const SERVER_MEMORY_MIXIN = {
       stats.consolidation.lastPassAt = this.consolidationEngine.lastPassAt || 0;
       stats.consolidation.passCount = this.consolidationEngine.passCount || 0;
       stats.consolidation.isDreaming = this._isDreaming === true;
+      // WORDSALAD.5 (REPLAYOFF) — "a pass ran" and "the pass LEARNED something"
+      // were the same number, which is how her sleep did zero learning for weeks
+      // while `passCount` climbed to 18 and looked healthy. These separate them:
+      // `replayWrites` is real Hebbian carried by the donor, `replayRefused`
+      // counts dispatches the donor declined, and `replaySchemas` is coverage
+      // this pass. All-zero `replayWrites` with a climbing `passCount` now reads
+      // as exactly what it is — bookkeeping only, no consolidation.
+      stats.consolidation.replaySchemas = this.consolidationEngine._gpuReplaySchemas | 0;
+      stats.consolidation.replayWrites = this.consolidationEngine._gpuReplayWrites | 0;
+      stats.consolidation.replayRefused = this.consolidationEngine._gpuReplayRefused | 0;
+      stats.consolidation.replayCursor = this.consolidationEngine._gpuReplayCursor | 0;
     }
 
     // Working memory (existing field on this.memory). iter17: cap=null

@@ -78,6 +78,22 @@ export class ConsolidationEngine {
     if (process.env.DREAM_CONSOLIDATION_DISABLE === '1') {
       return { skipped: 'disabled-by-env (DREAM_CONSOLIDATION_DISABLE=1)' };
     }
+    // WORDSALAD.5 — reset the per-pass GPU replay budget and remember where the
+    // last pass ran out. `_gpuReplayCursor` is what makes the bound FAIR: without
+    // it a pass always spends its budget on whichever schemas come first in the
+    // store's iteration order, and the tail would never be replayed at all — a
+    // silent truncation that would look exactly like working consolidation.
+    // With it, the schemas that missed this pass lead the next one, and the
+    // cursor wraps once a pass gets all the way through.
+    {
+      const _cap = process.env.DREAM_CONSOLIDATION_GPU_REPLAY_MAX != null
+        ? Number(process.env.DREAM_CONSOLIDATION_GPU_REPLAY_MAX)
+        : 64;
+      this._gpuReplayBudgetLeft = (Number.isFinite(_cap) && _cap > 0) ? _cap : 0;
+      this._gpuReplayCursor = this._gpuReplayCursor | 0;
+      this._gpuReplaySeen = 0;
+      this._gpuReplaySpentThisPass = 0;
+    }
     // I.8 closure 2026-06-17 22:00 PT — skip consolidation during
     // pre-cell SEED phases. K-VOCAB-UPFRONT-MULTIDEF SEED + dream-
     // trickle phases monopolize GPU for definition fetches; a
@@ -274,7 +290,26 @@ export class ConsolidationEngine {
         // against saturated basins reinforces the lock-in instead of
         // strengthening real schema patterns.
         if (!saturationVeto) {
-          const replayResult = await this._replaySchema(schema, cluster, opts);
+          // WORDSALAD.5 — per-pass GPU replay budget. Each schema that the
+          // donor carries costs one sparse dispatch (~205ms RTT measured on the
+          // pod, KI-23), so an unbounded pass over a large schema store would
+          // swamp the 300s consolidation interval. The budget bounds the pass;
+          // the cursor below means the schemas that miss this pass are the ones
+          // that go FIRST next time, so coverage completes over passes instead
+          // of being silently truncated at the top of the list every time.
+          if (this._gpuReplayBudgetLeft === undefined) this._gpuReplayBudgetLeft = 0;
+          this._gpuReplaySeen = (this._gpuReplaySeen | 0) + 1;
+          // Schemas before the cursor were already replayed by the previous
+          // pass; they wait their turn so the tail of the store gets served.
+          const _pastCursor = this._gpuReplaySeen > (this._gpuReplayCursor | 0);
+          const replayResult = await this._replaySchema(schema, cluster, {
+            ...opts,
+            gpuReplayBudget: _pastCursor ? this._gpuReplayBudgetLeft : 0,
+          });
+          if (replayResult.gpuCarried) {
+            this._gpuReplayBudgetLeft -= 1;
+            this._gpuReplaySpentThisPass = (this._gpuReplaySpentThisPass | 0) + 1;
+          }
           stats.replaysExecuted += replayResult.replays;
           stats.hebbianWritesTotal += replayResult.writes;
         }
@@ -360,6 +395,28 @@ export class ConsolidationEngine {
       stats.error = err.message;
     } finally {
       this._inFlight = false;
+      // WORDSALAD.5 — advance the rotation and REPORT IT. If this pass spent its
+      // whole budget there is more store than budget, so the next pass starts
+      // where this one stopped; if it got all the way through, the cursor wraps.
+      // The counts are logged rather than kept silent because "consolidation ran"
+      // and "consolidation LEARNED" are different claims, and the whole reason
+      // this fix exists is that the board could not tell them apart.
+      try {
+        const spent = this._gpuReplaySpentThisPass | 0;
+        const seen = this._gpuReplaySeen | 0;
+        if (spent > 0 && this._gpuReplayBudgetLeft <= 0 && seen > spent) {
+          this._gpuReplayCursor = (this._gpuReplayCursor | 0) + spent;
+          if (this._gpuReplayCursor >= seen) this._gpuReplayCursor = 0;
+        } else {
+          this._gpuReplayCursor = 0;   // got through everything eligible — wrap
+        }
+        stats.gpuReplaySchemas = spent;
+        stats.gpuReplayWrites = spent * REPLAYS_PER_SCHEMA;
+        stats.gpuReplayCursor = this._gpuReplayCursor | 0;
+        if (spent > 0) {
+          console.log(`[Consolidation] 💤 REPLAY ON THE DONOR — ${spent} schema(s) × ${REPLAYS_PER_SCHEMA} reps = ${spent * REPLAYS_PER_SCHEMA} real Hebbian writes this pass (of ${seen} eligible; cursor → ${this._gpuReplayCursor}). Her sleep is learning.`);
+        }
+      } catch { /* accounting must never fail a pass */ }
     }
     return stats;
   }
@@ -475,9 +532,52 @@ export class ConsolidationEngine {
       : 5_000_000;
     const _synNnz = (this.cluster.synapses && this.cluster.synapses.nnz) || 0;
     const _skipCpuReplay = _maxReplayNnz > 0 && _synNnz > _maxReplayNnz;
+    // ── WORDSALAD.5 (REPLAYOFF) — THE GPU ROUTE THE GUARD WAS WAITING FOR ─────
+    //
+    // The guard above is CORRECT and stays: a synchronous CPU `hebbianUpdate` at
+    // this nnz blocks the event loop for 30-400s. What was wrong is that its own
+    // comment defers to "the GPU teach path" and NO SUCH PATH EXISTED HERE — so
+    // at biological scale the replay Hebbian was skipped on every pass and only
+    // schema bookkeeping ran. Measured live on the box before this fix:
+    // `memoryStats.consolidation.passCount: 18` with
+    // `dreamRecombinationStats.novelConsolidated: 0`. Her sleep did no learning.
+    //
+    // That matters far beyond tidiness. In complementary-learning-systems terms
+    // the awake pass does fast, broad, overlapping encoding and the interleaved
+    // replay is what SEPARATES those representations — i.e. it is what builds
+    // the very margin `voice.emitRejection: "below-signal-floor"` says she
+    // lacks. With replay dead, 100% of her learning happened awake, which is
+    // also why the repetition counts had to be so brutal.
+    //
+    // ⛔ RE-PRICE (required, and computed BEFORE this shipped):
+    //   • The CPU guard is NOT removed or weakened — the CPU path stays skipped
+    //     at scale, so the event-loop protection it exists for is untouched.
+    //   • `hebbianBoundMasked` takes a `reps` argument, so all
+    //     REPLAYS_PER_SCHEMA (4) replays ride ONE dispatch instead of four.
+    //   • Cost per dispatch is one sparse op ≈ 205ms RTT measured on the remote
+    //     pod (KI-23). Bounded at 64 schemas per pass by default that is
+    //     ≈13s of device time against a 300s consolidation interval — ~4% duty.
+    //   • Unbounded it would NOT be safe: a large schema store would put every
+    //     pass into hundreds of dispatches and swamp the interval, so the bound
+    //     is the feature. A rotating cursor means schemas that miss one pass are
+    //     first in line for the next, so coverage is complete over time rather
+    //     than truncated at the top of the list.
+    //   • `DREAM_CONSOLIDATION_GPU_REPLAY_MAX=0` disables the GPU route and
+    //     restores exactly today's behaviour (bookkeeping only).
+    const _gpuProxy = (this.cluster && this.cluster._gpuProxyReady && this.cluster._gpuProxy) || null;
+    const _gpuReplayCap = process.env.DREAM_CONSOLIDATION_GPU_REPLAY_MAX != null
+      ? Number(process.env.DREAM_CONSOLIDATION_GPU_REPLAY_MAX)
+      : 64;
+    const _canGpuReplay = !!(_skipCpuReplay && _gpuProxy
+      && typeof _gpuProxy.hebbianBoundMasked === 'function'
+      && Number.isFinite(_gpuReplayCap) && _gpuReplayCap > 0);
     if (_skipCpuReplay && !this._replaySkipLogged) {
       this._replaySkipLogged = true;
-      console.warn(`[Consolidation] CPU replay (hebbianUpdate + preSem build) SKIPPED — intra-synapse nnz=${_synNnz.toLocaleString()} > ${_maxReplayNnz.toLocaleString()} cap. A synchronous CPU replay at this scale blocks the event loop 30s-400s and stalls the /ws donor handshake; GPU teach path owns real Hebbian here. Schema bookkeeping still runs. Tune via DREAM_CONSOLIDATION_MAX_REPLAY_NNZ (0=disable guard).`);
+      if (_canGpuReplay) {
+        console.warn(`[Consolidation] CPU replay SKIPPED at nnz=${_synNnz.toLocaleString()} > ${_maxReplayNnz.toLocaleString()} (a synchronous CPU replay here blocks the event loop 30s-400s) — REPLAY NOW RUNS ON THE DONOR via masked bound Hebbian, ${_gpuReplayCap} schema(s) per pass on a rotating cursor. Her sleep does real learning again. Disable with DREAM_CONSOLIDATION_GPU_REPLAY_MAX=0.`);
+      } else {
+        console.warn(`[Consolidation] CPU replay (hebbianUpdate + preSem build) SKIPPED — intra-synapse nnz=${_synNnz.toLocaleString()} > ${_maxReplayNnz.toLocaleString()} cap, and NO GPU REPLAY ROUTE IS AVAILABLE (donor not ready / hebbianBoundMasked missing / disabled by env). ⛔ This means consolidation is doing schema bookkeeping ONLY — no replay learning is happening this pass. Tune via DREAM_CONSOLIDATION_MAX_REPLAY_NNZ (0=disable guard) or attach a donor.`);
+      }
     }
 
     // Pre-build the cortex-side pattern ONCE — concept embedding tiled into
@@ -496,6 +596,41 @@ export class ConsolidationEngine {
       this.cluster.gainMultiplier = _origGain;
       _spindleActive = false;
     };
+
+    // WORDSALAD.5 — the GPU replay: ONE masked bound-Hebbian dispatch carrying
+    // all REPLAYS_PER_SCHEMA reps, against the schema's own active sem rows.
+    // The sleep-spindle gain is folded into the learning rate here because the
+    // CPU path gets its burst via `cluster.gainMultiplier`, which a device-side
+    // write does not read — same intended effect, applied where the write is.
+    if (_canGpuReplay) {
+      const _budget = (typeof opts.gpuReplayBudget === 'number') ? opts.gpuReplayBudget : Infinity;
+      if (_budget > 0) {
+        const activeIdx = this._buildRegionActiveIdx(semRegion, schema.conceptEmbedding);
+        if (activeIdx && activeIdx.length) {
+          try {
+            const carried = _gpuProxy.hebbianBoundMasked(
+              `${this.cluster.name}_intraSynapses`,
+              replayLr * SPINDLE_BURST_GAIN,
+              REPLAYS_PER_SCHEMA,
+              activeIdx,
+            ) === true;
+            if (carried) {
+              writes += REPLAYS_PER_SCHEMA;
+              replays += REPLAYS_PER_SCHEMA;
+              this._gpuReplayWrites = (this._gpuReplayWrites || 0) + REPLAYS_PER_SCHEMA;
+              this._gpuReplaySchemas = (this._gpuReplaySchemas || 0) + 1;
+              // The device carried the real Hebbian — the CPU loop below has
+              // nothing left to do for this schema, and re-running it would
+              // double-count the replay.
+              return { replays, writes, gpuCarried: true };
+            }
+            this._gpuReplayRefused = (this._gpuReplayRefused || 0) + 1;
+          } catch {
+            this._gpuReplayRefused = (this._gpuReplayRefused || 0) + 1;
+          }
+        }
+      }
+    }
 
     try {
       for (let r = 0; r < REPLAYS_PER_SCHEMA; r++) {
@@ -527,6 +662,27 @@ export class ConsolidationEngine {
     schema.reinforce(0.1 * (1 + emotionalWeight) * REPLAYS_PER_SCHEMA);
 
     return { replays, writes };
+  }
+
+  // WORDSALAD.5 (REPLAYOFF) — the SPARSE twin of `_buildRegionPattern`.
+  // The dense builder allocates `new Float64Array(cluster.size)` — hundreds of
+  // megabytes at biological scale, and one of the two reasons the CPU replay was
+  // guarded off in the first place. The pattern it builds is a pure tiling, so
+  // the active indices can be produced directly and cheaply, which is exactly
+  // what a masked GPU Hebbian write wants.
+  _buildRegionActiveIdx(region, feat) {
+    if (!this.cluster || !region || !feat || feat.length === 0) return null;
+    const size = region.end - region.start;
+    const gSize = Math.max(1, Math.floor(size / feat.length));
+    const idx = [];
+    for (let d = 0; d < feat.length; d++) {
+      if (feat[d] <= 0) continue;
+      for (let n = 0; n < gSize; n++) {
+        const i = region.start + d * gSize + n;
+        if (i < region.end) idx.push(i);
+      }
+    }
+    return idx.length ? Int32Array.from(idx) : null;
   }
 
   _buildRegionPattern(region, feat, binarize = true) {
