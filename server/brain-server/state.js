@@ -578,6 +578,34 @@ const SERVER_STATE_MIXIN = {
           previewsDrained: this._mindsEyePreviewsDrained | 0,
           schemas,                    // concepts whose SHAPE she has abstracted
           seenConcepts: seen,         // concepts she holds a field C for
+          // ⛔ EYEPIN.3 — WHAT SHE IS LOOKING AT, AND WHY. Shipped in the same
+          // commit as the picker, because the defect it reports was invisible
+          // to every existing counter: the lane read 383/383 drawn with every
+          // error field 0 while repeating ONE subject, and the only way to
+          // catch it was polling the snapshot eight times by hand.
+          //
+          // `pinTicks` is the instrument that matters — consecutive imagine
+          // ticks on one thought. It climbing without bound means her thought
+          // chain has stalled, which is a finding about EMISSION, not about
+          // art. `maxPinTicks` banks the worst run so a board read late still
+          // sees it. `recentSubjects` proves variety directly rather than
+          // asking anyone to trust a count.
+          eye: this._eyeStats ? {
+            picks: this._eyeStats.picks | 0,
+            fromThought: this._eyeStats.fromThought | 0,
+            fromAcquisition: this._eyeStats.fromAcquisition | 0,
+            fromRecall: this._eyeStats.fromRecall | 0,
+            none: this._eyeStats.none | 0,
+            pinTicks: this._eyeStats.pinTicks | 0,
+            maxPinTicks: this._eyeStats.maxPinTicks | 0,
+            rotations: this._eyeStats.rotations | 0,
+            lastSubject: this._eyeStats.lastSubject || null,
+            lastWhy: this._eyeStats.lastWhy || null,
+            lastAgeMs: this._eyeStats.lastAt ? (Date.now() - this._eyeStats.lastAt) : null,
+            recentSubjects: Array.isArray(this._eyeRecent) ? this._eyeRecent.slice() : [],
+            taughtPool: this._eyeTaughtCacheSize | 0,
+            taughtCursor: this._eyeTaughtCursor | 0,
+          } : null,   // null = the picker has not run yet, NOT "no pin"
           lastLabel: this._lastSketchLabel || null,
           style: (typeof process !== 'undefined' && process.env && process.env.DREAM_DRAW_STYLE) || 'own',
           // ARTSTYLE — the hand she used on her latest piece; rotates every artwork.

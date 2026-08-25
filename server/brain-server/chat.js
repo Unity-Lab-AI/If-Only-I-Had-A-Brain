@@ -1425,18 +1425,54 @@ const SERVER_CHAT_MIXIN = {
         // DRAWS the very thing she looked up (`canvas:draw:` frame) — 1:1, the
         // reference then her own traced version. Its per-concept cooldown / gap /
         // in-flight guards keep it to ~one real look-up + draw per 15s.
-        if (typeof this._lookUpAndDraw === 'function') {
-          this._lookUpAndDraw(_seedText).catch(() => { /* background look-up + draw best-effort */ });
-        }
-        // DRAW NOW from what she has ALREADY grounded (recall / provisional) — never
-        // a fetch (allowFetch:false), so the tick stays microsecond-fast and the
-        // viewer cycles every ~6-8s instead of stalling on the network round-trip.
-        // Only for a DRAWABLE concept — an OBJECT/noun (abstract thought-words trace
-        // to garbage scatter → skip to the favorite below). Dynamic POS gate.
-        if (typeof this._conceptIsDrawable !== 'function' || await this._conceptIsDrawable(_seedText)) {
+        // ⛔ EYEPIN.1/.2 (2026-08-25) — THIS BLOCK USED `_seedText` DIRECTLY FOR
+        // BOTH THE LOOK-UP AND THE DRAW, AND `_seedText` IS THE TAIL OF
+        // `_innerThoughtChain`. A chain that stops advancing therefore pinned
+        // the whole lane to ONE WORD forever.
+        //
+        // Measured on the live box: 8 of 8 sampled frames were `church`, in
+        // three different styles, while `emitDiagnostic` read `no-best-word`
+        // with `sampleCount 0` at an age of 1.07s — i.e. emission was failing
+        // on every tick, so no new thought ever reached the chain.
+        //
+        // ⭐ Every anti-repetition mechanism already here sits DOWNSTREAM of
+        // that seed: the 70/30 recombination above rotates an older thought
+        // into the FIELD, and the style picker zero-weights the last style —
+        // neither can change the SUBJECT. That is why the lane looked healthy
+        // (383/383 drawn, every error counter 0) while repeating itself: it
+        // was faithfully redrawing a stalled thought.
+        //
+        // ⛔ And it starved her acquisition at the same time: handing the same
+        // word to `_lookUpAndDraw` every tick meant it hit its own 6h
+        // per-concept cooldown forever — `attempts: 1` for an entire boot
+        // against `alreadyKnown: 368`. She learned no new sights because she
+        // only ever asked about one.
+        //
+        // ⭐ Fixed at the CHOKEPOINT rather than here: `_pickEyeSubject()` is
+        // the single owner of "what is she looking at", and it returns the
+        // acquisition decision with it. ⚠ This is a ROTATION POLICY, not a
+        // fallback — there is one subject chooser, always consulted, and no
+        // degraded second path. Her thought still wins whenever it is moving.
+        const _pick = await this._pickEyeSubject(_seedText);
+        if (_pick && _pick.word) {
+          // The look-up rides the CHOSEN subject. When the pick is an
+          // acquisition (`_pick.lookup`), this is a concept she has never
+          // seen, so the fetch is real work rather than a cooldown no-op.
+          if (_pick.lookup && typeof this._lookUpAndDraw === 'function') {
+            this._lookUpAndDraw(_pick.word).catch(() => { /* background look-up + draw best-effort */ });
+          }
+          // DRAW NOW from what she has ALREADY grounded (recall / provisional) —
+          // never a fetch (allowFetch:false), so the tick stays microsecond-fast
+          // and the viewer cycles every ~6-8s instead of stalling on the network.
+          // ⚠ Drawability was already checked inside the picker; re-testing here
+          // would be a second async taxonomy hop per tick for no new information.
           try {
-            const drawn = await this._drawConcept(_seedText, { allowFetch: false });
-            if (drawn && drawn.rec) { rec = drawn.rec; _seedSource = drawn.source || drawn.label; }
+            const drawn = await this._drawConcept(_pick.word, { allowFetch: false });
+            if (drawn && drawn.rec) {
+              rec = drawn.rec;
+              _seedSource = drawn.source || drawn.label;
+              this._eyeNoteDrawn(_pick);
+            }
           } catch { /* draw best-effort */ }
         }
         // FAVORITE fallback (Gee 2026-07-15) — the current thought couldn't ground
@@ -1675,6 +1711,211 @@ const SERVER_CHAT_MIXIN = {
   // assigned to a word; the FORM comes from an image she actually looked at. If
   // she can ground nothing (never seen it, no reference), she draws NOTHING for it
   // yet — honest, like she stays silent on words she can't say — never a fake shape.
+  /**
+   * EYEPIN.1/.2 — THE SINGLE OWNER OF "WHAT IS SHE LOOKING AT".
+   *
+   * Returns `{ word, lookup, why }` or null. `lookup` is the acquisition
+   * decision travelling WITH the subject, because the two questions were
+   * previously answered in different places against different words, which is
+   * how the look-up lane ended up permanently pointed at a cooldown.
+   *
+   * Priority, in order, and the reason each rank exists:
+   *
+   *   1. ACQUISITION — a word she has been TAUGHT but has never SEEN. This is
+   *      the rank that makes look-ups real work instead of cooldown no-ops. It
+   *      is FIRST, and gated, rather than last and unreachable: it fires when
+   *      her thought is pinned, and every `_EYE_ACQUIRE_EVERY`th pick even when
+   *      she is perfectly healthy, so she keeps learning new sights during a
+   *      normal walk instead of only when something has already gone wrong.
+   *   2. HER THOUGHT, while it is actually moving. She should draw what she is
+   *      thinking about — that is the point of the lane. It only loses priority
+   *      once it demonstrably stops advancing.
+   *   3. RECALL — something she HAS grounded and has not drawn recently.
+   *
+   * ⚠ The rank ORDER is load-bearing and was wrong on the first cut: with
+   * acquisition below the thought rank, an early `return` meant 12 consecutive
+   * healthy ticks produced ZERO acquisitions while this comment claimed
+   * otherwise. Harness `A healthy thought` exists to hold that line.
+   *
+   * ⚠ NOT a fallback chain in the banned sense: there is one chooser, always
+   * consulted, and every rank produces the same kind of answer at full
+   * capability. Nothing here degrades behaviour when a rank is unavailable —
+   * it simply is not the best available subject this tick.
+   *
+   * ⛔ The recent-subject ring is what actually kills the repeat. Ranks alone
+   * would not: a pinned thought would still win rank 1 forever. The ring is
+   * checked at EVERY rank, so no path can return a subject she just drew.
+   */
+  async _pickEyeSubject(seedText) {
+    // How many consecutive ticks the same thought must persist before it stops
+    // being treated as "what she is thinking about" and starts being treated as
+    // a stuck pointer. 2 is deliberate: one repeat is normal dwell, and the
+    // observed failure held ONE word across an entire boot, so the bar does not
+    // need to be high to separate the two cases.
+    const _EYE_PIN_TICKS = 2;
+    // One acquisition every N picks even when nothing is wrong.
+    const _EYE_ACQUIRE_EVERY = 4;
+    // How many of her most recent subjects are barred from being re-picked.
+    // ⚠ ONE OWNER: the ring's cap IS the window, so the picker and the recorder
+    // cannot disagree. Sized against her small early concept store (21 grounded
+    // on the box that exposed this) so the bar can never exclude everything she
+    // knows and leave her with no subject at all.
+    if (typeof this._eyeRecentMax !== 'number') this._eyeRecentMax = 5;
+
+    const _word = (typeof seedText === 'string') ? seedText.trim().toLowerCase() : '';
+    if (!Array.isArray(this._eyeRecent)) this._eyeRecent = [];
+    if (!this._eyeStats) {
+      this._eyeStats = {
+        picks: 0, fromThought: 0, fromAcquisition: 0, fromRecall: 0, none: 0,
+        pinTicks: 0, maxPinTicks: 0, rotations: 0,
+        lastSubject: null, lastWhy: null, lastAt: 0,
+      };
+    }
+    const st = this._eyeStats;
+    st.picks++;
+
+    // ── PIN DETECTION. Counts CONSECUTIVE ticks on one thought. ⚠ Tracked even
+    // when the thought is empty: "she is thinking nothing, repeatedly" is the
+    // same stuck-pointer condition and must not read as healthy variety.
+    // ⚠ The comparison uses a SENTINEL for the empty thought rather than the
+    // empty string, because `'' && ...` is falsy and would have reset the
+    // counter every tick — reading "she keeps changing her mind" when the truth
+    // is "she is thinking nothing, over and over". That is the same stuck
+    // pointer and must not render as healthy variety.
+    const _seedKey = _word || ' empty';
+    if (_seedKey === this._eyeLastSeed) st.pinTicks++;
+    else st.pinTicks = 0;
+    this._eyeLastSeed = _seedKey;
+    if (st.pinTicks > st.maxPinTicks) st.maxPinTicks = st.pinTicks;
+
+    const _recent = (w) => this._eyeRecent.indexOf(w) !== -1;
+    const _drawable = async (w) => {
+      if (typeof this._conceptIsDrawable !== 'function') return true;
+      try { return await this._conceptIsDrawable(w); } catch { return false; }
+    };
+
+    // ── RANK 1 — ACQUISITION: taught but never seen.
+    //
+    // ⛔ THIS RANK IS FIRST, AND THE HARNESS IS WHY. It began below the thought
+    // rank, which returns early — so across 12 ticks of a HEALTHY moving
+    // thought it fired ZERO times, because the periodic check was never
+    // reached. The comment above already promised acquisition "even when her
+    // thought is healthy" while the code could only ever acquire once
+    // something was wrong. **Ordering silently made the guarantee unreachable.**
+    //
+    // It runs when EITHER condition holds:
+    //   • the thought is pinned — she has nothing new to look at, so go learn
+    //     something rather than redraw a stalled pointer; or
+    //   • every `_EYE_ACQUIRE_EVERY`th pick regardless of health — so she works
+    //     THROUGH the vocabulary she has been taught during a normal walk,
+    //     instead of only ever seeing whatever words her thought happened to
+    //     land on. That difference is what "actual do lookups" means here.
+    const _wantAcquire = (st.pinTicks >= _EYE_PIN_TICKS) || (st.picks % _EYE_ACQUIRE_EVERY === 0);
+    if (_wantAcquire) {
+      const unseen = await this._pickUnseenTaughtWord(_recent, _drawable);
+      if (unseen) {
+        st.fromAcquisition++;
+        return { word: unseen, lookup: true, why: 'acquire' };
+      }
+    }
+
+    // ── RANK 2 — HER THOUGHT, if it is moving and she has not just drawn it.
+    // ⚠ `lookup: true` — a thought word she has never seen is itself worth
+    // looking up; the per-concept cooldown makes a repeat cheap.
+    if (_word && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
+      st.fromThought++;
+      return { word: _word, lookup: true, why: 'thought' };
+    }
+    if (_word && st.pinTicks >= _EYE_PIN_TICKS) st.rotations++;
+
+    // ── RANK 3 — RECALL: grounded already, not drawn recently. No fetch is
+    // requested for this rank; she is revisiting, not learning.
+    try {
+      const store = this._visualMemory;
+      if (store && store.size > 0) {
+        const keys = Array.from(store.keys());
+        // Bounded random probing rather than a full shuffle — the store is
+        // allowed to reach 25,000 entries (DREAM_VM_CAP) and this runs on the
+        // imagine tick, which must stay microseconds.
+        for (let t = 0; t < 8; t++) {
+          const k = keys[Math.floor(Math.random() * keys.length)];
+          if (typeof k !== 'string' || _recent(k)) continue;
+          if (!(await _drawable(k))) continue;
+          st.fromRecall++;
+          return { word: k, lookup: false, why: 'recall' };
+        }
+      }
+    } catch { /* store unreadable — she simply has no recall subject this tick */ }
+
+    st.none++;
+    return null;
+  },
+
+  /**
+   * EYEPIN.2 — a word she has been TAUGHT but has never SEEN.
+   *
+   * ⭐ This is what turns the look-up lane back into acquisition. The pool is
+   * `cluster._definitionTaughtWords` — words she genuinely holds a definition
+   * for — so she can only ever go looking at something she already has a
+   * concept of, never a random string.
+   *
+   * ⚠ NOT a word list. Membership is earned by having been taught, and
+   * drawability is decided by the live taxonomy gate, exactly as everywhere
+   * else. Nothing here enumerates subjects by hand.
+   */
+  async _pickUnseenTaughtWord(isRecent, isDrawable) {
+    const cluster = this.cortexCluster;
+    const taught = cluster && cluster._definitionTaughtWords;
+    if (!(taught instanceof Set) || taught.size === 0) return null;
+    const store = this._visualMemory;
+    // Cache the array form and refresh it only when the taught set grows —
+    // this runs every imagine tick and the set reaches tens of thousands.
+    if (!this._eyeTaughtCache || this._eyeTaughtCacheSize !== taught.size) {
+      this._eyeTaughtCache = Array.from(taught).filter(w => typeof w === 'string' && w.length > 1);
+      this._eyeTaughtCacheSize = taught.size;
+      // Cursor walks the pool so she works THROUGH what she has been taught
+      // instead of re-rolling the same lucky words. ⚠ Not reset on refresh:
+      // a growing vocabulary must not send her back to the beginning.
+      if (typeof this._eyeTaughtCursor !== 'number') this._eyeTaughtCursor = 0;
+    }
+    const pool = this._eyeTaughtCache;
+    if (pool.length === 0) return null;
+    // Bounded scan per tick — the cursor makes progress even when this tick
+    // finds nothing, so a long run of already-seen words cannot stall her.
+    const SCAN = 24;
+    for (let i = 0; i < SCAN; i++) {
+      const w = pool[this._eyeTaughtCursor % pool.length];
+      this._eyeTaughtCursor = (this._eyeTaughtCursor + 1) % pool.length;
+      if (isRecent(w)) continue;
+      // ⚠ UNSEEN is the whole point — a confirmed store entry means she already
+      // knows what it looks like, and asking again is the cooldown no-op this
+      // fix exists to remove.
+      try {
+        const known = store && store.get(w);
+        if (known && known.conf === true && known.rec) continue;
+      } catch { /* store unreadable — treat as unseen and let the look-up decide */ }
+      if (!(await isDrawable(w))) continue;
+      return w;
+    }
+    return null;
+  },
+
+  /** EYEPIN.1 — record what actually reached the eye, so the ring bars repeats. */
+  _eyeNoteDrawn(pick) {
+    if (!pick || !pick.word) return;
+    if (!Array.isArray(this._eyeRecent)) this._eyeRecent = [];
+    this._eyeRecent.push(pick.word);
+    // ⚠ ONE OWNER — the same `_eyeRecentMax` the picker reads. Two literals
+    // that "must agree" is how a bar silently stops barring anything.
+    const _max = (typeof this._eyeRecentMax === 'number') ? this._eyeRecentMax : 5;
+    while (this._eyeRecent.length > _max) this._eyeRecent.shift();
+    if (this._eyeStats) {
+      this._eyeStats.lastSubject = pick.word;
+      this._eyeStats.lastWhy = pick.why || null;
+      this._eyeStats.lastAt = Date.now();
+    }
+  },
+
   async _drawConcept(concept, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function'
         || typeof this.mindSpace.sketch !== 'function') return null;

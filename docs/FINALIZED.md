@@ -37638,3 +37638,62 @@ Read live off the running local brain while writing this: `working.items` **130*
 
 - ⛔ **I shipped this.** The absence renderer and the false path went in together, in the same commit, with a comment asserting the path was correct. **Naming a path in prose is not evidence that it is the path.**
 - ⚠ **I truncated a JSON dump to 1500 chars and concluded `working` and `consolidation` had no producer.** They were simply past the cut. Caught by re-polling with the keys printed instead of the body — **a truncated read is not a negative result**, and I nearly filed two phantom findings on it.
+
+---
+
+## 2026-08-25 - EYEPIN: she drew one thing forever and looked nothing up - feature/eyepin
+
+### Gee ask (verbatim per LAW #0)
+
+> *"just make her not get stuck drawing the same thing and actual do lookups and all the other shit propelry in the minds eye"*
+
+### The defect, measured before it was touched
+
+Eight consecutive polls of `/minds-eye.json` returned `canvas:own:church:*` — three different styles, **one subject**. Meanwhile `ownArt` read **383 attempts / 383 drawn, 0 dropped, every error counter 0, `lastErr: null`**, and `lookups` read **`attempts: 1`** for an entire boot against **`alreadyKnown: 368`**.
+
+Root cause traced to `chat.js:1312` — `_seedText = texts[texts.length - 1]`, the tail of `_innerThoughtChain` — and that chain had stopped advancing: `emitDiagnostic.reason "no-best-word"`, `bestMean 0`, `sampleCount 0`, **age 1.07s**, i.e. emission failing on *every* tick rather than idling.
+
+⭐ **Every anti-repetition mechanism already present sat DOWNSTREAM of that seed.** The 70/30 recombination rotates an older thought into the *field*; the style picker zero-weights the last *style*. Neither can change the SUBJECT. **That is why the lane read green while repeating itself — it was faithfully redrawing a stalled thought.**
+
+⛔ **And the same pin starved her acquisition:** handing one word to `_lookUpAndDraw` every tick meant it hit its own 6h per-concept cooldown forever. `coolSkips: 5`, `attempts: 1`. **She learned no new sights because she only ever asked about one thing.**
+
+### The fix — at the chokepoint
+
+`_pickEyeSubject()` is the **single owner of "what is she looking at"**, returning `{ word, lookup, why }` — the acquisition decision travels WITH the subject, because those two questions were previously answered in different places against different words, which is precisely how the look-up lane ended up aimed at a cooldown.
+
+Ranks: **ACQUISITION** (taught but never seen) → **THOUGHT** (while moving) → **RECALL** (grounded, not drawn recently). ⛔ **The recent-subject ring is what actually kills the repeat, and it is checked at EVERY rank** — ranks alone would not have worked, since a pinned thought would still win its rank forever.
+
+⚠ **A ROTATION POLICY, NOT A FALLBACK.** One chooser, always consulted, every rank producing a full-capability answer. Nothing degrades when a rank is unavailable; it simply is not the best subject this tick.
+
+⚠ **NOT a word list.** The acquisition pool is `cluster._definitionTaughtWords` — membership earned by having been taught — and drawability is decided by the live taxonomy gate, as everywhere else. A persistent cursor walks the pool so she works THROUGH her vocabulary instead of re-rolling the same lucky words, and it is deliberately **not** reset when the pool grows.
+
+### ⛔ The harness caught my own comment lying — twice
+
+1. **Rank order made the guarantee unreachable.** Acquisition started BELOW the thought rank, which `return`s early, so **12 consecutive healthy ticks produced ZERO acquisitions** while the doc-comment three lines above promised acquisition *"even when her thought is healthy"*. Prose and code disagreed, and prose lost silently. **Same failure shape as ENDODARK the same day, in a comment instead of a path.**
+2. **`_word && _word === this._eyeLastSeed` cannot detect an empty thought**, because `''` is falsy — so *"she is thinking nothing, over and over"* reset the counter every tick and rendered as healthy variety. That is the **exact condition on the live box** (`no-best-word`). Now compared through a sentinel.
+
+Also removed on review: a dead `_EYE_RECENT` constant, and a hardcoded ring bound in `_eyeNoteDrawn` that duplicated it — **two literals that "must agree" is how a bar silently stops barring anything.** One owner (`this._eyeRecentMax`).
+
+### Verified — 14/14 on the PRODUCTION mixin
+
+Harnessed against `Object.assign({}, SERVER_CHAT_MIXIN)` — the shipped object, not a reimplementation of its logic.
+
+| case | result |
+|---|---|
+| healthy moving thought | thought dominates **9/12**, **and still acquires** (3), no pin recorded |
+| permanently pinned thought | 14 ticks → **8 distinct subjects**, **0 consecutive repeats**, **10 real acquisitions**, `maxPin 13` reported honestly |
+| empty thought every tick | tracked as a pin (`maxPin 9`), 9 distinct, 0 repeats, **never starved** |
+| only ONE drawable concept | undrawable word never drawn, no crash, lane falls through to the imagine field |
+
+`node --check` clean on both server files; ESM import verified and all five methods confirmed present on the mixin (⚠ the first cut used bare `}` between methods — **this file is an object-literal mixin, `SERVER_CHAT_MIXIN = {`, so methods need trailing commas**; `node --check` caught it).
+
+### The instrument — shipped in the same commit as the field
+
+`state.ownArt.eye` publishes `picks / fromThought / fromAcquisition / fromRecall / none / pinTicks / maxPinTicks / rotations / lastSubject / lastWhy / lastAgeMs / recentSubjects / taughtPool / taughtCursor`, with a dashboard row rendering all of it. **12/12 producer/consumer parity checked**, divs 483/483.
+
+⭐ **`pinTicks` climbing is a finding about her THOUGHT CHAIN, not about her art** — and the row says so. ⛔ `eye: null` renders as *"picker has not run yet — NOT a verdict on variety"*, because an absent instrument reading as "no pin" is the mistake that let this hide behind a wall of green counters for the whole life of the lane. `recentSubjects` proves variety **directly** rather than asking anyone to trust a count — the counts read healthy the entire time.
+
+### Owned
+
+- ⚠ **The emission drought itself is NOT fixed and is not claimed to be.** `no-best-word` with `sampleCount 0` may be correct during the pre-phase vocabulary bootstrap — Gee has already ruled that class *"its doing vocab thats normal"*. What changed is that a stalled thought no longer pins her eye, and that the stall is now **visible** instead of inferable from polling a snapshot eight times by hand.
+- ⚠ **NOT VERIFIED LIVE.** `chat.js` + `state.js` are server-side — they need a restart to land. The dashboard row is frontend and appears on refresh.
