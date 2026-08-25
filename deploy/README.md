@@ -45,6 +45,22 @@ messages from registered pool donors.
    toolchain (`build-essential` + `python3`) in case `better-sqlite3` has no
    prebuilt binary for the host Node ABI.
 
+0. **Donor pod command** — `deploy/runpod-donor-launcher.sh` is the container
+   command a RunPod donor pod runs. ⛔ **It is not executed from this repo.**
+   RunPod stores the command on the POD (`args`), and `args` is **not mutable
+   via the API** — only name / image / disk / ports / env are. So this file is
+   the source of truth to PASTE IN when a donor pod is created or recreated.
+   It lives here so the next pod does not inherit the old flaws by copy-paste,
+   which is exactly how the live pod ended up three releases behind
+   (running v0.3.26 while v0.3.29 had been published for two days).
+   Two things it fixes over the command currently on the live pod:
+   **no stale pin** (an unreachable release API keeps the binary already on
+   disk instead of silently downgrading to a hardcoded old version) and an
+   **upgrade watchdog** that re-checks every 5 min and restarts the donor by
+   PID, so a new release is picked up in steady state and not only after a
+   disconnect. ⚠ Kill by PID, never `pkill -f unity-donor` — the supervisor's
+   own command line contains that string and would kill itself.
+
 1. **Backend service** — `deploy/bootstrap-backend.sh` does steps 1–6 (service
    user, code sync, `npm ci`, optional GloVe, unattended auto-advance seed,
    systemd unit, sudoers). It **prints** the nginx steps by default (does NOT
