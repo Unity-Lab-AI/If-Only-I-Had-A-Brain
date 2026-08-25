@@ -3493,7 +3493,17 @@ const SERVER_CHAT_MIXIN = {
   // state-readout class as the mind-space moodTint). A newborn with no trained
   // words gets the bare concept + her mood — honest, not faked richness.
   _composeImagePrompt(request) {
-    const base = String(request || '').replace(/[^a-zA-Z' -]/g, ' ').replace(/\s+/g, ' ').trim();
+    // WORDSALAD.1g — KEEP THE DIGITS. This sanitizer used to be `[^a-zA-Z' -]`,
+    // which deleted every number and every comma from the request: "3 black cats"
+    // became "black cats" and "1920s speakeasy" became "s speakeasy". The damage
+    // was already known — the selfie path is routed AROUND this whole function
+    // because it ate the literal "25 year old" out of her self-portrait identity
+    // (see the note at the _detectImageRequest call site) — but working around it
+    // for one caller left every other image request silently losing its numbers.
+    // Fixed at the source: digits carry counts, years, ages and sizes, and the
+    // comma is the prompt language's own separator. The class stays a strict
+    // allow-list (no injection surface); it simply stops throwing away meaning.
+    const base = String(request || '').replace(/[^a-zA-Z0-9' \-,.]/g, ' ').replace(/\s+/g, ' ').trim();
     const parts = base ? [base] : [];
     try {
       const cluster = this.cortexCluster;
@@ -3629,9 +3639,32 @@ const SERVER_CHAT_MIXIN = {
       // scene passes through untouched.
       const age = (typeof this._selfImageAge === 'function') ? this._selfImageAge() : 25;
       const EXPLICIT_RE = /\b(bare|breasts?|nipples?|tits?|naked|nude|topless|braless|underwear|panties|bra|thong|lingerie|bikini|pussy|ass|butt|booty|cleavage|shirtless|sexy|alluring|seductive|erotic|nothing|undressed|unclothed)\b/g;
+      // WORDSALAD.1b — AGE-WRONG GARMENTS, not just nudity. The strip above only
+      // ever removed EXPOSURE words, so a request naming fishnets, a corset or a
+      // leather mini skirt passed straight through onto a six-year-old's
+      // self-portrait. Operator: "not wearing leater skirts in kindergarten..
+      // obviously.... fishnets and tube tops are later". Adult garments are
+      // removed below 18; the mature-but-covered teen pieces are allowed from 14.
+      const ADULT_GARMENT_RE = /\b(fishnets?|corsets?|bustiers?|tube top|leather (?:skirt|dress|pants|outfit|corset)|garter|stockings|heels|stilettos|micro ?skirt|crop top)\b/g;
+      const TEEN_GARMENT_RE = /\b(mini ?skirt|choker|ripped (?:jeans|tights)|combat boots|band tee)\b/g;
       if (age < 18) {
-        scene = scene.replace(EXPLICIT_RE, ' ')
-          .replace(/\b(and|or|wearing|wear|dressed|in)\b(?=\s*(\b(and|or)\b\s*)*$)/g, ' ')   // dangling connectors/verbs left by the strip
+        scene = scene.replace(EXPLICIT_RE, ' ').replace(ADULT_GARMENT_RE, ' ');
+        if (age < 14) scene = scene.replace(TEEN_GARMENT_RE, ' ');
+        // Dangling-filler cleanup. Widened for WORDSALAD.1b: removing a GARMENT
+        // (rather than an exposure word) strands articles as well as connectors
+        // — "in a leather skirt" was left as "in a" — so the trailing run of
+        // connectors, wear-verbs, articles and prepositions is dropped as a
+        // chain, not one token.
+        scene = scene
+          // a wear-verb orphaned by the strip and now sitting in front of a
+          // place/preposition ("wearing fishnets at the mall" → "wearing at the
+          // mall") reads as broken English to the generator; drop the verb.
+          .replace(/\b(wearing|wear|dressed)\b\s+(?=(at|in|on|with|near|by|outside|inside)\b)/g, ' ')
+          // same shape one level up: the garment's own preposition + article are
+          // stranded when the garment goes ("in a band tee at a concert" →
+          // "in a at a concert"). Drop the orphaned pair, keep the real clause.
+          .replace(/\b(in|with|on|wearing)\s+(a|an|the)\b\s+(?=(at|in|on|with|near|by|outside|inside)\b)/g, ' ')
+          .replace(/\b(and|or|wearing|wear|dressed|in|with|on|at|a|an|the)\b(?=\s*(\b(and|or|in|with|on|at|a|an|the)\b\s*)*$)/g, ' ')
           .replace(/[\s,]+/g, ' ').trim();
       }
       const noun = age < 13 ? 'goth girl' : (age < 18 ? 'goth teen girl' : 'goth woman');
@@ -3640,7 +3673,36 @@ const SERVER_CHAT_MIXIN = {
       // wear, she picks from her own goth wardrobe (varied per request, all
       // canonically her). The old single fixed OUTFIT string made every
       // self-image wear the same black leather forever.
-      const WARDROBE = [
+      //
+      // WORDSALAD.1b — BANDED BY AGE. This used to be ONE flat list of eight
+      // adult outfits picked with a bare `Math.random()`, applied at every age:
+      // at grade 1, where `_selfImageAge()` correctly returns 6, every
+      // self-portrait had a 1-in-8 chance each of fishnets, a corset dress, a
+      // crop top or leather. The age system was already right — only this list
+      // was ungated. Operator's ladder: "normal school girl look till highschool
+      // ... fishnets and tube tops are later".
+      //
+      // She is goth-LEANING as a child (black, monsters, Halloween) and goth-
+      // IDENTIFYING as a teen, which is the same progression her Tier 3 anchors
+      // now follow — taste first, identity claim later, adult style at 18.
+      const WARDROBE_CHILD = [
+        'black t-shirt and jeans, purple sneakers',
+        'black hoodie and leggings, scuffed sneakers',
+        'plaid school skirt, dark tights and a cardigan',
+        'black long sleeve shirt with a cartoon bat, jeans',
+        'dark purple dress with black leggings',
+        'school uniform with a black backpack',
+        'striped black and grey sweater, jeans',
+      ];
+      const WARDROBE_TEEN = [
+        'black band tee and ripped jeans',
+        'oversized black hoodie and dark jeans',
+        'plaid skirt with black tights and combat boots',
+        'black long sleeve and a choker, dark jeans',
+        'black flannel over a band tee, boots',
+        'dark grey sweater dress and black tights',
+      ];
+      const WARDROBE_ADULT = [
         'black leather outfit, pink undertones',
         'black band tee and ripped jeans',
         'black lace top and a choker',
@@ -3649,6 +3711,7 @@ const SERVER_CHAT_MIXIN = {
         'black crop top and plaid mini skirt',
         'black velvet dress and silver jewelry',
       ];
+      const WARDROBE = age < 14 ? WARDROBE_CHILD : (age < 18 ? WARDROBE_TEEN : WARDROBE_ADULT);
       // MOODPOP — the CORE noun already carries her identity; the tail only
       // steers image quality: crisp + rich color, never smeared, no aesthetic
       // doubling (operator: "take out goth asthetic i already told u this")

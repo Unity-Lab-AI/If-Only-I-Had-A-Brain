@@ -9820,10 +9820,22 @@ export class Curriculum {
 
     // ALL subjects must pass grade N before ANY advance to grade
     // N+1. No subject races ahead while others are stuck.
-    // Each subject gets 3 minutes of wall-clock time to pass its grade.
-    // If it doesn't pass in 3 minutes, move to the next subject and
-    // come back for another round. Keep looping until all pass.
-    const GRADE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes per subject per round
+    //
+    // BOOTORDER.3 — `GRADE_TIMEOUT_MS = 3 * 60 * 1000` USED TO LIVE HERE AND WAS
+    // NEVER ENFORCED. It was declared, described in prose as "each subject gets 3
+    // minutes of wall-clock time to pass its grade", and then referenced in
+    // exactly ONE other place: the failure message below, which printed it. No
+    // timer, no race, no abort — nothing ever measured a cell against it. So
+    // every one of those warnings announced a 3-minute timeout that had not
+    // happened, while a live cell was measured running 90.4 minutes.
+    //
+    // DELETED rather than enforced, deliberately: enforcing 3 minutes would abort
+    // essentially every real cell (the measured average is ~26 min and the
+    // observed max 90+), which would be a catastrophic behaviour change smuggled
+    // in under the word "fix". A constant that only feeds a log line is not a
+    // budget — it is an instrument reporting a cause it never measured, and the
+    // honest repair is to stop claiming it. The message below now states what
+    // actually happened: the cell was attempted and did not pass.
     // Operator directive: "it should do it all once and be done...
     // we need to fix why its not finishing after it does all the
     // learning then just loops back to ait all again, thats not
@@ -10391,7 +10403,10 @@ export class Curriculum {
           } else {
             failed[subject] = grade;
             allPassedThisGrade = false;
-            console.warn(`[Curriculum] ✗ ${subject}/${grade} — timed out after ${attempt} attempts (${Math.round(GRADE_TIMEOUT_MS / 60000)} min, round ${round + 1}) — ${result?.reason || 'fail'}`);
+            // BOOTORDER.3 — says what HAPPENED. The old text claimed the cell
+            // "timed out after N attempts (3 min…)"; no timeout existed (see the
+            // deleted constant at the head of this method) and nothing was timed.
+            console.warn(`[Curriculum] ✗ ${subject}/${grade} — attempted ${attempt}× in round ${round + 1}/${MAX_GRADE_ROUNDS}, did NOT pass (no time limit is applied to a cell) — ${result?.reason || 'fail'}`);
           }
         }
 

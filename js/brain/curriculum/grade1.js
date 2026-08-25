@@ -664,11 +664,12 @@ export const G1_MIXIN = {
     // ⛔ THE REDUCTION BELOW WAS MADE FOR A TIMEOUT THAT DOES NOT EXIST.
     // The original note read "reps reduced to fit 3-min timeout · conceptTeach
     // 20→6, sentence lists 5-12→3, vocab 12→5". That 3-minute budget is
-    // `GRADE_TIMEOUT_MS` in the walker, and it is declared and then never
-    // enforced anywhere — its only other appearance in the codebase is inside
-    // the failure message that PRINTS it, while a single live cell was measured
-    // running 90.4 minutes. So this track was cut to roughly a third of its
-    // material to satisfy a limit that was never applied.
+    // was `GRADE_TIMEOUT_MS` in the walker: declared, never enforced anywhere,
+    // and referenced only inside the failure message that printed it — while a
+    // single live cell was measured running 90.4 minutes. So this track was cut
+    // to roughly a third of its material to satisfy a limit that was never
+    // applied. That constant has since been DELETED (BOOTORDER.3); no cell has a
+    // time limit, so nothing here needs to be sized to fit one.
     //
     // Reps are restored 6→12 here. Two honest caveats: the concept LIST itself
     // was cut from 20 entries to these 6 and that content is not recoverable

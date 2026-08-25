@@ -24,7 +24,13 @@
 
 import { SparseMatrix } from './sparse-matrix.js';
 
-const SCHEMA_VERSION = 1;
+// WORDSALAD.1 (2026-08-24) bumped 1 → 2: the identity seed list was corrected
+// (bare persona descriptor lists rewritten first-person, adult anchors age-gated,
+// age derived from her live grade instead of hardcoded). Tier3Store.loadFromJSON
+// DROPS any file below this version so the correction actually reaches brains
+// that already have an identity-core.json — without the bump, the old anchors
+// would be restored from disk on the next boot and nothing would change.
+const SCHEMA_VERSION = 2;
 
 // Identity-bound promotion criteria (iter13 T13.11). Hard-coded here so
 // SchemaStore can self-identify candidates; Tier3Store handles the actual
@@ -641,6 +647,115 @@ const TIER3_DECAY_PER_DAY = 0.999;
 const TIER3_HARD_CAP = Infinity;
 const IDENTITY_BASELINE_INJECT_STRENGTH = 0.15;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WORDSALAD.1 — AGE-GATED IDENTITY.
+//
+// Tier 3 anchors are permanently resident, carry `identity_relevance: 0.95`, and
+// are injected on EVERY chat turn. They are the highest-authority memories she
+// owns, which is exactly why an anchor belonging to the 25-year-old end state
+// must not be resident while she walks grade 1.
+//
+// Two defects this closes, both found live 2026-08-24:
+//   1. `persona-goth-anchor: 'goth emo dark black leather'` and
+//      `persona-nympho-anchor: 'horny aroused sexual fucking'` were BARE
+//      DESCRIPTOR LISTS — no agent, no verb, no `i`. Those are style/behaviour
+//      instructions lifted from persona files, not lived memories, and they are
+//      what made her replay her own instructions back at the operator.
+//   2. The sexual anchor was resident FROM BIRTH while `curriculum.js` correctly
+//      gates the same vocabulary to a much later grade — two systems in direct
+//      contradiction, with the wrong one winning on a six-year-old.
+//
+// Operator directive (2026-08-24): "shes not a horney slut till 18 and not
+// wearing leater skirts in kindergarten.. obviously.... fishnets and tube tops
+// are later. but normal school girl look till highschool".
+//
+// ⛔ SCOPE: this gates WHO SHE IS, never WHAT SHE LEARNS. Her curriculum teaches
+// real life at the real age — coming-of-age, puberty, periods, tampons — and
+// nothing here may be used as a training filter. See docs/WORD-SALAD-FIX.md §0.2c.
+//
+// Grade order is duplicated locally rather than imported: this module's only
+// import is sparse-matrix.js, and pulling in the 27k-line curriculum (which
+// reaches consolidation-engine, which imports THIS file) would risk a cycle for
+// the sake of one ordered list. `assertSeedGrades()` below fails loudly if a
+// seed names a grade this list does not contain, so drift cannot go silent.
+const TIER3_GRADE_ORDER = [
+  'pre-K', 'kindergarten',
+  'grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6',
+  'grade7', 'grade8', 'grade9', 'grade10', 'grade11', 'grade12',
+  'college1', 'college2', 'college3', 'college4', 'grad', 'phd',
+];
+
+// Age she IS at each grade — the same ladder `_selfImageAge()` uses for her
+// appearance, so her stated age and her rendered age can never disagree.
+const TIER3_GRADE_AGE = {
+  'pre-K': 4, 'kindergarten': 5,
+  grade1: 6, grade2: 7, grade3: 8, grade4: 9, grade5: 10, grade6: 11,
+  grade7: 12, grade8: 13, grade9: 14, grade10: 15, grade11: 16, grade12: 17,
+  college1: 18, college2: 19, college3: 20, college4: 21, grad: 23, phd: 25,
+};
+
+const AGE_WORDS = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+  'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+  'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty one', 'twenty two',
+  'twenty three', 'twenty four', 'twenty five',
+];
+
+function tier3GradeIdx(grade) {
+  const i = TIER3_GRADE_ORDER.indexOf(String(grade || ''));
+  return i < 0 ? 0 : i;
+}
+
+// Fails loudly at boot if a seed names a grade that does not exist — a typo'd
+// `minGrade` would otherwise silently never unlock, and an anchor that never
+// arrives is indistinguishable from one that was never written.
+export function assertSeedGrades(seedList = IDENTITY_SEED_LIST) {
+  const bad = [];
+  for (const s of seedList) {
+    if (s && s.minGrade && !TIER3_GRADE_ORDER.includes(s.minGrade)) bad.push(`${s.label} → '${s.minGrade}'`);
+  }
+  if (bad.length) {
+    throw new Error(`[Tier3Store] IDENTITY_SEED_LIST names unknown grade(s): ${bad.join(', ')}`);
+  }
+  return true;
+}
+
+// WORDSALAD.1 — NO BARE DESCRIPTOR LISTS. An identity anchor must be something
+// she can say about HERSELF: it needs a self token. 'goth emo dark black leather'
+// and 'horny aroused sexual fucking' had none — no agent, no verb, nothing she
+// could be the subject of — which is what made them read as behaviour
+// instructions rather than memories, and is exactly what the operator meant by
+// her "repeating her instructions of behavior from the persona files".
+//
+// Deliberately a SHAPE check, not a content check: it does not judge what an
+// anchor says, only that it is phrased as her own experience. Returns the
+// offenders instead of throwing so a boot can warn loudly without refusing to
+// start on a brain that is otherwise healthy.
+const SELF_TOKEN_RE = /\b(i|me|my|myself|mine|unity)\b/;
+
+export function findDescriptorListAnchors(seedList = IDENTITY_SEED_LIST) {
+  const offenders = [];
+  for (const s of seedList) {
+    if (!s) continue;
+    // Derived anchors are resolved at seed time; probe with a representative age.
+    const text = (typeof s.concept === 'function')
+      ? s.concept({ age: 5, grade: 'kindergarten', gradeIdx: 1 })
+      : s.concept;
+    if (!text || !SELF_TOKEN_RE.test(String(text))) offenders.push(s.label || '(unlabelled)');
+  }
+  return offenders;
+}
+
+// One call for boot: grades must resolve, and anchors must be first-person.
+export function assertIdentitySeedList(seedList = IDENTITY_SEED_LIST) {
+  assertSeedGrades(seedList);
+  const offenders = findDescriptorListAnchors(seedList);
+  if (offenders.length) {
+    console.warn(`[Tier3Store] ⚠ ${offenders.length} identity anchor(s) are bare descriptor lists with no self token — an anchor must be something she can say about herself, not an instruction: ${offenders.join(', ')}`);
+  }
+  return { ok: offenders.length === 0, offenders };
+}
+
 // Pre-seed identity-anchor schemas at brain init. When the operator
 // boots a fresh brain (no identity-core.json), these get inserted
 // immediately so Unity has minimal self-knowledge before any chat
@@ -696,11 +811,41 @@ export const IDENTITY_SEED_LIST = [
   // fill what she does not know (Gee: "self form with the questions ... in the
   // premess of I gain information to fill in where she lacks information").
   { label: 'self-curiosity-anchor', concept: 'i want to know i do not know i ask what is that tell me i want to learn', valence: 0.6, arousal: 0.6 },
-  { label: 'persona-goth-anchor', concept: 'goth emo dark black leather', valence: 0.7, arousal: 0.7 },
+  // ── WORDSALAD.1 — PERSONA ANCHORS, REWRITTEN AND BANDED ────────────────────
+  // These three used to read 'goth emo dark black leather' / 'i code program
+  // write software' / 'horny aroused sexual fucking'. Two of the three were bare
+  // descriptor lists with no agent and no verb — instructions about how to
+  // behave, not things she remembers being — and the third was resident from
+  // birth despite describing an adult. Each is now a first-person lived
+  // statement, and each unlocks at the grade she actually has it.
+  //
+  // The taste comes first and the IDENTITY CLAIM comes later, which is how it
+  // works in a real life: a small girl likes black and monsters long before
+  // anyone calls herself goth.
+  { label: 'self-dark-taste-anchor', concept: 'i like black i like dark things i like halloween and monsters and spooky stories', valence: 0.75, arousal: 0.6 },
+  { label: 'self-goth-identity-anchor', minGrade: 'grade9', concept: 'i am goth i wear black i like emo music and heavy music this is who i am', valence: 0.8, arousal: 0.7 },
+  { label: 'self-goth-adult-style-anchor', minGrade: 'college1', concept: 'i wear leather and fishnets and boots i dress how i want and i like how i look', valence: 0.8, arousal: 0.7 },
   { label: 'persona-coder-anchor', concept: 'i code program write software', valence: 0.7, arousal: 0.6 },
-  { label: 'persona-nympho-anchor', concept: 'horny aroused sexual fucking', valence: 0.9, arousal: 0.95 },
-  // K-LIFE biographical anchors (currently active grade)
-  { label: 'age-anchor-K', concept: 'i am five years old', valence: 0.4, arousal: 0.3 },
+  // 18+ ONLY. Operator: "shes not a horney slut till 18". First-person and
+  // experiential — what she wants and feels — never an adjective list telling
+  // her how to act.
+  { label: 'self-desire-anchor', minGrade: 'college1', concept: 'i want him i get turned on i think about sex i like being wanted and i say what i want', valence: 0.9, arousal: 0.95 },
+  // ── Biographical anchors ───────────────────────────────────────────────────
+  // AGE IS DERIVED, NOT HARDCODED. This was `age-anchor-K: 'i am five years old'`
+  // under a comment reading "currently active grade" — she was in grade 1 and
+  // still insisting she was five, and it would have said five for twenty grades.
+  // `concept` may be a function; it is resolved at seed time against her live
+  // grade, using the SAME ladder her rendered appearance uses.
+  {
+    label: 'age-anchor',
+    concept: (ctx) => {
+      const n = ctx && Number.isFinite(ctx.age) ? ctx.age : 5;
+      const w = AGE_WORDS[n] || String(n);
+      return `i am ${w} years old i am ${n} years old`;
+    },
+    valence: 0.4,
+    arousal: 0.3,
+  },
   { label: 'hair-anchor', concept: 'my hair is dark black with pink streaks', valence: 0.5, arousal: 0.4 },
   { label: 'mom-anchor', concept: 'my mom takes care of me i love mom', valence: 0.9, arousal: 0.6 },
   { label: 'halloween-anchor', concept: 'halloween is my favorite holiday witch costume', valence: 0.85, arousal: 0.8 },
@@ -733,11 +878,49 @@ export class Tier3Store {
   // are unavailable / the concept produced no vector. Shared by both
   // seedFromList (seed-everything) and seedMissingFromList (idempotent
   // top-up) so the two paths can never drift apart.
+  // WORDSALAD.1 — her live grade, read from the cluster's own pointer map. The
+  // MINIMUM across subjects is used deliberately: an anchor unlocks when she has
+  // genuinely reached that stage of life everywhere, not when her fastest single
+  // subject happens to run ahead. Unknown/absent state → pre-K, i.e. the most
+  // conservative answer, so a boot with no grade state cannot leak an adult
+  // anchor into a child.
+  _currentGradeIdx() {
+    try {
+      const grades = this.cluster && this.cluster.grades;
+      if (!grades || typeof grades !== 'object') return 0;
+      const vals = Object.values(grades).filter((g) => typeof g === 'string' && g);
+      if (vals.length === 0) return 0;
+      let min = Infinity;
+      for (const g of vals) min = Math.min(min, tier3GradeIdx(g));
+      return Number.isFinite(min) ? min : 0;
+    } catch { return 0; }
+  }
+
+  // True when this seed is allowed to be resident at her current age.
+  seedAllowedNow(seed) {
+    if (!seed || !seed.minGrade) return true;   // ungated = always resident
+    return this._currentGradeIdx() >= tier3GradeIdx(seed.minGrade);
+  }
+
   _buildSeedSchema(seed) {
     if (!this.sharedEmbeddings || typeof this.sharedEmbeddings.getSentenceEmbedding !== 'function') {
       return null;
     }
-    const emb = this.sharedEmbeddings.getSentenceEmbedding(seed.concept);
+    // AGE GATE — the single choke both seed paths share, so `seedFromList` and
+    // `seedMissingFromList` can never drift apart on who she is allowed to be.
+    // Because `seedMissingFromList` is an idempotent top-up that runs on EVERY
+    // boot, a gated anchor simply appears on the first boot after she reaches
+    // its grade — she grows into it rather than being born holding it.
+    if (!this.seedAllowedNow(seed)) return null;
+    // `concept` may be a function so an anchor can be derived from live state
+    // (her age) instead of frozen at whatever grade the file was written in.
+    const gradeIdx = this._currentGradeIdx();
+    const gradeLabel = TIER3_GRADE_ORDER[gradeIdx] || 'pre-K';
+    const conceptText = (typeof seed.concept === 'function')
+      ? seed.concept({ age: TIER3_GRADE_AGE[gradeLabel], grade: gradeLabel, gradeIdx })
+      : seed.concept;
+    if (!conceptText) return null;
+    const emb = this.sharedEmbeddings.getSentenceEmbedding(conceptText);
     if (!emb || emb.length === 0) return null;
     const attributeVector = new Float64Array(8);
     attributeVector[0] = seed.valence || 0;       // emotional_valence
@@ -1059,12 +1242,37 @@ export class Tier3Store {
   loadFromJSON(json) {
     if (!json || typeof json !== 'object') return 0;
     this.identitySchemas.clear();
+    // WORDSALAD.1 — VERSION ORPHANING. This method used to load every persisted
+    // anchor unconditionally and ignore `version` completely, which meant a
+    // seed-list correction could never reach a brain that already had a file:
+    // the old anchors would simply be restored on the next boot. That matters
+    // concretely here — a live identity-core.json written before this change
+    // contains the bare descriptor lists and the ungated adult anchor, so
+    // shipping the new list WITHOUT this check would fix nothing on any existing
+    // brain. Same ritual the visual store uses for its own version walk: an
+    // older file is not migrated, it is DROPPED, and the seed paths rebuild the
+    // identity under the current rules.
+    const fileVersion = Number(json.version) || 0;
+    if (fileVersion < SCHEMA_VERSION) {
+      console.warn(`[Tier3Store] identity file is version ${fileVersion}, current is ${SCHEMA_VERSION} — ORPHANING it. Anchors will be re-seeded from IDENTITY_SEED_LIST under the current age gates (this is intentional, not data loss: every Tier 3 anchor is a synthetic seed, not earned memory).`);
+      return 0;
+    }
     if (typeof json.lastDecaySweepAt === 'number') this.lastDecaySweepAt = json.lastDecaySweepAt;
     let loaded = 0;
+    let refused = 0;
+    const seedByLabel = new Map();
+    for (const s of IDENTITY_SEED_LIST) if (s && s.label) seedByLabel.set(s.label, s);
     if (Array.isArray(json.schemas)) {
       for (const sj of json.schemas) {
         try {
           const s = HippocampalSchema.fromJSON(sj);
+          // AGE GATE ON LOAD — defence in depth. Even a current-version file must
+          // not be able to reinstate an anchor she is too young to hold: a file
+          // could have been written at a higher grade, hand-edited, or copied
+          // between brains. The gate belongs on every path that can make an
+          // anchor resident, not only on the seeding path.
+          const seed = s && s.label ? seedByLabel.get(s.label) : null;
+          if (seed && !this.seedAllowedNow(seed)) { refused++; continue; }
           // Force Tier 3 flag on load — defense against corrupted file
           s.promotedToTier3 = true;
           if (!s.tier3PromotedAt) s.tier3PromotedAt = Date.now();
@@ -1075,7 +1283,40 @@ export class Tier3Store {
         }
       }
     }
+    if (refused > 0) {
+      console.warn(`[Tier3Store] refused ${refused} persisted anchor(s) above her current age band — they will re-seed on the boot after she reaches their grade.`);
+    }
     return loaded;
+  }
+
+  // WORDSALAD.1 — REFRESH DERIVED ANCHORS. An anchor whose `concept` is a
+  // function (her age) is otherwise frozen at whatever grade it was first seeded
+  // in, because the idempotent top-up skips any label already present — which is
+  // precisely how `age-anchor-K: 'i am five years old'` survived into grade 1.
+  // Rebuild those anchors whenever her grade has moved since the last seed pass.
+  // Cheap (a handful of entries), idempotent, and a no-op while she stays put.
+  refreshDerivedAnchors() {
+    const gradeIdx = this._currentGradeIdx();
+    if (this._lastSeedGradeIdx === gradeIdx) return 0;
+    let refreshed = 0;
+    for (const seed of IDENTITY_SEED_LIST) {
+      if (typeof seed.concept !== 'function') continue;
+      for (const [id, s] of this.identitySchemas) {
+        if (s && s.label === seed.label) this.identitySchemas.delete(id);
+      }
+      try {
+        const rebuilt = this._buildSeedSchema(seed);
+        if (rebuilt) { this.identitySchemas.set(rebuilt.id, rebuilt); refreshed++; }
+      } catch (err) {
+        console.warn(`[Tier3Store] derived anchor "${seed.label}" refresh failed: ${err.message}`);
+      }
+    }
+    this._lastSeedGradeIdx = gradeIdx;
+    if (refreshed > 0) {
+      const label = TIER3_GRADE_ORDER[gradeIdx] || 'pre-K';
+      console.log(`[Tier3Store] refreshed ${refreshed} derived identity anchor(s) for ${label} (age ${TIER3_GRADE_AGE[label]}).`);
+    }
+    return refreshed;
   }
 }
 
