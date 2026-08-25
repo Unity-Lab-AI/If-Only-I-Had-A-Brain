@@ -11546,6 +11546,32 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
                 for (const [k, us] of top) {
                   console.log(`[CPUProfile]   ${(us / 1000).toFixed(0).padStart(6)}ms (${(us / total * 100).toFixed(1).padStart(4)}%) ${k}`);
                 }
+                // ⛔ ONESHOT.1 (2026-08-25) — A ONE-SHOT DIAGNOSTIC CANNOT LIVE
+                // IN A CONSOLE LINE, and this profile proved it by being
+                // unreadable the very first time it was needed.
+                //
+                // The console ring is capped at 500 lines. Once the SCALEWALK
+                // fixes landed, definitions went from ~5-7s each to ~128ms, so
+                // the walk began logging ~55 lines/second — and a 500-line ring
+                // became a **NINE SECOND** window. The profile printed and was
+                // gone before it could be read, which is exactly how `UPLINK.1`
+                // was missed on the press before this one.
+                //
+                // ⭐ The irony is the lesson: the log got unreadable BECAUSE the
+                // fix worked. Any measurement that happens once must be a STATE
+                // FIELD, not a line — a line is a thing you had to be watching
+                // for, and this board is supposed to answer questions late.
+                try {
+                  brain._cpuProfile = {
+                    at: Date.now(),
+                    sampledMs: Math.round(total / 1000),
+                    top: top.map(([k, us]) => ({
+                      fn: k,
+                      ms: Math.round(us / 1000),
+                      pct: +(us / total * 100).toFixed(1),
+                    })),
+                  };
+                } catch { /* telemetry must never break the profiler's exit path */ }
               } catch (e2) { console.warn('[CPUProfile] summarize failed:', e2 && e2.message); }
               try { session.disconnect(); } catch { /* done */ }
             });

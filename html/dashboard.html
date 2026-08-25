@@ -2518,10 +2518,46 @@
             (t.boundHebbian == null)
               ? '<span class="muted">unmeasured</span>'
               : `<span class="muted" title="The batched wire verbs. rangesSent = the range-encoded Hebbian verb; maskedSent = the masked bound-plasticity verb (GPUVERB) that moved the last CPU training math onto the card. Both being zero while teach ops climb means the lane is falling back to per-op frames.">${num(t.boundHebbian.rangesSent)} range · ${num(t.boundHebbian.maskedSent)} masked</span>`) +
+          // ⛔ ONESHOT.1 — the upload rate, which used to exist ONLY in a console
+          // line and was missed on a press because the ring caps at 500 lines
+          // and the walk fills it in ~9 seconds. ⚠ The SIZE is shown with every
+          // rate on purpose: a 2.79GB matrix averages lower than a 48MB one
+          // because it spans many drain cycles, so a bare MB/s is a different
+          // claim depending on which matrix finished last.
+          row('uplink',
+            (!Array.isArray(t.uplink) || !t.uplink.length)
+              ? '<span class="muted" title="No chunked upload has completed since boot. Not a claim about link health.">no upload yet</span>'
+              : (() => {
+                  const u = t.uplink[t.uplink.length - 1];
+                  const best = t.uplink.reduce((m, x) => (x.mb > m.mb ? x : m), t.uplink[0]);
+                  const col = best.mbps >= 20 ? '#22c55e' : (best.mbps >= 8 ? '#f59e0b' : '#ef4444');
+                  return `<span style="color:${col}" title="Last completed chunked upload, and the LARGEST in the recent ring — the large one is the honest read of sustained throughput, because a small matrix can finish inside a single drain window and flatter the number. KI-24: a rate far below the port rating means the PUMP is the limit, not the link.">`
+                    + `${num(u.mbps, 1)} MB/s <span class="muted">(${num(u.mb, 0)}MB ${u.name})</span>`
+                    + ` · <span class="muted">largest ${num(best.mbps, 1)} MB/s @ ${num(best.mb, 0)}MB</span></span>`;
+                })()) +
           row('GPU dispatch', `${num(t.gpuDispatchPerSec, 1)}/s <span class="muted">(${num(t.gpuHits)}✓/${num(t.gpuMisses)}✗)</span>`) +
           row('spikes', num(t.totalSpikes)) +
           row('defs/hr', num(t.defsLearnedPerHour)) +
-          row('frames', num(t.frameCount));
+          row('frames', num(t.frameCount)) +
+          // ⛔ ONESHOT.1 — the RHYTHM3S self-profile's ranked table. It runs ONCE
+          // at +150s, and the first time it was actually needed it had already
+          // scrolled out of the console ring. This is the answer to "what is
+          // eating the loop?" given by the VM rather than inferred from
+          // rhythms — it named injectEmbeddingToRegion (34.9%) and _clearSpikes
+          // (23.0%) as 58% of the main thread, which is what SCALEWALK fixed.
+          // `null` means it has not run yet, never "the loop is fine".
+          row('loop profile',
+            (!p.cpuProfile || !Array.isArray(p.cpuProfile.top) || !p.cpuProfile.top.length)
+              ? '<span class="muted" title="The one-shot self-profile fires at +150s and samples 45s. Absent = it has not run yet on this boot. This is NOT a statement that the loop is healthy.">not sampled yet</span>'
+              : (() => {
+                  const cp = p.cpuProfile;
+                  const top3 = cp.top.slice(0, 3).map(e =>
+                    `<span style="color:${e.pct >= 20 ? '#ef4444' : (e.pct >= 8 ? '#f59e0b' : '#888')}">${e.fn.split(' @ ')[0]} ${num(e.pct, 1)}%</span>`
+                  ).join(' · ');
+                  const ageMin = Math.round((cp.ageMs || 0) / 60000);
+                  return `<span title="Top self-time functions on the MAIN THREAD over a 45s sample, ranked by the V8 profiler. A single function above ~20% is where the walk's wall-clock is actually going. Full table in state.profiling.cpuProfile.">${top3}</span>`
+                    + ` <span class="muted">(${num(cp.sampledMs / 1000, 1)}s sampled, ${ageMin}m ago)</span>`;
+                })());
       }
 
       // ── Network ──
