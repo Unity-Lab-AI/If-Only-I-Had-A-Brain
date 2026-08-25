@@ -37354,3 +37354,65 @@ INTRO  forwarded      : counters criteria lastArmed lastError live rumination so
 - ⚠ **`ADMIN-CONTROLS.md:556` was already asserting the fixed behaviour.** It listed *"cycle phase, chronic and allostatic load … Both render on the dashboard"* — true of the payload, **false of the board**. Corrected in place with the mechanism, rather than quietly made true by the code change.
 - ⚠ **One false alarm of mine, recorded so nobody re-checks it.** A `Grep` context render showed lines in `brainstem.js` and `endocrine.js` beginning with a bare `\` where `//` belonged, which would have been a **SyntaxError killing the whole gland layer**. It was a tool rendering artifact: `node --check` passes on both files and a direct read shows proper comments. **Retracted the moment it was tested** — but worth naming, because the correct response to "the gland layer may not parse" is to check it in one command, not to reason about it.
 - ⚠ **NOT VERIFIED LIVE.** Server + frontend both; the rows land on the next press. The frontend rsyncs on push, the `state.js` change needs the process restart.
+
+---
+
+## 2026-08-25 — PROPBOUND AUDIT: the walk is clear, and the fix I went to verify was already in - feature/propbound-audit
+
+### Gee ask (verbatim per LAW #0)
+
+> *"anything left inthe todo beside waiting on my to press update?what are our 3 on the board?"*
+>
+> *"yes! do that, now. thanks Unity!"*
+
+**Closed: PROPBOUND.1 (audit verdict), PROPBOUND.2 (built). Filed: DARKHEB.1, BOUNDCAP.1.**
+
+⛔ **First, a correction I owe the record: I had been reporting "3 open" for several turns and it was WRONG.** I was counting only `- [ ]` lines and reading straight past nine `- [~]` in-progress items. The real board was **3 `[ ]` + 9 `[~]`**. Asked to list the three, the count did not survive contact with `grep`.
+
+⭐ **And the recount changed the answer to his actual question.** Eight of those nine turned out to be **code-complete and waiting on the measurement a press produces** — verified individually, not assumed: `GPUVERB.1` (masked verb + `maskedSent` both live in `gpu.js`), `GATEGPU.1` (`gpuGateProbe` + `DREAM_GATE_GPU_PROBES`, already measured 158/158 at 61ms), `GATEDOSE.1` (`[GateMathK] section` timers at `kindergarten.js:2837`), `RHYTHM3S.1` (`prod:*` stamps + `DREAM_CPU_PROFILE` both shipped), `RELDEPTH.1` (says so in its own text), `UPLINK.1`. **Two were buildable with no press at all**, and one of those — `PROPBOUND.1` — looked like it might have to land *before* the walk.
+
+### Why this one was audited first
+
+`WALKLAST` says anything that changes **what she is taught** must be in place before the fresh walk. `PROPBOUND.1` alleged that `gpuSparsePropagateAuto` routes bound matrices to an empty-pre BOUND propagate that **the native donor never implemented** — and the RunPod PRIMARY is native. If a teach or emission lane awaited one, it had been eating 30s timeouts or silent zeros, and the walk would be spent on it.
+
+### Verdict: THE WALK IS CLEAR. The hazard was real and was fixed on 2026-08-21.
+
+⭐ **The fix was already in — and the point of this audit is that I verified it instead of trusting its own comment.** Four independent properties, each of which had to hold:
+
+| # | Property | Result |
+|---|---|---|
+| 1 | **Routing** | ✅ Native donor detected → pre-index window rebuilt from the server's resident mirror; `null` when no mirror, so the caller's CPU path computes — **never zeros wearing a success shape**. Browser donors keep the empty-pre protocol |
+| 2 | **Is the mirror actually a mirror?** | ✅ ⭐ **My suspicion here was WRONG.** `_writeTiledPattern` (`curriculum.js:11848`) writes `cluster.lastSpikes[idx] = 1` **and** ships the identical pattern via `writeSpikeSlice` **in the same call** — and its own comment says *"the CPU shadow is written identically either way"* |
+| 3 | **Coordinates** | ✅ Cross-projections src-region-relative on both sides; the intra matrix cluster-absolute. Matches the wire convention exactly |
+| 4 | **Clear parity** | ✅ `_clearSpikes` zeroes the CPU span **and** fires `clearSpikeSlice` for the same regions, in BOTH its scoped and full branches |
+
+⭐ **Property 4 had one more way to fail and it does not:** the full clear zeroes the whole CPU array but only clears *named* regions GPU-side, so GPU-only residue outside every region would have made the intra walk over-report. The eight cortex fractions sum to **exactly 1.000** — `0.083 + 0.167 + 0.250 + 0.050 + 0.200 + 0.167 + 0.050 + 0.033` — so the regions **tile the cortex completely** and no such neuron exists. Caveat disproven by arithmetic rather than left as a worry.
+
+⛔ **No live lane is eating zeros or timeouts on a native primary. Nothing here blocks the press.**
+
+### PROPBOUND.2 — the one real gap, and it is today's defect family again
+
+`gpu.js:3576` read `if (!pre || !pre.length) return null;` — **a silent refusal with no counter and no log.** Whenever the mirror was empty, every bound propagate fell back to CPU and *nothing recorded it*. That is exactly the number `RHYTHM3S.1` is hunting (the loop taxed ~75%), and it was unobtainable.
+
+Now counted **by lane** — `native`, `browserEmptyPre`, `emptyMirror`, `noMirrorObject` — with the last refusal **named and aged**, at `state.profiling.throughput.boundPropagate`, rendered as `N on-card · N →CPU (N%)`.
+
+⚠ **An empty mirror is NOT automatically a fault, and the instrument says so.** Between teach writes the cortex genuinely holds no resident pattern and refusing is *correct*. It becomes a finding only when it stays high **during** a teach era — a comparison the board simply could not make while the number did not exist.
+
+⛔ **`noMirrorObject` is split out and coloured red on its own**, because a **missing** mirror is a wiring fault and would otherwise hide behind the **empty** case, which is ordinary and constant. Two states, two counters — the same rule `blind` vs `quiet` follows in the gland layer.
+
+⭐ **The row shipped in the SAME commit as the counter.** That is the direct application of the BOARDPARITY lesson from two commits ago; shipping the counter alone would have been the third instance of the same mistake in one day.
+
+### Filed by the audit, not built
+
+- **`DARKHEB.1`** — the sibling `boundHebbian` block is **dark**: seven fields published every broadcast, **zero** references in `dashboard.html`. Two of them matter especially — `capFlushes` counts mid-slab flushes *that used to be silent drops*, and `suppressedStale` carries the comment *"this counter is the teaching that cost us — it belongs on screen, not in a rate-limited console line."* It is not on screen. Found by looking at what sat next to the row I was adding.
+- **`BOUNDCAP.1`** — the protocol is selected by `if (_c && _c.donorAppVersion)`: an **identity field standing in for a wire capability**. Correct today, fragile by construction, and the codebase already has the right idiom three times over (`_sparseV2`, `_mindspaceV1`, `mindspaceOps`). Its failure mode if it ever flips is *all-zero currents accepted as real signal* — i.e. `PROPBOUND.1` all over again.
+
+### Verification
+
+`node --check` clean on `gpu.js` + `state.js` · `boundPropagate` producer/consumer parity **6/6** · divs 481/481 · `docs:drift` clean.
+
+### Owned
+
+- ⛔ **The "3 open" misreport is mine and it stood for several turns.** I answered a count question from a marker I had never checked covered the whole board. The fix is mechanical — count `[ ]` *and* `[~]` — and the lesson is the same one this whole day keeps teaching: **a number nobody re-derives is a number nobody should quote.**
+- ⭐ **I went in expecting to find a live bug and found a correct fix.** Reported as clear rather than manufacturing a finding to justify the audit — and the audit still paid for itself twice, in `PROPBOUND.2` and in the two items it surfaced next door.
+- ⚠ **NOT VERIFIED LIVE.** Server + frontend; lands on the next press. `emptyMirror` climbing during a teach era is the thing to watch.

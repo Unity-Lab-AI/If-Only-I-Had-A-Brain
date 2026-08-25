@@ -3571,11 +3571,41 @@ const SERVER_GPU_MIXIN = {
     // declared semantics are already keep-latest, so reusing one persistent
     // buffer per matrix is safe here and nowhere else. Key by matrix name so
     // each projection keeps its own.
+    // ⛔ PROPBOUND.2 (2026-08-25) — THE REFUSAL IS COUNTED NOW.
+    //
+    // The rebuild above is correct and was verified four ways (the mirror is
+    // written in the SAME call as the wire frame, coordinates match on both
+    // sides, the clear path zeroes both, and the region fractions tile 1.000
+    // so a full clear leaves no GPU-only residue). What it did NOT have was an
+    // instrument: `return null` on an empty mirror sent every bound propagate
+    // to the CPU **silently**, so "how often does this lane fall back?" was
+    // unanswerable — and that is exactly the number RHYTHM3S.1 is hunting.
+    //
+    // ⚠ An empty mirror is NOT automatically a fault. Between teach writes the
+    // cortex genuinely has no resident pattern, and refusing is the correct
+    // behaviour there. It becomes a finding when it stays high *during* a
+    // teach era, which is a comparison the board can only make if the number
+    // exists. Counted by lane, so native-rebuild and browser-empty-pre can
+    // never be read as one thing.
+    if (!this._boundPropStats) {
+      this._boundPropStats = { native: 0, emptyMirror: 0, browserEmptyPre: 0, noMirrorObject: 0, lastEmptyAt: 0, lastEmptyName: null };
+    }
+    const _bps = this._boundPropStats;
     if (_c && _c.donorAppVersion) {
       const pre = this._boundPreIndicesFor(name);
-      if (!pre || !pre.length) return null;
+      if (!pre || !pre.length) {
+        // Split the two reasons: a MISSING mirror object is a wiring fault,
+        // an EMPTY one is an idle cortex. Collapsing them would hide the
+        // first behind the second, which is normal and constant.
+        if (!pre) _bps.noMirrorObject++; else _bps.emptyMirror++;
+        _bps.lastEmptyAt = Date.now();
+        _bps.lastEmptyName = name;
+        return null;
+      }
+      _bps.native++;
       return this.gpuSparsePropagate(name, pre, target, 30_000, `bound:${name}`);
     }
+    _bps.browserEmptyPre++;
     return this.gpuSparsePropagate(name, new Uint32Array(0), target, 30_000, `bound:${name}`);
   },
 
