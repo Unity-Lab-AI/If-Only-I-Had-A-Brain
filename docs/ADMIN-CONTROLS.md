@@ -293,11 +293,21 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
-## 🕳 PUBLISHED BUT NOT RENDERED — five instruments the board does not show
+## ✅ THE FIVE DARK INSTRUMENTS — now rendered (fixed 2026-08-25)
 
-⛔ **The dashboard renders state fields BY NAME ONLY.** There is no generic walk over the state object — every value reaches the DOM through an explicit reference (24 `row(label, value)` calls in the profiling panel, plus per-panel interpolation). **Therefore: absence from `html/dashboard.html` is proof of non-rendering, not merely evidence of it.** That is worth stating because it makes the audit below decidable by grep instead of by opinion.
+**All five below are now on the board.** Kept as a section rather than deleted, because *how* they were dark is the reusable lesson, and because the rendering rule at the top is the thing that makes this class of defect findable at all.
 
-Measured 2026-08-25 — published by `server/brain-server/state.js`, referenced **zero** times by the page:
+| Now shows | Where | Reading it |
+|---|---|---|
+| **`d-voice-verdict`** + detail | Speech panel | `matrix-driven` green / `oracle-carried` amber / `oracle-only` red / `unmeasured` **grey**. ⚠ Grey is deliberate — *unmeasured* is an absence of evidence, and colouring it green would be exactly the reassuring lie the old `canSpeak` field told |
+| **last refusal** | Speech panel | The rejection reason **WITH ITS AGE**, amber under 60s. A reason with no age is indistinguishable from a current one |
+| **curiosity** | Speech panel | `N gaps · N asked`. Gaps with **zero** asks goes amber and says so plainly — that is a training fact (the interrogative weights are not trained yet), not a bug to hide |
+| **`loop service`** | Profiling panel | `N% serviced · Nms/min late`, placed directly under `loop delay` and `loop freezes` **because it exists to contradict them** — both answer *"was there one long stall?"*, this answers *"was the loop available at all?"* |
+| **practice / your verdicts** | Speech panel | Session count and last resemblance delta; `kept` vs `no measurable gain, discarded` — a discard is a CORRECT outcome, since only measurable improvement is kept. Plus accept/redraw/ban counts |
+
+⛔ **The rule that made this findable — keep it in mind when adding any field: the dashboard renders state fields BY NAME ONLY.** There is no generic walk over the state object — every value reaches the DOM through an explicit reference (24 `row(label, value)` calls in the profiling panel, plus per-panel interpolation). **Therefore: absence from `html/dashboard.html` is proof of non-rendering, not merely evidence of it.** That is worth stating because it makes the audit below decidable by grep instead of by opinion.
+
+**How they came to be dark, measured 2026-08-25** — each was published by `server/brain-server/state.js` on every broadcast and referenced **zero** times by the page:
 
 | State field | What it carries | Why its absence matters |
 |---|---|---|
@@ -309,7 +319,7 @@ Measured 2026-08-25 — published by `server/brain-server/state.js`, referenced 
 
 ⚠ **`separability` and `lookups` ARE rendered** (`m.speechHealth` → `sh.separability`, and the look-up counters on the mind's-eye page) — they were in the same audit and came back clean. Listed so nobody re-checks them.
 
-⚠ **This is a filing, not a fix.** Adding the rows is UI work, not documentation work, and it is deliberately not bundled into a documentation sweep. What the sweep owes is an accurate statement of which instruments are dark, and that is the table above.
+✅ **Fixed the same day, after the sweep closed** — the sweep's job was to state accurately which instruments were dark; building the rows was separate work and was done separately.
 
 ---
 
