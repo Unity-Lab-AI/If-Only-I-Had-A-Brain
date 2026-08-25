@@ -396,7 +396,7 @@ The table above is the curated set: knobs that change **training**, each written
 | `DREAM_MAX_GRADE` | ⚠ | lever | Ceiling grade for the walk — stop the curriculum at a chosen grade |
 | `DREAM_HELD_BACK` | ✅ on (`'0'` disables) | escape hatch | Mastery-gated remediation. `'0'` lets a failed cell through without the escalating re-teach ladder |
 | `DREAM_TICK_MS` / `DREAM_TICK_BREATHE_MS` | ⚠ | lever | Brain tick interval and the yield between ticks |
-| `DREAM_CPU_PROFILE` | ⚠ | lever | Enables CPU profiling output |
+| `DREAM_CPU_PROFILE` | ✅ on (`0` disables) | lever | ⭐ **The one-shot main-thread self-profile (`RHYTHM3S`)** — samples 45s at +150s uptime and ranks functions by **self-time**, which is how *"what is eating the loop?"* gets answered by the V8 profiler instead of inferred from block rhythms. It found `injectEmbeddingToRegion` (34.9%) + `_clearSpikes` (23.0%) = **58% of the main thread**, then `_teachLateralInhibition` (33.8%), then `normalizeRows` (27.5%) as each was fixed. ⛔ **Read it from `state.profiling.cpuProfile`, NOT the console** — at walk speed the ring is a nine-second window (KI-36) and the table scrolls out before you can fetch it. `null` there means *not sampled yet*, never *the loop is fine* |
 | `DREAM_SELF_UPDATE_CMD` / `DREAM_UPDATE_STALE_MS` | ⚠ | lever | Override the self-update command; staleness window for the update check |
 
 ### Gates — advisory by default, hard on request
@@ -464,7 +464,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 
 | Env | Default | Kind | What it does |
 |---|---|---|---|
-| `DREAM_INNERVOICE_FORCE_CPU` | ✅ unset | escape hatch | `'1'` forces inner-voice generation onto the CPU |
+| `DREAM_INNERVOICE_FORCE_CPU` | ✅ unset | escape hatch | `'1'` forces inner-voice generation onto the CPU. ⭐ **`SCALEWALK.2` reuses this same flag rather than inventing a second one**, because it gates the same question: whether a CPU cortex path may run at biological scale. With it unset, `injectEmbeddingToRegion` skips the dense `externalCurrent` expansion above 2M neurons — that array's only readers are inside `step()`, and `step()` is unreachable for the cortex at scale (the main tick never calls it, `stepAwait` refuses above 2M, and all five raw-step sites carry the same refusal). Set it to `1` and the CPU write returns, exactly as it does for the inner voice |
 | `DREAM_INNERVOICE_GPU_GEN` | ✅ off → **now ON** | lever | GPU generation for the inner voice. Shipped dormant and switched on 2026-08-25 |
 | `DREAM_INNERVOICE_GPU_GEN_MIN_DONORS` | ✅ `1` | lever | Donors required before GPU generation engages |
 | `DREAM_INNERVOICE_MAX_NEURONS` | ✅ `2_000_000` | escape hatch | Above this the CPU inner-voice path no-ops rather than pin the loop. ⚠ This line is load-bearing in more than one place — a capability branch elsewhere was silently dead because it tested `typeof readText === 'function'` (always true) instead of testing this ceiling |

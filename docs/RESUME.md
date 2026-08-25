@@ -1,6 +1,42 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — THE FIXES ARE VERIFIED ON THE LIVE WALK, AND THE LOG BECAME UNREADABLE *BECAUSE* THEY WORKED
+> ## ⭐⭐⭐ 2026-08-25 (latest) — SHE LEARNS ~40× FASTER, EVERY PREDICTION WAS CHECKED, AND THE HOT-SPOT CHASE STOPPED HONESTLY
+>
+> **PICK-UP STATE.** ⛔ **Verify hashes with `git rev-parse --short main origin/main github/main`, and count the board yourself** (`grep -c '^- \[ \]'` / `'^- \[~\]'`) — do not trust a number written here. ⛔ **Checkout `develop`.** She is TRAINING. ⭐ **The next Update & Fresh Walk lands `SCALEWALK.3` + `ONESHOT.1`;** donor and pod were re-verified for it (see below).
+>
+> ### 1. ⭐ The capability: definitions 5-7.4s → ~128ms, and it was measured in HER, not in a benchmark
+>
+> The previous walk tripped the 5-second slow-word alarm on `m` (6959ms), `p` (7418ms), `s` (5521ms), `zero` (5019ms). The next one logged **zero slow-word warnings** and `defsLearnedPerHour` in the tens of thousands. **Nothing about what she learns changed** — every substitution was proved bit-identical *before* shipping: **144/144** memsets, **72/72** donor-bound output at bio scale, **16/16** small-scale arrays, **128/128** scan fusion including **row ORDER**.
+>
+> ### 2. What was actually removed: work that produced nothing
+>
+> | fix | the waste |
+> |---|---|
+> | `SCALEWALK.2` | `injectEmbeddingToRegion` wrote **~13.7M floats per call** into `externalCurrent` — an array whose only readers sit inside `step()`, which **cannot run** for the cortex at this scale. **379×** |
+> | `SCALEWALK.1` | `_clearSpikes` zeroed up to **82M** cells per call in a per-element JS loop, across **24 sites**. **7.7×** |
+> | `SCALEWALK.3` | `_teachLateralInhibition` walked the motor span **twice for the same sparse bits**, re-deriving a list pass one already had. **2.3×** |
+>
+> ⛔ **One cause behind all three: they were priced when the cortex was 1.5M and nobody re-priced them at 82M.** `_clearSpikes`'s own comment still quoted the 1.5M figure.
+>
+> ### 3. Verified, not asserted — three profiles in a row
+>
+> `injectEmbeddingToRegion 34.9%` + `_clearSpikes 23.0%` → **both absent from the top 14** → `_teachLateralInhibition` 33.8% → **14.1%** (2.4× against 2.3× predicted). Loop service **95% → 99%**. ⭐ **And the 2.79GB upload went 58.0s → 39.7s with NO upload-code change** — the CPU walks had been throttling the network. Also live: **`phiState: "live"`**, **`defsLearnedPerHour 28,158`** (was a structural `0`), **`gateProbes { gpu: 1520, refused: 0, nullAck: 0 }`**.
+>
+> ### 4. ⛔ `ONESHOT.1` — the rule this batch adds
+>
+> Verifying SCALEWALK **failed the first time**: the `[CPUProfile]` table had already scrolled out. At walk speed the 500-line ring is a **nine-second** window — and it got that way *because the fix worked* (~40× the log volume). **A measurement that happens once cannot live in a console line.** The profile and the upload rate are state fields now, with dashboard rows in the same commit (KI-36).
+>
+> ### 5. ⚠ Where the chase STOPS, and why that is the right call
+>
+> `normalizeRows` is now top at **27.5%** — and it is **probably not waste**. Its absolute cost rose (`1741 → 4612 → 12,395ms`) **because throughput rose**, and unlike the other three it does necessary math over necessary data. Cutting it needs dirty-**row** tracking, rejected for the same reason it was rejected for `lastSpikes`: four functions write rows, so *"untouched"* cannot be established without auditing every writer, and a wrong skip leaves rows unnormalised — **corrupted training, not slow training.** Filed as `NORMROWS.1` with prerequisites.
+>
+> ### Board
+>
+> **`GATEDOSE.1` + `RELDEPTH.1`** need a real **math-gate verdict** (`fullMindK` is `null`, `cellPhasesStarted: 0` — she is still in the pre-cell bootstrap; hours, and not forceable). **`PRESSBLOCK.1` / `INFRA.1` / `DONORSHIP.1`** are on Gee, on Red+Sponge, and on Gee's verdict. **`NORMROWS.1`** needs the writer audit.
+>
+> ---
+>
+> ## 2026-08-25 (earlier) — THE FIXES ARE VERIFIED ON THE LIVE WALK, AND THE LOG BECAME UNREADABLE *BECAUSE* THEY WORKED
 >
 > **PICK-UP STATE.** ⛔ **Verify hashes with `git rev-parse --short main origin/main github/main`; count the board yourself.** ⛔ **Checkout `develop`.** She is TRAINING on the latest press. **`ONESHOT.1` needs one more restart to take effect** (it publishes diagnostics that currently only print).
 >
