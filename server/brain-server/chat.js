@@ -2103,11 +2103,23 @@ const SERVER_CHAT_MIXIN = {
       // color masses, the PAINT.8 bare-paper intent). Crayon's whole
       // identity was the scribble stroke, so it leaves the roster with its
       // brush (STYLECULL precedent: pointillism + crosshatch).
-      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0,  traceBudget: 90 },
-      { name: 'pencil',      mass: 'none',     ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 150 },
-      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0,  traceBudget: 120 },
-      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0,  traceBudget: 40 },
-      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 22 },
+      // ⛔ ARTGROW (2026-08-25) — THESE NUMBERS WERE A CAP ON HER ABILITY AND
+      // THEY ARE NOT ANY MORE. Gee: *"dont limit stroke counts too much cant
+      // make a art work in only 20 strokes it should increase in ability as she
+      // learns in art and stuff"*. The old budgets (doodle 22, watercolor 40)
+      // were sized as a NOISE defence — and noise is no longer what they are
+      // defending against: `_traceSurvivors` gates the jagged tracer fragments
+      // at the source now, for the body AND the redraw, so a high budget adds
+      // real remembered contour instead of scratch. What is left for these
+      // numbers to express is CHARACTER — an ink drawing is spare, a graphite
+      // one is busy — never a ceiling on how much of a drawing she can make.
+      // The effective budget is this × the TRAINED `budgetMul` (up to 2.5×),
+      // so her commitment grows with practice like the rest of her hand.
+      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0,  traceBudget: 200 },
+      { name: 'pencil',      mass: 'none',     ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 260 },
+      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0,  traceBudget: 160 },
+      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0,  traceBudget: 170 },
+      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 110 },
     ];
   },
   _artStylePick(rnd, subjectWords) {
@@ -2425,7 +2437,15 @@ const SERVER_CHAT_MIXIN = {
   // the constants the hand used before practice existed — a concept she has
   // never practiced draws identically to yesterday.
   _skillDefaults() {
-    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0 };
+    // ARTGROW (2026-08-25, Gee: *"dont limit stroke counts too much cant make a
+    // art work in only 20 strokes it should increase in ability as she learns
+    // in art and stuff"*) — `budgetMul` is the sixth TRAINABLE param: how much
+    // of her remembered trace this hand commits to the page. It is her DRAWING
+    // ABILITY, so it belongs in the practice loop with the rest of the hand,
+    // not frozen in a style constant. Starts at 1.0 (the untrained hand already
+    // draws a real drawing) and the practice loop can take it to 2.5×, at which
+    // point she is redrawing essentially everything she remembers.
+    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0, budgetMul: 1.0 };
   },
   _skillFor(word) {
     const d = this._skillDefaults();
@@ -2647,6 +2667,12 @@ const SERVER_CHAT_MIXIN = {
       traceW:    [0.7, 1.4, 0.12],
       keepP:     [0.75, 0.97, 0.04],
       detailMul: [0.5, 1.5, 0.2],
+      // ARTGROW — her stroke commitment is TRAINED like every other part of the
+      // hand. The score is cosine against her banked percept of the real thing,
+      // so "more strokes" only survives a session when it actually made the
+      // drawing resemble the subject more — which is the honest way for an
+      // ability to grow rather than being handed to her as a constant.
+      budgetMul: [0.6, 2.5, 0.25],
     };
     const params = { ...this._skillDefaults(), ...(e.skill && e.skill.params) };
     const sessions = (e.skill && e.skill.sessions) || 0;
@@ -2674,6 +2700,47 @@ const SERVER_CHAT_MIXIN = {
     };
     try { console.log(`[OwnArt] 🎨 PRACTICE "${key}" session ${sessions + 1}: resemblance ${base.toFixed(4)} → ${best.toFixed(4)} (${kept} of ${ITERS} nudges kept)${kept ? ' — technique improved and saved' : ' — no nudge beat her current hand'}`); } catch { /* nf */ }
     return { word: key, base, best, kept };
+  },
+
+  // ── ARTZIG2.2 (2026-08-25) — THE FRAGMENT GATE, AS ONE OWNER.
+  //
+  // ⛔ The gate existed and was applied in exactly ONE place: the layer that
+  // DRAWS remembered strokes. The layer that decides the BODY read the RAW
+  // trace, so the convex hull was fitted to every jagged tracer fragment —
+  // i.e. to the bounding box of the noise scatter, not to the subject. Judged
+  // on real renders: the body came out a RECTANGULAR SLAB in both hands, and
+  // on the pale watercolor wash the part-colour blobs sitting on that slab
+  // read as the "coloured garbage" the complaint names.
+  //
+  // So ARTZIG2 suppressed the fragments' INK while keeping their SHAPE. The
+  // survivors are computed once here and consumed by both layers — the hull
+  // and the redraw — because "which strokes are real?" is one question and it
+  // had two different answers.
+  //
+  // The rule itself is unchanged (short AND jagged = tracer noise; whiskers
+  // are short but straight, an ear is one clean turn — both pass).
+  _traceSurvivors(schema, fx) {
+    const tN = (Array.isArray(schema.trace) ? schema.trace.length : 0);
+    if (tN === 0) return [];
+    const diag = Math.hypot(Math.max(1e-3, fx.w), Math.max(1e-3, fx.h));
+    const keep = [];
+    for (let ti = 0; ti < tN; ti++) {
+      const tp = schema.trace[ti];
+      if (!Array.isArray(tp) || tp.length < 2) continue;
+      let L = 0, turns = 0, nTurn = 0;
+      for (let i = 1; i < tp.length; i++) {
+        L += Math.hypot(tp[i][0] - tp[i - 1][0], tp[i][1] - tp[i - 1][1]);
+        if (i >= 2) {
+          const a1 = Math.atan2(tp[i - 1][1] - tp[i - 2][1], tp[i - 1][0] - tp[i - 2][0]);
+          const a2 = Math.atan2(tp[i][1] - tp[i - 1][1], tp[i][0] - tp[i - 1][0]);
+          let da = Math.abs(a2 - a1); if (da > Math.PI) da = 2 * Math.PI - da;
+          turns += da; nTurn++;
+        }
+      }
+      if (L < diag * 0.025 && nTurn > 0 && (turns / nTurn) > 1.22) continue;   // tracer noise
+      keep.push(ti);
+    }
+    return keep;
   },
 
   _ownArtStrokesFromSchema(schema, box, rnd, word, style, skillOverride) {
@@ -2722,6 +2789,9 @@ const SERVER_CHAT_MIXIN = {
     const mAng = (a2) => (mirror ? -a2 : a2);
     const mapX = (x) => { let u = (x - fx.x) / Math.max(1e-3, fx.w); if (mirror) u = 1 - u; return box.cx + (u - 0.5) * box.w; };
     const mapY = (y) => box.cy + (((y - fx.y) / Math.max(1e-3, fx.h)) - 0.5) * box.h;
+    // ARTZIG2.2 — computed ONCE, before anything reads the trace, so the body
+    // and the redraw agree about which strokes are real.
+    const _traceKeep = this._traceSurvivors(schema, fx);
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
     const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
@@ -2750,8 +2820,12 @@ const SERVER_CHAT_MIXIN = {
         // edges and rendered as a trapezoid (live-judged). Points hugging the
         // frame border, and strokes that span most of the frame in one axis
         // (the ground line, backdrop gradients), are scenery — not the subject.
-        const src = (Array.isArray(schema.trace) && schema.trace.length >= 10)
-          ? schema.trace.map(pts => ({ pts }))
+        // ⛔ ARTZIG2.2 — SURVIVORS, not the raw trace. Fitting the hull to every
+        // jagged fragment fitted it to the bounding box of the tracer's noise
+        // scatter, which is why the body rendered as a rectangular slab in
+        // both judged hands. Same survivor set the redraw layer uses.
+        const src = (_traceKeep.length >= 10)
+          ? _traceKeep.map(ti => ({ pts: schema.trace[ti] }))
           : schema.outlines;
         for (const o of src) {
           if (!o || !Array.isArray(o.pts)) continue;
@@ -2810,12 +2884,29 @@ const SERVER_CHAT_MIXIN = {
       // old 3-part single-ink shading for pre-color schemas.
       if (style.mass === 'fill' || style.mass === 'wash') {
         const colored = schema.parts.filter(p => Array.isArray(p.rgb) && !p.bg);   // BGPART — backdrop-colored cells paint no mass
+        // ⛔ ARTZIG2.2 — COLOUR LAYERS BELONG INSIDE THE SUBJECT. The part grid
+        // is a LAYOUT over the whole reference frame, so cells near the subject's
+        // edge placed their blobs (offset up to ±35% of the cell) OUTSIDE the
+        // silhouette — judged on the re-render as pastel dots floating off the
+        // body, which is the other half of the "coloured garbage" complaint.
+        // `p.bg` already drops cells whose colour came from the backdrop; this
+        // drops cells that are simply not on the thing. Even-odd ray cast
+        // against the silhouette the body was just filled with.
+        const _inSil = (x, y) => {
+          let inside = false;
+          for (let i = 0, j = sPts.length - 1; i < sPts.length; j = i++) {
+            const xi = sPts[i][0], yi = sPts[i][1], xj = sPts[j][0], yj = sPts[j][1];
+            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi)) inside = !inside;
+          }
+          return inside;
+        };
         if (colored.length) {
           // each part = THREE offset soft blobs at low alpha, not one crisp
           // ellipse — a single blob per cell rendered as an obvious column of
           // circles (judged live, the very artifact this layer replaces)
           for (const p of colored) {
             const cx = mapX(p.cx), cy = mapY(p.cy);
+            if (!_inSil(cx, cy)) continue;   // ARTZIG2.2 — not on the subject
             const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
             const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
             for (let bi = 0; bi < 3; bi++) {
@@ -2889,31 +2980,34 @@ const SERVER_CHAT_MIXIN = {
       // this fix leaked exactly that way: 30% of 220 strokes force-drew 46
       // fragments and the doodle stayed a hairball). Structural = the first
       // slice of the SURVIVORS, capped absolute.
-      const _fw = Math.max(1e-3, fx.w), _fh = Math.max(1e-3, fx.h);
-      const _diag = Math.hypot(_fw, _fh);
-      const _keepIdx = [];
-      for (let ti = 0; ti < tN; ti++) {
-        const tp = schema.trace[ti];
-        if (!Array.isArray(tp) || tp.length < 2) continue;
-        let L = 0, turns = 0, nTurn = 0;
-        for (let i = 1; i < tp.length; i++) {
-          L += Math.hypot(tp[i][0] - tp[i - 1][0], tp[i][1] - tp[i - 1][1]);
-          if (i >= 2) {
-            const a1 = Math.atan2(tp[i - 1][1] - tp[i - 2][1], tp[i - 1][0] - tp[i - 2][0]);
-            const a2 = Math.atan2(tp[i][1] - tp[i - 1][1], tp[i][0] - tp[i - 1][0]);
-            let da = Math.abs(a2 - a1); if (da > Math.PI) da = 2 * Math.PI - da;
-            turns += da; nTurn++;
-          }
-        }
-        const short2 = L < _diag * 0.025;
-        const jagged = nTurn > 0 && (turns / nTurn) > 1.22;
-        if (short2 && jagged) continue;   // tracer noise — not a feature
-        _keepIdx.push(ti);
-      }
+      // ARTZIG2.2 — the SAME survivor set the body was fitted to. This loop
+      // used to recompute the identical rule here, which is how the hull came
+      // to disagree with the redraw: one copy was applied, the other was not
+      // written at all. One owner, `_traceSurvivors`, consulted twice.
+      const _keepIdx = _traceKeep;
       // budget: structural survivors always; the rest longest-first (the trace
       // is length-sorted DESC at learn time, so kept order IS longest-first).
-      const _structN = Math.min(40, Math.max(10, Math.ceil(_keepIdx.length * 0.3)));
-      const _budget = Math.max(_structN, (style.traceBudget | 0) || 120);
+      // ⛔ ARTZIG2.2 — THE BUDGET IS AUTHORITATIVE. This was:
+      //     _structN = min(40, max(10, ceil(keep * 0.3)))
+      //     _budget  = max(_structN, style.traceBudget)
+      // i.e. the structural count was a FLOOR on the budget, so a hand could
+      // never draw fewer strokes than 30% of the survivors — and the two
+      // smallest budgets are exactly the two hands in this complaint. On a
+      // clean trace of ~120 survivors the floor is 36, so the doodle's
+      // declared budget of 22 was silently raised to 36 and *"a doodle is
+      // LOOSE"* stopped being true. Worse, when the floor met or exceeded the
+      // budget the two sets became IDENTICAL — every drawn stroke counted as
+      // structural, which force-drew all of them (killing the PAINT.12
+      // per-attempt subset) and gave every one of them the aggressive
+      // contrast value-shift meant for the structural read alone.
+      // Structural is a FRACTION OF the budget now, so the declared number
+      // means what it says and both tiers survive at every budget.
+      // ARTGROW — the style's character × her TRAINED commitment. A practiced
+      // hand reaches every stroke she remembers; an untrained one still draws a
+      // real drawing. No hard ceiling: when the effective budget exceeds the
+      // survivor count, she simply draws all of it.
+      const _budget = Math.max(24, Math.round(((style.traceBudget | 0) || 160) * (skill.budgetMul || 1)));
+      const _structN = Math.max(6, Math.ceil(_budget * 0.4));
       const _drawSet = new Set(_keepIdx.slice(0, _budget));
       const _structSet = new Set(_keepIdx.slice(0, _structN));
       // COLORLINE (2026-08-21, operator: "she is still using white lines to

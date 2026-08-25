@@ -37481,3 +37481,60 @@ Seven fields, **three rows** — seven rows of raw counters is noise, and the pi
 - ⛔ **I audited `gpuSparsePropagateBound` and passed it hours before finding this.** The audit checked the native branch thoroughly and never asked the same question of the branch beside it. A verdict scoped to one path should say so.
 - ⚠ **I introduced a false doc claim mid-edit and caught it in the next read:** I added `sparseV2 / mindspaceV1 / boundResidentRead: true` into the `gpu_register` JSON example that is explicitly the **native** donor's payload — which sends none of them. Replaced with a note stating the asymmetry, since the asymmetry is the point.
 - ⚠ **NOT VERIFIED LIVE.** Server + `compute.html` + dashboard. The frontend rsyncs on push; the server needs the restart.
+
+---
+
+## 2026-08-25 — ARTZIG2 + ARTGROW: the zigzag was the BODY, and my fix capped her ability - feature/artzig2
+
+### Gee ask (verbatim per LAW #0)
+
+> *"yes, start it"*
+>
+> *"hold up dont limit stroke counts too much cant make a art work in only 20 strokes it should increase in ability as she learns in art and stuff"*
+
+**Closed: ARTZIG2.1.**
+
+### The method was the item's own: render, judge, fix, re-render
+
+Four rounds through the **production** stroke builder (`_ownArtStrokesFromSchema`), the **real** `sketch()` and the **real** `reconstructImageData()`, out to PNG, looked at each time.
+
+⚠ **The schema was synthetic** — the visual store boots empty at v8 and there is no live box — but synthetic *in the shape the complaint names*: ~20 long structural arcs plus a 200-stroke tail of short jagged tracer fragments. The stub deliberately supplied no `_vmStore` and no `cortexCluster`, so `_skillFor` fell to defaults and `_defDrawAttributes` returned null: **the post-press empty-store condition.**
+
+### ⛔ The zigzag was not the strokes. It was the BODY.
+
+The first render answered it immediately: **both hands drew a rectangular slab**, and on the pale watercolor wash the part-colour blobs sitting on that slab *are* the "coloured garbage".
+
+**Cause, decidable from the code:** the convex hull was built from `schema.trace` **raw**, while the fragment gate ran ~140 lines later and only decided which strokes got **drawn**. So `ARTZIG` (2026-08-21) had suppressed the fragments' **ink while keeping their shape** — the hull was fitted to the bounding box of the noise scatter.
+
+⭐ **One question, two answers.** *"Which strokes are real?"* was being answered independently in two places, and only one of them had the rule. `_traceSurvivors()` is now the single owner and both the body and the redraw consult it. **The next render replaced the square with a real silhouette — ears, eyes, tail.**
+
+**Second defect, visible only on that re-render:** part-colour blobs **floating outside the body**. The part grid is a layout over the whole reference frame and blob offsets reach ±35% of a cell, so edge cells painted colour off the subject. `p.bg` already dropped backdrop-*coloured* cells; nothing dropped cells that simply were not **on the thing**. Even-odd clipped to the silhouette now — 42 blobs → 36, floating dots gone.
+
+### ⭐ ARGROW — Gee stopped me making it worse
+
+My first cut made `traceBudget` authoritative **at its old values**. Those values (doodle **22**, watercolor **40**) had been sized as a *noise defence* — and Gee named exactly what that turns into:
+
+> *"cant make a art work in only 20 strokes it should increase in ability as she learns"*
+
+⛔ **He is right, and the reasoning matters more than the numbers:** noise is no longer what those budgets defend against. The gate now kills fragments **at the source**, for the body and the redraw both. So a high budget adds *real remembered contour*, not scratch — and a low one is simply a ceiling on how much of a drawing she is allowed to make.
+
+**Budgets raised** — poster 90→**200**, pencil 150→**260**, ink 120→**160**, watercolor 40→**170**, doodle 22→**110** — so the numbers express **character** (an ink drawing is spare, a graphite one busy) and never ability.
+
+⭐ **And ability is now TRAINED.** The effective budget is `style.traceBudget × skill.budgetMul`, where `budgetMul` is a **sixth trainable hand param** in the PAINT.5 practice loop — range `[0.6, 2.5]`, step `0.25`, default `1.0` — scored exactly like the other five: cosine against her banked percept of the real thing. **So "draw more of what I remember" only survives a practice session when it actually made the drawing resemble the subject more.** That is an ability growing, not a constant handed over.
+
+**Measured on a full 260-stroke trace:** doodle **101 → 235** strokes untrained → practiced; watercolor **153 → 249**. No hairball at any budget.
+
+### Fixed in passing (found while reading the budget math)
+
+The structural count was a **floor on the budget**: `_budget = max(_structN, style.traceBudget)`. Whenever the floor met the budget the two sets became **identical**, so every drawn stroke counted as structural — which force-drew all of them (killing PAINT.12's per-attempt subset, i.e. *"never the same drawing twice"*) and gave every stroke the aggressive contrast value-shift meant for the structural read alone. Structural is a fraction **of** the budget now, so both tiers survive at every budget.
+
+### Verification
+
+Four judged render rounds · **regression-rendered all five hands**: five distinct signatures, pencil and ink provably untouched (`mass: 'none'` takes no fill/blob path) · budget growth measured untrained vs practiced · `node --check` clean · harness **deleted in this commit**.
+
+### Owned
+
+- ⛔ **I turned a noise fix into a cap on her ability, and Gee caught it before it shipped.** The failure was scope: I kept a number whose *justification had been removed by my own fix*. When a defence becomes unnecessary, its cost stops being free.
+- ⚠ **My own harness was weak in the first round and I only noticed after the fix.** It had a fragment-heavy but stroke-*poor* trace — 20 survivors — so it never exercised the redraw layer at all, which is where "zigzag" would live. Added a rich-trace mode; that is what made the budget behaviour measurable.
+- ⚠ **NOT claimed: that a 235-stroke drawing from a real reference is good.** The dense-detail strokes in the harness are synthetic swirls, not real traced contour, so the renders prove *not-fragment-scratch* and cannot judge beauty. **That is a post-press look at real look-ups**, and it belongs to PAINT.5's road rather than this item.
+- ⚠ **NOT VERIFIED LIVE.** `chat.js` is server-side and unbundled — lands on the next press.
