@@ -589,7 +589,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <div class="eq" style="font-size:13px;">
 n = totalSpikes this tick<br>
 N = total neuron count<br>
-Φ = Shannon entropy of the cortex spiking proportion, from the exact GPU-reported spike count (computePhi)<br>
+Φ = Shannon entropy of the cortex spiking proportion (exact GPU-reported spike count), rescaled to her operating range: Φ̂ = clamp(H(p) / ref, 0, 1), ref = adaptive high-water integration<br>
 Ψ = log₁₀(max(1, √(1/n) × N³ × (α·Id + β·Ego + γ·Left + δ·Right) × Φ))<br>
 <br>
 where:<br>

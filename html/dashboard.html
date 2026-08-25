@@ -1826,8 +1826,19 @@
           const st = m.phiState || 'unmeasured';
           const raw = (typeof m.phiRaw === 'number') ? m.phiRaw : null;
           const el = $('d-cortex-phi');
-          el.textContent = (m.phiProxy || 0).toFixed(3)
-            + (raw !== null ? ` (raw ${raw.toFixed(3)})` : '')
+          // PHISCALE.1 — show the whole chain: raw entropy → the ADAPTIVE
+          // reference it is divided by → the normalised value that actually
+          // multiplies Ψ. The reference is measured from her own integration
+          // (seeded at H(0.015), her documented design sparsity) rather than a
+          // hardcoded proportion, so it has to be visible or it is just another
+          // hidden number deciding a headline quantity.
+          // ⚠ ref climbing while norm sits at 1.0 = the scale is chasing her.
+          const ref = (typeof m.phiScaleRef === 'number') ? m.phiScaleRef : null;
+          const norm = (typeof m.phiNorm === 'number') ? m.phiNorm : null;
+          el.textContent = (norm !== null ? norm : (m.phiProxy || 0)).toFixed(3)
+            + (raw !== null ? ` (raw ${raw.toFixed(3)}` : '')
+            + (raw !== null && ref !== null ? ` / ref ${ref.toFixed(3)}` : '')
+            + (raw !== null ? ')' : '')
             + ` — ${st}`;
           // floored = it has never actually modulated Ψ. error/unmeasured are
           // producer problems. Only `live` is green.
