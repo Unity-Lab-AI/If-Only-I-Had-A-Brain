@@ -769,6 +769,18 @@ learned schemas: the knowledge is unchanged, the hand changes.
   binary blob rows and a resident cap, because monolithic JSON measured 761ms loop pins at 10k
   entries and hard-failed at 100k.
 
+**SE.21 — LOOKORDER: memory first, then the dictionary, and only then a fetch (2026-08-25).** Operator directive: keep learning from a looked-up picture, but make a generated render the **last** resort rather than the first move. A child learns what a zebra looks like from a picture book someone else drew — and does not go and look at a new one every time they think "zebra". The look lane now asks, in order:
+
+1. **Does she already REMEMBER it?** ⚠ CONFIRMED memories only. A provisional entry is a single unverified render that no second look has agreed with, and treating one as a memory is exactly how a noisy image hardens into belief — the failure the two-seed check exists to prevent. ⚠ Distinct from the 6h cooldown, which stops re-fetching for six hours and then would fetch a concept she has genuinely *seen* forever after. **Memory has no expiry.**
+2. **Can the DICTIONARY carry it?** Definition-driven drawing already builds from colours, shapes and part types read out of the definition, so a word whose definition describes it concretely needs no image at all. The check **delegates to the same reader the painter uses**, so the two can never disagree about what a definition can build — if it says yes, the painter can genuinely make it.
+3. **Only then fetch.**
+
+⚠ `force` bypasses all of it and must keep doing so — that is what the ✗ reject button uses to deliberately re-look-up a bad drawing. Blocking it there would have silently broken operator feedback.
+
+⭐ Three wins at once: fewer external renders shaping what she believes things look like, no network on the common path, and a stronger honest claim — **most of what she knows things look like now comes from her own memory and her own dictionary.** Two counters (`alreadyKnown`, `definitionServed`) measure exactly that share, declared in the initialiser so a lane that has never fired reads `0` rather than `undefined`.
+
+---
+
 ⚠ **The recurring lesson across this whole batch, and the reason so much of it was fixed twice:**
 every one of these was verified by RENDERING a real image through the production pipeline and
 LOOKING at it. The magenta palette, the floating shadow, the invisible mono ink, the colour-circle
