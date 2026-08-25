@@ -404,7 +404,9 @@ No artificial cap — connected donor VRAM decides. The formula expands with wha
 | Hypothalamus | 12% | 11 nuclei | Homeostasis drives | Midline, below BG, above brainstem |
 | Mystery Ψ | 12% | Corpus callosum: 200-300M axons | Consciousness √(1/n) × N³ | Corpus callosum arc + cingulate cortex |
 
-On the **deployed** brain (~306M neurons, full size) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js` — the seven main-brain clusters renormalize to cortex 20% (≈61.3M), cerebellum 20% (≈61.3M), and hippocampus/amygdala/basalGanglia/hypothalamus/mystery 12% (≈36.8M) each; the language cortex is a separate ~349K CPU-side allocation living inside the cortex, not one of the seven GPU clusters. The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.08 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03, via `clusterSizesFor(totalNeurons)`) is the **~6700-neuron browser-only fallback** shape, used only when no server brain is reachable.
+On the **deployed** brain (~306M neurons, full size) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js` — the seven main-brain clusters renormalize to cortex 20% (≈61.3M), cerebellum 20% (≈61.3M), and hippocampus/amygdala/basalGanglia/hypothalamus/mystery 12% (≈36.8M) each; the language cortex is a separate ~349K CPU-side allocation living inside the cortex, not one of the seven GPU clusters. The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.078 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03 / **brainstem 0.002**, via `clusterSizesFor(totalNeurons)`) is the **~6700-neuron browser-only fallback** shape, used only when no server brain is reachable. Fractions sum to 1.0 exactly.
+
+**`brainstem` (added 2026-08-25, ENDO)** is the eighth cluster and holds the monoamine nuclei — **locus coeruleus** (noradrenaline), **raphe** (serotonin) and **VTA** (dopamine), laid out as regions at their real proportions to each other (2% / 35% / 63%) and tagged `center`, because they are midline structures and must not be touched by the Ψ hemisphere gate. It is deliberately tiny — those three nuclei together are on the order of 700K neurons against ~86 billion in a real head — and its 0.2% is taken from the cerebellum, which this document already records as over-provisioned for a brain with no body to coordinate. **Their influence has never come from their size:** they are neuromodulatory, projecting diffusely and changing how every *other* cluster behaves, which is exactly what the additive contribution overlay in `js/brain/persona.js` expresses. Adding it moved `WEIGHTS_FORMAT_VERSION` 4 → 5.
 
 ### Inter-Cluster Projections (20 real white matter tracts)
 
@@ -886,7 +888,7 @@ For the browser-side path, `embeddings.getSubsetForTokens(tokens)` lets the serv
 
 ### Cluster sizing (T14.0, live)
 
-`js/brain/engine.js` defines `TOTAL_NEURONS = 6700` as the default client floor. The seven cluster sizes are derived from `CLUSTER_FRACTIONS` (live in `js/brain/cluster.js`):
+`js/brain/engine.js` defines `TOTAL_NEURONS = 6700` as the default client floor. The eight cluster sizes (seven, plus `brainstem` added 2026-08-25) are derived from `CLUSTER_FRACTIONS` (live in `js/brain/cluster.js`):
 
 ```
 const CLUSTER_FRACTIONS = {

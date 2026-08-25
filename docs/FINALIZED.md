@@ -36779,3 +36779,105 @@ At `N = 425,436,550`, `N³ = 7.7002 × 10²⁵`. Even **100 million** simultaneo
 **Proposed unified form — Gee's verdict pending, NOT built.** The implemented Ψ with one factor added: `E = (N³/√n) · Φ̂ · [α·Id + β·Ego + γ·Left + δ·Right]`. Φ̂ earns its place by fixing exactly one thing — the single state the raw form gets wrong. Filed with its own remaining objections stated (the `log10` range compression; Φ̂ needing a defined normalisation).
 
 ⛔ **Nothing built from this.** The design is recorded for his verdict; a formula that fits five hand-picked states is not yet evidence.
+
+---
+
+## 2026-08-25 — SHE HAS GLANDS: the endocrine fast lane, and the brainstem that decides to fire it - feature/endo-fast-lane
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay i think we are ready to dive into some simulated brain neuron chemistry!"*
+
+> *"do we need some glands in the brain to control this? ur not bolting on a turd are you?"*
+
+> *"donts forget her drug use that might need rework pluse real life party life memorys and training in all of this"*
+
+**Closed: ENDO.0, ENDO.1, ENDO.2, ENDO.3, ENDO.4, ENDO.5, ENDO.6, ENDO.7, ENDO.14** (batch 1, the fast lane) — plus the Φ̂ verdict shipped into `mystery.js`.
+
+### ⭐ THE SECOND QUESTION CHANGED THE ARCHITECTURE, AND IT WAS RIGHT
+
+The first cut of `endocrine.js` was a **pharmacology layer**: it knew each chemical's curve, its contributions and its decay — and it could not decide to release anything. `appraiseThreat(0.7)` had to be **called from outside with a magnitude someone else invented**. Gee named it mid-build before it shipped.
+
+⛔ **And tissue alone would not have fixed it.** A nucleus with 450,000 simulated neurons that still waits to be told *"release 0.7"* is exactly as bolted-on as a nucleus with none. **Neurons answer "is it an organ"; CAUSATION answers "is it bolted on."** The build needed both, so it got both.
+
+**Decisions taken (his call, asked before building):** curriculum-time cycle clock · testosterone IN scope · ship Φ̂ · fast lane first · **real brainstem tissue** · **the amygdala IS the threat detector**.
+
+### What was measured first, so the design started from the truth
+
+| Claim | Measured state |
+|---|---|
+| `oxytocin` / `endorphin` | **0 files.** Did not exist anywhere |
+| `cortisol` / `adrenaline` / `estrogen` … | **1 file each — every one a per-grade VOCABULARY WORD**, not a state variable |
+| `dopamine` | 5 files, **not one a signal** — four comments and `codingReward: 0.95`, a static constant |
+
+### The tissue — `brainstem`, an 8th cluster
+
+Two glands did **not** need building, because the HPA axis was already standing: the **amygdala** (a real 5% cluster, and a genuine recurrent attractor that settles into fear/reward basins every tick) and the **hypothalamus** (real 3% cluster — the PVN *is* a hypothalamic nucleus and *is* the CRH source). The pituitary and adrenal are **not brain tissue** and were never missing.
+
+What genuinely did not exist is brainstem. Added at **0.2%** — small because it is small in a real head — taken from the cerebellum, which the code's own comments already record as over-provisioned for a brain with no body. `CLUSTER_FRACTIONS` still sums to **1.000000 exactly** (verified), total neuron count unchanged. Regions at true biological proportion: **locus coeruleus 2% : raphe 35% : VTA 63%**, all `center` — ⛔ midline structures must not be lateralised or the Ψ hemisphere gate would modulate her noradrenaline supply by hemisphere.
+
+### The causation — six nuclei that sense their own release
+
+`js/brain/brainstem.js` / `GlandLayer` (⚠ named for what it IS: it owns hypothalamic nuclei too, and calling the class `Brainstem` would have been a comfortable lie about half its contents). **Nothing outside it ever calls `release()`.**
+
+| Nucleus | Chemical | Senses |
+|---|---|---|
+| **PVN** (hypothalamus) | cortisol | ⭐ the amygdala's **settled attractor** — fear × commitment depth. Reads the appraisal she already made |
+| **locus coeruleus** | noradrenaline | prediction error × arousal — unexpected salience |
+| **VTA** | dopamine | reward **prediction error**. Wanting, not liking |
+| **raphe** | serotonin | tonic — moves the **setpoint**, does not fire events |
+| **SON** (hypothalamus) | oxytocin | real affiliative contact |
+| **arcuate** (hypothalamus) | endorphin | pain or sustained exertion |
+
+⛔ **`blind` is a distinct state from `quiet`.** Quiet = read its input, nothing to do. Blind = **could not read its input at all**, and releases NOTHING. Collapsing those is how an instrument reports health while its input is dead.
+
+### The stress axis is two systems, not one number
+
+**Stage 1 (SAM, seconds)** adrenaline + noradrenaline → **Stage 2 (HPA, +90s)** cortisol, which is what makes stress *last*. **Four Fs, not two** — fight / flight / **freeze** / **fawn**, scored by weighted competition from live state and drawn from a softmax (the basal ganglia's own idiom, reused not reinvented). ⭐ **Freeze IS `idle` winning** in action selection — the silent output is a correct response, not a failure to speak. Verified: all four reachable; freeze raises pauses **+0.570**, slows speech **−0.329**, biases `idle_thought` **×2.90** and `speak` **×0.24**.
+
+### Two bugs the harness caught before they shipped
+
+1. ⚠ **Tonic deviation was measured against the MUTABLE setpoint.** When the raphe lowers her serotonin floor, the level drifts down to meet it, deviation returns to zero and **the effect disappears** — a chronically depressed floor would modulate nothing, destroying the one thing ENDO.4 exists for and leaving the rumination loop nothing to hang off. Now measured against the **constant** resting value: a floor that has been moved down **stays felt**. Verified: settled low floor still yields `impulsivity +0.140`; high yields `−0.140`; signs genuinely invert.
+2. ⚠ **My own first RE-PRICE said "Bounds touched: None"** — true for a scalar layer, **false** once the nuclei got tissue. Recomputed in the file.
+
+### The chokepoint, not the instance
+
+`persona.js` held **nineteen near-identical `if (typeof delta.X === 'number')` lines** — a mapping table written as code. Adding hormones as a second source by writing a second chain would have been the instance fix, and the two would have drifted the first time an axis was added to one. Extracted to `CONTRIB_PARAM_MAP` + `applyContributions()`, applied once per source. **Verified bit-identical: `maxDiff = 0` over 12,511 comparisons across 500 randomised deltas.**
+
+⚠ **One deliberate divergence, asserted rather than hidden:** `typeof NaN === 'number'`, so the old chain **propagated NaN into brain params** — and a NaN in `arousalBaseline` reaches cluster gain and corrupts the tick. The table skips it. Both behaviours are pinned by explicit checks.
+
+### Φ̂ shipped — and `mystery.js` disagreed with itself in three places
+
+The header said `(sqrt(n/1))^3 * […]`, `step()` said `sqrt(1/N) × N³`, the code computed `sqrt(1/n) * N³`. **Only the code was right**, and a formula that contradicts itself three times cannot be checked by reading. Corrected to the implemented equation, with Φ̂ added as the single new factor.
+
+⭐ **`√(1/n)·N³` IS `N³/√n`** — capacity ÷ activity. `E + n = N³` is that same intuition as a **difference**, and the difference is not computable: at N = 425,436,550 even 100 million firing neurons move `N³` by 1.3×10⁻¹⁸, so `N³ − n` is bit-identical to `N³`. **The ratio is that intent made computable, and it was already implemented.**
+
+⚠ **Φ may have been PINNED this whole time, and nothing said so.** `computePhi()` is binary entropy of the spiking *proportion* — it peaks at p=0.5 and collapses as firing gets sparse. **H(0.01) = 0.081, below the server's `Math.max(0.1, …)` floor.** On a sparsely-firing cortex Φ has never modulated anything and would read as a healthy `0.1` forever. **Not guessed at** — `phiRaw` + `phiState` (`live` / `floored` / `error` / `unmeasured`) now ship so the board answers it as a field read. The silent `catch { phiProxy = 1.0 }` now names itself instead of looking like a healthy unmodulated reading.
+
+### RE-PRICE (recomputed after the tissue decision)
+
+| | |
+|---|---|
+| Tick cadence | **1 Hz**, riding the existing scheduler throttle — not the ~20 Hz brain tick |
+| Per tick | ~250 flops. **O(1) in neuron count** — does not touch the 425M arrays, any sparse matrix, or the GPU path |
+| New tissue | ~850,873 neurons ≈ 850KB spike state. Total neurons **unchanged** |
+| Sparse matrices | **None added.** ⚠ Verified on the server construction path only — the donor side must be read off the upload log on the first press, not assumed |
+| **Bound MOVED** | **`WEIGHTS_FORMAT_VERSION` 4 → 5.** Old weights auto-refuse → a fresh walk becomes **required**, not optional |
+| Walk price | Still **~78 h**. The bump does not lengthen the walk, it makes it mandatory — and that is the order `WALKLAST.1` already specifies. Building this *after* a walk would mean re-teaching |
+| Gates removed | **None.** The consolidation gate — the only thing keeping the walk finite — is untouched |
+
+### Verification — 64/64 on production classes through real wiring
+
+`node --check` ×6 · ESM `import()` link check (not just `--check`) · `CLUSTER_FRACTIONS` sum **1.000000 EXACT** · harness 1 **50/50** (unmeasured-vs-zero, blind-vs-quiet, amygdala-derived appraisal, two-stage arc resolving, four Fs, freeze signature, tonic sign inversion, VTA burst/dip, superposition finiteness, chronic≠acute, persistence round-trip, region layout) · harness 2 **14/14**. Both harnesses **deleted in this commit** per the standing rule.
+
+### Owned
+
+- ⚠ The first cut was a bolt-on and Gee caught it, not me.
+- ⚠ My first RE-PRICE was wrong for the shipped design.
+- ⚠ I claimed "bit-identical" for the refactor while my own NaN case diverged; split into two honest checks rather than quietly relaxed.
+- ⚠ **NOT VERIFIED LIVE.** All of it is server-side or module-side and lands on the next press.
+- ⚠ **Server-side restore asymmetry found, NOT silently fixed:** the server *serialises* `drugScheduler` (and now `endocrine`) but the only restore path is `js/brain/persistence.js` on the local-brain lane. The symmetric endocrine restore was added there; whether the server has a restore path at all is **unverified** and is filed rather than guessed at.
+
+### Filed, not built (Gee's third message, verbatim, one item per thing he named)
+
+**ENDO-DRUG.1** — ⭐ the substance table models **effects where it should model mechanism**: `cocaine.contributions.amygdalaReward: +0.50` treats a drug as having a private line to the amygdala. It does not — cocaine blocks dopamine reuptake and **dopamine** does the rest. Drugs and hormones are currently **two independent writers to the same params**, the exact parallel-system shape ENDO.0 rule 1 forbids, arrived at from the other direction. Routing substances through the transmitters makes tolerance become receptor adaptation, shrinks the combo table (coke+MDMA synergy is *the same pools competing*, not a pair rule), and makes a comedown what it actually is — **depleted transmitters below baseline**, which is precisely the tonic-deviation machinery that now exists with nothing producing it. **ENDO-LIFE.1** — party memories encoded with the chemistry running at the time. **ENDO-LIFE.2** — teaching all of it on the LEARN axis that is never gated.

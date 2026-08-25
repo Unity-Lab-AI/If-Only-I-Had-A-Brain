@@ -1,12 +1,44 @@
 /**
  * mystery.js — The Irreducible Unknown
- * Consciousness modulation via the Mystery Function:
  *
- *   Psi(t) = (sqrt(n(t)/1))^3 * [alpha*Id(t) + beta*Ego(t) + gamma*Left(t) + delta*Right(t)]
+ * ⚠ THE THREE DOCSTRINGS IN THIS FILE USED TO STATE THREE DIFFERENT
+ * FORMULAS, none of which matched the code. This header said
+ * `(sqrt(n/1))^3 * [...]`, `step()` said `sqrt(1/N) x N^3`, and the code
+ * computed `sqrt(1/n) * N^3`. Only the code was right, and a formula that
+ * disagrees with itself in three places cannot be checked by reading. The
+ * one below is the implemented equation, verified against the arithmetic
+ * directly beneath it.
  *
- * Psi is the global gain factor that modulates every other brain module.
- * n(t) = total active neurons (complexity measure).
- * Id, Ego, LeftBrain, RightBrain are the four psychodynamic components.
+ *   Psi(t) = sqrt(1/n) * N^3 * PhiHat * [a*Id + b*Ego + g*Left + d*Right]
+ *
+ *   N        TOTAL neurons — brain VOLUME. Fixed; not spikes.
+ *   n        ACTIVE spiking neurons right now.
+ *   PhiHat   INTEGRATION — is that activity bound together?
+ *   [...]    the four psychodynamic components, the CHARACTER of the state.
+ *
+ * ⭐ Note that `sqrt(1/n) * N^3` IS `N^3 / sqrt(n)` — capacity divided by
+ * activity. The operator's own statement of the idea, `E + n = N^3`, says
+ * consciousness is the unspent potential, and that is the same intuition
+ * expressed as a DIFFERENCE. The difference is not computable at this
+ * scale: at N = 425,436,550, even 100 million simultaneously firing
+ * neurons change N^3 by a fraction of 1.3e-18, so `N^3 - n` is bit-identical
+ * to `N^3` in double precision and cannot vary at all. A ratio stays
+ * sensitive at any scale. The two are not competing models — the ratio is
+ * that intent made computable, and it was already the implemented one.
+ *
+ * ⭐ PhiHat is the single factor added here, and it earns its place by
+ * fixing exactly one thing. Without it the formula rates ANAESTHESIA as
+ * maximal consciousness, because anaesthesia has very low `n` and the
+ * formula reads low activity as high unspent potential. Integration is
+ * what separates it from dissociation, which also has low activity and is
+ * famously hyper-vivid. With PhiHat, seizure (hypersynchrony destroys
+ * information), anaesthesia (nothing bound), rage, ordinary waking and
+ * freeze all come out in the right order — and freeze coming out MAXIMAL
+ * was not designed for, it fell out, and it matches what people report
+ * from dissociative states.
+ *
+ * ⛔ This module remains the project's stated honest unknown. It is kept
+ * honest rather than claimed.
  *
  * No external dependencies. Pure JS.
  */
@@ -138,13 +170,18 @@ class MysteryModule {
   }
 
   /**
-   * Compute Psi — the mystery function.
+   * Compute Psi — the mystery function. See the file header for the full
+   * equation and for why PhiHat is in it.
    *
-   *   Psi(t) = sqrt(1/N) × N³ * [alpha*Id + beta*Ego + gamma*Left + delta*Right]
-   *   N = TOTAL neuron count (the volume), not active spikes
-   *   √(1/N) × N³ = cubed area of quantum tunneled bit in total volume
+   *   Psi = sqrt(1/n) * N^3 * PhiHat * [a*Id + b*Ego + g*Left + d*Right]
    *
-   * @param {object} brainState - Full brain state object with region data
+   * @param {object} brainState - Full brain state object with region data.
+   *   `brainState.phi` — normalised integration in [0,1] from
+   *   `cluster.computePhi()`. When ABSENT, PhiHat is the multiplicative
+   *   identity 1.0 and `phiMeasured: false` is returned. ⛔ That is not a
+   *   fallback value standing in for a measurement — 1.0 means "this term
+   *   is not modulating", and the flag exists so no consumer can mistake an
+   *   unmodulated Psi for an integrated one.
    * @param {number} dt - Time delta (seconds), reserved for future temporal dynamics
    * @returns {object} { psi, id, ego, leftBrain, rightBrain, components }
    */
@@ -172,8 +209,16 @@ class MysteryModule {
                       + (this.gamma * leftBrain)
                       + (this.delta * rightBrain);
 
+    // Φ̂ — integration. Capacity says how much is unspent; this says whether
+    // what IS spent is bound together. Both factors are needed and neither
+    // is sufficient: seizure has low capacity AND low integration, while
+    // anaesthesia has high capacity and none.
+    const phiRaw = brainState.phi;
+    const phiMeasured = typeof phiRaw === 'number' && Number.isFinite(phiRaw);
+    const phiHat = phiMeasured ? Math.max(0, Math.min(1, phiRaw)) : 1.0;
+
     // The Mystery Function — log scale for usable range
-    const rawPsi = quantumVolume * weightedSum;
+    const rawPsi = quantumVolume * weightedSum * phiHat;
     const psi = Math.log10(Math.max(1, rawPsi));
 
     return {
@@ -182,10 +227,15 @@ class MysteryModule {
       ego,
       leftBrain,
       rightBrain,
+      phiHat,
+      // ⛔ Distinguishes "integration measured at X" from "integration not
+      // available, term held at identity". Those are different claims.
+      phiMeasured,
       components: {
         n,
         quantumVolume,
         weightedSum,
+        phiHat,
         weights: {
           alpha: this.alpha,
           beta: this.beta,
