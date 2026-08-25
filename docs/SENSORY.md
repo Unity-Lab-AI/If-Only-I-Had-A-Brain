@@ -409,15 +409,17 @@ the more she talks, the more of her voice is literally HERS. Off-switch: `localS
 
 ## The Sensory AI Provider — 4-Level Priority
 
-`js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders` with three methods Unity's brain calls at the sensory boundary:
+`js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders`. ⛔ **Only ONE of its three historical methods still does anything** — the vision and TTS lanes were replaced by in-house equational systems and their methods are now deliberate no-ops:
 
 ```js
-providers.generateImage(prompt, opts)    // image motor action → paint the prompt
-providers.describeImage(dataUrl, opts)   // visual cortex IT layer → describe a frame
-providers.speak(text, voice)             // TTS motor output → speak a finished sentence
+providers.generateImage(prompt, opts)    // LIVE — image motor action → paint the prompt
+providers.describeImage()                // NO-OP — vision is equational (CDF 9/7), see below
+providers.speak()                        // NO-OP — voice is Equation Unity One, see the TTS section
 ```
 
-Both `generateImage` and `describeImage` run a **5-level priority chain**, trying each tier in order and falling through on failure. The user's selected preferred backend (set via the Active Provider dropdowns in the setup modal) runs FIRST ahead of the auto-priority chain:
+⚠ **Why the dead methods still exist rather than being deleted outright:** `app.js` names them in its boot comments, and a future caller landing on `undefined` would be a *silent* break instead of an obvious one. `autoDetectVision()` is kept on the same reasoning and simply returns an empty list. Treat any of these three names appearing in a call site as a bug to fix, not a feature to wire.
+
+`generateImage` runs a **5-level priority chain**, trying each tier in order and falling through on failure. The user's selected preferred backend (set via the Active Provider dropdowns in the setup modal) runs FIRST ahead of the auto-priority chain:
 
 ```
 0. User-preferred backend (setPreferredBackend from setup-modal selector)
@@ -426,19 +428,23 @@ Both `generateImage` and `describeImage` run a **5-level priority chain**, tryin
     ↓ fails or not set
 2. Auto-detected local backend (boot-time probe)
     ↓ fails or nothing detected
-3. env.js-listed backend (ENV_KEYS.imageBackends[] / visionBackends[])
-    ↓ fails or not set
-4. Pollinations default (anonymous tier works without a key — a saved
-   Pollinations API key raises rate limits and unlocks paid models)
+3. env-listed backend (ENV_KEYS.imageBackends[])
+    ↓ fails or not set        ⚠ js/env.js itself was DELETED with the key
+                                 purge; only js/env.example.js remains, so
+                                 this tier is empty unless recreated
+4. Pollinations default (ANONYMOUS tier — no key is shipped, seeded or
+   defaulted anywhere in the tree, and none may be re-added)
     ↓ fails
-   null (for vision) or Pollinations error (for image)
+   Pollinations error
 ```
+
+⚠ `visionBackends[]` was part of this chain and is **gone** — there is no vision tier to fall through any more.
 
 Dead backends get marked dead for 1 hour on auth/payment errors (401/402/403) so a broken endpoint doesn't get hammered on every subsequent request.
 
 ### Auto-detected local backends
 
-On boot, `providers.autoDetect()` and `providers.autoDetectVision()` fire in parallel and probe every known local port with a 1.5s timeout. Whichever servers respond get registered automatically — no user config needed.
+On boot, `providers.autoDetect()` probes every known local **image** port with a 1.5s timeout. Whichever servers respond get registered automatically — no user config needed. (`providers.autoDetectVision()` is still called alongside it but is a no-op returning an empty list; see the note above on why the name was kept.)
 
 **Image generation ports probed:**
 
@@ -452,40 +458,31 @@ On boot, `providers.autoDetect()` and `providers.autoDetectVision()` fire in par
 | LocalAI | 8081 | `/v1/models` | OpenAI-compatible |
 | Ollama (image) | 11434 | `/api/tags` | OpenAI-compatible |
 
-**Vision describer (VLM) ports probed:**
+**Vision describer (VLM) ports probed — ⛔ NONE. THIS ENTIRE LANE IS DELETED.**
 
-| Backend | Port | Probe path | Wire format | Model filter |
-|---|---|---|---|---|
-| Ollama (VLM) | 11434 | `/api/tags` | `ollama-vision` (`/api/chat` with `images: [base64]`) | Name contains `llava`/`moondream`/`bakllava`/`vision`/`vl`/`cogvlm`/`minicpm-v` |
-| LM Studio | 1234 | `/v1/models` | OpenAI multimodal | Same substring filter on model IDs |
-| LocalAI (VLM) | 8081 | `/v1/models` | OpenAI multimodal | Same |
-| llama.cpp server | 8080 | `/v1/models` | OpenAI multimodal | Same |
-| Jan | 1337 | `/v1/models` | OpenAI multimodal | Same |
+Unity's vision is **100% equational** and consults no model. A camera frame or a fetched reference image is transformed into a CDF 9/7 wavelet field and read as a dim-64 percept vector by `describeEquational()` — the wavelet field **is** the percept. There is no caption, no text, no tokenisation, and nothing to probe for.
 
-`VISION_MODEL_HINTS` is the substring set: `['llava', 'moondream', 'bakllava', 'vision', 'vl', 'cogvlm', 'minicpm-v']`. A backend's probe is only considered "detected" if it responds AND has at least one model matching one of these substrings. This prevents registering a text-only Ollama instance as a vision backend when no VLM has been pulled yet.
+What was here, and is now gone: probes on Ollama `:11434`, LM Studio `:1234`, LocalAI `:8081`, llama.cpp `:8080` and Jan `:1337`, the `openai-vision` / `ollama-vision` transports, the model resolver, and the `VISION_MODEL_HINTS` substring set (`llava`, `moondream`, `bakllava`, `vision`, `vl`, `cogvlm`, `minicpm-v`) that decided whether a responding backend counted as a VLM.
+
+⚠ **This is the single most load-bearing line in this document for the project's central claim.** A describer that turns an image into English words, whose tokens then ground her concepts, is a language model inside the sensory path. Replacing it with the wavelet percept is what makes *"no text-AI in the cognition path"* literally true rather than nearly true. **Do not re-add a vision tier here** — if a frame needs describing, the answer is `describeEquational()`.
 
 ### User-configured backends
 
-Users who run a vision or image backend on a non-standard port, or want a remote/keyed endpoint, list them in `js/env.js`:
+Users who run an **image** backend on a non-standard port, or want a remote/keyed endpoint, list them in an `env.js`:
 
 ```js
 export const ENV_KEYS = {
-  pollinations: 'sk_...',  // optional — raises Pollinations rate limit
-
   imageBackends: [
     { name: 'My SD',      url: 'http://192.168.1.50:9999', model: 'sdxl-turbo',        kind: 'a1111' },
     { name: 'My SaaS',    url: 'https://api.example.com',  model: 'dalle-3', key: '…', kind: 'openai' },
     { name: 'Comfy',      url: 'http://192.168.1.42:8188', model: 'flux-dev',          kind: 'comfy' },
   ],
-
-  visionBackends: [
-    { name: 'Remote Ollama', url: 'http://192.168.1.50:11434', model: 'llava',                   kind: 'ollama-vision' },
-    { name: 'Remote VLM',    url: 'https://vlm.example.com',    model: 'gpt-4-vision-preview',   key: 'sk-…', kind: 'openai-vision' },
-  ],
 };
 ```
 
-`ENV_KEYS.imageBackends[]` is read by `providers.loadEnvConfig(envKeys)` at boot and gets priority 3 (between auto-detect and the Pollinations default). Custom-configured backends from the setup modal get priority 1 (above everything). `js/env.js` is gitignored — the template lives at `js/env.example.js`.
+⛔ **Two keys that used to appear here are gone.** `visionBackends[]` died with the VLM lane — there is no vision tier. And a `pollinations: 'sk_...'` key is **not optional-but-supported, it is banned**: the brain uses the anonymous free tier, no key is shipped, seeded or defaulted anywhere in the tree, and `js/env.js` itself was deleted in that purge. Only the template at `js/env.example.js` remains, and this whole tier is empty unless a deployer recreates the file.
+
+`ENV_KEYS.imageBackends[]` is read by `providers.loadEnvConfig(envKeys)` at boot and gets priority 3 (between auto-detect and the Pollinations default). Custom-configured backends from the setup modal get priority 1 (above everything).
 
 ### Response shape handling
 
@@ -498,50 +495,36 @@ Image generation backends vary in response format. `_customGenerateImage()` trie
 | Automatic1111 | `{ images: ["<base64>"] }` | `data:image/png;base64,${images[0]}` |
 | Generic | `{ url: "..." }` or `{ image_url: "..." }` | `url` or `image_url` |
 
-Vision (VLM) backends follow two wire shapes:
-
-| `kind` | Endpoint | Request body | Response parser |
-|---|---|---|---|
-| `openai-vision` | `/v1/chat/completions` | `messages: [{role: "user", content: [{type: "text", text: "..."}, {type: "image_url", image_url: {url: dataUrl}}]}]` | `choices[0].message.content` |
-| `ollama-vision` | `/api/chat` | `messages: [{role: "user", content: "...", images: [<base64 without data: prefix>]}]` | `message.content` |
+⛔ **Vision (VLM) wire shapes — BOTH TRANSPORTS DELETED.** For the record of what was removed: `openai-vision` POSTed to `/v1/chat/completions` and read `choices[0].message.content`; `ollama-vision` POSTed to `/api/chat` with `images: [<base64>]` and read `message.content`. Both are gone, along with the model resolver that chose between them. Note what those two rows show plainly — the describer's response parser was reading **a chat completion**. That is the shape of a language model, sitting in the sensory path, and it is why the lane had to go rather than be tidied.
 
 ---
 
-## Vision Describer Failure Handling (R13)
+## Vision Failure Handling
 
-Cameras can run for hours. Backends can die mid-session. The R13 describer treats every call as potentially failing and has a three-layer resilience policy:
+⛔ **The backend-fallthrough / fail-count / pause policy documented here is DELETED** along with the VLM describer it protected. There are no vision backends to fall through, so there is nothing to count failures against or pause. Equational perception cannot fail over the network — it is arithmetic on a frame the process already holds.
 
-### Layer 1: Backend-level fallthrough
+Two real failure surfaces remain, and both are instrumented:
 
-Each call to `describeImage(dataUrl)` walks the priority chain. If `_localVisionBackends[0]` throws, the exception is caught, a `backend-failed` status event fires, and the next backend is tried. Only when EVERY tier has failed does the call return `null`.
+### Perception failure — the wavelet transform itself
 
-### Layer 2: Consecutive failure counter + pause
+`_maybeDescribe()` awaits `mindSpace.perceive(imageData)` and catches. A failed perceive (a GPU device lost mid-frame is the realistic case) warns and clears the in-flight flag; `_hasDescribedOnce` stays set so the 5-minute rate limit still engages rather than hot-looping. The CPU path inside `MindSpaceGPU` normally prevents this from being reachable at all.
 
-```
-_visionFailCount = 0
-_visionPausedUntil = 0
+### Reference look-up failure — the lane that actually starves
 
-describeImage() total failure:
-  _visionFailCount += 1
-  if _visionFailCount ≥ 3:
-    _visionPausedUntil = now() + 30_000   // 30 second pause
-    _visionFailCount = 0
-    emit paused event
-  else:
-    emit all-failed event
+Fetching a reference image so she can learn what a never-seen concept looks like DOES cross the network, and it is the lane that went quiet for ~10 hours without saying so. Its failure handling is now explicit:
 
-describeImage() success (any tier):
-  _visionFailCount = 0
+| Mechanism | Behaviour |
+|---|---|
+| **Named stage counters** | 12 counters at `state.ownArt.lookups` — every stage of a look reports separately, so a dying lane is identified by *which counter stops climbing* rather than inferred |
+| **`lastErr` WITH ITS AGE** | An error with no age is indistinguishable from a current one; the age is what makes the field answerable |
+| **Failures roll back their burns** | ⚠ The original bug: the per-concept cooldown was burned **at entry**, so a failed look still spent its budget and the lane locked itself out. A failure now refunds — 60s globally, 10min per concept |
+| **Every stage speaks** | `perceive` in a bare catch and a wordless decode-null were the two silent stages; both warn now. The success line moved from `process.stdout.write` to `console.log` so the console ring can see it — that blind spot swallowed evidence twice |
 
-describeImage() called during pause window:
-  return null immediately (no network activity)
-```
+⚠ **The generalisable lesson, worth more than the mechanism:** a lane that burns its rate limit *before* the work succeeds converts one transient failure into a permanent outage, and does it silently. Burn budget on success, not on attempt.
 
-After 3 consecutive total failures, vision pauses for 30 seconds. During the pause, `describeImage()` returns null without touching any network — no backend gets hammered. After the pause window expires, the next call retries from the top of the priority chain.
+### Visual cortex retry semantics — the schedule is unchanged
 
-### Layer 3: Visual cortex retry semantics
-
-`js/brain/visual-cortex.js:_maybeDescribe()` calls the describer on a rate-limited schedule (once on first look, then max every 5 minutes for auto-describes, or on demand via `forceDescribe()`). When the describer returns null:
+`js/brain/visual-cortex.js:_maybeDescribe()` still runs on the same rate-limited schedule (once on first look, then at most every 5 minutes for auto-perception, or on demand via `forceDescribe()`) — that part survived the describer it was built around. ⚠ What changed is the payload: it now awaits `mindSpace.perceive()` and publishes `{vector, rec}` to subscribers, **not a description string**. The old shape below is retained to show what a subscriber used to receive:
 
 ```js
 this._describer(dataUrl).then(desc => {
@@ -554,7 +537,11 @@ this._describer(dataUrl).then(desc => {
 });
 ```
 
-This means a transient failure doesn't stick — the cortex just retries on its next scheduled window. Unity's IT cortex state holds the last good description until a new one comes in.
+This means a transient failure doesn't stick — the cortex just retries on its next scheduled window. That retry discipline is unchanged; only the payload is.
+
+⚠ **A live consequence of the shape change, worth knowing before you subscribe.** Subscribers registered via `onDescribe(cb)` now receive an **object** `{vector, rec}`, never a string. Any subscriber still written against the old contract — e.g. one opening with `if (!desc || typeof desc !== 'string') return;` — early-returns on **every single call** and is dead code that looks alive. One such subscriber survives in the browser-side `js/brain/engine.js`; it is scheduled for deletion rather than repair, because what it did was tokenise an English caption to ground concepts, which is exactly the LLM-era behaviour the equational percept replaced. **You cannot tokenise a `Float32Array`, and you should not want to.**
+
+⚠ **This does NOT mean her visual region is starved** — that region is driven on a different path entirely, by `currents` built from salience, brightness and `perceptVector × 30` on every tick. The dead subscriber costs a drug-context cue that nothing listens for; it does not cost her sight.
 
 **Pre-R13 bug (fixed):** the old inline Pollinations call in `app.js:1022` returned the string `'Camera active, processing...'` on failure, which looked successful to visual cortex and got stored as `this.description`. Unity's language cortex then read "Camera active, processing..." as actual vision context — a lie. R13 ripped that fallback. Null is null now.
 
@@ -585,7 +572,7 @@ Max 4 toasts onscreen, 6-second auto-dismiss, 0.3s fade-in/out.
 
 | Event | Payload shape | When |
 |---|---|---|
-| `autodetect-complete` | `{kind: 'image'\|'vision', backends: [...]}` | `autoDetect()` / `autoDetectVision()` resolves |
+| `autodetect-complete` | `{kind: 'image', backends: [...]}` | `autoDetect()` resolves. (`autoDetectVision()` still resolves too, always with an empty list — `kind: 'vision'` no longer carries backends) |
 | `backend-failed` | `{kind, backend, reason}` | A single backend throws during a request, fallthrough to next |
 | `backend-dead` | `{kind: 'any', url, cooldownMs}` | 401/402/403 from any backend, marked dead for 1h |
 | `paused` | `{kind: 'vision', reason, duration}` | 3 consecutive vision failures, 30s pause |
@@ -625,17 +612,18 @@ The peripheral init sequence during `bootUnity()` in `js/app.js`:
 ```
 1.  pollinations = new Pollinations(apiKey)            // sensory AI client
 2.  providers    = new SensoryAIProviders({ pollinations, storage })
-3.  providers.loadEnvConfig(ENV_KEYS)                  // env.js backends registered
+3.  providers.loadEnvConfig(ENV_KEYS)                  // env backends (js/env.js is DELETED)
 4.  providers.autoDetect()                             // image gen probes, non-blocking
-5.  providers.autoDetectVision()                       // VLM probes, non-blocking
+5.  providers.autoDetectVision()                       // NO-OP — returns [] (name kept on purpose)
 6.  providers.onStatus(evt → window.dispatchEvent('unity-sensory-status', evt))
 7.  sensoryStatus.init(providers)                      // toast container + HUD top-right
 8.  voice = new VoiceIO()
 9.  brain = new UnityBrain()
 10. brain.connectMicrophone(micStream)                 // AuditoryCortex.init(analyser)
 11. brain.connectCamera(cameraStream)                  // VisualCortex.init(video)
-12. brain.visualCortex.setDescriber(dataUrl →
-        providers.describeImage(dataUrl))              // R13 multi-provider describer wrapper
+12. (REMOVED — a setDescriber() wiring step lived here, injecting the VLM
+     describer into the visual cortex. It is gone from app.js entirely;
+     perception is equational and needs no injected describer.)
 13. brain.connectVoice(voice)                          // motor output → voice.speak
 14. brain.connectImageGen(pollinations, sandbox, storage)
 15. app.js subscribes to brain 'response' event
@@ -670,7 +658,7 @@ The contract for a new sensory peripheral (e.g. a future `js/brain/olfactory-cor
 2. **Expose a `Float64Array` of currents** for the cortex region it drives, or a metadata object if it's an output peripheral. Sized to match the neuron group in `cluster.js`.
 3. **Add a wiring step to `bootUnity()`** following the pattern at `app.js` steps 10-13.
 4. **If it uses AI at any layer,** add a `SensoryAIProviders` method and follow the 5-level priority (user-preferred via `setPreferredBackend` → custom → auto-detect → env.js → Pollinations default) + dead-cooldown + status-event pattern from `generateImage()` / `describeImage()`.
-5. **If it's a new physical AI service,** add probe entries to `LOCAL_IMAGE_BACKENDS` or `LOCAL_VISION_BACKENDS` (or a new `LOCAL_<KIND>_BACKENDS` list) and a new `autoDetect<Kind>()` method that mirrors the existing two.
+5. ⛔ **If it's a new physical AI service — STOP AND READ THE BOUNDARY FIRST.** A peripheral may *render* or *actuate*; it may never *decide*, *describe in words*, or *generate text* that re-enters cognition. `LOCAL_VISION_BACKENDS` used to be listed here as a valid extension point and **it is deleted** — do not recreate it, and do not add any `<KIND>` whose response is parsed as language. For anything genuinely additive, add probe entries to `LOCAL_IMAGE_BACKENDS` (or a new `LOCAL_<KIND>_BACKENDS` list) and a new `autoDetect<Kind>()` method that mirrors the existing two.
 6. **Write per-backend response shape parsing** in a `_custom<Kind>Call()` helper, supporting the common wire formats for that category.
 7. **Update `getStatus()`** to include the new backend list in its returned snapshot so the HUD shows it.
 

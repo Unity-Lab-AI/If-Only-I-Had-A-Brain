@@ -205,15 +205,15 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │  └──────────┘  └──────────┘  └──────────────────────────────┘  │
 │                           │                                      │
 ├───────────────────────────┼──────────────────────────────────────┤
-│              AI BACKENDS (Multi-Provider, User's Choice)         │
+│        SENSORY PERIPHERALS — output only, never cognition        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │Pollinations│ │OpenRouter│  │ OpenAI   │  │ Local AI     │    │
-│  │ text+img │  │ 200+ mod │  │ GPT-4o   │  │ Ollama etc   │    │
+│  │Pollinations│ │ Local SD │  │  Piper   │  │ Equational   │    │
+│  │IMAGE only│  │A1111/Comf│  │ +CDF 9/7 │  │ vision (9/7) │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │ Claude   │  │ Mistral  │  │ DeepSeek │  │ Groq         │    │
-│  │(via proxy)│ │          │  │          │  │ ultra-fast   │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
+│                                                                │
+│  NO text-AI backend anywhere. Cognition is 100% equational.    │
+│  OpenAI / Claude / OpenRouter / Mistral / DeepSeek / Groq /    │
+│  Ollama-chat / GPT-2 / the arbiter: ALL DELETED 2026-08-25.    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -652,7 +652,7 @@ Unity's biographical substance first-use events are the same anchors the drug sc
 0. **User-preferred** — set via the Active Provider selector in the setup modal. Calls `providers.setPreferredBackend('image', {source, name, model})`. When set, this backend runs FIRST ahead of the auto-priority chain. Falls through to the chain on failure
 1. **Custom-configured** — user-added entries in `ENV_KEYS.imageBackends[]` with `{name, url, model, key, kind}`
 2. **Auto-detected local** — `autoDetect()` probes 7 common ports in parallel (1.5s timeout each): A1111 `:7860`, SD.Next/Forge `:7861`, Fooocus `:7865`, ComfyUI `:8188`, InvokeAI `:9090`, LocalAI `:8081`, Ollama `:11434`
-3. **env.js-listed** — backends loaded from `js/env.js` via `providers.loadEnvConfig(ENV_KEYS)` at boot
+3. **env-listed** — backends loaded via `providers.loadEnvConfig(ENV_KEYS)` at boot. ⚠ `js/env.js` itself was **DELETED** with the API-key purge (2026-08-22); only `js/env.example.js` remains as a template, so this tier is empty unless a deployer recreates the file
 4. **Pollinations default** — Unity's built-in provider, always available. Anonymous tier works without a key; a saved Pollinations API key unlocks paid models and higher rate limits
 
 `_customGenerateImage(url, model, key, prompt, opts)` supports 4 response shapes so practically any SD-alike backend works: OpenAI `{data:[{url}]}`, OpenAI b64 `{data:[{b64_json}]}`, A1111 `{images:['<base64>']}`, generic `{url}`/`{image_url}`. Dead-backend cooldown (1 hour) on auth/payment errors so bad endpoints don't get hammered.
@@ -676,7 +676,6 @@ R4 (commit `7e095d0`) deleted: `BrocasArea.generate()` AI-prompting pipeline, `_
 ```
 If-Only-I-Had-A-Brain/
 ├── index.html                  # Entry point — setup modal, brain HUD, sandbox (root-only — GitHub Pages landing URL)
-├── proxy.js                    # Anthropic CORS proxy (Node.js)
 ├── css/
 │   └── style.css               # Dark gothic aesthetic
 ├── js/
@@ -758,7 +757,7 @@ If-Only-I-Had-A-Brain/
 |--------|-----------|
 | Pollinations API | Image generation only (key is images-only). **No text chat, no TTS, no vision describer.** Free fallback in the 4-level image-gen priority. |
 | Local image backends | Auto-detected at boot on localhost: A1111/SD.Next/Forge/Fooocus/ComfyUI/InvokeAI/LocalAI/Ollama. 1.5s probe timeout per port. |
-| env.js image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). |
+| env-listed image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). ⚠ `js/env.js` was DELETED 2026-08-22 with the key purge; `js/env.example.js` is the remaining template. |
 | Web Speech API | Voice input (SpeechRecognition) with speech interruption handling |
 | Piper + CDF 9/7 voice pipeline | Voice output — in-browser (onnxruntime-web WebGPU→wasm, self-hosted `voice-engine/`) `en_US-hfc_female-medium` whole-sentence → wavelet equations |
 | Webcam / Vision | `getUserMedia` capture → CDF 9/7 equational percept (`describeEquational`, no LLM) → gaze tracking → Eye widget |

@@ -491,7 +491,7 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | Resource | Description |
 |---|---|
 | **[📑 Page Legend](html/legend.html)** | Quick-access index for every HTML + public-facing doc (every other HTML has a floating `📑 Pages` button pointing here) |
-| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET |
+| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET, THEORY_PAPER, KNOWN_ISSUES, ADMIN_CONTROLS, THRESHOLD_DERIVATION, HELD_BACK |
 | **[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** | Open Unity in your browser — no install. This is the running brain, not a demo build |
 | **[Setup Guide](docs/SETUP.md)** | Installation, WebGPU prerequisite, AI providers, self-hosting, troubleshooting |
 | **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** | Interactive walkthrough of every equation |
@@ -503,6 +503,11 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | **[Skill Tree](docs/SKILL_TREE.md)** | Capabilities matrix by domain and complexity |
 | **[Sensory Contract](docs/SENSORY.md)** | Peripheral interface, cognition vs. sensory boundary |
 | **[WebSocket Protocol](docs/WEBSOCKET.md)** | Wire reference, rate limits, reconnection, security model |
+| **[Theory Paper](docs/THEORY-PAPER.md)** | The full technical theory — how a brain this size learns to speak with no language model |
+| **[Known Issues](docs/KNOWN_ISSUES.md)** | The honest defect ledger, open and closed |
+| **[Admin Controls](docs/ADMIN-CONTROLS.md)** | Every operator lever — dashboard controls and the `DREAM_*` environment flags |
+| **[Threshold Derivation](docs/THRESHOLD-DERIVATION.md)** | Where the gate thresholds come from, derived rather than tuned |
+| **[Held-Back Spec](docs/HELD-BACK.md)** | Mastery-gated remediation — what happens when a cell fails |
 | **[GitHub](https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain)** | Source, issues, contributions |
 
 ---

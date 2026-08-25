@@ -105,7 +105,7 @@
 - **Sensory-only AI** (image gen, vision describer, TTS/STT) — cognition is 100% equational, no text-AI
 
 ### Backend Engineering
-- Node.js CORS proxy for Anthropic API (`proxy.js`)
+- ⛔ **DELETED 2026-08-25** — a Node.js CORS proxy for the Anthropic API (`proxy.js`) shipped in the tree with zero importers. It was removed with the rest of the LLM residue; nothing in the brain ever called it
 - EventTarget-based real-time state streaming (no WebSocket needed)
 - Float64Array tensor operations at 60fps
 - Browser-only architecture for core brain; **plus deployed Node brain-server backend** (`server/brain-server.js`) — always-on, WebSocket, behind an nginx reverse-proxy serving the static page + WSS to the backend
@@ -259,7 +259,7 @@
 | Drug combo state vectors | CompNeuro | Expert | **DONE** — 4 combos in `js/brain/persona.js` |
 | √(1/n) × N³ mystery module | CompNeuro | Expert | **DONE** — `js/brain/mystery.js` + 50-neuron cluster |
 | Attention mechanism | AI/ML | Advanced | Pending |
-| Anthropic CORS proxy | Backend | Intermediate | **DONE** — `proxy.js` (Node.js, translates OpenAI→Anthropic format) |
+| Anthropic CORS proxy | Backend | Intermediate | ⛔ **DELETED 2026-08-25 (LLMGUT.4)** — `proxy.js` (Node.js, translated OpenAI→Anthropic format) was a working forwarder with **zero importers**. Removed with the LLM residue. Kept in this table as a closed row rather than dropped, so "was there ever an LLM path?" has a written answer |
 | Camera/vision integration | Vision | Intermediate | **DONE** — `js/brain/visual-cortex.js` (V1 Gabor edge kernels → V4 color → salience saccades → IT AI description via Pollinations GPT-4o) + Eye iris in `app.js:1500` |
 | 3D brain visualizer | Frontend | Expert | **DONE** — `js/ui/brain-3d.js` (WebGL, 20K neurons, MNI positions, fractal connections) |
 | Neural cluster architecture | CompNeuro | Expert | **DONE** — `js/brain/cluster.js` (7 clusters, 20 projections, real white matter tracts) |
