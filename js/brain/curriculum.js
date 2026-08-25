@@ -12483,11 +12483,26 @@ export class Curriculum {
     if (bucketSize * numBuckets > motorSize) return;
 
     // Identify the dominant bucket by active-neuron count in lastSpikes.
+    // ⭐ SCALEWALK.3 (2026-08-25) — ONE SCAN, NOT TWO. This span was walked
+    // TWICE for the same bits: once here to count buckets, and again below to
+    // build the cross-bucket vector. At the 82M cortex `motor` is 3.3% ≈ 2.7M,
+    // so the pair cost ~5.4M reads per call — and this fires once per pair per
+    // rep. The self-profile named this function as **33.8% of main-thread
+    // self-time**, the new top entry once SCALEWALK.1/.2 removed the previous
+    // two. Motor spikes are SPARSE (a teach pattern sets hundreds), so the
+    // second walk was re-deriving a list it had already seen.
+    // The actives and their buckets are collected in this pass and the loop
+    // below iterates that small list instead of the full span. Same rows, same
+    // math, same order — only the rediscovery is gone.
     const bucketCounts = new Array(numBuckets).fill(0);
+    const _actIdx = [];
+    const _actBucket = [];
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
         const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
         bucketCounts[b]++;
+        _actIdx.push(i);
+        _actBucket.push(b);
       }
     }
     let primaryBucket = 0;
@@ -12516,7 +12531,9 @@ export class Curriculum {
       this._crossBucketPostScratch = new Uint8Array(cluster.size);
     }
     const crossBucketPost = this._crossBucketPostScratch;
-    for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
+    // SCALEWALK.3 — native memset over the motor span (identical to the loop it
+    // replaces; `fill(0, start, end)` IS that loop).
+    crossBucketPost.fill(0, motorRegion.start, motorRegion.end);
     let crossCount = 0;
     // ACTIVE-INDEX COLLECTION (2026-08-17) — this loop already visits every
     // index it sets, so collect them and hand them to the anti-Hebbian
@@ -12524,15 +12541,17 @@ export class Curriculum {
     // the ENTIRE cluster (12M cells at the grown cortex ≈ ~360ms/call,
     // measured live at 364ms — once per pair per rep, a pair-phase
     // band-blocker). Same rows, same math — only the rediscovery is gone.
+    // SCALEWALK.3 — walks the ACTIVES collected above instead of re-scanning the
+    // whole motor span. Ascending `i` order is preserved because `_actIdx` was
+    // filled in ascending order, so `crossActiveRows` comes out byte-identical
+    // to the old full-span walk.
     const crossActiveRows = [];
-    for (let i = 0; i < motorSize; i++) {
-      if (cluster.lastSpikes[motorRegion.start + i]) {
-        const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
-        if (b !== primaryBucket) {
-          crossBucketPost[motorRegion.start + i] = 1;
-          crossActiveRows.push(motorRegion.start + i);
-          crossCount++;
-        }
+    for (let a = 0; a < _actIdx.length; a++) {
+      if (_actBucket[a] !== primaryBucket) {
+        const _row = motorRegion.start + _actIdx[a];
+        crossBucketPost[_row] = 1;
+        crossActiveRows.push(_row);
+        crossCount++;
       }
     }
     if (crossCount === 0) return;
