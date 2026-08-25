@@ -19006,8 +19006,27 @@ export class Curriculum {
     // For "starts with X" (single letter): find K-vocab word starting with X.
     if (tplId === 5) {
       const q = question.toLowerCase();
+      // ── OWNWORDS.4 (2026-08-25) — THIS WAS A GRADE EARNED ON A STRING OP ──
+      //
+      // It used to be `return keyTok;` — for "spell cat", `_extractKeyToken`
+      // pulls "cat" out of the question and the answer WAS "cat", echoed
+      // straight back with **zero consultation of her weights**. The probe
+      // scored it correct, the cell passed on it, and the grade advanced on it.
+      //
+      // Every other template here at least propagates through trained synapses
+      // and reads an argmax — the template picks WHICH region to ask, and her
+      // matrix answers. This one skipped the brain entirely. It is the clearest
+      // case of the thing OWNWORDS was opened to find: a gate measuring string
+      // manipulation and reporting it as her knowing something.
+      //
+      // Returning null drops the probe through to `emitWordDirect`, so spelling
+      // is answered by the sem→word_motor mapping that `_teachWordSpellingDirect`
+      // spent every K cell carving. If she cannot spell the word yet, the probe
+      // fails honestly and that failure is a real training signal instead of a
+      // free point.
       if (/\bspell\b/.test(q) && /^[a-z]+$/.test(keyTok)) {
-        return keyTok; // emit the word itself as the spelling
+        this._spellEchoRefused = (this._spellEchoRefused || 0) + 1;
+        return null;
       }
       if (/\bstarts?\s+with\b/.test(q) && /^[a-z]$/.test(keyTok) && this.dictionary?._words) {
         // Find a K-vocab word starting with keyTok

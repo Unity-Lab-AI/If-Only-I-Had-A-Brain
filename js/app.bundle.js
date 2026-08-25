@@ -109078,7 +109078,8 @@ var Curriculum = class _Curriculum {
     if (tplId === 5) {
       const q = question.toLowerCase();
       if (/\bspell\b/.test(q) && /^[a-z]+$/.test(keyTok)) {
-        return keyTok;
+        this._spellEchoRefused = (this._spellEchoRefused || 0) + 1;
+        return null;
       }
       if (/\bstarts?\s+with\b/.test(q) && /^[a-z]$/.test(keyTok) && this.dictionary?._words) {
         const candidates = [];
