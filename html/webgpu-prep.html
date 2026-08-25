@@ -174,7 +174,12 @@
   <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
 
   <div class="container">
-    <h1>🧠 Unity Brain — WebGPU Setup</h1>
+    <h1>🧠 Unity Brain — <span class="tip tip--below tip--wide" tabindex="0" data-tip="The browser standard that lets a web page use your graphics card for general-purpose maths, not just for drawing. It is what makes donating compute from a browser tab possible at all. ⛔ There is deliberately NO slower CPU fallback — one correct compute path rather than a menu of degraded ones — so if WebGPU is unavailable the brain does not run at reduced quality, it does not run. That is why this page exists.">WebGPU</span> Setup</h1>
+
+<p style="font-size:12px;color:#888;margin:-6px 0 14px 0;">
+  Turning this on is safe and reversible — it is a browser feature flag, not a system change, and you can switch it back the same way.
+  <span class="tip tip--below tip--wide" tabindex="0" data-tip="'Unsafe' here is the browser vendor's label for 'not yet finalised as a web standard', NOT a security warning about this site. It is the same flag every WebGPU demo and machine-learning-in-the-browser page asks for. Your GPU is only used while the tab is open, and closing the tab ends it immediately.">Why does it say “unsafe”?</span>
+</p>
     <p class="lede">Pre-flight checks before you connect to the live dashboard.</p>
 
     <p>Unity's 306M-neuron brain runs Hebbian/Oja-rule learning on the GPU. Your browser needs WebGPU enabled before you can connect to the dashboard. Follow the steps for your detected browser below, then click <kbd>Re-check WebGPU</kbd>.</p>

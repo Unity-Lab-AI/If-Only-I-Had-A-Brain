@@ -7,7 +7,9 @@ tab-sleep drops, multi-GPU per machine, headless for servers/RunPod, plus a simp
 **Stack:** Rust + `wgpu` (runs the brain's WGSL shaders verbatim). See `BUILD-PLAN.md`
 for architecture, the protocol contract, and milestones.
 
-## Status: v0.3.26 — SHIPPING (M0–M4 all delivered)
+## Status: v0.3.29 — SHIPPING (M0–M4 all delivered)
+
+⚠ **This line read `v0.3.26` while the production pod ran `v0.3.29`** — three releases behind, in the donor's own README. What shipped since: **`.27` SPARSEACK** (propagate acks go sparse; ~48MB of mostly-zeros becomes the pairs the server already parses, guarded by an exact byte-count comparison so a dense-ish result keeps the dense frame and the change can never inflate a payload), **`.28`** (the word readout reduces ON the card — kilobytes per spoken word instead of 2.9MB — and predictive-error correction, the last signed-magnitude training lane, moves off the CPU), and **`.29`** (LOOPBACK: the server binds `127.0.0.1` IPv4-only while Windows resolves `localhost` to `::1` first, so a native donor was **refused on the same machine** while the browser fell back to IPv4 and worked — which is exactly why the dashboard looked healthy and the donor looked broken; plus the GUI hardcoding 10% utilisation against the `all` default, and one physical card enumerated per graphics backend telling the brain it had two replicas). See `RELEASE-0.3.27.md`, `RELEASE-0.3.28.md`, `RELEASE-0.3.29.md`.
 
 This said "M0 (scaffold)" for a long time after it stopped being true. Current reality:
 
