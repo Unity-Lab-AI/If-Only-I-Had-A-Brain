@@ -500,7 +500,7 @@ The donor is data-parallel: every donor holds a full replica and the server merg
 
 | Env | Default | Kind | What it does |
 |---|---|---|---|
-| `DREAM_MIN_DONOR_VERSION` | ⚠ | escape hatch | Minimum donor version admitted to the pool. Load-bearing: masked bound plasticity (SPRS type 13) requires ≥ 0.3.26, and an older donor silently cannot do it |
+| `DREAM_MIN_DONOR_VERSION` | **`0.3.26`** | escape hatch | Minimum donor version admitted to the pool. Load-bearing: masked bound plasticity (SPRS type 13) requires ≥ 0.3.26, and an older donor silently cannot do it. ⭐ **Default raised 0.3.7 → 0.3.26 on 2026-08-25** — this row already named 0.3.26 as the threshold while the code default sat 22 releases behind it. ⚠ Older donors are **refused at `gpu_register`** with a message naming both versions and the download link; they are not silently degraded. ⛔ Raise it only to a version where a lane **the walk depends on** moved onto the donor — not merely to whatever is newest, because community compute is donated and a floor that turns away working cards has its own cost |
 | `DREAM_DONOR_FIT_MB` | ⚠ | lever | VRAM a donor must hold to be eligible |
 | `DREAM_NO_DONOR_GRIND` | ⚠ | escape hatch | Stop hammering a donor that cannot keep up |
 | `DREAM_RESPECT_VRAM_CAP` | ⚠ | lever | Honour a donor's advertised VRAM cap |
