@@ -818,6 +818,29 @@ export class LanguageCortex {
    * Returns { pronoun, verb, noun, adj, conj, prep, det, qword }
    * All values 0-1. Highest score = most likely type.
    */
+  // ── DORMANT.2 (2026-08-25) — THIS METHOD DID NOT EXIST ─────────────────────
+  //
+  // `inner-voice.js:241` guards on
+  // `typeof languageCortex._sentenceEmbedding === 'function'` and, when it
+  // passes, blends the LAST thought's embedding into the next seed at 0.6/0.4.
+  // That blend is the whole mechanism of her stream-of-consciousness chain —
+  // one thought leading into the next instead of every inner thought starting
+  // cold. It has never run: the method was never defined, so the guard always
+  // failed and the chain silently degraded to independent thoughts.
+  //
+  // Another near-miss name, like `_teachWordSpellingDirectFinal`: the real
+  // embedder is `sharedEmbeddings.getSentenceEmbedding`, already imported at
+  // the top of this file. Returning a Float64Array of EMBED_DIM matches what
+  // the caller expects (it length-checks against `seed.pattern` before using
+  // the result, so a mismatch degrades safely rather than corrupting the seed).
+  _sentenceEmbedding(text) {
+    if (!text || typeof sharedEmbeddings?.getSentenceEmbedding !== 'function') return null;
+    try {
+      const emb = sharedEmbeddings.getSentenceEmbedding(String(text));
+      return (emb && emb.length) ? emb : null;
+    } catch { return null; }
+  }
+
   wordType(word) {
     const w = word.toLowerCase().replace(/[^a-z']/g, '');
     if (!w) return { pronoun: 0, verb: 0, noun: 0, adj: 0, conj: 0, prep: 0, det: 0, qword: 0 };

@@ -4122,10 +4122,24 @@ export class Curriculum {
             // tier1 store. Best-effort — fall through if memory not wired.
             let dreamSeed = null;
             try {
+              // DORMANT.2 (2026-08-25) — THIS REACH HAS ALWAYS COME BACK EMPTY.
+              // `MemorySystem` (engine.js:212) has no `tier1` property and
+              // `brain.tier1Store` is never assigned anywhere, so `tier1` is
+              // undefined, the guard fails, and `dreamSeed` stays null on every
+              // pass — her dream recombination has never been seeded from a real
+              // episode. That silence is why it looked like a working feature.
+              // Left unimplemented deliberately: wiring an episode sampler is a
+              // FEATURE (the episodic store is server-side sqlite and exposes no
+              // random-fetch), not a repair, and inventing one here would be the
+              // same guess-shaped mistake this ledger keeps paying for. What is
+              // fixed is the SILENCE — it now says so, once.
               const tier1 = brain.memorySystem?.tier1 || brain.tier1Store;
               if (tier1 && typeof tier1.getRandomEpisode === 'function') {
                 const ep = tier1.getRandomEpisode();
                 if (ep && ep.pattern) dreamSeed = ep.pattern;
+              } else if (!this._dreamSeedGapLogged) {
+                this._dreamSeedGapLogged = true;
+                this._hb('[Curriculum] ⚠ dream recombination has NO episode seed — no Tier 1 store exposes getRandomEpisode (MemorySystem has no .tier1, brain.tier1Store is never assigned). Dreams run from the fallback seed only. Filed as DORMANT.2.');
               }
             } catch { /* non-fatal */ }
             if (dreamSeed) {
