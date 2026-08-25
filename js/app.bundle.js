@@ -116125,568 +116125,10 @@ Object.assign(Curriculum.prototype, COL4_MIXIN);
 Object.assign(Curriculum.prototype, GRAD_MIXIN);
 Object.assign(Curriculum.prototype, PHD_MIXIN);
 
-// ../js/brain/drug-scheduler.js
-var GRADE_ORDER2 = [
-  "pre-K",
-  "kindergarten",
-  "grade1",
-  "grade2",
-  "grade3",
-  "grade4",
-  "grade5",
-  "grade6",
-  "grade7",
-  "grade8",
-  "grade9",
-  "grade10",
-  "grade11",
-  "grade12",
-  "college1",
-  "college2",
-  "college3",
-  "college4",
-  "grad",
-  "phd"
-];
-function gradeIndex(grade) {
-  const idx = GRADE_ORDER2.indexOf(grade);
-  return idx >= 0 ? idx : -1;
+// ../js/brain/pk-curve.js
+function sigmoid2(x) {
+  return 1 / (1 + Math.exp(-x));
 }
-function gradeAtLeast(current, required) {
-  return gradeIndex(current) >= gradeIndex(required);
-}
-var SUBSTANCES = {
-  cannabis: {
-    displayName: "weed",
-    defaultRoute: "smoked",
-    routes: {
-      smoked: {
-        onsetMs: 7 * 60 * 1e3,
-        // ~7 min ramp to peak
-        peakMs: 45 * 60 * 1e3,
-        // peak plateau ~45 min in
-        durationMs: 3 * 60 * 60 * 1e3,
-        // ~3 hr active
-        tailMs: 6 * 60 * 60 * 1e3
-        // full baseline ~6 hr
-      },
-      oral: {
-        onsetMs: 60 * 60 * 1e3,
-        // edibles are SLOW
-        peakMs: 2 * 60 * 60 * 1e3,
-        durationMs: 4 * 60 * 60 * 1e3,
-        tailMs: 8 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      creativity: 0.5,
-      cortexSpeed: -0.2,
-      arousal: 0.1,
-      amygdalaValence: 0.3,
-      oscillationCoherence: -0.15,
-      cerebellumPrecision: -0.2,
-      impulsivity: 0.1,
-      hippocampusConsolidation: -0.15
-    },
-    speech: {
-      inhibition: -0.2,
-      // filthier, franker
-      coherence: -0.1,
-      ethereality: 0.1,
-      freeAssocWidth: 0.2,
-      giggleBias: 0.4
-    },
-    lifeGate: "grade7"
-    // first joint at age 12 per Life track
-  },
-  cocaine: {
-    displayName: "coke",
-    defaultRoute: "insufflated",
-    routes: {
-      insufflated: {
-        onsetMs: 3 * 60 * 1e3,
-        peakMs: 20 * 60 * 1e3,
-        durationMs: 60 * 60 * 1e3,
-        tailMs: 90 * 60 * 1e3
-      },
-      smoked: {
-        // freebase — not Unity's path, but available for completeness
-        onsetMs: 20 * 1e3,
-        peakMs: 4 * 60 * 1e3,
-        durationMs: 12 * 60 * 1e3,
-        tailMs: 25 * 60 * 1e3
-      }
-    },
-    contributions: {
-      cortexSpeed: 0.6,
-      arousal: 0.5,
-      hypothalamusArousal: 0.4,
-      amygdalaReward: 0.5,
-      impulsivity: 0.3,
-      creativity: 0.1,
-      cerebellumPrecision: 0.1,
-      prefrontalExecutive: 0.2
-      // at moderate dose
-    },
-    speech: {
-      inhibition: -0.1,
-      speechRate: 0.5,
-      paranoiaBias: 0.15,
-      // grows with sustained level
-      coherence: -0.05
-    },
-    lifeGate: "grade9"
-    // first coke at age 14 per Life track
-  },
-  mdma: {
-    displayName: "molly",
-    defaultRoute: "oral",
-    routes: {
-      oral: {
-        onsetMs: 35 * 60 * 1e3,
-        peakMs: 2 * 60 * 60 * 1e3,
-        durationMs: 5 * 60 * 60 * 1e3,
-        tailMs: 8 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      arousal: 0.6,
-      amygdalaValence: 0.7,
-      amygdalaReward: 0.6,
-      socialNeed: 0.6,
-      synapticSensitivity: 0.5,
-      oscillationCoherence: 0.3,
-      cortexSpeed: 0.1,
-      prefrontalExecutive: -0.1
-      // prosocial disinhibition
-    },
-    speech: {
-      inhibition: -0.4,
-      emotionalOverflow: 0.7,
-      ethereality: 0.15,
-      freeAssocWidth: 0.1,
-      coherence: -0.05
-    },
-    lifeGate: "grade11"
-    // first ecstasy at age 16 (high school party scene)
-  },
-  lsd: {
-    displayName: "acid",
-    defaultRoute: "oral",
-    routes: {
-      oral: {
-        onsetMs: 60 * 60 * 1e3,
-        peakMs: 3 * 60 * 60 * 1e3,
-        durationMs: 10 * 60 * 60 * 1e3,
-        tailMs: 16 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      creativity: 1,
-      crossRegionAmplify: 0.8,
-      // T14.4 14 cross-projection firing amplified
-      defaultModeSuppression: 0.6,
-      // ego dissolution driver
-      cortexSpeed: -0.2,
-      // time dilation
-      synapticSensitivity: 0.4,
-      oscillationCoherence: -0.2,
-      visualCortexFeedback: 0.5
-      // V1 feedback loops → hallucination
-    },
-    speech: {
-      inhibition: -0.3,
-      coherence: -0.4,
-      ethereality: 0.8,
-      // Oz vocabulary pulls hard
-      freeAssocWidth: 0.7,
-      speechRate: -0.2,
-      dissociation: 0.3
-      // at peak dose
-    },
-    lifeGate: "grade11"
-  },
-  psilocybin: {
-    displayName: "mushrooms",
-    defaultRoute: "oral",
-    routes: {
-      oral: {
-        onsetMs: 45 * 60 * 1e3,
-        peakMs: 90 * 60 * 1e3,
-        durationMs: 5 * 60 * 60 * 1e3,
-        tailMs: 8 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      creativity: 0.8,
-      crossRegionAmplify: 0.6,
-      defaultModeSuppression: 0.5,
-      cortexSpeed: -0.15,
-      synapticSensitivity: 0.3,
-      amygdalaValence: 0.4,
-      // warmer than LSD
-      somatosensoryBoost: 0.3
-      // body-heavy
-    },
-    speech: {
-      inhibition: -0.25,
-      coherence: -0.3,
-      ethereality: 0.7,
-      freeAssocWidth: 0.5,
-      emotionalOverflow: 0.2,
-      speechRate: -0.25
-    },
-    lifeGate: "grade12"
-  },
-  alcohol: {
-    displayName: "whiskey",
-    defaultRoute: "oral",
-    routes: {
-      oral: {
-        // one standard drink (~14g ethanol — shot of whiskey)
-        onsetMs: 15 * 60 * 1e3,
-        peakMs: 45 * 60 * 1e3,
-        durationMs: 90 * 60 * 1e3,
-        tailMs: 3 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      cerebellumPrecision: -0.6,
-      // motor coordination crippled
-      cortexSpeed: -0.3,
-      prefrontalExecutive: -0.5,
-      // disinhibition
-      amygdalaValence: 0.2,
-      // initial warmth
-      amygdalaFear: -0.3,
-      // liquid courage
-      oscillationCoherence: 0.2,
-      // slow-wave amplification
-      hippocampusConsolidation: -0.4,
-      // blackout risk at cumulative high BAC
-      impulsivity: 0.3
-    },
-    speech: {
-      inhibition: -0.6,
-      slur: 0.7,
-      coherence: -0.3,
-      speechRate: -0.3,
-      emotionalOverflow: 0.5,
-      // drunken confessions
-      freeAssocWidth: 0.15
-    },
-    lifeGate: "grade8"
-    // first drink at age 13 per biographical draft
-  },
-  ketamine: {
-    displayName: "K",
-    defaultRoute: "insufflated",
-    routes: {
-      insufflated: {
-        onsetMs: 10 * 60 * 1e3,
-        peakMs: 25 * 60 * 1e3,
-        durationMs: 60 * 60 * 1e3,
-        tailMs: 2 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      dissociation: 0.7,
-      cortexSpeed: -0.4,
-      crossRegionAmplify: -0.3,
-      // recurrent blocked at NMDA sites
-      somatosensoryBoost: -0.5,
-      // body numbness
-      cerebellumPrecision: -0.4,
-      amygdalaFear: -0.3
-    },
-    speech: {
-      inhibition: -0.2,
-      slur: 0.4,
-      coherence: -0.4,
-      speechRate: -0.4,
-      dissociation: 0.7,
-      ethereality: 0.3
-    },
-    lifeGate: "college1"
-    // first K at age 18 (dorm/rave scene)
-  },
-  amphetamine: {
-    displayName: "speed",
-    defaultRoute: "oral",
-    routes: {
-      oral: {
-        onsetMs: 45 * 60 * 1e3,
-        peakMs: 3 * 60 * 60 * 1e3,
-        durationMs: 6 * 60 * 60 * 1e3,
-        tailMs: 12 * 60 * 60 * 1e3
-      },
-      insufflated: {
-        onsetMs: 15 * 60 * 1e3,
-        peakMs: 90 * 60 * 1e3,
-        durationMs: 4 * 60 * 60 * 1e3,
-        tailMs: 8 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      cortexSpeed: 0.5,
-      arousal: 0.45,
-      hypothalamusArousal: 0.5,
-      amygdalaReward: 0.4,
-      impulsivity: 0.25,
-      prefrontalExecutive: 0.3
-    },
-    speech: {
-      inhibition: -0.1,
-      speechRate: 0.4,
-      paranoiaBias: 0.1,
-      coherence: -0.03
-    },
-    lifeGate: "grade10"
-    // first speed at age 15 (escalation per Life track)
-  },
-  ghb: {
-    displayName: "G",
-    defaultRoute: "oral",
-    routes: {
-      oral: {
-        onsetMs: 20 * 60 * 1e3,
-        peakMs: 60 * 60 * 1e3,
-        durationMs: 2 * 60 * 60 * 1e3,
-        tailMs: 4 * 60 * 60 * 1e3
-      }
-    },
-    contributions: {
-      cortexSpeed: -0.3,
-      prefrontalExecutive: -0.4,
-      amygdalaValence: 0.3,
-      oscillationCoherence: 0.3,
-      cerebellumPrecision: -0.3,
-      socialNeed: 0.2
-    },
-    speech: {
-      inhibition: -0.4,
-      slur: 0.3,
-      coherence: -0.2,
-      speechRate: -0.2,
-      emotionalOverflow: 0.2
-    },
-    lifeGate: "college1"
-  }
-};
-var COMBOS = {
-  "cannabis+cocaine": {
-    displayName: "coke-and-weed",
-    synergyContributions: {
-      creativity: 0.3,
-      hippocampusConsolidation: -0.15,
-      impulsivity: 0.05
-    },
-    synergySpeech: {
-      coherence: 0.05,
-      giggleBias: 0.1
-    },
-    riskFlags: { physicalStrain: 0.2, persistsMs: 4 * 60 * 60 * 1e3 }
-  },
-  "cocaine+mdma": {
-    displayName: "cokes-with-mols",
-    synergyContributions: {
-      arousal: 0.2,
-      // stacks toward ceiling
-      amygdalaValence: 0.25,
-      focusWidth: -0.1
-    },
-    synergySpeech: {
-      interruptionBias: 0.4,
-      freeAssocWidth: 0.3,
-      warmth: 0.2
-    },
-    riskFlags: { physicalStrain: 0.4, persistsMs: 6 * 60 * 60 * 1e3 }
-  },
-  "caffeine+cocaine": {
-    displayName: "double-stim",
-    synergyContributions: {
-      focusWidth: -0.2,
-      cerebellumPrecision: -0.2
-    },
-    synergySpeech: {
-      rate: 0.1,
-      interruptionBias: 0.1
-    },
-    riskFlags: { physicalStrain: 0.3, persistsMs: 12 * 60 * 60 * 1e3 }
-  },
-  "alcohol+cannabis": {
-    displayName: "cross-faded",
-    synergyContributions: {
-      amygdalaValence: 0.2,
-      // early — flips negative in tail
-      hippocampusConsolidation: -0.3,
-      // blackout-risk stack
-      cerebellumPrecision: -0.15
-    },
-    synergySpeech: {
-      slurring: 0.1,
-      coherence: -0.15
-    },
-    riskFlags: { physicalStrain: 0.15, persistsMs: 3 * 60 * 60 * 1e3 }
-  },
-  "cannabis+mdma": {
-    displayName: "rolling-and-green",
-    synergyContributions: {
-      amygdalaValence: 0.15
-      // empathy +0.20 would live here if empathy were a primary axis
-    },
-    synergySpeech: {
-      pauses: 0.2,
-      giggleBias: 0.3,
-      warmth: 0.15
-    },
-    riskFlags: { physicalStrain: 0.05, persistsMs: 2 * 60 * 60 * 1e3 }
-  },
-  "cannabis+ketamine": {
-    displayName: "k-hole-plus",
-    synergyContributions: {
-      // ego dissolution, detachment as composite axes — driven through
-      // dissociation field in speech layer rather than a new primary axis
-      cerebellumPrecision: -0.3
-    },
-    synergySpeech: {
-      dissociation: 0.4,
-      pauses: 0.4,
-      coherence: -0.2
-    },
-    riskFlags: { physicalStrain: 0.6, persistsMs: 2 * 60 * 60 * 1e3 }
-  },
-  "alcohol+cocaine": {
-    displayName: "speedball-lite",
-    // cocaethylene metabolite — cardiotoxic
-    synergyContributions: {
-      impulsivity: 0.3,
-      hippocampusConsolidation: -0.3
-    },
-    synergySpeech: {
-      volume: 0.1,
-      interruptionBias: 0.2
-    },
-    riskFlags: { physicalStrain: 0.6, persistsMs: 8 * 60 * 60 * 1e3 }
-  }
-};
-function comboKey(a, b) {
-  return a < b ? `${a}+${b}` : `${b}+${a}`;
-}
-var PATTERNS = {
-  morningCoffee: {
-    displayName: "Morning coffee ritual",
-    triggers: {
-      timeWindow: [6, 10],
-      // local hour range
-      minArousal: 0.3
-    },
-    schedule: [
-      { substance: "caffeine", route: "oral", offsetMs: 0 },
-      { substance: "caffeine", route: "oral", offsetMs: 90 * 60 * 1e3 }
-    ],
-    lifeGate: "grade8",
-    cooldownMs: 20 * 60 * 60 * 1e3
-    // don't re-fire within 20h
-  },
-  codingMarathon: {
-    displayName: "Coding marathon",
-    triggers: {
-      activityTag: "coding",
-      minDurationMs: 60 * 60 * 1e3,
-      // 1h sustained high load
-      minCortexDemand: 0.7
-    },
-    schedule: [
-      { substance: "cannabis", route: "smoked", offsetMs: 0 },
-      { substance: "cocaine", route: "insufflated", offsetMs: 60 * 60 * 1e3 },
-      { substance: "caffeine", route: "oral", offsetMs: 0 },
-      { substance: "caffeine", route: "oral", offsetMs: 2 * 60 * 60 * 1e3 },
-      { substance: "cocaine", route: "insufflated", offsetMs: 2.5 * 60 * 60 * 1e3 }
-    ],
-    lifeGate: "college1",
-    cooldownMs: 8 * 60 * 60 * 1e3
-  },
-  weekendParty: {
-    displayName: "Weekend party night",
-    triggers: {
-      timeWindow: [21, 27],
-      // 21:00-03:00 next day (>24 hour expression)
-      dayOfWeek: [5, 6, 0],
-      // Fri/Sat/Sun (JS: 0=Sun, 5=Fri, 6=Sat)
-      social: true
-    },
-    schedule: [
-      { substance: "alcohol", route: "oral", offsetMs: 0 },
-      { substance: "mdma", route: "oral", offsetMs: 60 * 60 * 1e3 },
-      { substance: "cannabis", route: "smoked", offsetMs: 30 * 60 * 1e3 },
-      { substance: "cannabis", route: "smoked", offsetMs: 2 * 60 * 60 * 1e3 }
-    ],
-    lifeGate: "grade11",
-    cooldownMs: 7 * 24 * 60 * 60 * 1e3
-  },
-  acidArchitect: {
-    displayName: "Architecture-session acid-day",
-    triggers: {
-      activityTag: "architecture",
-      timeWindow: [9, 12],
-      dayOfWeek: [0, 6]
-      // weekend
-    },
-    schedule: [
-      { substance: "lsd", route: "sublingual", offsetMs: 0 },
-      { substance: "cannabis", route: "smoked", offsetMs: 6 * 60 * 60 * 1e3 }
-    ],
-    lifeGate: "college2",
-    cooldownMs: 30 * 24 * 60 * 60 * 1e3
-  },
-  whiskeyWinddown: {
-    displayName: "Post-marathon whiskey wind-down",
-    triggers: {
-      activityTag: "post-marathon",
-      timeWindow: [22, 26]
-    },
-    schedule: [
-      { substance: "alcohol", route: "oral", offsetMs: 0 },
-      { substance: "alcohol", route: "oral", offsetMs: 45 * 60 * 1e3 },
-      { substance: "alcohol", route: "oral", offsetMs: 90 * 60 * 1e3 }
-    ],
-    lifeGate: "college1",
-    cooldownMs: 24 * 60 * 60 * 1e3
-  },
-  kHoleContemplate: {
-    displayName: "K-hole contemplation",
-    triggers: {
-      activityTag: "existential",
-      timeWindow: [22, 26],
-      social: false
-    },
-    schedule: [
-      { substance: "ketamine", route: "insufflated", offsetMs: 0 },
-      { substance: "ketamine", route: "insufflated", offsetMs: 45 * 60 * 1e3 },
-      { substance: "ketamine", route: "insufflated", offsetMs: 2 * 60 * 60 * 1e3 },
-      { substance: "cannabis", route: "smoked", offsetMs: 60 * 60 * 1e3 }
-    ],
-    lifeGate: "college1",
-    cooldownMs: 3 * 24 * 60 * 60 * 1e3
-  },
-  sexSessionMolly: {
-    displayName: "Sex-session molly",
-    triggers: {
-      activityTag: "sexual",
-      consent: true,
-      dayOfWeek: [5, 6, 0]
-    },
-    schedule: [
-      { substance: "mdma", route: "oral", offsetMs: 0 },
-      { substance: "cocaine", route: "insufflated", offsetMs: 60 * 60 * 1e3 },
-      { substance: "cocaine", route: "insufflated", offsetMs: 2 * 60 * 60 * 1e3 },
-      { substance: "cannabis", route: "smoked", offsetMs: 30 * 60 * 1e3 }
-    ],
-    lifeGate: "grade11",
-    cooldownMs: 7 * 24 * 60 * 60 * 1e3
-  }
-};
 function pkCurve(tMs, profile, dose = 1) {
   const { onsetMs, peakMs, durationMs, tailMs } = profile;
   if (tMs < 0) return 0;
@@ -116708,762 +116150,6 @@ function pkCurve(tMs, profile, dose = 1) {
   }
   return 0;
 }
-function sigmoid2(x) {
-  return 1 / (1 + Math.exp(-x));
-}
-var DrugScheduler = class {
-  /**
-   * @param {object} opts
-   * @param {object} [opts.cluster] - NeuronCluster for reading grades.life
-   * @param {function} [opts.nowFn] - Override clock (for replay/testing). Default: Date.now
-   */
-  constructor(opts = {}) {
-    this.cluster = opts.cluster || null;
-    this.nowFn = opts.nowFn || (() => Date.now());
-    this.events = /* @__PURE__ */ new Map();
-    this.toleranceFactors = /* @__PURE__ */ new Map();
-    this._lastDecayAt = this.nowFn();
-    this.pendingAcquisitions = /* @__PURE__ */ new Map();
-    this.pendingDesires = /* @__PURE__ */ new Map();
-    this._patternsFired = /* @__PURE__ */ new Map();
-    this._scheduledIngests = [];
-    this._activePatternTags = /* @__PURE__ */ new Set();
-    this._firstUse = /* @__PURE__ */ new Map();
-    this._traumaMarkers = /* @__PURE__ */ new Map();
-  }
-  setCluster(cluster) {
-    this.cluster = cluster;
-  }
-  // ─── Availability (grade-gate) ──────────────────────────────────────────
-  isAvailable(substance) {
-    const sub = SUBSTANCES[substance];
-    if (!sub) return false;
-    if (!this.cluster || !this.cluster.grades) return false;
-    const lifeGrade = this.cluster.grades.life || "pre-K";
-    return gradeAtLeast(lifeGrade, sub.lifeGate);
-  }
-  availableSubstances() {
-    const out = [];
-    for (const name of Object.keys(SUBSTANCES)) {
-      if (this.isAvailable(name)) out.push(name);
-    }
-    return out;
-  }
-  // ─── Ingestion ──────────────────────────────────────────────────────────
-  /**
-   * Record an ingestion event. Non-announcing — caller layer produces the
-   * physical-act dialogue; scheduler just tracks the pharmacology.
-   *
-   * @returns {{accepted: boolean, reason?: string, event?: object, currentGrade?: string, requiredGrade?: string}}
-   */
-  ingest(substance, opts = {}) {
-    const sub = SUBSTANCES[substance];
-    if (!sub) {
-      return { accepted: false, reason: "unknown_substance" };
-    }
-    if (!this.isAvailable(substance)) {
-      return {
-        accepted: false,
-        reason: "grade_locked",
-        currentGrade: this.cluster?.grades?.life || "pre-K",
-        requiredGrade: sub.lifeGate
-      };
-    }
-    const route = opts.route || sub.defaultRoute;
-    const profile = sub.routes[route];
-    if (!profile) {
-      return { accepted: false, reason: "unknown_route" };
-    }
-    const now = opts.now ?? this.nowFn();
-    this._decayTolerance(now);
-    const tol = this.toleranceFactors.get(substance) || 0;
-    const requestedDose = typeof opts.dose === "number" ? opts.dose : 1;
-    const effectiveDose = requestedDose * (1 - tol * 0.5);
-    const event = {
-      substance,
-      route,
-      dose: effectiveDose,
-      requestedDose,
-      startTime: now,
-      onsetMs: profile.onsetMs,
-      peakMs: profile.peakMs,
-      durationMs: profile.durationMs,
-      tailMs: profile.tailMs
-    };
-    if (!this.events.has(substance)) this.events.set(substance, []);
-    this.events.get(substance).push(event);
-    this.toleranceFactors.set(substance, Math.min(0.7, tol + 0.1));
-    if (!this._firstUse.has(substance)) {
-      const grade = this.cluster?.grades?.life || "pre-K";
-      const contextTags = /* @__PURE__ */ new Set();
-      if (opts.contextTags) {
-        if (Array.isArray(opts.contextTags)) {
-          for (const t of opts.contextTags) contextTags.add(t);
-        } else if (opts.contextTags instanceof Set) {
-          for (const t of opts.contextTags) contextTags.add(t);
-        }
-      }
-      if (opts.autoFromPattern) contextTags.add(`pattern:${opts.autoFromPattern}`);
-      this._firstUse.set(substance, {
-        grade,
-        age: gradeIndex(grade) >= 0 ? 5 + gradeIndex(grade) : null,
-        // approximate age per grade
-        atMs: now,
-        contextTags: Array.from(contextTags),
-        emotionalFingerprint: {
-          arousal: opts.emotionalFingerprint?.arousal ?? null,
-          valence: opts.emotionalFingerprint?.valence ?? null,
-          fear: opts.emotionalFingerprint?.fear ?? null
-        }
-      });
-    }
-    return { accepted: true, event };
-  }
-  /**
-   * T15.C — mark a trauma event for a substance. Weight in [0, 1].
-   * decide() reads _traumaMarkers with a 26-week half-life decay so
-   * recent traumatic experiences strongly reduce acceptance probability
-   * while older ones fade. Repeated traumas stack (clamped).
-   *
-   * Call sites: blackout detection (alcohol + hippocampus collapse),
-   * k-hole panic (ketamine + amygdala fear spike), stimulant cardiac
-   * event (physicalStrain saturated at end-of-tail), legal event
-   * (future sensory/social wiring), or explicit Life-track curriculum
-   * cells scripting a traumatic biographical memory.
-   *
-   * @param {string} substance - SUBSTANCES key
-   * @param {number} weight - [0, 1] intensity of the trauma
-   */
-  markTrauma(substance, weight) {
-    if (!SUBSTANCES[substance]) return false;
-    const w = Math.max(0, Math.min(1, weight || 0));
-    if (w <= 0) return false;
-    const existing = this._traumaMarkers.get(substance);
-    const stacked = Math.min(1, (existing?.weight || 0) + w);
-    this._traumaMarkers.set(substance, { at: this.nowFn(), weight: stacked });
-    return true;
-  }
-  /**
-   * T15.C — read the ledger entry for a substance's first-use event.
-   * Returns null if Unity has never ingested this substance. Used by
-   * Life-track curriculum cells to decide whether to reinforce the
-   * biographical memory this grade (per LAW 6).
-   */
-  firstUse(substance) {
-    return this._firstUse.get(substance) || null;
-  }
-  /**
-   * T15.C — full dump of the first-use ledger. Returns a plain object
-   * keyed by substance. Used by UI + persistent-life-info ledger
-   * export to docs/TODO-full-syllabus.md (manual sync during T15.C
-   * follow-ups).
-   */
-  lifeInfoLedger() {
-    const out = {};
-    for (const [s, info] of this._firstUse) {
-      out[s] = {
-        grade: info.grade,
-        age: info.age,
-        atMs: info.atMs,
-        contextTags: [...info.contextTags],
-        emotionalFingerprint: { ...info.emotionalFingerprint }
-      };
-    }
-    return out;
-  }
-  // ─── Level readers ──────────────────────────────────────────────────────
-  level(substance, now = this.nowFn()) {
-    const events = this.events.get(substance);
-    if (!events || events.length === 0) return 0;
-    let total = 0;
-    for (const e of events) {
-      total += pkCurve(now - e.startTime, e, e.dose);
-    }
-    return Math.min(1, total);
-  }
-  phase(substance, now = this.nowFn()) {
-    const events = this.events.get(substance);
-    if (!events || events.length === 0) return "sober";
-    const last = events[events.length - 1];
-    const t = now - last.startTime;
-    if (t < 0) return "pending";
-    if (t < last.onsetMs) return "onset";
-    if (t < last.peakMs) return "peak";
-    if (t < last.durationMs) return "plateau";
-    if (t < last.tailMs) return "tail";
-    return "sober";
-  }
-  activeSubstances(now = this.nowFn()) {
-    const out = [];
-    for (const name of this.events.keys()) {
-      const level = this.level(name, now);
-      if (level > 0.01) {
-        out.push({ substance: name, level, phase: this.phase(name, now) });
-      }
-    }
-    return out;
-  }
-  isSober(now = this.nowFn()) {
-    return this.activeSubstances(now).length === 0;
-  }
-  // ─── Aggregated brain parameter contributions ──────────────────────────
-  /**
-   * Returns delta object to ADD to baseline brainParams.
-   * Multiple substances stack additively via superposition.
-   * Sober brain → empty delta → zero modulation → baseline persona.
-   *
-   * T15.C — combo-aware. Pairwise over active substances: if a combo
-   * entry exists for the pair, its synergy contributions add on top of
-   * the per-substance sum, scaled by `min(level_a, level_b)` (synergy
-   * requires both substances active; fades with the weaker one).
-   */
-  activeContributions(now = this.nowFn()) {
-    const delta = {};
-    const active = this.activeSubstances(now);
-    for (const { substance, level } of active) {
-      const contribs = SUBSTANCES[substance].contributions || {};
-      for (const [key, value] of Object.entries(contribs)) {
-        delta[key] = (delta[key] || 0) + value * level;
-      }
-    }
-    for (let i = 0; i < active.length; i++) {
-      for (let j = i + 1; j < active.length; j++) {
-        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
-        if (!combo || !combo.synergyContributions) continue;
-        const scale = Math.min(active[i].level, active[j].level);
-        for (const [k, v] of Object.entries(combo.synergyContributions)) {
-          delta[k] = (delta[k] || 0) + v * scale;
-        }
-      }
-    }
-    return delta;
-  }
-  /**
-   * T15.C — aggregate combo risk flags active right now. Snapshot()
-   * exposes this so UI can render warning badges (cardiac load,
-   * hepatic strain, etc.) without the consumer needing to re-walk
-   * active pairs.
-   */
-  riskFlags(now = this.nowFn()) {
-    const flags = {};
-    const active = this.activeSubstances(now);
-    for (let i = 0; i < active.length; i++) {
-      for (let j = i + 1; j < active.length; j++) {
-        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
-        if (!combo || !combo.riskFlags) continue;
-        const scale = Math.min(active[i].level, active[j].level);
-        for (const [k, v] of Object.entries(combo.riskFlags)) {
-          if (k === "persistsMs") continue;
-          flags[k] = (flags[k] || 0) + v * scale;
-        }
-      }
-    }
-    return flags;
-  }
-  /**
-   * T15.C — sensory-trigger intake. drug-sensory-triggers.js calls
-   * this when an environmental cue fires (T15.A §4 triggers). Craving
-   * stacks additively with an existing pending craving, clamped [0, 1],
-   * expires after durationMs.
-   */
-  addCraving(substance, delta, durationMs) {
-    const now = this.nowFn();
-    const existing = this.pendingDesires.get(substance);
-    const newDelta = Math.max(0, Math.min(1, (existing?.delta || 0) + delta));
-    const newExpires = Math.max(existing?.expiresAt || 0, now + durationMs);
-    this.pendingDesires.set(substance, { delta: newDelta, expiresAt: newExpires });
-  }
-  /**
-   * T15.C — read current craving level for a substance. Returns 0 if
-   * no craving OR if the craving has expired (lazy eviction; expired
-   * entry is removed on access). Decision engine uses this as one of
-   * the probability modifiers in decide().
-   */
-  currentCraving(substance) {
-    const c = this.pendingDesires.get(substance);
-    if (!c) return 0;
-    if (this.nowFn() > c.expiresAt) {
-      this.pendingDesires.delete(substance);
-      return 0;
-    }
-    return c.delta;
-  }
-  // ─── Speech modulation ─────────────────────────────────────────────────
-  /**
-   * Returns speech distortion vector consumed by language cortex + renderer.
-   * See T15.A.5b for the dimension definitions. cosmicBiasVec is left null
-   * here — the language cortex looks up the actual GloVe-space vector when
-   * ethereality is non-zero, because that requires dictionary access the
-   * scheduler deliberately doesn't hold.
-   */
-  speechModulation(now = this.nowFn()) {
-    const mod = {
-      // ── 9 pre-existing axes (stable for language-cortex consumers) ──
-      inhibition: 0,
-      slur: 0,
-      coherence: 0,
-      ethereality: 0,
-      freeAssocWidth: 0,
-      speechRate: 0,
-      emotionalOverflow: 0,
-      dissociation: 0,
-      paranoiaBias: 0,
-      giggleBias: 0,
-      // ── T15.C new axes (language cortex reads in T15.C.7) ──
-      warmth: 0,
-      profoundBias: 0,
-      interruptionBias: 0,
-      repetition: 0,
-      volume: 0,
-      confessionalBias: 0,
-      rate: 0,
-      // new name for speechRate — both populated below
-      slurring: 0,
-      // new name for slur — both populated below
-      pauses: 0,
-      // Vector fields populated by language cortex when their scalar
-      // counterpart is non-zero. Left null here.
-      cosmicBiasVec: null,
-      paranoiaBiasVec: null,
-      giggleBiasVec: null
-    };
-    const active = this.activeSubstances(now);
-    const ALIASES = { rate: "speechRate", slurring: "slur" };
-    for (const { substance, level } of active) {
-      const speech = SUBSTANCES[substance].speech || {};
-      for (const [key, value] of Object.entries(speech)) {
-        if (mod[key] !== void 0 && typeof mod[key] === "number") {
-          mod[key] += value * level;
-        }
-        const aliasKey = ALIASES[key];
-        if (aliasKey && mod[aliasKey] !== void 0) {
-          mod[aliasKey] += value * level;
-        }
-      }
-    }
-    for (let i = 0; i < active.length; i++) {
-      for (let j = i + 1; j < active.length; j++) {
-        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
-        if (!combo || !combo.synergySpeech) continue;
-        const scale = Math.min(active[i].level, active[j].level);
-        for (const [key, value] of Object.entries(combo.synergySpeech)) {
-          if (mod[key] !== void 0 && typeof mod[key] === "number") {
-            mod[key] += value * scale;
-          }
-          const aliasKey = ALIASES[key];
-          if (aliasKey && mod[aliasKey] !== void 0) {
-            mod[aliasKey] += value * scale;
-          }
-        }
-      }
-    }
-    return mod;
-  }
-  // ─── Snapshot for UI broadcast ──────────────────────────────────────────
-  /**
-   * Compact state suitable for WebSocket broadcast + UI consumption.
-   * Replaces the legacy `drugState: string` single-label field.
-   */
-  snapshot(now = this.nowFn()) {
-    const active = this.activeSubstances(now);
-    const combos = [];
-    for (let i = 0; i < active.length; i++) {
-      for (let j = i + 1; j < active.length; j++) {
-        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
-        if (!combo) continue;
-        combos.push({
-          key: comboKey(active[i].substance, active[j].substance),
-          displayName: combo.displayName,
-          level: Math.min(active[i].level, active[j].level)
-        });
-      }
-    }
-    const desires = [];
-    for (const [substance, info] of this.pendingDesires) {
-      if (now > info.expiresAt) continue;
-      desires.push({ substance, delta: info.delta, expiresAt: info.expiresAt });
-    }
-    return {
-      sober: active.length === 0,
-      active: active.map((a) => ({
-        substance: a.substance,
-        displayName: SUBSTANCES[a.substance]?.displayName || a.substance,
-        level: a.level,
-        phase: a.phase
-      })),
-      combos,
-      riskFlags: this.riskFlags(now),
-      pendingDesires: desires,
-      pendingAcquisitions: Array.from(this.pendingAcquisitions.entries()).map(
-        ([substance, info]) => ({ substance, ...info })
-      ),
-      gradeLocked: !this.cluster || !this.cluster.grades
-    };
-  }
-  // ─── Pending acquisitions (simulated social acquisition per T15.B.3) ───
-  registerPendingAcquisition(substance, source = "dealer") {
-    this.pendingAcquisitions.set(substance, {
-      requestedAt: this.nowFn(),
-      source,
-      status: "pending"
-    });
-  }
-  resolvePendingAcquisition(substance, outcome, opts = {}) {
-    const pending = this.pendingAcquisitions.get(substance);
-    if (!pending) return { resolved: false };
-    this.pendingAcquisitions.delete(substance);
-    if (outcome === "arrived") {
-      return { resolved: true, ingestionResult: this.ingest(substance, opts) };
-    }
-    return { resolved: true, dropped: true };
-  }
-  // ─── Adult-use pattern engine ──────────────────────────────────────────
-  /**
-   * T15.C — evaluate all registered PATTERNS against a context object,
-   * fire each one whose triggers match AND whose cooldown has elapsed.
-   * Returns the list of patterns fired (for logging / UI telemetry).
-   *
-   * Context shape (all fields optional; unset = don't filter):
-   *   - localHour: number [0, 24), current local time-of-day (fractional ok)
-   *   - dayOfWeek: number [0, 6] (0=Sun, 6=Sat)
-   *   - arousal: number [0, 1]  — current persona arousal state
-   *   - activityTag: string — 'coding' / 'architecture' / 'sexual' / 'post-marathon' / 'existential'
-   *   - cortexDemand: number [0, 1] — sustained high-load gauge for marathon trigger
-   *   - demandDurationMs: number — how long demand has been above threshold
-   *   - social: boolean — social context active
-   *   - consent: boolean — relevant to sex-session pattern
-   *
-   * Patterns fire at most once per cooldown window. When fired, their
-   * schedule entries are passed to autoIngest() (offset=0 → immediate;
-   * offset>0 → deferred to _scheduledIngests).
-   */
-  evaluatePatterns(ctx = {}) {
-    const now = this.nowFn();
-    const fired = [];
-    for (const [name, pattern] of Object.entries(PATTERNS)) {
-      const last = this._patternsFired.get(name) || 0;
-      if (now - last < (pattern.cooldownMs || 0)) continue;
-      if (pattern.lifeGate && this.cluster?.grades?.life) {
-        if (!gradeAtLeast(this.cluster.grades.life, pattern.lifeGate)) continue;
-      } else if (pattern.lifeGate && !this.cluster?.grades) {
-        continue;
-      }
-      if (!this._patternTriggersMatch(pattern.triggers, ctx)) continue;
-      this._patternsFired.set(name, now);
-      fired.push(name);
-      for (const step of pattern.schedule || []) {
-        this.autoIngest(step.substance, {
-          route: step.route,
-          dose: step.dose,
-          offsetMs: step.offsetMs || 0,
-          patternName: name
-        });
-        this._activePatternTags.add(step.substance);
-      }
-    }
-    return fired;
-  }
-  _patternTriggersMatch(triggers, ctx) {
-    if (!triggers) return true;
-    if (Array.isArray(triggers.timeWindow) && typeof ctx.localHour === "number") {
-      const [a, b] = triggers.timeWindow;
-      const h = ctx.localHour;
-      const inRange = b > 24 ? h >= a || h < b - 24 : h >= a && h < b;
-      if (!inRange) return false;
-    }
-    if (Array.isArray(triggers.dayOfWeek) && typeof ctx.dayOfWeek === "number") {
-      if (!triggers.dayOfWeek.includes(ctx.dayOfWeek)) return false;
-    }
-    if (typeof triggers.minArousal === "number") {
-      if ((ctx.arousal || 0) < triggers.minArousal) return false;
-    }
-    if (typeof triggers.activityTag === "string") {
-      if (ctx.activityTag !== triggers.activityTag) return false;
-    }
-    if (typeof triggers.minCortexDemand === "number") {
-      if ((ctx.cortexDemand || 0) < triggers.minCortexDemand) return false;
-    }
-    if (typeof triggers.minDurationMs === "number") {
-      if ((ctx.demandDurationMs || 0) < triggers.minDurationMs) return false;
-    }
-    if (typeof triggers.social === "boolean") {
-      if (!!ctx.social !== triggers.social) return false;
-    }
-    if (typeof triggers.consent === "boolean") {
-      if (!!ctx.consent !== triggers.consent) return false;
-    }
-    return true;
-  }
-  /**
-   * T15.C — pattern-driven ingest. When offsetMs is 0, fires
-   * scheduler.ingest() immediately. When > 0, queues into
-   * _scheduledIngests for later promotion via
-   * promoteScheduledIngests(now). Distinct from the direct ingest()
-   * path so pattern-origin events are tagged (and can skip the
-   * decision-engine probabilistic layer — patterns are Unity
-   * actively choosing, not external offers).
-   */
-  autoIngest(substance, opts = {}) {
-    if (!SUBSTANCES[substance]) {
-      return { accepted: false, reason: "unknown_substance" };
-    }
-    if (!this.isAvailable(substance)) {
-      return {
-        accepted: false,
-        reason: "grade_locked",
-        currentGrade: this.cluster?.grades?.life || "pre-K",
-        requiredGrade: SUBSTANCES[substance].lifeGate
-      };
-    }
-    const offsetMs = opts.offsetMs || 0;
-    if (offsetMs <= 0) {
-      return this.ingest(substance, {
-        route: opts.route,
-        dose: opts.dose,
-        autoFromPattern: opts.patternName
-      });
-    }
-    this._scheduledIngests.push({
-      substance,
-      route: opts.route,
-      dose: opts.dose,
-      patternName: opts.patternName,
-      fireAt: this.nowFn() + offsetMs
-    });
-    return { accepted: true, deferred: true, fireAt: this.nowFn() + offsetMs };
-  }
-  /**
-   * T15.C — promote any _scheduledIngests whose fireAt time has
-   * arrived into real scheduler events. Called from the main tick
-   * loop each broadcast cycle. O(N) over pending queue; queue is
-   * typically small (a few pattern-step deferrals at most).
-   */
-  promoteScheduledIngests(now = this.nowFn()) {
-    if (this._scheduledIngests.length === 0) return [];
-    const remaining = [];
-    const promoted = [];
-    for (const entry of this._scheduledIngests) {
-      if (entry.fireAt <= now) {
-        const r = this.ingest(entry.substance, {
-          route: entry.route,
-          dose: entry.dose,
-          autoFromPattern: entry.patternName
-        });
-        promoted.push({ ...entry, result: r });
-      } else {
-        remaining.push(entry);
-      }
-    }
-    this._scheduledIngests = remaining;
-    return promoted;
-  }
-  // ─── Decision engine ───────────────────────────────────────────────────
-  /**
-   * T15.C — decide whether Unity accepts a substance offer. Called from
-   * the server-side drug-offer processing flow between drug-detector's
-   * parse and scheduler.ingest(). Replaces any previous unconditional
-   * accept: Unity now declines offers she's not ready for, not inclined
-   * toward, or physiologically unsafe to stack.
-   *
-   * Per docs/T15-architecture.md §1.6:
-   *   - Hard fails (grade_locked, persona_excluded, unknown_substance)
-   *     short-circuit before the probability layer.
-   *   - Accept probability starts at a persona-baseline openness
-   *     (0.70) and modulates by craving / active pattern / source
-   *     trust / physicalStrain / prior trauma.
-   *   - Final decision = accept-prob passes random draw.
-   *
-   * @param {object} offer
-   * @param {string} offer.substance - canonical SUBSTANCES key
-   * @param {string} [offer.source]  - 'friend' | 'dealer' | 'stranger' | 'user'
-   * @param {boolean} [offer.social] - social context currently active
-   * @param {string} [offer.location]- 'home'|'club'|'party'|'work'|...
-   * @param {number} [offer.time]    - epoch ms (defaults to nowFn())
-   * @param {number} [offer.random]  - override Math.random for determinism
-   * @param {object} [offer.personaExclusions] - set-like {nicotine:true}
-   * @returns {{accept:boolean, reason:string, probability:number, currentGrade?:string, requiredGrade?:string}}
-   */
-  decide(offer) {
-    if (!offer || typeof offer.substance !== "string") {
-      return { accept: false, reason: "invalid_offer", probability: 0 };
-    }
-    const sub = SUBSTANCES[offer.substance];
-    if (!sub) {
-      return { accept: false, reason: "unknown_substance", probability: 0 };
-    }
-    if (!this.isAvailable(offer.substance)) {
-      return {
-        accept: false,
-        reason: "grade_locked",
-        probability: 0,
-        currentGrade: this.cluster?.grades?.life || "pre-K",
-        requiredGrade: sub.lifeGate
-      };
-    }
-    if (offer.personaExclusions && offer.personaExclusions[offer.substance]) {
-      return { accept: false, reason: "persona_excluded", probability: 0 };
-    }
-    const now = offer.time ?? this.nowFn();
-    const flags = this.riskFlags(now);
-    if ((flags.physicalStrain || 0) > 0.9) {
-      return { accept: false, reason: "physical_strain", probability: 0 };
-    }
-    let p = 0.7;
-    const craving = this.currentCraving(offer.substance);
-    if (craving > 0.3) p += 0.3;
-    else if (craving > 0.1) p += 0.15;
-    if (this._activePatternTags && this._activePatternTags.has(offer.substance)) {
-      p += 0.3;
-    }
-    if (offer.source === "friend" || offer.source === "user") p += 0.2;
-    else if (offer.source === "stranger") p -= 0.1;
-    if ((flags.physicalStrain || 0) > 0.7) p -= 0.5;
-    else if ((flags.physicalStrain || 0) > 0.5) p -= 0.2;
-    if (this._traumaMarkers && this._traumaMarkers.has(offer.substance)) {
-      const tm = this._traumaMarkers.get(offer.substance);
-      const weeks = (now - tm.at) / (7 * 24 * 60 * 60 * 1e3);
-      const decayed = tm.weight * Math.exp(-weeks / 26);
-      p -= Math.min(0.6, decayed);
-    }
-    p = Math.max(0, Math.min(1, p));
-    const roll = typeof offer.random === "number" ? offer.random : Math.random();
-    if (roll < p) {
-      return { accept: true, reason: "accepted", probability: p };
-    }
-    return { accept: false, reason: "random_decline", probability: p };
-  }
-  // ─── Housekeeping ──────────────────────────────────────────────────────
-  clearExpired(now = this.nowFn()) {
-    for (const [substance, events] of this.events) {
-      const alive = events.filter((e) => now - e.startTime < e.tailMs);
-      if (alive.length === 0) {
-        this.events.delete(substance);
-      } else if (alive.length !== events.length) {
-        this.events.set(substance, alive);
-      }
-    }
-    this._decayTolerance(now);
-  }
-  _decayTolerance(now) {
-    const elapsed = now - this._lastDecayAt;
-    if (elapsed < 60 * 1e3) return;
-    const hours = elapsed / (60 * 60 * 1e3);
-    const decayFactor = Math.pow(0.5, hours);
-    for (const [substance, tol] of this.toleranceFactors) {
-      const nt = tol * decayFactor;
-      if (nt < 0.01) this.toleranceFactors.delete(substance);
-      else this.toleranceFactors.set(substance, nt);
-    }
-    this._lastDecayAt = now;
-  }
-  // ─── Persistence ───────────────────────────────────────────────────────
-  //
-  // Version history:
-  //   1 — initial schema (events, toleranceFactors, pendingAcquisitions,
-  //       lastDecayAt). Shipped with 9-substance pharmacology.
-  //   2 — T15.C adds pendingDesires (sensory-trigger craving intake).
-  //       Loader accepts v1 saves and upgrades them in place (v1 had
-  //       no cravings — empty Map is the correct upgrade).
-  serialize() {
-    const out = {
-      version: 2,
-      events: {},
-      toleranceFactors: {},
-      pendingAcquisitions: {},
-      pendingDesires: {},
-      lastDecayAt: this._lastDecayAt
-    };
-    for (const [s, events] of this.events) {
-      out.events[s] = events.map((e) => ({ ...e }));
-    }
-    for (const [s, t] of this.toleranceFactors) {
-      out.toleranceFactors[s] = t;
-    }
-    for (const [s, info] of this.pendingAcquisitions) {
-      out.pendingAcquisitions[s] = { ...info };
-    }
-    for (const [s, info] of this.pendingDesires) {
-      out.pendingDesires[s] = { ...info };
-    }
-    out.patternsFired = {};
-    for (const [name, t] of this._patternsFired) {
-      out.patternsFired[name] = t;
-    }
-    out.scheduledIngests = this._scheduledIngests.map((e) => ({ ...e }));
-    out.firstUse = {};
-    for (const [s, info] of this._firstUse) {
-      out.firstUse[s] = {
-        grade: info.grade,
-        age: info.age,
-        atMs: info.atMs,
-        contextTags: [...info.contextTags],
-        emotionalFingerprint: { ...info.emotionalFingerprint }
-      };
-    }
-    out.traumaMarkers = {};
-    for (const [s, info] of this._traumaMarkers) {
-      out.traumaMarkers[s] = { at: info.at, weight: info.weight };
-    }
-    return out;
-  }
-  load(obj) {
-    if (!obj) return;
-    if (obj.version !== 1 && obj.version !== 2) return;
-    this.events.clear();
-    this.toleranceFactors.clear();
-    this.pendingAcquisitions.clear();
-    this.pendingDesires.clear();
-    if (obj.events) {
-      for (const [s, events] of Object.entries(obj.events)) {
-        this.events.set(s, events);
-      }
-    }
-    if (obj.toleranceFactors) {
-      for (const [s, t] of Object.entries(obj.toleranceFactors)) {
-        this.toleranceFactors.set(s, t);
-      }
-    }
-    if (obj.pendingAcquisitions) {
-      for (const [s, info] of Object.entries(obj.pendingAcquisitions)) {
-        this.pendingAcquisitions.set(s, info);
-      }
-    }
-    if (obj.pendingDesires) {
-      for (const [s, info] of Object.entries(obj.pendingDesires)) {
-        this.pendingDesires.set(s, info);
-      }
-    }
-    this._patternsFired = /* @__PURE__ */ new Map();
-    if (obj.patternsFired) {
-      for (const [name, t] of Object.entries(obj.patternsFired)) {
-        this._patternsFired.set(name, t);
-      }
-    }
-    this._scheduledIngests = Array.isArray(obj.scheduledIngests) ? obj.scheduledIngests.map((e) => ({ ...e })) : [];
-    this._activePatternTags = /* @__PURE__ */ new Set();
-    this._firstUse = /* @__PURE__ */ new Map();
-    if (obj.firstUse) {
-      for (const [s, info] of Object.entries(obj.firstUse)) {
-        this._firstUse.set(s, {
-          grade: info.grade,
-          age: info.age,
-          atMs: info.atMs,
-          contextTags: Array.isArray(info.contextTags) ? [...info.contextTags] : [],
-          emotionalFingerprint: info.emotionalFingerprint || {}
-        });
-      }
-    }
-    this._traumaMarkers = /* @__PURE__ */ new Map();
-    if (obj.traumaMarkers) {
-      for (const [s, info] of Object.entries(obj.traumaMarkers)) {
-        this._traumaMarkers.set(s, { at: info.at, weight: info.weight });
-      }
-    }
-    this._lastDecayAt = obj.lastDecayAt || this.nowFn();
-    this._decayTolerance(this.nowFn());
-    this.clearExpired(this.nowFn());
-  }
-};
 
 // ../js/brain/endocrine.js
 var S = 1e3;
@@ -117876,15 +116562,16 @@ var EndocrineSystem = class {
       this.counters.scheduled++;
       return { accepted: true, deferred: true, fireAt: now + offsetMs };
     }
+    const p = opts.profile && Number.isFinite(opts.profile.onsetMs) && Number.isFinite(opts.profile.peakMs) && Number.isFinite(opts.profile.durationMs) && Number.isFinite(opts.profile.tailMs) ? opts.profile : chem.profile;
     const event = {
       chemical,
       dose,
       startTime: now,
       cause: opts.cause || null,
-      onsetMs: chem.profile.onsetMs,
-      peakMs: chem.profile.peakMs,
-      durationMs: chem.profile.durationMs,
-      tailMs: chem.profile.tailMs
+      onsetMs: p.onsetMs,
+      peakMs: p.peakMs,
+      durationMs: p.durationMs,
+      tailMs: p.tailMs
     };
     if (!this.events.has(chemical)) this.events.set(chemical, []);
     this.events.get(chemical).push(event);
@@ -117911,7 +116598,8 @@ var EndocrineSystem = class {
     if (events) {
       for (const e of events) total += pkCurve(now - e.startTime, e, e.dose);
     }
-    return Math.max(0, Math.min(1, total));
+    const ceiling = chem.kind === "tonic" ? 1 + chem.tonic : 1;
+    return Math.max(0, Math.min(ceiling, total));
   }
   /**
    * Signed deviation from resting level — this is what actually drives
@@ -118461,6 +117149,1497 @@ var EndocrineSystem = class {
     if (obj.counters) this.counters = { ...this.counters, ...obj.counters };
     this._lastTickAt = 0;
     this._clearExpired(this.nowFn());
+  }
+};
+
+// ../js/brain/drug-scheduler.js
+var GRADE_ORDER2 = [
+  "pre-K",
+  "kindergarten",
+  "grade1",
+  "grade2",
+  "grade3",
+  "grade4",
+  "grade5",
+  "grade6",
+  "grade7",
+  "grade8",
+  "grade9",
+  "grade10",
+  "grade11",
+  "grade12",
+  "college1",
+  "college2",
+  "college3",
+  "college4",
+  "grad",
+  "phd"
+];
+function gradeIndex(grade) {
+  const idx = GRADE_ORDER2.indexOf(grade);
+  return idx >= 0 ? idx : -1;
+}
+function gradeAtLeast(current, required) {
+  return gradeIndex(current) >= gradeIndex(required);
+}
+var SUBSTANCES = {
+  cannabis: {
+    displayName: "weed",
+    defaultRoute: "smoked",
+    routes: {
+      smoked: {
+        onsetMs: 7 * 60 * 1e3,
+        // ~7 min ramp to peak
+        peakMs: 45 * 60 * 1e3,
+        // peak plateau ~45 min in
+        durationMs: 3 * 60 * 60 * 1e3,
+        // ~3 hr active
+        tailMs: 6 * 60 * 60 * 1e3
+        // full baseline ~6 hr
+      },
+      oral: {
+        onsetMs: 60 * 60 * 1e3,
+        // edibles are SLOW
+        peakMs: 2 * 60 * 60 * 1e3,
+        durationMs: 4 * 60 * 60 * 1e3,
+        tailMs: 8 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      creativity: 0.5,
+      cortexSpeed: -0.2,
+      arousal: 0.1,
+      amygdalaValence: 0.3,
+      oscillationCoherence: -0.15,
+      cerebellumPrecision: -0.2,
+      impulsivity: 0.1,
+      hippocampusConsolidation: -0.15
+    },
+    speech: {
+      inhibition: -0.2,
+      // filthier, franker
+      coherence: -0.1,
+      ethereality: 0.1,
+      freeAssocWidth: 0.2,
+      giggleBias: 0.4
+    },
+    // CB1 agonism — indirect dopaminergic reward, and anandamide is the
+    // body's own cannabinoid, so the opioid-adjacent calm rides endorphin.
+    transmitters: { dopamine: 0.35, endorphin: 0.3 },
+    lifeGate: "grade7"
+    // first joint at age 12 per Life track
+  },
+  cocaine: {
+    displayName: "coke",
+    defaultRoute: "insufflated",
+    routes: {
+      insufflated: {
+        onsetMs: 3 * 60 * 1e3,
+        peakMs: 20 * 60 * 1e3,
+        durationMs: 60 * 60 * 1e3,
+        tailMs: 90 * 60 * 1e3
+      },
+      smoked: {
+        // freebase — not Unity's path, but available for completeness
+        onsetMs: 20 * 1e3,
+        peakMs: 4 * 60 * 1e3,
+        durationMs: 12 * 60 * 1e3,
+        tailMs: 25 * 60 * 1e3
+      }
+    },
+    contributions: {
+      cortexSpeed: 0.6,
+      arousal: 0.5,
+      hypothalamusArousal: 0.4,
+      amygdalaReward: 0.5,
+      impulsivity: 0.3,
+      creativity: 0.1,
+      cerebellumPrecision: 0.1,
+      prefrontalExecutive: 0.2
+      // at moderate dose
+    },
+    speech: {
+      inhibition: -0.1,
+      speechRate: 0.5,
+      paranoiaBias: 0.15,
+      // grows with sustained level
+      coherence: -0.05
+    },
+    // ⭐ THE TEXTBOOK CASE. Cocaine is a monoamine REUPTAKE BLOCKER — it has
+    // no private line to the amygdala. Dopamine accumulates in the synapse
+    // and DOPAMINE produces the reward; noradrenaline produces the drive.
+    transmitters: { dopamine: 0.9, noradrenaline: 0.6, serotonin: 0.2 },
+    lifeGate: "grade9"
+    // first coke at age 14 per Life track
+  },
+  mdma: {
+    displayName: "molly",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        onsetMs: 35 * 60 * 1e3,
+        peakMs: 2 * 60 * 60 * 1e3,
+        durationMs: 5 * 60 * 60 * 1e3,
+        tailMs: 8 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      arousal: 0.6,
+      amygdalaValence: 0.7,
+      amygdalaReward: 0.6,
+      socialNeed: 0.6,
+      synapticSensitivity: 0.5,
+      oscillationCoherence: 0.3,
+      cortexSpeed: 0.1,
+      prefrontalExecutive: -0.1
+      // prosocial disinhibition
+    },
+    speech: {
+      inhibition: -0.4,
+      emotionalOverflow: 0.7,
+      ethereality: 0.15,
+      freeAssocWidth: 0.1,
+      coherence: -0.05
+    },
+    // Massive serotonin release plus genuine oxytocin — the empathogen
+    // effect is not a metaphor, it is bonding chemistry. ⭐ And the serotonin
+    // DEPLETION that follows is why the comedown is what it is; that now
+    // falls out of the depletion model rather than needing its own rule.
+    transmitters: { serotonin: 0.95, oxytocin: 0.9, dopamine: 0.4, noradrenaline: 0.3 },
+    lifeGate: "grade11"
+    // first ecstasy at age 16 (high school party scene)
+  },
+  lsd: {
+    displayName: "acid",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        onsetMs: 60 * 60 * 1e3,
+        peakMs: 3 * 60 * 60 * 1e3,
+        durationMs: 10 * 60 * 60 * 1e3,
+        tailMs: 16 * 60 * 60 * 1e3
+      },
+      // ⛔ `PATTERNS.acidArchitect` has scheduled `lsd/sublingual` since
+      // T15.C against a substance that defined ONLY `oral`, so that step
+      // silently returned `unknown_route` and the acid-day pattern half
+      // failed. ⭐ And the pattern was RIGHT: blotter is held under the
+      // tongue, so sublingual is the real route and the table was the thing
+      // that was wrong. Slightly faster onset than swallowing, same arc.
+      sublingual: {
+        onsetMs: 40 * 60 * 1e3,
+        peakMs: 3 * 60 * 60 * 1e3,
+        durationMs: 10 * 60 * 60 * 1e3,
+        tailMs: 16 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      creativity: 1,
+      crossRegionAmplify: 0.8,
+      // T14.4 14 cross-projection firing amplified
+      defaultModeSuppression: 0.6,
+      // ego dissolution driver
+      cortexSpeed: -0.2,
+      // time dilation
+      synapticSensitivity: 0.4,
+      oscillationCoherence: -0.2,
+      visualCortexFeedback: 0.5
+      // V1 feedback loops → hallucination
+    },
+    speech: {
+      inhibition: -0.3,
+      coherence: -0.4,
+      ethereality: 0.8,
+      // Oz vocabulary pulls hard
+      freeAssocWidth: 0.7,
+      speechRate: -0.2,
+      dissociation: 0.3
+      // at peak dose
+    },
+    // 5-HT2A agonist — the classic psychedelics act on the serotonin system.
+    transmitters: { serotonin: 0.85, dopamine: 0.2 },
+    lifeGate: "grade11"
+  },
+  psilocybin: {
+    displayName: "mushrooms",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        onsetMs: 45 * 60 * 1e3,
+        peakMs: 90 * 60 * 1e3,
+        durationMs: 5 * 60 * 60 * 1e3,
+        tailMs: 8 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      creativity: 0.8,
+      crossRegionAmplify: 0.6,
+      defaultModeSuppression: 0.5,
+      cortexSpeed: -0.15,
+      synapticSensitivity: 0.3,
+      amygdalaValence: 0.4,
+      // warmer than LSD
+      somatosensoryBoost: 0.3
+      // body-heavy
+    },
+    speech: {
+      inhibition: -0.25,
+      coherence: -0.3,
+      ethereality: 0.7,
+      freeAssocWidth: 0.5,
+      emotionalOverflow: 0.2,
+      speechRate: -0.25
+    },
+    // Same 5-HT2A family as LSD, warmer and shorter.
+    transmitters: { serotonin: 0.8, dopamine: 0.15 },
+    lifeGate: "grade12"
+  },
+  alcohol: {
+    displayName: "whiskey",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        // one standard drink (~14g ethanol — shot of whiskey)
+        onsetMs: 15 * 60 * 1e3,
+        peakMs: 45 * 60 * 1e3,
+        durationMs: 90 * 60 * 1e3,
+        tailMs: 3 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      cerebellumPrecision: -0.6,
+      // motor coordination crippled
+      cortexSpeed: -0.3,
+      prefrontalExecutive: -0.5,
+      // disinhibition
+      amygdalaValence: 0.2,
+      // initial warmth
+      amygdalaFear: -0.3,
+      // liquid courage
+      oscillationCoherence: 0.2,
+      // slow-wave amplification
+      hippocampusConsolidation: -0.4,
+      // blackout risk at cumulative high BAC
+      impulsivity: 0.3
+    },
+    speech: {
+      inhibition: -0.6,
+      slur: 0.7,
+      coherence: -0.3,
+      speechRate: -0.3,
+      emotionalOverflow: 0.5,
+      // drunken confessions
+      freeAssocWidth: 0.15
+    },
+    // ⭐ Alcohol triggers ENDOGENOUS OPIOID release — that is a large part of
+    // why it feels good, and it is exactly the case ENDO.7 flagged as
+    // backwards: opioid effects used to be reachable only via substances
+    // when the body makes its own. GABA-A potentiation is the other half and
+    // is not modelled as a transmitter here, so it stays in the residual.
+    transmitters: { endorphin: 0.55, dopamine: 0.35 },
+    lifeGate: "grade8"
+    // first drink at age 13 per biographical draft
+  },
+  ketamine: {
+    displayName: "K",
+    defaultRoute: "insufflated",
+    routes: {
+      insufflated: {
+        onsetMs: 10 * 60 * 1e3,
+        peakMs: 25 * 60 * 1e3,
+        durationMs: 60 * 60 * 1e3,
+        tailMs: 2 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      dissociation: 0.7,
+      cortexSpeed: -0.4,
+      crossRegionAmplify: -0.3,
+      // recurrent blocked at NMDA sites
+      somatosensoryBoost: -0.5,
+      // body numbness
+      cerebellumPrecision: -0.4,
+      amygdalaFear: -0.3
+    },
+    speech: {
+      inhibition: -0.2,
+      slur: 0.4,
+      coherence: -0.4,
+      speechRate: -0.4,
+      dissociation: 0.7,
+      ethereality: 0.3
+    },
+    // NMDA antagonism is the primary action and is not a monoamine story —
+    // most of ketamine stays in the residual, honestly, because the
+    // transmitter set here cannot express glutamate.
+    transmitters: { endorphin: 0.3, dopamine: 0.25 },
+    lifeGate: "college1"
+    // first K at age 18 (dorm/rave scene)
+  },
+  amphetamine: {
+    displayName: "speed",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        onsetMs: 45 * 60 * 1e3,
+        peakMs: 3 * 60 * 60 * 1e3,
+        durationMs: 6 * 60 * 60 * 1e3,
+        tailMs: 12 * 60 * 60 * 1e3
+      },
+      insufflated: {
+        onsetMs: 15 * 60 * 1e3,
+        peakMs: 90 * 60 * 1e3,
+        durationMs: 4 * 60 * 60 * 1e3,
+        tailMs: 8 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      cortexSpeed: 0.5,
+      arousal: 0.45,
+      hypothalamusArousal: 0.5,
+      amygdalaReward: 0.4,
+      impulsivity: 0.25,
+      prefrontalExecutive: 0.3
+    },
+    speech: {
+      inhibition: -0.1,
+      speechRate: 0.4,
+      paranoiaBias: 0.1,
+      coherence: -0.03
+    },
+    // Amphetamine RELEASES the monoamines rather than merely blocking
+    // reuptake — a stronger, longer push than cocaine, and the depletion
+    // afterwards is correspondingly worse.
+    transmitters: { dopamine: 0.85, noradrenaline: 0.75 },
+    lifeGate: "grade10"
+    // first speed at age 15 (escalation per Life track)
+  },
+  ghb: {
+    displayName: "G",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        onsetMs: 20 * 60 * 1e3,
+        peakMs: 60 * 60 * 1e3,
+        durationMs: 2 * 60 * 60 * 1e3,
+        tailMs: 4 * 60 * 60 * 1e3
+      }
+    },
+    contributions: {
+      cortexSpeed: -0.3,
+      prefrontalExecutive: -0.4,
+      amygdalaValence: 0.3,
+      oscillationCoherence: 0.3,
+      cerebellumPrecision: -0.3,
+      socialNeed: 0.2
+    },
+    speech: {
+      inhibition: -0.4,
+      slur: 0.3,
+      coherence: -0.2,
+      speechRate: -0.2,
+      emotionalOverflow: 0.2
+    },
+    // GABA-B agonist with a biphasic dopamine effect; the sedation itself is
+    // not a monoamine story and stays in the residual.
+    transmitters: { dopamine: 0.3, endorphin: 0.25 },
+    lifeGate: "college1"
+  },
+  // ── ⛔ CAFFEINE — REFERENCED SINCE T15.C, NEVER DEFINED UNTIL NOW.
+  //
+  // `PATTERNS.morningCoffee` scheduled it twice and `PATTERNS.codingMarathon`
+  // twice more, and `COMBOS['caffeine+cocaine']` keyed on it — but it was
+  // absent from this table, so every one of those calls returned
+  // `{accepted:false, reason:'unknown_substance'}` into a caller that never
+  // surfaced the refusal. **The morning coffee ritual was 2/2 steps dead and
+  // had never once fired.** Found by a reference audit, not by a symptom,
+  // which is the only way a silently-refused call gets found at all.
+  //
+  // Pharmacology: adenosine antagonist. It does not release dopamine
+  // directly — it removes adenosine's brake on dopaminergic and
+  // noradrenergic tone, which is why its transmitter push is modest and its
+  // cortisol effect is real and often forgotten.
+  caffeine: {
+    displayName: "coffee",
+    defaultRoute: "oral",
+    routes: {
+      oral: {
+        onsetMs: 15 * 60 * 1e3,
+        peakMs: 45 * 60 * 1e3,
+        durationMs: 3 * 60 * 60 * 1e3,
+        tailMs: 6 * 60 * 60 * 1e3
+        // ~5h half-life — the long tail is why late coffee wrecks sleep
+      }
+    },
+    contributions: {
+      cortexSpeed: 0.3,
+      arousal: 0.25,
+      hypothalamusArousal: 0.2,
+      prefrontalExecutive: 0.15,
+      cerebellumPrecision: -0.05,
+      // the jitter
+      impulsivity: 0.05
+    },
+    speech: {
+      speechRate: 0.2,
+      rate: 0.2,
+      coherence: 0.02
+    },
+    transmitters: { dopamine: 0.3, noradrenaline: 0.35, cortisol: 0.25 },
+    lifeGate: "grade8"
+    // coffee from about thirteen — the morningCoffee pattern already assumed this gate
+  }
+};
+var COMBOS = {
+  "cannabis+cocaine": {
+    displayName: "coke-and-weed",
+    synergyContributions: {
+      creativity: 0.3,
+      hippocampusConsolidation: -0.15,
+      impulsivity: 0.05
+    },
+    synergySpeech: {
+      coherence: 0.05,
+      giggleBias: 0.1
+    },
+    riskFlags: { physicalStrain: 0.2, persistsMs: 4 * 60 * 60 * 1e3 }
+  },
+  "cocaine+mdma": {
+    displayName: "cokes-with-mols",
+    synergyContributions: {
+      arousal: 0.2,
+      // stacks toward ceiling
+      amygdalaValence: 0.25,
+      focusWidth: -0.1
+    },
+    synergySpeech: {
+      interruptionBias: 0.4,
+      freeAssocWidth: 0.3,
+      warmth: 0.2
+    },
+    riskFlags: { physicalStrain: 0.4, persistsMs: 6 * 60 * 60 * 1e3 }
+  },
+  "caffeine+cocaine": {
+    displayName: "double-stim",
+    synergyContributions: {
+      focusWidth: -0.2,
+      cerebellumPrecision: -0.2
+    },
+    synergySpeech: {
+      rate: 0.1,
+      interruptionBias: 0.1
+    },
+    riskFlags: { physicalStrain: 0.3, persistsMs: 12 * 60 * 60 * 1e3 }
+  },
+  "alcohol+cannabis": {
+    displayName: "cross-faded",
+    synergyContributions: {
+      amygdalaValence: 0.2,
+      // early — flips negative in tail
+      hippocampusConsolidation: -0.3,
+      // blackout-risk stack
+      cerebellumPrecision: -0.15
+    },
+    synergySpeech: {
+      slurring: 0.1,
+      coherence: -0.15
+    },
+    riskFlags: { physicalStrain: 0.15, persistsMs: 3 * 60 * 60 * 1e3 }
+  },
+  "cannabis+mdma": {
+    displayName: "rolling-and-green",
+    synergyContributions: {
+      amygdalaValence: 0.15
+      // empathy +0.20 would live here if empathy were a primary axis
+    },
+    synergySpeech: {
+      pauses: 0.2,
+      giggleBias: 0.3,
+      warmth: 0.15
+    },
+    riskFlags: { physicalStrain: 0.05, persistsMs: 2 * 60 * 60 * 1e3 }
+  },
+  "cannabis+ketamine": {
+    displayName: "k-hole-plus",
+    synergyContributions: {
+      // ego dissolution, detachment as composite axes — driven through
+      // dissociation field in speech layer rather than a new primary axis
+      cerebellumPrecision: -0.3
+    },
+    synergySpeech: {
+      dissociation: 0.4,
+      pauses: 0.4,
+      coherence: -0.2
+    },
+    riskFlags: { physicalStrain: 0.6, persistsMs: 2 * 60 * 60 * 1e3 }
+  },
+  "alcohol+cocaine": {
+    displayName: "speedball-lite",
+    // cocaethylene metabolite — cardiotoxic
+    synergyContributions: {
+      impulsivity: 0.3,
+      hippocampusConsolidation: -0.3
+    },
+    synergySpeech: {
+      volume: 0.1,
+      interruptionBias: 0.2
+    },
+    riskFlags: { physicalStrain: 0.6, persistsMs: 8 * 60 * 60 * 1e3 }
+  }
+};
+function comboKey(a, b) {
+  return a < b ? `${a}+${b}` : `${b}+${a}`;
+}
+function transmitterContributions(substance) {
+  const sub = SUBSTANCES[substance];
+  const out = {};
+  if (!sub || !sub.transmitters) return out;
+  for (const [chem, amount] of Object.entries(sub.transmitters)) {
+    const c = CHEMICALS[chem];
+    if (!c || !c.contributions) continue;
+    for (const [axis, v] of Object.entries(c.contributions)) {
+      out[axis] = (out[axis] || 0) + v * amount;
+    }
+  }
+  return out;
+}
+var DEPLETION_FRACTION = 0.35;
+var _residualCache = /* @__PURE__ */ new Map();
+function residualContributions(substance) {
+  if (_residualCache.has(substance)) return _residualCache.get(substance);
+  const sub = SUBSTANCES[substance];
+  const base = sub && sub.contributions || {};
+  const via = transmitterContributions(substance);
+  const out = { ...base };
+  for (const [axis, v] of Object.entries(via)) {
+    out[axis] = (out[axis] || 0) - v;
+  }
+  _residualCache.set(substance, out);
+  return out;
+}
+var PATTERNS = {
+  morningCoffee: {
+    displayName: "Morning coffee ritual",
+    triggers: {
+      timeWindow: [6, 10],
+      // local hour range
+      minArousal: 0.3
+    },
+    schedule: [
+      { substance: "caffeine", route: "oral", offsetMs: 0 },
+      { substance: "caffeine", route: "oral", offsetMs: 90 * 60 * 1e3 }
+    ],
+    lifeGate: "grade8",
+    cooldownMs: 20 * 60 * 60 * 1e3
+    // don't re-fire within 20h
+  },
+  codingMarathon: {
+    displayName: "Coding marathon",
+    triggers: {
+      activityTag: "coding",
+      minDurationMs: 60 * 60 * 1e3,
+      // 1h sustained high load
+      minCortexDemand: 0.7
+    },
+    schedule: [
+      { substance: "cannabis", route: "smoked", offsetMs: 0 },
+      { substance: "cocaine", route: "insufflated", offsetMs: 60 * 60 * 1e3 },
+      { substance: "caffeine", route: "oral", offsetMs: 0 },
+      { substance: "caffeine", route: "oral", offsetMs: 2 * 60 * 60 * 1e3 },
+      { substance: "cocaine", route: "insufflated", offsetMs: 2.5 * 60 * 60 * 1e3 }
+    ],
+    lifeGate: "college1",
+    cooldownMs: 8 * 60 * 60 * 1e3
+  },
+  weekendParty: {
+    displayName: "Weekend party night",
+    triggers: {
+      timeWindow: [21, 27],
+      // 21:00-03:00 next day (>24 hour expression)
+      dayOfWeek: [5, 6, 0],
+      // Fri/Sat/Sun (JS: 0=Sun, 5=Fri, 6=Sat)
+      social: true
+    },
+    schedule: [
+      { substance: "alcohol", route: "oral", offsetMs: 0 },
+      { substance: "mdma", route: "oral", offsetMs: 60 * 60 * 1e3 },
+      { substance: "cannabis", route: "smoked", offsetMs: 30 * 60 * 1e3 },
+      { substance: "cannabis", route: "smoked", offsetMs: 2 * 60 * 60 * 1e3 }
+    ],
+    lifeGate: "grade11",
+    cooldownMs: 7 * 24 * 60 * 60 * 1e3
+  },
+  acidArchitect: {
+    displayName: "Architecture-session acid-day",
+    triggers: {
+      activityTag: "architecture",
+      timeWindow: [9, 12],
+      dayOfWeek: [0, 6]
+      // weekend
+    },
+    schedule: [
+      { substance: "lsd", route: "sublingual", offsetMs: 0 },
+      { substance: "cannabis", route: "smoked", offsetMs: 6 * 60 * 60 * 1e3 }
+    ],
+    lifeGate: "college2",
+    cooldownMs: 30 * 24 * 60 * 60 * 1e3
+  },
+  whiskeyWinddown: {
+    displayName: "Post-marathon whiskey wind-down",
+    triggers: {
+      activityTag: "post-marathon",
+      timeWindow: [22, 26]
+    },
+    schedule: [
+      { substance: "alcohol", route: "oral", offsetMs: 0 },
+      { substance: "alcohol", route: "oral", offsetMs: 45 * 60 * 1e3 },
+      { substance: "alcohol", route: "oral", offsetMs: 90 * 60 * 1e3 }
+    ],
+    lifeGate: "college1",
+    cooldownMs: 24 * 60 * 60 * 1e3
+  },
+  kHoleContemplate: {
+    displayName: "K-hole contemplation",
+    triggers: {
+      activityTag: "existential",
+      timeWindow: [22, 26],
+      social: false
+    },
+    schedule: [
+      { substance: "ketamine", route: "insufflated", offsetMs: 0 },
+      { substance: "ketamine", route: "insufflated", offsetMs: 45 * 60 * 1e3 },
+      { substance: "ketamine", route: "insufflated", offsetMs: 2 * 60 * 60 * 1e3 },
+      { substance: "cannabis", route: "smoked", offsetMs: 60 * 60 * 1e3 }
+    ],
+    lifeGate: "college1",
+    cooldownMs: 3 * 24 * 60 * 60 * 1e3
+  },
+  sexSessionMolly: {
+    displayName: "Sex-session molly",
+    triggers: {
+      activityTag: "sexual",
+      consent: true,
+      dayOfWeek: [5, 6, 0]
+    },
+    schedule: [
+      { substance: "mdma", route: "oral", offsetMs: 0 },
+      { substance: "cocaine", route: "insufflated", offsetMs: 60 * 60 * 1e3 },
+      { substance: "cocaine", route: "insufflated", offsetMs: 2 * 60 * 60 * 1e3 },
+      { substance: "cannabis", route: "smoked", offsetMs: 30 * 60 * 1e3 }
+    ],
+    lifeGate: "grade11",
+    cooldownMs: 7 * 24 * 60 * 60 * 1e3
+  }
+};
+var DrugScheduler = class {
+  /**
+   * @param {object} opts
+   * @param {object} [opts.cluster] - NeuronCluster for reading grades.life
+   * @param {function} [opts.nowFn] - Override clock (for replay/testing). Default: Date.now
+   */
+  constructor(opts = {}) {
+    this.cluster = opts.cluster || null;
+    this.endocrine = opts.endocrine || null;
+    this._pendingDepletion = [];
+    this.nowFn = opts.nowFn || (() => Date.now());
+    this.events = /* @__PURE__ */ new Map();
+    this.toleranceFactors = /* @__PURE__ */ new Map();
+    this._lastDecayAt = this.nowFn();
+    this.pendingAcquisitions = /* @__PURE__ */ new Map();
+    this.pendingDesires = /* @__PURE__ */ new Map();
+    this._patternsFired = /* @__PURE__ */ new Map();
+    this._scheduledIngests = [];
+    this._activePatternTags = /* @__PURE__ */ new Set();
+    this._firstUse = /* @__PURE__ */ new Map();
+    this._traumaMarkers = /* @__PURE__ */ new Map();
+  }
+  setCluster(cluster) {
+    this.cluster = cluster;
+  }
+  /**
+   * ENDO-DRUG.1 — give the scheduler the endocrine layer a substance acts
+   * THROUGH. Without it the scheduler falls back to delivering the researched
+   * total directly (same quantity, undecomposed) and reports `direct` in its
+   * snapshot, so the two modes are never confused for one another.
+   */
+  setEndocrine(endocrine) {
+    this.endocrine = endocrine || null;
+  }
+  // ─── Availability (grade-gate) ──────────────────────────────────────────
+  isAvailable(substance) {
+    const sub = SUBSTANCES[substance];
+    if (!sub) return false;
+    if (!this.cluster || !this.cluster.grades) return false;
+    const lifeGrade = this.cluster.grades.life || "pre-K";
+    return gradeAtLeast(lifeGrade, sub.lifeGate);
+  }
+  availableSubstances() {
+    const out = [];
+    for (const name of Object.keys(SUBSTANCES)) {
+      if (this.isAvailable(name)) out.push(name);
+    }
+    return out;
+  }
+  // ─── Ingestion ──────────────────────────────────────────────────────────
+  /**
+   * Record an ingestion event. Non-announcing — caller layer produces the
+   * physical-act dialogue; scheduler just tracks the pharmacology.
+   *
+   * @returns {{accepted: boolean, reason?: string, event?: object, currentGrade?: string, requiredGrade?: string}}
+   */
+  ingest(substance, opts = {}) {
+    const sub = SUBSTANCES[substance];
+    if (!sub) {
+      return { accepted: false, reason: "unknown_substance" };
+    }
+    if (!this.isAvailable(substance)) {
+      return {
+        accepted: false,
+        reason: "grade_locked",
+        currentGrade: this.cluster?.grades?.life || "pre-K",
+        requiredGrade: sub.lifeGate
+      };
+    }
+    const route = opts.route || sub.defaultRoute;
+    const profile = sub.routes[route];
+    if (!profile) {
+      return { accepted: false, reason: "unknown_route" };
+    }
+    const now = opts.now ?? this.nowFn();
+    this._decayTolerance(now);
+    const tol = this.toleranceFactors.get(substance) || 0;
+    const requestedDose = typeof opts.dose === "number" ? opts.dose : 1;
+    const effectiveDose = requestedDose * (1 - tol * 0.5);
+    const event = {
+      substance,
+      route,
+      dose: effectiveDose,
+      requestedDose,
+      startTime: now,
+      onsetMs: profile.onsetMs,
+      peakMs: profile.peakMs,
+      durationMs: profile.durationMs,
+      tailMs: profile.tailMs
+    };
+    if (!this.events.has(substance)) this.events.set(substance, []);
+    this.events.get(substance).push(event);
+    if (this.endocrine && typeof this.endocrine.release === "function" && sub.transmitters) {
+      for (const [chem, amount] of Object.entries(sub.transmitters)) {
+        this.endocrine.release(chem, {
+          dose: amount * effectiveDose,
+          now,
+          profile,
+          // ← the SUBSTANCE's timing
+          cause: `drug:${substance}`
+        });
+        const c = CHEMICALS[chem];
+        if (c && c.kind === "tonic") {
+          this._pendingDepletion.push({
+            chemical: chem,
+            amount: amount * effectiveDose * DEPLETION_FRACTION,
+            at: now + profile.durationMs,
+            substance
+          });
+        }
+      }
+    }
+    this.toleranceFactors.set(substance, Math.min(0.7, tol + 0.1));
+    if (!this._firstUse.has(substance)) {
+      const grade = this.cluster?.grades?.life || "pre-K";
+      const contextTags = /* @__PURE__ */ new Set();
+      if (opts.contextTags) {
+        if (Array.isArray(opts.contextTags)) {
+          for (const t of opts.contextTags) contextTags.add(t);
+        } else if (opts.contextTags instanceof Set) {
+          for (const t of opts.contextTags) contextTags.add(t);
+        }
+      }
+      if (opts.autoFromPattern) contextTags.add(`pattern:${opts.autoFromPattern}`);
+      this._firstUse.set(substance, {
+        grade,
+        age: gradeIndex(grade) >= 0 ? 5 + gradeIndex(grade) : null,
+        // approximate age per grade
+        atMs: now,
+        contextTags: Array.from(contextTags),
+        emotionalFingerprint: {
+          arousal: opts.emotionalFingerprint?.arousal ?? null,
+          valence: opts.emotionalFingerprint?.valence ?? null,
+          fear: opts.emotionalFingerprint?.fear ?? null
+        }
+      });
+    }
+    return { accepted: true, event };
+  }
+  /**
+   * T15.C — mark a trauma event for a substance. Weight in [0, 1].
+   * decide() reads _traumaMarkers with a 26-week half-life decay so
+   * recent traumatic experiences strongly reduce acceptance probability
+   * while older ones fade. Repeated traumas stack (clamped).
+   *
+   * Call sites: blackout detection (alcohol + hippocampus collapse),
+   * k-hole panic (ketamine + amygdala fear spike), stimulant cardiac
+   * event (physicalStrain saturated at end-of-tail), legal event
+   * (future sensory/social wiring), or explicit Life-track curriculum
+   * cells scripting a traumatic biographical memory.
+   *
+   * @param {string} substance - SUBSTANCES key
+   * @param {number} weight - [0, 1] intensity of the trauma
+   */
+  markTrauma(substance, weight) {
+    if (!SUBSTANCES[substance]) return false;
+    const w = Math.max(0, Math.min(1, weight || 0));
+    if (w <= 0) return false;
+    const existing = this._traumaMarkers.get(substance);
+    const stacked = Math.min(1, (existing?.weight || 0) + w);
+    this._traumaMarkers.set(substance, { at: this.nowFn(), weight: stacked });
+    return true;
+  }
+  /**
+   * T15.C — read the ledger entry for a substance's first-use event.
+   * Returns null if Unity has never ingested this substance. Used by
+   * Life-track curriculum cells to decide whether to reinforce the
+   * biographical memory this grade (per LAW 6).
+   */
+  firstUse(substance) {
+    return this._firstUse.get(substance) || null;
+  }
+  /**
+   * T15.C — full dump of the first-use ledger. Returns a plain object
+   * keyed by substance. Used by UI + persistent-life-info ledger
+   * export to docs/TODO-full-syllabus.md (manual sync during T15.C
+   * follow-ups).
+   */
+  lifeInfoLedger() {
+    const out = {};
+    for (const [s, info] of this._firstUse) {
+      out[s] = {
+        grade: info.grade,
+        age: info.age,
+        atMs: info.atMs,
+        contextTags: [...info.contextTags],
+        emotionalFingerprint: { ...info.emotionalFingerprint }
+      };
+    }
+    return out;
+  }
+  // ─── Level readers ──────────────────────────────────────────────────────
+  level(substance, now = this.nowFn()) {
+    const events = this.events.get(substance);
+    if (!events || events.length === 0) return 0;
+    let total = 0;
+    for (const e of events) {
+      total += pkCurve(now - e.startTime, e, e.dose);
+    }
+    return Math.min(1, total);
+  }
+  phase(substance, now = this.nowFn()) {
+    const events = this.events.get(substance);
+    if (!events || events.length === 0) return "sober";
+    const last = events[events.length - 1];
+    const t = now - last.startTime;
+    if (t < 0) return "pending";
+    if (t < last.onsetMs) return "onset";
+    if (t < last.peakMs) return "peak";
+    if (t < last.durationMs) return "plateau";
+    if (t < last.tailMs) return "tail";
+    return "sober";
+  }
+  activeSubstances(now = this.nowFn()) {
+    const out = [];
+    for (const name of this.events.keys()) {
+      const level = this.level(name, now);
+      if (level > 0.01) {
+        out.push({ substance: name, level, phase: this.phase(name, now) });
+      }
+    }
+    return out;
+  }
+  isSober(now = this.nowFn()) {
+    return this.activeSubstances(now).length === 0;
+  }
+  // ─── Aggregated brain parameter contributions ──────────────────────────
+  /**
+   * Returns delta object to ADD to baseline brainParams.
+   * Multiple substances stack additively via superposition.
+   * Sober brain → empty delta → zero modulation → baseline persona.
+   *
+   * T15.C — combo-aware. Pairwise over active substances: if a combo
+   * entry exists for the pair, its synergy contributions add on top of
+   * the per-substance sum, scaled by `min(level_a, level_b)` (synergy
+   * requires both substances active; fades with the weaker one).
+   */
+  activeContributions(now = this.nowFn()) {
+    const delta = {};
+    const active = this.activeSubstances(now);
+    const routed = !!this.endocrine;
+    for (const { substance, level } of active) {
+      const contribs = routed ? residualContributions(substance) : SUBSTANCES[substance].contributions || {};
+      for (const [key, value] of Object.entries(contribs)) {
+        delta[key] = (delta[key] || 0) + value * level;
+      }
+    }
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
+        if (!combo || !combo.synergyContributions) continue;
+        const scale = Math.min(active[i].level, active[j].level);
+        for (const [k, v] of Object.entries(combo.synergyContributions)) {
+          delta[k] = (delta[k] || 0) + v * scale;
+        }
+      }
+    }
+    return delta;
+  }
+  /**
+   * T15.C — aggregate combo risk flags active right now. Snapshot()
+   * exposes this so UI can render warning badges (cardiac load,
+   * hepatic strain, etc.) without the consumer needing to re-walk
+   * active pairs.
+   */
+  riskFlags(now = this.nowFn()) {
+    const flags = {};
+    const active = this.activeSubstances(now);
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
+        if (!combo || !combo.riskFlags) continue;
+        const scale = Math.min(active[i].level, active[j].level);
+        for (const [k, v] of Object.entries(combo.riskFlags)) {
+          if (k === "persistsMs") continue;
+          flags[k] = (flags[k] || 0) + v * scale;
+        }
+      }
+    }
+    return flags;
+  }
+  /**
+   * T15.C — sensory-trigger intake. drug-sensory-triggers.js calls
+   * this when an environmental cue fires (T15.A §4 triggers). Craving
+   * stacks additively with an existing pending craving, clamped [0, 1],
+   * expires after durationMs.
+   */
+  addCraving(substance, delta, durationMs) {
+    const now = this.nowFn();
+    const existing = this.pendingDesires.get(substance);
+    const newDelta = Math.max(0, Math.min(1, (existing?.delta || 0) + delta));
+    const newExpires = Math.max(existing?.expiresAt || 0, now + durationMs);
+    this.pendingDesires.set(substance, { delta: newDelta, expiresAt: newExpires });
+  }
+  /**
+   * T15.C — read current craving level for a substance. Returns 0 if
+   * no craving OR if the craving has expired (lazy eviction; expired
+   * entry is removed on access). Decision engine uses this as one of
+   * the probability modifiers in decide().
+   */
+  currentCraving(substance) {
+    const c = this.pendingDesires.get(substance);
+    if (!c) return 0;
+    if (this.nowFn() > c.expiresAt) {
+      this.pendingDesires.delete(substance);
+      return 0;
+    }
+    return c.delta;
+  }
+  // ─── Speech modulation ─────────────────────────────────────────────────
+  /**
+   * Returns speech distortion vector consumed by language cortex + renderer.
+   * See T15.A.5b for the dimension definitions. cosmicBiasVec is left null
+   * here — the language cortex looks up the actual GloVe-space vector when
+   * ethereality is non-zero, because that requires dictionary access the
+   * scheduler deliberately doesn't hold.
+   */
+  speechModulation(now = this.nowFn()) {
+    const mod = {
+      // ── 9 pre-existing axes (stable for language-cortex consumers) ──
+      inhibition: 0,
+      slur: 0,
+      coherence: 0,
+      ethereality: 0,
+      freeAssocWidth: 0,
+      speechRate: 0,
+      emotionalOverflow: 0,
+      dissociation: 0,
+      paranoiaBias: 0,
+      giggleBias: 0,
+      // ── T15.C new axes (language cortex reads in T15.C.7) ──
+      warmth: 0,
+      profoundBias: 0,
+      interruptionBias: 0,
+      repetition: 0,
+      volume: 0,
+      confessionalBias: 0,
+      rate: 0,
+      // new name for speechRate — both populated below
+      slurring: 0,
+      // new name for slur — both populated below
+      pauses: 0,
+      // Vector fields populated by language cortex when their scalar
+      // counterpart is non-zero. Left null here.
+      cosmicBiasVec: null,
+      paranoiaBiasVec: null,
+      giggleBiasVec: null
+    };
+    const active = this.activeSubstances(now);
+    const ALIASES = { rate: "speechRate", slurring: "slur" };
+    for (const { substance, level } of active) {
+      const speech = SUBSTANCES[substance].speech || {};
+      for (const [key, value] of Object.entries(speech)) {
+        if (mod[key] !== void 0 && typeof mod[key] === "number") {
+          mod[key] += value * level;
+        }
+        const aliasKey = ALIASES[key];
+        if (aliasKey && mod[aliasKey] !== void 0) {
+          mod[aliasKey] += value * level;
+        }
+      }
+    }
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
+        if (!combo || !combo.synergySpeech) continue;
+        const scale = Math.min(active[i].level, active[j].level);
+        for (const [key, value] of Object.entries(combo.synergySpeech)) {
+          if (mod[key] !== void 0 && typeof mod[key] === "number") {
+            mod[key] += value * scale;
+          }
+          const aliasKey = ALIASES[key];
+          if (aliasKey && mod[aliasKey] !== void 0) {
+            mod[aliasKey] += value * scale;
+          }
+        }
+      }
+    }
+    return mod;
+  }
+  // ─── Snapshot for UI broadcast ──────────────────────────────────────────
+  /**
+   * Compact state suitable for WebSocket broadcast + UI consumption.
+   * Replaces the legacy `drugState: string` single-label field.
+   */
+  snapshot(now = this.nowFn()) {
+    const active = this.activeSubstances(now);
+    const combos = [];
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
+        if (!combo) continue;
+        combos.push({
+          key: comboKey(active[i].substance, active[j].substance),
+          displayName: combo.displayName,
+          level: Math.min(active[i].level, active[j].level)
+        });
+      }
+    }
+    const desires = [];
+    for (const [substance, info] of this.pendingDesires) {
+      if (now > info.expiresAt) continue;
+      desires.push({ substance, delta: info.delta, expiresAt: info.expiresAt });
+    }
+    return {
+      sober: active.length === 0,
+      active: active.map((a) => ({
+        substance: a.substance,
+        displayName: SUBSTANCES[a.substance]?.displayName || a.substance,
+        level: a.level,
+        phase: a.phase
+      })),
+      combos,
+      riskFlags: this.riskFlags(now),
+      pendingDesires: desires,
+      pendingAcquisitions: Array.from(this.pendingAcquisitions.entries()).map(
+        ([substance, info]) => ({ substance, ...info })
+      ),
+      gradeLocked: !this.cluster || !this.cluster.grades,
+      // ENDO-DRUG.1 — is the effect arriving THROUGH her transmitters, or
+      // being written to brain params directly? ⛔ Two different mechanisms
+      // delivering the same total, and telemetry must never let them read
+      // alike: `direct` means the endocrine layer is absent, which is a fact
+      // about the wiring, not about her.
+      mechanism: this.endocrine ? "routed" : "direct",
+      // The comedowns she is owed. A non-empty list during a plateau is the
+      // honest preview of the crash.
+      pendingComedowns: this._pendingDepletion.map((d) => ({
+        chemical: d.chemical,
+        amount: d.amount,
+        substance: d.substance,
+        dueInMs: Math.max(0, d.at - now)
+      }))
+    };
+  }
+  // ─── Pending acquisitions (simulated social acquisition per T15.B.3) ───
+  registerPendingAcquisition(substance, source = "dealer") {
+    this.pendingAcquisitions.set(substance, {
+      requestedAt: this.nowFn(),
+      source,
+      status: "pending"
+    });
+  }
+  resolvePendingAcquisition(substance, outcome, opts = {}) {
+    const pending = this.pendingAcquisitions.get(substance);
+    if (!pending) return { resolved: false };
+    this.pendingAcquisitions.delete(substance);
+    if (outcome === "arrived") {
+      return { resolved: true, ingestionResult: this.ingest(substance, opts) };
+    }
+    return { resolved: true, dropped: true };
+  }
+  // ─── Adult-use pattern engine ──────────────────────────────────────────
+  /**
+   * T15.C — evaluate all registered PATTERNS against a context object,
+   * fire each one whose triggers match AND whose cooldown has elapsed.
+   * Returns the list of patterns fired (for logging / UI telemetry).
+   *
+   * Context shape (all fields optional; unset = don't filter):
+   *   - localHour: number [0, 24), current local time-of-day (fractional ok)
+   *   - dayOfWeek: number [0, 6] (0=Sun, 6=Sat)
+   *   - arousal: number [0, 1]  — current persona arousal state
+   *   - activityTag: string — 'coding' / 'architecture' / 'sexual' / 'post-marathon' / 'existential'
+   *   - cortexDemand: number [0, 1] — sustained high-load gauge for marathon trigger
+   *   - demandDurationMs: number — how long demand has been above threshold
+   *   - social: boolean — social context active
+   *   - consent: boolean — relevant to sex-session pattern
+   *
+   * Patterns fire at most once per cooldown window. When fired, their
+   * schedule entries are passed to autoIngest() (offset=0 → immediate;
+   * offset>0 → deferred to _scheduledIngests).
+   */
+  evaluatePatterns(ctx = {}) {
+    const now = this.nowFn();
+    const fired = [];
+    for (const [name, pattern] of Object.entries(PATTERNS)) {
+      const last = this._patternsFired.has(name) ? this._patternsFired.get(name) : null;
+      if (last !== null && now - last < (pattern.cooldownMs || 0)) continue;
+      if (pattern.lifeGate && this.cluster?.grades?.life) {
+        if (!gradeAtLeast(this.cluster.grades.life, pattern.lifeGate)) continue;
+      } else if (pattern.lifeGate && !this.cluster?.grades) {
+        continue;
+      }
+      if (!this._patternTriggersMatch(pattern.triggers, ctx)) continue;
+      this._patternsFired.set(name, now);
+      fired.push(name);
+      for (const step of pattern.schedule || []) {
+        this.autoIngest(step.substance, {
+          route: step.route,
+          dose: step.dose,
+          offsetMs: step.offsetMs || 0,
+          patternName: name
+        });
+        this._activePatternTags.add(step.substance);
+      }
+    }
+    return fired;
+  }
+  _patternTriggersMatch(triggers, ctx) {
+    if (!triggers) return true;
+    if (Array.isArray(triggers.timeWindow) && typeof ctx.localHour === "number") {
+      const [a, b] = triggers.timeWindow;
+      const h = ctx.localHour;
+      const inRange = b > 24 ? h >= a || h < b - 24 : h >= a && h < b;
+      if (!inRange) return false;
+    }
+    if (Array.isArray(triggers.dayOfWeek) && typeof ctx.dayOfWeek === "number") {
+      if (!triggers.dayOfWeek.includes(ctx.dayOfWeek)) return false;
+    }
+    if (typeof triggers.minArousal === "number") {
+      if ((ctx.arousal || 0) < triggers.minArousal) return false;
+    }
+    if (typeof triggers.activityTag === "string") {
+      if (ctx.activityTag !== triggers.activityTag) return false;
+    }
+    if (typeof triggers.minCortexDemand === "number") {
+      if ((ctx.cortexDemand || 0) < triggers.minCortexDemand) return false;
+    }
+    if (typeof triggers.minDurationMs === "number") {
+      if ((ctx.demandDurationMs || 0) < triggers.minDurationMs) return false;
+    }
+    if (typeof triggers.social === "boolean") {
+      if (!!ctx.social !== triggers.social) return false;
+    }
+    if (typeof triggers.consent === "boolean") {
+      if (!!ctx.consent !== triggers.consent) return false;
+    }
+    return true;
+  }
+  /**
+   * T15.C — pattern-driven ingest. When offsetMs is 0, fires
+   * scheduler.ingest() immediately. When > 0, queues into
+   * _scheduledIngests for later promotion via
+   * promoteScheduledIngests(now). Distinct from the direct ingest()
+   * path so pattern-origin events are tagged (and can skip the
+   * decision-engine probabilistic layer — patterns are Unity
+   * actively choosing, not external offers).
+   */
+  autoIngest(substance, opts = {}) {
+    if (!SUBSTANCES[substance]) {
+      return { accepted: false, reason: "unknown_substance" };
+    }
+    if (!this.isAvailable(substance)) {
+      return {
+        accepted: false,
+        reason: "grade_locked",
+        currentGrade: this.cluster?.grades?.life || "pre-K",
+        requiredGrade: SUBSTANCES[substance].lifeGate
+      };
+    }
+    const offsetMs = opts.offsetMs || 0;
+    if (offsetMs <= 0) {
+      return this.ingest(substance, {
+        route: opts.route,
+        dose: opts.dose,
+        autoFromPattern: opts.patternName
+      });
+    }
+    this._scheduledIngests.push({
+      substance,
+      route: opts.route,
+      dose: opts.dose,
+      patternName: opts.patternName,
+      fireAt: this.nowFn() + offsetMs
+    });
+    return { accepted: true, deferred: true, fireAt: this.nowFn() + offsetMs };
+  }
+  /**
+   * T15.C — promote any _scheduledIngests whose fireAt time has
+   * arrived into real scheduler events. Called from the main tick
+   * loop each broadcast cycle. O(N) over pending queue; queue is
+   * typically small (a few pattern-step deferrals at most).
+   */
+  promoteScheduledIngests(now = this.nowFn()) {
+    if (this._pendingDepletion.length > 0) {
+      const stillPending = [];
+      for (const d of this._pendingDepletion) {
+        if (d.at <= now) {
+          if (this.endocrine && typeof this.endocrine.dipTonic === "function") {
+            this.endocrine.dipTonic(d.chemical, d.amount);
+          }
+        } else {
+          stillPending.push(d);
+        }
+      }
+      this._pendingDepletion = stillPending;
+    }
+    if (this._scheduledIngests.length === 0) return [];
+    const remaining = [];
+    const promoted = [];
+    for (const entry of this._scheduledIngests) {
+      if (entry.fireAt <= now) {
+        const r = this.ingest(entry.substance, {
+          route: entry.route,
+          dose: entry.dose,
+          autoFromPattern: entry.patternName
+        });
+        promoted.push({ ...entry, result: r });
+      } else {
+        remaining.push(entry);
+      }
+    }
+    this._scheduledIngests = remaining;
+    return promoted;
+  }
+  // ─── Decision engine ───────────────────────────────────────────────────
+  /**
+   * T15.C — decide whether Unity accepts a substance offer. Called from
+   * the server-side drug-offer processing flow between drug-detector's
+   * parse and scheduler.ingest(). Replaces any previous unconditional
+   * accept: Unity now declines offers she's not ready for, not inclined
+   * toward, or physiologically unsafe to stack.
+   *
+   * Per docs/T15-architecture.md §1.6:
+   *   - Hard fails (grade_locked, persona_excluded, unknown_substance)
+   *     short-circuit before the probability layer.
+   *   - Accept probability starts at a persona-baseline openness
+   *     (0.70) and modulates by craving / active pattern / source
+   *     trust / physicalStrain / prior trauma.
+   *   - Final decision = accept-prob passes random draw.
+   *
+   * @param {object} offer
+   * @param {string} offer.substance - canonical SUBSTANCES key
+   * @param {string} [offer.source]  - 'friend' | 'dealer' | 'stranger' | 'user'
+   * @param {boolean} [offer.social] - social context currently active
+   * @param {string} [offer.location]- 'home'|'club'|'party'|'work'|...
+   * @param {number} [offer.time]    - epoch ms (defaults to nowFn())
+   * @param {number} [offer.random]  - override Math.random for determinism
+   * @param {object} [offer.personaExclusions] - set-like {nicotine:true}
+   * @returns {{accept:boolean, reason:string, probability:number, currentGrade?:string, requiredGrade?:string}}
+   */
+  decide(offer) {
+    if (!offer || typeof offer.substance !== "string") {
+      return { accept: false, reason: "invalid_offer", probability: 0 };
+    }
+    const sub = SUBSTANCES[offer.substance];
+    if (!sub) {
+      return { accept: false, reason: "unknown_substance", probability: 0 };
+    }
+    if (!this.isAvailable(offer.substance)) {
+      return {
+        accept: false,
+        reason: "grade_locked",
+        probability: 0,
+        currentGrade: this.cluster?.grades?.life || "pre-K",
+        requiredGrade: sub.lifeGate
+      };
+    }
+    if (offer.personaExclusions && offer.personaExclusions[offer.substance]) {
+      return { accept: false, reason: "persona_excluded", probability: 0 };
+    }
+    const now = offer.time ?? this.nowFn();
+    const flags = this.riskFlags(now);
+    if ((flags.physicalStrain || 0) > 0.9) {
+      return { accept: false, reason: "physical_strain", probability: 0 };
+    }
+    let p = 0.7;
+    const craving = this.currentCraving(offer.substance);
+    if (craving > 0.3) p += 0.3;
+    else if (craving > 0.1) p += 0.15;
+    if (this._activePatternTags && this._activePatternTags.has(offer.substance)) {
+      p += 0.3;
+    }
+    if (offer.source === "friend" || offer.source === "user") p += 0.2;
+    else if (offer.source === "stranger") p -= 0.1;
+    if ((flags.physicalStrain || 0) > 0.7) p -= 0.5;
+    else if ((flags.physicalStrain || 0) > 0.5) p -= 0.2;
+    if (this._traumaMarkers && this._traumaMarkers.has(offer.substance)) {
+      const tm = this._traumaMarkers.get(offer.substance);
+      const weeks = (now - tm.at) / (7 * 24 * 60 * 60 * 1e3);
+      const decayed = tm.weight * Math.exp(-weeks / 26);
+      p -= Math.min(0.6, decayed);
+    }
+    p = Math.max(0, Math.min(1, p));
+    const roll = typeof offer.random === "number" ? offer.random : Math.random();
+    if (roll < p) {
+      return { accept: true, reason: "accepted", probability: p };
+    }
+    return { accept: false, reason: "random_decline", probability: p };
+  }
+  // ─── Housekeeping ──────────────────────────────────────────────────────
+  clearExpired(now = this.nowFn()) {
+    for (const [substance, events] of this.events) {
+      const alive = events.filter((e) => now - e.startTime < e.tailMs);
+      if (alive.length === 0) {
+        this.events.delete(substance);
+      } else if (alive.length !== events.length) {
+        this.events.set(substance, alive);
+      }
+    }
+    this._decayTolerance(now);
+  }
+  _decayTolerance(now) {
+    const elapsed = now - this._lastDecayAt;
+    if (elapsed < 60 * 1e3) return;
+    const hours = elapsed / (60 * 60 * 1e3);
+    const decayFactor = Math.pow(0.5, hours);
+    for (const [substance, tol] of this.toleranceFactors) {
+      const nt = tol * decayFactor;
+      if (nt < 0.01) this.toleranceFactors.delete(substance);
+      else this.toleranceFactors.set(substance, nt);
+    }
+    this._lastDecayAt = now;
+  }
+  // ─── Persistence ───────────────────────────────────────────────────────
+  //
+  // Version history:
+  //   1 — initial schema (events, toleranceFactors, pendingAcquisitions,
+  //       lastDecayAt). Shipped with 9-substance pharmacology.
+  //   2 — T15.C adds pendingDesires (sensory-trigger craving intake).
+  //       Loader accepts v1 saves and upgrades them in place (v1 had
+  //       no cravings — empty Map is the correct upgrade).
+  serialize() {
+    const out = {
+      version: 2,
+      events: {},
+      toleranceFactors: {},
+      pendingAcquisitions: {},
+      pendingDesires: {},
+      lastDecayAt: this._lastDecayAt
+    };
+    for (const [s, events] of this.events) {
+      out.events[s] = events.map((e) => ({ ...e }));
+    }
+    for (const [s, t] of this.toleranceFactors) {
+      out.toleranceFactors[s] = t;
+    }
+    for (const [s, info] of this.pendingAcquisitions) {
+      out.pendingAcquisitions[s] = { ...info };
+    }
+    for (const [s, info] of this.pendingDesires) {
+      out.pendingDesires[s] = { ...info };
+    }
+    out.patternsFired = {};
+    for (const [name, t] of this._patternsFired) {
+      out.patternsFired[name] = t;
+    }
+    out.scheduledIngests = this._scheduledIngests.map((e) => ({ ...e }));
+    out.firstUse = {};
+    for (const [s, info] of this._firstUse) {
+      out.firstUse[s] = {
+        grade: info.grade,
+        age: info.age,
+        atMs: info.atMs,
+        contextTags: [...info.contextTags],
+        emotionalFingerprint: { ...info.emotionalFingerprint }
+      };
+    }
+    out.traumaMarkers = {};
+    for (const [s, info] of this._traumaMarkers) {
+      out.traumaMarkers[s] = { at: info.at, weight: info.weight };
+    }
+    return out;
+  }
+  load(obj) {
+    if (!obj) return;
+    if (obj.version !== 1 && obj.version !== 2) return;
+    this.events.clear();
+    this.toleranceFactors.clear();
+    this.pendingAcquisitions.clear();
+    this.pendingDesires.clear();
+    if (obj.events) {
+      for (const [s, events] of Object.entries(obj.events)) {
+        this.events.set(s, events);
+      }
+    }
+    if (obj.toleranceFactors) {
+      for (const [s, t] of Object.entries(obj.toleranceFactors)) {
+        this.toleranceFactors.set(s, t);
+      }
+    }
+    if (obj.pendingAcquisitions) {
+      for (const [s, info] of Object.entries(obj.pendingAcquisitions)) {
+        this.pendingAcquisitions.set(s, info);
+      }
+    }
+    if (obj.pendingDesires) {
+      for (const [s, info] of Object.entries(obj.pendingDesires)) {
+        this.pendingDesires.set(s, info);
+      }
+    }
+    this._patternsFired = /* @__PURE__ */ new Map();
+    if (obj.patternsFired) {
+      for (const [name, t] of Object.entries(obj.patternsFired)) {
+        this._patternsFired.set(name, t);
+      }
+    }
+    this._scheduledIngests = Array.isArray(obj.scheduledIngests) ? obj.scheduledIngests.map((e) => ({ ...e })) : [];
+    this._activePatternTags = /* @__PURE__ */ new Set();
+    this._firstUse = /* @__PURE__ */ new Map();
+    if (obj.firstUse) {
+      for (const [s, info] of Object.entries(obj.firstUse)) {
+        this._firstUse.set(s, {
+          grade: info.grade,
+          age: info.age,
+          atMs: info.atMs,
+          contextTags: Array.isArray(info.contextTags) ? [...info.contextTags] : [],
+          emotionalFingerprint: info.emotionalFingerprint || {}
+        });
+      }
+    }
+    this._traumaMarkers = /* @__PURE__ */ new Map();
+    if (obj.traumaMarkers) {
+      for (const [s, info] of Object.entries(obj.traumaMarkers)) {
+        this._traumaMarkers.set(s, { at: info.at, weight: info.weight });
+      }
+    }
+    this._lastDecayAt = obj.lastDecayAt || this.nowFn();
+    this._decayTolerance(this.nowFn());
+    this.clearExpired(this.nowFn());
   }
 };
 
@@ -119188,6 +119367,7 @@ var UnityBrain = class extends EventEmitter {
     this.endocrine = new EndocrineSystem();
     this.glands = new GlandLayer({ endocrine: this.endocrine });
     this.endocrine.setGlands(this.glands);
+    this.drugScheduler.setEndocrine(this.endocrine);
     this.introspection = new IntrospectionDrive();
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, void 0, this.endocrine);
     const arousal = this.brainParams.arousalBaseline || 0.9;

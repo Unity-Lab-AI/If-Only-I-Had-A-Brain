@@ -93,7 +93,12 @@
 // in this file — it needs a coarse phase-clock design and its own re-price.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { pkCurve } from './drug-scheduler.js';
+// ⚠ Imported from the leaf module, NOT from drug-scheduler.js. The scheduler
+// now imports CHEMICALS from this file (so a substance acts through a
+// transmitter rather than reaching into brain params directly), and importing
+// back from it would close a cycle whose failure mode is a load-time TDZ
+// crash that `node --check` does not catch. Still exactly one curve engine.
+import { pkCurve } from './pk-curve.js';
 
 // ─── Chemical database ────────────────────────────────────────────────────
 // Timing in milliseconds. Curves are the subjective shape of the real
@@ -601,15 +606,26 @@ class EndocrineSystem {
       return { accepted: true, deferred: true, fireAt: now + offsetMs };
     }
 
+    // ⚠ A caller may supply its OWN timing profile, and one case genuinely
+    // requires it: a substance-released transmitter follows the SUBSTANCE'S
+    // pharmacokinetics, not the transmitter's. Dopamine's native curve peaks
+    // in a second and is gone in a minute — that is a phasic burst. Cocaine's
+    // dopamine elevation lasts as long as reuptake is blocked. Forcing the
+    // native profile there would model a line of coke as a one-second twitch.
+    const p = (opts.profile
+      && Number.isFinite(opts.profile.onsetMs) && Number.isFinite(opts.profile.peakMs)
+      && Number.isFinite(opts.profile.durationMs) && Number.isFinite(opts.profile.tailMs))
+      ? opts.profile : chem.profile;
+
     const event = {
       chemical,
       dose,
       startTime: now,
       cause: opts.cause || null,
-      onsetMs:    chem.profile.onsetMs,
-      peakMs:     chem.profile.peakMs,
-      durationMs: chem.profile.durationMs,
-      tailMs:     chem.profile.tailMs,
+      onsetMs:    p.onsetMs,
+      peakMs:     p.peakMs,
+      durationMs: p.durationMs,
+      tailMs:     p.tailMs,
     };
     if (!this.events.has(chemical)) this.events.set(chemical, []);
     this.events.get(chemical).push(event);
@@ -641,7 +657,21 @@ class EndocrineSystem {
     if (events) {
       for (const e of events) total += pkCurve(now - e.startTime, e, e.dose);
     }
-    return Math.max(0, Math.min(1, total));
+    // ⚠ THE CEILING IS `1 + tonic` FOR TONIC CHEMICALS, NOT 1.
+    //
+    // A tonic chemical rests at its baseline and a release stacks ON TOP of
+    // it. Clamping the SUM at 1.0 silently truncated the release: cocaine
+    // floods dopamine by 0.90 onto a 0.40 baseline, and a hard 1.0 ceiling
+    // delivered a deviation of 0.60 instead — measured as a 0.165 shortfall
+    // on amygdalaReward, exactly (0.90−0.60)×0.55. That is the clamp eating
+    // a third of a line of coke.
+    //
+    // Supra-physiological flooding is precisely what stimulants DO, so the
+    // ceiling is the baseline plus one full release. Deviation therefore
+    // still tops out at 1.0, which is what every contribution weight is
+    // scaled against.
+    const ceiling = chem.kind === 'tonic' ? 1 + chem.tonic : 1;
+    return Math.max(0, Math.min(ceiling, total));
   }
 
   /**

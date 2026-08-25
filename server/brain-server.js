@@ -3911,6 +3911,13 @@ class ServerBrain {
       this.endocrine = new endocrineMod.EndocrineSystem({ cluster: this.cortexCluster });
       this.glands = new brainstemMod.GlandLayer({ endocrine: this.endocrine });
       this.endocrine.setGlands(this.glands);
+      // ENDO-DRUG.1 — substances now act THROUGH her transmitters. Wired here
+      // because the scheduler is constructed before the endocrine layer
+      // exists; without this call every drug silently reverts to writing
+      // brain params directly, which the snapshot reports as `direct`.
+      if (this.drugScheduler && typeof this.drugScheduler.setEndocrine === 'function') {
+        this.drugScheduler.setEndocrine(this.endocrine);
+      }
       console.log(`[Brain] ENDO — endocrine layer online: ${Object.keys(endocrineMod.CHEMICALS).length} chemicals, ${Object.keys(this.glands.nuclei).length} nuclei. brainstem cluster = ${(CLUSTER_SIZES.brainstem || 0).toLocaleString()} neurons (locus coeruleus / raphe / VTA).`);
 
       // INTRO — the introspective drive. ⛔ Produces GAPS, never sentences:
