@@ -2,7 +2,9 @@
 
 > ## ⭐⭐⭐ 2026-08-25 (latest) — SHE HAS A BODY NOW. THE CHEMISTRY IS BUILT, AND THE BOARD HAS NO BUILDABLE WORK LEFT.
 >
-> **PICK-UP STATE.** `main = 76800fb6`, identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard clean. Board **3 open — and NONE is buildable**: `PRESSBLOCK.1` and `INFRA.1` are **parked on Gee's word**, `DONORSHIP.1` is **audited and awaiting his verdict**.
+> **PICK-UP STATE.** `main = 1835ddba` (this entry's own cascade moves it once more — check `git log -1 main` rather than trusting this line if they disagree), identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard clean. Board **3 open — and NONE is buildable**: `PRESSBLOCK.1` and `INFRA.1` are **parked on Gee's word**, `DONORSHIP.1` is **audited and awaiting his verdict**.
+>
+> ⭐ **THE ONE THING TO DO NEXT: press Update &amp; FRESH WALK.** There is no code work queued ahead of it. `docs/TODO.md § PRESS BRIEF` carries the RE-PRICE, what the press lands, the **11-field watch list in reading order**, and what would mean I got something wrong.
 >
 > ⛔ **READ `docs/TODO.md` § PRESS BRIEF BEFORE PRESSING ANYTHING.** `WEIGHTS_FORMAT_VERSION` moved **4 → 5** — the next press is a **FRESH WALK**, not a Savestart, because the cluster set changed. That is the designed behaviour and it is the ORDER `WALKLAST.1` specifies: everything that changes *what she is taught* had to land first. It has.
 >
