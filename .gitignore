@@ -143,6 +143,16 @@ server/community-tier.json
 # are the three ways to change it, all loud.
 server/lang-geometry.json
 
+# === TOPOPIN — intra-synapse wiring pin (2026-08-25) ===
+# Records whether this brain was BUILT with topographic (1-D ring) or
+# random-global connectivity, so a Savestart resume cannot flip the wiring
+# underneath weights trained with the other topology — the same failure the
+# geometry pin above exists to prevent. Per-machine runtime state, never
+# committed: a brain built on one box says nothing about a brain on another.
+# A FRESH WALK re-decides and rewrites it (the pin binds resumes only);
+# DREAM_TOPOGRAPHIC=0/1 always wins for a deliberate change.
+server/brain-topology.json
+
 # === DF.7 community-compute auto-scale settings ===
 # Admin-set toggle + dead-zone buffer + stability window for the milestone
 # auto-resize. Persisted by /autoscale POST. Per-deployment runtime state.

@@ -24,6 +24,48 @@ REM   DREAM_MICROCOLUMNS=0           opt OUT of cortical microcolumns
 REM   DREAM_LAMINATION=0             opt OUT of six-layer lamination
 REM   DREAM_HUBS=0                   opt OUT of hub neurons
 REM   DREAM_THETA_GAMMA=0            opt OUT of theta/gamma oscillations
+REM   DREAM_TOPOGRAPHIC=0/1          intra-synapse wiring. A FRESH WALK now
+REM                                  turns this ON (1-D ring; nnz scales
+REM                                  LINEARLY with size instead of density x
+REM                                  size^2, so 100M+ neurons fit a budget
+REM                                  random-global saturates near 30M).
+REM                                  PINNED to server/brain-topology.json so a
+REM                                  Savestart resume cannot flip the wiring
+REM                                  under weights trained the other way; the
+REM                                  pin binds RESUMES only, a fresh walk
+REM                                  re-decides. =0/1 always wins.
+REM
+REM   -- 2026-08-25 additions ---------------------------------------------
+REM   DREAM_INNERVOICE_GPU_GEN=0     kill switch for her inner voice at
+REM                                  biological scale. DEFAULT ON now: it
+REM                                  used to require an opt-in nobody set, so
+REM                                  compose was skipped and every inner
+REM                                  thought fell through to a vocab sample.
+REM                                  Safety is donors-present + GPU-proxy-live,
+REM                                  not this flag.
+REM   DREAM_GEN_PROPAGATE_CHUNKED=0  opt OUT of chunked CPU propagate during
+REM                                  generation. DEFAULT ON: identical math
+REM                                  that yields between row slices, so the
+REM                                  no-donor fallback cannot pin the loop.
+REM   DREAM_SURPRISE_MAX=1.5         plasticity ceiling for the surprise gate
+REM                                  (0.5-5). Default 1.5 = unchanged. Read
+REM                                  memoryStats.surpriseGate.atCeilingPct
+REM                                  BEFORE raising it -- near 0 means the
+REM                                  ceiling was never the constraint.
+REM   DREAM_GRADE_MAJOR_ROUNDS=2     grade-major rounds before force-advance
+REM                                  (1-5). =1 restores the old single pass.
+REM   DREAM_SELF_FRAME_LIGHT_MAX_UNITS=96
+REM                                  per-cell budget for first-person framing
+REM                                  of vocab/sentences. 0 disables.
+REM   DREAM_CONSOLIDATION_GPU_REPLAY_MAX=64
+REM                                  schemas replayed on the donor per
+REM                                  consolidation pass. 0 = no replay (her
+REM                                  sleep stops learning again).
+REM   DREAM_DICT_FALLBACK=1          let dictionary retrieval speak when her
+REM                                  TRAINED emission is empty. Default OFF
+REM                                  for a trained brain -- silence is real
+REM                                  now. Turning this on means her words are
+REM                                  NOT hers.
 REM   DREAM_GW_IGNITION=0.45         GlobalWorkspace ignition threshold
 REM                                  in (0, 1). Default 0.45. Lower =
 REM                                  more frequent ignitions (diffuse
