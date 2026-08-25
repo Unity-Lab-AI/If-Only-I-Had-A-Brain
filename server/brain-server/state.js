@@ -1915,6 +1915,14 @@ const SERVER_STATE_MIXIN = {
       //   phiState: 'live' | 'floored' | 'error' | 'unmeasured'
       phiRaw: (typeof this.phiRaw === 'number') ? this.phiRaw : null,
       phiState: this.phiState || 'unmeasured',
+      // PHISCALE.1 — the ADAPTIVE reference Φ̂ is divided by, and the resulting
+      // normalised value. Published together so the chain is legible as
+      // raw → ref → normalised; a normaliser that only lived in the function
+      // computing it would be a hidden number deciding a headline quantity.
+      // ⚠ `phiScaleRef` climbing while `phiNorm` stays near 1.0 means the scale
+      // is chasing her, not measuring her — worth seeing.
+      phiScaleRef: (typeof this.phiScaleRef === 'number') ? this.phiScaleRef : null,
+      phiNorm: (typeof this.phiNorm === 'number') ? this.phiNorm : null,
       // ── ENDO — the endocrine layer + the glands that drive it.
       // Rendered BY NAME, so every field below needs its row; a field with
       // no row ships dark no matter how correct it is.

@@ -5036,8 +5036,65 @@ class ServerBrain {
     if (this.cortexCluster && typeof this.cortexCluster.computePhi === 'function') {
       try {
         phiRaw = this.cortexCluster.computePhi();
-        phiProxy = Math.max(0.1, phiRaw);
-        phiState = (phiRaw <= 0.1) ? 'floored' : 'live';
+        // ── PHISCALE.1 (2026-08-25, Gee's call: rescale to her operating range)
+        //
+        // Binary entropy peaks at p = 0.5, and her cortex is DELIBERATELY
+        // sparse — so H sits in the low tenths and the old 0.1 floor clamped it
+        // whenever firing dipped under ~1.3%. ⛔ Clamping is the real damage:
+        // a clamped value is CONSTANT, `psi` is log₁₀ so a constant multiplier
+        // is a constant addend, and `psiGain` rides `psi − psiBaseline` where
+        // the baseline carries that same addend — it cancels EXACTLY. Every
+        // clamped tick is a tick where consciousness contributes nothing.
+        //
+        // ⛔ THE REFERENCE IS MEASURED, NOT CHOSEN. A hardcoded `p_ref` (say 5%)
+        // would be a number nobody can defend, and worse, it would silently
+        // mean different things across boots — `totalNeurons` is derived at boot
+        // from free host RAM, so the same code has booted at 425,436,550 and at
+        // 411,216,550. An absolute anchor is not scale-invariant in meaning.
+        //
+        // ⭐ Instead the scale adapts to HER, which is the idiom this codebase
+        // already adopted twice for exactly this reason: `psiGain` rides Ψ's
+        // deviation from its own slow EMA ("auto-calibrates to any brain size"),
+        // and the amygdala arousal fix moved to a rolling baseline because an
+        // absolute threshold "saturates and then reports a constant" — which is
+        // precisely the failure being repaired here.
+        //
+        // Seeded at H(0.015) = 0.1124, the entropy at her DOCUMENTED ~1.5%
+        // design sparsity — an architectural property of the brain, not a
+        // preference of mine. ⛔ Deliberately NOT seeded from the first
+        // observation: that is the brainstem-nucleus lesson (seeding from the
+        // first sample habituates instantly to whatever it happened to see
+        // first, and here it would hand back Φ̂ = 1.0 on tick one).
+        //
+        // Rises quickly toward a genuine new high, decays very slowly and never
+        // below the seed, so one spike cannot permanently compress the scale.
+        // ⚠ Normalisation is monotonic and shared across a comparison, so the
+        // state ORDERING Φ̂ exists for (anaesthesia vs dissociation) is preserved.
+        const _PHI_REF_SEED = 0.1124;   // H(0.015) — her documented design sparsity
+        if (!(typeof this._phiScaleRef === 'number' && isFinite(this._phiScaleRef) && this._phiScaleRef > 0)) {
+          this._phiScaleRef = _PHI_REF_SEED;
+        }
+        // ⛔ FAST ATTACK, SLOW DECAY — and the first cut of this got it wrong in
+        // a way the harness caught before it shipped. With a gentle 5%-of-gap
+        // rise the reference LAGGED her, so every value at or above it clipped
+        // to 1.000: at her design sparsity Φ̂ read 1.000, and at 3% firing it
+        // read 1.000 as well. **A saturated value is a constant, and a constant
+        // is exactly what cancels out of `psiGain`** — the identical failure
+        // this change exists to repair, reintroduced at the other end of the
+        // range. The reference has to be her HIGH-WATER integration, not her
+        // TYPICAL integration, or typical always reads maximal.
+        if (phiRaw > this._phiScaleRef) {
+          this._phiScaleRef = phiRaw;                                        // reach a real peak at once
+        } else {
+          this._phiScaleRef = Math.max(_PHI_REF_SEED, this._phiScaleRef * 0.99995);   // let it come back down
+        }
+        const _phiRef = Math.max(1e-6, this._phiScaleRef);
+        const _phiNorm = Math.max(0, Math.min(1, phiRaw / _phiRef));
+        // A low collapse-guard remains so Ψ stays computable in true silence,
+        // set far enough down that it essentially never binds — its whole job
+        // is to catch p = 0, not to stand in for a measurement.
+        phiProxy = Math.max(0.01, _phiNorm);
+        phiState = (_phiNorm <= 0.01) ? 'floored' : 'live';
       } catch (err) {
         // ⛔ NOT a silent 1.0. The identity is used so Ψ stays computable,
         // but the failure NAMES itself instead of looking like a healthy
@@ -5049,6 +5106,13 @@ class ServerBrain {
     }
     this.phiRaw = phiRaw;
     this.phiState = phiState;
+    // PHISCALE.1 — ⛔ THE NORMALISER IS PUBLISHED. An adaptive reference that
+    // only exists inside this function would be a new hidden number deciding a
+    // headline quantity, which is the exact defect class this whole batch has
+    // been closing. Board reads raw → ref → normalised and can see for itself
+    // whether Φ̂ is varying or pinned.
+    this.phiScaleRef = (typeof this._phiScaleRef === 'number') ? this._phiScaleRef : null;
+    this.phiNorm = (phiState === 'live' || phiState === 'floored') ? phiProxy : null;
     const rawPsi = quantumVolume * (0.3 * id + 0.25 * ego + 0.2 * left + 0.25 * right) * phiProxy;
     // Log scale for usable range — consciousness measured in orders of magnitude.
     // Guard rawPsi finiteness: a NaN here would propagate to psiGain below and
