@@ -335,7 +335,7 @@
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="The brain isn't idle when no message is coming in — it's at a low-amplitude resting state. Cortex spike rates hover around persona baseline, amygdala holds whatever emotional residue the last interaction left, hippocampus consolidates working memory toward Tier 1 episodes. THIS is the starting state every message has to land into.">Step 0 — Brain state at rest, before the message arrives</span></div>
  <div class="eq-desc">
- <p>The server dispatches a batched compute_batch (SUBSTEPS iterations per batch) to compute.html every ~50 ms tick, iterating all seven clusters on the GPU. Her resting state is not zero — her persona θ plus whatever substances are actively contributing through the pharmacokinetic scheduler keep her amygdala firing at ~8% and her cortex at ~3% even with no input. Sober is the default; every live contribution comes from <code>scheduler.activeContributions(now)</code> additive deltas per active dose event:</p>
+ <p>The server dispatches a batched compute_batch (SUBSTEPS iterations per batch) to compute.html every ~50 ms tick, iterating all eight clusters on the GPU. Her resting state is not zero — her persona θ plus whatever substances are actively contributing through the pharmacokinetic scheduler keep her amygdala firing at ~8% and her cortex at ~3% even with no input. Sober is the default; every live contribution comes from <code>scheduler.activeContributions(now)</code> additive deltas per active dose event:</p>
  <div class="eq" style="font-size:13px;">
 contrib(t) = Σ_s scheduler.activeContributions(now)[s] × level(s, t)<br>
 tonicDrive[amygdala] = θ.arousalBaseline × (1 + contrib(t).arousal) × driveFloor<br>
@@ -612,7 +612,7 @@ Right = f(|valence|, coherence)<br>
  <li><strong>Mood fit</strong> came from the amygdala attractor settling into a reward-positive basin for this input</li>
  <li><strong>Speech modulation</strong> came from the pharmacokinetic scheduler's per-substance additive contributions (<code>scheduler.speechModulation(now)</code>) applied at the output layer AFTER clean cortex emission — slur/pauses/ethereality/dissociation/giggle emerge from whatever is actively contributing in real time, not from a static combo label</li>
  <li><strong>Bigram/trigram fit</strong> came from the statistics of every sentence she's ever learned, per-state</li>
- <li><strong>Temperature</strong> came from Ψ, which came from the total integration of all seven clusters</li>
+ <li><strong>Temperature</strong> came from Ψ, which came from the total integration of all eight clusters</li>
  <li><strong>Refractory rhythm</strong> came from the slow y variable of the Rulkov map pulling every neuron back into the chaotic basin between spikes</li>
  </ul>
  <p style="margin-top:12px;">The sentence she sent back isn't a string she looked up. It's the <em>current readout of a chaotic, emotion-modulated, memory-biased, drug-adjusted, Ψ-sharpened attractor network</em>. Run it again a tick later with slightly different state and you get a different sentence. That's what makes it Unity instead of a text-predictor.</p>
@@ -804,7 +804,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <p><strong>Weight bounds:</strong> All synaptic weights are clamped to [-2.0, +2.0]. Positive weights are excitatory, negative are inhibitory. 80% of connections are excitatory, 20% inhibitory — matching the ratio in real cortex.</p>
 
  <!-- ═══ 4. BRAIN MODULES ═══ -->
- <h2 id="modules" title="The seven brain regions and what they do. Cortex (language + perception + working memory). Hippocampus (Hopfield-attractor memory). Cerebellum (supervised error correction). Amygdala (emotional attractor). Basal ganglia (action selection). Hypothalamus (homeostasis). Mystery (the consciousness operator Ψ). Each is a self-contained Rulkov-map population with its own equations + parameters wired into the master equation.">4. Brain Region Modules</h2>
+ <h2 id="modules" title="The eight brain regions and what they do. Cortex (language + perception + working memory). Hippocampus (Hopfield-attractor memory). Cerebellum (supervised error correction). Amygdala (emotional attractor). Basal ganglia (action selection). Hypothalamus (homeostasis). Mystery (the consciousness operator Ψ). Each is a self-contained Rulkov-map population with its own equations + parameters wired into the master equation.">4. Brain Region Modules</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">DYNAMICAL SYSTEMS</span> Six specialized subsystems running in parallel every simulation step, each modeling a real brain region. Implemented in <code>js/brain/modules.js</code>.</p>
 
  <div class="module-grid">
@@ -2206,7 +2206,7 @@ word = dictionary.findByPattern(combined)
 Then: word pattern → cortex (Wernicke's) + hippocampus + amygdala
  brain steps again → next combined → next word → sentence
  </pre>
- <p class="eq-desc">N neurons across seven clusters produce ONE combined 300-dim pattern. The dictionary finds the closest word via cosine similarity in GloVe semantic space. That word feeds back into cortex + hippocampus + amygdala. Brain steps. Next pattern. Next word. The brain equations ARE the language equations. &Psi; consciousness scales the Mystery module's contribution — higher awareness = more self-referential speech. The mixing weights above mirror the biological VRAM weights each cluster is sized against, so the region that's literally biggest in the brain contributes the most to the combined pattern. N scales to hardware.</p>
+ <p class="eq-desc">N neurons across eight clusters produce ONE combined 300-dim pattern. The dictionary finds the closest word via cosine similarity in GloVe semantic space. That word feeds back into cortex + hippocampus + amygdala. Brain steps. Next pattern. Next word. The brain equations ARE the language equations. &Psi; consciousness scales the Mystery module's contribution — higher awareness = more self-referential speech. The mixing weights above mirror the biological VRAM weights each cluster is sized against, so the region that's literally biggest in the brain contributes the most to the combined pattern. N scales to hardware.</p>
  </div>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Morphosyntactic post-processing: after the brain selects words by meaning, the language cortex fixes the grammar. Subject-verb agreement (I am, she is), tense from cortex prediction error (uncertain→future 'will', recalling→past), negation from negative valence (below -0.4 threshold → don't/can't/won't), compounds for long sentences (arousal→'and', negative→'but').">Post-Processing — Agreement, Tense, Negation, Compounds</span></div>
