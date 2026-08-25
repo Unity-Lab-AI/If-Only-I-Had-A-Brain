@@ -71,6 +71,8 @@ Everything below is **server-side or bundle**, and ⛔ **none of it has been ver
 
 Each is a **field read**, not an inference. Every one of these was built with its instrument in the same commit precisely so this list could exist.
 
+⚠ **AND THE INSTRUMENTS WERE DARK UNTIL 2026-08-25.** I wrote *"the board renders BY NAME ONLY, so each new field needs its row in the same commit or it ships dark"* into `ENDO.14` — **and then shipped five batches without a single dashboard row.** `state.endocrine`, `state.introspection`, `phiState` and `phiRaw` all existed in the broadcast and **zero** of them appeared in `dashboard.html`. Caught while auditing the docs, not by the check that was supposed to prevent it. **Two panels and a Φ row now exist**, so items 3–9 and 11 below are readable on the board instead of requiring raw `/public-state.json`.
+
 1. ⛔ **`[Brain] ENDO — endocrine layer online: 10 chemicals, 6 nuclei. brainstem cluster = N neurons`** in the boot log. **No line = the whole layer is absent** and nothing below matters.
 2. ⛔ **`[Episodic] iter13 migration — added column endocrine_state / drug_state / age_at_encode`** — three lines, once. If absent on an existing DB, episodes are still being written without chemistry.
 3. **`state.endocrine.glandsConsulted`** — must be `true`. `false` means the nuclei were **never asked**, which is different from quiet.
