@@ -28,7 +28,7 @@
 > - Hooks into existing P6.7 word-creation-candidate gate (already exists for tip-of-tongue → vocab promotion) but EXTENDED for full memory derivation, not just compound-word creation
 > - Hooks into the existing ConsolidationEngine so derived memories flow into normal Tier 1 → Tier 2 → Tier 3 promotion path if reinforced enough
 >
-> **This mechanism exists nowhere in the current curriculum code.** It's NEW WORK that lands AFTER K Part 2 signs off (per PRE-K + K ONLY SCOPE LAW). When the post-K developmental arc starts implementing Adds #5-#21, this advanced-derivation mechanism is the OTHER half of "Unity remembers her life" — the trained-recall half (mechanism #1) handles what she DID experience; the on-the-fly-derivation half (mechanism #2 here) handles the inevitable gaps when conversation references something the trained curriculum didn't explicitly cover.
+> **This mechanism exists nowhere in the current curriculum code.** It is still NEW WORK — but ⛔ **its stated blocker is gone:** it was filed as landing "AFTER K Part 2 signs off (per PRE-K + K ONLY SCOPE LAW)", and that scope lock was **REVOKED 2026-06-18**. Nothing gates this on a K signoff any more; it is unbuilt because it is unbuilt. Now that Adds #5-#21 are being implemented across all grades, this advanced-derivation mechanism is the OTHER half of "Unity remembers her life" — the trained-recall half (mechanism #1) handles what she DID experience; the on-the-fly-derivation half (mechanism #2 here) handles the inevitable gaps when conversation references something the trained curriculum didn't explicitly cover.
 >
 > **Until both mechanisms ship: Unity will have holes in conversation she can't gracefully fill, and the "human girl" goal is partially unmet.** Per LAW.no-fallbacks Unity does NOT fall back to "i don't remember" or "i'm not sure" canned responses — she derives the answer, commits it, and lives with it.
 >
@@ -283,11 +283,11 @@
 >
 > ---
 
-> ⛔ **BINDING SCOPE LAW (Gee 2026-04-18)** — *"T16.5s should be a law built into the syllabus on how the syllabus todo needs to be refactored as to the changes to make the syllabus todo work aacurrat to the current stack as we are only trying to get pre-k  and k leanring down fisrt before we get it onto building all the other ciriculum and life and all of thatr"*
+> ⛔ **REVOKED SCOPE LAW — RETAINED AS HISTORY, BINDING ON NOTHING (Gee 2026-04-18 → REVOKED 2026-06-18)** — *"T16.5s should be a law built into the syllabus on how the syllabus todo needs to be refactored as to the changes to make the syllabus todo work aacurrat to the current stack as we are only trying to get pre-k  and k leanring down fisrt before we get it onto building all the other ciriculum and life and all of thatr"*
 >
-> **Pre-K + K ONLY is in scope right now.** Every grade from Grade 1 through PhD below is DEFERRED — the content is preserved for reference and future expansion, but NO implementation work happens on post-K grades until pre-K + K passes Gee's Part 2 signoff via the full-mind K gate (T16.5.b/c/d). The full LAW lives in `.claude/CLAUDE.md` under "LAW — PRE-K + K ONLY (SYLLABUS SCOPE CONTRACT)". See that LAW for enforcement details + rationale.
+> ⛔ **THE ABOVE IS REVOKED. EVERY GRADE IS IN SCOPE.** The quoted directive locked scope to pre-K + K and marked Grade 1 → PhD DEFERRED. That lock was **revoked 2026-06-18** and the full **K → PhD** curriculum is BUILT — all 19 grades (K, G1–G12, College 1–4, Grad, PhD), every subject plus the full lived year per grade. **Nothing in this document is deferred for scope reasons.** The walk is grade-major across 20 `GRADE_ORDER` entries × a 9-course roster, and Life is a full course with its own gate rather than a deferred track. The revoked LAW body is retained in `.claude/CONSTRAINTS.md` under "REVOKED LAW — PRE-K + K ONLY" for the record only. ⚠ Anywhere below this line that still says DEFERRED, "post-K unlocks", or "after K Part 2 signs off" is **pre-revocation wording** — read it as history, not as scope.
 >
-> **What this means for TODO accuracy:** every claim in the pre-K + K sections must match what the code actually does right now — method names, variable names, threshold values, cross-projection names, region fractions, grade-gate symbols. Every post-K section stays marked DEFERRED.
+> **What this means for TODO accuracy — the one clause that SURVIVED the revocation:** every claim in **every** section must match what the code actually does right now — method names, variable names, threshold values, cross-projection names, region fractions, grade-gate symbols. That was always a documentation-accuracy rule rather than a scope rule, it is correct, and it now applies to all 19 grades instead of only two. (The clause it replaces — *"every post-K section stays marked DEFERRED"* — died with the scope lock.)
 >
 > **T16.5.b/c/d (full-mind K gate redesign)** is the tip of the spear. Common Core K.RF / K.W / K.L / K.SL / K.RL + DIBELS / STAR / AIMSweb rubrics. Blocks on Gee design review. K doesn't pass until this gate is built AND Unity clears it.
 >
@@ -502,14 +502,16 @@
 
 ### Post-K extraction into per-grade files — blocked until K signoff
 
-Per the PRE-K + K ONLY SYLLABUS SCOPE CONTRACT LAW and the 2026-04-24 operator directive on per-grade file separation, each post-K grade should get its own file under `js/brain/curriculum/` when post-K unlocks. Tracked filenames for the next wave:
+✅ **DONE — this happened.** The per-grade file separation Gee directed on 2026-04-24 shipped: every grade has its own file under `js/brain/curriculum/`, and the runners in them execute today. (The scope clause that once accompanied this line — "when post-K unlocks", per the PRE-K + K ONLY SYLLABUS SCOPE CONTRACT LAW — was **REVOKED 2026-06-18** and nothing waits on it.) The filenames that were tracked for "the next wave", now built:
 
-- `js/brain/curriculum/grade-1.js` → `G1_MIXIN` holding runElaG1Real, runMathG1Real, runSciG1Real, runSocG1Real, runArtG1Real, runLifeG1 + any G1-specific teach helpers
-- `js/brain/curriculum/grade-2.js` through `grade-12.js` — same pattern
-- `js/brain/curriculum/college-1.js` through `college-4.js`
+⚠ **The filenames below were planned with hyphens and shipped WITHOUT them** — the real files are `grade1.js`, not `grade-1.js`. Corrected here to match disk:
+
+- `js/brain/curriculum/grade1.js` → `G1_MIXIN` holding runElaG1Real, runMathG1Real, runSciG1Real, runSocG1Real, runArtG1Real, runLifeG1, runMusicG1Real, runPeG1Real, runHealthG1Real + G1-specific teach helpers
+- `js/brain/curriculum/grade2.js` through `grade12.js` — same pattern
+- `js/brain/curriculum/college1.js` through `college4.js`
 - `js/brain/curriculum/grad.js` and `phd.js`
 
-Total 18 post-K grade files pending. Each extraction follows the proven `PREK_MIXIN` / `K_MIXIN` attach pattern established in pre-K.js + kindergarten.js.
+**All 18 post-K grade files SHIPPED** (verified on disk: `pre-K.js`, `kindergarten.js`, `grade1`–`grade12`, `college1`–`college4`, `grad`, `phd` — 20 files plus `README.md`). Each extraction followed the `PREK_MIXIN` / `K_MIXIN` attach pattern established in pre-K.js + kindergarten.js. ⚠ Note the roster grew to **9 courses** — music / pe / health joined at kindergarten, which is why G1 carries nine runners rather than the six originally planned here.
 
 ### Post-K teach helpers / transforms already in code
 
@@ -669,7 +671,7 @@ This entire block must ship as code BEFORE Gee's Part 2 test can pass for any gr
 >
 > Binding rule: BEFORE any grade's Life-track teaches an event, the academic tracks (ELA / Math / Science / Social / Art) at THAT grade must have already trained the comprehension vocabulary required to narrate, reason about, and remember the event. Unity cannot be told "your parents divorced when you were 8" if she doesn't have the sem → motor / phon / letter bindings for "parent" / "divorce" / "remember" / "when" / "age" / "happened".
 >
-> Status by grade — **pre-K + K only in scope** per the PRE-K + K ONLY SYLLABUS SCOPE CONTRACT LAW; post-K grades are DEFERRED but the prerequisite-check law applies once they come into scope:
+> Status by grade — ⛔ the "**pre-K + K only in scope**" clause that stood here was **REVOKED 2026-06-18**; **no grade is deferred for scope reasons** and the prerequisite-check law applies to all of them, now:
 
 ### Pre-K vocabulary prerequisites (in scope)
 - Family names: mom / dad / sister / brother / grandma / grandpa (**already in K_FAMILY**)
@@ -691,7 +693,7 @@ This entire block must ship as code BEFORE Gee's Part 2 test can pass for any gr
 
 All shipped into `allEmissionWords` via the new `K_LIFE_EXPERIENCES` array in `js/brain/curriculum.js`. Trained through `_teachPhonemeBlending` × 10 reps + `_teachWordEmission` × 12 reps like every other K category.
 
-### Future grades (DEFERRED per PRE-K + K ONLY LAW — prerequisite-check stays binding once they unlock)
+### Later grades (⛔ NOT deferred — the PRE-K + K ONLY LAW that deferred them was REVOKED 2026-06-18; all are built and walking, and the prerequisite-check is binding on them now)
 
 For every grade N from G1 through PhD, the Life-track events scheduled for that grade must have their explanatory vocabulary trained in the same-grade academic tracks BEFORE the Life cell runs. Each grade's Life writeup MUST explicitly list the "Life Vocabulary Prerequisites" block with:
 - New event nouns introduced that grade (e.g., G7 introduces "joint" / "weed" / "high" / "passed-around" — must be in the ELA/Social track's G7 vocab first)
@@ -9195,7 +9197,7 @@ The above additions sit in this `docs/TODO-full-syllabus.md` as the syllabus DES
 - `docs/TODO-life-experience.md § LOSSES AND TRAUMA` + per-grade sections — bad/terrible/horrible memories (Add #6 here, partial framework already exists, needs expansion)
 - Curriculum code: `js/brain/curriculum.js _teachBiographicalFacts` + `runLifeK` are the substrate. Adds #5-#11 add new method scaffolds + sentence-walks + episodic anchors.
 
-**Status:** [ ] not started — all 12 additions captured this session as Gee's directive. Implementation deferred to future iteration sessions per PRE-K + K ONLY SCOPE LAW; the full multi-grade buildout is post-K work.
+**Status:** [ ] not started — all 12 additions captured this session as Gee's directive. ⛔ The deferral written here — *"deferred to future iteration sessions per PRE-K + K ONLY SCOPE LAW; the full multi-grade buildout is post-K work"* — is **void**; that LAW was REVOKED 2026-06-18. The multi-grade buildout is not future work gated on a signoff, it is the live curriculum. Status is whatever the item's own checkbox says, and nothing here waits on scope.
 
 ### Add #13 — BODY AWARENESS + SEX EDUCATION + EROTIC IDENTITY EMERGENCE (Gee 2026-06-17 23:10)
 
@@ -9227,7 +9229,7 @@ Aligns with existing memory `feedback_erotic_state_grade_9_gate.md` — erotic s
 
 **Critical LAW reference:** body parts + sex acts vocabulary follows the same "Test words must be pre-taught" LAW (`feedback_k_life_words_must_be_learned.md`) — every body-part word + sex-act word must be vocab-registered + definition-trained + sentence-context-trained BEFORE any biographical/episodic binding uses it. NO compound-token pseudo-words for body parts.
 
-**Status:** [ ] not started — Add #13 captured 2026-06-17 23:10 per Gee's directive. Implementation deferred per PRE-K + K ONLY SCOPE LAW; the post-K developmental arc lands once K Part 2 signs off.
+**Status:** [ ] not started — Add #13 captured 2026-06-17 23:10 per Gee's directive. ⛔ The deferral once written here (*"per PRE-K + K ONLY SCOPE LAW; the post-K developmental arc lands once K Part 2 signs off"*) is **void** — that LAW was REVOKED 2026-06-18, one day after this was captured. Not started because it is not started; nothing gates it.
 
 ### Add #14 — SUBJECT INTRODUCTION MATRIX — every subject gated behind the grade it first appears in (Gee 2026-06-17 23:15)
 
@@ -9292,7 +9294,7 @@ This is the canonical grade-introduction matrix. **A subject does NOT exist in U
 4. Subject-specific vocabulary registered + definition-trained + sentence-context-trained PER LAW (`feedback_k_life_words_must_be_learned.md`)
 5. Episodic anchors for "first day of [subject]" memories in `docs/TODO-life-experience.md`
 
-Implementation deferred per PRE-K + K ONLY SCOPE LAW; the full grade-1-through-PhD multi-subject buildout is post-K work spanning multiple future sessions.
+⛔ The deferral once written here (*"per PRE-K + K ONLY SCOPE LAW; the full grade-1-through-PhD multi-subject buildout is post-K work spanning multiple future sessions"*) is **void** — that LAW was REVOKED 2026-06-18 and the grade-1-through-PhD buildout **shipped**. Read this item's own checkbox for status; scope no longer gates anything.
 
 ### Add #15 — FULL REAL-LIFE TROVE (Gee 2026-06-17 23:30)
 
@@ -9419,4 +9421,4 @@ Per Gee Add #15 verbatim directive: *"the full trove of life experiences memorie
 
 This is a CONTENT EXPANSION pass on docs/TODO-life-experience.md that needs to happen alongside the curriculum-code implementation. Currently `docs/TODO-life-experience.md` has the FRAMEWORK; the specific filled-in content per the Adds above is what makes Unity real, not a template.
 
-**Status:** [ ] not started — Adds #15-#21 captured 2026-06-17 23:30 per Gee's directive. Implementation deferred per PRE-K + K ONLY SCOPE LAW; the full real-life trove buildout is post-K work spanning multiple future sessions. The framework is here; the specific content is operator-canon-decision work for each grade as it gets implemented.
+**Status:** [ ] not started — Adds #15-#21 captured 2026-06-17 23:30 per Gee's directive. ⛔ The deferral once written here (*"per PRE-K + K ONLY SCOPE LAW; the full real-life trove buildout is post-K work spanning multiple future sessions"*) is **void** — that LAW was REVOKED 2026-06-18, one day after this was captured. The framework is here; the specific content is Gee-canon-decision work for each grade as it gets implemented, and that is the only thing it waits on.

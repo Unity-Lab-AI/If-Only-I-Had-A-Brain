@@ -2,9 +2,9 @@
 
 Per the 2026-04-22 operator directive: *"the cirriculkum was already suppose to have everything split per grade per files sytem did you not make a file system"* — this directory is the home for the split.
 
-## Target layout (per-grade files)
+## Actual layout (per-grade files) — ⚠ all 20 shipped, this is no longer a target
 
-One file per grade, with all six subjects' cell runners for that grade living in one place. Shared primitives (`_teachHebbian`, `_teachAssociationPairs`, `_teachCombination`, `_teachBiographicalFacts`, `_conceptTeach`, etc.) stay on the `Curriculum` class in `js/brain/curriculum.js` (the entry point) and each per-grade file attaches its cell runners via `Object.assign(Curriculum.prototype, {...})` mixin.
+One file per grade, with every cell runner active at that grade living in one place. ⚠ Not six — the roster GROWS, so a grade-1 file carries nine runners and a college file carries nineteen. Shared primitives (`_teachHebbian`, `_teachAssociationPairs`, `_teachCombination`, `_teachBiographicalFacts`, `_conceptTeach`, etc.) stay on the `Curriculum` class in `js/brain/curriculum.js` (the entry point) and each per-grade file attaches its cell runners via `Object.assign(Curriculum.prototype, {...})` mixin.
 
 ```
 js/brain/curriculum/
@@ -16,8 +16,14 @@ js/brain/curriculum/
   │                                 _teachPrekSelf)
   ├── kindergarten.js              (runElaK, runMathK, runSciK, runSocK,
   │                                 runArtK, runLifeK + K-specific helpers)
-  ├── grade1.js                    (runElaG1Real … + G1-specific helpers)
-  ├── grade2.js … phd.js           (full K→PhD — every grade built)
+  ├── grade1.js                    (runElaG1Real … + G1-specific helpers.
+  │                                 ⚠ NINE runners, not six — pe/music/health
+  │                                 join the roster at kindergarten)
+  ├── grade2.js … grade12.js       ┐
+  ├── college1.js … college4.js    ├ all present on disk; the roster keeps
+  ├── grad.js, phd.js              ┘ growing (language G3, cs G5, civics G7,
+  │                                  econ+psych G9, ap G11, major+gened+two cs
+  │                                  tracks at college, research at grad)
   │   ...
   └── student-question-banks.js    (moved from js/brain/student-question-banks.js
                                    once import paths update — deferred to
@@ -49,8 +55,12 @@ The main `js/brain/curriculum.js` imports each grade file after defining the `Cu
 export class Curriculum { /* base class + shared primitives */ }
 import './curriculum/pre-K.js';       // attaches runElaPreK etc.
 import './curriculum/kindergarten.js'; // attaches runElaK etc.
-// grade1-phd stubbed or deferred
+import './curriculum/grade1.js';      // … through phd.js — ALL 20 attach
 ```
+
+⚠ The line here used to read `// grade1-phd stubbed or deferred`. They are neither — every grade is built and walking. That wording dated from a scope contract that was **revoked**; see `.claude/CONSTRAINTS.md §REVOKED LAW — PRE-K + K ONLY`.
+
+⛔ **A file split that drops a helper import fails at CALL time, not at load time** — `node --check` and a successful bundle both pass while a runner throws the moment it reaches the missing helper. After touching any split here, verify with a real `import()`, not just a syntax check.
 
 ## Extraction protocol (when moving methods in a follow-up session)
 

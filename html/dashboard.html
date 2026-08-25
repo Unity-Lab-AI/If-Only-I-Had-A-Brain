@@ -169,6 +169,7 @@
     }
     .recovery-banner a:hover { color: #fff; border-bottom-color: #fff; }
   </style>
+<link rel="stylesheet" href="../css/tooltip.css">
 </head>
 <body>
   <!-- WebGPU pre-flight gate. The modal is HARD-BLOCK with no CPU
@@ -389,6 +390,27 @@
           </label>
           <div style="margin-top:6px;font-size:9px;color:#666;line-height:1.4;">
             ON = signoffs bypassed + grade auto-fired. OFF = per-subject signoffs required + manual ▶ Start Next Grade click.
+          </div>
+
+          <!-- ADMIN Pollinations key — HER lane only.
+               Two lanes, two wallets: this key pays for the BRAIN's own work
+               (mind's-eye reference look-ups, her drawing). A visitor's chat
+               image is billed to THAT VISITOR's own key from their own
+               browser, or runs anonymous. The two must never cross. -->
+          <div class="admin-only" style="margin-top:12px;padding-top:10px;border-top:1px solid #222;">
+            <label for="d-poll-key" style="display:block;font-size:10px;color:#888;margin-bottom:4px;">
+              <span class="tip tip--wide" tabindex="0" data-tip="Pays for the BRAIN's OWN Pollinations use — the reference images she looks up to learn what a thing looks like, and her drawing. ⛔ It is NEVER used for a visitor's chat image: that spends the visitor's own key from their own browser, or runs anonymous. Leave this empty and her look-ups run on the anonymous free tier, which is the default and fully supported — set it only if you want to spend pollen on her learning to get faster or higher-quality references. Stored on the box, never sent to any client, never returned by the API, and it survives a fresh walk because it is a credential and not training state.">Pollinations key — <b>her look-ups only</b></span>
+              <span id="d-poll-key-state" style="margin-left:6px;font-family:monospace;color:#555;">anonymous</span>
+            </label>
+            <div style="display:flex;gap:6px;">
+              <input id="d-poll-key" type="password" placeholder="paste key — or leave empty for anonymous" autocomplete="off"
+                     style="flex:1;min-width:0;background:#111;color:#ddd;border:1px solid #333;border-radius:4px;padding:4px 8px;font-size:10px;font-family:monospace;">
+              <button id="d-poll-key-save" style="background:#1a1a1a;color:#22c55e;border:1px solid #333;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;">save</button>
+              <button id="d-poll-key-clear" style="background:#1a1a1a;color:#e0533a;border:1px solid #333;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;">clear</button>
+            </div>
+            <div style="margin-top:4px;font-size:9px;color:#666;line-height:1.4;">
+              Empty = anonymous free tier (default). Visitors' chat images always use their own key or anonymous — never this one.
+            </div>
           </div>
         </div>
         <!-- Live single-cell RE-TEACH (admin-only). Surgically retrains one
@@ -645,6 +667,31 @@
         <div id="d-speech-sep" style="color:#aaa;font-size:11px;"></div>
         <div id="d-speech-floor" style="color:#00e5ff;font-size:11px;margin-top:6px;"></div>
         <div id="d-speech-empty" style="color:#555;font-size:10px;font-style:italic;">No speech-health data yet — populates after the first word-emission teach phase.</div>
+
+        <!-- IS SHE SPEAKING FROM HER OWN WEIGHTS?
+             This block is the EVIDENCE answer to that question. It replaced a
+             field called `canSpeak`, which was pure grade arithmetic wearing a
+             capability name — it reported that she could speak because she had
+             reached a grade, never because anything had been measured. The
+             field was removed; its replacement was published every broadcast
+             and rendered NOWHERE until now.
+             ⛔ It is the only thing on this page that distinguishes "no sample
+             exists" from "she cannot speak". Those are not the same state and
+             conflating them is what made the old field a liar. -->
+        <div style="margin-top:10px;padding-top:8px;border-top:1px solid #222;">
+          <div style="font-size:10px;color:#888;margin-bottom:4px;">
+            <span class="tip tip--wide" tabindex="0" data-tip="Whether her speech is coming from her own trained weights or from a dictionary lookup standing in for them. This is measured from real emissions, never inferred from her grade. 'unmeasured' means nothing has tried to speak since boot — which is NOT a claim that she cannot.">HER VOICE — measured, not inferred</span>
+          </div>
+          <div id="d-voice-verdict" style="font-size:11px;color:#555;">unmeasured</div>
+          <div id="d-voice-detail" style="font-size:10px;color:#777;margin-top:3px;line-height:1.5;"></div>
+          <div id="d-voice-reject" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-voice-curiosity" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <!-- Her ART. Both systems shipped and work; neither was rendered, so
+               "is practice improving her hand?" and "are my verdicts landing?"
+               were both unanswerable from this page. -->
+          <div id="d-art-practice" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <div id="d-art-feedback" style="font-size:10px;color:#777;margin-top:3px;"></div>
+        </div>
       </div>
     </div>
 
@@ -1587,6 +1634,99 @@
         const kvocPct = m.kVocabTotal > 0 ? ((m.kVocabTaught || 0) / m.kVocabTotal * 100).toFixed(1) : '…';
         $('d-cortex-kvocab-pct').textContent = kvocPct + (m.kVocabTotal > 0 ? '%' : '');
         // SPEAK speech-health panel (SPEAK.1/2/9-obs)
+        // HER VOICE — the evidence block. Published every broadcast and
+        // rendered nowhere until now, which meant the page could not answer
+        // the single most important question about her.
+        {
+          const v = s.voice || null;
+          // Local age formatter. The `fmtAge` helper elsewhere in this file
+          // takes a TIMESTAMP and lives in a different function scope; these
+          // fields carry an already-computed `ageMs`, so converting here keeps
+          // the two from being confused for one another.
+          const ageOf = (ms) => {
+            if (ms == null) return 'unknown age';
+            const sec = Math.max(0, Math.floor(ms / 1000));
+            if (sec < 60) return `${sec}s`;
+            if (sec < 3600) return `${Math.floor(sec / 60)}m`;
+            if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
+            return `${Math.floor(sec / 86400)}d`;
+          };
+          const $v = $('d-voice-verdict'), $d = $('d-voice-detail'),
+                $r = $('d-voice-reject'), $c = $('d-voice-curiosity');
+          if ($v) {
+            const verdict = v && v.verdict ? v.verdict : null;
+            const st = verdict ? verdict.status : 'unmeasured';
+            // Colour by what the status MEANS, not by whether it sounds good.
+            // 'unmeasured' is grey because it is an absence of evidence — it is
+            // deliberately NOT green, since that is exactly the reassuring lie
+            // the old field told.
+            const colour = st === 'matrix-driven' ? '#22c55e'
+                         : st === 'oracle-carried' ? '#f59e0b'
+                         : st === 'oracle-only' ? '#ef4444' : '#555';
+            $v.style.color = colour;
+            $v.textContent = st;
+            $v.title = verdict && verdict.reason ? verdict.reason : 'No emission has been sampled since boot. This is not a claim that she cannot speak.';
+          }
+          if ($d) {
+            if (!v) $d.textContent = '';
+            else {
+              const pct = (v.matrixDrivenPct == null) ? '—' : `${v.matrixDrivenPct}%`;
+              const w = v.words || {};
+              $d.innerHTML = `<span title="Share of emissions that came from her trained weights rather than the dictionary oracle.">matrix ${pct}</span>`
+                + ` · <span title="How many word_motor buckets have ever fired. Zero means the emission band has never produced a word.">${num(v.wordMotorEverFired)} buckets fired</span>`
+                + ` · <span title="Dictionary-cosine fallbacks. A retrieved word is the DICTIONARY speaking, not her — only legal on an untrained cortex now.">${num(w.retrieved)} retrieved</span>`
+                + ` · <span title="Times a TRAINED brain produced nothing and was allowed to stay quiet. Honest silence is a correct output, not a failure.">${num(w.honestSilence)} honest silence</span>`;
+            }
+          }
+          if ($r) {
+            const rej = v && v.emitRejection;
+            // ⚠ WITH ITS AGE. A rejection reason with no age is
+            // indistinguishable from a current one, which is how a stale
+            // reading gets read as live.
+            $r.textContent = rej ? `last refusal: ${rej.reason} (${ageOf(rej.ageMs)} ago)` : '';
+            $r.style.color = rej && rej.ageMs < 60000 ? '#f59e0b' : '#777';
+          }
+          if ($c) {
+            const cu = v && v.curiosity;
+            if (!cu) $c.textContent = '';
+            else {
+              // gaps with zero asks is a TRAINING FACT worth seeing, not a bug
+              // to hide — the interrogative weights simply are not trained yet.
+              const stuck = cu.gaps > 0 && cu.asks === 0;
+              $c.style.color = stuck ? '#f59e0b' : '#777';
+              $c.textContent = `curiosity: ${num(cu.gaps)} gaps · ${num(cu.asks)} asked`
+                + (stuck ? ' — reached for a word and could not hold it, but never turned that into a question' : '')
+                + (cu.lastAsk ? ` · last: "${cu.lastAsk.text}" (${ageOf(cu.lastAsk.ageMs)} ago)` : '');
+            }
+          }
+          // Her art — practice and operator verdicts. Both shipped, neither
+          // rendered until now.
+          const oa = s.ownArt || null;
+          const $ap = $('d-art-practice'), $af = $('d-art-feedback');
+          if ($ap) {
+            const p = oa && oa.practice;
+            if (!p) $ap.textContent = '';
+            else {
+              // Only a MEASURABLE improvement is kept, so `kept` false is a
+              // correct outcome and not a failure — say so rather than let a
+              // reader infer that practice is broken.
+              const up = (p.lastBest != null && p.lastBase != null) ? (p.lastBest - p.lastBase) : null;
+              $ap.style.color = p.lastKept ? '#22c55e' : '#777';
+              $ap.textContent = `practice: ${num(p.sessions)} sessions`
+                + (p.lastWord ? ` · last "${p.lastWord}" ${p.lastBase}→${p.lastBest}` : '')
+                + (up != null ? ` (${up >= 0 ? '+' : ''}${up.toFixed(4)})` : '')
+                + (p.lastKept ? ' · kept' : ' · no measurable gain, discarded');
+            }
+          }
+          if ($af) {
+            const fb = oa && oa.feedback;
+            $af.textContent = fb
+              ? `your verdicts: ${num(fb.accepts)} good · ${num(fb.rejects)} redraw · ${num(fb.bans)} banned`
+                + (fb.lastVerdict ? ` · last "${fb.lastWords || ''}" → ${fb.lastVerdict}` : '')
+              : '';
+          }
+        }
+
         if (m.speechHealth) {
           const sh = m.speechHealth;
           const sep = sh.separability || {};
@@ -2221,6 +2361,22 @@
               : (t.loopFreeze.episodes > 0
                   ? `<span style="color:#f59e0b" title="Times the main event loop stopped answering for longer than the freeze threshold (default 5s) since boot, as observed from a separate thread. Worst episode shown. Each one was reported to stderr WHILE it was happening, and server/.loop-freeze.json holds the last one — if that file says STALLED after a reboot, the process never recovered from it.">${num(t.loopFreeze.episodes)} · worst ${num(t.loopFreeze.worstMs)} ms</span>`
                   : `<span style="color:#22c55e" title="No stall past the freeze threshold since boot, measured by a thread that is not on the loop being measured — so this zero is evidence, not just an absence of reports.">none</span>`)) +
+          // The starvation row. It sits HERE deliberately, directly under the
+          // two rows it exists to contradict: `loop delay` and `loop freezes`
+          // both answer "was there one long stall?", and this answers "was the
+          // loop available at all?". A loop 200ms late on every 100ms sample
+          // never trips a max-stall threshold and is still unavailable two
+          // thirds of the time — during which both rows above read healthy and
+          // the page genuinely cannot be reached. `null` means unmeasured,
+          // never a reassuring zero.
+          row('loop service',
+            (t.loopStarve == null || t.loopStarve.servicePct == null)
+              ? '<span class="muted" title="Not yet sampled. This is NOT a claim that the loop is healthy — no measurement exists yet.">unmeasured</span>'
+              : (t.loopStarve.servicePct < 50
+                  ? `<span style="color:#ef4444" title="The loop delivered less than half the service it owed in the last minute. It is not frozen — it is LATE, constantly, which no max-stall alarm can see. Requests to this box will be timing out even though every other row here looks fine.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`
+                  : (t.loopStarve.servicePct < 90
+                      ? `<span style="color:#f59e0b" title="The loop is running late enough to be noticeable. Page fetches may be slow to first byte even while step time and freeze count look normal.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`
+                      : `<span style="color:#22c55e" title="The loop is answering close to on time. Total milliseconds per minute it owed and did not deliver.">${num(t.loopStarve.servicePct, 0)}% serviced · ${num(t.loopStarve.lateMsPerMin)}ms/min late</span>`))) +
           row('GPU dispatch', `${num(t.gpuDispatchPerSec, 1)}/s <span class="muted">(${num(t.gpuHits)}✓/${num(t.gpuMisses)}✗)</span>`) +
           row('spikes', num(t.totalSpikes)) +
           row('defs/hr', num(t.defsLearnedPerHour)) +
@@ -3332,6 +3488,59 @@
         setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 3000);
         refreshMilestone();
       });
+    })();
+
+    // ── ADMIN Pollinations key — HER lane only ──────────────────────────
+    // Two lanes, two wallets. This key pays for the BRAIN's own reference
+    // look-ups and drawing. A visitor's chat image is billed to that
+    // visitor's own key, or runs anonymous. The server never returns the
+    // key itself — only whether one is set, where it came from, and its
+    // last four characters — so a credential cannot leak back out through
+    // the dashboard it was typed into.
+    (function wirePollinationsKey() {
+      const input = document.getElementById('d-poll-key');
+      const saveBtn = document.getElementById('d-poll-key-save');
+      const clearBtn = document.getElementById('d-poll-key-clear');
+      const stateEl = document.getElementById('d-poll-key-state');
+      if (!input || !saveBtn || !clearBtn) return;
+
+      function render(s) {
+        if (!stateEl) return;
+        if (s && s.set) {
+          stateEl.textContent = `keyed ${s.hint || ''}${s.source === 'env' ? ' (from env)' : ''}`;
+          stateEl.style.color = '#22c55e';
+        } else {
+          stateEl.textContent = 'anonymous';
+          stateEl.style.color = '#555';
+        }
+      }
+
+      async function refresh() {
+        try { render(await (await fetch('/pollinations-key')).json()); }
+        catch { /* admin lane unreachable — leave the last known state visible */ }
+      }
+
+      async function send(key) {
+        const prev = stateEl ? stateEl.textContent : '';
+        if (stateEl) { stateEl.textContent = 'saving…'; stateEl.style.color = '#f59e0b'; }
+        try {
+          const r = await fetch('/pollinations-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key }),
+          });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          render(await r.json());
+          input.value = '';   // never leave a credential sitting in the field
+        } catch (e) {
+          if (stateEl) { stateEl.textContent = `failed — ${prev}`; stateEl.style.color = '#e0533a'; }
+        }
+      }
+
+      saveBtn.addEventListener('click', () => send(input.value || ''));
+      clearBtn.addEventListener('click', () => send(''));
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(input.value || ''); });
+      refresh();
     })();
 
     // Apply auto-advance toggle state to the checkbox UI. Centralized so

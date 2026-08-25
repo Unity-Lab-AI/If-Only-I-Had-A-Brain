@@ -2,7 +2,7 @@
 
 **Written 2026-08-18.** Spec only. **Nothing here is implemented, and none of it should be bolted onto an unrelated batch.**
 
-> Gee (verbatim): *"can the synaptic construction be built into the doner or is it always changeing? idk im trying of thingking how to limit the start up time"*
+> The operator (verbatim): *"can the synaptic construction be built into the doner or is it always changeing? idk im trying of thingking how to limit the start up time"*
 
 ---
 
@@ -79,9 +79,9 @@ Prize 1 is the headline number, but the fresh-walk upload happens once per fresh
 
 ## Related: why the 4.1GB CPU-side CSR is NOT a candidate for the same treatment
 
-**Added 2026-08-18** after Gee killed a bad idea before it got built.
+**Added 2026-08-18** after the operator killed a bad idea before it got built.
 
-> Gee (verbatim): *"This woundnt work tho becasueu of ransom or user controlled drop outs, right?"*
+> The operator (verbatim): *"This woundnt work tho becasueu of ransom or user controlled drop outs, right?"*
 
 The WALKFIX.5 investigation described a values-only donor readback frame as "the real cure" for the 4,165.6MB CPU-side `cortex_intraSynapses` copy. **That framing was wrong, and this is the correction.**
 

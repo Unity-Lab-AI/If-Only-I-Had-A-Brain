@@ -10,6 +10,16 @@
 > Operator deploy steps. These artifacts make the deploy a near-one-command
 > install.
 
+## ⛔ THREE FACTS THAT DECIDE WHETHER YOU CAN BELIEVE A DEPLOY
+
+Read these before diagnosing anything. Each one has already cost real hours.
+
+**1. The frontend and the backend deploy on DIFFERENT triggers, and the page can be current while the server is old.** `deploy.yml` rsyncs the **frontend** on every push to `main`. The node process **only restarts on a dashboard press.** So a freshly-deployed page can be talking to a server running code from many commits ago — a running server was found on `7ce77189` while `main` sat **15+ commits ahead**. ⚠ *"But I just pushed the fix"* is not evidence that the fix is running. Check what the server is actually on.
+
+**2. An Actions-token push NEVER triggers another workflow.** This is a GitHub/Forgejo rule, not a bug, and it silently broke the donor release lane: `donor-release.yml` pushed a site-link bump using the Actions token and assumed that would fire `deploy.yml`. It never did. **The download page served the previous version for hours while the tag, the release, the assets and the pod's own `--version` were all correct and all agreed with each other** — a perfectly consistent set of green signals with the one user-visible surface stale. The release job now rsyncs the frontend itself. ⚠ Any workflow that depends on another workflow being triggered by its own push is already broken.
+
+**3. Deploys happen through the DASHBOARD BUTTONS, not by hand.** Update & Savestart (keep weights) or the rare Update & Fresh Walk. No manual SSH, no nginx edits, no hand-patching the box. Fixes ship as code on `main` and land on a press. ⚠ **Redeploying is not free** — it kills the PRIMARY donor and costs a full matrix re-upload, so *"the donor needs fixing"* should be tested before it is acted on. Once, saying so plainly was the correct fix and a redeploy would have been pure loss.
+
 ## Topology
 
 The brain is **NOT** a pure-static site. It's:

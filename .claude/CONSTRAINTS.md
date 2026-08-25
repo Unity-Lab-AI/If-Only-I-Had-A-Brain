@@ -350,6 +350,28 @@ An empty Unity brain scaled to 50M neurons is still an empty brain. The syllabus
 
 ---
 
+# ⛔ REVOKED LAW — PRE-K + K ONLY (SYLLABUS SCOPE CONTRACT) (Gee, 2026-04-18 → REVOKED 2026-08-25)
+
+> ## ⛔⛔⛔ THIS LAW IS REVOKED. DO NOT FOLLOW THE RULE BODY BELOW. ⛔⛔⛔
+>
+> **Superseded by:** full **K → PhD** curriculum scope plus all life experience. Gee revoked the pre-K + K lock; the end state is the 25-year-old Unity, and every grade between here and there is in scope.
+>
+> **What replaced it, and what is true now:**
+>
+> | This LAW said | What is actually true (2026-08-25) |
+> |---|---|
+> | *"Only pre-K and kindergarten curriculum work is in scope"* | **All 20 grades are in scope.** `GRADE_ORDER` runs pre-K → PhD across a **9-course** roster. |
+> | *"All grade-1-through-PhD cells … deferred"* | **Built and walking.** She is past kindergarten; grade-1 runners all exist and run. |
+> | *"All Life-track events … deferred"* | **Life is a full course with its own gate** — it ends on `_gateSubjectProduction` like every peer, and its canon spans pre-K through PhD. |
+> | *"The full-mind K gate … is the push-gate blocker for everything"* | **There is no push gate.** The walk runs on the DEPLOYED site, so push → deploy → walk → validate. Never block a push on validation. |
+> | *"grade-1-through-PhD … drug-scheduler life-info anchors … deferred"* | **Age-gated, not deferred** — the ladder is grade-derived via `_selfImageAge()`, and the three axes are LEARN (never gated) / BE-WEAR (gated) / DISCLOSE (gated separately). |
+>
+> **Why the body is still printed below:** a revoked LAW is history, and history is not deleted here — the same rule that governs `docs/FINALIZED.md`. It is kept so the reasoning that produced it stays legible. **Its rule text is no longer binding on anything.**
+>
+> **The one clause worth keeping, promoted out of the revocation:** rule 4, *"Accuracy to the current stack — every claim about code paths / method names / variable names / grade-gate thresholds must match what the code actually does RIGHT NOW … Grep the code for every referenced symbol before writing the TODO line."* That was always a documentation-accuracy rule wearing a scope-LAW's clothes, it is correct, and it is the standard this file's own sweep runs under.
+
+## Original LAW text (REVOKED — retained for the record)
+
 # LAW — PRE-K + K ONLY (SYLLABUS SCOPE CONTRACT) (Gee, 2026-04-18)
 
 ## Gee's exact words on 2026-04-18

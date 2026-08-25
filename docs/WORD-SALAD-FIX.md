@@ -1,8 +1,22 @@
 # WORD SALAD FIX — the layout
 
-> **Status: LAID OUT, NOT IMPLEMENTED.** Gee: *"once all this is layed out first and implimented later"*.
-> Nothing in this document has been built. It is the plan, the measurements behind it, the price, and
-> the decisions that are Gee's to make before a line of it ships.
+> **⛔ STATUS SUPERSEDED — MOST OF THIS IS NOW BUILT (2026-08-25).** The line below said *"Nothing in this
+> document has been built"*, which was true when it was written on 2026-08-24 and is false now. **Phases 0
+> through 4 shipped the following day.** The original text of every phase is preserved unchanged — this is
+> a plan with a build log, not a plan that got quietly rewritten to match what happened.
+>
+> | Phase | What it was | Status |
+> |---|---|---|
+> | **0** — Tier 3 identity | Anchors as descriptor lists; the content-boundary breach; wardrobe ungated; the scope limit; menstruation recurrence; routine vs milestone; the image-gen audit | ✅ **BUILT** — anchors rewritten first-person and grade-banded with a schema version bump so the old ones ORPHAN rather than merge; wardrobe banded by `_selfImageAge()` and the garment strip widened past nudity-only; **+62 life experiences across 19 files** (724 total) for recurrence and routine; the image-gen audit came back **CLEAN** with one unrelated bug found and fixed |
+> | **1** — First-person coverage | Reframe at the CHOKEPOINTS, never the ~977 call sites | ✅ **BUILT** — 2 chokepoint edits cover ~415 call sites across 20 grade files, plus `me`/`mine` bindings and proper capitalisation of her name |
+> | **2** — The inquisitive drive | A question is the correct output of low confidence | ✅ **BUILT** — the curiosity gap is recorded at the signal floor and spent by the chat lane. ⚠ Shipped **OPT-IN**: opt-out would have let a question be scored as her answer in ~30 gate and probe callers |
+> | **3** — Gates probe in her frame | 116 impersonal probes vs first-person teaching | ✅ **BUILT** — one chokepoint edit; failed probes retry in her own frame, and first-pass vs recovered are reported separately, never blended |
+> | **4** — REPLAYOFF | Her sleep learned nothing: the replay guard fired on every pass at biological scale | ✅ **BUILT** — GPU replay route added, CPU guard untouched, re-priced first, sparse-vs-dense parity verified at 280,876 rows |
+> | **5** — The fresh walk | Whether to reformulate from zero | ⏳ **STILL OPEN — Gee's call.** Nothing in Phases 0–4 required one. The recommendation in this document stands: strictly last, and verify on current weights first |
+>
+> ⚠ **One thing this document could not know:** `separability` — named here as *the only instrument that would
+> measure the emission margin directly* — turned out to have **no producer at all**. It reads `{}` because
+> nothing ever wrote it. It has one now, so the margin is measurable for the first time.
 
 > **Governing directive (verbatim, 2026-08-24):** *"write the shole word salad fix(if needed we can do a
 > update freshwalk if the training needs to be reformulated and any where Unity is not being taught words

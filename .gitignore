@@ -270,3 +270,6 @@ server/visual-memory*.json
 visual-memory*.db*
 server/visual-memory*.db*
 art-notdrawable.json
+# The admin's Pollinations key — a CREDENTIAL. Never tracked.
+pollinations-admin.json
+server/pollinations-admin.json

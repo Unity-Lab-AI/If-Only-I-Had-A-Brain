@@ -1,5 +1,23 @@
 # Thalamic relay — attention over the emission context window
 
+## ⛔ THIS IS NOT TRANSFORMER ATTENTION. Read this before anything else.
+
+The word "attention" in this filename is the **thalamic / Posner sense** — a gain bias on what the brain is currently attending to. It is **not** the attention of an attention-is-all-you-need transformer, and the two share nothing but a noun.
+
+**Stated plainly, because this file's NAME is the thing an outside reader will point at when they want to argue there is a language model in here.** `js/brain/cluster/attention.js` was read closely during the 2026-08-25 no-text-AI audit and confirmed:
+
+| A transformer has | This has |
+|---|---|
+| Q / K / V projection matrices | **none** |
+| Multiple heads, learned per-head | **none** |
+| Gradients / backprop | **none — nothing in this brain uses backprop** |
+| A vocabulary / output projection layer | **none** |
+| Softmax over a sequence of tokens | **one cosine-weighted read over the last ≤16 words she actually emitted** |
+
+That is the whole mechanism: it looks at the small window of words she just said and biases the next read toward what is relevant in it. There is no learned parameter in the operation and no text model anywhere near it.
+
+⚠ If a future change makes any row on the right-hand side stop being true, that is not a refactor — it is a breach of the project's central claim, and the boot guard that fails on an LLM SDK or a transformer dependency exists precisely to catch it.
+
 ## What changed
 
 One new mixin, `js/brain/cluster/attention.js`, attached to

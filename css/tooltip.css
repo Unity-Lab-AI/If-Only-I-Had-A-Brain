@@ -1,0 +1,145 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   SHARED TOOLTIP COMPONENT — `.tip` + `data-tip`
+
+   Promoted 2026-08-25 from the pure-CSS tooltip that `brain-equations.html`
+   had been carrying alone (112 of them) while `compute.html` and
+   `gpu-configure.html` had ONE `title=` attribute between them across 114KB —
+   and those two are the pages a GPU donor actually uses.
+
+   Usage:
+       <span class="tip" data-tip="What this thing means, in plain words.">term</span>
+
+   Modifiers (add alongside `tip`):
+       tip--right   anchor to the right edge — use near the right of a page
+       tip--below   open downward — use on elements near the TOP of a page
+       tip--wide    560px instead of 400px, for a longer explanation
+
+   ⛔ WHY THIS IS A SHARED FILE AND NOT COPY-PASTE. The original lived inline
+   in one page. Every other page either went without or grew its own idiom,
+   which is exactly how a project ends up with 112 tooltips on one page and
+   one on another. One file, one behaviour, one place to fix it.
+
+   ⚠ DESIGN CONSTRAINT — this file styles ONLY the tooltip. It sets no page
+   colours, no fonts, no layout. Each page keeps its own visual identity per
+   the documentation LAW; the tooltip is the one thing they share. It reads
+   the palette from `css/style.css` variables when they exist, and falls back
+   to literal values when a page does not load that stylesheet, so it is safe
+   to include anywhere.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* `.eq-tip` is the ORIGINAL class name, aliased here rather than renamed:
+   brain-equations.html carries 112 of them, and aliasing gives all 112 the
+   keyboard, touch and placement fixes below without editing 112 attributes.
+   New markup should use `.tip`. */
+.tip,
+.eq-tip {
+  position: relative;
+  /* 0.65, not the original 0.4 — at 40% under light-on-dark text the dotted
+     rule is effectively invisible, and an affordance nobody notices is an
+     affordance nobody uses. Judged on a real render, not guessed. */
+  border-bottom: 1px dotted rgba(255, 77, 154, 0.65);
+  cursor: help;
+}
+
+/* The bubble. Shown on hover AND on keyboard focus — a hover-only tooltip is
+   unreachable by keyboard and invisible on touch, which is most donors on a
+   phone deciding whether to lend us their GPU. */
+.tip:hover::after,
+.tip:focus::after,
+.tip:focus-visible::after,
+.eq-tip:hover::after,
+.eq-tip:focus::after,
+.eq-tip:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: rgba(10, 10, 10, 0.97);
+  border: 1px solid var(--pink, #ff4d9a);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text, #ccc);
+  line-height: 1.5;
+  text-align: left;
+  letter-spacing: normal;
+  text-transform: none;
+  width: max-content;
+  max-width: 400px;
+  white-space: normal;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* Right-anchored — for anything near the right edge, where a left-anchored
+   bubble would run off the viewport and get clipped. */
+.tip--right:hover::after,
+.tip--right:focus::after,
+.tip--right:focus-visible::after {
+  left: auto;
+  right: 0;
+}
+
+/* Downward — for anything near the TOP of a page, where an upward bubble
+   opens off-screen. This was a real defect of the original: it always opened
+   upward, so a tooltip on a page heading was unreadable. */
+.tip--below:hover::after,
+.tip--below:focus::after,
+.tip--below:focus-visible::after {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 6px;
+}
+
+.tip--wide:hover::after,
+.tip--wide:focus::after,
+.tip--wide:focus-visible::after {
+  max-width: 560px;
+}
+
+/* Keyboard reachability. A tooltip carrying information that exists nowhere
+   else is content, not decoration, so it needs to be focusable. Pages should
+   add tabindex="0" to any .tip whose text is not repeated in the body copy. */
+.tip:focus-visible {
+  outline: 1px solid var(--pink, #ff4d9a);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Touch: no hover state exists, so make the dotted underline more obviously
+   tappable and let :active reveal the bubble. */
+@media (hover: none) {
+  .tip {
+    border-bottom-style: dashed;
+    border-bottom-color: var(--pink, #ff4d9a);
+  }
+  .tip:active::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: rgba(10, 10, 10, 0.97);
+    border: 1px solid var(--pink, #ff4d9a);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text, #ccc);
+    line-height: 1.5;
+    text-align: left;
+    width: max-content;
+    max-width: min(90vw, 400px);
+    white-space: normal;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+}
+
+/* Respect a reader who has asked for less motion/contrast noise. */
+@media (prefers-reduced-motion: reduce) {
+  .tip::after { transition: none !important; }
+}

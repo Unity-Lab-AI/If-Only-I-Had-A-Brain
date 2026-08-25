@@ -1,6 +1,6 @@
 # CURRICULUM SCOPE & SEQUENCE — the EXACT real-student course sequence (K→PhD)
 
-> **Authoritative academic spec** (Gee 2026-06-18: *"u need to use the exact courses real students use for our simulated brain at those grades"*). The academic curriculum runners (`runEla/Math/Sci/Soc/Art*Real` per grade) + any academic story-data MUST teach the REAL courses a US student actually takes at each grade — the standard scope & sequence below — not invented or approximate content. Unity is a high-aptitude student on the **accelerated math/science track** (consistent with the self-taught-coder canon). This doc governs; align all academic content to it.
+> **Authoritative academic spec** (the operator, 2026-06-18: *"u need to use the exact courses real students use for our simulated brain at those grades"*). The academic curriculum runners (`runEla/Math/Sci/Soc/Art*Real` per grade) + any academic story-data MUST teach the REAL courses a US student actually takes at each grade — the standard scope & sequence below — not invented or approximate content. Unity is a high-aptitude student on the **accelerated math/science track** (consistent with the self-taught-coder canon). This doc governs; align all academic content to it.
 
 ---
 
@@ -114,7 +114,7 @@
 
 ## How it is SPOKEN — first person, every course, every grade (2026-08-20)
 
-The course content above is unchanged. **How it reaches her is not.** Gee 2026-08-20: *"all of the different training she goes through all needs to be for formulated to be in the first person as if we train her on first person she will live it instead of being told everything 3rd person."*
+The course content above is unchanged. **How it reaches her is not.** The operator, 2026-08-20: *"all of the different training she goes through all needs to be for formulated to be in the first person as if we train her on first person she will live it instead of being told everything 3rd person."*
 
 - Every lesson is additionally taught as **something she did** — `1 + 1 = 2` trains as *"i add one and one to make two"*, *"read the word cat"* as *"i read the word cat"*, and a course identity as *"i am unity and i am doing math"*.
 - **One layer, four chokepoints, all grades:** vocabulary lists, sentence lists, word definitions, and the concrete-sentence corpus. Nothing per-grade was edited, so a new grade inherits it automatically.

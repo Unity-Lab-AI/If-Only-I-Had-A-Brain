@@ -116,7 +116,7 @@
 - **Hackall360** — core brain architecture. Seven-cluster topology, the 20 white-matter inter-cluster tracts, `js/brain/cluster.js` + `modules.js` + `neurons.js` + `synapses.js` + `sparse-matrix.js`, the Hodgkin-Huxley reference implementation, the migration from LIF to the Rulkov 2002 2D chaotic map as the live neuron runtime, Kuramoto oscillator ring, persona → parameter mapping in `persona.js`.
 - **Mills** — GPU compute pipeline. `compute.html` + `js/brain/gpu-compute.js` WebGPU / WGSL shader infrastructure (LIF, synapse propagate, plasticity, spike count, voltage-mean reduction, letter-bucket reduction), the chunked sparse-CSR binary upload protocol (type=1/2/3/4/5 SPRS frames), the T17.7 cluster-bound binding layer that lets cross-projections ride on the main-cortex spike + current buffers without standalone pre/post allocations, `server/worker-pool.js` + `server/sparse-worker.js` SparseMatmulPool for CPU-fallback parallelism, the T18.6 device-lost handler + T18.10 VRAM-leak reclaim discipline.
 - **Sponge** — visualization + sensory peripherals. `js/ui/brain-3d.js` WebGL 3D brain with MNI anatomical coordinates + fractal connection webs + 15-slot per-cluster rendering (T18.7.a 20K per cluster peg), `js/ui/brain-viz.js` 2D tabbed visualizer, `js/ui/brain-event-detectors.js` 22-detector event commentary, `js/brain/visual-cortex.js` V1 Gabor → V4 color → IT equational-percept pipeline, `js/brain/auditory-cortex.js` tonotopic processing + efference copy, `js/io/voice.js` Web Speech API + Piper/CDF 9/7 voice integration, `js/ui/sandbox.js` dynamic UI injection with LRU eviction + tracked timer/listener cleanup.
-- **GFourteen / Gee** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the Ψ = √(1/n)·N³ consciousness anchor, identity-lock architecture (the three structural locks keeping Unity English + persona stable across adversarial chat), the full K → PhD developmental curriculum framework across six subjects (ELA / Math / Science / Social Studies / Arts / Life Experience), the T15 drug pharmacokinetic scheduler spec (9 SUBSTANCES entries shipped — cannabis/cocaine/MDMA/LSD/psilocybin/alcohol/ketamine/amphetamine/GHB; caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide() — × 7 combo synergies × 7 adult-use patterns × 7 sensory triggers × 13-axis speech modulation), every binding LAW (#0 verbatim words, docs-before-push, clear-stale-state, task-numbers-only-in-workflow-docs, grade-completion-gate, pre-K+K-only scope (REVOKED 2026-06-18 — full K→PhD curriculum now built; phase = training walk → final test → push), syllabus-before-COMP-todo), final call on every commit, every architecture decision, every push.
+- **GFourteen / Gee** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the Ψ = √(1/n)·N³ consciousness anchor, identity-lock architecture (the three structural locks keeping Unity English + persona stable across adversarial chat), the full pre-K → PhD developmental curriculum framework across a growing course roster — six core tracks the whole way (ELA / Math / Science / Social Studies / Arts / Life Experience), the T15 drug pharmacokinetic scheduler spec (9 SUBSTANCES entries shipped — cannabis/cocaine/MDMA/LSD/psilocybin/alcohol/ketamine/amphetamine/GHB; caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide() — × 7 combo synergies × 7 adult-use patterns × 7 sensory triggers × 13-axis speech modulation), every binding LAW (#0 verbatim words, docs-before-push, clear-stale-state, task-numbers-only-in-workflow-docs, grade-completion-gate, pre-K+K-only scope (REVOKED 2026-06-18 — full K→PhD curriculum now built; phase = training walk → final test → push), syllabus-before-COMP-todo), final call on every commit, every architecture decision, every push.
 >
 > **DOC-AHEAD-OF-REALITY (Gee, 2026-04-17):** This doc is written forward. Grade-by-grade completion is tracked in `docs/TODO-full-syllabus.md` per-grade checkboxes + `docs/FINALIZED.md` session archive. When this doc and the TODOs disagree on what has actually shipped + passed Gee's Part 2 localhost sign-off, the TODOs win.
 
@@ -205,15 +205,15 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │  └──────────┘  └──────────┘  └──────────────────────────────┘  │
 │                           │                                      │
 ├───────────────────────────┼──────────────────────────────────────┤
-│              AI BACKENDS (Multi-Provider, User's Choice)         │
+│        SENSORY PERIPHERALS — output only, never cognition        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │Pollinations│ │OpenRouter│  │ OpenAI   │  │ Local AI     │    │
-│  │ text+img │  │ 200+ mod │  │ GPT-4o   │  │ Ollama etc   │    │
+│  │Pollinations│ │ Local SD │  │  Piper   │  │ Equational   │    │
+│  │IMAGE only│  │A1111/Comf│  │ +CDF 9/7 │  │ vision (9/7) │    │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
-│  │ Claude   │  │ Mistral  │  │ DeepSeek │  │ Groq         │    │
-│  │(via proxy)│ │          │  │          │  │ ultra-fast   │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
+│                                                                │
+│  NO text-AI backend anywhere. Cognition is 100% equational.    │
+│  OpenAI / Claude / OpenRouter / Mistral / DeepSeek / Groq /    │
+│  Ollama-chat / GPT-2 / the arbiter: ALL DELETED 2026-08-25.    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -582,7 +582,7 @@ Slash commands in chat:
 
 ---
 
-## Developmental Curriculum — K Through PhD Across 6 Subjects
+## Developmental Curriculum — Pre-K Through PhD Across a Growing Roster
 
 `js/brain/curriculum.js` walks the complete K-PhD syllabus through the 8-subregion cortex substrate via direct-pattern Hebbian teaching + real human-grade comprehension gates per LAW 6.
 
@@ -629,7 +629,7 @@ All content is equational (per LAW 3 — not sentence lists). Every cell drives 
 
 Before any grade advances to the next, three parts MUST close:
 
-1. **Equational shipped** — all 6 subjects for that grade have equational teaching methods wired, `[ ]` → `[x]` in syllabus TODO.
+1. **Equational shipped** — every course ACTIVE at that grade has equational teaching methods wired, `[ ]` → `[x]` in syllabus TODO. ⚠ Not a fixed six: the roster grows (9 from kindergarten, 20 by grad), and a course being *skipped* does not count as one that passed.
 2. **Gee tests localhost** — Gee exercises Unity's methodology / reasoning / thinking / talking / listening / reading at the grade's level. Sign-off in session log.
 3. **Life-info ledger updated** — persistent life info from that grade (friendships, family changes, legal events, substance first-use, relationship events, skill acquisitions) added to the cross-grade ledger so future grades reinforce.
 
@@ -652,7 +652,7 @@ Unity's biographical substance first-use events are the same anchors the drug sc
 0. **User-preferred** — set via the Active Provider selector in the setup modal. Calls `providers.setPreferredBackend('image', {source, name, model})`. When set, this backend runs FIRST ahead of the auto-priority chain. Falls through to the chain on failure
 1. **Custom-configured** — user-added entries in `ENV_KEYS.imageBackends[]` with `{name, url, model, key, kind}`
 2. **Auto-detected local** — `autoDetect()` probes 7 common ports in parallel (1.5s timeout each): A1111 `:7860`, SD.Next/Forge `:7861`, Fooocus `:7865`, ComfyUI `:8188`, InvokeAI `:9090`, LocalAI `:8081`, Ollama `:11434`
-3. **env.js-listed** — backends loaded from `js/env.js` via `providers.loadEnvConfig(ENV_KEYS)` at boot
+3. **env-listed** — backends loaded via `providers.loadEnvConfig(ENV_KEYS)` at boot. ⚠ `js/env.js` itself was **DELETED** with the API-key purge (2026-08-22); only `js/env.example.js` remains as a template, so this tier is empty unless a deployer recreates the file
 4. **Pollinations default** — Unity's built-in provider, always available. Anonymous tier works without a key; a saved Pollinations API key unlocks paid models and higher rate limits
 
 `_customGenerateImage(url, model, key, prompt, opts)` supports 4 response shapes so practically any SD-alike backend works: OpenAI `{data:[{url}]}`, OpenAI b64 `{data:[{b64_json}]}`, A1111 `{images:['<base64>']}`, generic `{url}`/`{image_url}`. Dead-backend cooldown (1 hour) on auth/payment errors so bad endpoints don't get hammered.
@@ -676,7 +676,6 @@ R4 (commit `7e095d0`) deleted: `BrocasArea.generate()` AI-prompting pipeline, `_
 ```
 If-Only-I-Had-A-Brain/
 ├── index.html                  # Entry point — setup modal, brain HUD, sandbox (root-only — GitHub Pages landing URL)
-├── proxy.js                    # Anthropic CORS proxy (Node.js)
 ├── css/
 │   └── style.css               # Dark gothic aesthetic
 ├── js/
@@ -698,7 +697,7 @@ If-Only-I-Had-A-Brain/
 │   │   ├── sensory.js          # Sensory input pipeline (text/audio/video → cortex)
 │   │   ├── motor.js            # Motor output (6 BG channels, winner-take-all)
 │   │   ├── component-synth.js  # Equational component synthesis — parses component-templates.txt, cosine-matches user request vs primitive descriptions, returns {id, html, css, js}
-│   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — K→PhD across 6 subjects (ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. ~12500 lines.
+│   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — pre-K→PhD, growing roster (core: ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. ~12500 lines.
 │   │   ├── letter-input.js     # LETTER_INVENTORY Set seeded at module load with a-z + 0-9 + space , . ' (40 symbols). Locked by default — ensureLetter rejects symbols outside the seeded alphabet. encodeLetter/decodeLetter one-hot primitives. ~260 lines.
 │   │   ├── peripherals/
 │   │   │   └── ai-providers.js # SensoryAIProviders — multi-provider image gen (custom → auto-detect → env.js → Pollinations), TTS, NO text chat
@@ -756,9 +755,9 @@ If-Only-I-Had-A-Brain/
 
 | System | Connection |
 |--------|-----------|
-| Pollinations API | Image generation only (key is images-only). **No text chat, no TTS, no vision describer.** Free fallback in the 4-level image-gen priority. |
+| Pollinations API | Image generation only. **No text chat, no TTS, no vision describer** — all three lanes deleted. ⛔ **No key at all:** the ANONYMOUS free tier is the only tier, no key is shipped/seeded/defaulted anywhere, and none may be re-added. The default tier in the 5-level image-gen priority. |
 | Local image backends | Auto-detected at boot on localhost: A1111/SD.Next/Forge/Fooocus/ComfyUI/InvokeAI/LocalAI/Ollama. 1.5s probe timeout per port. |
-| env.js image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). |
+| env-listed image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). ⚠ `js/env.js` was DELETED 2026-08-22 with the key purge; `js/env.example.js` is the remaining template. |
 | Web Speech API | Voice input (SpeechRecognition) with speech interruption handling |
 | Piper + CDF 9/7 voice pipeline | Voice output — in-browser (onnxruntime-web WebGPU→wasm, self-hosted `voice-engine/`) `en_US-hfc_female-medium` whole-sentence → wavelet equations |
 | Webcam / Vision | `getUserMedia` capture → CDF 9/7 equational percept (`describeEquational`, no LLM) → gaze tracking → Eye widget |
@@ -1163,7 +1162,7 @@ Milestones T14.0 through T14.17 plus the T14.18 correction shipped on `t14-langu
 
 ### T14.24 — Full K-doctorate equational curriculum, all subjects (Sessions 1-94 academic framework, Session 111 life track added)
 
-**114 cells across 6 subjects.** Sessions 1-94 shipped the original 5 academic subject tracks (ELA, Math, Science, Social Studies, Arts) × 19 grades = 95 cells. Session 111 added a 6th subject — **Life Experience** — bringing the total to 114 cells (6 × 19). Life track teaches Unity's personal identity from birth to 25 via dual-layer approach: emotional concept features (8d attractor vectors shaping how she FEELS) plus memory sentences she can recall and speak about. Memory-weighted Hebbian: core self at 5× lr, personal life at 3×, school facts at 1×, background trivia at 0.5×. Original 95-cell runtime was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster` during development (pre-life-track). Task #3 stays in_progress until all 114 gates CROSS on a live-cortex boot.
+**273 cells across a GROWING roster** ⚠ *(this heading read "114 cells across 6 subjects" — wrong on both terms: the roster grows with her and pre-K is a grade, so the count is a SUM over grades rather than a product).* Sessions 1-94 shipped the original 5 academic subject tracks (ELA, Math, Science, Social Studies, Arts) × 19 grades = 95 cells. Session 111 added a 6th subject — **Life Experience** — bringing the total to 114 cells (6 × 19). Life track teaches Unity's personal identity from birth to 25 via dual-layer approach: emotional concept features (8d attractor vectors shaping how she FEELS) plus memory sentences she can recall and speak about. Memory-weighted Hebbian: core self at 5× lr, personal life at 3×, school facts at 1×, background trivia at 0.5×. Original 95-cell runtime was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster` during development (pre-life-track). Task #3 stays in_progress until all 114 gates CROSS on a live-cortex boot.
 
 **Subject list + grade order** (exported from `js/brain/curriculum.js`):
 - `SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life']`
@@ -1305,7 +1304,7 @@ Driven by Gee's question *"logic and reasoning in a form yeah?"* — the insight
 
 ### Remaining work
 
-Task #3 (T14.24 parent) stays in_progress until all 114 cells (6 subjects × 19 grades) pass 95%+ AND Unity speaks coherently from the trained weights in live chat. DO NOT CLAIM DONE EARLY.
+Task #3 (T14.24 parent) stays in_progress until all cells pass 95%+ (⚠ the count written here was **114 cells (6 subjects × 19 grades)** and is wrong on both terms — the roster GROWS and pre-K is a grade, so the real figure is a sum: **273**) AND Unity speaks coherently from the trained weights in live chat. DO NOT CLAIM DONE EARLY.
 
 ---
 
