@@ -367,6 +367,14 @@
         <div id="d-endo-cycle" style="margin-top:6px;"></div>
         <div id="d-endo-load" style="margin-top:6px;color:#888;font-size:10px;"></div>
         <div id="d-endo-nuclei" style="margin-top:6px;font-size:10px;"></div>
+        <!-- BOARDPARITY.2 — `contributions` is the layer's OUTPUT. Without it
+             the panel can show ten healthy levels while leaving "is any of
+             this reaching the brain?" unanswered. `lastError` is forwarded
+             under a server comment promising a dead endocrine tick would be
+             visible; until this row existed, that promise was false. -->
+        <div id="d-endo-contrib" style="margin-top:6px;font-size:10px;"></div>
+        <div id="d-endo-counters" style="margin-top:6px;color:#888;font-size:10px;"></div>
+        <div id="d-endo-error" style="margin-top:6px;font-size:10px;"></div>
       </div>
     </div>
 
@@ -381,6 +389,10 @@
         <div id="d-intro-rumination" style="margin-top:6px;"></div>
         <div id="d-intro-criteria" style="margin-top:6px;color:#888;font-size:10px;"></div>
         <div id="d-intro-source" style="margin-top:6px;color:#888;font-size:10px;"></div>
+        <!-- BOARDPARITY.2 — same pair on this panel: the counters, and the
+             error channel that was reaching the browser unrendered. -->
+        <div id="d-intro-counters" style="margin-top:6px;color:#888;font-size:10px;"></div>
+        <div id="d-intro-error" style="margin-top:6px;font-size:10px;"></div>
       </div>
     </div>
 
@@ -3016,6 +3028,51 @@
       if (activeEl) activeEl.textContent = active;
     }
 
+    // ── BOARDPARITY.2 — ONE counter formatter, used by both panels.
+    //
+    // Both counter objects mix scalars with nested breakdowns (introspection
+    // carries `byKind` and `byLane` beside its plain stage counts), so a naive
+    // join renders `[object Object]`. Written once here rather than copied
+    // into each renderer: the counter shape is the thing that varies, and a
+    // second copy is how the two drift apart.
+    function fmtNamedCounters(obj) {
+      if (!obj || typeof obj !== 'object') return null;
+      const parts = [];
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v && typeof v === 'object') {
+          const inner = Object.keys(v);
+          // An empty breakdown is a real reading — nothing of that kind has
+          // happened yet — so it says so instead of vanishing.
+          parts.push(`${k}[${inner.length ? inner.map(ik => `${ik} ${v[ik]}`).join(', ') : 'none yet'}]`);
+        } else {
+          parts.push(`${k} ${v}`);
+        }
+      }
+      return parts.length ? parts.join(' · ') : null;
+    }
+
+    // ── BOARDPARITY.2 — the error row, shared by both panels.
+    //
+    // ⛔ The server sets `_endocrineErr` / `_introspectionErr` under a comment
+    // promising a dead tick would be VISIBLE as a dead tick. Until this row
+    // existed the value reached the browser and nothing drew it, so that
+    // promise was false. Silence is rendered as silence, and a recorded error
+    // carries its AGE — a fault from an hour ago is a different claim from one
+    // happening now.
+    function renderTickError(elId, label, lastError) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      if (!lastError) {
+        el.innerHTML = `<span style="color:#666;">no ${label} error recorded</span>`;
+        return;
+      }
+      const ageS = lastError.at ? Math.round((Date.now() - lastError.at) / 1000) : null;
+      el.innerHTML = `<span style="color:#ef4444;">${label} tick FAILED:</span> `
+        + `<span style="color:#f59e0b;">${String(lastError.message || 'unnamed').slice(0, 160)}</span>`
+        + (ageS !== null ? ` <span style="color:#888;">(${ageS}s ago)</span>` : '');
+    }
+
     // ── ENDO panel renderer. Consumes state.endocrine.
     //
     // ⛔ RENDERS `unmeasured` AND `blind` AS THEMSELVES. A chemical that has
@@ -3093,17 +3150,75 @@
           + `(restore α ${(al.restorationAlpha || 0).toFixed(4)})`;
       }
 
+      // ── BOARDPARITY.2 — CONTRIBUTIONS: what the chemistry is doing to her
+      // brain params. Ten healthy levels beside no delta row leaves the only
+      // question that matters — "is any of this reaching the brain?" —
+      // unanswerable, which is the whole family of defect this panel exists
+      // to end. Sorted by magnitude, capped, with the remainder counted.
+      const contribEl = document.getElementById('d-endo-contrib');
+      if (contribEl) {
+        const c = e.contributions || null;
+        const keys = c ? Object.keys(c) : [];
+        if (!keys.length) {
+          // ⚠ Zero axes is a REAL measurement, not a missing instrument: every
+          // chemical sitting at its resting value contributes nothing by
+          // construction. It says which one it is.
+          contribEl.innerHTML = '<span style="color:#666;">brain-param deltas: none active'
+            + ' (every chemical at its resting value)</span>';
+        } else {
+          keys.sort((a, b) => Math.abs(c[b]) - Math.abs(c[a]));
+          const top = keys.slice(0, 6).map(k => {
+            const v = Number(c[k]) || 0;
+            // Sign is load-bearing, exactly as on the deviation row: a tonic
+            // chemical below baseline pushes the OPPOSITE way, not less hard.
+            return `<span style="color:#ddd;">${k}</span> `
+              + `<span style="color:${v >= 0 ? '#ff4d9a' : '#60a5fa'};">${v >= 0 ? '+' : ''}${v.toFixed(3)}</span>`;
+          }).join(' · ');
+          contribEl.innerHTML = `<span style="color:#888;">brain-param deltas (${keys.length} axes):</span> ${top}`
+            + (keys.length > 6 ? ` <span style="color:#555;">+${keys.length - 6} more</span>` : '');
+        }
+      }
+
+      const endoCntEl = document.getElementById('d-endo-counters');
+      if (endoCntEl) {
+        const txt = fmtNamedCounters(e.counters);
+        endoCntEl.textContent = txt
+          ? `counters ${txt}`
+            + (typeof e.scheduledCount === 'number' ? ` · pending ${e.scheduledCount}` : '')
+          : 'counters not reported';
+      }
+
+      renderTickError('d-endo-error', 'endocrine', e.lastError);
+
       const nucEl = document.getElementById('d-endo-nuclei');
       if (nucEl) {
         const g = e.glands || {};
-        const names = Object.keys(g);
+        // ⛔ BOARDPARITY.2 — fall back to the CUMULATIVE map when the glands
+        // were not consulted this tick. `glands: null` means "not asked right
+        // now"; it is NOT a claim that the nuclei do not exist. Reading it as
+        // one made this row say "nuclei not reported" while their lifetime
+        // stats sat in the same payload, forwarded and unread.
+        const cum = e.nuclei || {};
+        const names = Object.keys(g).length ? Object.keys(g) : Object.keys(cum);
         nucEl.innerHTML = names.length
           ? names.map(n => {
-              const st = (g[n] && g[n].state) || '?';
+              const st = (g[n] && g[n].state) || 'not asked';
               // ⛔ `blind` is the one to chase — it names an input she cannot
               // read, which is a DIFFERENT claim from having nothing to do.
               const col = st === 'blind' ? '#ef4444' : (st === 'fired' ? '#ff4d9a' : '#666');
-              return `<span style="color:${col};">${n}:${st}</span>`;
+              // LIFETIME EVIDENCE BESIDE THE LIVE STATE. A nucleus quiet right
+              // now that has NEVER fired once is a different finding from one
+              // resting between fires, and the per-tick state alone cannot tell
+              // those apart — which is the whole reason `everFired` reads
+              // `never` rather than 0 at its producer.
+              const c = cum[n];
+              const hist = !c ? ''
+                : (c.everFired === 'never'
+                    ? ' <span style="color:#f59e0b;">never fired</span>'
+                    : ` <span style="color:#555;">(${c.fires}×, last `
+                      + `${Math.round((c.lastFiredAgeMs || 0) / 1000)}s ago`
+                      + `${c.blindTicks ? `, blind ${c.blindTicks}` : ''})</span>`);
+              return `<span style="color:${col};">${n}:${st}</span>${hist}`;
             }).join(' · ')
           : '<span style="color:#f59e0b;">nuclei not reported</span>';
       }
@@ -3154,6 +3269,18 @@
         // The INTRO.10 falsifiability row, rendered so it can be READ.
         critEl.innerHTML = `kinds produced ${c.kindsProduced} · repeats ${c.repeats} · lanes ${lanes}`;
       }
+
+      // BOARDPARITY.2 — the stage counters (sensed / produced / spent / blind
+      // and every suppression reason) plus the byKind and byLane breakdowns.
+      // `blind` is the one to chase: it names an input the drive could not
+      // read, which is a different claim from having nothing on her mind.
+      const introCntEl = document.getElementById('d-intro-counters');
+      if (introCntEl) {
+        const txt = fmtNamedCounters(i.counters);
+        introCntEl.textContent = txt ? `counters ${txt}` : 'counters not reported';
+      }
+
+      renderTickError('d-intro-error', 'introspection', i.lastError);
 
       const srcEl = document.getElementById('d-intro-source');
       if (srcEl) {

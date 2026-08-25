@@ -27,6 +27,18 @@
 >
 > I wrote *"the board renders BY NAME ONLY… or it ships dark"* into `ENDO.14` — **then shipped five batches with zero dashboard rows.** `state.endocrine`, `state.introspection`, `phiState`, `phiRaw`: all broadcasting, **none rendered.** It also made the whole press-brief watch list unreadable without raw JSON. **Caught while auditing the docs, not by the check meant to prevent it.** Fixed: two panels + a Φ row, where `unmeasured` and `blind` render **as themselves** and an absent layer says *"not wired this boot"*. **The lesson: writing a rule into a task description does not enforce it.**
 >
+> #### ⛔ 2a. BOARDPARITY — and then the FIX itself shipped half-dark (found 2026-08-25, verifying the two closures above)
+>
+> Gee asked me to confirm these two were wrapped up. **Item 1 was genuinely closed. Item 2 was not, and checking is what found it.** The panels, renderers and call sites all existed — so it *looked* landed — but a **producer/consumer parity check** showed the board could not read a third of the layer. `endocrine.js snapshot()` returns `puberty` / `cycle` / `allostatic`; `state.js` **forwarded none of them**; the renderer **read all three.** The `meanVoltage` shape, one layer down.
+>
+> ⛔ **It did not look like an empty row, which is why the eye missed it:** `allostatic` rendered **`0.000/0.6 (restore α 0.0000)` forever regardless of real load** (the renderer defaults a missing value to `{}`) — a reassuring zero on the one quantity that says whether adversity is accumulating, four lines under a comment forbidding exactly that. The `cycle` row **never drew at all** (phase, cycles elapsed, PMS withdrawal — all invisible). `puberty` rendered the literal **`? (age ?)`** with its amber `unknown` branch unreachable.
+>
+> **The other direction was dark too:** `contributions` (the layer's whole *output*), `counters`, `nuclei` and — worst — **`lastError` on both panels**, which the server sets under the comment *"a dead endocrine tick must be visible as a dead endocrine tick."* **That comment was false.** Fixed: four fields forwarded, five rows added, two shared helpers rather than two copies, and `nuclei` **consumed rather than deleted** (lifetime fire counts beside the live state — *never fired once* is a different finding from *resting between fires*).
+>
+> ⭐ **Parity is now exact BOTH ways: 13/13 endocrine, 7/7 introspection.** Every forwarded field has a row; every rendered field has a producer. ⚠ `ADMIN-CONTROLS.md` was already **asserting** the fixed behaviour (*"cycle phase, chronic and allostatic load… Both render on the dashboard"*) — true of the payload, false of the board; corrected in place rather than quietly made true.
+>
+> ⛔ **The lesson upgrade: adding the row is not the check. The check is proving the field ARRIVES.** A panel that renders is not a panel that reports.
+>
 > ---
 >
 > ### 3. ⭐ THE DONOR — `donor-v0.3.30` SHIPPED, VERIFIED, AND ON THE POD
