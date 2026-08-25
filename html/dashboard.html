@@ -2071,6 +2071,38 @@
         $('d-mem-cons-dreaming').style.color = cons.isDreaming ? '#22c55e' : '#555';
         // Number()||default — never blanks on undefined/NaN/empty (deployed-stale safety).
         $('d-mem-cons-interval').textContent = Math.floor((Number(cons.intervalMs) || 300000) / 60000) + ' min';
+      } else {
+        // ⛔ MEMDARK.1 (2026-08-25) — THE PANEL'S BIRTH STATE IS A CONFIDENT LIE.
+        //
+        // `if (s.memoryStats)` had no else, so whenever the field is absent the
+        // whole block is skipped and every row keeps its HARDCODED HTML default:
+        // `anchors: 0 / unbounded`, `episodes: 0`, `passes run: 0`,
+        // `last inject: never`, `no items yet`. **That is indistinguishable from
+        // a panel reporting real measured zeros** — and it was read exactly that
+        // way: the board showed all-zero memory while the live state held
+        // `tier3.identityCount: 30` (1049 retrievals each), `passCount: 3` and
+        // `working.items: 141`.
+        //
+        // Nothing was broken in the brain. The panel had simply never received a
+        // state message and was displaying the numbers it was born with. An
+        // instrument that looks identical whether it has data or not is the
+        // defect this whole board has spent the day removing.
+        //
+        // ⚠ `_getMemoryStats()` never returns null, so reaching here means the
+        // payload itself lacked the field — pre-first-broadcast, a getState
+        // section failure, or a partial/stale envelope. All three are worth
+        // SEEING rather than silently rendering as zeros.
+        for (const _id of ['d-mem-t1-count', 'd-mem-t2-count', 'd-mem-t3-count', 'd-mem-cons-count', 'd-mem-working']) {
+          const _el = $(_id);
+          if (_el) { _el.textContent = '—'; _el.style.color = '#f59e0b'; }
+        }
+        for (const _id of ['d-mem-t3-inject', 'd-mem-cons-last']) {
+          const _el = $(_id);
+          if (_el) { _el.textContent = 'not reported'; _el.style.color = '#f59e0b'; }
+        }
+        const _t3top = $('d-mem-t3-top');
+        if (_t3top) _t3top.innerHTML = '<span style="color:#f59e0b;">memory stats absent from this state payload — '
+          + 'this is NOT a measurement of zero. Waiting for a broadcast carrying `memoryStats`.</span>';
       }
 
       // Clusters
