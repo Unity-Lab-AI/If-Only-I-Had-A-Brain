@@ -781,7 +781,7 @@ var init_sparse_matrix = __esm({
           if (maxAbs > 0 && scale * maxAbs > wBound) {
             scale = wBound / maxAbs;
           }
-          if (scale === 1) continue;
+          if (Math.abs(scale - 1) < 1e-12) continue;
           for (let k = start; k < end; k++) {
             values[k] = values[k] * scale;
           }
