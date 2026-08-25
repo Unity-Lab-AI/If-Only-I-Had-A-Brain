@@ -120260,7 +120260,19 @@ var UnityBrain = class extends EventEmitter {
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, void 0, this.endocrine);
     if (this.introspection && this._endocrineSnapshot && !this.introspection.gap) {
       try {
-        const eps = this.memorySystem && Array.isArray(this.memorySystem._episodes) ? this.memorySystem._episodes.filter((e) => e && typeof e.trigger === "string" && e.trigger && !/\s/.test(e.trigger)) : [];
+        const knows = (w) => {
+          if (typeof w !== "string" || !w || /[^a-z'-]/i.test(w)) return false;
+          try {
+            const v = sharedEmbeddings.getEmbedding(w.toLowerCase());
+            if (!v || !v.length) return false;
+            let m = 0;
+            for (let i = 0; i < v.length; i++) m += v[i] * v[i];
+            return m > 0;
+          } catch {
+            return false;
+          }
+        };
+        const eps = this.memorySystem && Array.isArray(this.memorySystem._episodes) ? this.memorySystem._episodes.filter((e) => e && knows(e.trigger)) : [];
         if (eps.length) {
           const cortex = this.clusters?.cortex;
           const g = this.introspection.sense({

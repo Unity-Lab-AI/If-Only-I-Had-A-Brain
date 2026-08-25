@@ -30,6 +30,16 @@
 //                                                    for chat-recall path
 //   recallByUser(userId, limit)                    — recent-N episodes by
 //                                                    user
+//   livedConcepts(limit)                           — INTRO: single-WORD
+//                                                    concepts she has
+//                                                    lived, across all
+//                                                    episodes. Not
+//                                                    user-scoped (consent
+//                                                    covers it); cannot
+//                                                    return a sentence —
+//                                                    the SQL forbids
+//                                                    spaces, so concept
+//                                                    never content
 //   getEpisodeCount()                              — Tier 1 size for
 //                                                    dashboard telemetry
 //
@@ -264,6 +274,40 @@ const SERVER_MEMORY_MIXIN = {
 
     this._stmtRecallByUser = this._db.prepare(`
       SELECT * FROM episodes WHERE user_id = ? ORDER BY id DESC LIMIT ?
+    `);
+
+    // ── INTRO — HER OWN LIVED CONCEPTS, ACROSS EVERYTHING SHE HAS LIVED.
+    //
+    // ⭐ This is deliberately NOT user-scoped, and the binding-consent modal
+    // is why. Every user accepts, before their first word, that *"what she
+    // LEARNS from conversation (words, patterns, associations) DOES
+    // propagate into her shared brain state, which serves every other
+    // user"* and to *"assume anything you say can shape what she says to
+    // anyone else"*. A brain whose introspection could only draw on its own
+    // monologue would contradict the design it was consented under.
+    //
+    // ⛔ AND THE SAFETY IS STRUCTURAL, NOT A CALLER'S DISCIPLINE. The line
+    // that matters is not WHOSE episode it is — it is TRANSCRIPT vs
+    // CONCEPT. Replaying one person's sentences at another person is
+    // leakage, and the T6 filter below correctly prevents that. A single
+    // word she has experienced is what she LEARNED, which is exactly the
+    // thing consent covers.
+    //
+    // ⚠ AND THE FIRST CUT OF THIS QUERY WAS WRONG IN THE OTHER DIRECTION —
+    // it demanded `input_text NOT LIKE '% %'`, i.e. that the WHOLE EPISODE
+    // be a single word. Real conversation turns are sentences, so that
+    // returned almost nothing and starved the drive to a trickle while
+    // looking like a safeguard. Gee: *"how is she suppose to learn then wtf
+    // u are nuetering her"* — correct, and the shape was the problem.
+    //
+    // She gets EVERYTHING she has lived. The concept is extracted FROM the
+    // sentence by the caller rather than the sentence being refused, so
+    // breadth is full and what travels onward is still a word.
+    this._stmtLivedConcepts = this._db.prepare(`
+      SELECT input_text, valence, arousal, timestamp
+      FROM episodes
+      WHERE input_text IS NOT NULL AND input_text <> ''
+      ORDER BY id DESC LIMIT ?
     `);
 
     // T6 — recall by mood now REQUIRES a userId filter so cross-user
@@ -632,6 +676,115 @@ const SERVER_MEMORY_MIXIN = {
    */
   recallByUser(userId, limit = 10) {
     return this._stmtRecallByUser.all(userId, limit);
+  },
+
+  /**
+   * INTRO — the concepts she has actually lived, newest first, across
+   * EVERYTHING she has experienced.
+   *
+   * ⭐ Not user-scoped, deliberately: the binding-consent modal states that
+   * what she LEARNS propagates into her shared brain state and can shape
+   * what she says to anyone. Introspection surfaces on the inner voice,
+   * which has no user, so scoping it to one would be the wrong shape as
+   * well as an unnecessary restriction.
+   *
+   * ⭐ Every episode is a candidate — the CONCEPT IS EXTRACTED FROM IT, the
+   * episode is not refused for being a sentence. That is the difference
+   * between her introspecting about her whole life and introspecting about
+   * the handful of turns that happened to be one word long.
+   *
+   * ⛔ What travels onward is a single WORD she already knows. That is the
+   * transcript/concept line, and it is where it belongs: a word is what she
+   * LEARNED, which is exactly what consent covers. Replaying someone's
+   * sentences at someone else would be leakage, and nothing here can — a
+   * sentence never leaves this method.
+   *
+   * ⛔ NO STOP-WORD LIST. Word lists as classifiers are banned, and this
+   * would be a textbook place to sneak one in. The content word is chosen
+   * by asking HER: the candidate she has the strongest learned
+   * representation for wins, with length as the tiebreak. A word she does
+   * not know cannot be a thing she wonders about anyway.
+   *
+   * @param {number} limit
+   * @returns {Array<{input_text:string, valence:number, arousal:number, timestamp:number}>}
+   */
+  livedConcepts(limit = 60) {
+    if (!this._stmtLivedConcepts) return [];
+    try { return this._stmtLivedConcepts.all(limit); }
+    catch { return []; }   // a dead read yields nothing, which correctly means no introspection
+  },
+
+  /**
+   * INTRO — pull ONE concept out of an episode's text.
+   *
+   * Returns the token she has the strongest learned representation for, or
+   * null when she knows none of them — in which case there is no gap, which
+   * is honest: she cannot wonder about a word she has never learned.
+   *
+   * @param {string} text
+   * @returns {string|null}
+   */
+  _conceptFromEpisodeText(text) {
+    if (typeof text !== 'string' || !text) return null;
+    const toks = text.toLowerCase().match(/[a-z][a-z'-]{1,}/g);
+    if (!toks || toks.length === 0) return null;
+
+    // ⭐ THE STRONGEST SIGNAL IS WHAT SHE HAS ACTUALLY BEEN TAUGHT.
+    //
+    // ⚠ Raw embedding magnitude alone is NOT safe here: GloVe norms track
+    // frequency, so `the` and `was` can carry a larger vector than a rare
+    // but meaningful word. Ranking on norm alone would quietly hand her
+    // function words — the failure a stop-list would have "fixed", and stop
+    // lists are banned for exactly the reason that they are someone's
+    // opinion rather than her knowledge.
+    //
+    // `_definitionTaughtWords` is the honest answer: the words she has had
+    // DEFINED, built by her own curriculum. Membership dominates the score;
+    // magnitude only orders within it. Before anything has been taught the
+    // set is empty and magnitude carries the ranking alone, which is weaker
+    // and is reported as such rather than pretended about.
+    const emb = this.sharedEmbeddings;
+    const taught = (this.cortexCluster && this.cortexCluster._definitionTaughtWords instanceof Set)
+      ? this.cortexCluster._definitionTaughtWords : null;
+    let best = null, bestScore = -Infinity;
+    const seen = new Set();
+    for (const t of toks) {
+      if (t.length > 32 || seen.has(t)) continue;
+      seen.add(t);
+      // ⭐ "Does she know this word, and how strongly?" — asked of her own
+      // learned geometry rather than of a list someone wrote. Vector
+      // magnitude stands in for how much representation the word carries.
+      let known = 0;
+      if (emb && typeof emb.getEmbedding === 'function') {
+        try {
+          const v = emb.getEmbedding(t);
+          if (v && v.length) {
+            let m = 0;
+            for (let i = 0; i < v.length; i++) m += v[i] * v[i];
+            known = Math.sqrt(m);
+          }
+        } catch { known = 0; }
+      }
+      if (known <= 0) continue;                 // unknown word — not something she can wonder about
+      // Taught words dominate. The bonus is larger than any magnitude
+      // spread, so a word she has been DEFINED always beats one she has
+      // merely imported — which is the difference between a word she knows
+      // and a word that was in the table when she arrived.
+      if (taught && taught.has(t)) known += 10;
+      else if (taught && taught.size > 0) known -= 5;   // she has a vocabulary, and this is not in it
+      // ⚠ Length is a TIEBREAK ONLY, and the first cut got this wrong:
+      // `known + length*0.01` let an 8-letter word beat a 3-letter word she
+      // knew BETTER (0.92+0.08 > 0.93+0.03). That is length overriding
+      // strength while the comment claimed otherwise. Strength decides;
+      // length is consulted only when strength is effectively equal.
+      const EPS = 1e-3;
+      if (best === null || known > bestScore + EPS
+          || (Math.abs(known - bestScore) <= EPS && t.length > best.length)) {
+        bestScore = Math.max(bestScore, known);
+        best = t;
+      }
+    }
+    return best;
   },
 
   /**
