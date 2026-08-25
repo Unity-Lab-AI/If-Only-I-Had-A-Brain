@@ -37263,4 +37263,18 @@ LEARN-ahead-of-physiology per band · no sugar-coating (16 explicit word checks)
 
 - ⚠ One check failed first time and it was a **real gap, not a bad test**: the syllabus ended at 16.
 - ⚠ **NOT VERIFIED LIVE.** The migration and the vocabulary both land on the next press.
+### ⛔ DARKBOARD, BY MY OWN HAND — caught 2026-08-25 while auditing the docs
+
+**I wrote the rule and then broke it five times.** `ENDO.14`, in my own words: *"the board renders BY NAME ONLY, so each new field needs its row in the same commit or it ships dark exactly like the five instruments already sitting unrendered."*
+
+Then I shipped **five batches** — glands, slow hormones, introspection, drug mechanism, tolerance — and `dashboard.html` contained **zero** references to `state.endocrine`, `state.introspection`, `phiState` or `phiRaw`. `phiProxy` and `drugSnapshot` rendered fine, so the mechanism was never in question; **I simply never added the rows.**
+
+⚠ **It also made the entire 12-item press-brief watch list unusable from the board** — every field would have had to be read out of raw `/public-state.json`.
+
+**Fixed:** two panels (`Endocrine — her chemistry`, `Introspection — what is unresolved`) and a Φ row. ⛔ Built to the same discipline the data was: `unmeasured` and `blind` render **as themselves** in amber and red, never as a tidy zero; a `false` on `glandsConsulted` renders red because *"the nuclei were never asked"* is a different claim from *"the nuclei were quiet"*; an absent layer reports **"not wired this boot"** rather than leaving a blank card, because a blank card and a dead layer must not look the same. The renderers are called **unconditionally** for that reason.
+
+⭐ **And the Φ row is the one that matters most:** it now shows the raw value and the state beside the floored one, so `floored` — meaning Φ has never modulated Ψ at all — is visible instead of reading as a healthy `0.100` forever.
+
+**Caught by auditing, not by the check that was supposed to prevent it.** The honest lesson is that writing a rule into a task description does not enforce it.
+
 - ⚠ `recallByChemistry()` is **built and exported but has no consumer yet** — a deliberate seam, not an oversight: nothing in the chat or introspection path asks for state-dependent recall today, and wiring it into a lane before deciding *which* lane should use it is how a feature ships in the wrong place. Named here so it does not become the next unconsumed instrument.
