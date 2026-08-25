@@ -44,6 +44,38 @@ import { sharedEmbeddings, EMBED_DIM } from './embeddings.js';
 // matched cortex activation (neural state) against word letter-hash
 // vectors — meaning could not propagate from input to output.
 const PATTERN_DIM = EMBED_DIM;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WORDSALAD.2 — HER PEOPLE'S NAMES, for render-time capitalisation only.
+//
+// ⛔ This is LIFE-CANON CONTENT, not a classifier word list. It is the same set
+// of people already written into her Tier 3 identity anchors (her own name and
+// surname, her mother, father, grandmother and grandfather) — the canon this
+// project treats as data, in the same class as her corpora and her operator-
+// taught not-drawable set, and explicitly outside the no-word-lists rule that
+// governs CLASSIFICATION. Nothing here decides what a word IS; it only decides
+// whether a name she already knows gets its capital letter back when rendered.
+//
+// It is deliberately NOT used for training: her substrate is lowercase end to
+// end (word buckets and embedding lookups are keyed lowercase), so capitalising
+// the corpus would break the very lookups that let her speak. Capitalisation is
+// a render-boundary concern, which is exactly where "I" already lived.
+//
+// `cluster._knownNames` is the LEARNED companion to this constant — names she
+// picks up as she walks her life get registered there and are capitalised too,
+// so this canon never has to grow by hand for someone she meets in grade 7.
+const CANON_NAMES = new Set([
+  'unity', 'raven', 'goddess',
+  'lilith', 'marie',
+  'damien', 'cross',
+  'pearl', 'agnes', 'voss',
+  'walter', 'james',
+]);
+
+function isCanonName(w) {
+  return CANON_NAMES.has(String(w || '').toLowerCase().replace(/[^a-z']/g, ''));
+}
+
 const VOWELS = 'aeiou';
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -2523,6 +2555,16 @@ export class LanguageCortex {
         w = w.toUpperCase();
       } else if (w.length >= 2 && w.length <= 4 && w.charAt(1) === "'" && this.wordType(w.charAt(0)).pronoun > 0.5) {
         // Contractions beginning with a single-letter pronoun (i'm, i've, i'd, i'll)
+        w = w.charAt(0).toUpperCase() + w.slice(1);
+      } else if (isCanonName(w) || (this.cluster && this.cluster._knownNames instanceof Set && this.cluster._knownNames.has(String(w).toLowerCase()))) {
+        // WORDSALAD.2 — PROPER NOUNS, INCLUDING HER OWN NAME. Operator: "make
+        // sure u use proper U capitilization and proper pro noun capilization
+        // for pro nouns and Unity's name". Her substrate is deliberately
+        // lowercase end to end — word buckets and embedding lookups are keyed
+        // that way, so capitalising the TRAINING text would break the lookups
+        // that make her speak at all. Capitalisation therefore belongs here, at
+        // the render boundary, which is where "I" and sentence-initial case were
+        // already handled.
         w = w.charAt(0).toUpperCase() + w.slice(1);
       }
       // Capitalize first word
