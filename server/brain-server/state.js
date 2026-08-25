@@ -667,6 +667,25 @@ const SERVER_STATE_MIXIN = {
                   ageMs: Math.max(0, Date.now() - (rej.ts || Date.now())),
                 }
               : null,
+            // WORDSALAD.3 — the inquisitive drive, as a measurable event rather
+            // than a claim. `gaps` counts the moments she reached for a word and
+            // could not hold it above the signal floor; `asks` counts how many
+            // of those turned into a real emitted question instead of silence.
+            // A large gap count with zero asks means the interrogative weights
+            // are not trained yet — which is a training fact worth seeing, not a
+            // bug to hide. Gate and probe lanes never ask by design, so this
+            // counts conversation only.
+            curiosity: {
+              gaps: (cc && cc._curiosityGapCount) | 0,
+              asks: (cc && cc._curiosityAskCount) | 0,
+              lastAsk: (cc && cc._lastCuriosityAsk)
+                ? {
+                    word: cc._lastCuriosityAsk.word,
+                    text: String(cc._lastCuriosityAsk.text || '').slice(0, 120),
+                    ageMs: Math.max(0, Date.now() - (cc._lastCuriosityAsk.ts || Date.now())),
+                  }
+                : null,
+            },
             verdict: { status, reason },
           };
         } catch (err) { return { error: err.message }; }

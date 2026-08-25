@@ -3788,6 +3788,24 @@ class ServerBrain {
       // (seed-list anchors added after the brain was first seeded never landed
       // under the old "file exists → never seed" wiring). Idempotent by label:
       // a fully-seeded store tops up 0. Fresh brains get the whole list here.
+      // WORDSALAD.1 — validate the identity seed list BEFORE seeding from it.
+      // Two failure modes this catches at boot instead of in production: a
+      // `minGrade` naming a grade that does not exist (the anchor would silently
+      // never unlock, indistinguishable from one that was never written), and an
+      // anchor phrased as a bare descriptor list with no self token — an
+      // instruction about how to behave rather than something she can say about
+      // herself. Grade typos throw; shape problems warn loudly.
+      try {
+        const _hsMod = await import('../js/brain/hippocampal-schema.js');
+        if (typeof _hsMod.assertIdentitySeedList === 'function') {
+          const _seedCheck = _hsMod.assertIdentitySeedList();
+          if (_seedCheck && _seedCheck.ok) {
+            console.log('[Tier3Store] identity seed list validated — all anchors are first-person and every age gate resolves.');
+          }
+        }
+      } catch (err) {
+        console.error('[Tier3Store] ⛔ IDENTITY SEED LIST INVALID:', err?.message || err);
+      }
       if (this.tier3Store && typeof this.tier3Store.seedMissingFromList === 'function') {
         try {
           const before = this.tier3Store.size();
@@ -3799,6 +3817,16 @@ class ServerBrain {
           }
         } catch (err) {
           console.warn('[Tier3Store] seedMissingFromList failed:', err?.message || err);
+        }
+        // WORDSALAD.1 — anchors that are DERIVED from her live grade (her age)
+        // must be rebuilt when she has moved up, otherwise the idempotent top-up
+        // above skips them forever on label match and she keeps stating the age
+        // she was first seeded at. This is exactly how the old hardcoded
+        // 'i am five years old' survived into grade 1.
+        if (typeof this.tier3Store.refreshDerivedAnchors === 'function') {
+          try { this.tier3Store.refreshDerivedAnchors(); } catch (err) {
+            console.warn('[Tier3Store] refreshDerivedAnchors failed:', err?.message || err);
+          }
         }
       }
       // PD.4 — collapse any duplicate-label anchors (older boots double-promoted

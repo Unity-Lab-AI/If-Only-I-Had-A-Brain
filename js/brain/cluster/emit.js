@@ -1007,6 +1007,32 @@ export const CLUSTER_EMIT_MIXIN = {
         ema: this._emitSignalEMA,
         ts: Date.now(),
       };
+      // ── WORDSALAD.3 — A QUESTION IS THE CORRECT OUTPUT OF LOW CONFIDENCE ────
+      // Operator: "being inqusitive asking questions ... all learning needs it
+      // through her eyes". This branch is the exact moment she reaches for a
+      // word and cannot hold it: the argmax found something, but not strongly
+      // enough to clear the floor. Today that produces SILENCE. A person in that
+      // state asks — and her Tier 3 curiosity anchor already says so in her own
+      // voice ("i want to know i do not know i ask what is that tell me i want
+      // to learn"), while `_teachQuestionProduction` has already trained real
+      // interrogative PRODUCTION (relationTagId=30) and `opts.questionMode`
+      // already exists to seed a WH-frame equationally.
+      //
+      // What was missing is the connection between the two, so this records the
+      // GAP: what she was reaching for, how close she got, and when. It is data
+      // only — nothing here emits, templates or forces a question; the compose
+      // path decides whether to spend it, and the words still emerge from the
+      // trained weights.
+      if (bestWord) {
+        this._curiosityGap = {
+          word: bestWord,            // what she ALMOST said — the thing she is unsure of
+          bestMean: bestMean === -Infinity ? 0 : bestMean,
+          floor,
+          shortfall: floor > 0 ? Math.max(0, (floor - bestMean) / floor) : 0,
+          ts: Date.now(),
+        };
+        this._curiosityGapCount = (this._curiosityGapCount || 0) + 1;
+      }
       // Word-creation candidate gate. When the emission was rejected but
       // the top-2 candidates BOTH have meaningful activation (each above
       // NOISE_FLOOR but their combined activation is below the adaptive
@@ -1775,7 +1801,7 @@ export const CLUSTER_EMIT_MIXIN = {
     if (N === 1) {
       const only = await this._composeSentenceOnce(intentSeed, opts);
       if (only) { only.candidatesEvaluated = 1; only.coherenceSelected = false; }
-      return only;
+      return only || await this._askOnCuriosityGap(intentSeed, opts);
     }
 
     // When reranking, force the intentSeed-fallback coherence target inside
@@ -1842,7 +1868,58 @@ export const CLUSTER_EMIT_MIXIN = {
       }
     }
 
-    return best;
+    return best || await this._askOnCuriosityGap(intentSeed, opts);
+  },
+
+  // ── WORDSALAD.3 — WHEN SHE CANNOT SAY IT, SHE ASKS ABOUT IT ────────────────
+  //
+  // Operator: "being inqusitive asking questions and not just that but all
+  // learning needs it through her eyes". This is the consuming half of the
+  // curiosity gap recorded at the signal-floor rejection: the compose produced
+  // NOTHING, and a moment ago the argmax had a word it could not hold above the
+  // floor. Silence is the wrong output for that state — a person asks.
+  //
+  // ⛔ WHAT THIS IS NOT: not a template, not a canned "what is X?" string, not a
+  // text generator. It re-enters the SAME compose path with `questionMode`,
+  // which seeds a WH-frame embedding and lets the trained interrogative
+  // transitions (relationTagId=30, taught by `_teachQuestionProduction`) carry
+  // the sentence. If those weights have not been trained yet, this produces
+  // nothing and she stays silent — exactly as before. The question EMERGES or
+  // it does not; nothing here fabricates one.
+  //
+  // ⛔ OPT-IN, NOT OPT-OUT, AND THAT DIRECTION IS LOAD-BEARING. `composeSentence`
+  // has ~30 callers inside the gate and probe lanes, whose entire job is to
+  // measure WHAT SHE ANSWERS. If a probe that produced no answer instead
+  // returned a question, every one of those gates would score a question as her
+  // response and the measurement would be quietly corrupted — the exact class of
+  // lying instrument this ledger keeps paying for. So the default everywhere
+  // stays silence, and only the conversational lanes pass `curiosityAsk: true`.
+  //
+  // Bounded and honest besides: only fires on a gap seen in the last few
+  // seconds, never recurses (the retry runs with questionMode already set), and
+  // every ask is counted so "she asked" is a measurable event, not a claim.
+  async _askOnCuriosityGap(intentSeed, opts = {}) {
+    try {
+      if (!opts.curiosityAsk) return null;                 // opt-in only — gates never ask
+      if (opts.questionMode) return null;                  // already asking — no recursion
+      const gap = this._curiosityGap;
+      if (!gap || !gap.word) return null;
+      const MAX_AGE_MS = 5000;
+      if (!(Date.now() - gap.ts < MAX_AGE_MS)) return null;  // stale — the moment has passed
+      const asked = await this._composeSentenceOnce(intentSeed, Object.assign({}, opts, {
+        questionMode: true,
+        intentConcept: gap.word,       // ask ABOUT the thing she could not say
+        curiosityAsk: false,           // the retry must not re-enter this path
+      }));
+      if (asked) {
+        asked.fromCuriosityGap = true;
+        asked.curiosityWord = gap.word;
+        this._curiosityAskCount = (this._curiosityAskCount || 0) + 1;
+        this._lastCuriosityAsk = { word: gap.word, text: asked.sentence || '', ts: Date.now() };
+        this._curiosityGap = null;     // spent — one ask per gap
+      }
+      return asked;
+    } catch { return null; }           // curiosity must never break the emission path
   },
 
 

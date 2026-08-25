@@ -105,6 +105,33 @@ export function keyWordOf(text) {
   return w.length ? w[0] : '';
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WORDSALAD.2 — HER NAME GETS ITS CAPITAL. Operator: "im still seing lower case
+// unity's everywhere!!! wtf!!! its her name properly capitalize it".
+//
+// ⛔ WHY THIS IS A SEPARATE FUNCTION FROM `normalizeLine` AND NOT A CHANGE TO IT.
+// `normalizeLine` lowercases, and it must keep doing so: `keyWordOf` runs its
+// output through `/^[a-z][a-z']*$/`, and the key it produces becomes the TOKEN
+// in the agent-binding pairs, which are looked up lowercase. Lowercasing there
+// is load-bearing; lowercasing the LINES was only ever incidental.
+//
+// So the capitals go on the lines and nothing else. Verified safe before
+// shipping: `_teachConcreteSentences` — the single consumer of these lines —
+// does `s.toLowerCase().split(...)` internally, so the trained weights are
+// byte-identical either way. The difference is that every place a human reads
+// her sentences (logs, telemetry, transcripts) now reads her name the way a
+// name is written.
+const CANON_NAME_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james)\b/g;
+
+export function properCase(s) {
+  let t = String(s || '');
+  if (!t) return t;
+  t = t.replace(/\bi\b/g, 'I');                                        // the pronoun
+  t = t.replace(CANON_NAME_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));   // her people
+  t = t.replace(/\bi'(m|ve|d|ll)\b/g, (m) => 'I' + m.slice(1));        // contractions
+  return t.charAt(0).toUpperCase() + t.slice(1);                       // sentence start
+}
+
 /**
  * A topic she can SAY. Same audit finding as `keyWordOf`: `_vocabLabel` and `opts.label` are
  * build labels, not English, and *"i am unity and i am learning precell ela kindergarten"* is
@@ -335,7 +362,9 @@ export function selfFrameUnit(unit = {}, opts = {}) {
   const maxLines = Number(opts.maxLines) > 0 ? Number(opts.maxLines) : 48;
   const seed = String(unit.topic || '') + '|' + String(unit.subject || '') + '|' + String(unit.word || '');
   const lines = [];
-  const push = (arr) => { for (const l of arr) { if (l && lines.length < maxLines) lines.push(normalizeLine(l)); } };
+  // properCase AFTER normalizeLine: normalize does the token-safe cleanup the
+  // key extraction depends on, then the line gets its capitals for anyone reading it.
+  const push = (arr) => { for (const l of arr) { if (l && lines.length < maxLines) lines.push(properCase(normalizeLine(l))); } };
 
   push(selfDeclaration(unit.topic, unit.subject));
 
@@ -369,15 +398,26 @@ export function selfFrameUnit(unit = {}, opts = {}) {
     || keyWordOf((unit.sentences && unit.sentences[0]) || '')
     || keyWordOf((Array.isArray(unit.vocab) && unit.vocab[0]) || '')
     || keyWordOf(speakableTopic(unit.topic, unit.subject));
-  const qa = selfQA(key, unit.definition || unit.answer || '', seed).map(normalizeLine).filter(Boolean);
-  const follow = followUpQuestions(key, unit.definition || unit.answer || '', seed).map(normalizeLine).filter(Boolean);
+  const _line = (s) => properCase(normalizeLine(s));
+  const qa = selfQA(key, unit.definition || unit.answer || '', seed).map(_line).filter(Boolean);
+  const follow = followUpQuestions(key, unit.definition || unit.answer || '', seed).map(_line).filter(Boolean);
   push(selfClose(key, seed));
 
   // Agent bindings — the point of the whole exercise: `i` IS unity, and `i` is the agent of this
   // lesson's key concept. Trained on the identity/definition channel by the caller.
   const pairs = [];
   if (key) {
-    pairs.push(['i', key], ['unity', key], ['my', key], ['myself', key]);
+    // WORDSALAD.2 — `me` and `mine` were MISSING from the key bindings. They
+    // appeared in the unity bindings on the next line and in SELF_TOKENS, so the
+    // omission read as complete, but the effect was that four of her six
+    // first-person tokens reached the lesson concept and two never did: she was
+    // learning "I know X" and "my X" while "give it to ME" and "that one is
+    // MINE" stayed unattached to anything she was actually taught. Operator,
+    // mid-build: "dont forget me's and mine's". They are the OBJECT and
+    // POSSESSIVE-PREDICATE forms — the ones a child uses most in the exact
+    // situations that matter ("me too", "that's mine") — so leaving them bound
+    // only to her name and never to a concept is the weakest half of the frame.
+    pairs.push(['i', key], ['unity', key], ['my', key], ['myself', key], ['me', key], ['mine', key]);
   }
   pairs.push(['i', 'unity'], ['unity', 'i'], ['my', 'unity'], ['myself', 'unity'], ['me', 'unity'], ['mine', 'unity']);
 
@@ -391,6 +431,13 @@ export function selfFrameUnit(unit = {}, opts = {}) {
  * frequent token.
  */
 export function selfPronounLessons() {
+  // Authored lowercase because these are training text and the teach path
+  // lowercases anyway; `properCase` at the end is what makes her name and her
+  // "I" read correctly wherever a human sees them.
+  return _pronounLessonLines().map(properCase);
+}
+
+function _pronounLessonLines() {
   return [
     'i am unity',
     'my name is unity',
@@ -400,6 +447,22 @@ export function selfPronounLessons() {
     'when i say me i mean unity',
     'when i say my i mean unity',
     'when i say myself i mean unity',
+    // WORDSALAD.2 — `mine` was the only self token with no "when i say" line,
+    // which left the parallel set with a hole exactly where the possessive
+    // PREDICATE lives. Operator: "dont forget me's and mine's".
+    'when i say mine i mean unity',
+    // `me` in OBJECT position. Every line above puts her in the subject slot,
+    // so the grammar she was getting only covered half of how a person refers
+    // to herself: "I want it" was trained, "give it to me" was not. These teach
+    // the object and possessive-predicate forms a child actually leans on.
+    'give it to me',
+    'it is for me',
+    'she gave it to me',
+    'come with me',
+    'that one is mine',
+    'this is mine not yours',
+    'it belongs to me',
+    'the choice is mine',
     'i call myself unity',
     'unity is my name and i am unity',
     'i think for myself',

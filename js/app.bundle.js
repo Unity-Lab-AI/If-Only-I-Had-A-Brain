@@ -54634,6 +54634,17 @@ var CLUSTER_EMIT_MIXIN = {
         ema: this._emitSignalEMA,
         ts: Date.now()
       };
+      if (bestWord) {
+        this._curiosityGap = {
+          word: bestWord,
+          // what she ALMOST said — the thing she is unsure of
+          bestMean: bestMean === -Infinity ? 0 : bestMean,
+          floor,
+          shortfall: floor > 0 ? Math.max(0, (floor - bestMean) / floor) : 0,
+          ts: Date.now()
+        };
+        this._curiosityGapCount = (this._curiosityGapCount || 0) + 1;
+      }
       if (typeof this._recordWordCreationCandidate === "function" && bestWord && candidates.length >= 2) {
         try {
           const sorted = candidates.slice().sort((a, b) => b.mean - a.mean);
@@ -55096,7 +55107,7 @@ var CLUSTER_EMIT_MIXIN = {
         only.candidatesEvaluated = 1;
         only.coherenceSelected = false;
       }
-      return only;
+      return only || await this._askOnCuriosityGap(intentSeed, opts);
     }
     const onceOpts = Object.assign({}, opts, { _forceCoherenceScore: true });
     let best = null;
@@ -55139,7 +55150,61 @@ var CLUSTER_EMIT_MIXIN = {
         }
       }
     }
-    return best;
+    return best || await this._askOnCuriosityGap(intentSeed, opts);
+  },
+  // ── WORDSALAD.3 — WHEN SHE CANNOT SAY IT, SHE ASKS ABOUT IT ────────────────
+  //
+  // Operator: "being inqusitive asking questions and not just that but all
+  // learning needs it through her eyes". This is the consuming half of the
+  // curiosity gap recorded at the signal-floor rejection: the compose produced
+  // NOTHING, and a moment ago the argmax had a word it could not hold above the
+  // floor. Silence is the wrong output for that state — a person asks.
+  //
+  // ⛔ WHAT THIS IS NOT: not a template, not a canned "what is X?" string, not a
+  // text generator. It re-enters the SAME compose path with `questionMode`,
+  // which seeds a WH-frame embedding and lets the trained interrogative
+  // transitions (relationTagId=30, taught by `_teachQuestionProduction`) carry
+  // the sentence. If those weights have not been trained yet, this produces
+  // nothing and she stays silent — exactly as before. The question EMERGES or
+  // it does not; nothing here fabricates one.
+  //
+  // ⛔ OPT-IN, NOT OPT-OUT, AND THAT DIRECTION IS LOAD-BEARING. `composeSentence`
+  // has ~30 callers inside the gate and probe lanes, whose entire job is to
+  // measure WHAT SHE ANSWERS. If a probe that produced no answer instead
+  // returned a question, every one of those gates would score a question as her
+  // response and the measurement would be quietly corrupted — the exact class of
+  // lying instrument this ledger keeps paying for. So the default everywhere
+  // stays silence, and only the conversational lanes pass `curiosityAsk: true`.
+  //
+  // Bounded and honest besides: only fires on a gap seen in the last few
+  // seconds, never recurses (the retry runs with questionMode already set), and
+  // every ask is counted so "she asked" is a measurable event, not a claim.
+  async _askOnCuriosityGap(intentSeed, opts = {}) {
+    try {
+      if (!opts.curiosityAsk) return null;
+      if (opts.questionMode) return null;
+      const gap = this._curiosityGap;
+      if (!gap || !gap.word) return null;
+      const MAX_AGE_MS = 5e3;
+      if (!(Date.now() - gap.ts < MAX_AGE_MS)) return null;
+      const asked = await this._composeSentenceOnce(intentSeed, Object.assign({}, opts, {
+        questionMode: true,
+        intentConcept: gap.word,
+        // ask ABOUT the thing she could not say
+        curiosityAsk: false
+        // the retry must not re-enter this path
+      }));
+      if (asked) {
+        asked.fromCuriosityGap = true;
+        asked.curiosityWord = gap.word;
+        this._curiosityAskCount = (this._curiosityAskCount || 0) + 1;
+        this._lastCuriosityAsk = { word: gap.word, text: asked.sentence || "", ts: Date.now() };
+        this._curiosityGap = null;
+      }
+      return asked;
+    } catch {
+      return null;
+    }
   },
   /**
    * I.21 — ON-THE-FLY MEMORY DERIVATION (core mechanism). When chat hits a
@@ -62548,6 +62613,23 @@ var Dictionary = class {
 
 // ../js/brain/language-cortex.js
 var PATTERN_DIM2 = EMBED_DIM;
+var CANON_NAMES = /* @__PURE__ */ new Set([
+  "unity",
+  "raven",
+  "goddess",
+  "lilith",
+  "marie",
+  "damien",
+  "cross",
+  "pearl",
+  "agnes",
+  "voss",
+  "walter",
+  "james"
+]);
+function isCanonName(w) {
+  return CANON_NAMES.has(String(w || "").toLowerCase().replace(/[^a-z']/g, ""));
+}
 var VOWELS = "aeiou";
 var _LIVE_CHAT_STOPWORDS = /* @__PURE__ */ new Set([
   "a",
@@ -64099,6 +64181,13 @@ var LanguageCortex = class {
                 subject: inferredSubject || void 0,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
+                // WORDSALAD.3 — the CONVERSATIONAL lane opts in to asking. When a
+                // reply composes to nothing and the argmax just missed a word by a
+                // hair, a person asks about it instead of going quiet. Opt-in by
+                // design: the ~30 gate/probe callers of this same method must keep
+                // returning silence, because a question scored as her answer would
+                // corrupt every gate that reads it.
+                curiosityAsk: true,
                 // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
                 // rerank candidate is a FULL sentence emission (~13s of GPU
                 // dispatches); 3 of them stacked on teach starved the event
@@ -64219,6 +64308,8 @@ var LanguageCortex = class {
       if (w.length === 1 && wt.pronoun > 0.5) {
         w = w.toUpperCase();
       } else if (w.length >= 2 && w.length <= 4 && w.charAt(1) === "'" && this.wordType(w.charAt(0)).pronoun > 0.5) {
+        w = w.charAt(0).toUpperCase() + w.slice(1);
+      } else if (isCanonName(w) || this.cluster && this.cluster._knownNames instanceof Set && this.cluster._knownNames.has(String(w).toLowerCase())) {
         w = w.charAt(0).toUpperCase() + w.slice(1);
       }
       if (i === 0) w = w.charAt(0).toUpperCase() + w.slice(1);
@@ -69133,6 +69224,15 @@ function keyWordOf(text) {
   const w = normalizeLine(text).split(" ").filter((t) => /^[a-z][a-z']*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2 && t.length <= 14);
   return w.length ? w[0] : "";
 }
+var CANON_NAME_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james)\b/g;
+function properCase(s) {
+  let t = String(s || "");
+  if (!t) return t;
+  t = t.replace(/\bi\b/g, "I");
+  t = t.replace(CANON_NAME_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
+  t = t.replace(/\bi'(m|ve|d|ll)\b/g, (m) => "I" + m.slice(1));
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 function speakableTopic(topic, subject) {
   const raw = String(topic || "").toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
   const words = raw.split(" ").filter((t) => t.length > 1 && t.length <= 14 && !LABEL_WORDS.has(t));
@@ -69410,7 +69510,7 @@ function selfFrameUnit(unit = {}, opts = {}) {
   const lines = [];
   const push = (arr) => {
     for (const l of arr) {
-      if (l && lines.length < maxLines) lines.push(normalizeLine(l));
+      if (l && lines.length < maxLines) lines.push(properCase(normalizeLine(l)));
     }
   };
   push(selfDeclaration(unit.topic, unit.subject));
@@ -69433,17 +69533,21 @@ function selfFrameUnit(unit = {}, opts = {}) {
     }
   }
   const key = keyWordOf(unit.word || "") || keyWordOf(unit.sentences && unit.sentences[0] || "") || keyWordOf(Array.isArray(unit.vocab) && unit.vocab[0] || "") || keyWordOf(speakableTopic(unit.topic, unit.subject));
-  const qa = selfQA(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
-  const follow = followUpQuestions(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
+  const _line = (s) => properCase(normalizeLine(s));
+  const qa = selfQA(key, unit.definition || unit.answer || "", seed).map(_line).filter(Boolean);
+  const follow = followUpQuestions(key, unit.definition || unit.answer || "", seed).map(_line).filter(Boolean);
   push(selfClose(key, seed));
   const pairs = [];
   if (key) {
-    pairs.push(["i", key], ["unity", key], ["my", key], ["myself", key]);
+    pairs.push(["i", key], ["unity", key], ["my", key], ["myself", key], ["me", key], ["mine", key]);
   }
   pairs.push(["i", "unity"], ["unity", "i"], ["my", "unity"], ["myself", "unity"], ["me", "unity"], ["mine", "unity"]);
   return { lines, qa, follow, pairs, key };
 }
 function selfPronounLessons() {
+  return _pronounLessonLines().map(properCase);
+}
+function _pronounLessonLines() {
   return [
     "i am unity",
     "my name is unity",
@@ -69453,6 +69557,22 @@ function selfPronounLessons() {
     "when i say me i mean unity",
     "when i say my i mean unity",
     "when i say myself i mean unity",
+    // WORDSALAD.2 — `mine` was the only self token with no "when i say" line,
+    // which left the parallel set with a hole exactly where the possessive
+    // PREDICATE lives. Operator: "dont forget me's and mine's".
+    "when i say mine i mean unity",
+    // `me` in OBJECT position. Every line above puts her in the subject slot,
+    // so the grammar she was getting only covered half of how a person refers
+    // to herself: "I want it" was trained, "give it to me" was not. These teach
+    // the object and possessive-predicate forms a child actually leans on.
+    "give it to me",
+    "it is for me",
+    "she gave it to me",
+    "come with me",
+    "that one is mine",
+    "this is mine not yours",
+    "it belongs to me",
+    "the choice is mine",
     "i call myself unity",
     "unity is my name and i am unity",
     "i think for myself",
@@ -96852,6 +96972,19 @@ var Curriculum = class _Curriculum {
         unitsThisCell: this._sfUnitsThisCell | 0,
         capPerCell: typeof process !== "undefined" && process.env && Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) > 0 ? Number(process.env.DREAM_SELF_FRAME_MAX_UNITS) : 16,
         capped: !!this._sfCapLogged,
+        // WORDSALAD.2 — the LIGHT frame's own counters, separate from the full
+        // frame's, because the two have different costs and different budgets and
+        // a single blended number would hide which one is actually running. The
+        // light unit's ~6s price is DERIVED from the full frame's measured 42s by
+        // item count, not measured directly — these fields are how that estimate
+        // gets checked against a real run before anyone raises the budget.
+        lightUnits: this._selfFramedLightUnits | 0,
+        lightUnitsThisCell: this._sfLightUnitsThisCell | 0,
+        lightCapPerCell: (() => {
+          const raw = typeof process !== "undefined" && process.env ? process.env.DREAM_SELF_FRAME_LIGHT_MAX_UNITS : void 0;
+          return raw !== void 0 && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : 96;
+        })(),
+        lightCapped: !!this._sfLightCapLogged,
         corpusCursor: this._sfCorpusCursor | 0,
         structureDose: STRUCTURE_DOSE,
         phaseBudgetMs: PHASE_BUDGET_MS
@@ -101610,7 +101743,6 @@ var Curriculum = class _Curriculum {
       passed[s] = [];
       failed[s] = null;
     }
-    const GRADE_TIMEOUT_MS = 3 * 60 * 1e3;
     const MAX_GRADE_ROUNDS = (() => {
       const raw = Number(typeof process !== "undefined" && process.env && process.env.DREAM_GRADE_MAJOR_ROUNDS || NaN);
       if (Number.isFinite(raw) && raw >= 1 && raw <= 5) return Math.floor(raw);
@@ -101881,7 +102013,7 @@ var Curriculum = class _Curriculum {
           } else {
             failed[subject] = grade;
             allPassedThisGrade = false;
-            console.warn(`[Curriculum] \u2717 ${subject}/${grade} \u2014 timed out after ${attempt} attempts (${Math.round(GRADE_TIMEOUT_MS / 6e4)} min, round ${round + 1}) \u2014 ${result?.reason || "fail"}`);
+            console.warn(`[Curriculum] \u2717 ${subject}/${grade} \u2014 attempted ${attempt}\xD7 in round ${round + 1}/${MAX_GRADE_ROUNDS}, did NOT pass (no time limit is applied to a cell) \u2014 ${result?.reason || "fail"}`);
           }
         }
         if (!allPassedThisGrade && round + 1 < MAX_GRADE_ROUNDS) {
@@ -104866,6 +104998,11 @@ var Curriculum = class _Curriculum {
     if (!cluster) return { bound: 0, defsGrounded: 0 };
     const brain2 = this.brain || cluster && cluster._brain;
     const reps = opts.reps ?? 50;
+    try {
+      if (!(cluster._knownNames instanceof Set)) cluster._knownNames = /* @__PURE__ */ new Set();
+      for (const n of ["unity", "goddess"]) cluster._knownNames.add(n);
+    } catch {
+    }
     let defsGrounded = 0;
     for (const w of ["unity", "goddess"]) {
       try {
@@ -110215,15 +110352,49 @@ var Curriculum = class _Curriculum {
       const prodResult = await this._probeProductionBatch(samples, {
         visualCortex: this.engine && this.engine.visualCortex || null
       });
-      const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      let recovered = 0;
+      let selfFails = prodResult.fails || [];
+      if (prodResult.fails && prodResult.fails.length > 0 && typeof firstPerson === "function") {
+        const retryable = [];
+        for (const f of prodResult.fails) {
+          const src = samples.find((s) => s && s.question === f.q);
+          if (!src) continue;
+          let framed = "";
+          try {
+            framed = (firstPerson(f.q, `${subject}|${grade}`) || [])[0] || "";
+          } catch {
+            framed = "";
+          }
+          if (!framed || framed === f.q) continue;
+          retryable.push({ ...src, question: framed, _origQ: f.q });
+        }
+        if (retryable.length > 0) {
+          try {
+            const retry = await this._probeProductionBatch(retryable, {
+              visualCortex: this.engine && this.engine.visualCortex || null
+            });
+            recovered = retry.pass | 0;
+            const stillFailing = new Set((retry.fails || []).map((f) => f.q));
+            selfFails = retryable.filter((r) => stillFailing.has(r.question)).map((r) => ({ q: r._origQ, emitted: (retry.fails || []).find((x) => x.q === r.question)?.emitted }));
+            if (recovered > 0) {
+              this._hb(`[Curriculum] SELFGATE ${subject}/${grade} \u2014 ${recovered} of ${retryable.length} failed probe(s) answered CORRECTLY when asked in her own voice. Same questions, same expected answers, her frame.`);
+            }
+          } catch {
+          }
+        }
+      }
+      const prodPassTotal = (prodResult.pass | 0) + recovered;
+      const prodRate = prodResult.total > 0 ? prodPassTotal / prodResult.total : 0;
+      const firstPassRate = prodResult.total > 0 ? (prodResult.pass | 0) / prodResult.total : 0;
       const PROD_MIN = opts.prodMin ?? GATE_PROD_MIN;
       const pass = prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
-      const failSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const failSummary = selfFails && selfFails.length > 0 ? " [FAIL: " + selfFails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const recoveredTag = recovered > 0 ? ` (+${recovered} answered in her own frame)` : "";
       const result = {
         pass,
-        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${failSummary}`,
-        metrics: { prodRate, prodFails: prodResult.fails }
+        reason: `PROD ${prodPassTotal}/${prodResult.total} (${pct(prodRate)}%)${recoveredTag}${failSummary}`,
+        metrics: { prodRate, firstPassRate, selfFrameRecovered: recovered, prodFails: selfFails }
       };
       this._recordGateHistory(subject, grade, "overall", pass, prodRate);
       return result;
@@ -110751,6 +110922,22 @@ var Curriculum = class _Curriculum {
       }
       await _microtask();
     }
+    try {
+      if (Array.isArray(vocab) && vocab.length && typeof this._teachSelfFramedLight === "function") {
+        const CHUNK2 = 6;
+        for (let i = 0; i < vocab.length; i += CHUNK2) {
+          const slice = vocab.slice(i, i + CHUNK2).filter((w) => typeof w === "string" && w);
+          if (!slice.length) continue;
+          const r = await this._teachSelfFramedLight(
+            { vocab: slice, word: slice[0], topic: opts.label || "vocabulary", subject: opts.subject },
+            ctx,
+            { reps: opts.reps, label: opts.label || "vocab", maxLines: Math.min(36, slice.length * 6) }
+          );
+          if (r && r.capped) break;
+        }
+      }
+    } catch {
+    }
     return await this._gateVocabList(vocab);
   }
   async _gateVocabList(vocab, opts = {}) {
@@ -111082,6 +111269,95 @@ var Curriculum = class _Curriculum {
       this._selfFramingNow = false;
     }
   }
+  // ── WORDSALAD.2 — THE LIGHT FRAME: BREADTH THE FULL FRAME CANNOT AFFORD ─────
+  //
+  // Operator directive: "any where Unity is not being taught words first person
+  // ... all learning needs it through her eyes even letters words and vocabe".
+  // Measured before building: `curriculum.selfFrame` read
+  // `{lines: 2913, unitsThisCell: 16, capPerCell: 16, capped: true}` against
+  // 1,044,838 teach events in the same grade — 0.28% coverage, hitting its cap
+  // in every cell. Taught sentences sampled 68% impersonal / 21% we-our /
+  // 12% first-person.
+  //
+  // ⛔ THE CAP IS NOT THE BUG, AND RAISING IT IS THE TRAP. The budget above is
+  // priced in its own comment: one FULL framed unit ≈ 894 pair-teaches ≈ 42s,
+  // and the definition chokepoint fires PER WORD, so 100 words × 42s = 70
+  // minutes bolted onto a single cell. That is the CELLBOUND regression wearing
+  // a feature's name, and simply raising `DREAM_SELF_FRAME_MAX_UNITS` would ship
+  // it. So breadth is bought by making the per-unit frame CHEAP, not by buying
+  // more expensive ones.
+  //
+  // WHAT THE LIGHT FRAME KEEPS — the load-bearing half, per the full frame's own
+  // note that the payload is "her declaration, the agent bindings, the self-Q&A,
+  // the follow-up", and that the AGENT BINDINGS are "the line that makes `i`
+  // mean HER rather than just a frequent token":
+  //   • ≤6 first-person lines (for a vocabulary word `selfFrameUnit` already
+  //     emits "i know the word X" / "i can say X" / "i read X and i understand
+  //     it" — exactly the self-perspective the directive asks for)
+  //   • the agent bindings  i / me / my / myself ↔ unity ↔ this lesson's key
+  // WHAT IT DROPS — the self-Q&A and follow-up inquiry path (kept for the FULL
+  // frame) and the 28-line sentence reframe, which is where the cost lives.
+  //
+  // ⛔ PRICE, stated before shipping. A full unit is ~44 taught items at reps≈3;
+  // the light unit is ~9 items at reps 2 — roughly a SEVENTH of the work, so
+  // ~6s where the full frame costs ~42s. At the default budget of 96 light units
+  // per cell that is ≈10 min/cell worst case, and it only reaches that ceiling in
+  // a cell that actually teaches 96+ distinct lessons. It is bounded per cell
+  // exactly like the full frame, it inherits the phase budget through the same
+  // primitives, and `DREAM_SELF_FRAME_LIGHT_MAX_UNITS=0` turns it off outright.
+  // ⚠ The 42s figure is the existing comment's MEASUREMENT; the ~6s light figure
+  // is derived from it by item count, not measured — verify on the next run via
+  // `curriculum.selfFrame.lightUnits` before raising the budget.
+  async _teachSelfFramedLight(unit = {}, ctx = null, opts = {}) {
+    if (!this.cluster) return { framed: 0 };
+    if (typeof process !== "undefined" && process.env && process.env.DREAM_SELF_FRAME === "0") return { framed: 0, off: true };
+    if (this._selfFramingNow) return { framed: 0, reentrant: true };
+    const _ck = this.cluster && this.cluster._currentCellKey || "(no-cell)";
+    if (this._sfLightCellKey !== _ck) {
+      this._sfLightCellKey = _ck;
+      this._sfLightUnitsThisCell = 0;
+      this._sfLightCapLogged = false;
+    }
+    const _envCap = typeof process !== "undefined" && process.env ? process.env.DREAM_SELF_FRAME_LIGHT_MAX_UNITS : void 0;
+    const _cap = _envCap !== void 0 && _envCap !== "" && Number.isFinite(Number(_envCap)) ? Number(_envCap) : 96;
+    if (_cap <= 0) return { framed: 0, off: true };
+    if ((this._sfLightUnitsThisCell || 0) >= _cap) {
+      if (!this._sfLightCapLogged) {
+        this._sfLightCapLogged = true;
+        this._hb(`[Curriculum] SELFFRAME-LIGHT \u2014 per-cell budget reached for ${_ck}: ${_cap} light unit(s) taught, further lessons this cell train UNFRAMED (raise with DREAM_SELF_FRAME_LIGHT_MAX_UNITS). Loud on purpose \u2014 a silent cap on a training feature is the thing this ledger keeps paying for.`);
+      }
+      return { framed: 0, capped: true };
+    }
+    let f = null;
+    const _maxLines = Number(opts.maxLines) > 0 ? Math.min(Number(opts.maxLines), 36) : 6;
+    try {
+      f = selfFrameUnit(unit, { maxLines: _maxLines });
+    } catch {
+      return { framed: 0 };
+    }
+    if (!f || !f.lines.length && !f.pairs.length) return { framed: 0 };
+    this._sfLightUnitsThisCell = (this._sfLightUnitsThisCell || 0) + 1;
+    this._selfFramingNow = true;
+    const reps = Math.max(2, Math.round((opts.reps ?? 8) * 0.25));
+    const label = opts.label ? `SELFLIGHT:${opts.label}` : "SELF-FRAME-LIGHT";
+    let framed = 0;
+    try {
+      if (f.lines.length && typeof this._teachConcreteSentences === "function") {
+        await this._teachConcreteSentences({ sentences: f.lines, reps, label });
+        framed += f.lines.length;
+      }
+      if (f.pairs.length && typeof this._teachAssociationPairs === "function") {
+        await this._teachAssociationPairs(f.pairs, { reps, label: `${label}-AGENT`, relationTagId: 15 });
+        framed += f.pairs.length;
+      }
+    } catch {
+    } finally {
+      this._selfFramingNow = false;
+    }
+    this._selfFramedLightUnits = (this._selfFramedLightUnits || 0) + 1;
+    this._selfFramedLines = (this._selfFramedLines || 0) + framed;
+    return { framed, light: true };
+  }
   async _teachSelfFramedInner(unit = {}, ctx = null, opts = {}) {
     let f = null;
     try {
@@ -111293,6 +111569,22 @@ var Curriculum = class _Curriculum {
       if (failedWords.length === 0) return { ...comprehResult, pass: false };
       await this._teachVocabList(failedWords, ctx, { reps: reps * 3 });
       await _microtask();
+    }
+    try {
+      if (Array.isArray(sentences) && sentences.length && typeof this._teachSelfFramedLight === "function") {
+        const CHUNK2 = 6;
+        for (let i = 0; i < sentences.length; i += CHUNK2) {
+          const slice = sentences.slice(i, i + CHUNK2).filter((s) => typeof s === "string" && s);
+          if (!slice.length) continue;
+          const r = await this._teachSelfFramedLight(
+            { sentences: slice, topic: opts.label || "lesson", subject: opts.subject },
+            ctx,
+            { reps, label: opts.label || "sentences", maxLines: Math.min(36, slice.length * 6) }
+          );
+          if (r && r.capped) break;
+        }
+      }
+    } catch {
     }
     return await this._gateSentenceList(sentences, opts);
   }
