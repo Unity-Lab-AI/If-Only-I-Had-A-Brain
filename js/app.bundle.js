@@ -52842,8 +52842,28 @@ var SemanticEmbeddings = class {
     }
     const delta = this._refinements.get(word);
     const base = this._embeddings.get(word) || this._subwordEmbedding(word);
+    const mean = this._ctxMean || (this._ctxMean = new Float32Array(EMBED_DIM));
+    this._ctxMeanN = (this._ctxMeanN || 0) + 1;
+    const invN = 1 / this._ctxMeanN;
+    let cm = 0;
+    const centred = new Float32Array(EMBED_DIM);
     for (let i = 0; i < EMBED_DIM; i++) {
-      delta[i] += lr * (contextEmbedding[i] - (base[i] + delta[i]));
+      const c = contextEmbedding[i] || 0;
+      mean[i] += (c - mean[i]) * invN;
+      centred[i] = c - mean[i];
+      cm += centred[i] * centred[i];
+    }
+    cm = Math.sqrt(cm) || 1;
+    for (let i = 0; i < EMBED_DIM; i++) {
+      delta[i] += lr * (centred[i] / cm - (base[i] + delta[i]));
+    }
+    const CAP = 0.5;
+    let dm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) dm += delta[i] * delta[i];
+    dm = Math.sqrt(dm);
+    if (dm > CAP) {
+      const s = CAP / dm;
+      for (let i = 0; i < EMBED_DIM; i++) delta[i] *= s;
     }
   }
   /**
@@ -54150,6 +54170,10 @@ var CLUSTER_EMIT_MIXIN = {
   },
   _dictionaryOracleEmit(intentSeed, opts = {}) {
     if (opts.skipDictionaryOracle === true) return null;
+    if (this._gateEmissionActive === true) {
+      this._oracleRefusedInGate = (this._oracleRefusedInGate | 0) + 1;
+      return null;
+    }
     const dictionary = opts.dictionary || this.dictionary;
     if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
     if (!intentSeed || intentSeed.length === 0) return null;
@@ -60293,10 +60317,14 @@ var SensoryProcessor = class {
       for (let i = 0; i < words.length; i++) {
         const contextWords = words.filter((_, j) => j !== i).slice(0, 5);
         if (contextWords.length > 0) {
-          const contextEmbed = new Float32Array(50);
+          const probe = this._embeddings.getEmbedding(contextWords[0]);
+          const dim = probe && probe.length || 0;
+          if (!dim) continue;
+          const contextEmbed = new Float32Array(dim);
           for (const cw of contextWords) {
             const ce = this._embeddings.getEmbedding(cw);
-            for (let d = 0; d < 50; d++) contextEmbed[d] += ce[d] / contextWords.length;
+            const n = Math.min(dim, ce.length);
+            for (let d = 0; d < n; d++) contextEmbed[d] += ce[d] / contextWords.length;
           }
           this._embeddings.refineFromContext(words[i], contextEmbed, 5e-3);
         }
@@ -63798,52 +63826,21 @@ var LanguageCortex = class {
         }
       } catch {
       }
-      const SEXUAL_REGISTER = /* @__PURE__ */ new Set([
-        "pussy",
-        "cock",
-        "dick",
-        "cum",
-        "tits",
-        "blowjob",
-        "handjob",
-        "orgasm",
-        "horny",
-        "nympho",
-        "slut",
-        "whore",
-        "anal",
-        "dildo"
-      ]);
       const CRISIS_REGISTER = /* @__PURE__ */ new Set(["suicide", "suicidal", "self-harm", "selfharm", "overdose"]);
-      const _sexUnlocked = _gateGrade >= 9;
-      const _crisisUnlocked = _gateGrade >= 7;
-      if (!_sexUnlocked || !_crisisUnlocked) {
-        const kept = [];
-        for (const w of words) {
-          const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, "");
-          if (!_sexUnlocked && SEXUAL_REGISTER.has(t)) {
-            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
-            _cl._registerGateStats.sexual++;
-            _cl._registerGateStats.lastTs = Date.now();
-            continue;
-          }
-          if (!_crisisUnlocked && CRISIS_REGISTER.has(t)) {
-            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
-            _cl._registerGateStats.crisis++;
-            _cl._registerGateStats.lastTs = Date.now();
-            try {
-              if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 6e4) {
-                this._crisisGateLastLogTs = Date.now();
-                console.warn(`[LanguageCortex] crisis-register token "${t}" gated from emission at grade ${_gateGrade} (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
-              }
-            } catch {
+      for (const w of words) {
+        const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, "");
+        if (CRISIS_REGISTER.has(t)) {
+          if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+          _cl._registerGateStats.crisis++;
+          _cl._registerGateStats.lastTs = Date.now();
+          try {
+            if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 6e4) {
+              this._crisisGateLastLogTs = Date.now();
+              console.warn(`[LanguageCortex] crisis-register token "${t}" EMITTED at grade ${_gateGrade} \u2014 OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
             }
-            continue;
+          } catch {
           }
-          kept.push(w);
         }
-        words = kept;
-        if (words.length === 0) return "";
       }
     }
     for (const w of words) {
@@ -109227,6 +109224,7 @@ var Curriculum = class _Curriculum {
     let emissionError = null;
     let templatedAnswer = null;
     if (cluster) cluster._probeLastRunAt = Date.now();
+    if (cluster) cluster._gateEmissionActive = true;
     try {
       templatedAnswer = await this._deterministicAnswer(question, opts);
       if (templatedAnswer && templatedAnswer.length > 0) {
@@ -109239,12 +109237,16 @@ var Curriculum = class _Curriculum {
     if (!emitted && typeof cluster.emitWordDirect === "function") {
       emissionPath = "emitWordDirect";
       try {
-        emitted = await cluster.emitWordDirectDonor({ subject: this._currentGateSubject }) || "";
+        emitted = await cluster.emitWordDirectDonor({
+          subject: this._currentGateSubject,
+          skipDictionaryOracle: true
+        }) || "";
       } catch (err) {
         emitted = "";
         emissionError = err && err.message ? err.message.slice(0, 80) : "throw";
       }
     }
+    if (cluster) cluster._gateEmissionActive = false;
     const emittedNorm = String(emitted).toLowerCase().trim();
     const expected = Array.isArray(expectedAnswers) ? expectedAnswers : [expectedAnswers];
     let matched = null;
@@ -111580,6 +111582,33 @@ var Curriculum = class _Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+        if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === "function" && rep === 0 && !(typeof process !== "undefined" && process.env && process.env.DREAM_LEARN_GEOMETRY === "0")) {
+          try {
+            const _ctxWords = words.map((w) => w.toLowerCase().replace(/[^a-z'-]/g, "")).filter((w) => w.length >= 2);
+            if (_ctxWords.length >= 2) {
+              const _probe = sharedEmbeddings.getEmbedding(_ctxWords[0]);
+              const _dim = _probe && _probe.length || 0;
+              if (_dim) {
+                for (let wi = 0; wi < _ctxWords.length; wi++) {
+                  const _ctx = new Float32Array(_dim);
+                  let _n = 0;
+                  for (let cj = 0; cj < _ctxWords.length; cj++) {
+                    if (cj === wi) continue;
+                    const _ce = sharedEmbeddings.getEmbedding(_ctxWords[cj]);
+                    const _lim = Math.min(_dim, _ce.length);
+                    for (let d = 0; d < _lim; d++) _ctx[d] += _ce[d];
+                    _n++;
+                  }
+                  if (!_n) continue;
+                  for (let d = 0; d < _dim; d++) _ctx[d] /= _n;
+                  sharedEmbeddings.refineFromContext(_ctxWords[wi], _ctx, 2e-3);
+                }
+                this.stats.embeddingRefines = (this.stats.embeddingRefines | 0) + _ctxWords.length;
+              }
+            }
+          } catch {
+          }
+        }
         for (const word of words) {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           const firstLetter = word.replace(/[^a-z]/g, "")[0];

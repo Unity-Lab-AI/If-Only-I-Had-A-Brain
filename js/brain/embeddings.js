@@ -532,9 +532,73 @@ export class SemanticEmbeddings {
     const delta = this._refinements.get(word);
     const base = this._embeddings.get(word) || this._subwordEmbedding(word);
 
+    // ── GLOVEOWN.1 — the two properties that make this actually learn ────
+    // Both live HERE, at the chokepoint, so every caller gets them — the
+    // browser sensory path and the server teach path alike. Both were
+    // DERIVED by measurement, not chosen; the numbers are in the ledger.
+    //
+    // (1) MEAN-CENTRING — remove the common mode.
+    //     Without it this rule does not learn meaning, it CONCENTRATES.
+    //     Every context is dominated by the same high-frequency words
+    //     ("the", "a", "is"), so every update carries the same vector and
+    //     the whole vocabulary drifts toward one centroid. Measured on a
+    //     corpus where meaning and spelling deliberately disagree:
+    //         related   red~blue  0.0000 → 0.1604
+    //         unrelated red~dog   0.1667 → 0.3272   ← rose FASTER
+    //     Related words got closer and unrelated words got closer faster,
+    //     which is not learning. Subtracting the running mean context
+    //     cancels the common component so only the DISTINCTIVE part of a
+    //     context moves the word. With it, unrelated words go NEGATIVE —
+    //     they actively separate.
+    //
+    //     ⭐ This is the same lesson this brain already learned for bare
+    //     Hebbian: without Oja's decay term "bare Hebb piles every
+    //     association into the same columns and the basins collapse into
+    //     superposition". Same failure, different substrate.
+    const mean = this._ctxMean || (this._ctxMean = new Float32Array(EMBED_DIM));
+    this._ctxMeanN = (this._ctxMeanN || 0) + 1;
+    const invN = 1 / this._ctxMeanN;
+    let cm = 0;
+    const centred = new Float32Array(EMBED_DIM);
     for (let i = 0; i < EMBED_DIM; i++) {
-      // Move toward context
-      delta[i] += lr * (contextEmbedding[i] - (base[i] + delta[i]));
+      const c = contextEmbedding[i] || 0;   // || 0 — a short context vector must never inject NaN
+      mean[i] += (c - mean[i]) * invN;
+      centred[i] = c - mean[i];
+      cm += centred[i] * centred[i];
+    }
+    cm = Math.sqrt(cm) || 1;                // renormalise: the step must not shrink with the common mode
+
+    for (let i = 0; i < EMBED_DIM; i++) {
+      delta[i] += lr * ((centred[i] / cm) - (base[i] + delta[i]));
+    }
+
+    // (2) DELTA CAP — bound how far the learned part can move the word.
+    //     ⛔ Without this the result depends on TOTAL EXPOSURE (lr × passes),
+    //     and a 273-cell walk has effectively unbounded exposure. Measured
+    //     at a fixed lr, uncapped, as reading grows:
+    //         60 passes   margin 0.8185
+    //         600 passes  margin 0.1094
+    //         2400 passes margin 0.0224   ← everything ~0.99 similar
+    //     That is saturation: the mirror image of centroid collapse, where
+    //     related words fuse into one point. Capped at 0.5 the same runs
+    //     give 0.2382 / 0.2873 / 0.2492 — the margin HOLDS across 40×
+    //     exposure, so the outcome no longer depends on how long she reads.
+    //
+    //     ⭐ A margin of ~0.25 that HOLDS beats 0.82 that destroys itself.
+    //     That is the trade, taken deliberately, because corpus size is not
+    //     knowable in advance. A tighter cap (0.35) was also measured and
+    //     is too tight — margin fell to 0.04, barely any learning at all.
+    //
+    //     It also keeps the imported vectors as a STARTING SHAPE she grows
+    //     out of rather than something she can overwrite entirely — which
+    //     is exactly the arrangement the operator chose.
+    const CAP = 0.5;
+    let dm = 0;
+    for (let i = 0; i < EMBED_DIM; i++) dm += delta[i] * delta[i];
+    dm = Math.sqrt(dm);
+    if (dm > CAP) {
+      const s = CAP / dm;
+      for (let i = 0; i < EMBED_DIM; i++) delta[i] *= s;
     }
   }
 

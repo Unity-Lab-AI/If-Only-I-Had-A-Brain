@@ -612,6 +612,51 @@ If Gee catches that the clear didn't run:
 
 ---
 
+# LAW — THE FRESH WALK IS LAST (Gee, 2026-08-25)
+
+## Gee's exact words on 2026-08-25
+
+> *"fresh walk once all todo items are completed that can bewithout a press of update freshwalk, the later stuff we will be doing later and the update fresh walk depends on it too."*
+
+Asked whether to do a fresh walk now, the answer was **an ordering, not a yes or a no.** This is binding sequencing law.
+
+## The rule
+
+**Build everything that can be built WITHOUT a press. Land it. Only then do the Update & Fresh Walk.** The walk is the last step of a batch, never the middle of one — and *"the later stuff"* (the endocrine layer, the introspection drive, and anything else queued) is **upstream** of it, not after it.
+
+## Why — the failure this prevents
+
+A fresh walk **teaches her from zero using whatever the code does at that moment.** So anything that changes **WHAT she is taught** must be in place *before* the walk, or it gets taught to a brain that then has to be re-taught. Landing a curriculum change after the walk means the walk was spent on the old version.
+
+| Change type | Must land before the walk? |
+|---|---|
+| Changes what she is TAUGHT — curriculum content, life canon, the endocrine layer, the introspection drive, a replaced semantic geometry, register gating | ⛔ **YES.** Otherwise the walk teaches the old version |
+| Changes how she is MEASURED — instruments, dashboard rows, telemetry | No — these can land any time and are useful DURING the walk |
+| Fixes a defect in the walk itself — ordering, gates, save integrity | ⛔ **YES**, and ideally verified on current weights first |
+
+## Required actions
+
+| Required | Why |
+|----------|-----|
+| Before proposing a fresh walk, list what is still buildable without one | The walk is the expensive irreversible step; everything cheap goes first |
+| **RE-PRICE immediately before the press** | `corpus × reps × scale × visits` moves with every content addition. The endocrine/introspection content and a learned semantic geometry each change the product — see §RE-PRICE THE WALK BEFORE REMOVING A GATE |
+| Prefer **Update & Savestart** for anything that does not need a fresh brain | It lands the code and keeps the training. Most fixes do not need a wipe |
+| State plainly which pending work is upstream of the walk | So the ordering is a decision on the record, not an accident of what happened to be finished |
+
+## Forbidden actions
+
+| Banned | Reason |
+|--------|--------|
+| Firing a fresh walk while buildable curriculum work is still queued | The walk is spent teaching a version that is about to be replaced |
+| Treating "should we fresh walk?" as a yes/no question | It is a **position in a sequence**. The answer is almost always "yes, last" |
+| Pressing without re-pricing after content was added | The cost is arithmetic and it is invisible in a diff |
+
+## The cost argument, stated once
+
+She is at **grade 1 of 20** and a full walk prices at **~78 h ≈ 3.3 days**. That is the cheapest it will ever be, and it grows with every grade she completes. **The cost of doing it later is real — which is exactly why it should be done ONCE, correctly, after the content is right, rather than early and again.**
+
+---
+
 # LAW — RE-PRICE THE WALK BEFORE REMOVING A GATE (Gee, 2026-08-20)
 
 **No gate, bound, or dedup that keeps the walk finite may be removed, bypassed, or weakened until `corpus × reps × scale × visits` has been recomputed and written down.**
