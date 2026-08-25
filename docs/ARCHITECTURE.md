@@ -150,7 +150,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 | **Admin / Master** | Admin lane Forgejo-authenticated; first authed connection after deploy = locked primary operator. Admin dashboard: live server-console panel, auto-scale controls + sliders, grade signoffs, graceful stop. |
 | **Database** | SQLite (better-sqlite3) for episodic memory, JSON for weights + conversations |
 | **AI Backends** | **Sensory-OUTPUT only** — image gen (custom/auto-detected local/env.js/Pollinations), TTS/STT. Vision is now 100% EQUATIONAL (CDF 9/7 field C → `describeEquational` percept; the LLM/VLM vision describer is RETIRED). Zero text-AI for cognition — language cortex generates every word equationally. |
-| **Embeddings** | GloVe 300d word vectors + fastText-style subword fallback (no download required), online context refinement |
+| **Embeddings** | GloVe 300d word vectors + fastText-style subword fallback (no download required), and ⭐ **online context refinement that actually runs** — she reshapes her own semantic geometry from the corpus she reads, so the imported vectors are a STARTING SHAPE she grows out of rather than the fixed answer. Two derived terms make it learn instead of collapse: mean-centring and a 0.5 delta cap. ⚠ The refinement machinery existed for a long time with **one call site, browser-only** — the server had never refined a single embedding — and that call site was poisoning 250/300 dimensions with NaN. Both fixed 2026-08-25; see `EQUATIONS.md §Learned semantic geometry` |
 | **Voice I/O** | Web Speech API (listen) + "Equation Unity One": Piper `en_US-hfc_female-medium` synthesized **in-browser** via onnxruntime-web (WebGPU → CPU-wasm, in a Web Worker on the visitor's machine — never a server GPU) from a self-hosted model (`voice-engine/`, downloaded once at setup, OPFS-cached) → CDF 9/7 wavelet equational voice pipeline → playback (speak). No cloud TTS, no external API. Pollinations TTS retired; banked word/phrase set + SpeechSynthesis are last-ditch fallbacks. |
 | **Image Gen** | Pollinations API (flux, photorealistic, anime, cyberpunk + 20 more models) |
 | **Storage** | localStorage (browser) + disk persistence (server) with sparse CSR serialization |
@@ -711,6 +711,7 @@ If-Only-I-Had-A-Brain/
 │   │   ├── sparse-matrix.js    # CSR sparse connectivity (O(nnz) operations)
 │   │   ├── gpu-compute.js      # WebGPU compute shaders (WGSL Rulkov 2D chaotic map + synapses). LIF_SHADER constant name is historical — the shader body is the Rulkov x_{n+1}=α/(1+x²)+y, y_{n+1}=y−μ(x−σ) iteration, not LIF.
 │   │   ├── embeddings.js       # Semantic word embeddings (GloVe 300d + fastText subword fallback, EMBED_DIM=300)
+│   │   │                       #   + LEARNED delta she refines as she reads (mean-centred, ‖δ‖≤0.5)
 │   │   ├── language-cortex.js  # T14 thin delegate — generate() calls cluster.generateSentence(intentSeed), ~68 line body. _fineType(word) letter-position classifier still live for reading. learnSentence() updates T14.8 sentence-form schemas + T14.7 learned type transitions. ~3068 lines.
 │   │   ├── benchmark.js        # Dense vs sparse + neuron scale test — wired to /bench + /scale-test slash commands in app.js
 │   │   └── response-pool.js   # EDNA response categories (fallback for language cortex)
@@ -766,7 +767,7 @@ If-Only-I-Had-A-Brain/
 | Donor GPUs | Visitors' browser WebGPU via `compute.html` — data-parallel full-brain replicas. Server merges Hebbian weight-deltas + re-broadcasts the master; neuron count auto-scales to connected donor VRAM (community-compute). Server box needs no GPU. |
 | SQLite | Episodic memory persistence on server (better-sqlite3) |
 | WebGPU | GPU compute shaders for Rulkov 2D chaotic map neuron iteration + sparse CSR synapse propagation |
-| GloVe Embeddings | 300d word vectors + fastText-style subword fallback (no download required), online context refinement |
+| GloVe Embeddings | 300d word vectors + fastText-style subword fallback (no download required). ⭐ The imported vectors are the STARTING geometry only — she refines her own on top as she reads, and how much of her meaning-space is genuinely hers is a measurable quantity (the learned delta) rather than an argument |
 
 ---
 

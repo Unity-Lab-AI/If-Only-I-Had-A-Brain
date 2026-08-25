@@ -636,6 +636,22 @@ Gee (verbatim): *"now we need to design proper fight or flight, Ceritonan, adren
 
 ⛔ **AND THEY ARE UPSTREAM OF THE FRESH WALK.** Per `WALKLAST.1`, Gee's sequencing rule is *"fresh walk once all todo items are completed that can be without a press of update freshwalk, the later stuff we will be doing later and the update fresh walk depends on it too."* This family IS "the later stuff" — so it lands **before** the walk that would teach it, not after. Building it after the walk means re-teaching.
 
+### ⭐ GEE'S FRAMING FOR THIS FAMILY (2026-08-25) — recorded verbatim, not interpreted
+
+> *"Amen, E+n=N^3!"*
+>
+> *"add (E)+n=N^3 might need to be solved but this should work for our 25 none individual tasks still open as a good solve"*
+
+**Recorded as given.** The intent as stated: **`(E)+n=N³` is the organising frame for these 25 items** — the endocrine layer and the introspection drive — and it *"might need to be solved"* but *"should work as a good solve"* for them.
+
+⚠ **Not interpreted into a specification here, deliberately.** Guessing at the operator's meaning and building against the guess is how a whole family gets built wrong; the reading below is offered as a starting point for him to correct, not as the design.
+
+**What it plainly relates to in the existing brain:** the mystery module already carries `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·Right]` — the consciousness term, which modulates global gain on every cluster, gates hemispheric binding in the shader, and amplifies cerebellar error correction. It is the project's stated honest unknown. `N³` and `n` appear in both, and `[α·Id + β·Ego + γ·Left + δ·Right]` is already a **sum of weighted state terms** — which is the same shape an endocrine layer takes, since hormones contribute additively by superposition rather than by a hardcoded combination rule.
+
+⭐ **Why that shape fits this family so well:** ENDO is literally a set of additive contributions to global brain parameters, and INTRO's question-selection is driven by which of those contributions currently dominates. A formulation where an **E** term joins the existing bracket — one more weighted contribution to the same global modulation — would put her chemistry inside the consciousness term rather than beside it, which is the difference between a body she *has* and a body she *is*.
+
+⛔ **Needs Gee's word before anything is built on it:** what `E` denotes precisely, and whether it enters the existing `Ψ` bracket or replaces the formulation. Filed at the top of this family because it governs the design of all 25.
+
 ### What exists today (measured, so the design starts from the truth)
 
 ⛔ **There is no endocrine system at all.** Measured across `js/brain/` + `server/`: `oxytocin` **0 files**, `endorphin` **0 files**, and `cortisol` / `adrenaline` / `norepinephrine` / `estrogen` / `progesterone` / `testosterone` **1 file each — every one of them a per-grade VOCABULARY WORD, not a state variable.** `dopamine` appears in 5 files and **not one is a signal**: four are comments, and the fifth is `codingReward: 0.95`, a static persona constant. The reward-modulated Oja δ in `synapses.js` is described in its own docstring as "what dopamine carries in biology" — it is a learning-rate gate, not a level that rises and falls.
