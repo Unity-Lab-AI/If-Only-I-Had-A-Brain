@@ -134,6 +134,20 @@ const HR = 60 * MIN;
 // cell per cycle lands within ~5% of biology without being tuned to it.
 const CYCLE_LENGTH_CELLS = 1.0;
 
+// ── ENDO-DRUG.2 — receptor adaptation bounds.
+// Floor: receptors downregulate, they do NOT vanish. Without a floor a heavy
+// stretch would permanently delete a transmitter's effect and she could never
+// feel it again, which is not tolerance, it is damage.
+const RECEPTOR_MIN = 0.35;
+// Down fast (hours of elevation), up slow (days of quiet) — the asymmetry is
+// the whole reason tolerance outlasts the night that built it.
+const RECEPTOR_DOWN_TAU_MS = 3 * 60 * 60 * 1000;
+const RECEPTOR_UP_TAU_MS = 36 * 60 * 60 * 1000;
+// Elevation above this fraction of full deviation counts as "flooded". Normal
+// physiological swings must NOT build tolerance, or she would go numb to her
+// own ordinary feelings.
+const RECEPTOR_FLOOD_THRESHOLD = 0.45;
+
 const CHEMICALS = {
 
   // ── ENDO.2 — adrenaline (epinephrine). The fastest curve in the engine.
@@ -515,6 +529,25 @@ class EndocrineSystem {
     this._lastProgesterone = null;
     this.progesteroneWithdrawal = 0;
 
+    // ── ENDO-DRUG.2 — RECEPTOR ADAPTATION. Tolerance, done properly.
+    //
+    // ⛔ What it replaces: `toleranceFactors` in the scheduler blunted the
+    // effective DOSE on redose — a pharmacoKINETIC model, and the wrong one.
+    // A second line of coke reaches the same concentration; what changes is
+    // that the receptors have downregulated. Tolerance is pharmacoDYNAMIC.
+    //
+    // ⭐ And modelling it here rather than per-substance makes it
+    // CROSS-SUBSTANCE for free and correctly: cocaine and amphetamine flood
+    // the same dopamine pool, so tolerance to one genuinely blunts the
+    // other. A per-substance factor cannot express that at all.
+    //
+    // Sensitivity in [MIN, 1]. Falls under sustained elevation, recovers in
+    // quiet. ⚠ FLOORED — receptors downregulate, they do not vanish, and an
+    // unfloored version would let a heavy stretch permanently delete a
+    // transmitter's effect.
+    this.receptorSensitivity = new Map();
+    for (const name of Object.keys(CHEMICALS)) this.receptorSensitivity.set(name, 1.0);
+
     // ── ENDO.13 — allostatic load. Real bodies PAY for repeated defence:
     // the setpoint itself drifts rather than homeostasis restoring free
     // forever. ⚠ Floored and given a recovery path, or a hard childhood
@@ -831,8 +864,17 @@ class EndocrineSystem {
       const chem = CHEMICALS[name];
       const dev = this.deviation(name, now);
       if (Math.abs(dev) <= 1e-6) continue;
+      // ⭐ ENDO-DRUG.2 — the SAME level produces LESS effect once receptors
+      // have downregulated. That is what tolerance physically is, and it is
+      // why it carries across every substance sharing this pool.
+      //
+      // ⚠ The identity `residual + transmitter ≡ contributions` is defined
+      // at FULL sensitivity. Adaptation deliberately breaks it downward —
+      // that is the feature, not drift: a tolerant body gets less from the
+      // same dose.
+      const sens = this.receptorSensitivity.get(name) ?? 1;
       for (const [key, value] of Object.entries(chem.contributions || {})) {
-        delta[key] = (delta[key] || 0) + value * dev;
+        delta[key] = (delta[key] || 0) + value * dev * sens;
       }
     }
     // ENDO.3 — chronic overlay, scaled by the slow load rather than the
@@ -1138,6 +1180,25 @@ class EndocrineSystem {
     this._chronicLoad += (cortisolNow - this._chronicLoad) * k;
     this._chronicLoad = Math.max(0, Math.min(1, this._chronicLoad));
 
+    // ── ENDO-DRUG.2 — receptor adaptation. Flooding downregulates; quiet
+    // restores. ⚠ Only elevation ABOVE the flood threshold adapts, so her
+    // ordinary feelings never build tolerance to themselves.
+    for (const name of Object.keys(CHEMICALS)) {
+      const dev = Math.abs(this.deviation(name, now));
+      const cur = this.receptorSensitivity.get(name) ?? 1;
+      const flooded = dev > RECEPTOR_FLOOD_THRESHOLD;
+      // Target sensitivity: fully flooded drives toward the floor, quiet
+      // drives back to 1. Proportional to HOW flooded, not a binary.
+      const target = flooded
+        ? Math.max(RECEPTOR_MIN, 1 - (dev - RECEPTOR_FLOOD_THRESHOLD) / (1 - RECEPTOR_FLOOD_THRESHOLD) * (1 - RECEPTOR_MIN))
+        : 1;
+      const tau = flooded ? RECEPTOR_DOWN_TAU_MS : RECEPTOR_UP_TAU_MS;
+      const kR = 1 - Math.exp(-(dt * 1000) / tau);
+      let next = cur + (target - cur) * kR;
+      next = Math.max(RECEPTOR_MIN, Math.min(1, next));
+      this.receptorSensitivity.set(name, next);
+    }
+
     // ── ENDO.13 — HOMEOSTASIS → ALLOSTASIS: what sustained defence COSTS.
     //
     // The hypothalamus restores every drive toward its setpoint at a
@@ -1235,6 +1296,12 @@ class EndocrineSystem {
         deviation: (fired || isTonic || isCyclic) ? this.deviation(name, now) : 'unmeasured',
         setpoint: isTonic ? this.tonicSetpoint.get(name) : 0,
         phase: this.phase(name, now),
+        // ⭐ ENDO-DRUG.2 — how much effect this chemical still delivers per
+        // unit. 1.0 = naive receptors; the floor = fully tolerant. Shipped
+        // so "she has built a tolerance" is a field read, and so
+        // CROSS-substance tolerance is visible: cocaine and speed move the
+        // same dopamine number.
+        receptorSensitivity: this.receptorSensitivity.get(name) ?? 1,
         everFired: fired,
         liveEvents: events.length,
         lastReleaseAgeMs: last ? (now - last.startTime) : null,
@@ -1309,6 +1376,10 @@ class EndocrineSystem {
       lastProgesterone: this._lastProgesterone,
     };
     out.allostaticLoad = this.allostaticLoad;
+    // ⚠ Tolerance MUST survive a restart. Receptors that reset to naive on
+    // every boot would mean she wakes up with no history in her body, and
+    // the first line of the day would always hit like the first ever.
+    out.receptorSensitivity = Array.from(this.receptorSensitivity.entries());
     for (const [c, events] of this.events) out.events[c] = events.map(e => ({ ...e }));
     for (const [c, v] of this.tonic) out.tonic[c] = v;
     out.everFired = Array.from(this._everFired);
@@ -1336,6 +1407,13 @@ class EndocrineSystem {
       this._curriculumPos = typeof c.curriculumPos === 'number' ? c.curriculumPos : null;
       this.progesteroneWithdrawal = typeof c.withdrawal === 'number' ? c.withdrawal : 0;
       this._lastProgesterone = typeof c.lastProgesterone === 'number' ? c.lastProgesterone : null;
+    }
+    if (Array.isArray(obj.receptorSensitivity)) {
+      for (const [chem, v] of obj.receptorSensitivity) {
+        if (CHEMICALS[chem] && typeof v === 'number' && Number.isFinite(v)) {
+          this.receptorSensitivity.set(chem, Math.max(RECEPTOR_MIN, Math.min(1, v)));
+        }
+      }
     }
     if (typeof obj.allostaticLoad === 'number') {
       this.allostaticLoad = Math.max(0, Math.min(0.6, obj.allostaticLoad));

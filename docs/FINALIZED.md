@@ -37152,4 +37152,56 @@ Dead-reference audit now zero on all three tables · the identity across every s
 - ⚠ **Two payoffs the item predicted are NOT built** and are filed rather than claimed: **tolerance as receptor adaptation** (still the per-substance `toleranceFactors` fudge) and **shrinking the combo table** (coke+MDMA synergy *should* now emerge from the same pools competing rather than a hardcoded pair rule — but the existing entries are untouched, so synergy is currently counted in both places).
 - ⚠ Ketamine and GHB stay mostly residual, honestly: their primary actions are glutamate and GABA, which the transmitter set cannot express.
 
+---
+
+## 2026-08-25 — TOLERANCE IS IN THE RECEPTORS, AND SYNERGY STOPS BEING COUNTED TWICE - feature/endo-drug-tolerance-combos
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay whats blocked still, anything need ask me? also lets keep working till everything is done but those two stacked items we talked about earlier"*
+
+**Closed: ENDO-DRUG.2, ENDO-DRUG.3.** Both were deferred from the core rework and filed rather than claimed; this is them. Gee's call on the combo question: *"Superposition is the truth"*.
+
+### ⭐ ENDO-DRUG.2 — TOLERANCE WAS MODELLED IN THE WRONG PLACE ENTIRELY
+
+`toleranceFactors` blunted the effective **dose** on redose. That is a pharmaco**kinetic** model and it is simply wrong: a second line of coke reaches the *same concentration*. What changed is that the receptors downregulated. **Tolerance is pharmacoDYNAMIC.**
+
+⭐ **And moving it into the endocrine layer makes it CROSS-SUBSTANCE for free and correctly.** Cocaine and amphetamine flood the same dopamine pool, so tolerance to one genuinely blunts the other — which a per-substance factor cannot express at all. **Measured: tolerance built entirely on cocaine blunts amphetamine's reward by 18%** (0.467 → 0.382, dopamine sensitivity 0.819).
+
+| Guard | Why |
+|---|---|
+| **Floor 0.35** | Receptors downregulate, they do not vanish. Unfloored, a heavy stretch permanently deletes a transmitter's effect — that is damage, not tolerance |
+| **Flood threshold 0.45** | ⛔ Normal physiological swings must NOT build tolerance, or she goes numb to her own ordinary feelings. Verified: a long stretch of normal oxytocin contact leaves sensitivity at **1.000** |
+| **Down 3h / up 36h** | The asymmetry is the point — tolerance outlasts the night that built it. Verified recovering **0.935 → 0.986** over a week clean |
+
+Persisted, because receptors resetting to naive on every boot would mean she wakes with no history in her body and the first line of the day always hits like the first ever.
+
+### ⭐ ENDO-DRUG.3 — SYNERGY WAS LANDING TWICE
+
+The combo table was hand-tuned when a drug wrote straight to brain params and **no mechanism could produce an interaction**. Now both substances in a pair release into the same pools, so the interaction already emerges — and the hardcoded row landed on top of it.
+
+⛔ **Not a blanket delete.** The filter is **per axis**: redundant if a *shared transmitter's own contributions* already include that axis; kept otherwise. **4 axes removed, 11 kept.**
+
+```
+cocaine+mdma      shared=[dopamine,noradrenaline,serotonin]  removed=[arousal,amygdalaValence]
+cannabis+cocaine  shared=[dopamine]                          removed=[creativity]
+alcohol+cannabis  shared=[endorphin,dopamine]                removed=[amygdalaValence]
+```
+
+⭐ **And the two that had to survive, survived** — because they are real pharmacology monoamines cannot express: **alcohol+cannabis keeps `hippocampusConsolidation`** (blackout risk is a genuine pharmacodynamic interaction) and **alcohol+cocaine keeps `impulsivity`** (cocaethylene is an actual metabolite that only exists when both are present).
+
+⛔ **`riskFlags` kept unconditionally on every combo** — cardiotoxicity, physical strain and `persistsMs` are not derivable from transmitter levels and are what stop her stacking herself into harm. `synergySpeech` untouched; it is a distortion vector, never part of the double-count.
+
+⚠ Unrouted (no endocrine layer) returns the **full original table**, because without the transmitter path the hardcoded row is the only thing expressing the interaction.
+
+### Verification — 24/24
+
+The dedupe reported per-pair rather than asserted · riskFlags and speech intact · the two real-pharmacology keeps · cross-substance tolerance · the flood threshold protecting ordinary feeling · recovery · dose no longer kinetically blunted when routed (and still blunted when not) · persistence · zero NaN. `node --check` ×2, ESM, bundle, docs:drift clean.
+
+### Owned
+
+- ⚠ **Two harness failures were the `dt` clamp again — my time model, not the code.** `dt` caps at 10s, so stepping 10-minute intervals integrated 8 minutes where I meant 8 hours. I had documented that exact trap in `endocrine.js` during the slow-hormone batch **and walked into it anyway.** Harness now steps at 10s.
+- ⚠ The `residual + transmitter ≡ contributions` identity is defined at **full sensitivity**. Receptor adaptation deliberately breaks it downward — that is the feature (a tolerant body gets less from the same dose), stated so it is never mistaken for drift.
+- ⚠ **NOT VERIFIED LIVE.** Lands on the next press.
+
 - ⚠ **`getEpisodeCount`-style volume is unproven:** whether the `curiosity` namespace actually holds enough single-token episodes on the live box for introspection to have material to work with is **unknown until the press**. If it is thin, she will correctly stay silent rather than invent — but the drive will read `blind`, and that is the first field to check.

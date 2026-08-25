@@ -116156,6 +116156,10 @@ var S = 1e3;
 var MIN = 60 * S;
 var HR = 60 * MIN;
 var CYCLE_LENGTH_CELLS = 1;
+var RECEPTOR_MIN = 0.35;
+var RECEPTOR_DOWN_TAU_MS = 3 * 60 * 60 * 1e3;
+var RECEPTOR_UP_TAU_MS = 36 * 60 * 60 * 1e3;
+var RECEPTOR_FLOOD_THRESHOLD = 0.45;
 var CHEMICALS = {
   // ── ENDO.2 — adrenaline (epinephrine). The fastest curve in the engine.
   // Systemic panic: heart, pupils, tunnel attention, motor priming.
@@ -116483,6 +116487,8 @@ var EndocrineSystem = class {
     this.menarche = false;
     this._lastProgesterone = null;
     this.progesteroneWithdrawal = 0;
+    this.receptorSensitivity = /* @__PURE__ */ new Map();
+    for (const name of Object.keys(CHEMICALS)) this.receptorSensitivity.set(name, 1);
     this.allostaticLoad = 0;
     this._lastStress = null;
     this.glands = null;
@@ -116727,8 +116733,9 @@ var EndocrineSystem = class {
       const chem = CHEMICALS[name];
       const dev = this.deviation(name, now);
       if (Math.abs(dev) <= 1e-6) continue;
+      const sens = this.receptorSensitivity.get(name) ?? 1;
       for (const [key, value] of Object.entries(chem.contributions || {})) {
-        delta[key] = (delta[key] || 0) + value * dev;
+        delta[key] = (delta[key] || 0) + value * dev * sens;
       }
     }
     const chronic = CHEMICALS.cortisol.chronicContributions || {};
@@ -116970,6 +116977,17 @@ var EndocrineSystem = class {
     const k = 1 - Math.exp(-(dt * 1e3) / tauC);
     this._chronicLoad += (cortisolNow - this._chronicLoad) * k;
     this._chronicLoad = Math.max(0, Math.min(1, this._chronicLoad));
+    for (const name of Object.keys(CHEMICALS)) {
+      const dev = Math.abs(this.deviation(name, now));
+      const cur = this.receptorSensitivity.get(name) ?? 1;
+      const flooded = dev > RECEPTOR_FLOOD_THRESHOLD;
+      const target = flooded ? Math.max(RECEPTOR_MIN, 1 - (dev - RECEPTOR_FLOOD_THRESHOLD) / (1 - RECEPTOR_FLOOD_THRESHOLD) * (1 - RECEPTOR_MIN)) : 1;
+      const tau = flooded ? RECEPTOR_DOWN_TAU_MS : RECEPTOR_UP_TAU_MS;
+      const kR = 1 - Math.exp(-(dt * 1e3) / tau);
+      let next = cur + (target - cur) * kR;
+      next = Math.max(RECEPTOR_MIN, Math.min(1, next));
+      this.receptorSensitivity.set(name, next);
+    }
     const ALLO_UP = 8 * HR, ALLO_DOWN = 72 * HR;
     const over = Math.max(0, this._chronicLoad - 0.25);
     const tauA = over > 0 ? ALLO_UP : ALLO_DOWN;
@@ -117033,6 +117051,12 @@ var EndocrineSystem = class {
         deviation: fired || isTonic || isCyclic ? this.deviation(name, now) : "unmeasured",
         setpoint: isTonic ? this.tonicSetpoint.get(name) : 0,
         phase: this.phase(name, now),
+        // ⭐ ENDO-DRUG.2 — how much effect this chemical still delivers per
+        // unit. 1.0 = naive receptors; the floor = fully tolerant. Shipped
+        // so "she has built a tolerance" is a field read, and so
+        // CROSS-substance tolerance is visible: cocaine and speed move the
+        // same dopamine number.
+        receptorSensitivity: this.receptorSensitivity.get(name) ?? 1,
         everFired: fired,
         liveEvents: events.length,
         lastReleaseAgeMs: last ? now - last.startTime : null,
@@ -117103,6 +117127,7 @@ var EndocrineSystem = class {
       lastProgesterone: this._lastProgesterone
     };
     out.allostaticLoad = this.allostaticLoad;
+    out.receptorSensitivity = Array.from(this.receptorSensitivity.entries());
     for (const [c, events] of this.events) out.events[c] = events.map((e) => ({ ...e }));
     for (const [c, v] of this.tonic) out.tonic[c] = v;
     out.everFired = Array.from(this._everFired);
@@ -117126,6 +117151,13 @@ var EndocrineSystem = class {
       this._curriculumPos = typeof c.curriculumPos === "number" ? c.curriculumPos : null;
       this.progesteroneWithdrawal = typeof c.withdrawal === "number" ? c.withdrawal : 0;
       this._lastProgesterone = typeof c.lastProgesterone === "number" ? c.lastProgesterone : null;
+    }
+    if (Array.isArray(obj.receptorSensitivity)) {
+      for (const [chem, v] of obj.receptorSensitivity) {
+        if (CHEMICALS[chem] && typeof v === "number" && Number.isFinite(v)) {
+          this.receptorSensitivity.set(chem, Math.max(RECEPTOR_MIN, Math.min(1, v)));
+        }
+      }
     }
     if (typeof obj.allostaticLoad === "number") {
       this.allostaticLoad = Math.max(0, Math.min(0.6, obj.allostaticLoad));
@@ -117689,6 +117721,32 @@ var COMBOS = {
 function comboKey(a, b) {
   return a < b ? `${a}+${b}` : `${b}+${a}`;
 }
+function sharedTransmitters(a, b) {
+  const ta = SUBSTANCES[a] && SUBSTANCES[a].transmitters || {};
+  const tb = SUBSTANCES[b] && SUBSTANCES[b].transmitters || {};
+  return Object.keys(ta).filter((k) => Object.prototype.hasOwnProperty.call(tb, k));
+}
+var _comboSynergyCache = /* @__PURE__ */ new Map();
+function comboSynergyContributions(key, routed) {
+  const combo = COMBOS[key];
+  if (!combo || !combo.synergyContributions) return {};
+  if (!routed) return combo.synergyContributions;
+  if (_comboSynergyCache.has(key)) return _comboSynergyCache.get(key);
+  const [a, b] = key.split("+");
+  const shared = sharedTransmitters(a, b);
+  const explained = /* @__PURE__ */ new Set();
+  for (const chem of shared) {
+    const c = CHEMICALS[chem];
+    if (!c || !c.contributions) continue;
+    for (const axis of Object.keys(c.contributions)) explained.add(axis);
+  }
+  const kept = {};
+  for (const [axis, v] of Object.entries(combo.synergyContributions)) {
+    if (!explained.has(axis)) kept[axis] = v;
+  }
+  _comboSynergyCache.set(key, kept);
+  return kept;
+}
 function transmitterContributions(substance) {
   const sub = SUBSTANCES[substance];
   const out = {};
@@ -117908,7 +117966,7 @@ var DrugScheduler = class {
     this._decayTolerance(now);
     const tol = this.toleranceFactors.get(substance) || 0;
     const requestedDose = typeof opts.dose === "number" ? opts.dose : 1;
-    const effectiveDose = requestedDose * (1 - tol * 0.5);
+    const effectiveDose = this.endocrine ? requestedDose : requestedDose * (1 - tol * 0.5);
     const event = {
       substance,
       route,
@@ -118079,10 +118137,10 @@ var DrugScheduler = class {
     }
     for (let i = 0; i < active.length; i++) {
       for (let j = i + 1; j < active.length; j++) {
-        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
-        if (!combo || !combo.synergyContributions) continue;
+        const key = comboKey(active[i].substance, active[j].substance);
+        const syn = comboSynergyContributions(key, routed);
         const scale = Math.min(active[i].level, active[j].level);
-        for (const [k, v] of Object.entries(combo.synergyContributions)) {
+        for (const [k, v] of Object.entries(syn)) {
           delta[k] = (delta[k] || 0) + v * scale;
         }
       }

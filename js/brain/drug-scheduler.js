@@ -580,6 +580,72 @@ function comboKey(a, b) {
 // pulls it back to the researched reference. Left visible rather than
 // clamped, because clamping would silently break the identity above.
 
+// ─── ENDO-DRUG.3 — SYNERGY WAS BEING COUNTED TWICE ────────────────────────
+//
+// `COMBOS[*].synergyContributions` was hand-tuned back when a drug wrote
+// straight to brain params and there was no mechanism that could produce an
+// interaction. Now both substances in a pair release into the SAME
+// transmitter pools, so their interaction ALREADY emerges from superposition
+// — and the hardcoded entry was landing on top of it. Stacked stimulants
+// over-contributed.
+//
+// ⭐ Gee's call: superposition is the truth. But NOT a blanket delete —
+// deleting the whole table would throw away real information, so the filter
+// is PER AXIS:
+//
+//   REDUNDANT  the pair shares a transmitter whose own contributions include
+//              that axis. Dopamine already carries reward and arousal for
+//              coke+MDMA; stating it again is the double-count.
+//   KEPT       axes no shared transmitter touches. Alcohol+cannabis wrecking
+//              `hippocampusConsolidation` is a genuine pharmacodynamic
+//              interaction (blackout risk) that monoamines do not express,
+//              and alcohol+cocaine's `impulsivity` rides cocaethylene, an
+//              actual metabolite that only exists when both are present.
+//
+// ⛔ `riskFlags` are KEPT UNCONDITIONALLY. Cardiotoxicity, physical strain
+// and `persistsMs` are not derivable from transmitter levels at all, and
+// they are the entries that keep her from stacking herself into harm.
+// `synergySpeech` is likewise kept — it is a distortion vector, not a
+// brain-param contribution, so it was never part of the double-count.
+
+/** Transmitters a pair of substances BOTH release. */
+function sharedTransmitters(a, b) {
+  const ta = (SUBSTANCES[a] && SUBSTANCES[a].transmitters) || {};
+  const tb = (SUBSTANCES[b] && SUBSTANCES[b].transmitters) || {};
+  return Object.keys(ta).filter(k => Object.prototype.hasOwnProperty.call(tb, k));
+}
+
+const _comboSynergyCache = new Map();
+
+/**
+ * A combo's synergy contributions with the transmitter-explained axes
+ * removed. Returns the FULL original set when there is no endocrine layer to
+ * carry the mechanism — same reasoning as the residual split: without the
+ * transmitter path the hardcoded entry is the only thing expressing the
+ * interaction, and dropping it would silently lose it.
+ */
+function comboSynergyContributions(key, routed) {
+  const combo = COMBOS[key];
+  if (!combo || !combo.synergyContributions) return {};
+  if (!routed) return combo.synergyContributions;
+  if (_comboSynergyCache.has(key)) return _comboSynergyCache.get(key);
+
+  const [a, b] = key.split('+');
+  const shared = sharedTransmitters(a, b);
+  const explained = new Set();
+  for (const chem of shared) {
+    const c = CHEMICALS[chem];
+    if (!c || !c.contributions) continue;
+    for (const axis of Object.keys(c.contributions)) explained.add(axis);
+  }
+  const kept = {};
+  for (const [axis, v] of Object.entries(combo.synergyContributions)) {
+    if (!explained.has(axis)) kept[axis] = v;
+  }
+  _comboSynergyCache.set(key, kept);
+  return kept;
+}
+
 /** What a substance's transmitters contribute at dose 1.0. */
 function transmitterContributions(substance) {
   const sub = SUBSTANCES[substance];
@@ -869,7 +935,24 @@ class DrugScheduler {
     this._decayTolerance(now);
     const tol = this.toleranceFactors.get(substance) || 0;
     const requestedDose = typeof opts.dose === 'number' ? opts.dose : 1.0;
-    const effectiveDose = requestedDose * (1 - tol * 0.5);
+    // ── ENDO-DRUG.2 — WHERE TOLERANCE LIVES.
+    //
+    // ⛔ This used to be `requestedDose * (1 - tol*0.5)` unconditionally — a
+    // pharmacoKINETIC model, and the wrong one. A second line of coke reaches
+    // the SAME concentration; what changed is that her receptors
+    // downregulated. Tolerance is pharmacoDYNAMIC.
+    //
+    // Routed: the dose is untouched and the endocrine layer's receptor
+    // sensitivity blunts the EFFECT — which is why tolerance now carries
+    // across every substance sharing a transmitter pool.
+    //
+    // Direct: no endocrine layer exists to hold receptor state, so the legacy
+    // dose blunting is retained. Not a fallback value — it is the only place
+    // tolerance CAN live when there is no receptor model, and the snapshot
+    // reports which mode is running.
+    const effectiveDose = this.endocrine
+      ? requestedDose
+      : requestedDose * (1 - tol * 0.5);
 
     const event = {
       substance,
@@ -1090,13 +1173,15 @@ class DrugScheduler {
       }
     }
 
-    // (2) Pairwise combo synergies
+    // (2) Pairwise combo synergies — ⭐ ENDO-DRUG.3: only the part the shared
+    // transmitter pools do NOT already produce. Superposition carries the
+    // rest, and stating it twice was making stacked substances over-contribute.
     for (let i = 0; i < active.length; i++) {
       for (let j = i + 1; j < active.length; j++) {
-        const combo = COMBOS[comboKey(active[i].substance, active[j].substance)];
-        if (!combo || !combo.synergyContributions) continue;
+        const key = comboKey(active[i].substance, active[j].substance);
+        const syn = comboSynergyContributions(key, routed);
         const scale = Math.min(active[i].level, active[j].level);
-        for (const [k, v] of Object.entries(combo.synergyContributions)) {
+        for (const [k, v] of Object.entries(syn)) {
           delta[k] = (delta[k] || 0) + v * scale;
         }
       }
@@ -1772,5 +1857,5 @@ class DrugScheduler {
   }
 }
 
-export { DrugScheduler, SUBSTANCES, COMBOS, PATTERNS, GRADE_ORDER, gradeIndex, gradeAtLeast, pkCurve, sigmoid, comboKey, residualContributions, transmitterContributions };
+export { DrugScheduler, SUBSTANCES, COMBOS, PATTERNS, GRADE_ORDER, gradeIndex, gradeAtLeast, pkCurve, sigmoid, comboKey, residualContributions, transmitterContributions, comboSynergyContributions, sharedTransmitters };
 export default DrugScheduler;
