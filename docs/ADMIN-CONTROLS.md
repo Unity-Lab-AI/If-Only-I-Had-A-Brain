@@ -321,3 +321,178 @@ each is listed with what it actually costs.
 > day: **🔁 Savererun already does it**, through the dashboard, with a rollback
 > checkpoint taken first. Two mechanisms for one job drift apart — and building the
 > duplicate is what exposed the `passedPhases` gap fixed above.
+
+---
+
+## 🗂 COMPLETE `DREAM_*` REFERENCE — the other 139
+
+The table above is the curated set: knobs that change **training**, each written up with what it costs. It covered **39 of 178** environment flags. This section covers the rest, so that "is this flag documented?" has an answer for every one of them.
+
+**How to read a row.** ✅ = the default was read out of the code. ⚠ = the flag exists and its call site is named, but the default was **not** verified for this sweep — treat the description as the flag's purpose, not as a promise about its value, and confirm at the call site before relying on it. A wrong default in a doc is worse than an absent one.
+
+**Lever vs escape hatch.** A **lever** is meant to be turned — it tunes behaviour. An **escape hatch** exists so a failure mode has a way out and should stay at its default in normal operation. The distinction is what stops an operator from "tuning" a safety valve.
+
+### Boot & state — ⛔ the highest-consequence flags in the project
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_KEEP_STATE` | ✅ unset (= WIPE) | **escape hatch** | ⛔ **The fresh-walk-vs-resume switch, and the single most consequential variable here.** `'1'` = keep prior weights and resume; anything else = `autoClearStaleState()` wipes weights, conversations and episodic memory at boot. `Savestart.bat` / `Savestart.sh` set it; `start.bat` / `start.sh` deliberately do not. **Setting this wrong costs the entire training run**, which is why the launchers own it and why `start.*` gates on a Y/N prompt |
+| `DREAM_FORCE_CLEAR` | ✅ unset | escape hatch | Force the wipe regardless. Now redundant — the wipe is already unconditional on a fresh start — and kept only as a legacy override |
+| `DREAM_NO_AUTO_GPU` | ✅ unset | lever | `'1'` skips auto-launching a local browser donor tab. Set on every headless deployment; the systemd unit ships with it |
+| `DREAM_NO_HEAP_REEXEC` / `DREAM_HEAP_REEXECED` | ⚠ | escape hatch | Control / mark the self-re-exec that raises V8's heap limits. The second is set BY the re-exec to prevent an infinite loop — **never set it by hand** |
+| `DREAM_BRAIN_BUDGET_MB` | ✅ `0` (= derive) | lever | Hard RAM budget for the brain. `0` derives it from free host RAM, which is why the neuron count moves between boots. Set it to pin the size |
+| `DREAM_MAX_GRADE` | ⚠ | lever | Ceiling grade for the walk — stop the curriculum at a chosen grade |
+| `DREAM_HELD_BACK` | ✅ on (`'0'` disables) | escape hatch | Mastery-gated remediation. `'0'` lets a failed cell through without the escalating re-teach ladder |
+| `DREAM_TICK_MS` / `DREAM_TICK_BREATHE_MS` | ⚠ | lever | Brain tick interval and the yield between ticks |
+| `DREAM_CPU_PROFILE` | ⚠ | lever | Enables CPU profiling output |
+| `DREAM_SELF_UPDATE_CMD` / `DREAM_UPDATE_STALE_MS` | ⚠ | lever | Override the self-update command; staleness window for the update check |
+
+### Gates — advisory by default, hard on request
+
+Per the 2026-06-27 amendment a cell passes on **learning completion**, not answer correctness. These restore the old blocking behaviour per check.
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_CELL_PASS_HARD` | ✅ unset | escape hatch | `'1'` restores probe/battery/health-decides-pass wholesale |
+| `DREAM_HEALTH_GATE_HARD` | ✅ unset (advisory) | escape hatch | `'1'` makes the per-grade health gate block again |
+| `DREAM_BATTERY_GATE_HARD` | ✅ unset (advisory) | escape hatch | `'1'` makes the K-STUDENT battery block again |
+| `DREAM_BATTERY_GATE_ADVISORY` | ⚠ | escape hatch | The explicit advisory-side twin of the above |
+| `DREAM_GATE_PATH_MIN` | ✅ `0.80` | lever | Minimum READ/THINK/TALK pathway score |
+| `DREAM_GATE_PROD_MIN` | ✅ `0.80` | lever | Minimum production score |
+| `DREAM_GATE_GPU_PROBES` | ⚠ | lever | Whether gate probes may use the GPU lane |
+| `DREAM_BATTERY_DEADLINE_MS` | ✅ `8` | lever | Battery deadline (note the unit in the name against the value — verify at the call site before tuning) |
+| `DREAM_BATTERY_QUESTION_TIMEOUT_MS` | ✅ `45_000` | lever | Per-question timeout in the battery |
+| `DREAM_GRADE_MAJOR_ROUNDS` | ✅ `2` (range 1–5) | **lever, and a walk-price term** | ⛔ How many re-teach rounds a grade gets before a still-unpassed cell is recorded as blocked and the walk proceeds. **This is the bound that makes the grade-major block finite** — unbounded, the walk wedges forever on a single stuck course. Changing it re-prices the whole walk; see `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` |
+
+### Curriculum & teaching
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_PRECELL_VOCAB` | ⚠ | lever | The pre-cell vocabulary pass that teaches meanings before bindings |
+| `DREAM_MECH_EVERY_CELL` | ✅ opt-**out** | lever | Language mechanics in every ELA cell. Runs by default — this disables it |
+| `DREAM_K_UPFRONT_SEED` | ⚠ off | lever | Upfront K-vocabulary seeding. Off deliberately — an upfront bulk Hebbian blurs basins |
+| `DREAM_SENTENCE_TRANSITION_REPS` | ✅ `10` | lever | Reps for sentence-transition training |
+| `DREAM_SELF_FRAME_LIGHT_MAX_UNITS` | ⚠ | lever | Cap for the **light** first-person reframe at the vocab/sentence chokepoints (distinct from `DREAM_SELF_FRAME_MAX_UNITS` above) |
+| `DREAM_PATTERN_TEACH_THROTTLE_MS` | ⚠ | lever | Throttle between pattern-teach fires |
+| `DREAM_PER_WORD_TEACH_TIMEOUT_MS` | ⚠ | escape hatch | Per-word teach timeout so one word cannot hang a phase |
+| `DREAM_TRICKLE_BATCH` | ⚠ | lever | Batch size for the dream-cycle vocabulary trickle |
+| `DREAM_WINDOW_MAX_MS` | ⚠ | lever | Cap on a dream window |
+| `DREAM_DEFINITION_CACHE_FILE` | ✅ `server/definition-cache.json` (`''` opts out) | lever | Persistent dictionary-definition cache. After 2-3 cold runs it approaches full coverage and the prefetch completes with no API hits |
+| `DREAM_DEF_CACHE_CAP` | ⚠ | lever | Entry cap on that cache |
+
+### Consolidation & sleep
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_CONSOLIDATION_DISABLE` | ✅ unset | escape hatch | `'1'` kills consolidation entirely. ⛔ Consolidation is what SEPARATES representations — disabling it is disabling her sleep learning |
+| `DREAM_CONSOLIDATION_MAX_REPLAY_NNZ` | ✅ `5_000_000` | **lever, load-bearing** | Non-zero ceiling above which the replay Hebbian is SKIPPED. Against an intra matrix of ~360M nnz this guard fired on every pass at biological scale, which is why `novelConsolidated` read 0 — her sleep learned nothing. The GPU replay route exists now; this is the knob that decides whether it engages |
+| `DREAM_CONSOLIDATION_GPU_REPLAY_MAX` | ⚠ | lever | Ceiling for the GPU replay route specifically |
+| `DREAM_CONSOLIDATION_FORCE_MS` | ⚠ | lever | Cadence for forced passes (distinct from `_FORCE_MAX_MS` above, which is a duration cap) |
+| `DREAM_RECOMB_REPS` / `DREAM_RECOMB_ROUNDS` / `DREAM_RECOMB_MIN_WORDS` / `DREAM_RECOMB_MIN_UNIQUE_RATIO` / `DREAM_RECOMB_COHERENCE_MIN` | ⚠ | levers | Dream-recombination shape: how many reps and rounds, and the floors a recombined candidate must clear to count as novel |
+
+### Emission & speech
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_DICT_FALLBACK` | ✅ unset | **escape hatch** | ⛔ `'1'` restores dictionary RETRIEVAL when the trained matrix produces nothing. Off by default on purpose: a retrieved word is the dictionary speaking, not her. Leaving it off is what makes honest silence honest |
+| `DREAM_CHAT_MAX_WORDS` | ✅ `10` | lever | Hard ceiling on a chat reply's length |
+| `DREAM_CHAT_COHERENCE_FLOOR` / `DREAM_COHERENCE_MIN` | ⚠ | levers | Floors below which she degrades to her strongest single word or stays quiet rather than emit a scrambled string |
+| `DREAM_WORD_MOTOR_VOCAB_CAP` | ✅ `10` | lever | Vocabulary cap on the word-motor band |
+| `DREAM_WORDNORM` / `DREAM_WORDNORM_ALPHA` | ⚠ | levers | Per-bucket normalisation of word-motor activation and its strength — aimed at the frequency bias where common words win every argmax |
+| `DREAM_SURPRISE_MAX` | ⚠ | escape hatch | Ceiling on the predictive-coding surprise gate, so a single high-error event cannot multiply the learning rate without bound |
+| `DREAM_SAT_RATIO` / `DREAM_SAT_MEANABS` / `DREAM_SAT_MEANCOS` / `DREAM_SAT_SAMPLE` | ⚠ / ⚠ / ⚠ / ✅ `10` | levers | Saturation detection on `sem→motor` — the thresholds that decide a projection has collapsed, and how many rows are sampled to decide it |
+| `DREAM_BC_VOCAB_MIN` | ✅ `0.85` | lever | Vocabulary-coherence floor |
+| `DREAM_BC_EMISSION_DOM_MAX` | ✅ `0.45` | lever | Maximum share one word may take of emissions before it counts as domination |
+| `DREAM_BC_RECTIFY_DECAY` / `DREAM_BC_RECTIFY_NORM` | ✅ `0.5` / `0.6` | levers | Rectification strength when a collapse is detected |
+| `DREAM_BC_COMPOUND_COH_MIN` | ⚠ | lever | Coherence floor for compound emissions |
+| `DREAM_SPEAKLOOP` + `DREAM_SPEAKLOOP_TEACH_ROUNDS` / `DREAM_SPEAKLOOP_TEACH_MAX_MS` / `DREAM_SPEAKLOOP_DRILL_ROUNDS` / `DREAM_SPEAKLOOP_DRILL_MAX_MS` / `DREAM_SPEAKLOOP_MAX_FAILS` | ⚠ | levers | The speak-loop drill: teach-then-drill rounds, their wall-clocks, and how many failures end it |
+| `DREAM_LOOKUP_HOLD_MS` | ✅ `4500` | lever | How long a definition look-up holds before emission proceeds |
+
+### Inner voice
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_INNERVOICE_FORCE_CPU` | ✅ unset | escape hatch | `'1'` forces inner-voice generation onto the CPU |
+| `DREAM_INNERVOICE_GPU_GEN` | ✅ off → **now ON** | lever | GPU generation for the inner voice. Shipped dormant and switched on 2026-08-25 |
+| `DREAM_INNERVOICE_GPU_GEN_MIN_DONORS` | ✅ `1` | lever | Donors required before GPU generation engages |
+| `DREAM_INNERVOICE_MAX_NEURONS` | ✅ `2_000_000` | escape hatch | Above this the CPU inner-voice path no-ops rather than pin the loop. ⚠ This line is load-bearing in more than one place — a capability branch elsewhere was silently dead because it tested `typeof readText === 'function'` (always true) instead of testing this ceiling |
+
+### Cortical microstructure — the K-layer switches
+
+Each shapes how the cortex is WIRED, so each is applied at construction. ⛔ Changing one changes the geometry, and geometry changes are not comparable across a training run — see `docs/TRAJECTORY-CAPTURE.md` on never interpolating a curve across one.
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_SMALL_WORLD` | ⚠ on for size ≥ 2K | lever | Watts-Strogatz hybrid connectivity (70% local / 25% medium / 5% long-range) |
+| `DREAM_MICROCOLUMNS` | ⚠ | lever | Mountcastle microcolumns (`columnSize` 80 default), region-boundary respecting |
+| `DREAM_LAMINATION` | ⚠ | lever | Six-layer lamination (L1 5% · L2/3 25% · L4 25% · L5 25% · L6 20%) |
+| `DREAM_HUBS` | ⚠ | lever | Rich-club hub neurons — 5% of L2/3 + L5, deterministic-hash seeded so they persist across reboots |
+| `DREAM_THETA_GAMMA` | ⚠ | lever | 6 Hz theta drive modulation + 40 Hz theta-gated gamma on the learning rate |
+| `DREAM_TOPOGRAPHIC` | ✅ off → **now ON** | lever | Topographic cross-projections (70% topographic / 30% scattering). Shipped dormant, switched on 2026-08-25 |
+| `DREAM_PREDICTIVE_CODING` | ⚠ | lever | The Friston-style prediction-error loop that gates plasticity |
+| `DREAM_GW_IGNITION` | ⚠ | lever | Global-workspace ignition threshold (Baars / Dehaene-Changeux) |
+| `DREAM_NOISE_GATE` | ✅ **ON by default** | lever | Noise gating on the teach path. ⚠ Documented elsewhere as "ships dormant" — that is **wrong**, it is on |
+| `DREAM_ANNEAL_TEMP` | ⚠ | lever | Annealing temperature schedule |
+| `DREAM_PSI_GAIN_SCALE` | ⚠ | lever | Scales the Ψ consciousness term's global gain contribution |
+| `DREAM_SM_LR_SCALE` / `DREAM_SM_WMAX` | ⚠ | levers | Sparse-matrix learning-rate scale and weight clamp. ⛔ `wMax` clamps have been lost in a binary save/load round-trip before, leaving projections at ±Infinity — that is one of the two bugs the unconditional fresh-start wipe exists to prevent |
+
+### Language cortex
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_LANG_CORTEX` | ✅ `10` | lever | Language-cortex sizing term |
+| `DREAM_LANG_RAM_FRACTION` | ⚠ | lever | Share of the RAM budget the dense language cortex may claim |
+| `DREAM_LANG_VRAM_RESERVE_MB` | ⚠ | lever | VRAM held back for the language cortex |
+
+### Donor pool, DF.7 replicas & the wire
+
+The donor is data-parallel: every donor holds a full replica and the server merges Hebbian deltas. These govern that lane. ⚠ Most defaults here are unverified for this sweep; the wire is also where a wrong value is most expensive, so confirm at the call site.
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_MIN_DONOR_VERSION` | ⚠ | escape hatch | Minimum donor version admitted to the pool. Load-bearing: masked bound plasticity (SPRS type 13) requires ≥ 0.3.26, and an older donor silently cannot do it |
+| `DREAM_DONOR_FIT_MB` | ⚠ | lever | VRAM a donor must hold to be eligible |
+| `DREAM_NO_DONOR_GRIND` | ⚠ | escape hatch | Stop hammering a donor that cannot keep up |
+| `DREAM_RESPECT_VRAM_CAP` | ⚠ | lever | Honour a donor's advertised VRAM cap |
+| `DREAM_SPARSE_CHUNK_NNZ` | ⚠ | lever | Non-zeros per chunked sparse upload frame |
+| `DREAM_SPARSE_UPLOAD_TIMEOUT_MS` / `DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS` | ⚠ | escape hatches | Per-upload timeout and its ceiling |
+| `DREAM_UPLOAD_MIN_MBPS` / `DREAM_UPLOAD_WAIT_DONOR_MS` | ⚠ | levers | Minimum acceptable uplink rate; how long to wait for a donor before proceeding |
+| `DREAM_REUPLOAD_DEBOUNCE_MS` | ⚠ | lever | Debounce on dirty-matrix re-upload so a burst of writes ships once |
+| `DREAM_BATCH_STALL_MS` | ⚠ | escape hatch | When a compute batch counts as stalled |
+| `DREAM_HB_BUF_FORGIVE_MB` / `DREAM_WS_SOFT_SHED_MB` | ⚠ | escape hatches | Backpressure forgiveness and the soft-shed threshold on the donor socket |
+| `DREAM_CSR_FREE_MIN_MB` / `DREAM_PATTERN_LANE_CAP_MB` | ⚠ | escape hatches | Free-RAM floor before CSR allocation; cap on the pattern lane |
+| `DREAM_DELTA_COLIDX` | ⚠ **DISABLED, cause unknown** | lever | Delta column-index encoding. ⛔ Currently off with the reason **not** established — do not enable it without finding out why it was disabled |
+| `DREAM_GEN_PROPAGATE_CHUNKED` | ✅ off → **now ON** | lever | Chunked propagate on the generation path. Shipped dormant, switched on 2026-08-25 |
+| `DREAM_RESYNC_TEACH_THROTTLE_MS` | ⚠ | lever | Throttle on resync during teaching |
+| `DREAM_DF7_FANOUT` · `DREAM_DF7_FANOUT_PROPAGATE` | ⚠ | levers | Fan-out compute across replicas. ⚠ `DREAM_DF7_FANOUT_PROPAGATE` **auto-enables once replica sync is proven** — it is NOT a dormant feature waiting to be switched on, and reading it as one is a mistake already made |
+| `DREAM_DF7_MIN_VRAM_MB` · `DREAM_DF7_MIN_BIND_MB` · `DREAM_DF7_MIRROR_CAP_MB` | ⚠ | levers | Replica eligibility thresholds and mirror sizing |
+| `DREAM_DF7_SYNC_DURING_TEACH` · `DREAM_DF7_SYNC_PACE_MAX_MS` · `DREAM_DF7_SYNC_TEACH_PACE_MIN_MS` · `DREAM_DF7_SYNC_TEACH_PACE_MAX_MS` | ⚠ | levers | Whether replicas sync while teaching, and the pacing envelope when they do |
+| `DREAM_DF7_REBROADCAST_MS` · `DREAM_DF7_REBROADCAST_DUTY` · `DREAM_DF7_REBALANCE_MS` | ⚠ | levers | Master re-broadcast cadence, its duty cycle, and the rebalance interval |
+| `DREAM_DF7_PROMOTE_COOLDOWN_S` · `DREAM_DF7_FLOOD_COOLDOWN_MS` | ⚠ | escape hatches | How soon a replica may be promoted to PRIMARY again, and the anti-flood cooldown |
+| `DREAM_DF7_INFLIGHT` · `DREAM_DF7_READ_FRESH_MS` · `DREAM_DF7_WORK_FLOOR` · `DREAM_DF7_BACKED_PENALTY` | ⚠ | levers | In-flight budget, read-freshness window, minimum work share, and the scoring penalty applied to a backed replica |
+| `DREAM_SUBSTEPS` | ⚠ | lever | The base substeps value. ⚠ Distinct from `DREAM_SUBSTEPS_NATIVE` / `_TARGET_MS` / `_MAX` in the curated table above — those govern the adaptive controller; this is the underlying figure |
+
+### Art, vision & the mind's eye
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_DRAW_CANVAS` | ✅ `512` | lever | Canvas side for drawing |
+| `DREAM_IMAGINE_DRAW_PROB` | ✅ `0.18` | lever | Probability an imagined thought becomes a drawing |
+| `DREAM_EYE_SHOW_THOUGHT` | ⚠ off | lever | Show the current thought word on the mind's-eye frame |
+| `DREAM_SPONTANEOUS_IMG_AROUSAL` | ✅ `0.7` | lever | Arousal threshold above which she spontaneously makes an image |
+| `DREAM_SPONTANEOUS_IMG_GAP_MS` | ✅ `300_000` (5min) | lever | Minimum gap between spontaneous images |
+| `DREAM_REF_FETCH_COOLDOWN_MS` | ✅ `21_600_000` (6h) | lever | Per-concept re-fetch cooldown. ⚠ This is **de-duplication, not rate limiting** — it stops her re-looking-up the same concept, and the ✗ reject button deliberately forces past it |
+| `DREAM_REF_FETCH_TIMEOUT_MS` | ✅ `60_000` | escape hatch | Timeout on one reference fetch |
+| `DREAM_REF_MIN_DETAIL` | ✅ `200` | lever | Minimum detail a fetched reference must show to be worth learning from |
+| `DREAM_VM_RECALL_COOLDOWN_MS` | ⚠ | lever | Cooldown on recalling the same visual memory |
+
+### Diagnostic & misc
+
+| Env | Default | Kind | What it does |
+|---|---|---|---|
+| `DREAM_ABLATION_LOG` | ⚠ off | lever | Ablation logging for research runs |
+| `DREAM_POLLINATIONS_KEY` | ✅ `''` (empty) | **escape hatch, ops-only** | ⛔ Present as an operations override lever ONLY. The brain runs the Pollinations **anonymous free tier**; no key is shipped, seeded or defaulted anywhere in the tree, and none may be re-added. Empty ⇒ the URL builder omits the key parameter entirely |
+
+> ⚠ **Three strings that look like flags and are not:** `DREAM_CONSOLIDATION_`, `DREAM_SAT_` and `DREAM_KEEP_` appear in a raw extraction of this namespace because they are **prefixes** built up in code, not variables. Do not set them.
+>
+> ⛔ **`DREAM_TRANSFORMER`, `DREAM_TRANSFORMER_MODEL` and `DREAM_TRANSFORMER_MAX_LEN` are DEAD and must never come back.** They gated a complete GPT-2 / distilgpt2 / TinyLlama inference path that installed itself as a "right brain", and an arbiter that could return **the transformer's text as her answer**. All of it was deleted 2026-08-25. The three names still appear in `server/brain-server.js` **only inside the comment recording their own removal** — a grep of this namespace hits that tombstone, not a live read. ⚠ Its `@xenova/transformers` dependency was deliberately left undeclared in every `package.json` so a dependency audit could not see it; a boot guard now fails loudly if an LLM SDK, a chat-completions URL or a transformer dependency reappears.
