@@ -1093,6 +1093,33 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // on normal deploys, but DREAM_KEEP_STATE=1 BYPASSES the hash check — this format bump is the
 // belt-and-suspenders that still rejects v1 weights on that path, forcing the mandatory fresh
 // K→PhD walk that trains the new senses in from scratch (no migration, no garbage-weight load).
+// ── The donor build this server wants running against it.
+//
+// ⚠ MUST BE BUMPED WITH EVERY DONOR RELEASE. It is the number the `welcome`
+// handshake hands every donor so a pod can upgrade itself at its next
+// disconnect instead of reconnecting on a stale binary. Kept beside
+// WEIGHTS_FORMAT_VERSION deliberately — both are "things that must move when
+// something else moves", and the donor version has already been forgotten once
+// (DREAM_MIN_DONOR_VERSION sat at 0.3.7 for 22 releases).
+//
+// ⛔ This is NOT the hard floor. A donor between the floor and this keeps
+// working; it just upgrades at its next natural disconnect. Overridable with
+// DREAM_RECOMMENDED_DONOR_VERSION for a staged rollout.
+// ⚠ SAFE TO NAME A VERSION BEFORE ITS TAG IS PUSHED — but only because of how
+// the handshake degrades. Only 0.3.30+ READS `recommendedDonorVersion`; older
+// donors ignore the field entirely and keep upgrading via the launcher's
+// watchdog exactly as before. So a donor can only act on this number if it is
+// already running a build that exists.
+//
+// ⛔ The dangerous case is a FUTURE bump landing here before its tag is
+// published: donors would exit to upgrade, the launcher would reinstall the
+// same (older) `releases/latest`, and every pod would download in a loop
+// instead of donating. The donor carries an anti-loop guard for exactly that
+// (`upgrade-attempt.txt` — it refuses to bounce twice for the same upgrade and
+// says so loudly), but the guard is a net, not a licence. **Bump this WITH the
+// tag, not ahead of it.**
+const CURRENT_DONOR_VERSION = '0.3.30';
+
 const WEIGHTS_FORMAT_VERSION = 5;   // ENDO (2026-08-25): `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed, so saved geometry no longer matches. Old weights auto-refuse → clean fresh walk, which is the ORDER the walk law already specifies (chemistry lands BEFORE the walk that teaches from it). (v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
@@ -9947,6 +9974,25 @@ wss.on('connection', (ws, req) => {
     // DEPLOY VERSION HANDSHAKE — donor tabs survive deploys running old code;
     // they compare this stamp across reconnects and reload on change.
     buildStamp: (global.__ualBuildStamp || (global.__ualBuildStamp = (() => { try { return String(Math.floor(fs.statSync(__filename).mtimeMs)); } catch { return String(process.pid); } })())),
+    // ── DONOR UPGRADE HANDSHAKE (2026-08-25, Gee: "when the pod disconnects
+    // after the update is pressed, it shall upgrade to the updated most
+    // updated doner version before reconnecting attempts").
+    //
+    // ⭐ WHY IT RIDES `welcome` RATHER THAN AN HTTP CHECK: the donor has no
+    // HTTP client — only a WebSocket — and adding one would fight the
+    // deliberate cross-compile simplicity in its Cargo.toml. It does not need
+    // one: it is ALREADY TALKING to the authority. The server knows which
+    // binary it wants, so it says so on every connect, the donor remembers it,
+    // and acts on it at the next disconnect. Zero new dependencies, zero API
+    // calls, and the number is authoritative rather than scraped.
+    //
+    // ⚠ DISTINCT FROM `minVersion`. `DREAM_MIN_DONOR_VERSION` is a HARD FLOOR —
+    // below it the connection is refused outright. This is the RECOMMENDED
+    // build: a donor above the floor but below this keeps working normally and
+    // upgrades at its next natural disconnect, so nobody is kicked mid-walk
+    // for being one release behind.
+    minDonorVersion: (process.env.DREAM_MIN_DONOR_VERSION || '0.3.26').trim(),
+    recommendedDonorVersion: (process.env.DREAM_RECOMMENDED_DONOR_VERSION || CURRENT_DONOR_VERSION).trim(),
     state: brain.getState(),
     emotionHistory: brain._emotionHistory.slice(-300),
   }));
