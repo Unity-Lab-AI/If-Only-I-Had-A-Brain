@@ -2473,6 +2473,40 @@
                     + `${num(onCard)} on-card · ${num(toCpu)} →CPU (${pct}%)</span>${wiring}`
                     + (bp.lastEmptyName ? ` <span class="muted">last ${bp.lastEmptyName}${bp.lastEmptyAgeMs != null ? ` ${Math.round(bp.lastEmptyAgeMs / 1000)}s ago` : ''}</span>` : '');
                 })()) +
+          // ── DARKHEB.1 — the boundHebbian block, which was published every
+          // broadcast and rendered NOWHERE. Seven fields as THREE rows, because
+          // seven rows of raw counters is noise: the pipeline, the refusals, and
+          // the wire verbs are three different questions.
+          //
+          // ⛔ The refusal row is the one that earns its place. `capFlushes`
+          // counts mid-slab forced flushes THAT USED TO BE SILENT DROPS, and
+          // `suppressedStale` counts the dependent plasticity the system
+          // deliberately refused after a shed pattern frame — refusing is
+          // CORRECT there (training the previous iteration's pattern into this
+          // iteration's weights would be training a lie) but the cost of
+          // refusing has to be visible, which is what its own source comment
+          // says and what this row finally does.
+          row('teach ops',
+            (t.boundHebbian == null)
+              ? '<span class="muted" title="No bound-Hebbian telemetry on this boot.">unmeasured</span>'
+              : `${num(t.boundHebbian.flushedOps)} sent <span class="muted" title="Ops ENQUEUED versus ops that actually left, in how many wire frames. A gap between the two that keeps growing means the queue is filling faster than it drains.">/ ${num(t.boundHebbian.enqueued)} queued · ${num(t.boundHebbian.flushedFrames)} frames</span>`) +
+          row('teach refusals',
+            (t.boundHebbian == null)
+              ? '<span class="muted">unmeasured</span>'
+              : (() => {
+                  const bh = t.boundHebbian;
+                  const cap = bh.capFlushes | 0, stale = bh.suppressedStale | 0;
+                  if (cap === 0 && stale === 0) {
+                    return '<span style="color:#22c55e" title="No mid-slab forced flush and no plasticity suppressed after a shed pattern frame since boot. Both counters exist because both events used to be invisible.">none</span>';
+                  }
+                  // Amber not red: both of these are the system behaving
+                  // CORRECTLY under pressure. They are worth seeing, not alarming.
+                  return `<span style="color:#f59e0b" title="capFlushes = mid-slab forced flushes, which used to be SILENT DROPS. suppressedStale = dependent bound-Hebbian dispatches refused because the pattern lane went stale; refusing is correct (the alternative is training the previous iteration's pattern into this iteration's weights) but it is not free, so the count belongs on screen.">${num(cap)} cap-flush · ${num(stale)} stale-suppressed</span>`;
+                })()) +
+          row('teach verbs',
+            (t.boundHebbian == null)
+              ? '<span class="muted">unmeasured</span>'
+              : `<span class="muted" title="The batched wire verbs. rangesSent = the range-encoded Hebbian verb; maskedSent = the masked bound-plasticity verb (GPUVERB) that moved the last CPU training math onto the card. Both being zero while teach ops climb means the lane is falling back to per-op frames.">${num(t.boundHebbian.rangesSent)} range · ${num(t.boundHebbian.maskedSent)} masked</span>`) +
           row('GPU dispatch', `${num(t.gpuDispatchPerSec, 1)}/s <span class="muted">(${num(t.gpuHits)}✓/${num(t.gpuMisses)}✗)</span>`) +
           row('spikes', num(t.totalSpikes)) +
           row('defs/hr', num(t.defsLearnedPerHour)) +

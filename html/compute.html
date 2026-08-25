@@ -477,7 +477,12 @@ function connectToServer() {
     // VRAM (same-tab WS hiccup keeps WebGPU buffers alive, like the cluster
     // skip-reinit below). The server skips re-streaming these ONCE on this
     // reconnect; periodic rebroadcasts still re-converge any drift.
-    ws.send(JSON.stringify({ type: 'gpu_register', sparseV2: true, mindspaceV1: true, vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
+    // BOUNDCAP.1 — advertise the resident bound read explicitly. An empty pre
+    // (`preLen === 0`) means "read the bound cluster buffer" to this page, and
+    // the server used to infer that from the ABSENCE of a donor version string
+    // — which never happens, because it stamps 'browser' instead. Saying so
+    // outright is what keeps the bound propagate on the right protocol.
+    ws.send(JSON.stringify({ type: 'gpu_register', sparseV2: true, mindspaceV1: true, boundResidentRead: true, vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
   };
 
   ws.onerror = (err) => {

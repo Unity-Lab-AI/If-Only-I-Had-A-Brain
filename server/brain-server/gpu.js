@@ -2757,8 +2757,14 @@ const SERVER_GPU_MIXIN = {
         // at worst-case 4MB/s), browser donors keep the 8MB protection.
         let _loDefMb = 8;
         try {
-          const _c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
-          if (_c && _c.donorAppVersion) _loDefMb = 96;
+          // ⛔ BOUNDCAP.1 — this WAS `if (_c && _c.donorAppVersion) _loDefMb = 96`,
+          // which is true for a browser donor too (register stamps the truthy
+          // string 'browser'). So the 96MB in-flight window meant for native
+          // donors was ALSO handed to browser donors — the exact opposite of
+          // the sentence three lines up, and it removed the protection that
+          // exists because a browser donor's busy main thread cannot drain its
+          // own socket. Routed through the one nativeness owner now.
+          if (this._donorIsNative(ws)) _loDefMb = 96;
         } catch { /* browser default stands */ }
         const _loBytes = (Number.isFinite(_loMbEnv) && _loMbEnv > 0 ? _loMbEnv : _loDefMb) * 1024 * 1024;
         let _pacedMs = 0;
@@ -3591,7 +3597,41 @@ const SERVER_GPU_MIXIN = {
       this._boundPropStats = { native: 0, emptyMirror: 0, browserEmptyPre: 0, noMirrorObject: 0, lastEmptyAt: 0, lastEmptyName: null };
     }
     const _bps = this._boundPropStats;
-    if (_c && _c.donorAppVersion) {
+    // ⛔⛔ BOUNDCAP.1 (2026-08-25) — THE OLD TEST WAS `if (_c.donorAppVersion)`,
+    // AND IT WAS TRUE FOR EVERY DONOR, SO THE BROWSER PATH BELOW WAS DEAD CODE.
+    //
+    // `gpu_register` stamps `client.donorAppVersion = _donorVer || 'browser'` —
+    // a browser donor gets the truthy STRING `'browser'`, not a falsy value. So
+    // the presence test selected the native rebuild for browser donors too, and
+    // the empty-pre branch had been unreachable for any registered donor since
+    // the PROPBOUND fix landed 2026-08-21.
+    //
+    // ⛔ Why that was not merely redundant: `compute.html`'s type=2 handler
+    // reads the payload as a DENSE 0/1 spike array (`new Uint32Array(buf, off,
+    // preLen)` → `writeSparsePreSpikes`), and `_boundPreIndicesFor` returns
+    // INDICES. Sending indices where a dense vector is expected is not a
+    // smaller signal, it is a DIFFERENT one — and `preLen === 0` is precisely
+    // the browser's bound-mode trigger (compute.html:724), so a non-empty pre
+    // also forced standalone mode on a matrix whose standalone buffers are not
+    // allocated when it is cluster-bound. The fix for one donor type had become
+    // a mirror image of the same bug on the other.
+    //
+    // ⭐ Decided by CAPABILITY now, not by identity. The question this routes on
+    // is exactly "does this donor read its resident bound buffer when pre is
+    // empty?" — so that is what is asked. `boundResidentRead` is advertised at
+    // register (the `sparseV2` / `mindspaceV1` idiom); the explicit `'browser'`
+    // sentinel keeps ALREADY-LOADED pages correct without waiting for a reload,
+    // and it cannot silently flip the way a version-presence test did, because
+    // the server itself writes that sentinel from the absence of a version.
+    // ⚠ DELIBERATELY NOT `!this._donorIsNative(_ws)`, and this is not an
+    // oversight to tidy up: that helper answers `false` for an UNREGISTERED
+    // donor, so its negation would route an unknown donor to the empty-pre
+    // path — the one that silently returns all-zero currents on a native
+    // binary. The asymmetry is the safety property. Unknown must land on the
+    // rebuild path, which refuses with `null` instead of inventing a signal.
+    const _residentRead = (_ws && _ws._boundResidentRead === true)
+      || !!(_c && _c.donorAppVersion === 'browser');
+    if (!_residentRead) {
       const pre = this._boundPreIndicesFor(name);
       if (!pre || !pre.length) {
         // Split the two reasons: a MISSING mirror object is a wiring fault,
@@ -3632,6 +3672,26 @@ const SERVER_GPU_MIXIN = {
     const idx = [];
     for (let i = region.start; i < region.end; i++) { if (spikes[i]) idx.push(i - region.start); }
     return Uint32Array.from(idx);
+  },
+
+  // ⛔ BOUNDCAP.1 — THE ONE OWNER OF "IS THIS DONOR THE NATIVE BINARY?".
+  //
+  // Two separate call sites had each written `if (client.donorAppVersion)` to
+  // mean "native", and BOTH were wrong the same way: `gpu_register` stamps the
+  // string `'browser'` for a browser donor, which is truthy, so every donor
+  // read as native and each site's browser branch was dead code. Two instances,
+  // one root cause — so the question gets one owner rather than a second
+  // corrected copy.
+  //
+  // ⚠ Deliberately NOT a version comparison. Every other capability gate here
+  // regex-parses a semver and gets browser-exclusion for free (`'browser'` does
+  // not match `^\d+\.\d+\.\d+`), which is why those sites were never affected.
+  // This one asks about the donor's KIND, not its age, so it tests the sentinel
+  // the register handler actually writes.
+  _donorIsNative(ws) {
+    const c = (this.clients && this.clients.get && ws) ? this.clients.get(ws) : null;
+    if (!c || !c.donorAppVersion) return false;   // unregistered / unknown — never assume native
+    return c.donorAppVersion !== 'browser';
   },
 
   // TU.28.1 — shared soft-cap knob (same env knob as the TU.25.A hebbian
