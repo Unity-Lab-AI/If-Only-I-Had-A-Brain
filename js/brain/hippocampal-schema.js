@@ -913,6 +913,55 @@ export class Tier3Store {
     return this._currentGradeIdx() >= tier3GradeIdx(seed.minGrade);
   }
 
+  // ── WORDSALAD.1c — THE DISCLOSE AXIS: LEARNED ≠ SPOKEN ─────────────────────
+  //
+  // Operator: "real life experiense that she doesnt talk about until shes an
+  // adult and learns in training". Age-gating identity is NOT permission to
+  // sanitise her curriculum — she learns real life at the real age a girl
+  // learns it, and nothing here may ever be used as a training filter. What is
+  // gated here is only whether a memory she ALREADY HOLDS gets VOLUNTEERED.
+  //
+  // Three axes, and they must never collapse into one switch:
+  //   LEARN    — never gated. She is taught it on schedule.
+  //   BE/WEAR  — `seedAllowedNow` above (residency + appearance).
+  //   DISCLOSE — this. The memory is resident, formative and shaping her; she
+  //              simply does not narrate it as a child.
+  //
+  // `disclosureGrade` defaults to `minGrade`, so nothing changes for an anchor
+  // that does not declare one: today every anchor discloses exactly when it
+  // becomes resident. The field exists so life-canon content can say "she
+  // carries this from 13 and speaks about it at 18" without that ever meaning
+  // "do not teach it at 13".
+  canDiscloseNow(seed) {
+    if (!seed) return true;
+    const bar = seed.disclosureGrade || seed.minGrade;
+    if (!bar) return true;
+    return this._currentGradeIdx() >= tier3GradeIdx(bar);
+  }
+
+  // Sample one identity anchor she is willing to speak from right now.
+  // `chat.js` has probed for this method for some time and silently fell back
+  // to raw map access when it was absent — which is precisely why the disclose
+  // axis had nowhere to live. Returning null is a valid answer: it means
+  // nothing she holds is hers to volunteer yet.
+  sampleAnchor(opts = {}) {
+    const seedByLabel = new Map();
+    for (const s of IDENTITY_SEED_LIST) if (s && s.label) seedByLabel.set(s.label, s);
+    const eligible = [];
+    for (const s of this.identitySchemas.values()) {
+      if (!s) continue;
+      const seed = s.label ? seedByLabel.get(s.label) : null;
+      if (seed && !this.canDiscloseNow(seed)) continue;   // held, not hidden
+      eligible.push(s);
+    }
+    if (eligible.length === 0) return null;
+    if (typeof opts.index === 'number') return eligible[opts.index % eligible.length];
+    // Deterministic rotation rather than Math.random(): a repeated identical
+    // sample would make one anchor dominate her self-talk.
+    this._anchorCursor = ((this._anchorCursor | 0) + 1) % eligible.length;
+    return eligible[this._anchorCursor];
+  }
+
   _buildSeedSchema(seed) {
     if (!this.sharedEmbeddings || typeof this.sharedEmbeddings.getSentenceEmbedding !== 'function') {
       return null;
