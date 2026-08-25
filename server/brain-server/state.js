@@ -998,6 +998,41 @@ const SERVER_STATE_MIXIN = {
    *                capped at 24 + aggregates, so client→brain issues are visible.
    * All reads are defensive — any missing source degrades to null/0, never throws.
    */
+  // ── DEFRATE.1 (2026-08-25, found by reading the board minutes after the
+  // press) — ONE owner for "definitions learned per hour".
+  //
+  // ⛔ There were two consumers and only one was right. `_getConsciousnessState`
+  // read `cortex._defLearnedTimestamps` and computed a real rolling rate;
+  // `_getProfilingState` read **`this._defLearnedTimestamps`** — the BRAIN, not
+  // the cortex — and the producer (`curriculum.js`, `cluster._defLearnedTimestamps`)
+  // writes the CLUSTER. Nothing has ever written the brain-level field, so that
+  // one could only ever report 0. Caught live: the console was teaching
+  // definitions continuously while `profiling.throughput.defsLearnedPerHour`
+  // read `0`. Same shape as `meanVoltage` and `separability` — a consumer
+  // naming an owner that does not hold the value.
+  //
+  // ⚠ And it was not a RATE either: it returned `.length` of a ring capped at
+  // 256, labelled "PerHour". Two defects on one line — a wrong owner and a
+  // count wearing a rate's name.
+  _defsLearnedPerHour() {
+    const ts = this.cortexCluster && this.cortexCluster._defLearnedTimestamps;
+    if (!Array.isArray(ts) || ts.length < 2) return 0;
+    const now = Date.now();
+    // Clamp to the last hour: the 256-entry ring fills in ~2 min during the
+    // upfront definition seed, and reading oldest-to-newest across the whole
+    // ring reported ~7,680/hr off a burst (the 114.19ek finding).
+    const cutoff = now - 3_600_000;
+    let firstIdx = ts.length - 1;
+    for (let i = 0; i < ts.length; i++) {
+      if (ts[i] >= cutoff) { firstIdx = i; break; }
+    }
+    const recent = ts.length - firstIdx;
+    if (recent < 2) return 0;
+    const dt = (ts[ts.length - 1] - ts[firstIdx]) / 1000;
+    if (dt <= 0) return 0;
+    return (recent / dt) * 3600;
+  },
+
   _getProfilingState() {
     const now = Date.now();
     const MB = 1024 * 1024;
@@ -1210,8 +1245,9 @@ const SERVER_STATE_MIXIN = {
         batchTiming: perf.batchTiming || null,
         batchPaused: _batchPaused,
         batchStall: _batchStall,
-        defsLearnedPerHour: (this._defLearnedTimestamps && this._defLearnedTimestamps.length)
-          ? this._defLearnedTimestamps.length : 0,
+        // DEFRATE.1 — was `this._defLearnedTimestamps.length`: the wrong owner
+        // (brain, never written) AND a count wearing a rate's name.
+        defsLearnedPerHour: this._defsLearnedPerHour(),
         chatHebbianTurns: (this._chatTimeHebbianStats && this._chatTimeHebbianStats.turns) || 0,
         frameCount: this.frameCount || 0,
       };
@@ -2066,30 +2102,12 @@ const SERVER_STATE_MIXIN = {
       // from the timestamps ring buffer populated by
       // _teachWordDefinition. Reads oldest + newest within the buffer
       // window to avoid edge bias.
-      defsLearnedPerHour: (() => {
-        // 114.19ek P4 #16 — rolling 1hr window. Earlier formula
-        // read oldest + newest of the 256-cap ring buffer, which
-        // inflated catastrophically during the upfront K-vocab
-        // multi-def seed (256 timestamps inside a 2-min window
-        // would report ~7680 defs/hour). Clamp to timestamps within
-        // the last 3,600,000 ms so the dashboard reflects steady-
-        // state learning rate, not seed-burst peaks.
-        const ts = cortex && cortex._defLearnedTimestamps;
-        if (!Array.isArray(ts) || ts.length < 2) return 0;
-        const now = Date.now();
-        const cutoff = now - 3_600_000;
-        let firstIdx = ts.length - 1;
-        for (let i = 0; i < ts.length; i++) {
-          if (ts[i] >= cutoff) { firstIdx = i; break; }
-        }
-        const recent = ts.length - firstIdx;
-        if (recent < 2) return 0;
-        const newest = ts[ts.length - 1];
-        const oldest = ts[firstIdx];
-        const dt = (newest - oldest) / 1000;
-        if (dt <= 0) return 0;
-        return (recent / dt) * 3600;
-      })(),
+      // DEFRATE.1 — the 114.19ek rolling-1hr computation now lives in ONE
+      // place (`_defsLearnedPerHour`) and both consumers call it. This copy
+      // was the CORRECT one; the profiling copy read the wrong owner and could
+      // only ever report 0, which is precisely what two divergent copies of a
+      // "simple" derivation buy you.
+      defsLearnedPerHour: this._defsLearnedPerHour(),
       // M.24 _definitionTaughtWords counter (already in kVocabTaught above).
     };
   },
