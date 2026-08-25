@@ -274,6 +274,25 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 
 ---
 
+## 🔑 TWO POLLINATIONS LANES, TWO WALLETS (2026-08-25)
+
+⛔ **The rule, because this is the thing to get wrong:** the brain's own Pollinations use and a visitor's chat image are **separate lanes with separate keys**, and neither may ever spend the other's pollen.
+
+| Lane | What it is | Whose key | Default |
+|---|---|---|---|
+| **HER lane** | The mind's-eye reference look-ups she learns shapes from, and her own drawing. The BRAIN doing the work. | **The admin's**, set on the admin dashboard (or `DREAM_POLLINATIONS_KEY` as an ops override) | ⭐ **ANONYMOUS** |
+| **VISITOR lane** | An image a visitor asked Unity for in chat. | **That visitor's own**, from their own browser's localStorage | ⭐ **ANONYMOUS** |
+
+**Setting it:** the admin dashboard carries a *Pollinations key — her look-ups only* field under the milestone controls. Empty means anonymous, which is the default and fully supported; set it only to spend pollen on making her learning faster or her references better. Backed by `GET`/`POST /pollinations-key` (loopback-gated like every other brain-mutating endpoint).
+
+⚠ **The key never leaves the box.** `GET /pollinations-key` returns whether one is set, where it came from, and its **last four characters** — never the key. A credential cannot leak back out through the dashboard it was typed into.
+
+⚠ **It survives a fresh walk.** Stored at `server/pollinations-admin.json`, mode `0600`, gitignored, deploy-excluded, and on the never-clear protected list beside `identity-core.json`. A fresh walk wipes what she learned; it must not log the operator out.
+
+⛔ **THE BUG THIS FIXED, so it is not reintroduced.** One key served both lanes: the server built a fully keyed URL and sent it to the visitor's browser, so **every visitor's chat image was billed to the admin.** It was latent only because the key defaulted to empty — adding the dashboard field without separating the lanes first would have started the drain immediately. The chat lane now sends the **prompt only** and the client builds the URL with its own key. ⚠ The original reason for sending a server-built URL is also gone: it was a keyed-era fix for a fresh visitor whose key had not loaded and who therefore could not build a URL at all. Anonymous access removed that constraint — every client can always build one now. **Do not send a server-keyed image URL to a client.**
+
+---
+
 ## 🕳 PUBLISHED BUT NOT RENDERED — five instruments the board does not show
 
 ⛔ **The dashboard renders state fields BY NAME ONLY.** There is no generic walk over the state object — every value reaches the DOM through an explicit reference (24 `row(label, value)` calls in the profiling panel, plus per-panel interpolation). **Therefore: absence from `html/dashboard.html` is proof of non-rendering, not merely evidence of it.** That is worth stating because it makes the audit below decidable by grep instead of by opinion.

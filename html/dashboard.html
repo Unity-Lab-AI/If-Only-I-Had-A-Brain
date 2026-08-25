@@ -391,6 +391,27 @@
           <div style="margin-top:6px;font-size:9px;color:#666;line-height:1.4;">
             ON = signoffs bypassed + grade auto-fired. OFF = per-subject signoffs required + manual ▶ Start Next Grade click.
           </div>
+
+          <!-- ADMIN Pollinations key — HER lane only.
+               Two lanes, two wallets: this key pays for the BRAIN's own work
+               (mind's-eye reference look-ups, her drawing). A visitor's chat
+               image is billed to THAT VISITOR's own key from their own
+               browser, or runs anonymous. The two must never cross. -->
+          <div class="admin-only" style="margin-top:12px;padding-top:10px;border-top:1px solid #222;">
+            <label for="d-poll-key" style="display:block;font-size:10px;color:#888;margin-bottom:4px;">
+              <span class="tip tip--wide" tabindex="0" data-tip="Pays for the BRAIN's OWN Pollinations use — the reference images she looks up to learn what a thing looks like, and her drawing. ⛔ It is NEVER used for a visitor's chat image: that spends the visitor's own key from their own browser, or runs anonymous. Leave this empty and her look-ups run on the anonymous free tier, which is the default and fully supported — set it only if you want to spend pollen on her learning to get faster or higher-quality references. Stored on the box, never sent to any client, never returned by the API, and it survives a fresh walk because it is a credential and not training state.">Pollinations key — <b>her look-ups only</b></span>
+              <span id="d-poll-key-state" style="margin-left:6px;font-family:monospace;color:#555;">anonymous</span>
+            </label>
+            <div style="display:flex;gap:6px;">
+              <input id="d-poll-key" type="password" placeholder="paste key — or leave empty for anonymous" autocomplete="off"
+                     style="flex:1;min-width:0;background:#111;color:#ddd;border:1px solid #333;border-radius:4px;padding:4px 8px;font-size:10px;font-family:monospace;">
+              <button id="d-poll-key-save" style="background:#1a1a1a;color:#22c55e;border:1px solid #333;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;">save</button>
+              <button id="d-poll-key-clear" style="background:#1a1a1a;color:#e0533a;border:1px solid #333;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:10px;">clear</button>
+            </div>
+            <div style="margin-top:4px;font-size:9px;color:#666;line-height:1.4;">
+              Empty = anonymous free tier (default). Visitors' chat images always use their own key or anonymous — never this one.
+            </div>
+          </div>
         </div>
         <!-- Live single-cell RE-TEACH (admin-only). Surgically retrains one
              subject/grade cell on the running brain with NO reset — POST
@@ -3333,6 +3354,59 @@
         setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 3000);
         refreshMilestone();
       });
+    })();
+
+    // ── ADMIN Pollinations key — HER lane only ──────────────────────────
+    // Two lanes, two wallets. This key pays for the BRAIN's own reference
+    // look-ups and drawing. A visitor's chat image is billed to that
+    // visitor's own key, or runs anonymous. The server never returns the
+    // key itself — only whether one is set, where it came from, and its
+    // last four characters — so a credential cannot leak back out through
+    // the dashboard it was typed into.
+    (function wirePollinationsKey() {
+      const input = document.getElementById('d-poll-key');
+      const saveBtn = document.getElementById('d-poll-key-save');
+      const clearBtn = document.getElementById('d-poll-key-clear');
+      const stateEl = document.getElementById('d-poll-key-state');
+      if (!input || !saveBtn || !clearBtn) return;
+
+      function render(s) {
+        if (!stateEl) return;
+        if (s && s.set) {
+          stateEl.textContent = `keyed ${s.hint || ''}${s.source === 'env' ? ' (from env)' : ''}`;
+          stateEl.style.color = '#22c55e';
+        } else {
+          stateEl.textContent = 'anonymous';
+          stateEl.style.color = '#555';
+        }
+      }
+
+      async function refresh() {
+        try { render(await (await fetch('/pollinations-key')).json()); }
+        catch { /* admin lane unreachable — leave the last known state visible */ }
+      }
+
+      async function send(key) {
+        const prev = stateEl ? stateEl.textContent : '';
+        if (stateEl) { stateEl.textContent = 'saving…'; stateEl.style.color = '#f59e0b'; }
+        try {
+          const r = await fetch('/pollinations-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key }),
+          });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          render(await r.json());
+          input.value = '';   // never leave a credential sitting in the field
+        } catch (e) {
+          if (stateEl) { stateEl.textContent = `failed — ${prev}`; stateEl.style.color = '#e0533a'; }
+        }
+      }
+
+      saveBtn.addEventListener('click', () => send(input.value || ''));
+      clearBtn.addEventListener('click', () => send(''));
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') send(input.value || ''); });
+      refresh();
     })();
 
     // Apply auto-advance toggle state to the checkbox UI. Centralized so
