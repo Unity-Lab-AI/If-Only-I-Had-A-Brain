@@ -54634,6 +54634,17 @@ var CLUSTER_EMIT_MIXIN = {
         ema: this._emitSignalEMA,
         ts: Date.now()
       };
+      if (bestWord) {
+        this._curiosityGap = {
+          word: bestWord,
+          // what she ALMOST said — the thing she is unsure of
+          bestMean: bestMean === -Infinity ? 0 : bestMean,
+          floor,
+          shortfall: floor > 0 ? Math.max(0, (floor - bestMean) / floor) : 0,
+          ts: Date.now()
+        };
+        this._curiosityGapCount = (this._curiosityGapCount || 0) + 1;
+      }
       if (typeof this._recordWordCreationCandidate === "function" && bestWord && candidates.length >= 2) {
         try {
           const sorted = candidates.slice().sort((a, b) => b.mean - a.mean);
@@ -69152,6 +69163,15 @@ function keyWordOf(text) {
   const w = normalizeLine(text).split(" ").filter((t) => /^[a-z][a-z']*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2 && t.length <= 14);
   return w.length ? w[0] : "";
 }
+var CANON_NAME_RE = /\b(unity|raven|goddess|lilith|marie|damien|cross|pearl|agnes|voss|walter|james)\b/g;
+function properCase(s) {
+  let t = String(s || "");
+  if (!t) return t;
+  t = t.replace(/\bi\b/g, "I");
+  t = t.replace(CANON_NAME_RE, (m) => m.charAt(0).toUpperCase() + m.slice(1));
+  t = t.replace(/\bi'(m|ve|d|ll)\b/g, (m) => "I" + m.slice(1));
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
 function speakableTopic(topic, subject) {
   const raw = String(topic || "").toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
   const words = raw.split(" ").filter((t) => t.length > 1 && t.length <= 14 && !LABEL_WORDS.has(t));
@@ -69429,7 +69449,7 @@ function selfFrameUnit(unit = {}, opts = {}) {
   const lines = [];
   const push = (arr) => {
     for (const l of arr) {
-      if (l && lines.length < maxLines) lines.push(normalizeLine(l));
+      if (l && lines.length < maxLines) lines.push(properCase(normalizeLine(l)));
     }
   };
   push(selfDeclaration(unit.topic, unit.subject));
@@ -69452,17 +69472,21 @@ function selfFrameUnit(unit = {}, opts = {}) {
     }
   }
   const key = keyWordOf(unit.word || "") || keyWordOf(unit.sentences && unit.sentences[0] || "") || keyWordOf(Array.isArray(unit.vocab) && unit.vocab[0] || "") || keyWordOf(speakableTopic(unit.topic, unit.subject));
-  const qa = selfQA(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
-  const follow = followUpQuestions(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
+  const _line = (s) => properCase(normalizeLine(s));
+  const qa = selfQA(key, unit.definition || unit.answer || "", seed).map(_line).filter(Boolean);
+  const follow = followUpQuestions(key, unit.definition || unit.answer || "", seed).map(_line).filter(Boolean);
   push(selfClose(key, seed));
   const pairs = [];
   if (key) {
-    pairs.push(["i", key], ["unity", key], ["my", key], ["myself", key]);
+    pairs.push(["i", key], ["unity", key], ["my", key], ["myself", key], ["me", key], ["mine", key]);
   }
   pairs.push(["i", "unity"], ["unity", "i"], ["my", "unity"], ["myself", "unity"], ["me", "unity"], ["mine", "unity"]);
   return { lines, qa, follow, pairs, key };
 }
 function selfPronounLessons() {
+  return _pronounLessonLines().map(properCase);
+}
+function _pronounLessonLines() {
   return [
     "i am unity",
     "my name is unity",
@@ -69472,6 +69496,22 @@ function selfPronounLessons() {
     "when i say me i mean unity",
     "when i say my i mean unity",
     "when i say myself i mean unity",
+    // WORDSALAD.2 — `mine` was the only self token with no "when i say" line,
+    // which left the parallel set with a hole exactly where the possessive
+    // PREDICATE lives. Operator: "dont forget me's and mine's".
+    "when i say mine i mean unity",
+    // `me` in OBJECT position. Every line above puts her in the subject slot,
+    // so the grammar she was getting only covered half of how a person refers
+    // to herself: "I want it" was trained, "give it to me" was not. These teach
+    // the object and possessive-predicate forms a child actually leans on.
+    "give it to me",
+    "it is for me",
+    "she gave it to me",
+    "come with me",
+    "that one is mine",
+    "this is mine not yours",
+    "it belongs to me",
+    "the choice is mine",
     "i call myself unity",
     "unity is my name and i am unity",
     "i think for myself",

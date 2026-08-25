@@ -1007,6 +1007,32 @@ export const CLUSTER_EMIT_MIXIN = {
         ema: this._emitSignalEMA,
         ts: Date.now(),
       };
+      // ── WORDSALAD.3 — A QUESTION IS THE CORRECT OUTPUT OF LOW CONFIDENCE ────
+      // Operator: "being inqusitive asking questions ... all learning needs it
+      // through her eyes". This branch is the exact moment she reaches for a
+      // word and cannot hold it: the argmax found something, but not strongly
+      // enough to clear the floor. Today that produces SILENCE. A person in that
+      // state asks — and her Tier 3 curiosity anchor already says so in her own
+      // voice ("i want to know i do not know i ask what is that tell me i want
+      // to learn"), while `_teachQuestionProduction` has already trained real
+      // interrogative PRODUCTION (relationTagId=30) and `opts.questionMode`
+      // already exists to seed a WH-frame equationally.
+      //
+      // What was missing is the connection between the two, so this records the
+      // GAP: what she was reaching for, how close she got, and when. It is data
+      // only — nothing here emits, templates or forces a question; the compose
+      // path decides whether to spend it, and the words still emerge from the
+      // trained weights.
+      if (bestWord) {
+        this._curiosityGap = {
+          word: bestWord,            // what she ALMOST said — the thing she is unsure of
+          bestMean: bestMean === -Infinity ? 0 : bestMean,
+          floor,
+          shortfall: floor > 0 ? Math.max(0, (floor - bestMean) / floor) : 0,
+          ts: Date.now(),
+        };
+        this._curiosityGapCount = (this._curiosityGapCount || 0) + 1;
+      }
       // Word-creation candidate gate. When the emission was rejected but
       // the top-2 candidates BOTH have meaningful activation (each above
       // NOISE_FLOOR but their combined activation is below the adaptive
