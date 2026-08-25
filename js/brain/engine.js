@@ -118,6 +118,8 @@ export class UnityBrain extends EventEmitter {
     this.endocrine = new EndocrineSystem();
     this.glands = new GlandLayer({ endocrine: this.endocrine });
     this.endocrine.setGlands(this.glands);
+    // ENDO-DRUG.1 — substances act THROUGH her transmitters, not around them.
+    this.drugScheduler.setEndocrine(this.endocrine);
     this.introspection = new IntrospectionDrive();
     this.brainParams = getBrainParams(this.persona, this.drugScheduler, undefined, this.endocrine);
     const arousal = this.brainParams.arousalBaseline || 0.9;

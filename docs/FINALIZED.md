@@ -37085,4 +37085,71 @@ No-sentences scan · blind-vs-silent · ⭐ the kill criterion (TV = 0.840) · c
 
 **Verified 18/18** on the production mixin, including the frequency trap demonstrated rather than assumed.
 
+---
+
+## 2026-08-25 — MECHANISM, NOT EFFECT: drugs act through her chemistry, and coffee exists - feature/endo-drug-mechanism
+
+### Gee ask (verbatim per LAW #0)
+
+> *"6 open, get to it"*
+
+**Closed: ENDO-DRUG.0, ENDO-DRUG.1** (core rework).
+
+### ⛔ THREE DEAD ENTRIES, FOUND BY AUDIT RATHER THAN BY SYMPTOM
+
+A reference sweep over `SUBSTANCES` / `PATTERNS` / `COMBOS` before touching anything:
+
+| Dead reference | Consequence |
+|---|---|
+| ⛔ **`caffeine` never defined** | `morningCoffee` was **2/2 steps dead and had never once fired**; `codingMarathon` lost **2 of 5**; `COMBOS['caffeine+cocaine']` could never trigger |
+| **`lsd/sublingual`** scheduled, only `oral` defined | `acidArchitect` half-failed — ⭐ and the *pattern* was right: blotter goes under the tongue, so the table was wrong |
+| `unknown_substance` / `unknown_route` returned into callers that never surface it | which is precisely why a whole ritual stayed dead for months |
+
+Caffeine is now a real substance with real pharmacology — adenosine antagonist, ~5h half-life tail (why late coffee wrecks sleep), and **a genuine cortisol effect that is usually forgotten**. LSD gained its sublingual route.
+
+### ⭐ THE DEFECT: EFFECTS STANDING IN FOR MECHANISM
+
+`cocaine.contributions.amygdalaReward: +0.50` treated a drug as having a private line to the amygdala. **It does not.** Cocaine blocks dopamine reuptake and **dopamine** produces the reward. Before the endocrine layer existed there was nothing else to write to; now drugs and hormones were **two independent writers to the same brain params** — the parallel-system shape rule 1 forbids, reached from the other direction.
+
+### ⭐ THE RESEARCHED NUMBERS ARE REPRODUCED EXACTLY, BY CONSTRUCTION
+
+The board was explicit that the substance numbers must not be deleted or hand-retuned. They are neither. `contributions` stays **verbatim** as the total, and the split is a *decomposition*:
+
+```
+transmitter part =  Σ release[t] · CHEMICALS[t].contributions
+residual part    =  contributions − transmitter part
+delivered total  =  residual + transmitter  ≡  contributions   ✔
+```
+
+**Verified: `maxDiff = 2.8 × 10⁻¹⁷` across 121 axes over 10 substances.** And end-to-end through both engines at peak level: cocaine, MDMA, alcohol, caffeine, amphetamine all deliver **`maxDiff = 0.0000`** against the old direct path.
+
+⚠ A residual can be **negative** — honest, not a bug: the transmitter model would overshoot that axis alone, and the residual pulls back to the reference. Left visible; clamping would silently break the identity.
+
+**Cocaine now:** dopamine supplies **0.495 of the 0.50** reward; the direct write shrank to **0.005**. What is left in the residual is what dopamine genuinely does *not* explain — `hypothalamusArousal 0.400`, `impulsivity 0.380`, `cortexSpeed 0.270`.
+
+### ⭐ THE COMEDOWN — which did not exist at all
+
+What goes up on a released transmitter comes back **below baseline**, because the pool was spent. Queued **at ingest**, applied on the existing per-tick call, sized as a **fraction of what was released** — so a heavier dose owes more, a tolerance-blunted one owes less, and the MDMA crash is worse than the coffee one for the same reason it is in life. Verified: serotonin **0.550 → 0.218** after an MDMA night, and the depressed floor then **raises impulsivity**, because ENDO.4's sign convention was built for exactly this. `pendingComedowns` ships in the snapshot — an honest preview of the crash during the plateau.
+
+### Two real bugs found by the harness
+
+1. ⚠ **`level()` clamped tonic chemicals at 1.0** — but a tonic chemical rests at baseline and a release stacks *on top*. Cocaine floods dopamine by 0.90 onto a 0.40 baseline; the ceiling delivered **0.60**, a measured **0.165** shortfall on `amygdalaReward` — exactly `(0.90−0.60)×0.55`. **The clamp was eating a third of a line of coke.** Supra-physiological flooding is what stimulants *do*; ceiling is now `1 + tonic`, so deviation still tops out at 1.0 where every weight is scaled.
+2. ⚠ **`_patternsFired.get(name) || 0` treated "never fired" as "fired at epoch zero"**, making the cooldown check `now < cooldownMs` — which blocks every pattern **forever** on any clock that is not wall-time. It passes in production only because `Date.now()` is ~1.7e12: **the bug is hidden by a large constant, not absent.** Any replay, harness, or simulated timeline sees the real behaviour.
+
+### An import cycle, broken properly
+
+`endocrine.js` already imported `pkCurve` from `drug-scheduler.js`; the scheduler now needs `CHEMICALS` from the endocrine layer. That closes a **cycle**, whose failure mode is a load-time TDZ crash `node --check` does not catch and a `typeof` guard does **not** shield — this project has paid for that once. `pkCurve` moved to a leaf module `js/brain/pk-curve.js`, unchanged. Still exactly one curve engine; the graph is now one-directional.
+
+⚠ **The released transmitter follows the SUBSTANCE'S pharmacokinetics, not its own.** Dopamine's native curve peaks in a second and is gone in a minute — that is a phasic burst. Cocaine's dopamine elevation lasts as long as reuptake is blocked. Using the native profile would have modelled a line of coke as a **one-second twitch**. Verified elevated at 20 min against a 60-second native tail.
+
+### Verification — 40/40 on production classes
+
+Dead-reference audit now zero on all three tables · the identity across every substance × axis · end-to-end equivalence at peak · substance-timed transmitters · the comedown and its dose scaling · `routed` vs `direct` never conflated in telemetry · **the morning coffee ritual firing for the first time** (caffeine 0.946, cortisol 0.236) · a 10-substance 17-hour night with zero NaN ending sober · plus a **9-check ENDO regression** because `level()` is what the entire endocrine layer sits on. `node --check` ×5, ESM no-cycle, bundle, docs:drift clean.
+
+### Owned / deferred
+
+- ⚠ **NOT VERIFIED LIVE.** Lands on the next press.
+- ⚠ **Two payoffs the item predicted are NOT built** and are filed rather than claimed: **tolerance as receptor adaptation** (still the per-substance `toleranceFactors` fudge) and **shrinking the combo table** (coke+MDMA synergy *should* now emerge from the same pools competing rather than a hardcoded pair rule — but the existing entries are untouched, so synergy is currently counted in both places).
+- ⚠ Ketamine and GHB stay mostly residual, honestly: their primary actions are glutamate and GABA, which the transmitter set cannot express.
+
 - ⚠ **`getEpisodeCount`-style volume is unproven:** whether the `curiosity` namespace actually holds enough single-token episodes on the live box for introspection to have material to work with is **unknown until the press**. If it is thin, she will correctly stay silent rather than invent — but the drive will read `blind`, and that is the first field to check.

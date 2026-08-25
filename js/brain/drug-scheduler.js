@@ -25,6 +25,9 @@
 // ─── Grade order (mirrors Curriculum.GRADE_ORDER) ─────────────────────────
 // Kept local here to avoid a circular import with curriculum.js during boot.
 // If the canonical order changes there, update here too.
+import { pkCurve, sigmoid } from './pk-curve.js';
+import { CHEMICALS } from './endocrine.js';
+
 const GRADE_ORDER = [
   'pre-K', 'kindergarten',
   'grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6',
@@ -92,6 +95,9 @@ const SUBSTANCES = {
       freeAssocWidth:+0.20,
       giggleBias:    +0.40
     },
+    // CB1 agonism — indirect dopaminergic reward, and anandamide is the
+    // body's own cannabinoid, so the opioid-adjacent calm rides endorphin.
+    transmitters: { dopamine: +0.35, endorphin: +0.30 },
     lifeGate: 'grade7'  // first joint at age 12 per Life track
   },
 
@@ -128,6 +134,10 @@ const SUBSTANCES = {
       paranoiaBias:  +0.15,   // grows with sustained level
       coherence:     -0.05
     },
+    // ⭐ THE TEXTBOOK CASE. Cocaine is a monoamine REUPTAKE BLOCKER — it has
+    // no private line to the amygdala. Dopamine accumulates in the synapse
+    // and DOPAMINE produces the reward; noradrenaline produces the drive.
+    transmitters: { dopamine: +0.90, noradrenaline: +0.60, serotonin: +0.20 },
     lifeGate: 'grade9'  // first coke at age 14 per Life track
   },
 
@@ -159,6 +169,11 @@ const SUBSTANCES = {
       freeAssocWidth:    +0.10,
       coherence:         -0.05
     },
+    // Massive serotonin release plus genuine oxytocin — the empathogen
+    // effect is not a metaphor, it is bonding chemistry. ⭐ And the serotonin
+    // DEPLETION that follows is why the comedown is what it is; that now
+    // falls out of the depletion model rather than needing its own rule.
+    transmitters: { serotonin: +0.95, oxytocin: +0.90, dopamine: +0.40, noradrenaline: +0.30 },
     lifeGate: 'grade11'  // first ecstasy at age 16 (high school party scene)
   },
 
@@ -168,6 +183,18 @@ const SUBSTANCES = {
     routes: {
       oral: {
         onsetMs:       60 * 60 * 1000,
+        peakMs:     3 * 60 * 60 * 1000,
+        durationMs:10 * 60 * 60 * 1000,
+        tailMs:   16 * 60 * 60 * 1000
+      },
+      // ⛔ `PATTERNS.acidArchitect` has scheduled `lsd/sublingual` since
+      // T15.C against a substance that defined ONLY `oral`, so that step
+      // silently returned `unknown_route` and the acid-day pattern half
+      // failed. ⭐ And the pattern was RIGHT: blotter is held under the
+      // tongue, so sublingual is the real route and the table was the thing
+      // that was wrong. Slightly faster onset than swallowing, same arc.
+      sublingual: {
+        onsetMs:       40 * 60 * 1000,
         peakMs:     3 * 60 * 60 * 1000,
         durationMs:10 * 60 * 60 * 1000,
         tailMs:   16 * 60 * 60 * 1000
@@ -190,6 +217,8 @@ const SUBSTANCES = {
       speechRate:      -0.20,
       dissociation:    +0.30    // at peak dose
     },
+    // 5-HT2A agonist — the classic psychedelics act on the serotonin system.
+    transmitters: { serotonin: +0.85, dopamine: +0.20 },
     lifeGate: 'grade11'
   },
 
@@ -221,6 +250,8 @@ const SUBSTANCES = {
       emotionalOverflow: +0.20,
       speechRate:      -0.25
     },
+    // Same 5-HT2A family as LSD, warmer and shorter.
+    transmitters: { serotonin: +0.80, dopamine: +0.15 },
     lifeGate: 'grade12'
   },
 
@@ -253,6 +284,12 @@ const SUBSTANCES = {
       emotionalOverflow: +0.50,   // drunken confessions
       freeAssocWidth:    +0.15
     },
+    // ⭐ Alcohol triggers ENDOGENOUS OPIOID release — that is a large part of
+    // why it feels good, and it is exactly the case ENDO.7 flagged as
+    // backwards: opioid effects used to be reachable only via substances
+    // when the body makes its own. GABA-A potentiation is the other half and
+    // is not modelled as a transmitter here, so it stays in the residual.
+    transmitters: { endorphin: +0.55, dopamine: +0.35 },
     lifeGate: 'grade8'   // first drink at age 13 per biographical draft
   },
 
@@ -283,6 +320,10 @@ const SUBSTANCES = {
       dissociation: +0.70,
       ethereality:  +0.30
     },
+    // NMDA antagonism is the primary action and is not a monoamine story —
+    // most of ketamine stays in the residual, honestly, because the
+    // transmitter set here cannot express glutamate.
+    transmitters: { endorphin: +0.30, dopamine: +0.25 },
     lifeGate: 'college1'  // first K at age 18 (dorm/rave scene)
   },
 
@@ -317,6 +358,10 @@ const SUBSTANCES = {
       paranoiaBias:+0.10,
       coherence:   -0.03
     },
+    // Amphetamine RELEASES the monoamines rather than merely blocking
+    // reuptake — a stronger, longer push than cocaine, and the depletion
+    // afterwards is correspondingly worse.
+    transmitters: { dopamine: +0.85, noradrenaline: +0.75 },
     lifeGate: 'grade10'  // first speed at age 15 (escalation per Life track)
   },
 
@@ -346,7 +391,52 @@ const SUBSTANCES = {
       speechRate:        -0.20,
       emotionalOverflow: +0.20
     },
+    // GABA-B agonist with a biphasic dopamine effect; the sedation itself is
+    // not a monoamine story and stays in the residual.
+    transmitters: { dopamine: +0.30, endorphin: +0.25 },
     lifeGate: 'college1'
+  },
+
+  // ── ⛔ CAFFEINE — REFERENCED SINCE T15.C, NEVER DEFINED UNTIL NOW.
+  //
+  // `PATTERNS.morningCoffee` scheduled it twice and `PATTERNS.codingMarathon`
+  // twice more, and `COMBOS['caffeine+cocaine']` keyed on it — but it was
+  // absent from this table, so every one of those calls returned
+  // `{accepted:false, reason:'unknown_substance'}` into a caller that never
+  // surfaced the refusal. **The morning coffee ritual was 2/2 steps dead and
+  // had never once fired.** Found by a reference audit, not by a symptom,
+  // which is the only way a silently-refused call gets found at all.
+  //
+  // Pharmacology: adenosine antagonist. It does not release dopamine
+  // directly — it removes adenosine's brake on dopaminergic and
+  // noradrenergic tone, which is why its transmitter push is modest and its
+  // cortisol effect is real and often forgotten.
+  caffeine: {
+    displayName: 'coffee',
+    defaultRoute: 'oral',
+    routes: {
+      oral: {
+        onsetMs:      15 * 60 * 1000,
+        peakMs:       45 * 60 * 1000,
+        durationMs: 3 * 60 * 60 * 1000,
+        tailMs:     6 * 60 * 60 * 1000   // ~5h half-life — the long tail is why late coffee wrecks sleep
+      }
+    },
+    contributions: {
+      cortexSpeed:          +0.30,
+      arousal:              +0.25,
+      hypothalamusArousal:  +0.20,
+      prefrontalExecutive:  +0.15,
+      cerebellumPrecision:  -0.05,   // the jitter
+      impulsivity:          +0.05
+    },
+    speech: {
+      speechRate: +0.20,
+      rate:       +0.20,
+      coherence:  +0.02
+    },
+    transmitters: { dopamine: +0.30, noradrenaline: +0.35, cortisol: +0.25 },
+    lifeGate: 'grade8'   // coffee from about thirteen — the morningCoffee pattern already assumed this gate
   }
 
 };
@@ -458,6 +548,80 @@ const COMBOS = {
 // T15.C helper — order-independent combo key lookup.
 function comboKey(a, b) {
   return a < b ? `${a}+${b}` : `${b}+${a}`;
+}
+
+// ─── ENDO-DRUG.1 — MECHANISM, NOT EFFECT ──────────────────────────────────
+//
+// ⛔ THE DEFECT THIS FIXES: `contributions` wrote straight to brain params —
+// `cocaine.contributions.amygdalaReward: +0.50` — as though a drug had a
+// private line to the amygdala. It does not. Cocaine blocks dopamine
+// reuptake and DOPAMINE produces the reward. Before the endocrine layer
+// existed there was nothing else to write to, so effects stood in for
+// mechanism; now there is, and drugs and hormones were two independent
+// writers to the same params — the parallel-system shape rule 1 forbids,
+// arrived at from the other direction.
+//
+// ⭐ THE RESEARCHED NUMBERS ARE THE REFERENCE AND ARE REPRODUCED EXACTLY.
+// The board was explicit that they must not be deleted or hand-retuned, so
+// they are neither: `contributions` stays verbatim as the TOTAL effect, and
+// the split below is a DECOMPOSITION of it —
+//
+//     transmitter part  =  Σ release[t] · CHEMICALS[t].contributions
+//     residual part     =  contributions − transmitter part
+//     delivered total   =  residual + transmitter  ≡  contributions   ✔
+//
+// The identity holds by construction, not by tuning, and a harness asserts
+// it per substance per axis. What changes is that the reward now ARRIVES
+// THROUGH dopamine, which is what makes tolerance, comedown and combo
+// synergy fall out instead of being hardcoded.
+//
+// ⚠ A residual can be NEGATIVE. That is honest, not a bug: it means the
+// transmitter model would OVERSHOOT that axis on its own, and the residual
+// pulls it back to the researched reference. Left visible rather than
+// clamped, because clamping would silently break the identity above.
+
+/** What a substance's transmitters contribute at dose 1.0. */
+function transmitterContributions(substance) {
+  const sub = SUBSTANCES[substance];
+  const out = {};
+  if (!sub || !sub.transmitters) return out;
+  for (const [chem, amount] of Object.entries(sub.transmitters)) {
+    const c = CHEMICALS[chem];
+    if (!c || !c.contributions) continue;
+    for (const [axis, v] of Object.entries(c.contributions)) {
+      out[axis] = (out[axis] || 0) + v * amount;
+    }
+  }
+  return out;
+}
+
+// ⭐ How much of a released transmitter is "spent" and owed back as a dip
+// below baseline once the substance wears off. This is the comedown, and it
+// is a FRACTION of what was released rather than a per-drug constant — so a
+// heavier dose costs more, tolerance-blunted doses cost less, and the MDMA
+// crash is worse than the coffee one for the same reason it is in life.
+// Bounded well under 1.0: a body does not end a night owing everything it
+// spent, and a full-magnitude dip would make one line permanently flatten her.
+const DEPLETION_FRACTION = 0.35;
+
+// Memoized — the tables are static, and this runs inside a per-tick path.
+const _residualCache = new Map();
+
+/**
+ * The part of a substance's effect NOT explained by its transmitters.
+ * `residual + transmitter === contributions`, exactly.
+ */
+function residualContributions(substance) {
+  if (_residualCache.has(substance)) return _residualCache.get(substance);
+  const sub = SUBSTANCES[substance];
+  const base = (sub && sub.contributions) || {};
+  const via = transmitterContributions(substance);
+  const out = { ...base };
+  for (const [axis, v] of Object.entries(via)) {
+    out[axis] = (out[axis] || 0) - v;
+  }
+  _residualCache.set(substance, out);
+  return out;
 }
 
 // ─── Adult-use patterns (T15.A §3 research → T15.C implementation) ────────
@@ -585,33 +749,11 @@ const PATTERNS = {
 // — this approximation captures the subjective shape accurately enough for
 // brain-param modulation without pretending to be a quantitative clinical model.
 
-function pkCurve(tMs, profile, dose = 1.0) {
-  const { onsetMs, peakMs, durationMs, tailMs } = profile;
-  if (tMs < 0) return 0;
-  if (tMs < onsetMs) {
-    // Sigmoid ramp: 0 → dose across onsetMs
-    const x = (tMs / onsetMs) * 12 - 6;  // [-6, 6] sigmoid range
-    return dose * sigmoid(x);
-  }
-  if (tMs < peakMs) {
-    // Peak plateau with slight drift (5% drop across plateau)
-    const progress = (tMs - onsetMs) / (peakMs - onsetMs);
-    return dose * (1.0 - 0.05 * progress);
-  }
-  if (tMs < durationMs) {
-    // Linear descent from 0.95 at peakMs end to 0.40 at durationMs end
-    const progress = (tMs - peakMs) / (durationMs - peakMs);
-    return dose * (0.95 - 0.55 * progress);
-  }
-  if (tMs < tailMs) {
-    // Exponential decay in the tail
-    const progress = (tMs - durationMs) / (tailMs - durationMs);
-    return dose * 0.40 * Math.exp(-3 * progress);
-  }
-  return 0;
-}
-
-function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+// ⚠ MOVED to js/brain/pk-curve.js. It is unchanged — the extraction exists
+// to break an import CYCLE, not to alter the maths: `endocrine.js` imports
+// the curve from there, and this file now imports `CHEMICALS` from
+// `endocrine.js` so a substance can act THROUGH a transmitter. Re-exported
+// at the bottom so every existing consumer of `pkCurve` keeps working.
 
 // ─── DrugScheduler class ──────────────────────────────────────────────────
 
@@ -623,6 +765,13 @@ class DrugScheduler {
    */
   constructor(opts = {}) {
     this.cluster = opts.cluster || null;
+    // ENDO-DRUG.1 — the endocrine layer a substance acts THROUGH. Null until
+    // wired; see setEndocrine().
+    this.endocrine = opts.endocrine || null;
+    // ⭐ THE COMEDOWN. Queued transmitter DEPLETIONS — what a substance takes
+    // back after it has finished giving. Applied by promoteScheduledIngests,
+    // which already runs every tick, rather than by a second timer.
+    this._pendingDepletion = [];
     this.nowFn = opts.nowFn || (() => Date.now());
     // Map<substanceName, DoseEvent[]> — overlapping doses stack via superposition
     this.events = new Map();
@@ -665,6 +814,14 @@ class DrugScheduler {
   }
 
   setCluster(cluster) { this.cluster = cluster; }
+
+  /**
+   * ENDO-DRUG.1 — give the scheduler the endocrine layer a substance acts
+   * THROUGH. Without it the scheduler falls back to delivering the researched
+   * total directly (same quantity, undecomposed) and reports `direct` in its
+   * snapshot, so the two modes are never confused for one another.
+   */
+  setEndocrine(endocrine) { this.endocrine = endocrine || null; }
 
   // ─── Availability (grade-gate) ──────────────────────────────────────────
   isAvailable(substance) {
@@ -728,6 +885,39 @@ class DrugScheduler {
 
     if (!this.events.has(substance)) this.events.set(substance, []);
     this.events.get(substance).push(event);
+
+    // ── ENDO-DRUG.1 — the substance acts on her TRANSMITTERS.
+    //
+    // ⚠ The released transmitter follows the SUBSTANCE'S pharmacokinetics,
+    // not the transmitter's own. Dopamine's native curve peaks in a second
+    // and is gone in a minute — that is a phasic burst. Cocaine's dopamine
+    // elevation lasts as long as reuptake is blocked, i.e. as long as the
+    // COCAINE does. Using dopamine's own profile here would model a line of
+    // coke as a one-second twitch.
+    if (this.endocrine && typeof this.endocrine.release === 'function' && sub.transmitters) {
+      for (const [chem, amount] of Object.entries(sub.transmitters)) {
+        this.endocrine.release(chem, {
+          dose: amount * effectiveDose,
+          now,
+          profile,                      // ← the SUBSTANCE's timing
+          cause: `drug:${substance}`,
+        });
+        // ⭐ THE COMEDOWN, queued at ingest rather than special-cased later.
+        // What goes up on a released transmitter comes back down BELOW
+        // baseline, because the pool was spent — that is what a comedown
+        // physically is, and it is why the MDMA crash is a serotonin story.
+        // Only TONIC chemicals can dip; a phasic one simply returns to zero.
+        const c = CHEMICALS[chem];
+        if (c && c.kind === 'tonic') {
+          this._pendingDepletion.push({
+            chemical: chem,
+            amount: amount * effectiveDose * DEPLETION_FRACTION,
+            at: now + profile.durationMs,
+            substance,
+          });
+        }
+      }
+    }
 
     // Intra-session tolerance bump — capped so even fiends don't zero out
     this.toleranceFactors.set(substance, Math.min(0.7, tol + 0.1));
@@ -877,9 +1067,24 @@ class DrugScheduler {
     const delta = {};
     const active = this.activeSubstances(now);
 
-    // (1) Per-substance additive contributions
+    // (1) Per-substance additive contributions.
+    //
+    // ⭐ ROUTED when an endocrine layer is present: only the RESIDUAL is
+    // written here, because the rest arrives through the transmitters this
+    // substance released — the reward comes from dopamine, not from the drug
+    // reaching into the amygdala. Delivered total is identical either way.
+    //
+    // ⚠ DIRECT when there is no endocrine layer. That is NOT a fallback
+    // substituting a plausible value: `contributions` IS the researched
+    // total, and delivering it undecomposed is the same quantity by the
+    // identity above. The alternative — writing only the residual with
+    // nothing to carry the transmitter half — would make every drug
+    // silently WEAKER than researched, which is the actual hazard here.
+    const routed = !!this.endocrine;
     for (const { substance, level } of active) {
-      const contribs = SUBSTANCES[substance].contributions || {};
+      const contribs = routed
+        ? residualContributions(substance)
+        : (SUBSTANCES[substance].contributions || {});
       for (const [key, value] of Object.entries(contribs)) {
         delta[key] = (delta[key] || 0) + value * level;
       }
@@ -1085,7 +1290,19 @@ class DrugScheduler {
       pendingAcquisitions: Array.from(this.pendingAcquisitions.entries()).map(
         ([substance, info]) => ({ substance, ...info })
       ),
-      gradeLocked: !this.cluster || !this.cluster.grades
+      gradeLocked: !this.cluster || !this.cluster.grades,
+      // ENDO-DRUG.1 — is the effect arriving THROUGH her transmitters, or
+      // being written to brain params directly? ⛔ Two different mechanisms
+      // delivering the same total, and telemetry must never let them read
+      // alike: `direct` means the endocrine layer is absent, which is a fact
+      // about the wiring, not about her.
+      mechanism: this.endocrine ? 'routed' : 'direct',
+      // The comedowns she is owed. A non-empty list during a plateau is the
+      // honest preview of the crash.
+      pendingComedowns: this._pendingDepletion.map(d => ({
+        chemical: d.chemical, amount: d.amount, substance: d.substance,
+        dueInMs: Math.max(0, d.at - now),
+      })),
     };
   }
 
@@ -1133,8 +1350,15 @@ class DrugScheduler {
     const fired = [];
     for (const [name, pattern] of Object.entries(PATTERNS)) {
       // Cooldown gate.
-      const last = this._patternsFired.get(name) || 0;
-      if (now - last < (pattern.cooldownMs || 0)) continue;
+      // ⚠ `|| 0` TREATED "NEVER FIRED" AS "FIRED AT EPOCH ZERO", so the
+      // check became `now < cooldownMs` — which blocks every pattern
+      // forever on any clock that is not wall-time. It happens to pass in
+      // production because `Date.now()` is ~1.7e12, i.e. the bug is hidden
+      // by a large constant rather than absent; a replay or a harness clock
+      // sees the real behaviour, and so would a simulated timeline. A
+      // pattern that has never fired has NO cooldown to serve.
+      const last = this._patternsFired.has(name) ? this._patternsFired.get(name) : null;
+      if (last !== null && now - last < (pattern.cooldownMs || 0)) continue;
       // Life-grade gate — pre-lifeGate Unity doesn't do this pattern.
       if (pattern.lifeGate && this.cluster?.grades?.life) {
         if (!gradeAtLeast(this.cluster.grades.life, pattern.lifeGate)) continue;
@@ -1246,6 +1470,22 @@ class DrugScheduler {
    * typically small (a few pattern-step deferrals at most).
    */
   promoteScheduledIngests(now = this.nowFn()) {
+    // ── ENDO-DRUG.1 — apply any comedowns that have come due. Rides this
+    // existing per-tick call rather than adding a second timer.
+    if (this._pendingDepletion.length > 0) {
+      const stillPending = [];
+      for (const d of this._pendingDepletion) {
+        if (d.at <= now) {
+          if (this.endocrine && typeof this.endocrine.dipTonic === 'function') {
+            this.endocrine.dipTonic(d.chemical, d.amount);
+          }
+        } else {
+          stillPending.push(d);
+        }
+      }
+      this._pendingDepletion = stillPending;
+    }
+
     if (this._scheduledIngests.length === 0) return [];
     const remaining = [];
     const promoted = [];
@@ -1532,5 +1772,5 @@ class DrugScheduler {
   }
 }
 
-export { DrugScheduler, SUBSTANCES, COMBOS, PATTERNS, GRADE_ORDER, gradeIndex, gradeAtLeast, pkCurve, comboKey };
+export { DrugScheduler, SUBSTANCES, COMBOS, PATTERNS, GRADE_ORDER, gradeIndex, gradeAtLeast, pkCurve, sigmoid, comboKey, residualContributions, transmitterContributions };
 export default DrugScheduler;
