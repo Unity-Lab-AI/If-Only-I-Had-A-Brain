@@ -37593,3 +37593,48 @@ A true halt stays a true halt; `stop.bat` / `stop.sh` still use `/shutdown`. `wi
 - ⛔ **I first wrote the fix as "repoint the button at `/restart`" and only found `#btn-restart` — which already did exactly that — when I read the surrounding markup to fix the tooltip.** Had I not read the neighbours, I would have shipped the duplicate. **Reading the element I was told about, instead of the row it lives in, is how the redundancy would have entered.**
 - ⚠ **The literal ask is not what shipped**, and that is stated to Gee rather than buried here: he asked for the shutdown button to auto-start as a savestart; it is removed from the box instead, and the pre-existing savestart button is the one that survives there. Repointing remains a one-line change if he prefers the literal form.
 - ⚠ **NOT VERIFIED LIVE** — the box was down while this was written. Confirmation is Sponge's `start`, then the deployed dashboard rendering **no** `⏹ Stop Brain`.
+
+---
+
+## 2026-08-25 - ENDODARK: the absence message was the lie - feature/endodark-path
+
+### Gee ask (verbatim per LAW #0)
+
+> *"this aint working on local, whats up?"*
+
+(pasted with an all-zero memory panel plus `endocrine layer ABSENT — not wired this boot` and `introspective drive ABSENT — not wired this boot`)
+
+### What was actually wrong — ONE bug, and it was mine
+
+`html/dashboard.html` called `renderEndoPanel(s.endocrine)` and `renderIntroPanel(s.introspection)`. **The producer has never published at either path.** `getState()` (`server/brain-server/state.js:664`) attaches `consciousness: this._getConsciousnessState()`, and **both fields are returned from inside that function** (`:1965` and `:2000`) — so the wire path is `state.consciousness.endocrine`. The top-level reads were `undefined` **on every boot, on every box, since the panels shipped.**
+
+⛔ **This is worse than a dark panel, and that is the part worth keeping.** The absence branch was written by me, days earlier, specifically to stop a blank card reading as a healthy zero. Pointed at the wrong path it did something worse than the defect it replaced: it emitted a **confident false diagnosis** — *"not wired this boot"* — about a layer that is wired, running, and fully populated. **An instrument that says ABSENT when it means "I looked in the wrong place" is the same lie as one that says 0, just louder and more believable.**
+
+⚠ **A prose comment three lines above the panel asserted the wrong path in the same breath** — *"Every field below exists in state.endocrine because it was built with its instrument in the same commit."* It was not evidence, it was a claim, and it is exactly what made the bug survive review. Both that comment and the two `Consumes state.X` renderer headers said the wrong thing and are corrected.
+
+⛔ **Fourth instance of the producer/consumer name mismatch** (`meanVoltage`, `separability`, `defsLearnedPerHour`, now this) — and the first where **I introduced it inside the fix meant to prevent that whole class.**
+
+### The fix
+
+Read the real path: `const _cons = s.consciousness || null;` then `renderEndoPanel(_cons ? _cons.endocrine : null, !!_cons)`.
+
+⭐ **Deliberately NOT fixed by forwarding a duplicate to `state.endocrine`.** One value with two publication sites is precisely how these drift apart; the producer keeps sole ownership and the reader moves.
+
+⭐ **The absence verdict now carries its own address**, so this class self-reports next time: `consPresent` is passed separately so the renderers distinguish *"the broadcast carried no `consciousness` block at all"* (→ **"NOT a verdict on the layer"**) from *"the block is here and this layer genuinely is not in it"* (→ names the exact path it inspected). Two different causes, two different messages, neither reassuring.
+
+### The memory panel was NOT broken — measured, not assumed
+
+Read live off the running local brain while writing this: `working.items` **130** (`ela/kindergarten @_teachPhonemeBlending ×130`), `tier1.totalEpisodes` **6**, `tier1.recentSalienceAvg` **0.398**, `tier3.identityCount` **30** with `lastInjectedAt` stamping fresh every poll. ⭐ **The renderer's field names match the producer exactly** — `t1.totalEpisodes`, `t3.identityCount`, `t3.lastInjectedAt`, `t2.schemaCount` — and `updateDashboard()` runs both panels in one uninterrupted function with no early return between them, verified. `tier2.schemaCount 0` and `consolidation.passCount 0` are **genuinely zero** (nothing promoted yet; the pass interval is 5 min and the box had ~4 min uptime), not dark.
+
+⚠ **So a page still showing `episodes: 0` / `anchors: 0` after this lands is a STALE PAGE, not this bug** — hard-refresh first. If it survives a refresh it is a second, separate defect and gets its own hunt rather than being folded into this one.
+
+### Verified
+
+- **20/20 field parity against the LIVE payload** — every `e.*` read in `renderEndoPanel` (13) and every `i.*` read in `renderIntroPanel` (7) extracted from source and diffed against the running brain's actual `consciousness.endocrine` / `.introspection` keys. **Zero missing.** The panels render real data, not just a non-empty object.
+- No `s.endocrine` / `s.introspection` reads remain outside comments; both call sites and both signatures are 2-arg; divs **481/481**.
+- `_publicStateJson` is serialized from the **same** `getState()` object the WS broadcasts (`brain-server.js:11318` → `:11325`), so the snapshot used for this verification is the payload the dashboard receives — checked rather than assumed.
+
+### Owned
+
+- ⛔ **I shipped this.** The absence renderer and the false path went in together, in the same commit, with a comment asserting the path was correct. **Naming a path in prose is not evidence that it is the path.**
+- ⚠ **I truncated a JSON dump to 1500 chars and concluded `working` and `consolidation` had no producer.** They were simply past the cut. Caught by re-polling with the keys printed instead of the body — **a truncated read is not a negative result**, and I nearly filed two phantom findings on it.
