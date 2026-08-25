@@ -1035,6 +1035,12 @@ const SERVER_STATE_MIXIN = {
 
   _getProfilingState() {
     const now = Date.now();
+    // ONESHOT.1 — see the note on `throughput.uplink`. `null` means the profile
+    // has not run yet (it fires once at +150s), never "the loop is fine".
+    const _cpuProfile = (this._cpuProfile && Array.isArray(this._cpuProfile.top))
+      ? { at: this._cpuProfile.at, ageMs: Math.max(0, now - this._cpuProfile.at),
+          sampledMs: this._cpuProfile.sampledMs, top: this._cpuProfile.top.slice(0, 14) }
+      : null;
     const MB = 1024 * 1024;
     const r1 = (n) => Math.round(n);
     const r2 = (n) => Math.round(n * 100) / 100;
@@ -1208,6 +1214,21 @@ const SERVER_STATE_MIXIN = {
                 ? Math.max(0, Date.now() - this._boundPropStats.lastEmptyAt) : null,
             }
           : null,
+        // ⛔ ONESHOT.1 — ONE-SHOT MEASUREMENTS, AS FIELDS RATHER THAN LINES.
+        // Both of these existed ONLY in a console line, and both were missed
+        // for the same reason: the ring caps at 500 lines and the walk fills it
+        // in seconds (measured at ~55 lines/sec once SCALEWALK made definitions
+        // ~40× faster — a 500-line ring became a NINE SECOND window). A number
+        // you had to be watching for is not something this board can answer
+        // with later, which is the whole job of the board.
+        //   uplink   — a small RING, because the rate is not uniform: a 2.79GB
+        //              matrix averages lower than a 48MB one, so the size
+        //              travels with every entry and cannot be read apart.
+        //   cpuProfile — the RHYTHM3S self-profile's ranked self-time table,
+        //              which is how "what is eating the loop?" gets answered by
+        //              the VM instead of by inference.
+        uplink: Array.isArray(this._uplinkStats) && this._uplinkStats.length
+          ? this._uplinkStats.slice(-8) : null,
         // GATEGPU — gate probes relocated to the donor: gpu = graded on the
         // card, refused = lane busy/no donor (CPU graded instead), nullAck =
         // dispatch sent but no currents came back (CPU graded instead).
@@ -1298,6 +1319,9 @@ const SERVER_STATE_MIXIN = {
       const _totalMB = Math.floor(_os.totalmem() / 1048576);
       const _floor = process.env.DREAM_SAVE_MIN_FREE_MB !== undefined
         ? Number(process.env.DREAM_SAVE_MIN_FREE_MB) : 3072;
+      // ONESHOT.1 — the self-profile's ranked table, published so "what is
+      // eating the loop?" survives the console ring.
+      out.cpuProfile = _cpuProfile;
       out.hostRam = {
         freeMB: _freeMB,
         totalMB: _totalMB,

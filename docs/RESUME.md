@@ -1,6 +1,31 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — 58% OF THE MAIN THREAD WAS FEEDING AN ARRAY NOTHING READS
+> ## ⭐⭐⭐ 2026-08-25 (latest) — THE FIXES ARE VERIFIED ON THE LIVE WALK, AND THE LOG BECAME UNREADABLE *BECAUSE* THEY WORKED
+>
+> **PICK-UP STATE.** ⛔ **Verify hashes with `git rev-parse --short main origin/main github/main`; count the board yourself.** ⛔ **Checkout `develop`.** She is TRAINING on the latest press. **`ONESHOT.1` needs one more restart to take effect** (it publishes diagnostics that currently only print).
+>
+> ### ⭐ Four fixes confirmed by FIELD READS, not claims
+>
+> | fix | live evidence |
+> |---|---|
+> | **`PHISCALE.1` / KI-33** | **`phiState: "live"`** — `phiRaw 0.0590`, `phiNorm 0.5249`. That raw value is ~0.7% firing, **below** the old 0.1 floor, so it would have clamped to a constant and cancelled. **Φ̂ modulates Ψ for the first time.** |
+> | **`DEFRATE.1`** | `defsLearnedPerHour: 28,158.84` — previously a structural `0` |
+> | **`SCALEWALK.1/.2`** | **ZERO `slow word` warnings.** The prior press logged `"m" 6959ms`, `"p" 7418ms`, `"s" 5521ms`; this one logged **none**. ~128ms/definition |
+> | **`UPLINK.1`** | 2.79GB matrix **58.0s → 39.7s (48 → 70 MB/s)** — ⭐ **with no upload-code change at all**: freeing the loop from the CPU walks let the pump get serviced. **The CPU walks were throttling the network.** |
+>
+> ### ⛔ And the thing that bit me: the console ring is a NINE-SECOND window
+>
+> Verifying `SCALEWALK` against the self-profile failed — the `[CPUProfile] TOP SELF-TIME` table was **already gone**. A 500-line fetch spanned `15:55:03 → 15:55:12`. The walk logs **~55 lines/second**.
+>
+> ⭐ **The cause is the fix.** Definitions went ~5-7s → ~128ms, so log volume rose ~40× and the readable window shrank by the same factor. **The log became unreadable because the walk got fast.**
+>
+> ⛔ **The rule: a measurement that happens ONCE cannot live in a console line.** A line is something you had to be watching for; this board exists to answer questions *late*. `ONESHOT.1` moves both offenders into state — `profiling.cpuProfile` (ranked self-time table, `null` = *not sampled yet*, never *fine*) and `profiling.throughput.uplink` (a **ring**, because the rate is not uniform — a 2.79GB matrix averages lower than a 48MB one, so the **size travels with every entry**).
+>
+> ⚠ Ownership **verified, not assumed**: `brain` is the `ServerBrain` singleton and both mixins sit on its prototype, so `brain._x` and `this._x` are the same object. After three dead reads found today from exactly that mistake, checking was not optional.
+>
+> ---
+>
+> ## 2026-08-25 (earlier) — 58% OF THE MAIN THREAD WAS FEEDING AN ARRAY NOTHING READS
 >
 > **PICK-UP STATE.** ⛔ **Verify with `git rev-parse --short main origin/main github/main`; count the board yourself.** ⛔ **Checkout `develop`.** A fresh walk is running on the previous press; **these fixes need one more Update & Fresh Walk**, which Gee has approved.
 >
