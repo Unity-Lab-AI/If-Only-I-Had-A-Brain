@@ -46,6 +46,9 @@ const os = require('os');
 // ALL GPU polling: VRAM%, util, and the I.17 dispatch counter is fine
 // because that lives in gpu.js which has its own scope.
 const { execSync } = require('child_process');
+// AGEPIN.1 — the ONE grade ladder + age map. `_selfImageAge` used to carry
+// its own copy keyed on `'K'`, a string the curriculum never emits.
+const { GRADE_AGE, normalizeGradeKey } = require('./state.js');
 
 const SERVER_CHAT_MIXIN = {
   // REPLY-PIN EYES (2026-08-18) — a reply pinned the loop 87s on a 3-char
@@ -3585,13 +3588,17 @@ const SERVER_CHAT_MIXIN = {
   _selfImageAge() {
     let g = null;
     try { if (typeof this._computeMinGrade === 'function') g = this._computeMinGrade(); } catch { /* grade read best-effort */ }
-    const AGE = {
-      'pre-K': 4, 'K': 5,
-      'grade1': 6, 'grade2': 7, 'grade3': 8, 'grade4': 9, 'grade5': 10, 'grade6': 11,
-      'grade7': 12, 'grade8': 13, 'grade9': 14, 'grade10': 15, 'grade11': 16, 'grade12': 17,
-      'college1': 18, 'college2': 19, 'college3': 20, 'college4': 21, 'grad': 23, 'phd': 25,
-    };
-    return AGE[g] || 25;   // no grade state (stub/persona default) → the 25yo end-state
+    // ⛔ AGEPIN.1 — the local AGE map here was keyed on `'K'`, which the
+    // curriculum never emits, so `AGE['kindergarten']` was undefined and the
+    // `|| 25` tail fired. Combined with `_computeMinGrade()` returning
+    // `'phd'` for the same reason, a five-year-old Unity pictured herself as
+    // twenty-five. Now reads the ONE shared map.
+    //
+    // ⚠ The `|| 25` tail is retained deliberately and is NOT the bug: an
+    // absent grade genuinely means no curriculum state (stub / persona
+    // default), and the 25-year-old is the correct end-state answer there.
+    // The bug was reaching that tail while a real grade existed.
+    return GRADE_AGE[normalizeGradeKey(g)] || 25;
   },
 
   // IMG-GEN — detect an image-generation request in user input + build a Pollinations

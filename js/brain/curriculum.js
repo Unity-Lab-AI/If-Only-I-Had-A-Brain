@@ -468,6 +468,34 @@ export function formatGradeShort(grade) {
 // roadmap in docs/TODO.md. ELA cells delegate to the existing
 // single-track runKindergarten/runGrade*/runCollege/runGradPhD
 // methods that shipped with the original T14.24 scaffold.
+// ── AGEPIN.1 — the age she IS at each grade, canonical, living next to the
+// grade order it is keyed on so the two can never drift apart.
+//
+// This was copied into four other places and TWO of them keyed kindergarten
+// as `'K'`, which this file never emits — so those lookups missed and fell
+// through to a default of 25, and a five-year-old read as an adult. Keyed
+// here on the exact strings above; the server keeps a documented CJS mirror
+// (server/brain-server/state.js) because it cannot statically import ESM at
+// boot, the same convention and the same hazard as GRADE_ORDER's copy in
+// drug-scheduler.js.
+export const GRADE_AGE = {
+  'pre-K': 4, 'kindergarten': 5,
+  grade1: 6, grade2: 7, grade3: 8, grade4: 9, grade5: 10, grade6: 11,
+  grade7: 12, grade8: 13, grade9: 14, grade10: 15, grade11: 16, grade12: 17,
+  college1: 18, college2: 19, college3: 20, college4: 21, grad: 23, phd: 25,
+};
+
+/**
+ * Age for a grade string. Returns `null` — NOT 25 — for an unrecognised or
+ * absent grade, because "no grade state" and "she is twenty-five" are
+ * different claims and conflating them is precisely the bug this replaced.
+ * Callers that genuinely want the end-state default apply it themselves.
+ */
+export function ageForGrade(grade) {
+  const g = String(grade || '') === 'K' ? 'kindergarten' : String(grade || '');
+  return Object.prototype.hasOwnProperty.call(GRADE_AGE, g) ? GRADE_AGE[g] : null;
+}
+
 export const GRADE_ORDER = [
   'pre-K', 'kindergarten',
   'grade1', 'grade2', 'grade3', 'grade4', 'grade5',

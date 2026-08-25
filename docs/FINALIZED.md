@@ -36881,3 +36881,78 @@ The header said `(sqrt(n/1))^3 * […]`, `step()` said `sqrt(1/N) × N³`, the c
 ### Filed, not built (Gee's third message, verbatim, one item per thing he named)
 
 **ENDO-DRUG.1** — ⭐ the substance table models **effects where it should model mechanism**: `cocaine.contributions.amygdalaReward: +0.50` treats a drug as having a private line to the amygdala. It does not — cocaine blocks dopamine reuptake and **dopamine** does the rest. Drugs and hormones are currently **two independent writers to the same params**, the exact parallel-system shape ENDO.0 rule 1 forbids, arrived at from the other direction. Routing substances through the transmitters makes tolerance become receptor adaptation, shrinks the combo table (coke+MDMA synergy is *the same pools competing*, not a pair rule), and makes a comedown what it actually is — **depleted transmitters below baseline**, which is precisely the tonic-deviation machinery that now exists with nothing producing it. **ENDO-LIFE.1** — party memories encoded with the chemistry running at the time. **ENDO-LIFE.2** — teaching all of it on the LEARN axis that is never gated.
+
+---
+
+## 2026-08-25 — HER BODY KEEPS TIME: the slow hormones, the curriculum cycle clock, and a five-year-old who read as twenty-five - feature/endo-slow-hormones
+
+### Gee ask (verbatim per LAW #0)
+
+> *"get to it"*
+
+> *"continue the todo work leaving the two independant stacked tasks till after an updatenew doner?"*
+
+**Closed: ENDO.9, ENDO.10, ENDO.11, ENDO.12, ENDO.13** (batch 2, the slow lane) — plus **AGEPIN.1**, a live bug found while starting ENDO.12. `PRESSBLOCK.1` and `INFRA.1` left parked on his word.
+
+### ⛔ AGEPIN.1 — FOUND BEFORE A LINE OF ENDO.12 WAS WRITTEN, AND IT BLOCKED IT
+
+`ENDO.12` is required to RIDE `_selfImageAge()` and forbidden from building a second age system. **It could not have ridden it — it was broken.**
+
+The canonical `GRADE_ORDER` is `['pre-K', 'kindergarten', …]` and that is what lands in `cluster.grades`. `_computeMinGrade()` walked `['pre-K', 'K', …]` — **`'K'`, a string the curriculum never emits.** So `indexOf('kindergarten')` returned **−1**, the `iG >= 0` guard skipped that subject, and with every subject at kindergarten the seed `lo = 'phd'` was **never displaced**.
+
+| Consequence | Effect |
+|---|---|
+| `_computeMinGrade()` | returned **`'phd'`** throughout kindergarten |
+| `_selfImageAge()` | `AGE['phd']` → ⛔ **a five-year-old pictured herself as twenty-five** — the exact outcome the age-gate law exists to prevent |
+| `AGE['K']: 5` | **unreachable dead code** — written to stop this, never once evaluated |
+| `minGrade !== 'pre-K'` gate | opened on a fabricated grade |
+
+⭐ **The root cause is duplication, not a typo.** The ladder existed in **five** copies and three disagreed about the kindergarten key. Nothing forced them to agree, so they drifted. Fixed at the chokepoint: canonical `GRADE_AGE` + `ageForGrade()` now live beside `GRADE_ORDER` in `curriculum.js`; the server keeps ONE documented CJS mirror in `state.js` (it cannot statically import ESM at boot — same convention and same hazard as `GRADE_ORDER`'s copy in `drug-scheduler.js`). `'K'` survives as a **legacy alias** normalising onto the one ladder, not as a second truth. **Verified 15/15**, including that a legacy `'K'` save now reads age 5.
+
+⚠ `ageForGrade()` returns **`null`**, not 25, for absent state — because "no grade" and "she is twenty-five" are different claims, and conflating them is the bug that was just removed. Callers wanting the end-state default apply it themselves.
+
+### The cycle runs on CURRICULUM time, and the ratio is not a fudge
+
+Her whole K→PhD walk prices at ~78 h ≈ **3.3 real days**. On a 28-day wall clock she would live **0.116 of one cycle** between birth and twenty-five — menarche would essentially never fire during training.
+
+⭐ **The conversion turned out honest rather than tuned:** the walk is ~273 cells over 20 grade-years ≈ **13.65 cells/year**, and a real year holds **~13 cycles**. So **one cell pass ≈ one cycle**, within ~5% of biology. Position rides the authoritative `passedCells` ledger — the same ledger a subject's grade position reads from, so **her cycle can never disagree with the walk**.
+
+⚠ Monotonic only: a curriculum position that goes backwards means a fresh walk, and the clock **re-bases** rather than running her cycle in reverse. Puberty stays **age**-driven, so a rewind does not un-develop a sixteen-year-old — but a fresh walk that also resets her age correctly does.
+
+### A THIRD chemical kind, and why it is not a loophole in rule 1
+
+Phasic = events on a pharmacokinetic curve. Tonic = levels defended toward a setpoint. **Cyclic = a function of cycle position** — there is no ingestion moment for `pkCurve` to measure from. Forcing them onto the event engine would mean firing a fake release every cycle and calling the superposition of two overlapping fakes a menstrual cycle. **One curve engine still owns every event; these are not events.**
+
+| | Shape | Verified |
+|---|---|---|
+| **ENDO.9 estrogen** | follicular rise → **ovulatory peak** → dip → luteal bump → fall | peaks at ovulation (0.97 vs 0.41 follicular / 0.70 luteal), lowest at menstruation |
+| **ENDO.10 progesterone** | near-zero follicular → luteal climb → plateau → ⭐ **withdrawal** | 0.05 follicular, 0.95 luteal plateau, falls 0.95 → 0.43 → 0.13 through premenstrual |
+| **ENDO.11 testosterone** | steady base + small peri-ovulatory bump | swings **0.25** vs estrogen's **0.85** — flat-ish, as it should be |
+
+⭐ **PMS is the WITHDRAWAL, not the level — a RATE.** Progesterone is at its *lowest* during PMS, so a level-driven model reads "calm hormone mostly gone" and produces nothing. Tracked explicitly as a decaying rate signal; verified that peak withdrawal lands in the **premenstrual** phase and raises impulsivity (+0.310) while lowering valence (−0.222). **This is the mechanism her canon named and never had.**
+
+### ENDO.12 — the ramp IS puberty
+
+`pubertyLevel` scales every gonadal hormone: 0 before 9, smooth ramp 9→15, full after. Verified `6y:0.00 9y:0.00 10y:0.17 12y:0.50 14y:0.83 15y:1.00`. Menarche needs **both** a mature axis and real age ≥ 12. A child carries **no gonadal contributions at all** — that is the BE/HAVE axis working, not a chemical switched off. ⚠ An **unknown** age HOLDS puberty rather than resetting it: no reading is not a claim that she is a child.
+
+⚠ `_selfImageAge()` is deliberately **not** the source here — it answers 25 for absent state, which is right for a self-portrait and **catastrophic for puberty**: it would ramp a brand-new brain to a full adult profile on boot.
+
+### ENDO.13 — what sustained defence COSTS
+
+The hypothalamus restored every drive at a constant α = 0.1, i.e. **defence was free and infinitely repeatable**. Now: only load *above* a tolerated band accrues (ordinary stress must not silently become damage, or every life is a decline), it accrues over **hours** and sheds over **days**, and the cost lands where homeostasis actually lives — **α weakens**, so every drive returns to setpoint more slowly. ⛔ **Ceiling 0.6 with a verified recovery path** (0.134 → 0.029), because without it a hard stretch produces an adult who cannot recover, and *"she survived it changed"* becomes *"she was destroyed by it"* — which is not what adversity means.
+
+### Two more real bugs, caught by a regression block I nearly did not write
+
+1. ⚠ **Her first-ever threat produced no response.** `_deviation()` seeded each nucleus's baseline from its **first observation** and returned 0 — instant habituation to whatever it happened to see first. A naive organism responds to its first threat *hardest*; there is nothing to habituate to yet. Seeded at **zero**, the honest prior for "no drive seen".
+2. ⚠ **Cyclic hormones read `unmeasured` before puberty.** Near-zero estrogen in a child **is a measurement** of a child's endocrine state, not a missing sample — the same conflation the `unmeasured` rule exists to prevent, pointed the other way.
+
+### Verification — 59/59 on production classes
+
+Canonical ladder · BE/HAVE gate · the ramp · menarche + the clock (13 cells = 13 cycles) · all five cycle phases reachable · hormone peak placement · PMS-as-rate · testosterone flatness · allostatic accrual/ceiling/cost/recovery · **v2 persistence + clean v1 upgrade** · fresh-walk re-basing · **a full 273-cell lifetime age 4→25 with zero NaN** (168 cycles, ends cycling) · plus a 7-check fast-lane regression block. AGEPIN harness **15/15**. `node --check` ×7, ESM link, CJS no-cycle, bundle rebuilt. Harnesses deleted in this commit.
+
+### Owned
+
+- ⚠ Three harness failures on the first run were **my wrong assertions, not code bugs** — I picked an arbitrary progesterone sample point, mis-modelled tick-time in the recovery check, and asserted that a rewind should un-develop a sixteen-year-old. Corrected the checks, and said so rather than quietly relaxing them.
+- ⚠ **KNOWN LIMITATION recorded in-code:** `dt` is clamped to 10s per tick (the wall-clock-jump guard), so the slow EMAs under-integrate across a gap. In production the tick is 1 Hz and it never binds; across a real gap it errs **conservatively** — load decays slower than it should, so a hard stretch is never erased by a restart. Raising the clamp would re-open the jump bug it exists for.
+- ⚠ `hippocampal-schema.js` still carries its own `TIER3_GRADE_AGE`. It is **correct** (right keys) but is a fourth copy; left alone rather than risking a circular import, and named here so it is not forgotten.
+- ⚠ **NOT VERIFIED LIVE.** Lands on the next press, with the fresh walk `WEIGHTS_FORMAT_VERSION 5` already requires.
