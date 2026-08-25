@@ -200,7 +200,12 @@
            dev box). One glance tells you WHICH commit is live, so a redeploy
            can be confirmed instead of guessed. -->
       <span id="d-build-badge" class="mode-badge build-badge" title="Deploy build — the git commit the running server booted from. Set at deploy time; if this doesn't change after Update, the new code didn't land.">build …</span>
-      <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. On the deployed box systemd auto-resumes (clean stop = resume marker). (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
+      <!-- LOCALHOST ONLY. A true halt exits 42 and the unit's
+           RestartPreventExitStatus=42 makes that final on purpose, so this
+           element is REMOVED when the page is served from anywhere but the
+           local machine — the deployed operator has no shell to bring it back
+           with, and uses #btn-restart (savestart) instead. See wireGracefulStop. -->
+      <button id="btn-graceful-stop" class="btn-stop admin-only" title="TRUE HALT (localhost only) — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. NOTHING revives it: you re-run Savestart.bat yourself to resume. Want it to come back on its own? Use 🔄 Restart (Savestart). (Admin-only — hidden in viewer mode; absent entirely off localhost.)">⏹ Stop Brain</button>
       <button id="btn-restart" class="btn-stop admin-only" title="Restart the brain and RESUME training from saved state (auto-Savestart). Force-saves weights + drops a resume marker, then exits; systemd revives the process and it picks up where it left off. Restart without shell access. If a heavy update changed the brain size/format, it fresh-starts instead and says so. (Admin-only.)">🔄 Restart (Savestart)</button>
       <button id="btn-reset" class="btn-stop admin-only" title="RESET to a FRESH brain — WIPES all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and reboots clean via systemd. Destructive; use to start training over. (Admin-only.)">♻ Reset Brain (fresh)</button>
       <button id="btn-update" class="btn-stop admin-only" title="UPDATE & FRESH WALK — server re-pulls the latest project code (git-archive overlay), CLEARS all trained weights (identity-core Tier 3 preserved), restarts, and starts a clean K→PhD walk. Use after shipping fixes to deploy + restart training in one click. Destructive to weights. (Admin-only.)">⬆ Update &amp; Fresh Walk</button>
@@ -3647,6 +3652,38 @@
     (function wireGracefulStop() {
       const btn = document.getElementById('btn-graceful-stop');
       if (!btn) return;
+
+      // ⛔ STOPTRAP.1 (2026-08-25) — A ONE-WAY DOOR, ONE CLICK AWAY, ON THE ONE
+      // MACHINE WITH NO WAY BACK THROUGH IT.
+      //
+      // `/shutdown` is a TRUE HALT: it exits **42** on purpose, and the unit
+      // carries `RestartPreventExitStatus=42`, so systemd deliberately does not
+      // revive it. That is correct for a stop button. What was NOT correct is
+      // that it rendered on the DEPLOYED dashboard — where box changes are
+      // dashboard-only by standing rule, so the operator has no shell to run
+      // the recovery command with. The button's own tooltip made it worse by
+      // claiming *"On the deployed box systemd auto-resumes"*; both cannot be
+      // true, and the code won. It fired by accident on 2026-08-25, took the
+      // trained brain to a 502, and could only be recovered by the server admin.
+      //
+      // ⭐ The savestart button was already sitting next to it the whole time:
+      // `#btn-restart` → `/restart` → force-save, resume marker, exit **0**,
+      // `Restart=always` revives it, and the marker makes it RESUME the walk.
+      // No overlay, no wipe. So the deployed box does not need a halt at all,
+      // and repointing this one at `/restart` would only have shipped two
+      // differently-labelled buttons doing the same thing.
+      //
+      // So: the halt stays a halt, and stays reachable ONLY where a halt is
+      // recoverable — a locally-served dashboard, whose operator has the shell
+      // that runs `Savestart.bat`. Off localhost the element is removed, not
+      // merely hidden, so no stray handler or devtools unhide can reach it.
+      const _servedLocally = ['localhost', '127.0.0.1', '::1', '[::1]', '']
+        .includes(location.hostname);
+      if (!_servedLocally) {
+        btn.remove();
+        return;
+      }
+
       btn.addEventListener('click', async () => {
         const ok = window.confirm(
           'Stop the brain gracefully?\n\n' +
@@ -3654,7 +3691,10 @@
           '✓ Worker pool terminated\n' +
           '✓ Weights saved\n' +
           '✓ Server exits ~500ms after this confirm\n\n' +
-          'Run Savestart.bat to resume from saved state. (start.bat would WIPE weights — do not use to resume.)'
+          '⛔ This is a TRUE HALT. Nothing brings it back on its own — ' +
+          'run Savestart.bat yourself to resume from saved state. ' +
+          '(start.bat would WIPE weights — do not use to resume.)\n\n' +
+          'Want it to come back by itself? Use 🔄 Restart (Savestart) instead.'
         );
         if (!ok) return;
         btn.disabled = true;

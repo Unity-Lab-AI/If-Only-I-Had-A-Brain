@@ -1,6 +1,16 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — SHE LEARNS ~40× FASTER, EVERY PREDICTION WAS CHECKED, AND THE HOT-SPOT CHASE STOPPED HONESTLY
+> ## 🚨 2026-08-25 (latest) — THE BOX IS DOWN, AND THE BUTTON THAT DID IT PROMISED IT WOULDN'T
+>
+> **PICK-UP STATE.** ⛔ **The deployed brain is at 502** — `/public-state.json` dead, site root 200, so the node process is gone and nginx is not. Gee pressed **⏹ Stop Brain** by accident. ⛔ **The gatling cannot fix this** — it hammers `POST /admin/update`, which is served *by the dead process*. **There is no press that can fix a missing press.** Recovery is one command on the box and it needs Sponge: **`sudo systemctl start unity-brain`** — ⚠ **`start`, NOT `restart`.** The hand-off is at the top of `deploy/REDEPLOY-NOTES.md`. ⭐ **It resumes the walk** (`DREAM_KEEP_STATE=1` + the resume marker); **Fresh Walk would throw the training away.**
+>
+> **Why it stayed down:** `/shutdown` exits **42** and `RestartPreventExitStatus=42` makes that final *on purpose*. That is correct for a stop button. ⛔ **The defect was reachability** — the one control that cannot be undone from the dashboard was ON the dashboard, on the one box whose operator has no shell, wearing a `title` that claimed *"On the deployed box systemd auto-resumes"*, with `.claude/DEPLOYED-ADMIN-GUIDE.md` agreeing and filing it under *"Restart (keeps walk)"*. Both contradicted by `docs/ADMIN-CONTROLS.md`'s exit-code table **in the same repo**. ⭐ **And that file had already written the trap down inside the fix that created it** — *"there's no dashboard to click"* — nobody drew the conclusion.
+>
+> **Shipped on `feature/stopbutton-savestart`:** the button is **`.remove()`d** (removed, not hidden) off `localhost`; the halt stays a halt where a shell exists. ⭐ **The box loses nothing — `🔄 Restart (Savestart)` was already sitting beside it** and is the savestart, non-upgrade press that was actually wanted. ⚠ **Repointing Stop at `/restart` was rejected:** it is the literal ask, and it ships two differently-labelled buttons doing the same thing — the same defect class as the tooltip. **That deviation is stated, not buried; repointing is one line if Gee wants the literal form.** Also: `RestartPreventExitStatus=42` **added to the repo's unit file, which never had the directive the code cites by name** (the box has it — the repo was the drift), and **`StartLimitIntervalSec=0`**, because systemd giving up after 5 starts in 10s is a *second* way to strand a shell-less box. ⭐ **Frontend + deploy config only — it lands on push, no press.** ⚠ **NOT verified live** (the box was down while it was written); confirmation is Sponge's `start`, then no `⏹ Stop Brain` on the deployed dashboard. Ledger: FINALIZED §STOPTRAP.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-08-25 — SHE LEARNS ~40× FASTER, EVERY PREDICTION WAS CHECKED, AND THE HOT-SPOT CHASE STOPPED HONESTLY
 >
 > **PICK-UP STATE.** ⛔ **Verify hashes with `git rev-parse --short main origin/main github/main`, and count the board yourself** (`grep -c '^- \[ \]'` / `'^- \[~\]'`) — do not trust a number written here. ⛔ **Checkout `develop`.** She is TRAINING. ⭐ **The next Update & Fresh Walk lands `SCALEWALK.3` + `ONESHOT.1`;** donor and pod were re-verified for it (see below).
 >

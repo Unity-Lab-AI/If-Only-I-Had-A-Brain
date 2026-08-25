@@ -37538,3 +37538,58 @@ Four judged render rounds · **regression-rendered all five hands**: five distin
 - ⚠ **My own harness was weak in the first round and I only noticed after the fix.** It had a fragment-heavy but stroke-*poor* trace — 20 survivors — so it never exercised the redraw layer at all, which is where "zigzag" would live. Added a rich-trace mode; that is what made the budget behaviour measurable.
 - ⚠ **NOT claimed: that a 235-stroke drawing from a real reference is good.** The dense-detail strokes in the harness are synthetic swirls, not real traced contour, so the renders prove *not-fragment-scratch* and cannot judge beauty. **That is a post-press look at real look-ups**, and it belongs to PAINT.5's road rather than this item.
 - ⚠ **NOT VERIFIED LIVE.** `chat.js` is server-side and unbundled — lands on the next press.
+
+---
+
+## 2026-08-25 - STOPTRAP: the one-way door on the machine with no way back - feature/stopbutton-savestart
+
+### Gee ask (verbatim per LAW #0)
+
+> *"i pressed the shut down button on zccident and now i cant start it i need that machine gun command to savestart the brain sim"*
+
+> *"i cant do anything from her do the writer for sponge to save start it up again and fix the shutdown but to auto start upo as a savestart(non-upgrade version)"*
+
+### What happened
+
+The deployed brain served **502** on `/public-state.json` while the site root stayed 200 — the node process was gone, the nginx vhost was not. The gatling (`scripts/gatling-savestart.js`) could not help: it hammers `POST /admin/update`, which is served **by the dead process**. There was no press that could fix a missing press.
+
+`/shutdown` exits **42** on purpose, and the unit's `RestartPreventExitStatus=42` makes that final. That is correct behaviour for a stop button. ⛔ **The defect was that the button existed at all on a dashboard whose operator has no shell** — box changes are dashboard-only by standing rule — so the single control that could not be undone from the dashboard sat on the dashboard, one click from the buttons used routinely, styled identically to them.
+
+Two documents actively taught that it was safe:
+
+- The button's own `title`: *"On the deployed box systemd auto-resumes (clean stop = resume marker)"* — flatly contradicted by `docs/ADMIN-CONTROLS.md`'s exit-code table **in the same repo**, and by that file's own **verified-on-the-box 2026-06-22** result (`POST /shutdown` → `active=inactive`).
+- `.claude/DEPLOYED-ADMIN-GUIDE.md`: *"systemd brings it back"*, and a quick-reference row listing **⏹ Stop Brain** under **"Restart (keeps walk)"**.
+
+⭐ **`docs/ADMIN-CONTROLS.md` had already written down the trap, in the fix that created it:** *"it can't restart itself — the process is gone, so there's no dashboard to click"*. The sentence names the exact failure and nobody drew the conclusion that the button therefore must not be reachable from a dashboard-only box.
+
+### The fix — reachability, not behaviour
+
+A true halt stays a true halt; `stop.bat` / `stop.sh` still use `/shutdown`. `wireGracefulStop()` in `html/dashboard.html` now tests `location.hostname` and **`.remove()`s the element** — removed, not hidden, so no stray handler or devtools unhide reaches it — unless the page is served from `localhost` / `127.0.0.1` / `::1`, where the operator has the shell that runs `Savestart.bat`. The confirm text on the surviving local button states the halt is terminal and names the alternative.
+
+⭐ **The deployed box loses no capability, because the savestart button was already sitting beside it and nothing was wrong with it.** `#btn-restart` → `POST /restart` → force-save, resume marker, `process.exit(0)` → revived by `Restart=always` → resumes the walk via the unit's `DREAM_KEEP_STATE=1`. Non-destructive, no code overlay: **a savestart, non-upgrade**, which is exactly what was asked for.
+
+⚠ **Repointing `⏹ Stop Brain` at `/restart` was considered and rejected.** It is the literal reading of the ask, and it would have shipped **two differently-labelled buttons doing the same thing** — the same class of defect as the tooltip that caused the incident. The ask's *intent* — a stop-shaped press on the box always comes back as a savestart — is satisfied by removing the one that does not.
+
+### The unit file was carrying a contract it did not contain
+
+`server/brain-server.js` has cited **`RestartPreventExitStatus=42`** by name since the `/shutdown` handler was written. `deploy/unity-brain.service` **never contained the directive**. The box's installed copy evidently does (the 2026-06-22 verification proves exit 42 stayed down), so **the repo was the thing drifting** — a deploy artifact that would have produced auto-revive-on-Stop on any freshly-provisioned box, silently contradicting the code's own comments. Added.
+
+⛔ **`StartLimitIntervalSec=0` added in `[Unit]` — a SECOND way to strand a shell-less box, latent this whole time.** systemd's default limiter gives up after 5 starts in 10s and leaves the unit permanently dead. A boot-time crash loop exhausts that budget in under a minute and then **never retries**, with no dashboard left to press and no self-healing when a fixed overlay lands. `0` disables the limiter so `RestartSec=5` retries forever. ⚠ Both directives are on their own lines with comments on separate lines — systemd silently ignores a directive with a trailing comment, which would have turned this fix into a no-op.
+
+### Docs, same commit (docs-before-push)
+
+- `deploy/REDEPLOY-NOTES.md` — a **🚨 FOR SPONGE** block at the top: the one recovery command (⚠ **`start`, not `restart`** — the process already exited), the three confirmation reads, the warning that boot loads ~5.4 GB before binding so an early 502 is normal, ⭐ **that a plain `start` resumes the walk and Fresh Walk must NOT be reached for**, why it did not self-heal, and the unit refresh as an explicitly optional follow-up.
+- `docs/ADMIN-CONTROLS.md` — Stop Brain row flagged localhost-only; new **§STOPTRAP.1** recording the trap, the two lying documents, the rejected alternative, and both unit directives.
+- `.claude/DEPLOYED-ADMIN-GUIDE.md` — both false claims corrected; new quick-reference row for *"brain is down / 502 after a Stop"*.
+
+### Verified
+
+- Handler region re-read post-edit: braces balanced, `remove()`-then-`return` precedes the listener registration, so the click path is unreachable off localhost rather than merely inert.
+- `grep` swept every `.md` / `.html` / `.bat` / `.sh` mentioning `btn-graceful-stop` / `Stop Brain` / `/shutdown`; the launchers (`windows/stop.bat`, `linux/stop.sh`, `start.bat`, `Savestart.bat`) are localhost-shell contexts and are **correct as written** — deliberately unchanged.
+- ⭐ **Frontend + deploy config only — `deploy.yml` rsyncs the frontend on every push, so this lands WITHOUT a press.**
+
+### Owned
+
+- ⛔ **I first wrote the fix as "repoint the button at `/restart`" and only found `#btn-restart` — which already did exactly that — when I read the surrounding markup to fix the tooltip.** Had I not read the neighbours, I would have shipped the duplicate. **Reading the element I was told about, instead of the row it lives in, is how the redundancy would have entered.**
+- ⚠ **The literal ask is not what shipped**, and that is stated to Gee rather than buried here: he asked for the shutdown button to auto-start as a savestart; it is removed from the box instead, and the pre-existing savestart button is the one that survives there. Repointing remains a one-line change if he prefers the literal form.
+- ⚠ **NOT VERIFIED LIVE** — the box was down while this was written. Confirmation is Sponge's `start`, then the deployed dashboard rendering **no** `⏹ Stop Brain`.

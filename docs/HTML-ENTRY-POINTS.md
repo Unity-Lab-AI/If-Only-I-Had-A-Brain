@@ -82,7 +82,7 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 - `gpuClientSpawnFailed` — H.6 surfacing event (rare, fires on browser-launch failure)
 
 **Admin-only controls (hidden in viewer mode):**
-- `#btn-graceful-stop` — `⏹ Stop Brain` button in connection-status row.
+- `#btn-graceful-stop` — `⏹ Stop Brain` button in connection-status row. ⛔ **Removed from the DOM (not hidden) unless `location.hostname` is `localhost` / `127.0.0.1` / `::1`** — it exits 42, which `RestartPreventExitStatus=42` makes final, so it is a one-way door on a box whose operator has no shell. See `wireGracefulStop()` and `docs/ADMIN-CONTROLS.md §STOPTRAP.1`.
 - `#d-ms-advance` — `▶ START NEXT GRADE` panel + per-subject signoff buttons (appears only when curriculum pauses after a full grade pass).
 - `#d-ms-auto-advance` — `Auto-advance to next grade after pass` checkbox in the milestone panel. Single toggle governing both `/grade-advance` signoff bypass AND curriculum runner's auto-fire behavior. State persists via `cortexCluster._autoAdvanceGrade` inside cortexState; F5 restoration fires `GET /auto-advance` on `modeAssigned: admin`.
 
