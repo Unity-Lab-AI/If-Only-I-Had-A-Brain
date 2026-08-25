@@ -8,7 +8,10 @@
   "scripts": {
     "//": "BUNDLEFIX (2026-08-20) — `build` delegates to server/, where the real esbuild command lives. Both launchers (linux/start.sh step 6/7, start.bat) run `npm run build` from the REPO ROOT, and root scripts were {} — so the bundle rebuild has been failing on every single launch, printing 'ERROR: esbuild bundle build failed. The browser will run STALE code' and then continuing anyway. Found while rebuilding the bundle by hand for the gate-phase change. Delegating here fixes both launchers without editing either, and keeps server/package.json as the single source of the actual esbuild flags.",
     "build": "npm --prefix server run build",
-    "build:voiceworker": "npm --prefix server run build:voiceworker"
+    "build:voiceworker": "npm --prefix server run build:voiceworker",
+    "//social": "social-shots is a BUILD tool that writes PNG assets — the same class as stamp-version and vox-build-bank, NOT a code/file patcher. It was removed in the 2026-08-20 script purge alongside 26 patchers and 23 stale harnesses, which it fits neither of; the playwright devDependency it needs was left in place. Restored 2026-08-25 on the operator's call, because the social cards had gone two months stale with no way to regenerate them while two docs still told you to run this command.",
+    "social:shots": "node scripts/social-shots.mjs",
+    "social:shots:admin": "node scripts/social-shots.mjs --admin-only"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

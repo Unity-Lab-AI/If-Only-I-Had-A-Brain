@@ -176,12 +176,15 @@
     //   3. It documents lab tooling a visitor cannot use — PUSH_WORKFLOW,
     //      STATUSLINE, TALK-TO-UNITY-PLAYWRIGHT, DECOMPOSED-curriculum-build.
     //
-    // Docs blocked ONLY by rule 1 and otherwise worth publishing (PERSONA,
-    // MINDSPACE-INTEGRATION, SEEDED-TOPOLOGY-SPEC, CURRICULUM-SCOPE-SEQUENCE,
-    // HTML-ENTRY-POINTS) each carry verbatim operator quotes WITH attribution.
-    // Publishing them means either dropping the name (fine) or altering a
-    // verbatim quote (never) — that is an operator decision, not a sweep
-    // decision, so they stay out until it is made.
+    // RESOLVED 2026-08-25 — five docs were previously held back by rule 1
+    // alone (PERSONA, MINDSPACE-INTEGRATION, SEEDED-TOPOLOGY-SPEC,
+    // CURRICULUM-SCOPE-SEQUENCE, HTML-ENTRY-POINTS). Each carried verbatim
+    // operator quotes WITH attribution, so publishing meant either dropping
+    // the name or altering a quote. The operator chose: drop the name.
+    // All 13 attribution labels now read "the operator", and every quote is
+    // byte-for-byte unchanged — LAW #0 is about the QUOTE, not the label.
+    // ⛔ If you add a doc here, run the same check first: a quote may never
+    // be edited to make a doc publishable.
     const DOC_PATHS = {
       'README': '../README.md',
       'SETUP': '../docs/SETUP.md',
@@ -196,6 +199,11 @@
       'ADMIN_CONTROLS': '../docs/ADMIN-CONTROLS.md',
       'THRESHOLD_DERIVATION': '../docs/THRESHOLD-DERIVATION.md',
       'HELD_BACK': '../docs/HELD-BACK.md',
+      'PERSONA': '../docs/PERSONA.md',
+      'MINDSPACE': '../docs/MINDSPACE-INTEGRATION.md',
+      'SEEDED_TOPOLOGY': '../docs/SEEDED-TOPOLOGY-SPEC.md',
+      'CURRICULUM_SCOPE': '../docs/CURRICULUM-SCOPE-SEQUENCE.md',
+      'HTML_ENTRY_POINTS': '../docs/HTML-ENTRY-POINTS.md',
     };
 
     const selectEl = document.getElementById('doc-select');
