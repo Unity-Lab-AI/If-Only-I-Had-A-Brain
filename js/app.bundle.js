@@ -56619,7 +56619,8 @@ var NeuronCluster = class {
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
     const replaceMode = opts.replaceMode === true;
-    if (replaceMode) {
+    const _bioSkipCpuCurrent = haveProxy && (this.size | 0) > 2e6 && !(typeof process !== "undefined" && process.env && process.env.DREAM_INNERVOICE_FORCE_CPU === "1");
+    if (replaceMode && !_bioSkipCpuCurrent) {
       this.externalCurrent.fill(0, region.start, region.end);
     }
     const tmplWire = haveProxy && !!(this._brain && this._brain._tmplTeachOk === true);
@@ -56634,10 +56635,12 @@ var NeuronCluster = class {
       const startNeuron = region.start + d * groupSize;
       const _endIdx = Math.min(region.end, startNeuron + groupSize);
       if (value === 0 && !replaceMode) continue;
-      if (replaceMode) {
-        this.externalCurrent.fill(value, startNeuron, _endIdx);
-      } else {
-        for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
+      if (!_bioSkipCpuCurrent) {
+        if (replaceMode) {
+          this.externalCurrent.fill(value, startNeuron, _endIdx);
+        } else {
+          for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
+        }
       }
       if (fwdIndices && !tmplWire && value !== 0) {
         for (let idx = startNeuron; idx < _endIdx; idx++) {
