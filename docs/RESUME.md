@@ -1,8 +1,21 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-25 (latest) — THE WORD-SALAD BUILD: TEN ITEMS SHIPPED, AND FOUR OF THEM WERE ALREADY BUILT AND SWITCHED DOWN
+> ## ⭐⭐⭐ 2026-08-25 (latest) — THE WORD-SALAD BUILD (10 SHIPPED), THEN AN AUDIT THAT FOUND 14 MORE OF THE SAME DISEASE
 >
-> **PICK-UP STATE.** Board **36 → 25 open**. The whole WORDSALAD family is done except **WORDSALAD.6, the fresh walk, which is Gee's press**. Everything here is server-side + corpus, so **it all lands on the next Update-Savestart** — nothing is live yet. ⛔ Checkout `develop`, not `main`.
+> **PICK-UP STATE.** `main = develop` on BOTH remotes, tree clean, HEAD on `develop`. Board went **36 → 25** on the build, then **25 → 39** when the audit filed what it found: **39 open / 132 closed**. The whole WORDSALAD family is done except **WORDSALAD.6, the fresh walk, which is Gee's press**. Everything shipped is server-side + corpus, so **it all lands on the next Update-Savestart** — nothing is live yet. ⛔ Checkout `develop`, not `main`.
+>
+> ### ⭐ THE ONE SENTENCE THAT MATTERS FOR WHATEVER COMES NEXT
+> **The dominant defect in this codebase is not missing features — it is finished features that are switched down, mis-named, unconsumed, or probed-for and never defined.** Ten items were fixed on that pattern and an audit immediately found fourteen more. **Before building anything, check whether it already exists and is simply off.**
+>
+> ### THE AUDIT (filed, NOT built — Gee: *"you are adding all of this to the todo work items for completion later"*)
+> 126 JS files scanned, each item verified individually, and the ~20 false positives the scan threw (Node/browser capability guards like `unref` / `statfsSync` / `requestIdleCallback`, plus the `this.X = mod.fn` assignment pattern that hid `_drugDetector`, `_sensoryTriggers`, `speechModulation`) were **excluded rather than padded in**. Full detail lives in `docs/TODO.md` §DORMANT and §LLMGUT.
+> - ⛔ **DORMANT.1 is the big one.** `_teachWordSpellingDirectFinal` has **37 references and ZERO definitions** — a near-miss on the real `_teachWordSpellingDirect` (46 refs). Every call is `typeof`-guarded, so it fails **silently** in 8 kindergarten cells, and the comment says exactly what is being skipped: a `scale(0)` wipe + clean `ojaUpdate` whose stated job is clearing *"QA-train pollution / rescale damage"* from `sem_to_motor` **before the constructive phases write into it**. Every K cell has been building on a matrix that was never cleaned.
+> - **DORMANT.2** — four more probed-but-never-defined: `getRandomEpisode` (the dream-recombination lane whose `novelConsolidated` reads 0), `_sentenceEmbedding` (inner-voice chain coherence), **`_onDeviceLost` (a GPU device-lost recovery handler that can never fire)**, `getLastDescription`.
+> - **DORMANT.3** — `meanVoltage` is **null on all seven clusters** while being computed every tick: `cluster.js:3988` sets `lastMeanVoltage`, `state.js:364` reads `meanVoltage`. A name mismatch, one line to fix.
+> - **DORMANT.4** — `consciousness.speechHealth.separability` is **`{}`**, and it is *the only instrument that measures the emission margin directly* — the exact quantity the word-salad diagnosis turns on. Also `coherenceFloor`, `rerank`, `cortexDivergenceByRegion`, `ownArt.practice`/`feedback`.
+> - **DORMANT.5** — dead exports: `initGPUCompute`, `isInventoryLocked`, `resetInventory`, `levelKind`, `PREK_EXTRACT_MARKER`, and ⚠ **`isTrusted` — the FT.trusted mind-space gate, exported and never consulted, so that gate is currently decorative.**
+> - **DORMANT.6** — 10 features ship OFF and have never been switched on. Genuine opt-outs (`DREAM_KEEP_STATE`, `DREAM_FORCE_CLEAR`, `DREAM_NO_AUTO_GPU`, …) are explicitly **out of scope** in the task.
+> - **LLMGUT.1–.8** supersedes OWNWORDS Tier 2 with verified state. ⛔ **Ordering is written into the task:** the Tier-1 paths that speak in her place **at runtime** (`drug-rejections.js`, the GloVe retrieval under the *"HONEST silence"* comment, the inner-voice retrieval seeding the emission bus) are **worse** than most of these, which are dormant. The exception is **LLMGUT.1 — the live `POST /v1/chat/completions` Claude CLI route**, unauthenticated, CORS `*`, reachable through nginx's prefix-stripping `/admin/`, running today; `SKILL_TREE.md:358` already falsely claims it was removed and must be fixed in the same commit. ⚠ **LLMGUT.5 is surgical** — `pollinations.js` also builds her image URLs, which are load-bearing and verified correct.
 >
 > ### THE PATTERN OF THE WHOLE BATCH — read this before building anything else
 > Four separate items turned out to be **built already and throttled, mis-scoped, or unconsumed**, not missing. Check for that first from now on:
