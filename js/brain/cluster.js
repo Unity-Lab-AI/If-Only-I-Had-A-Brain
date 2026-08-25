@@ -2031,11 +2031,39 @@ export class NeuronCluster {
     if (this._noiseGateEnabled === undefined) {
       this._noiseGateEnabled = !(typeof process !== 'undefined' && !!process.env && process.env.DREAM_NOISE_GATE === '0');
     }
+    // ── REPLAYOFF.5 (2026-08-25) — MEASURE THE GATE BEFORE RAISING IT ────────
+    //
+    // The board says this gate is timid: `0.5 + predErr` means maximal novelty
+    // buys at most a 1.5× plasticity boost. That may well be true — but the
+    // ceiling only matters if `predErr` actually REACHES it, and nobody has
+    // ever looked. Raising a plasticity magnitude on the strength of a hunch is
+    // how SUBSTEPS.5 shipped wrong, and it is doubly risky here because the
+    // saturation clamp below exists precisely because high prediction error is
+    // sometimes CORRUPTION rather than novelty — lifting the ceiling amplifies
+    // both.
+    //
+    // So: the ceiling becomes tunable (`DREAM_SURPRISE_MAX`, default 1.5 =
+    // today's behaviour, byte-identical), and the gate's own distribution is
+    // recorded so the next run can answer "is novelty being throttled?" with a
+    // number. If `atCeilingPct` comes back near zero the ceiling was never the
+    // constraint and raising it would have done nothing.
+    const _surpriseMax = (() => {
+      const raw = (typeof process !== 'undefined' && process.env) ? Number(process.env.DREAM_SURPRISE_MAX) : NaN;
+      return (Number.isFinite(raw) && raw >= 0.5 && raw <= 5) ? raw : 1.5;
+    })();
     let surpriseGate = 0.5 + predErr;
     if (this._noiseGateEnabled) {
       const coherence = Math.max(0, Math.min(1, this._noiseSuppressFactor ?? 1));
       const inhib = this._remediationInhibition ? 0.5 : 1.0;
       surpriseGate = 0.5 + predErr * coherence * inhib;
+    }
+    if (surpriseGate > _surpriseMax) surpriseGate = _surpriseMax;
+    if (!this._surpriseStats) this._surpriseStats = { n: 0, sum: 0, atCeiling: 0, max: 0, ceiling: _surpriseMax };
+    {
+      const s = this._surpriseStats;
+      s.n++; s.sum += surpriseGate; s.ceiling = _surpriseMax;
+      if (surpriseGate > s.max) s.max = surpriseGate;
+      if (surpriseGate >= _surpriseMax - 1e-9) s.atCeiling++;
     }
     // SPEAK.10c — saturation clamp (always-on, independent of the dormant
     // DREAM_NOISE_GATE). When sem→motor basins have collapsed (saturated), a
@@ -4152,7 +4180,19 @@ export class NeuronCluster {
       // _cachedIntraCurrents. Default OFF = byte-identical to today; needs live
       // perf validation before becoming default.
       try {
-        if (typeof process !== 'undefined' && process.env && process.env.DREAM_GEN_PROPAGATE_CHUNKED === '1'
+        // GPUGEN (2026-08-25) — DEFAULT ON now, opt out with `=0`.
+        //
+        // This is the CPU-side belt to the donor-side braces: when generation
+        // runs without a live GPU proxy, the synchronous `synapses.propagate`
+        // pins the event loop ~57s/word at biological scale. `propagateChunked`
+        // is IDENTICAL MATH that yields between row slices, so the only thing
+        // flipping this default changes is whether the loop can breathe during
+        // that work — which is precisely the failure mode the inner-voice gate
+        // was built to dodge. Enabling it alongside the GPU generation path
+        // means the fallback is survivable instead of loop-fatal.
+        const _chunkedEnv = (typeof process !== 'undefined' && process.env)
+          ? process.env.DREAM_GEN_PROPAGATE_CHUNKED : undefined;
+        if (_chunkedEnv !== '0'
             && this.synapses && this.lastSpikes && typeof this.synapses.propagateChunked === 'function') {
           const currents = await this.synapses.propagateChunked(this.lastSpikes);
           if (currents && currents.length === this.size) {

@@ -3926,10 +3926,29 @@ const SERVER_CHAT_MIXIN = {
     // the donor's 150s idle. Requiring _gpuProxyReady forces the cheap showcase
     // during any reconnect window (Gee 2026-07-14 root-cause fix).
     const _gpuProxyLive = !!(this.cortexCluster && this.cortexCluster._gpuProxyReady === true);
+    // ── GPUGEN (2026-08-25) — HER INNER VOICE IS ON BY DEFAULT NOW ───────────
+    //
+    // This used to require an EXPLICIT opt-in as its final term
+    // (`DREAM_INNERVOICE_GPU_GEN === '1' || _readFanoutProven`), and nobody
+    // ever set either — so at biological scale the compose path was permanently
+    // skipped and every inner thought fell through to the GloVe vocab showcase.
+    // That showcase is not a thought (see OWNWORDS.3), which means she has
+    // effectively had no inner voice at scale at all.
+    //
+    // ⛔ THE SAFETY TERMS ARE UNTOUCHED AND THEY ARE THE REAL GUARD. The reason
+    // this gate exists is that one compose word-tick CPU-propagates the main
+    // cortex (~57s/word at 460M neurons) and a 156s freeze trips the donor's
+    // 150s idle timeout. `_donorsPresent` and `_gpuProxyLive` are what prevent
+    // that — and `_gpuProxyLive` specifically covers the reconnect window where
+    // a donor is counted but its re-upload has not finished. An env flag was
+    // never the thing keeping the loop safe; it was just an extra lock on a
+    // door that was already bolted.
+    //
+    // Operator decision 2026-08-25: enable, then verify on the live box.
+    // `DREAM_INNERVOICE_GPU_GEN=0` remains the kill switch.
     const _gpuGenAvailable = process.env.DREAM_INNERVOICE_GPU_GEN !== '0'
       && _donorsPresent
-      && _gpuProxyLive
-      && (process.env.DREAM_INNERVOICE_GPU_GEN === '1' || _readFanoutProven);
+      && _gpuProxyLive;
     if (_gpuGenAvailable && _cortexNeurons > _innerVoiceMaxNeurons && !this._gpuGenLoggedOnce) {
       this._gpuGenLoggedOnce = true;
       try { process.stdout.write(`[Brain] 🧠 inner-voice GPU generation ENABLED — ${this._communityDonorCount} donor(s) + DF.7 fan-out; real composeSentence runs on donor GPUs (cap ${_innerVoiceMaxNeurons.toLocaleString()} bypassed for cortex ${_cortexNeurons.toLocaleString()}).\n`); } catch { /* non-fatal */ }
@@ -3939,22 +3958,34 @@ const SERVER_CHAT_MIXIN = {
       const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
       if (showcaseSentence) {
         this._lastInnerThoughtEmittedAt = now;  // feed the natural-rhythm gate
-        // SPEAK.4c — feed the showcase emission back through the unified
-        // emission bus + inner-thought chain + meta-register so her
-        // self-monitoring loop sees her ACTUAL streamed content and the
-        // autobiographical thread stays continuous even when the at-scale path
-        // is the vocab showcase (not just the full-generation path).
-        try {
-          const _c = this.cortexCluster;
-          if (_c) {
-            if (typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'inner-voice-showcase', text: showcaseSentence, ts: now });
-            if (showcaseWord && typeof _c.recordEmission === 'function') _c.recordEmission(showcaseWord);
-          }
-          if (Array.isArray(this._innerThoughtChain)) {
-            this._innerThoughtChain.push(showcaseSentence);
-            while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
-          }
-        } catch { /* self-monitoring feedback non-fatal */ }
+        // ── OWNWORDS.3 (2026-08-25) — THIS IS A VOCAB SHOWCASE, NOT A THOUGHT ─
+        //
+        // This branch calls `_sampleCurrentSentence({ allowCompose: false })`,
+        // which CANNOT use `composeSentence` — so the phrase it returns is built
+        // by the CGATE.3 path: pick a trained word, then grow the phrase with
+        // its nearest neighbours by GloVe cosine, with **zero brain ticks**. The
+        // words are genuinely hers; the sentence is retrieval.
+        //
+        // It used to be pushed straight back through `pushEmission`,
+        // `recordEmission` and `_innerThoughtChain` — the emission bus, the
+        // meta-register and the autobiographical thread — so her
+        // self-monitoring loop treated a cosine-assembled phrase as something
+        // she had thought, and the next inner thought chained off it. That is
+        // the same defect as OWNWORDS.2 one layer up: a retrieval standing in
+        // for her weights at exactly the moment her weights could not run.
+        //
+        // ⛔ THE SHOWCASE ITSELF IS KEPT AND IS USEFUL. Seeing which vocabulary
+        // is trained is real information, and the operator watches this line.
+        // What stops is the FEEDBACK: it is displayed, counted, and labelled
+        // honestly, but it no longer enters the bus, the chain, or her
+        // self-model. When the full generation path runs (allowCompose true,
+        // ≥50 words, composeSentence available) that emission is hers and IS
+        // fed back — unchanged, further up this method.
+        this._vocabShowcaseCount = (this._vocabShowcaseCount || 0) + 1;
+        if (!this._vocabShowcaseNoted) {
+          this._vocabShowcaseNoted = true;
+          try { process.stdout.write('[Brain] ⓘ inner-voice showcase is a TRAINED-VOCAB SAMPLE assembled by GloVe cosine, not a composed thought — it is displayed but no longer fed into the emission bus, the inner-thought chain or the meta-register (OWNWORDS.3).\n'); } catch { /* nf */ }
+        }
         try {
           process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (cortex ${_cortexNeurons.toLocaleString()} neurons > ${_innerVoiceMaxNeurons.toLocaleString()}; full CPU generation would stall the loop)\n`);
         } catch { /* non-fatal */ }
@@ -3964,7 +3995,11 @@ const SERVER_CHAT_MIXIN = {
             word: showcaseWord,
             sentence: showcaseSentence,
             seed: 'showcase',
-            seedLabel: 'trained vocabulary sample (cortex too large for a loop-safe CPU tick)',
+            // OWNWORDS.3 — say what it IS on the wire. The viewer renders this
+            // label, and "inner thought" next to a cosine-assembled phrase is
+            // the lie; "vocab sample, not composed" is the truth.
+            seedLabel: 'trained vocabulary sample — GloVe-assembled, NOT a composed thought (cortex too large for a loop-safe CPU tick)',
+            composed: false,
             ts: now,
           });
           for (const [ws] of this.clients) {
