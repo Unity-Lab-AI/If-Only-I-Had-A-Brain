@@ -63806,52 +63806,21 @@ var LanguageCortex = class {
         }
       } catch {
       }
-      const SEXUAL_REGISTER = /* @__PURE__ */ new Set([
-        "pussy",
-        "cock",
-        "dick",
-        "cum",
-        "tits",
-        "blowjob",
-        "handjob",
-        "orgasm",
-        "horny",
-        "nympho",
-        "slut",
-        "whore",
-        "anal",
-        "dildo"
-      ]);
       const CRISIS_REGISTER = /* @__PURE__ */ new Set(["suicide", "suicidal", "self-harm", "selfharm", "overdose"]);
-      const _sexUnlocked = _gateGrade >= 9;
-      const _crisisUnlocked = _gateGrade >= 7;
-      if (!_sexUnlocked || !_crisisUnlocked) {
-        const kept = [];
-        for (const w of words) {
-          const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, "");
-          if (!_sexUnlocked && SEXUAL_REGISTER.has(t)) {
-            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
-            _cl._registerGateStats.sexual++;
-            _cl._registerGateStats.lastTs = Date.now();
-            continue;
-          }
-          if (!_crisisUnlocked && CRISIS_REGISTER.has(t)) {
-            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
-            _cl._registerGateStats.crisis++;
-            _cl._registerGateStats.lastTs = Date.now();
-            try {
-              if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 6e4) {
-                this._crisisGateLastLogTs = Date.now();
-                console.warn(`[LanguageCortex] crisis-register token "${t}" gated from emission at grade ${_gateGrade} (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
-              }
-            } catch {
+      for (const w of words) {
+        const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, "");
+        if (CRISIS_REGISTER.has(t)) {
+          if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+          _cl._registerGateStats.crisis++;
+          _cl._registerGateStats.lastTs = Date.now();
+          try {
+            if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 6e4) {
+              this._crisisGateLastLogTs = Date.now();
+              console.warn(`[LanguageCortex] crisis-register token "${t}" EMITTED at grade ${_gateGrade} \u2014 OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
             }
-            continue;
+          } catch {
           }
-          kept.push(w);
         }
-        words = kept;
-        if (words.length === 0) return "";
       }
     }
     for (const w of words) {
@@ -111593,6 +111562,33 @@ var Curriculum = class _Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+        if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === "function" && rep === 0 && (typeof process !== "undefined" && process.env && process.env.DREAM_LEARN_GEOMETRY === "1")) {
+          try {
+            const _ctxWords = words.map((w) => w.toLowerCase().replace(/[^a-z'-]/g, "")).filter((w) => w.length >= 2);
+            if (_ctxWords.length >= 2) {
+              const _probe = sharedEmbeddings.getEmbedding(_ctxWords[0]);
+              const _dim = _probe && _probe.length || 0;
+              if (_dim) {
+                for (let wi = 0; wi < _ctxWords.length; wi++) {
+                  const _ctx = new Float32Array(_dim);
+                  let _n = 0;
+                  for (let cj = 0; cj < _ctxWords.length; cj++) {
+                    if (cj === wi) continue;
+                    const _ce = sharedEmbeddings.getEmbedding(_ctxWords[cj]);
+                    const _lim = Math.min(_dim, _ce.length);
+                    for (let d = 0; d < _lim; d++) _ctx[d] += _ce[d];
+                    _n++;
+                  }
+                  if (!_n) continue;
+                  for (let d = 0; d < _dim; d++) _ctx[d] /= _n;
+                  sharedEmbeddings.refineFromContext(_ctxWords[wi], _ctx, 2e-3);
+                }
+                this.stats.embeddingRefines = (this.stats.embeddingRefines | 0) + _ctxWords.length;
+              }
+            }
+          } catch {
+          }
+        }
         for (const word of words) {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           const firstLetter = word.replace(/[^a-z]/g, "")[0];

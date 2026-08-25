@@ -22152,6 +22152,91 @@ export class Curriculum {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
 
+        // ─────────────────────────────────────────────────────────────────
+        // GLOVEOWN — SHE RESHAPES HER OWN SEMANTIC GEOMETRY AS SHE READS.
+        //
+        // Every word here moves a little toward the average of the words it
+        // appeared with. That is distributional semantics — meaning from
+        // company kept — and it is the same idea GloVe encodes, except
+        // computed from the corpus SHE actually reads instead of from
+        // Wikipedia.
+        //
+        // ⭐ The imported vectors become a STARTING SHAPE she grows out of
+        // rather than a fixed answer. The learned part is a separate,
+        // persisted delta (`_refinements`), so how much of her geometry is
+        // genuinely hers is a measurable quantity rather than an argument.
+        //
+        // ⛔ THIS MACHINERY ALREADY EXISTED AND HAD NEVER RUN HERE. Its only
+        // call site in the whole tree was in the BROWSER sensory path — the
+        // deployed server had never refined a single embedding. Her geometry
+        // was 100% imported because the learner was unplugged, not because
+        // learning was impossible.
+        //
+        // ⚠ ONCE PER SENTENCE, NOT PER REP — deliberately outside the word
+        // loop's rep multiplier. A sentence taught at 8 reps is the same
+        // sentence; refining 8× would let rep count silently scale how far
+        // meaning drifts, which is a dose nobody chose.
+        //
+        // ⚠ Learning rate is deliberately TINY. This runs on every sentence
+        // of a 273-cell walk, so a large step would let late reading
+        // overwrite early meaning. Slow accumulation is the point.
+        // ⛔ NOT ENABLED. `DREAM_LEARN_GEOMETRY=1` opts in for experiment only.
+        //
+        // ⚠ THE HARNESS DISPROVED THE NAIVE WIRING, so this is off until the
+        // separation term below is designed and demonstrated. Moving every
+        // word toward the average of its sentence pulls the WHOLE VOCABULARY
+        // TOWARD ONE CENTROID rather than separating meanings. Measured on a
+        // corpus where meaning and spelling deliberately disagree:
+        //     red~blue  0.0000 → 0.1604   (rose, good)
+        //     red~dog   0.1667 → 0.3272   (rose MORE — collapse)
+        // Related words got closer, but UNRELATED words got closer faster.
+        //
+        // ⭐ This is the same failure this codebase already documents for
+        // bare Hebbian: "without the decay-when-post-alone term, bare Hebb
+        // piles every association into the same columns and the basins
+        // collapse into superposition." Oja's rule fixes it there. The
+        // distributional analogue is a repulsion term — move toward context
+        // AND away from words that were NOT in it (word2vec-style negative
+        // sampling). A first attempt at that over-corrected (red~blue went
+        // NEGATIVE), which says the term is needed AND that its strength is
+        // a real parameter to derive rather than guess.
+        //
+        // ⛔ Shipping this on by default would degrade her semantic geometry
+        // across a 273-cell walk — worse than the imported vectors it was
+        // meant to improve on. See `GLOVEOWN.1` for what a real build needs.
+        if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === 'function' && rep === 0
+            && (typeof process !== 'undefined' && process.env && process.env.DREAM_LEARN_GEOMETRY === '1')) {
+          try {
+            const _ctxWords = words
+              .map((w) => w.toLowerCase().replace(/[^a-z'-]/g, ''))
+              .filter((w) => w.length >= 2);
+            if (_ctxWords.length >= 2) {
+              // Dimension DERIVED from a real vector, never a constant —
+              // a hardcoded dim is exactly what poisoned the browser call
+              // site with NaN across 250 of 300 dimensions.
+              const _probe = sharedEmbeddings.getEmbedding(_ctxWords[0]);
+              const _dim = (_probe && _probe.length) || 0;
+              if (_dim) {
+                for (let wi = 0; wi < _ctxWords.length; wi++) {
+                  const _ctx = new Float32Array(_dim);
+                  let _n = 0;
+                  for (let cj = 0; cj < _ctxWords.length; cj++) {
+                    if (cj === wi) continue;                // a word is not its own context
+                    const _ce = sharedEmbeddings.getEmbedding(_ctxWords[cj]);
+                    const _lim = Math.min(_dim, _ce.length);
+                    for (let d = 0; d < _lim; d++) _ctx[d] += _ce[d];
+                    _n++;
+                  }
+                  if (!_n) continue;
+                  for (let d = 0; d < _dim; d++) _ctx[d] /= _n;
+                  sharedEmbeddings.refineFromContext(_ctxWords[wi], _ctx, 0.002);
+                }
+                this.stats.embeddingRefines = (this.stats.embeddingRefines | 0) + _ctxWords.length;
+              }
+            }
+          } catch { /* geometry refinement is best-effort — it must never stop a teach */ }
+        }
+
         for (const word of words) {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           const firstLetter = word.replace(/[^a-z]/g, '')[0];
