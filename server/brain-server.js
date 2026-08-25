@@ -10477,6 +10477,16 @@ wss.on('connection', (ws, req) => {
           // perceive/describe/stylizeField/traceLineArt first (de-novo
           // imagineFromState lands with its glyph-plane port); no list = all.
           ws._mindspaceV1 = msg.mindspaceV1 === true;
+          // BOUNDCAP.1 — does this donor read its RESIDENT bound buffer when a
+          // propagate arrives with an empty pre? Browser donors do (that is
+          // what `preLen === 0` means to compute.html); the native binary's
+          // propagate is standalone-only and needs the pre indices shipped.
+          // ⛔ Advertised, not inferred: the routing used to test whether
+          // `donorAppVersion` was truthy, and it is ALWAYS truthy — a browser
+          // donor is stamped with the string 'browser' — so the browser branch
+          // was dead code and browser donors were served the native protocol.
+          // A capability question gets a capability flag.
+          ws._boundResidentRead = msg.boundResidentRead === true;
           ws._mindspaceOps = Array.isArray(msg.mindspaceOps) ? new Set(msg.mindspaceOps) : null;
           // PA.4.3 multi-donor pool. Track every registered donor GPU. The
           // brain's weights live in the PRIMARY donor's VRAM and ALL dispatch

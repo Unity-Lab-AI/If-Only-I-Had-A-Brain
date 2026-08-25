@@ -37416,3 +37416,68 @@ Now counted **by lane** — `native`, `browserEmptyPre`, `emptyMirror`, `noMirro
 - ⛔ **The "3 open" misreport is mine and it stood for several turns.** I answered a count question from a marker I had never checked covered the whole board. The fix is mechanical — count `[ ]` *and* `[~]` — and the lesson is the same one this whole day keeps teaching: **a number nobody re-derives is a number nobody should quote.**
 - ⭐ **I went in expecting to find a live bug and found a correct fix.** Reported as clear rather than manufacturing a finding to justify the audit — and the audit still paid for itself twice, in `PROPBOUND.2` and in the two items it surfaced next door.
 - ⚠ **NOT VERIFIED LIVE.** Server + frontend; lands on the next press. `emptyMirror` climbing during a teach era is the thing to watch.
+
+---
+
+## 2026-08-25 — BOUNDCAP + DARKHEB: a truthy string made two browser branches dead code - feature/boundcap-darkheb
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay you found more stuff to fix, get at it"*
+
+**Closed: BOUNDCAP.1, DARKHEB.1.**
+
+### BOUNDCAP.1 — ⛔ I filed this as a latent fragility. It was two LIVE bugs.
+
+The filing said *"correct today, real fragility"*. **That was wrong, and the thing that made it wrong is one line:**
+
+```js
+client.donorAppVersion = _donorVer || 'browser';   // brain-server.js:10467
+```
+
+A browser donor is stamped with the **string `'browser'`** — which is truthy. So `if (client.donorAppVersion)`, used at two sites to mean *"is this the native binary"*, was **true for every registered donor**, and both browser branches had been **dead code**.
+
+**Bug 1 — the bound-propagate router served browser donors the NATIVE protocol.** `_boundPreIndicesFor` returns **indices**; `compute.html`'s type=2 handler reads the payload as a **dense 0/1 array** (`new Uint32Array(buf, off, preLen)` → `writeSparsePreSpikes`). Indices where a dense vector is expected is not a smaller signal, it is a **different** one. And `preLen === 0` is precisely the browser's bound-mode trigger (`compute.html:724`), so a non-empty pre *also* forced standalone mode on matrices whose standalone buffers are not allocated when cluster-bound.
+
+⛔ **Which means the PROPBOUND fix had become a mirror image of the bug it fixed, aimed at the other donor type** — and I had audited that exact function hours earlier and called it correct. My verdict was right about the native path and I never asked the same question about the other branch.
+
+**Bug 2 — found only by applying fix-the-chokepoint.** The identical broken test at `gpu.js:2761` sets the upload pump's in-flight low-water:
+
+```js
+if (_c && _c.donorAppVersion) _loDefMb = 96;   // meant "native only"
+```
+
+Its own comment, three lines above, reads *"browser donors keep the 8MB protection"*. They did not: they got **96MB**. That protection exists because **a browser donor's busy main thread cannot service its own socket** — the one donor type that must not be handed a large in-flight window is the one that was.
+
+⭐ **This is why the law is "fix the chokepoint, not the instance."** Had I patched only the function I was looking at, the second site would have survived with its comment still describing behaviour it did not have.
+
+**Fixed:**
+- ⭐ **One owner for the question** — `_donorIsNative(ws)`, which tests the `'browser'` **sentinel** rather than the field's presence, and returns `false` for an unregistered donor so nativeness is never *assumed*.
+- ⭐ **The protocol choice is an ADVERTISED capability**, not an identity guess: `compute.html` sends `boundResidentRead: true`, the server stamps `ws._boundResidentRead`, and the router asks the question it actually cares about — *does this donor read its resident bound buffer on an empty pre?*
+- ⚠ **The sentinel is kept alongside the flag on purpose**, so already-loaded tabs are correct immediately instead of waiting for a reload.
+- ⚠ **And the unknown-donor case is deliberately asymmetric.** The router does NOT use `!_donorIsNative(...)`, because that would send an unknown donor to the empty-pre path — the one that silently returns **all-zero currents** on a native binary. Unknown lands on the rebuild path, which refuses with `null`. **The asymmetry is the safety property**, and it is commented as such so it does not get tidied into a bug later.
+
+⭐ **Why every OTHER capability gate was untouched, stated so nobody re-audits them:** all nine of them regex-parse a semver, and `'browser'` fails `^\d+\.\d+\.\d+`. **Version-gated checks got browser-exclusion for free; the two boolean-presence checks did not.** That is the whole distribution of this bug.
+
+### DARKHEB.1 — the sibling block that was published every broadcast and rendered nowhere
+
+Seven fields, **three rows** — seven rows of raw counters is noise, and the pipeline, the refusals and the wire verbs are three different questions:
+
+| Row | Fields | Reads |
+|---|---|---|
+| `teach ops` | `flushedOps` · `enqueued` · `flushedFrames` | `N sent / N queued · N frames` — a gap that keeps growing means the queue fills faster than it drains |
+| `teach refusals` | `capFlushes` · `suppressedStale` | ⭐ the one that earns its place |
+| `teach verbs` | `rangesSent` · `maskedSent` | both zero while ops climb = the lane fell back to per-op frames |
+
+⭐ **The refusal row exists because both of its counters exist because both events used to be INVISIBLE.** `capFlushes` counts mid-slab forced flushes **that used to be silent drops**; `suppressedStale` counts dependent plasticity refused after a shed pattern frame — and refusing is *correct* there, because the alternative is training the previous iteration's pattern into this iteration's weights, which is **training a lie**. Both render **amber, not red**: they are the system behaving correctly under pressure, worth seeing and not worth alarming. `none` renders green because that zero is *evidence*, not an absence of reports. `suppressedStale` now satisfies its own source comment — *"this counter is the teaching that cost us — it belongs on screen, not in a rate-limited console line."*
+
+### Verification
+
+`node --check` clean on `gpu.js` / `brain-server.js` / `state.js` · `boundHebbian` parity **7/7** (checked across BOTH access forms — the first pass reported 5/7 because the grep only caught `boundHebbian.X` and missed the two read through the destructured `bh`) · **zero** bare-truthy `donorAppVersion` tests left in the tree (the three remaining matches are comments documenting the fix — *grep the code, not the comments*) · capability traced advertise → stamp → consume · divs 481/481 · `docs:drift` clean.
+
+### Owned
+
+- ⛔ **My own filing understated this.** I wrote *"nothing is broken now"* about a live protocol bug, because I reasoned about the field's intent instead of reading the one line that assigns it. **The lesson is narrow and mechanical: when a test is `if (x)`, go read what writes `x`.**
+- ⛔ **I audited `gpuSparsePropagateBound` and passed it hours before finding this.** The audit checked the native branch thoroughly and never asked the same question of the branch beside it. A verdict scoped to one path should say so.
+- ⚠ **I introduced a false doc claim mid-edit and caught it in the next read:** I added `sparseV2 / mindspaceV1 / boundResidentRead: true` into the `gpu_register` JSON example that is explicitly the **native** donor's payload — which sends none of them. Replaced with a note stating the asymmetry, since the asymmetry is the point.
+- ⚠ **NOT VERIFIED LIVE.** Server + `compute.html` + dashboard. The frontend rsyncs on push; the server needs the restart.
