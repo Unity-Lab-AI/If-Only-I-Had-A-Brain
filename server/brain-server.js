@@ -11514,8 +11514,32 @@ try {
 // thread for 45s and the TOP SELF-TIME functions print to the ring — the
 // thief gets named by file:line, not inferred from block cadence. One-shot
 // per boot; ~1ms sampling overhead for 45s; DREAM_CPU_PROFILE=0 disables.
+// ⛔ PROFREARM.1 (2026-08-25) — IT RAN ONCE, AND ONCE IS THE WRONG NUMBER.
+//
+// The comment above claims +150s is "boot settled, the walk in its steady
+// rhythm". **That premise is false**, and a live read proved it: at +150s the
+// canonical sparse upload is frequently still running and the definition
+// bootstrap is in its FIRST-normalisation era. A single sample there is not a
+// picture of the walk — it is a picture of the walk's least representative
+// three minutes.
+//
+// ⭐ The concrete cost of that: `NORMROWS.2`'s deadband skips rows already AT
+// target norm, which by construction cannot fire while every row is being
+// normalised for the very first time. The harness measured the real effect
+// (pass 1 rewrote 4000 rows, pass 2 rewrote **0**) — and the one-shot profile
+// is **structurally blind to it**, because the benefit is a steady-state
+// property and the instrument never samples steady state.
+//
+// So it re-arms. First run stays at +150s (the early picture is still worth
+// having, and it is what caught the SCALEWALK thieves), then every
+// `DREAM_CPU_PROFILE_EVERY_MS` — default 30 min. The LATEST lands in
+// `_cpuProfile`; the FIRST is kept separately as `_cpuProfileFirst`, because
+// comparing early-vs-steady is exactly the question a one-shot could not
+// answer. Cost is ~1ms sampling overhead for 45s per interval.
+// `DREAM_CPU_PROFILE=0` still disables entirely; `DREAM_CPU_PROFILE_EVERY_MS=0`
+// keeps the original one-shot behaviour.
 if (process.env.DREAM_CPU_PROFILE !== '0') {
-  setTimeout(() => {
+  const _profileOnce = () => {
     try {
       const inspector = require('inspector');
       const session = new inspector.Session();
@@ -11571,6 +11595,11 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
                       pct: +(us / total * 100).toFixed(1),
                     })),
                   };
+                  // PROFREARM.1 — keep the FIRST sample forever alongside the
+                  // latest. Early-vs-steady is the comparison a one-shot could
+                  // never make, and it is exactly the question that matters for
+                  // any fix whose benefit accrues over time.
+                  if (!brain._cpuProfileFirst) brain._cpuProfileFirst = brain._cpuProfile;
                 } catch { /* telemetry must never break the profiler's exit path */ }
               } catch (e2) { console.warn('[CPUProfile] summarize failed:', e2 && e2.message); }
               try { session.disconnect(); } catch { /* done */ }
@@ -11579,6 +11608,21 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
         });
       });
     } catch (e) { console.warn('[CPUProfile] unavailable:', e && e.message); }
+  };
+  // First sample at +150s — the early picture, which is what named the
+  // SCALEWALK thieves. Then repeat, so steady state is observable at all.
+  setTimeout(() => {
+    _profileOnce();
+    const _everyRaw = process.env.DREAM_CPU_PROFILE_EVERY_MS;
+    const _every = _everyRaw === undefined ? 1_800_000 : Number(_everyRaw);
+    // `0` (or a non-positive / unparseable value) keeps the original one-shot
+    // behaviour rather than silently picking a default — an interval nobody
+    // asked for is a cost nobody priced.
+    if (Number.isFinite(_every) && _every > 0) {
+      const _t = setInterval(_profileOnce, Math.max(60_000, _every));
+      // Never hold the process open for a diagnostic.
+      if (typeof _t.unref === 'function') _t.unref();
+    }
   }, 150_000);
 }
 

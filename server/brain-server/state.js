@@ -1322,6 +1322,15 @@ const SERVER_STATE_MIXIN = {
       // ONESHOT.1 — the self-profile's ranked table, published so "what is
       // eating the loop?" survives the console ring.
       out.cpuProfile = _cpuProfile;
+      // PROFREARM.1 — the FIRST sample, kept so early-vs-steady is comparable.
+      // ⚠ The first one is taken at +150s, which is NOT "the walk settled": the
+      // canonical upload is often still running and every row is being
+      // normalised for the first time. Read it as the boot picture, and read
+      // `cpuProfile` (the latest) for how she actually runs.
+      out.cpuProfileFirst = (this._cpuProfileFirst && Array.isArray(this._cpuProfileFirst.top))
+        ? { at: this._cpuProfileFirst.at, sampledMs: this._cpuProfileFirst.sampledMs,
+            top: this._cpuProfileFirst.top.slice(0, 6) }
+        : null;
       out.hostRam = {
         freeMB: _freeMB,
         totalMB: _totalMB,
