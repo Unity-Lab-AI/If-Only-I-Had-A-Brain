@@ -3941,10 +3941,16 @@ export class Curriculum {
         // idle). Require it live so dream-window generation shows the cheap path
         // during any reconnect (Gee 2026-07-14 root-cause fix, mirrors chat).
         const _gpuProxyLive = !!(this.cluster && this.cluster._gpuProxyReady === true);
+        // GPUGEN (2026-08-25) — mirrors the chat-side gate: the explicit-opt-in
+        // term is dropped and the SAFETY terms stay. Nobody ever set that flag,
+        // so dream-window generation (phenomenology + recombination) has been
+        // permanently disabled at biological scale — which is part of why
+        // `novelConsolidated` reads 0. `_donorsPresent` + `_gpuProxyLive` are
+        // what actually keep the ~57s/word CPU pin from happening; the env flag
+        // was an extra lock on an already-bolted door. `=0` still kills it.
         _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== '0'
           && _donorsPresent
-          && _gpuProxyLive
-          && (_env.DREAM_INNERVOICE_GPU_GEN === '1' || _env.DREAM_DF7_FANOUT_PROPAGATE === '1');
+          && _gpuProxyLive;
         if (!_dwComposeSafe && !this._dwComposeGateLogged) {
           this._dwComposeGateLogged = true;
           this._hb(`[Curriculum] 💤 dream-window generation stages (phenomenology + recombination) DISABLED at scale — cortex ${_cortexN.toLocaleString()} > ${_maxN.toLocaleString()} and no GPU generation path. A composeSentence word-tick pins the host CPU ~57s at this scale; consolidation + trickle still run every window.`);

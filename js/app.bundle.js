@@ -56984,11 +56984,25 @@ var NeuronCluster = class {
     if (this._noiseGateEnabled === void 0) {
       this._noiseGateEnabled = !(typeof process !== "undefined" && !!process.env && process.env.DREAM_NOISE_GATE === "0");
     }
+    const _surpriseMax = (() => {
+      const raw = typeof process !== "undefined" && process.env ? Number(process.env.DREAM_SURPRISE_MAX) : NaN;
+      return Number.isFinite(raw) && raw >= 0.5 && raw <= 5 ? raw : 1.5;
+    })();
     let surpriseGate = 0.5 + predErr;
     if (this._noiseGateEnabled) {
       const coherence = Math.max(0, Math.min(1, this._noiseSuppressFactor ?? 1));
       const inhib = this._remediationInhibition ? 0.5 : 1;
       surpriseGate = 0.5 + predErr * coherence * inhib;
+    }
+    if (surpriseGate > _surpriseMax) surpriseGate = _surpriseMax;
+    if (!this._surpriseStats) this._surpriseStats = { n: 0, sum: 0, atCeiling: 0, max: 0, ceiling: _surpriseMax };
+    {
+      const s = this._surpriseStats;
+      s.n++;
+      s.sum += surpriseGate;
+      s.ceiling = _surpriseMax;
+      if (surpriseGate > s.max) s.max = surpriseGate;
+      if (surpriseGate >= _surpriseMax - 1e-9) s.atCeiling++;
     }
     if (typeof this._lastSemMotorMeanCos === "number" && this._lastSemMotorMeanCos > SATURATION_MEANCOS && surpriseGate > 0.5) {
       surpriseGate = 0.5;
@@ -58673,7 +58687,8 @@ var NeuronCluster = class {
     }
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
       try {
-        if (typeof process !== "undefined" && process.env && process.env.DREAM_GEN_PROPAGATE_CHUNKED === "1" && this.synapses && this.lastSpikes && typeof this.synapses.propagateChunked === "function") {
+        const _chunkedEnv = typeof process !== "undefined" && process.env ? process.env.DREAM_GEN_PROPAGATE_CHUNKED : void 0;
+        if (_chunkedEnv !== "0" && this.synapses && this.lastSpikes && typeof this.synapses.propagateChunked === "function") {
           const currents = await this.synapses.propagateChunked(this.lastSpikes);
           if (currents && currents.length === this.size) {
             this._cachedIntraCurrents = currents;
@@ -79257,6 +79272,20 @@ var K_MIXIN = {
   // shape the 37 call sites already pass, no new failure modes.
   async _teachWordSpellingDirectFinal(opts = {}) {
     if (typeof this._teachWordSpellingDirect !== "function") return;
+    const cluster = this.cluster;
+    const _isFreshWalk = !(typeof process !== "undefined" && process.env && process.env.DREAM_KEEP_STATE === "1");
+    const semToMotor = cluster && cluster.crossProjections && cluster.crossProjections.sem_to_motor;
+    if (_isFreshWalk && semToMotor && typeof semToMotor.scale === "function") {
+      try {
+        semToMotor.scale(0);
+        this._wordSpellFinalWipes = (this._wordSpellFinalWipes || 0) + 1;
+        this._hb(`[Curriculum] WORD-SPELL-FINAL \u2014 sem\u2192motor WIPED (scale(0)) before the re-carve. Fresh walk only; a resumed brain never takes this path. This wipe is running for the first time in the project's history (DORMANT.1b).`);
+      } catch (err) {
+        this._hb(`[Curriculum] WORD-SPELL-FINAL \u2014 wipe skipped, scale() threw (${err && err.message}); re-carving on top of existing weights instead.`);
+      }
+    } else if (!_isFreshWalk) {
+      this._hb("[Curriculum] WORD-SPELL-FINAL \u2014 resumed brain (DREAM_KEEP_STATE=1), so the sem\u2192motor wipe is SKIPPED by design; re-carving constructively on top of the trained weights.");
+    }
     this._hb(`[Curriculum] WORD-SPELL-FINAL \u2014 re-carving sem\u2192motor after the QA phases (subject=${opts.subject || "all"}, reps=${opts.reps ?? 8}). This phase existed in name only until 2026-08-25; it is running for the first time.`);
     return this._teachWordSpellingDirect({ ...opts, label: "WORD-SPELL-FINAL" });
   },
@@ -97329,7 +97358,7 @@ var Curriculum = class _Curriculum {
         const _minDonors = Number(_env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1;
         const _donorsPresent = (brain2 && brain2._communityDonorCount || 0) >= _minDonors;
         const _gpuProxyLive = !!(this.cluster && this.cluster._gpuProxyReady === true);
-        _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== "0" && _donorsPresent && _gpuProxyLive && (_env.DREAM_INNERVOICE_GPU_GEN === "1" || _env.DREAM_DF7_FANOUT_PROPAGATE === "1");
+        _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== "0" && _donorsPresent && _gpuProxyLive;
         if (!_dwComposeSafe && !this._dwComposeGateLogged) {
           this._dwComposeGateLogged = true;
           this._hb(`[Curriculum] \u{1F4A4} dream-window generation stages (phenomenology + recombination) DISABLED at scale \u2014 cortex ${_cortexN.toLocaleString()} > ${_maxN.toLocaleString()} and no GPU generation path. A composeSentence word-tick pins the host CPU ~57s at this scale; consolidation + trickle still run every window.`);
