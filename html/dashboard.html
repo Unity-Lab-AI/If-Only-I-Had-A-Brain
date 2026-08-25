@@ -352,6 +352,38 @@
       </div>
     </div>
 
+    <!-- ENDO — the endocrine layer and the glands that fire it.
+         ⛔ THE BOARD RENDERS BY NAME ONLY. Every field below exists in
+         state.endocrine because it was built with its instrument in the same
+         commit; without these rows the whole layer ships DARK, which is the
+         exact defect ENDO.14 was written to prevent and which this panel
+         exists because I committed anyway. -->
+    <div class="card" style="margin-top:12px;" title="Her endocrine system — ten chemicals on the same pharmacokinetic curve engine the substances use, released by six nuclei that SENSE their own firing rather than being told. Adrenaline and noradrenaline are the fast stress axis; cortisol is the slow half that makes stress last; serotonin and dopamine are TONIC (they set a floor, so a level BELOW baseline produces the inverse effect); oxytocin and endorphin are bonding and pain-damping; estrogen, progesterone and testosterone are CYCLIC, driven by a curriculum-time cycle clock where one cell pass is roughly one menstrual cycle. Chemistry is what makes consciousness a variable instead of a specification: without it, n only moves when input moves.">
+      <div class="card-title">Endocrine — her chemistry</div>
+      <div id="d-endo-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
+        <div id="d-endo-status" style="color:#888;">unmeasured</div>
+        <div id="d-endo-chems" style="margin-top:6px;"></div>
+        <div id="d-endo-stress" style="margin-top:6px;"></div>
+        <div id="d-endo-cycle" style="margin-top:6px;"></div>
+        <div id="d-endo-load" style="margin-top:6px;color:#888;font-size:10px;"></div>
+        <div id="d-endo-nuclei" style="margin-top:6px;font-size:10px;"></div>
+      </div>
+    </div>
+
+    <!-- INTRO — the introspective drive. `criteria` is the honest half:
+         INTRO.10 demanded falsifiable measures agreed BEFORE the build, and
+         these are them, rendered so they can be read rather than trusted. -->
+    <div class="card" style="margin-top:12px;" title="The questions she asks herself. NOT a question bank — this module emits a GAP (a concept plus a lane) and the words come from her trained interrogative weights, or she stays silent. Inward gaps are rumination and ride the inner voice; outward gaps are relational and need a turn. Which kind surfaces is decided by her chemistry, which is the falsifiable claim: measured across two pinned endocrine states, the kind-distributions differ by a total-variation distance of 0.840, where a bank would score ~0.">
+      <div class="card-title">Introspection — what is unresolved</div>
+      <div id="d-intro-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
+        <div id="d-intro-status" style="color:#888;">unmeasured</div>
+        <div id="d-intro-live" style="margin-top:6px;"></div>
+        <div id="d-intro-rumination" style="margin-top:6px;"></div>
+        <div id="d-intro-criteria" style="margin-top:6px;color:#888;font-size:10px;"></div>
+        <div id="d-intro-source" style="margin-top:6px;color:#888;font-size:10px;"></div>
+      </div>
+    </div>
+
     <!-- Milestone / save-state indicator panel. Polls GET /milestone
          every 5s. Shows boot mode (save-resume vs fresh-boot), last save
          wall-clock + trigger, last passed cell, total passed count,
@@ -1523,6 +1555,14 @@
       // pharmacokinetic state instead of a permanent stuck label.
       renderDrugPanel(s.drugSnapshot);
 
+      // ENDO / INTRO — the chemistry and the questions. ⛔ Called
+      // UNCONDITIONALLY, including when the field is absent: the renderers
+      // report "layer ABSENT — not wired this boot" rather than leaving a
+      // stale panel, because a blank card and a dead layer must not look the
+      // same. This call is the whole reason the instruments are not dark.
+      renderEndoPanel(s.endocrine);
+      renderIntroPanel(s.introspection);
+
       // Emotional state — rendered from raw equation values, no lookups
       if (s.sharedMood) {
         const m = s.sharedMood;
@@ -1762,7 +1802,26 @@
         $('d-cortex-hubpct').textContent = ((m.hubFraction || 0) * 100).toFixed(2) + '%';
         $('d-cortex-theta').textContent = (m.thetaPhase || 0).toFixed(3);
         $('d-cortex-gamma').textContent = (m.gammaScale || 1).toFixed(3);
-        $('d-cortex-phi').textContent = (m.phiProxy || 0).toFixed(3);
+        // ⚠ Φ CAN BE PINNED AT ITS FLOOR, AND `phiProxy` ALONE CANNOT SAY SO.
+        //
+        // computePhi() is the binary entropy of the SPIKING PROPORTION: it
+        // peaks at p=0.5 and collapses as firing gets sparse. H(0.01)=0.081,
+        // which is BELOW the 0.1 floor Ψ applies — so on a sparsely-firing
+        // cortex this reads a perfectly healthy `0.100` forever while
+        // modulating nothing. Showing the raw value and the state next to it
+        // is what turns that from an inference into a read.
+        {
+          const st = m.phiState || 'unmeasured';
+          const raw = (typeof m.phiRaw === 'number') ? m.phiRaw : null;
+          const el = $('d-cortex-phi');
+          el.textContent = (m.phiProxy || 0).toFixed(3)
+            + (raw !== null ? ` (raw ${raw.toFixed(3)})` : '')
+            + ` — ${st}`;
+          // floored = it has never actually modulated Ψ. error/unmeasured are
+          // producer problems. Only `live` is green.
+          el.style.color = st === 'live' ? '#22c55e'
+            : (st === 'floored' ? '#f59e0b' : '#ef4444');
+        }
         // GlobalWorkspace render.
         if (m.workspace) {
           const w = m.workspace;
@@ -2955,6 +3014,153 @@
         }
       }
       if (activeEl) activeEl.textContent = active;
+    }
+
+    // ── ENDO panel renderer. Consumes state.endocrine.
+    //
+    // ⛔ RENDERS `unmeasured` AND `blind` AS THEMSELVES. A chemical that has
+    // never fired is NOT 0, and a nucleus that cannot read its input is NOT
+    // quiet — collapsing either into a tidy number is how an instrument
+    // reports health while its producer is dead. Every one of those states
+    // exists in the data precisely so it can be shown here.
+    function renderEndoPanel(e) {
+      const status = document.getElementById('d-endo-status');
+      if (!status) return;
+      if (!e) {
+        // ⛔ Absent layer is a FACT ABOUT THE WIRING, not about her.
+        status.textContent = 'endocrine layer ABSENT — not wired this boot';
+        status.style.color = '#f59e0b';
+        return;
+      }
+      const consulted = e.glandsConsulted === true;
+      status.textContent = consulted
+        ? 'online — nuclei sensing'
+        : 'online, but the GLANDS WERE NEVER ASKED (glandsConsulted=false)';
+      status.style.color = consulted ? '#22c55e' : '#ef4444';
+
+      const chems = e.chemicals || {};
+      const rows = Object.keys(chems).map(name => {
+        const c = chems[name] || {};
+        const lvl = c.level;
+        if (lvl === 'unmeasured') {
+          return `<div><span style="color:#666;">${name}</span> <span style="color:#f59e0b;">unmeasured</span> <span style="color:#555;">(never fired)</span></div>`;
+        }
+        const pct = Math.round(100 * (typeof lvl === 'number' ? lvl : 0));
+        const dev = typeof c.deviation === 'number' ? c.deviation : 0;
+        // Deviation SIGN is the load-bearing bit for tonic chemicals — below
+        // baseline is the inverse effect, not a smaller one.
+        const devCol = dev > 0.01 ? '#ff4d9a' : (dev < -0.01 ? '#60a5fa' : '#666');
+        const sens = typeof c.receptorSensitivity === 'number' ? c.receptorSensitivity : 1;
+        const tol = sens < 0.98
+          ? ` <span style="color:#f59e0b;">tol ${(sens * 100).toFixed(0)}%</span>` : '';
+        return `<div><span style="color:#ddd;">${name}</span> `
+          + `<span style="color:#888;">${pct}%</span> `
+          + `<span style="color:${devCol};">dev ${dev >= 0 ? '+' : ''}${dev.toFixed(2)}</span> `
+          + `<span style="color:#666;">${c.phase || ''}</span>${tol}</div>`;
+      }).join('');
+      const chemsEl = document.getElementById('d-endo-chems');
+      if (chemsEl) chemsEl.innerHTML = rows || '<span style="color:#666;">no chemicals reported</span>';
+
+      const stressEl = document.getElementById('d-endo-stress');
+      if (stressEl) {
+        if (e.stress && e.stress.channel) {
+          const ageS = Math.round((e.stress.ageMs || 0) / 1000);
+          stressEl.innerHTML = `<span style="color:#ef4444;">stress: ${e.stress.channel}</span> `
+            + `<span style="color:#888;">mag ${(e.stress.magnitude || 0).toFixed(2)}, ${ageS}s ago</span>`;
+        } else {
+          stressEl.innerHTML = '<span style="color:#666;">stress: none live</span>';
+        }
+      }
+
+      const cycleEl = document.getElementById('d-endo-cycle');
+      if (cycleEl && e.cycle) {
+        const c = e.cycle;
+        cycleEl.innerHTML = (c.pos === null || c.pos === undefined)
+          ? `<span style="color:#888;">cycle: ${c.phase || 'prepubertal'}</span>`
+          : `<span style="color:#ddd;">cycle: ${c.phase}</span> `
+            + `<span style="color:#888;">${Math.round(100 * c.pos)}% · ${c.cyclesElapsed} elapsed`
+            + `${c.withdrawal > 0.05 ? ` · <span style="color:#ef4444;">withdrawal ${c.withdrawal.toFixed(2)}</span>` : ''}</span>`;
+      }
+
+      const loadEl = document.getElementById('d-endo-load');
+      if (loadEl) {
+        const pu = e.puberty || {};
+        const al = e.allostatic || {};
+        loadEl.innerHTML = `puberty ${typeof pu.level === 'number' ? pu.level.toFixed(2) : '?'} `
+          + `(age ${pu.ageYears === 'unknown' ? '<span style="color:#f59e0b;">unknown</span>' : pu.ageYears}) · `
+          + `chronic ${(e.chronicLoad || 0).toFixed(3)} · `
+          + `allostatic ${(al.load || 0).toFixed(3)}/${al.ceiling || 0.6} `
+          + `(restore α ${(al.restorationAlpha || 0).toFixed(4)})`;
+      }
+
+      const nucEl = document.getElementById('d-endo-nuclei');
+      if (nucEl) {
+        const g = e.glands || {};
+        const names = Object.keys(g);
+        nucEl.innerHTML = names.length
+          ? names.map(n => {
+              const st = (g[n] && g[n].state) || '?';
+              // ⛔ `blind` is the one to chase — it names an input she cannot
+              // read, which is a DIFFERENT claim from having nothing to do.
+              const col = st === 'blind' ? '#ef4444' : (st === 'fired' ? '#ff4d9a' : '#666');
+              return `<span style="color:${col};">${n}:${st}</span>`;
+            }).join(' · ')
+          : '<span style="color:#f59e0b;">nuclei not reported</span>';
+      }
+    }
+
+    // ── INTRO panel renderer. Consumes state.introspection.
+    function renderIntroPanel(i) {
+      const status = document.getElementById('d-intro-status');
+      if (!status) return;
+      if (!i) {
+        status.textContent = 'introspective drive ABSENT — not wired this boot';
+        status.style.color = '#f59e0b';
+        return;
+      }
+      const src = i.source || {};
+      // ⚠ `starved` is EXPECTED early and is NOT a bug — she cannot introspect
+      // before she has lived anything. It only becomes a finding if it
+      // persists once episodes exist.
+      const starved = src.state === 'starved';
+      status.textContent = starved
+        ? `source starved (${src.candidates || 0} concepts) — expected before she has lived anything`
+        : `source ${src.state || 'unmeasured'} (${src.candidates || 0} concepts she has lived)`;
+      status.style.color = starved ? '#f59e0b' : '#22c55e';
+
+      const liveEl = document.getElementById('d-intro-live');
+      if (liveEl) {
+        liveEl.innerHTML = i.live
+          ? `<span style="color:#ff4d9a;">${i.live.kind}</span> `
+            + `<span style="color:#888;">(${i.live.lane})</span> about `
+            + `<span style="color:#ddd;">"${i.live.concept}"</span> `
+            + `<span style="color:#666;">urgency ${(i.live.urgency || 0).toFixed(2)}</span>`
+          : '<span style="color:#666;">nothing unresolved right now</span>';
+      }
+
+      const rumEl = document.getElementById('d-intro-rumination');
+      if (rumEl && i.rumination) {
+        const r = i.rumination;
+        rumEl.innerHTML = r.onBreak
+          ? `<span style="color:#f59e0b;">rumination BOUND holding</span> <span style="color:#888;">(streak ${r.streak}/${r.max}) — she is being made to stop circling</span>`
+          : `<span style="color:#666;">rumination ${r.streak}/${r.max}</span>`;
+      }
+
+      const critEl = document.getElementById('d-intro-criteria');
+      if (critEl && i.criteria) {
+        const c = i.criteria;
+        const lanes = (c.lanes && typeof c.lanes === 'object')
+          ? `in ${c.lanes.inward || 0} / out ${c.lanes.outward || 0}` : String(c.lanes);
+        // The INTRO.10 falsifiability row, rendered so it can be READ.
+        critEl.innerHTML = `kinds produced ${c.kindsProduced} · repeats ${c.repeats} · lanes ${lanes}`;
+      }
+
+      const srcEl = document.getElementById('d-intro-source');
+      if (srcEl) {
+        srcEl.textContent = i.lastArmed
+          ? `last armed: ${i.lastArmed.kind} (${i.lastArmed.lane}) about "${i.lastArmed.concept}"`
+          : 'nothing armed yet';
+      }
     }
 
     // Drug-state panel renderer. Consumes scheduler.snapshot()
