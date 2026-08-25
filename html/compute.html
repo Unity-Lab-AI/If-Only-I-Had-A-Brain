@@ -911,7 +911,14 @@ function connectToServer() {
       if (clusterState[clusterName] && clusterState[clusterName].initialized && clusterState[clusterName].size === size) {
         ws.send(JSON.stringify({ type: 'gpu_init_ack', clusterName, size }));
         const totalInit = Object.keys(clusterState).length;
-        statusEl.textContent = `GPU already initialized: ${totalInit}/7 clusters — ${clusterName} (${size.toLocaleString()} neurons) [skip-reinit]`;
+        // CLUSTERCOUNT (2026-08-25) — the denominator WAS hardcoded `/7`, and the
+        // brain has eight clusters since the brainstem was added, so this read
+        // `8/7`. A donor cannot know the total up front (it learns one cluster
+        // per gpu_init), so the honest form is the count with no invented
+        // denominator — the same rule the server's own partial-coverage rows
+        // follow, pointed the other way: publish a fraction only when the
+        // denominator is actually known.
+        statusEl.textContent = `GPU already initialized: ${totalInit} clusters — ${clusterName} (${size.toLocaleString()} neurons) [skip-reinit]`;
         console.log(`[GPU] skipped re-init for ${clusterName} (already initialized at ${size.toLocaleString()} neurons; same tab, transient WS reconnect)`);
         return;
       }
@@ -941,9 +948,11 @@ function connectToServer() {
       // that auto-scale inside the cortex cluster; its cross-projections are
       // cluster-BOUND and taught GPU-only via the binary teach lane (the CPU
       // keeps only a probe-critical shadow) — so this status counter tracks
-      // GPU-init progress across the 7 clusters only.
-      statusEl.textContent = `GPU initialized: ${totalInit}/7 clusters — ${clusterName} (${size.toLocaleString()} neurons)`;
-      console.log(`[GPU] Initialized ${clusterName}: ${size.toLocaleString()} neurons (${totalInit}/7)`);
+      // GPU-init progress across the brain's clusters only. ⚠ This comment and
+      // the status text used to say SEVEN; the brainstem made it eight, and the
+      // count is not hardcoded any more precisely because it changed once.
+      statusEl.textContent = `GPU initialized: ${totalInit} clusters — ${clusterName} (${size.toLocaleString()} neurons)`;
+      console.log(`[GPU] Initialized ${clusterName}: ${size.toLocaleString()} neurons (${totalInit} so far)`);
       renderHierarchy();
       return;
     }

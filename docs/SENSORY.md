@@ -723,8 +723,13 @@ learned schemas: the knowledge is unchanged, the hand changes.
   a single ellipse re-created the "weird circle" artifact in colour, which was judged and fixed.
 - **Per-stroke alpha.** The one primitive the styles could not compose without. Washes, graphite
   and translucency now blend with the paper instead of sitting on it.
-- **Eight named hands** — poster, pencil, ink, watercolour, pointillism, crosshatch, crayon,
-  doodle. They are parameterisations of the same primitives over the same schemas, picked by a
+- **Named hands** — ⛔ *this bullet said **eight** and listed pointillism, crosshatch and crayon;
+  the roster is **FIVE** and has been since the same day.* **STYLECULL** dropped pointillism and
+  crosshatch, then **BRUSHCULL** dropped crayon with the scribble brush that was its whole identity:
+  every line-texture mass criss-crossed into X-scratch the moment two parts' stroke fields met at
+  different angles, and was judged bad even in isolation. Pencil survived as the graphite LINE hand
+  (`mass: 'none'` — trace and outline on bare paper). Live roster: **poster, pencil, ink,
+  watercolour, doodle.** They are parameterisations of the same primitives over the same schemas, picked by a
   mood-weighted chooser that **zero-weights her last style** so she never draws twice in a row the
   same way. The style rides the label (`canvas:own:<word>:<style>`). ⚠ A harness caught black ink
   on dark paper — invisible output — before it shipped; mono ink is pale now.
@@ -833,3 +838,46 @@ without chemistry `n` only moves when *input* moves — so Ψ described her hard
 ⚠ **Not verified live.** Board fields to read after the press: `state.endocrine.chemicals.*`,
 `state.endocrine.glands.*.state` (⛔ `blind` names an input she cannot read, and is a different claim from
 `quiet`), and `state.phiState`.
+
+---
+
+**SE.23 — THE ZIGZAG WAS THE BODY, AND HER STROKE COMMITMENT BECAME A TRAINED ABILITY (2026-08-25).**
+Two hands from SE.20 were still failing after their first fix — Gee: *"doodle still zigzags/scratches;
+watercolor renders garbage"* — so both were rendered through the production stroke builder and the real
+`sketch()`, out to PNG, and looked at. Four rounds.
+
+⛔ **It was never the strokes.** The first render showed both hands drawing a **rectangular slab**, and on
+the pale watercolour wash the part-colour blobs sitting on that slab *are* the "coloured garbage". The
+convex hull was fitted to the trace **raw**, while the fragment gate ran later and governed only which
+strokes got **drawn** — so the earlier fix had suppressed the jagged tracer fragments' **ink while keeping
+their shape**, and the body became the bounding box of the noise scatter.
+
+⭐ **One question had two answers.** *"Which strokes are real?"* was decided independently in two places and
+only one of them held the rule. The survivor set is computed once now and consumed by both the body and the
+redraw; the square became a real silhouette — ears, eyes, tail — on the next render. A second defect was
+visible only *after* that: part-colour blobs **floating outside the subject** (the part grid is a layout
+over the whole reference frame, and blob offsets reach ±35% of a cell). Colour layers are clipped to the
+silhouette now, because a colour layer belongs to the thing.
+
+⛔ **ARTGROW — and the fix that followed was WRONG in a way worth recording.** Making the per-hand stroke
+budget authoritative *at its old values* (doodle **22**, watercolour **40**) turned a noise defence into a
+**cap on her ability**. Gee: *"dont limit stroke counts too much cant make a art work in only 20 strokes it
+should increase in ability as she learns in art and stuff"*. The reasoning behind the correction is the
+part to keep: **noise is no longer what those numbers defend against.** Fragments die at the source now, so
+a high budget adds real remembered contour rather than scratch — and a low one is only a ceiling on how much
+of a drawing she is allowed to make. Budgets raised (doodle 110, watercolour 170, poster 200, ink 160,
+pencil 260) so they express **character** — an ink drawing is spare, a graphite one busy — never ability.
+
+⭐ **And ability is now TRAINED, which is the real content of this entry.** The effective budget is the
+style's character × a **sixth trainable hand parameter**, `budgetMul` (range 0.6–2.5, default 1.0), living
+in the same practice loop as jitter / underA / traceW / keepP / detailMul and scored the same way: cosine
+against her banked percept of the real thing. **So "commit more of what I remember to the page" only
+survives a practice session when it actually made the drawing resemble the subject more.** Measured on a
+full 260-stroke trace: the doodle draws **101 strokes untrained → 235 practiced**, watercolour 153 → 249.
+That is a skill improving, not a constant handed to her.
+
+⚠ **What the renders can and cannot settle.** They were judged against a *synthetic* schema — the store
+boots empty and there is no live box — realistic in the shape of the complaint, but its dense-detail
+strokes are synthetic swirls rather than real traced contour. So they prove the density is **not
+fragment-scratch** and they **cannot judge whether a 235-stroke drawing from a real reference is good.**
+That judgement belongs to a post-press look at real look-ups.

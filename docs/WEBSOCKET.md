@@ -233,7 +233,7 @@ Broadcast to all clients when Unity imagines (server `_imagineTick`, idle-gated)
 | GPU → Server | `gpu_init_ack` | `{clusterName, size}` | GPU confirms cluster is initialized |
 | GPU → Server | `compute_result` | `{clusterName, spikeCount}` | GPU returns atomic-counted spike count after running one Rulkov step. Spike edge = (x_n ≤ 0) ∧ (x_{n+1} > 0) — one spike per action potential |
 
-Why this architecture: state is `vec2<f32>` per neuron (12 bytes/neuron total including spikes u32) and stays resident on the GPU after init. Sending full state arrays every step at 60 Hz × 10 substeps × 7 clusters would be prohibitive at the auto-scaled N. Keeping state + spikes on the GPU and sending only scalar modulation inputs + a single `spikeCount` readback per step keeps WebSocket traffic under 100 KB/step regardless of cluster size. The GPU client is a regular WebSocket client from the server's perspective, just marked with `isGPU: true` in the client record after it sends `gpu_register`.
+Why this architecture: state is `vec2<f32>` per neuron (12 bytes/neuron total including spikes u32) and stays resident on the GPU after init. Sending full state arrays every step at 60 Hz × 10 substeps × 8 clusters would be prohibitive at the auto-scaled N. Keeping state + spikes on the GPU and sending only scalar modulation inputs + a single `spikeCount` readback per step keeps WebSocket traffic under 100 KB/step regardless of cluster size. The GPU client is a regular WebSocket client from the server's perspective, just marked with `isGPU: true` in the client record after it sends `gpu_register`.
 
 #### Distributed donor compute (data-parallel replica pool)
 
@@ -401,7 +401,7 @@ GPU confirms it initialized a cluster after receiving `gpu_init`.
 }
 ```
 
-Server logs this as confirmation. Used only for boot-time verification that the GPU client picked up all 7 clusters before the simulation loop starts dispatching steps.
+Server logs this as confirmation. Used only for boot-time verification that the GPU client picked up all 8 clusters before the simulation loop starts dispatching steps. ⚠ **The donor's own status text no longer prints a denominator at all** — it read a hardcoded `/7` and therefore `8/7` once the brainstem existed; a donor learns one cluster per `gpu_init` and cannot know the total up front, so it reports the count and nothing it would have to invent.
 
 ### Unknown types
 
