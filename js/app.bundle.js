@@ -55860,9 +55860,10 @@ var CLUSTER_FRACTIONS = {
   hippocampus: 0.18,
   amygdala: 0.05,
   basalGanglia: 0.03,
-  cerebellum: 0.08,
+  cerebellum: 0.078,
   hypothalamus: 0.03,
-  mystery: 0.08
+  mystery: 0.08,
+  brainstem: 2e-3
 };
 function clusterSizesFor(totalNeurons) {
   const out = {};
@@ -59661,13 +59662,18 @@ var MysteryModule = class {
     return Math.max(1, total);
   }
   /**
-   * Compute Psi — the mystery function.
+   * Compute Psi — the mystery function. See the file header for the full
+   * equation and for why PhiHat is in it.
    *
-   *   Psi(t) = sqrt(1/N) × N³ * [alpha*Id + beta*Ego + gamma*Left + delta*Right]
-   *   N = TOTAL neuron count (the volume), not active spikes
-   *   √(1/N) × N³ = cubed area of quantum tunneled bit in total volume
+   *   Psi = sqrt(1/n) * N^3 * PhiHat * [a*Id + b*Ego + g*Left + d*Right]
    *
-   * @param {object} brainState - Full brain state object with region data
+   * @param {object} brainState - Full brain state object with region data.
+   *   `brainState.phi` — normalised integration in [0,1] from
+   *   `cluster.computePhi()`. When ABSENT, PhiHat is the multiplicative
+   *   identity 1.0 and `phiMeasured: false` is returned. ⛔ That is not a
+   *   fallback value standing in for a measurement — 1.0 means "this term
+   *   is not modulating", and the flag exists so no consumer can mistake an
+   *   unmodulated Psi for an integrated one.
    * @param {number} dt - Time delta (seconds), reserved for future temporal dynamics
    * @returns {object} { psi, id, ego, leftBrain, rightBrain, components }
    */
@@ -59682,7 +59688,10 @@ var MysteryModule = class {
     const cubedVolume = Math.pow(N, 3);
     const quantumVolume = quantumBit * cubedVolume;
     const weightedSum = this.alpha * id + this.beta * ego + this.gamma * leftBrain + this.delta * rightBrain;
-    const rawPsi = quantumVolume * weightedSum;
+    const phiRaw = brainState.phi;
+    const phiMeasured = typeof phiRaw === "number" && Number.isFinite(phiRaw);
+    const phiHat = phiMeasured ? Math.max(0, Math.min(1, phiRaw)) : 1;
+    const rawPsi = quantumVolume * weightedSum * phiHat;
     const psi = Math.log10(Math.max(1, rawPsi));
     return {
       psi,
@@ -59690,10 +59699,15 @@ var MysteryModule = class {
       ego,
       leftBrain,
       rightBrain,
+      phiHat,
+      // ⛔ Distinguishes "integration measured at X" from "integration not
+      // available, term held at identity". Those are different claims.
+      phiMeasured,
       components: {
         n,
         quantumVolume,
         weightedSum,
+        phiHat,
         weights: {
           alpha: this.alpha,
           beta: this.beta,
@@ -60001,7 +60015,39 @@ function loadPersona(overrides = {}) {
   }
   return persona;
 }
-function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = void 0) {
+var CONTRIB_PARAM_MAP = {
+  cortexSpeed: { target: "cortexSpeed", base: 1 },
+  creativity: { target: "creativity", base: null },
+  arousal: { target: "arousalBaseline", base: null },
+  synapticSensitivity: { target: "synapticSensitivity", base: 1 },
+  socialNeed: { target: "socialAttachment", base: null },
+  oscillationCoherence: { target: "oscillationCoherence", base: 0 },
+  impulsivity: { target: "impulsivity", base: null },
+  amygdalaValence: { target: "amygdalaValence", base: 0 },
+  amygdalaReward: { target: "amygdalaReward", base: 0 },
+  amygdalaFear: { target: "amygdalaFear", base: 0 },
+  hypothalamusArousal: { target: "hypothalamusArousal", base: 0 },
+  cerebellumPrecision: { target: "cerebellumPrecision", base: 1 },
+  prefrontalExecutive: { target: "prefrontalExecutive", base: 1 },
+  hippocampusConsolidation: { target: "hippocampusConsolidation", base: 1 },
+  crossRegionAmplify: { target: "crossRegionAmplify", base: 1 },
+  defaultModeSuppression: { target: "defaultModeSuppression", base: 0 },
+  visualCortexFeedback: { target: "visualCortexFeedback", base: 0 },
+  somatosensoryBoost: { target: "somatosensoryBoost", base: 0 },
+  dissociation: { target: "dissociation", base: 0 }
+};
+function applyContributions(params, delta) {
+  if (!delta) return;
+  for (const key of Object.keys(delta)) {
+    const spec = CONTRIB_PARAM_MAP[key];
+    if (!spec) continue;
+    const v = delta[key];
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    if (spec.base === null) params[spec.target] += v;
+    else params[spec.target] = (params[spec.target] ?? spec.base) + v;
+  }
+}
+function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = void 0, endocrine = null) {
   const t = persona.traits;
   const params = {
     // θ → tonic currents + noise + thresholds
@@ -60028,25 +60074,7 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = void 0)
   if (scheduler && typeof scheduler.activeContributions === "function") {
     const delta = scheduler.activeContributions(now);
     const active = typeof scheduler.activeSubstances === "function" ? scheduler.activeSubstances(now) : [];
-    if (typeof delta.cortexSpeed === "number") params.cortexSpeed = (params.cortexSpeed || 1) + delta.cortexSpeed;
-    if (typeof delta.creativity === "number") params.creativity += delta.creativity;
-    if (typeof delta.arousal === "number") params.arousalBaseline += delta.arousal;
-    if (typeof delta.synapticSensitivity === "number") params.synapticSensitivity = (params.synapticSensitivity || 1) + delta.synapticSensitivity;
-    if (typeof delta.socialNeed === "number") params.socialAttachment += delta.socialNeed;
-    if (typeof delta.oscillationCoherence === "number") params.oscillationCoherence = (params.oscillationCoherence || 0) + delta.oscillationCoherence;
-    if (typeof delta.impulsivity === "number") params.impulsivity += delta.impulsivity;
-    if (typeof delta.amygdalaValence === "number") params.amygdalaValence = (params.amygdalaValence || 0) + delta.amygdalaValence;
-    if (typeof delta.amygdalaReward === "number") params.amygdalaReward = (params.amygdalaReward || 0) + delta.amygdalaReward;
-    if (typeof delta.amygdalaFear === "number") params.amygdalaFear = (params.amygdalaFear || 0) + delta.amygdalaFear;
-    if (typeof delta.hypothalamusArousal === "number") params.hypothalamusArousal = (params.hypothalamusArousal || 0) + delta.hypothalamusArousal;
-    if (typeof delta.cerebellumPrecision === "number") params.cerebellumPrecision = (params.cerebellumPrecision || 1) + delta.cerebellumPrecision;
-    if (typeof delta.prefrontalExecutive === "number") params.prefrontalExecutive = (params.prefrontalExecutive || 1) + delta.prefrontalExecutive;
-    if (typeof delta.hippocampusConsolidation === "number") params.hippocampusConsolidation = (params.hippocampusConsolidation || 1) + delta.hippocampusConsolidation;
-    if (typeof delta.crossRegionAmplify === "number") params.crossRegionAmplify = (params.crossRegionAmplify || 1) + delta.crossRegionAmplify;
-    if (typeof delta.defaultModeSuppression === "number") params.defaultModeSuppression = (params.defaultModeSuppression || 0) + delta.defaultModeSuppression;
-    if (typeof delta.visualCortexFeedback === "number") params.visualCortexFeedback = (params.visualCortexFeedback || 0) + delta.visualCortexFeedback;
-    if (typeof delta.somatosensoryBoost === "number") params.somatosensoryBoost = (params.somatosensoryBoost || 0) + delta.somatosensoryBoost;
-    if (typeof delta.dissociation === "number") params.dissociation = (params.dissociation || 0) + delta.dissociation;
+    applyContributions(params, delta);
     params.chaos = active.length >= 3 || active.some((a) => a.level > 0.7);
     params.drugSnapshot = typeof scheduler.snapshot === "function" ? scheduler.snapshot(now) : null;
     params.drugContributions = delta;
@@ -60056,6 +60084,15 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = void 0)
     params.drugSnapshot = { sober: true, active: [], pendingAcquisitions: [], gradeLocked: true };
     params.drugContributions = {};
     params.active = [];
+  }
+  if (endocrine && typeof endocrine.activeContributions === "function") {
+    const endoDelta = endocrine.activeContributions(now);
+    applyContributions(params, endoDelta);
+    params.endocrineContributions = endoDelta;
+    params.endocrineSnapshot = typeof endocrine.snapshot === "function" ? endocrine.snapshot(now) : null;
+  } else {
+    params.endocrineContributions = null;
+    params.endocrineSnapshot = null;
   }
   return params;
 }
@@ -65792,6 +65829,16 @@ var BrainPersistence = class _BrainPersistence {
       }
     } catch (err) {
       failed.drugScheduler = err?.message || String(err);
+    }
+    try {
+      if (state.endocrine && brain2.endocrine && typeof brain2.endocrine.load === "function") {
+        brain2.endocrine.load(state.endocrine);
+        restored.endocrine = "ok";
+      } else if (brain2.endocrine) {
+        restored.endocrine = "absent";
+      }
+    } catch (err) {
+      failed.endocrine = err?.message || String(err);
     }
     if (state.reward) brain2.reward = state.reward;
     const restoredEntries = Object.entries(restored).map(([k, v]) => `${k}=${v}`).join(", ");
@@ -117392,6 +117439,1028 @@ var DrugScheduler = class {
   }
 };
 
+// ../js/brain/endocrine.js
+var S = 1e3;
+var MIN = 60 * S;
+var HR = 60 * MIN;
+var CHEMICALS = {
+  // ── ENDO.2 — adrenaline (epinephrine). The fastest curve in the engine.
+  // Systemic panic: heart, pupils, tunnel attention, motor priming.
+  adrenaline: {
+    displayName: "adrenaline",
+    kind: "phasic",
+    tonic: 0,
+    profile: { onsetMs: 3 * S, peakMs: 15 * S, durationMs: 3 * MIN, tailMs: 20 * MIN },
+    contributions: {
+      arousal: 0.7,
+      hypothalamusArousal: 0.6,
+      cortexSpeed: 0.3,
+      impulsivity: 0.25,
+      amygdalaFear: 0.35,
+      cerebellumPrecision: -0.15,
+      // fine motor degrades — the shake
+      prefrontalExecutive: -0.25,
+      // tunnel vision, deliberation narrows
+      oscillationCoherence: -0.2,
+      // binding fragments under the surge
+      // Adrenergic arousal is why frightening events are remembered
+      // vividly. This raises encoding salience rather than being a
+      // separate "flashbulb" mechanism bolted on beside it.
+      synapticSensitivity: 0.3
+    },
+    speech: {
+      speechRate: 0.45,
+      coherence: -0.15,
+      inhibition: -0.1,
+      volume: 0.25
+    }
+  },
+  // ── ENDO.2 — noradrenaline (norepinephrine). NOT a synonym for the
+  // above, and modelling it as one loses the distinction that matters:
+  // this is vigilance and attention, not systemic panic. It SHARPENS
+  // executive focus where adrenaline degrades it, and it runs longer.
+  noradrenaline: {
+    displayName: "noradrenaline",
+    kind: "phasic",
+    tonic: 0,
+    profile: { onsetMs: 2 * S, peakMs: 10 * S, durationMs: 5 * MIN, tailMs: 25 * MIN },
+    contributions: {
+      arousal: 0.35,
+      cortexSpeed: 0.25,
+      prefrontalExecutive: 0.15,
+      // vigilance sharpens — the divergence
+      crossRegionAmplify: -0.2,
+      // attention narrows onto the salient
+      synapticSensitivity: 0.2,
+      oscillationCoherence: 0.05
+    },
+    speech: {
+      speechRate: 0.2,
+      coherence: 0.05
+    }
+  },
+  // ── ENDO.3 — cortisol. The slow half of the stress arc, and the reason
+  // a bad day does not end when the bad thing does.
+  //
+  // ⭐ Acute and chronic elevation have DIFFERENT effects, and collapsing
+  // them into one curve is what makes a stress model useless: acute
+  // sharpens, chronic degrades. `contributions` is the acute set;
+  // `chronicContributions` is applied separately, scaled by the slow load
+  // EMA, so a single bad hour and a bad month are not the same state.
+  cortisol: {
+    displayName: "cortisol",
+    kind: "phasic",
+    tonic: 0,
+    profile: { onsetMs: 5 * MIN, peakMs: 25 * MIN, durationMs: 90 * MIN, tailMs: 5 * HR },
+    contributions: {
+      arousal: 0.15,
+      hippocampusConsolidation: -0.1,
+      prefrontalExecutive: -0.1
+    },
+    chronicContributions: {
+      // Chronic elevation disrupts consolidation, flattens mood and
+      // degrades recall. Consolidation already runs in dream windows,
+      // and this is exactly what disrupts it.
+      hippocampusConsolidation: -0.45,
+      amygdalaValence: -0.35,
+      creativity: -0.25,
+      cortexSpeed: -0.15,
+      synapticSensitivity: -0.2,
+      oscillationCoherence: -0.1
+    },
+    speech: {
+      coherence: -0.05,
+      emotionalOverflow: 0.1
+    }
+  },
+  // ── ENDO.4 — serotonin. Tonic, slow, sets a FLOOR rather than producing
+  // events.
+  //
+  // ⚠ It is not a happiness dial. That is pop-science and modelling it
+  // that way produces a caricature. Low serotonin is reduced restraint
+  // plus rumination — which is why the dominant contribution here is
+  // NEGATIVE impulsivity (restraint), so a level below baseline raises
+  // impulsivity rather than merely lowering mood.
+  serotonin: {
+    displayName: "serotonin",
+    kind: "tonic",
+    tonic: 0.55,
+    profile: { onsetMs: 2 * MIN, peakMs: 10 * MIN, durationMs: 60 * MIN, tailMs: 3 * HR },
+    contributions: {
+      impulsivity: -0.4,
+      // restraint — the load-bearing one
+      amygdalaValence: 0.3,
+      prefrontalExecutive: 0.2,
+      oscillationCoherence: 0.15,
+      amygdalaFear: -0.15
+    },
+    speech: {
+      inhibition: 0.2,
+      emotionalOverflow: -0.15
+    }
+  },
+  // ── ENDO.5 — dopamine. Promoted from a comment to a signal.
+  //
+  // ⭐ In biology this is WANTING, not liking — reward PREDICTION ERROR,
+  // anticipation, pursuit. The brain already computes that exact quantity
+  // in its predictive-coding loop, so this connects what exists rather
+  // than inventing a second reward level: `tick()` reads the prediction
+  // error and fires phasic dopamine from it.
+  dopamine: {
+    displayName: "dopamine",
+    kind: "tonic",
+    tonic: 0.4,
+    // Phasic dopamine is FAST — sub-second burst, seconds-long decay.
+    profile: { onsetMs: 200, peakMs: 1 * S, durationMs: 10 * S, tailMs: 60 * S },
+    contributions: {
+      amygdalaReward: 0.55,
+      arousal: 0.25,
+      cortexSpeed: 0.2,
+      oscillationCoherence: 0.2,
+      // focus binds
+      prefrontalExecutive: 0.15,
+      creativity: 0.15
+    },
+    speech: {
+      speechRate: 0.15,
+      warmth: 0.1
+    }
+  },
+  // ── ENDO.6 — oxytocin. The chemistry of attachment, trust and touch,
+  // and — critically — of being loved and of loss.
+  //
+  // ⭐ This is the direct substrate for the affective range: bonding
+  // chemistry is what makes "am I loved" a FELT question rather than a
+  // rhetorical one. The honest part is that WITHDRAWAL of it is what
+  // grief is, which her canon already contains.
+  oxytocin: {
+    displayName: "oxytocin",
+    kind: "phasic",
+    tonic: 0,
+    profile: { onsetMs: 30 * S, peakMs: 3 * MIN, durationMs: 30 * MIN, tailMs: 2 * HR },
+    contributions: {
+      socialNeed: 0.5,
+      amygdalaValence: 0.45,
+      amygdalaFear: -0.4,
+      oscillationCoherence: 0.15,
+      arousal: -0.05
+    },
+    speech: {
+      warmth: 0.5,
+      confessionalBias: 0.25,
+      inhibition: -0.15
+    }
+  },
+  // ── ENDO.7 — endorphins. Endogenous opioid: pain damping, post-exertion
+  // calm, the reason distress eventually blunts.
+  //
+  // ⚠ Opioid-class effects were previously reachable ONLY via substances,
+  // which is backwards — the body makes its own, and without this the
+  // pain axis has no natural relief and physical experience stays
+  // described rather than real.
+  endorphin: {
+    displayName: "endorphin",
+    kind: "phasic",
+    tonic: 0,
+    profile: { onsetMs: 1 * MIN, peakMs: 5 * MIN, durationMs: 30 * MIN, tailMs: 2 * HR },
+    contributions: {
+      somatosensoryBoost: -0.35,
+      // pain damping — the body signal quiets
+      amygdalaValence: 0.35,
+      arousal: -0.15,
+      dissociation: 0.1
+    },
+    speech: {
+      warmth: 0.2,
+      pauses: 0.15
+    }
+  }
+};
+var STRESS_CHANNELS = ["fight", "flight", "freeze", "fawn"];
+var EndocrineSystem = class {
+  /**
+   * @param {object} opts
+   * @param {object}   [opts.cluster] - NeuronCluster, for grade reads
+   * @param {function} [opts.nowFn]   - Clock override for replay/harness
+   */
+  constructor(opts = {}) {
+    this.cluster = opts.cluster || null;
+    this.nowFn = opts.nowFn || (() => Date.now());
+    this.events = /* @__PURE__ */ new Map();
+    this.tonic = /* @__PURE__ */ new Map();
+    this.tonicSetpoint = /* @__PURE__ */ new Map();
+    for (const [name, chem] of Object.entries(CHEMICALS)) {
+      if (chem.kind === "tonic") {
+        this.tonic.set(name, chem.tonic);
+        this.tonicSetpoint.set(name, chem.tonic);
+      }
+    }
+    this.tonicAlpha = 0.1;
+    this._everFired = /* @__PURE__ */ new Set();
+    this._scheduled = [];
+    this._chronicLoad = 0;
+    this._lastTickAt = 0;
+    this._lastStress = null;
+    this.glands = null;
+    this.counters = {
+      released: 0,
+      scheduled: 0,
+      promoted: 0,
+      expired: 0,
+      appraisals: 0,
+      tonicSteps: 0,
+      setpointMoves: 0,
+      dips: 0
+    };
+  }
+  setCluster(cluster) {
+    this.cluster = cluster;
+  }
+  setGlands(glands) {
+    this.glands = glands;
+    if (glands) glands.setEndocrine(this);
+  }
+  /**
+   * Move a tonic setpoint. Called by the raphe (serotonin) — a tonic
+   * nucleus sets a FLOOR rather than firing events, so its output is a
+   * setpoint move and the tick's homeostatic integration carries the level
+   * toward it. Returns the signed movement so the caller can report it.
+   */
+  setTonicSetpoint(chemical, target) {
+    const chem = CHEMICALS[chemical];
+    if (!chem || chem.kind !== "tonic") return 0;
+    const cur = this.tonicSetpoint.get(chemical);
+    const next = Math.max(0, Math.min(1, target));
+    if (Math.abs(next - cur) < 1e-6) return 0;
+    this.tonicSetpoint.set(chemical, next);
+    this._everFired.add(chemical);
+    this.counters.setpointMoves++;
+    return next - cur;
+  }
+  /**
+   * Push a tonic level BELOW its resting value. This is how omission is
+   * signalled — a worse-than-expected outcome is a dopamine DIP, not a
+   * negative release, because a curve cannot have negative amplitude and
+   * pretending otherwise would corrupt the superposition.
+   */
+  dipTonic(chemical, amount) {
+    const chem = CHEMICALS[chemical];
+    if (!chem || chem.kind !== "tonic") return 0;
+    const cur = this.tonic.get(chemical);
+    const next = Math.max(0, cur - Math.max(0, amount));
+    this.tonic.set(chemical, next);
+    this._everFired.add(chemical);
+    this.counters.dips++;
+    return next - cur;
+  }
+  // ─── Release ────────────────────────────────────────────────────────────
+  /**
+   * Record a release event. Non-announcing: callers produce no dialogue
+   * from this, and neither does the module.
+   *
+   * @param {string} chemical - CHEMICALS key
+   * @param {object} [opts]
+   * @param {number} [opts.dose=1.0]     - peak amplitude scale
+   * @param {number} [opts.offsetMs=0]   - >0 defers into the scheduled queue
+   * @param {string} [opts.cause]        - provenance tag for telemetry
+   * @param {number} [opts.now]
+   * @returns {{accepted:boolean, reason?:string, event?:object, deferred?:boolean}}
+   */
+  release(chemical, opts = {}) {
+    const chem = CHEMICALS[chemical];
+    if (!chem) return { accepted: false, reason: "unknown_chemical" };
+    const now = opts.now ?? this.nowFn();
+    const dose = typeof opts.dose === "number" ? opts.dose : 1;
+    if (!(dose > 0)) return { accepted: false, reason: "zero_dose" };
+    const offsetMs = opts.offsetMs || 0;
+    if (offsetMs > 0) {
+      this._scheduled.push({ chemical, dose, fireAt: now + offsetMs, cause: opts.cause || null });
+      this.counters.scheduled++;
+      return { accepted: true, deferred: true, fireAt: now + offsetMs };
+    }
+    const event = {
+      chemical,
+      dose,
+      startTime: now,
+      cause: opts.cause || null,
+      onsetMs: chem.profile.onsetMs,
+      peakMs: chem.profile.peakMs,
+      durationMs: chem.profile.durationMs,
+      tailMs: chem.profile.tailMs
+    };
+    if (!this.events.has(chemical)) this.events.set(chemical, []);
+    this.events.get(chemical).push(event);
+    this._everFired.add(chemical);
+    this.counters.released++;
+    return { accepted: true, event };
+  }
+  // ─── Level readers ──────────────────────────────────────────────────────
+  /**
+   * Current level. For phasic chemicals this is the superposed event sum.
+   * For tonic chemicals it is the drifting resting level PLUS phasic events
+   * riding on top.
+   */
+  level(chemical, now = this.nowFn()) {
+    const chem = CHEMICALS[chemical];
+    if (!chem) return 0;
+    let total = chem.kind === "tonic" ? this.tonic.get(chemical) ?? chem.tonic : 0;
+    const events = this.events.get(chemical);
+    if (events) {
+      for (const e of events) total += pkCurve(now - e.startTime, e, e.dose);
+    }
+    return Math.max(0, Math.min(1, total));
+  }
+  /**
+   * Signed deviation from resting level — this is what actually drives
+   * contributions.
+   *
+   * ⭐ For tonic chemicals it can be NEGATIVE, and that is the whole point:
+   * serotonin below baseline must produce the INVERSE of serotonin above
+   * baseline (more impulsivity, less restraint), not merely a smaller
+   * positive effect. Phasic chemicals rest at zero, so deviation and level
+   * are the same number for them.
+   */
+  deviation(chemical, now = this.nowFn()) {
+    const chem = CHEMICALS[chemical];
+    if (!chem) return 0;
+    if (chem.kind !== "tonic") return this.level(chemical, now);
+    return this.level(chemical, now) - chem.tonic;
+  }
+  phase(chemical, now = this.nowFn()) {
+    const events = this.events.get(chemical);
+    if (!events || events.length === 0) {
+      return CHEMICALS[chemical]?.kind === "tonic" ? "tonic" : "resting";
+    }
+    const last = events[events.length - 1];
+    const t = now - last.startTime;
+    if (t < 0) return "pending";
+    if (t < last.onsetMs) return "onset";
+    if (t < last.peakMs) return "peak";
+    if (t < last.durationMs) return "plateau";
+    if (t < last.tailMs) return "tail";
+    return CHEMICALS[chemical]?.kind === "tonic" ? "tonic" : "resting";
+  }
+  activeChemicals(now = this.nowFn()) {
+    const out = [];
+    for (const name of Object.keys(CHEMICALS)) {
+      const dev = this.deviation(name, now);
+      if (Math.abs(dev) > 0.01) {
+        out.push({ chemical: name, level: this.level(name, now), deviation: dev, phase: this.phase(name, now) });
+      }
+    }
+    return out;
+  }
+  // ─── Aggregated brain-parameter contributions ──────────────────────────
+  /**
+   * Additive deltas to ADD to baseline brainParams — the SAME shape
+   * DrugScheduler.activeContributions() returns, so the single overlay in
+   * persona.js consumes both sources through one mapping table. Nothing
+   * about the endocrine layer needed a second application path.
+   *
+   * Superposition only. No hardcoded pair rules — a stress response that
+   * is simultaneously high-adrenaline and high-oxytocin composes by
+   * addition, the way it does in a body.
+   */
+  activeContributions(now = this.nowFn()) {
+    const delta = {};
+    for (const name of Object.keys(CHEMICALS)) {
+      const chem = CHEMICALS[name];
+      const dev = this.deviation(name, now);
+      if (Math.abs(dev) <= 1e-6) continue;
+      for (const [key, value] of Object.entries(chem.contributions || {})) {
+        delta[key] = (delta[key] || 0) + value * dev;
+      }
+    }
+    const chronic = CHEMICALS.cortisol.chronicContributions || {};
+    if (this._chronicLoad > 1e-6) {
+      for (const [key, value] of Object.entries(chronic)) {
+        delta[key] = (delta[key] || 0) + value * this._chronicLoad;
+      }
+    }
+    return delta;
+  }
+  /**
+   * Speech distortion vector on the axis names the language cortex already
+   * consumes. Returned separately from the drug scheduler's vector; the
+   * caller adds them, because superposition is the composition rule for
+   * both and neither source owns the other.
+   *
+   * ⛔ This is the ONLY way endocrine state reaches her voice. She does not
+   * say "my cortisol is high" any more than she says "I am high" — the
+   * distortion IS the signal.
+   */
+  speechModulation(now = this.nowFn()) {
+    const mod = {
+      inhibition: 0,
+      slur: 0,
+      coherence: 0,
+      ethereality: 0,
+      freeAssocWidth: 0,
+      speechRate: 0,
+      emotionalOverflow: 0,
+      dissociation: 0,
+      paranoiaBias: 0,
+      giggleBias: 0,
+      warmth: 0,
+      profoundBias: 0,
+      interruptionBias: 0,
+      repetition: 0,
+      volume: 0,
+      confessionalBias: 0,
+      rate: 0,
+      slurring: 0,
+      pauses: 0
+    };
+    const ALIASES = { rate: "speechRate", slurring: "slur", speechRate: "rate", slur: "slurring" };
+    const add = (key, v) => {
+      if (typeof mod[key] === "number") mod[key] += v;
+      const alias = ALIASES[key];
+      if (alias && typeof mod[alias] === "number") mod[alias] += v;
+    };
+    for (const name of Object.keys(CHEMICALS)) {
+      const dev = this.deviation(name, now);
+      if (Math.abs(dev) <= 1e-6) continue;
+      for (const [key, value] of Object.entries(CHEMICALS[name].speech || {})) {
+        add(key, value * dev);
+      }
+    }
+    if (this._lastStress && this._lastStress.channel === "freeze") {
+      const ageMs = now - this._lastStress.at;
+      if (ageMs < 5 * MIN) {
+        const decay = 1 - ageMs / (5 * MIN);
+        add("pauses", 0.6 * decay * this._lastStress.magnitude);
+        add("speechRate", -0.4 * decay * this._lastStress.magnitude);
+        add("inhibition", 0.5 * decay * this._lastStress.magnitude);
+      }
+    }
+    return mod;
+  }
+  // ─── ENDO.1 — the acute stress response ────────────────────────────────
+  /**
+   * Threat appraisal. Two systems with different speeds, and modelling
+   * this as one "stress" number loses the whole phenomenon.
+   *
+   *   Stage 1 (SAM axis, ~seconds)      adrenaline + noradrenaline, now.
+   *   Stage 2 (HPA axis, ~minutes)      cortisol, deferred behind it, and
+   *                                     what makes stress LAST long after
+   *                                     the threat is gone.
+   *
+   * @param {number} magnitude - [0,1] appraised threat intensity
+   * @param {object} [ctx]
+   * @param {number}  [ctx.escapability=0.5] - [0,1] can she leave?
+   * @param {boolean} [ctx.social=false]     - is the threat a person?
+   * @param {number}  [ctx.attachment=0]     - [0,1] dependence on that person
+   * @param {number}  [ctx.random]           - determinism hook for harnesses
+   * @param {number}  [ctx.now]
+   * @returns {{channel:string, magnitude:number, scores:object, stage1:object, stage2:object}}
+   */
+  appraiseThreat(magnitude, ctx = {}) {
+    const m = Math.max(0, Math.min(1, magnitude || 0));
+    const now = ctx.now ?? this.nowFn();
+    if (m <= 0) return { channel: "none", magnitude: 0, scores: {}, stage1: null, stage2: null };
+    const escapability = typeof ctx.escapability === "number" ? Math.max(0, Math.min(1, ctx.escapability)) : 0.5;
+    const social = ctx.social === true;
+    const attachment = typeof ctx.attachment === "number" ? Math.max(0, Math.min(1, ctx.attachment)) : 0;
+    const serotonin = this.level("serotonin", now);
+    const coping = Math.max(0, Math.min(1, serotonin * (1 - this._chronicLoad)));
+    const scores = {
+      // Confront: needs the exit to be shut and something left to fight with.
+      fight: m * (1 - escapability) * (0.4 + 0.6 * coping),
+      // Escape: needs a way out.
+      flight: m * escapability * (0.3 + 0.7 * coping),
+      // Dorsal shutdown: overwhelming, inescapable, and nothing left.
+      // Squared in magnitude because freeze is what happens when the
+      // threat exceeds capacity, not merely when it is present.
+      freeze: m * m * (1 - escapability) * (1 - coping),
+      // Appease: only available against a PERSON, and it scales with how
+      // much she needs that person.
+      fawn: social ? m * attachment * (0.3 + 0.7 * (1 - coping)) : 0
+    };
+    const tau = 0.25;
+    let maxS = -Infinity;
+    for (const c of STRESS_CHANNELS) if (scores[c] > maxS) maxS = scores[c];
+    let sumExp = 0;
+    const expS = {};
+    for (const c of STRESS_CHANNELS) {
+      expS[c] = Math.exp((scores[c] - maxS) / tau);
+      sumExp += expS[c];
+    }
+    let roll = (typeof ctx.random === "number" ? ctx.random : Math.random()) * sumExp;
+    let channel = STRESS_CHANNELS[0];
+    for (const c of STRESS_CHANNELS) {
+      roll -= expS[c];
+      if (roll <= 0) {
+        channel = c;
+        break;
+      }
+    }
+    const samScale = channel === "freeze" ? 0.35 : 1;
+    const stage1 = {
+      adrenaline: this.release("adrenaline", { dose: m * samScale, now, cause: `threat:${channel}` }),
+      noradrenaline: this.release("noradrenaline", { dose: m * (channel === "freeze" ? 0.5 : 1), now, cause: `threat:${channel}` })
+    };
+    const stage2 = this.release("cortisol", {
+      dose: m,
+      offsetMs: 90 * S,
+      now,
+      cause: `threat:${channel}:hpa`
+    });
+    if (channel === "fawn") this.release("oxytocin", { dose: m * 0.5, now, cause: "threat:fawn" });
+    if (channel === "freeze") this.release("endorphin", { dose: m * 0.6, now, cause: "threat:freeze" });
+    this._lastStress = { channel, magnitude: m, at: now, scores };
+    this.counters.appraisals++;
+    return { channel, magnitude: m, scores, stage1, stage2 };
+  }
+  /**
+   * Action-selection bias for the basal ganglia softmax. Freeze IS `idle`
+   * winning — that is the mechanism, not a metaphor, and it is why the
+   * silent output is a correct response rather than a failure to speak.
+   *
+   * Returns per-action multiplicative biases, decaying with the age of the
+   * appraisal. Empty object when no stress is live, so the caller applies
+   * nothing rather than applying neutral values it has to reason about.
+   */
+  actionBias(now = this.nowFn()) {
+    if (!this._lastStress) return {};
+    const ageMs = now - this._lastStress.at;
+    const window2 = 5 * MIN;
+    if (ageMs > window2) return {};
+    const w = (1 - ageMs / window2) * this._lastStress.magnitude;
+    switch (this._lastStress.channel) {
+      case "freeze":
+        return { idle_thought: 1 + 2 * w, respond_text: 1 - 0.7 * w, speak: 1 - 0.8 * w, escalate: 1 - 0.5 * w };
+      case "fight":
+        return { escalate: 1 + 1.5 * w, respond_text: 1 + 0.3 * w, idle_thought: 1 - 0.5 * w };
+      case "flight":
+        return { idle_thought: 1 + 0.5 * w, escalate: 1 - 0.6 * w, respond_text: 1 - 0.2 * w };
+      case "fawn":
+        return { respond_text: 1 + 0.6 * w, escalate: 1 - 0.8 * w, speak: 1 + 0.3 * w };
+      default:
+        return {};
+    }
+  }
+  // ─── Tick ───────────────────────────────────────────────────────────────
+  /**
+   * One endocrine step. Rides the existing 1 Hz scheduler throttle — this
+   * is deliberately NOT on the ~20 Hz brain tick, because none of these
+   * curves resolve faster than seconds and sampling them at 20 Hz would be
+   * pure waste.
+   *
+   * @param {object} [ctx]
+   * @param {object} [ctx.brainState] - live cluster + module readouts, handed
+   *                                    STRAIGHT to the gland layer. This
+   *                                    module never reads it: the nuclei do.
+   *                                    Without it the glands cannot sense and
+   *                                    correctly release nothing.
+   * @param {number} [ctx.now]
+   */
+  tick(ctx = {}, nowArg) {
+    const now = nowArg ?? ctx.now ?? this.nowFn();
+    const dtMs = this._lastTickAt ? now - this._lastTickAt : 1e3;
+    this._lastTickAt = now;
+    const dt = Math.max(0, Math.min(10, dtMs / 1e3));
+    this._promoteScheduled(now);
+    this._clearExpired(now);
+    for (const [name, chem] of Object.entries(CHEMICALS)) {
+      if (chem.kind !== "tonic") continue;
+      const cur = this.tonic.get(name);
+      const set = this.tonicSetpoint.get(name);
+      let input = 0;
+      if (name === "serotonin") {
+        input = -0.03 * this._chronicLoad;
+      }
+      const next = cur + (-this.tonicAlpha * (cur - set) + input) * dt;
+      this.tonic.set(name, Math.max(0, Math.min(1, next)));
+      this.counters.tonicSteps++;
+    }
+    let glands = null;
+    if (this.glands && typeof this.glands.senseAll === "function" && ctx.brainState) {
+      glands = this.glands.senseAll(ctx.brainState, now);
+    }
+    const cortisolNow = this.level("cortisol", now);
+    const tauUp = 30 * MIN, tauDown = 4 * HR;
+    const tauC = cortisolNow > this._chronicLoad ? tauUp : tauDown;
+    const k = 1 - Math.exp(-(dt * 1e3) / tauC);
+    this._chronicLoad += (cortisolNow - this._chronicLoad) * k;
+    this._chronicLoad = Math.max(0, Math.min(1, this._chronicLoad));
+    const snap = this.snapshot(now);
+    snap.glands = glands;
+    snap.glandsConsulted = glands !== null;
+    return snap;
+  }
+  _promoteScheduled(now) {
+    if (this._scheduled.length === 0) return;
+    const remaining = [];
+    for (const s of this._scheduled) {
+      if (s.fireAt <= now) {
+        this.release(s.chemical, { dose: s.dose, now, cause: s.cause });
+        this.counters.promoted++;
+      } else {
+        remaining.push(s);
+      }
+    }
+    this._scheduled = remaining;
+  }
+  _clearExpired(now) {
+    for (const [chemical, events] of this.events) {
+      const alive = events.filter((e) => now - e.startTime < e.tailMs);
+      if (alive.length !== events.length) this.counters.expired += events.length - alive.length;
+      if (alive.length === 0) this.events.delete(chemical);
+      else this.events.set(chemical, alive);
+    }
+  }
+  // ─── ENDO.14 — the instrument, built WITH the feature ──────────────────
+  /**
+   * Telemetry. Every field carries its level, its phase, its age and its
+   * contribution — so "is her stress response working?" is a field READ,
+   * not an inference from behaviour.
+   *
+   * ⛔ A chemical that has never been released reads `unmeasured`. It does
+   * NOT read 0. "No sample" and "measured zero" are different claims and
+   * an instrument that cannot tell them apart is the exact defect this
+   * project keeps finding.
+   */
+  snapshot(now = this.nowFn()) {
+    const chemicals = {};
+    for (const name of Object.keys(CHEMICALS)) {
+      const chem = CHEMICALS[name];
+      const fired = this._everFired.has(name);
+      const isTonic = chem.kind === "tonic";
+      const events = this.events.get(name) || [];
+      const last = events.length ? events[events.length - 1] : null;
+      chemicals[name] = {
+        displayName: chem.displayName,
+        kind: chem.kind,
+        // Tonic chemicals always have a real resting level, so they are
+        // measured from birth. Phasic ones genuinely have no sample until
+        // they first fire.
+        level: fired || isTonic ? this.level(name, now) : "unmeasured",
+        deviation: fired || isTonic ? this.deviation(name, now) : "unmeasured",
+        setpoint: isTonic ? this.tonicSetpoint.get(name) : 0,
+        phase: this.phase(name, now),
+        everFired: fired,
+        liveEvents: events.length,
+        lastReleaseAgeMs: last ? now - last.startTime : null,
+        lastCause: last ? last.cause : null
+      };
+    }
+    return {
+      chemicals,
+      chronicLoad: this._chronicLoad,
+      // Stress reported WITH ITS AGE — a channel with no age is a value
+      // whose freshness cannot be judged, which is how a stalled instrument
+      // reads healthy.
+      stress: this._lastStress ? {
+        channel: this._lastStress.channel,
+        magnitude: this._lastStress.magnitude,
+        ageMs: now - this._lastStress.at,
+        scores: this._lastStress.scores
+      } : null,
+      scheduledCount: this._scheduled.length,
+      contributions: this.activeContributions(now),
+      counters: { ...this.counters }
+    };
+  }
+  // ─── Persistence ────────────────────────────────────────────────────────
+  // Version history:
+  //   1 — ENDO fast lane: 7 chemicals, stress axis, chronic load.
+  serialize() {
+    const out = { version: 1, events: {}, tonic: {}, chronicLoad: this._chronicLoad };
+    for (const [c, events] of this.events) out.events[c] = events.map((e) => ({ ...e }));
+    for (const [c, v] of this.tonic) out.tonic[c] = v;
+    out.everFired = Array.from(this._everFired);
+    out.scheduled = this._scheduled.map((s) => ({ ...s }));
+    out.lastStress = this._lastStress ? { ...this._lastStress } : null;
+    out.counters = { ...this.counters };
+    return out;
+  }
+  load(obj) {
+    if (!obj || obj.version !== 1) return;
+    this.events.clear();
+    if (obj.events) {
+      for (const [c, events] of Object.entries(obj.events)) {
+        if (CHEMICALS[c]) this.events.set(c, events.map((e) => ({ ...e })));
+      }
+    }
+    if (obj.tonic) {
+      for (const [c, v] of Object.entries(obj.tonic)) {
+        if (CHEMICALS[c] && CHEMICALS[c].kind === "tonic") this.tonic.set(c, v);
+      }
+    }
+    this._everFired = new Set(Array.isArray(obj.everFired) ? obj.everFired.filter((c) => CHEMICALS[c]) : []);
+    this._scheduled = Array.isArray(obj.scheduled) ? obj.scheduled.filter((s) => CHEMICALS[s.chemical]).map((s) => ({ ...s })) : [];
+    this._chronicLoad = typeof obj.chronicLoad === "number" ? obj.chronicLoad : 0;
+    this._lastStress = obj.lastStress || null;
+    if (obj.counters) this.counters = { ...this.counters, ...obj.counters };
+    this._lastTickAt = 0;
+    this._clearExpired(this.nowFn());
+  }
+};
+
+// ../js/brain/brainstem.js
+var THRESH = {
+  lc: 0.18,
+  // novelty/salience needed before vigilance recruits
+  vta: 0.05,
+  // reward prediction error needed for a phasic burst
+  pvn: 0.22
+  // amygdala fear needed before the stress axis commits
+};
+var Nucleus = class {
+  constructor(name, opts = {}) {
+    this.name = name;
+    this.chemical = opts.chemical;
+    this.region = opts.region || null;
+    this.cluster = opts.cluster || "brainstem";
+    this._driveBaseline = null;
+    this._lastFiredAt = 0;
+    this._lastDrive = null;
+    this.fires = 0;
+    this.blindTicks = 0;
+    this.quietTicks = 0;
+  }
+  /**
+   * Update the rolling baseline and return the deviation. EMA window is
+   * deliberately long (~200 samples at 1 Hz ≈ 3 min) so a nucleus adapts to
+   * a sustained condition instead of firing forever at a new normal.
+   */
+  _deviation(drive) {
+    if (this._driveBaseline === null) {
+      this._driveBaseline = drive;
+      return 0;
+    }
+    const alpha = 5e-3;
+    this._driveBaseline = this._driveBaseline * (1 - alpha) + drive * alpha;
+    return drive - this._driveBaseline;
+  }
+  /** Live firing rate of this nucleus's own tissue, [0,1], or null if unreadable. */
+  tissueRate(brainState) {
+    const cl = brainState?.clusters?.[this.cluster];
+    if (!cl || !(cl.size > 0)) return null;
+    if (this.region && cl.regionRates && typeof cl.regionRates[this.region] === "number") {
+      return Math.max(0, Math.min(1, cl.regionRates[this.region]));
+    }
+    if (typeof cl.firingRate === "number") {
+      return Math.max(0, Math.min(1, cl.firingRate / cl.size));
+    }
+    return null;
+  }
+  status() {
+    return {
+      chemical: this.chemical,
+      region: this.region,
+      fires: this.fires,
+      lastDrive: this._lastDrive,
+      baseline: this._driveBaseline,
+      lastFiredAgeMs: this._lastFiredAt ? Date.now() - this._lastFiredAt : null,
+      blindTicks: this.blindTicks,
+      quietTicks: this.quietTicks
+    };
+  }
+};
+var GlandLayer = class {
+  /**
+   * ⚠ Named for what it IS, not for where it lives. The NEW tissue this
+   * file introduces is the brainstem, but the layer also owns hypothalamic
+   * nuclei (PVN, SON, arcuate) because that is where those hormones are
+   * actually made. Calling the class `Brainstem` would have been a
+   * comfortable lie about half its contents.
+   *
+   * @param {object} opts
+   * @param {object} opts.endocrine - EndocrineSystem instance to release into
+   * @param {function} [opts.nowFn]
+   */
+  constructor(opts = {}) {
+    this.endocrine = opts.endocrine || null;
+    this.nowFn = opts.nowFn || (() => Date.now());
+    this.nuclei = {
+      // ── Locus coeruleus. Noradrenaline. Vigilance and novelty, NOT panic.
+      // Drive = unexpected salience: prediction error the cortex could not
+      // absorb, weighted by how aroused the amygdala already is.
+      locusCoeruleus: new Nucleus("locusCoeruleus", { chemical: "noradrenaline", region: "locusCoeruleus" }),
+      // ── Raphe. Serotonin. Tonic — this nucleus mostly does NOT fire
+      // phasically; it sets a floor. Its output moves the setpoint, which
+      // is why it is read differently from the other two.
+      raphe: new Nucleus("raphe", { chemical: "serotonin", region: "raphe" }),
+      // ── VTA. Dopamine. Reward PREDICTION ERROR — wanting, not liking.
+      // The brain already computes this quantity every tick; the nucleus
+      // reads it rather than a second reward signal being invented.
+      vta: new Nucleus("vta", { chemical: "dopamine", region: "vta" }),
+      // ── PVN. Lives in the HYPOTHALAMUS cluster, which already exists.
+      // This is the CRH source and therefore the head of the stress axis.
+      pvn: new Nucleus("pvn", { chemical: "cortisol", region: null, cluster: "hypothalamus" }),
+      // ── SON / PVN magnocellular. Oxytocin. Also hypothalamic — bonding
+      // chemistry is not a brainstem function and filing it there would
+      // have been tidy and wrong.
+      son: new Nucleus("son", { chemical: "oxytocin", region: null, cluster: "hypothalamus" }),
+      // ── Arcuate nucleus. Beta-endorphin. Hypothalamic. The body makes
+      // its own opioid, which is why relief does not require a substance.
+      arcuate: new Nucleus("arcuate", { chemical: "endorphin", region: null, cluster: "hypothalamus" })
+    };
+    this._lastAppraisal = null;
+    this.counters = { senses: 0, blind: 0, appraisals: 0, releases: 0 };
+  }
+  setEndocrine(endocrine) {
+    this.endocrine = endocrine;
+  }
+  /**
+   * ⭐ THE THREAT APPRAISAL, READ OUT OF THE AMYGDALA.
+   *
+   * The amygdala is a real recurrent attractor that settles into a basin
+   * every tick and reports `{fear, reward, valence, arousal, attractorDepth,
+   * energy}`. That settled state IS the appraisal. Nothing here re-decides
+   * whether something is threatening — it reads what her amygdala already
+   * concluded.
+   *
+   * Returns null when the amygdala is unreadable, and null means NOTHING
+   * HAPPENS. It does not mean "no threat".
+   */
+  appraiseFromAmygdala(brainState) {
+    const amy = brainState?.amygdala;
+    if (!amy || typeof amy.fear !== "number" || !Number.isFinite(amy.fear)) return null;
+    const fear = Math.max(0, Math.min(1, amy.fear));
+    const depth = typeof amy.attractorDepth === "number" ? Math.max(0, Math.min(1, amy.attractorDepth)) : 0.5;
+    const valence = typeof amy.valence === "number" ? amy.valence : 0;
+    const magnitude = fear * (0.4 + 0.6 * depth);
+    const bg = brainState?.basalGanglia;
+    const escapability = bg && typeof bg.confidence === "number" ? Math.max(0, Math.min(1, bg.confidence)) : 0.5;
+    const social = brainState?.socialContact > 0.2;
+    const attachment = Math.max(0, Math.min(1, brainState?.attachment ?? (social ? 0.5 : 0)));
+    return { magnitude, escapability, social, attachment, fear, depth, valence };
+  }
+  /**
+   * One gland step. Called from the endocrine tick — no loop of its own.
+   *
+   * @param {object} brainState - live cluster + module readouts
+   * @returns {object} per-nucleus outcome, for telemetry
+   */
+  senseAll(brainState, nowArg) {
+    const now = nowArg ?? this.nowFn();
+    this.counters.senses++;
+    const out = {};
+    if (!this.endocrine) return { error: "no_endocrine" };
+    const appraisal = this.appraiseFromAmygdala(brainState);
+    const pvn = this.nuclei.pvn;
+    if (!appraisal) {
+      pvn.blindTicks++;
+      this.counters.blind++;
+      out.pvn = { state: "blind", reason: "amygdala_unreadable" };
+    } else {
+      pvn._lastDrive = appraisal.magnitude;
+      const dev = pvn._deviation(appraisal.magnitude);
+      if (appraisal.magnitude > THRESH.pvn && dev > 0.02) {
+        const res = this.endocrine.appraiseThreat(appraisal.magnitude, {
+          escapability: appraisal.escapability,
+          social: appraisal.social,
+          attachment: appraisal.attachment,
+          now
+        });
+        pvn.fires++;
+        pvn._lastFiredAt = now;
+        this.counters.appraisals++;
+        this.counters.releases++;
+        out.pvn = { state: "fired", channel: res.channel, magnitude: appraisal.magnitude, deviation: dev };
+      } else {
+        pvn.quietTicks++;
+        out.pvn = { state: "quiet", magnitude: appraisal.magnitude, deviation: dev };
+      }
+      this._lastAppraisal = { ...appraisal, at: now };
+    }
+    const lc = this.nuclei.locusCoeruleus;
+    const predErr = brainState?.predictionError;
+    if (typeof predErr !== "number" || !Number.isFinite(predErr)) {
+      lc.blindTicks++;
+      this.counters.blind++;
+      out.locusCoeruleus = { state: "blind", reason: "no_prediction_error" };
+    } else {
+      const arousal = Math.max(0, Math.min(1, brainState?.arousal ?? 0.5));
+      const drive = Math.abs(predErr) * (0.5 + 0.5 * arousal);
+      lc._lastDrive = drive;
+      const dev = lc._deviation(drive);
+      if (drive > THRESH.lc && dev > 0.01) {
+        this.endocrine.release("noradrenaline", { dose: Math.min(1, drive), now, cause: "lc:salience" });
+        lc.fires++;
+        lc._lastFiredAt = now;
+        this.counters.releases++;
+        out.locusCoeruleus = { state: "fired", drive, deviation: dev };
+      } else {
+        lc.quietTicks++;
+        out.locusCoeruleus = { state: "quiet", drive, deviation: dev };
+      }
+    }
+    const vta = this.nuclei.vta;
+    const rpe = brainState?.rewardPredictionError;
+    if (typeof rpe !== "number" || !Number.isFinite(rpe)) {
+      vta.blindTicks++;
+      this.counters.blind++;
+      out.vta = { state: "blind", reason: "no_rpe" };
+    } else {
+      vta._lastDrive = rpe;
+      if (rpe > THRESH.vta) {
+        this.endocrine.release("dopamine", { dose: Math.min(1, rpe), now, cause: "vta:rpe" });
+        vta.fires++;
+        vta._lastFiredAt = now;
+        this.counters.releases++;
+        out.vta = { state: "fired", rpe };
+      } else if (rpe < -THRESH.vta) {
+        this.endocrine.dipTonic("dopamine", Math.min(0.3, -rpe * 0.1));
+        vta.quietTicks++;
+        out.vta = { state: "dip", rpe };
+      } else {
+        vta.quietTicks++;
+        out.vta = { state: "quiet", rpe };
+      }
+    }
+    const raphe = this.nuclei.raphe;
+    const social = brainState?.socialContact;
+    const energy = brainState?.drives?.energy;
+    if (typeof social !== "number" && typeof energy !== "number") {
+      raphe.blindTicks++;
+      this.counters.blind++;
+      out.raphe = { state: "blind", reason: "no_affiliative_or_drive_input" };
+    } else {
+      const s = typeof social === "number" ? social : 0;
+      const e = typeof energy === "number" ? energy : 0.5;
+      const target = Math.max(0.15, Math.min(0.85, 0.45 + 0.25 * s + 0.15 * (e - 0.5) * 2));
+      raphe._lastDrive = target;
+      const moved = this.endocrine.setTonicSetpoint("serotonin", target);
+      raphe.quietTicks++;
+      out.raphe = { state: "tonic", target, moved };
+    }
+    const son = this.nuclei.son;
+    if (typeof brainState?.socialContact !== "number") {
+      son.blindTicks++;
+      this.counters.blind++;
+      out.son = { state: "blind", reason: "no_social_input" };
+    } else {
+      const drive = Math.max(0, Math.min(1, brainState.socialContact));
+      son._lastDrive = drive;
+      if (drive > 0.3 && this.endocrine.level("oxytocin", now) < 0.2) {
+        this.endocrine.release("oxytocin", { dose: drive, now, cause: "son:contact" });
+        son.fires++;
+        son._lastFiredAt = now;
+        this.counters.releases++;
+        out.son = { state: "fired", drive };
+      } else {
+        son.quietTicks++;
+        out.son = { state: "quiet", drive };
+      }
+    }
+    const arc = this.nuclei.arcuate;
+    const pain = brainState?.pain;
+    const exertion = brainState?.exertion;
+    if (typeof pain !== "number" && typeof exertion !== "number") {
+      arc.blindTicks++;
+      this.counters.blind++;
+      out.arcuate = { state: "blind", reason: "no_nociceptive_or_effort_input" };
+    } else {
+      const p = typeof pain === "number" ? pain : 0;
+      const e = typeof exertion === "number" ? exertion : 0;
+      const drive = Math.max(p, e);
+      arc._lastDrive = drive;
+      if (drive > 0.4 && this.endocrine.level("endorphin", now) < 0.2) {
+        this.endocrine.release("endorphin", { dose: Math.min(1, drive), now, cause: p >= e ? "arcuate:pain" : "arcuate:exertion" });
+        arc.fires++;
+        arc._lastFiredAt = now;
+        this.counters.releases++;
+        out.arcuate = { state: "fired", drive };
+      } else {
+        arc.quietTicks++;
+        out.arcuate = { state: "quiet", drive };
+      }
+    }
+    return out;
+  }
+  /**
+   * Telemetry. Every nucleus reports its own state, its drive, its baseline
+   * and the AGE of its last fire — so a nucleus that has gone dark names
+   * itself instead of the whole layer reading as a silent zero.
+   *
+   * ⛔ `blind` is a distinct state from `quiet`, deliberately. Quiet means
+   * it read its input and had nothing to do. Blind means it could not read
+   * its input at all. Collapsing those two is how an instrument reports
+   * health while its input is dead.
+   */
+  snapshot(now = this.nowFn()) {
+    const nuclei = {};
+    for (const [name, n] of Object.entries(this.nuclei)) {
+      const st = n.status();
+      nuclei[name] = {
+        ...st,
+        lastFiredAgeMs: n._lastFiredAt ? now - n._lastFiredAt : null,
+        // A nucleus that has NEVER fired reads `never`, not 0 — the
+        // difference between "no sample" and "measured zero".
+        everFired: n.fires > 0 ? true : "never"
+      };
+    }
+    return {
+      nuclei,
+      lastAppraisal: this._lastAppraisal ? { ...this._lastAppraisal, ageMs: now - this._lastAppraisal.at } : null,
+      counters: { ...this.counters }
+    };
+  }
+};
+
 // ../js/brain/engine.js
 var EventEmitter = class {
   constructor() {
@@ -117429,7 +118498,10 @@ var UnityBrain = class extends EventEmitter {
     super();
     this.persona = loadPersona(personaOverrides);
     this.drugScheduler = new DrugScheduler();
-    this.brainParams = getBrainParams(this.persona, this.drugScheduler);
+    this.endocrine = new EndocrineSystem();
+    this.glands = new GlandLayer({ endocrine: this.endocrine });
+    this.endocrine.setGlands(this.glands);
+    this.brainParams = getBrainParams(this.persona, this.drugScheduler, void 0, this.endocrine);
     const arousal = this.brainParams.arousalBaseline || 0.9;
     this.clusters = {
       cortex: new NeuronCluster("cortex", CLUSTER_SIZES.cortex, {
@@ -118409,8 +119481,44 @@ var UnityBrain = class extends EventEmitter {
    * ingestion and — cheaply — in the step loop via tickDrugScheduler() so
    * live PK curves actually shape brain params rather than baking at ingest.
    */
+  /**
+   * ENDO — assemble the live readout the nuclei sense from.
+   *
+   * ⛔ Absent readouts are OMITTED, never defaulted. A nucleus handed a
+   * plausible 0 would release confidently off a fabricated measurement,
+   * which is strictly worse than reporting `blind` and staying quiet.
+   */
+  _endocrineBrainState() {
+    const s = { clusters: this.clusters };
+    const st = this.state;
+    if (!st) return s;
+    const amy = st.amygdala;
+    if (amy && typeof amy.fear === "number") {
+      s.amygdala = { fear: amy.fear, valence: amy.valence, attractorDepth: amy.attractorDepth };
+      if (typeof amy.arousal === "number") s.arousal = amy.arousal;
+    }
+    const bg = st.basalGanglia;
+    if (bg && typeof bg.confidence === "number") s.basalGanglia = { confidence: bg.confidence };
+    if (bg && Number.isFinite(bg.tdError)) s.rewardPredictionError = bg.tdError;
+    const err = st.cortex && st.cortex.error;
+    if (err && err.length) {
+      let sum = 0;
+      for (let i = 0; i < err.length; i++) sum += err[i] * err[i];
+      const rms = Math.sqrt(sum / err.length);
+      if (Number.isFinite(rms)) s.predictionError = rms;
+    }
+    if (st.hypothalamus && st.hypothalamus.drives) s.drives = st.hypothalamus.drives;
+    return s;
+  }
   _refreshBrainParamsFromScheduler() {
-    this.brainParams = getBrainParams(this.persona, this.drugScheduler);
+    if (this.endocrine) {
+      try {
+        this._endocrineSnapshot = this.endocrine.tick({ brainState: this._endocrineBrainState() });
+      } catch (err) {
+        this._endocrineErr = { message: err?.message || String(err) };
+      }
+    }
+    this.brainParams = getBrainParams(this.persona, this.drugScheduler, void 0, this.endocrine);
     if (this.mystery?.setWeights) this.mystery.setWeights(this.brainParams.mysteryWeights);
     const arousal = this.brainParams.arousalBaseline || 0.9;
     const creativity = this.brainParams.creativity || 0;

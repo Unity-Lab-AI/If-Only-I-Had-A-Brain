@@ -555,15 +555,22 @@ const RESOURCES = detectResources();
 //   - main brain: 0.25→0.50, total grows from ~178M to ~285M
 //     with no cluster starved below 6%
 //   - both grow; neither sacrificed
+// ENDO — `brainstem` holds the monoamine nuclei. 0.2%, taken from the
+// cerebellum (over-provisioned for a brain with no body), so the sum is
+// unchanged at 1.00 and no other cluster is resized by its arrival.
+// These weights are normalised below regardless, but keeping the sum
+// exact means the log line reads as the real split rather than a
+// renormalised approximation of one.
 const DEFAULT_BIO_WEIGHTS = {
   language_cortex: 0.50,
   cortex:          0.10,
-  cerebellum:      0.10,
+  cerebellum:      0.098,
   hippocampus:     0.06,
   amygdala:        0.06,
   basalGanglia:    0.06,
   hypothalamus:    0.06,
   mystery:         0.06,
+  brainstem:       0.002,
 };
 const BRAIN_VRAM_ALLOC = (function () {
   // rawOverride = the operator's resource-config.json verbatim (vramCapMB
@@ -1086,7 +1093,7 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // on normal deploys, but DREAM_KEEP_STATE=1 BYPASSES the hash check — this format bump is the
 // belt-and-suspenders that still rejects v1 weights on that path, forcing the mandatory fresh
 // K→PhD walk that trains the new senses in from scratch (no migration, no garbage-weight load).
-const WEIGHTS_FORMAT_VERSION = 4;   // language-growth hop 1 (2026-08-16): langCortexSize 1.5M→12M — geometry change, old weights auto-refuse → clean fresh walk. (v3 was WMB 2026-07-14: word_motor unified band.)
+const WEIGHTS_FORMAT_VERSION = 5;   // ENDO (2026-08-25): `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed, so saved geometry no longer matches. Old weights auto-refuse → clean fresh walk, which is the ORDER the walk law already specifies (chemistry lands BEFORE the walk that teaches from it). (v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -1551,6 +1558,7 @@ const CLUSTER_SIZES = {
   cerebellum:   _sizeFor('cerebellum'),
   hypothalamus: _sizeFor('hypothalamus'),
   mystery:      _sizeFor('mystery'),
+  brainstem:    _sizeFor('brainstem'),
 };
 // PA.4.8 — community-compute milestone scaling (boot side). In the deployed
 // donation model the brain size is driven by what the donor POOL can hold (the
@@ -2371,7 +2379,7 @@ class ServerBrain {
     console.log('[Brain] R3 — loading language subsystem (dictionary + language cortex + embeddings + component synth)...');
     const startMs = Date.now();
     try {
-      const [dictMod, lcMod, embedMod, csMod, modulesMod, clusterMod, curriculumMod, drugSchedulerMod, drugDetectorMod, olfactoryMod, sensoryTriggersMod, letterInputMod] = await Promise.all([
+      const [dictMod, lcMod, embedMod, csMod, modulesMod, clusterMod, curriculumMod, drugSchedulerMod, drugDetectorMod, olfactoryMod, sensoryTriggersMod, letterInputMod, endocrineMod, brainstemMod] = await Promise.all([
         import('../js/brain/dictionary.js'),
         import('../js/brain/language-cortex.js'),
         import('../js/brain/embeddings.js'),
@@ -2387,6 +2395,9 @@ class ServerBrain {
         // of the letter inventory (module-level state, not a cluster
         // field). Stashed on `this._letterInputMod` below.
         import('../js/brain/letter-input.js'),
+        // ENDO — chemistry and the glands that decide to release it.
+        import('../js/brain/endocrine.js'),
+        import('../js/brain/brainstem.js'),
       ]);
       this._letterInputMod = letterInputMod;
 
@@ -3888,6 +3899,16 @@ class ServerBrain {
       // class the local-brain path uses.
       this.amygdalaModule = new modulesMod.Amygdala(32, { arousalBaseline: this.persona.arousalBaseline });
 
+      // ENDO — the endocrine layer and the glands, wired in that order
+      // because chemistry is DOWNSTREAM of tissue. The gland layer holds
+      // the nuclei; each one reads live cluster state and fires itself.
+      // Nothing outside `GlandLayer` ever calls `release()`, which is what
+      // separates an organ from a hormone table with a function call on it.
+      this.endocrine = new endocrineMod.EndocrineSystem({ cluster: this.cortexCluster });
+      this.glands = new brainstemMod.GlandLayer({ endocrine: this.endocrine });
+      this.endocrine.setGlands(this.glands);
+      console.log(`[Brain] ENDO — endocrine layer online: ${Object.keys(endocrineMod.CHEMICALS).length} chemicals, ${Object.keys(this.glands.nuclei).length} nuclei. brainstem cluster = ${(CLUSTER_SIZES.brainstem || 0).toLocaleString()} neurons (locus coeruleus / raphe / VTA).`);
+
       // Await GloVe embedding table load — must complete before corpus
       // training so persona words get real semantic patterns from the
       // start instead of hash-fallback vectors that would be wrong
@@ -4535,6 +4556,30 @@ class ServerBrain {
         whole: { start: 0, end: size, side: 'center' },
       };
     }
+    if (clusterName === 'brainstem') {
+      // ENDO — the three monoamine nuclei get REAL regions of real tissue,
+      // at their proportions to each other in a human brainstem:
+      //   locus coeruleus ~15k : raphe ~250k : VTA ~450k  ≈  2% : 35% : 63%
+      //
+      // `center` because these are MIDLINE structures. They are not
+      // lateralised, so the Ψ hemisphere gate must not touch them — a
+      // left/right-dominant tag here would have the consciousness term
+      // modulating her noradrenaline supply by hemisphere, which is not a
+      // thing brainstems do.
+      //
+      // ⚠ Layout duplicated from `brainstemRegions()` in js/brain/brainstem.js
+      // because this runs at cluster construction, BEFORE the dynamic
+      // imports in _initLanguageSubsystem. Same convention (and same
+      // hazard) as GRADE_ORDER in drug-scheduler.js — if the canonical
+      // fractions change there, change them here too.
+      const lc = Math.floor(size * 0.02);
+      const raphe = lc + Math.floor(size * 0.35);
+      return {
+        locusCoeruleus: { start: 0,     end: lc,    side: 'center' },
+        raphe:          { start: lc,    end: raphe, side: 'center' },
+        vta:            { start: raphe, end: size,  side: 'center' },
+      };
+    }
     return null;  // unknown cluster — no regions, homogeneous behavior
   }
 
@@ -4633,6 +4678,65 @@ class ServerBrain {
     try {
       this.drugScheduler.evaluatePatterns(ctx);
     } catch { /* non-fatal */ }
+
+    // ── ENDO — the endocrine tick, on this SAME 1 Hz throttle rather than
+    // a loop of its own. None of the chemical curves resolve faster than
+    // seconds, so sampling them on the ~20 Hz brain tick would be waste.
+    this._tickEndocrine(now);
+  }
+
+  /**
+   * ENDO — one endocrine step. Assembles the live brain readout the gland
+   * layer senses from, then lets the nuclei decide their own releases.
+   *
+   * ⛔ This method passes STATE, never a hormone level. If it ever gains a
+   * line that decides how much of something to release, the gland layer has
+   * been bypassed and the whole layer is a bolt-on again.
+   */
+  _tickEndocrine(now) {
+    if (!this.endocrine) return;
+    // ⛔ Absent readouts are OMITTED, never defaulted. A nucleus that cannot
+    // read its input reports `blind` and releases nothing; handing it a
+    // plausible 0 would make it release confidently off a fabricated
+    // measurement, which is worse than silence.
+    const brainState = { clusters: this.clusters };
+
+    if (this._amygOut) {
+      brainState.amygdala = {
+        fear: this._amygOut.fear,
+        valence: this._amygOut.valence,
+        attractorDepth: this._amygOut.attractorDepth,
+      };
+    }
+    if (typeof this.arousal === 'number') brainState.arousal = this.arousal;
+    if (this._bgConfidence != null) brainState.basalGanglia = { confidence: this._bgConfidence };
+    // Predictive-coding surprise — the quantity the locus coeruleus reads.
+    if (typeof this.predictionError === 'number' && Number.isFinite(this.predictionError)) {
+      brainState.predictionError = this.predictionError;
+    }
+    // Reward PREDICTION ERROR — wanting, not liking. The TD error the
+    // action-selection layer already computes IS this quantity; the VTA
+    // reads it rather than a second reward signal being invented for it.
+    if (typeof this._tdError === 'number' && Number.isFinite(this._tdError)) {
+      brainState.rewardPredictionError = this._tdError;
+    }
+    // Affiliative contact — a live conversational partner. Read from real
+    // session activity, not assumed.
+    if (typeof this._lastChatAtMs === 'number' && this._lastChatAtMs > 0) {
+      const sinceMs = now - this._lastChatAtMs;
+      brainState.socialContact = sinceMs < 5 * 60 * 1000
+        ? Math.max(0, 1 - sinceMs / (5 * 60 * 1000))
+        : 0;
+    }
+    if (this.hypothalamusModule && this._drives) brainState.drives = this._drives;
+
+    try {
+      this._endocrineSnapshot = this.endocrine.tick({ brainState }, now);
+    } catch (err) {
+      // Named, not swallowed. A dead endocrine tick must be visible as a
+      // dead endocrine tick.
+      this._endocrineErr = { message: err?.message || String(err), at: now };
+    }
   }
 
   _updateDerivedState() {
@@ -4709,11 +4813,37 @@ class ServerBrain {
     // integration, not just a scalar placeholder. Real cortex with
     // diverse activity → higher Φ → amplifies Ψ. Silent or saturated
     // cortex → low Φ → dampened Ψ. Biologically grounded measurement.
+    // ⚠ Φ CAN PIN AT ITS FLOOR, AND NOTHING USED TO SAY SO.
+    //
+    // computePhi() is the binary Shannon entropy of the SPIKING PROPORTION
+    // p — it peaks at p = 0.5 and collapses toward 0 as firing gets sparse.
+    // At 1% sparsity H(0.01) = 0.081, which is BELOW the 0.1 floor below.
+    // So on a sparsely-firing cortex this term is a constant and Φ has
+    // never modulated anything — the exact shape of dead instrument this
+    // project keeps finding, and it would read as a perfectly healthy 0.1
+    // forever.
+    //
+    // Not guessed at: the raw value, the floor state and the read state are
+    // recorded every tick so the board can answer it from a field read.
     let phiProxy = 1.0;
+    let phiRaw = null;
+    let phiState = 'unmeasured';   // ⛔ never 0 — "no sample" is not "measured zero"
     if (this.cortexCluster && typeof this.cortexCluster.computePhi === 'function') {
-      try { phiProxy = Math.max(0.1, this.cortexCluster.computePhi()); }
-      catch { phiProxy = 1.0; }
+      try {
+        phiRaw = this.cortexCluster.computePhi();
+        phiProxy = Math.max(0.1, phiRaw);
+        phiState = (phiRaw <= 0.1) ? 'floored' : 'live';
+      } catch (err) {
+        // ⛔ NOT a silent 1.0. The identity is used so Ψ stays computable,
+        // but the failure NAMES itself instead of looking like a healthy
+        // unmodulated reading.
+        phiProxy = 1.0;
+        phiState = 'error';
+        this._phiLastErr = { message: err?.message || String(err), at: Date.now() };
+      }
     }
+    this.phiRaw = phiRaw;
+    this.phiState = phiState;
     const rawPsi = quantumVolume * (0.3 * id + 0.25 * ego + 0.2 * left + 0.25 * right) * phiProxy;
     // Log scale for usable range — consciousness measured in orders of magnitude.
     // Guard rawPsi finiteness: a NaN here would propagate to psiGain below and
@@ -4793,6 +4923,15 @@ class ServerBrain {
         amyInput[i] = baseDrive * (0.6 + 0.4 * pattern) + this.valence * 0.1;
       }
       const amyOut = this.amygdalaModule.step(amyInput, { arousal: this.arousal, valence: this.valence }, 1);
+      // ENDO — keep the FULL settled attractor, not just the scalars that
+      // happened to be needed before. `attractorDepth` was computed every
+      // tick and thrown away; the stress axis needs it, because depth is
+      // what distinguishes a shallow fear reading (noise) from a basin she
+      // has actually fallen into. Held as the whole object so the gland
+      // layer reads the real readout and can tell "not initialised" from
+      // "initialised and calm" — the `this.fear = 0` below is a pre-init
+      // placeholder, and a nucleus must never mistake it for a measurement.
+      this._amygOut = amyOut;
       this.fear = amyOut.fear;
       // Reward is the amygdala readout, but the reward field on this
       // also receives external signals from user feedback — blend.
@@ -6421,6 +6560,10 @@ class ServerBrain {
         coherence: this.coherence,
         drugState: this._drugStateLabel(),
         drugScheduler: this.drugScheduler ? this.drugScheduler.serialize() : null,
+        // ENDO — her chemistry persists the way her substance state does.
+        // Chronic load especially: a hard stretch that evaporated on every
+        // restart would make allostatic load unmeasurable by construction.
+        endocrine: this.endocrine ? this.endocrine.serialize() : null,
         time: this.time,
         frameCount: this.frameCount,
         savedAt: new Date().toISOString(),

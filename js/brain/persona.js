@@ -176,6 +176,65 @@ function loadPersona(overrides = {}) {
   return persona;
 }
 
+// ─── Contribution → brain-param mapping ───────────────────────────────────
+// This was nineteen near-identical `if (typeof delta.X === 'number')` lines,
+// which is a mapping TABLE written as code. Extracted when the endocrine
+// layer arrived as a second contribution source: writing a second chain
+// beside the first would have been the instance fix, and the two would have
+// drifted the first time an axis was added to one and not the other.
+//
+//   target — the brain-param key the contribution lands on
+//   base   — the value to start from when the param does not exist yet.
+//            `null` means the param is ALREADY present from persona traits
+//            and is added to directly (creativity, arousalBaseline,
+//            socialAttachment, impulsivity), so seeding it would overwrite
+//            her persona with a generic default.
+const CONTRIB_PARAM_MAP = {
+  cortexSpeed:              { target: 'cortexSpeed',              base: 1.0 },
+  creativity:               { target: 'creativity',               base: null },
+  arousal:                  { target: 'arousalBaseline',          base: null },
+  synapticSensitivity:      { target: 'synapticSensitivity',      base: 1.0 },
+  socialNeed:               { target: 'socialAttachment',         base: null },
+  oscillationCoherence:     { target: 'oscillationCoherence',     base: 0 },
+  impulsivity:              { target: 'impulsivity',              base: null },
+  amygdalaValence:          { target: 'amygdalaValence',          base: 0 },
+  amygdalaReward:           { target: 'amygdalaReward',           base: 0 },
+  amygdalaFear:             { target: 'amygdalaFear',             base: 0 },
+  hypothalamusArousal:      { target: 'hypothalamusArousal',      base: 0 },
+  cerebellumPrecision:      { target: 'cerebellumPrecision',      base: 1.0 },
+  prefrontalExecutive:      { target: 'prefrontalExecutive',      base: 1.0 },
+  hippocampusConsolidation: { target: 'hippocampusConsolidation', base: 1.0 },
+  crossRegionAmplify:       { target: 'crossRegionAmplify',       base: 1.0 },
+  defaultModeSuppression:   { target: 'defaultModeSuppression',   base: 0 },
+  visualCortexFeedback:     { target: 'visualCortexFeedback',     base: 0 },
+  somatosensoryBoost:       { target: 'somatosensoryBoost',       base: 0 },
+  dissociation:             { target: 'dissociation',             base: 0 },
+};
+
+/**
+ * Apply one source's additive contributions onto `params`.
+ *
+ * Called once per source. Drugs and hormones compose by SUPERPOSITION —
+ * being frightened while high is the sum of both, not a special case — so
+ * there is no pair rule here and there must never be one.
+ *
+ * A non-finite contribution is SKIPPED rather than coerced: a NaN reaching
+ * `arousalBaseline` propagates into cluster gain and corrupts the whole
+ * tick, and silently substituting 0 for it would hide the producer that
+ * emitted garbage.
+ */
+function applyContributions(params, delta) {
+  if (!delta) return;
+  for (const key of Object.keys(delta)) {
+    const spec = CONTRIB_PARAM_MAP[key];
+    if (!spec) continue;
+    const v = delta[key];
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    if (spec.base === null) params[spec.target] += v;
+    else params[spec.target] = (params[spec.target] ?? spec.base) + v;
+  }
+}
+
 /**
  * Get brain-ready parameters from the persona.
  * Extracts the values that map directly to brain module inputs, then applies
@@ -192,7 +251,7 @@ function loadPersona(overrides = {}) {
  * @param {number} [now]       - Wall-clock ms (defaults to Date.now() via scheduler)
  * @returns {object} Brain parameters with drug contributions folded in
  */
-function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = undefined) {
+function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = undefined, endocrine = null) {
   const t = persona.traits;
   const params = {
     // θ → tonic currents + noise + thresholds
@@ -226,26 +285,8 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = undefin
       ? scheduler.activeSubstances(now)
       : [];
 
-    // Primary param overlay — direct additive on known keys
-    if (typeof delta.cortexSpeed === 'number')         params.cortexSpeed = (params.cortexSpeed || 1.0) + delta.cortexSpeed;
-    if (typeof delta.creativity === 'number')          params.creativity += delta.creativity;
-    if (typeof delta.arousal === 'number')             params.arousalBaseline += delta.arousal;
-    if (typeof delta.synapticSensitivity === 'number') params.synapticSensitivity = (params.synapticSensitivity || 1.0) + delta.synapticSensitivity;
-    if (typeof delta.socialNeed === 'number')          params.socialAttachment += delta.socialNeed;
-    if (typeof delta.oscillationCoherence === 'number')params.oscillationCoherence = (params.oscillationCoherence || 0) + delta.oscillationCoherence;
-    if (typeof delta.impulsivity === 'number')         params.impulsivity += delta.impulsivity;
-    if (typeof delta.amygdalaValence === 'number')     params.amygdalaValence = (params.amygdalaValence || 0) + delta.amygdalaValence;
-    if (typeof delta.amygdalaReward === 'number')      params.amygdalaReward = (params.amygdalaReward || 0) + delta.amygdalaReward;
-    if (typeof delta.amygdalaFear === 'number')        params.amygdalaFear = (params.amygdalaFear || 0) + delta.amygdalaFear;
-    if (typeof delta.hypothalamusArousal === 'number') params.hypothalamusArousal = (params.hypothalamusArousal || 0) + delta.hypothalamusArousal;
-    if (typeof delta.cerebellumPrecision === 'number') params.cerebellumPrecision = (params.cerebellumPrecision || 1.0) + delta.cerebellumPrecision;
-    if (typeof delta.prefrontalExecutive === 'number') params.prefrontalExecutive = (params.prefrontalExecutive || 1.0) + delta.prefrontalExecutive;
-    if (typeof delta.hippocampusConsolidation === 'number') params.hippocampusConsolidation = (params.hippocampusConsolidation || 1.0) + delta.hippocampusConsolidation;
-    if (typeof delta.crossRegionAmplify === 'number')  params.crossRegionAmplify = (params.crossRegionAmplify || 1.0) + delta.crossRegionAmplify;
-    if (typeof delta.defaultModeSuppression === 'number') params.defaultModeSuppression = (params.defaultModeSuppression || 0) + delta.defaultModeSuppression;
-    if (typeof delta.visualCortexFeedback === 'number') params.visualCortexFeedback = (params.visualCortexFeedback || 0) + delta.visualCortexFeedback;
-    if (typeof delta.somatosensoryBoost === 'number')  params.somatosensoryBoost = (params.somatosensoryBoost || 0) + delta.somatosensoryBoost;
-    if (typeof delta.dissociation === 'number')        params.dissociation = (params.dissociation || 0) + delta.dissociation;
+    // Primary param overlay — one table, applied by one function.
+    applyContributions(params, delta);
 
     // Chaos flag — any substance stacked × any other stacked + any above 0.7 level
     params.chaos = active.length >= 3 || active.some(a => a.level > 0.7);
@@ -259,6 +300,24 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = undefin
     params.drugSnapshot = { sober: true, active: [], pendingAcquisitions: [], gradeLocked: true };
     params.drugContributions = {};
     params.active = [];
+  }
+
+  // ENDO — endocrine contributions, applied through the SAME table as the
+  // substance contributions above. Hormones and drugs are not different
+  // kinds of thing to this function: both are additive deltas from a
+  // chemical state, and they superpose.
+  //
+  // ⛔ A null endocrine system is NOT the same as a sober one. Sober means
+  // measured and quiet; null means the layer is not present, and the
+  // telemetry says so rather than reporting a tidy set of zeroes.
+  if (endocrine && typeof endocrine.activeContributions === 'function') {
+    const endoDelta = endocrine.activeContributions(now);
+    applyContributions(params, endoDelta);
+    params.endocrineContributions = endoDelta;
+    params.endocrineSnapshot = typeof endocrine.snapshot === 'function' ? endocrine.snapshot(now) : null;
+  } else {
+    params.endocrineContributions = null;
+    params.endocrineSnapshot = null;
   }
 
   return params;

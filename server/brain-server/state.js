@@ -1794,6 +1794,35 @@ const SERVER_STATE_MIXIN = {
       thetaPhase,
       gammaScale: cortex ? (cortex._gammaLrScale || 1) : 1,
       phiProxy: this.phiProxy || 0,
+      // ⚠ Φ CAN PIN AT ITS FLOOR AND `phiProxy` ALONE CANNOT SAY SO.
+      // computePhi() is binary entropy of the spiking PROPORTION: it peaks
+      // at p=0.5 and collapses as firing gets sparse, and H(0.01)=0.081 is
+      // below the 0.1 floor Ψ applies. A pinned Φ reads as a healthy 0.1
+      // forever. These two fields are what let the board answer "is Φ
+      // actually modulating anything?" as a READ instead of an inference.
+      //   phiState: 'live' | 'floored' | 'error' | 'unmeasured'
+      phiRaw: (typeof this.phiRaw === 'number') ? this.phiRaw : null,
+      phiState: this.phiState || 'unmeasured',
+      // ── ENDO — the endocrine layer + the glands that drive it.
+      // Rendered BY NAME, so every field below needs its row; a field with
+      // no row ships dark no matter how correct it is.
+      // ⛔ `null` here means the layer is ABSENT, which is a different claim
+      // from "present and resting". Resting reports chemicals with real
+      // levels; absent reports nothing at all.
+      endocrine: this._endocrineSnapshot ? {
+        chemicals: this._endocrineSnapshot.chemicals,
+        chronicLoad: this._endocrineSnapshot.chronicLoad,
+        stress: this._endocrineSnapshot.stress,
+        contributions: this._endocrineSnapshot.contributions,
+        counters: this._endocrineSnapshot.counters,
+        // Whether the NUCLEI were consulted this tick. Distinguishes "the
+        // glands were quiet" from "the glands were never asked".
+        glandsConsulted: this._endocrineSnapshot.glandsConsulted === true,
+        glands: this._endocrineSnapshot.glands || null,
+        nuclei: (this.glands && typeof this.glands.snapshot === 'function')
+          ? this.glands.snapshot().nuclei : null,
+        lastError: this._endocrineErr || null,
+      } : null,
       // SPEAK.2/9-obs — speech-pipeline health. Per-subject word_motor basin
       // separability (weight-mass distribution: uniform = separable; from the
       // SPEAK.2 renorm probe) + frozen cellSize (SPEAK.1) + the reject-to-silence
