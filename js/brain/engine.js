@@ -32,6 +32,11 @@ import { sharedEmbeddings } from './embeddings.js';
 import { ComponentSynth } from './component-synth.js';
 import { Curriculum } from './curriculum.js';
 import { DrugScheduler, SUBSTANCES as DRUG_SUBSTANCES } from './drug-scheduler.js';
+// ENDO — chemistry, and the glands that decide to release it. Wired on the
+// local-brain path too: an asymmetry where only the server has hormones
+// would make `persistence.js`'s endocrine restore dead code on this lane.
+import { EndocrineSystem } from './endocrine.js';
+import { GlandLayer } from './brainstem.js';
 // (the `detectOffer` import lived here for the deleted vision-caption drug-cue
 //  subscriber — see the note further down; drug-detector.js itself is still
 //  used elsewhere and is untouched)
@@ -105,7 +110,12 @@ export class UnityBrain extends EventEmitter {
     // wired in after clusters are constructed (few lines below) so the
     // scheduler can gate substance availability by cluster.grades.life.
     this.drugScheduler = new DrugScheduler();
-    this.brainParams = getBrainParams(this.persona, this.drugScheduler);
+    // ENDO — endocrine BEFORE glands, then linked: chemistry is downstream
+    // of tissue, and nothing outside the gland layer ever calls release().
+    this.endocrine = new EndocrineSystem();
+    this.glands = new GlandLayer({ endocrine: this.endocrine });
+    this.endocrine.setGlands(this.glands);
+    this.brainParams = getBrainParams(this.persona, this.drugScheduler, undefined, this.endocrine);
     const arousal = this.brainParams.arousalBaseline || 0.9;
 
     // ══════════════════════════════════════════════════════════════
@@ -1588,8 +1598,63 @@ export class UnityBrain extends EventEmitter {
    * ingestion and — cheaply — in the step loop via tickDrugScheduler() so
    * live PK curves actually shape brain params rather than baking at ingest.
    */
+
+  /**
+   * ENDO — assemble the live readout the nuclei sense from.
+   *
+   * ⛔ Absent readouts are OMITTED, never defaulted. A nucleus handed a
+   * plausible 0 would release confidently off a fabricated measurement,
+   * which is strictly worse than reporting `blind` and staying quiet.
+   */
+  _endocrineBrainState() {
+    const s = { clusters: this.clusters };
+    const st = this.state;
+    if (!st) return s;   // pre-first-tick: glands read `blind`, which is true
+
+    const amy = st.amygdala;
+    if (amy && typeof amy.fear === 'number') {
+      s.amygdala = { fear: amy.fear, valence: amy.valence, attractorDepth: amy.attractorDepth };
+      if (typeof amy.arousal === 'number') s.arousal = amy.arousal;
+    }
+    const bg = st.basalGanglia;
+    if (bg && typeof bg.confidence === 'number') s.basalGanglia = { confidence: bg.confidence };
+    // Reward PREDICTION ERROR — the TD error the basal ganglia already
+    // computes IS this quantity. The VTA reads it rather than a second
+    // reward signal being invented alongside it.
+    if (bg && Number.isFinite(bg.tdError)) s.rewardPredictionError = bg.tdError;
+
+    // Predictive-coding surprise for the locus coeruleus. The cortex
+    // returns a per-unit error VECTOR; the nucleus needs a magnitude, so
+    // take its RMS — a real reduction of a real signal, not a stand-in.
+    const err = st.cortex && st.cortex.error;
+    if (err && err.length) {
+      let sum = 0;
+      for (let i = 0; i < err.length; i++) sum += err[i] * err[i];
+      const rms = Math.sqrt(sum / err.length);
+      if (Number.isFinite(rms)) s.predictionError = rms;
+    }
+
+    if (st.hypothalamus && st.hypothalamus.drives) s.drives = st.hypothalamus.drives;
+    return s;
+  }
+
   _refreshBrainParamsFromScheduler() {
-    this.brainParams = getBrainParams(this.persona, this.drugScheduler);
+    // ENDO — tick the endocrine layer on the SAME ~1s cadence as the drug
+    // refresh, then fold both contribution sets in through the one mapping
+    // table. Hormones and substances are not different kinds of thing here:
+    // both are additive deltas from a chemical state, and they superpose.
+    //
+    // ⛔ The brain STATE is handed to the glands; a hormone level never is.
+    // Each nucleus reads real cluster output and fires itself, and a nucleus
+    // that cannot read its input releases nothing rather than guessing.
+    if (this.endocrine) {
+      try {
+        this._endocrineSnapshot = this.endocrine.tick({ brainState: this._endocrineBrainState() });
+      } catch (err) {
+        this._endocrineErr = { message: err?.message || String(err) };
+      }
+    }
+    this.brainParams = getBrainParams(this.persona, this.drugScheduler, undefined, this.endocrine);
     if (this.mystery?.setWeights) this.mystery.setWeights(this.brainParams.mysteryWeights);
     const arousal = this.brainParams.arousalBaseline || 0.9;
     const creativity = this.brainParams.creativity || 0;

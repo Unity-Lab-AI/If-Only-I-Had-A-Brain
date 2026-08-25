@@ -72,14 +72,28 @@ const EMPTY_PRE_SPIKES = new Uint32Array(0);
 // Operator verbatim 2026-04-22: "the brain doent have heart and lungs it
 // can baicle build ui and read and talk so why the fuck would the most
 // important thing be so fucking microscopic".
+// ENDO — `brainstem` added for the monoamine nuclei (locus coeruleus,
+// raphe, ventral tegmental area). It is deliberately TINY because it is
+// tiny in a real head: those three nuclei together are on the order of
+// 700k neurons against ~86 billion. 0.2% here is generous to them, not
+// stingy — and their influence has never come from their size. They are
+// neuromodulatory: they project diffusely and change how every OTHER
+// cluster behaves, which is exactly what the additive contribution
+// overlay in persona.js expresses.
+//
+// The 0.2% is taken from the cerebellum, which the block above already
+// records as drastically over-provisioned for a brain with no body to
+// coordinate. Fractions must sum to 1.0 EXACTLY:
+//   0.55 + 0.18 + 0.05 + 0.03 + 0.078 + 0.03 + 0.08 + 0.002 = 1.000
 export const CLUSTER_FRACTIONS = {
   cortex:       0.55,
   hippocampus:  0.18,
   amygdala:     0.05,
   basalGanglia: 0.03,
-  cerebellum:   0.08,
+  cerebellum:   0.078,
   hypothalamus: 0.03,
   mystery:      0.08,
+  brainstem:    0.002,
 };
 
 /**

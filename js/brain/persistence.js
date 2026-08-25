@@ -548,6 +548,26 @@ export class BrainPersistence {
     } catch (err) {
       failed.drugScheduler = err?.message || String(err);
     }
+
+    // ENDO — rehydrate her chemistry, symmetric with the scheduler above.
+    // Chronic load is the one that must survive: a sustained hard stretch
+    // that reset to zero on every restart would make allostatic load
+    // unmeasurable by construction, and the whole point of it is that it
+    // outlasts the thing that caused it.
+    //
+    // ⛔ Absence is reported as `absent`, not silently skipped, so a save
+    // that carried no chemistry is distinguishable from one whose
+    // chemistry failed to load.
+    try {
+      if (state.endocrine && brain.endocrine && typeof brain.endocrine.load === 'function') {
+        brain.endocrine.load(state.endocrine);
+        restored.endocrine = 'ok';
+      } else if (brain.endocrine) {
+        restored.endocrine = 'absent';
+      }
+    } catch (err) {
+      failed.endocrine = err?.message || String(err);
+    }
     if (state.reward) brain.reward = state.reward;
 
     // Per-section restore summary — replaces the old all-or-nothing
