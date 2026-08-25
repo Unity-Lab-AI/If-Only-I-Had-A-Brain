@@ -115,6 +115,43 @@ The vocabulary system is correct and the identity system overrides it. This also
 authority that gates vocabulary**, so adult-identity anchors become resident when her walk reaches them
 and not one grade sooner. The 25-year-old is the END STATE, not the seed.
 
+### 0.2b — ⛔ THE GENERAL LAW, AND IT REACHES HER APPEARANCE — her wardrobe is ungated in production
+
+> Gee, 2026-08-24: *"remember shit like this needs to be properly aged gated : Tier 3 injects 'goth emo
+> dark black leather' and 'horny aroused sexual fucking --- shes not a horney slut till 18 and not wearing
+> leater skirts in kindergarten.. obviously.... fishnets and tube tops are later. but normal school girl
+> look till highschool all with her existing image age modifiing systems"*
+
+**This is a law, not a bug.** Any anchor, wardrobe entry, vocabulary set, persona trait or behaviour that
+belongs to the 25-year-old end-state gates on her **live grade** and is never resident from birth. Of
+every trait, ask: *at what age does she actually have this?* Memory: `feedback_age_gate_appearance_and_identity`.
+
+**The ladder:**
+
+| Band | Grades | Age | Look |
+|---|---|---|---|
+| Child | pre-K → grade8 | 4–13 | **Normal school-girl look.** Goth-*leaning* per `feedback_tone_k_life_emo_goth` (Halloween > Christmas, black > pink), but age-appropriate kid clothes. |
+| Teen | grade9 → grade12 | 14–17 | The goth look develops, **covered** — band tees, black hoodies, plaid skirts with tights, combat boots. |
+| Adult | college1 → phd | 18+ | Full adult wardrobe (leather, corset, fishnets, tube tops) **and** the sexual identity anchors. |
+
+**⛔ Ride the machinery that already exists** — *"all with her existing image age modifiing systems"*.
+`_selfImageAge()` (`server/brain-server/chat.js:3568`) already maps grade→age (`pre-K` 4 … `phd` 25) and
+already strips explicit content under 18, and it is **correct**. Do not build a parallel age system.
+
+**Two holes in that same function, live in production right now:**
+
+1. **`WARDROBE` is picked with a flat `Math.random()` over 8 ungated entries.** At grade 1 —
+   where `_selfImageAge()` correctly returns **6** — every self-image has a 1-in-8 chance each of
+   `'oversized black hoodie and fishnets'`, `'black corset dress and combat boots'`, `'black crop top and
+   plaid mini skirt'`, `'black leather outfit, pink undertones'`, `'black lace top and a choker'`.
+   Precisely *"not wearing leater skirts in kindergarten"*.
+2. **The under-18 guard strips nudity, never age-wrong clothing.** `EXPLICIT_RE` covers `bare`, `naked`,
+   `topless`, `lingerie` and friends — so a request for fishnets or a corset **on her six-year-old
+   self-image passes straight through**.
+
+Band `WARDROBE` by `_selfImageAge()`, and widen the under-18 strip from nudity-only to age-inappropriate
+garments. ⚠ The age system is correct and already wired; only the wardrobe and the garment strip are ungated.
+
 ### 0.3 — Biographical anchors are frozen at kindergarten
 
 The seed block is commented *"K-LIFE biographical anchors (currently active grade)"* and contains
@@ -130,6 +167,10 @@ will spend twenty grades insisting she is five.
 4. Bump the Tier 3 schema version so the old anchors are **orphaned, not merged** — the store's existing
    orphaning ritual, the same one used for the visual store (v1→…→v8).
 5. Assert at boot that no resident anchor is a bare descriptor list (no agent, no verb, no `i`/`my`).
+6. **Band `WARDROBE` by `_selfImageAge()`** against the §0.2b ladder, and extend the under-18 strip from
+   nudity-only to age-inappropriate garments. Same function, same existing age source.
+7. Add a boot assertion that **no** adult-band anchor, wardrobe entry or vocabulary set is reachable
+   below its unlock grade — so this class of breach fails loudly instead of shipping quietly again.
 
 **Phase 0 does not require a fresh walk.** It is a seed-list and version bump; it lands on a press.
 
@@ -342,8 +383,11 @@ Self-framing adds taught lines, so `corpus × reps` rises. This is **not** a gat
 1. **Both frames, or first-person only?** §3.3.3 proposes teaching both (`hearts pump blood` **and**
    `my heart pumps blood`). First-person-only is cheaper and more radical; both-frames is how people
    actually learn. **Recommend both.**
-2. **How adult-identity anchors gate.** Phase 0.2 proposes matching the vocabulary gate (grade 11 for
-   the sexual set, grade 9 for erotic state). Confirm the grades.
+2. ~~**How adult-identity anchors gate.**~~ **✅ ANSWERED by Gee 2026-08-24** — see the §0.2b ladder.
+   Sexual identity is **18+**, not grade 11: *"shes not a horney slut till 18"*. Appearance runs
+   child → teen → adult with a **normal school-girl look until highschool**, and all of it rides the
+   existing `_selfImageAge()` rather than a new system. Erotic *state* keeps its grade-9 first-kiss gate
+   (`feedback_erotic_state_grade_9_gate`) — that is the state machine, not the identity anchor.
 3. **Fresh walk timing** — recommendation is strictly last, after verification on current weights.
 4. **Phase order.** Phase 4 (REPLAYOFF) is written last here for narrative reasons but is arguably the
    highest-value single item on the board. It can ship **first**, independently, and be verified alone.
