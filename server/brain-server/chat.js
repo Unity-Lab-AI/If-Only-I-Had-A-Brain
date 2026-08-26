@@ -383,7 +383,7 @@ const SERVER_CHAT_MIXIN = {
         //
         // The client builds this image URL itself (PROMPT ONLY, by design) and
         // fetches Pollinations from the SAME PUBLIC IP as this server — so the
-        // background reference-look lane and the operator's "show me an apple"
+        // background reference-look lane and the operator's own image request
         // are competing for one anonymous quota, and the background errand was
         // winning. Operator: *"it doesnt error out image gen in chat and will
         // eventually generate the image"*.
@@ -1410,8 +1410,8 @@ const SERVER_CHAT_MIXIN = {
       // mind, she GENERATES it: auto-emit an image of the concrete concept so it
       // renders client-side, her eyes (visual-feeder) harvest it, perceive binds
       // it to the concept — and the NEXT time she thinks it, recall shows the
-      // real thing. This turns "talk to her about an apple → she imagines an
-      // apple" into truth (after the first generate). Gated hard so it's
+      // real thing. This turns "talk to her about a thing → she imagines that
+      // thing" into truth (after the first generate). Gated hard so it's
       // curiosity, not spam: concrete-noun head only, not already seen, cooldown,
       // low probability, never mid-teach-perturbing (broadcast only).
       // DRAW-ENGINE (Gee 2026-07-15) — NON-BLOCKING GROUND + DRAW. Grounding a
@@ -1834,9 +1834,9 @@ const SERVER_CHAT_MIXIN = {
 
     const _recent = (w) => this._eyeRecent.indexOf(w) !== -1;
     // ⚠ Judged on the HEAD of the phrase. The taxonomy answers about a LEMMA,
-    // and "red apple" is not one — asking it about the whole phrase returns
+    // and a modifier+subject phrase is not one — asking about the whole phrase returns
     // unknown and would refuse every multi-word subject, re-creating the
-    // one-word-only limit by the back door. "red apple" is drawable because
+    // one-word-only limit by the back door. A modified subject is drawable because
     // APPLE is.
     const _drawable = async (w) => {
       if (typeof this._conceptIsDrawable !== 'function') return true;
@@ -1879,21 +1879,21 @@ const SERVER_CHAT_MIXIN = {
     // the seed is a phrase, and a phrase is not a thing she can look at.
     // A SUBJECT PHRASE, not a single word. ⛔ The first cut of this guard
     // required one word, which stopped the leaked generator prompt but also
-    // made "red apple" and "old wooden church" impossible — a subject that can
+    // made every modifier+subject phrase impossible — a subject that can
     // never be more than one word is not a real subject.
     //
     // The real distinction is PHRASE vs PROMPT. A subject is short and natural:
     // a few words, no commas, no clause punctuation. A generation prompt is
     // comma-separated and style-laden, which is exactly what leaked in
-    // ("an apple, another, just, smartphone, vibrant saturated color, crisp
-    // sharp focus, bold dramatic contrast, …"). Commas and length separate the
+    // (a comma-separated string of a subject followed by unrelated nouns and
+    // a train of generator style directives). Commas and length separate the
     // two without naming a single style word — ⚠ no word list, per the law.
     const _isSubjectPhrase = (w) => {
       if (!w) return false;
       if (w.length > 48) return false;                 // a prompt runs long
       if (/[,;:!?"()]/.test(w)) return false;          // list/clause punctuation = prompt
       const parts = w.split(/\s+/).filter(Boolean);
-      // 8 admits "a big red apple on the table" (7) — a real subject WITH its
+      // 8 admits a subject carrying a prepositional tail — a real subject WITH its
       // relation, which is the whole point. A prompt is excluded by its commas
       // and by the 48-char cap regardless of how many words it has.
       if (parts.length === 0 || parts.length > 8) return false;
@@ -4051,7 +4051,7 @@ const SERVER_CHAT_MIXIN = {
     const VISUAL = /\b(draw|sketch|paint|painting|render|illustrate|selfie|portrait|drawing)\b/;
     const NOUN = /\b(picture|image|photo|pic|wallpaper|artwork)\b/;
     const SHOW = /\b(show me|generate|create|make me|make us|give me)\b/;
-    // show-me-object routing: "show me an apple!" is a visual ask even without
+    // show-me-object routing: a bare "show me <thing>!" is a visual ask even without
     // a picture/image noun. Route "show me/us <object>" to image UNLESS the
     // object is a code/state/telemetry word ("show me the code" stays text).
     // Input classification only, same rule-class as the detectors above.

@@ -626,6 +626,12 @@ const SERVER_STATE_MIXIN = {
           // lane starved for ~10h (2 grounds against a ~60-look budget) with
           // zero remotely-visible evidence — every failure path was silent.
           lookups: this._vmLookStats || null,
+          // VMRELATE — what the phrase-teach lane actually spent. Published
+          // because an unbounded teach layer cost 70 minutes per cell once
+          // already: `skippedBusy` climbing means the bound is doing its job,
+          // and `pairs` climbing without `queued` climbing would mean it is
+          // not. null = the lane has not run, never "it ran and did nothing".
+          relate: this._vmRelate || null,
         };
       })(),
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.

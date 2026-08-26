@@ -38054,3 +38054,49 @@ Proven by running it: `_vmContentWords("a big red apple on the table")[0]` → *
 - ⛔ **VMPHRASE.1 is a fix to my own fix from hours earlier.** I solved a prompt leak by banning phrases, which is the kind of over-correction that trades one defect for a worse one — and Gee, not I, spotted that the result could never be real.
 - ⚠ **Not verified live** — server-side, needs a restart.
 - ⚠ **The relation is PRESERVED, not yet USED.** `phrase` is now stored; nothing reads it into her weights. Teaching her the relation *"the apple was ON the table"* is a curriculum change and remains Gee's call, not an assumption to build on.
+
+---
+
+## 2026-08-26 - VMRELATE: the whole phrase she looked at, taught - feature/vm-relation-teach
+
+### Gee ask (verbatim per LAW #0)
+
+> *"yes that need taught too but idk for sure as how to do it while its already in a class"*
+
+> *"it should apply weither i do a freshwalk or a savestart, go ahead and write  that but make sure the full thing is taught EXAMPLE ONLY: "a big red apple on the table" not just "apple on table""*
+
+### The question that decided the design
+
+*"how to do it while its already in a class"* was the right thing to be unsure about, and the answer is that it does not go in a class at all.
+
+⭐ **This is EXPERIENTIAL, not curricular.** It fires when she LOOKS at something and rides the existing `_chatTeachJobQueue` drain — one job per teach-call boundary, reentrancy-guarded, per-job opts, the same lane the curiosity follow-up and the mind's-eye preview already use. Her current cell is never interrupted, and nothing on the perception path is awaited.
+
+⭐ **Which is also why it satisfies "fresh walk OR savestart" by construction rather than by a flag.** Nothing in this lane checks a walk state. On a savestart it lands on trained weights — Oja is self-normalizing, the property SAVERERUN already relies on. After a fresh walk it lands on empty ones. Same code, no gate.
+
+### "The FULL thing", which is the part that mattered
+
+⛔ **A bare noun-noun bind would have repeated VMPHRASE.3's loss one level up.** The size, the colour, the articles and the preposition are all part of what she SAW; reducing the label to its two nouns throws them away again. So one look teaches twice, on two channels:
+
+- **ORDER — tag 13**, the word→word transition channel every sentence already uses. Consecutive pairs across the whole phrase **including the glue**, so the modifier chain and the preposition are learned in the sequence she actually saw them.
+- **ATTACH — tag 35**, a channel of its own. Every remaining content word bound to the HEAD in both directions, so the modifiers and the second noun hang off the thing the picture is OF instead of floating as unrelated keys.
+
+⚠ **Two channels deliberately, not one.** Collapsing them would teach word order and attachment as the same relation, which is exactly the kind of conflation that makes a basin mean nothing.
+
+### Bounded before shipping — the SELFFRAME lesson, applied first this time
+
+An unbounded teach layer cost **70 minutes per cell** once already. This one caps pairs per look, keeps reps low, refuses when the drain is ≥24 deep, and counts every refusal. All three knobs are env-tunable. ⭐ Published at `state.ownArt.relate`, where `skippedBusy` climbing means the bound is working and `pairs` climbing without `queued` climbing would mean it is not. ⛔ `null` renders as *has not run*, never as *ran and did nothing*.
+
+⚠ **CONFIRMED looks only at both call sites** — the ingest path gates on `_anyTrustedBind`, the reference path on `confirmed`. LOOKTWICE exists because one render is a noisy oracle; teaching the wording of a picture she may still reject is precisely the poisoning that gate was built to prevent.
+
+### Verified by execution
+
+| check | result |
+|---|---|
+| full phrase taught | **9/9** — article→modifier, modifier chain, modifier→subject, **subject→preposition**, preposition→article, article→second noun, modifiers attach to head, both nouns linked both ways, channels separate |
+| bounds | **5/5** — refuses a deep drain, skips a lone word, holds the pair cap on a 17-word phrase, records its spend, safe on empty/null |
+
+### Owned
+
+- ⛔ **Gee wrote "EXAMPLE ONLY" as a warning, and it was a law I had broken myself hours earlier.** The VMPHRASE comments I shipped carried his subject words through `visual-memory.js` and `chat.js`. Rewritten to describe the SHAPE instead of naming things; three PRE-EXISTING leaks in `chat.js` went in the same pass. Both files now grep **0**.
+- ⚠ **NOT VERIFIED LIVE** — server-side, needs a restart.
+- ⚠ **She now LEARNS the relation; she is not yet asked to USE it.** Nothing queries these bindings to answer a spatial question. That is a further step and it is not assumed here.
