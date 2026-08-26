@@ -632,6 +632,11 @@ const SERVER_STATE_MIXIN = {
           // and `pairs` climbing without `queued` climbing would mean it is
           // not. null = the lane has not run, never "it ran and did nothing".
           relate: this._vmRelate || null,
+          // ARTWEIGHT — what MAKING art spent on her weights. Before this
+          // existed the whole draw + practice span had zero weight-touching
+          // calls, so `pieces` climbing while `pairs` stays flat would mean
+          // the lane has gone quiet again. null = never ran.
+          artWeight: this._artWeight || null,
         };
       })(),
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.

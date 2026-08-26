@@ -657,9 +657,26 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     //     measuring first" is answered with numbers instead of being carried
     //     forever as a reason not to try.
     try {
-      const _ingestMs = Number(process.env.DREAM_OWNART_INGEST_MS) > 0
+      // ⛔ THIS RAN ONLY WHEN IDLE, AND SHE IS NEVER IDLE.
+      //
+      // The guard was `!this._curriculumInProgress`, and that flag is set once
+      // when the walk starts and cleared only when the whole K→PhD walk
+      // RESOLVES — weeks. So learning the shape of a thing at the moment she
+      // saw it never happened during the entire curriculum, which is exactly
+      // the stretch where she is seeing the most.
+      //
+      // ⚠ The gate was for COST, not correctness — this is a trace on the
+      // perception path, and the header above says so. But a cost gate that
+      // resolves to "never" is not a bound, it is a deletion. The throttle
+      // below IS the bound, so it carries the cost instead: the normal spacing
+      // when she is idle, and a wider one mid-walk so the walk keeps its
+      // priority without the capability disappearing.
+      const _idleMs = Number(process.env.DREAM_OWNART_INGEST_MS) > 0
         ? Number(process.env.DREAM_OWNART_INGEST_MS) : 5000;
-      if (_ingestMs > 0 && !this._curriculumInProgress
+      const _walkMs = Number(process.env.DREAM_OWNART_INGEST_WALK_MS) > 0
+        ? Number(process.env.DREAM_OWNART_INGEST_WALK_MS) : 60000;
+      const _ingestMs = this._curriculumInProgress ? _walkMs : _idleMs;
+      if (_ingestMs > 0
           && typeof this._learnShapeSchema === 'function'
           && (!this._ownArtIngestAt || (now - this._ownArtIngestAt) >= _ingestMs)) {
         const _cand = words.find((t) => {
