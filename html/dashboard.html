@@ -4054,7 +4054,17 @@
         for (const id of LEGACY_POWER_IDS) {
           const el = document.getElementById(id);
           if (!el) continue;              // graceful-stop is .remove()d off non-localhost
-          el.style.display = on ? 'none' : '';
+          // ⛔ setProperty(..., 'important') — a PLAIN inline style LOSES this
+          // fight. Every legacy button carries `.admin-only`, and the
+          // stylesheet says `body.is-admin button.admin-only { display:
+          // inline-block !important }`. A stylesheet `!important` outranks a
+          // normal inline declaration, so `el.style.display = 'none'` was
+          // silently overridden on every render and the old row stayed on
+          // screen — which is exactly what Gee kept seeing after three
+          // "fixes" that were all correct except for this one line.
+          // Only an inline declaration that is ITSELF `!important` wins.
+          if (on) el.style.setProperty('display', 'none', 'important');
+          else el.style.removeProperty('display');
           el.title = on
             ? el.title + ' [superseded by the Brain Power panel]'
             : el.title.replace(' [superseded by the Brain Power panel]', '');
