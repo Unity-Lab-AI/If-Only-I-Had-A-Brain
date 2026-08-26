@@ -12103,7 +12103,32 @@ export class Curriculum {
         try {
           const job = brain._chatTeachJobQueue.shift();
           if (brain._chatTimeHebbianStats) brain._chatTimeHebbianStats.jobsQueued = brain._chatTeachJobQueue.length;
-          if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
+          // ⭐ VMUSE.5d — A SECOND JOB KIND: DEFERRED PERCEPT GROUNDING.
+          //
+          // The look lane used to SKIP its sem grounding whenever
+          // `_curriculumInProgress` was set — and that flag is true for the
+          // ENTIRE multi-week walk, so what she saw reached her sem region
+          // essentially never, across exactly the stretch where she sees the
+          // most. ⚠ The reason for the skip was real and still is: injecting
+          // a percept while a teach pattern is IN FLIGHT corrupts it.
+          //
+          // But "in flight" is the operative word. HERE, between teach calls,
+          // nothing is mid-pattern — this is the same seam the pair and job
+          // drains already use. So the injection is DEFERRED rather than
+          // dropped: the look queues it, and it lands in the gap where it
+          // cannot corrupt anything. `_clearSpikes` runs at the head of the
+          // next teach, so the grounding does not leak into it either.
+          if (job && job.kind === 'inject' && Array.isArray(job.vector) && job.vector.length > 0) {
+            const cl = this.cluster;
+            if (cl && typeof cl.injectEmbeddingToRegion === 'function') {
+              cl.injectEmbeddingToRegion(job.region || 'sem', job.vector, Number(job.strength) || 0.10);
+              if (brain._chatTimeHebbianStats) {
+                brain._chatTimeHebbianStats.injectsApplied = (brain._chatTimeHebbianStats.injectsApplied || 0) + 1;
+                brain._chatTimeHebbianStats.lastJobLabel = (job.opts && job.opts.label) || 'PERCEPT-GROUNDING';
+                brain._chatTimeHebbianStats.lastJobTs = Date.now();
+              }
+            }
+          } else if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
             await this._teachAssociationPairs(job.pairs, job.opts || { reps: 1, label: 'CHAT-TEACH-JOB', relationTagId: 30 });
             if (brain._chatTimeHebbianStats) {
               brain._chatTimeHebbianStats.jobsTaught = (brain._chatTimeHebbianStats.jobsTaught || 0) + 1;

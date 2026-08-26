@@ -701,13 +701,46 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     } catch { /* never let this path affect seeing */ }
 
     // grounding — the percept vector lands in sem at LOW strength (real
-    // seeing, not imagination). Skipped mid-teach so the walk's Hebbian
-    // patterns stay pristine, same rule as the imagine tick.
+    // seeing, not imagination).
+    //
+    // ⭐ VMUSE.5d — DEFERRED, NOT DROPPED. This was skipped outright whenever
+    // `_curriculumInProgress` was set, and that flag is true for the ENTIRE
+    // multi-week walk — so a percept reached her sem region essentially never,
+    // across exactly the stretch where she sees the most. ⚠ The reason for the
+    // skip is real and unchanged: injecting while a teach pattern is IN FLIGHT
+    // corrupts it. But "in flight" is the operative word — mid-walk the
+    // grounding is now QUEUED onto the same drain the teach jobs use and
+    // applied in the gap BETWEEN teach calls, where nothing is mid-pattern.
+    // Idle it still injects immediately; there is nothing to defer around.
     try {
-      if (_anyTrustedBind && !this._curriculumInProgress && this.cortexCluster
+      if (_anyTrustedBind && this.cortexCluster
           && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
         const percept = newPercept || await this.mindSpace.describe(rec);   // trusted frames only — provisional renders stay out of sem
-        if (percept) this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
+        if (percept) {
+          if (!this._curriculumInProgress) {
+            this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
+            this._perceptGroundDirect = (this._perceptGroundDirect || 0) + 1;
+          } else {
+            if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+            // ⚠ Bounded like every other drain producer. A percept that cannot
+            // find room is DROPPED and COUNTED rather than queued forever — a
+            // stale percept is worth less than a fresh one, and this queue must
+            // never become the thing that pins the walk.
+            const MAXQ = Number(process.env.DREAM_PERCEPT_GROUND_MAX_QUEUE) || 16;
+            if (this._chatTeachJobQueue.length < MAXQ) {
+              this._chatTeachJobQueue.push({
+                kind: 'inject',
+                region: 'sem',
+                vector: Array.from(percept),
+                strength: 0.10,
+                opts: { label: 'PERCEPT-GROUNDING' },
+              });
+              this._perceptGroundQueued = (this._perceptGroundQueued || 0) + 1;
+            } else {
+              this._perceptGroundSkipped = (this._perceptGroundSkipped || 0) + 1;
+            }
+          }
+        }
       }
     } catch { /* non-fatal */ }
 
