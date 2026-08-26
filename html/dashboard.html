@@ -2571,7 +2571,17 @@
           row('step time', `${num(t.stepTimeMs, 2)} ms`) +
           row('steps/sec', num(t.stepsPerSec, 2)) +
           row('event-loop lag', `${num(t.eventLoopLagMs)} ms`) +
-          row('loop delay', el.meanMs != null ? `μ${num(el.meanMs, 1)} · p99 ${num(el.p99Ms, 1)} · max ${num(el.maxMs, 1)} ms` : '—') +
+          // LOOPMAX.1 — this row now describes a WINDOW, not the whole run.
+          // `max` used to be cumulative since boot, so a boot-time weight-load
+          // stall (18.5s) advertised itself as a live reading forever, on a
+          // brain sitting at 26ms. The worst-ever stall is still shown — it is
+          // just labelled `boot-peak` so it stops impersonating the present.
+          row('loop delay', el.meanMs != null
+            ? `μ${num(el.meanMs, 1)} · p99 ${num(el.p99Ms, 1)} · max ${num(el.maxMs, 1)} ms`
+              + (el.windowMs != null ? ` <span style="color:#666;">(last ${Math.max(1, Math.round(el.windowMs / 1000))}s)</span>` : '')
+              + (el.sinceBootMaxMs != null && el.sinceBootMaxMs > el.maxMs
+                  ? ` <span style="color:#666;">· boot-peak ${num(el.sinceBootMaxMs, 1)} ms</span>` : '')
+            : '—') +
           // LOOPNAME.8 — the freeze row. `loop delay max` above is a since-boot
           // high-water mark with no count and no recency, so a single big number
           // there cannot be told apart from one bad moment at boot. This row is
