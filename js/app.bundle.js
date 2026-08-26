@@ -103764,7 +103764,17 @@ var Curriculum = class _Curriculum {
         try {
           const job = brain2._chatTeachJobQueue.shift();
           if (brain2._chatTimeHebbianStats) brain2._chatTimeHebbianStats.jobsQueued = brain2._chatTeachJobQueue.length;
-          if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
+          if (job && job.kind === "inject" && Array.isArray(job.vector) && job.vector.length > 0) {
+            const cl = this.cluster;
+            if (cl && typeof cl.injectEmbeddingToRegion === "function") {
+              cl.injectEmbeddingToRegion(job.region || "sem", job.vector, Number(job.strength) || 0.1);
+              if (brain2._chatTimeHebbianStats) {
+                brain2._chatTimeHebbianStats.injectsApplied = (brain2._chatTimeHebbianStats.injectsApplied || 0) + 1;
+                brain2._chatTimeHebbianStats.lastJobLabel = job.opts && job.opts.label || "PERCEPT-GROUNDING";
+                brain2._chatTimeHebbianStats.lastJobTs = Date.now();
+              }
+            }
+          } else if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
             await this._teachAssociationPairs(job.pairs, job.opts || { reps: 1, label: "CHAT-TEACH-JOB", relationTagId: 30 });
             if (brain2._chatTimeHebbianStats) {
               brain2._chatTimeHebbianStats.jobsTaught = (brain2._chatTimeHebbianStats.jobsTaught || 0) + 1;
