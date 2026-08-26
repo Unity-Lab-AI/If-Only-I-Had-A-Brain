@@ -1833,9 +1833,18 @@ const SERVER_CHAT_MIXIN = {
     if (st.pinTicks > st.maxPinTicks) st.maxPinTicks = st.pinTicks;
 
     const _recent = (w) => this._eyeRecent.indexOf(w) !== -1;
+    // ⚠ Judged on the HEAD of the phrase. The taxonomy answers about a LEMMA,
+    // and "red apple" is not one — asking it about the whole phrase returns
+    // unknown and would refuse every multi-word subject, re-creating the
+    // one-word-only limit by the back door. "red apple" is drawable because
+    // APPLE is.
     const _drawable = async (w) => {
       if (typeof this._conceptIsDrawable !== 'function') return true;
-      try { return await this._conceptIsDrawable(w); } catch { return false; }
+      let probe = w;
+      if (/\s/.test(String(w || '')) && typeof this._vmHeadWord === 'function') {
+        try { probe = this._vmHeadWord(w) || w; } catch { probe = w; }
+      }
+      try { return await this._conceptIsDrawable(probe); } catch { return false; }
     };
 
     // ── RANK 1 — ACQUISITION: taught but never seen.
@@ -1868,9 +1877,30 @@ const SERVER_CHAT_MIXIN = {
     // looking up; the per-concept cooldown makes a repeat cheap.
     // A subject is a single word: whitespace or sentence punctuation means
     // the seed is a phrase, and a phrase is not a thing she can look at.
-    const _isSingleWord = (w) => !!w && w.length <= 40 && !/[\s,;:.!?"'()]/.test(w);
-    if (_word && !_isSingleWord(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
-    if (_word && _isSingleWord(_word)
+    // A SUBJECT PHRASE, not a single word. ⛔ The first cut of this guard
+    // required one word, which stopped the leaked generator prompt but also
+    // made "red apple" and "old wooden church" impossible — a subject that can
+    // never be more than one word is not a real subject.
+    //
+    // The real distinction is PHRASE vs PROMPT. A subject is short and natural:
+    // a few words, no commas, no clause punctuation. A generation prompt is
+    // comma-separated and style-laden, which is exactly what leaked in
+    // ("an apple, another, just, smartphone, vibrant saturated color, crisp
+    // sharp focus, bold dramatic contrast, …"). Commas and length separate the
+    // two without naming a single style word — ⚠ no word list, per the law.
+    const _isSubjectPhrase = (w) => {
+      if (!w) return false;
+      if (w.length > 48) return false;                 // a prompt runs long
+      if (/[,;:!?"()]/.test(w)) return false;          // list/clause punctuation = prompt
+      const parts = w.split(/\s+/).filter(Boolean);
+      // 8 admits "a big red apple on the table" (7) — a real subject WITH its
+      // relation, which is the whole point. A prompt is excluded by its commas
+      // and by the 48-char cap regardless of how many words it has.
+      if (parts.length === 0 || parts.length > 8) return false;
+      return parts.every(p => /^[a-z][a-z'-]*$/i.test(p));        // plain words only
+    };
+    if (_word && !_isSubjectPhrase(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
+    if (_word && _isSubjectPhrase(_word)
         && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
       st.fromThought++;
       return { word: _word, lookup: true, why: 'thought' };
