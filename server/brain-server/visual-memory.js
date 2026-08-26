@@ -57,7 +57,24 @@ const path = require('path');
 // scenery filter, BGPART (backdrop cells paint no mass) and STYLECULL; v9
 // boots at 0 seen / 0 drawn behind the full stack. (v8 was the pre-BLOBSTORE
 // base64 era's replacement; v7/v6 earlier eras.) Training untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v9.db');
+// v9 → v10 (2026-08-26, operator: *"lets clear local visual memory too so now
+// minds eye is fixed it wont have a hundred backpack images"*) — v9 was banked
+// by the PRE-EYEPIN subject picker, which drew whatever sat at the tail of
+// `_innerThoughtChain` and so hammered ONE concept for as long as that thought
+// dwelled: 8 of 8 sampled frames were `backpack`, and before that `church`,
+// against only 21 grounded concepts across 6,750 draws. ⭐ The store is
+// therefore not merely stale, it is UNREPRESENTATIVE — a pile of near-duplicate
+// renders of a handful of subjects, which is exactly what the acquisition rank
+// added in EYEPIN.2 exists to stop producing. v10 boots empty so the FIXED
+// picker fills it by working THROUGH her taught vocabulary instead of on top of
+// the pile the broken one left. ⚠ Same contract as every bump before it:
+// imagery cleared, TRAINING KEPT — weights / grades / phases / episodic memory
+// live in entirely different files and are untouched. v9 stays on disk unused
+// (and is deleted by hand this once, on the operator's word); the FRESHEYES
+// pattern sweep (`visual-memory*`, json AND db, incl. `-wal`/`-shm`) and the
+// `.gitignore` pattern `server/visual-memory*.db*` both cover v10 automatically
+// — nothing to add for either, which is the whole point of versioning by name.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
