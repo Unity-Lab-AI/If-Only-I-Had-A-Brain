@@ -756,6 +756,10 @@
                failed)". 108 of 130 attempts were HTTP 429 and nothing on this
                page said so. -->
           <div id="d-art-look" style="font-size:10px;color:#777;margin-top:3px;"></div>
+          <!-- VMUSE.5.B — what she READS BACK off the relation channels. This
+               row exists before the consumers lean on it: a high `flat` count
+               early is the gate working, not a fault. -->
+          <div id="d-art-relation" style="font-size:10px;color:#777;margin-top:3px;"></div>
         </div>
       </div>
     </div>
@@ -1874,6 +1878,30 @@
                 + (lk.chatYields ? ` · ${num(lk.chatYields)} gave way to chat` : '')
                 + (backingOff ? ` · ⚠ BACKING OFF ${secsLeft}s (chat keeps the quota)` : '')
                 + (lk.lastErr ? ` · last "${String(lk.lastErr).slice(0, 40)}"` : '');
+            }
+          }
+          // VMUSE.5.B — the relation readback. ⛔ `null` means the reader has
+          // never been asked, said as such: an unasked instrument must not
+          // read as "no relations found".
+          const $rel = $('d-art-relation');
+          if ($rel) {
+            const ru = oa && oa.relationUse;
+            if (!ru) {
+              $rel.textContent = 'relations: reader not consulted yet — NOT a verdict on what she has learned';
+              $rel.style.color = '#666';
+            } else {
+              const asked = ru.asks | 0;
+              const conf = ru.confident | 0;
+              // AMBER while nothing is confident yet — early in a walk the
+              // channels have not separated and refusing IS the right answer.
+              // Green once she is actually reading relations back.
+              $rel.style.color = conf > 0 ? '#22c55e' : '#f59e0b';
+              const tags = Object.keys(ru.byTag || {}).sort((a, b) => (ru.byTag[b] - ru.byTag[a])).slice(0, 3);
+              $rel.textContent = `relations: ${num(conf)} confident / ${num(asked)} asked`
+                + (ru.flat ? ` · ${num(ru.flat)} not separated yet` : '')
+                + (ru.unreadable ? ` · ${num(ru.unreadable)} unreadable` : '')
+                + (tags.length ? ` · tags ${tags.map(t => `${t}×${ru.byTag[t]}`).join(' ')}` : '')
+                + ((ru.recent && ru.recent.length) ? ` · last "${ru.recent[0].word}"→${ru.recent[0].tag}` : '');
             }
           }
           if ($eyeR) {

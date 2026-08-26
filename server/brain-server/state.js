@@ -637,6 +637,22 @@ const SERVER_STATE_MIXIN = {
           // calls, so `pieces` climbing while `pairs` stays flat would mean
           // the lane has gone quiet again. null = never ran.
           artWeight: this._artWeight || null,
+          // VMUSE.5.B — WHAT SHE IS READING BACK, published BEFORE the other
+          // lanes lean on it. ⚠ The bands started writing this walk, so a high
+          // `flat` count early is CORRECT, not a fault — it is the gate
+          // refusing to act on channels that have not separated yet. The
+          // number to watch is `confident` climbing over time; if it never
+          // does, the consumers are inert and this row says so instead of
+          // letting them look active. null = the reader has never been asked.
+          relationUse: (this.curriculum && this.curriculum._relUse) ? {
+            asks: this.curriculum._relUse.asks | 0,
+            confident: this.curriculum._relUse.confident | 0,
+            flat: this.curriculum._relUse.flat | 0,
+            unreadable: this.curriculum._relUse.unreadable | 0,
+            cached: this.curriculum._relUse.cached | 0,
+            recent: (this.curriculum._relUse.recent || []).slice(0, 6),
+            byTag: this.curriculum._relUse.byTag || {},
+          } : null,
         };
       })(),
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.

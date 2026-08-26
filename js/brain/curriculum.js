@@ -15713,6 +15713,61 @@ export class Curriculum {
     return { tag: bestTag, score: best, margin, flat };
   }
 
+  /**
+   * VMUSE.5.A — THE ONE GATE. Every consumer of a relation goes through here.
+   *
+   * ⛔ Four lanes each deciding for themselves when a readout is trustworthy
+   * is four chances to feed noise into her. The `flat` handling exists once,
+   * so it only has to be got right once.
+   *
+   * ⚠ The bands started writing on THIS walk, so most words read `flat` for a
+   * while and this returns null for them — that is the correct answer, not a
+   * failure. A relation is only returned when the channels have genuinely
+   * separated for that word: a clear winner AND a margin over the runner-up.
+   *
+   * Also caches per word for a short window, because four consumers asking
+   * the same question within one tick should not each pay a full propagate.
+   */
+  _confidentRelationFor(word) {
+    const st = this._relUse || (this._relUse = {
+      asks: 0, confident: 0, flat: 0, unreadable: 0, cached: 0,
+      recent: [], byTag: Object.create(null),
+    });
+    const w = String(word || '').toLowerCase().trim();
+    if (!w) return null;
+    st.asks++;
+
+    const TTL = Number(process.env.DREAM_REL_USE_TTL_MS) || 30000;
+    const now = Date.now();
+    if (!this._relUseCache) this._relUseCache = new Map();
+    const hit = this._relUseCache.get(w);
+    if (hit && (now - hit.at) < TTL) { st.cached++; return hit.val; }
+
+    let r = null;
+    try { r = this.readRelationBand(w); } catch { r = null; }
+    let val = null;
+    if (!r) { st.unreadable++; }
+    else if (r.flat) { st.flat++; }
+    else {
+      // A second bar beyond `flat`: the winner must lead by a real fraction of
+      // its own size, not merely by a floating-point hair.
+      const MIN = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
+      if (r.score > 0 && (r.margin / Math.abs(r.score)) >= MIN) {
+        val = { tag: r.tag, margin: r.margin, score: r.score };
+        st.confident++;
+        st.byTag[r.tag] = (st.byTag[r.tag] | 0) + 1;
+        st.recent.unshift({ word: w, tag: r.tag, at: now });
+        while (st.recent.length > 8) st.recent.pop();
+      } else { st.flat++; }
+    }
+    this._relUseCache.set(w, { at: now, val });
+    // Bounded — this is consulted on hot lanes and must not become a leak.
+    if (this._relUseCache.size > 512) {
+      for (const k of this._relUseCache.keys()) { this._relUseCache.delete(k); if (this._relUseCache.size <= 384) break; }
+    }
+    return val;
+  }
+
   async _teachAssociationPairs(pairs, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
