@@ -75,6 +75,117 @@ const UNIT = process.env.UAL_BRAIN_UNIT || 'unity-brain';
 const HELPER = process.env.UAL_CTL_HELPER
   || path.join(__dirname, '..', 'deploy', 'brain-ctl-helper.sh');
 
+// ── LOCALCTL — the same control plane, on a machine with no systemd ──────────
+//
+// This service was written for the box: every verb ends in `systemctl` via the
+// root helper. Locally there is no systemd, no sudo and no unit — so the
+// dashboard's control panel pointed at :7526, got nothing, and EVERY BUTTON
+// HAS BEEN DEAD ON LOCALHOST SINCE IT SHIPPED. The panel already branches on
+// `_dashIsLocal` and already targets this port; what was missing was anything
+// answering it.
+//
+// ⭐ Adapted at the THREE PRIMITIVES (`runHelper`, `systemctlShow`, `journal`)
+// rather than at the eleven verbs. Everything above those is written in terms
+// of them plus a port probe, so `doStart` / `doStop` / `doRestart` / `doKick` /
+// `doReset` / `doSaveRerun` are untouched and inherit local behaviour for free.
+// Adapting per-verb would have been eleven chances to diverge from the box.
+//
+// ⚠ Detection is `/run/systemd/system`, the standard "am I under systemd" test
+// — NOT `platform === 'linux'`, because a Linux dev box without systemd (WSL,
+// a container) is exactly as local as Windows is.
+const IS_SYSTEMD = process.platform === 'linux' && fs.existsSync('/run/systemd/system');
+const LOCAL_MODE = !IS_SYSTEMD;
+const IS_WIN = process.platform === 'win32';
+const REPO_ROOT = path.join(__dirname, '..');
+// The launchers already exist for both platforms and already do the full job
+// (bundle build, memory install, env). Spawning `node brain-server.js` directly
+// would be a SECOND definition of "start the brain" that silently drifts from
+// the one the operator actually uses.
+const LAUNCH_DIR = path.join(REPO_ROOT, IS_WIN ? 'windows' : 'linux');
+const LAUNCHERS = Object.freeze({
+  // start.* wipes state (fresh walk); Savestart.* keeps it. That is the
+  // launchers' own contract, not a new one invented here.
+  fresh: path.join(LAUNCH_DIR, IS_WIN ? 'start.bat' : 'start.sh'),
+  save: path.join(LAUNCH_DIR, IS_WIN ? 'Savestart.bat' : 'Savestart.sh'),
+  stop: path.join(LAUNCH_DIR, IS_WIN ? 'stop.bat' : 'stop.sh'),
+});
+
+/**
+ * Spawn a launcher DETACHED and let go of it.
+ *
+ * ⛔ `detached + unref + stdio:'ignore'` is load-bearing, not tidiness. The
+ * brain outlives this request by hours; if it stayed a child of brain-ctl it
+ * would die whenever brain-ctl restarted, and holding its stdio would block on
+ * a full pipe buffer — which is how a "start" that appears to hang actually
+ * hangs. Detaching is what makes this service able to restart the thing that
+ * outlives it.
+ */
+function spawnLauncher(script) {
+  const { spawn } = require('child_process');
+  if (!fs.existsSync(script)) {
+    return Promise.reject(new Error(`launcher not found: ${script}`));
+  }
+  return new Promise((resolve, reject) => {
+    try {
+      const child = IS_WIN
+        // cmd.exe /c runs the .bat; the empty title arg is required by `start`
+        // when any later argument is quoted, or cmd treats the path AS the title.
+        ? spawn('cmd.exe', ['/c', 'start', '', '/D', LAUNCH_DIR, path.basename(script)],
+            { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore', windowsHide: false })
+        : spawn('bash', [script],
+            { cwd: LAUNCH_DIR, detached: true, stdio: 'ignore' });
+      child.on('error', reject);
+      child.unref();
+      resolve({ stdout: `launched ${path.basename(script)}`, stderr: '' });
+    } catch (e) { reject(e); }
+  });
+}
+
+/**
+ * Is the working tree dirty? Used to REFUSE a pull rather than risk the
+ * operator's files.
+ *
+ * ⛔ Gee: "make sure this will never over write shit in the directory i dont
+ * want a savesatart to fucking wipe my .clkaude and shit". This is the guard
+ * for that. `git pull --ff-only` already refuses to clobber modified tracked
+ * files, and `.claude/` is gitignored so a pull cannot see it at all — but
+ * "git would probably refuse" is not a safety argument. We check first and
+ * SKIP the pull entirely when anything is uncommitted, then still do the
+ * restart the operator asked for.
+ */
+function localTreeDirty() {
+  return new Promise((resolve) => {
+    execFile('git', ['status', '--porcelain'], { cwd: REPO_ROOT, timeout: 30000 },
+      (err, stdout) => {
+        // Unreadable git status => treat as dirty. The safe answer to "I do not
+        // know whether this would overwrite your work" is "do not pull".
+        if (err) return resolve({ dirty: true, reason: 'git status unreadable' });
+        const lines = String(stdout || '').split('\n').filter(Boolean);
+        resolve({ dirty: lines.length > 0, files: lines.length, reason: lines.length ? `${lines.length} uncommitted change(s)` : '' });
+      });
+  });
+}
+
+/** git pull in the repo — the local stand-in for deploy/self-update.sh. */
+function localGitPull() {
+  return new Promise((resolve) => {
+    // --ff-only: never creates a merge, never rewrites, and aborts rather than
+    // reconciling. The most conservative pull there is.
+    execFile('git', ['pull', '--ff-only'], { cwd: REPO_ROOT, timeout: 120000 },
+      (err, stdout, stderr) => {
+        // ⚠ Resolves even on failure, with `ok:false`. A pull that cannot
+        // fast-forward (dirty tree, diverged branch) must NOT abort a restart
+        // the operator asked for — it must be REPORTED and stepped over. The
+        // opposite would make a local button silently do nothing.
+        resolve({
+          ok: !err,
+          out: String(stdout || '').trim(),
+          err: String((err && (err.stderr || err.message)) || stderr || '').trim(),
+        });
+      });
+  });
+}
+
 // How long to let the brain flush ~5.4GB of weights after a graceful stop
 // before we consider the process gone. Generous on purpose: cutting a save
 // short is how trained state gets corrupted.
@@ -118,6 +229,22 @@ const ACTIONS = Object.freeze({
 function runHelper(action) {
   const argv = ACTIONS[action];
   if (!argv) return Promise.reject(new Error(`refusing unknown action: ${action}`));
+  // LOCALCTL — same closed verb set, different mechanism. The allowlist check
+  // above still runs first, so local mode cannot execute anything the box
+  // could not; it only substitutes the launcher for systemctl.
+  if (LOCAL_MODE) {
+    if (action === 'start') return spawnLauncher(LAUNCHERS.save);
+    if (action === 'stop') {
+      // Prefer the platform's own stop script; if the repo has none, fall
+      // through to the graceful HTTP shutdown the callers already use.
+      return fs.existsSync(LAUNCHERS.stop)
+        ? spawnLauncher(LAUNCHERS.stop)
+        : Promise.resolve({ stdout: 'no stop script — graceful shutdown only', stderr: '' });
+    }
+    if (action === 'restart') return spawnLauncher(LAUNCHERS.save);
+    // reload-nginx has no local meaning and says so rather than pretending.
+    return Promise.resolve({ stdout: `no-op on local: ${action}`, stderr: '' });
+  }
   return new Promise((resolve, reject) => {
     // execFile, not exec — no shell is spawned, so there is no shell to inject
     // into even if an argv element were somehow attacker-influenced.
@@ -133,6 +260,28 @@ function runHelper(action) {
 }
 
 function systemctlShow(unit) {
+  // LOCALCTL — there is no unit. Synthesize the same SHAPE the callers expect
+  // from what IS knowable locally: whether the brain's port is answering.
+  // ⚠ Fields that genuinely cannot be known locally are reported as such
+  // rather than guessed — a fabricated `ActiveState: active` would be exactly
+  // the kind of confident-wrong readout this project keeps having to un-ship.
+  if (LOCAL_MODE) {
+    return probeBrainPort().then((up) => ({
+      LoadState: 'not-loaded',
+      ActiveState: up ? 'active' : 'inactive',
+      SubState: up ? 'running' : 'dead',
+      UnitFileState: 'n/a (local — no systemd unit)',
+      ExecMainStartTimestamp: '',
+      ExecMainPID: '',
+      NRestarts: '',
+      Result: '',
+      _local: true,
+      _source: 'port probe (no systemd on this host)',
+    })).catch(() => ({
+      LoadState: 'not-loaded', ActiveState: 'unknown', SubState: 'unknown',
+      _local: true, _source: 'port probe failed',
+    }));
+  }
   return new Promise((resolve) => {
     execFile('systemctl', [
       'show', unit,
@@ -177,6 +326,33 @@ function probeBrainPort(timeoutMs = 2000) {
 }
 
 function journal(lines = 60) {
+  // LOCALCTL — no journald. The brain's own console ring is reachable over its
+  // HTTP tunnel, but that requires the brain to be UP, and the times you most
+  // want logs are the times it is not. So: say plainly that there is no local
+  // journal and point at where the output actually goes (the launcher window),
+  // instead of returning an empty list that reads as "nothing was logged".
+  if (LOCAL_MODE) {
+    // ⭐ There IS a local log — the launchers redirect the brain to
+    // `server/server.log` (`node brain-server.js > server.log 2>&1`). Tailing
+    // the real file beats returning "no journal here", and unlike the brain's
+    // own console ring it is readable when the brain is DOWN, which is exactly
+    // when logs are wanted.
+    const logPath = path.join(__dirname, 'server.log');
+    return new Promise((resolve) => {
+      fs.readFile(logPath, 'utf8', (err, txt) => {
+        if (err) {
+          return resolve(
+            `No systemd journal on this host (local run), and no ${logPath} yet.\n`
+            + `The launchers write the brain's output there; it appears once ${IS_WIN ? 'start.bat / Savestart.bat' : 'start.sh / Savestart.sh'} has run.`
+          );
+        }
+        const all = String(txt).split('\n');
+        // Tail only — this file grows for the whole walk and must never be
+        // read into a response whole.
+        resolve(all.slice(Math.max(0, all.length - lines)).join('\n'));
+      });
+    });
+  }
   return new Promise((resolve) => {
     execFile('journalctl', ['-u', UNIT, '-n', String(lines), '--no-pager', '-o', 'short-iso'],
       { timeout: 15000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => {
@@ -551,6 +727,55 @@ async function doUpdate(keep, confirmToken) {
     };
   }
 
+  // ── LOCALCTL — the local equivalent of self-update.sh ───────────────────
+  // The box overlays a git archive and restarts the unit. Locally the repo IS
+  // the source, so "update" means: pull, then relaunch through the launcher
+  // the operator actually uses. The WIPE interlock above still applies — local
+  // is not a reason to make the destructive verb easier.
+  if (LOCAL_MODE) {
+    // ⛔ NEVER OVERWRITE THE OPERATOR'S WORK. Checked BEFORE pulling, and a
+    // dirty tree SKIPS the pull rather than trusting git to refuse. The
+    // restart still happens, because that is what was asked for — the pull is
+    // the optional half. `.claude/` is gitignored and so is invisible to a
+    // pull either way; this guard covers everything else.
+    const dirt = await localTreeDirty();
+    let pulled = null;
+    if (dirt.dirty) {
+      log(`LOCAL UPDATE — skipping git pull: ${dirt.reason}`);
+    } else {
+      pulled = await localGitPull();
+      log(`LOCAL UPDATE — git pull ${pulled.ok ? 'ok' : 'FAILED'}: ${(pulled.out || pulled.err || '').split('\n')[0]}`);
+    }
+    // Stop first if it is up, so the launcher does not race a bound port.
+    const stBefore = await buildStatus();
+    if (stBefore.brainOnline) {
+      await askBrainToShutdown('/shutdown').catch(() => {});
+      await waitForPortClosed(Math.max(GRACEFUL_WAIT_MS, 120000));
+    }
+    // keep = Savestart (weights kept); fresh = start (state wiped at boot).
+    const script = keep ? LAUNCHERS.save : LAUNCHERS.fresh;
+    let launched;
+    try { launched = await spawnLauncher(script); }
+    catch (e) {
+      return { ok: false, action: 'update', mode, local: true,
+        message: `Could not launch ${path.basename(script)}: ${e.message}`,
+        gitSkipped: dirt.dirty, status: await buildStatus() };
+    }
+    const bound = await waitForBrainBound();
+    return {
+      ok: true, action: 'update', mode, local: true,
+      launcher: path.basename(script),
+      gitSkipped: dirt.dirty || undefined,
+      gitSkipReason: dirt.dirty ? dirt.reason : undefined,
+      gitPulled: pulled ? pulled.ok : false,
+      gitMessage: pulled ? (pulled.out || pulled.err).split('\n')[0] : 'skipped — uncommitted changes present',
+      message: `LOCAL ${mode}: ${dirt.dirty ? 'git pull SKIPPED (' + dirt.reason + ')' : (pulled && pulled.ok ? 'git pull ok' : 'git pull failed, continued')}`
+        + `, relaunched via ${path.basename(script)}${bound ? ' — brain is bound' : ' — brain not bound yet, watch the launcher window'}.`
+        + (launched && launched.stdout ? '' : ''),
+      status: await buildStatus(),
+    };
+  }
+
   if (!fs.existsSync(SELF_UPDATE_SH)) {
     return { ok: false, action: 'update', mode,
       message: `Update needs the deploy script, which is not on this box: ${SELF_UPDATE_SH}. Local dev has no self-update path — use start.bat / Savestart.bat.`,
@@ -707,9 +932,27 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// ⛔ ALREADY-RUNNING IS NOT AN ERROR. The launchers start this service on every
+// run, and the whole point of it is to OUTLIVE the brain — so on the second
+// launch the port is legitimately taken by the still-good instance from the
+// first. Exit 0 quietly instead of crash-looping a red error into the log.
+// Handled here, once, rather than adding a port check to four launcher scripts
+// that would then have to stay in sync.
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    log(`port ${PORT} already in use — another brain-ctl is already running, which is correct. Exiting quietly.`);
+    process.exit(0);
+  }
+  log(`FATAL listen error: ${err && err.message}`);
+  process.exit(1);
+});
+
 server.listen(PORT, BIND, () => {
   log(`listening on http://${BIND}:${PORT} — controlling unit "${UNIT}", watching brain port ${BRAIN_PORT}`);
   log('this service stays up when the brain is down; that is its entire purpose');
+  if (LOCAL_MODE) {
+    log(`LOCAL MODE — no systemd on this host. Power verbs run ${IS_WIN ? 'windows\\*.bat' : 'linux/*.sh'} launchers from ${LAUNCH_DIR}; logs tail server/server.log.`);
+  }
 });
 
 for (const sig of ['SIGTERM', 'SIGINT']) {
