@@ -1866,6 +1866,12 @@
                 + (att > 0 ? ` · ${failPct}% http-fail` : '')
                 + (lk.rateLimitHits ? ` · ${num(lk.rateLimitHits)} rate-limited` : '')
                 + (lk.rateLimitSkips ? ` · ${num(lk.rateLimitSkips)} skipped` : '')
+                // LOOKQUEUE.1 — both of these are the lane behaving CORRECTLY:
+                // `queued` means it waited its turn in a one-lane pipe, and
+                // `gave way to chat` means a human outranked a background
+                // errand. Shown because an invisible yield reads as a stall.
+                + (lk.globalInFlightSkips ? ` · ${num(lk.globalInFlightSkips)} queued` : '')
+                + (lk.chatYields ? ` · ${num(lk.chatYields)} gave way to chat` : '')
                 + (backingOff ? ` · ⚠ BACKING OFF ${secsLeft}s (chat keeps the quota)` : '')
                 + (lk.lastErr ? ` · last "${String(lk.lastErr).slice(0, 40)}"` : '');
             }
