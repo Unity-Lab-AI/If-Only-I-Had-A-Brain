@@ -217,6 +217,55 @@ six honest phases and offering only the actions that make sense for each:
 only *after* loading weights, so "systemd says active" and "actually serving" are different
 facts, and conflating them is why a healthy boot used to look like a failure.
 
+### All endpoints
+
+| endpoint | what it does | needs the brain up? |
+|---|---|---|
+| `GET  /ctl/status` | phase + unit state + uptime. Never 502s. | no |
+| `GET  /ctl/logs?n=N` | recent journal lines — readable exactly when the brain is down | no |
+| `GET  /ctl/health` | liveness of ctl itself | no |
+| `POST /ctl/start` | start a stopped brain, then reload the proxy. **The recovery verb.** | no |
+| `POST /ctl/stop` | graceful halt (brain force-saves first) | no |
+| `POST /ctl/restart` | savestart; escalates to a process restart if wedged | no |
+| `POST /ctl/kick` | hard restart for a wedged brain (no graceful save) | no |
+| `POST /ctl/update-savestart` | deploy latest code, **RESUME** training | no |
+| `POST /ctl/update` | deploy latest code + **FRESH WALK (wipes weights)** | no |
+| `POST /ctl/reset` | **wipe to a fresh brain** (identity-core preserved) | no |
+| `POST /ctl/savererun` | keep weights, re-walk the curriculum on top | **YES** |
+
+`savererun` is the one verb that genuinely cannot work with the brain down — it rewrites grade
+pointers inside the *loaded* weights. It refuses and says to press Start first, and the dashboard
+disables it in that phase with the reason in the tooltip.
+
+### 🛑 The two WIPING verbs require an explicit token
+
+`POST /ctl/update` (fresh-walk) and `POST /ctl/reset` **destroy all trained weights**. They
+refuse unless the request carries the confirmation token:
+
+```bash
+# refused — this is deliberate
+curl -s -X POST http://127.0.0.1:7526/ctl/reset
+#  {"ok":false,"refused":true,"needsConfirm":"WIPE", ...}
+
+# actually does it
+curl -s -X POST -H 'Content-Type: application/json' \
+     -d '{"confirm":"WIPE"}' http://127.0.0.1:7526/ctl/reset
+# ...or, for a shell: ?confirm=WIPE
+```
+
+**Why:** on 2026-08-26 a bare `POST /ctl/update` sent as a *probe* (expecting a "no deploy script
+here" refusal) ran a real fresh-walk deploy and wiped the live brain. The dashboard already asked
+for confirmation; the endpoint did not, so anything able to issue an HTTP request could wipe
+months of training. See the INCIDENT entry in `REDEPLOY-NOTES.md`.
+
+`/ctl/update-savestart` deliberately needs **no** token — friction on the safe path is what
+pushes people toward the dangerous one. In the dashboard, both wiping buttons make you *type*
+`WIPE`.
+
+**⚠ Never probe the wiping verbs against a live box to watch them refuse.** Assert that in the
+harness (`scripts/test-brain-ctl.mjs` covers it); a box configured differently from your
+assumption is exactly how this went wrong.
+
 ### Behaviour worth knowing
 
 - **Stop is graceful first.** ctl asks the brain's own `/shutdown` so it force-saves weights and
@@ -244,10 +293,15 @@ the unit name — so neither a bug in the service nor a leaky sudoers wildcard c
 ### Tests
 
 ```bash
-node scripts/test-brain-ctl.mjs        # 31 assertions — HTTP contract, graceful-stop
-                                       # ordering, 409 concurrency, helper refusals
-node scripts/test-brain-power-ui.mjs   # 13 assertions — real Chromium: proves the
-                                       # Start button works with the brain DOWN
+node scripts/test-brain-ctl.mjs          # 52 — HTTP contract, graceful-stop ordering,
+                                         #      409 concurrency, helper refusals, and the
+                                         #      WIPE-token interlock (incl. that a WRONG
+                                         #      token is not accepted)
+node scripts/test-brain-power-ui.mjs     # 22 — real Chromium: Start works with the brain
+                                         #      DOWN; savererun correctly disabled when down
+node scripts/test-brain-offline-pages.mjs # 10 — visitor pages (index / compute / minds-eye)
+                                         #      say "brain offline", against the exact body
+                                         #      nginx returns
 ```
 
 Both run against a mock brain and a mock helper, so they are safe on any machine and touch no
