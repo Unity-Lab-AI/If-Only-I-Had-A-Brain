@@ -434,8 +434,18 @@ async function doKick() {
  * Tier 3 anchors preserved) and DELETE the resume marker so the fresh boot does
  * not auto-resume the very training we are discarding.
  */
-async function doReset() {
-  log('RESET requested — arming a fresh-brain wipe');
+async function doReset(confirmToken) {
+  // Same destructive-verb interlock as /ctl/update fresh-walk — see the long
+  // note there. Reset throws away every trained weight, so the API refuses
+  // unless the caller states that intent explicitly.
+  if (confirmToken !== 'WIPE') {
+    return {
+      ok: false, action: 'reset', refused: true, needsConfirm: 'WIPE',
+      message: 'Refused: RESET destroys all trained weights. Re-send with {"confirm":"WIPE"} (the dashboard button asks you to type it). To keep training and just restart, use /ctl/restart.',
+      status: await buildStatus(),
+    };
+  }
+  log('RESET requested — arming a fresh-brain wipe (confirmed)');
   const asked = await askBrainToShutdown('/reset');
   if (asked.reached && asked.status === 200) {
     const gone = await waitForPortClosed(GRACEFUL_WAIT_MS);
@@ -516,9 +526,31 @@ async function doSaveRerun() {
  * leaves the brain crash-looping can now be fixed by deploying the fix from the
  * dashboard instead of needing SSH.
  */
-async function doUpdate(keep) {
+async function doUpdate(keep, confirmToken) {
   const mode = keep ? 'savestart' : 'fresh-walk';
   log(`UPDATE requested (${mode})`);
+
+  // ⚠ DESTRUCTIVE-VERB INTERLOCK (added after this cost a real brain).
+  // A bare `POST /ctl/update` runs deploy/self-update.sh in FRESH-WALK mode,
+  // which writes `.force-fresh` and WIPES every trained weight on the next
+  // boot. During development I probed this endpoint expecting a "no deploy
+  // script here" refusal; the script DID exist on the box, so the probe
+  // deployed and wiped the running brain. A single unauthenticated-by-intent
+  // curl must never be able to do that.
+  //
+  // So the wiping verbs now require an explicit typed token in the request.
+  // The UI already asks the operator to confirm; this makes the API itself
+  // refuse to be the accident. Non-destructive verbs (savestart) need nothing —
+  // keeping the safe path frictionless is what stops people reaching for the
+  // dangerous one out of habit.
+  if (!keep && confirmToken !== 'WIPE') {
+    return {
+      ok: false, action: 'update', mode, refused: true, needsConfirm: 'WIPE',
+      message: 'Refused: UPDATE + FRESH WALK destroys all trained weights. Re-send with {"confirm":"WIPE"} (the dashboard button does this for you). If you wanted the new code WITHOUT losing training, use /ctl/update-savestart instead.',
+      status: await buildStatus(),
+    };
+  }
+
   if (!fs.existsSync(SELF_UPDATE_SH)) {
     return { ok: false, action: 'update', mode,
       message: `Update needs the deploy script, which is not on this box: ${SELF_UPDATE_SH}. Local dev has no self-update path — use start.bat / Savestart.bat.`,
@@ -575,6 +607,27 @@ async function doUpdate(keep) {
 
 // ── HTTP ───────────────────────────────────────────────────────────────────
 
+/**
+ * Read a small JSON body, if any. Bounded (16 KB) because this endpoint takes
+ * only tiny confirmation tokens and should never buffer an arbitrary upload.
+ */
+function readJsonBody(req) {
+  return new Promise((resolve) => {
+    if (req.method !== 'POST') return resolve({});
+    let raw = '';
+    let tooBig = false;
+    req.on('data', (d) => {
+      raw += d;
+      if (raw.length > 16384) { tooBig = true; raw = ''; req.destroy(); }
+    });
+    req.on('end', () => {
+      if (tooBig || !raw) return resolve({});
+      try { resolve(JSON.parse(raw) || {}); } catch { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
+
 function sendJson(res, code, obj) {
   const body = JSON.stringify(obj, null, 2);
   res.writeHead(code, {
@@ -616,13 +669,20 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, unit: UNIT, lines: n, log: await journal(n) });
     }
     if (method === 'POST') {
+      // Confirmation token for the destructive verbs. Accepted in a JSON body
+      // ({"confirm":"WIPE"}) or as ?confirm=WIPE so an operator with a shell can
+      // still drive it deliberately.
+      const body = await readJsonBody(req);
+      const qs = (req.url.split('?')[1] || '');
+      const confirm = body.confirm || (qs.match(/(?:^|&)confirm=([^&]*)/)?.[1] || '');
+
       const table = {
         '/start': doStart, '/stop': doStop, '/restart': doRestart, '/kick': doKick,
         // "Everything else inbetween that we support doing" — these restart the
         // brain too, and used to be reachable ONLY through the brain itself.
-        '/reset': doReset,
+        '/reset': () => doReset(confirm),
         '/savererun': doSaveRerun,
-        '/update': () => doUpdate(false),            // UPDATE & FRESH WALK (wipes)
+        '/update': () => doUpdate(false, confirm),   // UPDATE & FRESH WALK (wipes)
         '/update-savestart': () => doUpdate(true),   // UPDATE & SAVESTART (keeps)
       };
       const fn = table[url];

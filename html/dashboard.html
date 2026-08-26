@@ -4128,6 +4128,11 @@
         try {
           const r = await fetch(ctlUrl(action), {
             method: 'POST', cache: 'no-store', credentials: 'same-origin',
+            headers: o.confirmToken ? { 'Content-Type': 'application/json' } : undefined,
+            // The destructive verbs REFUSE server-side without this token, so a
+            // stray request (a probe, a retried curl, a bookmarked URL) cannot
+            // wipe the brain. See the interlock note in server/brain-ctl.js.
+            body: o.confirmToken ? JSON.stringify({ confirm: o.confirmToken }) : undefined,
           });
           const j = await r.json().catch(() => null);
           if (r.status === 409) { setResult('⚠ ' + (j && j.message || 'another power action is already running'), 'err'); }
@@ -4180,14 +4185,20 @@
           + '✓ Restarts and reloads the proxy when it is back\n\n'
           + 'Takes 1-2 minutes. Non-destructive to training.',
       }));
-      btns.updateFresh.addEventListener('click', () => act('update', {
-        pending: 'deploying latest code + FRESH WALK',
-        confirm: 'UPDATE + FRESH WALK?\n\n'
-          + '⛔ This WIPES all trained weights and starts the curriculum over.\n'
-          + '   (identity-core Tier 3 anchors are preserved)\n\n'
-          + 'If you only want the new code and want to KEEP her training,\n'
-          + 'cancel and use "⬆ Update (keep weights)" instead.',
-      }));
+      btns.updateFresh.addEventListener('click', () => {
+        // Typed confirmation, same as Reset: this WIPES training, and an
+        // OK/Cancel dialog is not enough friction for that.
+        const typed = window.prompt(
+          '⛔ UPDATE + FRESH WALK — THIS WIPES ALL TRAINED WEIGHTS.\n\n'
+          + 'It deploys the latest code and starts the curriculum over from pre-K.\n'
+          + 'Identity-core Tier 3 anchors are preserved. There is no undo.\n\n'
+          + 'If you only want the new code and want to KEEP her training, Cancel\n'
+          + 'and use "⬆ Update (keep weights)" instead.\n\n'
+          + 'Type  WIPE  (in capitals) to confirm:'
+        );
+        if (typed !== 'WIPE') { setResult('Update + Fresh Walk aborted — nothing was changed.', ''); return; }
+        act('update', { pending: 'deploying latest code + FRESH WALK', confirmToken: 'WIPE' });
+      });
       btns.savererun.addEventListener('click', () => act('savererun', {
         pending: 'starting a savererun',
         confirm: 'SAVERERUN?\n\n'
@@ -4207,7 +4218,7 @@
           + 'Type  WIPE  (in capitals) to confirm, or Cancel to abort:'
         );
         if (typed !== 'WIPE') { setResult('Reset aborted — nothing was changed.', ''); return; }
-        act('reset', { pending: 'wiping to a fresh brain' });
+        act('reset', { pending: 'wiping to a fresh brain', confirmToken: 'WIPE' });
       });
 
       btns.refresh.addEventListener('click', () => { setResult(''); poll(); });

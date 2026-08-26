@@ -61,9 +61,11 @@ const brainDir = mkdtempSync(path.join(tmpdir(), 'brainctl-braindir-'));
 const forceFresh = path.join(brainDir, '.force-fresh');
 const resumeMarker = path.join(brainDir, '.resume-marker.json');
 
-function req(method, urlPath, timeoutMs = 30000) {
+function req(method, urlPath, timeoutMs = 30000, bodyObj = null) {
   return new Promise((resolve, reject) => {
-    const r = http.request({ host: '127.0.0.1', port: CTL_PORT, path: urlPath, method, timeout: timeoutMs },
+    const payload = bodyObj ? JSON.stringify(bodyObj) : null;
+    const r = http.request({ host: '127.0.0.1', port: CTL_PORT, path: urlPath, method, timeout: timeoutMs,
+      headers: payload ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) } : {} },
       (res) => {
         let b = '';
         res.on('data', (d) => { b += d; });
@@ -74,6 +76,7 @@ function req(method, urlPath, timeoutMs = 30000) {
       });
     r.on('timeout', () => { r.destroy(); reject(new Error('client timeout')); });
     r.on('error', reject);
+    if (payload) r.write(payload);
     r.end();
   });
 }
@@ -238,7 +241,7 @@ try {
     // RESET with the brain DOWN must arm the fresh boot itself — the case the
     // old dashboard could not serve at all.
     writeFileSync(resumeMarker, '{"stale":"marker"}');
-    const r = await req('POST', '/ctl/reset');
+    const r = await req('POST', '/ctl/reset', 30000, { confirm: 'WIPE' });
     check('reset answers with the brain down', r.code === 200, `code=${r.code}`);
     check('reset did NOT go via the brain', r.json?.viaBrain === false, JSON.stringify(r.json?.viaBrain));
     check('reset WROTE .force-fresh (wipe armed)', existsSync(forceFresh));
@@ -254,7 +257,10 @@ try {
     check('savererun tells the operator to press Start', /press start/i.test(sr.json?.message || ''), sr.json?.message);
 
     // UPDATE with no deploy script must say so rather than half-updating.
-    const up = await req('POST', '/ctl/update');
+    // Pass the confirm token so this exercises the MISSING-SCRIPT path — the
+    // interlock refusal (correctly) fires first without it, and is covered in
+    // its own section below.
+    const up = await req('POST', '/ctl/update', 30000, { confirm: 'WIPE' });
     check('update refuses without a deploy script', up.json?.ok === false);
     check('update names the missing script', /self-update/i.test(up.json?.message || ''), up.json?.message);
     check('update reports fresh-walk mode', up.json?.mode === 'fresh-walk', `mode=${up.json?.mode}`);
@@ -263,7 +269,33 @@ try {
     check('update-savestart reports savestart mode', ups.json?.mode === 'savestart', `mode=${ups.json?.mode}`);
   }
 
-  console.log('\n9. control plane survived the whole run');
+  console.log('\n9. DESTRUCTIVE-VERB INTERLOCK (the bug that cost a real brain)');
+  {
+    // A bare POST to a wiping verb must REFUSE. I probed /ctl/update during
+    // development expecting a "no deploy script" error; the script existed on
+    // the box, so the probe deployed and wiped the running brain. These
+    // assertions exist so that can never silently happen again.
+    const u = await req('POST', '/ctl/update');
+    check('bare /ctl/update REFUSES (no wipe)', u.json?.ok === false && u.json?.refused === true, JSON.stringify(u.json)?.slice(0, 160));
+    check('refusal names the required token', u.json?.needsConfirm === 'WIPE', JSON.stringify(u.json?.needsConfirm));
+    check('refusal points at the SAFE alternative', /update-savestart/.test(u.json?.message || ''), u.json?.message);
+
+    const rs = await req('POST', '/ctl/reset');
+    check('bare /ctl/reset REFUSES (no wipe)', rs.json?.ok === false && rs.json?.refused === true, JSON.stringify(rs.json)?.slice(0, 160));
+    check('reset refusal names the token', rs.json?.needsConfirm === 'WIPE');
+
+    // A WRONG token must not be accepted either (no truthy-string bypass).
+    const bad = await req('POST', '/ctl/reset', 30000, { confirm: 'yes' });
+    check('wrong token still refuses', bad.json?.refused === true, JSON.stringify(bad.json?.refused));
+
+    // The NON-destructive verb must stay frictionless — friction on the safe
+    // path is what pushes people toward the dangerous one.
+    const safe = await req('POST', '/ctl/update-savestart');
+    check('update-savestart needs NO token', safe.json?.refused !== true, JSON.stringify(safe.json)?.slice(0, 120));
+    check('update-savestart is still savestart mode', safe.json?.mode === 'savestart');
+  }
+
+  console.log('\n10. control plane survived the whole run');
   {
     const h = await req('GET', '/ctl/health');
     check('still alive at the end', h.code === 200 && h.json?.ok === true);
