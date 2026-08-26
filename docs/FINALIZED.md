@@ -38605,3 +38605,43 @@ Built: `bestMarginRatio` / `bestMarginWord` / `lastMarginRatio` / `marginProgres
 ⚠ Owned: one edit in this batch went through `sed -i` instead of the Edit tool — the banned edit-by-script pattern. Flagged rather than hidden; every other edit used Edit/Write.
 
 ⚠ Server-side + dashboard — `RELSEP.1` lands on the next restart.
+
+---
+
+## 2026-08-26 - VMUSE.5: the relation reader finally has a consumer - feature/vmuse5-consume
+
+### Gee ask (verbatim per LAW #0)
+
+> *"vmuse.5 get it done art concepts are stored with text conceptes the brain consisous interjects,... right?"*
+
+### The architecture question, answered from the code
+
+**Both halves are true.** Art percepts bind through the **same channels** as text: `ARTWEIGHT` writes `relationTagId: 35` (attach/structure) and `13` (order/composition) when she DRAWS, and `VMRELATE` writes the same two when she SEES — into the same `sem` region the text curriculum writes. So a concept she has looked at and a concept she has read live in one space, and **one relation read covers both**. That is why a single reader was ever going to be enough.
+
+### What was actually missing
+
+⛔ The reader had **no consumer**. `chat.js` called `_confidentRelationFor` for each draw-plan subject and set `s.relationTag` — and **nothing in the entire tree ever read that field.** One grep hit: the assignment. The same write-only shape as `_relTagWrites`, one level up.
+
+### What shipped
+
+When she reaches into visual memory for something to interject about, candidates whose relation she **confidently knows** are moved to the front of the pool. A confident band means she has learned what KIND of thing it is, not merely that it exists — so it is the better thing to surface.
+
+⚠ **A preference, never a filter.** Nothing is excluded; the pool is reordered and never shrunk. With no confident relation the loop behaves exactly as before.
+
+⚠ **It does NOT touch what she DRAWS.** Subjects are still never added, removed or reordered on the strength of a band — the standing constraint holds. This changes what she REACHES FOR.
+
+⚠ **Bounded scan** (24 samples) because this runs on the mind's-eye tick against a store that can hold tens of thousands, and `_confidentRelationFor` is cached per word.
+
+⭐ **Inert until it should not be.** The reader returns null while the bands are still separating (~3% of the gate today), so this does nothing yet — which is the gate working, not a disabled feature. `relationUse.consumedByEye` counts the times a relation actually changed something, so "gated" and "never wired" can be told apart.
+
+### ⛔ A bug I introduced and caught before shipping
+
+The first-try bias was keyed off `this._eyeRelationPicks`, a **cumulative** counter. Once it went non-zero, every later tick would take `_favKeys[0]` whether or not that tick had reordered anything — **pinning the mind's eye to a single concept.** That is `EYEPIN` exactly, already in this ledger, and I nearly re-committed it. Fixed with a per-tick `_relOrdered` flag.
+
+Also caught pre-commit: I first published the counter as `this.eyeRelationPicks` against a producer named `this._eyeRelationPicks` — the producer/consumer name mismatch that has now bitten this project five times. Grep-verified after fixing.
+
+### Verified — 8/8 against the real source block
+
+Known concepts move to the front; the pool size is unchanged (nothing filtered); the counter increments; **no confident relation → no reorder, pool byte-identical, counter untouched**; a single-key store is left alone. Plus `node --check` ×2, dashboard divs 492/492, scripts parse, and an explicit NUL-byte scan of `chat.js` (0 — I shipped one into this exact file earlier today).
+
+⚠ **Server-side + dashboard — lands on the next restart.**
