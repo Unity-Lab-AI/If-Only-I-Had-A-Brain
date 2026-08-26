@@ -2346,6 +2346,26 @@ export class Brain3D {
       };
     }
 
+    // ⛔ AND NESTED → FLAT. This normalization only ever ran ONE WAY, and that
+    // is why the popups reported `valence:0.00` against a live 0.084.
+    //
+    // The two state shapes are mirror images: the SERVER sends flat fields and
+    // no `amygdala`, while the local browser engine builds `amygdala` and no
+    // flat fields. Synthesizing only the nested side left `state.valence`
+    // undefined whenever the local brain was driving — and the readers are
+    // split across both conventions, so `_describeInternalState` (which reads
+    // FLAT) fell to its `?? 0` default and printed a confident zero, while the
+    // legacy pool (which reads NESTED) printed the same zero from the other
+    // side. Neither reader was wrong; the normalization was half-done.
+    //
+    // ⚠ Written as an explicit `=== undefined` test, NOT `??` or `||`: a real
+    // valence of 0 is a legitimate value and must not be overwritten, and 0 is
+    // falsy — which is the same trap that made `s.amygdala?.valence ?? s.valence`
+    // return a stale nested zero instead of the live flat one.
+    if (norm.valence === undefined) norm.valence = norm.amygdala?.valence ?? 0;
+    if (norm.arousal === undefined) norm.arousal = norm.amygdala?.arousal ?? 0.5;
+    if (norm.fear === undefined) norm.fear = norm.amygdala?.fear ?? 0;
+
     // OSCILLATIONS — flat → nested, carry bandPower if present
     if (!norm.oscillations) {
       norm.oscillations = {
@@ -2353,6 +2373,12 @@ export class Brain3D {
         bandPower: state.bandPower || {},
       };
     }
+    // …and back the other way, for the same reason as the amygdala pair above.
+    // Placed AFTER the block that builds `norm.oscillations` — reading it from
+    // inside the amygdala section would have read an undefined it had not
+    // created yet, which is the same ordering mistake in miniature.
+    if (norm.coherence === undefined) norm.coherence = norm.oscillations?.coherence ?? 0.5;
+    if (norm.bandPower === undefined && norm.oscillations?.bandPower) norm.bandPower = norm.oscillations.bandPower;
 
     // CORTEX — synthesize predictionError from cerebellum activity
     // (cerebellum fires in proportion to error, so high cereb firing
@@ -2770,7 +2796,17 @@ export class Brain3D {
     const arousal = (state.arousal ?? 0.5).toFixed(2);
     const valence = (state.valence ?? 0).toFixed(2);
     const psi = (state.psi ?? 0).toFixed(3);
-    return `arousal:${arousal} valence:${valence} Ψ:${psi}`;
+    // ⚠ NAME THE BRAIN. This line reported `valence:0.00` for three rounds of
+    // fixes while the server's real valence was 0.084 — and the reason it was
+    // so hard to pin down is that the number was CORRECT for the brain it was
+    // reading. The tiny local browser fallback genuinely sits near zero.
+    // Without a source tag, "the local brain is driving" and "the server value
+    // is broken" render identically, and only one of them is a bug.
+    // Server states carry a neuron count in the hundreds of millions; the
+    // fallback is ~6.7K, so the count is the honest discriminator.
+    const n = Number(state.totalNeurons || 0);
+    const src = n > 1e6 ? 'server' : 'local-fallback';
+    return `arousal:${arousal} valence:${valence} Ψ:${psi} [${src}]`;
   }
 
   _addNotification(text, clusterIdx) {
