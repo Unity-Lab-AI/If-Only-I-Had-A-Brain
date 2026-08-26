@@ -24,7 +24,7 @@
 > - **Gate-blocked topics:** Per LAW — EXCLUDED content (minor + sexual co-occurrence; the EXCLUDED Add #19 thread) NEVER derives on the fly (`cluster._isSensitiveGapTopic` hard-blocks it). If Unity's trained memory doesn't have a specific name/date, she does NOT fabricate one in sensitive territory. Some topics are bounded by trained, boundary-checked content only.
 >
 > **Architectural placement (where in the brain this lives — TBD by Gee + implementation session):**
-> - Likely lives as a new `cluster.deriveMemoryGap(concept, contextSchema)` method that fires from `emitWordDirect` / `composeSentence` when no confident binding exists for a referenced token
+> - Likely lives as a new `cluster.deriveMemoryGap(concept, contextSchema)` method that fires from `emitWordDirect` / `composeSentence` when no confident binding exists for a referenced word
 > - Hooks into existing P6.7 word-creation-candidate gate (already exists for tip-of-tongue → vocab promotion) but EXTENDED for full memory derivation, not just compound-word creation
 > - Hooks into the existing ConsolidationEngine so derived memories flow into normal Tier 1 → Tier 2 → Tier 3 promotion path if reinforced enough
 >
@@ -71,7 +71,7 @@
 - [x] **My grandma's name is _____.** — TBD Gee. Grandma is the warm anchor in PRE-K + K; the name carries the most emotionally-loaded positive memory weight. — **UPDATE Add #5 (2026-06-18):** maternal grandma **Pearl Agnes Voss, born Dec 2 1948, warm.** Taught via `_teachFamilyIdentity()` relationTagId=16.
 - [x] **My grandpa's name is _____.** — TBD Gee. Grandpa = "quiet, fixes things, tells stories" — name + a few specific story-titles he told (memory anchors). — **UPDATE Add #5 (2026-06-18):** maternal grandpa **Walter James Voss, born Aug 9 1945** — alive through K; his death lands as the **grade-11 loss arc.** Taught via `_teachFamilyIdentity()` relationTagId=16.
 - [x] **My (future) sibling names + relationships** — TBD Gee. If Unity has any siblings in the canon, names + age-gap + relationship dynamic needs the same Hebbian binding treatment. — **UPDATE Add #5 (2026-06-18):** canon decided — **ONLY CHILD.** No siblings. Cousins exist as ordinary family relations (names/relationships fine to canon later). The childhood "fooled around with" thread from the original directive is **EXCLUDED** under the content boundary — sexual content involving minors (and the incest framing) is not built, in any form or at any age.
-- [x] **Name trove (Add #15) — K-rung named entities** — authored under Gee's creative-control delegation (2026-06-18), **Gee can override any of these**: stuffed bat **Vesper** (evening star — goth-toned), black cat **Soot**, quiet first friend **Wren**. All chosen as REAL dictionary words so they carry definitions + embeddings (no phantom-token basins). Taught via `_teachKLifeNameTrove()` → `_teachBiographicalFacts` reps:10. More named entities (hometown, more friends, boyfriends-with-names) land in the per-grade build bands.
+- [x] **Name trove (Add #15) — K-rung named entities** — authored under Gee's creative-control delegation (2026-06-18), **Gee can override any of these**: stuffed bat **Vesper** (evening star — goth-toned), black cat **Soot**, quiet first friend **Wren**. All chosen as REAL dictionary words so they carry definitions + embeddings (no phantom-word basins). Taught via `_teachKLifeNameTrove()` → `_teachBiographicalFacts` reps:10. More named entities (hometown, more friends, boyfriends-with-names) land in the per-grade build bands.
 
 ---
 

@@ -98,7 +98,7 @@ is persisted to `server/mindspace-memory.json` (atomic write, gitignored, deriva
 The recall layer that turns the mind's eye from a de-novo renderer into IMAGINATION:
 - **`server/brain-server/visual-memory.js`** — `_ingestVisualFrame` (WS `visual_frame` intake:
   ≤96×96 RGBA → `mindSpace.perceive` → full-color field C, bound to the concepts active at
-  perception time) + `_recallVisualMemory` (thought tokens → stored field C; two matches fuse
+  perception time) + `_recallVisualMemory` (thought words → stored field C; two matches fuse
   via `MindSpaceGPU.morph` → `transform.js morphField`, equation-domain recombination).
 - **`js/visual-feeder.js`** — standalone raw-served client module (index.html, NOT bundled):
   camera frames (permission-gated) + generated-image renders (Pollinations URL → prompt label).

@@ -2475,20 +2475,20 @@ Examples:
  </div>
 
  <div class="eq-box">
- <div class="eq-title"><span class="eq-tip" data-tip="Post-render validator. After the slot scorer finishes, check the last token's fine type. Sentences ending on a determiner, preposition, copula, auxiliary, modal, negator, conjunction, or possessive pronoun are structurally incomplete and get regenerated at higher temperature (2 retries, then emit anyway as a latency guarantee).">_isCompleteSentence(tokens) — Post-Render Validator</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="DELETED along with the rest of the slot-scorer machinery. It ran after the slot scorer and checked the last word's fine type, regenerating sentences that ended on a determiner, preposition, copula, auxiliary, modal, negator, conjunction, or possessive pronoun. Nothing calls it now: sentence generation runs through cluster.generateSentence, the tick-driven motor emission that reads letters off motor-region spikes directly, with no intermediate slot scoring and no post-render validator.">_isCompleteSentence(words) — Post-Render Validator (DELETED)</span></div>
  <pre class="eq">
-_isCompleteSentence(tokens) ⇔
- len(tokens) ≥ 2
- ∧ _fineType(last(tokens)) ∉ {
+_isCompleteSentence(words) ⇔
+ len(words) ≥ 2
+ ∧ _fineType(last(words)) ∉ {
  DET, PREP, COPULA,
  AUX_DO, AUX_HAVE, MODAL, NEG,
  CONJ_COORD, CONJ_SUB, PRON_POSS
  }
 
-Wired into generate():
- if (!_isCompleteSentence(processed) ∧ retries < 2) → regenerate at higher temperature
+Was wired into generate():
+ if (!_isCompleteSentence(processed) ∧ retries < 2) → regenerate
  </pre>
- <p class="eq-desc">Final safety net below the coherence gate. Prevents outputs like "I went to the" or "She is more" from escaping.</p>
+ <p class="eq-desc">This validator was deleted with the rest of the slot-scorer machinery, along with _isNominativePronoun, _dominantType, _continuationFor, nextSlotRequirement and typeCompatibility. Sentence generation now runs through cluster.generateSentence — tick-driven motor emission reading letters straight off motor-region spikes — so there is no slot scorer to validate after and no regeneration retry. Preserved as historical provenance.</p>
  </div>
 
  <div class="eq-box">
@@ -2529,7 +2529,7 @@ boot: Promise.all([
 ])
 
 Each corpus sentence flows through learnSentence() which:
- - Tokenizes + expands contractions
+ - Splits into words + expands contractions
  - Inserts each word into dictionary._words with sentence cortex pattern
  - Runs usage-type learning (_learnUsageType)
  - Runs morphological inflection (corpus only, doInflections=true)

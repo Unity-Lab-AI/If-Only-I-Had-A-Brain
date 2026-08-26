@@ -55,7 +55,7 @@ Two theories died on measurement before this layout was written. Recording them 
 |---|---|
 | Hot buckets — a few words hoard activation mass | WORDNORM's own first log line: avg bucket mass **1.501**, only 2 buckets >3× avg. The profile is near-uniform. |
 | Question-independent currents — the input never reaches the argmax | The donor demonstrably scatters the passed pre indices per question. |
-| **Saturation / mode collapse** | `basinHealth`: `saturated: false`, `semMotorMeanCos: 0.075`, `semMotorRatio: 2.59`, `dominantToken "gaseous"` at `dominantShare: 0.03`. **Rows are NOT collapsed onto each other.** |
+| **Saturation / mode collapse** | `basinHealth`: `saturated: false`, `semMotorMeanCos: 0.075`, `semMotorRatio: 2.59`, `dominantWord "gaseous"` at `dominantShare: 0.03`. **Rows are NOT collapsed onto each other.** |
 
 What is actually true, live:
 
@@ -382,7 +382,7 @@ will spend twenty grades insisting she is five.
 
 | Export | What it already does |
 |---|---|
-| `SELF_TOKENS` | `['i','me','my','myself','mine','unity']` |
+| `SELF_WORDS` | `['i','me','my','myself','mine','unity']` |
 | `firstPerson(sentence, seed)` | Rewrites a content sentence into her voice |
 | `mathToFirstPerson(text)` | The same for arithmetic |
 | `selfDeclaration(topic, subject)` | "this is something I am learning" |
@@ -401,7 +401,7 @@ bindings   → ['i', key] ['unity', key] ['my', key] ['myself', key]
              ['i','unity'] ['unity','i'] ['my','unity'] ['me','unity'] ['mine','unity']
 ```
 
-That binding block is the mechanism that makes `i` **mean her** rather than be one more frequent token.
+That binding block is the mechanism that makes `i` **mean her** rather than be one more frequent word.
 It is the correct design and it is already written.
 
 ### 3.2 — The actual defect: coverage and cap

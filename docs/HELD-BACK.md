@@ -21,7 +21,7 @@ cells getting another real shot, not on a perfect score.
 "Failure" already includes **noisy / degenerate output**. The existing advance gate
 (`_gradeAdvanceHealthGate`) fails a cell on sem→motor saturation and emission
 mode-collapse — so a cell that emits incoherent garbage is a *failed* cell here, even
-if it once produced a right token. This is why held-back remediation also targets the
+if it once produced a right word. This is why held-back remediation also targets the
 basin/mode-collapse problem ([[KNOWN_ISSUES]] KI-4).
 
 ## The ladder (`_remediateGradeFailures`, `curriculum.js`)
