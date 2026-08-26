@@ -1757,9 +1757,16 @@
             // 'unmeasured' is grey because it is an absence of evidence — it is
             // deliberately NOT green, since that is exactly the reassuring lie
             // the old field told.
+            // VOICELIE.1 — 'attempting-refused' is RED, not grey. It used to be
+            // reported as 'unmeasured' (grey, an absence of evidence) when in
+            // fact she was reaching for a word every tick and being refused
+            // every tick. That is the loudest state on this row, not the
+            // quietest, and colouring it grey would re-tell the same lie in a
+            // new field name.
             const colour = st === 'matrix-driven' ? '#22c55e'
                          : st === 'oracle-carried' ? '#f59e0b'
-                         : st === 'oracle-only' ? '#ef4444' : '#555';
+                         : st === 'oracle-only' ? '#ef4444'
+                         : st === 'attempting-refused' ? '#ef4444' : '#555';
             $v.style.color = colour;
             $v.textContent = st;
             $v.title = verdict && verdict.reason ? verdict.reason : 'No emission has been sampled since boot. This is not a claim that she cannot speak.';
@@ -1781,7 +1788,19 @@
             // ⚠ WITH ITS AGE. A rejection reason with no age is
             // indistinguishable from a current one, which is how a stale
             // reading gets read as live.
-            $r.textContent = rej ? `last refusal: ${rej.reason} (${ageOf(rej.ageMs)} ago)` : '';
+            // VOICELIE.1 — a last-value has no denominator. "one stray refusal"
+            // and "refused continuously for forty minutes" rendered identically
+            // here; the counts are what separate them.
+            const nAtt = v ? (v.emitAttempts | 0) : 0, nRej = v ? (v.emitRejects | 0) : 0;
+            const tally = nAtt > 0 ? ` · ${num(nRej)}/${num(nAtt)} refused` : '';
+            $r.textContent = rej ? `last refusal: ${rej.reason} (${ageOf(rej.ageMs)} ago)${tally}` : (nRej ? `${num(nRej)}/${num(nAtt)} refused` : '');
+            $r.title = nAtt > 0
+              ? `${nRej} of ${nAtt} emission attempts were refused since boot.`
+                + ' A refusal reason on its own cannot say how often — these can.'
+                + (v && v.emitRejectsByReason
+                    ? ' By cause: ' + Object.entries(v.emitRejectsByReason).map(([k, n]) => `${k} ${n}×`).join(', ')
+                    : '')
+              : 'No emission attempt has been recorded since boot.';
             $r.style.color = rej && rej.ageMs < 60000 ? '#f59e0b' : '#777';
           }
           if ($c) {
@@ -1895,13 +1914,38 @@
               // AMBER while nothing is confident yet — early in a walk the
               // channels have not separated and refusing IS the right answer.
               // Green once she is actually reading relations back.
-              $rel.style.color = conf > 0 ? '#22c55e' : '#f59e0b';
+              // RELWRITE.1 — amber says "wait", RED says "waiting will never
+              // work". `flatNoMass` is every band reading ZERO, which is not a
+              // channel that has yet to separate but a channel with nothing in
+              // it. Those two were one bucket and one colour before this.
+              const noMass = ru.flatNoMass | 0, withMass = ru.flatWithMass | 0;
+              const writes = ru.tagWrites | 0;
+              const deadChannel = conf === 0 && noMass > 0 && withMass === 0;
+              $rel.style.color = conf > 0 ? '#22c55e' : (deadChannel ? '#ef4444' : '#f59e0b');
               const tags = Object.keys(ru.byTag || {}).sort((a, b) => (ru.byTag[b] - ru.byTag[a])).slice(0, 3);
+              const wTags = Object.keys(ru.tagWritesByTag || {}).sort((a, b) => (ru.tagWritesByTag[b] - ru.tagWritesByTag[a])).slice(0, 3);
               $rel.textContent = `relations: ${num(conf)} confident / ${num(asked)} asked`
-                + (ru.flat ? ` · ${num(ru.flat)} not separated yet` : '')
+                // THE WRITE SIDE — this counter existed and was read by nothing.
+                // A read side with no write side beside it cannot distinguish
+                // "not learned yet" from "never taught".
+                + ` · ${num(writes)} tags written${wTags.length ? ` (${wTags.map(t => `${t}×${num(ru.tagWritesByTag[t])}`).join(' ')})` : ''}`
+                + (ru.tagWritesRefused ? ` · ⚠ ${num(ru.tagWritesRefused)} REFUSED (tag out of range)` : '')
+                + (withMass ? ` · ${num(withMass)} not separated yet` : '')
+                + (noMass ? ` · ⛔ ${num(noMass)} read ZERO mass` : '')
                 + (ru.unreadable ? ` · ${num(ru.unreadable)} unreadable` : '')
                 + (tags.length ? ` · tags ${tags.map(t => `${t}×${ru.byTag[t]}`).join(' ')}` : '')
                 + ((ru.recent && ru.recent.length) ? ` · last "${ru.recent[0].word}"→${ru.recent[0].tag}` : '');
+              $rel.title = deadChannel
+                ? 'Every relation read came back with ZERO mass in every band.'
+                  + ' That is not "the channels have not separated yet" — it is'
+                  + ' nothing to separate. Compare tags written (the write side)'
+                  + ' against this: writes climbing with zero mass read back'
+                  + ' means the tags are not reaching the matrix.'
+                  + (ru.lastRead ? ` Last read "${ru.lastRead.word}": ${ru.lastRead.nonZeroBands}/${ru.lastRead.scannedBands} bands non-zero, total mass ${ru.lastRead.totalMass}.` : '')
+                : 'Relation channels she can read back. Early in a walk, flat'
+                  + ' readings are CORRECT — the gate refuses to act on channels'
+                  + ' that have not separated. Watch `confident` climb.'
+                  + (ru.lastRead ? ` Last flat read "${ru.lastRead.word}": ${ru.lastRead.nonZeroBands}/${ru.lastRead.scannedBands} bands carry mass.` : '');
             }
           }
           if ($eyeR) {

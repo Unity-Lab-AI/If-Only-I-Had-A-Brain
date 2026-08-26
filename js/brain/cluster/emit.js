@@ -1099,8 +1099,22 @@ export const CLUSTER_EMIT_MIXIN = {
       : Math.max(NOISE_FLOOR, activeAdaptive);
     this._emitSignalFloor = floor;  // surface for dashboard
     if (!bestWord || bestMean < floor) {
+      const rejectReason = !bestWord ? 'no-best-word' : 'below-signal-floor';
+      // VOICELIE.1 — COUNT the rejections, do not merely remember the last one.
+      // The published voice verdict derived its status from accepted emissions
+      // alone, so a cluster that reached for a word every tick and was refused
+      // every tick reported "nothing has attempted an emission since boot" —
+      // while the single-sample record of that very refusal sat beside it in
+      // the same payload. A last-value has no denominator: it cannot separate
+      // "one stray refusal" from "refused continuously for forty minutes", and
+      // those two states call for opposite responses. Counting is the whole
+      // fix; the reason breakdown is what makes the count actionable.
+      this._emitAttempts = (this._emitAttempts || 0) + 1;
+      this._emitRejects = (this._emitRejects || 0) + 1;
+      if (!this._emitRejectsByReason) this._emitRejectsByReason = Object.create(null);
+      this._emitRejectsByReason[rejectReason] = (this._emitRejectsByReason[rejectReason] | 0) + 1;
       this._lastEmitRejection = {
-        reason: !bestWord ? 'no-best-word' : 'below-signal-floor',
+        reason: rejectReason,
         bestMean: bestMean === -Infinity ? 0 : bestMean,
         floor,
         ema: this._emitSignalEMA,
@@ -1161,6 +1175,12 @@ export const CLUSTER_EMIT_MIXIN = {
     // "nothing has attempted an emission since boot" right after a full
     // 8-question gate battery spoke through this very function.
     this._matrixHits = (this._matrixHits || 0) + 1;
+    // VOICELIE.1 — the accept half of the attempt counter. Incremented here
+    // rather than at function entry on purpose: everything above this line can
+    // return for reasons that are not an attempt to speak (no substrate, a
+    // caller bailing out), and counting those would inflate the denominator
+    // that the published verdict divides by.
+    this._emitAttempts = (this._emitAttempts || 0) + 1;
     // Update EMA + sample count on every accepted CONTENT emission.
     // SPEAK.11 — function-word emissions are EXCLUDED from the adaptive
     // EMA: their naturally lower magnitude would drag the content-word

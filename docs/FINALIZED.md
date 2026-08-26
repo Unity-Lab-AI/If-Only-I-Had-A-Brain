@@ -38256,3 +38256,64 @@ Board restructure only — **no code changed in this commit.**
 ⛔ Item ② changes **her dynamics**. The donor's per-cluster `step()` is plain LIF (tau 20, fixed thresholds); hers carries activity-modulated theta/gamma Kuramoto accumulators, a 5-factor effective drive, K.5 column gap-junction voltage pull, per-region attention lookup, per-neuron `externalCurrent` + `incomingProjections`, and the cerebellar `errorCorrection`. **Moving the step as-is would silently lobotomize the cortical microstructure** — and *silently* is the operative word: it would run, produce numbers, and teach a differently-shaped brain. A port landing MID-WALK teaches her under two different physics in one walk. Either it lands before a walk, or it is proved bit-identical to the `propagateChunked` standard (`maxDiff = 0`). **There is no third option that is honest.**
 
 ⚠ All three are server-side and land on a RESTART. She is walking now; a savestart resume keeps her training, a fresh walk throws it away.
+
+---
+
+## 2026-08-26 - RELWRITE + VOICELIE + EVERFIRED: measured her live first, and the measurement moved three board items - feature/relation-instruments
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay so do everything u can"*
+
+### Measured the LIVE brain before writing a line, and two of the three unfolded items were designed against the wrong machine
+
+Read off the running local brain (port 7525, uptime 2249s, `ela/kindergarten`, 459,775,607 neurons):
+
+| measured | consequence |
+|---|---|
+| `gpuPool.donorCount 1`, primary **RTX 4070 Ti SUPER**, `gpuComputeConnected true`, `gpuHits 112 / gpuMisses 0`, `gpuUtilPercent` **90** | ⭐ **The localhost donor is ALREADY RUNNING and the card is at 90% util** against the remote pod's 9%. `COMP.2`'s measured win is live, not pending |
+| `batchTiming.roundTripMs 1301 / EmaMs 724`, ⛔ `donorComputeMs null`, `donorReports false` | ⛔ **`COMP.1(d)` — "fatter batches to amortize the ~200ms RTT" — targets a wire that on loopback is FREE.** 724ms EMA on localhost is donor compute or queueing, **and we cannot tell which**, because the donor does not report its own compute time. Re-price before building |
+| `loopStarve {servicePct 94}`, `eventLoopDelay {mean 24.5, p50 24.7, p99 25.4}`, `workerCount 0` | ⛔ **`GPUTEACH.1-B`'s premise does not reproduce.** B exists to kill multi-second BLOCKED slabs; live p99 is **25ms** |
+| `boundHebbian {enqueued 1813900, flushedOps 1813860, capFlushes 0}` | ⭐ `GPUTEACH.1` **part A confirmed working in production** — 1.81M teach ops enqueued, 1.81M flushed, nothing capped |
+
+**Both findings are recorded on the board beside the items they affect.** Neither item was built against its stale premise.
+
+### `RELWRITE.1` — the counter that would have answered the question was written and read by nothing
+
+`relationUse` read `asks 290 · confident 0 · flat 194 · unreadable 0 · byTag {}` — **reads SUCCEED and every one is flat**, 37 minutes into a walk whose definition lane had bound 415 definitions in its last window.
+
+⛔ Two candidate readings, and no instrument separated them: either the bands have not separated yet (the code's own stated expectation), or the tags never reached the matrix. **`curriculum.js` incremented `this._relTagWrites` and NOTHING IN THE TREE EVER READ IT** — grep-verified, one write site, zero read sites. The `meanVoltage` / `separability` / `defsLearnedPerHour` family, fourth generation.
+
+**Shipped:** `tagWrites` / `tagWritesByTag` / `tagWritesRefused` published — **per tag**, because a single total cannot show one channel silent while its neighbours write, which is precisely the shape the six-band bug had. `readRelationBand` returns `totalMass` / `nonZeroBands` / `scannedBands`. **`flat` is split into `flatWithMass` and `flatNoMass`** — bands carrying mass but unseparated mean WAIT; bands carrying ZERO mean nothing to separate and waiting is waiting forever. `lastRead` carries the raw shape behind the last flat verdict so the claim can be checked rather than believed. Dashboard row goes **RED** on flat-with-zero-mass, amber on flat-with-mass.
+
+### `VOICELIE.1` — the verdict denied evidence it was holding in the same function
+
+Live: `voice.verdict.status "unmeasured"`, reason *"nothing has attempted an emission since boot"* — published **beside** `voice.emitRejection {reason: "no-best-word", ageMs: 19882}`.
+
+⛔ A sample DID exist. She was reaching for words and being refused, which is a completely different state from "no sample", and **the field that says so is read four lines above the field that denied it** (`state.js` reads `rej`, then derives status from `emissions = oracleHits + matrixHits`, i.e. **successes only**).
+
+⭐ **Its own comment forbids exactly this:** *"The verdict is derived from evidence that is PRESENT. It never reports health from the absence of a recorded failure (the SYNCEMPTY lesson)."* This is that lesson **inverted** — reporting absence from the absence of a recorded SUCCESS.
+
+**Shipped:** new status `attempting-refused` naming the count, the dominant cause with its tally, the most recent reason and its age. `emit.js` counts `_emitAttempts` / `_emitRejects` / `_emitRejectsByReason`. ⚠ **Attempts are counted at the accept/reject decision, not at function entry** — everything above that line can return for reasons that are not an attempt to speak, and counting those would inflate the denominator the verdict divides by. `unmeasured` is now reserved for genuinely neither a success nor a refusal. Dashboard row is **RED**, because grey would re-tell the same reassuring-absence lie under a new field name.
+
+### `EVERFIRED.2` — a 5-second poll was rendering as a capability claim
+
+`_updateLangEverFired` **polls** `lastSpikes` on a 5s throttle and ORs into a bitset. It is not an event hook, so anything written and cleared between samples is invisible to it permanently. Live, `fineType` read `everFired: 0` against `size: 504000` — which on a dashboard reads as *"this region has never been used"*, a claim the instrument is not entitled to make about a region whose writes are transient by construction.
+
+**Shipped:** `method: 'poll'`, `pollIntervalMs: 5000`, and a `measures` string stating it is a LOWER BOUND on participation and that `0%` means "never sampled active", never "never used".
+
+⚠ **Deliberately NOT claimed: that fineType's 0% is benign.** `sem`/`phon`/`letter` are caught by the same poll at 81-99%, so fineType reading exactly zero across ~444 polls is not explained away by sampling alone. It stays one of the two readings `RELWRITE.1` exists to separate.
+
+### Verification
+
+- **10/10** `_writeRelationTag` on the REAL `Curriculum` prototype — per-tag counting, repeat counting, out-of-range REFUSED and counted separately from writes, band width 10,500, correct band written.
+- **17/17** `readRelationBand` + `_confidentRelationFor` on the real prototype across all three states: all-zero bands → `flatNoMass`; all-mass-unseparated → `flatWithMass`; one dominant band → `confident` with the right tag.
+- **16/16** the `VOICELIE.1` verdict against the **REAL source text extracted from `state.js` on disk** — not a reimplementation — covering all five statuses and confirming `matrix-driven` / `oracle-only` / `oracle-carried` still reachable.
+- **Producer/consumer name parity grep-verified on all 7 new fields.** This is the defect class that has bitten this project four times and it is the one thing a logic harness cannot catch.
+- `node --check` ×3, ESM `import()` ×3, dashboard divs **485/485**, all inline scripts parse, bundle rebuilt **4,417,768 → 4,419,346** with all 7 identifiers confirmed present.
+
+⚠ **Two harness assertions failed on the first run and BOTH were the harness's fault, not the code's** — `Math.round(19882/1000)` is 20 and I asserted 19; and my extracted block included the success branch, so `emissions>0` overriding to `matrix-driven` was correct behaviour I had written the wrong expectation for. Recorded because a harness that is wrong in the accusing direction is the more dangerous kind.
+
+⛔ **Could NOT run the full `getState` standalone** — it is composed from several mixins and needs the whole server object. **I did not boot a second brain to get around that**, because she is walking on this machine and it would have fought the running process for the GPU. The verdict logic was verified against its real source text instead, and this limitation is stated rather than papered over.
+
+⚠ **NOT VERIFIED LIVE — all three are server-side and land on a restart.** She is walking; a savestart resume keeps her training.

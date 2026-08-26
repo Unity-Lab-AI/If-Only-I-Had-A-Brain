@@ -54679,8 +54679,13 @@ var CLUSTER_EMIT_MIXIN = {
     const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, activeAdaptive);
     this._emitSignalFloor = floor;
     if (!bestWord || bestMean < floor) {
+      const rejectReason = !bestWord ? "no-best-word" : "below-signal-floor";
+      this._emitAttempts = (this._emitAttempts || 0) + 1;
+      this._emitRejects = (this._emitRejects || 0) + 1;
+      if (!this._emitRejectsByReason) this._emitRejectsByReason = /* @__PURE__ */ Object.create(null);
+      this._emitRejectsByReason[rejectReason] = (this._emitRejectsByReason[rejectReason] | 0) + 1;
       this._lastEmitRejection = {
-        reason: !bestWord ? "no-best-word" : "below-signal-floor",
+        reason: rejectReason,
         bestMean: bestMean === -Infinity ? 0 : bestMean,
         floor,
         ema: this._emitSignalEMA,
@@ -54711,6 +54716,7 @@ var CLUSTER_EMIT_MIXIN = {
       return "";
     }
     this._matrixHits = (this._matrixHits || 0) + 1;
+    this._emitAttempts = (this._emitAttempts || 0) + 1;
     if (!winnerIsFunctionWord) {
       const _emaAlpha = 0.05;
       this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
@@ -106591,6 +106597,7 @@ var Curriculum = class _Curriculum {
         this._relTagWarned.add(relationTagId);
         console.warn(`[Curriculum] relation tag ${relationTagId} does not fit ${BANDS2} bands \u2014 NOT written. Raise Curriculum.RELATION_TAG_BANDS; a tag that silently writes nothing is how every channel above 5 stayed dark.`);
       }
+      this._relTagRefused = (this._relTagRefused || 0) + 1;
       return false;
     }
     const band = Math.floor(fineSize / BANDS2);
@@ -106601,6 +106608,8 @@ var Curriculum = class _Curriculum {
     const tagVal = binarize ? 1 : 0.5;
     for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
     this._relTagWrites = (this._relTagWrites || 0) + 1;
+    if (!this._relTagWritesByTag) this._relTagWritesByTag = /* @__PURE__ */ Object.create(null);
+    this._relTagWritesByTag[relationTagId] = (this._relTagWritesByTag[relationTagId] | 0) + 1;
     return true;
   }
   /**
@@ -106653,6 +106662,7 @@ var Curriculum = class _Curriculum {
     const band = Math.floor(fineSize / BANDS2);
     if (band <= 0) return null;
     let bestTag = -1, best = -Infinity, second = -Infinity;
+    let totalMass = 0, nonZeroBands = 0, scannedBands = 0;
     for (let t = 0; t < BANDS2; t++) {
       const s = t * band;
       const e = Math.min(out.length, s + band);
@@ -106660,6 +106670,9 @@ var Curriculum = class _Curriculum {
       let sum = 0;
       for (let i = s; i < e; i++) sum += out[i];
       const mean = sum / (e - s);
+      scannedBands++;
+      totalMass += mean;
+      if (mean > 0) nonZeroBands++;
       if (mean > best) {
         second = best;
         best = mean;
@@ -106671,7 +106684,7 @@ var Curriculum = class _Curriculum {
     if (bestTag < 0 || !Number.isFinite(best)) return null;
     const margin = Number.isFinite(second) ? best - second : best;
     const flat = !(best > 0) || margin <= Math.abs(best) * 0.05;
-    return { tag: bestTag, score: best, margin, flat };
+    return { tag: bestTag, score: best, margin, flat, totalMass, nonZeroBands, scannedBands };
   }
   /**
    * VMUSE.5.A — THE ONE GATE. Every consumer of a relation goes through here.
@@ -106695,6 +106708,13 @@ var Curriculum = class _Curriculum {
       flat: 0,
       unreadable: 0,
       cached: 0,
+      // RELWRITE.1 — declared here rather than created on first use so the
+      // published block always carries them. A field that appears only once it
+      // is non-zero is indistinguishable from a field with no producer, which
+      // is the exact confusion this batch exists to end.
+      flatWithMass: 0,
+      flatNoMass: 0,
+      lastRead: null,
       recent: [],
       byTag: /* @__PURE__ */ Object.create(null)
     });
@@ -106720,6 +106740,18 @@ var Curriculum = class _Curriculum {
       st.unreadable++;
     } else if (r.flat) {
       st.flat++;
+      if (r.totalMass > 0) st.flatWithMass = (st.flatWithMass || 0) + 1;
+      else st.flatNoMass = (st.flatNoMass || 0) + 1;
+      st.lastRead = {
+        word: w,
+        topTag: r.tag,
+        score: r.score,
+        margin: r.margin,
+        totalMass: r.totalMass,
+        nonZeroBands: r.nonZeroBands,
+        scannedBands: r.scannedBands,
+        at: now
+      };
     } else {
       const MIN2 = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
       if (r.score > 0 && r.margin / Math.abs(r.score) >= MIN2) {
