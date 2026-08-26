@@ -339,6 +339,13 @@ echo "  server log: $DIR/server/server.log"
 if [ -f server.log ]; then rm server.log; fi
 
 # Launch brain server in background with output redirect.
+# LOCALCTL — start the control plane FIRST so the dashboard's power buttons
+# work on a local run. Separate always-up process on 7526 by design: that is
+# what lets the Start button work while the brain is DOWN. Already running →
+# it sees EADDRINUSE and exits 0 quietly, so re-running never stacks them.
+# ⚠ On a systemd box this is redundant (the unit owns it) and harmless for the
+# same reason — the running instance keeps the port.
+node brain-ctl.js > brain-ctl.log 2>&1 &
 node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1 &
 SERVER_PID=$!
 sleep 2

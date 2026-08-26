@@ -200,6 +200,10 @@ echo "  server log: $DIR/server/server.log"
 if [ -f server.log ]; then rm server.log; fi
 
 # Launch with full V8 flags. DREAM_KEEP_STATE=1 already exported above.
+# LOCALCTL — control plane first (separate always-up process on 7526, which is
+# what lets the Start button work while the brain is DOWN). Already running →
+# EADDRINUSE → exits 0 quietly, so re-launching never stacks instances.
+node brain-ctl.js > brain-ctl.log 2>&1 &
 node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1 &
 SERVER_PID=$!
 sleep 2
