@@ -48,8 +48,14 @@ echo ""
 # Step 3/3: verify port 7525 is free
 echo "[stop] step 3/3: verifying port 7525 is free..."
 if lsof -ti:7525 > /dev/null 2>&1; then
-    echo "  WARNING: port 7525 still held -- force-killing ALL node processes."
-    pkill -9 -f "node" 2>/dev/null
+    # CTLSTOP — kill what HOLDS 7525, not every node on the machine.
+    #   `pkill -9 -f node` is indiscriminate: it also kills the control plane on
+    #   7526 and any unrelated node the operator has running. Losing brain-ctl
+    #   here is the worst of it, because it is the thing that would let the
+    #   dashboard START the brain again — so the nuclear option quietly removed
+    #   the recovery path. Targeting the port kills exactly what is wedged.
+    echo "  WARNING: port 7525 still held -- killing the PIDs holding it."
+    for pid in $(lsof -ti:7525 2>/dev/null); do kill -9 "$pid" 2>/dev/null; done
     sleep 1
     if lsof -ti:7525 > /dev/null 2>&1; then
         echo "  ERROR: port 7525 STILL held. Manual intervention needed."
@@ -75,6 +81,27 @@ if command -v pgrep > /dev/null 2>&1; then
             kill -9 "$pid" 2>/dev/null
         done
     fi
+fi
+echo ""
+
+# CTLSTOP — brain-ctl is LEFT RUNNING ON PURPOSE by default.
+# It is a separate always-up process whose entire job is to outlive the brain:
+# with it up, the dashboard's Start button can bring the brain back. Killing it
+# here would mean "stop" also removed the way to start again.
+# Pass `./stop.sh all` when you genuinely want everything down.
+echo "[stop] control plane (port 7526)..."
+if lsof -ti:7526 > /dev/null 2>&1; then
+    if [ "${1:-}" = "all" ]; then
+        for pid in $(lsof -ti:7526 2>/dev/null); do kill -9 "$pid" 2>/dev/null; done
+        echo "  control plane STOPPED (you asked for 'all') -- the dashboard"
+        echo "  Start button will not work until a launcher runs again."
+    else
+        echo "  control plane LEFT RUNNING on 7526 -- this is deliberate."
+        echo "  It is what lets the dashboard Start the brain again."
+        echo "  Run ./stop.sh all to stop it too."
+    fi
+else
+    echo "  control plane not running."
 fi
 echo ""
 
