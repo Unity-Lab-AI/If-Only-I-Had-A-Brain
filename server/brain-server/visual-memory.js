@@ -310,19 +310,18 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   //
   // ⛔ The two single-key call sites used `_vmContentWords(x)[0]`, and English
   // noun phrases are HEAD-FINAL, so the first content word is normally an
-  // adjective. Measured: "a big red apple on the table" keyed as **"big"**,
-  // "the old wooden church" as **"old"**. Her learned SHAPE of an apple was
-  // filed under `big`, where it collides with every big thing she ever sees,
-  // and asking for `apple` never found it.
+  // adjective. Measured on real labels: a phrase of the form
+  // <article><size><colour><subject> keyed under the SIZE word, so her learned
+  // SHAPE of the subject was filed under a modifier — colliding with every
+  // other thing sharing that modifier, while the subject itself found nothing.
   //
   // Walks the ORIGINAL text (not the stripped list) because the phrase
   // boundary lives in the glue: once a concrete noun has been seen, the next
-  // glue word ends the head phrase, so "apple on the table" stops at "on" and
-  // never drifts onto "table". Concreteness is the live WordNet judgement the
-  // draw lane already uses — ⚠ NOT a word list, which is the standing law.
-  //   "a big red apple on the table" → apple   (stops at "on")
-  //   "the old wooden church"        → church  (old/wooden are not concrete)
-  //   "a cat sitting on a chair"     → cat     ("sitting" reads abstract)
+  // glue word ends the head phrase, so a trailing prepositional phrase cannot
+  // drag the key onto the second noun. Concreteness is the live WordNet
+  // judgement the draw lane already uses — ⚠ NOT a word list, per the law.
+  // Modifiers that WordNet reads as adjectives, and gerunds it reads as
+  // abstract, are both skipped, so the head lands on the thing itself.
   _vmHeadWord(text) {
     const raw = String(text || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
     if (raw.length === 0) return '';
@@ -346,6 +345,95 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // key still gets the best available one instead of dropping the memory.
     if (!head) head = this._vmContentWords(text)[0] || '';
     return head;
+  },
+
+  // VMRELATE — teach the WHOLE phrase she just looked at.
+  //
+  // ⛔ A bare noun-noun bind would repeat the loss VMPHRASE.3 was filed for,
+  // one level up: the size, the colour, the articles and the preposition are
+  // all part of what she SAW, and reducing the label to its two nouns throws
+  // them away again. Operator: *"make sure the full thing is taught"*.
+  //
+  // So the label trains twice, on two channels, from one look:
+  //   • THE ORDER — every consecutive pair across the phrase INCLUDING the
+  //     glue, on the same word→word transition channel every sentence uses.
+  //     This is what carries the modifier chain and the preposition in the
+  //     sequence she actually saw them in.
+  //   • THE RELATION — each remaining content word bound to the HEAD in both
+  //     directions on a channel of its own, so the modifiers and the second
+  //     noun attach to the thing the picture is OF rather than floating as
+  //     unrelated keys.
+  //
+  // ⭐ EXPERIENTIAL, not curricular, which is what makes it independent of
+  // which button the operator presses: it fires when she LOOKS, rides the
+  // existing chat-teach drain (one job per teach-call boundary), and lands on
+  // whatever weights exist — trained (Oja is self-normalizing, the property
+  // SAVERERUN relies on) or empty after a fresh walk. Her current cell is
+  // never interrupted and nothing here is gated on a walk state.
+  //
+  // ⚠ BOUNDED BEFORE SHIPPING. An unbounded teach layer cost 70 minutes per
+  // cell once already, so this one caps the pairs per look, keeps reps low,
+  // refuses when the drain is already deep, and counts every one of those
+  // refusals — a teach lane that quietly grows is the failure mode, not a
+  // teach lane that says it stopped.
+  _queuePhraseTeach(phrase) {
+    const st = this._vmRelate || (this._vmRelate = {
+      looks: 0, queued: 0, pairs: 0, skippedShort: 0, skippedBusy: 0, lastPhrase: null, lastAt: 0,
+    });
+    const text = String(phrase || '').trim();
+    if (!text) return 0;
+    st.looks++;
+    const words = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    // One word carries no order and no relation — nothing to teach here that
+    // the ordinary vocabulary lanes do not already do better.
+    if (words.length < 2) { st.skippedShort++; return 0; }
+    if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+    const MAX_QUEUE = Number(process.env.DREAM_VM_RELATE_MAX_QUEUE) || 24;
+    if (this._chatTeachJobQueue.length >= MAX_QUEUE) { st.skippedBusy++; return 0; }
+
+    const MAX_PAIRS = Number(process.env.DREAM_VM_RELATE_MAX_PAIRS) || 24;
+    const REPS = Number(process.env.DREAM_VM_RELATE_REPS) || 4;
+
+    // ORDER — consecutive pairs across the whole phrase, glue included.
+    const order = [];
+    for (let i = 0; i + 1 < words.length && order.length < MAX_PAIRS; i++) {
+      if (words[i] !== words[i + 1]) order.push([words[i], words[i + 1]]);
+    }
+
+    // RELATION — content words bound to the head, both directions.
+    const relation = [];
+    let head = '';
+    try { head = this._vmHeadWord(text); } catch { head = ''; }
+    if (head) {
+      const content = this._vmContentWords(text);
+      for (const w of content) {
+        if (w === head || relation.length + 2 > MAX_PAIRS) continue;
+        relation.push([w, head], [head, w]);
+      }
+    }
+    if (order.length === 0 && relation.length === 0) { st.skippedShort++; return 0; }
+
+    // Two jobs, because the channel is the meaning: collapsing them onto one
+    // tag would teach the order and the attachment as the same relation.
+    if (order.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: order,
+        opts: { reps: REPS, label: 'VMRELATE-ORDER', relationTagId: 13 },
+      });
+      st.queued++; st.pairs += order.length;
+    }
+    if (relation.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: relation,
+        opts: { reps: REPS, label: 'VMRELATE-ATTACH', relationTagId: 35 },
+      });
+      st.queued++; st.pairs += relation.length;
+    }
+    st.lastPhrase = text.slice(0, 80);
+    st.lastAt = Date.now();
+    // The drain's own 32-job bound still applies and counts its drops; this
+    // returns what was queued so a caller can log the real number.
+    return order.length + relation.length;
   },
 
   // WS 'visual_frame' intake: {source:'camera'|'image', w, h, rgba_b64, label}.
@@ -498,13 +586,13 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
     };
     // VMPHRASE.3 — KEEP THE WHOLE PHRASE. The keys are stopword-free on
-    // purpose (binding a field C to "the"/"of" would make every future
-    // thought recall random imagery through stopword collisions), but that
-    // stripping used to be the ONLY record of the label, so
-    // "a big red apple on the table" survived as {big, red, apple, table}
-    // and the RELATION was gone: apple and table filed as unrelated keys
-    // with nothing saying the apple was ON it. The full phrase now rides
-    // the entry, so nothing is discarded even though the keys stay clean.
+    // purpose (binding a field C to a preposition or article would make every
+    // future thought recall random imagery through glue collisions), but that
+    // stripping used to be the ONLY record of the label: a subject phrase with
+    // a prepositional tail survived as an unordered bag of content words, and
+    // the RELATION was gone — the two nouns filed as unrelated keys with
+    // nothing recording how they stood to each other. The full phrase now
+    // rides the entry, so nothing is discarded and the keys stay clean.
     const _phrase = String(msg.label || '').trim().slice(0, 160) || null;
     let _anyTrustedBind = fromCamera;
     for (const t of words) {
@@ -605,6 +693,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (percept) this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
       }
     } catch { /* non-fatal */ }
+
+    // VMRELATE — a TRUSTED look teaches the phrase that named it. Gated on the
+    // same `_anyTrustedBind` as the sem grounding above: a provisional render
+    // is one unconfirmed guess, and binding a phrase to it would teach the
+    // wording of a picture she may yet reject. Queued, never awaited — the
+    // drain runs it between her lessons.
+    try {
+      if (_anyTrustedBind && _phrase && typeof this._queuePhraseTeach === 'function') {
+        this._queuePhraseTeach(_phrase);
+      }
+    } catch { /* non-fatal — a look must never fail on its teach */ }
 
     // she SEES it — swap the shared mind's-eye snapshot to the live percept
     // so the viewer shows the eye receiving. CAMPOISON (operator law):
@@ -1356,7 +1455,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       return null;
     }
     // ⛔ CHAT WINS THE PIPE. The person in the room outranks the background
-    // errand — the whole visible symptom was "show me an apple" answering
+    // errand — the whole visible symptom was the operator's image request answering
     // "(image generation failed)" while she quietly ground her vocabulary.
     // `_imageLanePriorityUntil` is stamped by the chat path the moment it
     // returns `action: 'generate_image'`, so the browser's request (built
@@ -1400,7 +1499,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // ⭐ And the visible cost was not hers, it was the operator's: her chat
     // image generation is built BROWSER-side from the same public IP, so the
     // background acquisition lane was spending the shared anonymous quota and
-    // "show me an apple" came back "(image generation failed)". **A background
+    // the operator's own request came back "(image generation failed)". **A background
     // errand must not outbid the person in the room.**
     if (!opts.force && this._vmRef429Until && now < this._vmRef429Until) {
       const st = this._vmLook();
@@ -1561,6 +1660,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt, phrase: (String(concept || '').trim().slice(0, 160) || (prev && prev.phrase) || null) });
         while (store.size > VM_CAP) store.delete(store.keys().next().value);
         this._vmSaveSoon();
+        // VMRELATE — the look taught. `concept` is what she asked to see, whole:
+        // its modifiers, its glue and its relation, not the head noun `key` was
+        // reduced to. ⚠ CONFIRMED looks only, for the same reason the ingest
+        // path gates on a trusted bind — LOOKTWICE exists because one render is
+        // a noisy oracle, and teaching the wording of a picture she may reject
+        // is exactly the poisoning that gate was built to stop.
+        try {
+          if (confirmed && !opts.keyOverride && typeof this._queuePhraseTeach === 'function') {
+            this._queuePhraseTeach(concept);
+          }
+        } catch { /* non-fatal — a look must never fail on its teach */ }
         // MIND'S-EYE — she SEES the reference she looked up (Gee 2026-07-15: "the
         // minds eye shows the shit she sees period"). The looked-up image IS what
         // her eyes receive, so publish the perceived field C to the shared viewer
