@@ -755,7 +755,26 @@ const SERVER_CHAT_MIXIN = {
         this._chatPriorityUntil = 0;   // CHAT.3 — close the priority window on failure too
         console.error('[Brain] languageCortex.generate threw:', err.message);
         console.error(err.stack);
-        return { text: '', action: 'respond_text' };
+        // ⛔ LOOPCHAT.2 (2026-08-26) — THIS RETURNED BARE EMPTY TEXT, AND THE
+        // TRANSPORT DROPS THAT ON THE FLOOR.
+        //
+        // `brain-server.js` sends the reply `if (result.text)`, with an
+        // `else if (result.silent)` that forwards a reason to the client. A
+        // THROW here satisfied neither branch, so the user got **total dead
+        // air** — no bubble, no note, no error — and the only trace was this
+        // console line, which at walk speed scrolls out of the ring in minutes.
+        //
+        // ⛔ Three distinct outcomes existed and only two were distinguishable
+        // from the chat window: she answered, she chose silence and said why,
+        // or **her reply lane crashed and looked exactly like nothing
+        // happened.** A crash must never be quieter than a deliberate silence.
+        return {
+          text: '',
+          action: 'respond_text',
+          silent: true,
+          silentReason: 'reply_error',
+          silentDetail: `Her reply pass threw before composing: ${err && err.message ? err.message : String(err)}. This is a FAULT, not her choosing not to speak — the message reached her and the lane broke. Server log has the stack.`,
+        };
       }
       this._chatPriorityUntil = 0;   // CHAT.3 — reply composed; teach lane reopens immediately
     }
