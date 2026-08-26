@@ -1138,7 +1138,38 @@ const SERVER_STATE_MIXIN = {
       const h = this._eventLoopHistogram;
       if (h && typeof h.percentile === 'function') {
         const nsToMs = (v) => r2((v || 0) / 1e6);
-        elDelay = { meanMs: nsToMs(h.mean), p50Ms: nsToMs(h.percentile(50)), p99Ms: nsToMs(h.percentile(99)), maxMs: nsToMs(h.max) };
+        // ⛔ LOOPMAX.1 — `max` WAS CUMULATIVE SINCE BOOT AND COULD ONLY GO UP.
+        //
+        // Caught because it read 18,505.3ms IDENTICALLY across two readings
+        // while `serviced` went 52% -> 91%, lag 320ms -> 21ms and late/min
+        // 29,048 -> 5,561. Everything else moved and it did not: that is the
+        // tell. It was the BOOT pinning the loop to load ~5.4GB of weights,
+        // and it sat there advertising a live 18-second stall on a brain
+        // running at 26ms lag. It also contradicted the row beside it — the
+        // freeze watchdog warns at 5,000ms, so 18.5s is 3.7x the bar, yet
+        // `loop freezes` read `none`. Two fields on one card, both cannot be
+        // right.
+        //
+        // ⭐ The histogram now ROLLS: it is reset after each read, so mean /
+        // p50 / p99 / max all describe the window since the previous
+        // broadcast — a number that can fall as well as rise.
+        //
+        // ⚠ The all-time peak is NOT discarded, it is BANKED and RENAMED.
+        // Losing the worst stall the process ever saw would be its own
+        // dishonesty; the fix is to stop it wearing the name of a live
+        // reading. `sinceBootMaxMs` says exactly what it is.
+        const _live = { meanMs: nsToMs(h.mean), p50Ms: nsToMs(h.percentile(50)), p99Ms: nsToMs(h.percentile(99)), maxMs: nsToMs(h.max) };
+        if (_live.maxMs > (this._elDelayAllTimeMaxMs || 0)) this._elDelayAllTimeMaxMs = _live.maxMs;
+        elDelay = {
+          ..._live,
+          sinceBootMaxMs: this._elDelayAllTimeMaxMs || 0,
+          windowMs: Date.now() - (this._elDelayWindowStart || (this._elDelayWindowStart = Date.now())),
+        };
+        // Reset AFTER reading so the next window starts clean. ⚠ Guarded:
+        // a Node build without `reset()` keeps the old cumulative behaviour
+        // rather than throwing inside the state build — but then `windowMs`
+        // grows without bound, which is the honest signal that it did not roll.
+        try { if (typeof h.reset === 'function') { h.reset(); this._elDelayWindowStart = Date.now(); } } catch { /* keep cumulative */ }
       }
       // GPU dispatch rate from the rolling timestamp window
       let gpuDispatchPerSec = 0;
