@@ -38158,3 +38158,48 @@ tag 6, 8, 9, 10, 11, 12, 13, 15, 23, 30, 34  -> *** ZERO ***
 ### Left open
 
 **VMUSE.5 — the reader is BUILT but not yet CONSULTED.** Nothing in chat, emission or the imagine tick calls `readRelationBand` yet. ⚠ Filed rather than wired: choosing WHERE she consults a relation changes what she says, and that is curriculum-shaped. ⭐ **The omission Gee named is closed at the mechanism level — the channels exist and are readable — and the consumer is the next call.**
+
+---
+
+## 2026-08-26 - VMUSE.5 / ARTWEIGHT: seeing and making art now move her weights - feature/vmuse5-see-draw-weights
+
+### Gee ask (verbatim per LAW #0)
+
+> *"VMUSE.5 make sure what we need to have what she see and draws effect her weights? ruight? an image one sees and art they make has real effects on all kinds of brain processes"*
+
+### The audit, and he was right on both halves
+
+⛔ **DRAWING: zero weight-touching calls** across the entire ~930-line draw + practice span. `_practiceDrawing` writes `e.skill` — params, cosine, session count — into the visual **STORE**, and store state is not synapses. **She could draw the same subject a hundred times and not one synapse moved.**
+
+⛔ **SEEING: injection only, and gated off for the whole walk.** `injectEmbeddingToRegion('sem', percept, 0.10)` sets a transient current that decays — it is not a bind — and it sat behind `!this._curriculumInProgress`, a flag set once at walk start and cleared only when the entire K→PhD walk RESOLVES. Both perception paths were dead for weeks at a time, across exactly the stretch where she sees the most.
+
+⚠ **The distinction that made the audit work was writing VMUSE.5a as "distinguish INJECTION from LEARNING" before looking.** They are not the same thing, and the code reads as if they are.
+
+### ARTWEIGHT — making art is now a bind
+
+Hooked at `_ownArtDrawn++`, the single point every draw lane flows through, so no lane can miss it. Two bindings on two channels, because they are two different facts:
+
+- ⭐ **STRUCTURE (tag 35)** — the subject binds to the PARTS she actually built it from, both directions. Drawing a thing forces attention onto every piece of it, and that is what strengthens the structure — a person who draws a thing knows its parts better afterwards.
+- ⭐ **COMPOSITION (tag 13)** — when a piece holds more than one subject, those subjects bind to each other **and to the place they were set in**, because she composed them together.
+
+⚠ **Only what she DREW.** `contributed` is the set that actually put marks on the canvas; a subject that failed to build is not in it. Teaching from the plan rather than the result would bind things she never managed to draw.
+
+⚠ Bounded like every drain job and for the same measured reason (an unbounded teach layer cost 70 min/cell once): hard pair cap, low reps, refuses at a deep drain, all env-tunable, counters at `state.ownArt.artWeight`.
+
+### The shape-schema learn ran only when idle, and she is never idle
+
+⚠ **That gate was for COST, not correctness** — it is a trace on the perception path and the header says so. **But a cost gate that resolves to "never" is not a bound, it is a deletion.** The throttle now carries the cost instead: **5s idle, 60s mid-walk** (`DREAM_OWNART_INGEST_WALK_MS`). ⭐ This is the thing that makes her FIRST drawing of something informed rather than naive, and it had never once run during a curriculum.
+
+### Verified
+
+| check | result |
+|---|---|
+| ARTWEIGHT | **7/7** — subject↔parts both ways, second subject to ITS parts, subjects to each other, subjects to the place, channels separate, nothing-drawn teaches nothing, refuses a deep drain |
+| schema throttle | idle 5s (unchanged) · mid-walk **60s, was NEVER** |
+| syntax / link | `node --check` + ESM import clean on all three files |
+
+### Left open, deliberately
+
+**VMUSE.5d — the sem grounding injection stays skipped mid-walk.** ⚠ Unlike the other two this one is correct as it stands: injecting a percept into sem while a teach pattern is in flight genuinely corrupts it. ⭐ **And the durable half is covered anyway** — VMRELATE queues a real Hebbian bind from every trusted look, ungated, so seeing does move her weights during the walk as of today. Deferring the injection itself would need the drain to carry a second job KIND (it only runs `_teachAssociationPairs`), and changing the drain contract touches the walk lane.
+
+⚠ **NOT VERIFIED LIVE** — server-side, needs a restart.
