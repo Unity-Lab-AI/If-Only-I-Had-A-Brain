@@ -1782,7 +1782,15 @@ const SERVER_CHAT_MIXIN = {
     // counter every tick — reading "she keeps changing her mind" when the truth
     // is "she is thinking nothing, over and over". That is the same stuck
     // pointer and must not render as healthy variety.
-    const _seedKey = _word || ' empty';
+    //
+    // ⛔ The sentinel is a READABLE, GREPPABLE literal, and it is spelled out
+    // for a reason: the first version of this line shipped a raw NUL byte
+    // (`'\0empty'`). It worked — no real word collides with it — but a NUL in
+    // source makes the whole file read as BINARY to `grep`, which then stops
+    // reporting matches in it *silently*. A search that comes back clean
+    // because the tool gave up is worse than one that errors. No control
+    // characters in sentinels.
+    const _seedKey = _word || '__eye_no_thought__';
     if (_seedKey === this._eyeLastSeed) st.pinTicks++;
     else st.pinTicks = 0;
     this._eyeLastSeed = _seedKey;
