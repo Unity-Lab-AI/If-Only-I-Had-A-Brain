@@ -2067,6 +2067,11 @@
                 + ` · ${num(writes)} tags written${wTags.length ? ` (${wTags.map(t => `${t}×${num(ru.tagWritesByTag[t])}`).join(' ')})` : ''}`
                 + (ru.tagWritesRefused ? ` · ⚠ ${num(ru.tagWritesRefused)} REFUSED (tag out of range)` : '')
                 + (withMass ? ` · ${num(withMass)} not separated yet` : '')
+                // RELSEP.1 — how close the bands are to the gate, so "not
+                // separated yet" stops being a state with no direction.
+                + ((ru.marginProgress > 0 || ru.bestMarginRatio > 0)
+                    ? ` · separation ${(ru.marginProgress * 100).toFixed(1)}% of gate (best ${Number(ru.bestMarginRatio).toFixed(4)}/${Number(ru.marginGate || 0.15).toFixed(2)}${ru.bestMarginWord ? ` on "${ru.bestMarginWord}"` : ''})`
+                    : '')
                 + (noMass ? ` · ⛔ ${num(noMass)} read ZERO mass` : '')
                 + (ru.unreadable ? ` · ${num(ru.unreadable)} unreadable` : '')
                 + (tags.length ? ` · tags ${tags.map(t => `${t}×${ru.byTag[t]}`).join(' ')}` : '')

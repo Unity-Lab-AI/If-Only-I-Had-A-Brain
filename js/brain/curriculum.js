@@ -15756,6 +15756,10 @@ export class Curriculum {
       // is non-zero is indistinguishable from a field with no producer, which
       // is the exact confusion this batch exists to end.
       flatWithMass: 0, flatNoMass: 0, lastRead: null,
+      // RELSEP.1 — declared up front so the block always carries them; a field
+      // that appears only once non-zero is indistinguishable from one with no
+      // producer, which is the confusion this family of fixes exists to end.
+      bestMarginRatio: 0, bestMarginWord: null, lastMarginRatio: 0, marginProgress: 0, marginGate: 0,
       recent: [], byTag: Object.create(null),
     });
     const w = String(word || '').toLowerCase().trim();
@@ -15771,6 +15775,33 @@ export class Curriculum {
     let r = null;
     try { r = this.readRelationBand(w); } catch { r = null; }
     let val = null;
+    // RELSEP.1 — BANK THE MARGIN RATIO FOR EVERY READABLE READ, flat included.
+    //
+    // ⛔ This has to happen BEFORE the flat/confident branch, because the reads
+    // that matter while the bands are still separating are precisely the FLAT
+    // ones. Banking it inside the confident branch would only ever record
+    // reads that had already cleared the gate — an instrument that starts
+    // reporting once the thing it measures has finished.
+    //
+    // `confident` is pass/fail and `lastRead` is one sample, so between them
+    // they cannot answer the question that actually governs `VMUSE.5.D`: is it
+    // GETTING CLOSER? A live 0.00013 and a live 0.14 both render as "flat, 0
+    // confident", and those are opposite situations — one is a walk that will
+    // never arrive, one is a walk about to.
+    const RELMIN = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
+    if (r && r.score > 0) {
+      const ratio = r.margin / Math.abs(r.score);
+      if (Number.isFinite(ratio)) {
+        st.lastMarginRatio = ratio;
+        if (!(st.bestMarginRatio > 0) || ratio > st.bestMarginRatio) {
+          st.bestMarginRatio = ratio;
+          st.bestMarginWord = w;
+        }
+        // Distance to the gate as a fraction of it. 1 = cleared.
+        st.marginProgress = RELMIN > 0 ? Math.min(1, st.bestMarginRatio / RELMIN) : 0;
+        st.marginGate = RELMIN;
+      }
+    }
     if (!r) { st.unreadable++; }
     else if (r.flat) {
       st.flat++;
@@ -15798,8 +15829,11 @@ export class Curriculum {
     else {
       // A second bar beyond `flat`: the winner must lead by a real fraction of
       // its own size, not merely by a floating-point hair.
-      const MIN = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
-      if (r.score > 0 && (r.margin / Math.abs(r.score)) >= MIN) {
+      // Uses the ratio banked above, so the gate and the progress readout can
+      // never disagree about what "cleared" means.
+      const MIN = RELMIN;
+      const ratio = r.score > 0 ? (r.margin / Math.abs(r.score)) : 0;
+      if (r.score > 0 && ratio >= MIN) {
         val = { tag: r.tag, margin: r.margin, score: r.score };
         st.confident++;
         st.byTag[r.tag] = (st.byTag[r.tag] | 0) + 1;
