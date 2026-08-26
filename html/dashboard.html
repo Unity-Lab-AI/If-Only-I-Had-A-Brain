@@ -132,6 +132,64 @@
       margin: 0 0 8px 0;
       text-transform: uppercase;
     }
+
+    /* ── BRAIN POWER PANEL (control plane, CTLPLANE.1) ──────────────────
+       Rendered from /ctl/status, which is served by unity-brain-ctl — a
+       separate always-up service. This panel therefore still works, and its
+       buttons still function, when the brain itself is completely down. That
+       is the entire point: the operator who owns the brain can recover it
+       without shell access. Styled distinctly from .recovery-banner because
+       it is NOT an error state — it is a normal, always-present control. */
+    #brain-power {
+      display: none;
+      background: linear-gradient(135deg, #0d1520 0%, #0a1016 100%);
+      border: 1px solid #1f3a4d;
+      border-left: 4px solid #38bdf8;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 0 0 16px 0;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    #brain-power.active { display: block; }
+    /* Offline/failed gets an unmissable red treatment — when the brain is
+       down this is the single most important element on the page. */
+    #brain-power.state-offline, #brain-power.state-halted, #brain-power.state-failed {
+      border-left-color: #ef4444;
+      background: linear-gradient(135deg, #1f0c0c 0%, #150809 100%);
+      box-shadow: 0 0 20px rgba(239,68,68,0.15);
+    }
+    #brain-power.state-booting { border-left-color: #f59e0b; background: linear-gradient(135deg, #1c1408 0%, #140f06 100%); }
+    #brain-power.state-online  { border-left-color: #22c55e; }
+    #brain-power.state-unmanaged { border-left-color: #a855f7; }
+    #brain-power .bp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    #brain-power .bp-dot { width: 10px; height: 10px; border-radius: 50%; background: #555; flex: none; }
+    #brain-power.state-online  .bp-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    #brain-power.state-booting .bp-dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: bp-pulse 1.2s ease-in-out infinite; }
+    #brain-power.state-offline .bp-dot,
+    #brain-power.state-halted  .bp-dot,
+    #brain-power.state-failed  .bp-dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    #brain-power.state-unmanaged .bp-dot { background: #a855f7; box-shadow: 0 0 8px #a855f7; }
+    @keyframes bp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    #brain-power .bp-title { font-weight: 700; font-size: 13px; letter-spacing: 0.3px; text-transform: uppercase; color: #e5e7eb; }
+    #brain-power .bp-human { color: #9fb3c8; font-size: 11.5px; margin: 6px 0 10px; }
+    #brain-power .bp-meta { color: #64748b; font-size: 10.5px; font-family: 'JetBrains Mono', monospace; margin: 0 0 10px; }
+    #brain-power .bp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    #brain-power button {
+      background: #16283a; color: #cfe6f5; border: 1px solid #2c4c66;
+      border-radius: 5px; padding: 7px 13px; font-size: 11.5px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    #brain-power button:hover:not(:disabled) { background: #1e3a52; border-color: #3d6b8f; }
+    #brain-power button:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* Start is the recovery verb — make it the obvious action when down. */
+    #brain-power button.bp-start { background: #14532d; border-color: #22c55e; color: #dcfce7; }
+    #brain-power button.bp-start:hover:not(:disabled) { background: #1a6b3a; }
+    #brain-power button.bp-danger { background: #3f1414; border-color: #7f1d1d; color: #fecaca; }
+    #brain-power button.bp-danger:hover:not(:disabled) { background: #571b1b; }
+    #brain-power .bp-result { margin-top: 9px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: #94a3b8; white-space: pre-wrap; }
+    #brain-power .bp-result.err { color: #fca5a5; }
+    #brain-power .bp-result.ok { color: #86efac; }
     .recovery-banner .details {
       color: #cbb;
       font-size: 11px;
@@ -231,6 +289,35 @@
         <pre id="d-diag-js-errors" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:100px;overflow:auto;color:#ff6b6b;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— none yet —</pre>
       </div>
     </details>
+
+    <!-- ── BRAIN POWER PANEL (CTLPLANE.1) ───────────────────────────────────
+         Driven by /ctl/status from unity-brain-ctl, a SEPARATE always-up
+         service. Unlike every control in the header (which posts to the brain
+         itself and therefore dies with it), everything in here keeps working
+         when the brain is down — including Start, the verb the brain could
+         never offer for itself. This is what lets an operator with no shell
+         recover from a stopped brain.
+         Populated by wireBrainPower(); stays hidden until the first
+         /ctl/status answers, so a box without the control plane installed
+         shows no broken UI. -->
+    <div id="brain-power" role="region" aria-label="Brain power controls">
+      <div class="bp-head">
+        <span class="bp-dot" id="bp-dot"></span>
+        <span class="bp-title" id="bp-title">checking brain…</span>
+        <span style="flex:1"></span>
+        <span class="bp-meta" id="bp-meta" style="margin:0"></span>
+      </div>
+      <div class="bp-human" id="bp-human"></div>
+      <div class="bp-actions" id="bp-actions">
+        <button id="bp-start" class="bp-start" title="Start a stopped brain. It resumes saved training automatically (DREAM_KEEP_STATE + the resume marker), and once it binds its port the proxy lanes are reloaded so the site serves it cleanly. THIS IS THE RECOVERY BUTTON — it works when the brain is completely down.">▶ Start Brain</button>
+        <button id="bp-restart" title="Savestart: ask the brain to force-save weights and write a resume marker, exit cleanly, then come back and resume where it left off. Falls back to a process-level restart if the brain is not answering. Non-destructive.">🔄 Restart (Savestart)</button>
+        <button id="bp-stop" class="bp-danger" title="TRUE HALT. The brain is asked to save its weights first, then stopped. It will STAY DOWN until someone presses Start — which, unlike before, you can now do from this page.">⏹ Stop Brain</button>
+        <button id="bp-kick" class="bp-danger" title="Hard restart for a WEDGED brain (process alive but not answering — e.g. a long GC pin). Skips the graceful save, so training since the last checkpoint is lost. Use only when Restart does not work.">⚡ Force Restart (wedged)</button>
+        <button id="bp-refresh" title="Re-read /ctl/status right now.">⟳ Refresh</button>
+        <button id="bp-logs" title="Fetch the brain's recent journal lines through the control plane — readable even when the brain is down, which is exactly when you need them (e.g. to see an OOM kill or a failed boot).">📄 Brain logs</button>
+      </div>
+      <div class="bp-result" id="bp-result"></div>
+    </div>
 
     <!-- No-connection recovery banner — appears when WebSocket fails to
          connect OR drops. Documents the recovery path explicitly so
@@ -1167,6 +1254,13 @@
       try {
         const r = await fetch(publicStateUrl(), { cache: 'no-store' });
         const j = await r.json();
+        // CTLPLANE.1 — nginx now degrades a dead upstream to a 200 with an
+        // explicit offline flag (instead of a 502 HTML page). Name that cause
+        // precisely; the generic "parsed but not a live state payload" below
+        // would be technically true and diagnostically useless.
+        if (j && (j.brainOffline === true || j.brainOnline === false)) {
+          return { alive: false, brainOffline: true, reason: j.human || 'the brain is not running (reported by the web server, which is still up)' };
+        }
         if (!j || j.type !== 'state' || !j.state) {
           return { alive: false, reason: 'the snapshot parsed but is not a live state payload' };
         }
@@ -3836,6 +3930,208 @@
 
     // Redraw chart every 2 seconds
     setInterval(drawEmotionChart, 2000);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CTLPLANE.1 — BRAIN POWER PANEL, driven by the always-up control plane.
+    //
+    // Every other power control on this page posts to the BRAIN (`adminApi()` →
+    // `/admin/shutdown` etc). That works right up until the moment you need it
+    // most: a stopped brain cannot serve its own start button. On 2026-08-25 a
+    // mis-click halted the brain and the box needed SSH to come back.
+    //
+    // This panel talks to `unity-brain-ctl` instead — a separate, tiny, always-up
+    // systemd service (see server/brain-ctl.js). It survives brain crashes, OOM
+    // kills and deliberate halts, so START works from a dead brain.
+    //
+    // Degrades honestly in three layers:
+    //   • control plane answers          → full controls, live phase
+    //   • control plane 502s (nginx)     → nginx's @ctl_unreachable JSON says so
+    //   • control plane not installed    → panel stays HIDDEN (no broken UI on
+    //     a box or a local dev checkout that has no /ctl lane at all)
+    // ═══════════════════════════════════════════════════════════════════════
+    (function wireBrainPower() {
+      const panel = document.getElementById('brain-power');
+      if (!panel) return;
+      const $ = (id) => document.getElementById(id);
+      const elTitle = $('bp-title'), elHuman = $('bp-human');
+      const elMeta = $('bp-meta'), elResult = $('bp-result');
+      const btns = {
+        start: $('bp-start'), restart: $('bp-restart'), stop: $('bp-stop'),
+        kick: $('bp-kick'), refresh: $('bp-refresh'), logs: $('bp-logs'),
+      };
+
+      // The control plane lives beside the brain, not inside it.
+      //  • Deployed: nginx `/ctl/` lane (Basic-auth gated, same as /admin/).
+      //  • Local dev: brain-ctl on :7526 directly, if the operator runs it.
+      function ctlUrl(p) {
+        if (_dashIsLocal) {
+          const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+          return `${scheme}//${location.hostname || 'localhost'}:7526/ctl/${p}`;
+        }
+        return `${location.origin}/ctl/${p}`;
+      }
+
+      let available = false;      // has /ctl/status EVER answered?
+      let busy = false;           // a power action is in flight from this page
+      let pollTimer = null;
+      let lastPhase = null;
+
+      const TITLES = {
+        online: 'Brain online',
+        booting: 'Brain starting…',
+        offline: 'Brain offline',
+        halted: 'Brain halted',
+        failed: 'Brain failed',
+        unmanaged: 'Brain running (unmanaged)',
+        unknown: 'Brain state unknown',
+      };
+
+      function setResult(msg, cls) {
+        elResult.textContent = msg || '';
+        elResult.className = 'bp-result' + (cls ? ' ' + cls : '');
+      }
+
+      function fmtUptime(iso) {
+        if (!iso || iso === 'n/a') return '';
+        const t = Date.parse(iso.replace(/^[A-Za-z]{3} /, ''));
+        if (!isFinite(t)) return '';
+        const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+        if (s < 90) return `${s}s`;
+        if (s < 5400) return `${Math.round(s / 60)}m`;
+        if (s < 172800) return `${(s / 3600).toFixed(1)}h`;
+        return `${(s / 86400).toFixed(1)}d`;
+      }
+
+      function render(st) {
+        const phase = (st && st.phase) || 'unknown';
+        lastPhase = phase;
+        // Rewrite ONLY the state-* class, preserving `active`. Assigning
+        // className wholesale here previously risked dropping classes other
+        // code may add to this element.
+        panel.classList.add('active');
+        for (const c of Array.from(panel.classList)) {
+          if (c.startsWith('state-')) panel.classList.remove(c);
+        }
+        panel.classList.add('state-' + phase);
+        elTitle.textContent = TITLES[phase] || TITLES.unknown;
+        elHuman.textContent = (st && st.human) || '';
+
+        const u = (st && st.unit) || {};
+        const bits = [];
+        if (u.activeState) bits.push(`unit ${u.activeState}${u.subState && u.subState !== u.activeState ? '/' + u.subState : ''}`);
+        const up = fmtUptime(u.activeEnter);
+        if (up && phase === 'online') bits.push(`up ${up}`);
+        if (u.memoryBytes) bits.push(`${(u.memoryBytes / 1073741824).toFixed(1)} GB`);
+        if (typeof u.nRestarts === 'number' && u.nRestarts > 0) bits.push(`${u.nRestarts} restarts`);
+        if (st && st.portOpen === false && phase !== 'offline' && phase !== 'halted') bits.push('port closed');
+        elMeta.textContent = bits.join(' · ');
+
+        // Only offer actions that make sense for the current phase. Offering
+        // Start on a running brain (or Stop on a stopped one) is how operators
+        // learn to distrust a panel.
+        const down = (phase === 'offline' || phase === 'halted' || phase === 'failed');
+        const canStop = (phase === 'online' || phase === 'booting');
+        btns.start.disabled   = busy || !down;
+        btns.restart.disabled = busy || !(phase === 'online' || phase === 'booting' || phase === 'failed');
+        btns.stop.disabled    = busy || !canStop;
+        btns.kick.disabled    = busy || !(phase === 'online' || phase === 'booting' || phase === 'unmanaged');
+        btns.refresh.disabled = busy;
+        btns.logs.disabled    = busy;
+      }
+
+      async function poll() {
+        try {
+          const r = await fetch(ctlUrl('status'), { cache: 'no-store', credentials: 'same-origin' });
+          const j = await r.json();
+          // nginx's @ctl_unreachable shape — the control plane itself is down.
+          if (j && j.ctlOnline === false) {
+            available = true;
+            render({ phase: 'unknown', human: j.human || 'Control plane unreachable.', unit: {} });
+            return;
+          }
+          if (!j || j.ok !== true) throw new Error('unexpected /ctl/status payload');
+          available = true;
+          render(j);
+        } catch (err) {
+          // NEVER been reachable → the control plane is not installed here.
+          // Stay invisible rather than showing a permanently broken panel.
+          if (!available) { panel.classList.remove('active'); return; }
+          render({ phase: 'unknown', human: 'Could not read /ctl/status: ' + err.message, unit: {} });
+        }
+      }
+
+      async function act(action, opts) {
+        const o = opts || {};
+        if (o.confirm && !window.confirm(o.confirm)) return;
+        busy = true;
+        render({ phase: lastPhase || 'unknown', human: elHuman.textContent, unit: {} });
+        setResult(`⏳ ${o.pending || action}… (a start waits for ~5.4 GB of weights to load, so this can take minutes — leave the page open)`, '');
+        try {
+          const r = await fetch(ctlUrl(action), {
+            method: 'POST', cache: 'no-store', credentials: 'same-origin',
+          });
+          const j = await r.json().catch(() => null);
+          if (r.status === 409) { setResult('⚠ ' + (j && j.message || 'another power action is already running'), 'err'); }
+          else if (j && j.ok) {
+            setResult('✓ ' + (j.message || 'done')
+              + (j.proxyReloaded ? '\n✓ Proxy lanes reloaded — the site is serving the fresh brain.' : '')
+              + (j.proxyReloadError ? '\n⚠ nginx reload failed: ' + j.proxyReloadError : ''), 'ok');
+            log(`[ctl] ${action} → ${j.message || 'ok'}`);
+          } else {
+            setResult('✗ ' + ((j && (j.error || j.message)) || `HTTP ${r.status}`)
+              + (j && j.hint ? '\n' + j.hint : ''), 'err');
+          }
+        } catch (err) {
+          // A stop/restart legitimately kills the connection mid-flight when
+          // running against the brain's own host; that is not a failure.
+          setResult('✗ request failed: ' + err.message
+            + '\n(If you just pressed Stop or Restart this can be expected — press Refresh to read the real state.)', 'err');
+        } finally {
+          busy = false;
+          await poll();
+        }
+      }
+
+      btns.start.addEventListener('click', () => act('start', { pending: 'starting the brain' }));
+      btns.restart.addEventListener('click', () => act('restart', {
+        pending: 'restarting (savestart)',
+        confirm: 'Restart the brain and RESUME training?\n\n'
+          + '✓ Weights force-saved first\n✓ Resume marker written\n✓ Comes back automatically and picks up where it left off\n\n'
+          + 'Non-destructive — training is preserved.',
+      }));
+      btns.stop.addEventListener('click', () => act('stop', {
+        pending: 'stopping the brain',
+        confirm: 'STOP the brain?\n\n'
+          + '✓ It saves its weights first\n'
+          + '⛔ It will STAY DOWN until someone presses Start\n\n'
+          + 'The website stays up either way and will show "brain offline".\n'
+          + 'You CAN start it again from this same panel — no shell needed.',
+      }));
+      btns.kick.addEventListener('click', () => act('kick', {
+        pending: 'force-restarting',
+        confirm: 'FORCE RESTART (hard)?\n\n'
+          + '⛔ No graceful save — training since the last checkpoint is LOST.\n\n'
+          + 'Only use this if the brain is wedged and "Restart (Savestart)" did not work.',
+      }));
+      btns.refresh.addEventListener('click', () => { setResult(''); poll(); });
+      btns.logs.addEventListener('click', async () => {
+        setResult('⏳ fetching brain logs…', '');
+        try {
+          const r = await fetch(ctlUrl('logs?n=60'), { cache: 'no-store', credentials: 'same-origin' });
+          const j = await r.json();
+          setResult(j && j.log ? String(j.log).slice(-4000) : '(no log returned)', '');
+        } catch (err) { setResult('✗ could not fetch logs: ' + err.message, 'err'); }
+      });
+
+      // Poll faster while something is transitioning — a start takes minutes and
+      // the operator needs to see it progress rather than wonder if it worked.
+      function schedule() {
+        clearTimeout(pollTimer);
+        const fast = busy || lastPhase === 'booting';
+        pollTimer = setTimeout(async () => { await poll(); schedule(); }, fast ? 3000 : 15000);
+      }
+      poll().then(schedule);
+    })();
 
     // Graceful-stop button click handler. POST /shutdown
     // (loopback-gated server-side) which calls brain.stop() — flushes
