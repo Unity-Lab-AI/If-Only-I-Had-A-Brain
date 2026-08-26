@@ -38425,3 +38425,44 @@ I initially "found" the bug in `js/ui/brain-3d.js` — the legacy notification p
 ⚠ The lesson is the one this project keeps paying for: I reasoned from a plausible pattern (the fifth producer/consumer path mismatch of the week) instead of tracing what the function actually received. The real cause was two levels up, in who was subscribed to what.
 
 ⚠ **Frontend only — lands on deploy, no press needed.**
+
+---
+
+## 2026-08-26 - VALFLAT.1: a nested ZERO outranked the live value - feature/valence-flat-first
+
+### Gee ask (verbatim per LAW #0)
+
+> *"check it i restarted both fresh walks all their pop ups still show 0.00 not the actual which currently is 0.08"*
+
+> *"im looking at the #D brain you mroon"*
+
+### What it actually was
+
+`??` only falls through on **null/undefined**. A nested `amygdala.valence` holding a **real 0** is not nullish, so it WINS — and all three resolution chains in `js/app.js` put `amygdala` FIRST:
+
+```js
+const valence = s.amygdala?.valence ?? s.valence ?? l.amygdala?.valence ?? l.valence ?? 0;
+```
+
+The local browser engine initialises exactly that zero (`engine.js:242` — `amygdala: { arousal: 0.5, valence: 0 }`). Any state object carrying both a live flat `valence` and that nested zero rendered **0.00** while the server's real value was 0.084.
+
+⭐ **`brain-viz.js` already had it right and said why in a comment** — *"Server sends flat fields, not nested amygdala object"* — reading `s.valence ?? s.amygdala?.valence`. Three chains in `app.js` never got that treatment. The precedent was in the repo the whole time.
+
+### Verified against the LIVE socket, all three shapes
+
+| state shape | OLD (amygdala first) | NEW (flat first) |
+|---|---|---|
+| raw server | 0.08 | 0.08 |
+| **both present, nested stale zero** | **0.00** | **0.08** |
+| local engine only | 0.00 | 0.00 (correct — no flat field exists) |
+
+4/4. The middle row is the reported bug, reproduced and fixed; the last row confirms the local-engine path still resolves through the nested block, so nothing regressed for the offline brain.
+
+### ⚠ Two wrong attempts before this, both owned
+
+1. **`brain-3d.js` normalization** — I "fixed" the legacy notification pool passing raw state instead of `norm`. Wrong: line 2439 is `state = norm`, so it already had it. Reverted before commit.
+2. **`VALSNAP.1`** — the `serverConnected` snapshot. That IS a real bug and the fix stands on its own (the server listener was genuinely never attached on a normal load), but it was **not the cause of the 0.00** and I presented it as such. Gee restarted both walks and the symptom persisted, which is what disproved it.
+
+⛔ The lesson, again: I reasoned from a plausible pattern three times instead of executing the actual expression against the actual payload. The moment I ran the real chain against the real socket, the answer took one run.
+
+⚠ **Frontend only — lands on deploy, no press.** Hard-refresh to clear the cached bundle.
