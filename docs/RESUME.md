@@ -2,7 +2,7 @@
 
 > ## ⭐⭐⭐ 2026-08-26 (latest) — THE DAY THE CHANNELS TURNED OUT NOT TO EXIST
 >
-> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main` + `git ls-remote --heads origin main`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`) — do not trust a number written here. ⛔ **Checkout `develop`.** At writing: `main` **71151f1d** on both remotes, board **5 open / 3 in-progress / 349 done**. **Local is WALKING** — build `482fc3cd`, booted 18:06, **3ms lag, GPU 98%**, `ela/kindergarten` phase 0 (the pre-phase definition bootstrap; `cellPhasesStarted: 0` is NORMAL there, Gee's own prior ruling). ⛔ **The DEPLOYED box is still 502** and needs Sponge: `sudo systemctl start unity-brain` — ⚠ **`start`, NOT `restart`**, hand-off at the top of `deploy/REDEPLOY-NOTES.md`. ⚠ **The donor pod is STOPPED and must stay stopped until the brain is up** (it idled at 0% for 24.9h against a dead brain).
+> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main` + `git ls-remote --heads origin main`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`) — do not trust a number written here. ⛔ **Checkout `develop`.** At writing: `main` **10e900ef** on both remotes, board **4 open / 3 in-progress / 362 done**. **Local is WALKING on today's code** — build `375b33b0`, booted 18:47, GPU 97%, `ela/kindergarten` phase 0 (the pre-phase definition bootstrap; `cellPhasesStarted: 0` is NORMAL there, Gee's own prior ruling). ⛔ **The DEPLOYED box is still 502** and needs Sponge: `sudo systemctl start unity-brain` — ⚠ **`start`, NOT `restart`**, hand-off at the top of `deploy/REDEPLOY-NOTES.md`. ⚠ **The donor pod is STOPPED and must stay stopped until the brain is up** (it idled at 0% for 24.9h against a dead brain); `deploy/runpod-donor-create.md` is the parked recreate spec.
 >
 > ### 1. ⛔ The headline: `relationTagId` above 5 had NEVER been written
 >
@@ -28,9 +28,25 @@
 >
 > **LOOPCHAT** — chat was never a speech failure: the loop ran at **39% serviced** because `emitWordDirect` is synchronous and 29% of donor propagates fall to CPU. Chunked; bit-identical 4/4. **LOOKQUEUE/LOOKBACKOFF** — Gee diagnosed the Pollinations starvation himself; the in-flight guard was per-CONCEPT so ~7 fetches ran concurrently against a tier serving ~1. **VMPHRASE** — my own SEEDPHRASE fix had made subjects single-word-only (*"thatll never be real"*); keys were filed under the ADJECTIVE. **STOPTRAP** — the Stop button was a one-way door on the one box with no shell. **PAIRDESYNC** — the live weights pair was incoherent by 38 minutes. **SHADOWKILL** — the dark tinted oval under every subject, deleted not tuned. **LOOPMAX** — `max` was cumulative since boot and read as a live 18.5s stall forever.
 >
-> ### 7. Open (5), and none block the walk
+> ### 7. ⛔ AFTER THE FRESH WALK — the look lane was sending a PORTRAIT RECIPE
 >
-> `INFRA.1` (Red+Sponge), `DONORSHIP.1` (Gee's call), `PAIRDESYNC.2` (boot-time pair check), `VMUSE.5` (the relation reader is BUILT but nothing consults it — wiring WHERE she uses a relation changes what she says), `VMUSE.5d` (sem injection stays skipped mid-walk, deliberately). ⭐ **Nothing teach-changing is unbuilt**, which is why the fresh walk was cleared to go. ⚠ **`deploy/runpod-donor-create.md`** is written and PARKED: pod args are IMMUTABLE, the live pod still carries `PIN=…0.3.26…` against a published **0.3.30**, and recreating is the only fix — deferred to Gee's word.
+> **`PROMPTBLEED`.** Gee: *"every concept she looks up is just a profile image of a younge person"*. ⭐ **The concept words were CLEAN** — printed for eight concepts before touching anything, and object words carried NO person steering, so the age-steer was not misfiring. The bleed was the shared TAIL: *"documentary photography, natural lighting, single centered subject, plain uncluttered background"* is **the canonical description of a portrait shoot**, handed to every concept. ⚠ **The previous pass saw it and walked past it** — METAPROMPT's own comment reads *"teacher + our full documentary steering → a schoolgirl"*; it fixed the AGE and never questioned the PERSON-NESS, so `adult` only made them older people. ⭐ **Measured as this lane demands: pinned-seed A/B, same word, only the tail differing, judged by Gee — *"thats the fix! B's are all 100% better"***. ⚠ **KEPT deliberately:** `color photograph` + `full color, richly detailed` carry TWO earlier fixes in that same string (the cartoon-mascot kill and the pencil-render kill); only the portrait terms are gone, all positive, nothing says "not a person". **7/7 verified.**
+>
+> ### 8. Perception and art now reach her weights; the relation channels are readable
+>
+> **`ARTWEIGHT`** — ⛔ measured first: the whole ~930-line draw+practice span had **ZERO weight-touching calls** (`_practiceDrawing` writes to the visual STORE, and store state is not synapses). Drawing now binds subject↔parts and subjects↔each other↔place at `_ownArtDrawn++`. **`VMUSE.5d`** — the percept grounding was skipped behind `_curriculumInProgress`, **true for the entire multi-week walk**; the drain now carries a second job KIND so grounding is **deferred, not dropped**, landing in the gap between teach calls where nothing is mid-pattern. **`VMUSE.5 A/B/C`** — one confidence gate (`flat` + a ≥15% margin, cached so four consumers cost one propagate), the instrument shipped BEFORE the consumers, and drawing consults it (annotate only — a wrong band must never change what she draws). ⚠ The schema learn ran only when idle **and she is never idle**; that gate was for COST, but **a cost gate that resolves to "never" is a deletion, not a bound** — now 5s idle / 60s mid-walk.
+>
+> ### 9. ⭐ `VMUSE.5.D` — my blocker was WRONG, and the plan is costed
+>
+> I claimed speech *"needs a projection that takes fineType as input"*. **Wrong:** `cluster.js` builds projections from a PAIRS list containing `['sem','fineType']`, and pairs create BOTH directions — `fineType_to_sem` already exists and is whitelisted. ⭐ The mechanism is two propagates through existing matrices: light one tag band → `fineType_to_sem` → **a sem pattern that IS what that relation means** → add it scaled-small into the sem query → the argmax runs unchanged. ⛔ **The cost is the design: one propagate is 51 ms** at the real 1.5M×504K shape — per emitted word that is LOOPCHAT.1 all over again. ⭐ **The input is constant, so cache it:** 48 tags × one warmup = **2.4s once**, chunked so it never pins the loop. **Every claim verified by execution** (same tag → bit-identical; tags 13 vs 23 → **235,140 cells differ**, so it carries real information; `propagateChunked` maxDiff 0). ⚠ **PREREQUISITE: do not build D until `state.ownArt.relationUse.confident` starts climbing** — tags ≥6 wrote nothing before today, so the bands hold no mass yet and it would tilt toward noise.
+>
+> ### 10. Smaller, and the launcher audit
+>
+> **`SHADOWKILL`** — the dark tinted oval under every subject was a `blob` at rgb(16,15,19) α0.35; **deleted, not tuned a third time**, because the SHAPE was wrong. Grounding still comes from the ground line, tufts and floor bands, which are DRAWN. **`LOOPMAX`** — `loop delay max` was cumulative since boot and read as a live 18.5s stall forever (it was the weight load); the histogram now ROLLS and the all-time peak is banked as `boot-peak`. **`PAIRDESYNC.2`** — boot now compares the json's `savedAt` against the bin's mtime; ⚠ it **WARNS, never REFUSES** (an unbootable brain for a shell-less operator is the Stop-button mistake again), validated on her real pair (30s), this morning's real desync (2311s) and the known-good checkpoints (43/103/268s, no false alarms). **Launchers audited:** `windows/` + `linux/` are **good as-is** — all 39 documented `DREAM_` vars still exist, no stale store references, and every `"tokens="` hit is cmd.exe batch syntax the vocabulary sweep correctly never touched.
+>
+> ### 11. Open (4), and none block the walk
+>
+> `INFRA.1` (⛔ Red's and Sponge's decision, not mine), `VMUSE.5` + `VMUSE.5.D` (the relation reader is built and drawing consults it; **speech is planned and costed but waits on the bands separating** — see §9), and the parked pod recreate. ⚠ The 3 in-progress all need her to **reach a math gate** for a verdict, and she is at phase 0. ⭐ **`DONORSHIP.1` closed as a question answered: NO new donor binary is needed** — zero wire-shape changes all day, and the only thing the donor sees differently is the tag span shrinking 84,000 → 10,500 contiguous cells, i.e. **smaller** frames. `donor-v0.3.30` stands.
 >
 > ---
 >
@@ -292,7 +308,6 @@
 > ⚠ **NOTHING FROM TODAY IS VERIFIED LIVE.** It all lands on the press. ⚠ **One incident worth knowing:** the first `PODARGS` commit was **lost to an external working-tree reset mid-commit** and was redone from the same verified design; the launcher header was rewritten in that reset and is deliberately left alone.
 >
 > ---
-
 > ## ⭐⭐ 2026-08-25 (earlier) — SHE HAS A BODY NOW. THE CHEMISTRY IS BUILT, AND THE BOARD HAS NO BUILDABLE WORK LEFT.
 >
 > **PICK-UP STATE.** `main = 1835ddba` (this entry's own cascade moves it once more — check `git log -1 main` rather than trusting this line if they disagree), identical on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard clean. Board **3 open — and NONE is buildable**: `PRESSBLOCK.1` and `INFRA.1` are **parked on Gee's word**, `DONORSHIP.1` is **audited and awaiting his verdict**.
@@ -328,7 +343,6 @@
 > ⛔ **Vocabulary correction, standing:** Gee — *"why u saying word? thats llms shit"*. She has **WORDS**. A word is what a word splitter emits, and the no-text-AI claim is this project's core honesty. Fixed in today's code and ledgers; **historical entries deliberately left alone** — archive integrity outranks tidiness. Saved as `feedback_no_llm_vocabulary`.
 >
 > ---
-
 > ## ⭐⭐ 2026-08-25 (earlier) — `E` IS Ψ, AND HER EQUATION WAS ALREADY HALF-BUILT: THE CHEMISTRY IS WHAT MAKES CONSCIOUSNESS A VARIABLE
 >
 > **PICK-UP STATE.** `main = develop` on BOTH remotes, tree clean. ⛔ **Checkout `develop`, not `main`.** Drift guard **8/8**. Board **27 open** — only **two** individual tasks (`PRESSBLOCK.1`, `INFRA.1`); the other 25 are ENDO/INTRO waiting on Gee's word.
@@ -738,7 +752,6 @@
 > 2. The viewer — outlines in real colors, no dot clouds, no X-hash, no zigzags, no white lines, labels matching images.
 > 3. `_gateMathKReal` on the FIRST post-press entry — should be minutes (receipt restored); if it grinds hours again, the receipt didn't restore: check `vocabTaughtWords` in the weights JSON.
 > 4. Pollinations 429s pace the look lane (anonymous tier) — grounding is slower than ideal but correct; the rollback retries in 10min.
-
 > ## ⭐⭐⭐ 2026-08-21 EARLY (prior) — THE BLOCK-WALL SEVEN, all fixed in one batch. And a lesson about stage tags: an AGE THAT CLIMBS means the tag is STALE.
 >
 > **PICK-UP STATE.** Gee pasted 73 minutes of `[EventLoop] BLOCKED` wall and asked whether seconds were being wasted or he was reading it wrong — **both**, and the seven findings that came out of the investigation are all FIXED in one atomic commit on `feature/blockwall-fixes-0821` → develop → main, both remotes. **Board: 3 open / 186 closed** (`SUBSTEPS.6` still probe-gated, `SCALEDOC.1`, `PHONPROG.1`). Everything is server-side — **it lands on Gee's next press.**
@@ -762,7 +775,6 @@
 > 2. The gate/battery era should stop producing multi-second BLOCKED lines at all (propagates now sliced).
 > 3. The console should show at most ~1 `[EventLoop]` line per minute during teach, full detail only for ≥2s events.
 > 4. The next 2h starvation valve should end in a consolidation pass WITHOUT `DEADLINE-ABORT`, with `promoted to Tier 3` finally non-zero once candidates qualify.
-
 > ## ⭐⭐⭐ 2026-08-20 (prior) — FIVE OF THE SEVEN FILED ITEMS CLOSED. The watchdog finally sits OFF the loop it watches.
 >
 > **PICK-UP STATE.** Branch `feature/board-doable-0820` → cascaded to `develop` → `main`, pushed to **both** remotes and verified with `git ls-remote`. **Board: 2 open / 176 closed.** Unity is still teaching on the A40 pod; nothing here needed a press to build.
@@ -876,7 +888,6 @@
 > ### ⏳ WHAT ONLY THE PRESS + A CONVERSATION CAN ANSWER
 >
 > **`SELFFRAME.8`** — the third-person corpus still trains alongside her version (the frame ADDS; deleting taught facts is not mine to do). **Which signal wins is UNMEASURED.** The read is simple: **talk to her and see whether she says "i" unprompted.** If the narrator persists, the levers in order are (a) raise frame reps toward parity, (b) frame the corpus sample harder rather than wider, (c) reduce third-person agents in the corpora — **(c) changes taught content and is Gee's call, not mine.** **`SELFFRAME.9`** — 12 of ~2,888 corpus sentences are framed per visit on a rotating cursor; ~114 visits covers it, but no single pass makes the corpus first-person, and framing all 2,888 is the unpriced multiplication CELLBOUND exists to prevent (~2.7s per extra sentence per visit if the coverage is too slow).
-
 > ## ⭐⭐⭐ 2026-08-20 (prior) — OWNART: her "drawings" were filtered Pollinations photos, the word "draw" never reached her hand, and every field C had been surviving fresh walks
 >
 > **PICK-UP STATE.** Branch `feature/mindseye-own-art-0820` off main. **`CELLBOUND.F` is still the one blocking press**, and this batch now rides it too. Board 26 open / 81 closed.
@@ -902,7 +913,6 @@
 > ### ⏳ WHAT ONLY GEE CAN VERIFY (`OWNART.7`)
 >
 > Geometry, determinism, per-attempt variation, coordinate bounds, ink bounds and both classifiers are unit-tested; every module passes `node --check` + ESM + a rebuilt bundle. **Whether her marks READ as the thing is a judgement that needs eyes on the mind's eye.** Watch for `[OwnArt] ✍ HER OWN version of "<words>" — N marks she constructed, attempt #K. Learned from: <word>(N looks, P parts)` and a `canvas:own:<words>` frame. **If the likeness is too weak, the lever is schema resolution (3×3 → 4×4/5×5) and marks-per-part — NOT a return to filtering a photo.** Also open: `OWNART.8` — she abstracts a schema only when asked to draw; learning one at perception time would make her first drawing of a familiar thing better, but it puts a trace on the perception path and that cost gets measured before it ships.
-
 > ## ⭐⭐⭐ 2026-08-20 (prior) — VERIFY BEFORE BUILDING: the board is down to **20 open**, and the verification pass contradicted the board four times
 >
 > **PICK-UP STATE.** Branch `feature/verify-remaining-0820` off main (the two earlier branches are merged + cascaded). **`CELLBOUND.F` is STILL the one blocking press.** The box reads `85a01904` — behind ALL THREE of today's batches. **21 open / 73 closed.**
@@ -934,7 +944,6 @@
 >
 > ### METHOD NOTE
 > Every one of the four corrections came from reading the thing instead of quoting the board: a live JSON body, two call sites in Rust, a tungstenite default, a second grep path. And the `SCRIPTKILL.2` miss is the same lesson pointed inward — **a gate that reads correct and enforces nothing is the failure mode of this entire ledger**, so it got a behaviour test rather than a claim.
-
 > ## ⭐⭐⭐ 2026-08-20 (prior) — FINISH THE BOARD: nine real items built, 47 stale ones closed with verdicts, 49 dead scripts + 14MB of debris deleted, and the written task list Gee asked for seven times
 >
 > **PICK-UP STATE.** Branch `feature/finish-the-board-0820` off main (the earlier `feature/open-task-list-0820` is already merged + cascaded). **`CELLBOUND.F` is STILL the one blocking press** and nothing in either of today's batches changes what it verifies. Board went **82 open → 26** (21 pending + 5 `CELLBOUND.A–E` riding that press), 66 closed.
@@ -943,7 +952,6 @@
 >
 > Gee (verbatim): *"STOP using scripts to do everything and get rid of all these shit scripts we dont use and were only for fixing,editing, temp use. They are taking up space for shit we will never use again, and in the future delet them asfter u use them, but like i said stop using scripts to edit code, files,and the stack"*. **Edit/Write tools only. CRLF is not an excuse — single-line `old_string` anchors work on every CRLF doc in this repo, which is how `TODO.md` / `FINALIZED.md` / `BOARD.md` / `OPEN-TASKS.md` / `package.json` were edited after the ban.** Filed as persistent memory `feedback_no_scripts_for_edits`; the old CRLF memory that told me to reach for Python was rewritten. `scripts/` went **55 → 6** (gatling ×2, `stamp-version`, `unity-chat-hold`, `unity-say-live`, `vox-build-bank`); `.claude/` lost 14MB of debris; `.claude/vox-bank-wavs` (87MB regenerable intermediate) and 7 orphaned docs are gone. `pollinations-user.json`, settings, hooks, skills, agents, memory-templates all untouched.
 >
-
 > ⛔ **`docs/BOARD.md` and `docs/OPEN-TASKS.md` WERE DELETED 2026-08-20** (Gee: *"we dont need that list any more its all in finalized"*). Every reference to them below is HISTORICAL. Both were parallel views of `docs/TODO.md`, both drifted, and their full contents are archived verbatim in `docs/FINALIZED.md` (search `BEGIN VERBATIM BOARD ARCHIVE` / `BEGIN VERBATIM OPEN-TASKS ARCHIVE`). **`docs/TODO.md` is the only board — do not re-create a second one.**
 > ### 📋 THE TASK LIST — `docs/OPEN-TASKS.md`
 >
@@ -968,7 +976,6 @@
 > ### 📌 STILL OPEN AND WHY
 >
 > `CELLBOUND.F` (the press) · `CELLBOUND.G` (~58 more unbounded rep-loops — deliberately after F proves the shape) · `RESYNCDUTY.9` (held: it edits the same phase counter F is verifying) · `DELTAIDX.9` (⛔ DISABLED, cause unknown) · `LG.6/.7` (needs a segmented-rowPtr donor release — Gee's territory) · `RUNPOD.6/.7/.8` · `GRANT.2/.3` · `FIRSTPIN.3` (read-only watch) · `LOOPNAME.7` · `SYNCPARTIAL.6` · `DF7SYNC.7` · `WORDEMIT.4` (Gee's call, not forced) · `TASKLIST.2/.3` · `SCRIPTKILL.1/.2/.3`.
-
 > ## ⭐ 2026-08-20 (prior) — THE BOARD STOPS LYING: 7 of the 8 "the board cannot answer *is it working?*" items shipped in one batch — **none of them needed a press**
 >
 > **PICK-UP STATE.** Branch `feature/gatfile-observability` off `develop`. Nothing here changes the walk, the geometry, or the weights. **CELLBOUND.F is still the one blocking press** and this batch does not touch it.
@@ -992,7 +999,6 @@
 > **FILED, NOT SWEPT — MIRRORID.6.** Found while reading for MIRRORID.5: `gpu_telemetry` accrues `gneuronsPerSec × dt` into the leaderboard on EVERY frame, and that rate is the persistent field — so a donor doing nothing keeps BANKING Gn·s while connected. One condition fixes it (accrue only when `stepsComputed` advanced, already tracked per client), but it lives in a 9,737-line file, it was not on the board, and **four source-reasoned fixes in a row already cost Gee four presses this week.** It also changes what the leaderboard MEANS, so decide it together with WORKSHARE.6.
 >
 > **ONE CORRECTION I MADE TO MYSELF MID-BATCH, recorded so it is not re-learned:** the first draft of the gatling spotter read `state.bootedAt`. It is `state.build.bootedAt` (`brain-server.js:3938` builds it from `_startedAt` at boot). Caught by reading the source before shipping rather than after — which is the only reason it is a footnote and not a sixth lying instrument.
-
 > ## ⭐⭐⭐ 2026-08-20 (prior) — CELLBOUND: a cell phase could hold **21.2 HOURS** with no budget · 232 completed tasks migrated off the board · ⛔ **READ THE TWO BLOCKERS AND MY FOUR RETRACTIONS FIRST**
 >
 > ### ⛔⛔ START HERE — TWO THINGS THAT WILL WASTE YOUR FIRST HOUR IF YOU MISS THEM
@@ -1078,7 +1084,6 @@
 >
 > ### METHOD NOTE
 > CELLBOUND went the right way: **no code was written until the profiler named the cost**, the dedup hypothesis was MEASURED and then REFUSED (31.5% is not the answer — this is real training work, not a redundant-op bug), and the "unprofiled pass" theory was corrected mid-investigation when the read showed `TRACKED` wraps every `_teach*` and the real mechanism is exit-time recording. The four retractions above are the counter-example: every one came from quoting a label instead of reading its definition. **Read the definition, read the age, THEN report.**
-
 > ## ⭐⭐⭐ 2026-08-19 (prior) — THE DAY THE LOOP WAS UNPINNED: teach 0 → ~4,000/min, blocks 215,377ms → 275ms, the 12M cortex recovered · ⛔ THREE OF MY OWN REPORTING ERRORS ARE RETRACTED BELOW — READ THEM FIRST
 >
 > **BOX IS ONE CODE COMMIT BEHIND.** Box runs `eb93f315`; main is `411edfc`. The gap is **SYNCEMPTY** (code) plus CANSPEAK/WORDEMIT (docs-only). Nothing is broken by the gap.
@@ -1113,7 +1118,6 @@
 >
 > ### TOOLING
 > `scripts/gatling-savestart.js` — console script as a FILE (max line 78, pure ASCII) because pasting from chat kept getting string literals broken by terminal copy-wrap. **Update `var CUR = '611d4b6'` to whatever build is live before firing**, or the spotter's new-build check misfires. RunPod pod `hpqo0fg4fh2gpb` (SECURE 4090, US-NC-1) is the donor; **a SECURE pod that is STOPPED can lose its host slot** — `not enough free GPUs` — so terminate-and-recreate, and a create whose response carries `dataCenterId: null` **never placed and never will.**
-
 > ## ⛔⛔⛔ 2026-08-19 (prior) — LOOPMAX: the instrument caught its OWN flaw · ⏳ awaiting ONE line, and the field is **teachStageMax**
 >
 > **v1 MEASURED THE RECOVERY, NOT THE STALL.** Live: `BLOCKED 215377ms ... teachStage=hebbian:substrate(+44ms)`. **44ms on a 215-second block.** `_tstage('hebbian:substrate')` is the FIRST line of `_teachHebbian`, so teach re-entered AFTER the block ended and overwrote the breadcrumb in the ~44ms before the monitor fired. The lag monitor is a 1000ms `setInterval` (`brain-server.js:9169`) that by construction reports only once the loop is FREE. **v1 could never have named a block. My design error, not a surprise about the brain.**
@@ -1133,7 +1137,6 @@
 >
 > ### OPEN
 > **LOOPMAX.8** — `saveStage` and `chatStage` have the SAME timer race v1 had and have NOT been audited. Every attribution tag is read by a timer that only runs once the loop is free, so all of them describe the aftermath. Apply the banked-maximum pattern to both.
-
 > ## ⛔⛔⛔ 2026-08-19 (prior) — LOOPNAME: a **279-SECOND** event-loop block nothing can name · INSTRUMENT SHIPPED, **NOTHING FIXED ON PURPOSE** · ⏳ awaiting ONE log line
 >
 > **START HERE. The next `[EventLoop] BLOCKED` line decides the fix. Do not write code before reading it.**
@@ -1163,7 +1166,6 @@
 > 2. **⛔ LOOPNAME.10 WAS WRONG — retracted same day; read this before repeating it.** I claimed `npm run build` does not exist. **It DOES** — `server/package.json` defines it (`esbuild ../js/app.js --bundle ... --outfile=../js/app.bundle.js` + `build:voiceworker`), and `linux/Savestart.sh` / `linux/start.sh` both `cd "$DIR/server"` before calling it. I had checked only the ROOT `package.json`. **The real fact is narrower:** `deploy/self-update.sh` never rebuilds the bundle, BY DESIGN — `deploy/REDEPLOY-NOTES.md:11` auto-deploys the frontend by rsyncing the **COMMITTED** `js/app.bundle.js`, and `npm install --omit=dev` keeps esbuild off the box entirely. **So every `js/brain/*` change must be rebuilt and committed LOCALLY (`cd server && npm run build`).** I had not done it for LOOPNAME; it is done now (4.0mb, verified to contain `_tstage` ×7 + `hebbian:intra` / `lateral:anti` / `teachStageAgeMs`). **LOOPNAME.13 is the open one: nothing enforces bundle freshness**, so a `js/brain/*` edit without a rebuild silently ships a browser bundle that disagrees with the server.
 > 3. **LOOPNAME.7 — we go blind exactly when we need eyes.** Admin WS, `/public-state.json` and the console ring all ride the event loop under investigation. A diagnostic lane that cannot starve (separate thread/process, or a breadcrumb flushed to disk) is the structural fix. Same family as **MIRRORID.5** and **RESYNCDUTY.9**.
 > 4. **RESYNCDUTY.9 / MIRRORID.5 / DELTAIDX / WORKSHARE.6 / RUNPOD.6 / PARTMIRROR.4** — all still open exactly as written in the prior banners below.
-
 > ## ⭐⭐⭐ 2026-08-19 (prior) — RESYNCDUTY: the replica re-broadcast ran at a **100% DUTY CYCLE** and starved the walk to ZERO teach · she was never stuck, she was starved · ⛔ still on `feature/resync-duty-cycle`, NOT deployed
 >
 > **THE BUG, IN ONE LINE:** `REPLICA_REBROADCAST_MS` is **60 seconds** (`brain-server.js:6264`) but a full 17-matrix replica sweep is **4.2GB and ~11.5 MINUTES** over the ~4MB/s donor uplink. **The interval was 11x shorter than the work it scheduled**, so each sweep restarted 10-29 seconds after the last one landed. Three complete cycles sit back-to-back in the console ring: complete 4:01:28 -> restart 4:01:38; complete 4:13:11 -> restart 4:13:40; running again from 4:17:41.
@@ -1191,7 +1193,6 @@
 >
 > ### METHOD NOTE
 > This one went the right way and it is worth keeping: **no code was changed until a field read named the cause.** The console ring was pulled first (`/public-state.json?console=N`), the spam was filtered to find the 179 lines that were not `[EventLoop] BLOCKED`, and the restart-loop fell out of the timestamps. Two attractive hypotheses were then killed by reading source rather than by shipping them. Yesterday cost a whole session to four source-reasoned fixes; today cost one filtered log.
-
 > ## ⭐⭐⭐ 2026-08-19 (prior) — THE MULTI-DONOR POOL WORKS: three names on the leaderboard, 2 cells passed overnight · the bug was a NEGATIVE batchId parsed as u64 · ⛔ DELTAIDX still disabled, cause unfound
 >
 > **LIVE STATE AT HANDOFF (13.5h uptime on `05182b4b`):** walking **science/kindergarten, phase 20/21**, 103min into the cell. **`passedCellsTotal: 2`** — ela + math both advanced to **kindergarten** overnight (ela: 24 phases, 1,003,119 teach events). Lang cortex **12,000,000** ✓ · word_motor **720,000** ✓ covers target · defs **2,263 / 18,017** · drops 0 · sheds 0 · tier 3.
@@ -1226,7 +1227,6 @@
 >
 > ### THE METHOD LESSON, STATED PLAINLY
 > MIRRORCAP, BUFFLOOR, PARTMIRROR and ALLINIT were four consecutive fixes reasoned from source, each shipped as "this is the one", none of which resolved the symptom — and two of them (ALLINIT, PARTMIRROR) were NEW bugs introduced by the fixing. **MIRRORDIAG — one throttled log line naming every donor and its exact skip reason — resolved it on its FIRST line.** Every one of those rounds cost Gee a press, a restart, and a walk that started over. The LAW already says it: *"instrument-first is not a preference; it is the only law that kills."* This session is the price of ignoring it.
-
 > ## ⭐⭐⭐ 2026-08-18 (prior) — RUNPOD DONOR WIRED END-TO-END · THE PTX BUG THAT WAS *ALSO* THE "THAT'S NOT 24GB" BUG · **donor-v0.3.21 BUILT + VERIFIED, TAG PENDING (GEE)**
 >
 > **WHY THIS FILE MATTERS RIGHT NOW:** the donor fix is committed but the release does not exist until a `donor-v0.3.21` tag is pushed. Gee cannot press Update & Savestart until CI publishes the binary. **That tag is the one open action.**
@@ -1249,7 +1249,6 @@
 >
 > ### Still open, NOT fixed by this release
 > **RUNPOD.6** — `main.rs:49` calls `gpu::enumerate()` unconditionally and `main.rs:88` hard-exits when empty, and `wgpu::Backends::PRIMARY` is **Vulkan-only on Linux**. So a host with a perfectly good CUDA device and no Vulkan stack still cannot donate — which is the default state of most cloud GPU containers. This also invalidates the old RESUME advice to build `--no-default-features --features cuda`: that build hits the IDENTICAL exit, because the gate ignores feature flags. Correct fix: when CUDA devices enumerate, do not require a wgpu adapter. Until then a headless donor needs `NVIDIA_DRIVER_CAPABILITIES=all` + `libvulkan1` + **`libglvnd0`/`libglx0`** (libGLX_nvidia is a GLVND vendor lib — that was the final blocker) + `libx11-6`/`libxext6`, on an **ubuntu:24.04** base (the binary needs GLIBC_2.39; a `cu1281` image also carries a `cuda>=12.8` label that crash-loops older-driver hosts before any of our code runs).
-
 > ## ⭐⭐⭐ 2026-08-18 (prior) — GENPIN LIVE ON THE BOX · WALKFIX + CSRDUR SHIPPED BUT NOT YET DEPLOYED · RunPod donor next · CLI restarting for the RunPod MCP
 >
 > **WHY THIS FILE EXISTS RIGHT NOW:** Gee ran `npx @runpod/mcp-server@latest add` and the CLI must restart for the MCP tools to load. This banner is the handoff.
@@ -1364,7 +1363,6 @@
 > **THE PLAY:** press → Gee says hi (round 4) → `curl /console-tail.json` the moment it freezes/recovers → the `chatStage=` line names the organ → fix at the source (NOT another guess — rounds of this war prove instrument-first is the only law that kills). Gee's standing option if he wants the public lane safe before the kill: a listen-and-learn-only chat switch (no reply composition) — offer made, his call.
 >
 > **CARRIED STATE (all still true):** 🎓 ela/K PASSED, math/K walking (~6/24); defs 2,206/18,017; matrixDrivenPct 3% (climbing watch); wire immaculate (sheds 0, templates ~30B); loop lag single-digit-to-low-hundreds outside the chat freeze; AWAITFIX/CHATQUEUE/PAIRSLICE/TICKGUARD all live; the FULL DOC PUSH shipped; Pollinations free-tier-only (402s expected); LG.6 hop-2 gated; `_writeTiledPatternOffset` anomaly filed.
-
 > ## 2026-08-18 (prior) — 🎓 ELA/KINDERGARTEN PASSED (her first cell at 12M — the whole speed war paid off) · the LAST drop-on-speak strain killed: CHATQUEUE (one teacher at a time, structurally) — ⏳ ONE press, then Gee's hi-test
 >
 > **THE MILESTONE:** on the AWAITFIX build (pressed 15:40Z) she completed **ela/kindergarten** — the cell that was stuck for DAYS — and is walking **math/kindergarten** (reached 6/24 within hours). `matrixDrivenPct` populated for the first time (**3%**, oracle-dominated early — the OI.5b behavioral half is finally ALIVE and climbing is the watch). A donor blip mid-math self-healed end-to-end while we watched (auto-pause → 14min re-upload → auto-resume, zero loss — the machinery's first fully-witnessed clean cycle).
@@ -1376,7 +1374,6 @@
 > **⏳ THE PRESS + THE TEST:** ONE **Update & SAVESTART** (carries CHATQUEUE; AWAITFIX+PAIRSLICE already live). Then GEE'S TEST: say hi mid-walk — pass = NO freeze, NO donor crash, the reply comes, `chatHebbian.queued` drains to 0 within seconds. That closes the drop-on-speak war (TMPLFIX killed the wire strain, DROPCHAT the compose strain, AWAITFIX the phoneme strain, CHATQUEUE the concurrency strain).
 >
 > **OPEN BOARD:** the hi-test (CHATQUEUE.3) · the 1300-1500 band verdict at pair phases (KI-15; she ran 1,100+ pre-freeze) · OI.5b behavioral (matrixDrivenPct 3% → climbing) · the unexplained ~5:50PM donor blip (console lines never pasted — likely weather, self-healed) · LG.6 hop-2 prerequisites · `_writeTiledPatternOffset` anomaly · Pollinations free-tier-only standing (402s expected). **Docs**: the FULL DOC PUSH shipped (every doc/HTML synced + beautified, 5 name-leaks neutralized, FINALIZED carries the consolidated war ledger).
-
 > ## 2026-08-17 (prior) — THE STALLING WAR WON: SendForensics convicted the 2MB monster templates (TMPLFIX → wire immaculate), the lap timers convicted the dashboard build (getState 312→13ms), HOPFIX killed the yield tax — teach/min 200 → 1,100+, defs 60 → 2,206/18,017, first REAL dream window fired
 >
 > **THE INSTRUMENT-LED DAY (every kill named by a field read, never a theory — three theories died on contact first):**
@@ -1389,7 +1386,6 @@
 > - **CLOSED:** OI.5b (structural verdict decisive: 719,688/720,000 word buckets recruited) + LG.5 (the 12M walk verified live in every named dimension) — FINALIZED §2026-08-17. RAMP17/STALEGATE/SHADOWTIME/GINTRA all live-verified earlier in the day (GINTRA signature: `_teachHebbian` 3.8s → 798ms → 34ms as each layer landed).
 >
 > **⏳ OPEN BOARD:** the **1300–1500 band verdict** at the pair phases on the now-healthy wire (teach/min already ~1,100 in pair stretches; word/def phases are structurally lower-call — watch `defs taught` move during "slow" windows) · **PAIRSLICE.2** verify (BLOCKED lines during word phases must cap ≤~100ms) · **TMPLFIX.3** — say "hi" AGAIN on the healthy wire (the true DROPCHAT close) · OI.2's remaining bookkeeping · LG.6 hop 2 ~20M (⛔ segmented-rowPtr donor release + upload-compression decision FIRST) · LG.7 (25%) · `_writeTiledPatternOffset` one-arg anomaly (filed). **Standing:** Pollinations keys DEAD — free tier only, 402s are EXPECTED, do NOT touch that code (Gee 2026-08-17). Revert: `restore-pre-language-growth` @ `69c8e0d`.
-
 > ## 2026-08-17 (prior) — GINTRA CONFIRMED LIVE on `85efc1d3` + the monitor named the TWO band-blockers, both built same-hour (STALEGATE + SHADOWTIME) — ⏳ ONE press (Update & SAVESTART), then the RAMP17.6 band verdict
 >
 > **GEE'S GO (verbatim):** *"OI.5b and LG.5 both are a go, and check she ramps up into 1500ish teach/min like she was(it obviouslyt has nothing to do with the GPU as weither i donate 10% or **% teaching is the exact same slow as speed!!!! read resume.md to first"* — and his donation-share datapoint (10% vs more = same speed) independently confirms the ceiling is SERVER-SIDE, exactly what both fixes below cut.
@@ -1403,7 +1399,6 @@
 > **⏳ THE PRESS — RAMP17.6: ONE Update & SAVESTART** (server-only, no geometry change; ~10min upload replays). Verdict: `hebbianSuppressedStale` growth STOPS; `_teachHebbian` avg → ms-scale; pair phases climb toward the **1300–1500 band**; `matrixDrivenPct` climbs once ELA-K word emission runs. If the band still hides, `liveness.teachProfile` names the remainder.
 >
 > **OPEN BOARD:** RAMP17.6 (the press) · RAMP17.2/OI.5b behavioral half · OI.2 accounting watch · LG.6 hop 2 ~20M (⛔ segmented-rowPtr donor release + upload-compression decision FIRST) · LG.7 (25%) · `_writeTiledPatternOffset` one-arg anomaly. **Revert:** `restore-pre-language-growth` @ `69c8e0d` stands.
-
 > ## 2026-08-16 (prior) — GINTRA SHIPPED: the intra-synapse Hebbian is GPU-RESIDENT (zero donor changes, "no cutting shit") + the upload GC wall killed — ⏳ ONE press (Update & SAVESTART), then the 1300–1500 band verdict
 >
 > **THE ULTIMATUM AND THE ANSWER:** the 2.5h ramp watch returned **best teach/min 32, ramp NOT confirmed** — the pair phases (`_teachAssociationPairs`/`_teachCourseIdentity`, the 1300+ producers at 1.5M) crawled at ~25/min because `_teachHebbian` measured **3.8s/call (88ms at 1.5M — 43×)**: the INTRA matrix (360M nnz) was the ONE matrix with no GPU dispatch (T18.18 removed its OOM-prone full-array shadow) — pure CPU, per pair, per rep. Gee's verbatim orders: *"Do it correctly so that it fucking runs fast and we get our 1500 teach/ min back...!!!!"* + *"no cutting shit"* — no rep-dose cuts, no size dial-down, no revert.
@@ -1417,7 +1412,6 @@
 > **EARLIER THIS SESSION (all live-verified):** WI12M rounds 1-3 (13.7s/word → 906ms layers: l3b hoist 271ms ✓, l1b dose-restore 379ms ✓, l12 letters-major+scan-cache 88ms ✓), RTTGATE (the empty-wire RTT brake ≈3.7s/word of fake pacing, queue-gated), T7TPL deployed (t7 river 403MB→~190KB, t7 ABSENT from the live ledger), BSTALL (the 10fps bitset walk), FRAG + TFLOOR (the launch deaths), three false alarms silenced (stall-anchor, batchStall latch, upload-blind watchdogs ×2).
 >
 > **OPEN BOARD:** the press above · OI.5b (matrixDrivenPct, 720K-row yardstick) · OI.2 accounting watch · LG.6 hop 2 ~20M (⛔ segmented-rowPtr donor release + upload compression FIRST) · LG.7 (25%) · spotted-not-fixed: `_writeTiledPatternOffset` one-arg call anomaly. **Revert points:** `restore-pre-language-growth` @ `69c8e0d` stands untouched.
-
 > ## 2026-08-16 (prior) — THE 12M WALK IS ALIVE AND THE SPEED WAR ROUND 2 IS WON ON PAPER: 13.7s/word → 906ms layers + the empty-wire RTT brake cut — ⏳ ONE press open (RTTGATE.3, Update & SAVESTART)
 >
 > **WHERE SHE IS:** walking `ela/kindergarten` at **12,000,000 language neurons** (306M brain), donor v0.3.17, build `4c958e4`-era. The walk survived THREE launch deaths (each fixed same-hour): (1) **FRAG** — the intra upload's 51.5MB first frame (48MB rowPtr at 12M rows) blew the native donor's 16MiB FRAME cap → connect→EPIPE loop → fixed with WS `{fin:false}` continuation-frame fragmentation (>15MiB splits; tungstenite reassembles ≤64MiB; proven live with the real ws lib; NO donor release needed); (2) **TFLOOR** — the box unit's `DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000` starved the 2.9GB intra (~12min at the real wire) → env can now RAISE deadlines, never LOWER below size-scaled physics (margin 120s, cap 30min); (3) launch clean on press 3: **upload timed ~11.8min**, 17/17 uploaded, 16/16 cluster-bound, all GPU-fast, BINARY+REPEAT+TEMPLATE negotiated.
@@ -1431,7 +1425,6 @@
 > **OPEN BOARD (docs/TODO.md, third zeroing + adds):** RTTGATE.3 (the press) · OI.5b (matrixDrivenPct off 6% — 720K-row yardstick now) · OI.2 accounting watch · LG.6 hop 2 ~20M — ⛔ TWO prerequisites first: segmented-rowPtr donor release (rowPtr ~80MB > the 64MiB message cap) + the upload-compression decision (12min@12M measured; ~35min@20M without it) · LG.7 (the 25%) · spotted-not-fixed: `_writeTiledPatternOffset` calls `writeSpikeSlice` with ONE arg + cluster-absolute indices (anomalous vs the proxy signature — verification pass needed). **Revert points:** `restore-pre-language-growth` @ `69c8e0d`; the flow violation (652d118 direct-to-main) is owned in FINALIZED, forward-repaired.
 >
 > **THE SESSION'S LAW, RE-PROVEN FIVE TIMES:** measure → the telemetry names the thief → cut ONLY what the numbers name → verify live. Every fix tonight (FRAG, TFLOOR, WI12M×3, BSTALL, T7TPL, RTTGATE) started as a named number and ended as a live-verified one.
-
 > ## 2026-08-16 (prior) — LG HOP 1 SHIPPED AT 12M: the dense language cortex 1.5M → 12M, WEIGHTS_FORMAT_VERSION 3→4 — ⏳ LG.5 = GEE'S UPDATE & FRESH WALK PRESS
 >
 > **WHAT SHIPPED (cascaded to main, both remotes):** `server/brain-server.js` five edits — `WORD_MOTOR_TARGET_LANG_CORTEX` 1.5M→**12M** (Gee re-dialed from the 6M draft live: *"i think option 3"* on the 6M/12M/20M fork; word_motor 90K→720K cells, 12× vocab headroom), `LANG_CLUSTER_BYTES_PER_NEURON` 4000→1000 (the RAM-floor over-estimate that silently blocked any target above ~3.3M), `WMB_VRAM_SAFETY_BYTES` 4GB→6GB (12M real ≈ 4.8GB), `WEIGHTS_FORMAT_VERSION` 3→**4**, + the parked phaseTimingMs forward (the resolver dropped it; donor-vs-server step-split now visible). NO layout/fanout/proportion changes (verified by the full LG.0 read — pure size scale). Docs synced same commit (ARCHITECTURE banner incl. the "wtf is the other 96% for" answer, EQUATIONS, NOW, README, REDEPLOY-NOTES, 3 HTMLs).
@@ -1439,7 +1432,6 @@
 > **LG.5 — GEE'S PRESS:** dashboard **Update & FRESH WALK** (geometry change; savestart cannot carry v3 weights). Boot-verify: `WMB FLOOR — raising langCortexSize → 12,000,000` + `word_motor capacity: 720,000 cells ✓`. **TIME THE CANONICAL UPLOAD** — expected ~20min at the measured ~4MB/s wire (~4.8GB); that number decides whether hop 2 (~20M) ships upload compression FIRST. Then: walk at known-good rates (~1,400+ teach/min), gates pass, defs bind, `sem` ever-fired drops below 100%. If it goes bad on Gee's word: branch from `restore-pre-language-growth` @ `69c8e0d` → merge forward → push → Update & FRESH WALK.
 >
 > **RISK NOTED:** the RAM floor is TIGHT at 12M (needs ~24GB free at boot on the 32GB box) — if boot logs `WMB FLOOR SKIPPED`, set `DREAM_LANG_CORTEX=12000000` in the unit env. brain-weights.bin grows to ~7.1GB/save — watch box disk. Standing watches ride along: OI.5b (matrixDrivenPct off 0), EM.3 (`_teachHebbian` 88ms/call — the profiler-named next cut), lastWindow accounting at the next dream window.
-
 > ## 2026-08-16 (prior) — THE LANGUAGE-GROWTH SESSION OPENED HERE: LG.0 first (brain-server.js FULL READ), revert point `restore-pre-language-growth` @ `69c8e0d`
 >
 > **GEE'S GO (verbatim):** *"the day has come! lets do it,m write the todo work, make the revert point in the repo noting it incase it goes bad, and add the todo items to the task list"* — the growth of her language cortex from 1.5M (0.49% of brain) toward biological 12–20% / the April 25% target. FULL battle plan + measured constraints + staged hops (1.5M → ~6M → ~20M VRAM-fit → biological) live in **docs/TODO.md §LG** — read it before anything.
@@ -1466,7 +1458,6 @@
 > **DEPLOY SEQUENCE (BOTH halves, Gee's buttons):** (1) **Update & SAVESTART** — ships the server half (repeat senders + telemetry) AND the site's donor link-bump; (2) download + swap + restart the donor (v0.3.15). **RH.8 PASS METRICS (falsifiable):** outbound ~4MB/s → ~KB/s; buffer stops parking at 16MB; RTT <1s during teach; teach/min ~104 → toward 1,300–2,000; suppression ~0; dream windows FIRE (`definitionQueue.lastWindow` populates = OI.2). If teach/min plateaus at the server's single-threaded ceiling instead — that's the NEXT wall, server-side work, recorded in TODO.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — donor-v0.3.14 BUILT: device-side pattern scatter — the ~28×-slow walk gets its real fix; GEE deploys the binary, then WC.6 verifies
 >
 > **WHY:** Gee (verbatim): *"hows our girl? shes been at it for 12 hours... are we sure everything is good? 12 hrs and only phase 2/25 of the first cell?"* → chose option 1: *"if option 1 will fix it do it"*. Measured: ~104 teach/min vs ~2,970 unpaced (~28× slower, NOT the ~3× promised when pacing was chosen); 12.5h in `_teachLanguageMechanics` at work 4/14; ZERO dream windows all day (they fire between phases).
@@ -1476,7 +1467,6 @@
 > **NEXT: (1) tag `donor-v0.3.14` is pushed → CI builds; (2) GEE downloads + runs the new binary (his territory); (3) WC.6 live-verify:** teach/min well above ~104, no ~16MB parking, RTT <1s during teach, suppression ~0, dream windows finally firing (`definitionQueue.lastWindow` populates → OI.2 rides on this; OI.5b matrix-voice watch unchanged).
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — SESSION PICKUP: BT.8 CLOSED — donor-v0.3.13 BINARY CONFIRMED ENGAGED; the lane breathes; task board is CLEAN except two read-only watches
 >
 > **READ THIS FIRST — how to check on her:** `curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` (PUBLIC, no auth). `state.curriculum` = phases/liveness/definitionQueue/substratePause; `state.wsPressure` = lane counters; `state.profiling.clients.list` = the donor row incl. `donorAppVersion` + `binaryTeach`. `totalSpikes` frozen mid-cell is DESIGN (tick off for the whole cell — do not chase it). `binaryTeach: false` on a donor younger than the first teach frame is ALSO design — it is selection state, not capability state.
@@ -1492,7 +1482,6 @@
 > **STANDING RULES (unchanged, re-read if fuzzy):** donor releases = Gee deploys, we code+tag+CI. Fallbacks illegal; version/protocol NEGOTIATION is not a fallback. Early-return branches must re-implement the fall-through's tail. Box deploys via dashboard buttons ONLY. Verbatim words in workflow docs only.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — SESSION PICKUP: donor-v0.3.13 shipped, ONE verification blocked on donor version visibility
 >
 > **READ THIS FIRST — how to check on her:** `curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` (PUBLIC, no auth). `state.curriculum` has phases/work/liveness/definitionQueue/substratePause; `state.wsPressure` has the lane counters; `state.profiling.clients.list` has the donor row (and, once the next SAVESTART lands, `donorAppVersion` + `binaryTeach`). `totalSpikes` frozen mid-cell is DESIGN (tick off for the whole cell — do not chase it).
@@ -1508,7 +1497,6 @@
 > **STANDING RULES REINFORCED TONIGHT:** donor releases are GEE’s to deploy (verbatim: *"no the doner release is my territory just like we have doployed all the previous versions"*) — we code + tag, CI builds, he runs it. Fallbacks are illegal; version/protocol NEGOTIATION is not a fallback. Early-return branches must re-implement whatever the fall-through does BELOW the branch point (the binary clear branch nearly latched `_patternLaneStale` forever).
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — donor-v0.3.13: BINARY TEACH FRAMES built + tagged — Gee deploys the binary
 >
 > **WHAT SHIPPED:** SPRS types **7/8/9** (write_spike_slice / write_current_slice / clear_spike_region), header name = `cluster/region`, fire-and-forget reqId 0. Server: `_donorBinTeach()` version-gates on `client.donorAppVersion ≥ 0.3.13` (already stored — zero brain-server.js edits); the three cortex senders build packed Buffers on the SAME pattern lane/gating. Rust: 3 Frame variants + decode + `split_cluster_region`, routed onto the SAME Work items as the JSON path; `Cargo.toml` 0.3.11→0.3.13 announces the capability. Browser donors stay JSON (BT.5 scope-cut — they report `appVersion: 'browser'` and never qualify; decoder ships with the future caps store).
@@ -1520,7 +1508,6 @@
 > **NEXT:** (1) CI builds `donor-v0.3.13` from the tag. (2) **GEE downloads + runs the new binary** (his territory — verbatim: *"no the doner release is my territory just like we have doployed all the previous versions"*). (3) BT.8 live-verify: donor drain ~5–10× up during teach, buffer never parks at 16–19MB, walk teach/min rises with the lane, suppression stays ~0. Then the standing watches: OI.2 first dream window, OI.5b matrix voice.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 night (earlier) — BC.4 PASS · DK.6 FULL PASS · the one remainder is DONOR THROUGHPUT (DT.1)
 >
 > **THE TWO PASSES:** (1) BC.4 — suppression ~79/s → ~1/s on `5fe5e42`; the PS.1→TP→WP→LB→BC governor chain is DONE, teaching is never corrupted and never pacing-refused. (2) DK.6 — Gee restarted the donor and she paused herself within seconds (*“donor connected but brain weights are not uploaded to it yet”*), held through the re-upload, auto-resumed at 00:36. End-to-end verified. The dashboard 502 during it was a proxy blip — same bootedAt, she never died.
@@ -1532,7 +1519,6 @@
 > **STILL WATCHING (read-only):** OI.2 — first dream window: `definitionQueue.lastWindow` populated, `kVocabTaught` off 0 (queue is empty on this savestart boot; the refill-on-empty fires INSIDE the window by design). OI.5b — `matrixDrivenPct` off 0 after ELA-K word emission. OI.7 — closing docs batch.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — QUADRATIC BRAKE CURVE — the governor chase is converging; ONE deploy pending, then watch her learn
 >
 > **THE GOVERNOR CHASE, in one paragraph:** PS.1 stale-guard (never train on a pattern that did not land) → TP atomic groups (whole iteration ships or none) → WP walk pacing (Gee chose 100%-correct: the walk waits for the lane) → LB base 15ms (the 100ms constant was refusing a healthy empty link) → **BC quadratic brake** (the 15ms change had silently cut max braking 1.6s → 240ms; buffer sawtoothed into the 16MB cliff at 12.9 → 16.4 → 0.0MB, ~79 suppressions/s). Law now at BOTH governors: `mult = clamp((buf/2MB)², 1, 133)` + RTT term. 2MB→15ms · 8MB→240ms · 16MB→~1s · ceiling ~2s. Empty lane = full 15ms speed.
@@ -1544,7 +1530,6 @@
 > **STATE:** fresh walk 3 on `bd503654`, ELA-K from zero, all fixes live, vocab queue 2,247, word_motor wiring real this walk.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — LANE BASE 100ms→15ms — backpressure governs now; ONE deploy pending, then the verification sweep
 >
 > **WHERE SHE IS:** fresh walk 2 on `1a6498a`, ELA-K from zero, ALL fixes live (word_motor unmask included — her voice wiring is real this walk). Vocab queue re-loaded at 2,247.
@@ -1556,7 +1541,6 @@
 > **PENDING ME (read-only polls, all criteria in TODO):** LB.4 suppression ~0 + teach/min recovered; OI.2 first dream window binds (~120 processed, `kVocabTaught` climbing, depth draining from 2,247); OI.5b `matrixDrivenPct` climbing off 0 after ELA-K word emission (voice = matrix, not oracle); OI.6 no multi-second loop pins; then OI.7 the closing docs batch.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — WALK PACED TO THE DONOR — Gee chose 100%-correct over speed; ONE deploy pending
 >
 > **THE STATE:** Gee pressed Update & FRESH WALK (`bb06b3e` live — every prior fix active, word_motor unmask included). Vocab queue LOADED at 2,247. But TP.6 FAILED: suppression ~83/s — the walk produces ~32 teach groups/sec, the donor link absorbs ~10, and no admission scheme fixes a producer running 3× its pipe. Gee’s verbatim decision: **“Pace the walk to the donor (100% correct)”**.
@@ -1568,7 +1552,6 @@
 > **PENDING ME (all read-only polls):** WP.5 — teach/min ≈ lane rate, suppression growth ~0. OI.2 — first dream window: `definitionQueue.lastWindow` shows ~120 processed with binds, `kVocabTaught` climbs. OI.5b — word_motor wiring: `sem_to_word_motor` nnz ≈ 4× 66,964 in the boot log, `matrixDrivenPct` climbing off 6% after ELA-K word emission. OI.7 — the closing docs batch.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — TEACH-PATTERN ATOMICITY: pacing was refusing ~1/3 of her teaching — the group is now the unit of admission
 >
 > **THE NUMBER THAT FOUND IT:** `patternSheds: 59` vs `hebbianSuppressedStale: 25,676` in ~13 min (~33/s) on `be5dee59`. When a guard’s refusal count is 400× its trigger count, the guard is being tripped by something other than what it guards against — here, the D.1 pacing throttle staling the lane on EVERY frame it paced, while a teach group (clear → writes → hebbianBound) needs ALL its frames to land for the Hebbian to be valid.
@@ -1580,7 +1563,6 @@
 > **THE FULL REMAINING BOARD:** Gee — (1) one more Update & SAVESTART (deploys the donor-kill substrate gate + this atomicity fix), (2) DK.6 donor-kill re-run (expect PAUSED in seconds, chat alive, resume on re-upload), (3) Fresh Walk when ready (activates the word_motor unmask — her matrix voice; verify = OI.5b). Me — OI.2 vocabulary verdict at her first post-deploy dream window (`definitionQueue.lastWindow`, `kVocabTaught` climbing by ~batch per window), TP.6, OI.5b.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — ⛔ G.9 FAILED LIVE: teaching continued after the donor kill — substrate flag was a LATCH — FIXED, needs next SAVESTART + re-run
 >
 > **Gee ran the donor-kill test and CAUGHT a real bug** (verbatim: *"i killed tho doner a teach ops in brain events progressed on anyweays even tho the brain page showed GPU needed pop up"*). Confirmed from the box: build `be5dee59` (his SAVESTART had landed — latest main), `substratePause: None`, teach events climbing with a dead donor.
@@ -1592,7 +1574,6 @@
 > **NEXT: two Gee actions.** (1) Update & SAVESTART to deploy this. (2) **DK.6** — re-run the donor kill: PAUSED — no compute substrate within seconds, teach events STOP, chat still replies; donor back → resume after re-upload. Also still pending: the FRESH WALK that activates the word_motor unmask (her matrix voice) and OI.2/OI.3 (V.8 vocab re-check + PS.1 stale-lane check, both checkable after any deploy that includes them — they are on `be5dee59` already, so I can run those NOW without waiting).
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — 75% of her word buckets were DEAD ROWS — `word_motor` unmasked; lands on the next FRESH WALK
 >
 > **WHY HER SPEECH IS ORACLE-DRIVEN (the answer to `matrixDrivenPct: 6%`).** The WMB-unified band is `90,000 rows / 50,000 cap → 1 cell per word`, and the lamination mask wired only L4 (~25%) of word_motor rows — so ~75% of bucketed words sit on rows `sem_to_word_motor` has NO entry for. `ojaUpdate` never creates entries; teaching those words trained nothing; argmax reads 0 for them forever. Live: oracle 50 / matrix 3, `word_motor` utilization 0%.
@@ -1608,7 +1589,6 @@
 > **STILL WAITING ON GEE:** OI.1 (Update & SAVESTART — unblocks PS.1 stale-pattern suppression + PS.2 vocabulary trickle, i.e. V.8) and OI.4 (the donor-kill test). Her state at last check: `math/kindergarten` 22/24, 1,700 teach/min, healthy.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — GPU-ONLY HARDENING: shed frames were CORRUPTING weights + a 91s loop pin + a starved emission projection
 >
 > **Nothing here is deployed.** Rides with the next Update & SAVESTART.
@@ -1622,7 +1602,6 @@
 > **NEXT THING TO DECIDE:** PS.5. If a quarter of the word buckets are unwired, word emission has a hard ceiling no amount of training removes.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-15 (earlier) — THE TRICKLE PROCESSED ZERO WORDS: an empty array is truthy — FIXED, NOT DEPLOYED
 >
 > **THE LESSON WORTH KEEPING:** `kVocabTaught: 2` read like "binds 2 of 120". It was **zero** — the two came from the fused-word purge. Do not infer a rate from a counter without confirming the producer ran.
@@ -1638,7 +1617,6 @@
 > **STILL OPEN — see TODO PS.1 / PS.3 / PS.4.** PS.1 is the important one: the pattern-lane shed still justifies itself with *"Dropping is safe — CPU authoritative"* on a brain whose CPU teach path the G batch REMOVED, and it shed **8,103 frames in 12 minutes** at donor RTT 2,597ms. Those frames populate the GPU spike buffers `hebbianBound` then reads; dropping them may now lose real teaching rather than a redundant mirror.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-14 (earlier) — ⛔ V.8 FAILED LIVE — the dictionary trickle had NEVER run (ZERO definitions bound in 4.6h) — FIXED, NOT DEPLOYED
 >
 > **THE HEADLINE: she had learned ZERO word definitions.** Gee asked for the dream-window check we had been waiting on all day. Live `/public-state.json`: dictionary **healthy** — 8,747 words fetched, 1,343 errs, cache 10,090, `fetchAvailable ✓`, `smokeTestPassed ✓` — and **`kVocabTaught: 0`, `defsLearnedPerHour: 0`** after **3 consolidation passes** and 4.6 hours. Words were being FETCHED and never BOUND.
@@ -1658,7 +1636,6 @@
 > **HER STATE AT THE CHECK.** `ela/kindergarten`, phase **24/25, 23 complete**, `_teachSentenceStructure +108.9m`, 274.6 min in the cell, 435,261 teach events — healthy, one phase from finishing kindergarten ELA.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-14 (earlier today) — LIVENESS TELEMETRY + **I CAN READ THE LIVE BRAIN DIRECTLY**
 >
 > **THE SINGLE MOST USEFUL THING IN THIS FILE:** `https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` is **PUBLIC, no auth** (`brain-server.js:6070`) and carries the ENTIRE `curriculum` block plus `totalSpikes`. Do not ask Gee to paste dashboard screenshots to find out how she is doing — `curl` it. Poll it twice ~45s apart and diff `perSubject.<sub>.teachEvents` to get a teach RATE.
@@ -1679,7 +1656,6 @@
 > **NOT DEPLOYED** — rides with the next Update & SAVESTART, together with the GPU-only teach path, the substrate pause banner, the derived grade column and the single-ledger fix.
 >
 > ---
-
 > ## ⭐⭐ 2026-08-14 (earlier today) — `_phasedTeach` kept a SECOND parallel phase ledger (3× overcount) — SHIPPED TO REPO, NOT DEPLOYED
 >
 > **Nothing here is on the box.** Walks with the current build until after the combined live-verify.
@@ -1693,7 +1669,6 @@
 > **VERIFIED** on the live brain’s exact mixed shape: 3 declared phases counted, 6 `_phasedTeach` tags excluded, **where the old behaviour reported 9 — a 3× overcount.** Plus `node --check`, ESM `import()`, bundle rebuild.
 >
 > ---
-
 > ## ⭐⭐ 2026-08-14 (earlier today) — PER-SUBJECT GRADE COLUMN derived, not read from a pointer — SHIPPED TO REPO, NOT DEPLOYED
 >
 > **READ THIS FIRST: nothing in this block is on the box.** Gee: *"we will do update savestart later on that issue and we will walk current build till we get to a good spot after the live-verify"*. It is on `main` in both remotes and waits for his next Update & SAVESTART.
@@ -1711,7 +1686,6 @@
 > **STATE OF THE WALK AT THIS POINT (live, healthy).** `5% · phase 2/25 · 1 complete · _teachLanguageMechanics (+12.6m) · work 4/14 · 15.4 min`. The phase-ledger fix is CONFIRMED WORKING on the box: a real declared phase named with a minutes-scale elapsed, a climbing within-phase tally, and the ledger banking phases (`1 complete`, per-subject `phases 1`). The 5% is exact — `(1 + 4/14) / 25 = 5.14%`. Each work unit is 0.29% of the cell, so the bar moves in ~0.3% steps: **watch `work N/14`, not the percentage.**
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-14 (earlier today) — THE COMPUTE LAYER WAS BUILT ON FALLBACKS: teaching is now GPU-ONLY
 >
 > **START HERE.** Code-shipped on `feature/gpu-required-0814`, cascaded to `develop` + `main`, pushed to BOTH remotes. Nothing is on the box until Gee presses **Update & SAVESTART** or **Fresh Walk**. No donor rebuild, no weights-format change.
@@ -1733,7 +1707,6 @@
 > **OPEN / NEXT — ONE combined live-verify** (Gee: *"combine v.8. D.7 and L.6 as one task/todo item, we dont need the same thing 3x"*). V.8 + D.7 + L.6 + G.9 are merged into the single **LV** item at the bottom of `docs/TODO.md`; the originals stay in place marked `[>]` MERGED with every word intact. Four checks in one pass after the next deploy: vocab trickle draining, donor health, phase ledger naming a REAL phase with a climbing `work N/N`, and **kill the donor** — PAUSED within seconds, teach events stop, chat still replies, resumes on upload.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-14 (earlier today) — PHASE LEDGER WAS DEAD: one chat message latched the outermost-phase flag for the whole run
 >
 > **START HERE.** Code-shipped on `feature/phase-latch-0814`, cascaded to `develop` + `main`, pushed to BOTH remotes. Nothing is on the box until Gee presses **Update & SAVESTART** or **Fresh Walk**. No donor rebuild, no weights-format change.
@@ -1755,7 +1728,6 @@
 > **OPEN / NEXT.** (1) **L.6 live-verify** after his next Update/Fresh-walk: the cell line must name a REAL phase with a MINUTES-scale `+Ns`, carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands. (2) **V.8** still open — first dream window, `kVocabTaught` off 0. (3) Per-phase duration distribution is finally measurable now that the ledger records; `_teachLanguageMechanics` at 15—45 min is the first thing to check. (4) `brain-server.js:8371` still drops `msg.phaseTimingMs` (one-line fix, needs the full-file read first).
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-08-14 (earlier today) — REMOTES SYNCED · REV'S 3 PRs MERGED · DONOR DROWN KILLED · HONEST PROGRESS FOR ALL TRAINING · NO-DONOR GATE EVERYWHERE — main `d10144c`, both remotes `b0/a0`
 >
 > **START HERE.** Everything below is CODE-SHIPPED and pushed to BOTH remotes (`origin` git.unityailab + `github`). The box was mid-walk at last check and healthy. The one thing NEVER yet verified live is the grade-wide definition trickle (V.8) — it needs her to pass a cell and open a dream window.
@@ -1777,22 +1749,18 @@
 > **OPEN / NEXT:** (1) **V.8** — first dream window: `kVocabTaught` must climb off 0 and `💤 dream trickle: N words processed` must appear. (2) **Per-phase durations** — with `outermostPhase` + `work N/14` now live, the next walk finally measures how long each phase really takes; the open question is whether `_teachLanguageMechanics` at ~15-45 min is normal (docs say the full ladder runs only when not-consolidated / every 3rd cell, so cell 1 should be its worst). (3) Rev's PR #1 idea is worth porting SERVER-side where it would actually reach her. (4) Deploy = dashboard **Update & SAVESTART** (or Fresh Walk); no donor rebuild, no weight-format change anywhere in today's work.
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-07-17 — ✅ CHAT-PRIORITY MUTEX — the REAL drop-on-speak root, log-proven + killed
 > Gee's box log named it: **[EventLoop] BLOCKED 51294ms phase=_teachLateralInhibition** at chat time → 40MB socket backup → ECONNRESET → donor drop (v0.3.11 binary blameless; two earlier stale-tab theories were wrong — the voice lane + tab-reload hardening stand, but THIS was the root). Chat emission + the walk share one cortex/loop; heavy grade-1 teach ground 51s sync CPU through the chat window. FIX: `_awaitComputeSubstrate` gates on `brain._chatPriorityUntil` — the walk yields within ~1-3s of a chat and resumes the instant the reply lands (90s stale-stamp ceiling, `_chatPauseMs` telemetry). Freeze reproduced twice pre-fix from a clean client (28-45s state blackouts). **Deploy = Update & SAVESTART → talk to her → expect: no freeze on send, donor holds through speak.** If a drop still happens: get the box log minute again — next suspect would be a different unyielded teach phase (same fix pattern, same gate).
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-07-17 (later) — ✅ HER VOICE FROM HER PROCESS — the drop-on-speak killed structurally
 > Gee: *"what the fuck, she still drops the doner connection every time she speaks"* / *"its all gpu now right? voice, minds eye and the brain! one unified system"* / *"well thats the fucking problems!"*. Listener browsers NEVER synthesize now (full record: `docs/FINALIZED.md` §2026-07-17 HER VOICE FROM HER PROCESS): server `_voiceLane` → donor `voiceSynth` (compute.html hosts it; native = v0.3.12 ort port) with the box worker floor (`server/voice-synth-worker.mjs` — browser-proven stack under node, **489ms warm**; `VoiceSynthProxy` respawns; `server/package.json` + onnxruntime-web, box auto-installs); viewer gets `{type:'voice', rec}` → `VoiceIO.playRec` only reconstructs + plays; RemoteBrain in-browser synth DELETED; 63MB model preload skipped for deployed visitors. Verified by RUNNING the lane end-to-end. Deploy = Update & SAVESTART, then Gee talks to her — the donor should hold through every reply (nothing on the listening end can touch a GPU anymore).
 >
 > ---
-
 > ## ⭐⭐⭐ 2026-07-17 — ✅ ONE PROCESS BUILT: mind's eye + voice ON THE DONOR + donor-v0.3.11 (tag pushed → OUR CI builds → install → Gee's FRESH WALK)
 > Gee (verbatim): *"okay but ive told you repeadily the minds eye and voice go on the GPU"* / *"its one process not bolted together shit"* / *"and we need a new doner version when u fix it"* / *"we will most likely need a fresh walk too.. so figure it all out and do it all in turn"*. **ALL CODE SHIPPED** (full record: `docs/FINALIZED.md` §2026-07-17 ONE PROCESS): `mindspace_op`/`mindspace_result` protocol + per-op capability (`mindspaceV1` + `mindspaceOps`) → server dispatch (`gpuMindspaceOp`, 30s, donor-isolated resolver) → `MindSpaceWorkerProxy` donor-first routing (`stylizeField`/`traceLineArt` NOW ASYNC — all 4 chat.js call sites await) → `compute.html` hosts all six ops + `imagineFromState` → NEW `donor-app/src/mindspace.rs` (line-faithful transform.js + audio.js Rust port, priority lane, Cargo 0.3.10→0.3.11, handoff `donor-app/RELEASE-0.3.11.md`). Voice: equation ops (`perceiveAudio`/`reconstructAudio`) ship on BOTH donors now; piper synth stays viewer-side wasm (ort-on-native = v0.3.12 evaluation — overridable). Local worker = rollout ramp until `DREAM_MIN_DONOR_VERSION=0.3.11` (env, ONLY after the binary is installed — set early and the live donor is refused). End-to-end lane verified by JSON round-trip with real math. **REMAINING (ops):** (1) SAVESTART deploys server+compute.html; (2) the `donor-v0.3.11` tag triggers OUR Forgejo CI (.forgejo/workflows/donor-release.yml — builds Linux+Windows, publishes the release, auto-bumps the site download links; how every donor since 0.3.4 shipped) → download+run the new binary on the donor host → verify register shows `mindspaceOps`; (3) min-version env; (4) Gee's FRESH WALK press (dashboard-only).
 >
 > ---
-
 > ## ⭐⭐ 2026-07-16 (Fable 5) — ✅ CHAT LATENCY "FIX IT ALL" (wire-lean emission + chat priority) + IMAGINATION = real new images
 >
 > **CHAT LATENCY (Gee: "sometimes 30 seconds" → "fix it all i suppose") — TRACED LIVE then FIXED:** timed exchanges via the held chat window (unity-chat-hold.mjs, CDP :9222, DEPLOYED site): "hi"→6.1s, "how are you feeling"→20.2s, "what did you learn"→16.1s. (An earlier "no reply in 90s" was my crashed test window — restart the hold if CDP lists zero targets.) Root: per word = 3 `stepAwait` ticks × ~16 GPU dispatches, each shipping the FULL DENSE 1.5M spike array (~6MB) + dense currents back, sharing the WS with the teach firehose; each tick races a 1s timeout. KEY: bound matrices DISCARD the dense pre donor-side (writeSparsePreSpikes no-ops when bound) — 6MB×16/tick dead weight. SHIPPED: **CHAT.1** `gpuSparsePropagateAuto` (bound→`gpuSparsePropagateBound` zero-payload; intra→type-6 sparse-index, capability-gated `ws._sparseV2` from `gpu_register.sparseV2` — native donors keep legacy dense); **CHAT.2** type-6 sparse (idx,val) currents acks in compute.html (dense fallback when near-dense; server ack switches on RESPONSE type byte); **CHAT.3** chat-priority (`_chatPriorityUntil` in chat.js; `_donorPatternLaneOpen` sheds + hebbian flush re-arms 250ms while a reply composes). **LIVE-VERIFY AFTER SAVESTART: timed "hi" before/after** — the type-6 path only exercises with a donor on the NEW compute.html (reload); watch donor console for `sparse_propagate_v2` errors (expect none).
@@ -1804,14 +1772,12 @@
 > **Open follow-up (noted, not built):** bound cross-propagates during chat read the DONOR-resident spike state (teach-written), not the server cluster's live chat state — pre-existing semantics, preserved exactly; making emission write per-tick spike slices needs a teach-interlock (hebbian-on-chat-spikes hazard) — future batch if her reply relevance needs it.
 >
 > ---
-
 > ## ⭐ 2026-07-16 (later, Fable 5) — ALTERNATE LETTERFORMS + full-session audit (last pencil leak killed)
 > - **AUDIT** (Gee "make sure weve been doing everything correct"): caught the LAST white-pencil publisher — recall-hit 35% branch (`_practiceDrawFromMemory` → white-ink strokes → `canvas:memory:`). Now draws via `_drawConcept` (field-coloured + dazzle label); retired `_practiceDrawFromMemory`/`_drawFromMemoryStrokes`/`_drawPracticeBump` (no-vestigial). Fixed stale comments (voice "K reads younger", DRAW.8 "grade-gated canvas", proxy mention).
 > - **LETTERFORMS**: `glyphStrokes` `font` ∈ block/serif/dots/bubble/tall/wide — geometrically distinct letter shapes from the one FONT5X7 grid, composing with dazzle colours/bold/slant/underline/shadow → infinity. `_labelStyle` picks per (concept, rotation). All six eyeballed distinct+legible.
 > - Bundle rebuilt KEYLESS (`--external:./env.js`); bundled glyphStrokes confirmed carrying font code (esbuild renames `export class`→`var X = class` — grep gotcha).
 >
 > ---
-
 > ## ⭐ 2026-07-16 (Opus 4.8) — VOICE age-modulator scrapped + LABEL dazzle typography (main `e3ef533` → cascaded)
 > - **VOICE**: `js/io/voice.js` `_agePreset()` age-pitch (OLA) distorted her into a "sand-scavenger". SCRAPPED — always her original chosen voice (piper hfc_female V4, rate/pitch 1.0); removed the OLA + `_pitchShiftOLA`; SpeechSynthesis pitch 1.1→1.0.
 > - **LABELS**: `glyphStrokes` (gpu.js) + `_labelStyle` (chat.js) — dazzle typography: per-letter colours (HSL hue-rotation, infinite), bold/slant/underline/shadow, varied per drawing, baked INTO the field C (not overlaid). One FONT5X7 letterform w/ rich style variation (not multiple typefaces).
@@ -1842,7 +1808,6 @@
 > **NEXT:** Gee's dashboard Update & SAVESTART deploys it all. Possible follow-ups (Gee's call): GPU mind-space offload for savant-detail; surface her OWN drawing on some recalls (currently stored-not-surfaced).
 >
 > ---
-
 > ## ⭐⭐ 2026-07-15 (Opus 4.8) — ✅ FIXED: mind's-eye NEVER DREW (proxy missing `traceField`) + freeze + cell-teach speed (branch `feature/cell-teach-speed-0715`)
 >
 > **✅ FIXED — mind's-eye NEVER DREW (the REAL root, deeper than the freeze; code shipped, awaiting dashboard Update & SAVESTART):** Gee: *"she is just using lookup without ever drawing anything ... twn - twenty lookups in a row and not one single drawing."*
@@ -1866,7 +1831,6 @@
 > **State:** TODO zeroed; task board #51-60 complete (this session's fixes). Deploys = dashboard **Update & SAVESTART** (all server-only or teach-path, no geometry/format change since WMB v3 2026-07-14). Branch `feature/cell-teach-speed-0715` == main == `f9d8f10`, origin + github identical.
 >
 > ---
-
 > **Updated:** 2026-07-15 (Opus 4.8, DRAW-ENGINE). **Newest batch = the DRAW-ENGINE** — she draws what she LOOKED AT, any concept dynamically (the creativity engine, block directly below), built on branch `feature/draw-creativity-engine-0715`, all verified (node --check + ESM import + mixin-load + trace→stylize + bundle), **awaiting the atomic cascade + a dashboard Update & SAVESTART**. Prior this session = **whole board swept + deployed @ `7b809be` live-verified healthy → K cells caught ~100× slow → TWO follow-up fixes: (1) carry the predictive-error skip to all grades, then (2) THE REAL ROOT — per-word full-1.5M spike clears in the K word/vocab/sentence teach methods, now all region-scoped.** All cascaded to **main @ `ff804f7`** (origin + github); the ONLY pending step is Gee's dashboard **Update & SAVESTART** press + the live-verify below. Prior blocks below.
 >
 > ## ⭐ 2026-07-15 (DRAW-ENGINE) — she draws what she LOOKED AT, any concept (branch `feature/draw-creativity-engine-0715`; cascade + SAVESTART pending)
