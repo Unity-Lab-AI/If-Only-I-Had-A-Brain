@@ -1882,14 +1882,14 @@ const SERVER_CHAT_MIXIN = {
     // being exhausted.
     //
     // ⚠ Structural test, NOT a word list: a concept key in this system is a
-    // single token — every store key, every definition lookup, every taxonomy
+    // single WORD — every store key, every definition lookup, every taxonomy
     // judgement is one word. Whitespace or sentence punctuation means the seed
     // is a phrase, and a phrase is not a thing she can look at. Acquisition and
     // recall below still give her a subject, so a phrase-shaped thought costs
     // her nothing but this rank.
-    const _isConceptToken = (w) => !!w && w.length <= 40 && !/[\s,;:.!?"'()]/.test(w);
-    if (_word && !_isConceptToken(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
-    if (_word && _isConceptToken(_word)
+    const _isSingleWord = (w) => !!w && w.length <= 40 && !/[\s,;:.!?"'()]/.test(w);
+    if (_word && !_isSingleWord(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
+    if (_word && _isSingleWord(_word)
         && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
       st.fromThought++;
       return { word: _word, lookup: true, why: 'thought' };
@@ -4096,7 +4096,7 @@ const SERVER_CHAT_MIXIN = {
         // (rather than an exposure word) strands articles as well as connectors
         // — "in a leather skirt" was left as "in a" — so the trailing run of
         // connectors, wear-verbs, articles and prepositions is dropped as a
-        // chain, not one token.
+        // chain, not one word.
         scene = scene
           // a wear-verb orphaned by the strip and now sitting in front of a
           // place/preposition ("wearing fishnets at the mall" → "wearing at the
