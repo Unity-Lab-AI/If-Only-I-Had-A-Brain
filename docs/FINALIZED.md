@@ -37999,3 +37999,58 @@ Caught by reading the control flow for exactly this before running anything. Cla
 
 - ⚠ **I shipped the 429 backoff first and called it the fix.** It was a real improvement and it was treating the symptom: I never asked why we were being refused at that rate, and the answer — unbounded concurrency — was two lines above the code I had just edited. **Gee found it by reasoning about the service's behaviour while I was reading counters.**
 - ⚠ **NOT VERIFIED LIVE.** Server-side; needs a restart. The row is frontend and lands on refresh.
+
+---
+
+## 2026-08-26 - VMPHRASE: one-word concepts will never be real - feature/vm-phrase-subjects
+
+### Gee ask (verbatim per LAW #0)
+
+> *"Seems like this is dumbing her down as big red apple table is totally differetn that the original "a big red apple on a table" the visual memory should be shortening the memory should it becasue the original is turn not the content words only: seems like that could poison her brain at times not getting or not using the fulkll information"*
+
+> *"im seeing this in her brains mind eye too "she is only using one word concepts" so thatll never be real! also make all these fixes i wave been speaking of"*
+
+### What was true, and what was not
+
+⭐ **The memory itself was never shortened**, and that part is worth stating plainly: the visual memory is the **field C** — the full wavelet reconstruction, ~41k equation terms across three colour channels. The words are the label on the folder. Recall already tried EVERY content word (`for (const t of words) store.get(t)`), and ingest already filed under the first three. So it was never lossy compression of the picture.
+
+⛔ **But three things were genuinely wrong, and Gee named all three.**
+
+### VMPHRASE.1 — my own fix had made subjects single-word-only
+
+Earlier the same day I added `_isSingleWord` to stop a leaked generator prompt being spent as a Pollinations request. It worked, and it was far too blunt: **it made `red apple` and `old wooden church` impossible.**
+
+⭐ The real distinction is **phrase vs prompt**, not one-word vs everything. A subject is short and natural; a prompt is comma-separated and style-laden. Commas plus a 48-char cap plus an 8-word bound separate them — ⚠ **without naming a single style word**, per the no-word-list law. 8 is deliberate: it admits *"a big red apple on the table"* (7), a real subject **with its relation in it**.
+
+### VMPHRASE.2 — the store filed memories under an ADJECTIVE
+
+Proven by running it: `_vmContentWords("a big red apple on the table")[0]` → **`"big"`**; `"the old wooden church"` → **`"old"`**. Two sites used `[0]` as the sole key — `_learnShapeSchema` (her learned SHAPE) and `_fetchReferenceAndGround` (the looked-up reference).
+
+⛔ **So her shape-memory of an apple was filed under *big*** — colliding with every big thing she ever sees, while asking for *apple* found nothing. English noun phrases are head-final, so `[0]` is close to the worst available pick.
+
+`_vmHeadWord()` replaces it. ⭐ It walks the **original** text rather than the stripped list, because the phrase boundary lives in the glue: once a concrete noun has been seen, the next glue word closes the phrase — which is exactly what stops *"apple on the table"* drifting onto *table*. Concreteness comes from `drawableVerdict`, the live WordNet judgement the draw lane already uses.
+
+### VMPHRASE.3 — the relation was dropped, which was Gee's actual point
+
+*"on the table"* was captured nowhere. `apple` and `table` were filed as independent keys with **no link between them**, so she could not learn *"the apple was ON the table"* from the label.
+
+⭐ The stopword strip has a sound stated reason — *"binding a field C to 'the'/'of' would make every future thought recall random imagery through stopword collisions"* — and that reasoning is correct **for keys**. But nothing else preserved the sentence. ⚠ **This was omission, not poisoning**, and the fix keeps both properties: the keys stay stopword-free, and the **whole phrase now rides the entry** (`phrase`, capped 160 chars) across all five store writes. Nothing is discarded.
+
+### VMPHRASE.4 — drawability had to move to the head too
+
+⚠ Caught while wiring it: the taxonomy answers about a **lemma**, and `red apple` is not one. Asking it about the whole phrase returns `unknown`, which would have refused every multi-word subject and **rebuilt the one-word limit by the back door**. `_drawable` now probes the head — *red apple* is drawable because APPLE is.
+
+### Verified by execution, on the production mixin
+
+| check | result |
+|---|---|
+| head-word picker | **8/8** — apple / church / cat / apple / dog / fox, incl. both operator examples |
+| phrase vs prompt | **11/11** — six real subjects accepted, the leaked prompt + ramble + `end.` refused |
+| end-to-end pick | phrase accepted as a `thought` subject, judged drawable **by its head** |
+| prompt rejection | still refused, counted in `seedNotConcept` |
+
+### Owned
+
+- ⛔ **VMPHRASE.1 is a fix to my own fix from hours earlier.** I solved a prompt leak by banning phrases, which is the kind of over-correction that trades one defect for a worse one — and Gee, not I, spotted that the result could never be real.
+- ⚠ **Not verified live** — server-side, needs a restart.
+- ⚠ **The relation is PRESERVED, not yet USED.** `phrase` is now stored; nothing reads it into her weights. Teaching her the relation *"the apple was ON the table"* is a curriculum change and remains Gee's call, not an assumption to build on.
