@@ -687,6 +687,16 @@ const SERVER_STATE_MIXIN = {
             // tag present in writes and absent from reads is the six-band bug's
             // exact signature, and it went undetected because neither half was
             // published. `refused` counts tags rejected for not fitting.
+            // RELSEP.1 — THE TREND, not just the verdict. `confident: 0` is
+            // true for a walk that will never separate AND for one about to,
+            // and `VMUSE.5.D` is gated on exactly that difference. `progress`
+            // is the best ratio seen as a fraction of the gate, so one
+            // snapshot answers "is it getting closer?".
+            bestMarginRatio: this.curriculum._relUse.bestMarginRatio || 0,
+            bestMarginWord: this.curriculum._relUse.bestMarginWord || null,
+            lastMarginRatio: this.curriculum._relUse.lastMarginRatio || 0,
+            marginProgress: this.curriculum._relUse.marginProgress || 0,
+            marginGate: this.curriculum._relUse.marginGate || 0,
             tagWrites: (this.curriculum._relTagWrites | 0),
             tagWritesByTag: this.curriculum._relTagWritesByTag || {},
             tagWritesRefused: (this.curriculum._relTagRefused | 0),
