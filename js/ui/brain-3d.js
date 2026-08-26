@@ -1339,7 +1339,17 @@ export class Brain3D {
 .b3d-lbl{position:absolute;font-size:11px;letter-spacing:1.5px;font-weight:800;white-space:nowrap;transform:translate(-50%,-50%);opacity:1;padding:3px 9px;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.25);border-radius:4px;text-shadow:0 0 6px rgba(0,0,0,1),0 0 12px currentColor;box-shadow:0 0 20px rgba(0,0,0,.6);transition:opacity .3s}
 .b3d-foot{position:absolute;bottom:8px;left:12px;right:12px;display:flex;justify-content:space-between;font-size:9px;color:#444;pointer-events:none;z-index:1}
 .b3d-notif-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
-.b3d-notif{position:absolute;font-family:inherit;pointer-events:none;padding:8px 14px;background:linear-gradient(135deg,rgba(14,14,16,.94),rgba(24,14,28,.94));border-radius:8px;border:1px solid currentColor;border-left:3px solid currentColor;backdrop-filter:blur(6px);max-width:320px;box-shadow:0 0 24px rgba(0,0,0,.85),0 0 40px currentColor,inset 0 0 12px rgba(0,0,0,.4);transform:translate(-50%,-100%);animation:b3d-notif-in .45s cubic-bezier(.2,1.4,.3,1)}
+/* Solid bubble. The fill was .94 alpha over a blur, so two overlapping
+   popups showed each other's text through the glass and read as one
+   garbled block. Fully opaque + a rounded bubble radius gives each one a
+   real boundary; the separation pass in _updateNotifications keeps them
+   from touching in the first place.
+   NO transition on top/left. Both are rewritten every frame by the 3D
+   projection (the bubble floats slowly upward as it ages), so a
+   transition would never reach its target and the bubble would trail
+   behind its own cluster. Separation snaps instead, which is invisible
+   at one new popup per ~5s. */
+.b3d-notif{position:absolute;font-family:inherit;pointer-events:none;padding:9px 15px;background:#111014;background-image:linear-gradient(135deg,#141317,#1d1420);border-radius:14px;border:1px solid currentColor;border-left:3px solid currentColor;max-width:320px;box-shadow:0 0 0 1px rgba(0,0,0,.9),0 6px 22px rgba(0,0,0,.95),0 0 34px currentColor;transform:translate(-50%,-100%);will-change:top,left,opacity;animation:b3d-notif-in .45s cubic-bezier(.2,1.4,.3,1)}
 .b3d-notif-label{font-size:10px;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;text-shadow:0 0 8px currentColor,0 0 2px rgba(0,0,0,1);white-space:nowrap;opacity:.95}
 .b3d-notif-readout{font-size:10px;color:#a0a0b0;margin-top:3px;line-height:1.4;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;text-shadow:0 1px 2px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b3d-notif-comment{font-size:13px;font-style:italic;color:#f5d7e6;margin-top:5px;line-height:1.35;text-shadow:0 1px 2px rgba(0,0,0,.9);font-family:'Georgia','JetBrains Mono',serif;letter-spacing:.2px;word-wrap:break-word;white-space:normal}
@@ -2817,6 +2827,10 @@ export class Brain3D {
   }
 
   _updateNotifications(mvp, canvas) {
+    // Pass 1 — age, project, fade, reap. Screen position is STORED, not
+    // applied: two popups whose clusters project near each other would land
+    // on top of one another, and that can only be resolved once every
+    // position for this frame is known.
     for (let i = this._notifications.length - 1; i >= 0; i--) {
       const n = this._notifications[i];
       n.age++;
@@ -2824,10 +2838,9 @@ export class Brain3D {
       // Project 3D cluster center to screen — notification appears AT the cluster
       const floatOffset = n.age * 0.003; // slow float upward
       const screen = this._project3Dto2D(n.x, n.y + 0.3 + floatOffset, n.z, mvp, canvas);
-      if (screen) {
-        n.el.style.left = screen.x + 'px';
-        n.el.style.top = screen.y + 'px';
-      }
+      n.sx = screen ? screen.x : n.sx;
+      n.sy = screen ? screen.y : n.sy;
+      n.visible = !!screen || Number.isFinite(n.sx);
 
       // Fade: quick appear, hold, then fade out in last 30%
       const life = n.age / n.maxAge;
@@ -2840,6 +2853,86 @@ export class Brain3D {
         this._notifications.splice(i, 1);
       }
     }
+
+    this._separateNotifications(canvas);
+  }
+
+  /**
+   * Keep the popups from ever sitting on top of each other.
+   *
+   * Requested behaviour: solid bubbles that push apart, with the MOST RECENT
+   * one lowest and older ones bubbling upward off it.
+   *
+   * `_notifications` is push-ordered, so the last entry is the newest. That
+   * one keeps the position its cluster actually projects to — it is the one
+   * the eye should go to, and moving it would break the link between a popup
+   * and the cluster that produced it. Every older bubble is then lifted only
+   * as far as it must be to clear the one below, and only when they genuinely
+   * overlap horizontally: two popups on opposite sides of the brain are not
+   * colliding and must not be stacked as if they were.
+   *
+   * ⚠ Each element is `translate(-50%,-100%)`, so `top` is its BOTTOM edge and
+   * it grows upward. That is why clearing means moving to `bottomOfNeighbour −
+   * height − gap`, and why the viewport clamp is applied to the top edge.
+   */
+  _separateNotifications(canvas) {
+    const list = this._notifications;
+    if (list.length < 2) {
+      // Single bubble — nothing to resolve, just place it.
+      for (const n of list) this._placeNotification(n);
+      return;
+    }
+
+    const GAP = 10;             // breathing room between bubbles, px
+    const EDGE = 8;             // keep a bubble off the very top edge
+    const viewH = (canvas && canvas.clientHeight) || 0;
+
+    // Newest first — it anchors, everything older gets pushed off it.
+    const ordered = list.slice().reverse();
+    const placed = [];
+
+    for (const n of ordered) {
+      // Measure lazily and cache: offsetHeight forces layout, and with a cap
+      // of 3 bubbles doing it once each is free — doing it every frame for
+      // every bubble would not be.
+      if (!n.h || !n.w) {
+        n.h = n.el.offsetHeight || 0;
+        n.w = n.el.offsetWidth || 0;
+      }
+      let y = n.sy;
+
+      // Lift above any already-placed bubble it would overlap. Repeated
+      // because clearing one can push it into another.
+      for (let pass = 0; pass < placed.length + 1; pass++) {
+        let moved = false;
+        for (const p of placed) {
+          const hOverlap = Math.abs(n.sx - p.sx) < ((n.w + p.w) / 2);
+          if (!hOverlap) continue;
+          const nTop = y - n.h, nBot = y;
+          const pTop = p.y - p.h, pBot = p.y;
+          if (nBot > pTop && nTop < pBot) {
+            y = pTop - GAP;     // sit fully above it
+            moved = true;
+          }
+        }
+        if (!moved) break;
+      }
+
+      // Never let a lifted bubble escape off the top of the view.
+      if (viewH && (y - n.h) < EDGE) y = EDGE + n.h;
+
+      n.ty = y;
+      placed.push({ sx: n.sx, y, h: n.h, w: n.w });
+      this._placeNotification(n);
+    }
+  }
+
+  _placeNotification(n) {
+    if (!Number.isFinite(n.sx)) return;
+    const y = Number.isFinite(n.ty) ? n.ty : n.sy;
+    if (!Number.isFinite(y)) return;
+    n.el.style.left = n.sx + 'px';
+    n.el.style.top = y + 'px';
   }
 
   _project3Dto2D(x, y, z, mvp, canvas) {
