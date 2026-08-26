@@ -37734,3 +37734,68 @@ Sentinel replaced with a readable, greppable literal: `'__eye_no_thought__'`. Th
 
 - ⛔ **I introduced it, it reached `main` on two remotes, and every gate I run passed it.** Syntax checks, ESM link checks, and a 14-case behavioural harness are all blind to a control character inside a working string literal.
 - ⚠ **I did not find it by auditing my own change.** I found it because an unrelated `grep` printed `Binary file ... matches` while I was chasing a different question. **Had that line not appeared, the file would have stayed silently unsearchable indefinitely** — and I would have kept using `grep` on it and trusting the empty results.
+
+---
+
+## 2026-08-26 - LOOPCHAT: the silence was a scheduling failure wearing a speech failure's costume - feature/loopstarve-chat
+
+### Gee ask (verbatim per LAW #0)
+
+> *"is it normal that cortex coherance in the pop up of the brain only shows: coh = .90 y- 0.000 a=0.000 --- and myster psi pop up shows mystery 0%. and she is not talking when i chat to her"*
+
+> *"yeah fix it all write it to todo and then fix it"*
+
+### ⛔ LOOPCHAT.1 — she was not failing to speak. She was failing to be *scheduled*.
+
+⚠ **I chased the wrong thing first and it is worth recording why.** The obvious suspect was emission: `emitRejection: below-signal-floor` with `bestMean 0.013769` against `floor 0.014157` — she missed by **1.4 percentage points**, and `floor = ema × 0.5` exactly. It looked like a self-defeating adaptive gate. **It was not.** The EMA updates *past* the floor check, so a climbing `sampleCount` (108 → 132 → 151) proves acceptances: **151 accepted content emissions, `matrixDrivenPct: 100`**, and `curiosity.lastAsk` held six real words from three minutes earlier. **Emission was healthy the entire time.**
+
+The console ring (**636s** span) named the real defect 87 times:
+
+```
+[EventLoop] ⛔ STARVED — the loop was late 38.1s out of the last 62s (39% serviced)
+[EventLoop] BLOCKED 2821ms — /ws handshakes + donor frames stalled this long.
+            context: phase=_gateSocKReal cell=social/kindergarten donors=1
+[SendForensics] LARGE non-upload send to PRIMARY donor: 3.0MB kind=sprs-t2
+```
+
+⭐ **Chat is a WebSocket lane, and the warning names its own casualty.** At 39% serviced, in 2.5–2.9s slabs, a chat message cannot land and the reply pass cannot run.
+
+**Cause:** `emitWordDirect` is **synchronous**, so its `proj.propagate(preSem)` — sem(1.5M) → word_motor(720K) — cannot yield. It is reached whenever the donor cannot answer, and `boundPropagate` read **`native 5489 / emptyMirror 2246` — 29% refusing to CPU**, `lastEmptyName: cortex_word_motor_to_sem`. A K gate speaks 14 production probes plus sentence generation, so that is dozens of unyielding propagates per gate pass. ⭐ A dense 720K-float readout is **2.88MB**, which is what the `3.0MB sprs-t2` frames are (`sprs-t2` = SPRS wire type 2, dense).
+
+**Fix — no new mechanism, no signature change.** `emitWordDirectDonor` is already `async` and already accepts a pre-computed readout via `wmOutOverride` (built for the donor lane, and exactly the right shape for a chunked CPU one). The shadow propagate now happens there, chunked. ⭐ `_buildSemPreVector()` added as the **single owner** of the sem pre-vector: both paths must propagate identical numbers, and a hand-copied second copy of that loop is how two callers silently diverge while every test still passes.
+
+⚠ **NO GATE WEAKENED — nothing to RE-PRICE, and it is proved rather than asserted.** `propagateChunked` is the same arithmetic split across row ranges: **4/4 harness cases, up to 3.6M nnz and 104,639 non-zero outputs, worst `maxDiff = 0`.** It changes WHEN the loop breathes, never WHAT she computes — WORDNORM, repetition penalty, GW boost, function-word floor, capacity break and the grade gate all read the same values.
+
+⚠ The bare synchronous call is **deliberately kept** as the last resort. A matrix without `propagateChunked`, an absent `lastSpikes`, or a throw must still produce her word; refusing to speak because an optimisation was unavailable would be the fallback pattern this repo bans.
+
+### ⛔ LOOPCHAT.2 — a crashed reply was quieter than a chosen silence
+
+`brain-server.js` sends the reply `if (result.text)`, with an `else if (result.silent)` forwarding a reason to the client. `chat.js`'s `catch` around `languageCortex.generate` returned bare `{ text: '', action: 'respond_text' }` — **satisfying neither branch**, so a THROWN reply produced total dead air: no bubble, no note, no error, traced only by a console line that scrolls out of the ring in minutes. **Three outcomes existed and only two were distinguishable from the chat window.** Now returns `silent: true, silentReason: 'reply_error'` with the thrown message, and says plainly that it is a FAULT rather than her choosing not to speak.
+
+### ⛔ BANDPOP.1 — `γ=0.000 α=0.000` for a band that was never zero
+
+Live: `bandPower {gamma: 0.4008, beta: 0.2422, alpha: 2.9006, theta: 0.3829}` — populated and moving the whole time.
+
+Two state shapes reach `brain-3d.js`: the FLAT server state (`state.bandPower`) and the NORMALIZED one the class builds itself, which nests the same object under `state.oscillations.bandPower`. ⭐ **The sibling reader in that very file already used the nested path** — the two disagreed and only one could be right per call. `coh` survived only because it has a `?? state.oscillations?.coherence` twin; the band read had no twin. Fixed with the dual-path form `brain-viz.js` already uses in three places.
+
+⚠ **`|| 0` is what made it silent rather than obviously broken** — an absent field and a genuinely quiet band printed identically. Absent now prints `—`.
+
+### ⛔ MYSTPCT.1 — an integer percent rendered the whole brain as 0%
+
+`pct = (v) => (v*100).toFixed(0) + '%'`. Mystery was firing at `254,669 / 55,173,073` = **0.46%**, which zero decimals prints as `0%`.
+
+⭐ **Not one cluster's bad luck — structural.** At biological scale she is a SPARSE coder: cortex 0.34%, hippocampus 0.43%, cerebellum 0.47%, amygdala 0.46%, mystery 0.46%. **Every cluster lives inside the first decimal place**, so the readout could never report anything but 0% about anything. Precision now follows magnitude. `_clusterAct` returns `null` for absent instead of `0`, so an unwired cluster and a silent one stop looking the same.
+
+### Verified
+
+- **Bit-identity: 4/4 cases, worst `maxDiff = 0`** for the exact call shape used (Float64Array input, no outBuf, `chunkRows: 250000`).
+- **Formatters proved against the REAL live payload:** mystery `0%`→`0.46%`, cortex→`0.34%`, hippocampus→`0.43%`, cerebellum→`0.47%`, brainstem `3%`→`3.3%`; ⭐ big values unchanged (arousal `90%`, coherence `90%`); ⭐ a genuine zero still says `0%` (`lang_word_motor`); absent → `—`. Bands γ `0.401` α `2.901`, absent → `—`.
+- **All 10 `_clusterAct` consumers audited** before changing its return to `null` — every one passes straight into `pct()` with no arithmetic, so `null` cannot become `NaN`.
+- **Production wiring, not a copy:** `_buildSemPreVector` / `emitWordDirect` / `emitWordDirectDonor` all confirmed on the real `NeuronCluster.prototype`.
+- `node --check` clean on all three files. **Bundle rebuilt** — `js/app.bundle.js` 4,406,767 → 4,408,689 bytes, new code confirmed present (`brain-3d.js` and `emit.js` are both bundled).
+
+### Owned
+
+- ⚠ **I spent the first half of this hunt on the signal floor and it was the wrong suspect.** The numbers were real (`bestMean` 48.6% of EMA) but the conclusion was not — a climbing `sampleCount` disproved it, and I should have checked whether the EMA update sat before or after the rejection *return* before theorising about self-reference.
+- ⚠ **Discovered while harnessing: `js/brain/cluster/emit.js` cannot be imported directly** — `Cannot access 'CLUSTER_EMIT_MIXIN' before initialization`, a circular-import TDZ. **Confirmed PRE-EXISTING on the untouched baseline via `git stash`**, so not a regression from this batch. It only bites a direct import; the app enters through `cluster.js`, which resolves the cycle. Recorded, not fixed here.
+- ⚠ **NOT VERIFIED LIVE.** `emit.js` runs server-side, so LOOPCHAT.1 needs a restart. The popup fixes are frontend and land on refresh once the bundle is served.
