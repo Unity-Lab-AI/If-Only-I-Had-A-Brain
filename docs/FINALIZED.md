@@ -38801,3 +38801,42 @@ body.is-admin button.admin-only { display: inline-block !important; }
 The harness models a real `CSSStyleDeclaration` including declaration PRIORITY, because a model that only stores values would have passed the broken version too — the previous harness did exactly that and reported 6/6 on code that could not work in a browser. It now asserts the property is set **with `important`**, that `removeProperty` clears both value and priority, and that repeat polls stay idempotent.
 
 ⚠ **That is the lesson worth keeping: the earlier harness tested my logic and not the environment my logic had to survive.** Six green checks on code the browser would ignore.
+
+---
+
+## 2026-08-26 - CTLCORS.1: a different port is a different origin - feature/ctl-cors
+
+### Gee ask (verbatim per LAW #0)
+
+> *"i put a [image] in the root look at it!!! why does our fucking button on the main dashboard not look like this image of the pictures on the server run dashboard?"*
+
+### The screenshot was the evidence that ended it
+
+The image showed the SERVER dashboard rendering Sponge's `BRAIN ONLINE` panel correctly. Local rendered no panel at all. Same file, same build — so the difference could not be the HTML, and was not.
+
+⛔ **`brain-ctl` had NO CORS handling whatsoever.** No `Access-Control-Allow-Origin`, no `OPTIONS`.
+
+On the box, nginx proxies `/ctl/` on the **same origin** as the dashboard, so the browser never performs a cross-origin check and none of it is needed. **Locally the dashboard is served from `:7525` and must call `:7526` — a different port is a different origin.** The browser blocked every request, `available` never flipped, the panel never appeared, and the legacy row stayed.
+
+⚠ **And this is why it survived several rounds of fixes: `curl` does not enforce CORS.** Every command-line probe I ran returned a healthy 200 while the browser saw nothing. I verified the service was up, in local mode, serving correct JSON — all true, all irrelevant to the actual failure. **A probe that does not share the consumer's constraints is not a test of the consumer.**
+
+### Fixed, with the trust boundary kept
+
+Loopback origins only — `localhost`, `127.0.0.1`, `[::1]`, any port.
+
+⛔ **NEVER `Access-Control-Allow-Origin: *`.** This service starts, stops and WIPES a brain; a wildcard would let any page the operator happens to have open POST to it. The allowlist matches the trust boundary the socket already has (it binds `127.0.0.1`) — expressed to the browser rather than assumed.
+
+`OPTIONS` returns 204 with the headers: a POST carrying a JSON body is not a "simple request", so the browser sends a preflight first and never issues the POST if that 404s. No `Allow-Credentials` — the dashboard sends `credentials: 'same-origin'`, so cross-origin requests carry none and asking would widen the surface for nothing.
+
+### Verified — 4/4 against a running instance
+
+| case | result |
+|---|---|
+| Origin `http://localhost:7525` | `200` + `Access-Control-Allow-Origin: http://localhost:7525` + `Vary: Origin` |
+| `OPTIONS` preflight for POST | `204` with methods + headers |
+| **Origin `https://evil.example.com`** | **zero allow-origin headers** — browser blocks it |
+| No Origin (curl, scripts) | `200`, unchanged |
+
+### ⚠ A trap I built earlier, and the cost of it
+
+`LOCALCTL.1` made a second `brain-ctl` exit quietly on `EADDRINUSE` so relaunching never stacks instances. Correct for that problem — but it means **a launcher relaunch does NOT replace an already-running brain-ctl**, so a NEW build of this service never takes over on its own. Upgrading it needs the old process stopped first (`stop.bat all` / `./stop.sh all`, which exist for exactly this).

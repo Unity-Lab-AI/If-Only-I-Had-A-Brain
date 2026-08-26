@@ -882,6 +882,39 @@ const server = http.createServer(async (req, res) => {
   const url = (req.url || '/').split('?')[0].replace(/^\/ctl(?=\/|$)/, '') || '/';
   const method = req.method || 'GET';
 
+  // ── CTLCORS — the reason every local button was dead ────────────────────
+  //
+  // On the box, nginx proxies `/ctl/` on the SAME ORIGIN as the dashboard, so
+  // the browser never does a cross-origin check and none of this is needed.
+  // Locally the dashboard is served from :7525 and must call :7526 — and a
+  // DIFFERENT PORT IS A DIFFERENT ORIGIN. With no CORS headers the browser
+  // blocked every request, `available` never flipped, the panel never
+  // appeared, and the legacy row stayed. ⚠ `curl` does not enforce CORS, so
+  // every command-line probe of this service passed while the browser saw
+  // nothing — which is exactly how this survived several rounds of fixes.
+  //
+  // ⛔ NEVER `Access-Control-Allow-Origin: *`. This service starts, stops and
+  // WIPES a brain. A wildcard would let any page the operator happens to have
+  // open POST to it. The allowlist is loopback origins only — the same trust
+  // boundary the socket already has (it binds 127.0.0.1), expressed to the
+  // browser rather than assumed.
+  const origin = req.headers && req.headers.origin;
+  if (origin && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // No Allow-Credentials: the dashboard sends `credentials: 'same-origin'`,
+    // so cross-origin requests carry none and asking for them would widen the
+    // surface for nothing.
+  }
+  // Preflight. A POST with a JSON body is not a "simple request", so the
+  // browser sends OPTIONS first and never issues the POST if it 404s.
+  if (method === 'OPTIONS') {
+    res.writeHead(origin ? 204 : 405);
+    return res.end();
+  }
+
   try {
     if (method === 'GET' && (url === '/health' || url === '/')) {
       return sendJson(res, 200, { ok: true, service: 'brain-ctl', version: 1, uptimeSec: Math.round(process.uptime()) });
