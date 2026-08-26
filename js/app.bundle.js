@@ -131403,13 +131403,13 @@ Vision: ${state.visionDescription || "none"}`;
   });
   voice.on("speech_start", () => setAvatarState("speaking"));
   voice.on("speech_end", () => setAvatarState("idle"));
-  const serverConnected = landingBrainSource && landingBrainSource.isConnected();
+  const isServerDriving = () => !!(landingBrainSource && landingBrainSource.isConnected());
   let _brain3dDownsampleCounter = 0;
   const BRAIN3D_DOWNSAMPLE = 3;
   brain.on("stateUpdate", (state) => {
-    if (!serverConnected) updateBrainIndicator(state);
-    if (brainViz) brainViz.updateState(state);
-    if (!serverConnected && brain3d) {
+    if (!isServerDriving()) updateBrainIndicator(state);
+    if (!isServerDriving() && brainViz) brainViz.updateState(state);
+    if (!isServerDriving() && brain3d) {
       _brain3dDownsampleCounter++;
       if (_brain3dDownsampleCounter >= BRAIN3D_DOWNSAMPLE) {
         _brain3dDownsampleCounter = 0;
@@ -131417,7 +131417,7 @@ Vision: ${state.visionDescription || "none"}`;
       }
     }
   });
-  if (serverConnected) {
+  if (landingBrainSource) {
     landingBrainSource.on("stateUpdate", (serverState) => {
       _landingState = serverState;
       updateBrainIndicator(serverState);
