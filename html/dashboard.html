@@ -4025,6 +4025,41 @@
       }
 
       let available = false;      // has /ctl/status EVER answered?
+
+      // ── CTLSUPERSEDE — the new panel must REPLACE the old row, not join it ──
+      //
+      // ⛔ The legacy `/admin/*` buttons in #connection-status were never
+      // hidden when this panel shipped, so both sets render at once: two
+      // "Update & Savestart" buttons, two restarts, two resets — pointing at
+      // two DIFFERENT backends (the brain's own admin routes vs the control
+      // plane). Gee, looking at a local run: "its still showing the old
+      // buttons". It was showing both, and the old row is the one in the
+      // header where the eye lands.
+      //
+      // ⚠ Hidden ONLY once the control plane has actually answered. If /ctl is
+      // not installed or not running, the legacy row is the ONLY way to control
+      // the brain and hiding it would leave a dashboard with no controls at all
+      // — strictly worse than a duplicate.
+      //
+      // ⚠ Hidden, not removed: availability can flip back (ctl restarting), and
+      // a removed node cannot come back without a reload.
+      const LEGACY_POWER_IDS = [
+        'btn-graceful-stop', 'btn-restart', 'btn-reset',
+        'btn-update', 'btn-update-savestart', 'btn-savererun',
+      ];
+      let legacyHidden = false;
+      function supersedeLegacyPower(on) {
+        if (on === legacyHidden) return;   // idempotent — this runs every poll
+        legacyHidden = on;
+        for (const id of LEGACY_POWER_IDS) {
+          const el = document.getElementById(id);
+          if (!el) continue;              // graceful-stop is .remove()d off non-localhost
+          el.style.display = on ? 'none' : '';
+          el.title = on
+            ? el.title + ' [superseded by the Brain Power panel]'
+            : el.title.replace(' [superseded by the Brain Power panel]', '');
+        }
+      }
       let busy = false;           // a power action is in flight from this page
       let pollTimer = null;
       let lastPhase = null;
@@ -4114,16 +4149,26 @@
           // nginx's @ctl_unreachable shape — the control plane itself is down.
           if (j && j.ctlOnline === false) {
             available = true;
+            // ⚠ The control plane is INSTALLED but down. Bring the legacy row
+            // BACK — it talks to the brain's own admin routes, which are still
+            // up, so it is the working path while ctl is restarting. Hiding it
+            // here would leave the operator with a panel that cannot act and no
+            // alternative.
+            supersedeLegacyPower(false);
             render({ phase: 'unknown', human: j.human || 'Control plane unreachable.', unit: {} });
             return;
           }
           if (!j || j.ok !== true) throw new Error('unexpected /ctl/status payload');
           available = true;
+          // The control plane answered — its panel is now THE power UI, so the
+          // duplicate legacy row stands down.
+          supersedeLegacyPower(true);
           render(j);
         } catch (err) {
           // NEVER been reachable → the control plane is not installed here.
-          // Stay invisible rather than showing a permanently broken panel.
-          if (!available) { panel.classList.remove('active'); return; }
+          // Stay invisible rather than showing a permanently broken panel, and
+          // leave the legacy row visible because it is then the ONLY control.
+          if (!available) { panel.classList.remove('active'); supersedeLegacyPower(false); return; }
           render({ phase: 'unknown', human: 'Could not read /ctl/status: ' + err.message, unit: {} });
         }
       }

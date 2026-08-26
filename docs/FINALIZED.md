@@ -38693,3 +38693,37 @@ Gee asked whether this could wipe his directory. Measured before wiring anything
 `/ctl/status` → `phase: online`, unit state synthesized from the port probe with `_source` naming how it was derived (a fabricated `ActiveState: active` would be the confident-wrong readout this project keeps un-shipping). `/ctl/logs` → real tail. Second instance → exit 0, quiet. `node --check` on brain-ctl, `bash -n` on both `.sh` launchers, and both log files confirmed gitignored so nothing pollutes the tree.
 
 ⚠ Gee chose **git pull included** on the local update verbs (asked before building). The WIPE interlock on fresh-walk is unchanged — local is not a reason to make the destructive verb easier.
+
+---
+
+## 2026-08-26 - CTLSUPERSEDE.1: the new panel replaces the old row instead of joining it - feature/ctl-supersede
+
+### Gee ask (verbatim per LAW #0)
+
+> *"did it not fire? did u not set up the .sh and .bat  's correctly in the windows and linix folders all those files need to work as its still showing the old buttons"*
+
+> *"why is is on 7526 ist suppose to be 7525"*
+
+### It DID fire — measured, not assumed
+
+All four launchers carry the line (`windows/start.bat`, `windows/Savestart.bat`, `linux/start.sh`, `linux/Savestart.sh`), and the live control plane on 7526 answers with `loadState: not-loaded` — **which is the LOCAL_MODE synthesized status**, so the running `brain-ctl` is the new local build. `LOCALCTL.1` worked.
+
+### The real cause of "still showing the old buttons"
+
+⛔ **There were TWO button sets, and both rendered.** The legacy `/admin/*` buttons live in `#connection-status` (`btn-restart`, `btn-reset`, `btn-update`, `btn-update-savestart`, `btn-savererun`, `btn-graceful-stop`) and were **never hidden** when Sponge's `#brain-power` panel shipped. So the page showed two "Update & Savestart" buttons, two restarts, two resets — **pointing at two different backends** (the brain's own admin routes vs the control plane). The old row is in the header, which is where the eye lands.
+
+**Fixed:** the legacy buttons stand down the moment `/ctl/status` answers. Sponge's panel becomes THE power UI.
+
+⚠ **Only once the control plane has actually answered.** If `/ctl` is not installed or not running, the legacy row is the ONLY way to control the brain, and hiding it would leave a dashboard with no controls at all — strictly worse than a duplicate.
+
+⚠ **And restored if ctl goes away.** On the `ctlOnline: false` branch (control plane installed but down) the legacy row comes BACK, because the brain's own admin routes are still up and are the working path while ctl restarts.
+
+⚠ Hidden, not removed — availability can flip back, and a removed node cannot return without a reload. Idempotent, because it runs on every poll.
+
+### Why the control plane is on 7526, not 7525
+
+7525 **is the brain**. If the control plane lived there it would die WITH the brain, and the Start button could never start anything, because the thing serving the button would be gone. The separate port is the entire mechanism — `brain-ctl`'s own boot line says it: *"this service stays up when the brain is down; that is its entire purpose."* The operator only ever visits 7525; the dashboard calls 7526 in the background.
+
+### Verified — 6/6 against the real source
+
+All present legacy buttons hidden; a missing button (`btn-graceful-stop` is `.remove()`d off non-localhost) does not throw; titles annotated once and only once across repeat polls; fully restored — including original titles — when the control plane goes away. Dashboard divs 492/492, all scripts parse.
