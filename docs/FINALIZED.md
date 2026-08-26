@@ -38100,3 +38100,61 @@ An unbounded teach layer cost **70 minutes per cell** once already. This one cap
 - ⛔ **Gee wrote "EXAMPLE ONLY" as a warning, and it was a law I had broken myself hours earlier.** The VMPHRASE comments I shipped carried his subject words through `visual-memory.js` and `chat.js`. Rewritten to describe the SHAPE instead of naming things; three PRE-EXISTING leaks in `chat.js` went in the same pass. Both files now grep **0**.
 - ⚠ **NOT VERIFIED LIVE** — server-side, needs a restart.
 - ⚠ **She now LEARNS the relation; she is not yet asked to USE it.** Nothing queries these bindings to answer a spatial question. That is a further step and it is not assumed here.
+
+---
+
+## 2026-08-26 - VMUSE: every relation channel above 5 had never been written - feature/vm-relation-use
+
+### Gee ask (verbatim per LAW #0)
+
+> *"lets do that further step. wht limit her via admisssions"*
+
+### The feature was small; what the investigation found was not
+
+VMUSE.2 was written as *"establish whether use is already automatic BEFORE building any read path"*, and that ordering is the only reason this was caught.
+
+⛔ **The tag write was `band = Math.floor(fineSize / 6)` — SIX bands — while `relationTagId` values in live use run to 35.** At her real `lang_fineType` size of **504,000**, band = 84,000, tag 5 ends exactly at the region end, and every tag ≥ 6 starts past it. `tagEnd` clamps back to the end, `tagStart` stays beyond it, and the write loop runs **zero iterations**.
+
+Computed across every tag actually in use:
+
+```
+tag 0-5                                      -> 84,000 cells each
+tag 6, 8, 9, 10, 11, 12, 13, 15, 23, 30, 34  -> *** ZERO ***
+```
+
+⛔ That is **word-to-word transitions (13)**, **definitions (23)**, WH-intent (12), identity (15), intent-to-first-slot (9), subject-verb agreement (10), article placement (11), chat pairs (30), anecdotal (34) — the majority of her relation channels and the two largest teach lanes in the project. **Both write sites carried the identical `/ 6`; there was no correct one.**
+
+⚠ **The pair binding itself always landed** — sem-to-motor Oja is untouched — so she learned the associations and never learned WHICH RELATION they were, every kind collapsing into one undifferentiated space. ⭐ **That is why "let her use the relation" had nowhere to read from: the channel did not exist.**
+
+⚠ `docs/ARCHITECTURE.md` describes these as working channels (*"Q&A + follow-ups on the question-intent channel (12), agent pairs on the identity channel (15)"*) — a documented capability that had never run.
+
+### The fix
+
+`RELATION_TAG_BANDS = 48`, and both sites collapsed into ONE owner, `_writeRelationTag` — **two copies of the same arithmetic is how it stayed broken**. 48 rather than 36 because headroom is the point: a future channel must not fall off the end the way the last dozen did.
+
+⛔ **Out of range now REFUSES LOUDLY**, naming the constant to raise. *A tag that silently writes nothing is how every channel above 5 stayed dark.*
+
+⚠ **RE-PRICE: strictly cheaper.** The write is a fixed span per pair, so 84,000 -> 10,500 cells written. Nothing in `corpus x reps x scale x visits` moves.
+
+⚠ **NOT savestart-safe, and that is inherent rather than a shortcut.** Six bands filled the region exactly, so admitting the real range HAS to re-divide it and tags 0-5 move. Only those six carry any learned tag mass — 6+ never wrote any — and they re-teach on the walk. Flagged as a geometry change before it was made; Gee authorised it.
+
+### The read path — equational, and it had a projection waiting
+
+`readRelationBand(word)` propagates sem(word) through the **same `sem_to_fineType` projection the association teach binds the tag on**. That projection and its `fineType_to_sem` twin were already whitelisted for association pairs, so the tag was always bound bidirectionally with meaning and simply had no reader. **The winning band index IS the relation id.**
+
+⭐ No table, no stored string, no template — the number comes out of her weights or it does not come out. ⚠ It reports `margin` and a `flat` verdict, because a confident-looking tag drawn from a flat readout is exactly the instrument class this project keeps having to un-ship.
+
+### Verified
+
+| check | result |
+|---|---|
+| every tag writes | **13/13** — 0, 1, 5, 6, 9, 12, 13, 15, 23, 30, 34, 35, 47 all write **10,500** cells (was 0 for everything >= 6) |
+| out of range | tag 48 writes nothing **and says so** |
+| read path | on a real `SparseMatrix` with band 13 trained, reads back **`{tag: 13, flat: false}`** |
+| safety | null with no cluster, null with the projection absent — never a fake answer |
+
+`node --check` + ESM import clean.
+
+### Left open
+
+**VMUSE.5 — the reader is BUILT but not yet CONSULTED.** Nothing in chat, emission or the imagine tick calls `readRelationBand` yet. ⚠ Filed rather than wired: choosing WHERE she consults a relation changes what she says, and that is curriculum-shaped. ⭐ **The omission Gee named is closed at the mechanism level — the channels exist and are readable — and the consumer is the next call.**

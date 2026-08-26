@@ -2535,6 +2535,20 @@ const STRUCTURE_DOSE = Math.max(
 export class Curriculum {
   static PRE_K_FALLBACK_CAP = PRE_K_FALLBACK_CAP;
 
+  // How many relation channels the fineType region is divided into.
+  //
+  // ⛔ This was the literal 6, inline at two write sites, while tags in live
+  // use run to 35 — so every channel above 5 wrote nothing at all. See
+  // `_writeRelationTag` for the full measurement.
+  //
+  // 48 rather than 36: the highest tag in the tree is 35, and headroom is the
+  // point — a new channel must not silently fall off the end the way the last
+  // dozen did. At the real fineType size of 504,000 this is 10,500 cells per
+  // band, comfortably above the ~10 cells a tag needs to be legible and
+  // strictly cheaper per pair than the 84,000 the six-band layout wrote.
+  // A tag beyond this REFUSES LOUDLY; it never writes nothing in silence.
+  static RELATION_TAG_BANDS = 48;
+
   /**
    * T18.25 — REMOVED forced gc() from T18.24's between-phase memory
    * barrier. Earlier runs showed V8 OOM'd shortly after Phase 2 DONE
@@ -15546,6 +15560,134 @@ export class Curriculum {
     }
   }
 
+  /**
+   * ⛔ THE RELATION TAG. Every channel above 5 has never been written.
+   *
+   * Both call sites carried `band = Math.floor(fineSize / 6)` — SIX bands —
+   * while `relationTagId` values in live use run to 35. At the real fineType
+   * size of 504,000 that makes band = 84,000, tag 5 end EXACTLY at the region
+   * end, and every tag >= 6 start past it; `tagEnd` clamps back to the end,
+   * `tagStart` stays beyond it, and the write loop runs ZERO iterations.
+   *
+   * Computed across the tags actually in use: 0-5 wrote 84,000 cells each,
+   * and 6, 8, 9, 10, 11, 12, 13, 15, 23, 30, 34 wrote NOTHING — that is
+   * word-to-word transitions, definitions, WH-intent, identity,
+   * intent-to-first-slot, subject-verb agreement, article placement, chat
+   * pairs and anecdotal, i.e. the majority of the channels and the two
+   * largest teach lanes in the project.
+   *
+   * ⚠ The pair binding itself always landed — sem-to-motor Oja is untouched —
+   * so she learned the associations and never learned WHICH RELATION they
+   * were, every kind collapsing into one undifferentiated space. That is why
+   * nothing could read a relation back: the channel did not exist.
+   *
+   * ⚠ RE-PRICED: the write is a fixed span per pair, so more bands is
+   * strictly CHEAPER (84,000 -> ~10,500 cells written per pair). Nothing in
+   * corpus x reps x scale x visits moves.
+   *
+   * ⛔ NOT savestart-safe, and that is inherent rather than a shortcut: six
+   * bands filled the region exactly, so admitting the real range HAS to
+   * re-divide it and tags 0-5 move. Only those six carry any learned tag mass
+   * (6+ never wrote any), and they re-teach on a walk.
+   *
+   * A tag that does not fit now REFUSES LOUDLY instead of writing nothing.
+   */
+  _writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize) {
+    if (!fineTypeRegion || relationTagId === null || relationTagId === undefined) return false;
+    if (!cluster || !cluster.lastSpikes) return false;
+    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
+    if (fineSize <= 0) return false;
+    const BANDS = Curriculum.RELATION_TAG_BANDS;
+    if (!(relationTagId >= 0) || relationTagId >= BANDS) {
+      if (!this._relTagWarned) this._relTagWarned = new Set();
+      if (!this._relTagWarned.has(relationTagId)) {
+        this._relTagWarned.add(relationTagId);
+        console.warn(`[Curriculum] relation tag ${relationTagId} does not fit ${BANDS} bands — NOT written. Raise Curriculum.RELATION_TAG_BANDS; a tag that silently writes nothing is how every channel above 5 stayed dark.`);
+      }
+      return false;
+    }
+    const band = Math.floor(fineSize / BANDS);
+    if (band <= 0) return false;
+    const tagStart = fineTypeRegion.start + relationTagId * band;
+    const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
+    if (tagEnd <= tagStart) return false;
+    // Soft tag — match the vector-write intensity so the relation channel
+    // doesn't dominate the pair pattern (binary 1 against sub-1.0 GloVe
+    // magnitudes would).
+    const tagVal = binarize ? 1 : 0.5;
+    for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
+    this._relTagWrites = (this._relTagWrites || 0) + 1;
+    return true;
+  }
+
+  /**
+   * VMUSE — READ BACK which relation she has learned for a word.
+   *
+   * Operator: *"wht limit her via admisssions"* — the bindings existed and
+   * nothing consulted them, so the omission was ours, not a limit on what she
+   * knows.
+   *
+   * ⭐ EQUATIONAL, and it has to be: sem(word) is propagated through the
+   * SAME `sem_to_fineType` projection the association teach binds the tag on,
+   * and the winning BAND INDEX *is* the relation id. There is no table, no
+   * stored answer and no template — the number comes out of her weights or it
+   * does not come out at all. If she has learned nothing about the word, the
+   * bands are flat and this says so instead of naming a winner.
+   *
+   * Returns `{ tag, score, margin, flat }` or null when the read cannot be
+   * made. `margin` is the winner's lead over the runner-up: a large margin
+   * means one relation dominates, a small one means the channels are not yet
+   * separated for this word, and ⚠ reporting that difference is the point —
+   * a confident-looking tag drawn from a flat readout would be exactly the
+   * kind of instrument this project keeps having to un-ship.
+   */
+  readRelationBand(word) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return null;
+    const proj = cluster.crossProjections.sem_to_fineType;
+    const semRegion = cluster.regions && cluster.regions.sem;
+    const fineTypeRegion = cluster.regions && cluster.regions.fineType;
+    if (!proj || typeof proj.propagate !== 'function' || !semRegion || !fineTypeRegion) return null;
+
+    const emb = this._dictionaryPatternFor(word);
+    if (!emb || emb.length === 0) return null;
+
+    // Write the query pattern into sem exactly as the teach side does, so the
+    // read rides the geometry it was trained on rather than an approximation.
+    const semSize = semRegion.end - semRegion.start;
+    const pre = new Float64Array(semSize);
+    for (let i = 0; i < semSize; i++) pre[i] = 0;
+    try { this._writeTiledPattern(semRegion, emb, false); } catch { /* fall through to the raw read */ }
+    for (let i = 0; i < semSize; i++) pre[i] = cluster.lastSpikes[semRegion.start + i] || 0;
+
+    let out = null;
+    try { out = proj.propagate(pre); } catch { return null; }
+    if (!out || out.length === 0) return null;
+
+    const BANDS = Curriculum.RELATION_TAG_BANDS;
+    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
+    const band = Math.floor(fineSize / BANDS);
+    if (band <= 0) return null;
+
+    let bestTag = -1, best = -Infinity, second = -Infinity;
+    for (let t = 0; t < BANDS; t++) {
+      const s = t * band;
+      const e = Math.min(out.length, s + band);
+      if (e <= s) break;
+      let sum = 0;
+      for (let i = s; i < e; i++) sum += out[i];
+      const mean = sum / (e - s);
+      if (mean > best) { second = best; best = mean; bestTag = t; }
+      else if (mean > second) { second = mean; }
+    }
+    if (bestTag < 0 || !Number.isFinite(best)) return null;
+    const margin = Number.isFinite(second) ? best - second : best;
+    // Flat = the channels are not separated for this word yet. Said plainly
+    // rather than dressed up as a verdict.
+    const flat = !(best > 0) || margin <= Math.abs(best) * 0.05;
+    return { tag: bestTag, score: best, margin, flat };
+  }
+
   async _teachAssociationPairs(pairs, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
@@ -15852,17 +15994,7 @@ export class Curriculum {
           this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
           this._writeTiledPattern(semRegion, inEmbSem, binarize);
           this._writeTiledPattern(motorRegion, outEmbMotor, binarize);
-          if (fineTypeRegion && relationTagId !== null) {
-            const fineSize = fineTypeRegion.end - fineTypeRegion.start;
-            const band = Math.floor(fineSize / 6);
-            const tagStart = fineTypeRegion.start + relationTagId * band;
-            const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
-            // Soft tag — match the vector-write intensity so the
-            // relation channel doesn't dominate the pair pattern
-            // (binary 1 against sub-1.0 GloVe magnitudes would).
-            const tagVal = binarize ? 1 : 0.5;
-            for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
-          }
+          this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
           // Predictive-coding error-gradient pass BEFORE the main teach
           // so the delta-rule correction fires against the current
           // weights' prediction, not the post-Oja state. Skipped for
@@ -15916,14 +16048,7 @@ export class Curriculum {
                   // Relation tag fires on NEG pair too so the relation
                   // channel doesn't learn to classify positive vs negative
                   // by tag presence alone.
-                  if (fineTypeRegion && relationTagId !== null) {
-                    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
-                    const band = Math.floor(fineSize / 6);
-                    const tagStart = fineTypeRegion.start + relationTagId * band;
-                    const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
-                    const tagVal = binarize ? 1 : 0.5;
-                    for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
-                  }
+                  this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
                   // iter22-F.1 — match positive-pair association whitelist
                   // (sem↔motor + sem↔fineType for relation tags) so anti-
                   // Hebbian only depresses those projections.
