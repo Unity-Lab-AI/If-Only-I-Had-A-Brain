@@ -38369,3 +38369,59 @@ The brain has been parsing `value.phaseTimingMs.totalMs` the whole time — `gpu
 - **Dashboard row 7/7** against the real source: no-samples, old-donor, and queue- / compute- / wire-dominated each name the correct dominant term.
 
 ⚠ **Not verified against a live brain.** The donor side is built; the server side lands on its next restart. The first real reading is the `batch round-trip` row saying which of the three that 724ms actually was — and that reading decides whether `COMP.1(d)` is worth building at all.
+
+---
+
+## 2026-08-26 - VALSNAP.1: the popups were reading a different brain - feature/valence-popup-path
+
+### Gee ask (verbatim per LAW #0)
+
+> *"on the brain pop ups(more than one type) the valence appears to be wrong it shows 0.00 when its actual is more liek 0.07-0.09"*
+
+> *"wire the server handler... wtf"*
+
+### The measurement, first
+
+Live box: `state.valence` = **0.0789**, published flat at the top level. Gee's reading was exact. So the producer was fine and the fault was on the consumer side.
+
+### What was wrong
+
+`js/app.js` computed the connection state **once**:
+
+```js
+const serverConnected = landingBrainSource && landingBrainSource.isConnected();
+```
+
+and then used that snapshot as a live guard for the rest of the session, in three places. **The brain socket connects asynchronously**, so at wiring time it is normally still false. Two consequences, and they compound:
+
+1. ⛔ **The server's `stateUpdate` listener was never ATTACHED.** It sat behind `if (serverConnected) { landingBrainSource.on('stateUpdate', ...) }`. On every normal load the page wired up a server feed and then never subscribed to it.
+2. ⛔ **The `!serverConnected` guards stayed open**, so the small untrained local browser brain drove `updateBrainIndicator`, the 3D popups and the 2D viz instead.
+
+⭐ **The 0.00 was a real number. It was just a different brain's.** The local fallback brain's valence sits at ~0. Arousal, coherence and the band powers came from that same wrong brain, which is exactly why more than one popup was wrong at the same time — the symptom Gee led with.
+
+⚠ **`brainViz` had no guard at all** while its two siblings did: it received the local brain from one handler and the server from the other, so whichever fired last won and the two disagreed.
+
+### The fix
+
+- `isServerDriving()` is a **predicate evaluated per event**, not a snapshot. Authority now follows the socket in **both** directions — the server takes over the moment it connects, and the local brain resumes if it drops. The old code could do neither.
+- The server listener attaches **unconditionally**. The handler is inert until the socket delivers something, so withholding it guarded nothing and cost everything.
+- `brainViz` gets the same rule as the 3D brain.
+
+### Verified — 11/11
+
+Seven static checks against the real source, plus a behavioural trace of the connect-later lifecycle that models both versions through the same events:
+
+| | result |
+|---|---|
+| OLD (snapshot) | `["LOCAL 0","LOCAL 0"]` — never sees server state, keeps rendering 0.00 after connect |
+| NEW (predicate) | `["LOCAL 0","SERVER 0.08"]` — server value arrives and local stops driving |
+
+`node --check` clean, no stale `serverConnected` reference in any code path, bundle rebuilt 4,419,346 → 4,419,385 with `isServerDriving` confirmed present.
+
+### Owned: my first fix was wrong and was reverted before it shipped
+
+I initially "found" the bug in `js/ui/brain-3d.js` — the legacy notification pool reads `state.amygdala?.valence ?? 0`, and the server sends valence flat — and edited it to pass the normalized object. **That was wrong.** Line 2439 is `state = norm;`, so the notification builders already receive the normalized shape and those reads already worked. The edits were no-ops whose comments asserted a cause that did not exist, which is worse than no change. Reverted with `git checkout` before commit.
+
+⚠ The lesson is the one this project keeps paying for: I reasoned from a plausible pattern (the fifth producer/consumer path mismatch of the week) instead of tracing what the function actually received. The real cause was two levels up, in who was subscribed to what.
+
+⚠ **Frontend only — lands on deploy, no press needed.**

@@ -3050,7 +3050,26 @@ Vision: ${state.visionDescription || 'none'}`;
   voice.on('speech_end', () => setAvatarState('idle'));
 
   // ── Wire brain state updates to visualizers ──
-  const serverConnected = landingBrainSource && landingBrainSource.isConnected();
+  // ⛔ THIS WAS A ONE-TIME SNAPSHOT USED AS A LIVE GUARD.
+  //
+  // `isConnected()` was read ONCE, here, at wiring time — and the brain socket
+  // connects asynchronously, so at this moment it is normally still false. The
+  // value was then used for the rest of the session in three places, with two
+  // consequences that compound:
+  //
+  //   1. the server's `stateUpdate` listener was never ATTACHED at all, so no
+  //      server state ever reached the HUD, the 3D popups or the 2D viz; and
+  //   2. the `!serverConnected` guards stayed open, so the small untrained
+  //      local browser brain drove every readout instead.
+  //
+  // That is why valence rendered as a confident 0.00 while the server's real
+  // valence was ~0.08: the number on screen was a different brain's. Arousal,
+  // coherence and the bands came from that same wrong brain.
+  //
+  // It is a predicate now, evaluated at each event, so authority follows the
+  // socket in BOTH directions — the server takes over the moment it connects,
+  // and the local brain takes back over if it drops.
+  const isServerDriving = () => !!(landingBrainSource && landingBrainSource.isConnected());
 
   // 3D brain state-update downsample. We don't need to render every
   // connection every tick — firing neurons and their connections on
@@ -3067,10 +3086,14 @@ Vision: ${state.visionDescription || 'none'}`;
 
   brain.on('stateUpdate', (state) => {
     // Only let local brain drive HUD if no server is connected
-    if (!serverConnected) updateBrainIndicator(state);
-    if (brainViz) brainViz.updateState(state);
+    if (!isServerDriving()) updateBrainIndicator(state);
+    // ⚠ brainViz had NO guard while its two siblings did, so it received the
+    // local brain here AND the server below — last writer wins, and the two
+    // disagree. Same rule as the 3D brain now: the server is the authority
+    // whenever it is connected.
+    if (!isServerDriving() && brainViz) brainViz.updateState(state);
     // Don't send local brain state to 3D — server drives that
-    if (!serverConnected && brain3d) {
+    if (!isServerDriving() && brain3d) {
       _brain3dDownsampleCounter++;
       if (_brain3dDownsampleCounter >= BRAIN3D_DOWNSAMPLE) {
         _brain3dDownsampleCounter = 0;
@@ -3079,8 +3102,14 @@ Vision: ${state.visionDescription || 'none'}`;
     }
   });
 
-  // Server state → HUD + 3D: server is the authority when connected
-  if (serverConnected) {
+  // Server state → HUD + 3D: server is the authority when connected.
+  //
+  // ⛔ Attached UNCONDITIONALLY. Gating the listener on a connection that had
+  // not happened yet meant that on every normal load — where the socket opens
+  // a moment after this code runs — the page wired up a server feed it then
+  // never subscribed to. The handler itself is inert until the socket delivers
+  // something, so there is nothing to guard against by withholding it.
+  if (landingBrainSource) {
     landingBrainSource.on('stateUpdate', (serverState) => {
       _landingState = serverState;
       updateBrainIndicator(serverState);
