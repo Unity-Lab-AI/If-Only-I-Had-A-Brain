@@ -2306,12 +2306,18 @@ const SERVER_CHAT_MIXIN = {
         h: b0.h * (0.9 + rnd() * 0.2),
       };
       boxes.push(box);
-      // PAINT.10 — grounding shadow FIRST (under the subject), so it stands
-      // on the ground instead of floating. The shadow rides the STYLE-SCALED
-      // footprint (a doodle draws small inside its box; judged live — the
-      // shadow floated below the feet on the raw box).
-      const ss = artStyle && Number.isFinite(artStyle.scale) ? artStyle.scale : 1;
-      strokes.push(this._groundShadow({ cx: box.cx, cy: box.cy, w: box.w * ss, h: box.h * ss }, rnd));
+      // ⛔ SHADOWKILL — the grounding cast shadow is GONE. Operator: *"the
+      // shadow effect in her drawings that is just a dark tinted oval below
+      // everything she draws need to go: it crappy and looks like shit"*.
+      //
+      // It was a `blob` at rgb(16,15,19) alpha 0.35 under every subject, and
+      // that is exactly what it looked like — a flat tinted ellipse, not
+      // light. ⚠ It had already been tuned once, when the doodle hand floated
+      // it and the fix was to scale the footprint; the question that pass did
+      // not ask is whether an ellipse reads as a shadow AT ALL at her stroke
+      // fidelity. It does not, so the lane is deleted rather than tuned a
+      // third time. Grounding still comes from the ground line, the tufts and
+      // the floor bands in the backdrop, which are drawn, not tinted.
       const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word, artStyle);
       if (built.length > 0) contributed.push(s);
       for (const st of built) { if (!st.layer) st.layer = 'subject'; strokes.push(st); }
@@ -2741,20 +2747,11 @@ const SERVER_CHAT_MIXIN = {
   // ── PAINT.10 — THE GROUNDING SHADOW. The oldest trick in drawing: a squashed
   // dark ellipse where the subject meets the ground makes it STAND THERE
   // instead of floating. Light direction varies per attempt.
-  _groundShadow(box, rnd) {
-    const lightX = (rnd() - 0.5) * 0.5;
-    return {
-      type: 'blob',
-      cx: box.cx + lightX * box.w * 0.15,
-      cy: box.cy + box.h * 0.44,
-      rx: box.w * (0.34 + rnd() * 0.08),
-      ry: box.h * 0.05,
-      ang: 0,
-      rgb: [16, 15, 19],
-      a: 0.35,
-      layer: 'backdrop',
-    };
-  },
+  // ⛔ `_groundShadow` REMOVED (SHADOWKILL, operator judgement on the live
+  // renders). It returned one `blob` at rgb(16,15,19) alpha 0.35 beneath each
+  // subject. Deleted rather than left unreferenced: a dead painter primitive
+  // is an invitation to switch it back on, and the reason it went is that the
+  // SHAPE was wrong, not its parameters.
 
   // ── PAINT.11 — THE ERASER (her revision pass). A painter doesn't only add —
   // she steps back and REMOVES what hurts the picture. Two revisions, both
