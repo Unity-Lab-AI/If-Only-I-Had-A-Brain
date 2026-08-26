@@ -379,6 +379,23 @@ const SERVER_CHAT_MIXIN = {
             while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
           }
         } catch { /* learning-loop push non-fatal */ }
+        // ⛔ LOOKQUEUE.1 (2026-08-26) — CLAIM THE IMAGE PIPE FOR THE HUMAN.
+        //
+        // The client builds this image URL itself (PROMPT ONLY, by design) and
+        // fetches Pollinations from the SAME PUBLIC IP as this server — so the
+        // background reference-look lane and the operator's "show me an apple"
+        // are competing for one anonymous quota, and the background errand was
+        // winning. Operator: *"it doesnt error out image gen in chat and will
+        // eventually generate the image"*.
+        //
+        // Stamping the window HERE is what makes that possible: this is the
+        // exact instant the intent becomes real, and it is server-side, so the
+        // look lane can see it even though the fetch itself happens in the
+        // browser. ⚠ A TIME window rather than a lock, deliberately — the
+        // client's fetch is out of this process's sight, so there is nothing to
+        // release; a lock with no releaser is a lane that never reopens.
+        this._imageLanePriorityUntil = Date.now()
+          + (Number(process.env.DREAM_CHAT_IMAGE_PRIORITY_MS) || 45000);
         return { text: imgPrompt, action: 'generate_image' };
       }
     }
