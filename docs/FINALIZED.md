@@ -38765,3 +38765,39 @@ Both stop scripts target **7525 only**. But step 3 — the "port still held" fal
 `bash -n` clean on `linux/stop.sh`. `windows/stop.bat` block-paren balance 14/14 (an unbalanced batch `IF (`/`)` silently mis-executes rather than erroring, so this is checked, not eyeballed). Confirmed the executing nuclear kill is gone and 7526 is handled.
 
 ⛔ **Deliberately NOT executed to test** — both scripts kill the brain, and she is mid-walk. The change is verified by structure and by the platform parsers, and the behaviour is a one-line read at next use.
+
+---
+
+## 2026-08-26 - CTLSUPERSEDE.2: a plain inline style loses to a stylesheet !important - feature/ctl-supersede-important
+
+### Gee ask (verbatim per LAW #0)
+
+> *"wtf!its still showing the old dashboard buuttons!!! not sponges version that getes re mapped to lacalk when run local"*
+
+### Everything else was right. One line was wrong.
+
+Checked in order, and each came back clean:
+
+| checked | result |
+|---|---|
+| Is the served file current? | **Byte-identical** to the repo (359,200 B) with `supersedeLegacyPower` present |
+| Is `_dashIsLocal` in scope where ctl uses it? | **Same script block** (1091-5018) — no ReferenceError |
+| Is the control plane answering? | **7526 → HTTP 200**, and `loadState: not-loaded` proves it is the LOCAL_MODE build |
+| Does the brain serve `/ctl`? | 7525 → 404, correct — that is why ctl is on its own port |
+
+⛔ **The fault was CSS specificity.** Every legacy button carries `.admin-only`, and the stylesheet says:
+
+```css
+.admin-only { display: none !important; }
+body.is-admin button.admin-only { display: inline-block !important; }
+```
+
+`supersedeLegacyPower` set `el.style.display = 'none'` — a **plain inline declaration**. A stylesheet `!important` **outranks a normal inline declaration**, so the browser overrode it on every render and the old row stayed on screen. Only an inline declaration that is ITSELF `!important` wins.
+
+**Fixed:** `el.style.setProperty('display', 'none', 'important')`, and `removeProperty('display')` to restore — which also clears the priority, where assigning `''` would not.
+
+### Verified — 5/5 with a priority-aware style model
+
+The harness models a real `CSSStyleDeclaration` including declaration PRIORITY, because a model that only stores values would have passed the broken version too — the previous harness did exactly that and reported 6/6 on code that could not work in a browser. It now asserts the property is set **with `important`**, that `removeProperty` clears both value and priority, and that repeat polls stay idempotent.
+
+⚠ **That is the lesson worth keeping: the earlier harness tested my logic and not the environment my logic had to survive.** Six green checks on code the browser would ignore.
