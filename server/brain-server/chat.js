@@ -2165,6 +2165,92 @@ const SERVER_CHAT_MIXIN = {
     return true;
   },
 
+  /**
+   * ARTWEIGHT — what she MADE moves her weights.
+   *
+   * Called once per completed piece, from the single point every draw lane
+   * flows through. Two bindings, on two channels, because they are two
+   * different facts:
+   *
+   *   • STRUCTURE (tag 35, the attach channel) — subject <-> the part words
+   *     she actually built it from, both directions. Drawing a thing forces
+   *     attention onto each piece of it, and that is what strengthens the
+   *     structure; a person who draws a thing knows its parts better after.
+   *   • COMPOSITION (tag 13, the sequence channel) — when a piece holds more
+   *     than one subject, those subjects bind to each other and to the place
+   *     they were set in, because she composed them together.
+   *
+   * ⚠ Only what she DREW. `contributed` is the set that actually put marks on
+   * the canvas — a subject that failed to build is not in it, and must not be
+   * learned as though it had been. Teaching from the plan rather than the
+   * result would bind things she never managed to draw.
+   */
+  _queueArtWeightTeach(contributed, plan) {
+    const st = this._artWeight || (this._artWeight = {
+      pieces: 0, queued: 0, pairs: 0, skippedBusy: 0, skippedEmpty: 0, lastAt: 0,
+    });
+    if (!Array.isArray(contributed) || contributed.length === 0) { st.skippedEmpty++; return 0; }
+    st.pieces++;
+    if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+    const MAX_QUEUE = Number(process.env.DREAM_ART_WEIGHT_MAX_QUEUE) || 24;
+    if (this._chatTeachJobQueue.length >= MAX_QUEUE) { st.skippedBusy++; return 0; }
+    const MAX_PAIRS = Number(process.env.DREAM_ART_WEIGHT_MAX_PAIRS) || 24;
+    const REPS = Number(process.env.DREAM_ART_WEIGHT_REPS) || 4;
+
+    const clean = (w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '');
+    const subjects = [];
+    for (const s of contributed) {
+      const w = clean(s && s.word);
+      if (w.length >= 2 && !subjects.includes(w)) subjects.push(w);
+    }
+    if (subjects.length === 0) { st.skippedEmpty++; return 0; }
+
+    // STRUCTURE — subject <-> the parts she drew it from.
+    const structure = [];
+    for (const s of contributed) {
+      const w = clean(s && s.word);
+      if (w.length < 2) continue;
+      const parts = (s && s.schema && Array.isArray(s.schema.parts)) ? s.schema.parts : [];
+      for (const p of parts) {
+        if (structure.length + 2 > MAX_PAIRS) break;
+        const pw = clean(p && (p.name || p.kind || p.type || p));
+        if (pw.length < 2 || pw === w) continue;
+        structure.push([w, pw], [pw, w]);
+      }
+    }
+
+    // COMPOSITION — the subjects of one piece, and the place they were set in.
+    const composition = [];
+    const place = clean(plan && plan.place && (plan.place.word || plan.place.w));
+    for (let i = 0; i < subjects.length; i++) {
+      if (place && place !== subjects[i] && composition.length + 2 <= MAX_PAIRS) {
+        composition.push([subjects[i], place], [place, subjects[i]]);
+      }
+      for (let j = i + 1; j < subjects.length; j++) {
+        if (composition.length + 2 > MAX_PAIRS) break;
+        composition.push([subjects[i], subjects[j]], [subjects[j], subjects[i]]);
+      }
+    }
+
+    if (structure.length === 0 && composition.length === 0) { st.skippedEmpty++; return 0; }
+    if (structure.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: structure,
+        opts: { reps: REPS, label: 'ARTWEIGHT-STRUCTURE', relationTagId: 35 },
+      });
+      st.queued++; st.pairs += structure.length;
+    }
+    if (composition.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: composition,
+        opts: { reps: REPS, label: 'ARTWEIGHT-COMPOSITION', relationTagId: 13 },
+      });
+      st.queued++; st.pairs += composition.length;
+    }
+    st.lastAt = Date.now();
+    return structure.length + composition.length;
+  },
+
   async _drawOwnCreation(text, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
     const plan = await this._drawPlanFromMessage(text, opts);
@@ -2258,6 +2344,31 @@ const SERVER_CHAT_MIXIN = {
     // point all lanes flow through. The old counter lived in one drain lane
     // while the mind's-eye tick published art all day: 0 drawn, 56 attempts.
     this._ownArtDrawn = (this._ownArtDrawn | 0) + 1;
+    // ⛔ ARTWEIGHT — MAKING ART USED TO CHANGE NOTHING IN HER BRAIN.
+    //
+    // Measured across the whole draw + practice span: ZERO weight-touching
+    // calls. `_practiceDrawing` writes `e.skill` — params, cosine, session
+    // count — into the visual STORE, and store state is not synapses. So she
+    // could draw the same subject a hundred times and not one synapse moved.
+    // Operator: *"an image one sees and art they make has real effects on all
+    // kinds of brain processes"*.
+    //
+    // ⭐ The act of drawing is now a bind, on the same drain VMRELATE uses:
+    // the subject she drew binds to the PARTS she built it from, both ways.
+    // That is what drawing a thing does to a person — it strengthens the
+    // structure of the thing, because you had to attend to every piece of it
+    // to put it down. And when she drew more than one subject in a scene,
+    // those subjects bind to each other and to the place, because they were
+    // composed together.
+    //
+    // ⚠ Bounded like every other drain job, and for the same measured reason
+    // (an unbounded teach layer cost 70 min/cell once): a hard pair cap, low
+    // reps, and it refuses when the drain is already deep.
+    try {
+      if (typeof this._queueArtWeightTeach === 'function') {
+        this._queueArtWeightTeach(contributed, plan);
+      }
+    } catch { /* non-fatal — a drawing must never fail on its teach */ }
     // ARTSTYLE — the style rides the label so the viewer SHOWS her changing it up.
     const styleName = artStyle ? artStyle.name : 'poster';
     const label = 'canvas:own:' + contributed.map(s => s.word).join('+') + ':' + styleName;
