@@ -867,7 +867,7 @@ Re-observation updates the running means on `pattern`/`arousal`/`valence` and bu
 
 Implementation: `Dictionary.setCluster(cluster)` wires the cortex reference (called once during boot from `engine.js` and from `brain-server.js:_initLanguageSubsystem`). `Dictionary.learnWord` handles both observation paths. `Dictionary.syllablesFor(word)` and `Dictionary.snapshotFor(word)` expose the stored state to consumers. Persistence uses `STORAGE_KEY = 'unity_brain_dictionary_v4'` (bumped from v3 to abandon stale 50d-pattern caches). `js/brain/dictionary.js`.
 
-**T14.5 curriculum exposure equations (SHIPPED 2026-04-14).** Continuous developmental learning is the data-driven bucketing of corpus words by complexity, walked in order with frequency-proportional repetitions. Given corpora `C = { persona, baseline, coding, ... }`, split into words into:
+**T14.5 curriculum exposure equations (SHIPPED 2026-04-14).** Continuous developmental learning is the data-driven bucketing of corpus words by complexity, walked in order with frequency-proportional repetitions. Given corpora `C = { persona, baseline, coding, ... }`, split into:
 
 ```
 sentences(C)  = ⋃_c split(c, /(?<=[.!?])\s+|\n\s*\n/) ↦ normalize(·)
