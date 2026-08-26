@@ -452,6 +452,16 @@ const SERVER_GPU_MIXIN = {
           t.donorComputeMs = donorMs;
           t.unaccountedMs = (donorMs != null) ? Math.max(0, rtMs - donorMs) : null;
           t.donorReports = donorMs != null;
+          // DONORTIME.1 — the donor's own split of the time it held the batch.
+          // `unaccountedMs` alone says "not the donor", which was enough when
+          // the donor was a remote pod behind a 205ms wire. With the donor on
+          // localhost the wire is effectively free, so the interesting question
+          // moved INSIDE the donor: is it queueing (saturated — batching and
+          // scheduling help) or computing (the kernels are the cost)? Those
+          // call for opposite work and one number cannot tell them apart.
+          const pt = value && value.phaseTimingMs;
+          t.donorQueueWaitMs = (pt && Number.isFinite(Number(pt.queueWaitMs))) ? Number(pt.queueWaitMs) : null;
+          t.donorComputeOnlyMs = (pt && Number.isFinite(Number(pt.computeMs))) ? Number(pt.computeMs) : null;
           t.substeps = substeps;
           // Sparse dispatches issued while this batch was in flight — the
           // queue-depth proxy (how much other traffic shared the donor socket).
@@ -459,9 +469,11 @@ const SERVER_GPU_MIXIN = {
           this._perfStats.batchTiming = t;
           if (!this._batchTimingLogMs || (Date.now() - this._batchTimingLogMs) > 30000) {
             this._batchTimingLogMs = Date.now();
+            const donorSplit = (t.donorQueueWaitMs != null && t.donorComputeOnlyMs != null)
+              ? ` [queue=${t.donorQueueWaitMs.toFixed(0)}ms compute=${t.donorComputeOnlyMs.toFixed(0)}ms]` : '';
             const donorTxt = donorMs != null
-              ? `donor=${donorMs.toFixed(0)}ms · UNACCOUNTED=${t.unaccountedMs.toFixed(0)}ms (wire + blocked loop)`
-              : 'donor=not-reported (native donor sends no phaseTimingMs — the unaccounted split needs a browser donor or a donor-side port)';
+              ? `donor=${donorMs.toFixed(0)}ms${donorSplit} · UNACCOUNTED=${t.unaccountedMs.toFixed(0)}ms (wire + blocked loop)`
+              : 'donor=not-reported (donor sent no phaseTimingMs — pre-0.3.31 native donor; the unaccounted split needs the donor-side port)';
             console.log(`[Brain] TICK-GAP — compute_batch round-trip ${rtMs}ms (ema ${t.roundTripEmaMs.toFixed(0)}ms) · substeps=${substeps} · ${donorTxt} · sparse dispatches in flight during batch=${t.dispatchesDuring}. Rate-limited 30s.`);
           }
         } catch { /* telemetry must never break a tick */ }
