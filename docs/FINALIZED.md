@@ -37887,3 +37887,60 @@ A repo-wide sweep on the canonical FRESHEYES pattern returned exactly ONE image-
 ### Left open
 
 **PAIRDESYNC.2 — nothing detects this at boot, and something should.** ⛔ The loader takes the json and bin as a pair **without comparing them**, so a save interrupted between the two writes resumes silently with metadata ahead of synapses. **The only reason it was caught this time is that a human asked an unrelated question about leftover files.** ⭐ The evidence is already on disk and free to check — the json carries `savedAt`, the bin's mtime/header is available at load, and a gap beyond a few minutes is decidable: REFUSE, or fall back to the newest coherent slot, rather than boot incoherent. ⚠ Filed, not built — it touches the load path, which is not something to change while she is mid-recovery.
+
+---
+
+## 2026-08-26 - LOOKBACKOFF: I fixed a bug that was acting as a rate limiter - feature/look-429-backoff
+
+### Gee ask (verbatim per LAW #0)
+
+> *"is the mind's eye hogging the pollinations anynomous generation lane???: You show me an apple / Unity (image generation failed) / You show me a dog / Unity (image generation failed)"*
+
+### The answer is yes, and the cause is my own change from earlier the same day
+
+Live, 15 minutes after EYEPIN shipped: **`attempts: 130`, `httpFails: 108`, `lastErr: "HTTP 429"`, `grounded: 15`** — **83% refused** — against `eye.fromAcquisition: 107 of 142 picks`.
+
+⛔ **The bug I fixed had been functioning as an accidental rate limiter.** The old picker handed the SAME word to `_lookUpAndDraw` every tick, so the per-concept 6h cooldown absorbed everything and the lane managed **one attempt per boot**. EYEPIN.2's acquisition rank deliberately picks a **different unseen word** on ~75% of ticks — and a per-concept cooldown **by construction cannot throttle a walk through fresh vocabulary**. The global gap was already 0 (NOGAP, revoked on *"its the anonymous free"*, which was correct when looks were rare).
+
+⭐ **The remaining pacing was documented as "natural — the per-concept in-flight guard plus the 2-60s a look takes".** That sentence was true of a lane that fired rarely. Nothing re-priced it when the lane started firing constantly — **the same failure shape as SCALEWALK, where three hot loops were priced at a 1.5M cortex and never re-priced at 82M.**
+
+⛔ **And it was a positive feedback loop.** `_vmLookFail` rolls the burns back so a failed concept retries in 10 min instead of 6 h — so **every 429 scheduled another retry.** The harder we were refused, the harder we asked.
+
+⭐ **The cost landed on the operator, not on her.** Chat image generation is built BROWSER-side from the same public IP, so a background acquisition errand was spending the shared anonymous quota while *"show me an apple"* answered *"(image generation failed)"*. **A background errand must not outbid the person in the room.**
+
+### Fix — honour the refusal, do not re-impose a budget
+
+Exponential backoff from 15s, doubling per consecutive 429, capped at 10 min, with **`Retry-After` winning when the server sends one** (it is the only party that knows when it will answer again), reset to zero on the first success.
+
+⚠ **This is explicitly NOT a re-arming of the global gap Gee revoked.** That was a SELF-IMPOSED spend budget from the keyed-account era, and revoking it was right. This is the generator explicitly answering **HTTP 429 — stop**. Ignoring an explicit refusal is not generosity toward her ability: a refused request returns no image either way, so the only thing hammering buys is someone else's quota.
+
+⚠ **Reset-on-success is load-bearing.** Without it the backoff RATCHETS — one 429 an hour keeps doubling a value that never comes back down, and the lane quietly stops looking forever while every counter still reads healthy.
+
+### ⛔ SEEDPHRASE.1 — a whole image prompt was being used as a concept
+
+Found in `eye.recentSubjects` on the live box, sitting among `may` / `digits` / `change` / `walk`:
+
+```
+'an apple, another, just, smartphone, vibrant saturated color, crisp sharp focus, bold dramatic contrast, elect…'
+```
+
+Image-lane emissions land in `_innerThoughtChain` like any other, so `_seedText` is sometimes a prompt or a sentence rather than a word. ⛔ **Not merely an ugly label — that string was handed to `_lookUpAndDraw`**, spent as a Pollinations request on a query that could never ground, **during the exact window the quota was being exhausted**.
+
+⚠ **Structural test, NOT a word list.** A concept key in this system is a single token — every store key, every definition lookup, every taxonomy judgement is one word. Whitespace or sentence punctuation means the seed is a phrase, and a phrase is not a thing she can look at. Acquisition and recall still supply a subject, so a phrase-shaped thought costs her nothing but that one rank.
+
+### ⛔ The look lane had no dashboard row at all
+
+`state.ownArt.lookups` publishes the whole counter block; `html/dashboard.html` contained **zero** references to it. **108 rate-limited fetches produced nothing on screen while the operator sat watching his own image requests fail.** Row shipped in the same commit as the counters: grounded/attempts, http-fail %, rate-limited and skipped counts, and `⚠ BACKING OFF Ns (chat keeps the quota)` while armed.
+
+⭐ **AMBER while backing off** — that is the system behaving CORRECTLY under refusal, not a fault. **RED is reserved for ≥50% failing while NOT backing off**, which is the unhandled case. `null` renders as *"no attempts yet — NOT a verdict on the generator"*, never as a reassuring zero.
+
+### Verified
+
+- **Backoff harness:** escalation `15s → 30s → 60s → 120s → 240s → 480s → 600s → 600s` (capped); `Retry-After 120s` beats the 15s base; reset clears to 0.
+- **Token guard harness 11/11:** `apple`, `walk`, `digits`, `back-pack` pass; the leaked prompt, `backpack juice gravity!`, `hello world`, `end.`, a 41-char string and empty are all refused.
+- **7/7 producer/consumer parity** on the new row; divs **484/484**; `node --check` clean on both server files; bundle rebuilt.
+
+### Owned
+
+- ⛔ **I caused this.** EYEPIN was the right fix and I shipped it without asking what the old defect had been silently absorbing. **When you remove something broken, price what it was accidentally doing** — the acquisition rank turned a lane that fetched once per boot into one that fetched 130 times in 15 minutes, and I did not check the rate before or after.
+- ⚠ **NOT VERIFIED LIVE** — server-side, needs a restart. The row is frontend and lands on refresh.

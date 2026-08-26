@@ -750,6 +750,12 @@
                CHAIN, not her art. -->
           <div id="d-art-eye" style="font-size:10px;color:#777;margin-top:3px;"></div>
           <div id="d-art-eye-recent" style="font-size:10px;color:#666;margin-top:2px;"></div>
+          <!-- LOOKBACKOFF.1 — the LOOK lane had NO row at all, which is how it
+               spent the shared anonymous Pollinations quota for hours while the
+               operator's own "show me an apple" came back "(image generation
+               failed)". 108 of 130 attempts were HTTP 429 and nothing on this
+               page said so. -->
+          <div id="d-art-look" style="font-size:10px;color:#777;margin-top:3px;"></div>
         </div>
       </div>
     </div>
@@ -1834,6 +1840,34 @@
                 + ` · pin ${num(e.pinTicks)}${pinned ? ' ⚠ THOUGHT STALLED' : ''}`
                 + (e.maxPinTicks > 1 ? ` (max ${num(e.maxPinTicks)})` : '')
                 + ` · ${num(e.rotations)} rotations`;
+            }
+          }
+          // LOOKBACKOFF.1 — the reference-look lane. ⛔ `null` means the lane
+          // has not run, rendered as such: an absent instrument must never read
+          // as "no rate limiting", which is exactly the silence that let the
+          // 429 flood run unseen.
+          const $look = $('d-art-look');
+          if ($look) {
+            const lk = oa && oa.lookups;
+            if (!lk) {
+              $look.textContent = 'look lane: no attempts yet — NOT a verdict on the generator';
+              $look.style.color = '#666';
+            } else {
+              const now = Date.now();
+              const backingOff = (lk.backoffUntil || 0) > now;
+              const secsLeft = backingOff ? Math.ceil((lk.backoffUntil - now) / 1000) : 0;
+              const att = lk.attempts | 0;
+              const failPct = att > 0 ? Math.round(((lk.httpFails | 0) / att) * 100) : 0;
+              // AMBER while backing off — it is the system behaving CORRECTLY
+              // under refusal, not a fault. RED only when most attempts fail
+              // and we are NOT already backing off, which is the unhandled case.
+              $look.style.color = backingOff ? '#f59e0b' : (failPct >= 50 ? '#ef4444' : '#22c55e');
+              $look.textContent = `look lane: ${num(lk.grounded)} grounded / ${num(att)} attempts`
+                + (att > 0 ? ` · ${failPct}% http-fail` : '')
+                + (lk.rateLimitHits ? ` · ${num(lk.rateLimitHits)} rate-limited` : '')
+                + (lk.rateLimitSkips ? ` · ${num(lk.rateLimitSkips)} skipped` : '')
+                + (backingOff ? ` · ⚠ BACKING OFF ${secsLeft}s (chat keeps the quota)` : '')
+                + (lk.lastErr ? ` · last "${String(lk.lastErr).slice(0, 40)}"` : '');
             }
           }
           if ($eyeR) {
