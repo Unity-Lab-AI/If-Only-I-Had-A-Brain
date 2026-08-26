@@ -37799,3 +37799,39 @@ Two state shapes reach `brain-3d.js`: the FLAT server state (`state.bandPower`) 
 - ⚠ **I spent the first half of this hunt on the signal floor and it was the wrong suspect.** The numbers were real (`bestMean` 48.6% of EMA) but the conclusion was not — a climbing `sampleCount` disproved it, and I should have checked whether the EMA update sat before or after the rejection *return* before theorising about self-reference.
 - ⚠ **Discovered while harnessing: `js/brain/cluster/emit.js` cannot be imported directly** — `Cannot access 'CLUSTER_EMIT_MIXIN' before initialization`, a circular-import TDZ. **Confirmed PRE-EXISTING on the untouched baseline via `git stash`**, so not a regression from this batch. It only bites a direct import; the app enters through `cluster.js`, which resolves the cycle. Recorded, not fixed here.
 - ⚠ **NOT VERIFIED LIVE.** `emit.js` runs server-side, so LOOPCHAT.1 needs a restart. The popup fixes are frontend and land on refresh once the bundle is served.
+
+---
+
+## 2026-08-26 - VMBUMP4: the store was not stale, it was UNREPRESENTATIVE - feature/vmbump-v10
+
+### Gee ask (verbatim per LAW #0)
+
+> *"lets clear local visual memory too so now minds eye is fixed it wont have a hundred backpack images"*
+
+> *"option 1. and delete old v9"*
+
+### Why the store had to go, stated as a measurement
+
+v9 was banked by the **pre-EYEPIN** subject picker, which drew whatever sat at the tail of the inner-thought chain — so it hammered one concept for as long as that thought dwelled. Measured on the box before the fix: **8 of 8 sampled frames were backpack** (three styles, one subject), church before that, against only **21 grounded concepts across 6,750 draws**.
+
+⭐ **So the store is not merely out of date — it is unrepresentative of what she has learned.** It is a pile of near-duplicate renders of a handful of subjects, which is precisely the output EYEPIN.2's acquisition rank was built to stop producing. Letting the fixed picker accumulate on top of it would bury the fix under the defect's own output. v10 boots empty and fills by working THROUGH her taught vocabulary.
+
+⚠ **Same contract as every bump before it: imagery cleared, TRAINING KEPT.** Weights, grades, phases and episodic memory live in entirely different files and are untouched.
+
+### Why a version bump rather than deleting the file
+
+⭐ **Measured, not preferred.** The db is open with WAL and was being written every few seconds (mtimes 09:09 and 09:11 against a 09:11 clock). Deleting it live either loses to a Windows lock or — worse, because it looks like success — gets rewritten from the resident Map. A version bump is **boot-time orphaning**, needs no stop, and lands on the restart already required for LOOPCHAT.1. **One restart does both.**
+
+⚠ It is CODE, so the deployed box's store also resets on its next boot. **Surfaced to Gee as a fork before acting rather than assumed** — and correct here, since the box carries the same stale pile and is receiving the same fix.
+
+### Verified — and the interesting part is how little there was to change
+
+- **Exactly ONE code reference existed** (VM_DB in visual-memory.js). No others anywhere in js / yml / sh / bat.
+- ⭐ **Every safety net is pattern-based and covered v10 with nothing added:** the gitignore entry, the FRESHEYES sweep regex (verified against the db and its wal and shm sidecars), and the self-update rsync excludes. **This is the dividend of the 2026-08-21 decision to stop naming versions in the wipe list** — that fix was written because a v3 json store survived a fresh walk while the wipe reported success on a 298KB relic. Five bumps later it is still paying.
+- node --check clean; zero leftover v9 references.
+
+### Left open, deliberately
+
+**VMBUMP4.1 — deleting the orphaned v9 files.** Cannot be done while she runs: the v9 db (53.9MB) plus wal (4.7MB) and shm (32KB) are held open by the live process. Once she reboots onto v10 they are free.
+
+⚠ **The imagined-field RING (mindspace-memory-v3.json, 3.0MB) is deliberately NOT bundled into this.** Separate store, its own orphaning ritual (RINGWIPE), it holds imagine-lane fields rather than her drawings, and Gee named v9 specifically. **Raised rather than silently swept** — if old imagined visions still surface after the restart, that ring is the next bump.
