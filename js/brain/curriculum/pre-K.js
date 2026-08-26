@@ -251,7 +251,7 @@ export const PREK_MIXIN = {
     ];
     await this._conceptTeach(FRAME_VOCAB, 10);
 
-    // "." must be a bucketable emission token before the corpus trains
+    // "." must be a bucketable emission word before the corpus trains
     // X→"." sentence-end transitions (same registration K's question-
     // production pass does for its terminators).
     if (this.dictionary && typeof this.dictionary.learnWord === 'function') {

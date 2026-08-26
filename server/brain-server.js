@@ -3178,7 +3178,7 @@ class ServerBrain {
       // is caught at boot, never silently at emit time (the old overflow bug).
       {
         const _wmCells = Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940);
-        const _wmTargetVocab = 60000;   // ~17K curriculum floor + definition-token + headroom
+        const _wmTargetVocab = 60000;   // ~17K curriculum floor + definition-word + headroom
         const _msg = `[Brain] WMB word_motor capacity: ${_wmCells.toLocaleString()} cells (6% of ${langCortexSize.toLocaleString()} langCortexSize) — UNIFIED single band, 1 bucket/unique word. Full K→PhD vocab target ~${_wmTargetVocab.toLocaleString()}.`;
         if (_wmCells < _wmTargetVocab) console.warn(`${_msg} ⚠ UNDER target — words past index ${_wmCells.toLocaleString()} would be silenced; raise DREAM_LANG_CORTEX or WORD_MOTOR_TARGET_LANG_CORTEX.`);
         else console.log(`${_msg} ✓ covers target.`);
@@ -3533,7 +3533,7 @@ class ServerBrain {
         lifeCurriculum.academicStorySentences(subject, grade);
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
-      // a successful definition lookup so sem(word) → sem(def_tokens)
+      // a successful definition lookup so sem(word) → sem(def_words)
       // gets carved INCREMENTALLY through actual user use, not upfront
       // blur. Fire-and-forget — chat doesn't await this.
       this.cortexCluster.teachWordDefinition = (word, opts) => {
@@ -3619,7 +3619,7 @@ class ServerBrain {
       // Periodic retry — first tick fires after 60s; the wrapper
       // re-arms with the appropriate interval based on current state.
       this._scheduleSmokeTestRetry();
-      // Fused-token dictionary purge — learnSentence's old sanitizer
+      // Fused-word dictionary purge — learnSentence's old sanitizer
       // DELETED punctuation/newlines instead of spacing them, fusing
       // adjacent words into fake compounds ("lightingto", "fuckeryyou")
       // that were then LEARNED as real dictionary words and pollute the
@@ -3630,8 +3630,8 @@ class ServerBrain {
       // (a candidate is only purged when dictionaryapi.dev has NO
       // definition for it — legit compounds like "football" survive).
       const _fusedPurgeTimer = setTimeout(() => {
-        try { this._purgeFusedDictionaryTokens(); } catch (err) {
-          console.warn('[Brain] fused-token dictionary purge threw:', err?.message || err);
+        try { this._purgeFusedDictionaryWords(); } catch (err) {
+          console.warn('[Brain] fused-word dictionary purge threw:', err?.message || err);
         }
       }, 45 * 1000);
       if (typeof _fusedPurgeTimer.unref === 'function') _fusedPurgeTimer.unref();
@@ -3848,11 +3848,6 @@ class ServerBrain {
         console.warn('[MindSpace] init failed:', err?.message || err);
         this.mindSpace = null;
       }
-      // Auto-attach transformer backend when the dep is installed AND
-      // the env flag is set. Default OFF — operator opts in via
-      // `cd server && npm install @xenova/transformers` + export
-      // DREAM_TRANSFORMER=1. Silent no-op in every other case so the
-      // left-brain-only path keeps working identically.
       // LLMGUT.2 (2026-08-25) — the GPT-2 / distilgpt2 transformer backend and
       // its boot attach are DELETED, along with DREAM_TRANSFORMER,
       // DREAM_TRANSFORMER_MODEL and DREAM_TRANSFORMER_MAX_LEN. It was a
@@ -3975,7 +3970,7 @@ class ServerBrain {
       // Two failure modes this catches at boot instead of in production: a
       // `minGrade` naming a grade that does not exist (the anchor would silently
       // never unlock, indistinguishable from one that was never written), and an
-      // anchor phrased as a bare descriptor list with no self token — an
+      // anchor phrased as a bare descriptor list with no self word — an
       // instruction about how to behave rather than something she can say about
       // herself. Grade typos throw; shape problems warn loudly.
       // ── LLMGUT.8 (2026-08-25) — KEEP THE CLAIM TRUE ──────────────────────
@@ -4336,7 +4331,7 @@ class ServerBrain {
 
 
   /**
-   * Fused-token dictionary purge. The old learnSentence sanitizer fused
+   * Fused-word dictionary purge. The old learnSentence sanitizer fused
    * words across deleted separators ("lighting\nto" → "lightingto") and
    * learned the concat as a word. Candidates: pure-alpha entries ≥ 7
    * chars, low frequency (runtime-learned, not curriculum-trained), not
@@ -4347,9 +4342,9 @@ class ServerBrain {
    * "something") always survive. Bounded at 200 API checks per boot;
    * the definition service's cache + backoff absorb the load. Persona
    * entries are candidates too (stricter ≥9-char floor, no freq gate)
-   * since the persona-lane tokenizer was itself a fusion source.
+   * since the persona-lane word splitter was itself a fusion source.
    */
-  async _purgeFusedDictionaryTokens() {
+  async _purgeFusedDictionaryWords() {
     if (this._fusedPurgeRan) return;
     this._fusedPurgeRan = true;
     const dict = this.dictionary;
@@ -4365,7 +4360,7 @@ class ServerBrain {
       if (!entry) continue;
       if (!/^[a-z]+$/.test(word)) continue;
       if (taught && taught.has(word)) continue;
-      // PERSONA entries are no longer skipped — the persona-lane tokenizer
+      // PERSONA entries are no longer skipped — the persona-lane word splitter
       // was the SECOND fusion source ("herselfthese", "conceptsresonate",
       // "meintensity" all rode persona text) and the old isPersona skip
       // meant those fusions could NEVER be purged while the identity
@@ -4394,7 +4389,7 @@ class ServerBrain {
       if (splits) candidates.push(word);
     }
     if (candidates.length === 0) return;
-    console.log(`[Brain] fused-token purge — ${candidates.length} candidate compound(s) queued for API verification: ${candidates.slice(0, 8).join(', ')}${candidates.length > 8 ? ', …' : ''}`);
+    console.log(`[Brain] fused-word purge — ${candidates.length} candidate compound(s) queued for API verification: ${candidates.slice(0, 8).join(', ')}${candidates.length > 8 ? ', …' : ''}`);
     let purged = 0;
     for (const word of candidates) {
       let def = null;
@@ -4407,7 +4402,7 @@ class ServerBrain {
       // ("prevent", "password", "overflow") before this guard existed.
       if (definitionService.lookupStatus(word) !== 'noDef') continue;
       words.delete(word);
-      // Bigram hygiene — drop the fake token as a key and as a follower.
+      // Bigram hygiene — drop the fake word as a key and as a follower.
       try {
         if (dict._bigrams) {
           dict._bigrams.delete(word);
@@ -4415,10 +4410,10 @@ class ServerBrain {
         }
       } catch { /* best-effort */ }
       purged++;
-      console.log(`[Brain] fused-token purge — removed "${word}" (two-known-word concat, no API definition)`);
+      console.log(`[Brain] fused-word purge — removed "${word}" (two-known-word concat, no API definition)`);
     }
     if (purged > 0) {
-      console.log(`[Brain] fused-token purge DONE — ${purged}/${candidates.length} fake compound(s) removed from the dictionary.`);
+      console.log(`[Brain] fused-word purge DONE — ${purged}/${candidates.length} fake compound(s) removed from the dictionary.`);
     }
   }
 
@@ -8701,7 +8696,7 @@ const httpServer = http.createServer((req, res) => {
   // SAVERERUN — keep ALL trained weights, reset the grade pointers to the
   // very beginning, and re-walk the whole curriculum ON TOP of the existing
   // synapses. The re-walk re-teaches every cell with the CURRENT teach code
-  // (letter-token gating, glue-word production reinforcement, first-person
+  // (letter-word gating, glue-word production reinforcement, first-person
   // lead-ins, terminator outlet) so fixes that need teach-time Hebbian mass
   // land on the kept brain instead of requiring a from-zero rebuild. Oja
   // updates are self-normalizing — re-teaching on trained weights
@@ -9366,7 +9361,7 @@ const httpServer = http.createServer((req, res) => {
   // Exam-answer endpoint. Takes a single question string, runs it
   // through the brain's question → answer path (same pipeline a chat
   // iter23.5 — POST /learn-from-web { topic } fetches a Wikipedia
-  // summary for the topic, tokenizes alpha-only single-tokens, calls
+  // summary for the topic, splits it into alpha-only single words, calls
   // dictionary.learnWord on each new one, fires a Tier 1 episode with
   // the source URL. Unity's vocabulary grows from real-world content
   // without any text-AI in her cognition path. Body cap 4 KB —

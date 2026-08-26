@@ -647,7 +647,7 @@ function loadPersonaSelfImage(targetBrain) {
     }
 
     // T15-C17 — Load the ethereal / Oz / psychedelic corpus so the cortex
-    // has real tokens for the cosmic-bias vector to pull toward when drug
+    // has real words for the cosmic-bias vector to pull toward when drug
     // scheduler's ethereality is elevated (LSD / psilocybin / high MDMA
     // peak). Non-announcing: no "I'm tripping" keywords, just the TYPE of
     // vocabulary a person at peak psychedelic state uses.
@@ -660,7 +660,7 @@ function loadPersonaSelfImage(targetBrain) {
     // the legacy loaders so cortex + dictionary already contain the
     // vocabulary, then replays the same corpora through the complexity-
     // sorted walk (letters → short words → long words → sentences) with
-    // per-token tick budgets that scale with structural complexity and
+    // per-word tick budgets that scale with structural complexity and
     // corpus frequency. Letters get up to 20 reps × 8 ticks each, short
     // words get up to 6 reps × 4 ticks, long words 3 reps × 3 ticks,
     // sentences walk word-by-word at 2 ticks/word. This is the pass

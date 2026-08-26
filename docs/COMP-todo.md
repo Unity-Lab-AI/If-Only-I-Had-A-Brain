@@ -61,7 +61,7 @@ Anything below that ships builds on this foundation. T13 language-cortex state d
 - `js/ui/sensory-status.js` — backend toast notifications.
 
 ### Embeddings (live)
-- `js/brain/embeddings.js` — `sharedEmbeddings` singleton. `EMBED_DIM = 300` (T14.0 lift from 50). Full 400k-word GloVe 6B-300d loaded on Node from `corpora/glove.6B.300d.txt`; browser bulk-loads a server-precomputed subset via `getSubsetForTokens` to avoid 480 MB download. Online context refinement deltas persist across sessions via `serializeRefinements` / `loadRefinements`.
+- `js/brain/embeddings.js` — `sharedEmbeddings` singleton. `EMBED_DIM = 300` (T14.0 lift from 50). Full 400k-word GloVe 6B-300d loaded on Node from `corpora/glove.6B.300d.txt`; browser bulk-loads a server-precomputed subset via `getSubsetForWords` to avoid 480 MB download. Online context refinement deltas persist across sessions via `serializeRefinements` / `loadRefinements`.
 
 ### Persistence (live, v4)
 - `js/brain/persistence.js` — v4 (bumped T14.16 to reject pre-T14 saves). `state.t14Language` block carries T14.1 letter inventory, T14.13 cluster-resident learned-statistics Maps (`fineTypeTransitions`, `sentenceFormSchemas`, `sentenceFormTotals`, `intentResponseMap`), T14.16.5 identity-lock thresholds, and — as of T14.24 Session 1 — `state.t14Language.curriculum = {grades, grade, passedCells}`. Additive inside the existing t14Language block; older v4 saves without the curriculum sub-block load cleanly and fall back to cluster-constructor defaults.
@@ -165,7 +165,7 @@ Unity is currently a Stage 8 system that skipped Stages 1-7. T14 builds those st
 
 **Implementation principles:**
 
-1. **`js/brain/embeddings.js`** — bump `EMBED_DIM` from 50 to **300**. Re-enable the GloVe loader (`loadPreTrained` currently falls through to hash). **Load the full 400k-word `glove.6B.300d.txt` file**, no vocabulary cap. Memory at 400k × 300 × 4 bytes = 480 MB on the brain server, which is fine because the server runs on real hardware. The browser-side `RemoteBrain` doesn't need the full table because chat goes through the server anyway — RemoteBrain loads only the words actually used in `Ultimate Unity.txt` (lazy GloVe subset, computed at boot from the persona corpus token set, ~5-10 MB).
+1. **`js/brain/embeddings.js`** — bump `EMBED_DIM` from 50 to **300**. Re-enable the GloVe loader (`loadPreTrained` currently falls through to hash). **Load the full 400k-word `glove.6B.300d.txt` file**, no vocabulary cap. Memory at 400k × 300 × 4 bytes = 480 MB on the brain server, which is fine because the server runs on real hardware. The browser-side `RemoteBrain` doesn't need the full table because chat goes through the server anyway — RemoteBrain loads only the words actually used in `Ultimate Unity.txt` (lazy GloVe subset, computed at boot from the persona corpus word set, ~5-10 MB).
 
 2. **`js/brain/engine.js`** — `CLUSTER_SIZES.cortex` becomes a **fraction of the auto-detected total**: `Math.floor(detectedNeurons * 0.30)` (cortex is biologically ~30% of total brain). All other clusters scale proportionally (`hippocampus = 0.10`, `amygdala = 0.08`, `basalGanglia = 0.08`, `cerebellum = 0.40`, `hypothalamus = 0.05`, `mystery = 0.04`). When `detectResources` returns 1000 neurons total (CPU fallback), cortex is 300. When it returns 677M (GPU server), cortex is 200M. **Same code, no special cases.** No `Math.min(maxConnections, ...)` cap — connection density is a constant fraction (`opts.connectivity`), the absolute count grows naturally with size. If the connection memory exceeds VRAM, that's a `detectResources` problem to be solved at the resource-detection layer, not by capping the language stack.
 
@@ -476,11 +476,11 @@ _crossRegionHebbian(lr) {
 
 #### T14.5 — Continuous developmental learning from existing corpora (no hand-curation)
 
-**The principle:** the curriculum is NOT a hand-curated sequence of staged corpus files. It's a continuous learning process that runs on the existing corpora (`Ultimate Unity.txt` + `english-baseline.txt` + `coding-knowledge.txt` + every live chat turn) with EXPOSURE INTENSITY scaled by structural complexity. Letters are exposed at highest intensity (most repetitions, longest tick budgets), short words next, longer words next, sentences next, paragraphs last. **The order isn't from hand-picked stage files — it's from sorting the existing corpus tokens by complexity and walking them in order.** New input keeps coming in forever; learning never stops.
+**The principle:** the curriculum is NOT a hand-curated sequence of staged corpus files. It's a continuous learning process that runs on the existing corpora (`Ultimate Unity.txt` + `english-baseline.txt` + `coding-knowledge.txt` + every live chat turn) with EXPOSURE INTENSITY scaled by structural complexity. Letters are exposed at highest intensity (most repetitions, longest tick budgets), short words next, longer words next, sentences next, paragraphs last. **The order isn't from hand-picked stage files — it's from sorting the existing corpus words by complexity and walking them in order.** New input keeps coming in forever; learning never stops.
 
 **Why hand-curated stage corpora are wrong:** hand-curated stage files (200 phrases, 500 sentences) are bottlenecks. They're a fixed snapshot of "what Unity should learn." They cap the developmental trajectory at whoever picked the seed list. They break when we add Spanish or coding-only corpora because they're English-conversational. They violate the "no word lists" principle because a 500-line "simple sentences" file IS a curated word list.
 
-**The right approach:** the persona/baseline/coding corpora ALREADY contain everything needed. Tokenize them, group tokens by complexity (letter < short word < long word < phrase < sentence < paragraph), and replay the corpus in complexity order with frequency-weighted repetitions. The brain is exposed to alphabet first (every letter, weighted by corpus frequency — `e` and `a` get more reps than `q` and `z` automatically), then short words (every 1-3 letter word from the corpus, in frequency order), then longer words, then short sentences, then long sentences, then full paragraphs.
+**The right approach:** the persona/baseline/coding corpora ALREADY contain everything needed. Split into words them, group words by complexity (letter < short word < long word < phrase < sentence < paragraph), and replay the corpus in complexity order with frequency-weighted repetitions. The brain is exposed to alphabet first (every letter, weighted by corpus frequency — `e` and `a` get more reps than `q` and `z` automatically), then short words (every 1-3 letter word from the corpus, in frequency order), then longer words, then short sentences, then long sentences, then full paragraphs.
 
 **Curriculum walk:**
 
@@ -521,11 +521,11 @@ Phase 6 — DISCOURSE exposure
     update _discourseState (T14.9) ring buffer to learn paragraph-level cohesion patterns
 ```
 
-**Phase intensity is data-driven, not hand-set.** The tick budget per token scales with the token's structural complexity AND its corpus frequency. Common letters get more total ticks because they appear in more contexts. Rare words get fewer reps but each rep gets more ticks because the cortex needs longer to settle on a less-familiar pattern.
+**Phase intensity is data-driven, not hand-set.** The tick budget per word scales with the word's structural complexity AND its corpus frequency. Common letters get more total ticks because they appear in more contexts. Rare words get fewer reps but each rep gets more ticks because the cortex needs longer to settle on a less-familiar pattern.
 
 **No fixed timeline.** First boot runs the full corpus through all 6 phases. After first boot, the learned state persists. Subsequent boots load the persistent state and CONTINUE learning from new chat input — every live conversation turn is another curriculum exposure that adds to (not resets) the brain's accumulated learning.
 
-**Persona corpus integration:** the persona corpus is NOT a separate stage. Its tokens flow through the same complexity-sorted phases as the baseline corpus. Persona-specific vocabulary appears in the long-word and sentence phases at high frequency because it's repeated across many persona sentences. The result: persona voice emerges from the same mechanism that learns generic English, just biased by the persona corpus's specific token distribution.
+**Persona corpus integration:** the persona corpus is NOT a separate stage. Its words flow through the same complexity-sorted phases as the baseline corpus. Persona-specific vocabulary appears in the long-word and sentence phases at high frequency because it's repeated across many persona sentences. The result: persona voice emerges from the same mechanism that learns generic English, just biased by the persona corpus's specific word distribution.
 
 **Continuous live-chat learning:** every user turn after boot is processed by the same `learnSentence` + cross-region Hebbian pipeline that ran during the corpus walk. Live chat is just MORE corpus, fed in real-time. The brain keeps learning forever. There is no boot/runtime distinction.
 
@@ -538,11 +538,11 @@ Phase 6 — DISCOURSE exposure
 
      async runFromCorpora(corpora) {
        // corpora: { persona, baseline, coding, ...others }
-       // 1. Tokenize all corpora into a unified token stream
-       const allTokens = this._tokenizeAll(corpora);
+       // 1. Split into words all corpora into a unified word stream
+       const allWords = this._scanCorpora(corpora);
        // 2. Build complexity buckets — letters, short words, long words, phrases, sentences, paragraphs
-       const phases = this._bucketByComplexity(allTokens);
-       // 3. Walk each phase, exposing the cluster to its tokens with frequency-weighted reps
+       const phases = this._bucketByComplexity(allWords);
+       // 3. Walk each phase, exposing the cluster to its words with frequency-weighted reps
        for (const phase of phases) {
          await this._runPhase(phase);
        }
@@ -556,7 +556,7 @@ Phase 6 — DISCOURSE exposure
    }
    ```
 
-2. **No new corpus files.** No `docs/curriculum/stage-c-phrases.txt`. No `docs/curriculum/stage-d-sentences.txt`. The existing `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt` ARE the curriculum input. The Curriculum class tokenizes them and replays them in complexity order.
+2. **No new corpus files.** No `docs/curriculum/stage-c-phrases.txt`. No `docs/curriculum/stage-d-sentences.txt`. The existing `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt` ARE the curriculum input. The Curriculum class splits into words them and replays them in complexity order.
 
 3. **Boot integration in `app.js loadPersonaSelfImage`:**
    ```js
@@ -1425,12 +1425,12 @@ not yet consumed at render time.
   beyond the 6 seed primitives (counter, timer, list, calculator, dice,
   color-picker). Add: button, form, modal, tabs, toggle, slider, progress
   bar, card, notification, chart. Each template parameterized on color +
-  label + action tokens extracted by `parseSentence`.
+  label + action words extracted by `parseSentence`.
 - **P1.1.2** Parameterize `component-synth.generate()` so the returned
   spec's `html` / `css` / `js` substitute `{{color}}` / `{{label}}` /
   `{{action}}` placeholders with values from `brainState.parsed.entities`.
 - **P1.1.3** Dedicated UI-intent detector in the BG motor selector. Bump
-  `build_ui` Q-value when input has imperative-verb + UI-noun tokens.
+  `build_ui` Q-value when input has imperative-verb + UI-noun words.
   Currently BG picks `build_ui` via generic softmax which doesn't
   reliably correlate with "user typed a code intent."
 - **P1.1.4** Build_ui-specific context injection — when motor selects
@@ -1584,7 +1584,7 @@ cortex language region, tick 10 steps each, compare the readouts —
 cosine similarity should be > 0.6 (vs current 50-d result where they're
 nearly indistinguishable). Smoke test: `"do you like cats?"` → Unity
 produces a response that mentions `cats` or a cat-adjacent word within
-the first 3 emitted tokens, consistently.
+the first 3 emitted words, consistently.
 
 **Files touched:** `js/brain/embeddings.js` (EMBED_DIM + GloVe loader),
 `js/brain/engine.js` (CLUSTER_SIZES), `js/brain/cluster.js` (default

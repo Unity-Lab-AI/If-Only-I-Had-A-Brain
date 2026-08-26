@@ -14,7 +14,7 @@
 //      broadcast) for unlabeled camera frames — sight fuses with the word
 //      being "heard", the way infant perception grounds vocabulary.
 //   3. IMAGINING — at imagine-time (_imagineTick / IMG-SEE preview), the
-//      thought's tokens are looked up here FIRST. One match → she re-sees
+//      thought's words are looked up here FIRST. One match → she re-sees
 //      the stored percept — the single strongest ACCURATE one. (The old
 //      two-match morphField overlay was REMOVED by operator directive —
 //      superimposing two seen frames is noise static, not imagination.)
@@ -300,7 +300,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
 
   // Content words only — binding a field C to "the"/"of" would make every
   // future thought recall random imagery through stopword collisions.
-  _vmContentTokens(text) {
+  _vmContentWords(text) {
     return String(text || '').toLowerCase().split(/[^a-z]+/)
       .filter(w => w.length >= 2 && !VM_STOP.has(w))
       .slice(0, 6);
@@ -434,7 +434,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // EXPERIENCES every frame (sem grounding below); she only FILES the ones
     // whose label says what they are. Labels are capped to the first 3
     // content words — a subject is a couple of words, never a sentence.
-    const tokens = this._vmContentTokens(msg.label).slice(0, 3);
+    const words = this._vmContentWords(msg.label).slice(0, 3);
     const store = this._vmStore();
     // GENERATED-IMAGE CONFIRMATION GATE (operator directive) — an image
     // generator is a NOISY oracle: "drag" can come back a balloon; an
@@ -456,7 +456,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
     };
     let _anyTrustedBind = fromCamera;
-    for (const t of tokens) {
+    for (const t of words) {
       const prev = store.get(t);
       if (fromCamera || !newPercept) {
         store.delete(t);                                      // LRU touch
@@ -500,7 +500,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // which is exactly the kind of cost that needs measuring first (the
     // CELLBOUND lesson)". So it is measured, not assumed, and it cannot become
     // a hidden tax:
-    //   * CONFIRMED tokens only — a provisional look (one unconfirmed render)
+    //   * CONFIRMED words only — a provisional look (one unconfirmed render)
     //     is not worth abstracting, and `conf` already encodes that judgement.
     //   * the first FEW looks only (`looks < 3`), NOT "new schemas only" — my
     //     first draft guarded on absence, which fights this method's own design:
@@ -523,7 +523,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       if (_ingestMs > 0 && !this._curriculumInProgress
           && typeof this._learnShapeSchema === 'function'
           && (!this._ownArtIngestAt || (now - this._ownArtIngestAt) >= _ingestMs)) {
-        const _cand = tokens.find((t) => {
+        const _cand = words.find((t) => {
           const e = store.get(t);
           if (!e || e.conf !== true || !e.rec) return false;
           const _looks = (e.schema && Number(e.schema.looks)) || 0;
@@ -566,7 +566,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       this._lastGroundedEyeAt = now;   // SEE.6 — a seen frame is a grounded frame
       this._mindsEyeJson = JSON.stringify({
         type: 'mindsEye', rec, terms: rec.equation_count || 0,
-        source: 'seen' + (tokens.length ? ':' + tokens[0] : ''),
+        source: 'seen' + (words.length ? ':' + words[0] : ''),
         at: now,
       });
     } catch { /* non-fatal */ }
@@ -575,7 +575,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     this._vmIngestCount = (this._vmIngestCount || 0) + 1;
     if (!this._vmLogAt || (now - this._vmLogAt) > 60000) {
       this._vmLogAt = now;
-      console.log(`[VisualMemory] 👁 seen ${fromCamera ? 'camera frame' : 'image'} ${w}x${h} → field C (${rec.equation_count} terms) bound to [${tokens.join(', ') || 'unbound'}] — ${store.size} concept(s) held, ${this._vmIngestCount} frame(s) this boot`);
+      console.log(`[VisualMemory] 👁 seen ${fromCamera ? 'camera frame' : 'image'} ${w}x${h} → field C (${rec.equation_count} terms) bound to [${words.join(', ') || 'unbound'}] — ${store.size} concept(s) held, ${this._vmIngestCount} frame(s) this boot`);
     }
   },
 
@@ -588,10 +588,10 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   _recallVisualMemory(text) {
     const store = this._vmStore();
     if (store.size === 0) return null;
-    const tokens = this._vmContentTokens(text);
-    if (tokens.length === 0) return null;
+    const words = this._vmContentWords(text);
+    if (words.length === 0) return null;
     const hits = [];
-    for (const t of tokens) {
+    for (const t of words) {
       const e = store.get(t);
       if (e && e.rec) hits.push({ word: t, e });
     }
@@ -659,7 +659,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // Cheap: it runs on strokes she already traced, and stores plain numbers.
   async _learnShapeSchema(concept, rec) {
     if (!rec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
-    const key = (this._vmContentTokens(concept)[0] || String(concept || '').toLowerCase().trim());
+    const key = (this._vmContentWords(concept)[0] || String(concept || '').toLowerCase().trim());
     if (!key) return null;
     let strokes = null;
     try {
@@ -1213,7 +1213,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // opts.promptOverride — the caller supplies the full generation prompt
     // (imagination's unified-scene phrasing) instead of the def-driven single-
     // concept prompt.
-    const key = opts.keyOverride || (this._vmContentTokens(concept)[0]) || String(concept || '').toLowerCase().trim();
+    const key = opts.keyOverride || (this._vmContentWords(concept)[0]) || String(concept || '').toLowerCase().trim();
     if (!key) return null;
     const now = Date.now();
 

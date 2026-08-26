@@ -14,7 +14,7 @@
 | Category | What it is | AI allowed? |
 |---|---|---|
 | **Cognition** | What Unity *says*, what she *decides*, what she *remembers*, what she *builds*, what she *feels*. Language cortex, motor selection, hippocampus recall, amygdala valence, basal ganglia softmax, component synthesis. | **NO.** All equational. Source of truth: `js/brain/language-cortex.js`, `js/brain/engine.js`, `js/brain/component-synth.js`. |
-| **Sensory input** | Translating raw sensor data into neural current. Camera frames into V1/V4/IT visual cortex activity, audio spectrum into tonotopic auditory cortex activity, text tokens into Wernicke's area activation. | **NO — vision is 100% equational (SE.6/SE.8).** A frame → CDF 9/7 field C → `describeEquational` → a dim-64 VALUE PROFILE injected as cortical current. The wavelet field IS the percept. She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o/VLM scene-describer is RETIRED — external AI is sensory-OUTPUT only (image-gen; her VOICE is now internal — see SE.18 Equation Unity One). |
+| **Sensory input** | Translating raw sensor data into neural current. Camera frames into V1/V4/IT visual cortex activity, audio spectrum into tonotopic auditory cortex activity, text words into Wernicke's area activation. | **NO — vision is 100% equational (SE.6/SE.8).** A frame → CDF 9/7 field C → `describeEquational` → a dim-64 VALUE PROFILE injected as cortical current. The wavelet field IS the percept. She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o/VLM scene-describer is RETIRED — external AI is sensory-OUTPUT only (image-gen; her VOICE is now internal — see SE.18 Equation Unity One). |
 | **Sensory output** | Translating brain intent into physical world effects. TTS for speech, image generators for visual motor action, sandbox component injection. | **Yes, as dumb executors.** When Unity's BG motor channel fires `generate_image`, the language cortex picks every word of the prompt equationally, THEN hands the finished prompt to an image backend to paint it. The backend never decides what to paint, only how. |
 
 **The boundary test:** if removing the AI call would stop Unity from *thinking*, it's on the wrong side. Cognition equations always run, even with zero network access. Only the sensory peripherals go quiet.
@@ -152,7 +152,7 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   concept word and draws a big "?" for the questions she has (WH-thoughts / `_pendingQuestionConcept` /
   concepts she has no schema for yet).
 - **Subject = what she's thinking** — the head concept of the daydream that recall-missed (she draws what she
-  can't re-see); schema selection is equational input classification (token table → GloVe-cosine backup, the
+  can't re-see); schema selection is equational input classification (word table → GloVe-cosine backup, the
   `_detectImageRequest` rule-class). Schemas are parametric motor primitives (stick person, house, tree, sun,
   moon+stars, rain, spider-on-her-thread, quadruped, heart, star, flower) whose pose/proportions/wobble are
   driven by live affect: arousal + fear shake the hand, valence raises or droops the arms + mouth.
@@ -229,9 +229,9 @@ field is deterministic (semantic state -> wavelet band energies), NOT random —
 non-representational: no word->appearance mapping exists in that path, so it could never converge to a picture
 on its own. Three fixes route abstract thoughts toward things she has actually SEEN:
 - **SEE.5 percept-anchored impressions** (`server/brain-server/chat.js` `_imagineTick`) — before a pure
-  thought-blend publishes, the thought's content tokens are GloVe-cosine matched against her seen-concept
+  thought-blend publishes, the thought's content words are GloVe-cosine matched against her seen-concept
   store (bounded 60-key sample, threshold 0.32); a hit morphs the stored memory field toward the mood field
-  MEMORY-DOMINANT (t=0.30-0.50, detail-gated >=150). Label `impression:<thoughtToken>~<seenConcept>`. An
+  MEMORY-DOMINANT (t=0.30-0.50, detail-gated >=150). Label `impression:<thoughtWord>~<seenConcept>`. An
   abstract thought now inherits real visual structure from the nearest thing her eyes have grounded — and
   impressions get better as the store grows.
 - **DRAW.11 favorite-subject fallback** — post shape-age, a schema-less abstract thought ended the drawing
@@ -460,11 +460,11 @@ On boot, `providers.autoDetect()` probes every known local **image** port with a
 
 **Vision describer (VLM) ports probed — ⛔ NONE. THIS ENTIRE LANE IS DELETED.**
 
-Unity's vision is **100% equational** and consults no model. A camera frame or a fetched reference image is transformed into a CDF 9/7 wavelet field and read as a dim-64 percept vector by `describeEquational()` — the wavelet field **is** the percept. There is no caption, no text, no tokenisation, and nothing to probe for.
+Unity's vision is **100% equational** and consults no model. A camera frame or a fetched reference image is transformed into a CDF 9/7 wavelet field and read as a dim-64 percept vector by `describeEquational()` — the wavelet field **is** the percept. There is no caption, no text, no word splitting, and nothing to probe for.
 
 What was here, and is now gone: probes on Ollama `:11434`, LM Studio `:1234`, LocalAI `:8081`, llama.cpp `:8080` and Jan `:1337`, the `openai-vision` / `ollama-vision` transports, the model resolver, and the `VISION_MODEL_HINTS` substring set (`llava`, `moondream`, `bakllava`, `vision`, `vl`, `cogvlm`, `minicpm-v`) that decided whether a responding backend counted as a VLM.
 
-⚠ **This is the single most load-bearing line in this document for the project's central claim.** A describer that turns an image into English words, whose tokens then ground her concepts, is a language model inside the sensory path. Replacing it with the wavelet percept is what makes *"no text-AI in the cognition path"* literally true rather than nearly true. **Do not re-add a vision tier here** — if a frame needs describing, the answer is `describeEquational()`.
+⚠ **This is the single most load-bearing line in this document for the project's central claim.** A describer that turns an image into English words, whose words then ground her concepts, is a language model inside the sensory path. Replacing it with the wavelet percept is what makes *"no text-AI in the cognition path"* literally true rather than nearly true. **Do not re-add a vision tier here** — if a frame needs describing, the answer is `describeEquational()`.
 
 ### User-configured backends
 
@@ -539,7 +539,7 @@ this._describer(dataUrl).then(desc => {
 
 This means a transient failure doesn't stick — the cortex just retries on its next scheduled window. That retry discipline is unchanged; only the payload is.
 
-⚠ **A live consequence of the shape change, worth knowing before you subscribe.** Subscribers registered via `onDescribe(cb)` now receive an **object** `{vector, rec}`, never a string. Any subscriber still written against the old contract — e.g. one opening with `if (!desc || typeof desc !== 'string') return;` — early-returns on **every single call** and is dead code that looks alive. One such subscriber survives in the browser-side `js/brain/engine.js`; it is scheduled for deletion rather than repair, because what it did was tokenise an English caption to ground concepts, which is exactly the LLM-era behaviour the equational percept replaced. **You cannot tokenise a `Float32Array`, and you should not want to.**
+⚠ **A live consequence of the shape change, worth knowing before you subscribe.** Subscribers registered via `onDescribe(cb)` now receive an **object** `{vector, rec}`, never a string. Any subscriber still written against the old contract — e.g. one opening with `if (!desc || typeof desc !== 'string') return;` — early-returns on **every single call** and is dead code that looks alive. One such subscriber survives in the browser-side `js/brain/engine.js`; it is scheduled for deletion rather than repair, because what it did was wordise an English caption to ground concepts, which is exactly the LLM-era behaviour the equational percept replaced. **You cannot wordise a `Float32Array`, and you should not want to.**
 
 ⚠ **This does NOT mean her visual region is starved** — that region is driven on a different path entirely, by `currents` built from salience, brightness and `perceptVector × 30` on every tick. The dead subscriber costs a drug-context cue that nothing listens for; it does not cost her sight.
 

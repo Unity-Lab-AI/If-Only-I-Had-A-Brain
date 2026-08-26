@@ -183,29 +183,29 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // 12M cut round 3 — CROSS-CALL scan reuse. When the caller guarantees the
     // spike patterns are unchanged across consecutive calls (the letters-major
     // teach loop: write each letter's patterns ONCE, then rep the Hebbian), it
-    // passes `opts.spkCacheToken`. The scan map is reused only while (a) the
-    // token matches AND (b) the cluster's regionSpikesActive GENERATION counter
+    // passes `opts.spkCacheStamp`. The scan map is reused only while (a) the
+    // word matches AND (b) the cluster's regionSpikesActive GENERATION counter
     // is exactly where we left it — any foreign scan (chat teach, emission,
     // another phase) refills the shared per-region scratch and would clobber
     // our references, so it invalidates the cache and we rescan. Without a
-    // token: per-call cache, exactly the old TW S1 behavior.
+    // word: per-call cache, exactly the old TW S1 behavior.
     let _spkCache;
-    const _spkTok = opts.spkCacheToken;
+    const _spkTok = opts.spkCacheStamp;
     if (_spkTok !== undefined
         && this._spkTokCache
-        && this._spkTokCache.token === _spkTok
+        && this._spkTokCache.word === _spkTok
         && this._spkTokCache.gen === (this._regionScratchGen | 0)) {
       _spkCache = this._spkTokCache.map;
     } else {
       _spkCache = new Map();
-      this._spkTokCache = (_spkTok !== undefined) ? { token: _spkTok, map: _spkCache, gen: -1 } : null;
+      this._spkTokCache = (_spkTok !== undefined) ? { word: _spkTok, map: _spkCache, gen: -1 } : null;
     }
     const _spk = (regionName) => {
       let e = _spkCache.get(regionName);
       if (!e) {
         e = this.regionSpikesActive(regionName);
         _spkCache.set(regionName, e);
-        // Stamp validity AT FILL TIME (not end-of-call): the next same-token
+        // Stamp validity AT FILL TIME (not end-of-call): the next same-word
         // call reuses the map iff the generation still equals the counter
         // after our LAST fill — a foreign scan during any of this call's
         // awaits advances the counter and forces a rescan. (A foreign scan

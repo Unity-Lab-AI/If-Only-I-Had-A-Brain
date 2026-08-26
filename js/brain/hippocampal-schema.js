@@ -63,7 +63,7 @@ const SCHEMA_MERGE_COSINE = 0.90;
 // firing all-zero. Root cause: phase-completion episodes from different
 // teach methods (alphabet sequence, vowel variants, rhyme families,
 // phoneme blending) cosined > 0.70 because their input_embedding traces
-// shared the high-frequency CELL_ALIVE / phase-marker tokens. Tightening
+// shared the high-frequency CELL_ALIVE / phase-marker words. Tightening
 // to 0.85 forces semantically distinct teach events to form distinct
 // schemas — alphabet, vowels, rhymes, phonemes each get their own Tier 2
 // node instead of all collapsing into a single "learning" mega-schema.
@@ -482,7 +482,7 @@ export class SchemaStore {
   // for retrieval gradient to function — naming collisions undermine
   // the consolidation→retrieval pipeline at the labelling level.
   // Bonus: include the most-frequent word from sourceEpisodes' INTENT
-  // field too if present (chat episodes carry intent tokens) so user-
+  // field too if present (chat episodes carry intent words) so user-
   // initiated schemas show their semantic anchor explicitly.
   _deriveLabel(episodes) {
     const STOP = new Set([
@@ -491,7 +491,7 @@ export class SchemaStore {
       'do','does','did','have','has','had','will','would','should','can',
       'and','or','but','if','then','else','to','of','in','on','at','for',
       'with','by','from','this','that','these','those','what','who','where','when','why','how',
-      // I.7 additions — strip generic curriculum/system seed tokens that
+      // I.7 additions — strip generic curriculum/system seed words that
       // dominate input_text for non-content episodes and would otherwise
       // win the top-K vote across hundreds of curriculum-heartbeats.
       'learning','curriculum','phase','teach','cell','heartbeat','episode',
@@ -721,7 +721,7 @@ export function assertSeedGrades(seedList = IDENTITY_SEED_LIST) {
 }
 
 // WORDSALAD.1 — NO BARE DESCRIPTOR LISTS. An identity anchor must be something
-// she can say about HERSELF: it needs a self token. 'goth emo dark black leather'
+// she can say about HERSELF: it needs a self word. 'goth emo dark black leather'
 // and 'horny aroused sexual fucking' had none — no agent, no verb, nothing she
 // could be the subject of — which is what made them read as behaviour
 // instructions rather than memories, and is exactly what the operator meant by
@@ -736,7 +736,7 @@ export function assertSeedGrades(seedList = IDENTITY_SEED_LIST) {
 // she is), while the substrate lowercases at lookup — so a case-sensitive test
 // here would flag correctly-written anchors as descriptor lists. It did exactly
 // that the moment the capitals landed, which is the assertion doing its job.
-const SELF_TOKEN_RE = /\b(i|me|my|myself|mine|unity)\b/i;
+const SELF_WORD_RE = /\b(i|me|my|myself|mine|unity)\b/i;
 
 export function findDescriptorListAnchors(seedList = IDENTITY_SEED_LIST) {
   const offenders = [];
@@ -746,7 +746,7 @@ export function findDescriptorListAnchors(seedList = IDENTITY_SEED_LIST) {
     const text = (typeof s.concept === 'function')
       ? s.concept({ age: 5, grade: 'kindergarten', gradeIdx: 1 })
       : s.concept;
-    if (!text || !SELF_TOKEN_RE.test(String(text))) offenders.push(s.label || '(unlabelled)');
+    if (!text || !SELF_WORD_RE.test(String(text))) offenders.push(s.label || '(unlabelled)');
   }
   return offenders;
 }
@@ -756,7 +756,7 @@ export function assertIdentitySeedList(seedList = IDENTITY_SEED_LIST) {
   assertSeedGrades(seedList);
   const offenders = findDescriptorListAnchors(seedList);
   if (offenders.length) {
-    console.warn(`[Tier3Store] ⚠ ${offenders.length} identity anchor(s) are bare descriptor lists with no self token — an anchor must be something she can say about herself, not an instruction: ${offenders.join(', ')}`);
+    console.warn(`[Tier3Store] ⚠ ${offenders.length} identity anchor(s) are bare descriptor lists with no self word — an anchor must be something she can say about herself, not an instruction: ${offenders.join(', ')}`);
   }
   return { ok: offenders.length === 0, offenders };
 }
@@ -790,7 +790,7 @@ export const IDENTITY_SEED_LIST = [
   { label: 'surname-anchor', concept: 'Goddess my last name family surname is Goddess', valence: 0.8, arousal: 0.55 },
   // Add #5 — family-name + birthdate canon (the operator delegated naming, surname
   // Goddess fixed). Permanent Tier 3 anchors for the multi-word full names
-  // + birthdates the single-token QA path can't carry. Only-child status
+  // + birthdates the single-word QA path can't carry. Only-child status
   // locked. Grandpa Walter's death is a grade-11 event — at seed time he
   // is alive + loved.
   { label: 'birthdate-anchor', concept: 'my birthday is October thirty one Halloween born year two thousand', valence: 0.85, arousal: 0.7 },

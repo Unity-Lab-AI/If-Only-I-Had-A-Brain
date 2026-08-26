@@ -110,7 +110,7 @@ export const K_MIXIN = {
    * K-LIFE-VOCAB — Pre-step. Defines K-LIFE-specific new vocab via
    * `_teachWordDefinition` (dictionary-API definition lookup + Hebbian
    * sem-binding) BEFORE any K-LIFE binding fires. Without this, K-LIFE
-   * Hebbian writes would land on phantom-token noise basins — meaningless.
+   * Hebbian writes would land on phantom-word noise basins — meaningless.
    *
    * Per project rule: brain cannot have memories using words it doesn't
    * know the meaning of. Vocab-registered + definition-anchored MUST
@@ -171,7 +171,7 @@ export const K_MIXIN = {
       // bodily functions + hygiene — no sugar-coating per the operator)
       'belly', 'tummy', 'potty', 'bath', 'soap', 'vomit', 'sneeze', 'throat',
       // Name-trove K-rung (Add #15) — concrete named entities. Chosen as
-      // REAL dictionary words so defs + embeddings exist (no phantom tokens):
+      // REAL dictionary words so defs + embeddings exist (no phantom words):
       // vesper=evening star (her stuffed bat), soot (her black cat), wren
       // (her quiet first friend). Goth-toned, consistent with Raven canon.
       'vesper', 'soot', 'wren',
@@ -575,7 +575,7 @@ export const K_MIXIN = {
   /**
    * TRACK SE — cross-modal sensory GROUNDING. Bind concrete concepts to their
    * multi-sensory VALUE descriptors so a concept is comprehended ACROSS senses,
-   * not as a bare token: strawberry → sweet(taste) + red(sight) + soft(touch);
+   * not as a bare word: strawberry → sweet(taste) + red(sight) + soft(touch);
    * cloud → white + soft + bright; bird → small + quiet; fire → hot + bright +
    * smoke. The descriptors are the sensory words already taught (taste / touch /
    * sight-color / light / sound / smell), each carrying its own valence vector —
@@ -1171,7 +1171,7 @@ export const K_MIXIN = {
    * relationTagId=31 = discourse-coherence channel.
    *
    * Past-notes rule: words drawn from K_CONCRETE_SENTENCES so every
-   * pair token is already vocab-trained (the corpus only contains
+   * pair word is already vocab-trained (the corpus only contains
    * K_VOCABULARY words).
    *
    * @returns {Promise<{taught:number, groups:number}>}
@@ -1315,7 +1315,7 @@ export const K_MIXIN = {
     // ── A.K-LIFE-VOCAB — Vocabulary pre-step (FIRES FIRST) ──
     // Defines K-LIFE-specific new vocab BEFORE any K-LIFE binding uses
     // those words. Without this, K-LIFE Hebbian writes would land on
-    // phantom-token noise basins. Brain cannot have memories using words
+    // phantom-word noise basins. Brain cannot have memories using words
     // it doesn't know the meaning of. Each new word gets dictionary-API
     // definition fetched + Hebbian sem-binding so it becomes an anchored
     // basin before K-LIFE bindings reference it.
@@ -5403,14 +5403,14 @@ export const K_MIXIN = {
       // Oracle wrapper-echo guard — for meanings like "color red apple"
       // with hints ['red','apple'], block the dictionary oracle from
       // echoing the structural word "color" by excluding any meaning
-      // token that is NOT in the expected-hints set. Forces the oracle
+      // word that is NOT in the expected-hints set. Forces the oracle
       // to choose from the expected family of answer words OR fall
       // through to the trained sem→motor matrix.
       const _respHintSet = new Set((ctx.expectHints || []).map(h => String(h).toLowerCase()));
       const _respExclude = new Set(
         String(ctx.meaning || '').toLowerCase().split(/\s+/).filter(w => w && !_respHintSet.has(w))
       );
-      const _respEmitOpts = { injectStrength: 1.0, maxTicks: 50, excludeTokens: _respExclude };
+      const _respEmitOpts = { injectStrength: 1.0, maxTicks: 50, excludeWords: _respExclude };
       // T18.4.b — await-cascade when GPU ready (same as WRITE probe above).
       const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === 'function'
         ? await cluster.generateSentenceAwait(emb, _respEmitOpts)
@@ -5468,9 +5468,9 @@ export const K_MIXIN = {
         : cluster.generateSentence(emb, { injectStrength: 1.0, maxTicks: 80 })) || '';
       twoWordEmitted.push(`${p.phrase}→${emitted || '∅'}`);
       const emittedLower = emitted.toLowerCase();
-      const emittedTokens = emittedLower.split(/\s+/).filter(Boolean);
-      const matchedBoth = p.words.every(w => emittedTokens.includes(w));
-      const matchedOne  = p.words.some(w => emittedTokens.includes(w));
+      const emittedWords = emittedLower.split(/\s+/).filter(Boolean);
+      const matchedBoth = p.words.every(w => emittedWords.includes(w));
+      const matchedOne  = p.words.some(w => emittedWords.includes(w));
       if (matchedBoth) twoWordPass++;
       else if (matchedOne) twoWordPartial++;
       const _twoWordMs = Date.now() - _twoWordProbeStart;
@@ -5523,13 +5523,13 @@ export const K_MIXIN = {
       const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === 'function'
         ? await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 200 })
         : cluster.generateSentence(emb, { injectStrength: 1.0, maxTicks: 200 })) || '';
-      const tokens = emitted.toLowerCase().split(/\s+/).filter(Boolean);
-      freeWritingEmitted.push(`${prompt}→${emitted || '∅'} (${tokens.length}w)`);
-      if (tokens.length > 0) freeWritingNonEmpty++;
-      freeWritingWordCount += tokens.length;
+      const words = emitted.toLowerCase().split(/\s+/).filter(Boolean);
+      freeWritingEmitted.push(`${prompt}→${emitted || '∅'} (${words.length}w)`);
+      if (words.length > 0) freeWritingNonEmpty++;
+      freeWritingWordCount += words.length;
       const _freeMs = Date.now() - _freeProbeStart;
       const _freeSlowTag = _freeMs > 60000 ? ' SLOW' : '';
-      try { process.stdout.write(`[Curriculum][K-DIAG] FREE ${_freeIdx}/${freeWritingPrompts.length} DONE${_freeSlowTag} '${prompt}'→'${emitted || '∅'}' (${tokens.length}w) in ${_freeMs}ms\n`); } catch {}
+      try { process.stdout.write(`[Curriculum][K-DIAG] FREE ${_freeIdx}/${freeWritingPrompts.length} DONE${_freeSlowTag} '${prompt}'→'${emitted || '∅'}' (${words.length}w) in ${_freeMs}ms\n`); } catch {}
     }
     const freeWritingRate = freeWritingPrompts.length > 0 ? freeWritingNonEmpty / freeWritingPrompts.length : 0;
     const freeWritingAvgWords = freeWritingPrompts.length > 0 ? freeWritingWordCount / freeWritingPrompts.length : 0;
@@ -5657,7 +5657,7 @@ export const K_MIXIN = {
   //      Hebbian — inject digit character into the letter region AND
   //      inject GloVe('zero' | 'one' | 'two' | … | 'nine') into the sem
   //      region simultaneously. Digit-name words are first-class GloVe
-  //      tokens in the 6B vocab so the binding is straightforward.
+  //      words in the 6B vocab so the binding is straightforward.
 
   //   3. Magnitude-feature binding via phon↔letter cross-projection
   //      Hebbian — the 16-dim `_magnitudeFeatureForDigit` already defined
@@ -8916,7 +8916,7 @@ export const K_MIXIN = {
     ensureLetters(ALPHABET.split(''));
 
     // Binds letter one-hot ↔ GloVe(name) via sem↔letter cross-
-    // projection Hebbian. Uses the single-letter GloVe token first
+    // projection Hebbian. Uses the single-letter GloVe word first
     // ('a', 'b', 'c' all in GloVe 6B) with fallback to LETTER_NAMES
     // ('ay', 'bee', ...).
     for (let rep = 0; rep < reps; rep++) {
@@ -9021,7 +9021,7 @@ export const K_MIXIN = {
 
     // Digit one-hot + GloVe(English name) simultaneous inject into
     // letter + sem regions. 'zero', 'one', 'two', ..., 'nine' are all
-    // first-class GloVe 6B tokens.
+    // first-class GloVe 6B words.
     for (let rep = 0; rep < reps; rep++) {
       for (let i = 0; i < DIGITS.length; i++) {
         const digit = DIGITS[i];

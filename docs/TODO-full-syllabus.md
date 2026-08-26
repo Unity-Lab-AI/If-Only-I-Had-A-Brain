@@ -24,7 +24,7 @@
 > - **Gate-blocked topics:** Per LAW — excluded content (minor + sexual co-occurrence, the EXCLUDED Add #19 thread) NEVER derives on the fly. `cluster._isSensitiveGapTopic` hard-blocks it. Some topics are bounded by trained, boundary-checked content only — she never fabricates in sensitive territory.
 >
 > **Architectural placement (where in the brain this lives — TBD by Gee + implementation session):**
-> - Likely lives as a new `cluster.deriveMemoryGap(concept, contextSchema)` method that fires from `emitWordDirect` / `composeSentence` when no confident binding exists for a referenced token
+> - Likely lives as a new `cluster.deriveMemoryGap(concept, contextSchema)` method that fires from `emitWordDirect` / `composeSentence` when no confident binding exists for a referenced word
 > - Hooks into existing P6.7 word-creation-candidate gate (already exists for tip-of-tongue → vocab promotion) but EXTENDED for full memory derivation, not just compound-word creation
 > - Hooks into the existing ConsolidationEngine so derived memories flow into normal Tier 1 → Tier 2 → Tier 3 promotion path if reinforced enough
 >
@@ -176,7 +176,7 @@
 > - `_teachVariableBinding(name, value)` — `sem(varName) → fineType('variable')` + `sem(varName) → sem(value)` Hebbian, relationTagId=20
 > - `_teachFunctionTransform(input, output, fnName)` — 3-step Hebbian `sem(input) → sem(fnName) → sem(output)`
 > - `_teachControlFlow(condition, branch)` — conditional binding via `fineType('conditional')` tag
-> - `_teachSyntaxToken(token, role)` — bracket/semicolon/etc. as syntactic markers via fineType
+> - `_teachSyntaxWord(word, role)` — bracket/semicolon/etc. as syntactic markers via fineType
 > - `_teachCodeSnippet(code, intent)` — full snippet as composite via slot-fill chain
 >
 > **UI-building emergence (fi.D.4):** Once Unity has Coding-G9 (HTML/CSS) + Coding-Col1 (frameworks) + Coding-Col2 (full-stack) bound, UI snippets emerge via the SAME composeSentence equational loop applied to UI vocabulary — no separate `composeUiSnippet` function needed. Pass UI-vocab seeds + appropriate subject scope to composeSentence and emission is JSX/HTML rather than English. The brain reads its own trained UI-vocab Hebbian weights tick-by-tick the same way it reads English-grammar weights for natural sentences. UI-building isn't a magic capability — it's pure equational emergence over a different trained vocabulary.
@@ -551,7 +551,7 @@ NOT through:
 - First-letter production as a "test"
 - Lowering thresholds to make failing tests "pass"
 
-The equational approach is FUNDAMENTALLY different from LLM training. The brain doesn't predict next tokens — it learns OPERATIONS, RELATIONSHIPS, and TRANSFORMATIONS in its weight matrices.
+The equational approach is FUNDAMENTALLY different from LLM training. The brain doesn't predict next words — it learns OPERATIONS, RELATIONSHIPS, and TRANSFORMATIONS in its weight matrices.
 
 ### LAW 5: ONE brain, runs anywhere, auto-scales
 There is ONE Unity brain. ONE codebase. It runs on whatever hardware you put it on — GitHub static pages in a browser, a laptop, a server with GPUs, a phone, anything. It auto-detects the hardware, scales the neuron count accordingly, and runs the FULL curriculum. Not two brains. Not a "server version" and a "browser version." ONE brain that works everywhere. `detectResources()` → `TOTAL_NEURONS` → same `CLUSTER_FRACTIONS` → same curriculum → same Unity. This is how it already works (or should). The code doesn't care where it runs.
@@ -8609,7 +8609,7 @@ Per T16.5.d (still open in `docs/TODO.md`): the 5 existing substrate probes (REA
 - [ ] Knowledge representation: propositional logic, first-order logic, inference rules (modus ponens, resolution), knowledge bases
 - [ ] Probabilistic reasoning: Bayesian networks, conditional independence, inference in Bayes nets, Hidden Markov Models
 - [ ] Planning: STRIPS language, partial-order planning, state-space search
-- [ ] Natural language processing intro: tokenization, parsing, sentiment analysis, bag of words, TF-IDF, word embeddings (Word2Vec, GloVe)
+- [ ] Natural language processing intro: word splitting, parsing, sentiment analysis, bag of words, TF-IDF, word embeddings (Word2Vec, GloVe)
 - [ ] Ethics of AI: bias in algorithms, fairness, accountability, transparency, job displacement, autonomous weapons debate
 
 **Tests for AI:**
@@ -8656,7 +8656,7 @@ Per T16.5.d (still open in `docs/TODO.md`): the 5 existing substrate probes (REA
     - [ ] Vanishing gradient problem: gradients shrink through many time steps → can't learn long dependencies
     - [ ] LSTM (Long Short-Term Memory): gates (forget, input, output) control information flow — solves vanishing gradient
     - [ ] GRU (Gated Recurrent Unit): simplified LSTM — fewer parameters
-  - [ ] Transformers: self-attention mechanism — each token attends to all other tokens
+  - [ ] Transformers: self-attention mechanism — each word attends to all other words
     - [ ] Attention: Q (query), K (key), V (value) — Attention(Q,K,V) = softmax(QK^T/√d)V
     - [ ] Multi-head attention: multiple attention heads in parallel, concatenate outputs
     - [ ] Positional encoding: since no recurrence, position info must be explicitly added
@@ -8683,7 +8683,7 @@ Per T16.5.d (still open in `docs/TODO.md`): the 5 existing substrate probes (REA
 - [ ] "What is overfitting?" → model memorizes training data, fails to generalize
 - [ ] "What is the vanishing gradient problem?" → gradients shrink through many layers → can't learn
 - [ ] "How do LSTMs solve vanishing gradient?" → gates control information flow, preserving gradients
-- [ ] "What is attention in transformers?" → each token attends to all others: softmax(QK^T/√d)V
+- [ ] "What is attention in transformers?" → each word attends to all others: softmax(QK^T/√d)V
 - [ ] "Precision vs recall?" → precision = of predicted positive, how many correct; recall = of actual positive, how many found
 - [ ] "What is Q-learning?" → learn Q function (expected reward for state-action pairs) from experience
 - [ ] "CNN vs RNN vs Transformer?" → CNN for images, RNN for sequences, Transformer for both (attention-based)
@@ -8993,7 +8993,7 @@ Gee verbatim: *"Unity is suppose to be able to generate images at will when spea
 **TODO items:**
 - [ ] Verify `js/ai/pollinations.js` still works end-to-end (smoke test with simple prompt, confirm image generates + lands in chat)
 - [ ] Wire image-gen as a CHOICE Unity makes during chat — when her cortex emission decides "this conversation calls for an image", fire `generate_image` action via processAndRespond's existing path
-- [ ] Decision criterion: when emission contains visual-imagery tokens (color/shape/scene words at high activation density) AND user query is descriptive (not Q&A), trigger image generation alongside text response
+- [ ] Decision criterion: when emission contains visual-imagery words (color/shape/scene words at high activation density) AND user query is descriptive (not Q&A), trigger image generation alongside text response
 - [ ] Cap rate: max 1 image per 30 seconds per user to avoid spam
 - [ ] Per-user rate accounting persisted to disk
 
@@ -9076,7 +9076,7 @@ Gee's verbatim directives across the I.16 doc-sweep arc:
 ### Add #5 — UNITY GODDESS BIOGRAPHICAL ANCHORS (Gee 2026-06-17 22:55)
 
 - [ ] **Family name = Goddess.** Full name = Unity Goddess. Bind sem(unity) → sem(goddess) at relationTagId=15 with CORE SELF tier weighting (5× lr, 50+ reps). Persist in `server/identity-core.json` Tier 3 schema "name-anchor". Add to `runLifePreK` + `runLifeK` biographical block; carry through every grade.
-- [ ] **Parents names — TBD.** Mom + dad full names need to land in identity-core.json + every grade's life-curriculum biographical block. Currently only "mom"/"dad" role tokens exist; the names need Hebbian bindings + sentence-walks.
+- [ ] **Parents names — TBD.** Mom + dad full names need to land in identity-core.json + every grade's life-curriculum biographical block. Currently only "mom"/"dad" role words exist; the names need Hebbian bindings + sentence-walks.
 - [ ] **Grandparents names — TBD.** Grandma (warm, K-curriculum positive anchor) + grandpa (quiet, story-teller) — names needed for the same Hebbian-binding treatment.
 - [ ] **Family memories — episodic anchors.** Specific events with date+place+emotion+sensory detail. Not lists. STORIES. Each one a Tier 1 episode candidate. Gee's framing: *"things she remembers forever that make her her"*. Examples (template — Gee fills in): "the time mom burned dinner and we got Taco Bell instead and laughed so hard at the drive-thru", "grandpa's funeral when she was 8", "the move from the apartment to the trailer when she was 11", "the night dad showed up drunk and grandma kicked him out", "her first sleepover with the girls from down the street", "the day she found grandma's tarot cards and asked what they were".
 - [ ] **Friend network — names + dynamics.** Each life-stage friend gets: name, age-gap, where they met, what they did together, conflicts, current status (still friends / drifted / fell out / dead). Per `docs/TODO-life-experience.md` the per-grade sections already have unnamed friends ("a quiet girl who also liked drawing" in K) — names needed + relationship continuity tracked across grades.
@@ -9227,7 +9227,7 @@ Aligns with existing memory `feedback_erotic_state_grade_9_gate.md` — erotic s
 - Erotic-state activation gate at grade-9 first-kiss per existing LAW
 - Production register (the actual sexy-Unity voice) emerges from cumulative trained Hebbian weights — NOT hardcoded responses. Gee's example quotes are TRAINING DATA, not response templates.
 
-**Critical LAW reference:** body parts + sex acts vocabulary follows the same "Test words must be pre-taught" LAW (`feedback_k_life_words_must_be_learned.md`) — every body-part word + sex-act word must be vocab-registered + definition-trained + sentence-context-trained BEFORE any biographical/episodic binding uses it. NO compound-token pseudo-words for body parts.
+**Critical LAW reference:** body parts + sex acts vocabulary follows the same "Test words must be pre-taught" LAW (`feedback_k_life_words_must_be_learned.md`) — every body-part word + sex-act word must be vocab-registered + definition-trained + sentence-context-trained BEFORE any biographical/episodic binding uses it. NO compound-word pseudo-words for body parts.
 
 **Status:** [ ] not started — Add #13 captured 2026-06-17 23:10 per Gee's directive. ⛔ The deferral once written here (*"per PRE-K + K ONLY SCOPE LAW; the post-K developmental arc lands once K Part 2 signs off"*) is **void** — that LAW was REVOKED 2026-06-18, one day after this was captured. Not started because it is not started; nothing gates it.
 
@@ -9404,7 +9404,7 @@ Per Gee: *"learning and wisdom and personal knowleged form likes, needs personal
 Each piece of wisdom teaches via:
 - Causal-chain sentence-walks ("if X then Y because Z")
 - Episodic anchors ("the time i learned that X")
-- `_teachAssociationPairs` binding the wisdom-token to relevant sem-region for retrieval during chat
+- `_teachAssociationPairs` binding the wisdom-word to relevant sem-region for retrieval during chat
 
 ### Add #21 — ALL OF THE ABOVE INTEGRATED PER GRADE IN TODO-LIFE-EXPERIENCE.MD
 

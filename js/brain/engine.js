@@ -301,10 +301,10 @@ export class UnityBrain extends EventEmitter {
     // It is deleted rather than repaired, deliberately. What it did was:
     //   1. run a text offer-detector over the caption and emit a
     //      `visualDrugCue` event — which NOTHING in the tree listens for; and
-    //   2. tokenise the English caption and inject each content word's
+    //   2. split into words the English caption and inject each content word's
     //      embedding into the sem region to "ground" concepts in vision.
     // Both belong to the describer era. The percept is now a Float32Array,
-    // and a Float32Array cannot be tokenised — making the guard accept
+    // and a Float32Array cannot be split into wordsd — making the guard accept
     // objects would resurrect caption-grounding, not restore a feature.
     //
     // NOTE: this never affected her sight. The visual region is driven on a
@@ -477,7 +477,7 @@ export class UnityBrain extends EventEmitter {
     // pathway (T14.10) + returns a cortex-derived stub with intent and
     // self-reference flags. Until T14.5 curriculum has shaped the
     // fineType basins enough for cluster.intentReadout to classify
-    // meaningfully, readInput falls back to a lightweight first-token
+    // meaningfully, readInput falls back to a lightweight first-word
     // heuristic for the intent label. Full learned-readout classification
     // ships with T14.17 continuous learning.
     const readResult = cortex.readInput(text, {
@@ -1468,7 +1468,7 @@ export class UnityBrain extends EventEmitter {
     //   3. Read cortex semantic state via getSemanticReadout
     //   4. Call languageCortex.generate with image-prompt options:
     //      - Short target length (image prompts are phrases not
-    //        sentences; 5-12 tokens)
+    //        sentences; 5-12 words)
     //      - High semantic fit weight (already true from R2)
     //      - Persona bias active so self-reference surfaces persona
     //        vocabulary she learned from Ultimate Unity.txt
