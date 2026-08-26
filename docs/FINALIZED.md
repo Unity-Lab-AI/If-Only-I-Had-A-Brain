@@ -38203,3 +38203,56 @@ Hooked at `_ownArtDrawn++`, the single point every draw lane flows through, so n
 **VMUSE.5d — the sem grounding injection stays skipped mid-walk.** ⚠ Unlike the other two this one is correct as it stands: injecting a percept into sem while a teach pattern is in flight genuinely corrupts it. ⭐ **And the durable half is covered anyway** — VMRELATE queues a real Hebbian bind from every trusted look, ungated, so seeing does move her weights during the walk as of today. Deferring the injection itself would need the drain to carry a second job KIND (it only runs `_teachAssociationPairs`), and changing the drain contract touches the walk lane.
 
 ⚠ **NOT VERIFIED LIVE** — server-side, needs a restart.
+
+---
+
+## 2026-08-26 - INFRA UNFOLD: four engineering items were parked by a decision they never depended on - feature/infra-unfold
+
+### Gee ask (verbatim per LAW #0)
+
+> *"we dont need sponge to do these"*
+
+> *"and number 4 we dont even need that was running it locally which is what im doing now which pusts that whole needed sponge and red thing mute"*
+
+### What was wrong
+
+`INFRA.1` held five multi-day architecture items under one board line, folded together on 2026-08-25 on Gee's own instruction (*"the 5 multi day ones do the same putting them as 1 item containing all ther there in tasks"*). The fold was correct — all five genuinely answer the same question, *where does the compute actually live, and what is the wire between here and there?*
+
+⛔ **The defect appeared afterwards, and it is a reporting defect, not a filing one.** One of the five — `COMP.2`, the local-run option — was an infrastructure decision belonging to Red and Sponge. The umbrella therefore carried the status **"⛔ Parked on Gee's word. Contains a decision that is Red's and Sponge's"**, and the board summary read **"there is no buildable work left on this board."**
+
+⭐ **Four pure-engineering items inherited a park they had nothing to do with.** `COMP.1` is a donor binary. `COMP.1c`/`RHYTHM3S.2` is a kernel port. `GPUTEACH.1` part B is worker threads on the coordinator. **Not one of them needs a box Gee cannot reach, and not one of them needs another person's decision.** They read as blocked for a day because they shared a line with something that was.
+
+**The generalisable rule, written into the board:** an umbrella reports the WORST blocker of its members to all of them. Bundling by *topic* is safe; bundling by *topic across a decision boundary* hides work.
+
+### And member 4 is not deferred — it is answered by fact
+
+`COMP.2` asked whether the brain should keep running on the coordinator box with donated GPUs, or move to Gee's 128GB machine. **He is running it locally right now** — the walk in progress is on his own hardware. ⭐ **The decision item was asking permission for a state that already exists**, which makes it moot rather than pending.
+
+⚠ **Stated so it is not discovered later:** the deployed box remains the brain's PUBLIC home — public page, donor system, leaderboard, chat — and this closure does not claim otherwise. What it closes is the *"someone else must decide before I may build"* condition.
+
+⭐ **The measured win named inside `COMP.2`'s own text is now available rather than hypothetical:** a localhost donor kills the ~200ms wire tax that KI-23 identified as the real ceiling, and the 4070 Ti Super holds her current ~10GB ask. `COMP.2` had already measured that RAM was never the constraint (the coordinator uses 7.3 of 32GB).
+
+### What shipped
+
+Board restructure only — **no code changed in this commit.**
+
+- `INFRA.1` marked `[x] ↪ UNFOLDED`, with Gee's two verbatim sentences and the full original five-item text retained unchanged beneath it per the never-delete rule.
+- Three individual OPEN items filed: **`COMP.1` (parts b/c/d)**, **`COMP.1c`/`RHYTHM3S.2`**, **`GPUTEACH.1` part B**.
+- The governing constraint block kept in place directly above them, because it is the thing most likely to be lost once one item becomes three: **the ceiling is the coordinator and the wire, not the card** (~205ms RTT/op, ~88s per 5.4GB checkpoint, and `GPUSWAP.1`'s measured ~1.05-1.2× for ~15× the cost).
+- The 2026-08-25 board banner and its *"no buildable work left"* reading are KEPT and marked superseded in place, not rewritten — they were true when written.
+
+### Three corrections made while unfolding, each of which would have cost real work
+
+⛔ **`COMP.1` scoped to parts b/c/d.** The original filing lists `RHYTHM3S.2` as `COMP.1`'s own part (a) — so filing `COMP.1` and `COMP.1c` as two open items without scoping means **the same kernel port gets built twice.**
+
+⛔ **`GPUTEACH.1` part B's headline number is STALE and is flagged as such.** B's first named target was `_teachLateralInhibition`'s anti-Hebbian at **31,818ms**, read off build `2157af98` — but **`SCALEWALK.3` has since cut that exact lane 2.3×.** The profile that justified B's ordering no longer describes the brain, so B owes a re-measure before anyone builds against it. ⭐ Also carried forward from `COMP.3`: the teach loop stays single-thread by CORRECTNESS (concurrent Hebbian writes to the same synapse rows race and corrupt learning), and a bio-scale worker-pool experiment was **measured** costing more in per-call SAB copies than the math saved — **B is only viable as per-matrix ownership with a snapshot read, never as "parallelize the teach loop".**
+
+⛔ **`COMP.1` needs a NEW DONOR BINARY, which is a change of posture from `DONORSHIP.1`.** That item closed *"no new binary needed"* earlier the same day — correctly, because that batch made zero wire-shape changes. `COMP.1` is `v0.3.27` scope by name and changes the wire shape on purpose. Per `feedback_i_push_donor_tags` the release is mine end-to-end.
+
+### `WALKLAST.1` splits the three, and this is the part that must not be skipped
+
+⭐ Items ① and ③ change **how fast she is taught**, not what she is taught — they may land any time.
+
+⛔ Item ② changes **her dynamics**. The donor's per-cluster `step()` is plain LIF (tau 20, fixed thresholds); hers carries activity-modulated theta/gamma Kuramoto accumulators, a 5-factor effective drive, K.5 column gap-junction voltage pull, per-region attention lookup, per-neuron `externalCurrent` + `incomingProjections`, and the cerebellar `errorCorrection`. **Moving the step as-is would silently lobotomize the cortical microstructure** — and *silently* is the operative word: it would run, produce numbers, and teach a differently-shaped brain. A port landing MID-WALK teaches her under two different physics in one walk. Either it lands before a walk, or it is proved bit-identical to the `propagateChunked` standard (`maxDiff = 0`). **There is no third option that is honest.**
+
+⚠ All three are server-side and land on a RESTART. She is walking now; a savestart resume keeps her training, a fresh walk throws it away.
