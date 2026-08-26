@@ -130,6 +130,33 @@ pub struct PerClusterResult {
     pub mean_voltage: Option<f32>,
 }
 
+/// Donor-side timing for one `compute_batch`, so the brain can split its
+/// round-trip honestly instead of attributing all of it to the wire.
+///
+/// The brain measures dispatch -> reply and calls that `roundTripMs`. Until now
+/// the native donor reported nothing, so `donorReports` was false and the whole
+/// round trip was indistinguishable between three very different causes: time
+/// on the wire, time waiting in this donor's work queue, and time actually
+/// doing the math. Those call for opposite fixes -- batching helps the first,
+/// only the third is a reason to touch the kernels -- and with a localhost
+/// donor the wire is effectively free, which makes the split the whole answer.
+///
+/// `total_ms` is the field the brain already reads (`phaseTimingMs.totalMs`);
+/// the other two are what make it actionable.
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct PhaseTimingMs {
+    /// Queue wait + compute. What the brain subtracts from its round trip.
+    #[serde(rename = "totalMs")]
+    pub total_ms: f64,
+    /// Time this batch sat in the work queue before the GPU worker picked it
+    /// up. High here means the donor is saturated, not slow.
+    #[serde(rename = "queueWaitMs")]
+    pub queue_wait_ms: f64,
+    /// Time inside `run_substeps` -- the actual GPU math.
+    #[serde(rename = "computeMs")]
+    pub compute_ms: f64,
+}
+
 /// Reply to a `compute_batch`.
 #[derive(Debug, Clone, Serialize)]
 pub struct ComputeBatchResult {
@@ -139,6 +166,12 @@ pub struct ComputeBatchResult {
     pub batch_id: u64,
     #[serde(rename = "perCluster")]
     pub per_cluster: HashMap<String, PerClusterResult>,
+    /// Optional so an older brain that ignores it is unaffected, and so a path
+    /// that cannot time itself omits the field rather than reporting a zero --
+    /// a zero here would read as "the donor did no work", which is a lie the
+    /// brain would then subtract from its round trip.
+    #[serde(rename = "phaseTimingMs", skip_serializing_if = "Option::is_none")]
+    pub phase_timing_ms: Option<PhaseTimingMs>,
 }
 
 /// Periodic per-donor stats (every ~5 s).

@@ -897,6 +897,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">
           <div title="Live count of connected donor GPUs sharing compute.">donors: <span id="d-as-donors" style="color:#22c55e;">0</span></div>
+          <div id="d-batch-timing-wrap" style="grid-column:1/-1;" title="BATCH ROUND TRIP, SPLIT HONESTLY. The brain measures dispatch-to-reply and calls that the round trip; on its own that number cannot say where the time went. A donor that reports its own timing splits it three ways: queue (the batch sat behind other work on the donor — it is saturated, not slow), compute (the GPU math itself), and the remainder, which is genuinely wire plus any blocked event loop. This matters because the fixes are opposite: batching and scheduling help queue time, only compute time is a reason to touch the kernels. With a donor on localhost the wire is nearly free, so a large round trip is almost entirely one of the first two. 'donor not reporting' means a pre-0.3.31 donor, and the split is unavailable rather than zero.">batch round-trip: <span id="d-batch-timing" style="color:#888;">—</span></div>
           <div title="Sum of all connected donors' reported VRAM.">community VRAM: <span id="d-as-vram" style="color:#00e5ff;">0</span> MB</div>
           <div title="SIZE DRIVER — max(operator baseline, smallest committed donor VRAM). Data-parallel: every replica donor holds the FULL brain, so this (not the community sum) bounds brain size.">size driver: <span id="d-as-driver" style="color:#00e5ff;">0</span> MB</div>
           <div title="Neurons the size driver can hold ((driver x 0.75 − 2048MB) / bytes-per-neuron). Milestone tiers gate on this capacity.">capacity: <span id="d-as-cap" style="color:#a855f7;">0</span></div>
@@ -1659,6 +1660,37 @@
         const vramQueryWorking = p.gpuVramQueryWorking !== false;
         const vramPct = (vramQueryWorking && vramTotal > 0) ? Math.max(0, Math.min(100, Math.round((vramUsed / vramTotal) * 100))) : 0;
         const gpuColor = !vramQueryWorking ? '#888' : (vramPct > 90 ? '#ef4444' : vramPct > 70 ? '#f59e0b' : '#22c55e');
+        // DONORTIME.1 — the round-trip split, on the page instead of only in a
+        // rate-limited console line. A measurement that scrolls away cannot be
+        // read when it is needed (ONESHOT.1). Where the time went decides which
+        // fix is even relevant, so the row names the dominant part rather than
+        // leaving three numbers to be compared by eye.
+        const $bt = document.getElementById('d-batch-timing');
+        if ($bt) {
+          const bt = p.batchTiming;
+          if (!bt || !bt.samples) {
+            $bt.textContent = 'no batch sampled yet';
+            $bt.style.color = '#666';
+          } else {
+            const ema = Math.round(bt.roundTripEmaMs || 0);
+            if (!bt.donorReports) {
+              // Absence named as absence — never rendered as a zero share.
+              $bt.innerHTML = `<span style="color:#f59e0b;">${ema}ms ema</span>`
+                + ` <span style="color:#777;">· donor not reporting (pre-0.3.31) — cannot split wire from compute</span>`;
+            } else {
+              const q = Math.round(bt.donorQueueWaitMs ?? 0);
+              const c2 = Math.round(bt.donorComputeOnlyMs ?? 0);
+              const un = Math.round(bt.unaccountedMs ?? 0);
+              const parts = [['queue', q], ['compute', c2], ['wire+loop', un]];
+              parts.sort((a, b) => b[1] - a[1]);
+              const dom = parts[0];
+              const colour = dom[0] === 'compute' ? '#a855f7' : dom[0] === 'queue' ? '#f59e0b' : '#00e5ff';
+              $bt.innerHTML = `<span style="color:${colour};">${ema}ms ema</span>`
+                + ` <span style="color:#777;">· queue ${q}ms · compute ${c2}ms · wire+loop ${un}ms</span>`
+                + ` <span style="color:${colour};">→ mostly ${dom[0]}</span>`;
+            }
+          }
+        }
         $('d-perf').innerHTML = `
           <div>
             <div style="font-size:10px;color:#555;">CPU</div>

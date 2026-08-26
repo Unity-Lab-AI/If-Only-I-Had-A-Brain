@@ -18,7 +18,7 @@ use crate::config::DonorConfig;
 use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
-    ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
+    ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult, PhaseTimingMs,
     LetterSurpriseAck, MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck, RebindAck,
     ServerMessage,
 };
@@ -292,7 +292,11 @@ enum CachedTeach {
 /// keep flowing during a heavy teach burst.
 enum Work {
     Init(GpuInit),
-    Batch(ComputeBatch),
+    /// The `Instant` is when this batch was pushed onto the queue. Carried so
+    /// the reply can separate queue wait from compute -- without it the donor
+    /// can only report one number, and one number cannot tell the brain whether
+    /// it is saturating this donor or whether the math itself is slow.
+    Batch(ComputeBatch, std::time::Instant),
     Frame(Frame),
     WriteSpike { cluster: String, region: String, indices: Vec<u32> },
     WriteCurrent { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
@@ -357,7 +361,7 @@ impl WorkQueue {
         // minutes-deep teach flood (same reasoning as compute_batch).
         let hi = matches!(
             &work,
-            Work::Batch(_) | Work::Init(_) | Work::ChecksumMatrix { .. } | Work::Mindspace { .. }
+            Work::Batch(..) | Work::Init(_) | Work::ChecksumMatrix { .. } | Work::Mindspace { .. }
         ) || matches!(&work, Work::Frame(f) if matches!(f, Frame::Upload { .. } | Frame::Chunk { .. }));
         if let Ok(mut lanes) = self.inner.lock() {
             if hi { lanes.hi.push_back(work) } else { lanes.lo.push_back(work) }
@@ -814,7 +818,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
             activity_w.begin(match &work {
                 Work::Init(init) => format!("gpu_init {}", init.cluster_name),
-                Work::Batch(batch) => format!("compute_batch {}", batch.batch_id),
+                Work::Batch(batch, _) => format!("compute_batch {}", batch.batch_id),
                 Work::Frame(f) => match f {
                     Frame::Upload { name, .. } => format!("upload {name}"),
                     Frame::Chunk { name, chunk_seq, total_chunks, .. } => format!("upload-chunk {name} {}/{}", chunk_seq + 1, total_chunks),
@@ -847,14 +851,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let ack = GpuInitAck { msg_type: "gpu_init_ack", cluster_name: init.cluster_name.clone(), size: init.size };
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
-                Work::Batch(batch) => {
+                Work::Batch(batch, queued_at) => {
                     // Per-GPU duty-cycle now lives inside run_substeps (each card throttles to
                     // its own util target), so the worker just runs + replies. Pass the stop
                     // flag so a low-util idle bails fast on ⏹ Stop.
                     let _neurons: u64 = batch.clusters.iter().map(|c| c.size as u64).sum();
                     let _substeps = batch.substeps.max(1) as u64;
                     let _t0 = std::time::Instant::now();
-                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w);
+                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w, queued_at);
                     let _elapsed = _t0.elapsed().as_secs_f64().max(1e-6);
                     // Gneuron-steps/sec — same metric as compute.html: (Σ cluster sizes × substeps) / sec / 1e9.
                     let _gns = (_neurons as f64 * _substeps as f64) / _elapsed / 1e9;
@@ -1133,7 +1137,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Message::Text(t) => {
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {
                             Ok(ServerMessage::GpuInit(init)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Init(init)); }
-                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Batch(batch)); }
+                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Batch(batch, std::time::Instant::now())); }
                             Ok(ServerMessage::RebindSparse(rb)) => {
                                 // Ack inline (no GPU work) so the brain doesn't hit its 30s
                                 // rebind timeout. The matrix stays standalone (carried preSpikes
@@ -1326,7 +1330,11 @@ fn handle_gpu_init(engine: &mut MultiEngine, init: &GpuInit) {
     println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
-fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize) -> ComputeBatchResult {
+fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize, queued_at: std::time::Instant) -> ComputeBatchResult {
+    // Queue wait is measured from the moment the WS task pushed this batch, so
+    // it covers the whole time it sat behind other work -- measuring from the
+    // top of this function would report zero by construction and look healthy.
+    let queue_wait_ms = queued_at.elapsed().as_secs_f64() * 1000.0;
     let substeps = batch.substeps.max(1);
     let mut per_cluster = std::collections::HashMap::new();
     let mut jobs: Vec<StepJob> = Vec::with_capacity(batch.clusters.len());
@@ -1344,14 +1352,29 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, st
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.
     *step_seed = step_seed.wrapping_mul(2654435761).wrapping_add(40503);
+    let compute_t0 = std::time::Instant::now();
     let outs = engine.run_substeps(&jobs, substeps, *step_seed, stop, pending);
+    let compute_ms = compute_t0.elapsed().as_secs_f64() * 1000.0;
     for (name, so) in outs {
         per_cluster.insert(
             name,
             PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: None },
         );
     }
-    ComputeBatchResult { msg_type: "compute_batch_result", batch_id: batch.batch_id, per_cluster }
+    ComputeBatchResult {
+        msg_type: "compute_batch_result",
+        batch_id: batch.batch_id,
+        per_cluster,
+        // total = what the brain subtracts from its round trip. It is queue +
+        // compute deliberately: from the brain's point of view both are time
+        // the donor held the request, and only the remainder after subtracting
+        // it is genuinely wire.
+        phase_timing_ms: Some(PhaseTimingMs {
+            total_ms: queue_wait_ms + compute_ms,
+            queue_wait_ms,
+            compute_ms,
+        }),
+    }
 }
 
 /// Handle a decoded binary sparse frame; returns the SPRR ack bytes to send (if any).
