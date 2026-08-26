@@ -38502,3 +38502,46 @@ Worst case, three popups projecting to the identical point: newest at bottom **5
 ⚠ Owned: the first edit put backticks inside the CSS comment — and that CSS is a JS **template literal**, so it terminated the string. Caught by `node --check` before commit.
 
 ⚠ **Frontend only — lands on deploy, no press.**
+
+---
+
+## 2026-08-26 - VALBIDIR.1: the normalization only ever ran ONE WAY - feature/valence-bidirectional
+
+### Gee ask (verbatim per LAW #0)
+
+> *"valence is STILL READING 0.00!!! IS IT A SCALING PROBLEM WTF IS IT?"*
+
+### It is not scaling. The popup was reading a DIFFERENT BRAIN, and reading it through a half-finished normalizer.
+
+The two state shapes are mirror images:
+
+| | flat `state.valence` | nested `state.amygdala.valence` |
+|---|---|---|
+| **server** broadcast | ✅ 0.084 | ❌ absent |
+| **local browser engine** | ❌ absent | ✅ (starts at 0) |
+
+`brain-3d.js`'s normalizer synthesized **flat → nested only**. So whenever the local fallback brain was driving the 3D view, `state.valence` stayed `undefined`, and `_describeInternalState` — which reads the FLAT field — fell to its `?? 0` default and printed `valence:0.00`. The legacy pool, which reads the NESTED field, printed the same zero from the other side. **Neither reader was wrong. The normalization was half-done.**
+
+⭐ **Reproduced exactly before fixing:** feeding the local-brain shape through the REAL normalizer rendered `valence:0.00`; the server shape rendered `valence:0.08`.
+
+### Fixed
+
+**Bidirectional normalization** — nested values are now backfilled to flat, after the block that creates them (reading `norm.oscillations` from inside the amygdala section would have read an undefined it had not built yet — the same ordering mistake in miniature).
+
+⚠ Written as an explicit `=== undefined` test, **not** `??` or `||`: a real valence of 0 is legitimate and must not be overwritten, and 0 is falsy — which is the identical trap that made `s.amygdala?.valence ?? s.valence` return a stale nested zero instead of the live flat one in `VALFLAT.1`.
+
+**And the popup now NAMES ITS SOURCE** — `[server]` or `[local-fallback]`, discriminated on neuron count (hundreds of millions vs ~6.7K). ⛔ This is why the bug survived three fixes: **the number was CORRECT for the brain it was reading.** Without a source tag, *"the local brain is driving"* and *"the server value is broken"* render identically, and only one of them is a bug.
+
+### Verified — 9/9 against the real normalizer
+
+Local shape backfills nested→flat (0.07 renders as 0.07); server shape unchanged (0.084, nested still synthesized, coherence both ways, bandPower survives); and a **genuine** zero is preserved rather than treated as missing.
+
+### The three earlier attempts, and why each missed
+
+1. **`brain-3d.js` norm passing** — a no-op; line 2439 is `state = norm`. Reverted before commit.
+2. **`VALSNAP.1`** — the `serverConnected` snapshot. A real bug, fixed and standing, but not this one.
+3. **`VALFLAT.1`** — chain ordering in `app.js`. Also real, also standing, also not this one (it fixed the HUD, not the 3D popups).
+
+⛔ All three were reasoned from a plausible pattern. The answer came the moment I executed the real normalizer against the real shape instead. **That should have been the first move, not the fourth.**
+
+⚠ **Frontend only — lands on deploy, no press.** The `[source]` tag on the popup is the thing to read next: if it says `local-fallback`, the 3D brain is not attached to the server and that is a separate, now-visible problem.

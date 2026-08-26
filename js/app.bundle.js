@@ -126932,12 +126932,17 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
         reward: state.reward ?? 0
       };
     }
+    if (norm.valence === void 0) norm.valence = norm.amygdala?.valence ?? 0;
+    if (norm.arousal === void 0) norm.arousal = norm.amygdala?.arousal ?? 0.5;
+    if (norm.fear === void 0) norm.fear = norm.amygdala?.fear ?? 0;
     if (!norm.oscillations) {
       norm.oscillations = {
         coherence: state.coherence ?? 0.5,
         bandPower: state.bandPower || {}
       };
     }
+    if (norm.coherence === void 0) norm.coherence = norm.oscillations?.coherence ?? 0.5;
+    if (norm.bandPower === void 0 && norm.oscillations?.bandPower) norm.bandPower = norm.oscillations.bandPower;
     if (!norm.cortex) {
       const cerebBaseline = 0.03;
       const errProxy = Math.max(0, Math.min(1, (cerebAct - cerebBaseline) * 20));
@@ -127249,7 +127254,9 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     const arousal = (state.arousal ?? 0.5).toFixed(2);
     const valence = (state.valence ?? 0).toFixed(2);
     const psi = (state.psi ?? 0).toFixed(3);
-    return `arousal:${arousal} valence:${valence} \u03A8:${psi}`;
+    const n = Number(state.totalNeurons || 0);
+    const src = n > 1e6 ? "server" : "local-fallback";
+    return `arousal:${arousal} valence:${valence} \u03A8:${psi} [${src}]`;
   }
   _addNotification(text, clusterIdx) {
     const wrap = this._overlay?.querySelector(".b3d-notif-wrap");
