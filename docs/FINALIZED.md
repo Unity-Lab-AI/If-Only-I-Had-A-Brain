@@ -38645,3 +38645,51 @@ Also caught pre-commit: I first published the counter as `this.eyeRelationPicks`
 Known concepts move to the front; the pool size is unchanged (nothing filtered); the counter increments; **no confident relation → no reorder, pool byte-identical, counter untouched**; a single-key store is left alone. Plus `node --check` ×2, dashboard divs 492/492, scripts parse, and an explicit NUL-byte scan of `chat.js` (0 — I shipped one into this exact file earlier today).
 
 ⚠ **Server-side + dashboard — lands on the next restart.**
+
+---
+
+## 2026-08-26 - LOCALCTL.1: Sponge's control plane now works on a local run, both platforms - feature/local-ctl
+
+### Gee ask (verbatim per LAW #0)
+
+> *"i want sponges new button layout to work for the local run version with all mapped properly for the local run brain(AS THESE ARE ALL FOR OUR SPECIFIC SERVER BOX CURRENTLY) and the local bversion runs fine currently but its buttons obviously have never worked becasue we never correctly differenceiate wwhich dashboard should be running when running locally localhost which as different or at least needs differetn button code than one running on the server box"*
+
+> *"make sure u build correctly to auto work on sh and .bat for windows and linix"*
+
+> *"make sure this will never over write shit in the directory i dont want a savesatart to fucking wipe my .clkaude and shit"*
+
+### What was wrong
+
+`brain-ctl` is systemd end-to-end — `sudo`, `deploy/brain-ctl-helper.sh`, `systemctl`, `journalctl`. The dashboard **already** branched on `_dashIsLocal` and **already** pointed at `localhost:7526`; nothing answered there, so **every power button has been dead on localhost since it shipped.** The differentiation existed; the other half of it did not.
+
+### Fixed at the THREE PRIMITIVES, not the eleven verbs
+
+`runHelper`, `systemctlShow` and `journal` are the only systemd-coupled functions. Everything above them — `doStart` / `doStop` / `doRestart` / `doKick` / `doReset` / `doSaveRerun` — is written in terms of those plus a port probe, so all of it inherits local behaviour untouched. ⭐ Adapting per-verb would have been eleven chances to drift from the box.
+
+⚠ Detection is `/run/systemd/system`, the standard "am I under systemd" test — **not** `platform === 'linux'`, because a Linux dev box without systemd (WSL, a container) is exactly as local as Windows.
+
+**Cross-platform by construction:** `windows/*.bat` and `linux/*.sh` both already exist, so the launcher path is chosen from `process.platform`. `start.*` = fresh (state wiped at boot), `Savestart.*` = keep — the launchers' own contract, not a new one.
+
+⚠ Launchers are spawned **detached + unref + stdio ignore**. Load-bearing: the brain outlives the request by hours, and as a child of brain-ctl it would die whenever brain-ctl restarted, while held stdio would block on a full pipe — which is how a "start" that appears to hang actually hangs.
+
+### ⛔ The safety question, answered by AUDIT not assurance
+
+Gee asked whether this could wipe his directory. Measured before wiring anything:
+
+- **The launchers delete exactly one file: `glove.6B.zip`** (the archive, after extraction). No `rmdir`, no directory wipes.
+- **The fresh-walk state clear** is `unlink` on literally-named state files. Its ONLY recursive delete is hardcoded to `pollinations-output/`, and the code already carries the standing law in a comment: `.claude/pollinations-user.json` is never touched.
+- **`.claude/` is gitignored**, so a pull cannot see it at all.
+
+⭐ **And a guard was added rather than relying on any of that:** `localTreeDirty()` runs `git status --porcelain` BEFORE any pull. Dirty → the pull is **skipped entirely** and the restart still happens, because the restart is what was asked for and the pull is the optional half. ⚠ An unreadable `git status` counts as dirty: the safe answer to *"I cannot tell whether this would overwrite your work"* is *"do not pull"*. Verified live on this repo — 5 uncommitted changes detected, pull correctly skipped.
+
+### Two things the audit improved beyond the ask
+
+**Local logs exist.** The launchers already redirect to `server/server.log`. `journal` now TAILS THAT FILE instead of reporting "no journal here" — and unlike the brain's own console ring it is readable when the brain is DOWN, which is exactly when logs are wanted. Verified live: real curriculum output returned.
+
+**Double-start is not an error.** The launchers start ctl every run, and the service exists to OUTLIVE the brain, so on the second launch the port is legitimately held by the still-good first instance. `EADDRINUSE` now exits **0** with a plain message instead of crash-looping — handled once, rather than adding a port check to four launcher scripts that would then have to stay in sync.
+
+### Verified live on Windows
+
+`/ctl/status` → `phase: online`, unit state synthesized from the port probe with `_source` naming how it was derived (a fabricated `ActiveState: active` would be the confident-wrong readout this project keeps un-shipping). `/ctl/logs` → real tail. Second instance → exit 0, quiet. `node --check` on brain-ctl, `bash -n` on both `.sh` launchers, and both log files confirmed gitignored so nothing pollutes the tree.
+
+⚠ Gee chose **git pull included** on the local update verbs (asked before building). The WIPE interlock on fresh-walk is unchanged — local is not a reason to make the destructive verb easier.

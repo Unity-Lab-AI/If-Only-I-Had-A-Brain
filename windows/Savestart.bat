@@ -177,6 +177,10 @@ REM end-to-end.
 echo [Savestart] step 7/7: launching brain server + log tail (SAVE-STATE RESUME, DREAM_KEEP_STATE=1)...
 echo   server log: %~dp0..\server\server.log
 if exist server.log del server.log
+REM LOCALCTL - control plane first (separate always-up process on 7526, which
+REM is what lets the Start button work while the brain is DOWN). Already
+REM running = exits 0 quietly, so re-launching never stacks instances.
+start /b "" cmd /c "node brain-ctl.js > brain-ctl.log 2>&1"
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
