@@ -715,7 +715,20 @@
       rowsEl.innerHTML=html;
       footEl.textContent=(lb.totalContributors||0)+' contributor'+(lb.totalContributors===1?'':'s')+' · resets on fresh walk';
     }
-    function poll(){fetch('/public-state.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(s){render(s&&s.state&&s.state.leaderboard);}).catch(function(){footEl.textContent='offline — retrying…';});}
+    // CTLPLANE.1 — when the brain is stopped the web server stays up and the
+    // snapshot reports `brainOffline`, so SAY "brain offline" instead of
+    // rendering an empty board that reads as "nobody has donated". The catch
+    // below only fires on a network error; a deliberate outage returns valid
+    // JSON, so it needs its own branch.
+    function poll(){fetch('/public-state.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(s){
+      if(s&&(s.brainOffline===true||s.brainOnline===false)){
+        rowsEl.innerHTML='<div style="color:#f87171;">Brain offline — she isn\'t running right now.</div>'
+          +'<div style="color:#667;margin-top:4px;">The site stays up; an admin can start her again. Scores are preserved.</div>';
+        footEl.textContent='brain offline · retrying…';
+        return;
+      }
+      render(s&&s.state&&s.state.leaderboard);
+    }).catch(function(){footEl.textContent='offline — retrying…';});}
     poll();setInterval(poll,5000);
   })();</script>
 
