@@ -290,6 +290,23 @@ lane, exactly like `/admin/`. Privilege is exercised only via `execFile` (no she
 the unit name — so neither a bug in the service nor a leaky sudoers wildcard can retarget
 `systemctl` at Forgejo or sshd on this shared box.
 
+### Re-verify it on a REAL box (the acceptance check)
+
+```bash
+bash deploy/verify-ctlplane.sh              # full cycle — STOPS AND STARTS THE BRAIN
+bash deploy/verify-ctlplane.sh --read-only  # no state change; auth + interlock only
+```
+
+24 checks. It proves the three promises by actually causing an outage: the site
+stays up (4 paths), the public lanes report `brainOffline:true` instead of 502,
+and the brain starts again with the proxy reloaded — then asserts training
+**resumed** and that no `FORCE-FRESH` fired.
+
+Safe by construction: graceful stop (weights force-saved + resume marker), it
+**never** touches `/ctl/update` or `/ctl/reset`, and an `EXIT` trap starts the
+brain again even if a check fails midway. Expect 2-4 minutes, mostly the brain
+reloading ~5.4 GB.
+
 ### Tests
 
 ```bash
