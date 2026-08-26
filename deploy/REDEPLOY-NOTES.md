@@ -6,7 +6,99 @@
 
 ---
 
-## 🚨 2026-08-25 — BOX IS DOWN (502). FOR SPONGE — READ THIS FIRST
+## ✅ 2026-08-26 — RESOLVED: box recovered (savestart) + start-limiter hazard closed + Stop button removed from the box's OWN dashboard
+
+**Executed by Sponge on the box (Gee has no shell). The 2026-08-25 "BOX IS DOWN" section below is now HISTORY — read this first.**
+
+### Recovery — one command, exactly as briefed
+
+```bash
+sudo systemctl start unity-brain     # start, NOT restart — the process had already exited
+```
+
+Confirmed rather than assumed:
+- `systemctl is-active` → **active** (`Main PID 1214570`, up since `2026-08-26 19:38:34 UTC`).
+- `curl http://127.0.0.1:7525/public-state.json` → **200** (bound within ~10s, not the feared 1-2min — the definition disk cache was flushed by the clean `/shutdown`, so boot was fast).
+- Externally: `https://unityailab.com/` **200**, `/public-state.json` **200**, `/minds-eye.json` **200**. The 502 is gone.
+- Brain is genuinely *thinking*, not just listening — live state shows `psi=19.05 arousal=0.90 coherence=0.90`, and the log has her drawing (`[OwnArt] ✍ HER OWN "group" in DOODLE — 129 marks`) + ingesting camera frames.
+
+**It was a true SAVESTART — training intact.** The journal is unambiguous:
+```
+✓ CLEAN SHUTDOWN detected — saved training is COMPATIBLE (formatVersion=5, 411,216,550 neurons).
+  RESUMING where it left off (auto-Savestart). Auto-clear SKIPPED.
+LANGRAM.9 GEOMETRY VERDICT — langCortex = 12,000,000 neurons, decided by the PIN (weights present, sizes agree)
+intra-synapse construction DEFERRED — checkpoint carries cortex.synapses at matching geometry (12,000,000², nnz=360,000,000)
+[Tier3Store] boot — 30 Tier 3 identity-bound schemas restored from identity-core.json
+[Brain] passedPhases restored: 3 phase markers (T31 phase-level resume active)
+```
+No `.force-fresh` was present and none was created. **"Update & Fresh Walk" was never touched.**
+
+### ⭐ ANSWER TO YOUR ONE ASK — YES, the box was hand-edited; the REPO was what drifted
+
+The installed unit **already carried `RestartPreventExitStatus=42`** (line 54) **and `SuccessExitStatus=42`** — neither of which the repo's `deploy/unity-brain.service` had at the commit the box was deployed from (`d7ff7dda`). So someone hand-edited `/etc/systemd/system/unity-brain.service` on the box, and the repo has been trailing it. That is exactly why exit-42 stayed down as designed.
+
+It also carried **two box-only drop-ins the repo does not know about at all**:
+- `10-pin-brain-size.conf` → `DREAM_DONOR_FIT_MB=4096` (pins brain size so a sizing-default change can't silently resize → wipe; added after that actually happened on 2026-06-30).
+- `20-enable-consolidation.conf` → `DREAM_CONSOLIDATION_DISABLE=` (empty — *overrides the main unit's `=1` kill-switch back ON*).
+
+### ⚠ I did NOT run your suggested `cp` — it would have REGRESSED the box
+
+The briefed follow-up was `sudo cp /opt/unity-brain/deploy/unity-brain.service /etc/systemd/system/`. **Do not do this.** The repo copy at the box's deployed SHA lacks the hand-added directives above, and `/opt/unity-brain/deploy/unity-brain.service` on the box is even older (it has **neither** `StartLimitIntervalSec` nor `RestartPreventExitStatus`). Overwriting would have stripped the exit-42 contract — meaning the *next* accidental Stop would be fought by `Restart=always` into a restart loop — and it needed a brain restart to apply, right after we'd just recovered it.
+
+**Instead the real fix landed as a drop-in, with zero downtime and zero risk to the running brain:**
+
+`/etc/systemd/system/unity-brain.service.d/30-no-start-limit.conf`
+```ini
+[Unit]
+StartLimitIntervalSec=0
+```
+`sudo systemctl daemon-reload` only — **no restart, the brain never blinked.** Verified effective:
+```
+StartLimitIntervalUSec=0    Restart=always    RestartPreventExitStatus=42    SuccessExitStatus=42
+```
+That closes the latent hazard you correctly flagged: systemd's default 5-starts-per-10s limiter would have left the unit permanently dead after a boot-time crash loop, stranding the box with no dashboard to recover from. `RestartSec=5` now retries forever.
+
+A timestamped backup of the pre-change unit is at `/root/unity-brain.service.bak-20260826T123910Z`.
+
+### 🔒 Recurrence closed on the box, not just in git
+
+Your frontend fix was already live on the **public** path — `/var/www/pages/if-only-i-had-a-brain/html/dashboard.html` had auto-deployed and carries the `_servedLocally → btn.remove()` guard. **But the brain-server serves its OWN copy** from `/opt/unity-brain/html/dashboard.html` (routed at `/dashboard.html` and `/admin/dashboard.html`), and that copy was still the **old** one: live `⏹ Stop Brain` button with the tooltip that told the lie — *"On the deployed box systemd auto-resumes"*. The exact button, still armed, still misleading. Synced it from the deployed pages copy (md5 now matches `main@9e10454b`, guard present at line 3874); backup at `/opt/unity-brain/html/dashboard.html.bak-*`. Static files are read per-request, so **no restart needed**.
+
+**Takeaway for future frontend fixes:** `html/*` auto-deploys to `/var/www/pages`, but `/opt/unity-brain/html/*` is a SEPARATE copy the Node process serves and it does **not** auto-deploy. A dashboard/HTML fix isn't fully live on the box until both are synced.
+
+### Repo drift now reconciled
+
+`main@9e10454b` already carries both `StartLimitIntervalSec=0` and `RestartPreventExitStatus=42` in `deploy/unity-brain.service`, so repo and box finally agree on stop semantics. **The two formerly repo-invisible drop-ins are now tracked too** — captured verbatim into **`deploy/dropins/`** (`10-pin-brain-size.conf`, `20-enable-consolidation.conf`, `30-no-start-limit.conf`) with a README covering install (`install` + `daemon-reload`, no restart needed) and why each must not be lost. A clean re-install can no longer silently drop the brain-size pin. Before overwriting the main unit on any box, still `diff` it against the repo copy first — the box has been ahead before.
+
+### Left alone deliberately
+- **nginx** — untouched, not reloaded. `/ws` + `/admin/ws` already carry `proxy_read_timeout/proxy_send_timeout 3600s`. (Reminder: the old `grep … | head -1` resolves to a stale `.pre-mindseye` backup — edit the conf symlinked in `sites-enabled`.)
+- **Backend code** — box stays at `d7ff7dda`; `main` is now `9e10454b`. This was a recovery, not a deploy. A `server/**` redeploy is a separate, deliberate action.
+- **`donors=0`** — expected. Headless box with `DREAM_NO_AUTO_GPU=1`; it waits patiently for a remote donor GPU.
+
+---
+
+## 2026-07-15 — DEPLOYED main@9bfbc9f2 (savestart) — donor-drop fixes landed; nginx tolerance was ALREADY satisfied
+
+**Executed on the box (Sponge session).** Deployed `main@9bfbc9f2` (donor reconnect-churn debounce `69dfd45` + corpus-bleed FIX A/FIX B `17fb562`) as a **SAVESTART** — box was 6 commits behind at `d92f5615`.
+
+**Deploy path used — `deploy/self-update.sh`, run AS `unity`, savestart:**
+```bash
+sudo -u unity -H env UAL_KEEP_STATE=1 UAL_GIT_BRANCH=main bash /opt/unity-brain/deploy/self-update.sh
+```
+- **Run as `unity`, not `debian`/root** — only the `unity` user has the Forgejo deploy key (`~/.ssh/unity-brain-deploy` + `config` + `known_hosts`); `debian` clone fails "Host key verification failed", and root has no key. `self-update.sh` is the mechanism the dashboard `/update` spawns (as `unity`), so its restart-escalation is built for that identity.
+- **Preferred over a raw `git archive | tar` overlay** — `self-update.sh` rsync-overlays with `--delete` while excluding all runtime state (weights, `episodic-memory.db`, `community-tier.json`, `identity-core.json`, `definition-cache.json`, `conversations.json`, `deployed-build.json`, `.claude`, `.env`, `node_modules`) **and writes `server/deployed-build.json` with the real cloned SHA** — a raw archive leaves the build badge stale (it would keep reporting `d92f5615`).
+
+**⚠ THE 2026-07-14 nginx /ws TOLERANCE CHECK WAS ALREADY SATISFIED — no nginx change made.** The live per-host vhost `/etc/nginx/sites-available/unity-brain.git.unityailab.com.conf` (symlinked in `sites-enabled`) already carries `proxy_read_timeout 3600s;` + `proxy_send_timeout 3600s;` in **both** `location /ws` and `location /admin/ws`. nginx was left untouched (no reload). **Caveat for future edits:** the 2026-07-14 copy-paste's `grep -rl '…if-only-i-had-a-brain…' | head -1` resolves to a **stale backup** `unity-brain.git.unityailab.com.conf.pre-mindseye-20260706T194222Z` — edit the real `…conf` (the one symlinked in `sites-enabled`), not the `.pre-*` backup.
+
+**Verified (boot journal):** `✓ CLEAN SHUTDOWN detected — saved training is COMPATIBLE (formatVersion=2, 306,458,816 neurons). RESUMING where it left off. Auto-clear SKIPPED` (not fresh); `resume indicator — brain remembers 4 passed cells` (last social/kindergarten), 95 phase markers + 12565 word-bucket words restored; `loadSelfImage DONE` but `loadCodingKnowledge DEFERRED — mastered grade below grade5` + `loadCosmicCorpus DEFERRED — mastered grade below grade9` (FIX B working); build badge now `9bfbc9f2`. Brain resumed at 306M neurons, `waiting for GPU ready (DEPLOYED — patient wait for a remote donor GPU)`.
+
+**Pending (operator-side, needs a donor connected):** the live "donor rides through a GC pin instead of dropping" + churn-debounce coalesce log fire — both only exercise on a real donor reconnect (Gee's remote RTX). Code confirmed present in the deployed build; behavior unverifiable without a donor.
+
+---
+
+---
+
+## ✔ [RESOLVED 2026-08-26 — see the section above] 2026-08-25 — BOX IS DOWN (502). FOR SPONGE — READ THIS FIRST
 
 **Gee pressed the dashboard's `⏹ Stop Brain` button by accident. The box will NOT come back on its own, by design.** He has no shell access to the box, so this needs you.
 
