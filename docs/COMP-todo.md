@@ -556,7 +556,7 @@ Phase 6 — DISCOURSE exposure
    }
    ```
 
-2. **No new corpus files.** No `docs/curriculum/stage-c-phrases.txt`. No `docs/curriculum/stage-d-sentences.txt`. The existing `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt` ARE the curriculum input. The Curriculum class splits into words them and replays them in complexity order.
+2. **No new corpus files.** No `docs/curriculum/stage-c-phrases.txt`. No `docs/curriculum/stage-d-sentences.txt`. The existing `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt` ARE the curriculum input. The Curriculum class splits them into words and replays them in complexity order.
 
 3. **Boot integration in `app.js loadPersonaSelfImage`:**
    ```js

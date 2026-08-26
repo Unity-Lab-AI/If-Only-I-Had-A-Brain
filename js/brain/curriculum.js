@@ -101,7 +101,7 @@ const SENTENCE_REPS = 1;
 // Complexity bucket thresholds — letter count only. Phrase detection
 // (T14.5 Phase 4) is deferred to a post-T14.12 pass that can consume
 // the learned grammar the main curriculum produces. Sentences are
-// anything containing whitespace in the split into words form.
+// anything containing whitespace once split into words.
 const SHORT_WORD_MAX_LEN = 3;
 
 // ─── Multi-subject curriculum framework ─────────────────────────
@@ -7114,7 +7114,7 @@ export class Curriculum {
 
     // Split into words ALL corpora up front — every grade reads from these
     // frozen structures rather than re-splitting into words. Keeps the grade
-    // methods pure exposure-over-equation. Cache the split into words form
+    // methods pure exposure-over-equation. Cache the split form
     // on `this._lastCtx` so post-boot slash commands (/curriculum run
     // <subject> <grade>) can re-run individual cells without reloading
     // corpora from disk/CDN.
@@ -14102,7 +14102,7 @@ export class Curriculum {
    *  — Multi-word definition emission via live dictionary API.
    *
    * Given a subject word X, fetches the dictionary definition (async,
-   * server-side, dictionaryapi.dev wrapper), splits into words it, injects each
+   * server-side, dictionaryapi.dev wrapper), splits it into words, injects each
    * definition word's embedding into sem so cortex "hears" the
    * definitional meaning, then returns the definition string for the
    * caller to emit verbatim through the existing motor / chat path.

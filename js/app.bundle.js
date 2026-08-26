@@ -62916,7 +62916,7 @@ var LanguageCortex = class {
    *
    * The cortex cluster's own `learnSentenceHebbian` method handles
    * the tick-inject-Hebbian inner loop; this driver is just the
-   * split into words-and-embed outer walk over the persona corpus.
+   * split-and-embed outer walk over the persona corpus.
    *
    * Logs before/after synapse weight stats so the operator can see Hebbian
    * actually moved the weights without opening devtools.
@@ -105230,7 +105230,7 @@ var Curriculum = class _Curriculum {
    *  — Multi-word definition emission via live dictionary API.
    *
    * Given a subject word X, fetches the dictionary definition (async,
-   * server-side, dictionaryapi.dev wrapper), splits into words it, injects each
+   * server-side, dictionaryapi.dev wrapper), splits it into words, injects each
    * definition word's embedding into sem so cortex "hears" the
    * definitional meaning, then returns the definition string for the
    * caller to emit verbatim through the existing motor / chat path.
