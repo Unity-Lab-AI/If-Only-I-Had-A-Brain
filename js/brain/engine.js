@@ -301,10 +301,10 @@ export class UnityBrain extends EventEmitter {
     // It is deleted rather than repaired, deliberately. What it did was:
     //   1. run a text offer-detector over the caption and emit a
     //      `visualDrugCue` event — which NOTHING in the tree listens for; and
-    //   2. split into words the English caption and inject each content word's
+    //   2. split the English caption into words and inject each content word's
     //      embedding into the sem region to "ground" concepts in vision.
     // Both belong to the describer era. The percept is now a Float32Array,
-    // and a Float32Array cannot be split into wordsd — making the guard accept
+    // and a Float32Array cannot be split into words — making the guard accept
     // objects would resurrect caption-grounding, not restore a feature.
     //
     // NOTE: this never affected her sight. The visual region is driven on a

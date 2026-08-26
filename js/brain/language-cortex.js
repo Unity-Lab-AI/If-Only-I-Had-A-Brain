@@ -324,7 +324,7 @@ export class LanguageCortex {
    *
    * The cortex cluster's own `learnSentenceHebbian` method handles
    * the tick-inject-Hebbian inner loop; this driver is just the
-   * split into words-and-embed outer walk over the persona corpus.
+   * split-and-embed outer walk over the persona corpus.
    *
    * Logs before/after synapse weight stats so the operator can see Hebbian
    * actually moved the weights without opening devtools.
