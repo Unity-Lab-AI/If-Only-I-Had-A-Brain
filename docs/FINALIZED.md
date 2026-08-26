@@ -37835,3 +37835,55 @@ v9 was banked by the **pre-EYEPIN** subject picker, which drew whatever sat at t
 **VMBUMP4.1 — deleting the orphaned v9 files.** Cannot be done while she runs: the v9 db (53.9MB) plus wal (4.7MB) and shm (32KB) are held open by the live process. Once she reboots onto v10 they are free.
 
 ⚠ **The imagined-field RING (mindspace-memory-v3.json, 3.0MB) is deliberately NOT bundled into this.** Separate store, its own orphaning ritual (RINGWIPE), it holds imagine-lane fields rather than her drawings, and Gee named v9 specifically. **Raised rather than silently swept** — if old imagined visions still surface after the restart, that ring is the next bump.
+
+---
+
+## 2026-08-26 - PAIRDESYNC: her metadata was 38 minutes ahead of her synapses - hotfix/weights-pair-repair
+
+### Gee ask (verbatim per LAW #0)
+
+> *"any other versions files of visual memory lingering we can remove?"*
+
+> *"opton 1"*
+
+### The answer to the question asked: no
+
+A repo-wide sweep on the canonical FRESHEYES pattern returned exactly ONE image-store file — `server/mindspace-memory-v3.json` — and grepping the stem proves it **LIVE, not an orphan**: `brain-server.js:3836` restores the imagined-field ring from it and `:7135` saves to it. v1-v8 were cleared by earlier bumps, v9 by VMBUMP4.1. **Nothing left to remove.**
+
+⭐ **But the sweep was deliberately widened past visual memory, and that is where the finding was.**
+
+### ⛔ The finding: an interrupted save left the LIVE pair incoherent
+
+| file | size | mtime |
+|---|---|---|
+| `brain-weights.bin` | 5,724,847,276 | **08:33:53** |
+| `brain-weights.json` | 6,215,626 | **09:12:24** |
+| `brain-weights.bin.tmp` | **4,530,576,184** | **09:12:28** |
+
+**The shutdown save completed the small json and then died 79% of the way through the 5.72GB bin.** Atomic-write means the partial was never renamed, so the live bin stayed at 08:33 while the json advanced to 09:12.
+
+⛔ **Her metadata described synapses that were never written** — grade pointers and taught-word ledgers claiming 38 minutes of progress the weights do not hold. That is exactly the *"the board lies"* class this project has spent weeks eliminating, except living inside her own save file.
+
+⚠ **Same incoherent-pair class CHECKROT fixed for the CHECKPOINT slots on 2026-08-21** (*"both pair files copy together"*) — **but this is the LIVE pair, desynced by an interrupted save rather than by the rotation bug**, so that fix could not have caught it.
+
+### The repair cost nothing real
+
+⭐ A coherent fallback already existed: **slot v2 held the SAME bin (08:33:53) with its matching json (08:33:10 — a 43s gap)**. Repaired by copying `brain-weights-v2.json` → `brain-weights.json`.
+
+**The discarded 09:12 json described synapses that do not exist**, so nothing real was lost. ⚠ **No `.bak` was created, deliberately** — slot v2 remains untouched and IS the backup, and a stray backup file is precisely the relic class we had just spent the session clearing.
+
+### Verified
+
+- Live json now **byte-identical to slot v2** — `sha a6c8bdd7e8ca3396` on both.
+- Internal `savedAt` reads **14:33:10.209Z** against the bin's **14:33:53Z** — 43 seconds apart, coherent.
+- Parses clean, all **20** top-level keys present.
+- ⭐ **`brain-weights.bin` sha `3fa6f257…` UNCHANGED before and after — not one byte of her synapses was touched.**
+- ⚠ **The live json's MTIME is now the copy time (09:31), so any future mtime-based coherence check will flag it FALSELY.** `savedAt` is the field carrying the truth. Recorded here so the next person does not re-panic on the same evidence.
+
+### Also removed
+
+`brain-weights.bin.tmp` — **4,530,576,184 bytes (4.2 GiB)**. A `.tmp` never renamed was never valid, and `brain-server.js:1432` already names the class. ⚠ Deleted only after confirming the brain was DOWN (port 7525 → `000`); removing a `.tmp` under a live process would be killing an in-progress save. With VMBUMP4.1's 58.6MB that is **~4.3 GiB reclaimed**.
+
+### Left open
+
+**PAIRDESYNC.2 — nothing detects this at boot, and something should.** ⛔ The loader takes the json and bin as a pair **without comparing them**, so a save interrupted between the two writes resumes silently with metadata ahead of synapses. **The only reason it was caught this time is that a human asked an unrelated question about leftover files.** ⭐ The evidence is already on disk and free to check — the json carries `savedAt`, the bin's mtime/header is available at load, and a gap beyond a few minutes is decidable: REFUSE, or fall back to the newest coherent slot, rather than boot incoherent. ⚠ Filed, not built — it touches the load path, which is not something to change while she is mid-recovery.
