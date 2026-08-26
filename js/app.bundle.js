@@ -129820,8 +129820,8 @@ function renderLandingTab(tab, s) {
   const card = (title, body) => `<div style="margin-bottom:12px;"><div style="font-size:10px;color:#ff4d9a;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${title}</div>${body}</div>`;
   const metric = (label, val, color = "#e0e0e0") => `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span style="color:#555;">${label}</span><span style="color:${color};">${val}</span></div>`;
   const bar = (pct, color) => `<div style="height:4px;background:#1a1a1a;border-radius:2px;margin-top:3px;"><div style="width:${Math.min(100, pct)}%;height:100%;background:${color};border-radius:2px;"></div></div>`;
-  const arousal = s.amygdala?.arousal ?? s.sharedMood?.arousal ?? 0;
-  const valence = s.amygdala?.valence ?? s.sharedMood?.valence ?? 0;
+  const arousal = s.arousal ?? s.amygdala?.arousal ?? s.sharedMood?.arousal ?? 0;
+  const valence = s.valence ?? s.amygdala?.valence ?? s.sharedMood?.valence ?? 0;
   const coherence = s.oscillations?.coherence ?? s.sharedMood?.coherence ?? 0;
   const psi = s.psi ?? 0;
   const spikes = s.spikeCount ?? s.totalSpikes ?? 0;
@@ -130056,8 +130056,8 @@ function updateLandingStats(state) {
   const $ = (id) => document.getElementById(id);
   const neurons = state.totalNeurons ?? state.neurons ?? 1e3;
   const psi = state.psi ?? 0;
-  const arousal = state.amygdala?.arousal ?? state.sharedMood?.arousal ?? 0;
-  const valence = state.amygdala?.valence ?? state.sharedMood?.valence ?? 0;
+  const arousal = state.arousal ?? state.amygdala?.arousal ?? state.sharedMood?.arousal ?? 0;
+  const valence = state.valence ?? state.amygdala?.valence ?? state.sharedMood?.valence ?? 0;
   const coherence = state.oscillations?.coherence ?? state.sharedMood?.coherence ?? 0;
   const spikes = state.spikeCount ?? state.totalSpikes ?? 0;
   const users = state.connectedUsers ?? 0;
@@ -131623,8 +131623,8 @@ function updateBrainIndicator(state) {
   const s = state;
   const l = _landingState || {};
   const coherence = s.oscillations?.coherence ?? s.coherence ?? l.oscillations?.coherence ?? l.coherence ?? 0;
-  const arousal = s.amygdala?.arousal ?? s.arousal ?? l.amygdala?.arousal ?? l.arousal ?? 0;
-  const valence = s.amygdala?.valence ?? s.valence ?? l.amygdala?.valence ?? l.valence ?? 0;
+  const arousal = s.arousal ?? s.amygdala?.arousal ?? l.arousal ?? l.amygdala?.arousal ?? 0;
+  const valence = s.valence ?? s.amygdala?.valence ?? l.valence ?? l.amygdala?.valence ?? 0;
   const psi = s.psi ?? l.psi ?? 0;
   const bandPower = s.oscillations?.bandPower || s.bandPower || l.oscillations?.bandPower || l.bandPower || {};
   const psiEl = $("hud-psi");
