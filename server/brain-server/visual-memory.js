@@ -1136,6 +1136,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         alreadyKnown: 0, definitionServed: 0,
         inFlightSkips: 0, noPrompt: 0, httpFails: 0, fetchErrs: 0, decodeFails: 0,
         perceiveFails: 0, blankRefs: 0, lastErr: null, lastErrAt: 0, lastGroundedKey: null, lastGroundedAt: 0,
+        // LOOKBACKOFF.1 — the rate-limit lane, declared here for the same
+        // reason as the rest: a lane that has never fired must read 0, not
+        // undefined. `rateLimitSkips` is the count of looks NOT attempted
+        // because the generator had already told us to stop.
+        rateLimitSkips: 0, rateLimitHits: 0, backoffMs: 0, backoffUntil: 0,
       };
     }
     return this._vmLookStats;
@@ -1279,6 +1284,38 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // positive ms value to re-arm a global gap for ops tuning.
     const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) > 0 ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 0;
     if (!opts.force && GAP > 0 && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
+    // ⛔ LOOKBACKOFF.1 (2026-08-26) — HONOUR A 429. NOT A BUDGET.
+    //
+    // ⚠ This is deliberately NOT a re-arming of the global gap Gee revoked on
+    // 2026-08-21 (*"its the anonymous free"*). That was a SELF-IMPOSED spend
+    // budget from the keyed-account era, and revoking it was right. This is the
+    // generator explicitly answering **HTTP 429 — stop**. Ignoring an explicit
+    // refusal is not generosity toward her ability; it wins nothing, because a
+    // refused request returns no image either way.
+    //
+    // ⛔ What made it urgent: the comment above claims the remaining pacing is
+    // "natural — the per-concept in-flight guard plus the 2-60s a look takes".
+    // That held while the look lane fired rarely. EYEPIN.2's acquisition rank
+    // now picks a DIFFERENT unseen word on ~75% of ticks, and the per-concept
+    // cooldown by construction only throttles REPEATS of one word — so it
+    // throttles a walk through fresh vocabulary not at all. Measured 15 minutes
+    // after that change shipped: **130 attempts, 108 of them HTTP 429**.
+    //
+    // ⛔ Worse, it was a POSITIVE FEEDBACK LOOP: `_vmLookFail` rolls the burns
+    // back so a failed concept retries in 10 min instead of 6 h — so every 429
+    // SCHEDULED ANOTHER RETRY. The harder we were refused, the harder we asked.
+    //
+    // ⭐ And the visible cost was not hers, it was the operator's: her chat
+    // image generation is built BROWSER-side from the same public IP, so the
+    // background acquisition lane was spending the shared anonymous quota and
+    // "show me an apple" came back "(image generation failed)". **A background
+    // errand must not outbid the person in the room.**
+    if (!opts.force && this._vmRef429Until && now < this._vmRef429Until) {
+      const st = this._vmLook();
+      st.rateLimitSkips++;
+      st.backoffUntil = this._vmRef429Until;
+      return null;
+    }
     this._vmRefInFlight.add(key);
     this._vmLastRefFetchAt = now;
     this._vmRefFetchAt.set(key, now);
@@ -1319,8 +1356,36 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           // its burns back and retries on cooldown). The old text said "verify
           // the Pollinations key", sending the operator hunting a key that
           // does not exist.
-          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image${r && r.status === 429 ? ' (anonymous-tier rate limit — expected; retries on cooldown)' : ''}.`); }
+          // LOOKBACKOFF.1 — ARM THE BACKOFF on an explicit rate-limit refusal.
+          // Exponential from 15s, doubling per consecutive 429, capped at 10min,
+          // and `Retry-After` WINS when the server sends one — it is the only
+          // party that actually knows when it will answer again.
+          if (r && r.status === 429) {
+            const st429 = this._vmLook();
+            st429.rateLimitHits++;
+            const prev = Number(this._vmRef429BackoffMs) || 0;
+            let wait = prev > 0 ? Math.min(prev * 2, 600000) : 15000;
+            const ra = Number(r.headers && typeof r.headers.get === 'function' ? r.headers.get('retry-after') : 0);
+            // Retry-After is in SECONDS per RFC; only trust a sane positive value.
+            if (Number.isFinite(ra) && ra > 0 && ra < 3600) wait = Math.max(wait, ra * 1000);
+            this._vmRef429BackoffMs = wait;
+            this._vmRef429Until = now + wait;
+            st429.backoffMs = wait;
+            st429.backoffUntil = this._vmRef429Until;
+          }
+          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image${r && r.status === 429 ? ` (anonymous-tier rate limit — backing off ${Math.round((Number(this._vmRef429BackoffMs) || 0) / 1000)}s so the chat image lane keeps its share of the shared anonymous quota)` : ''}.`); }
           return this._vmLookFail(key, 'httpFails', 'HTTP ' + (r ? r.status : '?'));
+        }
+        // LOOKBACKOFF.1 — the generator answered, so the escalation resets.
+        // ⚠ Without this the backoff RATCHETS: one 429 an hour would keep
+        // doubling a value that never came back down, and the lane would
+        // quietly stop looking forever while every counter still read healthy.
+        if (this._vmRef429BackoffMs) {
+          this._vmRef429BackoffMs = 0;
+          this._vmRef429Until = 0;
+          const stOk = this._vmLook();
+          stOk.backoffMs = 0;
+          stOk.backoffUntil = 0;
         }
         buf = Buffer.from(await r.arrayBuffer());
       } catch (e) {

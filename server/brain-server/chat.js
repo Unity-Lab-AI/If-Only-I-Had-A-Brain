@@ -1849,7 +1849,31 @@ const SERVER_CHAT_MIXIN = {
     // ── RANK 2 — HER THOUGHT, if it is moving and she has not just drawn it.
     // ⚠ `lookup: true` — a thought word she has never seen is itself worth
     // looking up; the per-concept cooldown makes a repeat cheap.
-    if (_word && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
+    //
+    // ⛔ SEEDPHRASE.1 (2026-08-26) — A SUBJECT IS ONE WORD, AND THE THOUGHT
+    // CHAIN DOES NOT ONLY CONTAIN WORDS. Caught in `recentSubjects` on the live
+    // box, sitting among `may` / `digits` / `change` / `walk`:
+    //   'an apple, another, just, smartphone, vibrant saturated color, crisp
+    //    sharp focus, bold dramatic contrast, elect…'
+    // — a generated IMAGE PROMPT, whole, being used as a concept. Emissions
+    // from the image lane land in the chain like any other, so `_seedText` is
+    // sometimes a prompt or a sentence rather than a word.
+    //
+    // ⛔ It is not merely an ugly label: that string was handed to
+    // `_lookUpAndDraw`, i.e. spent as a Pollinations request on a query that
+    // could never ground, during the exact window the anonymous quota was
+    // being exhausted.
+    //
+    // ⚠ Structural test, NOT a word list: a concept key in this system is a
+    // single token — every store key, every definition lookup, every taxonomy
+    // judgement is one word. Whitespace or sentence punctuation means the seed
+    // is a phrase, and a phrase is not a thing she can look at. Acquisition and
+    // recall below still give her a subject, so a phrase-shaped thought costs
+    // her nothing but this rank.
+    const _isConceptToken = (w) => !!w && w.length <= 40 && !/[\s,;:.!?"'()]/.test(w);
+    if (_word && !_isConceptToken(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
+    if (_word && _isConceptToken(_word)
+        && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
       st.fromThought++;
       return { word: _word, lookup: true, why: 'thought' };
     }
