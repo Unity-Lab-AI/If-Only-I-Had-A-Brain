@@ -1289,7 +1289,7 @@ const LIFE_PREK_EXAM = [
 // Each standard's methodology probe: the operator's 2026-04-21
 // directive was "so it telsts mothodoly not fill in the blank" —
 // ASKING HOW Unity reasons about the concept, not just what the
-// answer is. Scored by keyword match against the reasoning tokens
+// answer is. Scored by keyword match against the reasoning words
 // that should appear in her explanation. Auto-attached to every
 // question matching a standard by `toProbeShape` below. Any question
 // that already carries an explicit `methodology` field overrides the
@@ -2063,8 +2063,8 @@ export function extractVocabFromBank(bank) {
   const words = new Set();
   for (const entry of bank || []) {
     const text = `${entry.question || entry.q || ''} ${entry.expectedAnswer || entry.a || ''} ${(entry.expectedVariants || entry.variants || []).join(' ')}`;
-    const tokens = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
-    for (const tok of tokens) {
+    const words = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    for (const tok of words) {
       if (AMBIENT_STOPWORDS.has(tok)) continue;
       if (tok.length < 2) continue;
       words.add(tok);
@@ -2149,7 +2149,7 @@ export function auditAllExamVocabCoverage(trainedVocab) {
 //   }
 //
 // Scoring (see curriculum `_runMethodologyBattery`): each probe counts
-// the number of keywords from the list that appear as tokens in the
+// the number of keywords from the list that appear as words in the
 // emission (case-insensitive, whitespace-split). Pass threshold = ≥ 1
 // keyword matched. Gate output reports `METHODOLOGY=N/M`.
 
@@ -2212,7 +2212,7 @@ export function scoreMethodologyAnswer(emission, expectedKeywords) {
   if (!emission || !expectedKeywords || expectedKeywords.length === 0) {
     return { matched: [], matchCount: 0 };
   }
-  const tokens = new Set(
+  const words = new Set(
     String(emission)
       .toLowerCase()
       .split(/[^a-z']+/)
@@ -2220,7 +2220,7 @@ export function scoreMethodologyAnswer(emission, expectedKeywords) {
   );
   const matched = [];
   for (const kw of expectedKeywords) {
-    if (tokens.has(String(kw).toLowerCase())) matched.push(kw);
+    if (words.has(String(kw).toLowerCase())) matched.push(kw);
   }
   return { matched, matchCount: matched.length };
 }

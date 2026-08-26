@@ -899,15 +899,15 @@ const SERVER_STATE_MIXIN = {
         } catch (err) { return { top: [], totalContributors: 0, totalNeurons: 0, error: err.message }; }
       }),
       // BC.12 — basin-collapse telemetry. Surfaces the signals behind the
-      // single-token mode-collapse so recovery is visible without hand-
-      // diffing /ws polls: sem→motor saturation, dominant-token share of
+      // single-word mode-collapse so recovery is visible without hand-
+      // diffing /ws polls: sem→motor saturation, dominant-word share of
       // recent emissions, GW broadcast diversity. Computed once per state
       // broadcast (not per tick) so the checkSemMotorHealth sample is cheap.
       basinHealth: _lap('basinHealth', () => {
         try {
           const cc = this.cortexCluster;
           if (!cc) return null;
-          const out = { saturated: null, semMotorMeanCos: null, semMotorRatio: null, dominantToken: null, dominantShare: null, gwUniqueRatio: null };
+          const out = { saturated: null, semMotorMeanCos: null, semMotorRatio: null, dominantWord: null, dominantShare: null, gwUniqueRatio: null };
           if (typeof cc.checkSemMotorHealth === 'function') {
             const h = cc.checkSemMotorHealth();
             out.saturated = !!h.saturated;
@@ -919,7 +919,7 @@ const SERVER_STATE_MIXIN = {
             for (const e of cc._metaRegister) { if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1); }
             let topW = null, topN = 0;
             for (const [w, n] of counts) { if (n > topN) { topN = n; topW = w; } }
-            out.dominantToken = topW;
+            out.dominantWord = topW;
             out.dominantShare = +(topN / cc._metaRegister.length).toFixed(2);
           }
           const gw = cc._globalWorkspace || this._globalWorkspace || (this.brain && this.brain._globalWorkspace);

@@ -408,11 +408,11 @@ const SERVER_CHAT_MIXIN = {
     // relationTagId=30 carves a dedicated chat-time channel so
     // conversation-driven writes can be distinguished from curriculum
     // writes for telemetry + dream-cycle scoring.
-    // Past-notes rule: pair tokens MUST be already-vocab-trained —
-    // we filter to /^[a-z']+$/ K-grade-style tokens AND verify each
+    // Past-notes rule: pair words MUST be already-vocab-trained —
+    // we filter to /^[a-z']+$/ K-grade-style words AND verify each
     // appears in the dictionary _words map before binding. Unknown
-    // tokens (typos, rare vocabulary) are skipped so chat input never
-    // lands Hebbian writes on phantom-token noise basins.
+    // words (typos, rare vocabulary) are skipped so chat input never
+    // lands Hebbian writes on phantom-word noise basins.
     try {
       this._chatStamp('pair-enqueue');
       if (this.cortexCluster
@@ -420,12 +420,12 @@ const SERVER_CHAT_MIXIN = {
           && typeof this.curriculum._teachAssociationPairs === 'function'
           && typeof text === 'string'
           && text.length > 0) {
-        const tokens = text.toLowerCase()
+        const words = text.toLowerCase()
           .replace(/[.!?,;:'"()]/g, ' ')
           .split(/\s+/)
           .filter(t => /^[a-z]+$/.test(t) && t.length >= 1 && t.length <= 20);
         const dictWords = this.cortexCluster.dictionary?._words;
-        const filtered = tokens.filter(t => !dictWords || dictWords.has(t));
+        const filtered = words.filter(t => !dictWords || dictWords.has(t));
         if (filtered.length >= 2) {
           const pairs = [];
           for (let i = 0; i < filtered.length - 1; i++) {
@@ -886,7 +886,7 @@ const SERVER_CHAT_MIXIN = {
 
     // Curiosity FOLLOW-UP — if Unity ASKED a question last tick
     // (_pendingQuestionConcept set by _maybeAskCuriousQuestion), this user
-    // message is the ANSWER. Bind the answer tokens to the gap concept so she
+    // message is the ANSWER. Bind the answer words to the gap concept so she
     // LEARNS it (Hebbian, definition channel) + store the Q→A as an episode,
     // then clear the pending flag. Closes the ask → answer → incorporate loop
     // so she follows up on what she asked, like a real curious entity.
@@ -895,10 +895,10 @@ const SERVER_CHAT_MIXIN = {
       this._pendingQuestionConcept = null;
       try {
         const curric = this.cortexCluster && this.cortexCluster._curriculum;
-        const answerTokens = text.toLowerCase().split(/\s+/)
+        const answerWords = text.toLowerCase().split(/\s+/)
           .filter(w => /^[a-z]{2,}$/.test(w)).slice(0, 8);
-        if (curric && typeof curric._teachAssociationPairs === 'function' && answerTokens.length > 0) {
-          const pairs = answerTokens.map(t => [concept, t]);
+        if (curric && typeof curric._teachAssociationPairs === 'function' && answerWords.length > 0) {
+          const pairs = answerWords.map(t => [concept, t]);
           // ONE TEACHER AT A TIME, HERE TOO (2026-08-20). This awaited
           // _teachAssociationPairs INLINE — 8 pairs x 12 reps on the
           // definition channel, on the reply path, on the same cluster and
@@ -938,7 +938,7 @@ const SERVER_CHAT_MIXIN = {
         // cleared. One question, no curiosity.
         //
         // Now the answer's own content picks the next question, which is what makes it
-        // a FOLLOW-UP rather than a second unrelated question: a content token from
+        // a FOLLOW-UP rather than a second unrelated question: a content word from
         // what YOU said becomes the concept she asks about next, and it is armed as the
         // pending question so the same answer→bind→follow-up machinery runs again.
         //
@@ -954,7 +954,7 @@ const SERVER_CHAT_MIXIN = {
           while (this._inquireChain.length > 8) this._inquireChain.shift();
           if (this._inquireDepth < MAXD) {
             // A content word from the ANSWER she has not already chased this chain.
-            const next = answerTokens.find(t => t !== concept && !this._inquireChain.includes(t) && t.length > 2);
+            const next = answerWords.find(t => t !== concept && !this._inquireChain.includes(t) && t.length > 2);
             if (next) {
               this._pendingQuestionConcept = next;
               this._inquireFollowUpOf = concept;
@@ -1543,7 +1543,7 @@ const SERVER_CHAT_MIXIN = {
         // structurally NON-representational: no word→appearance mapping exists
         // in that path, so it can never converge to a picture on its own.
         // Anchor it instead: find the stored SEEN percept whose concept is
-        // nearest (GloVe cosine) to the thought's content tokens and morph the
+        // nearest (GloVe cosine) to the thought's content words and morph the
         // memory toward the mood field (memory-dominant). Abstract thoughts
         // inherit real visual structure from what her eyes have grounded, and
         // the impressions get BETTER as her seen-store grows.
@@ -1706,7 +1706,7 @@ const SERVER_CHAT_MIXIN = {
   // real sketchbook. `_drawSkill` tracks the per-concept resemblance ceiling.
   async _rememberDrawing(concept, drawnRec) {
     if (!drawnRec || typeof this._vmStore !== 'function') return;
-    const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
+    const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
     if (!key) return;
     const store = this._vmStore();
     const e = store.get(key);
@@ -1866,30 +1866,11 @@ const SERVER_CHAT_MIXIN = {
     // ── RANK 2 — HER THOUGHT, if it is moving and she has not just drawn it.
     // ⚠ `lookup: true` — a thought word she has never seen is itself worth
     // looking up; the per-concept cooldown makes a repeat cheap.
-    //
-    // ⛔ SEEDPHRASE.1 (2026-08-26) — A SUBJECT IS ONE WORD, AND THE THOUGHT
-    // CHAIN DOES NOT ONLY CONTAIN WORDS. Caught in `recentSubjects` on the live
-    // box, sitting among `may` / `digits` / `change` / `walk`:
-    //   'an apple, another, just, smartphone, vibrant saturated color, crisp
-    //    sharp focus, bold dramatic contrast, elect…'
-    // — a generated IMAGE PROMPT, whole, being used as a concept. Emissions
-    // from the image lane land in the chain like any other, so `_seedText` is
-    // sometimes a prompt or a sentence rather than a word.
-    //
-    // ⛔ It is not merely an ugly label: that string was handed to
-    // `_lookUpAndDraw`, i.e. spent as a Pollinations request on a query that
-    // could never ground, during the exact window the anonymous quota was
-    // being exhausted.
-    //
-    // ⚠ Structural test, NOT a word list: a concept key in this system is a
-    // single token — every store key, every definition lookup, every taxonomy
-    // judgement is one word. Whitespace or sentence punctuation means the seed
-    // is a phrase, and a phrase is not a thing she can look at. Acquisition and
-    // recall below still give her a subject, so a phrase-shaped thought costs
-    // her nothing but this rank.
-    const _isConceptToken = (w) => !!w && w.length <= 40 && !/[\s,;:.!?"'()]/.test(w);
-    if (_word && !_isConceptToken(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
-    if (_word && _isConceptToken(_word)
+    // A subject is a single word: whitespace or sentence punctuation means
+    // the seed is a phrase, and a phrase is not a thing she can look at.
+    const _isSingleWord = (w) => !!w && w.length <= 40 && !/[\s,;:.!?"'()]/.test(w);
+    if (_word && !_isSingleWord(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
+    if (_word && _isSingleWord(_word)
         && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
       st.fromThought++;
       return { word: _word, lookup: true, why: 'thought' };
@@ -1989,7 +1970,7 @@ const SERVER_CHAT_MIXIN = {
         || typeof this.mindSpace.sketch !== 'function') return null;
     const seed = String(concept || '').trim();
     if (!seed) return null;
-    const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(seed)[0] || '') : seed.toLowerCase().split(/\s+/)[0]) || '';
+    const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(seed)[0] || '') : seed.toLowerCase().split(/\s+/)[0]) || '';
     if (!key) return null;
 
     // 1) RECALL — a confirmed grounded field C she has seen before (cooled).
@@ -2259,7 +2240,7 @@ const SERVER_CHAT_MIXIN = {
   // DRAWCTX (Gee 2026-08-20: *"when Unity is told to 'draw' she should draw the
   // topic, thing, place, person, in context in the message from the user"*).
   //
-  // The old path took `_vmContentTokens(seed)[0]` — the FIRST content word — so
+  // The old path took `_vmContentWords(seed)[0]` — the FIRST content word — so
   // "draw a <modifier> <subject> sitting on a <place>" drew whatever the modifier
   // resolved to and threw the rest away. This reads the WHOLE message: every
   // drawable noun in order, the PLACE if one is named, and the modifiers that
@@ -2282,11 +2263,11 @@ const SERVER_CHAT_MIXIN = {
     let placeWord = null;
     const pm = body.match(/\b(?:on|in|at|under|inside|beside|near|by|over|behind|against)\s+(?:a|an|the)?\s*([a-z][a-z'-]{2,})/i);
     if (pm) placeWord = pm[1].toLowerCase();
-    const tokens = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(body) : body.toLowerCase().split(/\s+/);
+    const words = (typeof this._vmContentWords === 'function') ? this._vmContentWords(body) : body.toLowerCase().split(/\s+/);
     const seen = new Set();
     const subjects = [];
     const MAX_SUBJ = Number(process.env.DREAM_OWNART_MAX_SUBJECTS) > 0 ? Number(process.env.DREAM_OWNART_MAX_SUBJECTS) : 3;
-    for (const t of tokens) {
+    for (const t of words) {
       if (seen.has(t) || t === placeWord) continue;
       seen.add(t);
       let drawable = true;
@@ -3552,7 +3533,7 @@ const SERVER_CHAT_MIXIN = {
     const keys = [];
     for (const c of (Array.isArray(concepts) ? concepts : [])) {
       if (keys.length >= 3) break;
-      const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(c)[0] || '') : String(c || '').toLowerCase());
+      const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(c)[0] || '') : String(c || '').toLowerCase());
       if (!key || keys.includes(key)) continue;
       if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only DRAWABLE (noun) concepts
       keys.push(key);
@@ -3597,7 +3578,7 @@ const SERVER_CHAT_MIXIN = {
     const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
     const texts = chain.map(e => (typeof e === 'string' ? e : (e && e.sentence) || '')).filter(t => t && t.trim());
     const pool = texts.slice(-4).join(' ');
-    const toks = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(pool) : [];
+    const toks = (typeof this._vmContentWords === 'function') ? this._vmContentWords(pool) : [];
     const cand = [];
     for (const t of toks) if (t && !cand.includes(t)) cand.push(t);
     if (cand.length < 2) return;   // need ≥2 concepts to invent a combination
@@ -3745,7 +3726,7 @@ const SERVER_CHAT_MIXIN = {
   // The default flipped permissive→strict on purpose: refusing to draw an
   // abstraction is honest; scribbling letter-shapes at it never is.
   async _conceptIsDrawable(word) {
-    const w = (typeof this._vmContentTokens === 'function') ? (this._vmContentTokens(word)[0] || '') : String(word || '').toLowerCase().trim();
+    const w = (typeof this._vmContentWords === 'function') ? (this._vmContentWords(word)[0] || '') : String(word || '').toLowerCase().trim();
     if (!w || w.length < 2) return false;
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
@@ -3957,8 +3938,8 @@ const SERVER_CHAT_MIXIN = {
         if (pool.length === 0 && cluster._definitionTaughtWords instanceof Set) {
           for (const w of cluster._definitionTaughtWords) if (typeof w === 'string' && w.length > 1) pool.push(w);
         }
-        const reqTokens = base.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 2).slice(0, 3);
-        if (pool.length > 0 && reqTokens.length > 0) {
+        const reqWords = base.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 2).slice(0, 3);
+        if (pool.length > 0 && reqWords.length > 0) {
           const cos = (a, b) => {
             let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
             for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
@@ -3967,8 +3948,8 @@ const SERVER_CHAT_MIXIN = {
           // bounded scoring pool so cost stays O(POOL·dim) at any vocab size
           const POOL = 300;
           const sample = pool.length <= POOL ? pool : Array.from({ length: POOL }, () => pool[Math.floor(Math.random() * pool.length)]);
-          const picked = new Set(reqTokens);
-          for (const tok of reqTokens) {
+          const picked = new Set(reqWords);
+          for (const tok of reqWords) {
             const tv = emb.getEmbedding(tok);
             if (!tv) continue;
             const scored = [];
@@ -4096,7 +4077,7 @@ const SERVER_CHAT_MIXIN = {
         // (rather than an exposure word) strands articles as well as connectors
         // — "in a leather skirt" was left as "in a" — so the trailing run of
         // connectors, wear-verbs, articles and prepositions is dropped as a
-        // chain, not one token.
+        // chain, not one word.
         scene = scene
           // a wear-verb orphaned by the strip and now sitting in front of a
           // place/preposition ("wearing fishnets at the mall" → "wearing at the

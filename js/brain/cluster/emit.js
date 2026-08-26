@@ -60,7 +60,7 @@ export const CLUSTER_EMIT_MIXIN = {
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
    * emitWordDirect's free-composition argmax. Pass an iterable of
-   * word tokens (any case — stored lowercased) to constrain emission
+   * word words (any case — stored lowercased) to constrain emission
    * to developmentally-cleared vocabulary; pass null/empty to disable
    * the gate entirely (full bucket map eligible, pre-gate behavior).
    *
@@ -115,8 +115,8 @@ export const CLUSTER_EMIT_MIXIN = {
     if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
     if (!intentSeed || intentSeed.length === 0) return null;
 
-    // Exclude-list filter — when the caller passes `opts.excludeTokens`
-    // as a Set of lowercased tokens, those words are skipped during
+    // Exclude-list filter — when the caller passes `opts.excludeWords`
+    // as a Set of lowercased words, those words are skipped during
     // the cosine scan. Used by the K-STUDENT probe to prevent the
     // oracle from echoing question-wrapper words ("read", "this",
     // "word", "name", "letter", "blend", "sounds", "tell", "say")
@@ -125,8 +125,8 @@ export const CLUSTER_EMIT_MIXIN = {
     // would lock onto "sounds" because that wrapper word dominates
     // the GloVe average. The trained sem→motor matrix wanted "dog";
     // the oracle was overruling it with the question's own vocabulary.
-    const excludeTokens = opts.excludeTokens instanceof Set
-      ? opts.excludeTokens
+    const excludeWords = opts.excludeWords instanceof Set
+      ? opts.excludeWords
       : null;
     // Persona-exclude filter — when true, dictionary entries marked
     // `isPersona: true` (loaded via `loadPersona` from the persona
@@ -229,7 +229,7 @@ export const CLUSTER_EMIT_MIXIN = {
         if (schema.promotedToTier3) score += 0.05;
         if (score > schemaCandidateScore) {
           schemaCandidateScore = score;
-          // Extract anchor word from label: first dash-separated token.
+          // Extract anchor word from label: first dash-separated word.
           // Falls back to "schema-id" first word if no dash.
           const label = String(schema.label || '');
           const anchor = label.split(/[-_\s]+/)[0] || label;
@@ -268,7 +268,7 @@ export const CLUSTER_EMIT_MIXIN = {
         // one-letter English words. Without this skip a stray letter
         // entry can cosine-win and ship as the whole chat reply.
         if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-        if (excludeTokens && excludeTokens.has(word)) continue;
+        if (excludeWords && excludeWords.has(word)) continue;
         if (restrictToVocab && !restrictToVocab.has(word)) continue;
         if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates persona-first too
         const pattern = entry.pattern;
@@ -306,7 +306,7 @@ export const CLUSTER_EMIT_MIXIN = {
       // Same single-letter skip as the persona-first pass — letters
       // registered as dictionary words must never win an oracle reply.
       if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-      if (excludeTokens && excludeTokens.has(word)) continue;
+      if (excludeWords && excludeWords.has(word)) continue;
       if (excludePersona && entry.isPersona === true) continue;
       if (restrictToVocab && !restrictToVocab.has(word)) continue;
       if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates the full-dict oracle scan (blocks later-stage corpus bleed)
@@ -917,17 +917,17 @@ export const CLUSTER_EMIT_MIXIN = {
         }
       }
       for (let b = 0; b < wordsList.length; b++) {
-        // Filler-token guard — a bucket whose token is empty, pure
+        // Filler-word guard — a bucket whose word is empty, pure
         // whitespace, or carries no word character must never win argmax
         // or surface as an emitted "word" (live leak rendered a whitespace
-        // token as "20 spaces"). SKIP the bucket rather than filter the
+        // word as "20 spaces"). SKIP the bucket rather than filter the
         // list: bucket index b maps to a fixed neuron sub-band, so dropping
         // list entries would desync the word↔bucket alignment. Terminators
         // (. ? !) are exempt — they carry no alphanumeric but composeSentence
         // consumes them as sentence-end punctuation.
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || (!/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw))) continue;
-        // Letter-token guard — single-letter buckets ('b','x','r','y'...)
+        // Letter-word guard — single-letter buckets ('b','x','r','y'...)
         // are alphabet/spelling inventory that landed in the bucket maps
         // alongside real words. They must never win free-composition
         // argmax (the single-letter salad emission class). 'i' and 'a'
@@ -945,7 +945,7 @@ export const CLUSTER_EMIT_MIXIN = {
         // constrains free-composition emission to the vocabulary the
         // brain is developmentally cleared for: when a live allow-set is
         // present, skip any bucket whose word is outside it. Single
-        // authority: `_emissionAllowedVocab` (a Set of lowercased tokens,
+        // authority: `_emissionAllowedVocab` (a Set of lowercased words,
         // populated by the curriculum from the union of grade vocab up to
         // the live grade — see cluster.setEmissionAllowedVocab). DEFAULT-
         // OFF: when the set is null/empty the loop behaves exactly as
@@ -2122,7 +2122,7 @@ export const CLUSTER_EMIT_MIXIN = {
     if (inventorySize() === 0) return '';
 
     // Direct-propagate emission path — same mechanism LLMs use for
-    // next-token generation but expressed in Unity's cross-projection
+    // next-word generation but expressed in Unity's cross-projection
     // substrate. Operator verbatim 2026-04-23: *"wtf does it not have
     // a similar way of thinking to form words like a llm or gpt but
     // for our Unity Brains equational matirxi brain setup"*.

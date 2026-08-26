@@ -201,7 +201,7 @@ export const CLUSTER_TELEMETRY_MIXIN = {
     // BC.13 — health + coherence gate. Don't coin compound words from
     // degraded output (the live `ice_sorry` / `laundry_mom` junk came from
     // coining off a mode-collapsed emission stream).
-    // (a) Skip while emission is mode-collapsed — one token dominating the
+    // (a) Skip while emission is mode-collapsed — one word dominating the
     //     recent meta-register means the top-2 are repetitive garbage.
     if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 8) {
       const counts = new Map();

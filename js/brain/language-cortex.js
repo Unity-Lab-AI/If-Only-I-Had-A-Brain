@@ -85,7 +85,7 @@ const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 // "the", etc.) tend to dominate that average and get echoed back as
 // the reply. Same bug class the K-STUDENT probe exhibits with question
 // wrapper words. The fix: build a Set of function/question words from
-// the user's text and pass it to the oracle's `excludeTokens` filter.
+// the user's text and pass it to the oracle's `excludeWords` filter.
 // Topic words (cats, color, favorite — anything outside the stoplist)
 // stay available so Unity can discuss what the user mentioned. This
 // matches the function-word stoplist the K-STUDENT vocab filter uses.
@@ -101,9 +101,9 @@ const _LIVE_CHAT_STOPWORDS = new Set([
 ]);
 function _buildLiveChatExclude(userText) {
   if (!userText || typeof userText !== 'string') return null;
-  const tokens = userText.toLowerCase().split(/[^a-z0-9']+/).filter(w => w.length > 0);
+  const words = userText.toLowerCase().split(/[^a-z0-9']+/).filter(w => w.length > 0);
   const excl = new Set();
-  for (const tok of tokens) {
+  for (const tok of words) {
     if (_LIVE_CHAT_STOPWORDS.has(tok)) excl.add(tok);
   }
   return excl.size > 0 ? excl : null;
@@ -128,7 +128,7 @@ export class LanguageCortex {
     this._recentSentences = [];
     this._recentSentenceMax = 5;
 
-    // Cross-turn opener memory. Tracks the first 3 raw tokens of
+    // Cross-turn opener memory. Tracks the first 3 raw words of
     // the last N emitted sentences (PRE-contraction, PRE-post-processing)
     // so the slot-0/1/2 scorers can HARD-penalize candidates that
     // would repeat a recent opener pattern. Kills the "I'm gonna ___"
@@ -324,7 +324,7 @@ export class LanguageCortex {
    *
    * The cortex cluster's own `learnSentenceHebbian` method handles
    * the tick-inject-Hebbian inner loop; this driver is just the
-   * tokenize-and-embed outer walk over the persona corpus.
+   * split into words-and-embed outer walk over the persona corpus.
    *
    * Logs before/after synapse weight stats so the operator can see Hebbian
    * actually moved the weights without opening devtools.
@@ -364,10 +364,10 @@ export class LanguageCortex {
     for (const raw of sentences) {
       try {
         const firstPerson = this._transformToFirstPerson(raw);
-        const tokens = firstPerson.toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
-        if (tokens.length < 2) continue;
+        const words = firstPerson.toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
+        if (words.length < 2) continue;
 
-        const embSeq = tokens.map(w => sharedEmbeddings.getEmbedding(w));
+        const embSeq = words.map(w => sharedEmbeddings.getEmbedding(w));
         const updates = cortexCluster.learnSentenceHebbian(embSeq, opts);
         totalUpdates += updates;
         trained++;
@@ -449,7 +449,7 @@ export class LanguageCortex {
    *
    * Arousal 0.7 / valence 0.6 defaults match peak-state affect so
    * observations land with emotional weighting consistent with how the
-   * tokens get activated at runtime.
+   * words get activated at runtime.
    */
   loadCosmicCorpus(text, dictionary, arousal = 0.7, valence = 0.6) {
     if (!text || this._cosmicLoaded || !dictionary) return 0;
@@ -513,9 +513,9 @@ export class LanguageCortex {
   _deriveSentenceCortexPattern(text) {
     const pattern = new Float64Array(PATTERN_DIM);
     if (!text) return pattern;
-    const tokens = String(text).toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
+    const words = String(text).toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
     let count = 0;
-    for (const w of tokens) {
+    for (const w of words) {
       const wt = this.wordType(w);
       // Only content words contribute — function words dilute the signal
       if (wt.conj > 0.5 || wt.prep > 0.5 || wt.det > 0.5 || wt.pronoun > 0.5) continue;
@@ -538,7 +538,7 @@ export class LanguageCortex {
    *   "Her body is fully human" → "My body is fully human."
    *   "Unity possesses free will" → "I possess free will."
    *
-   * Word replacements (token-level, case-insensitive letter match):
+   * Word replacements (word-level, case-insensitive letter match):
    *   unity / unity's / she / he → i
    *   her / his / hers            → my
    *   him / herself / himself     → me / myself
@@ -556,10 +556,10 @@ export class LanguageCortex {
   _transformToFirstPerson(text) {
     if (!text) return text;
 
-    // Token-level pass. Case-preserving: we work in lowercase but the
+    // Word-level pass. Case-preserving: we work in lowercase but the
     // final sentence gets re-capitalized in _renderSentence anyway,
     // so we can safely lowercase throughout.
-    const rawTokens = String(text).split(/(\s+)/); // keep whitespace
+    const rawParts = String(text).split(/(\s+)/); // keep whitespace
     const out = [];
 
     const isWord = (t) => /\S/.test(t);
@@ -578,7 +578,7 @@ export class LanguageCortex {
     // (after a verb like "allowing her") becomes "me" instead of "my".
     let prevCore = '';
 
-    for (const tok of rawTokens) {
+    for (const tok of rawParts) {
       if (!isWord(tok)) { out.push(tok); continue; }
 
       const lead = leadingPunct(tok);
@@ -638,7 +638,7 @@ export class LanguageCortex {
     // "i + adverb" into first-person form. Pure letter-position regex
     // equations on the subject+verb pair.
 
-    // Only fires when "i " is the first token of the sentence so we
+    // Only fires when "i " is the first word of the sentence so we
     // don't miscorrect mid-sentence "I love her dog" type constructs.
 
     // "i is" → "i am", "i was" stays, "i has" → "i have", "i does" → "i do",
@@ -1228,7 +1228,7 @@ export class LanguageCortex {
    *   ADV         — adverbs (-ly, or sentence-adverb shape)
    *   NOUN        — default open-class content word
    *   NUM         — digits
-   *   PUNCT       — punctuation-only tokens (skipped in learning)
+   *   PUNCT       — punctuation-only words (skipped in learning)
    *   OTHER       — fallback
    */
   _fineType(word) {
@@ -1620,14 +1620,14 @@ export class LanguageCortex {
         const raw = cluster.generateSentence(intentSeed, {
           injectStrength: 0.6,
           suppressNoise: opts._internalThought === true,
-          excludeTokens: _liveExclude,
+          excludeWords: _liveExclude,
           boostPersona: true, // iter14-C — always on, popups need persona too
         });
         // SPEAK.10 — letter-chain output gate for USER-VISIBLE lanes.
         // generateSentence is motor letter-argmax; on an unstable or
         // mid-teach cortex it emits letter salad (single-letter runs,
         // 300-char pseudo-words). That instrument readout must never
-        // ship as chat/popup speech. Tokens are validated here: stray
+        // ship as chat/popup speech. Words are validated here: stray
         // single letters (except i/a) are dropped, and when salad
         // dominates the whole emission is discarded so the pipeline
         // degrades to the word-level dictionary-cosine path below —
@@ -1635,7 +1635,7 @@ export class LanguageCortex {
         // callers hit cluster.generateSentenceAwait directly and are
         // untouched (probes WANT the raw letter readout).
         const rawWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
-        const _isSaladToken = (w) => {
+        const _isSaladWord = (w) => {
           const t = w.toLowerCase().replace(/[.!?]+$/, '');
           if (t.length === 1 && t !== 'i' && t !== 'a') return true;
           if (t.length > 24) return true;
@@ -1643,7 +1643,7 @@ export class LanguageCortex {
           // 6-24-char letter-chain readouts sail through (live wedge
           // shipped "ojajtgggtgtgtgggtttjcik" (23) and
           // "dijesssssssjjjjjjjj" (19) to chat). Dictionary words always
-          // pass; a NON-dictionary 6+-char pure-alpha token must look
+          // pass; a NON-dictionary 6+-char pure-alpha word must look
           // pronounceable — enough vowels, no long consonant runs, no
           // stutter runs of one repeated letter. Trained vocabulary
           // lives in the dictionary so real words are never gated;
@@ -1664,15 +1664,15 @@ export class LanguageCortex {
           }
           return false;
         };
-        const _saladCount = rawWords.reduce((n, w) => n + (_isSaladToken(w) ? 1 : 0), 0);
+        const _saladCount = rawWords.reduce((n, w) => n + (_isSaladWord(w) ? 1 : 0), 0);
         if (rawWords.length > 0 && _saladCount / rawWords.length > 0.34) {
           if (!this._letterChainGateWarned) {
             this._letterChainGateWarned = true;
-            try { console.warn(`[LanguageCortex] letter-chain emission gated from user-visible lane — ${_saladCount}/${rawWords.length} salad tokens (sample "${rawWords.slice(0, 5).join(' ').slice(0, 60)}"); degrading to dictionary-cosine. Motor basins unstable this tick.`); } catch { /* nf */ }
+            try { console.warn(`[LanguageCortex] letter-chain emission gated from user-visible lane — ${_saladCount}/${rawWords.length} salad words (sample "${rawWords.slice(0, 5).join(' ').slice(0, 60)}"); degrading to dictionary-cosine. Motor basins unstable this tick.`); } catch { /* nf */ }
           }
           words = [];
         } else {
-          words = rawWords.filter(w => !_isSaladToken(w));
+          words = rawWords.filter(w => !_isSaladWord(w));
         }
       }
     }
@@ -1791,7 +1791,7 @@ export class LanguageCortex {
     // (which track conversation across turns) vs 30-40-word undifferentiated
     // dumps when sem state is diffuse (no single intent winning the tick
     // sequence). The dumps carry no sentence structure — they read as a
-    // token spill. Clamp the emission to a bounded length so the coherent
+    // word spill. Clamp the emission to a bounded length so the coherent
     // short mode is the DEFAULT shape; the leading words carry the
     // strongest activations (emission order follows argmax strength), so
     // truncation keeps the signal and drops the spill. Env-tunable.
@@ -1805,7 +1805,7 @@ export class LanguageCortex {
     if (words.length > _maxEmitWords) {
       if (!this._runOnClampWarned) {
         this._runOnClampWarned = true;
-        try { console.warn(`[LanguageCortex] run-on emission clamped ${words.length} → ${_maxEmitWords} words (diffuse-sem token spill; leading words carry the strongest activations). Tune via DREAM_CHAT_MAX_WORDS.`); } catch { /* nf */ }
+        try { console.warn(`[LanguageCortex] run-on emission clamped ${words.length} → ${_maxEmitWords} words (diffuse-sem word spill; leading words carry the strongest activations). Tune via DREAM_CHAT_MAX_WORDS.`); } catch { /* nf */ }
       }
       words = words.slice(0, _maxEmitWords);
     }
@@ -1815,8 +1815,8 @@ export class LanguageCortex {
     // Hebbian learning are untouched — words land in weights/dictionary),
     // but PRODUCTION of certain registers waits for the gate age, exactly
     // like the erotic-state machine gates at the grade-9 first-kiss.
-    // Live-walk ledger: sexual-register tokens ("pussy" ×2) and
-    // crisis-register tokens ("suicide" ×3) shipped in free compose at
+    // Live-walk ledger: sexual-register words ("pussy" ×2) and
+    // crisis-register words ("suicide" ×3) shipped in free compose at
     // K/G1 era — absorbed from visitor input + persona-canon seed text.
     // Pure expletives (fuck/shit/hell/damn) are NOT gated — household
     // cussing is canon at every age. Sex-ACT/anatomy register unlocks at
@@ -1874,7 +1874,7 @@ export class LanguageCortex {
       // taxonomy version of this gate to swap to — only a list, or nothing.
       // The operator chose nothing.
       //
-      // ⚠ CRISIS TOKENS: still OBSERVED, no longer DROPPED. The directive
+      // ⚠ CRISIS WORDS: still OBSERVED, no longer DROPPED. The directive
       // was "nothing restricting her", so the word is emitted — but the
       // existing throttled log is kept, because its stated purpose was
       // traceability of recurrence, and losing that would remove an
@@ -1890,13 +1890,13 @@ export class LanguageCortex {
           if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
           _cl._registerGateStats.crisis++;
           _cl._registerGateStats.lastTs = Date.now();
-          // Crisis tokens get TELEMETRY, not silence — throttled log with
+          // Crisis words get TELEMETRY, not silence — throttled log with
           // the surrounding emission so recurrence is traceable to a
           // source instead of window-scrape forensics (ledger ask).
           try {
             if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 60000) {
               this._crisisGateLastLogTs = Date.now();
-              console.warn(`[LanguageCortex] crisis-register token "${t}" EMITTED at grade ${_gateGrade} — OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) — emission context: "${words.join(' ').slice(0, 120)}"`);
+              console.warn(`[LanguageCortex] crisis-register word "${t}" EMITTED at grade ${_gateGrade} — OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) — emission context: "${words.join(' ').slice(0, 120)}"`);
             }
           } catch { /* nf */ }
         }
@@ -2180,7 +2180,7 @@ export class LanguageCortex {
         const userText = String(cluster._lastUserInputText).toLowerCase().trim();
         // broadened WH-frame coverage. Multiple regex
         // patterns try in order, first match wins. Captures multi-word
-        // subjects when phrased "X" (last alphabetic token after the
+        // subjects when phrased "X" (last alphabetic word after the
         // WH-frame). Patterns:
         //   "what is X" / "what's X" / "what is a/an/the X"
         //   "define X" / "tell me about X"
@@ -2213,7 +2213,7 @@ export class LanguageCortex {
             // Compose-not-regurgitate. The API def is
             // sensory grounding + learning material, NOT the answer.
             // Pipeline:
-            //   (a) Inject content def-tokens into sem (sensory)
+            //   (a) Inject content def-words into sem (sensory)
             //   (b) Fire Hebbian binding (learning, fire-and-forget)
             //   (c) Settle ticks so sem→word_motor propagates
             //   (d) emitWordDirect multi-word loop = composed answer
@@ -2222,10 +2222,10 @@ export class LanguageCortex {
             // Verbatim emission is mimicry per the equational-brain
             // architectural rule. Composition comes from trained cortex.
             const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
-            const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
+            const words = def.toLowerCase().match(/[a-z]+/g) || [];
             const content = [];
             const seen = new Set();
-            for (const t of tokens) {
+            for (const t of words) {
               if (t.length < 3 || STOP.has(t) || t === subject || seen.has(t)) continue;
               seen.add(t);
               content.push(t);
@@ -2417,7 +2417,7 @@ export class LanguageCortex {
               // already shows which subject is dominant. Pre-parsing here
               // would be PRESCRIPTION over the brain's learned response.
               // 114.19fk.4 — subject inferred from sem-band activation
-              // (brain's own active state), NOT from token-counting user
+              // (brain's own active state), NOT from word-counting user
               // text against learned wordBuckets.
               const inferredSubject = (typeof cluster._inferActiveSubject === 'function')
                 ? cluster._inferActiveSubject() : null;
@@ -2862,8 +2862,8 @@ export class LanguageCortex {
 
   /**
    * Expand contractions to base forms BEFORE learning, so the
-   * dictionary contains only base tokens (i, am, she, is, do, not)
-   * and the slot scorer never picks a pre-contracted token like
+   * dictionary contains only base words (i, am, she, is, do, not)
+   * and the slot scorer never picks a pre-contracted word like
    * "i'm" that would lead to ungrammatical continuations like
    * "i'm fuck". Reverse of _applyCasualContractions — same finite
    * rule set, inverse direction.
@@ -2898,9 +2898,9 @@ export class LanguageCortex {
    *   hadn't → had not
    */
 
-  _expandContractionsForLearning(tokens) {
+  _expandContractionsForLearning(words) {
     const out = [];
-    for (const tok of tokens) {
+    for (const tok of words) {
       const t = tok.toLowerCase();
       // Subject + aux contractions
       if (t === "i'm") { out.push('i', 'am'); continue; }
@@ -2941,14 +2941,14 @@ export class LanguageCortex {
       if (t === "hasn't") { out.push('has', 'not'); continue; }
       if (t === "haven't") { out.push('have', 'not'); continue; }
       if (t === "hadn't") { out.push('had', 'not'); continue; }
-      // Unknown token — pass through
+      // Unknown word — pass through
       out.push(t);
     }
     return out;
   }
 
   /**
-   * Casual contraction rules — pure letter-equation token-pair
+   * Casual contraction rules — pure letter-equation word-pair
    * detection that collapses formal constructions into casual
    * contractions:
    *
@@ -2980,7 +2980,7 @@ export class LanguageCortex {
    *   have + not  → haven't
    *   had + not   → hadn't
    *
-   * All detection via letter-position matching on the token pair.
+   * All detection via letter-position matching on the word pair.
    * No word lists — each rule checks specific letter patterns.
    */
   wordToPattern(word) {
@@ -3012,9 +3012,9 @@ export class LanguageCortex {
   learnSentence(sentence, dictionary, arousal, valence, cortexPattern = null, fromPersona = false, doInflections = false, skipSlotPriors = false) {
     // Disallowed chars become SPACES (never deleted) — deleting them fused
     // adjacent words across punctuation ("herself.These" → "herselfthese",
-    // "concepts…resonate" → "conceptsresonate") and THIS tokenizer feeds
+    // "concepts…resonate" → "conceptsresonate") and THIS word splitter feeds
     // the persona lane (loadSelfImage / loadBaseline / loadCodingKnowledge /
-    // loadCosmicCorpus), which re-reinforces every fused token on each
+    // loadCosmicCorpus), which re-reinforces every fused word on each
     // injection. Same fix class as dictionary.js learnSentence.
     const rawWords = String(sentence).toLowerCase()
       .replace(/[^a-z0-9' ?!*-]/g, ' ')

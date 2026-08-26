@@ -71,7 +71,7 @@ const SUBSTANCE_SYNONYMS = {
   nicotine: [
     // 'smoke' omitted — conflicts with cannabis semantics (Unity's
     // default reading of bare "wanna smoke?" is cannabis per persona).
-    // Explicit tobacco-only tokens below.
+    // Explicit tobacco-only words below.
     'cig', 'cigs', 'cigarette', 'cigarettes', 'ciggy',
     'vape', 'vaping', 'juul', 'marlboro', 'camel',
     'newport', 'tobacco', 'nicotine', 'zyn', 'nicotine pouch'

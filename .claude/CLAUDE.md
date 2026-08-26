@@ -202,7 +202,7 @@ The LAW framework is unchanged — iter25 (D through M) was feature-implementati
 **iter25-J — Live dictionary API + WH-question comprehension (2026-05-07):**
 - `server/definition-service.js` wraps dictionaryapi.dev (free, no key) with in-memory cache (LRU 10k, TTL on errors), in-flight Promise dedup, prefetch parallel batch, Node 18 built-in fetch + User-Agent header.
 - `cluster.lookupDefinition` / `lookupDefinitionSync` / `prefetchDefinitions` attached to cortexCluster. Browser-side `RemoteBrain.lookupDefinition` via WS roundtrip ('definitionResult' / 'prefetchDone' handlers) with smoke test on welcome.
-- `Curriculum._teachWordDefinition(word)` Oja-Hebbian binds `sem(word) → sem(def_tokens)` with relationTagId=23.
+- `Curriculum._teachWordDefinition(word)` Oja-Hebbian binds `sem(word) → sem(def_words)` with relationTagId=23.
 - `js/brain/k-vocabulary.js` ships 2247 deduplicated K-grade English words.
 - WH-frame parser `_extractIntentConcept(question)` returns intent-concept word; `_teachQuestionIntent` (J.1) wired into all 6 K cells with relationTagId=12.
 - `_teachQuestionAnswerBinding` was REMOVED (banned hardcoded fact-table mimicry).
@@ -240,7 +240,7 @@ The LAW framework is unchanged — iter25 (D through M) was feature-implementati
 - M.8 `_metaRegister` self-monitoring — emissions inject back into sem at strength 0.3 (reflective "I-just-said" loop).
 - M.9 attention selection — `cluster.attentionGain` per-region multiplier from amygdala/basal-ganglia state (Posner network).
 - M.16 real Φ proxy — `cluster.computePhi()` Shannon entropy of 64-sampled spikes; psi formula multiplies by Φ.
-- M.6/M.10 vision describer hook injects content tokens into sem (image→concept grounding).
+- M.6/M.10 vision describer hook injects content words into sem (image→concept grounding).
 - M.7 background-trickle K_VOCAB Hebbian during dream cycles (one word per cycle from queue).
 - M.15 `cluster._definitionTaughtWords` Set persisted in saveWeights (cap 5000, sorted array on disk).
 - M.18 CONSTRAINTS.md philosophical-bounds appendix — FUNCTIONAL vs PHENOMENAL consciousness distinction.
@@ -255,12 +255,12 @@ The LAW framework is unchanged — iter25 (D through M) was feature-implementati
 - Phase 4 dashboard wiring fix: `_dictionarySmokeTestResult` boolean assigned in all `.then()` / `.catch()` / `else` branches (was undefined → "pending" forever; N.10); audit confirmed other consciousness fields have proper fallbacks (N.11); `_broadcastStateNow()` force-pushes state on smoke test completion (N.12).
 
 **iter25-O — Post-N ULTRATHINK audit (22 items across 6 phases, 2026-05-07):**
-- Phase 1 critical bugs: O.1 dictionary smoke retry (60s on FAIL, 1hr on PASS, in-flight guard); O.2 silent WS drop → CRITICAL log + `_gpuShadowDirty` flag + dashboard banner (with iter25-K projections, drift no longer recoverable via fire-and-forget); O.3 predictive coding GATES plasticity via `surpriseGate := 0.5 + clamp(error, 0, 1)` multiplied into gammaScale (high error → 1.5× lr); O.4 meta-register familiarity decay (0.30 → 0.15 → 0.075 floor 0.04, resets on token change); O.5 `computePhi()` sample 64 → 1024; O.6 `attentionGain` clamp `[0.5, 2.0]`.
+- Phase 1 critical bugs: O.1 dictionary smoke retry (60s on FAIL, 1hr on PASS, in-flight guard); O.2 silent WS drop → CRITICAL log + `_gpuShadowDirty` flag + dashboard banner (with iter25-K projections, drift no longer recoverable via fire-and-forget); O.3 predictive coding GATES plasticity via `surpriseGate := 0.5 + clamp(error, 0, 1)` multiplied into gammaScale (high error → 1.5× lr); O.4 meta-register familiarity decay (0.30 → 0.15 → 0.075 floor 0.04, resets on word change); O.5 `computePhi()` sample 64 → 1024; O.6 `attentionGain` clamp `[0.5, 2.0]`.
 - Phase 2 vestigial wiring: O.7 cortex.getWorkspaceCandidate publishes "cortex:`<word>`" labels + emitWordDirect reads `_globalWorkspace.getBroadcast()` for 10% bucket-mean boost (closes Baars GWT loop); O.8 `_teachWordDefinition` extra K-scaled ojaUpdate fire after `_teachAssociationPairs`; O.9 audit conclusion (broader dispatcher kScales = iter25-P scope); O.10 K env flags verified wired; O.11 `innerThoughtChainSemSize` saved + validated on load.
 - Phase 3 LAW violations: O.12 app.js iter25-E/G scrubbed (full-repo iter25 leakage now ZERO across .js/.html/.css); O.13 34 property identifier renames (`_t1826*` → `_ws*`, `_iter25LSmokeTestResult` → `_dictionarySmokeTestResult`) via `scripts/rename-property-ids.mjs`; O.14 108 CSS class + DOM id + state-key renames (`iter25m-panel` → `consciousness-panel`, `iter25n-panel` → `ws-pressure-panel`, `state.iter25m` → `state.consciousness`, `state.iter25n` → `state.wsPressure`).
 - Phase 4 observability: O.15 GlobalWorkspace dashboard panel (current ignition + strength + rate% + history cap 8); O.16 predictive error sparkline (32 bars + ↗→↘ trend); O.17 last-drop-time field with color gradation; O.18 defs-learned-per-hour rate from `_defLearnedTimestamps` 256-cap ring buffer.
 - Phase 5 persistence: O.19 saveWeights persists `wsBackpressure` counters; O.20 saveWeights persists `dictionarySmokeTest` result + ts (kills "pending" flicker every Savestart).
-- Phase 6 defensive: O.21 `DREAM_GW_IGNITION` env var + launcher header docs; O.22 vision token cap 6 → 16 with adjusted strength curve (0.30 → 0.05 over 16, total injection bounded).
+- Phase 6 defensive: O.21 `DREAM_GW_IGNITION` env var + launcher header docs; O.22 vision word cap 6 → 16 with adjusted strength curve (0.30 → 0.05 over 16, total injection bounded).
 
 **Gee-driven rules to remember (2026-05-06/07):**
 - Gee verbatim words go in **workflow docs only** (TODO.md, FINALIZED.md, .claude/*.md, public docs ARCHITECTURE/EQUATIONS/SKILL_TREE — these have historical pattern, OK; commits) — **NEVER in JS/HTML/CSS/etc. code comments**. Code references the iter ID, describes neutral rationale; verbatim stays workflow-internal.

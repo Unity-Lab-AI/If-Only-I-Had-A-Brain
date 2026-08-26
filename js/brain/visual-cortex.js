@@ -672,7 +672,7 @@ export class VisualCortex {
    * T7.2 — subscribe to fresh description events. Callback receives
    * the raw description string every time the describer completes
    * with a non-null result. Used by the language cortex to pull
-   * gender tokens out of the scene description.
+   * gender words out of the scene description.
    */
   onDescribe(cb) {
     if (typeof cb === 'function') this._describeSubscribers.push(cb);
