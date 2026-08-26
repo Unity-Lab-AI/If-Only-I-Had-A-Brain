@@ -44,6 +44,19 @@
  *   POST /ctl/kick     — hard systemd restart, for a hung/unreachable brain.
  *   GET  /ctl/logs     — recent journal lines, for diagnosing a failed boot.
  *   GET  /ctl/health   — liveness of ctl itself.
+ *
+ * ...plus the rest of the power verbs the brain supports, which were ALSO only
+ * reachable through the brain and so shared the same dead zone:
+ *   POST /ctl/reset            — wipe to a fresh brain (identity-core preserved).
+ *   POST /ctl/savererun        — keep weights, re-walk the curriculum on top.
+ *   POST /ctl/update           — deploy latest code + FRESH WALK.
+ *   POST /ctl/update-savestart — deploy latest code, RESUME saved training.
+ *
+ * Each of those delegates to the brain's own endpoint when the brain is up (so
+ * behaviour is identical and it does its own bookkeeping), and does the
+ * equivalent work directly when it is down. `savererun` is the one exception: it
+ * must rewrite grade pointers inside the LOADED weights, so with the brain down
+ * it refuses and says to press Start first, rather than pretending to work.
  */
 
 'use strict';
@@ -51,6 +64,7 @@
 const http = require('http');
 const { execFile } = require('child_process');
 const net = require('net');
+const fs = require('fs');
 const path = require('path');
 
 const PORT = parseInt(process.env.UAL_CTL_PORT || '7526', 10);
@@ -72,6 +86,21 @@ const GRACEFUL_WAIT_MS = parseInt(process.env.UAL_CTL_GRACEFUL_WAIT_MS || '20000
 // exactly the kind of lie this service exists to remove. Overridable so tests
 // (and smaller brains) need not sit through the full budget.
 const BIND_WAIT_MS = parseInt(process.env.UAL_CTL_BIND_WAIT_MS || '300000', 10);
+
+// Where the brain keeps the flags that steer its NEXT boot. brain-ctl writes
+// these directly so the destructive/deploy verbs work with the brain DOWN —
+// which is the whole reason this service exists. Paths must match
+// brain-server.js: `.force-fresh` lives beside it in server/, and the resume
+// marker is what makes a later start auto-resume instead of re-walking.
+const BRAIN_DIR = process.env.UAL_BRAIN_DIR || __dirname;
+const FORCE_FRESH_PATH = path.join(BRAIN_DIR, '.force-fresh');
+const RESUME_MARKER_PATH = process.env.UAL_RESUME_MARKER
+  // NOTE: `.resume-marker.json` — the exact filename brain-server.js uses
+  // (RESUME_MARKER_PATH). Getting this wrong would silently mean a Reset did
+  // not clear the marker, so the "fresh" brain would resume old training.
+  || path.join(BRAIN_DIR, '.resume-marker.json');
+const SELF_UPDATE_SH = process.env.UAL_SELF_UPDATE_SH
+  || path.join(BRAIN_DIR, '..', 'deploy', 'self-update.sh');
 
 const log = (...a) => console.log(`[BrainCtl ${new Date().toISOString()}]`, ...a);
 
@@ -390,7 +419,214 @@ async function doKick() {
   };
 }
 
+// ── The remaining verbs the brain supports ("everything else inbetween") ────
+// /reset, /savererun and /update all RESTART the brain, and all used to be
+// served BY the brain — so they were unreachable in exactly the situation where
+// an operator most needs them (brain down/failed and needing a wipe, a re-walk,
+// or a code fix). Each is implemented here as: ask the brain to do it itself if
+// it is up (identical behaviour, its own bookkeeping), otherwise perform the
+// equivalent boot-flag work directly and start it. That keeps one button doing
+// one predictable thing regardless of whether the brain happens to be alive.
+
+/**
+ * RESET — wipe to a fresh brain. Mirrors brain-server's /reset: write
+ * `.force-fresh` (autoClearStaleState then WIPES weights on boot, identity-core
+ * Tier 3 anchors preserved) and DELETE the resume marker so the fresh boot does
+ * not auto-resume the very training we are discarding.
+ */
+async function doReset(confirmToken) {
+  // Same destructive-verb interlock as /ctl/update fresh-walk — see the long
+  // note there. Reset throws away every trained weight, so the API refuses
+  // unless the caller states that intent explicitly.
+  if (confirmToken !== 'WIPE') {
+    return {
+      ok: false, action: 'reset', refused: true, needsConfirm: 'WIPE',
+      message: 'Refused: RESET destroys all trained weights. Re-send with {"confirm":"WIPE"} (the dashboard button asks you to type it). To keep training and just restart, use /ctl/restart.',
+      status: await buildStatus(),
+    };
+  }
+  log('RESET requested — arming a fresh-brain wipe (confirmed)');
+  const asked = await askBrainToShutdown('/reset');
+  if (asked.reached && asked.status === 200) {
+    const gone = await waitForPortClosed(GRACEFUL_WAIT_MS);
+    const bound = gone ? await waitForBrainBound() : false;
+    let proxyReloaded = false;
+    if (bound) { try { await runHelper('reload-nginx'); proxyReloaded = true; } catch { /* reported below */ } }
+    return {
+      ok: true, action: 'reset', viaBrain: true, boundPort: bound, proxyReloaded,
+      message: bound
+        ? 'Reset done by the brain itself — it is back up on a FRESH brain (trained weights wiped, identity-core preserved).'
+        : 'Reset armed by the brain; it is restarting into a fresh walk but has not bound its port yet.',
+      status: await buildStatus(),
+    };
+  }
+
+  // Brain is down — do the equivalent work ourselves. This is the case the old
+  // dashboard could not serve at all.
+  log('brain unreachable — writing the fresh-boot flags directly');
+  try {
+    fs.writeFileSync(FORCE_FRESH_PATH,
+      JSON.stringify({ requestedAt: Date.now(), via: 'brain-ctl /ctl/reset (brain was down)' }, null, 2));
+    if (fs.existsSync(RESUME_MARKER_PATH)) fs.unlinkSync(RESUME_MARKER_PATH);
+  } catch (err) {
+    return { ok: false, action: 'reset', error: `could not arm the fresh-boot flags: ${err.message}`,
+      hint: `brain-ctl needs write access to ${FORCE_FRESH_PATH} (it runs as the same user as the brain, so check ownership).`,
+      status: await buildStatus() };
+  }
+  const started = await doStart();
+  return {
+    ok: true, action: 'reset', viaBrain: false, boundPort: started.boundPort,
+    proxyReloaded: started.proxyReloaded,
+    message: `Reset armed while the brain was down (fresh-boot flag written, resume marker cleared), then started. ${started.message}`,
+    status: started.status,
+  };
+}
+
+/**
+ * SAVERERUN — keep every trained weight but reset the walk POINTERS so the
+ * whole curriculum re-teaches on top of the existing synapses. Only the brain
+ * can do this: it must take a rollback checkpoint and rewrite grade pointers
+ * INSIDE the weights, which needs the loaded model. So when the brain is down
+ * we honestly refuse and tell the operator to start it first, rather than
+ * pretending or writing flags that would not have the intended effect.
+ */
+async function doSaveRerun() {
+  log('SAVERERUN requested');
+  const st = await buildStatus();
+  if (!st.brainOnline) {
+    return {
+      ok: false, action: 'savererun', needsBrainUp: true,
+      message: 'Savererun needs the brain RUNNING — it takes a rollback checkpoint and rewrites the grade pointers inside the loaded weights, which cannot be done from outside the process. Press Start first, then Savererun.',
+      status: st,
+    };
+  }
+  const asked = await askBrainToShutdown('/savererun');
+  if (!asked.reached) {
+    return { ok: false, action: 'savererun', message: `The brain did not accept the savererun request: ${asked.reason}`, status: await buildStatus() };
+  }
+  const gone = await waitForPortClosed(GRACEFUL_WAIT_MS);
+  const bound = gone ? await waitForBrainBound() : false;
+  let proxyReloaded = false;
+  if (bound) { try { await runHelper('reload-nginx'); proxyReloaded = true; } catch { /* non-fatal */ } }
+  return {
+    ok: true, action: 'savererun', boundPort: bound, proxyReloaded,
+    message: bound
+      ? 'Savererun done — weights KEPT, walk pointers reset to pre-K, and the brain is back up re-teaching the curriculum on top of the trained synapses.'
+      : 'Savererun armed; the brain is restarting but has not bound its port yet.',
+    status: await buildStatus(),
+  };
+}
+
+/**
+ * UPDATE — pull the latest code and restart. `keep=true` is UPDATE & SAVESTART
+ * (resume weights); `keep=false` is UPDATE & FRESH WALK (wipe, identity-core
+ * preserved). Runs the SAME deploy/self-update.sh the brain would spawn, with
+ * the same UAL_KEEP_STATE switch, so the outcome does not depend on who
+ * launched it. Works with the brain down, which is the point: a bad deploy that
+ * leaves the brain crash-looping can now be fixed by deploying the fix from the
+ * dashboard instead of needing SSH.
+ */
+async function doUpdate(keep, confirmToken) {
+  const mode = keep ? 'savestart' : 'fresh-walk';
+  log(`UPDATE requested (${mode})`);
+
+  // ⚠ DESTRUCTIVE-VERB INTERLOCK (added after this cost a real brain).
+  // A bare `POST /ctl/update` runs deploy/self-update.sh in FRESH-WALK mode,
+  // which writes `.force-fresh` and WIPES every trained weight on the next
+  // boot. During development I probed this endpoint expecting a "no deploy
+  // script here" refusal; the script DID exist on the box, so the probe
+  // deployed and wiped the running brain. A single unauthenticated-by-intent
+  // curl must never be able to do that.
+  //
+  // So the wiping verbs now require an explicit typed token in the request.
+  // The UI already asks the operator to confirm; this makes the API itself
+  // refuse to be the accident. Non-destructive verbs (savestart) need nothing —
+  // keeping the safe path frictionless is what stops people reaching for the
+  // dangerous one out of habit.
+  if (!keep && confirmToken !== 'WIPE') {
+    return {
+      ok: false, action: 'update', mode, refused: true, needsConfirm: 'WIPE',
+      message: 'Refused: UPDATE + FRESH WALK destroys all trained weights. Re-send with {"confirm":"WIPE"} (the dashboard button does this for you). If you wanted the new code WITHOUT losing training, use /ctl/update-savestart instead.',
+      status: await buildStatus(),
+    };
+  }
+
+  if (!fs.existsSync(SELF_UPDATE_SH)) {
+    return { ok: false, action: 'update', mode,
+      message: `Update needs the deploy script, which is not on this box: ${SELF_UPDATE_SH}. Local dev has no self-update path — use start.bat / Savestart.bat.`,
+      status: await buildStatus() };
+  }
+
+  const st = await buildStatus();
+  if (st.brainOnline) {
+    // Let the brain drive it — it streams the script's output into its own
+    // console, which the operator is already watching.
+    const asked = await askBrainToShutdown(keep ? '/update?keep=1' : '/update');
+    if (asked.reached && asked.status === 200) {
+      const gone = await waitForPortClosed(Math.max(GRACEFUL_WAIT_MS, 120000));
+      const bound = gone ? await waitForBrainBound() : await waitForBrainBound();
+      let proxyReloaded = false;
+      if (bound) { try { await runHelper('reload-nginx'); proxyReloaded = true; } catch { /* non-fatal */ } }
+      return {
+        ok: true, action: 'update', mode, viaBrain: true, boundPort: bound, proxyReloaded,
+        message: bound
+          ? `Update (${mode}) complete — latest code deployed and the brain is serving again${keep ? ', resuming saved training' : ' on a fresh walk'}.`
+          : `Update (${mode}) was armed and the code overlay is running; the brain has not bound its port yet (overlay + restart takes 1-2 min).`,
+        status: await buildStatus(),
+      };
+    }
+    log('brain accepted nothing — falling back to running the deploy script directly');
+  }
+
+  // Brain down (or unresponsive): run the deploy script ourselves. It performs
+  // its own `systemctl restart` at the end, so we do not start the brain here —
+  // doing both would race the overlay against a boot.
+  return await new Promise((resolve) => {
+    const env = { ...process.env };
+    if (keep) env.UAL_KEEP_STATE = '1';
+    else delete env.UAL_KEEP_STATE;
+    execFile('bash', [SELF_UPDATE_SH], { timeout: 900000, maxBuffer: 8 * 1024 * 1024, env },
+      async (err, stdout, stderr) => {
+        const tail = (s) => String(s || '').split('\n').filter(Boolean).slice(-12).join('\n');
+        if (err) {
+          return resolve({ ok: false, action: 'update', mode, viaBrain: false,
+            message: `The deploy script failed: ${err.message}`,
+            output: tail(stdout) + '\n' + tail(stderr), status: await buildStatus() });
+        }
+        const bound = await waitForBrainBound();
+        let proxyReloaded = false;
+        if (bound) { try { await runHelper('reload-nginx'); proxyReloaded = true; } catch { /* non-fatal */ } }
+        resolve({ ok: true, action: 'update', mode, viaBrain: false, boundPort: bound, proxyReloaded,
+          message: bound
+            ? `Update (${mode}) complete while the brain was down — latest code deployed and the brain is serving again.`
+            : `Update (${mode}) ran, but the brain has not bound its port yet. Check the logs.`,
+          output: tail(stdout), status: await buildStatus() });
+      });
+  });
+}
+
 // ── HTTP ───────────────────────────────────────────────────────────────────
+
+/**
+ * Read a small JSON body, if any. Bounded (16 KB) because this endpoint takes
+ * only tiny confirmation tokens and should never buffer an arbitrary upload.
+ */
+function readJsonBody(req) {
+  return new Promise((resolve) => {
+    if (req.method !== 'POST') return resolve({});
+    let raw = '';
+    let tooBig = false;
+    req.on('data', (d) => {
+      raw += d;
+      if (raw.length > 16384) { tooBig = true; raw = ''; req.destroy(); }
+    });
+    req.on('end', () => {
+      if (tooBig || !raw) return resolve({});
+      try { resolve(JSON.parse(raw) || {}); } catch { resolve({}); }
+    });
+    req.on('error', () => resolve({}));
+  });
+}
 
 function sendJson(res, code, obj) {
   const body = JSON.stringify(obj, null, 2);
@@ -433,7 +669,22 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, unit: UNIT, lines: n, log: await journal(n) });
     }
     if (method === 'POST') {
-      const table = { '/start': doStart, '/stop': doStop, '/restart': doRestart, '/kick': doKick };
+      // Confirmation token for the destructive verbs. Accepted in a JSON body
+      // ({"confirm":"WIPE"}) or as ?confirm=WIPE so an operator with a shell can
+      // still drive it deliberately.
+      const body = await readJsonBody(req);
+      const qs = (req.url.split('?')[1] || '');
+      const confirm = body.confirm || (qs.match(/(?:^|&)confirm=([^&]*)/)?.[1] || '');
+
+      const table = {
+        '/start': doStart, '/stop': doStop, '/restart': doRestart, '/kick': doKick,
+        // "Everything else inbetween that we support doing" — these restart the
+        // brain too, and used to be reachable ONLY through the brain itself.
+        '/reset': () => doReset(confirm),
+        '/savererun': doSaveRerun,
+        '/update': () => doUpdate(false, confirm),   // UPDATE & FRESH WALK (wipes)
+        '/update-savestart': () => doUpdate(true),   // UPDATE & SAVESTART (keeps)
+      };
       const fn = table[url];
       if (fn) {
         const who = req.headers['x-ual-user'] || 'unknown';

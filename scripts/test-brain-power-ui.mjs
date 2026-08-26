@@ -52,6 +52,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const tmp = mkdtempSync(path.join(tmpdir(), 'bp-ui-'));
 const helperLog = path.join(tmp, 'calls.log');
 const helper = path.join(tmp, 'helper.sh');
+// Scratch brain dir so the Reset button can arm its flags without touching real state.
+const brainDir = mkdtempSync(path.join(tmpdir(), 'bp-ui-braindir-'));
 writeFileSync(helper, `#!/usr/bin/env bash\necho "$*" >> ${helperLog}\nexit 0\n`);
 chmodSync(helper, 0o755);
 
@@ -105,7 +107,9 @@ const ctl = spawn(process.execPath, [path.join(REPO, 'server', 'brain-ctl.js')],
     // A real start waits up to 5 minutes for the brain to load ~5.4 GB of
     // weights and bind its port. That is correct in production and far too slow
     // for a test, so shorten just the bind wait.
-    UAL_CTL_BIND_WAIT_MS: '8000' },
+    UAL_CTL_BIND_WAIT_MS: '8000',
+    UAL_BRAIN_DIR: brainDir,
+    UAL_SELF_UPDATE_SH: path.join(brainDir, 'no-such-self-update.sh') },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let ctlOut = '';
@@ -167,7 +171,35 @@ try {
   check('Start is now disabled (already running)', await page.isDisabled('#bp-start'));
   check('Force Restart is available for a wedged brain', await page.isEnabled('#bp-kick'));
 
-  console.log('\n5. no JS errors from the panel');
+  console.log('\n5. the REST of the verbs are present and correctly gated');
+  {
+    // With the brain UP (state from step 4), savererun should be available.
+    check('Savererun enabled while brain is up', await page.isEnabled('#bp-savererun'));
+    check('Update (keep weights) present', await page.isVisible('#bp-update-save'));
+    check('Update + Fresh Walk present', await page.isVisible('#bp-update-fresh'));
+    check('Reset present', await page.isVisible('#bp-reset'));
+
+    // Now take the brain away and re-check the gating.
+    if (mockBrain) { await mockBrain.close(); mockBrain = null; }
+    await page.click('#bp-refresh');
+    await page.waitForFunction(() => /state-(offline|halted|failed)/.test(document.getElementById('brain-power').className), { timeout: 20000 });
+    check('Savererun DISABLED with the brain down', await page.isDisabled('#bp-savererun'),
+      'it rewrites pointers inside loaded weights, so it cannot work while stopped');
+    check('Savererun tooltip explains why', /needs the brain running/i.test(await page.getAttribute('#bp-savererun', 'title') || ''),
+      await page.getAttribute('#bp-savererun', 'title'));
+    check('Update STILL enabled with the brain down', await page.isEnabled('#bp-update-save'),
+      'fixing a bad deploy is exactly when the brain is down');
+    check('Reset STILL enabled with the brain down', await page.isEnabled('#bp-reset'));
+
+    // Reset must demand a typed confirmation, and abort safely on anything else.
+    page.once('dialog', d => d.dismiss().catch(() => {}));      // cancel the prompt
+    await page.click('#bp-reset');
+    await page.waitForTimeout(800);
+    const aborted = (await page.textContent('#bp-result')).trim();
+    check('Reset aborts when the typed confirm is cancelled', /aborted/i.test(aborted), `result="${aborted}"`);
+  }
+
+  console.log('\n6. no JS errors from the panel');
   check('no uncaught page errors', consoleErrors.length === 0, consoleErrors.join(' | ').slice(0, 300));
 } catch (err) {
   fail.push(`harness: ${err.message}`);
