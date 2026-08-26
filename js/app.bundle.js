@@ -68895,11 +68895,11 @@ function extractVocabFromBank(bank) {
   const words = /* @__PURE__ */ new Set();
   for (const entry of bank || []) {
     const text = `${entry.question || entry.q || ""} ${entry.expectedAnswer || entry.a || ""} ${(entry.expectedVariants || entry.variants || []).join(" ")}`;
-    const words2 = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
-    for (const tok of words2) {
-      if (AMBIENT_STOPWORDS.has(tok)) continue;
-      if (tok.length < 2) continue;
-      words2.add(tok);
+    const entryWords = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    for (const w of entryWords) {
+      if (AMBIENT_STOPWORDS.has(w)) continue;
+      if (w.length < 2) continue;
+      words.add(w);
     }
   }
   return words;
