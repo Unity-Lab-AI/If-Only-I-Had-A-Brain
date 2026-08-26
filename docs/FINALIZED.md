@@ -37697,3 +37697,40 @@ Harnessed against `Object.assign({}, SERVER_CHAT_MIXIN)` — the shipped object,
 
 - ⚠ **The emission drought itself is NOT fixed and is not claimed to be.** `no-best-word` with `sampleCount 0` may be correct during the pre-phase vocabulary bootstrap — Gee has already ruled that class *"its doing vocab thats normal"*. What changed is that a stalled thought no longer pins her eye, and that the stall is now **visible** instead of inferable from polling a snapshot eight times by hand.
 - ⚠ **NOT VERIFIED LIVE.** `chat.js` + `state.js` are server-side — they need a restart to land. The dashboard row is frontend and appears on refresh.
+
+---
+
+## 2026-08-26 - NULSENT: I shipped a NUL byte into source and grep went quiet about it - hotfix/nul-sentinel
+
+### How it was found
+
+Not by a symptom, and not by looking for it. While tracing a chat question, `grep -rn "injectText(" server/brain-server/*.js` printed:
+
+```
+Binary file server/brain-server/chat.js matches
+```
+
+⛔ **`grep` had silently reclassified a 320KB JavaScript file as binary and stopped reporting matches inside it.** Earlier greps against the same file had worked, so the change was recent — and I had edited it hours before.
+
+### The defect — mine, from the EYEPIN batch
+
+`_pickEyeSubject`'s empty-thought sentinel shipped as a **raw NUL byte**: `const _seedKey = _word || '\0empty';` — one `0x00` at offset 105,925 (line 1785) in 320,014 bytes. It was intended to be a leading space. It was committed, merged through `develop`, and **cascaded to `main` on both remotes**.
+
+⚠ **It was not functionally broken, which is exactly why it would have survived.** A NUL-prefixed string is unique — no real word collides with it — so the pin detector worked and all 14 harness checks passed over it. `node --check` passed. The ESM import passed. **Nothing that gates a commit looks for a control character in a string literal.**
+
+⛔ **The real damage is to the toolchain, and it is the dangerous kind: silent.** A file `grep` treats as binary produces *no matches and no error*. Every subsequent search of that file — mine or anyone's — comes back clean and looks like a negative result. Given that this session alone closed four producer/consumer defects **found by grepping for a field name**, a search tool that quietly stops answering is a direct threat to the method being used to find bugs. It also breaks diffs and can be mangled by editors that normalise control characters.
+
+### Fix
+
+Sentinel replaced with a readable, greppable literal: `'__eye_no_thought__'`. The comment above it now records the incident and states the rule — **no control characters in sentinels** — because the next person to want a "value that cannot collide" will reach for exactly the same trick.
+
+### Verified
+
+- **Repo-wide NUL sweep: 0 files.** All `.js/.mjs/.cjs/.html/.css/.md/.json/.service/.sh/.bat/.yml` walked (excluding `.git`, `node_modules`, `.scratch`, `corpora`) — this was the only one, and there are no others hiding elsewhere.
+- `grep -c "_pickEyeSubject" server/brain-server/chat.js` → **3**. The file reads as text again, so search works on it.
+- `node --check` clean; **all 14 EYEPIN harness checks re-run and PASS** on the corrected file, including case C (`empty tracked as pin`), which is the case the sentinel exists for — the behaviour is unchanged, only the byte is.
+
+### Owned
+
+- ⛔ **I introduced it, it reached `main` on two remotes, and every gate I run passed it.** Syntax checks, ESM link checks, and a 14-case behavioural harness are all blind to a control character inside a working string literal.
+- ⚠ **I did not find it by auditing my own change.** I found it because an unrelated `grep` printed `Binary file ... matches` while I was chasing a different question. **Had that line not appeared, the file would have stayed silently unsearchable indefinitely** — and I would have kept using `grep` on it and trusting the empty results.
