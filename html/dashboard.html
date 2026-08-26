@@ -2066,6 +2066,10 @@
                 // "not learned yet" from "never taught".
                 + ` · ${num(writes)} tags written${wTags.length ? ` (${wTags.map(t => `${t}×${num(ru.tagWritesByTag[t])}`).join(' ')})` : ''}`
                 + (ru.tagWritesRefused ? ` · ⚠ ${num(ru.tagWritesRefused)} REFUSED (tag out of range)` : '')
+                // VMUSE.5 — the reader finally has a consumer. 0 while the
+                // bands are still separating is the gate working, not a dead
+                // lane; the row says which of the two it is.
+                + ` · consumed ${num(ru.consumedByEye || 0)}×`
                 + (withMass ? ` · ${num(withMass)} not separated yet` : '')
                 // RELSEP.1 — how close the bands are to the gate, so "not
                 // separated yet" stops being a state with no direction.
