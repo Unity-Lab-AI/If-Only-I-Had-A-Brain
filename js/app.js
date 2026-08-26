@@ -749,8 +749,15 @@ function renderLandingTab(tab, s) {
   const metric = (label, val, color = '#e0e0e0') => `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span style="color:#555;">${label}</span><span style="color:${color};">${val}</span></div>`;
   const bar = (pct, color) => `<div style="height:4px;background:#1a1a1a;border-radius:2px;margin-top:3px;"><div style="width:${Math.min(100,pct)}%;height:100%;background:${color};border-radius:2px;"></div></div>`;
 
-  const arousal = s.amygdala?.arousal ?? s.sharedMood?.arousal ?? 0;
-  const valence = s.amygdala?.valence ?? s.sharedMood?.valence ?? 0;
+  // ⛔ FLAT FIRST. `??` only falls through on null/undefined, so a nested
+  // `amygdala.valence` holding a REAL 0 beats a live flat 0.084 — and the local
+  // browser engine initialises exactly that (`amygdala: { arousal: 0.5,
+  // valence: 0 }`). Whenever a state object carried both, the stale nested zero
+  // won and the readout rendered a confident 0.00. The server sends these FLAT;
+  // `brain-viz.js` already reads them flat-first and says so in a comment. Only
+  // fall back to the nested block for the local engine, which has no flat form.
+  const arousal = s.arousal ?? s.amygdala?.arousal ?? s.sharedMood?.arousal ?? 0;
+  const valence = s.valence ?? s.amygdala?.valence ?? s.sharedMood?.valence ?? 0;
   const coherence = s.oscillations?.coherence ?? s.sharedMood?.coherence ?? 0;
   const psi = s.psi ?? 0;
   const spikes = s.spikeCount ?? s.totalSpikes ?? 0;
@@ -1045,8 +1052,10 @@ function updateLandingStats(state) {
   const $ = id => document.getElementById(id);
   const neurons = state.totalNeurons ?? state.neurons ?? 1000;
   const psi = state.psi ?? 0;
-  const arousal = state.amygdala?.arousal ?? state.sharedMood?.arousal ?? 0;
-  const valence = state.amygdala?.valence ?? state.sharedMood?.valence ?? 0;
+  // Flat first — see the note at the sibling chain above. A nested zero from
+  // the local engine must never outrank a live flat value from the server.
+  const arousal = state.arousal ?? state.amygdala?.arousal ?? state.sharedMood?.arousal ?? 0;
+  const valence = state.valence ?? state.amygdala?.valence ?? state.sharedMood?.valence ?? 0;
   const coherence = state.oscillations?.coherence ?? state.sharedMood?.coherence ?? 0;
   const spikes = state.spikeCount ?? state.totalSpikes ?? 0;
   const users = state.connectedUsers ?? 0;
@@ -3363,8 +3372,12 @@ function updateBrainIndicator(state) {
   const l = _landingState || {};
 
   const coherence = s.oscillations?.coherence ?? s.coherence ?? l.oscillations?.coherence ?? l.coherence ?? 0;
-  const arousal = s.amygdala?.arousal ?? s.arousal ?? l.amygdala?.arousal ?? l.arousal ?? 0;
-  const valence = s.amygdala?.valence ?? s.valence ?? l.amygdala?.valence ?? l.valence ?? 0;
+  // ⛔ THE HUD ON THE 3D BRAIN. Flat first — this is the chain that rendered
+  // `hud-valence` as 0.00 against a live 0.084. `s.amygdala?.valence` came
+  // first, and the local engine's nested `valence: 0` is a REAL number, so
+  // `??` kept it instead of falling through to the correct flat field.
+  const arousal = s.arousal ?? s.amygdala?.arousal ?? l.arousal ?? l.amygdala?.arousal ?? 0;
+  const valence = s.valence ?? s.amygdala?.valence ?? l.valence ?? l.amygdala?.valence ?? 0;
   const psi = s.psi ?? l.psi ?? 0;
   const bandPower = s.oscillations?.bandPower || s.bandPower || l.oscillations?.bandPower || l.bandPower || {};
 
