@@ -306,6 +306,48 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       .slice(0, 6);
   },
 
+  // The HEAD of the subject phrase — the thing the picture is OF.
+  //
+  // ⛔ The two single-key call sites used `_vmContentWords(x)[0]`, and English
+  // noun phrases are HEAD-FINAL, so the first content word is normally an
+  // adjective. Measured: "a big red apple on the table" keyed as **"big"**,
+  // "the old wooden church" as **"old"**. Her learned SHAPE of an apple was
+  // filed under `big`, where it collides with every big thing she ever sees,
+  // and asking for `apple` never found it.
+  //
+  // Walks the ORIGINAL text (not the stripped list) because the phrase
+  // boundary lives in the glue: once a concrete noun has been seen, the next
+  // glue word ends the head phrase, so "apple on the table" stops at "on" and
+  // never drifts onto "table". Concreteness is the live WordNet judgement the
+  // draw lane already uses — ⚠ NOT a word list, which is the standing law.
+  //   "a big red apple on the table" → apple   (stops at "on")
+  //   "the old wooden church"        → church  (old/wooden are not concrete)
+  //   "a cat sitting on a chair"     → cat     ("sitting" reads abstract)
+  _vmHeadWord(text) {
+    const raw = String(text || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    if (raw.length === 0) return '';
+    let tax = null;
+    try { tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js')); }
+    catch { tax = null; }
+    let head = '';
+    for (const w of raw) {
+      const glue = w.length < 2 || VM_STOP.has(w);
+      // Glue AFTER the head noun closes the phrase; glue before it is just
+      // the article and must not stop the walk.
+      if (glue) { if (head) break; continue; }
+      let concrete = true;
+      if (tax && typeof tax.drawableVerdict === 'function') {
+        try { concrete = tax.drawableVerdict(w) === 'concrete'; } catch { concrete = true; }
+      }
+      if (concrete) head = w;
+    }
+    // Nothing concrete anywhere (an abstract or unknown phrase) — fall back to
+    // the content words rather than returning empty, so a caller that needs a
+    // key still gets the best available one instead of dropping the memory.
+    if (!head) head = this._vmContentWords(text)[0] || '';
+    return head;
+  },
+
   // WS 'visual_frame' intake: {source:'camera'|'image', w, h, rgba_b64, label}.
   // Validation is strict (dims 8..96, byte length must equal w*h*4) because
   // this is a PUBLIC-lane message — a malformed frame must never reach the
@@ -455,24 +497,33 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
       const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
     };
+    // VMPHRASE.3 — KEEP THE WHOLE PHRASE. The keys are stopword-free on
+    // purpose (binding a field C to "the"/"of" would make every future
+    // thought recall random imagery through stopword collisions), but that
+    // stripping used to be the ONLY record of the label, so
+    // "a big red apple on the table" survived as {big, red, apple, table}
+    // and the RELATION was gone: apple and table filed as unrelated keys
+    // with nothing saying the apple was ON it. The full phrase now rides
+    // the entry, so nothing is discarded even though the keys stay clean.
+    const _phrase = String(msg.label || '').trim().slice(0, 160) || null;
     let _anyTrustedBind = fromCamera;
     for (const t of words) {
       const prev = store.get(t);
       if (fromCamera || !newPercept) {
         store.delete(t);                                      // LRU touch
-        store.set(t, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: true, p: newPercept || (prev && prev.p) || null });
+        store.set(t, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: true, p: newPercept || (prev && prev.p) || null, phrase: _phrase || (prev && prev.phrase) || null });
         _anyTrustedBind = true;
         continue;
       }
       if (!prev || !prev.p) {
         store.delete(t);
-        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept });
+        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept, phrase: _phrase });
         continue;                                             // provisional — awaits a confirming render
       }
       const _s = _vmCosP(newPercept, prev.p);
       if (_s >= 0.45) {
         store.delete(t);
-        store.set(t, { rec, at: now, seen: (prev.seen || 0) + 1, conf: true, p: newPercept });
+        store.set(t, { rec, at: now, seen: (prev.seen || 0) + 1, conf: true, p: newPercept, phrase: _phrase || (prev && prev.phrase) || null });
         _anyTrustedBind = true;                               // two independent renders agree — the look is real
       } else if (prev.conf !== false) {
         this._vmOutlierSkips = (this._vmOutlierSkips || 0) + 1;
@@ -482,7 +533,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         }
       } else {
         store.delete(t);
-        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept });   // newer provisional replaces provisional
+        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept, phrase: _phrase });   // newer provisional replaces provisional
       }
     }
     while (store.size > VM_CAP) store.delete(store.keys().next().value);
@@ -659,7 +710,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // Cheap: it runs on strokes she already traced, and stores plain numbers.
   async _learnShapeSchema(concept, rec) {
     if (!rec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
-    const key = (this._vmContentWords(concept)[0] || String(concept || '').toLowerCase().trim());
+    const key = (this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim());
     if (!key) return null;
     let strokes = null;
     try {
@@ -1213,7 +1264,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // opts.promptOverride — the caller supplies the full generation prompt
     // (imagination's unified-scene phrasing) instead of the def-driven single-
     // concept prompt.
-    const key = opts.keyOverride || (this._vmContentWords(concept)[0]) || String(concept || '').toLowerCase().trim();
+    const key = opts.keyOverride || this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim();
     if (!key) return null;
     const now = Date.now();
 
@@ -1505,7 +1556,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // a first sight that passed LOOKTWICE binds CONFIRMED
         const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45) || (!(prev && prev.p) && !!percept && !opts.keyOverride);
         store.delete(key);
-        store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt });
+        // VMPHRASE.3 — the concept she asked to look at, whole. `key` is the
+        // head noun; this keeps the phrase that produced it.
+        store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt, phrase: (String(concept || '').trim().slice(0, 160) || (prev && prev.phrase) || null) });
         while (store.size > VM_CAP) store.delete(store.keys().next().value);
         this._vmSaveSoon();
         // MIND'S-EYE — she SEES the reference she looked up (Gee 2026-07-15: "the
