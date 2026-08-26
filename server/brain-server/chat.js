@@ -2256,6 +2256,31 @@ const SERVER_CHAT_MIXIN = {
     const plan = await this._drawPlanFromMessage(text, opts);
     if (!plan || !plan.subjects.length) return null;
 
+    // ⭐ VMUSE.5.C — SHE CONSULTS WHAT SHE HAS LEARNED ABOUT THE SUBJECT.
+    //
+    // The relation channels are written by VMRELATE (what she looked at) and
+    // ARTWEIGHT (what she drew). Reading them back HERE closes that loop: the
+    // subject's dominant relation is recorded on the plan, so the piece is
+    // informed by what she actually knows about the thing rather than by the
+    // schema alone.
+    //
+    // ⚠ Everything goes through the ONE gate, so a band that has not separated
+    // yet returns null and this simply does not fire — which is the correct
+    // behaviour early in a walk, not a failure. ⚠ And it only ANNOTATES: no
+    // subject is added, removed or reordered on the strength of a relation,
+    // because a wrong band must never be able to change what she draws.
+    try {
+      const cur = this.curriculum;
+      if (cur && typeof cur._confidentRelationFor === 'function') {
+        for (const s of plan.subjects) {
+          const w = (typeof s === 'string') ? s : (s && s.word);
+          if (!w) continue;
+          const rel = cur._confidentRelationFor(w);
+          if (rel && typeof s === 'object') s.relationTag = rel.tag;
+        }
+      }
+    } catch { /* non-fatal — a drawing never fails on a relation read */ }
+
     // Per-attempt seed: the words + her live mood + the attempt counter. Same words
     // on a different day (or a different mood) compose differently — that is her
     // having a style rather than a cache.
