@@ -129,7 +129,7 @@ export function howToSolve(extOrId) {
 }
 
 // real-vocab keywords from a concept/method name (drop math symbols + stopwords) — these are
-// the tokens the brain actually has in sem-space and can bind.
+// the words the brain actually has in sem-space and can bind.
 const _STOP = new Set(['the', 'a', 'an', 'of', 'to', 'and', 'or', 'for', 'into', 'as', 'is', 'it', 'each', 'all', 'how', 'do', 'i', 'her']);
 function keywords(s) {
   return String(s || '').toLowerCase().replace(/[^a-z ]+/g, ' ').split(/\s+/).filter(w => w.length > 2 && !_STOP.has(w));

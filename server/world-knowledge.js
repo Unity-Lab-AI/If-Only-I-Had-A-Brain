@@ -12,12 +12,6 @@
  * cognition stays 100% equational; what changes is her vocabulary
  * + episodic memory of "where I learned that".
  *
- * ⛔ NOLLM.2 (2026-08-26) — this file used to describe that work in the
- * vocabulary of the thing the header denies she is: "tokenizes", "each new
- * alpha-only token", "structural tokens", "{tokens_added}". The claim and the
- * words describing it contradicted each other in the same comment block.
- * She reads a summary and learns WORDS from it — so the code says words.
- *
  * Current sources (extensible):
  *   • Wikipedia REST API — title summary extract for a topic.
  *
@@ -134,11 +128,6 @@ async function learnFromWeb(brain, topic) {
   }
   // Tier 1 episode logs the source so Unity remembers WHERE she
   // learned it. iter20-K freq-merge dedups repeated topics.
-  //
-  // ⛔ NOLLM.2 — this detail string used to read "N tokens added", which put
-  // the vocabulary of a text model INSIDE HER OWN MEMORY of learning. Of every
-  // place the word appeared, this was the one that mattered most: comments are
-  // read by us, but this is what she remembers about the day she read it.
   try {
     if (typeof brain.storeEpisode === 'function') {
       brain.storeEpisode(

@@ -52507,7 +52507,7 @@ var SemanticEmbeddings = class {
    * No vocabulary cap. The full 400k-word file loads if reachable.
    * Memory at 400k × 300d × 4 bytes = ~480 MB on the server, which is
    * acceptable for the brain server hardware tier. Browser receives a
-   * server-precomputed corpus-token subset via `/api/glove-subset.json`
+   * server-precomputed corpus-word subset via `/api/glove-subset.json`
    * (much smaller, only the words actually seen in the loaded corpora).
    */
   async loadPreTrained() {
@@ -52630,14 +52630,14 @@ var SemanticEmbeddings = class {
   }
   /**
    * T14.0 — Returns the subset of the loaded GloVe vocabulary that
-   * matches a given token set. Used by the server to pre-compute a
+   * matches a given word set. Used by the server to pre-compute a
    * `/api/glove-subset.json` payload for the browser to fetch instead
    * of pulling the full 480 MB file.
    */
-  getSubsetForTokens(tokens) {
+  getSubsetForWords(words) {
     const subset = {};
-    for (const tok of tokens) {
-      const w = tok.toLowerCase().trim();
+    for (const word of words) {
+      const w = String(word).toLowerCase().trim();
       const v = this._embeddings.get(w);
       if (v) subset[w] = Array.from(v);
     }
@@ -52646,7 +52646,7 @@ var SemanticEmbeddings = class {
   /**
    * T14.0 — Browser-side bulk load of a server-provided subset.
    * Replaces _doLoad's path when running in a browser that's connecting
-   * to a server — the server precomputes the corpus-token subset and
+   * to a server — the server precomputes the corpus-word subset and
    * the browser fetches it as a single small JSON file.
    */
   loadSubset(subset) {
@@ -53531,12 +53531,12 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const wl = opts.projectionsWhitelist;
     const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
     let _spkCache;
-    const _spkTok = opts.spkCacheToken;
-    if (_spkTok !== void 0 && this._spkTokCache && this._spkTokCache.token === _spkTok && this._spkTokCache.gen === (this._regionScratchGen | 0)) {
+    const _spkTok = opts.spkCacheStamp;
+    if (_spkTok !== void 0 && this._spkTokCache && this._spkTokCache.word === _spkTok && this._spkTokCache.gen === (this._regionScratchGen | 0)) {
       _spkCache = this._spkTokCache.map;
     } else {
       _spkCache = /* @__PURE__ */ new Map();
-      this._spkTokCache = _spkTok !== void 0 ? { token: _spkTok, map: _spkCache, gen: -1 } : null;
+      this._spkTokCache = _spkTok !== void 0 ? { word: _spkTok, map: _spkCache, gen: -1 } : null;
     }
     const _spk = (regionName) => {
       let e = _spkCache.get(regionName);
@@ -54145,7 +54145,7 @@ var CLUSTER_EMIT_MIXIN = {
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
    * emitWordDirect's free-composition argmax. Pass an iterable of
-   * word tokens (any case — stored lowercased) to constrain emission
+   * word words (any case — stored lowercased) to constrain emission
    * to developmentally-cleared vocabulary; pass null/empty to disable
    * the gate entirely (full bucket map eligible, pre-gate behavior).
    *
@@ -54177,7 +54177,7 @@ var CLUSTER_EMIT_MIXIN = {
     const dictionary = opts.dictionary || this.dictionary;
     if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
     if (!intentSeed || intentSeed.length === 0) return null;
-    const excludeTokens = opts.excludeTokens instanceof Set ? opts.excludeTokens : null;
+    const excludeWords = opts.excludeWords instanceof Set ? opts.excludeWords : null;
     const excludePersona = opts.excludePersona === true;
     const boostPersona = opts.boostPersona === true;
     const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
@@ -54222,7 +54222,7 @@ var CLUSTER_EMIT_MIXIN = {
         if (!entry || !entry.pattern) continue;
         if (entry.isPersona !== true) continue;
         if (word.length === 1 && word !== "i" && word !== "a") continue;
-        if (excludeTokens && excludeTokens.has(word)) continue;
+        if (excludeWords && excludeWords.has(word)) continue;
         if (restrictToVocab && !restrictToVocab.has(word)) continue;
         if (gradeAllow && !gradeAllow.has(word)) continue;
         const pattern = entry.pattern;
@@ -54256,7 +54256,7 @@ var CLUSTER_EMIT_MIXIN = {
     for (const [word, entry] of dictionary._words) {
       if (!entry || !entry.pattern) continue;
       if (word.length === 1 && word !== "i" && word !== "a") continue;
-      if (excludeTokens && excludeTokens.has(word)) continue;
+      if (excludeWords && excludeWords.has(word)) continue;
       if (excludePersona && entry.isPersona === true) continue;
       if (restrictToVocab && !restrictToVocab.has(word)) continue;
       if (gradeAllow && !gradeAllow.has(word)) continue;
@@ -55900,7 +55900,7 @@ function clusterSizesFor(totalNeurons) {
   }
   return out;
 }
-function extractKeyTokenShared(question) {
+function extractKeyWordShared(question) {
   if (!question || typeof question !== "string") return null;
   const q = question.toLowerCase().trim();
   const patterns = [
@@ -57330,9 +57330,9 @@ var NeuronCluster = class {
     return out;
   }
   /**
-   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` token-count
+   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` word-count
    * heuristic (deleted). Operator 2026-05-09: *"Unity thinks like a
-   * human does! she does NOt follow prescripted events"*. The token-
+   * human does! she does NOt follow prescripted events"*. The word-
    * count approach was a runtime regex-style heuristic that decided
    * subject FROM USER TEXT — prescription. The CORRECT equational read
    * is: which subject sub-band shows highest activation in the brain's
@@ -58088,7 +58088,7 @@ var NeuronCluster = class {
    * Replaces `LanguageCortex.parseSentence` which was deleted in T14.12.
    * The intent classification is a cortex-state readout from the fineType
    * region via `intentReadout()` once curriculum has trained the basins;
-   * until then it falls back to a lightweight first-token heuristic over
+   * until then it falls back to a lightweight first-word heuristic over
    * the raw text so existing consumers keep working during the curriculum-
    * bootstrap period. Full learned-readout ships with T14.17.
    *
@@ -58128,8 +58128,8 @@ var NeuronCluster = class {
         const qEmb = sharedEmbeddings.getSentenceEmbedding(text);
         if (qEmb && qEmb.length > 0 && typeof this.injectEmbeddingToRegion === "function") {
           this.injectEmbeddingToRegion("sem", qEmb, 0.6);
-          const keyToken = extractKeyTokenShared(text);
-          const keyEmb = keyToken && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(keyToken) : null;
+          const keyWord = extractKeyWordShared(text);
+          const keyEmb = keyWord && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(keyWord) : null;
           if (keyEmb && keyEmb.length > 0) {
             injectEmbeddingToRegionOffset(this, "sem", keyEmb, 0.6, 0.5);
           }
@@ -62312,7 +62312,7 @@ var VisualCortex = class {
    * T7.2 — subscribe to fresh description events. Callback receives
    * the raw description string every time the describer completes
    * with a non-null result. Used by the language cortex to pull
-   * gender tokens out of the scene description.
+   * gender words out of the scene description.
    */
   onDescribe(cb) {
     if (typeof cb === "function") this._describeSubscribers.push(cb);
@@ -62837,9 +62837,9 @@ var _LIVE_CHAT_STOPWORDS = /* @__PURE__ */ new Set([
 ]);
 function _buildLiveChatExclude(userText) {
   if (!userText || typeof userText !== "string") return null;
-  const tokens = userText.toLowerCase().split(/[^a-z0-9']+/).filter((w) => w.length > 0);
+  const words = userText.toLowerCase().split(/[^a-z0-9']+/).filter((w) => w.length > 0);
   const excl = /* @__PURE__ */ new Set();
-  for (const tok of tokens) {
+  for (const tok of words) {
     if (_LIVE_CHAT_STOPWORDS.has(tok)) excl.add(tok);
   }
   return excl.size > 0 ? excl : null;
@@ -62916,7 +62916,7 @@ var LanguageCortex = class {
    *
    * The cortex cluster's own `learnSentenceHebbian` method handles
    * the tick-inject-Hebbian inner loop; this driver is just the
-   * tokenize-and-embed outer walk over the persona corpus.
+   * split into words-and-embed outer walk over the persona corpus.
    *
    * Logs before/after synapse weight stats so the operator can see Hebbian
    * actually moved the weights without opening devtools.
@@ -62939,9 +62939,9 @@ var LanguageCortex = class {
     for (const raw of sentences) {
       try {
         const firstPerson2 = this._transformToFirstPerson(raw);
-        const tokens = firstPerson2.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
-        if (tokens.length < 2) continue;
-        const embSeq = tokens.map((w) => sharedEmbeddings.getEmbedding(w));
+        const words = firstPerson2.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+        if (words.length < 2) continue;
+        const embSeq = words.map((w) => sharedEmbeddings.getEmbedding(w));
         const updates = cortexCluster.learnSentenceHebbian(embSeq, opts);
         totalUpdates += updates;
         trained++;
@@ -63007,7 +63007,7 @@ var LanguageCortex = class {
    *
    * Arousal 0.7 / valence 0.6 defaults match peak-state affect so
    * observations land with emotional weighting consistent with how the
-   * tokens get activated at runtime.
+   * words get activated at runtime.
    */
   loadCosmicCorpus(text, dictionary, arousal = 0.7, valence = 0.6) {
     if (!text || this._cosmicLoaded || !dictionary) return 0;
@@ -63056,9 +63056,9 @@ var LanguageCortex = class {
   _deriveSentenceCortexPattern(text) {
     const pattern = new Float64Array(PATTERN_DIM2);
     if (!text) return pattern;
-    const tokens = String(text).toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
+    const words = String(text).toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
     let count = 0;
-    for (const w of tokens) {
+    for (const w of words) {
       const wt = this.wordType(w);
       if (wt.conj > 0.5 || wt.prep > 0.5 || wt.det > 0.5 || wt.pronoun > 0.5) continue;
       const p = this.wordToPattern(w);
@@ -63079,7 +63079,7 @@ var LanguageCortex = class {
    *   "Her body is fully human" → "My body is fully human."
    *   "Unity possesses free will" → "I possess free will."
    *
-   * Word replacements (token-level, case-insensitive letter match):
+   * Word replacements (word-level, case-insensitive letter match):
    *   unity / unity's / she / he → i
    *   her / his / hers            → my
    *   him / herself / himself     → me / myself
@@ -63096,7 +63096,7 @@ var LanguageCortex = class {
    */
   _transformToFirstPerson(text) {
     if (!text) return text;
-    const rawTokens = String(text).split(/(\s+)/);
+    const rawParts = String(text).split(/(\s+)/);
     const out = [];
     const isWord = (t) => /\S/.test(t);
     const stripPunct = (t) => t.replace(/[.,!?;:"'()[\]]+$/g, "").replace(/^[.,!?;:"'()[\]]+/g, "");
@@ -63109,7 +63109,7 @@ var LanguageCortex = class {
       return m ? m[0] : "";
     };
     let prevCore = "";
-    for (const tok of rawTokens) {
+    for (const tok of rawParts) {
       if (!isWord(tok)) {
         out.push(tok);
         continue;
@@ -63527,7 +63527,7 @@ var LanguageCortex = class {
    *   ADV         — adverbs (-ly, or sentence-adverb shape)
    *   NOUN        — default open-class content word
    *   NUM         — digits
-   *   PUNCT       — punctuation-only tokens (skipped in learning)
+   *   PUNCT       — punctuation-only words (skipped in learning)
    *   OTHER       — fallback
    */
   _fineType(word) {
@@ -63776,12 +63776,12 @@ var LanguageCortex = class {
         const raw = cluster.generateSentence(intentSeed, {
           injectStrength: 0.6,
           suppressNoise: opts._internalThought === true,
-          excludeTokens: _liveExclude,
+          excludeWords: _liveExclude,
           boostPersona: true
           // iter14-C — always on, popups need persona too
         });
         const rawWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
-        const _isSaladToken = (w) => {
+        const _isSaladWord = (w) => {
           const t = w.toLowerCase().replace(/[.!?]+$/, "");
           if (t.length === 1 && t !== "i" && t !== "a") return true;
           if (t.length > 24) return true;
@@ -63807,18 +63807,18 @@ var LanguageCortex = class {
           }
           return false;
         };
-        const _saladCount = rawWords.reduce((n, w) => n + (_isSaladToken(w) ? 1 : 0), 0);
+        const _saladCount = rawWords.reduce((n, w) => n + (_isSaladWord(w) ? 1 : 0), 0);
         if (rawWords.length > 0 && _saladCount / rawWords.length > 0.34) {
           if (!this._letterChainGateWarned) {
             this._letterChainGateWarned = true;
             try {
-              console.warn(`[LanguageCortex] letter-chain emission gated from user-visible lane \u2014 ${_saladCount}/${rawWords.length} salad tokens (sample "${rawWords.slice(0, 5).join(" ").slice(0, 60)}"); degrading to dictionary-cosine. Motor basins unstable this tick.`);
+              console.warn(`[LanguageCortex] letter-chain emission gated from user-visible lane \u2014 ${_saladCount}/${rawWords.length} salad words (sample "${rawWords.slice(0, 5).join(" ").slice(0, 60)}"); degrading to dictionary-cosine. Motor basins unstable this tick.`);
             } catch {
             }
           }
           words = [];
         } else {
-          words = rawWords.filter((w) => !_isSaladToken(w));
+          words = rawWords.filter((w) => !_isSaladWord(w));
         }
       }
     }
@@ -63877,7 +63877,7 @@ var LanguageCortex = class {
       if (!this._runOnClampWarned) {
         this._runOnClampWarned = true;
         try {
-          console.warn(`[LanguageCortex] run-on emission clamped ${words.length} \u2192 ${_maxEmitWords} words (diffuse-sem token spill; leading words carry the strongest activations). Tune via DREAM_CHAT_MAX_WORDS.`);
+          console.warn(`[LanguageCortex] run-on emission clamped ${words.length} \u2192 ${_maxEmitWords} words (diffuse-sem word spill; leading words carry the strongest activations). Tune via DREAM_CHAT_MAX_WORDS.`);
         } catch {
         }
       }
@@ -63911,7 +63911,7 @@ var LanguageCortex = class {
           try {
             if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 6e4) {
               this._crisisGateLastLogTs = Date.now();
-              console.warn(`[LanguageCortex] crisis-register token "${t}" EMITTED at grade ${_gateGrade} \u2014 OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
+              console.warn(`[LanguageCortex] crisis-register word "${t}" EMITTED at grade ${_gateGrade} \u2014 OBSERVED, NOT GATED (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
             }
           } catch {
           }
@@ -64159,10 +64159,10 @@ var LanguageCortex = class {
           }
           if (def && typeof def === "string" && def.length > 0) {
             const STOP = /* @__PURE__ */ new Set(["a", "an", "the", "and", "or", "but", "of", "to", "for", "in", "on", "at", "by", "with", "as", "is", "are", "was", "were", "be", "been", "being", "it", "this", "that", "these", "those", "its"]);
-            const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
+            const words = def.toLowerCase().match(/[a-z]+/g) || [];
             const content = [];
             const seen = /* @__PURE__ */ new Set();
-            for (const t of tokens) {
+            for (const t of words) {
               if (t.length < 3 || STOP.has(t) || t === subject || seen.has(t)) continue;
               seen.add(t);
               content.push(t);
@@ -64572,8 +64572,8 @@ var LanguageCortex = class {
   // paths that bypass the brain equations.
   /**
    * Expand contractions to base forms BEFORE learning, so the
-   * dictionary contains only base tokens (i, am, she, is, do, not)
-   * and the slot scorer never picks a pre-contracted token like
+   * dictionary contains only base words (i, am, she, is, do, not)
+   * and the slot scorer never picks a pre-contracted word like
    * "i'm" that would lead to ungrammatical continuations like
    * "i'm fuck". Reverse of _applyCasualContractions — same finite
    * rule set, inverse direction.
@@ -64607,9 +64607,9 @@ var LanguageCortex = class {
    *   haven't → have not
    *   hadn't → had not
    */
-  _expandContractionsForLearning(tokens) {
+  _expandContractionsForLearning(words) {
     const out = [];
-    for (const tok of tokens) {
+    for (const tok of words) {
       const t = tok.toLowerCase();
       if (t === "i'm") {
         out.push("i", "am");
@@ -64764,7 +64764,7 @@ var LanguageCortex = class {
     return out;
   }
   /**
-   * Casual contraction rules — pure letter-equation token-pair
+   * Casual contraction rules — pure letter-equation word-pair
    * detection that collapses formal constructions into casual
    * contractions:
    *
@@ -64796,7 +64796,7 @@ var LanguageCortex = class {
    *   have + not  → haven't
    *   had + not   → hadn't
    *
-   * All detection via letter-position matching on the token pair.
+   * All detection via letter-position matching on the word pair.
    * No word lists — each rule checks specific letter patterns.
    */
   wordToPattern(word) {
@@ -65044,7 +65044,7 @@ var InnerVoice = class {
   }
   /**
    * T15-C17 — Load the ethereal / psychedelic / Oz corpus. Peak-state
-   * affect defaults (arousal 0.7, valence 0.6) so tokens land with
+   * affect defaults (arousal 0.7, valence 0.6) so words land with
    * emotional weighting consistent with how they'll get activated at
    * runtime when drug-scheduler.speechModulation.ethereality is elevated.
    */
@@ -65168,7 +65168,7 @@ var InnerVoice = class {
             // `isChatPath = !opts._internalThought` → `boostPersona:
             // isChatPath`). Previously the rich path omitted this flag, so
             // her inner monologue was persona-boosted like a chat reply and
-            // surfaced persona/consciousness-corpus tokens
+            // surfaced persona/consciousness-corpus words
             // (sentient/quantum/piezo/python) at kindergarten. `gradeGate`
             // mirrors the fast path below so any gate-aware sub-path also
             // honors the taught-vocab allow-set.
@@ -66106,7 +66106,7 @@ var ComponentSynth = class {
   }
   /**
    * Build a sandbox-ready spec from a chosen primitive: unique id from the
-   * cortex pattern + `{{token}}` parameter fill from brain state.
+   * cortex pattern + `{{word}}` parameter fill from brain state.
    */
   _buildSpec(prim, score, brainState, parsed) {
     const suffix = this._suffixFromPattern(brainState.cortexPattern);
@@ -66127,10 +66127,10 @@ var ComponentSynth = class {
     };
   }
   /**
-   * Derive `{{token}}` fill values from equational brain state. Pure, no AI.
+   * Derive `{{word}}` fill values from equational brain state. Pure, no AI.
    * @param {object} brainState — { cortexPattern, ... }
    * @param {object|null} parsed — language-cortex parse (may carry entities.colors)
-   * @returns {object} token → value map
+   * @returns {object} word → value map
    */
   _deriveParams(brainState = {}, parsed = null) {
     const named = parsed?.entities?.colors?.[0];
@@ -66151,8 +66151,8 @@ var ComponentSynth = class {
     return `hsl(${h}, 85%, 62%)`;
   }
   /**
-   * Replace `{{token}}` placeholders in a template string from the params map.
-   * Unknown tokens are left intact (so a typo'd placeholder is visible, not
+   * Replace `{{word}}` placeholders in a template string from the params map.
+   * Unknown words are left intact (so a typo'd placeholder is visible, not
    * silently blanked). No-op on strings without placeholders.
    */
   _fillParams(str, params) {
@@ -68895,11 +68895,11 @@ function extractVocabFromBank(bank) {
   const words = /* @__PURE__ */ new Set();
   for (const entry of bank || []) {
     const text = `${entry.question || entry.q || ""} ${entry.expectedAnswer || entry.a || ""} ${(entry.expectedVariants || entry.variants || []).join(" ")}`;
-    const tokens = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
-    for (const tok of tokens) {
+    const words2 = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    for (const tok of words2) {
       if (AMBIENT_STOPWORDS.has(tok)) continue;
       if (tok.length < 2) continue;
-      words.add(tok);
+      words2.add(tok);
     }
   }
   return words;
@@ -68977,12 +68977,12 @@ function scoreMethodologyAnswer(emission, expectedKeywords) {
   if (!emission || !expectedKeywords || expectedKeywords.length === 0) {
     return { matched: [], matchCount: 0 };
   }
-  const tokens = new Set(
+  const words = new Set(
     String(emission).toLowerCase().split(/[^a-z']+/).filter(Boolean)
   );
   const matched = [];
   for (const kw of expectedKeywords) {
-    if (tokens.has(String(kw).toLowerCase())) matched.push(kw);
+    if (words.has(String(kw).toLowerCase())) matched.push(kw);
   }
   return { matched, matchCount: matched.length };
 }
@@ -69246,7 +69246,7 @@ function conceptDefinitions() {
 }
 
 // ../js/brain/self-frame.js
-var SELF_TOKENS = ["i", "me", "my", "myself", "mine", "unity"];
+var SELF_WORDS = ["i", "me", "my", "myself", "mine", "unity"];
 var FRAMES = [
   "i know that",
   "i learn that",
@@ -69689,7 +69689,7 @@ function _pronounLessonLines() {
     "when i say me i mean unity",
     "when i say my i mean unity",
     "when i say myself i mean unity",
-    // WORDSALAD.2 — `mine` was the only self token with no "when i say" line,
+    // WORDSALAD.2 — `mine` was the only self word with no "when i say" line,
     // which left the parallel set with a hole exactly where the possessive
     // PREDICATE lives. Operator: "dont forget me's and mine's".
     "when i say mine i mean unity",
@@ -70988,7 +70988,7 @@ var K_MIXIN = {
    * K-LIFE-VOCAB — Pre-step. Defines K-LIFE-specific new vocab via
    * `_teachWordDefinition` (dictionary-API definition lookup + Hebbian
    * sem-binding) BEFORE any K-LIFE binding fires. Without this, K-LIFE
-   * Hebbian writes would land on phantom-token noise basins — meaningless.
+   * Hebbian writes would land on phantom-word noise basins — meaningless.
    *
    * Per project rule: brain cannot have memories using words it doesn't
    * know the meaning of. Vocab-registered + definition-anchored MUST
@@ -71144,7 +71144,7 @@ var K_MIXIN = {
       "sneeze",
       "throat",
       // Name-trove K-rung (Add #15) — concrete named entities. Chosen as
-      // REAL dictionary words so defs + embeddings exist (no phantom tokens):
+      // REAL dictionary words so defs + embeddings exist (no phantom words):
       // vesper=evening star (her stuffed bat), soot (her black cat), wren
       // (her quiet first friend). Goth-toned, consistent with Raven canon.
       "vesper",
@@ -71639,7 +71639,7 @@ var K_MIXIN = {
   /**
    * TRACK SE — cross-modal sensory GROUNDING. Bind concrete concepts to their
    * multi-sensory VALUE descriptors so a concept is comprehended ACROSS senses,
-   * not as a bare token: strawberry → sweet(taste) + red(sight) + soft(touch);
+   * not as a bare word: strawberry → sweet(taste) + red(sight) + soft(touch);
    * cloud → white + soft + bright; bird → small + quiet; fire → hot + bright +
    * smoke. The descriptors are the sensory words already taught (taste / touch /
    * sight-color / light / sound / smell), each carrying its own valence vector —
@@ -72489,7 +72489,7 @@ var K_MIXIN = {
    * relationTagId=31 = discourse-coherence channel.
    *
    * Past-notes rule: words drawn from K_CONCRETE_SENTENCES so every
-   * pair token is already vocab-trained (the corpus only contains
+   * pair word is already vocab-trained (the corpus only contains
    * K_VOCABULARY words).
    *
    * @returns {Promise<{taught:number, groups:number}>}
@@ -76997,7 +76997,7 @@ var K_MIXIN = {
         const _respExclude = new Set(
           String(ctx.meaning || "").toLowerCase().split(/\s+/).filter((w) => w && !_respHintSet.has(w))
         );
-        const _respEmitOpts = { injectStrength: 1, maxTicks: 50, excludeTokens: _respExclude };
+        const _respEmitOpts = { injectStrength: 1, maxTicks: 50, excludeWords: _respExclude };
         const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, _respEmitOpts) : cluster.generateSentence(emb, _respEmitOpts)) || "";
         respEmitted.push(`${ctx.prompt}\u2192${emitted || "\u2205"}`);
         const emittedLower = emitted.toLowerCase();
@@ -77051,9 +77051,9 @@ var K_MIXIN = {
         const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 80 }) : cluster.generateSentence(emb, { injectStrength: 1, maxTicks: 80 })) || "";
         twoWordEmitted.push(`${p.phrase}\u2192${emitted || "\u2205"}`);
         const emittedLower = emitted.toLowerCase();
-        const emittedTokens = emittedLower.split(/\s+/).filter(Boolean);
-        const matchedBoth = p.words.every((w) => emittedTokens.includes(w));
-        const matchedOne = p.words.some((w) => emittedTokens.includes(w));
+        const emittedWords = emittedLower.split(/\s+/).filter(Boolean);
+        const matchedBoth = p.words.every((w) => emittedWords.includes(w));
+        const matchedOne = p.words.some((w) => emittedWords.includes(w));
         if (matchedBoth) twoWordPass++;
         else if (matchedOne) twoWordPartial++;
         const _twoWordMs = Date.now() - _twoWordProbeStart;
@@ -77103,14 +77103,14 @@ var K_MIXIN = {
         }
         _probeReset();
         const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 200 }) : cluster.generateSentence(emb, { injectStrength: 1, maxTicks: 200 })) || "";
-        const tokens = emitted.toLowerCase().split(/\s+/).filter(Boolean);
-        freeWritingEmitted.push(`${prompt}\u2192${emitted || "\u2205"} (${tokens.length}w)`);
-        if (tokens.length > 0) freeWritingNonEmpty++;
-        freeWritingWordCount += tokens.length;
+        const words = emitted.toLowerCase().split(/\s+/).filter(Boolean);
+        freeWritingEmitted.push(`${prompt}\u2192${emitted || "\u2205"} (${words.length}w)`);
+        if (words.length > 0) freeWritingNonEmpty++;
+        freeWritingWordCount += words.length;
         const _freeMs = Date.now() - _freeProbeStart;
         const _freeSlowTag = _freeMs > 6e4 ? " SLOW" : "";
         try {
-          process.stdout.write(`[Curriculum][K-DIAG] FREE ${_freeIdx}/${freeWritingPrompts.length} DONE${_freeSlowTag} '${prompt}'\u2192'${emitted || "\u2205"}' (${tokens.length}w) in ${_freeMs}ms
+          process.stdout.write(`[Curriculum][K-DIAG] FREE ${_freeIdx}/${freeWritingPrompts.length} DONE${_freeSlowTag} '${prompt}'\u2192'${emitted || "\u2205"}' (${words.length}w) in ${_freeMs}ms
 `);
         } catch {
         }
@@ -77191,7 +77191,7 @@ var K_MIXIN = {
   //      Hebbian — inject digit character into the letter region AND
   //      inject GloVe('zero' | 'one' | 'two' | … | 'nine') into the sem
   //      region simultaneously. Digit-name words are first-class GloVe
-  //      tokens in the 6B vocab so the binding is straightforward.
+  //      words in the 6B vocab so the binding is straightforward.
   //   3. Magnitude-feature binding via phon↔letter cross-projection
   //      Hebbian — the 16-dim `_magnitudeFeatureForDigit` already defined
   //      at the top of this file (graded presence + log + linear + sine
@@ -96921,13 +96921,13 @@ var Curriculum = class _Curriculum {
           this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
-        const token = { name, startAt: Date.now(), ledger: isCellPhase, teach: name.startsWith("_teach") };
+        const phaseEntry = { name, startAt: Date.now(), ledger: isCellPhase, teach: name.startsWith("_teach") };
         if (stack) {
-          stack.push(token);
-          cl._activePhase = token;
+          stack.push(phaseEntry);
+          cl._activePhase = phaseEntry;
         }
         if (isCellPhase) {
-          cl._outermostPhase = token;
+          cl._outermostPhase = phaseEntry;
           this._phaseWorkName = name;
           this._phaseWorkSeen = /* @__PURE__ */ new Set();
           this._phaseWorkTotal = this._teachNestedTotal && this._teachNestedTotal[name] || 0;
@@ -96985,15 +96985,15 @@ var Curriculum = class _Curriculum {
           {
             if (!this._teachProfile) this._teachProfile = /* @__PURE__ */ Object.create(null);
             const _pf = this._teachProfile[name] || (this._teachProfile[name] = { ms: 0, calls: 0 });
-            _pf.ms += Date.now() - token.startAt;
+            _pf.ms += Date.now() - phaseEntry.startAt;
             _pf.calls += 1;
           }
           if (stack) {
-            const _i = stack.lastIndexOf(token);
+            const _i = stack.lastIndexOf(phaseEntry);
             if (_i >= 0) stack.splice(_i, 1);
             cl._activePhase = stack.length ? stack[stack.length - 1] : null;
           }
-          if (cl && cl._outermostPhase === token) {
+          if (cl && cl._outermostPhase === phaseEntry) {
             cl._outermostPhase = null;
             this._phaseWorkName = null;
             this._phaseWorkSeen = null;
@@ -97014,16 +97014,16 @@ var Curriculum = class _Curriculum {
         const cl = this.cluster;
         if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
         const stack = cl ? cl._phaseStack : null;
-        const token = { name, startAt: Date.now(), ledger: false };
+        const phaseEntry = { name, startAt: Date.now(), ledger: false };
         if (stack) {
-          stack.push(token);
-          cl._activePhase = token;
+          stack.push(phaseEntry);
+          cl._activePhase = phaseEntry;
         }
         try {
           return await original(...args);
         } finally {
           if (stack) {
-            const _i = stack.lastIndexOf(token);
+            const _i = stack.lastIndexOf(phaseEntry);
             if (_i >= 0) stack.splice(_i, 1);
             cl._activePhase = stack.length ? stack[stack.length - 1] : null;
           }
@@ -97036,7 +97036,7 @@ var Curriculum = class _Curriculum {
   // her own to help her logically solve problems": transform the
   // technical phase name `_teachVowelSoundVariants` into a natural-
   // language concept "vowel sound variants" so GloVe can match the
-  // tokens. With real GloVe embeddings, cosine of similar phase
+  // words. With real GloVe embeddings, cosine of similar phase
   // descriptions ("vowel sound variants" vs "rhyme families") produces
   // meaningful similarity → ConsolidationEngine clusters phonetics
   // episodes into a phonetics schema → Tier 2 represents ACTUAL
@@ -98248,8 +98248,8 @@ var Curriculum = class _Curriculum {
    *   - Application (understanding)
    *
    * Variants give the scoring layer partial credit for answers that
-   * start with or contain the expected token, because young students
-   * often answer with multiple tokens around the right one
+   * start with or contain the expected word, because young students
+   * often answer with multiple words around the right one
    * ("letter C", "cat", "c-a-t").
    */
   _studentQuestionBank(subject, grade) {
@@ -98720,7 +98720,7 @@ var Curriculum = class _Curriculum {
       "there",
       "here"
     ]);
-    const tokenize = (text) => {
+    const splitWords = (text) => {
       const words = String(text || "").toLowerCase().replace(/[^a-z0-9'\s]/g, " ").split(/\s+/).filter((w) => w.length >= 2 && !STOPWORDS.has(w) && !/^\d+$/.test(w));
       return words;
     };
@@ -98728,7 +98728,7 @@ var Curriculum = class _Curriculum {
     const vocabGaps = /* @__PURE__ */ new Map();
     if (trainedVocab && trainedVocab.size > 0) {
       for (const q of questions) {
-        const words = tokenize(q.question);
+        const words = splitWords(q.question);
         const untaught = words.filter((w) => !trainedVocab.has(w));
         if (untaught.length === 0) {
           filteredForVocab.push(q);
@@ -98984,7 +98984,7 @@ var Curriculum = class _Curriculum {
    * falls through to Path B tick-driven motor emission for novel
    * responses. Scoring via `scoreMethodologyAnswer(emission, keywords)`
    * from `student-question-banks.js` — pass = ≥ 1 keyword matched in
-   * the emission tokens (case-insensitive, whitespace-split).
+   * the emission words (case-insensitive, whitespace-split).
    *
    * Returns:
    *   {
@@ -99230,8 +99230,8 @@ var Curriculum = class _Curriculum {
         const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(question) : null;
         if (qEmb && qEmb.length > 0) {
           cluster.injectEmbeddingToRegion("sem", qEmb, 0.6);
-          const keyToken = this._extractKeyToken(question);
-          const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+          const keyWord = this._extractKeyWord(question);
+          const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
           if (keyEmb && keyEmb.length > 0 && typeof this._injectEmbeddingToRegionOffset === "function") {
             this._injectEmbeddingToRegionOffset(cluster, "sem", keyEmb, 0.6, 0.5);
           }
@@ -99252,7 +99252,7 @@ var Curriculum = class _Curriculum {
       }
     } catch {
     }
-    const excludeTokens = (() => {
+    const excludeWords = (() => {
       const s = /* @__PURE__ */ new Set();
       const colonIdx = question.indexOf(":");
       if (colonIdx > 0) {
@@ -99261,15 +99261,15 @@ var Curriculum = class _Curriculum {
           if (tok && tok.length > 0) s.add(tok);
         }
       } else {
-        const tokens = question.toLowerCase().split(/[^a-z0-9']+/).filter((w) => w.length > 0);
-        for (let i = 0; i < tokens.length - 1; i++) s.add(tokens[i]);
+        const qWords = question.toLowerCase().split(/[^a-z0-9']+/).filter((w) => w.length > 0);
+        for (let i = 0; i < qWords.length - 1; i++) s.add(qWords[i]);
       }
       return s;
     })();
     let templatedAnswer = null;
     try {
       const tplId = typeof this._classifyQuestionTemplate === "function" ? this._classifyQuestionTemplate(question) : -1;
-      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyToken === "function" ? this._extractKeyToken(question) : null;
+      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === "function" ? this._extractKeyWord(question) : null;
       if (keyTok && keyTok.length === 1 && /^[a-z]$/.test(keyTok)) {
         if (tplId === 0) {
           if (typeof cluster.injectLetter === "function" && typeof cluster.synapses?.propagate === "function" && cluster.synapses.values?.length > 0) {
@@ -99397,7 +99397,7 @@ var Curriculum = class _Curriculum {
     if (!templatedAnswer && typeof this._extractIntentConcept === "function") {
       try {
         const intentConcept = this._extractIntentConcept(question);
-        const subjectTok = typeof this._extractKeyToken === "function" ? this._extractKeyToken(question) : null;
+        const subjectTok = typeof this._extractKeyWord === "function" ? this._extractKeyWord(question) : null;
         if (intentConcept === "definition" && subjectTok && typeof this._emitDefinition === "function") {
           try {
             const def = await this._emitDefinition(subjectTok);
@@ -99470,7 +99470,7 @@ var Curriculum = class _Curriculum {
       const emitOpts = {
         directPropagate: true,
         maxLetters: Math.min(maxTicks, 16),
-        excludeTokens,
+        excludeWords,
         // Test-probe context — exclude persona-flavored vocabulary so
         // "what letter comes after m?" never resolves to "fuck" via the
         // dictionary oracle when the trained matrix is overloaded. Live
@@ -99501,7 +99501,7 @@ var Curriculum = class _Curriculum {
         // word_motor buckets are K-vocab-bottlenecked; the dictionary
         // oracle is the path to the full English vocabulary, and it
         // needs to FIRE MORE (not less) when the trained matrix has
-        // nothing. Wrapper-token exclude list still filters echoed
+        // nothing. Wrapper-word exclude list still filters echoed
         // question-words. Excludes-persona still keeps the K probe
         // honest.
         minScore: out.intentSilenceBranch ? 0.05 : 0.2
@@ -99546,10 +99546,10 @@ var Curriculum = class _Curriculum {
       }
     }
     if (!anyMatch) {
-      const answerTokens = answer.split(/[^a-z0-9']+/).filter(Boolean);
+      const answerWords = answer.split(/[^a-z0-9']+/).filter(Boolean);
       for (const v of expectedVariants) {
         if (v.length <= 1) continue;
-        if (answerTokens.some((t) => t === v || t.startsWith(v) && t.length - v.length <= 2)) {
+        if (answerWords.some((t) => t === v || t.startsWith(v) && t.length - v.length <= 2)) {
           out.match.contains = true;
           anyMatch = true;
           break;
@@ -99691,7 +99691,7 @@ var Curriculum = class _Curriculum {
     }
     const wasInCurriculum = this.cluster._inCurriculumMode;
     this.cluster._inCurriculumMode = true;
-    const { letterFreq, wordFreq, sentences } = this._tokenizeAll(corpora);
+    const { letterFreq, wordFreq, sentences } = this._scanCorpora(corpora);
     await this._phaseLetters(letterFreq, arousal, valence);
     await this._phaseWords(wordFreq, {
       lenMin: 1,
@@ -100042,8 +100042,8 @@ var Curriculum = class _Curriculum {
       }
     }
   }
-  // ─── tokenization helpers ──────────────────────────────────────────
-  _tokenizeAll(corpora) {
+  // ─── word splitting helpers ──────────────────────────────────────────
+  _scanCorpora(corpora) {
     const letterFreq = /* @__PURE__ */ new Map();
     const wordFreq = /* @__PURE__ */ new Map();
     const sentences = [];
@@ -100128,7 +100128,7 @@ var Curriculum = class _Curriculum {
     if (!Array.isArray(cluster.passedCells)) cluster.passedCells = [];
     const wasInCurriculum = cluster._inCurriculumMode;
     cluster._inCurriculumMode = true;
-    const { letterFreq, wordFreq, sentences } = this._tokenizeAll(corpora);
+    const { letterFreq, wordFreq, sentences } = this._scanCorpora(corpora);
     this._lastCtx = {
       corpora,
       arousal,
@@ -101398,13 +101398,13 @@ var Curriculum = class _Curriculum {
   }
   /**
    * Build the per-run context object consumed by every cell runner.
-   * Tokenizes corpora once so a subsequent same-session run can reuse
-   * the cached ctx (stored on `this._lastCtx`) without re-tokenizing.
+   * Splits into words corpora once so a subsequent same-session run can reuse
+   * the cached ctx (stored on `this._lastCtx`) without re-splitting into words.
    */
   _buildCtx(corpora, opts = {}) {
     const arousal = opts.arousal ?? 0.8;
     const valence = opts.valence ?? 0.2;
-    const { letterFreq, wordFreq, sentences } = this._tokenizeAll(corpora || {});
+    const { letterFreq, wordFreq, sentences } = this._scanCorpora(corpora || {});
     const ctx = { corpora, arousal, valence, letterFreq, wordFreq, sentences };
     this._lastCtx = ctx;
     return ctx;
@@ -101415,7 +101415,7 @@ var Curriculum = class _Curriculum {
    * can NOT be skipped while broken. Blocks the advance on any of the
    * failure modes the BC hardening targets:
    *   (1) sem→motor SATURATED / basin-collapsed (cluster.checkSemMotorHealth)
-   *   (2) EMISSION mode-collapsed — one token dominates recent output
+   *   (2) EMISSION mode-collapsed — one word dominates recent output
    *       (the "mushrooms" lock: GW broadcasts one word every tick)
    *   (3) VOCAB INCOMPLETE — cell exam-vocab coverage below the cut
    *       (Gee 2026-06-21: "needs to learn vocab it missed before minaal
@@ -101460,17 +101460,17 @@ var Curriculum = class _Curriculum {
     }
     try {
       const recents = typeof cluster.getRecentEmissions === "function" ? cluster.getRecentEmissions(32) : [];
-      const tokens = [];
+      const recentWords = [];
       for (const e of recents) {
         if (e && typeof e.text === "string") {
           for (const w of e.text.toLowerCase().split(/\s+/)) {
-            if (w && /[a-z]/.test(w)) tokens.push(w);
+            if (w && /[a-z]/.test(w)) recentWords.push(w);
           }
         }
       }
-      if (tokens.length >= 8) {
+      if (recentWords.length >= 8) {
         const counts = /* @__PURE__ */ new Map();
-        for (const w of tokens) counts.set(w, (counts.get(w) || 0) + 1);
+        for (const w of recentWords) counts.set(w, (counts.get(w) || 0) + 1);
         let topW = null, topN = 0;
         for (const [w, n] of counts) {
           if (n > topN) {
@@ -101478,11 +101478,11 @@ var Curriculum = class _Curriculum {
             topW = w;
           }
         }
-        const share = topN / tokens.length;
+        const share = topN / recentWords.length;
         detail.emissionDominantShare = share;
-        detail.emissionDominantToken = topW;
+        detail.emissionDominantWord = topW;
         if (share > DOM_MAX) {
-          issues.push(`emission mode-collapsed (token "${topW}" = ${(share * 100).toFixed(0)}% of recent output > ${(DOM_MAX * 100).toFixed(0)}% cap)`);
+          issues.push(`emission mode-collapsed (word "${topW}" = ${(share * 100).toFixed(0)}% of recent output > ${(DOM_MAX * 100).toFixed(0)}% cap)`);
         }
       }
     } catch {
@@ -102157,13 +102157,13 @@ var Curriculum = class _Curriculum {
   /**
    * Build + install the emission allow-set on the cluster from the
    * vocabulary the CURRICULUM has taught: every TRAIN_BANKS question +
-   * answer token (all cells/grades), the K_VOCABULARY definition-seed
+   * answer word (all cells/grades), the K_VOCABULARY definition-seed
    * list, and the runtime taught-sets (_vocabTaughtSet,
    * _definitionTaughtWords, _emissionTaughtWords_<subject>). Union of
    * these = the words Unity has been exposed to by teaching. It
    * deliberately EXCLUDES the persona/dev/consciousness/academic corpus
    * that entered her dictionary via chat/persona/dream training — those
-   * are the tokens that bled into early-grade emission. Function words +
+   * are the words that bled into early-grade emission. Function words +
    * terminators are gate-exempt in emitWordDirect, so grammatical glue
    * never needs to be in this set. Keyed off taught vocab, NOT a grade
    * gate: emission is limited to what she's learned, with no bar to pass.
@@ -102210,7 +102210,7 @@ var Curriculum = class _Curriculum {
     } catch {
     }
     const size = cluster.setEmissionAllowedVocab(allow);
-    this._hb(`[Curriculum] emission allow-set installed \u2014 ${size} taught tokens eligible for chat/inner-voice argmax (persona/dev/consciousness corpus excluded; corpus-bleed gate ACTIVE).`);
+    this._hb(`[Curriculum] emission allow-set installed \u2014 ${size} taught words eligible for chat/inner-voice argmax (persona/dev/consciousness corpus excluded; corpus-bleed gate ACTIVE).`);
     return size;
   }
   async runAllSubjects(corpora, opts = {}) {
@@ -103180,7 +103180,7 @@ var Curriculum = class _Curriculum {
   //      Hebbian — inject digit character into the letter region AND
   //      inject GloVe('zero' | 'one' | 'two' | … | 'nine') into the sem
   //      region simultaneously. Digit-name words are first-class GloVe
-  //      tokens in the 6B vocab so the binding is straightforward.
+  //      words in the 6B vocab so the binding is straightforward.
   //   3. Magnitude-feature binding via phon↔letter cross-projection
   //      Hebbian — the 16-dim `_magnitudeFeatureForDigit` already defined
   //      at the top of this file (graded presence + log + linear + sine
@@ -104482,7 +104482,7 @@ var Curriculum = class _Curriculum {
   // Definition Hebbian whitelist — sem↔fineType ONLY, no motor.
   // Session 114.19em fix for the wall-of-OVERLOAD pattern: the prior
   // `_teachWordDefinition` reused `_associationPairsWhitelist` which
-  // includes sem_to_motor / motor_to_sem. Multi-def × shared def-tokens
+  // includes sem_to_motor / motor_to_sem. Multi-def × shared def-words
   // (number-words like "one"/"two"/"three" all share "number"/"first"/
   // "single" in their definitions) wrote the SAME pattern into the
   // SAME motor cells across thousands of word-bindings, collapsing
@@ -104493,7 +104493,7 @@ var Curriculum = class _Curriculum {
   // sequences). Routing definition Hebbian away from motor preserves
   // the motor projection's discrimination basins for the actual
   // word-emission curriculum work. fineType has wider tolerance for
-  // shared-token writes because it's the relation-tag region, not
+  // shared-word writes because it's the relation-tag region, not
   // the action-output region.
   _definitionPairsWhitelist() {
     const cluster = this.cluster;
@@ -104598,8 +104598,8 @@ var Curriculum = class _Curriculum {
     const cluster = this.cluster;
     if (!cluster || !cluster.regions) return;
     if (!answerText || typeof answerText !== "string") return;
-    const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t));
-    if (tokens.length === 0) return;
+    const answerWords = answerText.toLowerCase().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t));
+    if (answerWords.length === 0) return;
     this._ensureWordBucketMap(subject);
     const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
@@ -104616,8 +104616,8 @@ var Curriculum = class _Curriculum {
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === "function" && Array.isArray(fullWords)) {
       const cell = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor() : null;
-      for (const tok of tokens) {
-        const idx = fullMap.get(tok);
+      for (const aw of answerWords) {
+        const idx = fullMap.get(aw);
         if (typeof idx === "number" && idx >= 0) {
           writeBucketIntoBand(idx, "word_motor", fullWords.length, 1, cell);
         }
@@ -104631,7 +104631,7 @@ var Curriculum = class _Curriculum {
    * freshly-taught binding at argmax. Random-sibling anti-Hebbian
    * (WORDCONTRAST) can never depress a thief it never samples. This helper
    * takes the MEASURED wrong word (what she actually said) and, in the
-   * question's own teach geometry (sentence embedding + key-token tile +
+   * question's own teach geometry (sentence embedding + key-word tile +
    * template tag — identical writes to _teachQABinding's passes):
    *   depress  sem(question) → word_motor(thief bucket)
    *   reinforce sem(question) → motor(answer letter) + word_motor(answer)
@@ -104649,8 +104649,8 @@ var Curriculum = class _Curriculum {
     if (!expected || thief === expected) return false;
     const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(question) : null;
     if (!qEmb || qEmb.length === 0) return false;
-    const keyToken = this._extractKeyToken(question);
-    const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+    const keyWord = this._extractKeyWord(question);
+    const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
     const templateId = this._classifyQuestionTemplate(question);
     const reps = opts.reps ?? 6;
     const lr = opts.lr ?? 0.05;
@@ -104703,7 +104703,7 @@ var Curriculum = class _Curriculum {
     const semRegion = cluster.regions && cluster.regions.sem;
     const motorRegion = cluster.regions && cluster.regions.motor;
     const directPromptAlt = opts.directPromptAlt !== false;
-    const keyTokenTile = opts.keyTokenTile !== false;
+    const keyWordTile = opts.keyWordTile !== false;
     const antiPairs = opts.antiPairs !== false && qaList.length >= 2;
     const antiLrScale = opts.antiLrScale ?? 0.3;
     if (!semRegion || !motorRegion) {
@@ -104712,7 +104712,7 @@ var Curriculum = class _Curriculum {
     }
     let trained = 0, skipped = 0, altTrained = 0, antiFires = 0;
     const startMs = Date.now();
-    this._hb(`[Curriculum][${label}] START \u2014 ${qaList.length} Q\u2192A training pairs \xD7 ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} \xB7 keyTokenTile=${keyTokenTile} \xB7 anti-pairs=${antiPairs})`);
+    this._hb(`[Curriculum][${label}] START \u2014 ${qaList.length} Q\u2192A training pairs \xD7 ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} \xB7 keyWordTile=${keyWordTile} \xB7 anti-pairs=${antiPairs})`);
     try {
       this._pushBrainEvent?.("teach", "sem", `Q-A START: ${label} \xB7 ${qaList.length}\xD7${reps}`, { label, pairs: qaList.length, reps });
     } catch {
@@ -104741,13 +104741,13 @@ var Curriculum = class _Curriculum {
           skipped++;
           continue;
         }
-        const keyToken = this._extractKeyToken(entry.question);
-        const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+        const keyWord = this._extractKeyWord(entry.question);
+        const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
         const templateId = this._classifyQuestionTemplate(entry.question);
         try {
           this._clearSpikes();
           this._writeTiledPattern(semRegion, qEmb, false);
-          if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+          if (keyWordTile && keyEmb && keyEmb.length > 0) {
             this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
           }
           if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -104769,14 +104769,14 @@ var Curriculum = class _Curriculum {
         } catch (err) {
           skipped++;
         }
-        if (directPromptAlt && keyToken) {
+        if (directPromptAlt && keyWord) {
           try {
-            const directPromptText = `${keyToken}:`;
+            const directPromptText = `${keyWord}:`;
             const directEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(directPromptText) : null;
             if (directEmb && directEmb.length > 0) {
               this._clearSpikes();
               this._writeTiledPattern(semRegion, directEmb, false);
-              if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+              if (keyWordTile && keyEmb && keyEmb.length > 0) {
                 this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
               }
               if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -104804,7 +104804,7 @@ var Curriculum = class _Curriculum {
               try {
                 this._clearSpikes();
                 this._writeTiledPattern(semRegion, qEmb, false);
-                if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+                if (keyWordTile && keyEmb && keyEmb.length > 0) {
                   this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
                 }
                 if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -104830,7 +104830,7 @@ var Curriculum = class _Curriculum {
       if (rep >= 1 && qaList.length >= 2) {
         try {
           const pseudoPairs = qaList.slice(0, 8).map((e) => {
-            const kt = this._extractKeyToken(e.question);
+            const kt = this._extractKeyWord(e.question);
             const ans = String(e.expectedAnswer || "").toLowerCase().charAt(0);
             return kt && ans ? [kt, ans] : null;
           }).filter(Boolean);
@@ -104998,14 +104998,14 @@ var Curriculum = class _Curriculum {
         if (!expTok) continue;
         const qEmb2 = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
         if (!qEmb2 || qEmb2.length === 0) continue;
-        const kt2 = this._extractKeyToken(entry.question);
+        const kt2 = this._extractKeyWord(entry.question);
         const ke2 = kt2 ? this._dictionaryPatternFor(kt2) : null;
         const tid2 = this._classifyQuestionTemplate(entry.question);
         _slChecked++;
         for (let round = 0; round <= _slRounds; round++) {
           this._clearSpikes();
           this._writeTiledPattern(semRegion, qEmb2, false);
-          if (keyTokenTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
+          if (keyWordTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
           if (tid2 >= 0) this._writeQuestionTemplateTag(tid2);
           let said = "";
           try {
@@ -105050,12 +105050,12 @@ var Curriculum = class _Curriculum {
   }
   /**
    * Classify a question into a template ID 0-6 based on its form.
-   * Template ID is orthogonal to the key token — two questions can
+   * Template ID is orthogonal to the key word — two questions can
    * share a template ("what letter comes after a?" and "what letter
    * comes after b?" both map to template 0) but have different key
-   * tokens. Written as a one-hot pattern into the upper 25% of the
+   * words. Written as a one-hot pattern into the upper 25% of the
    * fineType region so cross-projection Hebbian can learn
-   * template-conditioned routing independently of the specific token.
+   * template-conditioned routing independently of the specific word.
    *
    * Returns template ID in [0, 6] or -1 when no template matches (then
    * the question is treated as generic — no template tag written).
@@ -105166,14 +105166,14 @@ var Curriculum = class _Curriculum {
     }
   }
   /**
-   * Key-token extraction for Q-A training — lightweight attention-lite
+   * Key-word extraction for Q-A training — lightweight attention-lite
    * (Bahdanau 2014 spirit, no scoring network). Pattern-matches common
    * K-grade question forms and returns the discriminating noun/letter/
    * digit so the Q-A sem pattern can carry both the full-sentence bag
-   * AND the specific token that makes one question different from
-   * another. Returns lowercase token or null when no pattern matches.
+   * AND the specific word that makes one question different from
+   * another. Returns lowercase word or null when no pattern matches.
    */
-  _extractKeyToken(question) {
+  _extractKeyWord(question) {
     if (!question || typeof question !== "string") return null;
     const q = question.toLowerCase().trim();
     const patterns = [
@@ -105195,9 +105195,9 @@ var Curriculum = class _Curriculum {
       /\bcount\s+from\s+([a-z0-9]+)/,
       // "spell X" → X
       /\bspell\s+([a-z]+)/,
-      // "starts with" — next token after "starts with"
+      // "starts with" — next word after "starts with"
       /\bstarts?\s+with\s+([a-z]+)/,
-      // fallback: last single-quoted or question-mark-preceded token
+      // fallback: last single-quoted or question-mark-preceded word
       /\b([a-z0-9]+)\??\s*$/
     ];
     for (const p of patterns) {
@@ -105230,7 +105230,7 @@ var Curriculum = class _Curriculum {
    *  — Multi-word definition emission via live dictionary API.
    *
    * Given a subject word X, fetches the dictionary definition (async,
-   * server-side, dictionaryapi.dev wrapper), tokenizes it, injects each
+   * server-side, dictionaryapi.dev wrapper), splits into words it, injects each
    * definition word's embedding into sem so cortex "hears" the
    * definitional meaning, then returns the definition string for the
    * caller to emit verbatim through the existing motor / chat path.
@@ -105244,7 +105244,7 @@ var Curriculum = class _Curriculum {
    * (a) parsing the WH-question to know to call this path,
    * (b) the live API call (sensory I/O — same pattern as
    * Pollinations image-gen),
-   * (c) injecting the definition tokens into sem so future trained
+   * (c) injecting the definition words into sem so future trained
    * weights co-activate definitional structure for that subject
    * (Hebbian one-shot definitional learning).
    *
@@ -105259,13 +105259,13 @@ var Curriculum = class _Curriculum {
    *  — Definition-comprehension teach via live dictionary
    * API + Hebbian. EQUATIONAL — the API is sensory input (like
    * Pollinations image-gen / TTS), the actual learning is
-   * `_teachAssociationPairs(word, def_token)` which is Oja-Hebbian on
+   * `_teachAssociationPairs(word, def_word)` which is Oja-Hebbian on
    * sem→sem cross-projection. Each definition co-occurrence gets
    * carved as a real Hebbian binding so cortex co-activates
    * definitional meaning whenever the word fires.
    *
-   * One word in, ~3-8 definition tokens out (filtered to content
-   * words; stopwords skipped). Each (word, def_token) pair fires
+   * One word in, ~3-8 definition words out (filtered to content
+   * words; stopwords skipped). Each (word, def_word) pair fires
    * `_teachAssociationPairs` with relationTagId=23 (definition band
    * in fineType). After this phase, sem(dog) → sem(animal),
    * sem(pet), sem(four), sem(legs), sem(barks) all light up via
@@ -105336,26 +105336,26 @@ var Curriculum = class _Curriculum {
       const entry = definitions[defIdx];
       const defText = entry && typeof entry === "object" ? entry.definition : entry;
       if (!defText || typeof defText !== "string") continue;
-      const tokens = defText.toLowerCase().match(/[a-z]+/g) || [];
-      const contentTokens = [];
+      const defWords = defText.toLowerCase().match(/[a-z]+/g) || [];
+      const contentWords = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const t of tokens) {
+      for (const t of defWords) {
         if (t.length < 3) continue;
         if (STOP.has(t)) continue;
         if (t === w) continue;
         if (seen.has(t)) continue;
         seen.add(t);
-        contentTokens.push(t);
-        if (contentTokens.length >= 8) break;
+        contentWords.push(t);
+        if (contentWords.length >= 8) break;
       }
-      if (contentTokens.length === 0) continue;
+      if (contentWords.length === 0) continue;
       if (entry && entry.partOfSpeech && typeof entry.partOfSpeech === "string") {
         const pos = entry.partOfSpeech.toLowerCase().replace(/[^a-z]/g, "");
-        if (pos && pos.length >= 3 && !contentTokens.includes(pos) && contentTokens.length < 8) {
-          contentTokens.push(pos);
+        if (pos && pos.length >= 3 && !contentWords.includes(pos) && contentWords.length < 8) {
+          contentWords.push(pos);
         }
       }
-      const pairs = contentTokens.map((t) => [w, t]);
+      const pairs = contentWords.map((t) => [w, t]);
       const r = await this._teachAssociationPairs(pairs, {
         reps,
         label: definitions.length > 1 ? `${baseLabel}#${defIdx + 1}/${definitions.length}` : baseLabel,
@@ -105462,7 +105462,7 @@ var Curriculum = class _Curriculum {
    *
    * Self-contained prerequisite handling: both `unity` and `goddess` get
    * their dictionary definitions trained FIRST, so the Hebbian bindings
-   * land on anchored basins instead of phantom-token noise (per the
+   * land on anchored basins instead of phantom-word noise (per the
    * K-LIFE words-must-be-learned standard). The method behaves identically
    * whether or not the caller already ran a vocabulary pre-step — it owns
    * its own prerequisites rather than depending on call order.
@@ -105544,7 +105544,7 @@ var Curriculum = class _Curriculum {
    * Once-per-walk (guarded by `_mindSpaceKnowledgeTaught`) — called right after
    * the identity teach so she learns WHO she is and HOW her own mind works in
    * the same foundational pass. No new corpus, no word lists, no math symbols
-   * injected (knowledge.js strips to real tokens) — LAW-clean.
+   * injected (knowledge.js strips to real words) — LAW-clean.
    */
   async _teachMindSpaceKnowledge(opts = {}) {
     if (this._mindSpaceKnowledgeTaught) return { bound: 0, skipped: true };
@@ -105787,17 +105787,17 @@ var Curriculum = class _Curriculum {
         await this._teachSentenceList(exp.sentences, memCtx, { reps, ticksPerWord });
         sentenceCount += exp.sentences.length;
         try {
-          const themeTokens = String(exp.theme || "").toLowerCase().replace(/[^a-z0-9' -]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !FUNCTION_WORDS.has(w));
-          if (themeTokens.length > 0) {
+          const themeWords = String(exp.theme || "").toLowerCase().replace(/[^a-z0-9' -]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !FUNCTION_WORDS.has(w));
+          if (themeWords.length > 0) {
             const sceneWords = /* @__PURE__ */ new Set();
             for (const s of exp.sentences) {
               for (const w of String(s).toLowerCase().replace(/[^a-z0-9' -]/g, " ").split(/\s+/)) {
-                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeTokens.includes(w)) sceneWords.add(w);
+                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeWords.includes(w)) sceneWords.add(w);
               }
             }
             const groundPairs = [];
             for (const w of sceneWords) {
-              for (const t of themeTokens) {
+              for (const t of themeWords) {
                 groundPairs.push([w, t]);
                 groundPairs.push([t, w]);
               }
@@ -105973,7 +105973,7 @@ var Curriculum = class _Curriculum {
   /**
    * PREREQ #105 — definition-train every content word in a grade's life
    * memories BEFORE the memory walk encodes them. A Hebbian memory binding on
-   * an undefined word lands on a noise basin (phantom token), so the word must
+   * an undefined word lands on a noise basin (phantom word), so the word must
    * be an anchored sem-basin first. Extracts unique content words (≥3 chars,
    * minus a small stop-list), skips ones already definition-trained this run
    * (cluster._definitionTaughtWords dedup, cross-grade), and routes the rest
@@ -106175,7 +106175,7 @@ var Curriculum = class _Curriculum {
           } catch {
           }
         }
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB \u2014 ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, capped ${VOCAB_CAP}). Prose now binds on anchored basins, not phantom tokens.`);
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB \u2014 ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, capped ${VOCAB_CAP}). Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch {
     }
@@ -106195,7 +106195,7 @@ var Curriculum = class _Curriculum {
    * up in life (heard from parents arguing at K → puberty sexual-anatomy at G6
    * → fluent teen register at G9 → full adult uncensored register at college+).
    * Vocabulary EXPOSURE/knowledge only — definition-trained where the dictionary
-   * has the word, bound as known tokens otherwise. PRODUCTION register (when she
+   * has the word, bound as known words otherwise. PRODUCTION register (when she
    * actually uses them) is grade-gated by the life story-data + Add #7 context
    * binding. Knowing a word ≠ depicting an act — the content boundary governs
    * narrative, not which words she has heard. The cumulative lexicon emerges
@@ -106224,8 +106224,8 @@ var Curriculum = class _Curriculum {
    *         (server-side, dictionaryapi.dev) so `_teachWordDefinition`
    *         calls all hit cache (instant).
    * Step 2: For each word, call `_teachWordDefinition(word)` which fires
-   *         Oja-Hebbian on `sem(word) → sem(def_token)` for each content
-   *         token. Equational definitional knowledge carved into trained
+   *         Oja-Hebbian on `sem(word) → sem(def_word)` for each content
+   *         word. Equational definitional knowledge carved into trained
    *         weights — REAL comprehension, not lookup.
    *
    * Network failures degrade gracefully: words with no definition (404
@@ -106337,14 +106337,14 @@ var Curriculum = class _Curriculum {
     }
     if (!def || typeof def !== "string") return null;
     const STOP = /* @__PURE__ */ new Set(["a", "an", "the", "and", "or", "but", "of", "to", "for", "in", "on", "at", "by", "with", "as", "is", "are", "was", "were", "be", "been", "being", "it", "this", "that", "these", "those", "its"]);
-    const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
-    const contentTokens = [];
+    const defWords = def.toLowerCase().match(/[a-z]+/g) || [];
+    const contentWords = [];
     const seen = /* @__PURE__ */ new Set();
-    for (const t of tokens) {
+    for (const t of defWords) {
       if (t.length < 3 || STOP.has(t) || t === word || seen.has(t)) continue;
       seen.add(t);
-      contentTokens.push(t);
-      if (contentTokens.length >= 8) break;
+      contentWords.push(t);
+      if (contentWords.length >= 8) break;
     }
     const injectSem = opts.injectSem !== false;
     if (injectSem && typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
@@ -106355,9 +106355,9 @@ var Curriculum = class _Curriculum {
         } catch {
         }
       }
-      for (let i = 0; i < contentTokens.length; i++) {
+      for (let i = 0; i < contentWords.length; i++) {
         try {
-          const emb = sharedEmbeddings.getEmbedding(contentTokens[i]);
+          const emb = sharedEmbeddings.getEmbedding(contentWords[i]);
           if (emb && emb.length > 0) {
             const strength = Math.max(0.1, 0.4 - i * 0.04);
             cluster.injectEmbeddingToRegion("sem", emb, strength);
@@ -106492,7 +106492,7 @@ var Curriculum = class _Curriculum {
    * Tile a feature vector into a fractional offset slice of a region.
    * `offset` is in [0, 1) giving the starting fraction of the region;
    * the tile extends from `region.start + offset·size` to end-of-region.
-   * Used by `_teachQABinding` to overlay the key-token pattern in the
+   * Used by `_teachQABinding` to overlay the key-word pattern in the
    * second half of sem alongside the full-sentence pattern in the
    * first half.
    */
@@ -107547,7 +107547,7 @@ var Curriculum = class _Curriculum {
    * directly.
    *
    * 5 trials, threshold ≥ 4/5. A trial passes if the emitted sentence
-   * contains `unity` OR `goddess` (either token confirms the self-name
+   * contains `unity` OR `goddess` (either word confirms the self-name
    * basin fired). Full-name questions look for `goddess` specifically so
    * the surname link is exercised, not just the given name.
    *
@@ -107840,7 +107840,7 @@ var Curriculum = class _Curriculum {
    * each phoneme in order. 20 trials. Pass ≥ 0.80. Brain-module chain:
    * auditory cortex → phon → motor with cerebellum motor-timing gating.
    * Scored by checking that the composed sentence contains ≥ 3 sound
-   * tokens (proxying phoneme emission) and that the first sound matches
+   * words (proxying phoneme emission) and that the first sound matches
    * the word's first phoneme.
    */
   async _probeRF3PhonemeSegmentation() {
@@ -107860,9 +107860,9 @@ var Curriculum = class _Curriculum {
         composed = null;
       }
       const emittedWords = composed && Array.isArray(composed.words) ? composed.words : [];
-      const distinctTokens = new Set(emittedWords.map((w) => String(w).toLowerCase().replace(/[^a-z]/g, "")));
-      distinctTokens.delete("");
-      const segmented = distinctTokens.size >= 3 || emittedWords.length >= 3;
+      const distinctWords = new Set(emittedWords.map((w) => String(w).toLowerCase().replace(/[^a-z]/g, "")));
+      distinctWords.delete("");
+      const segmented = distinctWords.size >= 3 || emittedWords.length >= 3;
       const emittedStr = composed && composed.sentence ? String(composed.sentence).toLowerCase() : "";
       const firstChar = emittedStr.replace(/[^a-z]/g, "").charAt(0) || "";
       const firstMatches = firstChar === word.charAt(0);
@@ -107900,10 +107900,10 @@ var Curriculum = class _Curriculum {
         composed = null;
       }
       const emittedWords = composed && Array.isArray(composed.words) ? composed.words : [];
-      const distinctTokens = new Set(emittedWords.map((w) => String(w).toLowerCase().replace(/[^a-z]/g, "")));
-      distinctTokens.delete("");
-      const decoded = distinctTokens.size >= 2 || emittedWords.length >= 2;
-      trials.push({ word, emittedWords, distinctTokens: distinctTokens.size, decoded });
+      const distinctWords = new Set(emittedWords.map((w) => String(w).toLowerCase().replace(/[^a-z]/g, "")));
+      distinctWords.delete("");
+      const decoded = distinctWords.size >= 2 || emittedWords.length >= 2;
+      trials.push({ word, emittedWords, distinctWords: distinctWords.size, decoded });
       if (decoded) passed++;
     }
     const score = TRIALS > 0 ? passed / TRIALS : 0;
@@ -109404,7 +109404,7 @@ var Curriculum = class _Curriculum {
     if (typeof this._classifyQuestionTemplate !== "function") return null;
     const tplId = this._classifyQuestionTemplate(question);
     if (tplId < 0) return null;
-    const keyTok = typeof this._extractKeyToken === "function" ? this._extractKeyToken(question) : null;
+    const keyTok = typeof this._extractKeyWord === "function" ? this._extractKeyWord(question) : null;
     if (!keyTok) return null;
     if (tplId === 0 && /^[a-z]$/.test(keyTok)) {
       const letterRegion = cluster.regions?.letter;
@@ -109651,12 +109651,12 @@ var Curriculum = class _Curriculum {
     const emittedNorm = String(emitted).toLowerCase().trim();
     const expected = Array.isArray(expectedAnswers) ? expectedAnswers : [expectedAnswers];
     let matched = null;
-    const emittedTokens = emittedNorm.split(/[^a-z0-9']+/).filter(Boolean);
+    const emittedWords = emittedNorm.split(/[^a-z0-9']+/).filter(Boolean);
     for (const e of expected) {
       if (!e) continue;
       const eNorm = String(e).toLowerCase().trim();
       if (eNorm.length === 0) continue;
-      const hit = eNorm.length === 1 ? emittedNorm === eNorm : emittedTokens.some((t) => t === eNorm || t.startsWith(eNorm) && t.length - eNorm.length <= 2);
+      const hit = eNorm.length === 1 ? emittedNorm === eNorm : emittedWords.some((t) => t === eNorm || t.startsWith(eNorm) && t.length - eNorm.length <= 2);
       if (hit) {
         matched = e;
         break;
@@ -110569,7 +110569,7 @@ var Curriculum = class _Curriculum {
    * actually knows what e.g. "PE" or "Algebra" IS before learning its
    * content (the operator 2026-06-18: "Unity need to know and learn the names of the
    * classes ... got to know what PE is to be able to learn wtf it entails").
-   * Vocab-first (course-name + subject + blurb tokens registered), then binds
+   * Vocab-first (course-name + subject + blurb words registered), then binds
    * the name to its meaning via sentences. Called at the TOP of each subject
    * runner. Uniform — one helper, every subject/grade.
    */
@@ -110579,8 +110579,8 @@ var Curriculum = class _Curriculum {
     const nameLc = name.toLowerCase();
     const blurb = COURSE_BLURB[subject] || "";
     const ctxc = ctx || { arousal: 0.6, valence: 0.2 };
-    const tokens = (nameLc + " " + subject + " " + blurb).split(/\s+/).map((w) => w.replace(/[^a-z]/g, "")).filter((w) => w.length >= 2);
-    const vocab = [...new Set(tokens)];
+    const idWords = (nameLc + " " + subject + " " + blurb).split(/\s+/).map((w) => w.replace(/[^a-z]/g, "")).filter((w) => w.length >= 2);
+    const vocab = [...new Set(idWords)];
     if (vocab.length && typeof this._teachVocabList === "function") {
       await this._teachVocabList(vocab, ctxc, { reps: 3 });
     }
@@ -110797,7 +110797,7 @@ var Curriculum = class _Curriculum {
       if (!expTok) continue;
       const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(s.question) : null;
       if (!qEmb || qEmb.length === 0) continue;
-      const kt = this._extractKeyToken(s.question);
+      const kt = this._extractKeyWord(s.question);
       const ke = kt ? this._dictionaryPatternFor(kt) : null;
       const tid = this._classifyQuestionTemplate(s.question);
       checked++;
@@ -111056,14 +111056,14 @@ var Curriculum = class _Curriculum {
       for (let j = 0; j < motorSize; j++) {
         cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
       }
-      layer12Opts.spkCacheToken = `wi:${cleanWord}:${i}`;
+      layer12Opts.spkCacheStamp = `wi:${cleanWord}:${i}`;
       for (let rep = 0; rep < reps; rep++) {
         cluster._teachIntermediateRep = rep < reps - 1;
         cluster._teachFinalRepSampleEveryN = rep === reps - 1 ? 5 : 0;
         await cluster._crossRegionHebbian(lr, layer12Opts);
       }
     }
-    layer12Opts.spkCacheToken = void 0;
+    layer12Opts.spkCacheStamp = void 0;
     _wiT.l12 += Date.now() - _wiMark;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
@@ -111795,7 +111795,7 @@ var Curriculum = class _Curriculum {
   // WHAT THE LIGHT FRAME KEEPS — the load-bearing half, per the full frame's own
   // note that the payload is "her declaration, the agent bindings, the self-Q&A,
   // the follow-up", and that the AGENT BINDINGS are "the line that makes `i`
-  // mean HER rather than just a frequent token":
+  // mean HER rather than just a frequent word":
   //   • ≤6 first-person lines (for a vocabulary word `selfFrameUnit` already
   //     emits "i know the word X" / "i can say X" / "i read X and i understand
   //     it" — exactly the self-perspective the directive asks for)
@@ -111901,7 +111901,7 @@ var Curriculum = class _Curriculum {
   // SELFFRAME prerequisite — the lesson that makes "i" mean HER. `_teachPronouns`
   // already teaches the third-person half ("the cat ran fast … he was quick"); this is
   // the missing first-person half, and without it every frame above is training a
-  // frequent-but-meaningless token. Cheap (22 short lines), runs once per cell, and it
+  // frequent-but-meaningless word. Cheap (22 short lines), runs once per cell, and it
   // is where "my name is unity" and "i like the color black" actually enter her
   // weights — Gee named both of those examples specifically.
   async _teachSelfPronouns(opts = {}) {
@@ -111914,7 +111914,7 @@ var Curriculum = class _Curriculum {
         await this._teachConcreteSentences({ sentences: lines, reps, label: "SELF-PRONOUN" });
       }
       const pairs = [];
-      for (const t of SELF_TOKENS) {
+      for (const t of SELF_WORDS) {
         if (t !== "unity") {
           pairs.push([t, "unity"], ["unity", t]);
         }
@@ -121797,7 +121797,7 @@ var VoiceIO = class {
       document.addEventListener(ev, unlock, { passive: true });
     }
   }
-  _voxTokens(text) {
+  _voxWords(text) {
     return String(text || "").toLowerCase().split(/[^a-z']+/).filter((w) => w.length >= 1 && w.length <= 24).slice(0, 64);
   }
   _voxInitDb() {
@@ -121847,7 +121847,7 @@ var VoiceIO = class {
     if (!this._voxEnabled) return false;
     this._ensureVoxRef();
     const tier = this._voxTier();
-    const toks = this._voxTokens(text);
+    const toks = this._voxWords(text);
     if (!toks.length) return false;
     const recs = [];
     const _lookup = (key) => this._voxBank.get(`${tier}:${key}`) || this._voxRef && this._voxRef.get(key) || null;
@@ -121991,7 +121991,7 @@ var VoiceIO = class {
   _voxQueueMissing(text) {
     if (!this._voxEnabled) return;
     const tier = this._voxTier();
-    for (const w of this._voxTokens(text)) {
+    for (const w of this._voxWords(text)) {
       if (this._voxRef && this._voxRef.has(w)) continue;
       const key = `${tier}:${w}`;
       if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {

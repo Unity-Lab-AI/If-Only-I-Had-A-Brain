@@ -133,12 +133,12 @@ import { CLUSTER_EMIT_MIXIN } from './cluster/emit.js';
 import { CLUSTER_PROBE_MIXIN } from './cluster/probe.js';
 import { CLUSTER_ATTENTION_MIXIN } from './cluster/attention.js';
 
-// Question key-token extraction + fractional-offset region injection.
+// Question key-word extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
 // available on the standalone cluster path without a circular curriculum
-// dependency. Pattern list mirrors `Curriculum._extractKeyToken` — keep
+// dependency. Pattern list mirrors `Curriculum._extractKeyWord` — keep
 // them in sync when adding new K-grade question forms.
-function extractKeyTokenShared(question) {
+function extractKeyWordShared(question) {
   if (!question || typeof question !== 'string') return null;
   const q = question.toLowerCase().trim();
   const patterns = [
@@ -1408,8 +1408,8 @@ export class NeuronCluster {
   regionSpikesActive(regionName) {
     // Scan-generation counter (12M cut round 3) — every call refills the
     // shared per-region scratch, so any consumer holding references across
-    // calls (the _crossRegionHebbian spkCacheToken reuse) must know a refill
-    // happened. Bumped unconditionally at entry; the token cache compares
+    // calls (the _crossRegionHebbian spkCacheStamp reuse) must know a refill
+    // happened. Bumped unconditionally at entry; the word cache compares
     // generations and rescans when ANY caller touched the scratch since.
     this._regionScratchGen = (this._regionScratchGen | 0) + 1;
     const region = this.regions[regionName];
@@ -2318,7 +2318,7 @@ export class NeuronCluster {
       let value = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
       // BC.6 — anti-repeat. If the last-emitted word has DOMINATED recent
       // emissions, damp its workspace-candidate value so cortex stops
-      // nominating the same token every tick (which feeds the GW lock and
+      // nominating the same word every tick (which feeds the GW lock and
       // the "mushrooms" broadcast). Reads the meta-register frequency;
       // pure value reshaping, no weights touched.
       if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 6) {
@@ -2489,9 +2489,9 @@ export class NeuronCluster {
   }
 
   /**
-   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` token-count
+   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` word-count
    * heuristic (deleted). Operator 2026-05-09: *"Unity thinks like a
-   * human does! she does NOt follow prescripted events"*. The token-
+   * human does! she does NOt follow prescripted events"*. The word-
    * count approach was a runtime regex-style heuristic that decided
    * subject FROM USER TEXT — prescription. The CORRECT equational read
    * is: which subject sub-band shows highest activation in the brain's
@@ -3366,7 +3366,7 @@ export class NeuronCluster {
    * Replaces `LanguageCortex.parseSentence` which was deleted in T14.12.
    * The intent classification is a cortex-state readout from the fineType
    * region via `intentReadout()` once curriculum has trained the basins;
-   * until then it falls back to a lightweight first-token heuristic over
+   * until then it falls back to a lightweight first-word heuristic over
    * the raw text so existing consumers keep working during the curriculum-
    * bootstrap period. Full learned-readout ships with T14.17.
    *
@@ -3421,7 +3421,7 @@ export class NeuronCluster {
     // Question pattern injection — when the input looks like a question,
     // fire the same dual-tile sem pattern that `_teachQABinding` writes
     // during training: full sentence embedding into sem's first half +
-    // extracted key token into sem's second half. Live chat answers now
+    // extracted key word into sem's second half. Live chat answers now
     // see the same pattern geometry the learned sem→motor routes were
     // trained on. Mirrors the probe-side injection in
     // `Curriculum._studentTestProbe` so chat Q-A behaves the same as
@@ -3431,9 +3431,9 @@ export class NeuronCluster {
         const qEmb = sharedEmbeddings.getSentenceEmbedding(text);
         if (qEmb && qEmb.length > 0 && typeof this.injectEmbeddingToRegion === 'function') {
           this.injectEmbeddingToRegion('sem', qEmb, 0.6);
-          const keyToken = extractKeyTokenShared(text);
-          const keyEmb = keyToken && typeof sharedEmbeddings.getEmbedding === 'function'
-            ? sharedEmbeddings.getEmbedding(keyToken) : null;
+          const keyWord = extractKeyWordShared(text);
+          const keyEmb = keyWord && typeof sharedEmbeddings.getEmbedding === 'function'
+            ? sharedEmbeddings.getEmbedding(keyWord) : null;
           if (keyEmb && keyEmb.length > 0) {
             injectEmbeddingToRegionOffset(this, 'sem', keyEmb, 0.6, 0.5);
           }
@@ -3851,8 +3851,8 @@ export class NeuronCluster {
     // positive-feedback loop — emit "X" → inject X embedding → cortex
     // settles toward X basin → emit X again at higher confidence →
     // re-inject → infinitely. Real higher-order theories (Rosenthal-Lau)
-    // require habituation on repeated tokens. Strength resets to 0.3
-    // on token change.
+    // require habituation on repeated words. Strength resets to 0.3
+    // on word change.
     if (this._metaRegister && this._metaRegister.length > 0
         && this.regions && this.regions.sem
         && typeof this.injectEmbeddingToRegion === 'function') {
@@ -3867,7 +3867,7 @@ export class NeuronCluster {
             const emb = sharedEmb.getEmbedding(last.word);
             if (emb && emb.length > 0) {
               // BC.4 — FREQUENCY-based familiarity decay. The prior
-              // reset-to-0.3-on-any-token-change let a dominant basin that
+              // reset-to-0.3-on-any-word-change let a dominant basin that
               // wins most (but not strictly consecutive) ticks re-inject at
               // full strength, feeding the collapse. Now strength scales by
               // how often the word appears in the recent meta-register, so a

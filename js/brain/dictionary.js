@@ -125,7 +125,7 @@ export class Dictionary {
    * @param {number} valence — amygdala valence when word was encountered
    */
   learnWord(word, cortexPattern, arousal, valence, opts = {}) {
-    // Terminators (. ? !) are real emission tokens — composeSentence
+    // Terminators (. ? !) are real emission words — composeSentence
     // consumes them as sentence-enders and the question-production
     // pass trains word→"?" transitions. The alphanumeric strip below
     // deleted them, so no terminator could ever become a dictionary

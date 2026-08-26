@@ -10,7 +10,7 @@
  * Source: Stanford GloVe (Wikipedia + Gigaword, 6B tokens, 400K vocab,
  * 300d). The server reads `corpora/glove.6B.300d.txt` from disk at boot
  * (~480 MB Float32 in memory, ~1 GB raw text). The browser receives a
- * server-precomputed corpus-token subset via `/api/glove-subset.json`
+ * server-precomputed corpus-word subset via `/api/glove-subset.json`
  * to avoid downloading the full file.
  *
  * Three modes:
@@ -46,7 +46,7 @@ const EMBED_DIM = 300;
 // 6B tokens, 400K vocab, 300d vectors. ~1.0 GB raw text, ~480 MB if
 // loaded into Float32 in memory at full vocab. Cap is 0 (no cap) — the
 // foundation lift loads the entire vocabulary on the server. Browser-side
-// uses a corpus-token subset hosted by the server (T14.0 RemoteBrain path).
+// uses a corpus-word subset hosted by the server (T14.0 RemoteBrain path).
 const GLOVE_LOCAL_PATH = 'corpora/glove.6B.300d.txt';
 // T14.23.2 — URL order trimmed. The Stanford NLP URL is CORS-blocked
 // from all browser origins (no Access-Control-Allow-Origin header),
@@ -102,7 +102,7 @@ export class SemanticEmbeddings {
    * No vocabulary cap. The full 400k-word file loads if reachable.
    * Memory at 400k × 300d × 4 bytes = ~480 MB on the server, which is
    * acceptable for the brain server hardware tier. Browser receives a
-   * server-precomputed corpus-token subset via `/api/glove-subset.json`
+   * server-precomputed corpus-word subset via `/api/glove-subset.json`
    * (much smaller, only the words actually seen in the loaded corpora).
    */
   async loadPreTrained() {
@@ -236,7 +236,7 @@ export class SemanticEmbeddings {
       for (const line of lines) {
         if (!line.trim()) continue;
         // Use a fast split for performance — GloVe lines have no embedded
-        // multi-space tokens
+        // multi-space entries
         const parts = line.split(' ');
         if (parts.length !== EMBED_DIM + 1) continue;
 
@@ -276,14 +276,14 @@ export class SemanticEmbeddings {
 
   /**
    * T14.0 — Returns the subset of the loaded GloVe vocabulary that
-   * matches a given token set. Used by the server to pre-compute a
+   * matches a given word set. Used by the server to pre-compute a
    * `/api/glove-subset.json` payload for the browser to fetch instead
    * of pulling the full 480 MB file.
    */
-  getSubsetForTokens(tokens) {
+  getSubsetForWords(words) {
     const subset = {};
-    for (const tok of tokens) {
-      const w = tok.toLowerCase().trim();
+    for (const word of words) {
+      const w = String(word).toLowerCase().trim();
       const v = this._embeddings.get(w);
       if (v) subset[w] = Array.from(v);
     }
@@ -293,7 +293,7 @@ export class SemanticEmbeddings {
   /**
    * T14.0 — Browser-side bulk load of a server-provided subset.
    * Replaces _doLoad's path when running in a browser that's connecting
-   * to a server — the server precomputes the corpus-token subset and
+   * to a server — the server precomputes the corpus-word subset and
    * the browser fetches it as a single small JSON file.
    */
   loadSubset(subset) {

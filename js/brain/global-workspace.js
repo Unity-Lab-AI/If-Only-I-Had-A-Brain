@@ -100,7 +100,7 @@ class GlobalWorkspace {
     // penalty so the workspace can NOT re-broadcast the SAME content every
     // tick. Without this the GW faithfully re-elects whatever cortex
     // reports as its top candidate, which under a saturated sem→motor
-    // basin is one token forever (the live "mushrooms" lock: 8× identical
+    // basin is one word forever (the live "mushrooms" lock: 8× identical
     // broadcast). Pure value reshaping — no persisted state, no weights.
     this._recentWinnerTicks = new Map(); // label → tickCounter when it last won
     this.winnerRefractoryTicks = opts.winnerRefractoryTicks ?? 12;

@@ -129,7 +129,7 @@ export class InnerVoice {
 
   /**
    * T15-C17 — Load the ethereal / psychedelic / Oz corpus. Peak-state
-   * affect defaults (arousal 0.7, valence 0.6) so tokens land with
+   * affect defaults (arousal 0.7, valence 0.6) so words land with
    * emotional weighting consistent with how they'll get activated at
    * runtime when drug-scheduler.speechModulation.ethereality is elevated.
    */
@@ -198,15 +198,15 @@ export class InnerVoice {
     const opts = args.opts || {};
     const seed = opts.seed || { pattern: null, source: 'baseline', label: 'baseline cortex state' };
 
-    // 114.19fg.Tier7 — Multi-token rotation detection. Familiarity-
-    // decay only halves on TOKEN MATCH so a 3-token rotation
+    // 114.19fg.Tier7 — Multi-word rotation detection. Familiarity-
+    // decay only halves on WORD MATCH so a 3-word rotation
     // ("Hey/Medicines/Controls" cycling each tick) slips past it
-    // because each token resets the others' decay counter. Add explicit
-    // unique-token count check across the last 8 chain entries — if
+    // because each word resets the others' decay counter. Add explicit
+    // unique-word count check across the last 8 chain entries — if
     // fewer than 3 unique first-words, the chain is basin-locked.
     // Skip the chain blend in that case (use raw seed.pattern, not
     // chain-blended) so the next emit gets a state shift away from the
-    // rotating token cluster.
+    // rotating word cluster.
     const recentEntries = chain.slice(-8);
     const uniqueFirstWords = new Set();
     for (const entry of recentEntries) {
@@ -223,7 +223,7 @@ export class InnerVoice {
     // strength so the chain shapes the next thought without dominating
     // (60/40 mix). Cap chain consumption to the last entry. Skipped
     // entirely when basin-locked (Tier7 detection above) so the next
-    // emit doesn't reinforce the rotating-token attractor.
+    // emit doesn't reinforce the rotating-word attractor.
     let chainedPattern = seed.pattern;
     if (basinLocked) {
       // Optional: also inject a small random-jitter to perturb the seed
@@ -288,7 +288,7 @@ export class InnerVoice {
             // `isChatPath = !opts._internalThought` → `boostPersona:
             // isChatPath`). Previously the rich path omitted this flag, so
             // her inner monologue was persona-boosted like a chat reply and
-            // surfaced persona/consciousness-corpus tokens
+            // surfaced persona/consciousness-corpus words
             // (sentient/quantum/piezo/python) at kindergarten. `gradeGate`
             // mirrors the fast path below so any gate-aware sub-path also
             // honors the taught-vocab allow-set.

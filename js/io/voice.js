@@ -123,7 +123,7 @@ class VoiceIO {
     }
   }
 
-  _voxTokens(text) {
+  _voxWords(text) {
     return String(text || '').toLowerCase().split(/[^a-z']+/)
       .filter(w => w.length >= 1 && w.length <= 24).slice(0, 64);
   }
@@ -169,7 +169,7 @@ class VoiceIO {
     if (!this._voxEnabled) return false;
     this._ensureVoxRef();   // lazy bank load — the first utterance may fall through while it warms
     const tier = this._voxTier();
-    const toks = this._voxTokens(text);
+    const toks = this._voxWords(text);
     if (!toks.length) return false;
     const recs = [];
     // Greedy longest-first tiling: banked PHRASE units ("i am", "this is")
@@ -321,7 +321,7 @@ class VoiceIO {
   _voxQueueMissing(text) {
     if (!this._voxEnabled) return;
     const tier = this._voxTier();
-    for (const w of this._voxTokens(text)) {
+    for (const w of this._voxWords(text)) {
       if (this._voxRef && this._voxRef.has(w)) continue;   // reference bank covers it
       const key = `${tier}:${w}`;
       if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {

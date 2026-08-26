@@ -25,7 +25,7 @@
  *      c. Pick the highest-scoring primitive
  *      d. Fill the template's html/css/js strings (no placeholder
  *         substitution for now — the templates are complete as-is,
- *         and params can be extended later via `{{var}}` tokens)
+ *         and params can be extended later via `{{var}}` words)
  *      e. Generate a unique component id from a cortex pattern hash
  *      f. Return { id, html, css, js }
  *
@@ -248,7 +248,7 @@ export class ComponentSynth {
 
   /**
    * Build a sandbox-ready spec from a chosen primitive: unique id from the
-   * cortex pattern + `{{token}}` parameter fill from brain state.
+   * cortex pattern + `{{word}}` parameter fill from brain state.
    */
   _buildSpec(prim, score, brainState, parsed) {
     const suffix = this._suffixFromPattern(brainState.cortexPattern);
@@ -270,10 +270,10 @@ export class ComponentSynth {
   }
 
   /**
-   * Derive `{{token}}` fill values from equational brain state. Pure, no AI.
+   * Derive `{{word}}` fill values from equational brain state. Pure, no AI.
    * @param {object} brainState — { cortexPattern, ... }
    * @param {object|null} parsed — language-cortex parse (may carry entities.colors)
-   * @returns {object} token → value map
+   * @returns {object} word → value map
    */
   _deriveParams(brainState = {}, parsed = null) {
     const named = parsed?.entities?.colors?.[0];
@@ -298,8 +298,8 @@ export class ComponentSynth {
   }
 
   /**
-   * Replace `{{token}}` placeholders in a template string from the params map.
-   * Unknown tokens are left intact (so a typo'd placeholder is visible, not
+   * Replace `{{word}}` placeholders in a template string from the params map.
+   * Unknown words are left intact (so a typo'd placeholder is visible, not
    * silently blanked). No-op on strings without placeholders.
    */
   _fillParams(str, params) {
