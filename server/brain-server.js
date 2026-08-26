@@ -7624,7 +7624,63 @@ class ServerBrain {
     }
   }
 
+  /**
+   * ⛔ PAIRDESYNC.2 — IS THE PAIR ON DISK COHERENT?
+   *
+   * The loader takes `brain-weights.json` and `brain-weights.bin` as a pair
+   * and never compared them. A save interrupted between the two writes
+   * therefore resumes SILENTLY with metadata ahead of synapses.
+   *
+   * That is not hypothetical. On 2026-08-26 a shutdown completed the small
+   * json at 09:12:24 and died 79% through the 5.72GB bin; atomic-write meant
+   * the partial was never renamed, so the live bin stayed at 08:33 while the
+   * json advanced to 09:12 — **her grade pointers and taught-word ledgers
+   * claiming 38 minutes of progress the weights did not hold.** The ONLY
+   * reason it was caught is that a human asked an unrelated question about
+   * leftover files.
+   *
+   * ⭐ The evidence was already on disk and free to check: the json carries
+   * its own `savedAt`, and the bin's mtime is one `statSync` away.
+   *
+   * ⚠ It WARNS, it does not refuse. Refusing to boot on a stale pair would
+   * hand a shell-less operator an unbootable brain over a condition that is
+   * usually survivable — the same one-way-door mistake as the Stop button.
+   * Naming it loudly, with the numbers and the fix, is the honest middle.
+   */
+  _checkWeightsPairCoherence() {
+    const out = { checked: false, coherent: null, gapSec: null, jsonSavedAt: null, binMtime: null };
+    try {
+      const binPath = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+      if (!fs.existsSync(WEIGHTS_FILE) || !fs.existsSync(binPath)) return out;
+      const raw = JSON.parse(fs.readFileSync(WEIGHTS_FILE, 'utf8'));
+      const savedAt = raw && raw.savedAt ? Date.parse(raw.savedAt) : NaN;
+      const binMs = fs.statSync(binPath).mtimeMs;
+      if (!Number.isFinite(savedAt) || !Number.isFinite(binMs)) return out;
+      out.checked = true;
+      out.jsonSavedAt = new Date(savedAt).toISOString();
+      out.binMtime = new Date(binMs).toISOString();
+      const gapSec = Math.round(Math.abs(savedAt - binMs) / 1000);
+      out.gapSec = gapSec;
+      // A coherent pair is written seconds apart. The observed good pairs sat
+      // at 43s / 103s / 268s; the broken one at 2311s. 600s is well clear of
+      // a slow-but-honest save and well under a real desync.
+      const TOL = Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) > 0
+        ? Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) : 600;
+      out.coherent = gapSec <= TOL;
+      if (!out.coherent) {
+        console.warn(`[Brain] ⛔ WEIGHTS PAIR INCOHERENT — brain-weights.json says savedAt ${out.jsonSavedAt} but brain-weights.bin was written ${out.binMtime}, a gap of ${gapSec}s (tolerance ${TOL}s). Her METADATA is ahead of her SYNAPSES: grade pointers and taught-word ledgers will claim progress the weights do not hold. Cause is almost always a save interrupted between the two writes — check for a leftover brain-weights.bin.tmp. FIX: copy the newest COHERENT checkpoint pair over the live one (brain-weights-vN.json + .bin, whose mtimes are seconds apart). Booting anyway.`);
+      } else {
+        console.log(`[Brain] weights pair coherent — json/bin ${gapSec}s apart.`);
+      }
+    } catch (err) {
+      console.warn(`[Brain] weights pair coherence check failed: ${err?.message || err}`);
+    }
+    return out;
+  }
+
   _loadWeights() {
+    // PAIRDESYNC.2 — before trusting the json, say whether it matches the bin.
+    try { this._weightsPair = this._checkWeightsPairCoherence(); } catch { /* never block the load */ }
     try {
       if (fs.existsSync(WEIGHTS_FILE)) {
         const data = JSON.parse(fs.readFileSync(WEIGHTS_FILE, 'utf8'));
