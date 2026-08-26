@@ -1343,6 +1343,28 @@ function connectToServer() {
     if (_reconnectTimer) clearTimeout(_reconnectTimer);
     _reconnectTimer = setTimeout(() => { _reconnectTimer = null; connectToServer(); }, delaySec * 1000);
     _showReconnectButton(true);   // #112.1(d) — surface one-click reconnect (skips the backoff wait)
+
+    // CTLPLANE.1 — SAY WHY, don't just say "disconnected". A donor whose tab
+    // drops cannot tell "my wifi blipped" from "the brain is deliberately
+    // stopped", and the difference decides whether waiting is pointless. The
+    // web server stays up when the brain is down and now reports that in
+    // /public-state.json, so ask it and tell the donor plainly. Best-effort and
+    // fire-and-forget: it must never interfere with the reconnect schedule
+    // above, which stays armed regardless of what this says.
+    fetch('/public-state.json', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d) return;
+        if (d.brainOffline === true || d.brainOnline === false) {
+          statusEl.textContent = 'Brain offline — she is not running right now, so there is no compute to donate. '
+            + `This tab keeps retrying automatically (next try in ~${delaySec}s); leave it open and it will pick her up the moment an admin starts her again.`;
+          statusEl.style.color = '#ef4444';
+        }
+        // If the snapshot IS live, the brain is up and this was a link/tab
+        // problem — the existing "reconnecting" text is already correct, so
+        // deliberately leave it alone rather than overwrite with a guess.
+      })
+      .catch(() => { /* snapshot unreachable too — keep the generic message */ });
   };
 } // end connectToServer
 

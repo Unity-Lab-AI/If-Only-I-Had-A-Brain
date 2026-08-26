@@ -55,6 +55,12 @@ writeFileSync(mockHelper, `#!/usr/bin/env bash\necho "$*" >> ${helperLog}\nexit 
 chmodSync(mockHelper, 0o755);
 const helperCalls = () => (existsSync(helperLog) ? readFileSync(helperLog, 'utf8').trim().split('\n').filter(Boolean) : []);
 
+// Scratch "brain dir" so the reset verb can write .force-fresh / clear the
+// resume marker without touching a real brain's state.
+const brainDir = mkdtempSync(path.join(tmpdir(), 'brainctl-braindir-'));
+const forceFresh = path.join(brainDir, '.force-fresh');
+const resumeMarker = path.join(brainDir, '.resume-marker.json');
+
 function req(method, urlPath, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     const r = http.request({ host: '127.0.0.1', port: CTL_PORT, path: urlPath, method, timeout: timeoutMs },
@@ -105,6 +111,11 @@ function startCtl(env = {}) {
       UAL_BRAIN_UNIT: TEST_UNIT,
       UAL_CTL_HELPER: mockHelper,
       UAL_CTL_GRACEFUL_WAIT_MS: '6000',
+      UAL_BRAIN_DIR: brainDir,
+      UAL_CTL_BIND_WAIT_MS: '4000',
+      // Point the update verb at a script that cannot exist, so the "no deploy
+      // script here" refusal is what gets exercised rather than a real deploy.
+      UAL_SELF_UPDATE_SH: path.join(brainDir, 'no-such-self-update.sh'),
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -222,7 +233,37 @@ try {
     check('refuses no args at all', runHelper([]) === 64);
   }
 
-  console.log('\n8. control plane survived the whole run');
+  console.log('\n8. the REST of the power verbs ("everything else inbetween")');
+  {
+    // RESET with the brain DOWN must arm the fresh boot itself — the case the
+    // old dashboard could not serve at all.
+    writeFileSync(resumeMarker, '{"stale":"marker"}');
+    const r = await req('POST', '/ctl/reset');
+    check('reset answers with the brain down', r.code === 200, `code=${r.code}`);
+    check('reset did NOT go via the brain', r.json?.viaBrain === false, JSON.stringify(r.json?.viaBrain));
+    check('reset WROTE .force-fresh (wipe armed)', existsSync(forceFresh));
+    check('reset CLEARED the resume marker', !existsSync(resumeMarker),
+      'a leftover marker would make the "fresh" brain resume the training being discarded');
+    const ff = existsSync(forceFresh) ? JSON.parse(readFileSync(forceFresh, 'utf8')) : {};
+    check('force-fresh records who armed it', /brain-ctl/.test(ff.via || ''), JSON.stringify(ff));
+
+    // SAVERERUN with the brain down must REFUSE honestly, not pretend.
+    const sr = await req('POST', '/ctl/savererun');
+    check('savererun refuses with the brain down', sr.json?.ok === false);
+    check('savererun says it needs the brain up', sr.json?.needsBrainUp === true);
+    check('savererun tells the operator to press Start', /press start/i.test(sr.json?.message || ''), sr.json?.message);
+
+    // UPDATE with no deploy script must say so rather than half-updating.
+    const up = await req('POST', '/ctl/update');
+    check('update refuses without a deploy script', up.json?.ok === false);
+    check('update names the missing script', /self-update/i.test(up.json?.message || ''), up.json?.message);
+    check('update reports fresh-walk mode', up.json?.mode === 'fresh-walk', `mode=${up.json?.mode}`);
+    const ups = await req('POST', '/ctl/update-savestart');
+    check('update-savestart is a distinct route', ups.code === 200 || ups.json?.ok === false);
+    check('update-savestart reports savestart mode', ups.json?.mode === 'savestart', `mode=${ups.json?.mode}`);
+  }
+
+  console.log('\n9. control plane survived the whole run');
   {
     const h = await req('GET', '/ctl/health');
     check('still alive at the end', h.code === 200 && h.json?.ok === true);
