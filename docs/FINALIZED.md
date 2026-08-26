@@ -38466,3 +38466,39 @@ The local browser engine initialises exactly that zero (`engine.js:242` — `amy
 ⛔ The lesson, again: I reasoned from a plausible pattern three times instead of executing the actual expression against the actual payload. The moment I ran the real chain against the real socket, the answer took one run.
 
 ⚠ **Frontend only — lands on deploy, no press.** Hard-refresh to clear the cached bundle.
+
+---
+
+## 2026-08-26 - NOTIFBUBBLE.1: the 3D brain popups stop landing on each other - feature/notif-bubbles
+
+### Gee ask (verbatim per LAW #0)
+
+> *"and lets mast the popups have solid bubble like boubary to them meaning i want them to never apepear ontop of each other and should kinda bubble oaway from each other so that the most recent is on the bottom"*
+
+### What was wrong
+
+Each popup projected its cluster's 3D centre to screen and was placed there directly — with no awareness of the others. Two clusters that project near each other put two popups in the same place, and because the fill was `rgba(...,.94)` over a `backdrop-filter:blur`, the overlap showed each bubble's text through the other and read as one garbled block.
+
+### What shipped
+
+**Solid boundary.** Opaque fill (`#111014` + an opaque gradient), the translucency and backdrop blur removed, radius `8px → 14px`, and a hairline dark ring under the coloured border so a bubble reads as a bubble against the brain behind it.
+
+**A real separation pass.** `_updateNotifications` was one loop that aged, projected and positioned in a single step. It is now two: pass 1 ages/projects/fades and **stores** the position; `_separateNotifications` then resolves collisions once every position for the frame is known — which is the only point at which the question is answerable.
+
+The ordering is the requested one: `_notifications` is push-ordered, so the last entry is newest. **The newest keeps the position its cluster actually projects to** — it is the one the eye should go to, and moving it would break the link between a popup and the cluster that produced it. Older bubbles are lifted only as far as needed to clear the one below.
+
+⚠ **Lift only on genuine overlap.** Horizontal ranges are tested first: two popups on opposite sides of the brain are not colliding and must not be stacked as if they were.
+
+⚠ **`translate(-50%,-100%)` means `top` is the BOTTOM edge** and the bubble grows upward. Clearing therefore means moving to `neighbourTop − height − gap`, and the viewport clamp applies to the top edge.
+
+⚠ **Measurements cached.** `offsetHeight`/`offsetWidth` force layout; with a 3-bubble cap, measuring once each is free and measuring every frame would not be. A zero measure leaves the cache unset so it retries next frame.
+
+⛔ **No CSS `transition` on top/left, deliberately.** Both are rewritten every frame by the projection (the bubble floats slowly upward as it ages), so a transition would never reach its target and every bubble would trail behind its own cluster. Separation snaps instead, invisible at one new popup per ~5s. ⚠ A `transition:top` was written first and removed before shipping for exactly this reason.
+
+### Verified — 11/11 against the real methods
+
+Worst case, three popups projecting to the identical point: newest at bottom **500**, older at **430** and **360**, 10px gaps, zero overlap on all three pairs. Plus: far-apart popups keep their own y (not stacked), partial horizontal overlap does separate, the viewport clamp holds all tops ≥ 8px, and a single popup is placed untouched at its projection.
+
+⚠ Owned: the first edit put backticks inside the CSS comment — and that CSS is a JS **template literal**, so it terminated the string. Caught by `node --check` before commit.
+
+⚠ **Frontend only — lands on deploy, no press.**
