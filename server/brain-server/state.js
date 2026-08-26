@@ -700,6 +700,14 @@ const SERVER_STATE_MIXIN = {
             tagWrites: (this.curriculum._relTagWrites | 0),
             tagWritesByTag: this.curriculum._relTagWritesByTag || {},
             tagWritesRefused: (this.curriculum._relTagRefused | 0),
+            // VMUSE.5 — how many times a relation actually CHANGED something.
+            // The reader existed for a day with every consumer annotate-only,
+            // and `s.relationTag` was written and never read. A consumer that
+            // cannot be counted is indistinguishable from one that was never
+            // wired, which is the whole family of defects this batch is about.
+            // Expected to sit at 0 until the bands separate — that is the gate
+            // doing its job, not a dead lane.
+            consumedByEye: (this._eyeRelationPicks | 0),
           } : null,
         };
       })(),

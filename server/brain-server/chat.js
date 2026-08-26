@@ -1523,8 +1523,68 @@ const SERVER_CHAT_MIXIN = {
             // words banked as lookup frames), and drawing one traces to garbage.
             // A few random tries, each gated; none pass → no favorite this tick.
             const _favKeys = Array.from(this._visualMemory.keys());
+            // ── VMUSE.5 — THE RELATION IS FINALLY CONSUMED ───────────────────
+            // Gee: "art concepts are stored with text concepts the brain
+            // consciousness interjects". Both halves are true in the code: art
+            // percepts bind through the SAME channels as text (ARTWEIGHT writes
+            // tag 35 / 13 when she draws, VMRELATE the same when she sees), into
+            // the same sem region — so a concept she has SEEN and a concept she
+            // has READ live in one space and one relation read covers both.
+            //
+            // ⛔ Until now nothing consumed the reader. The draw plan set
+            // `s.relationTag` and NOTHING IN THE TREE EVER READ IT — the same
+            // write-only-counter shape as `_relTagWrites`, one level up.
+            //
+            // What it does here: when she reaches into memory for something to
+            // interject about, prefer a concept whose relation she actually
+            // KNOWS. A confident band means she has learned what KIND of thing
+            // it is, not merely that it exists — so it is the better thing to
+            // surface and think about.
+            //
+            // ⚠ This is a PREFERENCE over candidates she was already willing to
+            // pick, never a filter: nothing is excluded, and if no candidate has
+            // a confident relation the loop below behaves exactly as before.
+            // ⚠ And it does NOT touch what she DRAWS — subjects are still never
+            // added, removed or reordered on the strength of a band, which was
+            // the standing constraint. It changes what she REACHES FOR.
+            // ⚠ Costs nothing today and nothing later: `_confidentRelationFor`
+            // is cached per word and returns null while the bands are still
+            // separating (currently ~3% of the gate), so this is inert until
+            // she has genuinely learned the relations — which is the correct
+            // behaviour, not a disabled feature.
+            // ⛔ PER-TICK, not the cumulative counter. Keying the first-try bias
+            // off `_eyeRelationPicks` would make it true forever after the first
+            // success, so every later tick would take _favKeys[0] whether or not
+            // this tick actually reordered anything — pinning the eye to one
+            // concept. That is EYEPIN exactly, and it is already in the ledger.
+            let _relOrdered = false;
+            try {
+              const _cur = this.curriculum;
+              if (_cur && typeof _cur._confidentRelationFor === 'function' && _favKeys.length > 1) {
+                const _known = [];
+                // Bounded scan — this runs on the mind's-eye tick, so it samples
+                // rather than walking a store that can hold tens of thousands.
+                const _scan = Math.min(_favKeys.length, 24);
+                for (let _i = 0; _i < _scan; _i++) {
+                  const _k = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+                  if (_cur._confidentRelationFor(_k)) _known.push(_k);
+                }
+                if (_known.length) {
+                  // Put the relation-known ones first; the rest still follow, so
+                  // the candidate pool is reordered and never shrunk.
+                  const _knownSet = new Set(_known);
+                  _favKeys.sort((a, b) => (_knownSet.has(b) ? 1 : 0) - (_knownSet.has(a) ? 1 : 0));
+                  _relOrdered = true;
+                  this._eyeRelationPicks = (this._eyeRelationPicks || 0) + 1;
+                }
+              }
+            } catch { /* non-fatal — a relation read must never break the eye */ }
             for (let _ft = 0; _ft < 4 && !rec; _ft++) {
-              const _fav = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+              // Bias the first try toward the front of the (possibly relation-
+              // ordered) list; later tries stay random so rotation is preserved.
+              const _fav = (_ft === 0 && _relOrdered)
+                ? _favKeys[0]
+                : _favKeys[Math.floor(Math.random() * _favKeys.length)];
               if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(_fav))) continue;
               const drawnFav = await this._drawConcept(_fav, { allowFetch: false });
               if (drawnFav && drawnFav.rec) { rec = drawnFav.rec; _seedSource = 'draw:fav:' + _fav; }
