@@ -48,3 +48,55 @@ Before overwriting the main unit on any box, diff it first:
 ```bash
 diff /etc/systemd/system/unity-brain.service /opt/unity-brain/deploy/unity-brain.service
 ```
+
+---
+
+## `nightly-backup/` — fixing a silent 3-month backup outage (2026-08-26)
+
+`10-fix-restic-password.conf` is a drop-in for **`nightly-backup.service`**, not
+for the brain. It lives here because it was found and fixed in the same session
+and belongs with the box's other systemd overrides.
+
+**What was wrong.** Every nightly run since **2026-05-20** failed with
+`Fatal: Resolving password failed: /root/.restic-password does not exist`. The
+file *does* exist (mode 0600, root-owned). The unit's own `ProtectHome=true`
+makes `/root` inaccessible to the service, so restic could never read its
+password. Proven directly:
+
+```bash
+systemd-run -p ProtectHome=true /bin/sh -c 'test -r /root/.restic-password'   # BLOCKED
+```
+
+**Why it mattered.** The repo held exactly ONE snapshot (2026-05-20) and nothing
+newer — no Forgejo backup, no lab-git backup, and no brain weights, even though
+`nightly-backup.sh` had been extended on 2026-06-30 *specifically* to stage the
+trained brain state after an earlier silent wipe. The backup was protecting
+nothing while appearing to be configured. It was discovered while looking for a
+restore point after a wipe, which is the worst possible moment to learn it.
+
+**The fix.** `ProtectHome=read-only` — still denies `/home` and `/run/user`, but
+leaves `/root` readable, which is the minimum needed. The hardening is kept
+rather than dropped, and the secret is deliberately NOT moved (a credential move
+is the kind of change that quietly breaks other callers). Plus an
+`ExecStopPost` that logs a `user.err` on any non-zero exit, because a backup that
+fails silently is worse than no backup — it buys false confidence.
+
+**Verified:** `systemctl start nightly-backup` → `Result=success`,
+`ExecMainStatus=0`, snapshot count 1 → 2, and the new snapshot contains
+`unity-brain/brain-weights*.bin|.json`, `identity-core.json`, `schemas.json`,
+`conversations.json` and `episodic-memory.db*`.
+
+**Install:**
+```bash
+sudo mkdir -p /etc/systemd/system/nightly-backup.service.d
+sudo install -o root -g root -m 644 deploy/dropins/nightly-backup/*.conf \
+     /etc/systemd/system/nightly-backup.service.d/
+sudo systemctl daemon-reload
+sudo systemctl start nightly-backup      # verify: Result=success
+```
+
+**⚠ Still worth a decision (not changed unilaterally):** retention is
+`restic forget --keep-daily 3`, so there are only ever ~3 days of history, and
+the repo is **on the same box** (`/var/backups/restic`) — a disk loss takes the
+backups with it. For a brain that takes weeks to train, consider
+`--keep-weekly/--keep-monthly` and an off-box destination.
