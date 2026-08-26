@@ -1141,6 +1141,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // undefined. `rateLimitSkips` is the count of looks NOT attempted
         // because the generator had already told us to stop.
         rateLimitSkips: 0, rateLimitHits: 0, backoffMs: 0, backoffUntil: 0,
+        // LOOKQUEUE.1 — `globalInFlightSkips` is the number of looks NOT
+        // started because one was already running (the pipe is one lane
+        // wide); `chatYields` is the number stood down so a human's image
+        // request could have the lane. Both are the system behaving
+        // CORRECTLY, so they must be readable rather than inferred.
+        globalInFlightSkips: 0, chatYields: 0,
       };
     }
     return this._vmLookStats;
@@ -1273,6 +1279,41 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // can't trigger a fetch storm
     if (!this._vmRefInFlight) this._vmRefInFlight = new Set();
     if (this._vmRefInFlight.has(key)) { this._vmLook().inFlightSkips++; return null; }
+    // ⛔ LOOKQUEUE.1 (2026-08-26) — ONE LOOK IN THE PIPE, BRAIN-WIDE.
+    //
+    // Operator, diagnosing it himself: *"only beiong able to have one image gen
+    // in the pipe with ananymous teir seems to suck up all the image gen with
+    // the minds eye ... can we put them in a que or something and not allow the
+    // minds eye to have more than one in the que"*. He was right, and the guard
+    // directly above is exactly why: it is keyed by CONCEPT, so it only ever
+    // stopped the same word twice. **Different words were never guarded at all.**
+    //
+    // ⛔ The arithmetic that makes it bite: `_lookUpAndDraw` is launched
+    // FIRE-AND-FORGET from the imagine tick (~8s), a look takes 2-60s, and
+    // since EYEPIN.2 every launch carries a DIFFERENT unseen word — so the
+    // per-concept guard matches nothing and up to ~7 fetches run concurrently
+    // against a tier that serves about one. The lane was not merely fast, it
+    // was PARALLEL, and that is what starved the chat request.
+    //
+    // ⚠ Concurrency 1, NOT a time budget — this is not the global gap Gee
+    // revoked (*"its the anonymous free"*). Nothing here says "look less
+    // often"; it says "finish the one you started before beginning another",
+    // which is what a single-lane pipe means. Over an hour she still looks just
+    // as many times, and each look now actually completes.
+    if (!opts.force && (this._vmRefGlobalInFlight | 0) > 0) {
+      this._vmLook().globalInFlightSkips++;
+      return null;
+    }
+    // ⛔ CHAT WINS THE PIPE. The person in the room outranks the background
+    // errand — the whole visible symptom was "show me an apple" answering
+    // "(image generation failed)" while she quietly ground her vocabulary.
+    // `_imageLanePriorityUntil` is stamped by the chat path the moment it
+    // returns `action: 'generate_image'`, so the browser's request (built
+    // client-side, same public IP, same anonymous quota) gets a clear lane.
+    if (!opts.force && this._imageLanePriorityUntil && now < this._imageLanePriorityUntil) {
+      this._vmLook().chatYields++;
+      return null;
+    }
     // GLOBAL look-up gap — REVOKED by operator directive 2026-08-21 (default now
     // 0 = no brain-wide gap). The 10-minute budget was a KEYED-ACCOUNT-era rule:
     // renders cost real pollen then. The account keys are dead (2026-08-17 law)
@@ -1317,6 +1358,14 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       return null;
     }
     this._vmRefInFlight.add(key);
+    // ⚠ LOOKQUEUE.1 — CLAIMED HERE, beside the per-concept guard, and NOT at
+    // the gate above. The first draft incremented at the gate, which sits
+    // ABOVE two `return null` paths (the global gap and the 429 backoff) that
+    // never reach the `try`/`finally` releasing it. That leaks the only slot —
+    // and a leaked slot does not slow the lane, it CLOSES it permanently. The
+    // 429 path guaranteed it would happen on the first rate limit. Claim and
+    // release must share one lifetime, so they share one statement pair.
+    this._vmRefGlobalInFlight = (this._vmRefGlobalInFlight | 0) + 1;
     this._vmLastRefFetchAt = now;
     this._vmRefFetchAt.set(key, now);
     this._vmLook().attempts++;
@@ -1483,6 +1532,10 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       return rec;
     } finally {
       this._vmRefInFlight.delete(key);
+      // LOOKQUEUE.1 — release the brain-wide slot. ⚠ In `finally` beside the
+      // per-concept delete, because a leaked global slot does not degrade the
+      // lane, it CLOSES it: one missed decrement and she never looks again.
+      this._vmRefGlobalInFlight = Math.max(0, (this._vmRefGlobalInFlight | 0) - 1);
     }
   },
 

@@ -37944,3 +37944,58 @@ Image-lane emissions land in `_innerThoughtChain` like any other, so `_seedText`
 
 - ⛔ **I caused this.** EYEPIN was the right fix and I shipped it without asking what the old defect had been silently absorbing. **When you remove something broken, price what it was accidentally doing** — the acquisition rank turned a lane that fetched once per boot into one that fetched 130 times in 15 minutes, and I did not check the rate before or after.
 - ⚠ **NOT VERIFIED LIVE** — server-side, needs a restart. The row is frontend and lands on refresh.
+
+---
+
+## 2026-08-26 - LOOKQUEUE: the lane was not fast, it was PARALLEL - feature/look-singleflight
+
+### Gee ask (verbatim per LAW #0)
+
+> *"sooo... only beiong able to have one image gen in the pipe with ananymous teir seems to suck up all the image gen with the minds eye. so i dont knwo what to do... what do you suggest? can we put them in a que or something and not allow the minds eye to have more than one in the que so that it doesnt error out image gen in chat and will eventually generate the image when it gets done with the image that the mind;s eye is doing?"*
+
+> *"image gen worked yesterday before all that massive work we did"*
+
+### He diagnosed it before I did, and the code agreed with him
+
+The 429 backoff shipped an hour earlier treated the symptom — being refused — without asking **why we were being refused so hard**. The answer is that the lane was never rate-limited by anything on our side:
+
+- The in-flight guard is keyed by **CONCEPT** (`_vmRefInFlight.has(key)`), so it only ever stopped the *same word twice*. **Different words were never guarded at all.**
+- `_lookUpAndDraw` is launched **fire-and-forget** from the imagine tick (~8s).
+- A look takes **2-60s**.
+- Since EYEPIN.2, every launch carries a **different unseen word**.
+
+⭐ **So up to ~7 reference fetches ran concurrently against a tier that serves about one.** That is exactly the "one image gen in the pipe" Gee described — and it explains his other observation precisely: *"image gen worked yesterday"* because yesterday the broken picker made **one attempt per boot**.
+
+### Fix — a one-lane pipe, and the human has right of way
+
+**LOOKQUEUE.1** — a brain-wide single-flight slot. ⚠ **Concurrency 1, NOT a time budget.** This is not the global gap Gee revoked (*"its the anonymous free"*); nothing here says "look less often", it says **"finish the one you started before beginning another"**. Over an hour she looks just as many times, and each look now actually completes instead of racing six siblings into a 429.
+
+**LOOKQUEUE.2** — `_imageLanePriorityUntil`, stamped server-side at the exact instant the chat path returns `action: 'generate_image'`; the look lane stands down for the window (`DREAM_CHAT_IMAGE_PRIORITY_MS`, default 45s). ⭐ **Stamping it there is what makes this solvable at all:** the client builds the image URL itself (PROMPT ONLY, by design) and fetches from the **same public IP**, so the browser's request is invisible to this process — but the *intent* is not. ⚠ **A TIME window rather than a lock, deliberately:** there is nothing to release when the fetch happens in another process, and **a lock with no releaser is a lane that never reopens.**
+
+### ⛔ My first draft leaked the slot, and it would have been worse than the bug
+
+The claim sat at the gate — **above** two `return null` paths (the global gap and my own 429 backoff) that never reach the `try`/`finally` that releases it. **A leaked slot does not slow the lane, it CLOSES it permanently**, and the 429 path guaranteed it would happen on the first rate limit — i.e. the fix for being rate-limited would have been triggered *by* being rate-limited, and she would have stopped looking forever with every counter reading healthy.
+
+Caught by reading the control flow for exactly this before running anything. Claim and release now share one lifetime, one statement pair, beside the per-concept guard. **Audited: 0 unguarded returns between claim and `try`; 13 returns inside, all covered by the `finally`.**
+
+### ⭐ SEEDPHRASE.1's producer, found by accident while adding the stamp
+
+`chat.js:378` — `this._innerThoughtChain.push(imgPrompt)`. The generated image PROMPT is deliberately pushed into her inner-thought chain as a learning-loop signal, which is precisely why a whole prompt string surfaced as a draw subject and got spent as a Pollinations request.
+
+⚠ **The push is NOT removed** — it is intentional, and her thinking about what she just asked for is the feature. The single-token guard shipped earlier remains the correct fix; it now has a **named origin instead of a suspected one**.
+
+### Verified — 4/4 on the full gate chain
+
+| case | result |
+|---|---|
+| concurrency-1 | five ticks 8s apart, 30s look → **1 fetch, 4 queued** |
+| chat priority | yields the whole 45s window (3 ticks), then **resumes on its own** |
+| `force` bypass | the ✗ reject-relearn path **still bypasses every gate** — an operator verdict must never be throttled |
+| slot leak | **inflight = 0** after 200 claim/release cycles |
+
+**9/9 producer/consumer parity** on the extended dashboard row (`queued` and `gave way to chat` render, both AMBER-class "behaving correctly" facts); divs **484/484**; `node --check` clean on both server files. ⚠ `dashboard.html` is standalone — **no bundle rebuild needed** for this batch.
+
+### Owned
+
+- ⚠ **I shipped the 429 backoff first and called it the fix.** It was a real improvement and it was treating the symptom: I never asked why we were being refused at that rate, and the answer — unbounded concurrency — was two lines above the code I had just edited. **Gee found it by reasoning about the service's behaviour while I was reading counters.**
+- ⚠ **NOT VERIFIED LIVE.** Server-side; needs a restart. The row is frontend and lands on refresh.
