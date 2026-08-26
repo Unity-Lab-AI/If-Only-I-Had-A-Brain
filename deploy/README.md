@@ -135,3 +135,120 @@ follow-on needed.
 - [ ] admin `wss://<host>/admin/ws` carries `X-UAL-User=$remote_user` → operator gets `mode=admin` (first authed = master)
 - [ ] client-supplied `X-UAL-User` is stripped (spoof attempt → viewer, not admin)
 - [ ] frontend already deployed via Actions; backend redeploy is the manual `git pull && npm ci && systemctl restart`
+
+---
+
+## 🎛 BRAIN CONTROL PLANE (`unity-brain-ctl`) — start/stop/restart from the web, no shell
+
+**The problem it removes.** Every power control used to live *inside* `brain-server.js`
+(`/shutdown`, `/restart`, `/savererun`, `/update`). A control plane hosted by the thing it
+controls has one unavoidable dead zone: **a stopped brain cannot serve its own start button.**
+On 2026-08-25 a mis-click halted the brain and the box sat at 502 until someone with SSH ran
+one command. `unity-brain-ctl` is a separate, tiny, always-up service that holds those
+controls instead — including **`start`**, the one verb the brain could never offer for itself.
+
+### Components
+
+| file | installs to | role |
+|---|---|---|
+| `server/brain-ctl.js` | runs from `/opt/unity-brain` | the service. Zero deps, node builtins only, never imports brain code. |
+| `deploy/unity-brain-ctl.service` | `/etc/systemd/system/` | always-up unit. `Restart=always`, `StartLimitIntervalSec=0`, 256M cap. |
+| `deploy/brain-ctl-helper.sh` | `/usr/local/sbin/brain-ctl-helper` | the ONLY root-capable surface. Closed verb set, hardcoded unit name. |
+| `deploy/sudoers.d/unity-brain-ctl` | `/etc/sudoers.d/unity-brain-ctl` | narrow NOPASSWD for that one helper path. |
+| `deploy/nginx-unity-brain-ctl.conf` | `/etc/nginx/snippets/` | `/ctl/` admin lane + brain-offline JSON fallbacks. |
+
+### Install (one time, ~2 minutes, brain keeps running throughout)
+
+```bash
+cd /opt/unity-brain
+
+# 1. privileged helper + its narrow sudoers rule
+sudo install -o root -g root -m 755 deploy/brain-ctl-helper.sh /usr/local/sbin/brain-ctl-helper
+sudo install -o root -g root -m 440 deploy/sudoers.d/unity-brain-ctl /etc/sudoers.d/unity-brain-ctl
+sudo visudo -cf /etc/sudoers.d/unity-brain-ctl     # MUST print "parsed OK" — a bad
+                                                    # sudoers file can lock out sudo
+
+# 2. the service
+sudo cp deploy/unity-brain-ctl.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now unity-brain-ctl
+curl -s http://127.0.0.1:7526/ctl/status | head -20      # expect phase/brainOnline
+
+# 3. nginx lanes (validate BEFORE reloading — a broken config would take the
+#    static site down too, which is the opposite of the goal)
+sudo install -o root -g root -m 644 deploy/nginx-unity-brain-ctl.conf \
+     /etc/nginx/snippets/unity-brain-ctl.conf
+# then, INSIDE the brain vhost's server{} block, add:
+#     include snippets/unity-brain-ctl.conf;
+# and DELETE the vhost's now-duplicated `location = /public-state.json` and
+# `location = /minds-eye.json` blocks — the snippet supersedes them with
+# offline-tolerant versions. Duplicate locations make `nginx -t` fail.
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Verify the whole point
+
+```bash
+# from a machine with shell:
+curl -s http://127.0.0.1:7526/ctl/status | grep -E 'phase|human'
+# stop the brain THROUGH the control plane, confirm the site survives:
+curl -s -X POST http://127.0.0.1:7526/ctl/stop
+curl -s -o /dev/null -w 'site:%{http_code}\n' https://unityailab.com/          # want 200
+curl -s https://unityailab.com/public-state.json | head -c 200                 # want brainOffline:true
+# then bring it back the way Gee would — from the dashboard, or:
+curl -s -X POST http://127.0.0.1:7526/ctl/start
+```
+
+### What the operator sees
+
+The dashboard grows a **Brain Power** panel (top of page) fed by `/ctl/status`, showing one of
+six honest phases and offering only the actions that make sense for each:
+
+| phase | meaning | offered |
+|---|---|---|
+| `online` | serving | Restart, Stop, Force Restart |
+| `booting` | process up, port not bound yet (loading ~5.4 GB — normal for minutes) | Restart, Stop, Force Restart |
+| `halted` | deliberately stopped (exit 42); systemd will NOT revive it | **Start** |
+| `offline` | not running | **Start** |
+| `failed` | crashed / OOM-killed | **Start**, Restart |
+| `unmanaged` | something serves :7525 but the unit is inactive (hand-started) | Force Restart |
+
+`booting` vs `online` is a real distinction the old UI could not make: the brain binds its port
+only *after* loading weights, so "systemd says active" and "actually serving" are different
+facts, and conflating them is why a healthy boot used to look like a failure.
+
+### Behaviour worth knowing
+
+- **Stop is graceful first.** ctl asks the brain's own `/shutdown` so it force-saves weights and
+  writes the resume marker, waits for the port to close, and only then issues `systemctl stop`.
+  If the brain never answered, the response says so — training since the last checkpoint may be lost.
+- **Start reloads the proxy afterwards.** Once the brain binds its port, ctl runs
+  `nginx -t && systemctl reload nginx` so the upstream lanes are re-established cleanly and no
+  stale 502 lingers. It is a **reload, not a restart** — the static site never goes down.
+  A reload failure is reported but does not mask a successful start.
+- **One action at a time.** Concurrent power actions return `409`. Two overlapping start/stop
+  cycles against a process mid-weight-save is how checkpoints get corrupted.
+- **The site never depends on it.** `/public-state.json` and `/minds-eye.json` degrade to a 200
+  JSON body carrying `brainOffline: true` and a human sentence, so the frontend says
+  "brain offline" instead of parse-erroring on a 502 HTML page (or, on the lab vhost,
+  SPA-swallowing the request and parsing `index.html` as JSON).
+
+### Security shape
+
+`brain-ctl` binds **loopback only**; all external access is through nginx's Basic-auth `/ctl/`
+lane, exactly like `/admin/`. Privilege is exercised only via `execFile` (no shell) against a
+**hardcoded allowlist** of argv, and the root helper *independently* re-validates and hardcodes
+the unit name — so neither a bug in the service nor a leaky sudoers wildcard can retarget
+`systemctl` at Forgejo or sshd on this shared box.
+
+### Tests
+
+```bash
+node scripts/test-brain-ctl.mjs        # 31 assertions — HTTP contract, graceful-stop
+                                       # ordering, 409 concurrency, helper refusals
+node scripts/test-brain-power-ui.mjs   # 13 assertions — real Chromium: proves the
+                                       # Start button works with the brain DOWN
+```
+
+Both run against a mock brain and a mock helper, so they are safe on any machine and touch no
+real systemd unit.
