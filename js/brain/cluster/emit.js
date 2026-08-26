@@ -602,6 +602,26 @@ export const CLUSTER_EMIT_MIXIN = {
    * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
    * is never skipped, only sourced honestly.
    */
+  /**
+   * LOOPCHAT.1 — the sem-region pre-vector, built in ONE place.
+   *
+   * Read straight off `lastSpikes` for the sem span. Both the synchronous
+   * emission path and the chunked CPU shadow in `emitWordDirectDonor` consume
+   * it, and they MUST consume the same numbers — a second hand-written copy of
+   * this loop is exactly how two callers begin propagating subtly different
+   * inputs while every test still passes.
+   */
+  _buildSemPreVector() {
+    const sem = this.regions && this.regions.sem;
+    if (!sem || !this.lastSpikes) return null;
+    const semSize = sem.end - sem.start;
+    const preSem = new Float64Array(semSize);
+    for (let i = 0; i < semSize; i++) {
+      preSem[i] = this.lastSpikes[sem.start + i] || 0;
+    }
+    return preSem;
+  },
+
   async emitWordDirectDonor(opts = {}) {
     const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
     const sem = this.regions && this.regions.sem;
@@ -655,6 +675,58 @@ export const CLUSTER_EMIT_MIXIN = {
     }
     const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
     s.cpu++;
+    // ⛔ LOOPCHAT.1 (2026-08-26) — THE CPU SHADOW WAS A SYNCHRONOUS
+    // 1.5M→720K SPARSE PROPAGATE, ONCE PER SPOKEN WORD, ON THE EVENT LOOP.
+    //
+    // `emitWordDirect` is synchronous, so its `proj.propagate(preSem)` cannot
+    // yield — and it is reached whenever the donor cannot answer. Measured on
+    // the box: `boundPropagate` read `native 5489 / emptyMirror 2246`, i.e.
+    // **29% of bound propagates refuse and drop to CPU**, with
+    // `lastEmptyName: cortex_word_motor_to_sem`. A K gate speaks 14 production
+    // probes plus sentence generation, so that is dozens of unyielding
+    // multi-hundred-millisecond propagates per gate pass.
+    //
+    // Consequence, in the loop watchdog's own words:
+    //   `[EventLoop] BLOCKED 2821ms — /ws handshakes + donor frames stalled`
+    //   `[EventLoop] STARVED — late 38.1s out of the last 62s (39% serviced)`
+    // ⛔ **Chat is a WebSocket lane.** At 39% serviced a chat message cannot
+    // land and the reply pass cannot run — she reads as "not talking" while
+    // emission itself is perfectly healthy (151 accepted content emissions,
+    // `matrixDrivenPct: 100`). **The silence was a scheduling failure wearing
+    // the costume of a speech failure.**
+    //
+    // ⭐ The fix needs no signature change and no new mechanism: THIS wrapper
+    // is already `async`, and `emitWordDirect` already accepts a pre-computed
+    // readout via `wmOutOverride` — built for the donor path, and exactly the
+    // right shape for a chunked CPU one. So the shadow propagate happens HERE,
+    // chunked, and the synchronous path is never entered.
+    //
+    // ⚠ NO GATE IS WEAKENED — nothing to RE-PRICE. `propagateChunked` is the
+    // same arithmetic split across row ranges (verified bit-identical,
+    // maxDiff=0, when GATEPIN.1 converted the probe lane on 2026-08-21); it
+    // changes WHEN the loop breathes, never WHAT she computes. Every
+    // downstream rule — WORDNORM, repetition penalty, GW boost, function-word
+    // floor, capacity break, the grade gate — reads the identical numbers.
+    //
+    // ⚠ The bare `emitWordDirect(opts)` below stays as the last resort on
+    // purpose: a matrix with no `propagateChunked`, an absent `lastSpikes`, or
+    // a throw must still produce her word rather than silence. Refusing to
+    // speak because an optimisation was unavailable would be the fallback
+    // pattern this repo bans.
+    if (!opts.wmBucketMeans && !opts.wmOutOverride
+        && proj && typeof proj.propagateChunked === 'function' && this.lastSpikes) {
+      try {
+        const preSem = this._buildSemPreVector();
+        if (preSem) {
+          const out = await proj.propagateChunked(preSem, { chunkRows: 250000 });
+          if (out && out.length > 0) {
+            s.cpuChunked = (s.cpuChunked || 0) + 1;
+            return this.emitWordDirect({ ...opts, wmOutOverride: out });
+          }
+        }
+      } catch { /* fall through to the synchronous shadow — a word beats silence */ }
+    }
+    s.cpuSync = (s.cpuSync || 0) + 1;
     return this.emitWordDirect(opts);
   },
 
@@ -678,14 +750,13 @@ export const CLUSTER_EMIT_MIXIN = {
     const bucketMeans = (opts.wmBucketMeans && opts.wmBucketMeans.length > 0)
       ? opts.wmBucketMeans : null;
 
-    // Build sem-region input from current cluster spike state
+    // Build sem-region input from current cluster spike state.
+    // ⭐ LOOPCHAT.1 — ONE OWNER. `emitWordDirectDonor` needs the identical
+    // vector to run the CPU shadow through `propagateChunked`, and a
+    // hand-copied second construction is how two callers silently start
+    // propagating different inputs. See `_buildSemPreVector`.
     let preSem = null;
-    if (!bucketMeans) {
-      preSem = new Float64Array(semSize);
-      for (let i = 0; i < semSize; i++) {
-        preSem[i] = this.lastSpikes[sem.start + i] || 0;
-      }
-    }
+    if (!bucketMeans) preSem = this._buildSemPreVector();
 
     let wmOut;
     // SPEAKGPU (2026-08-22) — a caller that already fetched the word-motor

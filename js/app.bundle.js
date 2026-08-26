@@ -54431,6 +54431,25 @@ var CLUSTER_EMIT_MIXIN = {
    * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
    * is never skipped, only sourced honestly.
    */
+  /**
+   * LOOPCHAT.1 — the sem-region pre-vector, built in ONE place.
+   *
+   * Read straight off `lastSpikes` for the sem span. Both the synchronous
+   * emission path and the chunked CPU shadow in `emitWordDirectDonor` consume
+   * it, and they MUST consume the same numbers — a second hand-written copy of
+   * this loop is exactly how two callers begin propagating subtly different
+   * inputs while every test still passes.
+   */
+  _buildSemPreVector() {
+    const sem = this.regions && this.regions.sem;
+    if (!sem || !this.lastSpikes) return null;
+    const semSize = sem.end - sem.start;
+    const preSem = new Float64Array(semSize);
+    for (let i = 0; i < semSize; i++) {
+      preSem[i] = this.lastSpikes[sem.start + i] || 0;
+    }
+    return preSem;
+  },
   async emitWordDirectDonor(opts = {}) {
     const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
     const sem = this.regions && this.regions.sem;
@@ -54481,6 +54500,20 @@ var CLUSTER_EMIT_MIXIN = {
     }
     const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
     s.cpu++;
+    if (!opts.wmBucketMeans && !opts.wmOutOverride && proj && typeof proj.propagateChunked === "function" && this.lastSpikes) {
+      try {
+        const preSem = this._buildSemPreVector();
+        if (preSem) {
+          const out = await proj.propagateChunked(preSem, { chunkRows: 25e4 });
+          if (out && out.length > 0) {
+            s.cpuChunked = (s.cpuChunked || 0) + 1;
+            return this.emitWordDirect({ ...opts, wmOutOverride: out });
+          }
+        }
+      } catch {
+      }
+    }
+    s.cpuSync = (s.cpuSync || 0) + 1;
     return this.emitWordDirect(opts);
   },
   emitWordDirect(opts = {}) {
@@ -54495,12 +54528,7 @@ var CLUSTER_EMIT_MIXIN = {
     const wmSize = wordMotor.end - wordMotor.start;
     const bucketMeans = opts.wmBucketMeans && opts.wmBucketMeans.length > 0 ? opts.wmBucketMeans : null;
     let preSem = null;
-    if (!bucketMeans) {
-      preSem = new Float64Array(semSize);
-      for (let i = 0; i < semSize; i++) {
-        preSem[i] = this.lastSpikes[sem.start + i] || 0;
-      }
-    }
+    if (!bucketMeans) preSem = this._buildSemPreVector();
     let wmOut;
     if (bucketMeans) {
       wmOut = null;
@@ -126531,13 +126559,25 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
    * category: motor events show channel distributions, arousal
    * events show arousal deltas, Ψ events show Ψ numbers, etc.
    */
+  // ⛔ MYSTPCT.1 — returns null for ABSENT, a number for MEASURED. It used to
+  // return 0 for both, so a cluster missing from the payload and a cluster
+  // sitting genuinely silent rendered identically — and the reader had no way
+  // to tell "not in this broadcast" from "not firing".
   _clusterAct(state, name) {
     const c = state.clusters?.[name];
-    if (!c || !c.size) return 0;
+    if (!c || !c.size) return null;
     return (c.spikeCount || 0) / c.size;
   }
   _eventReadout(event, state) {
-    const pct = (v) => (v * 100).toFixed(0) + "%";
+    const pct = (v) => {
+      if (v === null || v === void 0 || !Number.isFinite(Number(v))) return "\u2014";
+      const p = Number(v) * 100;
+      if (p === 0) return "0%";
+      if (p >= 10) return p.toFixed(0) + "%";
+      if (p >= 1) return p.toFixed(1) + "%";
+      if (p >= 0.01) return p.toFixed(2) + "%";
+      return "<0.01%";
+    };
     const f3 = (v) => Number(v || 0).toFixed(3);
     const f4 = (v) => Number(v || 0).toFixed(4);
     const t = event.type;
@@ -126578,8 +126618,9 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
     }
     if (t === "coherence_lock" || t === "coherence_scatter") {
       const c = state.coherence ?? state.oscillations?.coherence ?? 0;
-      const bp = state.bandPower || {};
-      return `coh=${pct(c)}  \u03B3=${f3(bp.gamma || 0)} \u03B1=${f3(bp.alpha || 0)}`;
+      const bp = state.bandPower || state.oscillations?.bandPower || {};
+      const band = (v) => v === null || v === void 0 || !Number.isFinite(Number(v)) ? "\u2014" : f3(v);
+      return `coh=${pct(c)}  \u03B3=${band(bp.gamma)} \u03B1=${band(bp.alpha)}`;
     }
     if (t.startsWith("drive_")) {
       const drives = state.hypothalamus?.drives || {};

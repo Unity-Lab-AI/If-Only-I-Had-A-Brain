@@ -2123,14 +2123,43 @@ export class Brain3D {
    * category: motor events show channel distributions, arousal
    * events show arousal deltas, Ψ events show Ψ numbers, etc.
    */
+  // ⛔ MYSTPCT.1 — returns null for ABSENT, a number for MEASURED. It used to
+  // return 0 for both, so a cluster missing from the payload and a cluster
+  // sitting genuinely silent rendered identically — and the reader had no way
+  // to tell "not in this broadcast" from "not firing".
   _clusterAct(state, name) {
     const c = state.clusters?.[name];
-    if (!c || !c.size) return 0;
+    if (!c || !c.size) return null;
     return (c.spikeCount || 0) / c.size;
   }
 
   _eventReadout(event, state) {
-    const pct = (v) => (v * 100).toFixed(0) + '%';
+    // ⛔ MYSTPCT.1 (2026-08-26) — `(v*100).toFixed(0)` RENDERED THE ENTIRE
+    // BRAIN AS 0%. Operator saw `mystery 0%` and asked if that was normal; the
+    // mystery cluster was firing at `spikeCount 254,669 / size 55,173,073` =
+    // **0.46%**, which zero decimal places prints as `0%`.
+    //
+    // ⭐ This is not one cluster's bad luck — it is structural. At biological
+    // scale she is a SPARSE coder: cortex 0.34%, hippocampus 0.43%, cerebellum
+    // 0.47%, mystery 0.46%. **Every cluster lives inside the first decimal
+    // place**, so an integer percent could never report anything but 0% and
+    // the readout was incapable of saying otherwise.
+    //
+    // Precision now follows magnitude, so a big value keeps its clean form
+    // (arousal 0.8996 → `90%`, unchanged) while a sparse rate says what it is.
+    // ⚠ `null` (absent) is rendered as `—`, never as a number: an unwired
+    // cluster and a silent one must not look the same.
+    const pct = (v) => {
+      if (v === null || v === undefined || !Number.isFinite(Number(v))) return '—';
+      const p = Number(v) * 100;
+      if (p === 0) return '0%';
+      if (p >= 10) return p.toFixed(0) + '%';
+      if (p >= 1) return p.toFixed(1) + '%';
+      if (p >= 0.01) return p.toFixed(2) + '%';
+      // Below a hundredth of a percent, decimals stop being informative —
+      // say it is non-zero rather than round it to the zero it is not.
+      return '<0.01%';
+    };
     const f3 = (v) => Number(v || 0).toFixed(3);
     const f4 = (v) => Number(v || 0).toFixed(4);
     const t = event.type;
@@ -2183,8 +2212,27 @@ export class Brain3D {
     // Coherence
     if (t === 'coherence_lock' || t === 'coherence_scatter') {
       const c = state.coherence ?? state.oscillations?.coherence ?? 0;
-      const bp = state.bandPower || {};
-      return `coh=${pct(c)}  γ=${f3(bp.gamma || 0)} α=${f3(bp.alpha || 0)}`;
+      // ⛔ BANDPOP.1 (2026-08-26) — THIS READ ONE OF THE TWO SHAPES AND
+      // RENDERED THE OTHER AS ZERO. Operator saw `γ=0.000 α=0.000`; live on
+      // the box `bandPower` was `{gamma: 0.4008, beta: 0.2422, alpha: 2.9006,
+      // theta: 0.3829}` — populated and moving the whole time.
+      //
+      // Two shapes reach this file: the FLAT server state (`state.bandPower`)
+      // and the NORMALIZED one this class builds itself, which nests the same
+      // object under `state.oscillations.bandPower` (see the normalizer). The
+      // sibling reader in this very file already uses the nested path, so the
+      // two disagreed and only one could be right per call. `coh` survived
+      // because it has the `?? state.oscillations?.coherence` twin; the band
+      // read had no such twin. Same dual-path form `brain-viz.js` already uses
+      // in three places.
+      //
+      // ⚠ `|| 0` is what made it SILENT rather than wrong-looking: an absent
+      // field and a genuinely quiet band both printed `0.000`. An absent band
+      // now prints `—`, so a missing field can never again pose as a
+      // measurement of zero.
+      const bp = state.bandPower || state.oscillations?.bandPower || {};
+      const band = (v) => (v === null || v === undefined || !Number.isFinite(Number(v))) ? '—' : f3(v);
+      return `coh=${pct(c)}  γ=${band(bp.gamma)} α=${band(bp.alpha)}`;
     }
 
     // Drives
