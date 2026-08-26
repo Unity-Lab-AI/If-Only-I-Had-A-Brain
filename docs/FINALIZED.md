@@ -38727,3 +38727,41 @@ All four launchers carry the line (`windows/start.bat`, `windows/Savestart.bat`,
 ### Verified — 6/6 against the real source
 
 All present legacy buttons hidden; a missing button (`btn-graceful-stop` is `.remove()`d off non-localhost) does not throw; titles annotated once and only once across repeat polls; fully restored — including original titles — when the control plane goes away. Dashboard divs 492/492, all scripts parse.
+
+---
+
+## 2026-08-26 - CTLSTOP.1: stop.* did not know 7526 existed, and its fallback killed it by accident - feature/stop-ctl-aware
+
+### Gee ask (verbatim per LAW #0)
+
+> *"does stop.bat properly stop 7526 too"*
+
+### The answer was NO, and the way it was no is worse than a plain omission
+
+Both stop scripts target **7525 only**. But step 3 — the "port still held" fallback — was `taskkill /f /im node.exe` on Windows and `pkill -9 -f "node"` on Linux: **force-kill EVERY node process on the machine.**
+
+⛔ So `brain-ctl` was not stopped deliberately; it was killed **indiscriminately and only sometimes** — whenever the graceful path failed. That is the worst of both worlds:
+
+- It also killed any unrelated node the operator had running.
+- ⚠ **And losing brain-ctl removes the RECOVERY PATH.** It is the process whose entire job is to outlive the brain so the dashboard's Start button can bring it back. A "stop" that sometimes deletes the way to start again is a trap of the same shape as the Stop-button incident already in this ledger.
+
+### Fixed — two separate things
+
+**1. The nuclear step now targets the PORT, not the image name.** Both scripts kill the PIDs actually holding 7525 and nothing else. Exactly what is wedged, nothing more. The `taskkill /f /im node.exe` text survives ONLY in the manual-advice line, now carrying an explicit warning that it takes the control plane with it.
+
+**2. 7526 is handled EXPLICITLY, and left running BY DEFAULT.** The scripts now say so out loud rather than being silent about a process they started:
+
+```
+[stop] control plane (port 7526)...
+  control plane LEFT RUNNING on 7526 -- this is deliberate.
+  It is what lets the dashboard Start the brain again.
+  Run stop.bat all to stop it too.
+```
+
+⭐ `stop.bat all` / `./stop.sh all` stops it too, and says what that costs: *"the dashboard Start button will not work until a launcher runs again."* Both platforms, same behaviour, same wording.
+
+### Verified
+
+`bash -n` clean on `linux/stop.sh`. `windows/stop.bat` block-paren balance 14/14 (an unbalanced batch `IF (`/`)` silently mis-executes rather than erroring, so this is checked, not eyeballed). Confirmed the executing nuclear kill is gone and 7526 is handled.
+
+⛔ **Deliberately NOT executed to test** — both scripts kill the brain, and she is mid-walk. The change is verified by structure and by the platform parsers, and the behaviour is a one-line read at next use.
