@@ -309,6 +309,23 @@ const SERVER_STATE_MIXIN = {
           pct: +(((this._lcEverFiredCount || 0) / Math.max(1, this._lcEverFired.length)) * 100).toFixed(2),
           sinceMs: this._lcEverFiredSince || null,
           regions: this._lueRegions,
+          // EVERFIRED.2 — SAY WHAT THIS MEASURES, because a bare `0%` beside a
+          // region name is read as "never used" and this instrument is not
+          // entitled to that claim. `_updateLangEverFired` POLLS lastSpikes on
+          // a 5s throttle and ORs into a bitset; it is not an event hook, so
+          // anything written and cleared between two polls is invisible to it
+          // permanently. Regions whose activity is transient by construction —
+          // fineType carries relation tags that are written, bound and cleared
+          // within a single pair — can therefore read 0 while being written
+          // thousands of times. ⚠ The converse does NOT hold and must not be
+          // inferred: a 0 here is not proof of health either. It is a floor on
+          // observed coverage and nothing more.
+          method: 'poll',
+          pollIntervalMs: 5000,
+          measures: 'fraction of cells observed non-zero in lastSpikes at a'
+            + ' 5s sample since boot — a LOWER BOUND on participation, not a'
+            + ' capability claim. Transient writes between samples are missed;'
+            + ' 0% means "never sampled active", never "never used".',
         };
       }
       // Throttled CSR row-recruitment scan (rowPtr diff — O(rows)/matrix,
@@ -652,6 +669,27 @@ const SERVER_STATE_MIXIN = {
             cached: this.curriculum._relUse.cached | 0,
             recent: (this.curriculum._relUse.recent || []).slice(0, 6),
             byTag: this.curriculum._relUse.byTag || {},
+            // RELWRITE.1 — `flat` alone could not say WHY, and the note above
+            // ("a high flat count early is CORRECT") is only true in one of the
+            // two cases it covers. Bands carrying mass but not yet separated
+            // means wait. Bands carrying ZERO means the relation never reached
+            // the matrix, and waiting for that is waiting forever. These split
+            // the bucket, and `lastRead` carries the raw shape behind the last
+            // flat verdict so the claim can be checked rather than believed.
+            flatWithMass: this.curriculum._relUse.flatWithMass | 0,
+            flatNoMass: this.curriculum._relUse.flatNoMass | 0,
+            lastRead: this.curriculum._relUse.lastRead || null,
+            // RELWRITE.1 — THE WRITE SIDE. `_relTagWrites` was incremented at
+            // curriculum.js and read by nothing in the entire tree; without it
+            // no amount of staring at the read side can establish whether any
+            // tag was ever written. `byTag` here is the write breakdown (do not
+            // confuse it with `byTag` above, which is the READ breakdown) — a
+            // tag present in writes and absent from reads is the six-band bug's
+            // exact signature, and it went undetected because neither half was
+            // published. `refused` counts tags rejected for not fitting.
+            tagWrites: (this.curriculum._relTagWrites | 0),
+            tagWritesByTag: this.curriculum._relTagWritesByTag || {},
+            tagWritesRefused: (this.curriculum._relTagRefused | 0),
           } : null,
         };
       })(),
@@ -756,9 +794,42 @@ const SERVER_STATE_MIXIN = {
             ? Math.round((matrixHits / emissions) * 100) : null;
           const rej = cc && cc._lastEmitRejection;
           const everFired = wm ? (wm.everFired | 0) : null;
+          // VOICELIE.1 — REFUSALS ARE EVIDENCE OF AN ATTEMPT.
+          //
+          // This verdict used to derive its status from `emissions` alone,
+          // which counts only ACCEPTED words. A cluster reaching for a word
+          // every tick and being refused every tick therefore published
+          // "nothing has attempted an emission since boot" — while the record
+          // of the most recent refusal was read four lines above and published
+          // in the very same object. Measured live at `no-best-word`, age 20s.
+          //
+          // That is the SYNCEMPTY lesson running backwards: not health inferred
+          // from a missing failure, but ABSENCE inferred from a missing
+          // success. The two states it conflated call for opposite responses —
+          // "no sample yet, wait" versus "she is trying and cannot", and only
+          // the second is a problem. `unmeasured` is now reserved for the case
+          // where there is genuinely neither a success nor a refusal on record.
+          const attempts = (cc && cc._emitAttempts) | 0;
+          const rejects = (cc && cc._emitRejects) | 0;
+          const rejectsByReason = (cc && cc._emitRejectsByReason)
+            ? Object.assign(Object.create(null), cc._emitRejectsByReason) : null;
           let status = 'unmeasured';
-          let reason = 'nothing has attempted an emission since boot — this is'
-            + ' NOT a claim that she cannot speak, only that no sample exists';
+          let reason = 'no emission has been attempted since boot — neither an'
+            + ' accepted word nor a refusal is on record. This is NOT a claim'
+            + ' that she cannot speak, only that no sample exists';
+          if (emissions === 0 && (rejects > 0 || rej)) {
+            // Named for what it is. She IS reaching; the reach is being refused.
+            status = 'attempting-refused';
+            const top = rejectsByReason
+              ? Object.entries(rejectsByReason).sort((a, b) => b[1] - a[1])[0] : null;
+            const ageS = rej && rej.ts ? Math.round((Date.now() - rej.ts) / 1000) : null;
+            reason = `${rejects || 'at least 1'} emission attempt(s) refused and`
+              + ` ZERO accepted since boot — she is reaching for words and not`
+              + ` clearing the gate.`
+              + (top ? ` Dominant cause: ${top[0]} (${top[1]}×).` : '')
+              + (rej ? ` Most recent: ${rej.reason || 'unknown'}` : '')
+              + (ageS !== null ? ` ${ageS}s ago.` : '');
+          }
           if (emissions > 0) {
             if (everFired > 0 && matrixDrivenPct >= 50) {
               status = 'matrix-driven';
@@ -790,6 +861,14 @@ const SERVER_STATE_MIXIN = {
             // answered for her on a test. A rising count beside falling
             // scores is the truth arriving, not a regression.
             oracleRefusedInGate: (cc && cc._oracleRefusedInGate) | 0,
+            // VOICELIE.1 — the DENOMINATOR. `emitRejection` below is a single
+            // last-value: it can say what went wrong most recently but never
+            // how often, and "one stray refusal" and "refused continuously for
+            // forty minutes" are opposite situations that it renders
+            // identically. These three answer how often, and by which cause.
+            emitAttempts: attempts,
+            emitRejects: rejects,
+            emitRejectsByReason: rejectsByReason,
             emitRejection: rej
               ? {
                   reason: rej.reason || 'unknown',

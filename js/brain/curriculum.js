@@ -15629,6 +15629,7 @@ export class Curriculum {
         this._relTagWarned.add(relationTagId);
         console.warn(`[Curriculum] relation tag ${relationTagId} does not fit ${BANDS} bands — NOT written. Raise Curriculum.RELATION_TAG_BANDS; a tag that silently writes nothing is how every channel above 5 stayed dark.`);
       }
+      this._relTagRefused = (this._relTagRefused || 0) + 1;
       return false;
     }
     const band = Math.floor(fineSize / BANDS);
@@ -15641,7 +15642,17 @@ export class Curriculum {
     // magnitudes would).
     const tagVal = binarize ? 1 : 0.5;
     for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
+    // RELWRITE.1 — this total existed and NOTHING IN THE TREE EVER READ IT.
+    // A write-only counter is the same defect as no counter at all, and it is
+    // the one number that separates "the bands have not separated yet" from
+    // "the tags never reached the matrix" — the two readings that a flat
+    // relation verdict cannot tell apart on its own. The per-tag breakdown is
+    // what makes it load-bearing: a single total cannot show that one channel
+    // is silent while its neighbours write, which is precisely the shape the
+    // six-band bug had.
     this._relTagWrites = (this._relTagWrites || 0) + 1;
+    if (!this._relTagWritesByTag) this._relTagWritesByTag = Object.create(null);
+    this._relTagWritesByTag[relationTagId] = (this._relTagWritesByTag[relationTagId] | 0) + 1;
     return true;
   }
 
@@ -15695,6 +15706,12 @@ export class Curriculum {
     if (band <= 0) return null;
 
     let bestTag = -1, best = -Infinity, second = -Infinity;
+    // RELWRITE.1 — carry the SHAPE of the readout out with the verdict.
+    // `flat` on its own is a true statement that explains nothing: bands that
+    // all hold real mass and bands that all hold ZERO both report flat, and
+    // those are opposite diagnoses. `totalMass` separates them in one number,
+    // and `nonZeroBands` says whether the channel structure exists at all.
+    let totalMass = 0, nonZeroBands = 0, scannedBands = 0;
     for (let t = 0; t < BANDS; t++) {
       const s = t * band;
       const e = Math.min(out.length, s + band);
@@ -15702,6 +15719,9 @@ export class Curriculum {
       let sum = 0;
       for (let i = s; i < e; i++) sum += out[i];
       const mean = sum / (e - s);
+      scannedBands++;
+      totalMass += mean;
+      if (mean > 0) nonZeroBands++;
       if (mean > best) { second = best; best = mean; bestTag = t; }
       else if (mean > second) { second = mean; }
     }
@@ -15710,7 +15730,7 @@ export class Curriculum {
     // Flat = the channels are not separated for this word yet. Said plainly
     // rather than dressed up as a verdict.
     const flat = !(best > 0) || margin <= Math.abs(best) * 0.05;
-    return { tag: bestTag, score: best, margin, flat };
+    return { tag: bestTag, score: best, margin, flat, totalMass, nonZeroBands, scannedBands };
   }
 
   /**
@@ -15731,6 +15751,11 @@ export class Curriculum {
   _confidentRelationFor(word) {
     const st = this._relUse || (this._relUse = {
       asks: 0, confident: 0, flat: 0, unreadable: 0, cached: 0,
+      // RELWRITE.1 — declared here rather than created on first use so the
+      // published block always carries them. A field that appears only once it
+      // is non-zero is indistinguishable from a field with no producer, which
+      // is the exact confusion this batch exists to end.
+      flatWithMass: 0, flatNoMass: 0, lastRead: null,
       recent: [], byTag: Object.create(null),
     });
     const w = String(word || '').toLowerCase().trim();
@@ -15747,7 +15772,29 @@ export class Curriculum {
     try { r = this.readRelationBand(w); } catch { r = null; }
     let val = null;
     if (!r) { st.unreadable++; }
-    else if (r.flat) { st.flat++; }
+    else if (r.flat) {
+      st.flat++;
+      // RELWRITE.1 — split FLAT into its two opposite meanings.
+      //
+      // ⛔ `flat` was one bucket holding two diagnoses that call for opposite
+      // action. Bands that all carry real mass but have not separated yet mean
+      // WAIT — she is learning and the channels will pull apart. Bands that are
+      // all ZERO mean the relation never reached the matrix, which is a bug and
+      // waiting for it is waiting forever. Every read on this walk reported
+      // flat, and with one bucket there was no way to tell which had happened.
+      if (r.totalMass > 0) st.flatWithMass = (st.flatWithMass || 0) + 1;
+      else st.flatNoMass = (st.flatNoMass || 0) + 1;
+      st.lastRead = {
+        word: w,
+        topTag: r.tag,
+        score: r.score,
+        margin: r.margin,
+        totalMass: r.totalMass,
+        nonZeroBands: r.nonZeroBands,
+        scannedBands: r.scannedBands,
+        at: now,
+      };
+    }
     else {
       // A second bar beyond `flat`: the winner must lead by a real fraction of
       // its own size, not merely by a floating-point hair.
