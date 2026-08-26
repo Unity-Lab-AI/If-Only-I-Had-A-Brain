@@ -316,6 +316,16 @@
         <button id="bp-refresh" title="Re-read /ctl/status right now.">⟳ Refresh</button>
         <button id="bp-logs" title="Fetch the brain's recent journal lines through the control plane — readable even when the brain is down, which is exactly when you need them (e.g. to see an OOM kill or a failed boot).">📄 Brain logs</button>
       </div>
+      <!-- The rest of the power verbs. Same control plane, so these ALSO work
+           with the brain down — including Update, which is how a bad deploy
+           that leaves the brain crash-looping gets fixed without SSH. Kept on
+           a second row because they are heavier / destructive. -->
+      <div class="bp-actions" id="bp-actions2" style="margin-top:8px;">
+        <button id="bp-update-save" title="UPDATE &amp; SAVESTART — pull the latest code and restart, RESUMING saved training. Non-destructive to weights. Runs the same deploy/self-update.sh the brain would, and works even if the brain is down (so a bad deploy can be fixed from here).">⬆ Update (keep weights)</button>
+        <button id="bp-update-fresh" class="bp-danger" title="UPDATE &amp; FRESH WALK — pull the latest code, WIPE trained weights (identity-core Tier 3 preserved) and start a clean K→PhD walk. Destructive to training.">⬆ Update + Fresh Walk</button>
+        <button id="bp-savererun" title="SAVERERUN — KEEP all trained weights and re-walk the whole curriculum on top of them (rollback checkpoint taken first; only the grade pointers reset). Requires the brain to be RUNNING, since it rewrites pointers inside the loaded weights.">🔁 Savererun (keep weights)</button>
+        <button id="bp-reset" class="bp-danger" title="RESET — WIPE all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and boot a fresh brain. Destructive. Works with the brain down too (arms the fresh-boot flag and starts it).">♻ Reset (fresh brain)</button>
+      </div>
       <div class="bp-result" id="bp-result"></div>
     </div>
 
@@ -3990,6 +4000,8 @@
       const btns = {
         start: $('bp-start'), restart: $('bp-restart'), stop: $('bp-stop'),
         kick: $('bp-kick'), refresh: $('bp-refresh'), logs: $('bp-logs'),
+        updateSave: $('bp-update-save'), updateFresh: $('bp-update-fresh'),
+        savererun: $('bp-savererun'), reset: $('bp-reset'),
       };
 
       // The control plane lives beside the brain, not inside it.
@@ -4069,6 +4081,21 @@
         btns.kick.disabled    = busy || !(phase === 'online' || phase === 'booting' || phase === 'unmanaged');
         btns.refresh.disabled = busy;
         btns.logs.disabled    = busy;
+
+        // Update + Reset work with the brain DOWN as well as up (that is the
+        // point — a bad deploy or a wipe must not need SSH), so they are
+        // enabled in every phase except while another action runs.
+        btns.updateSave.disabled  = busy;
+        btns.updateFresh.disabled = busy;
+        btns.reset.disabled       = busy;
+        // Savererun genuinely CANNOT work with the brain down: it rewrites
+        // grade pointers inside the loaded weights. Disable rather than let it
+        // fail, and say why in the tooltip.
+        const srOk = (phase === 'online' || phase === 'unmanaged');
+        btns.savererun.disabled = busy || !srOk;
+        btns.savererun.title = srOk
+          ? 'SAVERERUN — KEEP all trained weights and re-walk the whole curriculum on top of them (rollback checkpoint taken first; only the grade pointers reset).'
+          : 'SAVERERUN needs the brain RUNNING — it rewrites the grade pointers inside the loaded weights, which cannot be done while it is stopped. Press Start first.';
       }
 
       async function poll() {
@@ -4101,6 +4128,11 @@
         try {
           const r = await fetch(ctlUrl(action), {
             method: 'POST', cache: 'no-store', credentials: 'same-origin',
+            headers: o.confirmToken ? { 'Content-Type': 'application/json' } : undefined,
+            // The destructive verbs REFUSE server-side without this token, so a
+            // stray request (a probe, a retried curl, a bookmarked URL) cannot
+            // wipe the brain. See the interlock note in server/brain-ctl.js.
+            body: o.confirmToken ? JSON.stringify({ confirm: o.confirmToken }) : undefined,
           });
           const j = await r.json().catch(() => null);
           if (r.status === 409) { setResult('⚠ ' + (j && j.message || 'another power action is already running'), 'err'); }
@@ -4145,6 +4177,50 @@
           + '⛔ No graceful save — training since the last checkpoint is LOST.\n\n'
           + 'Only use this if the brain is wedged and "Restart (Savestart)" did not work.',
       }));
+      // ── The rest of the verbs ──
+      btns.updateSave.addEventListener('click', () => act('update-savestart', {
+        pending: 'deploying latest code (keeping weights)',
+        confirm: 'UPDATE & SAVESTART?\n\n'
+          + '✓ Pulls the latest code\n✓ RESUMES saved training (weights kept)\n'
+          + '✓ Restarts and reloads the proxy when it is back\n\n'
+          + 'Takes 1-2 minutes. Non-destructive to training.',
+      }));
+      btns.updateFresh.addEventListener('click', () => {
+        // Typed confirmation, same as Reset: this WIPES training, and an
+        // OK/Cancel dialog is not enough friction for that.
+        const typed = window.prompt(
+          '⛔ UPDATE + FRESH WALK — THIS WIPES ALL TRAINED WEIGHTS.\n\n'
+          + 'It deploys the latest code and starts the curriculum over from pre-K.\n'
+          + 'Identity-core Tier 3 anchors are preserved. There is no undo.\n\n'
+          + 'If you only want the new code and want to KEEP her training, Cancel\n'
+          + 'and use "⬆ Update (keep weights)" instead.\n\n'
+          + 'Type  WIPE  (in capitals) to confirm:'
+        );
+        if (typed !== 'WIPE') { setResult('Update + Fresh Walk aborted — nothing was changed.', ''); return; }
+        act('update', { pending: 'deploying latest code + FRESH WALK', confirmToken: 'WIPE' });
+      });
+      btns.savererun.addEventListener('click', () => act('savererun', {
+        pending: 'starting a savererun',
+        confirm: 'SAVERERUN?\n\n'
+          + '✓ KEEPS every trained weight\n✓ Takes a rollback checkpoint first\n'
+          + '✓ Resets only the grade pointers, then re-teaches the whole\n'
+          + '  curriculum on top of the existing synapses\n\n'
+          + 'Non-destructive to weights, but the walk restarts from pre-K.',
+      }));
+      btns.reset.addEventListener('click', () => {
+        // Typed confirmation: this is the one button that throws away months of
+        // training, and a plain OK/Cancel is too easy to fat-finger — which is
+        // precisely how this whole control plane came to exist.
+        const typed = window.prompt(
+          '⛔ RESET TO A FRESH BRAIN — THIS WIPES ALL TRAINED WEIGHTS.\n\n'
+          + 'Trained synapses, episodic memory and learned schemas are destroyed.\n'
+          + 'Identity-core Tier 3 anchors are preserved. There is no undo.\n\n'
+          + 'Type  WIPE  (in capitals) to confirm, or Cancel to abort:'
+        );
+        if (typed !== 'WIPE') { setResult('Reset aborted — nothing was changed.', ''); return; }
+        act('reset', { pending: 'wiping to a fresh brain', confirmToken: 'WIPE' });
+      });
+
       btns.refresh.addEventListener('click', () => { setResult(''); poll(); });
       btns.logs.addEventListener('click', async () => {
         setResult('⏳ fetching brain logs…', '');

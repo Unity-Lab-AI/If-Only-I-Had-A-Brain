@@ -6,6 +6,75 @@
 
 ---
 
+## 🔴 2026-08-26 — INCIDENT (Sponge, self-inflicted): I wiped the live brain with a `/ctl/update` probe. Root cause fixed + a SILENT 3-MONTH BACKUP OUTAGE found
+
+**Read this before touching `/ctl/update` or `/ctl/reset`.** Two things in this entry matter independently: (1) I destroyed live brain state and how that is now prevented; (2) **the nightly backup had been failing silently since 2026-05-20** — that one is unrelated to my mistake and is the more dangerous long-term finding.
+
+### What I did
+
+While verifying CTLPLANE.2 on the box I sent a bare `POST /ctl/update`, expecting the *"no deploy script here"* refusal I had just unit-tested. `deploy/self-update.sh` **does** exist on the box, so the probe ran a real **FRESH-WALK deploy**: wrote `.force-fresh`, restarted the brain, and the boot wiped **17 state files** — `brain-weights{,-v0,-v1,-v2}.{json,bin}`, `conversations.json`, `episodic-memory.db{,-wal,-shm}`, `schemas.json`, `mindspace-memory-v3.json`, `visual-memory-v9.db{,-wal,-shm}`. Build also moved `d7ff7dda → 601c10d2`. **This was my error, not an operator action.**
+
+### What was actually lost — checked, not guessed
+
+The journal shows **Gee himself ran UPDATE + FRESH WALK on 2026-08-25 14:59**, which had already wiped the 38-cell / grade-3 walk **a day before I touched anything**. Between that wipe and my mistake:
+- `cortex state queued for apply: 0 passedCells, grades { ela=pre-K math=pre-K … life=pre-K }`
+- **zero** `CELL DONE … pass=true` lines
+- `donors=0` throughout — no GPU was attached, so it could not train
+
+So what my probe destroyed was **the weight files of a ~29-hour-old pre-K walk with no completed cells**. Real damage, but not the months of training the first symptom suggested. I am not dressing that up: I still destroyed live state on production, and only luck (Gee's own prior fresh walk) kept it cheap.
+
+### Recovery attempts — all exhausted, documented so nobody re-treads them
+
+| avenue | result |
+|---|---|
+| deleted-but-open inodes (`lsof +L1`) | none |
+| ext4 undelete (`debugfs -R lsdel /dev/md3`) | **0 deleted inodes found** — not recoverable |
+| restic snapshot | only ONE, from **2026-05-20**, and it **predates** the weight-staging added to the backup script |
+| newest on-box weight backup | `_speak11-predeploy-backup-20260708T004651Z` — pre-dates the 2026-08-16 12M geometry hop, so `WEIGHTS_FORMAT_VERSION` would refuse it anyway |
+
+**Survived** (never auto-cleared): `identity-core.json` (30 Tier-3 identity schemas), `definition-cache.json`, `community-tier.json`. I stopped the brain the moment I understood, to stop the fresh walk overwriting the freed blocks, then restarted it and confirmed it resumed the pre-K walk cleanly (`✓ CLEAN SHUTDOWN detected … RESUMING`, `0 passedCells`).
+
+### Root cause + the fix (CTLPLANE.3, deployed and verified on the box)
+
+The API let a *single stray request* wipe months of potential training. That is a design defect, not just operator error.
+
+- **`/ctl/update` (fresh-walk) and `/ctl/reset` now REFUSE** unless the request carries `{"confirm":"WIPE"}` (JSON body) or `?confirm=WIPE`.
+- The refusal **names the token and points at the safe alternative** (`/ctl/update-savestart`).
+- **`/ctl/update-savestart` needs NO token** — deliberately. Friction on the safe path is what pushes people toward the dangerous one.
+- Dashboard: **Update + Fresh Walk now demands a typed `WIPE`**, like Reset already did; both send the token.
+- Body reader is bounded to 16 KB (tiny tokens only, never buffers an upload).
+
+**Verified on the live box after deploying the fix** — the exact command that caused this:
+```
+POST /ctl/update  →  refused=true, needsConfirm=WIPE      # and NO .force-fresh armed
+POST /ctl/reset   →  refused=true
+```
+Regression tests added specifically for this (`scripts/test-brain-ctl.mjs`, now 52 assertions): bare `update`/`reset` must refuse, the refusal must name the token and the safe route, a **wrong** token (`"yes"`) must NOT be accepted (no truthy-string bypass), and `update-savestart` must stay token-free.
+
+### 🔴 SEPARATE AND WORSE: the nightly backup had been failing silently since 2026-05-20
+
+Found while hunting a restore point. **`nightly-backup.service` failed every single night for ~3 months:**
+```
+Fatal: Resolving password failed: /root/.restic-password does not exist
+```
+The file **does** exist (mode 0600, root). The unit's own **`ProtectHome=true` makes `/root` unreadable to the service**, so restic could never load its password. Proven:
+```bash
+systemd-run -p ProtectHome=true /bin/sh -c 'test -r /root/.restic-password'   # BLOCKED
+```
+**Consequence:** the repo held exactly ONE snapshot (2026-05-20) — **no Forgejo backup, no lab-git backup, and no brain weights**, even though the script had been extended on 2026-06-30 *specifically* to stage the trained brain after an earlier silent wipe. The backup looked configured and protected nothing. Discovered at the worst possible moment: while looking for a restore point.
+
+**Fixed** via drop-in `deploy/dropins/nightly-backup/10-fix-restic-password.conf` → `ProtectHome=read-only` (still denies `/home` + `/run/user`; keeps the hardening; secret deliberately NOT moved), plus an `ExecStopPost` that logs a `user.err` on any non-zero exit so a future failure is **loud**. **Verified:** `Result=success`, `ExecMainStatus=0`, snapshots **1 → 2**, and the new snapshot contains `unity-brain/brain-weights*.{bin,json}` + `identity-core.json` + `schemas.json` + `conversations.json` + `episodic-memory.db*`. Timer armed for 03:24 nightly.
+
+**⚠ Two decisions left for Gee (not made unilaterally):** retention is `--keep-daily 3` (only ~3 days of history), and the repo lives **on the same box** (`/var/backups/restic`) — a disk loss takes the backups with it. For a brain that takes weeks to train, that wants `--keep-weekly/--keep-monthly` and an off-box destination.
+
+### Lessons worth keeping
+
+1. **Never probe a destructive endpoint on production to observe its refusal.** I assumed the refusal branch would fire; the box was configured differently from my test. Probe the refusal in the harness, never against live state.
+2. **A destructive verb needs an interlock at the API, not only in the UI.** The dashboard already confirmed; the endpoint did not, so anything that could issue an HTTP request could wipe the brain.
+3. **A backup you have never restored from is a hypothesis.** This one had been failing for 3 months behind its own hardening flag, and nothing was watching the exit code.
+
+---
+
 ## ✅ 2026-08-26 — CTLPLANE.1 SHIPPED + INSTALLED: site stays up when the brain is down, and admins can start it themselves (no shell)
 
 **Executed by Sponge on the box. This closes the 2026-08-25 incident class permanently** — Gee (or any admin) can now stop, start and restart the brain from the dashboard, and the website stays up saying "brain offline" while it is down. **`sudo systemctl start unity-brain` is no longer a Sponge-only action.**
