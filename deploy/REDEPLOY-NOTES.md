@@ -6,6 +6,81 @@
 
 ---
 
+## ✅ 2026-08-26 — CTLPLANE.1 SHIPPED + INSTALLED: site stays up when the brain is down, and admins can start it themselves (no shell)
+
+**Executed by Sponge on the box. This closes the 2026-08-25 incident class permanently** — Gee (or any admin) can now stop, start and restart the brain from the dashboard, and the website stays up saying "brain offline" while it is down. **`sudo systemctl start unity-brain` is no longer a Sponge-only action.**
+
+### The structural flaw this removes
+
+Every power control lived **inside** `brain-server.js` (`/shutdown`, `/restart`, `/savererun`, `/update`). A control plane hosted by the thing it controls has one unavoidable dead zone: **a stopped brain cannot serve its own start button.** Worse, the box's sudoers only granted `unity` the verb `systemctl restart unity-brain` — **never `start`** — so even the brain's own tooling could not have recovered a deliberate halt.
+
+### What is now installed on the box
+
+| component | location | role |
+|---|---|---|
+| `brain-ctl.js` | `/opt/unity-brain/server/` | the service — zero deps, node builtins only, never imports brain code |
+| `unity-brain-ctl.service` | `/etc/systemd/system/` | **always-up** unit; `Restart=always`, `StartLimitIntervalSec=0`, `MemoryMax=256M` (running at **12.8 MB**) |
+| `brain-ctl-helper` | `/usr/local/sbin/` | the ONLY root-capable surface; closed verb set, **hardcoded** unit name |
+| sudoers rule | `/etc/sudoers.d/unity-brain-ctl` | narrow NOPASSWD for that one helper path (`visudo -c` → parsed OK) |
+| nginx snippet | `/etc/nginx/snippets/unity-brain-ctl.conf` | `/ctl/` admin lane + offline-tolerant public lanes |
+
+`unity-brain-ctl` is deliberately **not** `Requires=`/`PartOf=` `unity-brain` — it must stay up precisely when the brain is down.
+
+### Endpoints (loopback-bound; external access via the Basic-auth `/ctl/` lane, verified **401** without auth)
+
+`GET /ctl/status` · `POST /ctl/start` · `POST /ctl/stop` · `POST /ctl/restart` · `POST /ctl/kick` · `GET /ctl/logs`
+
+`/ctl/status` reports **six honest phases**, and the distinctions are real ones the old UI could not make:
+- **`booting` vs `online`** — the brain binds its port only *after* loading ~5.4 GB of weights, so "systemd active" and "actually serving" are different facts. Conflating them is why a healthy boot looked like a failure.
+- **`halted`** — exit 42 detected, i.e. a *deliberate* stop systemd won't fight, so the UI says "press Start" rather than implying a crash. (Gated on `activeState === 'inactive'`, because `ExecMainStatus` lingers as the last exit code and would otherwise keep claiming "halted" after a later start.)
+- **`unmanaged`** — port open but unit inactive (hand-started `node server/brain-server.js`). Counts as online because the site really works; claiming "offline" would be a lie the site visibly contradicts.
+
+### Startup reloads the brain's proxy layer (the operator's explicit ask)
+
+After a start, once the brain has **bound its port**, ctl runs `nginx -t && systemctl reload nginx` so the upstream lanes re-establish cleanly and no stale 502 lingers. **`reload`, not `restart`** — connections drain and the static site never drops, which is the entire point. `nginx -t` gates it: a bad config is refused rather than turning a brain outage into a total site outage. A reload failure is reported but never masks a successful start.
+
+### The site now survives the brain
+
+`proxy_intercept_errors` + `error_page 502 503 504 = @named` turn a dead upstream into **HTTP 200 with a real JSON body** (`brainOffline: true` + a human sentence) on `/public-state.json` and `/minds-eye.json`. Previously those returned a 502 **HTML** page that callers `.json()`-parse-errored on — or worse, on this vhost an unproxied path falls through to `location /` → `index.html`, so the viewer parsed the whole SPA as JSON. `minds-eye.html` and the dashboard's `probePublicBrain()` now read the flag, so a genuine outage no longer renders as the much softer *"her mind's eye is warming up…"*.
+
+### VERIFIED ON THE LIVE BOX — full operator cycle, twice, training intact
+
+Driven in **real Chromium against the actual deployed `dashboard.html` bytes** and the real brain:
+
+| step | observed |
+|---|---|
+| baseline | `Brain online` · `unit active/running · up 3m · 6.2 GB` · Start correctly **disabled** |
+| clicked **⏹ Stop** | panel → `Brain halted`, exit 42 detected, Start became **enabled** |
+| **site during outage** | `/` **200**, `/dashboard.html` **200**, `/compute.html` **200** |
+| public lanes during outage | `/public-state.json` **200** `brainOffline:true` · `/minds-eye.json` **200** `brainOffline:true` |
+| clicked **▶ Start** | `✓ Brain started and is serving. Proxy lanes reloaded.` → panel `Brain online` |
+| after recovery | `/public-state.json` serving real state, clock advancing |
+| **training** | `✓ CLEAN SHUTDOWN detected — COMPATIBLE (formatVersion=5, 411,216,550 neurons). RESUMING. Auto-clear SKIPPED` + 30 Tier-3 schemas + `passedPhases restored: 3` — **after BOTH cycles** |
+
+Security verified on the box too: `/ctl/` is **401** without auth, and as the `unity` user the helper **refuses** `forgejo` and `sshd` (exit 77) while allowing `unity-brain`.
+
+### Tests (shipped, runnable anywhere — mock brain + mock helper, touch no real unit)
+
+```bash
+node scripts/test-brain-ctl.mjs        # 31/31 — HTTP contract, graceful-stop ORDERING
+                                       #         (brain asked BEFORE systemd), 409
+                                       #         concurrency + lock release, helper refusals
+node scripts/test-brain-power-ui.mjs   # 13/13 — real Chromium: proves START WORKS
+                                       #         WITH THE BRAIN DOWN
+```
+
+The loop found four real defects that inspection had missed: `unmanaged` mislabelled as offline; exit-42 `halted` persisting after later starts; a duplicated 5-minute bind-wait loop (now one configurable helper); and minds-eye rendering an outage as "warming up".
+
+### ⚠ Notes for the next operator
+
+- **`/dashboard.html` SPA-swallows — the real URL is `/html/dashboard.html`.** On this vhost `location /` falls through to `index.html`, so `curl …/dashboard.html` returns the 55 KB landing shell, not the 345 KB dashboard. I briefly mis-read a deploy as failed because of this.
+- **`unityailab.com` is NOT the brain vhost.** The brain is `if-only-i-had-a-brain.git.unityailab.com`. Health-checking the wrong host reports a happy site while the brain is down.
+- **Two dashboard copies, again.** `html/*` auto-deploys to `/var/www/pages/…`, but `/opt/unity-brain/html/*` is a **separate** copy the Node process serves. Both were synced here (md5 match); a future HTML fix must do the same.
+- The vhost's inline `location = /public-state.json` and `location = /minds-eye.json` blocks were **removed** — the snippet supersedes them with offline-tolerant versions, and duplicate `location =` blocks make `nginx -t` fail. Rollback copies: `/root/vhost.rollback-*`, `/root/vhost.bak-*`.
+- Backend code on the box is still `d7ff7dda`; only `brain-ctl.js` + the dashboard were added. `main` is ahead — a `server/**` redeploy remains a separate, deliberate action.
+
+---
+
 ## ✅ 2026-08-26 — RESOLVED: box recovered (savestart) + start-limiter hazard closed + Stop button removed from the box's OWN dashboard
 
 **Executed by Sponge on the box (Gee has no shell). The 2026-08-25 "BOX IS DOWN" section below is now HISTORY — read this first.**
