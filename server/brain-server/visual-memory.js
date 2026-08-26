@@ -1243,6 +1243,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   _referenceImagePrompt(concept) {
     const c = String(concept || '').toLowerCase().replace(/[^a-z' -]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!c) return '';
+    // ⚠ Hoisted to function scope: the definition-tail filter below computes
+    // this inside a nested try, and the subject framing at the end of the
+    // function needs it too. Left where it was it is a ReferenceError that
+    // `node --check` cannot see. Defaults FALSE — an unavailable taxonomy
+    // means "not known to be a person", which is the safe framing.
+    let conceptIsPerson = false;
     let defTail = '';
     try {
       const cx = this.cortexCluster;
@@ -1260,7 +1266,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         let words = d.toLowerCase().split(/[^a-z]+/).filter(w2 => w2.length > 2 && w2 !== c);
         try {
           const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
-          const conceptIsPerson = tax.primaryLex(c) === 18;
+          conceptIsPerson = tax.primaryLex(c) === 18;
           words = words.filter(w => tax.knownDescriptor(w) && (conceptIsPerson || tax.primaryLex(w) !== 18));
         } catch { /* taxonomy unavailable — the raw tail stands */ }
         if (words.length) defTail = ' ' + [...new Set(words)].slice(0, 6).join(' ');
@@ -1293,9 +1299,42 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     let ageSteer = '';
     try {
       const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
-      if (tax.primaryLex(c) === 18 && typeof tax.descendsFromJuvenile === 'function' && !tax.descendsFromJuvenile(c)) ageSteer = ', adult';
+      // ⚠ Person-ness is decided HERE, not in the definition-tail block above:
+      // that block only runs when a definition is available, so a person word
+      // with no cached definition would fall through to object framing.
+      conceptIsPerson = tax.primaryLex(c) === 18;
+      if (conceptIsPerson && typeof tax.descendsFromJuvenile === 'function' && !tax.descendsFromJuvenile(c)) ageSteer = ', adult';
     } catch { /* taxonomy unavailable — the un-steered prompt stands */ }
-    return `${c}${ageSteer}${defTail}, realistic photograph, true to life, documentary photography, natural lighting, full color, richly detailed, single centered subject, plain uncluttered background`;
+    // ⛔ PROMPTBLEED — THE TAIL WAS A PORTRAIT RECIPE, APPLIED TO EVERYTHING.
+    //
+    // Operator: *"every concept she looks up is just a profile image of a
+    // younge person"*. The concept words were CLEAN — printed for eight
+    // concepts, and object words carried no person steering at all, so the
+    // age-steer was not misfiring. The bleed was the shared tail:
+    // *"documentary photography, natural lighting, single centered subject,
+    // plain uncluttered background"* is the canonical description of a
+    // PORTRAIT SHOOT, and a generator handed that resolves an ambiguous or
+    // weak subject noun into a person.
+    //
+    // ⚠ The previous pass SAW this and did not follow it — its own note reads
+    // *"teacher + our full documentary steering → a schoolgirl"*. It fixed the
+    // AGE (adult vs child) and never questioned the PERSON-NESS, so the
+    // steering kept pulling toward people and `adult` only made them older.
+    //
+    // ⭐ Verified the way this lane demands: PINNED-SEED A/B on the same word,
+    // only the tail differing, judged by the operator — *"B's are all 100%
+    // better"* across chair / hammer / apple.
+    //
+    // ⚠ KEPT deliberately: `color photograph` + `full color, richly detailed`.
+    // Those carry the two earlier fixes in this same string — photographic
+    // realism (which killed the cartoon-mascot problem) and full colour (which
+    // killed the black-on-white line drawings that field-rendered as pencil).
+    // Only the portrait-recipe terms are gone.
+    //
+    // ⚠ POSITIVE terms only, per the standing rule: nothing here says "not a
+    // person", because an image model attends to the nouns it is given.
+    const subjectFraming = conceptIsPerson ? 'color photograph' : 'color photograph of the object';
+    return `${c}${ageSteer}${defTail}, ${subjectFraming}, full color, richly detailed, plain background`;
   },
 
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C
