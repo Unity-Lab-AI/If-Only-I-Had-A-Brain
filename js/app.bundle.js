@@ -106715,6 +106715,14 @@ var Curriculum = class _Curriculum {
       flatWithMass: 0,
       flatNoMass: 0,
       lastRead: null,
+      // RELSEP.1 — declared up front so the block always carries them; a field
+      // that appears only once non-zero is indistinguishable from one with no
+      // producer, which is the confusion this family of fixes exists to end.
+      bestMarginRatio: 0,
+      bestMarginWord: null,
+      lastMarginRatio: 0,
+      marginProgress: 0,
+      marginGate: 0,
       recent: [],
       byTag: /* @__PURE__ */ Object.create(null)
     });
@@ -106736,6 +106744,19 @@ var Curriculum = class _Curriculum {
       r = null;
     }
     let val = null;
+    const RELMIN = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
+    if (r && r.score > 0) {
+      const ratio = r.margin / Math.abs(r.score);
+      if (Number.isFinite(ratio)) {
+        st.lastMarginRatio = ratio;
+        if (!(st.bestMarginRatio > 0) || ratio > st.bestMarginRatio) {
+          st.bestMarginRatio = ratio;
+          st.bestMarginWord = w;
+        }
+        st.marginProgress = RELMIN > 0 ? Math.min(1, st.bestMarginRatio / RELMIN) : 0;
+        st.marginGate = RELMIN;
+      }
+    }
     if (!r) {
       st.unreadable++;
     } else if (r.flat) {
@@ -106753,8 +106774,9 @@ var Curriculum = class _Curriculum {
         at: now
       };
     } else {
-      const MIN2 = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
-      if (r.score > 0 && r.margin / Math.abs(r.score) >= MIN2) {
+      const MIN2 = RELMIN;
+      const ratio = r.score > 0 ? r.margin / Math.abs(r.score) : 0;
+      if (r.score > 0 && ratio >= MIN2) {
         val = { tag: r.tag, margin: r.margin, score: r.score };
         st.confident++;
         st.byTag[r.tag] = (st.byTag[r.tag] | 0) + 1;
