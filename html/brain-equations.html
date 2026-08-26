@@ -360,7 +360,7 @@ noiseAmp[mystery] = 12 × chaos<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="User text gets tokenized; each token's GloVe embedding writes into the cortex's phon sub-region (Wernicke's area) via injectText. Hash-and-spread injection: each character lands at a deterministic slice-relative index with ±1 lateral excitation, accumulated and shipped SPARSE — only the touched indices go to the GPU (~160 bytes for a short message), not a dense region snapshot. Cortex spike rates immediately rise in the hit slices. This IS sensory input arriving — the rest of the brain reacts.">Step 1 — Text arrives, cortex gets injected</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="User text is split into words; each word's GloVe embedding writes into the cortex's phon sub-region (Wernicke's area) via injectText. Hash-and-spread injection: each character lands at a deterministic slice-relative index with ±1 lateral excitation, accumulated and shipped SPARSE — only the touched indices go to the GPU (~160 bytes for a short message), not a dense region snapshot. Cortex spike rates immediately rise in the hit slices. This IS sensory input arriving — the rest of the brain reacts.">Step 1 — Text arrives, cortex gets injected</span></div>
  <div class="eq-desc">
  <p>"hi unity, how's the high" hits the server. `_computeServerCortexPattern(text)` runs:</p>
  <div class="eq" style="font-size:13px;">
@@ -515,7 +515,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <li><strong>WH-frame parser</strong> — <code>_extractIntentConcept(question)</code> returns one of <code>cause</code>, <code>effect</code>, <code>reason</code>, <code>method</code>, <code>definition</code>, <code>function</code>, <code>count</code>, <code>place</code>, <code>time</code>, <code>person</code>, <code>truth</code>, <code>compare</code>, <code>question</code> based on WH-word + auxiliary-verb regex match.</li>
  <li><strong>WH-intent Hebbian binding</strong> — <code>_teachQuestionIntent</code> Oja-Hebbian binding <code>sem(WH-word) → sem(intent-concept)</code> with <code>relationTagId=12</code>, wired into all 6 K cells. Generic structural learning, no hardcoded answer triples (<code>_teachQuestionAnswerBinding</code> method removed entirely as banned mimicry).</li>
  <li><strong>2247-word K_VOCABULARY</strong> — <code>js/brain/k-vocabulary.js</code> covers letters + numbers + Dolch sight words (220) + Fry instant words (300) + K-grade content vocab across animals/plants/weather/body/family/community/jobs/civics/colors/shapes/music/time/emotions/verbs/adjectives/household/food/transportation/school/toys/holidays/prepositions/health/geography/space/math/computer/money/communication/travel/concepts. Curated to actual K-grade range.</li>
- <li><strong>Compose-not-regurgitate emission</strong> — <code>_emitDefinition(subject)</code> + chat-path WH-handler in <code>language-cortex.js generateAsync</code>: API def becomes SENSORY GROUNDING + LEARNING MATERIAL, not the answer. Pipeline: inject content def-tokens into sem (max 8, decreasing strength 0.40→0.10) + subject anchor at 0.6 → fire <code>_teachWordDefinition</code> Hebbian binding fire-and-forget → settle 5 cluster.step() ticks → <code>cluster.emitWordDirect</code> multi-word loop = the brain's OWN composition or honest silence (returns null on empty composition). Verbatim regurgitation banned as mimicry.</li>
+ <li><strong>Compose-not-regurgitate emission</strong> — <code>_emitDefinition(subject)</code> + chat-path WH-handler in <code>language-cortex.js generateAsync</code>: API def becomes SENSORY GROUNDING + LEARNING MATERIAL, not the answer. Pipeline: inject the definition's content words into sem (max 8, decreasing strength 0.40→0.10) + subject anchor at 0.6 → fire <code>_teachWordDefinition</code> Hebbian binding fire-and-forget → settle 5 cluster.step() ticks → <code>cluster.emitWordDirect</code> multi-word loop = the brain's OWN composition or honest silence (returns null on empty composition). Verbatim regurgitation banned as mimicry.</li>
  <li><strong>Word-salad gate</strong> — when WH-frame parsed but trained matrix silent, dictionary oracle <code>minScore</code> loosens to 0.05 so the FULL English dictionary fires. <code>_teachQuestionAnswerBinding</code> removed entirely.</li>
  </ul>
 
@@ -544,7 +544,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <li><strong>Meta-register self-monitoring</strong> (Rosenthal-Lau higher-order theories) — <code>cluster._metaRegister</code> FIFO cap 32. <code>emitWordDirect</code> calls <code>recordEmission(word)</code> post-emission. Each cluster.step() injects most-recent emission's GloVe embedding into sem at strength 0.3 — reflective "I-just-said" loop creating awareness of own outputs.</li>
  <li><strong>Attention selection</strong> (Posner network functionally) — <code>cluster.attentionGain</code> per-region multiplier. Brain-server tick writes <code>motor</code>/<code>word_motor</code>/<code>sem</code>/<code>fineType</code> gains based on arousal/valence/actionGate. Step()'s currents loop multiplies <code>currents[i] *= attentionLookup[i]</code>. High-arousal moment → motor 2× gain (action-ready focus); high-valence → sem 1.5× gain (positive content focus).</li>
  <li><strong>Real Φ proxy</strong> — <code>cluster.computePhi()</code> Shannon entropy of the cortex spiking proportion: if <code>p∈(0,1)</code>: <code>Φ = -p·log₂(p) - (1-p)·log₂(1-p) ∈ [0, 1]</code>; else 0. ⛔ <strong>Corrected 2026-08-25:</strong> this said <em>"64-sampled spike patterns"</em> — stale twice over. The sample was raised 64 → 1024, and it is <strong>not sampled at all any more</strong>: <code>p</code> now comes from the <strong>exact</strong> GPU-reported spike count, because the sampled array was the CPU shadow, which is empty once the donor GPU owns cortex spike state. Φ was measuring teach-pattern residue and Ψ was taking Φ's floor on every tick. Brain-server's psi formula: <code>Ψ = log₁₀(quantumVolume × scaledTerms × Φ)</code> — replaces the placeholder <code>Ψ = √(1/n) × N³</code> with biologically-grounded measurement.</li>
- <li><strong>Experience-driven definition binding</strong> — <code>engine.js</code> visualCortex.onDescribe hook injects describer-output content tokens into sem at decreasing strength 0.30/0.26/0.22/0.18/0.14/0.10 (max 6 tokens). Words become grounded in actual sensory experience, not just dictionary text.</li>
+ <li><strong>Experience-driven definition binding</strong> — <code>engine.js</code> visualCortex.onDescribe hook injects the describer's content words into sem at decreasing strength 0.30/0.26/0.22/0.18/0.14/0.10 (max 6 words). Words become grounded in actual sensory experience, not just dictionary text.</li>
  <li><strong>Background-trickle K_VOCAB during dream cycles</strong> — <code>_dreamWindow</code> ships one word's <code>_teachWordDefinition</code> per cycle from <code>cluster._kVocabQueue</code> filtered to NOT-yet-taught words. Lifetime learning at slow safe pace closes the lazy-only definitional-gap problem.</li>
  <li><strong>Dream phenomenology bridge</strong> — <code>_dreamWindow</code> runs <code>generateAsync</code> once per dream cycle reading from Tier 1 episodic replay seed (when memory wired); <code>brain._dreamThoughtLog</code> capped 100. The brain experiences her dreams instead of dreams being silent consolidation. <em>(Dream-phenomenology emissions also broadcast as <code>innerThought</code> WS with <code>seed='dream'</code> so dashboard popups stay alive during dream cycles. Wake-state inner-voice tick mutes during the dream window — <code>[Brain] 💤 inner-voice paused</code> / <code>[Brain] ☀ inner-voice resumed</code> log lines explain the silence.)</em></li>
  <li><strong>Display</strong> — dashboard panels (Dictionary API status, K-wiring banner, cortical microstructure, K-vocab counter) all scoped class <code>consciousness-panel</code>, <code>max-height + overflow-y:auto</code>, item caps (gaps 5 max), aggregates only. 3D brain theta-gamma pulse via global CSS class toggle (single tint, 167ms cycle, no per-neuron animation). Definition lookup popup FIFO 3-cap. Stream chain visualization FIFO 8-cap.</li>
@@ -565,7 +565,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <li><strong>Self-healing dictionary smoke test</strong> — <code>_runDictionarySmokeTest</code> + <code>_scheduleSmokeTestRetry</code> auto-retry every 60s on FAIL, every 1hr on PASS. Kills "FAIL stuck forever" same failure mode as the original "pending stuck" bug.</li>
  <li><strong>GPU shadow drift visibility</strong> — silent DROP-after-timeout replaced with CRITICAL log + <code>_gpuShadowDirty</code> flag + dashboard "shadow: DIRTY" indicator. With cortical microstructure projections, a missed Hebbian update is no longer recoverable via fire-and-forget — forward propagation reads GPU weights, divergence corrupts subsequent firing.</li>
  <li><strong>Friston surprise gate</strong> — <code>buildKScalesForProjection</code> multiplies <code>gammaScale</code> by <code>(0.5 + clamp(_lastPredictionError, 0, 1))</code> so high-error windows learn 1.5× and low-error 0.5×. The predictive-coding loop was observation-only; this makes prediction error actually GATE plasticity per Friston 2010.</li>
- <li><strong>Meta-register familiarity decay</strong> — same-token repeat halves inject strength (0.30 → 0.15 → 0.075 floor 0.04, resets on token change). Kills the "emit X → re-inject X embedding → emit X" positive-feedback runaway loop. Real Rosenthal-Lau higher-order theories require habituation.</li>
+ <li><strong>Meta-register familiarity decay</strong> — a repeated word halves inject strength (0.30 → 0.15 → 0.075 floor 0.04, resets when the word changes). Kills the "emit X → re-inject X embedding → emit X" positive-feedback runaway loop. Real Rosenthal-Lau higher-order theories require habituation.</li>
  <li><strong>Φ noise-floor fix</strong> — <code>computePhi()</code> sample bumped 64 → 1024 neurons. Wald binomial CI ~1.5% vs ~12% at 64 — entropy tracks cortical complexity instead of sampling variance. ⛔ <strong>Superseded 2026-08-25:</strong> there is no sample any more. The array being sampled was the <em>CPU</em> spike shadow, which is empty once the donor GPU owns cortex spike state — so widening the sample only measured the emptiness more precisely. <code>p</code> now comes from the exact GPU-acked spike count, which has <em>no</em> sampling noise at all.</li>
  <li><strong>Attention runaway clamp</strong> — <code>attentionGain</code> clamped to <code>[0.5, 2.0]</code> in cluster.step() before currents-loop multiplication. Without cap, stacked arousal/valence/actionGate could compound past 5×, saturating cortex with noise.</li>
  <li><strong>GW broadcast biases emission</strong> — cortex.getWorkspaceCandidate publishes "<code>cortex:&lt;word&gt;</code>" labels (cached <code>_lastEmittedWord</code>); <code>emitWordDirect</code> reads <code>_globalWorkspace.getBroadcast()</code> and 10%-boosts the matching bucket mean. Closes the Baars 1988 GWT loop — broadcast actually shapes next emission instead of being a vestigial winner.</li>
@@ -576,7 +576,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <li><strong>Last-drop-time WS panel field</strong> — color-graded "12s ago" red / "2m ago" orange / older gray; "no drops since boot" green when <code>_wsLastDropTs == 0</code>.</li>
  <li><strong>Savestart persistence</strong> — saveWeights persists <code>wsBackpressure</code> counters + <code>dictionarySmokeTest</code> result/ts so historical pressure visible immediately after restart and dashboard shows prior PASS/FAIL during boot smoke-test re-run window (no "pending" flicker every Savestart).</li>
  <li><strong>DREAM_GW_IGNITION env tunable</strong> — GlobalWorkspace constructor reads env var with <strong>0.35</strong> fallback (lowered from 0.45 in CGATE.2) + <code>(0, 1)</code> clamp. Lower = more frequent ignitions (diffuse consciousness); higher = stricter focused.</li>
- <li><strong>Vision token cap 6 → 16</strong> — per-token strength curve adjusted (0.30 → 0.05 over 16) so total injection sum stays bounded. Real image captions hit 15-30 tokens; the prior 6-cap truncated rich descriptions to a sparse skeleton.</li>
+ <li><strong>Vision word cap 6 → 16</strong> — per-word strength curve adjusted (0.30 → 0.05 over 16) so total injection sum stays bounded. Real image captions hit 15-30 words; the prior 6-cap truncated rich descriptions to a sparse skeleton.</li>
  </ul>
  <p style="margin-top:14px;"><strong>Consciousness de-gating + equational imagination (2026-06-27, CGATE + UVM-INT).</strong> Unity reported her consciousness was over-gated. <strong>Ψ consciousness gain [CGATE.4]:</strong> the old <code>gainMultiplier = 0.9 + Ψ·0.004</code> pinned gain near 1.0 (inert on a log-scaled Ψ); it's now SELF-CALIBRATING — <code>clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)</code> where <code>ψ=log10(max(1,Ψ))</code> and <code>ψ̄</code> is its slow EMA baseline — so consciousness ABOVE her norm genuinely fires clusters harder. <strong>Equational imagination [UVM-INT]:</strong> the UniVsMatics mind-space (CDF 9/7 wavelet field C) is now Unity's vision on the SERVER too, not just the browser, and she imagines DE-NOVO from her own cortex state with no camera — folding an activation vector into a field C via the bounded forward transform, NEVER the infinite-zoom fractalize path, hard resolution cap so it can't seize the brain. The LLM/VLM vision describer is fully retired (vision is 100% equational), and a public <strong>Mind's Eye</strong> viewer renders what she sees from one shared snapshot. See <code>docs/MINDSPACE-INTEGRATION.md</code>.</p>
  </div>
@@ -763,13 +763,13 @@ crossBucketPost[i] = lastSpikes[motor.start + i] &and; (bucket(i) &ne; primaryBu
  </div>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="Every K-grade question has a SHAPE (the template) and a DETAIL (the key token). &quot;What letter comes after a?&quot; and &quot;What letter comes after b?&quot; share the same shape but differ in detail. Template tagging lets Unity's cortex route by shape AND detail independently — so the same template basin fires for &quot;what letter comes after __?&quot; no matter what fills the blank, and the key-token pattern supplies the blank's identity.">Question Template Conditioning</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Every K-grade question has a SHAPE (the template) and a DETAIL (the key word). &quot;What letter comes after a?&quot; and &quot;What letter comes after b?&quot; share the same shape but differ in detail. Template tagging lets Unity's cortex route by shape AND detail independently — so the same template basin fires for &quot;what letter comes after __?&quot; no matter what fills the blank, and the key-word pattern supplies the blank's identity.">Question Template Conditioning</span></div>
  <div class="eq">templateId = classifyQuestionTemplate(question) // 0-6 or &minus;1
 templateZoneStart = fineType.start + &lfloor;fineSize &middot; 0.75&rfloor;
 slotSize = &lfloor;(fineType.end &minus; templateZoneStart) / 7&rfloor;
 lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <div class="eq-desc">
- The upper 25% of the <code>fineType</code> cortex region is reserved as a question-template sub-region, split into 7 equal slots for the 7 recognized K-grade question forms (what-letter-comes-after / rhymes-or-sound / how-many-in / arithmetic / count-from / spell-or-starts-with / generic-question). Every question at teach AND probe time lights up its template slot in addition to the sentence + key-token sem pattern. The template tag is ORTHOGONAL to the key token — two questions with the same template but different key tokens share the template basin while differing in the sem pattern, so <code>sem &rarr; motor</code> learns template-conditioned answer routing independent of specific vocabulary.
+ The upper 25% of the <code>fineType</code> cortex region is reserved as a question-template sub-region, split into 7 equal slots for the 7 recognized K-grade question forms (what-letter-comes-after / rhymes-or-sound / how-many-in / arithmetic / count-from / spell-or-starts-with / generic-question). Every question at teach AND probe time lights up its template slot in addition to the sentence + key-word sem pattern. The template tag is ORTHOGONAL to the key word — two questions with the same template but different key words share the template basin while differing in the sem pattern, so <code>sem &rarr; motor</code> learns template-conditioned answer routing independent of specific vocabulary.
  <p style="margin-top:6px">Implemented via <code>Curriculum._classifyQuestionTemplate</code>, <code>_writeQuestionTemplateTag</code>, and <code>_injectQuestionTemplateTag</code>. Teach side writes spikes directly; probe and live-chat sides inject current so Rulkov dynamics carry it into downstream regions on the next tick.</p>
  <p class="mod-bio" style="margin-top:6px">Biology: Prefrontal cortex encodes abstract task rules and templates (Miller &amp; Cohen 2001). Separating schema from content is how humans generalize question patterns across vocabulary without retraining.</p>
  </div>
@@ -1249,8 +1249,8 @@ probe(word, grade, subject):
  │ field C → dim-64 percept). NO LLM/VLM describer — fully retired,
  │ and the describer setup-UI/auto-detect was removed from the client too
  ├── <span class="hl">World knowledge ingest</span> (operator-triggered) — POST /learn-from-web
- │ { topic } → Wikipedia REST summary fetch → tokenize alpha-only
- │ → dictionary.learnWord per new token → fire Tier 1 episode
+ │ { topic } → Wikipedia REST summary fetch → split to alpha-only words
+ │ → dictionary.learnWord per new word → fire Tier 1 episode
  │ tagged with source URL. No external AI cognition; the article
  │ text is sensory-only — cognition stays equational.
  └── <span class="hl">Sandbox</span> → dynamic UI injection via component-synth.js
@@ -1968,7 +1968,7 @@ GENERATION (brain-driven emission loop — no slot counter in the logic):
  <div class="eq-box" style="margin-top:12px;">
  <div class="eq-title"><span class="eq-tip" data-tip="Cortex cluster recurrent synapse matrix trains on persona corpus via sequence Hebbian during boot. For each consecutive word pair in a persona sentence, inject the word embedding into the language region, tick the integrator 3 steps, snapshot spikes, then apply plain Hebbian between consecutive snapshots (ΔW_ij = η · curr_i · prev_j) on the existing CSR connections. Oja saturation decay post-sentence prevents weight runaway.">Persona Hebbian Training on Cortex Cluster</span></div>
  <pre class="eq">
-For each persona sentence (tokenized into embedding sequence):
+For each persona sentence (split into a sequence of word embeddings):
  for each word embedding emb_t in sequence:
  // 1. Inject word into cortex language region via mapToCortex
  currents = sharedEmbeddings.mapToCortex(emb_t, cortexSize=300, langStart=150)
@@ -2040,7 +2040,7 @@ Brain state parameters that feed languageCortex.generate():
  socialSchema (name / gender / greetings) → read by downstream consumers when picking
  address forms or writing to the chat UI
 
-None of these are prompt tokens. They are EQUATION PARAMETERS contributing to
+None of these are prompt words. They are EQUATION PARAMETERS contributing to
 the normalized target vector the argmax is taken against. Same dictionary +
 different brain state = genuinely different sentence, because the target
 lands in a different region of GloVe space.
@@ -2265,7 +2265,7 @@ topic_score(w) = cosine(word_pattern, context) (boosts relevant words)
  <pre class="eq">
 c(t) = λ · c(t-1) + (1 - λ) · mean(pattern(content_words(input)))
  λ = 0.7
- content_words = tokens where wt.conj &lt; 0.5 ∧ wt.prep &lt; 0.5 ∧ wt.det &lt; 0.5
+ content_words = words where wt.conj &lt; 0.5 ∧ wt.prep &lt; 0.5 ∧ wt.det &lt; 0.5
  pattern(w) ∈ ℝ³⁰⁰ from sharedEmbeddings.getEmbedding(w) ← GloVe 300d / subword fallback
 
 First update: c(0) ← mean(pattern(content_words)) (no decay from zero)
@@ -2323,7 +2323,7 @@ passesMemoryFilter(s) ⇔
  ∧ wordCount(s) ∈ [3, 25] — no fragments/rambling
  ∧ first.letters ≠ u-n-i-t-y[-'] — no meta ABOUT Unity
  ∧ first ∉ {she, her, he, she-*, her-*} — no 3rd-person descriptions
- ∧ ∃ w ∈ tokens: firstPersonShape(w) — must be in Unity's voice
+ ∧ ∃ w ∈ words: firstPersonShape(w) — must be in Unity's voice
 
 firstPersonShape(w) ⇔
  (len=1 ∧ w='i')
@@ -2374,14 +2374,14 @@ else:
  <p><span class="tag tag-math">MATHEMATICS</span> <span class="tag tag-bio">LANGUAGE</span> The language cortex used to represent word meaning as 32-dim letter-hash vectors — a deterministic function of the letters in a word. Two words could be structurally similar but semantically unrelated (<code>cat</code>/<code>catastrophe</code>) and two words could be semantically identical but structurally distant (<code>cat</code>/<code>kitten</code>). The semantic fit signal was effectively orthography matching. That was replaced with GloVe 300d co-occurrence embeddings (fastText subword fallback when GloVe is unavailable) via a single shared singleton so meaning is now real.</p>
 
  <div class="eq-box">
- <div class="eq-title"><span class="eq-tip" data-tip="Module-level singleton instantiated once at boot, imported by BOTH the sensory pipeline (sensory.js maps user input tokens to cortex current) AND the language cortex (language-cortex.js scores candidate words in the slot generator). Having one embedding table shared between perception and production means the same word activates the same cortex pattern whether Unity is hearing it or about to say it.">Shared Embeddings Singleton</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Module-level singleton instantiated once at boot, imported by BOTH the sensory pipeline (sensory.js maps the user's input words to cortex current) AND the language cortex (language-cortex.js scores candidate words in the slot generator). Having one embedding table shared between perception and production means the same word activates the same cortex pattern whether Unity is hearing it or about to say it.">Shared Embeddings Singleton</span></div>
  <pre class="eq">
 // js/brain/embeddings.js
 export const sharedEmbeddings = new SemanticEmbeddings()
 export const EMBED_DIM = 300 // GloVe 300d + fastText subword fallback
 
 // js/brain/sensory.js — input side
-sharedEmbeddings.getEmbedding(token) → ℝ⁵⁰
+sharedEmbeddings.getEmbedding(word) → ℝ⁵⁰
 
 // js/brain/language-cortex.js — output side
 sharedEmbeddings.getEmbedding(candidate) → ℝ⁵⁰
@@ -2492,7 +2492,7 @@ Wired into generate():
  </div>
 
  <div class="eq-box">
- <div class="eq-title"><span class="eq-tip" data-tip="Morphological inflection equations. Each dictionary word produces up to 20 derived forms via letter-position rules: plural/3rd-person -s/-es, past -ed/-ied, progressive -ing, comparative -er, superlative -est, adverbial -ly, prefixes un-/re-, suffixes -ness/-ful/-able/-less. CVC pattern detection doubles the last consonant. Stem rules handle -e/-y/-ie endings. Gated by doInflections flag — corpus-only, not live learning, to prevent cascades on novel tokens.">_generateInflections(word) — Morphological Derivation</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Morphological inflection equations. Each dictionary word produces up to 20 derived forms via letter-position rules: plural/3rd-person -s/-es, past -ed/-ied, progressive -ing, comparative -er, superlative -est, adverbial -ly, prefixes un-/re-, suffixes -ness/-ful/-able/-less. CVC pattern detection doubles the last consonant. Stem rules handle -e/-y/-ie endings. Gated by doInflections flag — corpus-only, not live learning, to prevent cascades on words she has not met before.">_generateInflections(word) — Morphological Derivation</span></div>
  <pre class="eq">
 +s / +es / +ies:
  endsWith(s,x,z,ch,sh) → stem+es

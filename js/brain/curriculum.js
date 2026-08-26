@@ -5852,13 +5852,13 @@ export class Curriculum {
         if (qEmb && qEmb.length > 0) {
           // Full sentence into sem (default layout — whole-region tile).
           cluster.injectEmbeddingToRegion('sem', qEmb, 0.6);
-          const keyToken = this._extractKeyToken(question);
+          const keyWord = this._extractKeyWord(question);
           // Use the unified pattern (GloVe + identity-hash + cortex-
           // snapshot) so probe geometry matches what `_teachQABinding`
           // wrote. Without this the key-token injection at probe time
           // is GloVe-only while training was on the unified pattern,
           // and the matrix won't recognize the key token.
-          const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+          const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
           if (keyEmb && keyEmb.length > 0 && typeof this._injectEmbeddingToRegionOffset === 'function') {
             // Key token into the second half of sem — same fractional
             // offset (0.5) the teach-side `_writeTiledPatternOffset` uses.
@@ -5937,8 +5937,8 @@ export class Curriculum {
     try {
       const tplId = typeof this._classifyQuestionTemplate === 'function'
         ? this._classifyQuestionTemplate(question) : -1;
-      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyToken === 'function'
-        ? this._extractKeyToken(question) : null;
+      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === 'function'
+        ? this._extractKeyWord(question) : null;
       if (keyTok && keyTok.length === 1 && /^[a-z]$/.test(keyTok)) {
         if (tplId === 0) {
           // "what (letter) comes after X" — inject X into letter region,
@@ -6119,8 +6119,8 @@ export class Curriculum {
     if (!templatedAnswer && typeof this._extractIntentConcept === 'function') {
       try {
         const intentConcept = this._extractIntentConcept(question);
-        const subjectTok = (typeof this._extractKeyToken === 'function')
-          ? this._extractKeyToken(question) : null;
+        const subjectTok = (typeof this._extractKeyWord === 'function')
+          ? this._extractKeyWord(question) : null;
         // Definition-intent fast path: when "what is X"
         // hits, route through live dictionary API + multi-word emit.
         // This is the path operator demanded — Unity speaks the actual
@@ -13334,8 +13334,8 @@ export class Curriculum {
     const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
       ? sharedEmbeddings.getSentenceEmbedding(question) : null;
     if (!qEmb || qEmb.length === 0) return false;
-    const keyToken = this._extractKeyToken(question);
-    const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+    const keyWord = this._extractKeyWord(question);
+    const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
     const templateId = this._classifyQuestionTemplate(question);
     const reps = opts.reps ?? 6;
     const lr = opts.lr ?? 0.05;
@@ -13416,7 +13416,7 @@ export class Curriculum {
     // the discriminating token its own pattern footprint alongside the
     // full-sentence embedding in the first half. Lets sem→motor learn
     // both "sentence-shape → answer" AND "key-token → answer" paths.
-    const keyTokenTile = opts.keyTokenTile !== false;
+    const keyWordTile = opts.keyWordTile !== false;
     // Contrastive anti-Hebbian push-pull, same mechanism as
     // `_teachAssociationPairs`. For every correct Q-A pair the brain
     // sees, sample a WRONG answer from a different pair and push the
@@ -13441,7 +13441,7 @@ export class Curriculum {
     }
     let trained = 0, skipped = 0, altTrained = 0, antiFires = 0;
     const startMs = Date.now();
-    this._hb(`[Curriculum][${label}] START — ${qaList.length} Q→A training pairs × ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} · keyTokenTile=${keyTokenTile} · anti-pairs=${antiPairs})`);
+    this._hb(`[Curriculum][${label}] START — ${qaList.length} Q→A training pairs × ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} · keyWordTile=${keyWordTile} · anti-pairs=${antiPairs})`);
     // Dashboard popup — announce the Q-A phase START on the 3D brain
     // so operator sees WHICH teach pass is firing in real time.
     try { this._pushBrainEvent?.('teach', 'sem', `Q-A START: ${label} · ${qaList.length}×${reps}`, { label, pairs: qaList.length, reps }); } catch {}
@@ -13459,19 +13459,19 @@ export class Curriculum {
         if (!targetLetter) { skipped++; continue; }
         const motorPattern = encodeLetter(targetLetter);
         if (!motorPattern || motorPattern.length === 0) { skipped++; continue; }
-        const keyToken = this._extractKeyToken(entry.question);
+        const keyWord = this._extractKeyWord(entry.question);
         // Key-token embedding uses the unified `_dictionaryPatternFor`
         // pattern (GloVe + identity-hash + cortex-snapshot) so similar
         // GloVes for K-vocab key tokens like 'cat' / 'dog' / 'pig' get
         // disjoint identity stripes. Matrix can discriminate at probe
         // time even though the GloVe overlap is high.
-        const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+        const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
         const templateId = this._classifyQuestionTemplate(entry.question);
         try {
           // ─── Natural-sentence positive pair ────────────────────────
           this._clearSpikes();
           this._writeTiledPattern(semRegion, qEmb, false);
-          if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+          if (keyWordTile && keyEmb && keyEmb.length > 0) {
             // Second-half overlay — key token gets its own pattern
             // inside sem alongside the full sentence. Same region,
             // different tile offset (second half), so both signals
@@ -13514,16 +13514,16 @@ export class Curriculum {
         }
 
         // ─── Direct-prompt alternative format positive pair ─────────
-        if (directPromptAlt && keyToken) {
+        if (directPromptAlt && keyWord) {
           try {
-            const directPromptText = `${keyToken}:`;
+            const directPromptText = `${keyWord}:`;
             const directEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function'
               ? sharedEmbeddings.getSentenceEmbedding(directPromptText)
               : null;
             if (directEmb && directEmb.length > 0) {
               this._clearSpikes();
               this._writeTiledPattern(semRegion, directEmb, false);
-              if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+              if (keyWordTile && keyEmb && keyEmb.length > 0) {
                 this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
               }
               if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -13571,7 +13571,7 @@ export class Curriculum {
               try {
                 this._clearSpikes();
                 this._writeTiledPattern(semRegion, qEmb, false);
-                if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+                if (keyWordTile && keyEmb && keyEmb.length > 0) {
                   this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
                 }
                 if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -13606,7 +13606,7 @@ export class Curriculum {
           const pseudoPairs = qaList
             .slice(0, 8)
             .map(e => {
-              const kt = this._extractKeyToken(e.question);
+              const kt = this._extractKeyWord(e.question);
               const ans = String(e.expectedAnswer || '').toLowerCase().charAt(0);
               return (kt && ans) ? [kt, ans] : null;
             })
@@ -13861,14 +13861,14 @@ export class Curriculum {
         const qEmb2 = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
           ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
         if (!qEmb2 || qEmb2.length === 0) continue;
-        const kt2 = this._extractKeyToken(entry.question);
+        const kt2 = this._extractKeyWord(entry.question);
         const ke2 = kt2 ? this._dictionaryPatternFor(kt2) : null;
         const tid2 = this._classifyQuestionTemplate(entry.question);
         _slChecked++;
         for (let round = 0; round <= _slRounds; round++) {
           this._clearSpikes();
           this._writeTiledPattern(semRegion, qEmb2, false);
-          if (keyTokenTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
+          if (keyWordTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
           if (tid2 >= 0) this._writeQuestionTemplateTag(tid2);
           let said = '';
           try { said = (await cluster.emitWordDirectDonor({ subject: opts.subject })) || ''; }
@@ -14037,7 +14037,7 @@ export class Curriculum {
    * AND the specific token that makes one question different from
    * another. Returns lowercase token or null when no pattern matches.
    */
-  _extractKeyToken(question) {
+  _extractKeyWord(question) {
     if (!question || typeof question !== 'string') return null;
     const q = question.toLowerCase().trim();
     // Order matters — more specific patterns first.
@@ -14132,13 +14132,13 @@ export class Curriculum {
    *  — Definition-comprehension teach via live dictionary
    * API + Hebbian. EQUATIONAL — the API is sensory input (like
    * Pollinations image-gen / TTS), the actual learning is
-   * `_teachAssociationPairs(word, def_token)` which is Oja-Hebbian on
+   * `_teachAssociationPairs(word, def_word)` which is Oja-Hebbian on
    * sem→sem cross-projection. Each definition co-occurrence gets
    * carved as a real Hebbian binding so cortex co-activates
    * definitional meaning whenever the word fires.
    *
    * One word in, ~3-8 definition tokens out (filtered to content
-   * words; stopwords skipped). Each (word, def_token) pair fires
+   * words; stopwords skipped). Each (word, def_word) pair fires
    * `_teachAssociationPairs` with relationTagId=23 (definition band
    * in fineType). After this phase, sem(dog) → sem(animal),
    * sem(pet), sem(four), sem(legs), sem(barks) all light up via
@@ -14241,7 +14241,7 @@ export class Curriculum {
       if (!defText || typeof defText !== 'string') continue;
 
       const tokens = defText.toLowerCase().match(/[a-z]+/g) || [];
-      const contentTokens = [];
+      const contentWords = [];
       const seen = new Set();
       for (const t of tokens) {
         if (t.length < 3) continue;
@@ -14249,21 +14249,21 @@ export class Curriculum {
         if (t === w) continue;
         if (seen.has(t)) continue;
         seen.add(t);
-        contentTokens.push(t);
-        if (contentTokens.length >= 8) break;
+        contentWords.push(t);
+        if (contentWords.length >= 8) break;
       }
-      if (contentTokens.length === 0) continue;
+      if (contentWords.length === 0) continue;
 
       // Layer the part-of-speech as an additional content token when
       // available — disambiguates noun-vs-verb senses in sem.
       if (entry && entry.partOfSpeech && typeof entry.partOfSpeech === 'string') {
         const pos = entry.partOfSpeech.toLowerCase().replace(/[^a-z]/g, '');
-        if (pos && pos.length >= 3 && !contentTokens.includes(pos) && contentTokens.length < 8) {
-          contentTokens.push(pos);
+        if (pos && pos.length >= 3 && !contentWords.includes(pos) && contentWords.length < 8) {
+          contentWords.push(pos);
         }
       }
 
-      const pairs = contentTokens.map(t => [w, t]);
+      const pairs = contentWords.map(t => [w, t]);
       // Session 114.19ej P1 #8 — pass `_associationPairsWhitelist` so
       // _teachHebbian fan-out scopes to sem↔motor + sem↔fineType only.
       // Without this, the multi-def upfront seed × inline-from-teach ×
@@ -14852,19 +14852,19 @@ export class Curriculum {
         // Bounded: content words only (no glue, len ≥ 3), deduped, ≤ 2×N
         // pairs per memory (word→theme + theme→word).
         try {
-          const themeTokens = String(exp.theme || '')
+          const themeWords = String(exp.theme || '')
             .toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/)
             .filter(w => w.length >= 3 && !FUNCTION_WORDS.has(w));
-          if (themeTokens.length > 0) {
+          if (themeWords.length > 0) {
             const sceneWords = new Set();
             for (const s of exp.sentences) {
               for (const w of String(s).toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/)) {
-                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeTokens.includes(w)) sceneWords.add(w);
+                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeWords.includes(w)) sceneWords.add(w);
               }
             }
             const groundPairs = [];
             for (const w of sceneWords) {
-              for (const t of themeTokens) {
+              for (const t of themeWords) {
                 groundPairs.push([w, t]);
                 groundPairs.push([t, w]);
               }
@@ -15176,7 +15176,7 @@ export class Curriculum {
    *         (server-side, dictionaryapi.dev) so `_teachWordDefinition`
    *         calls all hit cache (instant).
    * Step 2: For each word, call `_teachWordDefinition(word)` which fires
-   *         Oja-Hebbian on `sem(word) → sem(def_token)` for each content
+   *         Oja-Hebbian on `sem(word) → sem(def_word)` for each content
    *         token. Equational definitional knowledge carved into trained
    *         weights — REAL comprehension, not lookup.
    *
@@ -15330,7 +15330,7 @@ export class Curriculum {
     // emits. Pipeline:
     //   (a) Inject each content def-token's embedding into sem region
     //       (sensory: cortex "hears" the definitional meaning)
-    //   (b) Fire Hebbian binding sem(word) → sem(def_tokens) so
+    //   (b) Fire Hebbian binding sem(word) → sem(def_words) so
     //       co-activations carve into trained weights (learning)
     //   (c) Read freshly-primed sem state via cluster.emitWordDirect
     //       and let the brain COMPOSE its own answer from trained weights
@@ -15341,13 +15341,13 @@ export class Curriculum {
     // trained cortex.
     const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
     const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
-    const contentTokens = [];
+    const contentWords = [];
     const seen = new Set();
     for (const t of tokens) {
       if (t.length < 3 || STOP.has(t) || t === word || seen.has(t)) continue;
       seen.add(t);
-      contentTokens.push(t);
-      if (contentTokens.length >= 8) break;
+      contentWords.push(t);
+      if (contentWords.length >= 8) break;
     }
 
     // (a) Inject content def-tokens into sem region with subject-as-anchor.
@@ -15360,9 +15360,9 @@ export class Curriculum {
         try { cluster.injectEmbeddingToRegion('sem', subjectEmb, 0.6); }
         catch { /* non-fatal */ }
       }
-      for (let i = 0; i < contentTokens.length; i++) {
+      for (let i = 0; i < contentWords.length; i++) {
         try {
-          const emb = sharedEmbeddings.getEmbedding(contentTokens[i]);
+          const emb = sharedEmbeddings.getEmbedding(contentWords[i]);
           if (emb && emb.length > 0) {
             const strength = Math.max(0.1, 0.4 - i * 0.04);
             cluster.injectEmbeddingToRegion('sem', emb, strength);
@@ -15371,7 +15371,7 @@ export class Curriculum {
       }
     }
 
-    // (b) Hebbian-bind sem(word) → sem(def_tokens) so co-activations
+    // (b) Hebbian-bind sem(word) → sem(def_words) so co-activations
     // carve into trained weights. Fire-and-forget — composition uses
     // the sem injection (a) which is already active.
     if (typeof this._teachWordDefinition === 'function') {
@@ -17440,9 +17440,9 @@ export class Curriculum {
       try { composed = await cluster.composeSentence(word, { subject: 'ela' }); } catch { composed = null; }
       const emittedWords = composed && Array.isArray(composed.words) ? composed.words : [];
       // CVC = 3 phonemes — emission should have at least 3 distinct sound tokens.
-      const distinctTokens = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
-      distinctTokens.delete('');
-      const segmented = distinctTokens.size >= 3 || emittedWords.length >= 3;
+      const distinctWords = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
+      distinctWords.delete('');
+      const segmented = distinctWords.size >= 3 || emittedWords.length >= 3;
       const emittedStr = composed && composed.sentence ? String(composed.sentence).toLowerCase() : '';
       const firstChar = emittedStr.replace(/[^a-z]/g, '').charAt(0) || '';
       const firstMatches = firstChar === word.charAt(0);
@@ -17478,10 +17478,10 @@ export class Curriculum {
       try { composed = await cluster.composeSentence(word, { subject: 'ela' }); } catch { composed = null; }
       const emittedWords = composed && Array.isArray(composed.words) ? composed.words : [];
       // For nonsense decoding, success = ≥ 2 distinct phoneme-like tokens emerge.
-      const distinctTokens = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
-      distinctTokens.delete('');
-      const decoded = distinctTokens.size >= 2 || emittedWords.length >= 2;
-      trials.push({ word, emittedWords, distinctTokens: distinctTokens.size, decoded });
+      const distinctWords = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
+      distinctWords.delete('');
+      const decoded = distinctWords.size >= 2 || emittedWords.length >= 2;
+      trials.push({ word, emittedWords, distinctWords: distinctWords.size, decoded });
       if (decoded) passed++;
     }
     const score = TRIALS > 0 ? passed / TRIALS : 0;
@@ -18981,8 +18981,8 @@ export class Curriculum {
     if (typeof this._classifyQuestionTemplate !== 'function') return null;
     const tplId = this._classifyQuestionTemplate(question);
     if (tplId < 0) return null;
-    const keyTok = (typeof this._extractKeyToken === 'function')
-      ? this._extractKeyToken(question) : null;
+    const keyTok = (typeof this._extractKeyWord === 'function')
+      ? this._extractKeyWord(question) : null;
     if (!keyTok) return null;
 
     // Template 0 — "what letter comes after X" / "what comes after X"
@@ -19094,7 +19094,7 @@ export class Curriculum {
       const q = question.toLowerCase();
       // ── OWNWORDS.4 (2026-08-25) — THIS WAS A GRADE EARNED ON A STRING OP ──
       //
-      // It used to be `return keyTok;` — for "spell cat", `_extractKeyToken`
+      // It used to be `return keyTok;` — for "spell cat", `_extractKeyWord`
       // pulls "cat" out of the question and the answer WAS "cat", echoed
       // straight back with **zero consultation of her weights**. The probe
       // scored it correct, the cell passed on it, and the grade advanced on it.
@@ -20692,7 +20692,7 @@ export class Curriculum {
       const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
         ? sharedEmbeddings.getSentenceEmbedding(s.question) : null;
       if (!qEmb || qEmb.length === 0) continue;
-      const kt = this._extractKeyToken(s.question);
+      const kt = this._extractKeyWord(s.question);
       const ke = kt ? this._dictionaryPatternFor(kt) : null;
       const tid = this._classifyQuestionTemplate(s.question);
       checked++;

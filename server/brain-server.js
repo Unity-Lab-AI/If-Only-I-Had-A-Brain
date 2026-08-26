@@ -3848,11 +3848,14 @@ class ServerBrain {
         console.warn('[MindSpace] init failed:', err?.message || err);
         this.mindSpace = null;
       }
-      // Auto-attach transformer backend when the dep is installed AND
-      // the env flag is set. Default OFF — operator opts in via
-      // `cd server && npm install @xenova/transformers` + export
-      // DREAM_TRANSFORMER=1. Silent no-op in every other case so the
-      // left-brain-only path keeps working identically.
+      // ⛔ NOLLM.1 (2026-08-26) — THE PARAGRAPH THAT USED TO SIT HERE WAS THE
+      // INSTALL RECIPE FOR THE THING THE LAW FORBIDS. It described the
+      // auto-attach as live and told the reader how to opt in
+      // (`npm install @xenova/transformers` + a env flag). The attach was
+      // deleted by LLMGUT.2 the day before, and the correction was appended
+      // BELOW the stale text rather than replacing it — so a skim read a
+      // working recipe and only a careful read reached the retraction.
+      // A removal record must not carry instructions for undoing itself.
       // LLMGUT.2 (2026-08-25) — the GPT-2 / distilgpt2 transformer backend and
       // its boot attach are DELETED, along with DREAM_TRANSFORMER,
       // DREAM_TRANSFORMER_MODEL and DREAM_TRANSFORMER_MAX_LEN. It was a

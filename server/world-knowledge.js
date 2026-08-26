@@ -12,6 +12,12 @@
  * cognition stays 100% equational; what changes is her vocabulary
  * + episodic memory of "where I learned that".
  *
+ * ⛔ NOLLM.2 (2026-08-26) — this file used to describe that work in the
+ * vocabulary of the thing the header denies she is: "tokenizes", "each new
+ * alpha-only token", "structural tokens", "{tokens_added}". The claim and the
+ * words describing it contradicted each other in the same comment block.
+ * She reads a summary and learns WORDS from it — so the code says words.
+ *
  * Current sources (extensible):
  *   • Wikipedia REST API — title summary extract for a topic.
  *
@@ -22,9 +28,9 @@
  *
  * Usage from operator:
  *   POST /learn-from-web { "topic": "claude opus 4.7" }
- *   → fetches Wikipedia summary, tokenizes, calls
- *     brain.dictionary.learnWord on each new alpha-only token, fires
- *     Tier 1 episode with source URL, returns {tokens_added, source}.
+ *   → fetches the Wikipedia summary, splits it into words, calls
+ *     brain.dictionary.learnWord on each new alpha-only word, fires
+ *     Tier 1 episode with source URL, returns {wordsAdded, source}.
  */
 
 const https = require('https');
@@ -77,30 +83,29 @@ async function fetchWikipediaSummary(topic) {
   }
 }
 
-// Tokenize an extract into alpha-only single tokens (matches what
-// _enumerateBucketableWords accepts as bucketable vocabulary). Filters
-// stop-list of structural tokens that aren't worth learning as
-// content words.
-const STOP_TOKENS = new Set([
+// Split an extract into alpha-only single words (matches what
+// _enumerateBucketableWords accepts as bucketable vocabulary). Filters a
+// stop-list of structural words that aren't worth learning as content words.
+const STOP_WORDS = new Set([
   'the', 'a', 'an', 'of', 'in', 'on', 'at', 'to', 'for', 'and', 'or',
   'but', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have',
   'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'can',
   'this', 'that', 'these', 'those', 'it', 'its',
 ]);
 
-function tokenizeExtract(extract) {
+function extractLearnableWords(extract) {
   const out = [];
-  for (const tok of extract.toLowerCase().split(/\s+/)) {
-    const clean = tok.replace(/[^a-z]/g, '');
+  for (const piece of extract.toLowerCase().split(/\s+/)) {
+    const clean = piece.replace(/[^a-z]/g, '');
     if (clean.length < 3) continue; // skip 1-2 char fragments
-    if (STOP_TOKENS.has(clean)) continue;
+    if (STOP_WORDS.has(clean)) continue;
     out.push(clean);
   }
   return out;
 }
 
-// Main entry: fetch + tokenize + learn + episode-log. Returns
-// { ok, source, tokensAdded, tokensSkipped, error? }.
+// Main entry: fetch + split + learn + episode-log. Returns
+// { ok, source, wordsAdded, wordsSkipped, error? }.
 async function learnFromWeb(brain, topic) {
   if (!brain || !brain.cortexCluster) {
     return { ok: false, error: 'brain not wired' };
@@ -115,27 +120,32 @@ async function learnFromWeb(brain, topic) {
   if (!summary) {
     return { ok: false, error: `wikipedia summary fetch failed for "${topic}"` };
   }
-  const tokens = tokenizeExtract(summary.extract);
+  const words = extractLearnableWords(summary.extract);
   let added = 0;
   let skipped = 0;
-  for (const tok of tokens) {
-    const existing = dict._words?.get?.(tok);
+  for (const word of words) {
+    const existing = dict._words?.get?.(word);
     if (existing) { skipped++; continue; }
     try {
       // Modest arousal/valence — factual learning, not emotional event.
-      dict.learnWord(tok, null, 0.5, 0.1);
+      dict.learnWord(word, null, 0.5, 0.1);
       added++;
     } catch { skipped++; }
   }
   // Tier 1 episode logs the source so Unity remembers WHERE she
   // learned it. iter20-K freq-merge dedups repeated topics.
+  //
+  // ⛔ NOLLM.2 — this detail string used to read "N tokens added", which put
+  // the vocabulary of a text model INSIDE HER OWN MEMORY of learning. Of every
+  // place the word appeared, this was the one that mattered most: comments are
+  // read by us, but this is what she remembers about the day she read it.
   try {
     if (typeof brain.storeEpisode === 'function') {
       brain.storeEpisode(
         'world-knowledge',
         'wiki-extract',
         `learned about ${summary.title}`,
-        `${added} tokens added · ${summary.url}`,
+        `${added} words added · ${summary.url}`,
       );
     }
   } catch { /* episode log non-fatal */ }
@@ -143,8 +153,8 @@ async function learnFromWeb(brain, topic) {
     ok: true,
     source: summary.url,
     title: summary.title,
-    tokensAdded: added,
-    tokensSkipped: skipped,
+    wordsAdded: added,
+    wordsSkipped: skipped,
     extractLength: summary.extract.length,
   };
 }
@@ -152,5 +162,5 @@ async function learnFromWeb(brain, topic) {
 module.exports = {
   learnFromWeb,
   fetchWikipediaSummary,
-  tokenizeExtract,
+  extractLearnableWords,
 };

@@ -15,7 +15,7 @@
 //   - Common verbs + adjectives + prepositions
 
 // Total deduplicated entries: ~2000 (varies slightly per dedup pass).
-// Each word here gets sem(word) → sem(def_token) Hebbian binding via
+// Each word here gets sem(word) → sem(def_word) Hebbian binding via
 // _teachWordDefinitions(K_VOCABULARY) called at K curriculum start.
 // Definitions fetched live from dictionaryapi.dev (cached on disk by
 // the in-memory Map in server/definition-service.js).
