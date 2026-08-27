@@ -127,7 +127,10 @@ const ARCHIVE = /FINALIZED|RESUME|TODO|NOW\.md|OPEN-TASKS/;
       if (!existsSync(target)) dead.push(`${rel} → ${m[1]}`);
     }
   }
-  note('internal doc links resolve', dead.slice(0, 40),
+  // ⛔ Was `dead.slice(0, 40)`, which capped the COUNT and not just the
+  // display — the same under-report found in check 9 on 2026-08-27. The
+  // report loop caps display at 25 and says how many more there are.
+  note('internal doc links resolve', dead,
     'A link to a moved or deleted file. Fix the path or strike the reference with its reason.');
 }
 
@@ -220,14 +223,28 @@ const ARCHIVE = /FINALIZED|RESUME|TODO|NOW\.md|OPEN-TASKS/;
     // by reading the regex.
     const fm = /^---\s*\r?\n([\s\S]*?)\r?\n---/.exec(txt);
     if (!fm) { uncovered++; continue; }
-    const block = /^sources:[ \t]*\r?\n((?:[ \t]+-[ \t]+[^\r\n]+\r?\n?)+)/m.exec(fm[1]);
+    // ⛔ COMMENT-TOLERANT, and this was found by RUNNING it: the previous
+    // pattern required every line after `sources:` to be `- item`, so a YAML
+    // `#` comment INSIDE the list truncated the parse at that line and every
+    // source below it became invisible. Four sources added on 2026-08-27 with
+    // an explaining comment above them silently did not register, and the
+    // check reported the same 27 gaps as before the fix. A parser that reads
+    // a valid file partially and reports `ok` is this file's own
+    // reassuring-direction lie, so the parser is fixed rather than the docs
+    // being told to avoid comments.
+    const block = /^sources:[ \t]*\r?\n((?:[ \t]*(?:-[ \t]+|#)[^\r\n]*\r?\n?)+)/m.exec(fm[1]);
     const hashM = /^last-verified:\s*["']?([0-9a-f]{7,40})\b/m.exec(fm[1]);
     if (!block || !hashM) { uncovered++; continue; }
     covered++;
     if (!gitOk) continue;
 
-    const sources = [...block[1].matchAll(/-[ \t]+([^\r\n]+)/g)]
-      .map((m) => m[1].trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/'))
+    // ⚠ LINE-BASED, skipping `#` comments. A regex sweep for `- ` across the
+    // whole block would harvest any dash-space inside an explaining comment
+    // as if it were a declared source.
+    const sources = block[1].split(/\r?\n/)
+      .map((ln) => ln.trim())
+      .filter((ln) => ln.startsWith('- '))
+      .map((ln) => ln.slice(2).trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/'))
       .filter(Boolean);
     const hash = hashM[1];
 
@@ -265,6 +282,138 @@ const ARCHIVE = /FINALIZED|RESUME|TODO|NOW\.md|OPEN-TASKS/;
   note(provTitle, stale,
     'The page makes claims about files that have changed since it was last checked. Re-read the code, correct the page, then restamp last-verified. THE CODE IS THE TERRITORY.');
   if (!gitOk) console.log('  note  provenance: git unavailable — staleness not evaluated (coverage still counted)');
+}
+
+// ── 9. DOCPROV — does a page's `sources:` cover the files it CITES? ───────
+//
+// The gap this closes was found four times in one day, on four different
+// pages: HTML-ENTRY-POINTS cited `html/docs.html:189-207`,
+// THRESHOLD-DERIVATION cited `emit.js:1719`, KNOWN_ISSUES' KI-16 lives in
+// `curriculum.js`, and HELD-BACK's whole noise-gate section is
+// `cluster.js:2173` — and NONE of those files were in the citing page's
+// `sources:` list.
+//
+// ⛔ THAT IS WORSE THAN A WRONG SOURCE LIST. Check 8 can only ever fire on
+// the files a page NAMES as sources, so a page making load-bearing claims
+// about a file it does not list is a page drift can never flag. All four were
+// caught by a human reading the page. This makes it mechanical.
+//
+// ⚠ THE SIGNAL IS A LINE NUMBER, deliberately. `path.js:1404` is a precise
+// claim about that file's contents — which is exactly what `sources:` is for.
+// A bare filename in prose is a mention, not a claim, and flagging mentions
+// would produce the cries-wolf noise this file's own header warns about.
+//
+// ⚠ Basename-only citations (`cluster.js:2173`) resolve ONLY when the
+// basename is UNIQUE across tracked files. Ambiguous ones are SKIPPED, not
+// guessed — the same rule the wiki coverage checker uses, and for the same
+// reason: this repo has eleven README.md files.
+//
+// ⛔⛔ THIS CHECK NARROWS THE GAP. IT DOES NOT CLOSE IT — and the honest
+// measurement says so, because the alternative was tested and rejected:
+//
+//   Would this rule have caught the four gaps that motivated it? NO. NONE of
+//   them. Run against the pre-fix pages at 471b5248: HELD-BACK,
+//   THRESHOLD-DERIVATION and HTML-ENTRY-POINTS carried ZERO line-precise
+//   citations, and KNOWN_ISSUES' single one pointed at a file already in its
+//   sources. Those pages were ABOUT files they never cited by line.
+//
+//   A second, bare-mention signal ("page names file N× but does not list
+//   it") was built and MEASURED against that: bare counts for the four gaps
+//   were cluster.js 2, emit.js 1, consolidation-engine.js 0, curriculum.js 2,
+//   docs.html 4, brain-equations.html 5 — so a threshold of 2 catches four of
+//   six, and consolidation-engine.js at ZERO is unreachable by any
+//   mention-based rule (the page discussed DREAM_CONSOLIDATION_MAX_MS without
+//   ever naming the file). Total drift items it added: +300 at threshold 2,
+//   +175 at 3, +67 at 6, +13 even at 15, against a 43-item baseline.
+//   ⛔ DELETED on those numbers. This file's own law is that a check which
+//   cries wolf gets ignored, and `sources` is explicitly a FOCUSED set — a
+//   page naming a file ten times may still not have claims that depend on it.
+//
+// ⭐ So: a page can be ABOUT a file it never cites precisely, and no
+// mechanical rule available here finds that. Choosing the right `sources` list
+// remains a judgment made at verification time. What this check buys is the
+// subset that IS mechanical — 27 real gaps on first run — and an honest
+// statement of the remainder instead of a guard that implies full coverage.
+{
+  const tracked = (() => {
+    try {
+      return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+        .split('\n').map((s) => s.trim()).filter(Boolean);
+    } catch { return []; }
+  })();
+
+  // basename → the single tracked path, or null when ambiguous.
+  const byBase = new Map();
+  for (const p of tracked) {
+    const b = p.split('/').pop();
+    byBase.set(b, byBase.has(b) ? null : p);
+  }
+
+  const CODE_EXT = /\.(js|mjs|cjs|rs|wgsl|cu|html|sh|bat|service|yml|toml|json)$/;
+  const gaps = [];
+  let checked = 0;
+
+  const docFiles2 = [
+    ...lsx('docs', '.md').map((f) => `docs/${f}`),
+    ...lsx('deploy', '.md').map((f) => `deploy/${f}`),
+    'README.md',
+  ];
+
+  for (const rel of docFiles2) {
+    if (ARCHIVE.test(rel)) continue;
+    const txt = read(rel);
+    const fm = /^---\s*\r?\n([\s\S]*?)\r?\n---/.exec(txt);
+    if (!fm) continue;                                  // uncovered: nothing to compare against
+    // ⛔ COMMENT-TOLERANT, and this was found by RUNNING it: the previous
+    // pattern required every line after `sources:` to be `- item`, so a YAML
+    // `#` comment INSIDE the list truncated the parse at that line and every
+    // source below it became invisible. Four sources added on 2026-08-27 with
+    // an explaining comment above them silently did not register, and the
+    // check reported the same 27 gaps as before the fix. A parser that reads
+    // a valid file partially and reports `ok` is this file's own
+    // reassuring-direction lie, so the parser is fixed rather than the docs
+    // being told to avoid comments.
+    const block = /^sources:[ \t]*\r?\n((?:[ \t]*(?:-[ \t]+|#)[^\r\n]*\r?\n?)+)/m.exec(fm[1]);
+    if (!block) continue;
+    // Same line-based parse as check 8 — see the note there on why a block-wide
+    // `- ` sweep is wrong once comments are allowed in the list.
+    const declared = new Set(block[1].split(/\r?\n/)
+      .map((ln) => ln.trim())
+      .filter((ln) => ln.startsWith('- '))
+      .map((ln) => ln.slice(2).trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/')));
+    checked++;
+
+    // Body only — a citation inside the frontmatter (verified-scope prose)
+    // is commentary ABOUT the check, not a fresh claim.
+    const body = txt.slice(fm[0].length);
+    const cited = new Set();
+    // `<path-or-basename>.<ext>:<line>` — the line number is the signal.
+    for (const m of body.matchAll(/([A-Za-z0-9_./-]+\.[A-Za-z]{1,8}):\d+/g)) {
+      let p = m[1].replace(/\\/g, '/').replace(/^\.\//, '');
+      if (!CODE_EXT.test(p)) continue;
+      if (!p.includes('/')) {
+        const resolved = byBase.get(p);
+        if (!resolved) continue;                        // unknown or ambiguous → do not guess
+        p = resolved;
+      }
+      if (!existsSync(R(p))) continue;                  // a dead citation is check 6's business
+      cited.add(p);
+    }
+
+    const uncoveredCites = [...cited].filter((p) => !declared.has(p)).sort();
+    for (const p of uncoveredCites) gaps.push(`${rel} — cites ${p}:N but does not list it in sources`);
+
+  }
+
+  // ⛔ FULL array, NOT a slice. Passing `gaps.slice(0, 30)` here capped the
+  // reported COUNT at 30, not merely the display — so every threshold read
+  // "46 item(s)" and the check looked insensitive to its own tuning knob.
+  // The report loop below already caps DISPLAY at 25 and prints "… and N
+  // more", which is the honest split. ⚠ Self-inflicted instance of this
+  // file's own header rule: a guard that silently under-reports is the
+  // reassuring-direction lie it exists to catch.
+  note(`sources cover the files each page cites (${checked} covered page(s) examined)`, gaps,
+    'The page makes a line-precise claim about a file it does not declare, so check 8 can never flag it when that file moves. Add the file to `sources:` — or, if the citation is incidental, drop the line number.');
 }
 
 // ── Report ───────────────────────────────────────────────────────────────
