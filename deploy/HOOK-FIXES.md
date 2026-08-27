@@ -10,10 +10,49 @@ status: draft
 sources:
   - .claude/settings.json
   - scripts/doc-prov-stop-check.mjs
-last-verified: "1284d3df 2026-08-20"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — by RUNNING this page's own verification
+  recipe, which is the check the drift tool structurally cannot do on
+  unversioned files but a reader can in two commands:
+    - FIX 1: grep -c SCRIPT_SCAN_ROOTS .claude/hooks/session-start-env-dump.cjs
+      → 3   (recipe says "expect >0")  ✅ STILL APPLIED
+    - FIX 2: grep -c USAGE_MAX_BYTES .claude/hooks/usage-track.cjs
+      → 5   (recipe says "expect >0")  ✅ STILL APPLIED
+  ⭐ So neither fix has been reverted by a framework refresh. That is the exact
+  failure this page exists to catch, and it has not happened.
+  THE DRIFT IS FULLY EXPLAINED, and it is growth rather than rot:
+    - scripts/doc-prov-stop-check.mjs  +177 lines — the file did not exist at
+      the last stamp; it is a NEW second Stop hook (DOCPROV.2).
+    - .claude/settings.json  +4 lines — wiring that hook.
+  ⭐ AND THE INTERESTING PART, added to the body: that new hook was deliberately
+  placed in scripts/ rather than .claude/hooks/, precisely so it is TRACKED and
+  therefore immune to the vanishing problem this whole page documents. The
+  page's own lesson, applied by the next thing built after it.
+  NOT CHECKED — do not read this page as authority on:
+    - the BODIES of the two fixes. Their marker constants are present, which
+      proves the fix was not reverted; it does not prove the surrounding logic
+      is unchanged. ⛔ A marker can survive an edit that breaks what it marks.
+    - the other hooks in .claude/hooks/ (there are more than these two).
+    - the /unity-update preserve-list claim, which was not re-read.
+last-verified: "074aa591 2026-08-27"
 ---
 
 # `.claude/hooks/` fixes — the tracked record of code that cannot be tracked
+
+> ## ⭐ RE-VERIFIED 2026-08-27 — both fixes STILL APPLIED, and a third hook escaped the problem entirely
+>
+> **Verified by running this page's own recipe**, which is the check `docs:drift` structurally cannot perform (the subject is unversioned) and a reader can perform in two commands:
+>
+> | fix | marker | count | recipe expects |
+> |---|---|---:|---|
+> | FIX 1 | `SCRIPT_SCAN_ROOTS` in `session-start-env-dump.cjs` | **3** | `>0` ✅ |
+> | FIX 2 | `USAGE_MAX_BYTES` in `usage-track.cjs` | **5** | `>0` ✅ |
+>
+> ⭐ **Neither fix has been reverted by a framework refresh — the exact failure this page exists to catch has not happened.** ⚠ **But read the strength of that claim precisely:** a marker constant being present proves the fix was not *reverted*; it does **not** prove the surrounding logic is unchanged. **A marker can outlive an edit that breaks what it marks.**
+>
+> **The drift on this page is GROWTH, not rot,** and it resolves completely: `scripts/doc-prov-stop-check.mjs` is **+177 lines because it did not exist at the last stamp** — a new second Stop hook (`DOCPROV.2`) — and `.claude/settings.json` is **+4 lines** wiring it.
+>
+> ⭐ **AND THE PART WORTH RECORDING: that new hook lives in `scripts/`, NOT in `.claude/hooks/`, deliberately.** `.gitignore:48` excludes `.claude/` while `settings.json` is tracked — so a hook body placed in `scripts/` is **version-controlled and cannot silently vanish on the next `/unity-update`.** ⭐ **This page's entire thesis is "a fix that vanishes without a word", and the very next hook built after it was sited to be immune. The compensation worked, and then stopped being needed.**
 
 > **Why this file exists.** Two hook fixes live in `.claude/hooks/*.cjs`, and that tree can be version-controlled in **neither** available place:
 >
