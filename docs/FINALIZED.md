@@ -39733,6 +39733,50 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
 
+## 2026-08-27 - DOCPROV.4 (11 and 12 of 22): a live learning modifier documented as dormant, and a spec priced off a myth its own ledger had already retired
+
+Gee: *"get to it"*
+
+### ⛔ `docs/HELD-BACK.md` — `DREAM_NOISE_GATE` is ON by default, and this page said it ships dormant
+
+`js/brain/cluster.js:2173`:
+
+`this._noiseGateEnabled = !(typeof process !== 'undefined' && !!process.env && process.env.DREAM_NOISE_GATE === '0')`
+
+**Enabled unless explicitly set to the string `'0'`.** The comment two lines above says it outright: *"Opt OUT with `DREAM_NOISE_GATE=0` to A/B against plain predictive coding."*
+
+The page documented it as **`=1`, default OFF, "ships dormant"**, and asserted: *"With it OFF, plasticity is byte-identical to plain predictive coding"* and *"its magnitudes need a live training run to dial in before it's switched on in production."*
+
+⛔ **So the un-tuned `0.2` / `0.5` magnitudes have been shaping every training pass, while the doc said they were waiting to be switched on.** ⭐ **A doc that describes a live learning modifier as dormant is worse than one that never mentions it — it tells you not to look.** That is the same class as `SKILL_TREE.md:358` claiming a route was removed while it ran in production for four more months, applied to plasticity instead of a route.
+
+⛔ **AND THIS INVERSION HAD ALREADY BEEN CAUGHT ONCE.** The 2026-08-25 `DORMANT` audit recorded *"`DREAM_NOISE_GATE` is ON by default"* among its **own false positives** — the correction was made and **never propagated to the page that documents the flag.** ⭐ **Second instance in one day of a finding living in one doc and not the one that needed it** (`KI-27` / `SUBSTEPS.6` was the first). **The lesson is not "check harder" — it is that a correction is not finished until it reaches the page a reader would consult.**
+
+⚠ **Also undocumented until now: the surprise gate has a CEILING.** `cluster.js:2191` computes `_surpriseMax`, `:2201` clamps to it, and `_surpriseStats { n, sum, atCeiling, max, ceiling }` counts how often the clamp binds. ⭐ **`atCeiling` is the field that answers whether raising the boost would change anything** — and the code carries a `REPLAYOFF.5` note (*"MEASURE THE GATE BEFORE RAISING IT"*) recording that the board suspects the gate is timid, since `0.5 + predErr` buys at most a 1.5× boost. **The page described the gate without the half that decides whether tuning the other half matters.**
+
+⭐ **Everything else HELD, listed so nobody re-checks:** `DREAM_HELD_BACK` (default-on, `=0` opts out), `DREAM_GRADE_MAJOR_ROUNDS` (default **2**, clamped 1-5 via `Math.floor`), `surpriseGate = 0.5 + predErr` with gated form `0.5 + predErr × coherence × inhib`, `_noiseSuppressFactor` 0.2 saturated / 1.0 clean, `inhib` 0.5 on rung 3.
+
+⚠ **`js/brain/cluster.js` added as a source.** The page's own banner names it — *"Source: `curriculum.js`, `cluster.js`"* — and **the noise gate lives there**, but the frontmatter listed `student-question-banks.js` instead. **So drift could never have fired on the file that owns half the page. Fourth time today** (`HTML-ENTRY-POINTS`, `THRESHOLD-DERIVATION`, `KNOWN_ISSUES`, now this).
+
+### ⛔ `docs/SEEDED-TOPOLOGY-SPEC.md` — the reasoning survives, the pricing was ~18× wrong
+
+⭐ **First, the claim that mattered most held up, and it was CHECKED not assumed: "Nothing here is implemented" is still true.** `sparse-matrix.js` holds **22 `Math.random()` calls** and **zero** deterministic PRNG (no splitmix, no xorshift, no seeded generator) in it or `cluster.js`. All four named constructors exist (`initRandom:50`, `initTopographic:175`, `initSmallWorld:278`, `initTopographicProjection:414`). `ensureIntraTopology()` is at `cluster.js:4266`, `_applyPendingCortexWeights()` at `brain-server.js:7546`, both as described. **The spec's risk analysis — silent mis-wiring with no loud failure mode — stands entirely unchanged.**
+
+⛔ **What was wrong was the number that justifies the whole spec:** *"~2,792MB, roughly 12 minutes at the observed ~4MB/s wire."*
+
+**The 4MB/s is a myth this project's own ledger already retired.** `KNOWN_ISSUES` **KI-24 is 🟢 FIXED**: *"The '~4MB/s box uplink' was never the link — it was the pump."* Post-fix reads were **75-350 MB/s**. ⛔ **KI-24's note literally predicts this page: *"Every doc comment that treated 4MB/s as the physical link inherited the pump's shadow."*** The same 2.79GB matrix measures **58.0s → 39.7s** (≈70 MB/s — consistent with KI-24's range).
+
+⚠ **The old arithmetic was internally consistent** — `2,792MB ÷ 4MB/s ≈ 11.6 min` — **which is precisely why it looked trustworthy. A false input with correct arithmetic produces a number that survives review.**
+
+⛔ Also corrected: the checkpoint is **5,460 MB measured on disk** (`server/brain-weights.bin` = `5,724,850,936` bytes), not "~4.4GB", so structure is **~27%** of it rather than 34%. ⭐ **The absolute win (~1.49GB/save) is unchanged and is still the reason to build it — the share moved only because the FILE GREW, which makes save cost worse, not better.**
+
+⭐ **THE RE-PRICE, and the satisfying part: it strengthens the page's own recommendation.** Prize 1 ("the fresh-walk upload approaches zero") is worth **~40 seconds, once per fresh walk** — an ~18× de-valuation. Prize 2 saves ~1.49GB on **every single save**. The page's "Honest assessment" already said *"if only one piece of this is ever built, build that one"* about prize 2. **The corrected numbers move that from sensible to decisive — so the stale figure had not merely misinformed, it had made the page's best argument look closer than it was.**
+
+⚠ **`donor-app/src/compute.rs` is a listed source and was NOT read** — every Rust-side claim on that page (what Rust can reproduce, the protocol addition) is unverified this pass. ⚠ The **~1.49GB numerator** was carried forward without re-measurement; only the denominator was measured. ⚠ The **39.7s** figure is from the SCALEWALK record, not re-measured — no upload happened this pass.
+
+**Drift list 18 → 16.** **12 of 22 pages done.** Board **8 open / 4 in-progress / 384 done**. ⚠ **One self-correction on reporting: last turn I said "eight drifted pages left" — that conflated the board's 8 open items with the drift count, which was 18.**
+
+## Prior entry — 2026-08-27 (10 of 22)
+
 ## 2026-08-27 - DOCPROV.4 (10 of 22): a ledger that sat two days lying by omission, a KI that is worse than filed, and two corrections to my own work
 
 Gee: *"get to it"*
