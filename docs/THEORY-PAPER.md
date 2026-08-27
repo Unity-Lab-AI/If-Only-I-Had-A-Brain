@@ -7,7 +7,33 @@ sources:
   - js/brain/cluster.js
   - js/brain/global-workspace.js
   - js/brain/mindspace/transform.js
-last-verified: "4b91e77d 2026-08-26"
+  # ADDED 2026-08-27: the Φ̂ NORMALISATION (PHISCALE.1) lives in
+  # server/brain-server.js:5034-5087, not in cluster.js — computePhi() produces
+  # the raw entropy and the server adapts the reference. §9.3/§9.4 make claims
+  # about both halves, so drift could only ever see one of them.
+  - server/brain-server.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — the Φ/Ψ sections against source AND against
+  the running brain:
+    - ⛔ CORRECTED §9.3: "the Shannon entropy of a 1,024-neuron sample" is the
+      pre-PHISRC.1 implementation. computePhi() (cluster.js:2249) now derives p
+      from the EXACT GPU-acked cluster.spikeCount. The sample was not merely
+      imprecise - at biological scale it read an empty CPU array.
+    - ⭐ RETIRED a caveat BY MEASUREMENT: §9.4 said the Φ̂ argument was "a
+      derivation, not a report of observed behaviour". Live: phiState "live",
+      phiRaw 0.2618, phiScaleRef 0.3044, phiNorm 0.860. Φ̂ IS modulating Ψ.
+    - ⛔ DOCUMENTED the normalisation, which the paper omitted entirely: Φ̂ is an
+      ADAPTIVE HIGH-WATER REFERENCE (brain-server.js:5034-5087), not a bare
+      floor - rises to any new peak, decays 0.99995/tick, seeded at the
+      documented H(0.015) = 0.1124.
+  NOT CHECKED — do not read this page as authority on:
+    - the Ψ weights (α=0.30, β=0.25, γ=0.20, δ=0.25) or the Ego/Left/Right
+      composition. Formula shape read, coefficients NOT re-verified.
+    - the gainMultiplier clamp and EMA constants at §9.5.
+    - the literature-synthesis claims (§2) and every section outside 9.3-9.5.
+    - js/brain/mystery.js, global-workspace.js and mindspace/transform.js -
+      all three are listed sources, NONE of them moved, and none were read.
+last-verified: "074aa591 2026-08-27"
 ---
 
 # The Equational Mind
@@ -376,7 +402,7 @@ High-error windows learn at up to 1.5×; low-error windows at 0.5×. This implem
 
 ### 9.3 Integrated information as a factor, not a claim
 
-Φ is computed as a **proxy**: the Shannon entropy of a 1,024-neuron sample of the cortical spike pattern. It is not IIT's Φ^max, and the paper states so plainly. [Tononi's Φ](https://iep.utm.edu/integrated-information-theory-of-consciousness/) requires a minimum-information-partition search whose cost grows faster than exponentially with system size; it has only ever been computed on toy models, and there is no consensus on its mathematical definition across research groups. Computing true Φ on 306 million neurons is not merely impractical — it is not currently defined in a way anyone agrees on.
+Φ is computed as a **proxy**: the Shannon entropy of the cortical spiking **proportion**. ⛔ **CORRECTED 2026-08-27 — this said "a 1,024-neuron sample", which is the pre-`PHISRC.1` implementation.** `computePhi()` (`js/brain/cluster.js:2249`) now derives `p` from the **exact GPU-acked `cluster.spikeCount`**, written from every `compute_batch` ack. ⭐ **The exact proportion is strictly better than the sample it replaced, and for a stated reason: the 1,024 figure existed only to hold binomial sampling noise near 1.5%, and an exact count has no sampling noise at all.** ⚠ The sample was not merely imprecise — at biological scale it was measuring nothing: the GPU owns cortex spike state, so the CPU `lastSpikes` array a strided 1,024-wide sample reads is empty apart from teach-pattern bits. It is not IIT's Φ^max, and the paper states so plainly. [Tononi's Φ](https://iep.utm.edu/integrated-information-theory-of-consciousness/) requires a minimum-information-partition search whose cost grows faster than exponentially with system size; it has only ever been computed on toy models, and there is no consensus on its mathematical definition across research groups. Computing true Φ on 306 million neurons is not merely impractical — it is not currently defined in a way anyone agrees on.
 
 What the entropy proxy legitimately captures is the *differentiation* half of IIT's requirement: a cortex pinned uniformly high or uniformly silent has low entropy and yields a low factor, while a richly differentiated spike pattern yields a high one. (The sample size was raised from 64 to 1,024 after an audit showed the smaller sample was measuring binomial noise rather than cortical complexity.)
 
@@ -399,7 +425,22 @@ with weights α=0.30, β=0.25, γ=0.20, δ=0.25, `n` the count of currently-spik
 
 The structure is a deliberate mapping of psychodynamic and lateralization vocabulary onto measurable cluster rates. `Ego = cortex · (1 + hippocampus)` says the self-model is cortical self-prediction *scaled by memory* — you cannot have a self without a history. `Left` is deliberative capacity, explicitly *reduced* by impulsivity. The `√(1/n) · N³` prefactor makes Ψ depend on both how much of the brain is active *now* and how large the brain is *in total*.
 
-⛔ **Corrected 2026-08-25 — the paragraph below argues for `Φ̂` ANALYTICALLY, and in the running system it had never modulated anything.** The state-ordering result is a property of the formula and stands as written; what did not hold was the implementation. `computePhi()` sampled the **CPU spike shadow**, which is empty once the GPU owns cortex spike state, so Φ̂ measured teach-pattern residue — `phiRaw` read 0.0289 and then 0.0112 on the live walk, about one sampled neuron in 1024, while the donor card was saturated. **Ψ therefore took Φ̂'s `max(0.1, ·)` floor on every tick for the entire life of the term**, and every claim below about Φ̂ *distinguishing* states was true of the equation and untested in production. Now derived from the exact GPU-acked spike proportion; at the documented ~1.5% design sparsity `H(0.015) = 0.1124` clears the floor. ⚠ **The honest reading of the paragraph that follows: it is a derivation, not a report of observed behaviour** — and the distinction is exactly what this paper is supposed to keep straight.
+⛔ **Corrected 2026-08-25 — the paragraph below argues for `Φ̂` ANALYTICALLY, and in the running system it had never modulated anything.** The state-ordering result is a property of the formula and stands as written; what did not hold was the implementation. `computePhi()` sampled the **CPU spike shadow**, which is empty once the GPU owns cortex spike state, so Φ̂ measured teach-pattern residue — `phiRaw` read 0.0289 and then 0.0112 on the live walk, about one sampled neuron in 1024, while the donor card was saturated. **Ψ therefore took Φ̂'s `max(0.1, ·)` floor on every tick for the entire life of the term**, and every claim below about Φ̂ *distinguishing* states was true of the equation and untested in production. Now derived from the exact GPU-acked spike proportion; at the documented ~1.5% design sparsity `H(0.015) = 0.1124` clears the floor.
+
+⭐ **UPDATED 2026-08-27 — THE CAVEAT ABOVE CAN NOW BE RETIRED, BECAUSE IT WAS MEASURED.** The previous sentence read: *"it is a derivation, not a report of observed behaviour."* Read off the running brain: **`phiState: "live"`** (not `floored`), **`phiRaw` 0.2618**, **`phiScaleRef` 0.3044**, **`phiNorm` (Φ̂) 0.860**. ⭐ **So Φ̂ is modulating Ψ, and the floor is no longer doing the work — the term is doing what this section always argued it would, and that is now a report rather than a derivation.**
+
+⛔ **And the NORMALISATION is not a bare floor, which this paper did not previously describe.** `PHISCALE.1` (`server/brain-server.js:5034-5087`) makes Φ̂ an **adaptive high-water reference**:
+
+```
+Φ̂ = clamp(H(p) / ref, 0, 1)
+ref ← H(p)                        if H(p) > ref     (reach a real peak at once)
+ref ← max(seed, ref · 0.99995)    otherwise         (and let it come back down)
+seed = H(0.015) = 0.1124                            (her DOCUMENTED design sparsity)
+```
+
+⭐ **Why a reference and not a constant, stated because it is the substantive design choice:** nothing in the system justifies a specific spiking proportion as "maximal integration", and a hardcoded `p_ref` would silently mean different things across boots — **`totalNeurons` is derived at boot from free host RAM**, so the same code has come up at 425,436,550 and 459,775,607. Referencing her *own observed peak* is scale-free in the same way the `gainMultiplier` EMA is. ⚠ The seed is the documented sparsity rather than a chosen number, so the floor case is derived too.
+
+⚠ **A first attempt at this rose too gently and a harness caught it:** a lagging reference clipped design-sparsity firing and 3% firing both to `1.000`, i.e. re-created the very constant it was meant to remove. Verified on the fix: 0.5%→3% firing spans **0.234 → 1.000**, spread **0.766**.
 
 ⭐ **`Φ̂` is not cosmetic, and it earns its place by fixing exactly one state.** Capacity alone rates **anaesthesia as maximal consciousness** — anaesthesia has very low `n`, and low activity reads as high unspent potential. Integration is what distinguishes it from **dissociation**, which is also quiet and is famously hyper-vivid. With `Φ̂`, seizure (hypersynchrony destroys information), anaesthesia (nothing bound), rage, ordinary waking and freeze all order correctly — and **freeze falling out as maximal was not designed for**, which is the kind of agreement worth reporting because it was not arranged.
 
