@@ -9,10 +9,35 @@ status: verified
 sources:
   - js/brain/curriculum.js
   - js/brain/language-cortex.js
-last-verified: "79215585 2026-08-27"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). ⛔ The dated capability entries saying "8
+  named sub-regions" and "7 pairs x 2 directions" were NOT rewritten — they
+  were true when written, and this page's whole function is to record what she
+  could do on each date.
+  WHAT WAS DONE INSTEAD: a GEOMETRY FORWARD-POINTER at the head giving the
+  current measured values (11 top-level sub-regions; 16 cross-region
+  projections) and naming the current authority.
+  ⭐ The CLASS is now guarded: docs:drift check 10 tripwires the superseded
+  figures with a historical exemption, and reads GREEN as of this stamp.
+  NOT CHECKED — do not read this page as authority on:
+    - any capability claim. This page is ~514 lines of extremely dense dated
+      banners and NONE of them were re-verified; only the geometry figures were.
+    - js/brain/curriculum.js, the source that moved. Not read for this page.
+  ⚠ THE STANDING WARNING ON THIS PAGE REMAINS THE POINT: line 358 once claimed
+  a route had been removed in April while it ran in production for four more
+  months. Treat every capability sentence here as a cached observation.
+last-verified: "81c5068c 2026-08-27"
 ---
 
 # SKILL TREE — IF ONLY I HAD A BRAIN
+
+> ## ⚠ GEOMETRY FORWARD-POINTER (added 2026-08-27) — the dated entries below say **8 sub-regions**, and that was TRUE WHEN WRITTEN
+>
+> ⛔ **The cortex now carves into ELEVEN top-level sub-regions, not 8, and there are SIXTEEN cross-region projections, not 14 / "7 pairs × 2".** Measured by constructing a real cluster: `auditory, visual, gustatory, somatosensory, free, letter, phon, sem, fineType, motor, word_motor`. `gustatory` and `somatosensory` were carved out of `free` (so the spans shifted), and `word_motor` + its projection pair arrived with the 2026-07-14 WMB unification.
+>
+> ⭐ **The dated entries below are NOT being rewritten, and that is deliberate.** They are a record of what shipped on the day they were written, when `8` and `14` were the truth. **Editing them would falsify the history this page exists to keep** — the same reason `docs:drift`'s link checker exempts archives.
+>
+> **Current authority for the region map:** `wiki/modules/cortex-cluster.md`, `docs/ARCHITECTURE.md` and `README.md` — all three verified 2026-08-27. ⚠ **Six documents were found carrying the old figures during that sweep; four stated them as CURRENT and were corrected, and this page and `docs/ROADMAP.md` state them as history and were left alone with this pointer instead.**
 
 > **CURRENT-STATE (2026-08-17):** **Pre-K + K ONLY scope REVOKED 2026-06-18** — the full K→PhD curriculum (all 19 grades: K, G1-G12, College 1-4, Grad, PhD — every subject + full lived-year per grade; per-grade vocabulary lists totaling 49,921 words / **18,017 unique** across the journey) is BUILT and WALKING on the grown **12,000,000-neuron language cortex** (306M brain). Current phase = the training walk at full speed (teach/min 200 → 1,100+ after the 2026-08-17 stalling war; the 1300–1500 pair-phase band is the next live confirmation) → final test → push. The "SCOPE LAW (2026-04-18): Pre-K + K ONLY" line in the dated banners below is HISTORICAL.
 
