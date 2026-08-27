@@ -38928,3 +38928,44 @@ On the deployed box `/ctl/` sits behind `auth_basic "Unity admin"` (`deploy/ngin
 Public visitor blocked; `?public=1` blocked even when admin; deployed admin allowed; local allowed; local + public flag still blocked. Dashboard divs 492/492, scripts parse.
 
 ⚠ **Frontend only — lands on deploy, no press.**
+
+---
+
+## 2026-08-27 - DOCPROV.1: docs get the provenance the code side already had - feature/fable-kit-adapt
+
+### Gee ask (verbatim per LAW #0)
+
+> *"build it"*
+
+### What shipped
+
+An eighth check in `scripts/doc-drift-check.mjs`. Checks 1-7 are **claim-based** — each hunts a specific lie someone already thought to look for. That only catches predicted lies. This one catches the unpredicted ones, mechanically, for any page: a doc declares the source files its claims derive from plus the commit they were verified at, and `git diff --stat <hash>..HEAD -- <sources>` answers whether the ground moved.
+
+⭐ **The rule adopted with it, stated in the tool and in both seeded pages: THE DOC IS THE MAP, THE CODE IS THE TERRITORY.** Every claim is a cached observation that may have gone stale; on conflict trust the code and fix the page. Every doc-lie in this project's history is a violation of exactly that.
+
+**Seeded on two pages, not thirty-one** — frontmatter is OPTIONAL, so a page without it is UNCOVERED rather than failing and this can grow. `SKILL_TREE.md` was seeded first deliberately: line 358 once claimed a route had been removed in April while it ran in production for four more months. It is the page that proved a doc can lie in the reassuring direction.
+
+⚠ `sources` is the FOCUSED set whose change most likely invalidates the page, not everything it mentions. A page claiming the whole tree reports drift on every commit, and the tool's own header already warns that a check which cries wolf gets ignored.
+
+### ⛔ Two self-inflicted reassuring lies, caught by RUNNING it
+
+**1. Zero coverage read as green.** With no page carrying frontmatter, `stale` is empty, so the check landed in the `ok` column: *"doc provenance verified"* when the truth was *"nothing was looked at"*. That is the exact failure this file exists to catch, committed inside the check written to prevent it. The title now reads `NO PAGE IS COVERED YET (0 of 31); nothing was checked`.
+
+**2. CRLF truncated every source list to its first entry.** This repo stores CRLF. `.` does not match `\r`, so `.*\n?` stopped at the carriage return and the list matcher captured **only the first source of every page** — the check would have reported `ok` while examining a fraction of what each page claimed. ⭐ **Found by running it against a real two-source page and noticing "1 of its 1 source(s)" where the page listed two.** Reading the regex would not have found it.
+
+### Verified — all four branches exercised against the real repo
+
+| test | result |
+|---|---|
+| Stale baseline (40 commits back) | `SKILL_TREE.md — 1 of its 2 source(s) changed since ba5b0cdb` |
+| Unresolvable hash (`deadbee`) | `is not a commit in this repo; re-verify and restamp` — does NOT pass silently |
+| Source that no longer exists | `sources no longer exist: js/brain/does-not-exist.js` |
+| Restored, honest state | `ok doc provenance verified (2 covered, 29 uncovered)` |
+
+Also: `--strict` still exits 1 on real drift, and the whole run is report-only — the tool's header is explicit that a guard which silently rewrote a doc to make itself pass would be the failure it exists to catch, and that property is untouched.
+
+### ⭐ It found MY drift within a minute of existing
+
+12 `DREAM_*` flags shipped undocumented — **all of them mine, from today**: the `ARTWEIGHT` trio, the `VM_RELATE` trio, `PERCEPT_GROUND_MAX_QUEUE`, `OWNART_INGEST_WALK_MS`, `REL_USE_MIN_MARGIN`, `REL_USE_TTL_MS`, `CHAT_IMAGE_PRIORITY_MS`, `WEIGHTS_PAIR_TOL_SEC`. **Docs-before-push is a LAW and I broke it twelve times today.** Documented rather than filed — each row carries its default, its effect, and the reasoning that makes it a lever or a bound.
+
+**`npm run docs:drift` now reports: No drift found.** That clean baseline is the prerequisite for `DOCPROV.2`, the Stop-hook half.
