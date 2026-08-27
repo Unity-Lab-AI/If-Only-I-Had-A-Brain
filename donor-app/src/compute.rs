@@ -1229,19 +1229,18 @@ impl Backend {
     }
     /// GOTCHA.3b (v0.3.32) — voltage mean, per backend.
     ///
-    /// ⚠ THE CUDA ARM RETURNS `None` ON PURPOSE, and this is the honest shape
-    /// rather than a stub pretending to work. The board's own cost note for this
-    /// field says the reduction "must be written TWICE, once for wgpu and once
-    /// for CUDA" — the wgpu half ships here; the CUDA half needs a kernel in
-    /// `cuda_kernels.cu` and is NOT written. Returning `None` means the server
-    /// reads `unreported-by-this-donor` for a CUDA donor, which is exactly what
-    /// `meanVoltageSource` (GOTCHA.3a) was built to say. ⛔ Returning `Some(0.0)`
-    /// here would be a lie indistinguishable from a real quiet cluster.
+    /// ⭐ BOTH BACKENDS, as the board's own cost note required: the reduction
+    /// "must be written TWICE, once for wgpu and once for CUDA". `voltage_mean`
+    /// exists in `shaders/voltage_mean.wgsl` and in `cuda_kernels.cu`, and the
+    /// two Rust halves mirror each other line-for-line (fixed partial slots,
+    /// host sums, host divides by the real `n`) precisely so a divergence would
+    /// show up as a backend-dependent number rather than hiding.
+    /// ⛔ Either half returns `None` on failure, never `Some(0.0)`.
     fn voltage_mean(&self, name: &str) -> Option<f32> {
         match self {
             Backend::Wgpu(e) => e.voltage_mean(name),
             #[cfg(feature = "cuda")]
-            Backend::Cuda(_) => None,
+            Backend::Cuda(e) => e.voltage_mean(name),
         }
     }
     fn has_cluster(&self, name: &str) -> bool {
