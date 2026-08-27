@@ -39609,3 +39609,76 @@ Found by reading the diff of the **one source that had moved**, which was my own
 ⚠ **This edit re-drifts `ADMIN-CONTROLS.md` by one source the instant it lands** — recorded in that page's `verified-scope` with the reason, because the alternative is bumping a hash to silence a signal that is telling the truth. ⛔ **A stamp cannot name the commit that contains it**, so the honest value is *the tree I actually read*.
 
 **Drift list 22 → 21** (and back to 22 on commit, by design, per the note above). **5 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`, `ADMIN-CONTROLS`). Board **8 open / 4 in-progress / 384 done** — ⚠ **counted with `grep`, not derived.** I first wrote *"3 in-progress"* by reasoning that `GOTCHA.9` had closed one; it did not move the count, because `GOTCHA.9` was **filed and closed inside the same session**, entering as `[~]` and leaving as `[x]`. ⭐ **Same lesson as the line counts: a tally is a READING, not an inference** — and it was wrong in the direction that flatters the work.
+
+## 2026-08-27 - DOCPROV.4 (6 and 7 of 22): a doc that asserted her sentence invention was mathematically impossible, and a capture spec whose own validity rule referenced a field that does not exist
+
+Gee: *"get on with it"*
+
+### ⛔ `docs/THRESHOLD-DERIVATION.md` — the oldest baseline on the board, and one section had INVERTED
+
+Stamped 2026-06-17, so its sources had two months to move. Every named constant was looked up in source: **ten held, five had moved, one section had gone from true to false.**
+
+**THE BIG ONE.** The section headed *"Open-loop work: K-vocab corpus expansion (B.6)"* declared itself **"the largest single item on the audit ship-gate"** and stated that *"the 'she invented a sentence' milestone is **mathematically suppressed**"* because the corpus was *"6× UNDER percolation."* Measured by importing the real modules and counting:
+
+| quantity | the page claimed | measured | |
+|---|---|---|---|
+| `K_CONCRETE_SENTENCES` | 233 | **2,881** | 12.4× |
+| unique bigrams | ~700 | **7,831** | 11.2× |
+| mean bigram degree | 0.31 | **3.485** | — |
+| stated target | ~4,500 bigrams / degree 2.0 | **exceeded by 74%** | ⭐ PASSED |
+
+`N = 2247` (`K_VOCABULARY`) was the only number in that block that survived.
+
+⛔ **Why this is worse than a wrong number.** An authoritative, mathematically-dressed claim that compositional emergence *cannot* happen is a **ready-made false cause for any emission failure.** ⚠ **`EMITZERO.1` is open right now** — 100% emit refusal, one reason, `no-best-word` — and it is filed *deliberately* as a question with evidence and **no diagnosis**, because three of this project's worst days came from acting on a plausible cause. **This page was sitting there offering one, in the language of Erdős-Rényi, and it had been false since the corpus grew.** ⭐ **That is the `SKILL_TREE.md:358` failure exactly: a doc lying in the direction that feels like an answer.**
+
+⚠ **I did not upgrade it to the opposite over-claim.** Mean degree clearing a threshold is **not** a connectivity proof — it does not test whether the bigram graph is one giant component or several islands, and **a mean can clear a bound while the graph is fragmented.** The coarse proxy was kept deliberately so before/after is comparable, and its limit is stated on the page.
+
+### ⛔ Two constants moved, and the CODE was right both times
+
+**`BACK_INJECT_BASE` is `0.24`; `BACK_INJECT_DECAY` is `0.92`** (`emit.js:1719-1720`) — documented here as `0.15` / `0.85`. ⭐ **This was not undocumented drift: `emit.js:1700-1719` carries a full superseding derivation** under *WORD-ORDER REBALANCE*, and its reasoning matters more than the numbers:
+
+> the bio-leak default (base 0.15, decay 0.85) left the prior-word transition signal too weak against the persistent ~0.30 intent seed, so per-tick argmax selected words by **topic-similarity to the intent** rather than by **grammatical sequence given the prior word** → topically-correct but scrambled word-salad.
+
+**So `0.15` was identified as a CAUSE of scrambled output and deliberately traded away from pure cortical-leak timing.** The code states its own bound (asymptotic `0.24/0.08 = 3.0` vs `1.0` before) and names the first knob to turn. ⛔ **The retired "drift trigger" was actively dangerous:** *"recompute `= exp(−TICKS_PER_WORD × tick_ms / τ_ms)`"* would drive the value back to ~0.861 and **silently reintroduce the word-salad the constant was raised to fix.** Also corrected: `0.92` is **6.9%** above the biological `0.861`, not *"within 1.5%"*.
+
+⚠ **One claim WITHDRAWN rather than restated with a new number.** The old text claimed a *"50% reserved for intent"* budget invariant. I could not confirm that the back-inject call at `:1723` passes through the `MAX_CUMULATIVE_SEM_INJECT` accounting at `:1470-1489` at all — it calls `injectEmbeddingToRegion` directly. **So the invariant is named as unestablished instead of being given a freshly-computed figure I could not stand behind.** ⛔ **I had in fact computed one — a geometric sum putting back-injection at 97% of the 1.5 budget — and dropped it, because it assumed an enforcement path I had not verified.** `MAX_CUMULATIVE_SEM_INJECT = 1.5` itself is confirmed.
+
+### ⛔ `COHERENCE_MIN` is THREE constants with three values
+
+| site | value | what it gates |
+|---|---|---|
+| `cluster.js:261` | **0.15** (env `DREAM_COHERENCE_MIN`) | the `composeSentence` floor **this page describes** |
+| `curriculum.js:16906` | **0.05** | the P5.3 quality **bonus** floor — **not a rejection gate at all** |
+| `curriculum.js:18502` | **0.80** | `_probeCM2MysteryPsiCoherence`, 15 trials |
+
+The page documented the **second one's value** against the **first one's gate**, reading as *"emissions are rejected below 0.05"* when the real floor is three times higher and `0.05` governs whether a bonus is added. ⭐ **A name collision is the most dangerous shape a constant table can have — every value in it is individually real, so nothing looks wrong.**
+
+Also corrected: the consolidation cap is **45s routine / 120s forced** (`CONSTARVE.1`), not 30s.
+
+### ⚠ Two stale IN-CODE comments, fixed in the same commit
+
+`emit.js:1689` asserted *"BACK_INJECT_DECAY=0.85 … within 1.5% of biological"* **twenty lines above `const BACK_INJECT_DECAY = 0.92`**, with no marker separating the old block from the one superseding it — so the file contradicted itself and the stale half read as current. `consolidation-engine.js:114` said *"default 30s"* thirty lines above the code setting `45000`/`120000`. Both now labelled in place. ⭐ **A wrong comment beside a right value is worse than no comment: it is precisely what stops the next reader checking.** Same class as the `visual-cortex.js` header that claimed an LLM in the perception path.
+
+⚠ **Both edits are comment-only — verified, not assumed: the rebuilt bundle is byte-identical at 4,426,103 bytes, because esbuild strips comments.** `node --check` clean on both. ⚠ **The `emit.js` ESM import failure seen while verifying is `GOTCHA.1`, pre-existing and left documented on Gee's call** — proved by importing `curriculum.js` first, its own documented workaround, after which `emit.js` imports fine.
+
+⭐ **Ten constants VERIFIED UNCHANGED and listed on the page so nobody re-checks them:** `COHERENCE_BONUS_GAIN 0.5`, `MIN_UNIQUE_RATIO 0.5`, `DREAM_RECOMB_COHERENCE_MIN 0.20`, `INJECTION_GAIN 8`, `NOISE_FLOOR 0.001`, `MAX_CUMULATIVE_SEM_INJECT 1.5`, `ADAPTIVE_FLOOR = EMA × 0.5`, P6.1 `reps 80`, P6.8 `reps 30`, `K_VOCABULARY 2247`.
+
+### ⛔ `docs/TRAJECTORY-CAPTURE.md` — five paths that do not exist, one of them the spec's own correctness rule
+
+This page is a **capture spec**: field, path, sampling rule. Every path was looked up key-by-key in the live `/public-state.json`. **Five are UNDEFINED:**
+
+`curriculum.activeSubject` → **`currentSubject`**. `curriculum.activeGrade` → **`currentGrade`**. `curriculum.cellsPassed` → **`passedCellsTotal`**. And `curriculum.passedCells` / `.passedPhases` have **no published equivalent at all** — they exist on the cluster as the ledger `WALKORDER.1` made position read from, and they are simply not in the payload.
+
+⭐ **In a capture spec a wrong path is not a typo. It is a recorder writing `undefined` into the x-axis of a curve that then looks captured and is empty** — the fabricated trajectory this file's own header says is *"worse than no trajectory for exactly the audience this is aimed at"*, arriving through the front door.
+
+⛔ **And the deepest one: the spec's validity rule depended on a missing field.** *"A trajectory row for a cell is only valid once that cell appears in `passedCells`."* **`passedCells` is not in the payload the rest of the page tells the recorder to read.** `undefined` is falsy, so a recorder built strictly to this spec either **rejects every row** or — if the check were written the other way — **passes every row unchecked.** **Both fail silently.** Corrected to: valid once `passedCellsTotal` increments (differenced, per the page's own rule 1) or `lastGateVerdict` records a fail.
+
+⭐ **Three present-and-undocumented fields found while checking — including the two the page actually needed:** `curriculum.lastGateVerdict`, `curriculum.examTranscript`, `curriculum.cellPhasesStarted`.
+
+⚠ Also: **six subjects, not five** (`["ela","math","science","social","art","life"]`). `totalNeurons` is **published top-level** and must not be re-derived by summing `clusters.*.size`; the figures quoted here were stale because **the count is derived at boot from free host RAM** — 459,775,607 this boot, against 425,436,550 and 411,216,550 on other boots of the same code.
+
+⚠ **Left as an OPEN QUESTION, not answered:** `curriculum.subjects` lists 6 while the course roster is 9 (`pe`/`music`/`health` are real courses — `WALKORDER.1` exists because they had no `cluster.grades` entry and defaulted to `pre-K` forever). **Whether `subjects` is the core set by design or is under-reporting is a separate investigation, and guessing it would repeat that bug's own cause.**
+
+⚠ **`profiling.clients.list[]` per-donor field names could NOT be confirmed — the list was empty at read time. Absence of a donor is not absence of a field**, so those rows are recorded as unchecked rather than either endorsed or corrected.
+
+**Drift list 22 → 20** (and back to 21 on commit, by design — the comment demotions edit two of `THRESHOLD-DERIVATION`'s own sources; pre-documented in its `verified-scope`). **7 of 22 pages done.** Board **8 open / 4 in-progress / 384 done**.

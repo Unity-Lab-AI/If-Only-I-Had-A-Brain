@@ -113,7 +113,10 @@ export class ConsolidationEngine {
       return { skipped: 'seed-phase-active' };
     }
     // I.8 — also enforce a wall-clock cap. Operator-tunable via
-    // `DREAM_CONSOLIDATION_MAX_MS` env var (default 30s). When a pass
+    // `DREAM_CONSOLIDATION_MAX_MS` env var — default 45s for a routine pass,
+    // and DREAM_CONSOLIDATION_FORCE_MAX_MS (default 120s) when opts.forced,
+    // per CONSTARVE.1 below. (This line said "default 30s" until 2026-08-27,
+    // thirty lines above the code that sets 45000/120000.) When a pass
     // exceeds the cap, abort gracefully at the next phase boundary;
     // the next pass resumes work from a fresh candidate batch. Without
     // the cap, observed durations of 153s+ stole the GPU exclusively
