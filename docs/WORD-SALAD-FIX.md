@@ -10,6 +10,19 @@ sources:
   - js/brain/cluster/emit.js
   - js/brain/self-frame.js
   - js/brain/language-cortex.js
+  # ADDED 2026-08-27 by the new sources-coverage check (doc-drift-check.mjs
+  # check 9): this page makes LINE-PRECISE claims about all four and declared
+  # none of them, so check 8 could never have flagged them when they moved.
+  # chat.js is cited 3× (:3496/:3568/:3630) and brain-server/state.js:347 is
+  # the basis of the recruitment-path correction above.
+  - server/brain-server/chat.js
+  - server/brain-server/state.js
+  - js/brain/curriculum.js
+  - js/brain/hippocampal-schema.js
+  # This one was INVISIBLE until the parser was fixed: the comment above
+  # truncated the block, so every source below it went unread and this gap
+  # went unreported. Revealed by fixing the parser, not by a second look.
+  - server/brain-server/visual-memory.js
 verified-scope: |
   CHECKED 2026-08-27 — every live measurement this page cites was RE-READ off
   the local brain (build 2673d14c, booted 04:22:39Z) and recorded beside the
