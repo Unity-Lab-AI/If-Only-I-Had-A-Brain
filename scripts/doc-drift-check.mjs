@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -166,6 +167,104 @@ const ARCHIVE = /FINALIZED|RESUME|TODO|NOW\.md|OPEN-TASKS/;
   }
   note('no doc describes a deleted component as live', hits,
     'Each hit reads as if the thing still exists. Mark it DELETED with its reason, or strike it.');
+}
+
+// ── 8. DOCPROV — provenance: has the ground moved under this page? ───────
+//
+// Checks 1-7 are CLAIM-based: each hunts a specific lie someone already
+// thought to look for (a deleted component named as live, an undocumented
+// flag). That only ever catches the lies we predicted. This check catches the
+// ones we have not thought of yet, mechanically and for any page: a doc
+// declares the source files its claims derive from plus the commit those
+// claims were verified at, and git answers whether those files have moved
+// since.
+//
+// ⭐ The governing rule, worth stating because every doc-lie in this file's
+// history is a violation of it: THE DOC IS THE MAP, THE CODE IS THE
+// TERRITORY. Every claim is a cached observation that may have gone stale.
+// On conflict, trust the code and fix the page.
+//
+// ⚠ Frontmatter is OPTIONAL. A page without it is UNCOVERED, not failing —
+// so this can land on two docs and grow, instead of demanding a 31-file
+// migration before it reports anything. Coverage is printed either way, so
+// "nothing is covered" can never masquerade as "nothing is stale".
+{
+  const stale = [];
+  let covered = 0, uncovered = 0;
+
+  const gitOut = (args) => {
+    try {
+      return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch { return null; }
+  };
+  // No git (a tarball deploy, a sandbox) → skip the whole check rather than
+  // report every page as broken. Absence of the tool is not evidence of drift.
+  const gitOk = gitOut(['rev-parse', '--git-dir']) !== null;
+
+  const docFiles = [
+    ...lsx('docs', '.md').map((f) => `docs/${f}`),
+    ...lsx('deploy', '.md').map((f) => `deploy/${f}`),
+    'README.md',
+  ];
+
+  for (const rel of docFiles) {
+    if (ARCHIVE.test(rel)) continue;            // archives are history, not claims
+    const txt = read(rel);
+    // ⛔ CRLF-TOLERANT, and this is not cosmetic. This repo stores CRLF (git
+    // says so on every commit). `.` does not match `\r`, so `.*\n?` stopped at
+    // the carriage return and the list matcher captured only the FIRST source
+    // of every page — the check would have reported `ok` while examining a
+    // fraction of what each page claimed. A guard that silently under-reports
+    // is the reassuring-direction lie this file exists to catch, and it was
+    // caught by RUNNING the check against a real two-source page rather than
+    // by reading the regex.
+    const fm = /^---\s*\r?\n([\s\S]*?)\r?\n---/.exec(txt);
+    if (!fm) { uncovered++; continue; }
+    const block = /^sources:[ \t]*\r?\n((?:[ \t]+-[ \t]+[^\r\n]+\r?\n?)+)/m.exec(fm[1]);
+    const hashM = /^last-verified:\s*["']?([0-9a-f]{7,40})\b/m.exec(fm[1]);
+    if (!block || !hashM) { uncovered++; continue; }
+    covered++;
+    if (!gitOk) continue;
+
+    const sources = [...block[1].matchAll(/-[ \t]+([^\r\n]+)/g)]
+      .map((m) => m[1].trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/'))
+      .filter(Boolean);
+    const hash = hashM[1];
+
+    // ⛔ An unresolvable baseline (rebase, squash, shallow clone) must NEVER
+    // pass silently. "I cannot check this" and "this is fine" are different
+    // answers, and conflating them is the reassuring-direction lie in a new
+    // form — the exact failure this file exists to catch.
+    if (gitOut(['cat-file', '-e', `${hash}^{commit}`]) === null) {
+      stale.push(`${rel} — last-verified ${hash} is not a commit in this repo; re-verify and restamp`);
+      continue;
+    }
+    // A source that no longer exists is drift by itself: the page describes a
+    // file that is gone.
+    const missing = sources.filter((s) => !existsSync(R(s)));
+    if (missing.length) stale.push(`${rel} — sources no longer exist: ${missing.join(', ')}`);
+
+    const present = sources.filter((s) => existsSync(R(s)));
+    if (!present.length) continue;
+    const diff = gitOut(['diff', '--stat', `${hash}..HEAD`, '--', ...present]);
+    if (diff && diff.trim()) {
+      const files = diff.trim().split('\n').length - 1;   // last line is the summary
+      stale.push(`${rel} — ${files} of its ${present.length} source(s) changed since ${hash}`);
+    }
+  }
+
+  // ⛔ ZERO COVERAGE MUST NOT READ AS GREEN. With no page carrying
+  // frontmatter, `stale` is empty and this lands in the ok column — "nothing
+  // is stale" when the truth is "nothing was looked at". That is the
+  // reassuring-direction lie this file exists to catch, and it would have been
+  // self-inflicted in the very check written to prevent it. The title says
+  // which of the two it is.
+  const provTitle = covered === 0
+    ? `doc provenance — NO PAGE IS COVERED YET (0 of ${uncovered}); nothing was checked`
+    : `doc provenance verified (${covered} covered, ${uncovered} uncovered)`;
+  note(provTitle, stale,
+    'The page makes claims about files that have changed since it was last checked. Re-read the code, correct the page, then restamp last-verified. THE CODE IS THE TERRITORY.');
+  if (!gitOk) console.log('  note  provenance: git unavailable — staleness not evaluated (coverage still counted)');
 }
 
 // ── Report ───────────────────────────────────────────────────────────────
