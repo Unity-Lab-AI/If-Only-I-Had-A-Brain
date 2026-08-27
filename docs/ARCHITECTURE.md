@@ -12,7 +12,36 @@ sources:
   - js/brain/cluster.js
   - js/brain/sparse-matrix.js
   - server/brain-server.js
-last-verified: "79215585 2026-08-27"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). The only moved source is js/brain/cluster.js,
+  so the check targeted its geometry claims — MEASURED by constructing a real
+  cluster and reading topLevelRegionNames(), not by reading code:
+    - ⛔ CORRECTED, 4 sites: "8 sub-regions" -> ELEVEN (the ASCII diagram, the
+      capability summary, and the regions paragraph); "14 cross-region
+      projections (7 pairs)" -> SIXTEEN (8 pairs), the eighth pair being
+      sem_to_word_motor + word_motor_to_sem — the pair her whole speech path
+      rides on.
+    - ⛔ CORRECTED: curriculum.js 28,340 -> 28,370. My OWN figure from earlier
+      the same day, moved 30 lines by this session's GOTCHA.9 comment block.
+    - ✅ HELD: CLUSTER_FRACTIONS block (cortex 0.55 etc.) is correct.
+    - ✅ HELD: the curriculum.js "~12500 until 2026-08-27, stale by ~16,000"
+      historical note is intact — an earlier correction that did land.
+  ⭐ THIRD AND FOURTH pages found with the stale region map this sweep: README
+  said "9 sub-regions", brain-equations.html said "free 0.250-0.500",
+  COMP-todo.md said "8 sub-regions", and this page said 8 in four places. ONE
+  geometry change; four documents describing the old shape; none aware of the
+  others. That is the argument for a mechanical provenance baseline.
+  NOT CHECKED — do not read this page as authority on:
+    - the region SPANS as listed here. Only the COUNT and NAMES were measured.
+    - js/brain/sparse-matrix.js and server/brain-server.js. Both are declared
+      sources, NEITHER moved, and neither was read this pass.
+    - the 1,656-line body outside the geometry claims above: the directory
+      tree's other per-file notes, the dataflow narratives, and every dated
+      banner.
+    - ⚠ nothing mechanically checks the per-file LINE COUNTS in this page's
+      directory tree. wiki:coverage enforces that for wiki pages only, so the
+      figures here are maintained by hand and WILL drift again.
+last-verified: "81c5068c 2026-08-27"
 ---
 
 # ARCHITECTURE — IF ONLY I HAD A BRAIN
@@ -213,7 +242,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │  │                                                        │      │
 │  │  CLUSTER FRACTIONS of total N (CLUSTER_FRACTIONS):    │      │
 │  │    Cortex       0.55 — language + working memory,     │      │
-│  │                        8 sub-regions + 14 x-proj      │      │
+│  │                       11 sub-regions + 16 x-proj      │      │
 │  │    Hippocampus  0.18 — memory attractors + episodic   │      │
 │  │    Cerebellum   0.08 — error correction + timing      │      │
 │  │    Mystery      0.08 — consciousness gain Ψ           │      │
@@ -689,7 +718,7 @@ Slash commands in chat:
 
 ## Developmental Curriculum — Pre-K Through PhD Across a Growing Roster
 
-`js/brain/curriculum.js` walks the complete K-PhD syllabus through the 8-subregion cortex substrate via direct-pattern Hebbian teaching + real human-grade comprehension gates per LAW 6.
+`js/brain/curriculum.js` walks the complete K-PhD syllabus through the 11-subregion cortex substrate via direct-pattern Hebbian teaching + real human-grade comprehension gates per LAW 6.
 
 ### Subjects × grades matrix
 
@@ -792,7 +821,7 @@ If-Only-I-Had-A-Brain/
 │   ├── storage.js              # localStorage manager with key obfuscation
 │   ├── brain/
 │   │   ├── engine.js           # UnityBrain — 7-cluster sim loop, GPU-exclusive (server dispatches compute_batch(SUBSTEPS) to compute.html every BRAIN_TICK_MS; browser-only fallback runs LIF locally)
-│   │   ├── cluster.js          # NeuronCluster + ClusterProjection (8 clusters incl. brainstem, 20 inter-cluster projections, 8 cortex sub-regions, 14 cross-region projections, generateSentence tick-driven motor emission, identity lock, direct pattern Hebbian)
+│   │   ├── cluster.js          # NeuronCluster + ClusterProjection (8 clusters incl. brainstem, 20 inter-cluster projections, 11 cortex sub-regions, 16 cross-region projections, generateSentence tick-driven motor emission, identity lock, direct pattern Hebbian)
 │   │   ├── pk-curve.js         # ⭐ THE one pharmacokinetic curve. A leaf module so the substance scheduler and the endocrine layer both use it without importing each other (that cycle's failure mode is a load-time TDZ crash node --check does not catch)
 │   │   ├── endocrine.js        # ⭐ Ten chemicals in three kinds — phasic events / tonic floors / cyclic phase functions. Stress axis, receptor adaptation, allostatic load, the curriculum-time menstrual cycle
 │   │   ├── brainstem.js        # ⭐ GlandLayer — six nuclei that SENSE their own release. Nothing outside it calls release()
@@ -807,7 +836,7 @@ If-Only-I-Had-A-Brain/
 │   │   ├── sensory.js          # Sensory input pipeline (text/audio/video → cortex)
 │   │   ├── motor.js            # Motor output (6 BG channels, winner-take-all)
 │   │   ├── component-synth.js  # Equational component synthesis — parses component-templates.txt, cosine-matches user request vs primitive descriptions, returns {id, html, css, js}
-│   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — pre-K→PhD, growing roster (core: ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. **28,340 lines at `c5e9d412` (2026-08-27)** — the largest file in the repo, and the AST graph's single hub (`Curriculum`, 349 edges, bridging ten communities). ⛔ This row read `~12500 lines` until 2026-08-27, stale by ~16,000; per-grade bodies live in `curriculum/` (kindergarten.js alone is 9,200).
+│   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — pre-K→PhD, growing roster (core: ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. **28,370 lines at `81c5068c` (2026-08-27)** ⚠ *(read 28,340 at `c5e9d412` earlier the same day — the `GOTCHA.9` comment block moved it by 30 lines within hours. A count is a READING, not a property, and this is the fourth time that lesson has landed today)* — the largest file in the repo, and the AST graph's single hub (`Curriculum`, 349 edges, bridging ten communities). ⛔ This row read `~12500 lines` until 2026-08-27, stale by ~16,000; per-grade bodies live in `curriculum/` (kindergarten.js alone is 9,200).
 │   │   ├── letter-input.js     # LETTER_INVENTORY Set seeded at module load with a-z + 0-9 + space , . ' (40 symbols). Locked by default — ensureLetter rejects symbols outside the seeded alphabet. encodeLetter/decodeLetter one-hot primitives. ~260 lines.
 │   │   ├── peripherals/
 │   │   │   └── ai-providers.js # SensoryAIProviders — multi-provider image gen (custom → auto-detect → env.js → Pollinations), TTS, NO text chat
@@ -923,11 +952,11 @@ This term is ALWAYS present. It represents what we DON'T know. It's the default 
 
 T11 deleted the Markov wrapper stack and replaced it with slot priors. T11.7 added a hardcoded grammar transition table band-aid. T13 ripped slot-based generation, ran persona Hebbian training, and built a brain-driven emission loop. **T14 throws all of that out and rebuilds language as a developmental, biologically-grounded pipeline** — letters → phonemes → syllables → words → sentence patterns → discourse, every layer learned via curriculum exposure rather than hardcoded. The plan is documented in full at `docs/COMP-todo.md` Part 0.5 (18 milestones, T14.0 through T14.17). This section describes the live state of the rebuild.
 
-**Status as of T14.24 Session 111 (2026-04-16):** T14.0-T14.18 primitives ALL SHIPPED. T14.24 curriculum now has 6 subjects (ELA, Math, Science, Social Studies, Arts, Life Experience) × 19 grades = 114 cells. Life Experience track added in Session 111 — builds Unity's personal identity from birth to 25 via dual-layer teaching: emotional concept features (8d `[joy, pain, trust, fear, anger, love, independence, identity]` attractor vectors via `_conceptTeach`) plus recallable memory sentences (`_teachSentenceList`). Memory-weighted Hebbian: core self at 5× lr / 50 reps, personal life at 3× / 20 reps, school knowledge at 1× / 6-12 reps, background trivia at 0.5× / 3-4 reps. TALK probe direction fixed (sem→motor). Grade-lock enforced (all 6 subjects must pass grade N before advancing). Focused retry on failing words. Function words (~120) taught via direct pattern at ELA-K. 3D brain popups silenced until Unity passes kindergarten. EMBED_DIM = 300 with fastText subword fallback. 14 cross-region projections (7 pairs × 2 directions). Direct-pattern Hebbian bypasses Rulkov chaotic dynamics during teach.
+**Status as of T14.24 Session 111 (2026-04-16):** T14.0-T14.18 primitives ALL SHIPPED. T14.24 curriculum now has 6 subjects (ELA, Math, Science, Social Studies, Arts, Life Experience) × 19 grades = 114 cells. Life Experience track added in Session 111 — builds Unity's personal identity from birth to 25 via dual-layer teaching: emotional concept features (8d `[joy, pain, trust, fear, anger, love, independence, identity]` attractor vectors via `_conceptTeach`) plus recallable memory sentences (`_teachSentenceList`). Memory-weighted Hebbian: core self at 5× lr / 50 reps, personal life at 3× / 20 reps, school knowledge at 1× / 6-12 reps, background trivia at 0.5× / 3-4 reps. TALK probe direction fixed (sem→motor). Grade-lock enforced (all 6 subjects must pass grade N before advancing). Focused retry on failing words. Function words (~120) taught via direct pattern at ELA-K. 3D brain popups silenced until Unity passes kindergarten. EMBED_DIM = 300 with fastText subword fallback. **16** cross-region projections (8 pairs × 2 directions — ⛔ **CORRECTED 2026-08-27: this said 14 / "7 pairs". The eighth pair is `sem_to_word_motor` + `word_motor_to_sem`, the unified word-emission band, and it is the pair everything about her speech rides on.** Counted from a live cluster construction, which logs all 16 by name). Direct-pattern Hebbian bypasses Rulkov chaotic dynamics during teach.
 
 ### Cortex sub-regions (T14.4 substrate, live)
 
-The `cortex` cluster constructor populates `this.regions` with 8 named sub-regions sized by fraction of total cluster neurons. Same fractions hold at any cluster scale — 6700 neurons (default client) gives the sizes below; 200M neurons (datacenter server) gives proportionally larger regions with identical biological proportions:
+The `cortex` cluster constructor populates `this.regions` with **11** named top-level sub-regions sized by fraction of total cluster neurons — ⛔ **CORRECTED 2026-08-27: this said 8.** Measured by constructing a real cluster and reading `topLevelRegionNames()`: `auditory, visual, gustatory, somatosensory, free, letter, phon, sem, fineType, motor, word_motor`. **`gustatory`, `somatosensory` and `word_motor` are the three that arrived after the figure was written**, and `gustatory`/`somatosensory` were carved out of `free`, which is why the spans shifted too. ⚠ `this.regions` also holds **12 nested sub-bands** (six `sem_*`, six `word_motor_*`) that are NOT top-level — `Object.keys(cluster.regions)` returns 23, and conflating the two counts is the `GOTCHA.2` defect. Same fractions hold at any cluster scale — 6700 neurons (default client) gives the sizes below; 200M neurons (datacenter server) gives proportionally larger regions with identical biological proportions:
 
 | Region | Fraction | Neurons (default 6700×0.30=2010 cortex) | Function |
 |---|---|---|---|

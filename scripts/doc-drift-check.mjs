@@ -416,6 +416,126 @@ const ARCHIVE = /FINALIZED|RESUME|TODO|NOW\.md|OPEN-TASKS/;
     'The page makes a line-precise claim about a file it does not declare, so check 8 can never flag it when that file moves. Add the file to `sources:` — or, if the citation is incidental, drop the line number.');
 }
 
+// ── 10. Stale-GEOMETRY tripwire ──────────────────────────────────────────
+//
+// The finding that produced this check: ONE cortex geometry change left SIX
+// documents describing the old shape, and none of them knew about the others.
+// `README.md` said "9 sub-regions", `html/brain-equations.html` said
+// `free 0.250-0.500`, `docs/COMP-todo.md` and `docs/ARCHITECTURE.md` said
+// "8 sub-regions" (ARCHITECTURE in four separate places), and
+// `docs/SKILL_TREE.md` + `docs/ROADMAP.md` carried "8 named sub-regions",
+// "14 cross-region projections", "7 pairs × 2" and `cortex 0.30`.
+//
+// ⛔ Fixing the sixth instance by hand does nothing about the seventh. This is
+// the chokepoint: the OLD figures are now WRONG figures, so they can be
+// tripwired by value — the same shape as check 7's deleted-component tripwire,
+// and for the same reason.
+//
+// ⭐ THE HISTORICAL EXEMPTION IS LOAD-BEARING, NOT A CONVENIENCE. A dated
+// milestone banner saying "8-subregion cortex substrate" was TRUE on its date,
+// and rewriting it would falsify the record this project keeps on purpose. So a
+// hit is only reported when the line carries no historical marker — exactly how
+// check 7 treats a mention of a deleted component. `SKILL_TREE.md` and
+// `ROADMAP.md` keep their old numbers legitimately and are silent here because
+// their lines are marked.
+//
+// ⚠ These patterns encode CURRENT truth and will themselves go stale the next
+// time the geometry moves. That is acceptable and is the point: the next change
+// makes this check FAIL LOUDLY on its own patterns, which is a prompt to update
+// them — infinitely better than six documents drifting in silence.
+{
+  const geo = [
+    { was: '8 sub-regions',                now: '11 top-level sub-regions',  re: /\b8[- ]sub-?regions?\b|\b8 named sub-?regions?\b|\b8-subregion\b/i },
+    { was: '9 sub-regions',                now: '11 top-level sub-regions',  re: /\b9 sub-?regions?\b/i },
+    { was: '14 cross-region projections',  now: '16 (8 pairs × 2)',          re: /\b14 (sparse )?cross-region\b/i },
+    // ⛔ MUST require the "× 2 directions" context. A bare /\b7 pairs\b/ matched
+    // `COMBO SYNERGIES (7 pairs, scaled by min(level_a, level_b))` in
+    // html/brain-equations.html — DRUG combo pairs, nothing to do with
+    // projections. One false positive is how a tripwire starts getting ignored,
+    // which this file's own header says is the failure mode that matters.
+    { was: '7 pairs × 2 directions',       now: '8 pairs × 2',               re: /\b7 pairs\b[^.\n]{0,24}(×|x)\s*2/i },
+    { was: 'cortex fraction 0.30',         now: '0.55',                      re: /cortex[:= ]+0\.30\b/i },
+    { was: 'free 0.250-0.500',             now: 'free 0.300-0.500',          re: /free[`'" ]*0\.250-0\.500/i },
+  ];
+  // Same marker set as check 7, plus the words a forward-pointer or dated
+  // banner actually uses in this repo.
+  // ⚠ `Shipped milestones` is here because a list of what SHIPPED is a record by
+  // definition — ROADMAP's milestone cell legitimately says "8-subregion cortex
+  // substrate, 14 cross-region projections" because that is what shipped on
+  // that date, and rewriting it would falsify the milestone.
+  const HIST = /CORRECTED|SUPERSEDED|was TRUE WHEN WRITTEN|historical|HISTORICAL|until 2026|stale|~~|no longer|earlier|prior|forward-pointer|FORWARD-POINTER|Last updated|Earlier updated|Shipped milestones|shipped on|at the time|then\b/i;
+  const hits = [];
+  const files = [
+    ...lsx('docs', '.md').map((f) => `docs/${f}`),
+    ...lsx('deploy', '.md').map((f) => `deploy/${f}`),
+    ...lsx('html', '.html').map((f) => `html/${f}`),
+    'README.md', 'index.html',
+  ];
+  for (const rel of files) {
+    if (ARCHIVE.test(rel)) continue;           // ledgers keep their own history
+    // ⛔ SKIP FRONTMATTER, for the same reason check 9 does: a `verified-scope`
+    // block is metadata ABOUT corrections, not a claim the page makes. And the
+    // per-line historical marker cannot save it — YAML block scalars WRAP, so
+    // `"8 sub-regions" -> ELEVEN` routinely lands on a different physical line
+    // from its own `CORRECTED` keyword. Four false positives on the first run,
+    // every one inside a note explaining the very fix.
+    const txtAll = read(rel);
+    const fmBlock = /^---\s*\r?\n[\s\S]*?\r?\n---/.exec(txtAll);
+    const lines = (fmBlock ? txtAll.slice(fmBlock[0].length) : txtAll).split('\n');
+    const lineOffset = fmBlock ? fmBlock[0].split('\n').length : 0;
+
+    // ⛔ MARKING IS PARAGRAPH-SCOPED AND SECTION-AWARE, not per-line. A
+    // per-line marker was tried first and was too fragile in both directions:
+    //   · markdown prose WRAPS, so a forward-pointer banner listing the old
+    //     figures put "8 sub-regions" on a different physical line from its own
+    //     "was TRUE WHEN WRITTEN" — the check flagged the very banners written
+    //     to explain the correction.
+    //   · a dated snapshot SECTION ("STACK STATE AS OF 2026-04-15") is
+    //     historical as a whole, and its banner sits many paragraphs above the
+    //     figures it governs.
+    // So: a hit is suppressed if its PARAGRAPH carries a marker, or if the
+    // nearest preceding HEADER marks the section as dated/historical.
+    const paraOf = new Array(lines.length).fill(0);
+    const sectionHistorical = new Array(lines.length).fill(false);
+    {
+      let para = 0, histHeader = false, histLevel = 99;
+      const paraHasMarker = new Map();
+      for (let i = 0; i < lines.length; i++) {
+        const ln = lines[i];
+        if (/^\s*$/.test(ln)) { para++; }
+        // ⛔ STICKY BY HEADING LEVEL. A dated section marks everything under it
+        // historical, INCLUDING its sub-sections — `## STACK STATE AS OF
+        // 2026-04-15` followed by `### Brain substrate (live)` must not have the
+        // sub-header clear the ancestor's status. That bug reported five hits
+        // inside an explicitly-dated April snapshot.
+        const h = /^(#{1,4})\s/.exec(ln);
+        if (h) {
+          const lvl = h[1].length;
+          if (/AS OF|HISTORICAL|SUPERSEDED|\b20\d\d-\d\d-\d\d\b/i.test(ln)) {
+            histHeader = true; histLevel = lvl;
+          } else if (lvl <= histLevel) {
+            histHeader = false; histLevel = 99;   // same or shallower ⇒ new section
+          }
+        }
+        paraOf[i] = para;
+        sectionHistorical[i] = histHeader;
+        if (HIST.test(ln)) paraHasMarker.set(para, true);
+      }
+      for (let i = 0; i < lines.length; i++) {
+        if (paraHasMarker.get(paraOf[i])) sectionHistorical[i] = true;
+      }
+    }
+    lines.forEach((ln, i) => {
+      if (sectionHistorical[i]) return;        // marked as history → correct as written
+      for (const g of geo) {
+        if (g.re.test(ln)) hits.push(`${rel}:${i + 1 + lineOffset} says "${g.was}" — current is ${g.now}`);
+      }
+    });
+  }
+  note(`no doc states a superseded cortex geometry as current (${geo.length} figures watched)`, hits,
+    'One geometry change left SIX documents describing the old shape. Correct the figure, or mark the line as historical if it is a dated record — a dated banner that was true when written must NOT be rewritten.');
+}
+
 // ── Report ───────────────────────────────────────────────────────────────
 const strict = process.argv.includes('--strict');
 console.log('\nDOC DRIFT CHECK\n' + '─'.repeat(60));

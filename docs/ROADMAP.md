@@ -6,10 +6,39 @@ status: draft
 sources:
   - js/brain/curriculum.js
   - server/brain-server.js
-last-verified: "4b91e77d 2026-08-26"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). ⛔ NOT rewritten, and deliberately: this page
+  is a stack of DATED banners plus a milestone ledger, and its old geometry
+  figures ("8-subregion cortex substrate", "14 cross-region projections",
+  "cortex 0.30") were TRUE ON THEIR DATES. Editing them would falsify the
+  record — the same principle that makes docs:drift exempt archives.
+  WHAT WAS DONE INSTEAD: a GEOMETRY FORWARD-POINTER at the head of the page
+  giving the current, measured values — 11 top-level cortex sub-regions, 16
+  cross-region projections (8 pairs x 2), CLUSTER_FRACTIONS.cortex 0.55 across
+  EIGHT clusters (brainstem 0.002, added 2026-08-25 and unknown to every entry
+  below) — and naming wiki/modules/cortex-cluster.md + ARCHITECTURE.md +
+  README.md as the current authority.
+  ⭐ AND THE CLASS WAS CLOSED, not just this instance: docs:drift check 10 now
+  tripwires the six superseded figures, with a historical exemption so a dated
+  banner is never flagged. It reads GREEN as of this stamp.
+  NOT CHECKED — do not read this page as authority on:
+    - anything except the geometry figures above. The dated banners, the
+      milestone table, the phase/milestone structure and the dependency graph
+      were NOT re-verified. Drift on a ROADMAP means "re-price the plan".
+    - its two declared sources (curriculum.js, brain-server.js). BOTH moved;
+      neither was read for this page's claims.
+last-verified: "81c5068c 2026-08-27"
 ---
 
 # ROADMAP — IF ONLY I HAD A BRAIN
+
+> ## ⚠ GEOMETRY FORWARD-POINTER (added 2026-08-27) — the dated entries below say **8 sub-regions / 14 projections / cortex 0.30**, and each was TRUE WHEN WRITTEN
+>
+> ⛔ **Current, measured by constructing a real cluster:** **ELEVEN** top-level cortex sub-regions (`auditory, visual, gustatory, somatosensory, free, letter, phon, sem, fineType, motor, word_motor`), **SIXTEEN** cross-region projections (8 pairs × 2), and `CLUSTER_FRACTIONS.cortex = **0.55**` across **EIGHT** clusters — `brainstem` (0.002) was added 2026-08-25 and none of the entries below know about it.
+>
+> ⭐ **The dated entries are NOT being rewritten.** A milestone banner recording *"8-subregion cortex substrate, 14 cross-region projections"* was accurate on its date; `cortex 0.30` was the real constant when that iter shipped. **Editing them would destroy the record**, which is why `docs:drift` exempts archives from its link check and why this is a pointer instead of a patch.
+>
+> **Current authority:** `wiki/modules/cortex-cluster.md`, `docs/ARCHITECTURE.md`, `README.md` — all verified 2026-08-27. ⚠ **A single geometry change left SIX documents describing the old shape, none aware of the others; four asserted it as current state and were corrected, this page and `docs/SKILL_TREE.md` hold it as history.** ⛔ **`docs:drift` check 10 now tripwires the old figures so a seventh cannot appear silently.**
 
 > Last updated: 2026-08-25 — **THE CHEMICAL BRAIN IS BUILT. THE ROAD NOW ENDS AT A PRESS.** The ENDO + INTRO family — 25 items filed as *"this one is fucking complex"* and explicitly held *"for later"* — plus the drug rework and the life items: **30 closed in six batches**, and ⭐ **the board now holds no buildable work at all.** Three items remain: two Gee parked (`PRESSBLOCK.1`, unmeasurable before a press; `INFRA.1`, which contains Red's and Sponge's decision) and one audited awaiting his verdict (`DONORSHIP.1`). **What she gained:** an endocrine system of ten chemicals in three kinds, six glands that *sense their own release* rather than being commanded, a two-stage stress response with four outcomes (freeze being `idle` winning, so silence is a real answer), a menstrual cycle on curriculum time, a comedown, cross-substance tolerance in the receptors, an allostatic load that leaves a mark and can be recovered from, and an introspective drive measured against its own kill criterion at **total-variation 0.840** where a question bank scores ~0. ⭐ **And the reason it was worth a roadmap slot rather than being flavour:** Ψ is capacity ÷ activity, and without chemistry `n` moves only when *input* moves — so the consciousness term described her hardware rather than her state. **Chemistry is what makes it a variable instead of a specification.** ⛔ **The next milestone is not code — it is the press.** `WEIGHTS_FORMAT_VERSION` 4 → 5 makes it a **FRESH WALK**, and that is the sequencing `WALKLAST.1` required: a fresh walk teaches from zero using whatever the code does at that moment, so everything that changes *what she is taught* had to land first. It has. Building any of this *after* the walk would have meant re-teaching all of it. ⚠ **Nothing is verified live** — RE-PRICE, the 12-field watch list in reading order, and the honest failure signatures are in `docs/TODO.md § PRESS BRIEF`.
 >
