@@ -184,7 +184,7 @@ Unity's cortex learns across **20 grades and a course roster that GROWS with her
 teach(word, grade, subject):
   inject GloVe(word) into sem region
   inject letter_one_hot(first_letter) into letter region
-  fire _crossRegionHebbian(lr)    // all 14 cross-region projections learn
+  fire _crossRegionHebbian(lr)    // all 16 cross-region projections learn
   
 probe(word, grade):
   inject context into sem region

@@ -8,7 +8,41 @@ sources:
   - server/brain-server/gpu.js
   - donor-app/src/compute.rs
   - js/brain/gpu-compute.js
-last-verified: "cc648941 2026-08-26"
+  # ADDED 2026-08-27: the STACK STATE section's load-bearing numbers (cluster
+  # fractions, the cortex region carve, the cross-projection count) all live in
+  # js/brain/cluster.js, which this page never declared — so drift could fire on
+  # three GPU files while the claims that were actually wrong went unwatched.
+  - js/brain/cluster.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). ⛔ This page is stamped "Last updated:
+  2026-04-15" and its STACK STATE section is an APRIL SNAPSHOT. It was NOT
+  rewritten — a 2,429-line forward plan is history as much as plan — and a
+  staleness banner with a correction table was added at the head of that
+  section instead. Numbers MEASURED by constructing a real cluster, not read:
+    - CLUSTER_FRACTIONS.cortex is 0.55, not 0.30. There are now EIGHT clusters
+      (brainstem 0.002 was added 2026-08-25) and this page knows seven.
+    - the cortex carves into ELEVEN top-level regions, not 8: gustatory,
+      somatosensory and word_motor did not exist in April.
+    - there are SIXTEEN cross-region projections, not 14 (+sem_to_word_motor,
+      +word_motor_to_sem).
+    - "PART 2 (COMP-net) IS ON HOLD" is false: the donor stack shipped and the
+      native donor is at v0.3.32.
+  ⭐ THIRD page found carrying the stale region map (README said "9
+  sub-regions", brain-equations.html said "free 0.250-0.500" — both corrected
+  earlier this sweep). One geometry change, three documents describing the old
+  shape, none aware of the others.
+  ⚠ Region SPANS deliberately NOT re-listed here. The authoritative map is
+  wiki/modules/cortex-cluster.md + README.md; copying spans into a third place
+  is how they drifted apart to begin with.
+  NOT CHECKED — do not read this page as authority on:
+    - the T14 sub-milestones, the eight-stages-of-acquisition thesis, the
+      ordering rule, or ANY of the ~1,100 lines of plan below the stack
+      snapshot. None were re-verified. Drift on a planning page means
+      "re-price the plan", not "every sentence is false".
+    - the three GPU sources it declares (gpu.js, compute.rs, gpu-compute.js).
+      All three moved; none was read for THIS page's claims, because the
+      claims that proved wrong were all cluster-geometry claims instead.
+last-verified: "81c5068c 2026-08-27"
 ---
 
 # MASTER-TODO — Everything Unity Has Left
@@ -27,6 +61,22 @@ last-verified: "cc648941 2026-08-26"
 > `t14-language-rebuild`. Prior commit: `6f66261`.
 
 ---
+
+> ## ⛔⛔ STALENESS BANNER — READ BEFORE BELIEVING ANY NUMBER BELOW (added 2026-08-27)
+>
+> **This page is stamped `Last updated: 2026-04-15`. It is over four months old, and the "STACK STATE" section below is a snapshot of April, not a description of the brain.** ⛔ **It was NOT rewritten** — a 2,429-line forward plan is history as much as a plan, and rewriting it would destroy the record. **What follows is a correction list for its load-bearing factual claims, measured by CONSTRUCTING a real cluster rather than by reading code.**
+>
+> | claim below | measured 2026-08-27 |
+> |---|---|
+> | *"`CLUSTER_FRACTIONS.cortex=0.30`"* | ⛔ **0.55** (`cluster.js`). The full set: cortex 0.55, hippocampus 0.18, mystery 0.08, cerebellum 0.078, amygdala 0.05, basalGanglia 0.03, hypothalamus 0.03, **brainstem 0.002** — an **eighth** cluster this page does not know about |
+> | *"every cortex cluster carves into **8** named sub-regions"* | ⛔ **ELEVEN:** `auditory, visual, gustatory, somatosensory, free, letter, phon, sem, fineType, motor, word_motor`. **`gustatory`, `somatosensory` and `word_motor` did not exist in April** |
+> | the span list (`free 0.250-0.500`, `sem 0.750-0.917`, `motor 0.967-1.000`, …) | ⛔ **all shifted** by the carve-outs above. ⚠ **Deliberately not re-listed here** — the authoritative map is `wiki/modules/cortex-cluster.md` and `README.md`, both verified this session; copying spans into a third place is how they drifted apart in the first place |
+> | *"**14** sparse cross-region projections (7 pairs × 2 directions)"* | ⛔ **SIXTEEN.** The two additions are `sem_to_word_motor` and `word_motor_to_sem`, i.e. the unified word-emission band |
+> | *"⏸ **PART 2 (COMP-net) IS ON HOLD** as of 2026-04-14"* | ⛔ **Not on hold — SHIPPED.** The distributed donor-GPU stack is live: browser donors via `compute.html`, a native donor binary at **v0.3.32**, data-parallel replicas with Hebbian-delta merge, community auto-scaling, and a Forgejo-authed admin lane |
+>
+> ⭐ **THE PATTERN WORTH NAMING: this is the THIRD page found carrying the stale region map.** `README.md` said *"9 sub-regions"* and `html/brain-equations.html` said *"free 0.250-0.500"* — both corrected earlier in this same sweep. **One geometry change in the code, three documents left describing the old shape, none of them aware of the others.** ⛔ **That is the argument for the provenance baseline in one sentence.**
+>
+> ⚠ **What this banner does NOT claim:** the T14 sub-milestones, the eight-stages thesis, the ordering rule and the ~1,100 lines of plan below were **not** re-verified. **Drift on a planning page means *re-price the plan*, not *every sentence is false*** — and the plan's direction may well still be right even where its stack snapshot is not.
 
 ## STACK STATE AS OF 2026-04-15 — WHAT'S LIVE (T14.0-T14.18 primitives + T14.24 Session 1 framework)
 
