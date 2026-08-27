@@ -396,6 +396,21 @@ const SERVER_CHAT_MIXIN = {
         // release; a lock with no releaser is a lane that never reopens.
         this._imageLanePriorityUntil = Date.now()
           + (Number(process.env.DREAM_CHAT_IMAGE_PRIORITY_MS) || 45000);
+        // ⛔ CHATPREEMPT.1 — the stamp alone was not enough, and this is why
+        // "(image generation failed)" survived the priority window.
+        //
+        // The stamp stops the NEXT look. A reference fetch already running
+        // holds the single anonymous slot for up to 60s, and the browser fires
+        // its image request the moment this returns — so the two collided on
+        // one anonymous quota and one of them got a 429. Aborting the in-flight
+        // look here frees the pipe in milliseconds.
+        //
+        // ⚠ Best-effort by construction: it is a no-op when nothing is in
+        // flight (the common case), and a failure to preempt must never turn a
+        // chat turn into an error — the worst case is the old behaviour.
+        try {
+          if (typeof this._vmPreemptLookForChat === 'function') this._vmPreemptLookForChat();
+        } catch { /* never let lane management break a reply */ }
         return { text: imgPrompt, action: 'generate_image' };
       }
     }

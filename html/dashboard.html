@@ -2031,6 +2031,11 @@
                 // errand. Shown because an invisible yield reads as a stall.
                 + (lk.globalInFlightSkips ? ` · ${num(lk.globalInFlightSkips)} queued` : '')
                 + (lk.chatYields ? ` · ${num(lk.chatYields)} gave way to chat` : '')
+                // CHATPREEMPT.1 — `gave way` = stood down BEFORE starting.
+                // `cut short` = KILLED MID-FETCH to free the single anonymous
+                // slot for a human. Only the second one explains a 429 that
+                // stopped happening, so they must not share a number.
+                + (lk.chatPreempts ? ` · ${num(lk.chatPreempts)} cut short for chat${lk.lastChatPreemptKey ? ` (last "${lk.lastChatPreemptKey}")` : ''}` : '')
                 + (backingOff ? ` · ⚠ BACKING OFF ${secsLeft}s (chat keeps the quota)` : '')
                 + (lk.lastErr ? ` · last "${String(lk.lastErr).slice(0, 40)}"` : '');
             }
