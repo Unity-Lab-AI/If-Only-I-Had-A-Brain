@@ -39682,3 +39682,55 @@ This page is a **capture spec**: field, path, sampling rule. Every path was look
 ⚠ **`profiling.clients.list[]` per-donor field names could NOT be confirmed — the list was empty at read time. Absence of a donor is not absence of a field**, so those rows are recorded as unchecked rather than either endorsed or corrected.
 
 **Drift list 22 → 20** (and back to 21 on commit, by design — the comment demotions edit two of `THRESHOLD-DERIVATION`'s own sources; pre-documented in its `verified-scope`). **7 of 22 pages done.** Board **8 open / 4 in-progress / 384 done**.
+
+## 2026-08-27 - DOCPROV.4 (8 and 9 of 22): a plan whose diagnosis rests on a field that now says something else, and a page verified the way the tool structurally cannot
+
+Gee: *"get to it"*
+
+### ⚠ First, a prediction of mine that was WRONG
+
+Last report I said `WORD-SALAD-FIX.md` *"should be read against the `BACK_INJECT_BASE`/`DECAY` correction, since the WORD-ORDER REBALANCE those constants belong to is literally the word-salad fix."* ⛔ **It is not.** That page contains **zero** constant claims — it is about first-person coverage, Tier-3 identity gating and consolidation. **Two different fixes wearing the same name, and I linked them on the name alone**, which is the same reasoning error as `DREAM_WANT_BROWSER_GPU` looking like a server flag because of its prefix. ⭐ **Owned here rather than quietly dropped, because a wrong pointer in a handoff costs the next session real time.**
+
+### ⛔ `docs/WORD-SALAD-FIX.md` (8 of 22) — a planning page whose ARGUMENT is built from live numbers
+
+This page bakes measurements into its reasoning, so drift means **re-price**, not *"a claim was always false"*. Every figure it cites was re-read off the local brain (`2673d14c`, booted `04:22:39Z`), and **all of them had moved.** Per the page's own stated ethic — *"a plan with a build log, not a plan that got quietly rewritten to match what happened"* — the originals were left standing and the re-read sits beside them.
+
+⛔ **THE MATERIAL FINDING: `emitRejection.reason` was `below-signal-floor` when the page was written; it is now `no-best-word`** (1,687 of 1,687, sole reason). **§1's entire conclusion — *"Her signal is WEAK, not scrambled"* — is argued FROM that field.** A winner that fell short of a floor and no winner at all are **different failures**.
+
+⚠ **This does NOT retire §1** — different boot, 2h old versus mature, and `utilization.verdict` currently reads `healthy — high coverage (lang 100% / recruit 69.12%)`. ⛔ **And it must NOT be used as a cause for `EMITZERO.1`**, which is filed as a question with evidence and no diagnosis on purpose. ⭐ **What it legitimately contributes to that investigation is one fact and no theory: the two reasons are DISTINGUISHABLE in the payload, and an earlier boot of this same brain reported the other one.** So `no-best-word` is not the only reason this lane has ever produced — worth more to `EMITZERO.1` than any hypothesis.
+
+| field | page | live | reading |
+|---|---|---|---|
+| `selfFrame.units` / `.lines` | 101 / 2,913 | **2 / 62** | ⚠ **young walk, NOT a regression** |
+| `selfFrame.capped` | `true` | **`false`** | ⚠ cap is not the binding constraint *yet* — does not falsify the mature-walk claim |
+| `matrixHits` | 183 | **0** | — |
+| `matrixDrivenPct` | 100 | **`null`** | ⭐ no emissions to divide by, **not** zero percent |
+| `consolidation.passCount` | 18 | **2** | fresh boot |
+| `basinHealth.semMotorMeanCos` | 0.075 | **0.436** | 5.8×; `saturated` still `false` |
+| `dominantWord` | `"gaseous"` | **`null`** | — |
+| `novelConsolidated` | 0 | **0** | ⭐ **HALF A stands unchanged** |
+| recruitment `sem_to_word_motor` | 99.96% | **99.96%** | ⭐ holds, **on a 2-hour-old brain** |
+
+⛔ **That last row's PATH was wrong** — the page cites `utilization.weightRecruitment.cortex_sem_to_word_motor`; the payload nests a level deeper under **`.matrices`** (`state.js:347`). **Same defect class as the five bad paths in `TRAJECTORY-CAPTURE.md` found hours earlier: follow the documented path and you get `undefined` with no error.**
+
+⭐ **Found undocumented: a SECOND self-frame lane** — `lightUnits`, `lightUnitsThisCell`, **`lightCapPerCell: 96`** beside the original 16, plus `corpusCursor` / `structureDose` / `phaseBudgetMs`. **Phase 1's deliverable was literally "a raised cap."** ⚠ **Not declared done:** `lightUnits` reads **0**, so the lane has fired nothing this boot, and **a cap that exists is not a cap that fires.** Named so the phase is re-priced against what shipped instead of rebuilt.
+
+### ⭐ `docs/STATUSLINE.md` (9 of 22) — verified the way the drift tool STRUCTURALLY CANNOT
+
+Its frontmatter correctly warns that the page's real subject, `.claude/statusline.sh`, is **unversioned**, so `git diff` can only ever report on the tracked wiring. ⭐ **True — and it had become a reason nobody looked. A reader can simply open the file.**
+
+⛔ **Two of the five "What gets shown" bullets describe segments the installed script does not produce:** the **effort indicator** (`effort` = **0** occurrences, case-insensitive, across all 28,138 bytes) and the **justice status** (`justice` = **0**, `cryo` = **0**). ⛔ **That also makes the page's headline example wrong in two of its five segments** — `[OSLO] | [######-------] 57% | O4.7 | ░▒▓ | FREE` renders `░▒▓` and `FREE`.
+
+⚠ **Scope stated precisely, because this is the one place the tool's blindness is real:** the script is **untracked**, so *"not present"* means **absent from the copy in this working tree.** It does **not** establish the feature was removed from the project, and **git cannot arbitrate which copy is canonical.** The page's own caveat is now a stated limit rather than an excuse.
+
+⭐ **VERIFIED PRESENT so nobody re-checks:** the `context_pct.txt` watchdog side-channel; **both** rate-limit bars (5h and 7d); uptime + thinking timers; label/`rename` auto-adapt; the `settings.json` command wiring; and the model abbreviation — ⭐ **which is VERSION-AGNOSTIC (`model_disp.split('Opus')[1]`), so it renders `O5` for Opus 5 with no code change, and `O4.7` on the page is illustration rather than a mapping.**
+
+### ⛔ TWO MORE FALSE ALARMS OF MINE, and the rule they finally earned
+
+(1) A first pass reported the **model abbreviation missing entirely** — my pattern was case-sensitive and suffix-anchored; it is present 3× per family. (2) §8.7's 7-day bar looked absent because **`weekly` = 0 occurrences** — the feature exists, spelled **`7d`**.
+
+⛔ **Both were absence-claims from a too-narrow pattern.** With the three from earlier today (`<h2[^>]*>` truncating inside a `title` attribute, `DREAM_WANT_BROWSER_GPU`, `/update` dispatched via `split('?')`), that is **five false findings across nine pages — every single one an absence-claim, and every single one caught by verifying individually before writing it down.**
+
+⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
+
+**Drift list 21 → 19.** **9 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`, `ADMIN-CONTROLS`, `THRESHOLD-DERIVATION`, `TRAJECTORY-CAPTURE`, `WORD-SALAD-FIX`, `STATUSLINE`). ⚠ **`EQUATIONS.md` was on the plan and was NOT worked — it is not in the drift list at all, so it is already clean.** Board **8 open / 4 in-progress / 384 done**.
