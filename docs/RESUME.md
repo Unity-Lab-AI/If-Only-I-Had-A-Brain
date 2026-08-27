@@ -1,6 +1,57 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-27 (latest) — PICK UP HERE: DOCPROV.4 IS MID-SWEEP, 3 OF 22 PAGES DONE
+> ## ⭐⭐⭐ 2026-08-27 (latest) — PICK UP HERE: DOCPROV.4 IS **COMPLETE**, donor 0.3.32 SHIPPED, and the board's blockers all need a PRESS
+>
+> **Every number below was MEASURED immediately before writing, not recalled.** ⛔ **Verify them anyway** (`git rev-parse --short=8 refs/heads/main`, `npm run docs:drift`, `grep -c '^- \[ \]' docs/TODO.md`) — this file's own standing rule, and it earned it: **its previous version's hash rows were stale before the commit that shipped them landed.**
+>
+> | | |
+> |---|---|
+> | `main` | **e0eb98ec** — identical on **both** remotes (`git ls-remote`) |
+> | `develop` | **379314f1** — identical on both |
+> | Board | **9 open / 5 in-progress / 386 done** |
+> | `npm run docs:drift` | ⭐ **provenance 0 (31 covered, 0 uncovered)** · geometry tripwire **clean** · `sources`-coverage **21** (the one open check) |
+> | `npm run wiki:coverage` | **449/449 files, 0 broken links, 0 orphans, index in sync, 176 exact + 4 approximate counts all matching** |
+> | donor | **v0.3.32** shipped — tag on both remotes, release id 9494, both assets, public page bumped, `.exe --version` confirmed |
+>
+> ⛔ **CHECKOUT `develop`.** The cascade parks HEAD on `main`. ⚠ **`Stack Vault.png` is still untracked in the repo root and is NOT mine** — ~14 commits have staged **explicit paths** rather than `git add -A` to keep it out. Do the same, or decide what it is.
+>
+> ### 1. ⛔ THE THING MOST LIKELY TO MISLEAD YOU — unchanged, and now worse
+>
+> **Both brains still run code that predates ~everything below.** Local: build **`2673d14c`**, booted `04:22:39Z`, **7.98 h** uptime, **459,775,607** neurons, `cellPhasesStarted` **2**, `passedCellsTotal` **0**.
+>
+> ⛔ **So these all read absent/null on the live payload DESPITE having shipped:** `meanVoltageSource` (`null`), `voice.wordsBucketed` (**`undefined`**), `topLevelRegionNames()`, `validateClusterRegions()`, the `GOTCHA.9` unconditional call. **Do not re-diagnose any of them as broken.** It is the documented *"the page can be current while the server is old"* trap, and it now covers five shipped items at once.
+>
+> ### 2. What is genuinely LEFT, and what each one waits on
+>
+> - ⭐ **`COMP.1c` / `RHYTHM3S.2` — the one substantial build.** Gee overruled my deferral and was right: `WEIGHTS_FORMAT_VERSION` 4→5 makes the next press a **fresh walk**, so the current walk is throwaway and landing a physics port NOW is exactly what `WALKLAST.1` asks. ⛔ **What survives is a CORRECTNESS requirement, not a timing one:** the donor kernel is plain LIF while hers carries activity-modulated theta/gamma Kuramoto accumulators, a 5-factor drive, K.5 column gap-junction pull, per-region attention, per-neuron `externalCurrent` + `incomingProjections`, and cerebellar `errorCorrection`. **It needs a parity harness to the `propagateChunked` standard (`maxDiff = 0`) or the fresh walk teaches a differently-shaped brain — silently.** Deserves its own focused session.
+> - ⚠ **The `cs`-at-college fork — GEE'S CALL, and the tidy answer is wrong.** `subjectsForGrade` is **purely additive with no retirement mechanism** (executed, not reasoned), so `cs` genuinely remains in the roster at college1→phd. **And it is one of NINE:** `pe · music · health · language · cs · civics · economics · psychology · ap` — every track introduced between K and grade11 has no college runner (rosters are **19** at college, **20** at grad/phd, against 10 and 8 runners). ⭐ The walk will **not** wedge — `readyAndWaiting` does not clear `allPassedThisGrade`, so HELD cells skip cleanly. ⛔ **`ap` is high-school-only and `cs` is plausibly covered by `cstheory`/`cssystems`/`major`, but your own directive makes PE/Health/Music distinct courses at "all grades" — so some of the nine want a `SUBJECTS_RETIRED_AT` map and some want runners.**
+> - **21 `sources`-coverage gaps** (`docs:drift` check 9). ⛔ **Do NOT bulk-add them** — each belongs to its page's own verification pass, and bulk-adding manufactures exactly the noise a bare-mention signal was deleted for.
+> - **`kernels.ptx` regeneration** would activate the CUDA half of `GOTCHA.3b`. ⚠ Not done deliberately: it targets `compute_60` and the local nvcc is CUDA **13.0**, which dropped that arch. **A RunPod pod is a CUDA donor, so `meanVoltage` will still read `null` there after 0.3.32 — that is the instrument being honest, not the fix failing.**
+> - Press-gated: `GATEDOSE.1`, `RELDEPTH.1`, `PRESSBLOCK.1`, `REPLAYOFF.4`, `VMUSE.5.D` ×2, `EMITZERO.1`.
+>
+> ### 3. `EMITZERO.1` — narrowed by two reads, still NOT diagnosed
+>
+> Live: `emitAttempts`/`emitRejects` **2,563 / 2,563**, sole reason `no-best-word`. ⭐ **`emitDiagnostic.bestMean` = 0**, so it is **genuinely no candidate above zero**, not a floor rejecting a winner — that answers read (2) of the row's three. `cellPhasesStarted` is still **2**, so read (1) (*"a bootstrap drought must END when the phases produce"*) is **untested**.
+>
+> ⚠ **I nearly filed a wrong cause: `separability.cellSize` = 0 is an ARTIFACT.** `wordBucketCellSizeFor()` caches lazily and `_applyPendingCortexState()` only sets it on a weight restore, so on a fresh walk it reads 0 until something needs the geometry — and `emitWordDirect` bails before it needs geometry when nothing is bucketed. ⛔ **A consequence of the empty bucket set, not evidence about emission.** All three readings match the innocent explanation already on the board (`WALKPROG.1` closed NORMAL). ⭐ **`voice.wordsBucketed` is the field that settles it and it lands on the next press.**
+>
+> ### 4. Two rules this session earned the hard way
+>
+> ⭐ **RULE 1 — enumerate-and-diff finds what reading cannot, and its errors run overwhelmingly toward FALSE POSITIVES.** Find the set the code defines; diff it against the set the page defines; do not proof-read prose. It produced an undocumented wire frame type, four undocumented WS message types, an 18-vs-8 whitelist, five nonexistent state paths, six wrong runner names, and a safety rail with no implementation. ⛔ **And it produced TEN false alarms of mine, every one an absence-claim from a too-narrow grep — `#chat-input` reads ZERO in both HTML files and is created at runtime; `/c` is `cmd.exe /c`; `7 pairs` matched DRUG combos.** **An absence proven by one grep is not proven.**
+>
+> ⭐ **RULE 2 — fix the CLASS, and expect the guard itself to be wrong first.** Six documents carried one stale geometry. Check 10 tripwires it — after **four** precision bugs in my own tripwire, each found by running it: per-line markers flagged the banners explaining the fix (markdown wraps), frontmatter self-flagged, a sub-header reset its ancestor's historical flag, and one pattern matched drug pairs. ⚠ **A dated banner that was true when written must NOT be rewritten** — `SKILL_TREE` and `ROADMAP` got forward-pointers, not edits.
+>
+> ### 5. Standing decisions — do not re-litigate
+>
+> - **`/fable-mode` active** (PROTOCOL v0.3.0). ⭐ `~/.claude/fable/fable.ps1` loads it at **system-prompt level**, which is stronger than mid-session adoption — launch via `fable` if you want it from the first token.
+> - **Vault + wiki are current** at `C:/Users/gfour/FableVault` (junction into `wiki/`, dashboard regenerated). ⚠ **`wiki/` and `graphify-out/` are BOTH gitignored** — neither survives a fresh clone, which is why findings land in `docs/FINALIZED.md`.
+> - **graphify refreshed:** 5,456 nodes / 13,055 edges / 232 communities, `GRAPH_REPORT.md` exists for the first time, 0 LLM tokens. ⚠ Use `graphify . --update --code-only` — a plain `--update` **refuses**, demanding a key for 128 doc/image files. ⚠ **Top community hubs are `app.bundle.js` and `voice-piper-worker.bundle.js` — generated artifacts, so centrality is skewed.**
+> - **`GOTCHA.1`** (emit.js circular-import TDZ): documented, not fixed, on Gee's call. Import `curriculum.js` first.
+> - **`KI-37` filed:** every donor release diverges `main` between the remotes (the release job pushes to Forgejo only). ⛔ **Do not force-push** — fetch, confirm the extra commit is only the CI link bump, merge, push both, back-merge to develop.
+>
+> ---
+>
+> ## ⭐⭐ 2026-08-27 (earlier) — DOCPROV.4 MID-SWEEP, 3 OF 22 PAGES DONE
 >
 > **PICK-UP STATE — every number below was read, not recalled, immediately before writing this.**
 >
