@@ -1,6 +1,80 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-27 (latest) — THE WIKI COVERS THE WHOLE STACK, AND "COVERS" IS A NUMBER
+> ## ⭐⭐⭐ 2026-08-27 (latest) — PICK UP HERE: DOCPROV.4 IS MID-SWEEP, 3 OF 22 PAGES DONE
+>
+> **PICK-UP STATE — every number below was read, not recalled, immediately before writing this.**
+>
+> ⛔ **Verify these yourself anyway** (`git rev-parse --short=8 main develop`, `grep -c '^- \[ \]' docs/TODO.md`) — this file's own standing rule.
+>
+> | | |
+> |---|---|
+> | `main` | **6b053155** (confirmed on both remotes by `git ls-remote`) |
+> | `develop` | **a0ba6396** (confirmed on both remotes) |
+> | Board | **8 open / 4 in-progress / 383 done** |
+> | Tree | clean except one untracked file — see the ⚠ below |
+> | `npm run docs:drift` | **31 covered, 0 uncovered, 23 drifted** (exits 0; `--strict` is wired into no CI or hook) |
+> | `npm run wiki:coverage` | **449/449 files named, 0 broken links, 0 orphans, index in sync, 176/176 line counts matching** |
+>
+> ⛔ **CHECKOUT `develop`.** The cascade parks HEAD on `main`.
+>
+> ⚠ **`Stack Vault.png` is untracked in the repo root and is NOT mine.** I have left it alone through six commits by staging **explicit paths instead of `git add -A`** every time. Do the same or decide what it is — do not let it get swept in.
+>
+> ### 1. What is IN FLIGHT — `DOCPROV.4`, and it is the one thing to resume
+>
+> **3 of 22 drifted pages re-verified: `README.md`, `docs/WEBSOCKET.md`, `docs/SETUP.md`.** Each is out of the drift list and carries a new `verified-scope:` frontmatter field.
+>
+> ⭐ **THE METHOD THAT WORKS, and it is not "read the page":** for `WEBSOCKET.md` I enumerated every `_encodeSparseHeader(N` call site in the server and diffed that set against the documented table. That found **frame type 6 missing from the wire contract entirely** — something a careful 561-line read would very likely have skimmed past. **Diff the code's own enumeration against the doc's enumeration; do not proof-read prose.**
+>
+> ⛔ **`status` stays `draft` on all three, deliberately.** `verified-scope:` names what was checked and what was not (wire contract exhaustively / JSON schemas not; launcher contracts / systemd narrative not). **Marking them `verified` would claim a line-by-line pass that did not happen.** ⛔ **And never clear a drift row by bumping `last-verified` without reading** — that is precisely the lie the tool exists to catch.
+>
+> **NEXT THREE, ordered by blast radius (unchanged plan):** `docs/HTML-ENTRY-POINTS.md` (**5 of 5** sources moved — worst ratio on the board), `docs/ADMIN-CONTROLS.md` (the 191-flag table), `docs/THRESHOLD-DERIVATION.md` (oldest baseline, 2026-06-17).
+>
+> ⚠ **Expect the list to GROW as you fix code.** It went 22 → 25 → 23 during this session because my own source edits drifted more pages. **That is the baseline working, not a regression.**
+>
+> ### 2. ⛔ THE ONE THING MOST LIKELY TO MISLEAD YOU NEXT
+>
+> **Both brains are running code that PREDATES this session's fixes.** Read live:
+>
+> - **LOCAL** — build `2673d14c` (branch `develop`), booted `04:22:39Z`, **459,775,607** neurons, `ela/kindergarten` phase **2**, **1,593** teach/min.
+> - **BOX** — build `3893e980` (branch `main`), deployed `04:22:00Z`, **411,216,550** neurons, phase **2**, **1,866** teach/min, **4 donors**.
+>
+> ⛔ **So `meanVoltageSource` reads `null` on the live payload even though `GOTCHA.3a` shipped it.** The field does not exist in the running process. **Do not re-diagnose that as a bug** — it is the documented "page can be current while the server is old" trap, and it now applies to `topLevelRegionNames()`, `validateClusterRegions()` and `meanVoltageSource` all at once. **Everything this session shipped server-side lands on the next press.**
+>
+> ### 3. Live numbers worth carrying forward
+>
+> | field | local | box | meaning |
+> |---|---|---|---|
+> | `cellPhasesStarted` | 2 | 2 | Past the pre-phase bootstrap; `fullMindK` still `null`, so **no math-gate verdict yet** — the three in-progress items wait on a number, not a phase |
+> | `relationUse.marginProgress` | 0.178 | **0.439** | Bands separating (gate is 0.15 of own score). `confident` still **0** ⇒ **`VMUSE.5.D` stays parked**, per its own prerequisite |
+> | `relationUse.tagWrites` | 345,905 | — | Tags landing, `refused` 0 |
+> | `voice.emitAttempts` / `emitRejects` | 1,479 / 1,479 | 1,652 / 1,652 | ⛔ **100% refusal, still `no-best-word`** — `EMITZERO.1`, filed as a QUESTION with evidence and **no diagnosis**. Do not guess a cause; the board names the three cheap reads that separate the innocent case from the lethal one |
+> | `consolidation.passCount` | 2 | — | `REPLAYOFF.4`'s gate is met; `replaySchemas`/`replayWrites` still 0 |
+>
+> ### 4. What shipped this session, and the two rules worth stealing
+>
+> Closed: `DOCPROV.2`, `HOOKDEBRIS.1`, `WIKIFULL.1`, `GOTCHA.2`-`.7` (except `.1`/`.3b`/`.8`), `WIKICOUNT.1`, `DOCPROV.3`. The wiki went **9 content pages → 36, all 26 module pages `verified`, zero `TODO: ingest`**.
+>
+> ⭐ **RULE 1 — the live payload outranks the config constant.** I nearly "corrected" a CORRECT `README.md` because I computed cluster shares from `DEFAULT_BIO_WEIGHTS` instead of asking the running brain. `language_cortex: 0.50` renormalises away; live reads cortex **20.00%**, cerebellum 19.60%, five subcortical 12.00%, brainstem 0.40%, summing to **exactly** `totalNeurons`. **A doc-verification pass can introduce errors as easily as fix them.**
+>
+> ⭐ **RULE 2 — a count is a READING, not a property.** `cluster.js` went 4,984 → 5,011 → 5,059 across two batches, going stale **inside the commit that recorded it**, twice. That is why `wiki:coverage` now checks every `| path | N |` row against `wc -l`, with `~N` marking a deliberately approximate one. It caught a `.txt` recorded as **94** lines that is **194** the moment it existed.
+>
+> ### 5. Standing decisions made this session — do not re-litigate
+>
+> - **`/fable-mode` is ACTIVE** (PROTOCOL v0.3.0). ⛔ This and the central vault both **reverse refusals recorded in `FINALIZED.md`**; both reversals are written into the ledger so it does not assert something untrue. **The protocol injector's system-prompt form (`fable` / `claude2` launcher) is stronger than mid-session adoption** — mention it if starting fresh.
+> - **Central vault is REAL** at `C:/Users/gfour/FableVault`, junction into `wiki/`. ⚠ **Removal hazard: a recursive delete can traverse the junction into `wiki/`** — remove the link first.
+> - **`GOTCHA.1` (emit.js circular-import TDZ): left documented, not fixed**, on Gee's call. Workaround: import `curriculum.js` first.
+> - **`GOTCHA.2`'s `sem_*` delete: NO LONGER WORTH DOING.** Both consumers were fixed instead; the keys now cost nothing measurable.
+> - **`GOTCHA.6` (`addition` passes the taxonomy): closed as an accepted residual.** ⛔ Reopen only on evidence of a **class** — a word-list patch was already tried and deleted for killing `book`/`table`/`fire`.
+>
+> ### 6. ⚠ Blocked, and by what exactly — do not burn time here
+>
+> `COMP.1c` / `RHYTHM3S.2` — **`WALKLAST.1` governs it**; a kernel port mid-walk teaches her under two physics. `VMUSE.5.D` ×2 — needs `relationUse.confident` climbing off 0. `EMITZERO.1` — needs her to actually emit. `GOTCHA.3b` + `COMP.1(c)` — need a **donor release** (two backends: WGSL *and* CUDA; `donor-v*` push is mine end-to-end, and **a green CI log is not one of KI-22's four surfaces**).
+>
+> ⚠ **`wiki/` is gitignored.** Its 36 pages exist only in this working tree and are **not recoverable from the remote** — which is why every finding also lands in `docs/FINALIZED.md`.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-08-27 (earlier) — THE WIKI COVERS THE WHOLE STACK, AND "COVERS" IS A NUMBER
 >
 > **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). ⛔ **Checkout `develop`** — the cascade parks HEAD on `main`. ⭐ **Both brains still training**, booted `04:22Z`. ⚠ **`wiki/` is gitignored**, so the 35 pages exist only in this working tree — the checker that governs them is tracked.
 >
