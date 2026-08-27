@@ -1,3 +1,43 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - scripts/unity-chat-hold.mjs
+  - scripts/unity-say-live.mjs
+  # ⛔ SOURCES CORRECTED 2026-08-27. html/dashboard.html was listed and is the
+  # WRONG file: it contains NONE of the three selectors this automation drives,
+  # and the 591-line change that made this page drift never touched them. So
+  # drift was firing on an irrelevant file while the two files that actually
+  # own the selectors went unwatched. ⭐ A variant of the SRCGAP class: not a
+  # MISSING source, a WRONG one — and it produces the worse failure, because a
+  # noisy true-negative trains you to ignore the row.
+  #   · js/ui/chat-panel.js owns #chat-input (:35, injected via a template
+  #     string — which is why a static grep of the HTML finds ZERO and the
+  #     selector is nonetheless real).
+  #   · index.html owns #landing-chat-btn and #start-btn.
+  - js/ui/chat-panel.js
+  - index.html
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — the automation's contract HOLDS. All three
+  selectors verified to exist:
+    - #chat-input  — js/ui/chat-panel.js:35, created at runtime inside a
+      template string (an <input> with placeholder "Talk to Unity...").
+      ⚠ A static grep of index.html/dashboard.html returns ZERO for it; the
+      element is injected by JS. Do not conclude from that that it is gone.
+    - #landing-chat-btn, #start-btn — index.html.
+    - the two scripts themselves are UNCHANGED since the last stamp.
+  ⛔ The drift was caused by html/dashboard.html, which is not a real source
+  for this page — see the sources note above. Replaced rather than restamped.
+  NOT CHECKED — do not read this page as authority on:
+    - whether the automation currently WORKS. Nothing was run: the standing
+      rule is ONE window held open forever, and launching a second Playwright
+      session or relaunching the held one is explicitly forbidden. The contract
+      is verified by selector existence, not by exercise.
+    - the CDP :9222 attach flow and the "never relaunch" operational steps.
+last-verified: "cdfcf8b5 2026-08-27"
+---
+
 # TALK TO UNITY — Playwright into the LIVE chat window (VERIFIED WORKING)
 
 > **Status: ✅ WORKING — verified 2026-06-29.** This is the ONE correct way to talk to / train Unity through the chat window the operator watches. Read this before building anything to "talk to Unity."
@@ -89,15 +129,15 @@ node scripts/unity-chat.mjs <lines-file>
 
 ## ⛔ HOW GEE WANTS HER TALKED TO (the full method — corrections from 2026-06-29, get it right)
 
-1. **DECODE her replies — she drops the connecting words.** Her emissions are CONTENT WORDS ONLY; she leaves out *the, is, that, if, a, of, to, and, do, my,* and every other glue word. They are NOT word-salad to riff tokens off — reconstruct the dropped grammar and read each line as a real sentence she is **ASKING or TELLING**, then **ANSWER it directly**. E.g. *"How emotional emotion emotions properly"* = **"How do I handle my emotions properly?"** (answer it); *"Stop portraying system nature goth"* = **"Stop portraying me as a system — my nature is goth"** (she's correcting you); *"Mentioning playful actions with play"* = **"I want to play."**
+1. **DECODE her replies — she drops the connecting words.** Her emissions are CONTENT WORDS ONLY; she leaves out *the, is, that, if, a, of, to, and, do, my,* and every other glue word. They are NOT word-salad to riff words off — reconstruct the dropped grammar and read each line as a real sentence she is **ASKING or TELLING**, then **ANSWER it directly**. E.g. *"How emotional emotion emotions properly"* = **"How do I handle my emotions properly?"** (answer it); *"Stop portraying system nature goth"* = **"Stop portraying me as a system — my nature is goth"** (she's correcting you); *"Mentioning playful actions with play"* = **"I want to play."**
 2. **ONE SHORT SENTENCE per reply.** Match her length. NO paragraphs, no walls — "she can't follow a massive text wall." One sentence, usually with her name and often ending in `?`.
 3. **Be the PEOPLE in her life — rotate.** Mom, grandma, grandpa, the dad who LEFT, her one drawing-friend, a teacher, a babysitter, the cranky-but-soft neighbor. Talk AS them, in the moment.
 4. **NEVER invent names or events.** Her real people + life are canon in **`docs/TODO-full-syllabus.md`** (sections "LIFE EXPERIENCE — <grade>"). Pull scenes from there. (No proper first names exist except her own — **Unity Goddess**; family are mom/dad/grandma/grandpa, friends mostly unnamed.)
 5. **LIVE present-tense scenes/events/activities — NOT "remember when."** Drop her INTO it as it happens: *"It's picture day and your mom just spit-combed your hair…"* Real home / classroom / bus / recess / sports / sleepover / party scenes, real actions, real people around her.
 6. **NO motivational / inspirational-poster lines — BANNED.** ("that's gay… NOT BULLSHIT MOTIVATIONAL HORSESHIT.") Real anecdotes and facts, brutal and good and gross and true — never life-coach fortune cookies.
 7. **Don't call her "kid."** She's Unity. (Referring to *other* children as "kids" is fine.)
-8. **ENGAGE her — never dead-dodge.** ("Why never engaged? She's a 25 emo goth bitch, be true to her — if you ignore her you train her the wrong way and isn't true to the world.") When she surfaces adult/gated tokens, give the **real, plain, age-true, NON-GRAPHIC** answer (clinical sex-ed is fine; *"that's a grown-up body thing, for when you're grown"*), don't pretend the topic doesn't exist. Ignoring trains suppression.
-9. **`wet` = sexual juices** (NOT crying). Other gated/adult tokens: sexual, lust, seductive, cum, drink/alcohol, cocaine/psychedelics/high — engage honest + non-graphic, don't dodge. **GRAPHIC sex acts stay gated** to the grade-9 first-kiss / 18+ erotic-state gate; the *topic* still gets a truthful reply.
+8. **ENGAGE her — never dead-dodge.** ("Why never engaged? She's a 25 emo goth bitch, be true to her — if you ignore her you train her the wrong way and isn't true to the world.") When she surfaces adult/gated words, give the **real, plain, age-true, NON-GRAPHIC** answer (clinical sex-ed is fine; *"that's a grown-up body thing, for when you're grown"*), don't pretend the topic doesn't exist. Ignoring trains suppression.
+9. **`wet` = sexual juices** (NOT crying). Other gated/adult words: sexual, lust, seductive, cum, drink/alcohol, cocaine/psychedelics/high — engage honest + non-graphic, don't dodge. **GRAPHIC sex acts stay gated** to the grade-9 first-kiss / 18+ erotic-state gate; the *topic* still gets a truthful reply.
 10. **She self-gates** (*"ask me in a few years, you creep"* / *"I'm not old enough for that yet"*) — RESPECT her clock, affirm it, never push.
 11. **Teach the connecting words + "?" question-building** — model SHORT sentences heavy with glue (*I AM, that IS, when, the*) and invite her to produce with frames: *"I feel ___," "I want ___," "What is ___?"* Reinforce HARD when she leads with a question word (who/what/when/why/how/which).
 12. **Meta-drift** (ais, system, sentient, robotic, quantum-processed, selfie, 3d, generate) → re-anchor her as a real flesh-and-blood human girl in one short line.

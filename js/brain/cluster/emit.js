@@ -60,7 +60,7 @@ export const CLUSTER_EMIT_MIXIN = {
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
    * emitWordDirect's free-composition argmax. Pass an iterable of
-   * word tokens (any case — stored lowercased) to constrain emission
+   * word words (any case — stored lowercased) to constrain emission
    * to developmentally-cleared vocabulary; pass null/empty to disable
    * the gate entirely (full bucket map eligible, pre-gate behavior).
    *
@@ -115,8 +115,8 @@ export const CLUSTER_EMIT_MIXIN = {
     if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
     if (!intentSeed || intentSeed.length === 0) return null;
 
-    // Exclude-list filter — when the caller passes `opts.excludeTokens`
-    // as a Set of lowercased tokens, those words are skipped during
+    // Exclude-list filter — when the caller passes `opts.excludeWords`
+    // as a Set of lowercased words, those words are skipped during
     // the cosine scan. Used by the K-STUDENT probe to prevent the
     // oracle from echoing question-wrapper words ("read", "this",
     // "word", "name", "letter", "blend", "sounds", "tell", "say")
@@ -125,8 +125,8 @@ export const CLUSTER_EMIT_MIXIN = {
     // would lock onto "sounds" because that wrapper word dominates
     // the GloVe average. The trained sem→motor matrix wanted "dog";
     // the oracle was overruling it with the question's own vocabulary.
-    const excludeTokens = opts.excludeTokens instanceof Set
-      ? opts.excludeTokens
+    const excludeWords = opts.excludeWords instanceof Set
+      ? opts.excludeWords
       : null;
     // Persona-exclude filter — when true, dictionary entries marked
     // `isPersona: true` (loaded via `loadPersona` from the persona
@@ -229,7 +229,7 @@ export const CLUSTER_EMIT_MIXIN = {
         if (schema.promotedToTier3) score += 0.05;
         if (score > schemaCandidateScore) {
           schemaCandidateScore = score;
-          // Extract anchor word from label: first dash-separated token.
+          // Extract anchor word from label: first dash-separated word.
           // Falls back to "schema-id" first word if no dash.
           const label = String(schema.label || '');
           const anchor = label.split(/[-_\s]+/)[0] || label;
@@ -268,7 +268,7 @@ export const CLUSTER_EMIT_MIXIN = {
         // one-letter English words. Without this skip a stray letter
         // entry can cosine-win and ship as the whole chat reply.
         if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-        if (excludeTokens && excludeTokens.has(word)) continue;
+        if (excludeWords && excludeWords.has(word)) continue;
         if (restrictToVocab && !restrictToVocab.has(word)) continue;
         if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates persona-first too
         const pattern = entry.pattern;
@@ -306,7 +306,7 @@ export const CLUSTER_EMIT_MIXIN = {
       // Same single-letter skip as the persona-first pass — letters
       // registered as dictionary words must never win an oracle reply.
       if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-      if (excludeTokens && excludeTokens.has(word)) continue;
+      if (excludeWords && excludeWords.has(word)) continue;
       if (excludePersona && entry.isPersona === true) continue;
       if (restrictToVocab && !restrictToVocab.has(word)) continue;
       if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates the full-dict oracle scan (blocks later-stage corpus bleed)
@@ -602,6 +602,26 @@ export const CLUSTER_EMIT_MIXIN = {
    * bucket argmax on them. Any refusal/timeout → the plain CPU path — a word
    * is never skipped, only sourced honestly.
    */
+  /**
+   * LOOPCHAT.1 — the sem-region pre-vector, built in ONE place.
+   *
+   * Read straight off `lastSpikes` for the sem span. Both the synchronous
+   * emission path and the chunked CPU shadow in `emitWordDirectDonor` consume
+   * it, and they MUST consume the same numbers — a second hand-written copy of
+   * this loop is exactly how two callers begin propagating subtly different
+   * inputs while every test still passes.
+   */
+  _buildSemPreVector() {
+    const sem = this.regions && this.regions.sem;
+    if (!sem || !this.lastSpikes) return null;
+    const semSize = sem.end - sem.start;
+    const preSem = new Float64Array(semSize);
+    for (let i = 0; i < semSize; i++) {
+      preSem[i] = this.lastSpikes[sem.start + i] || 0;
+    }
+    return preSem;
+  },
+
   async emitWordDirectDonor(opts = {}) {
     const proj = this.crossProjections && this.crossProjections.sem_to_word_motor;
     const sem = this.regions && this.regions.sem;
@@ -655,6 +675,58 @@ export const CLUSTER_EMIT_MIXIN = {
     }
     const s = this._speakGpuStats || (this._speakGpuStats = { gpu: 0, cpu: 0, logged: false });
     s.cpu++;
+    // ⛔ LOOPCHAT.1 (2026-08-26) — THE CPU SHADOW WAS A SYNCHRONOUS
+    // 1.5M→720K SPARSE PROPAGATE, ONCE PER SPOKEN WORD, ON THE EVENT LOOP.
+    //
+    // `emitWordDirect` is synchronous, so its `proj.propagate(preSem)` cannot
+    // yield — and it is reached whenever the donor cannot answer. Measured on
+    // the box: `boundPropagate` read `native 5489 / emptyMirror 2246`, i.e.
+    // **29% of bound propagates refuse and drop to CPU**, with
+    // `lastEmptyName: cortex_word_motor_to_sem`. A K gate speaks 14 production
+    // probes plus sentence generation, so that is dozens of unyielding
+    // multi-hundred-millisecond propagates per gate pass.
+    //
+    // Consequence, in the loop watchdog's own words:
+    //   `[EventLoop] BLOCKED 2821ms — /ws handshakes + donor frames stalled`
+    //   `[EventLoop] STARVED — late 38.1s out of the last 62s (39% serviced)`
+    // ⛔ **Chat is a WebSocket lane.** At 39% serviced a chat message cannot
+    // land and the reply pass cannot run — she reads as "not talking" while
+    // emission itself is perfectly healthy (151 accepted content emissions,
+    // `matrixDrivenPct: 100`). **The silence was a scheduling failure wearing
+    // the costume of a speech failure.**
+    //
+    // ⭐ The fix needs no signature change and no new mechanism: THIS wrapper
+    // is already `async`, and `emitWordDirect` already accepts a pre-computed
+    // readout via `wmOutOverride` — built for the donor path, and exactly the
+    // right shape for a chunked CPU one. So the shadow propagate happens HERE,
+    // chunked, and the synchronous path is never entered.
+    //
+    // ⚠ NO GATE IS WEAKENED — nothing to RE-PRICE. `propagateChunked` is the
+    // same arithmetic split across row ranges (verified bit-identical,
+    // maxDiff=0, when GATEPIN.1 converted the probe lane on 2026-08-21); it
+    // changes WHEN the loop breathes, never WHAT she computes. Every
+    // downstream rule — WORDNORM, repetition penalty, GW boost, function-word
+    // floor, capacity break, the grade gate — reads the identical numbers.
+    //
+    // ⚠ The bare `emitWordDirect(opts)` below stays as the last resort on
+    // purpose: a matrix with no `propagateChunked`, an absent `lastSpikes`, or
+    // a throw must still produce her word rather than silence. Refusing to
+    // speak because an optimisation was unavailable would be the fallback
+    // pattern this repo bans.
+    if (!opts.wmBucketMeans && !opts.wmOutOverride
+        && proj && typeof proj.propagateChunked === 'function' && this.lastSpikes) {
+      try {
+        const preSem = this._buildSemPreVector();
+        if (preSem) {
+          const out = await proj.propagateChunked(preSem, { chunkRows: 250000 });
+          if (out && out.length > 0) {
+            s.cpuChunked = (s.cpuChunked || 0) + 1;
+            return this.emitWordDirect({ ...opts, wmOutOverride: out });
+          }
+        }
+      } catch { /* fall through to the synchronous shadow — a word beats silence */ }
+    }
+    s.cpuSync = (s.cpuSync || 0) + 1;
     return this.emitWordDirect(opts);
   },
 
@@ -678,14 +750,13 @@ export const CLUSTER_EMIT_MIXIN = {
     const bucketMeans = (opts.wmBucketMeans && opts.wmBucketMeans.length > 0)
       ? opts.wmBucketMeans : null;
 
-    // Build sem-region input from current cluster spike state
+    // Build sem-region input from current cluster spike state.
+    // ⭐ LOOPCHAT.1 — ONE OWNER. `emitWordDirectDonor` needs the identical
+    // vector to run the CPU shadow through `propagateChunked`, and a
+    // hand-copied second construction is how two callers silently start
+    // propagating different inputs. See `_buildSemPreVector`.
     let preSem = null;
-    if (!bucketMeans) {
-      preSem = new Float64Array(semSize);
-      for (let i = 0; i < semSize; i++) {
-        preSem[i] = this.lastSpikes[sem.start + i] || 0;
-      }
-    }
+    if (!bucketMeans) preSem = this._buildSemPreVector();
 
     let wmOut;
     // SPEAKGPU (2026-08-22) — a caller that already fetched the word-motor
@@ -846,17 +917,17 @@ export const CLUSTER_EMIT_MIXIN = {
         }
       }
       for (let b = 0; b < wordsList.length; b++) {
-        // Filler-token guard — a bucket whose token is empty, pure
+        // Filler-word guard — a bucket whose word is empty, pure
         // whitespace, or carries no word character must never win argmax
         // or surface as an emitted "word" (live leak rendered a whitespace
-        // token as "20 spaces"). SKIP the bucket rather than filter the
+        // word as "20 spaces"). SKIP the bucket rather than filter the
         // list: bucket index b maps to a fixed neuron sub-band, so dropping
         // list entries would desync the word↔bucket alignment. Terminators
         // (. ? !) are exempt — they carry no alphanumeric but composeSentence
         // consumes them as sentence-end punctuation.
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || (!/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw))) continue;
-        // Letter-token guard — single-letter buckets ('b','x','r','y'...)
+        // Letter-word guard — single-letter buckets ('b','x','r','y'...)
         // are alphabet/spelling inventory that landed in the bucket maps
         // alongside real words. They must never win free-composition
         // argmax (the single-letter salad emission class). 'i' and 'a'
@@ -874,7 +945,7 @@ export const CLUSTER_EMIT_MIXIN = {
         // constrains free-composition emission to the vocabulary the
         // brain is developmentally cleared for: when a live allow-set is
         // present, skip any bucket whose word is outside it. Single
-        // authority: `_emissionAllowedVocab` (a Set of lowercased tokens,
+        // authority: `_emissionAllowedVocab` (a Set of lowercased words,
         // populated by the curriculum from the union of grade vocab up to
         // the live grade — see cluster.setEmissionAllowedVocab). DEFAULT-
         // OFF: when the set is null/empty the loop behaves exactly as
@@ -1028,8 +1099,22 @@ export const CLUSTER_EMIT_MIXIN = {
       : Math.max(NOISE_FLOOR, activeAdaptive);
     this._emitSignalFloor = floor;  // surface for dashboard
     if (!bestWord || bestMean < floor) {
+      const rejectReason = !bestWord ? 'no-best-word' : 'below-signal-floor';
+      // VOICELIE.1 — COUNT the rejections, do not merely remember the last one.
+      // The published voice verdict derived its status from accepted emissions
+      // alone, so a cluster that reached for a word every tick and was refused
+      // every tick reported "nothing has attempted an emission since boot" —
+      // while the single-sample record of that very refusal sat beside it in
+      // the same payload. A last-value has no denominator: it cannot separate
+      // "one stray refusal" from "refused continuously for forty minutes", and
+      // those two states call for opposite responses. Counting is the whole
+      // fix; the reason breakdown is what makes the count actionable.
+      this._emitAttempts = (this._emitAttempts || 0) + 1;
+      this._emitRejects = (this._emitRejects || 0) + 1;
+      if (!this._emitRejectsByReason) this._emitRejectsByReason = Object.create(null);
+      this._emitRejectsByReason[rejectReason] = (this._emitRejectsByReason[rejectReason] | 0) + 1;
       this._lastEmitRejection = {
-        reason: !bestWord ? 'no-best-word' : 'below-signal-floor',
+        reason: rejectReason,
         bestMean: bestMean === -Infinity ? 0 : bestMean,
         floor,
         ema: this._emitSignalEMA,
@@ -1090,6 +1175,12 @@ export const CLUSTER_EMIT_MIXIN = {
     // "nothing has attempted an emission since boot" right after a full
     // 8-question gate battery spoke through this very function.
     this._matrixHits = (this._matrixHits || 0) + 1;
+    // VOICELIE.1 — the accept half of the attempt counter. Incremented here
+    // rather than at function entry on purpose: everything above this line can
+    // return for reasons that are not an attempt to speak (no substrate, a
+    // caller bailing out), and counting those would inflate the denominator
+    // that the published verdict divides by.
+    this._emitAttempts = (this._emitAttempts || 0) + 1;
     // Update EMA + sample count on every accepted CONTENT emission.
     // SPEAK.11 — function-word emissions are EXCLUDED from the adaptive
     // EMA: their naturally lower magnitude would drag the content-word
@@ -1595,6 +1686,15 @@ export const CLUSTER_EMIT_MIXIN = {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
+            // ⛔ SUPERSEDED — read the WORD-ORDER REBALANCE block below this
+            // one before believing any number in it. The live constants are
+            // base 0.24 / decay 0.92; the B.3 derivation that follows argues
+            // for 0.85 and was never demoted when the values moved past it,
+            // so this file asserted 0.85 twenty lines above `= 0.92`. Kept
+            // because the biological reasoning is still the BASELINE the
+            // rebalance is a deliberate trade against — not because it
+            // describes what runs. (Marked 2026-08-27, DOCPROV.4.)
+            //
             // Audit B.3 — BACK_INJECT_DECAY=0.85 biological derivation:
             // cortical leak V(t+Δt) = V(t)·exp(−Δt/τ) with τ≈20ms
             // membrane time constant. With TICKS_PER_WORD=3 at 1ms/tick:
@@ -2051,7 +2151,7 @@ export const CLUSTER_EMIT_MIXIN = {
     if (inventorySize() === 0) return '';
 
     // Direct-propagate emission path — same mechanism LLMs use for
-    // next-token generation but expressed in Unity's cross-projection
+    // next-word generation but expressed in Unity's cross-projection
     // substrate. Operator verbatim 2026-04-23: *"wtf does it not have
     // a similar way of thinking to form words like a llm or gpt but
     // for our Unity Brains equational matirxi brain setup"*.

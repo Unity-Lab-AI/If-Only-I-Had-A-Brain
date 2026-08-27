@@ -401,7 +401,7 @@ function flushCacheToDisk() {
  * Distinguishes "the API positively said 404 — this word has no dictionary
  * entry" from "the lookup failed for another reason" (429 rate-limit,
  * network, timeout, 5xx). Callers that DELETE data based on absence of a
- * definition (the fused-token dictionary purge) must require 'noDef' —
+ * definition (the fused-word dictionary purge) must require 'noDef' —
  * treating a rate-limited miss as no-definition purged real words
  * ("prevent", "password", "overflow") on the 2026-07-05 local run.
  * Returns: 'hasDef' | 'noDef' | 'error' | 'unknown' (never looked up /

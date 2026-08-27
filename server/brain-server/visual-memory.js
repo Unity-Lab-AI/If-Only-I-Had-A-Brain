@@ -14,7 +14,7 @@
 //      broadcast) for unlabeled camera frames — sight fuses with the word
 //      being "heard", the way infant perception grounds vocabulary.
 //   3. IMAGINING — at imagine-time (_imagineTick / IMG-SEE preview), the
-//      thought's tokens are looked up here FIRST. One match → she re-sees
+//      thought's words are looked up here FIRST. One match → she re-sees
 //      the stored percept — the single strongest ACCURATE one. (The old
 //      two-match morphField overlay was REMOVED by operator directive —
 //      superimposing two seen frames is noise static, not imagination.)
@@ -57,7 +57,24 @@ const path = require('path');
 // scenery filter, BGPART (backdrop cells paint no mass) and STYLECULL; v9
 // boots at 0 seen / 0 drawn behind the full stack. (v8 was the pre-BLOBSTORE
 // base64 era's replacement; v7/v6 earlier eras.) Training untouched.
-const VM_DB = path.join(__dirname, '..', 'visual-memory-v9.db');
+// v9 → v10 (2026-08-26, operator: *"lets clear local visual memory too so now
+// minds eye is fixed it wont have a hundred backpack images"*) — v9 was banked
+// by the PRE-EYEPIN subject picker, which drew whatever sat at the tail of
+// `_innerThoughtChain` and so hammered ONE concept for as long as that thought
+// dwelled: 8 of 8 sampled frames were `backpack`, and before that `church`,
+// against only 21 grounded concepts across 6,750 draws. ⭐ The store is
+// therefore not merely stale, it is UNREPRESENTATIVE — a pile of near-duplicate
+// renders of a handful of subjects, which is exactly what the acquisition rank
+// added in EYEPIN.2 exists to stop producing. v10 boots empty so the FIXED
+// picker fills it by working THROUGH her taught vocabulary instead of on top of
+// the pile the broken one left. ⚠ Same contract as every bump before it:
+// imagery cleared, TRAINING KEPT — weights / grades / phases / episodic memory
+// live in entirely different files and are untouched. v9 stays on disk unused
+// (and is deleted by hand this once, on the operator's word); the FRESHEYES
+// pattern sweep (`visual-memory*`, json AND db, incl. `-wal`/`-shm`) and the
+// `.gitignore` pattern `server/visual-memory*.db*` both cover v10 automatically
+// — nothing to add for either, which is the whole point of versioning by name.
+const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
 // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
 // not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
 // and see everything on the way — she would start FORGETTING what things look like
@@ -283,10 +300,140 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
 
   // Content words only — binding a field C to "the"/"of" would make every
   // future thought recall random imagery through stopword collisions.
-  _vmContentTokens(text) {
+  _vmContentWords(text) {
     return String(text || '').toLowerCase().split(/[^a-z]+/)
       .filter(w => w.length >= 2 && !VM_STOP.has(w))
       .slice(0, 6);
+  },
+
+  // The HEAD of the subject phrase — the thing the picture is OF.
+  //
+  // ⛔ The two single-key call sites used `_vmContentWords(x)[0]`, and English
+  // noun phrases are HEAD-FINAL, so the first content word is normally an
+  // adjective. Measured on real labels: a phrase of the form
+  // <article><size><colour><subject> keyed under the SIZE word, so her learned
+  // SHAPE of the subject was filed under a modifier — colliding with every
+  // other thing sharing that modifier, while the subject itself found nothing.
+  //
+  // Walks the ORIGINAL text (not the stripped list) because the phrase
+  // boundary lives in the glue: once a concrete noun has been seen, the next
+  // glue word ends the head phrase, so a trailing prepositional phrase cannot
+  // drag the key onto the second noun. Concreteness is the live WordNet
+  // judgement the draw lane already uses — ⚠ NOT a word list, per the law.
+  // Modifiers that WordNet reads as adjectives, and gerunds it reads as
+  // abstract, are both skipped, so the head lands on the thing itself.
+  _vmHeadWord(text) {
+    const raw = String(text || '').toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    if (raw.length === 0) return '';
+    let tax = null;
+    try { tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js')); }
+    catch { tax = null; }
+    let head = '';
+    for (const w of raw) {
+      const glue = w.length < 2 || VM_STOP.has(w);
+      // Glue AFTER the head noun closes the phrase; glue before it is just
+      // the article and must not stop the walk.
+      if (glue) { if (head) break; continue; }
+      let concrete = true;
+      if (tax && typeof tax.drawableVerdict === 'function') {
+        try { concrete = tax.drawableVerdict(w) === 'concrete'; } catch { concrete = true; }
+      }
+      if (concrete) head = w;
+    }
+    // Nothing concrete anywhere (an abstract or unknown phrase) — fall back to
+    // the content words rather than returning empty, so a caller that needs a
+    // key still gets the best available one instead of dropping the memory.
+    if (!head) head = this._vmContentWords(text)[0] || '';
+    return head;
+  },
+
+  // VMRELATE — teach the WHOLE phrase she just looked at.
+  //
+  // ⛔ A bare noun-noun bind would repeat the loss VMPHRASE.3 was filed for,
+  // one level up: the size, the colour, the articles and the preposition are
+  // all part of what she SAW, and reducing the label to its two nouns throws
+  // them away again. Operator: *"make sure the full thing is taught"*.
+  //
+  // So the label trains twice, on two channels, from one look:
+  //   • THE ORDER — every consecutive pair across the phrase INCLUDING the
+  //     glue, on the same word→word transition channel every sentence uses.
+  //     This is what carries the modifier chain and the preposition in the
+  //     sequence she actually saw them in.
+  //   • THE RELATION — each remaining content word bound to the HEAD in both
+  //     directions on a channel of its own, so the modifiers and the second
+  //     noun attach to the thing the picture is OF rather than floating as
+  //     unrelated keys.
+  //
+  // ⭐ EXPERIENTIAL, not curricular, which is what makes it independent of
+  // which button the operator presses: it fires when she LOOKS, rides the
+  // existing chat-teach drain (one job per teach-call boundary), and lands on
+  // whatever weights exist — trained (Oja is self-normalizing, the property
+  // SAVERERUN relies on) or empty after a fresh walk. Her current cell is
+  // never interrupted and nothing here is gated on a walk state.
+  //
+  // ⚠ BOUNDED BEFORE SHIPPING. An unbounded teach layer cost 70 minutes per
+  // cell once already, so this one caps the pairs per look, keeps reps low,
+  // refuses when the drain is already deep, and counts every one of those
+  // refusals — a teach lane that quietly grows is the failure mode, not a
+  // teach lane that says it stopped.
+  _queuePhraseTeach(phrase) {
+    const st = this._vmRelate || (this._vmRelate = {
+      looks: 0, queued: 0, pairs: 0, skippedShort: 0, skippedBusy: 0, lastPhrase: null, lastAt: 0,
+    });
+    const text = String(phrase || '').trim();
+    if (!text) return 0;
+    st.looks++;
+    const words = text.toLowerCase().split(/[^a-z']+/).filter(Boolean);
+    // One word carries no order and no relation — nothing to teach here that
+    // the ordinary vocabulary lanes do not already do better.
+    if (words.length < 2) { st.skippedShort++; return 0; }
+    if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+    const MAX_QUEUE = Number(process.env.DREAM_VM_RELATE_MAX_QUEUE) || 24;
+    if (this._chatTeachJobQueue.length >= MAX_QUEUE) { st.skippedBusy++; return 0; }
+
+    const MAX_PAIRS = Number(process.env.DREAM_VM_RELATE_MAX_PAIRS) || 24;
+    const REPS = Number(process.env.DREAM_VM_RELATE_REPS) || 4;
+
+    // ORDER — consecutive pairs across the whole phrase, glue included.
+    const order = [];
+    for (let i = 0; i + 1 < words.length && order.length < MAX_PAIRS; i++) {
+      if (words[i] !== words[i + 1]) order.push([words[i], words[i + 1]]);
+    }
+
+    // RELATION — content words bound to the head, both directions.
+    const relation = [];
+    let head = '';
+    try { head = this._vmHeadWord(text); } catch { head = ''; }
+    if (head) {
+      const content = this._vmContentWords(text);
+      for (const w of content) {
+        if (w === head || relation.length + 2 > MAX_PAIRS) continue;
+        relation.push([w, head], [head, w]);
+      }
+    }
+    if (order.length === 0 && relation.length === 0) { st.skippedShort++; return 0; }
+
+    // Two jobs, because the channel is the meaning: collapsing them onto one
+    // tag would teach the order and the attachment as the same relation.
+    if (order.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: order,
+        opts: { reps: REPS, label: 'VMRELATE-ORDER', relationTagId: 13 },
+      });
+      st.queued++; st.pairs += order.length;
+    }
+    if (relation.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: relation,
+        opts: { reps: REPS, label: 'VMRELATE-ATTACH', relationTagId: 35 },
+      });
+      st.queued++; st.pairs += relation.length;
+    }
+    st.lastPhrase = text.slice(0, 80);
+    st.lastAt = Date.now();
+    // The drain's own 32-job bound still applies and counts its drops; this
+    // returns what was queued so a caller can log the real number.
+    return order.length + relation.length;
   },
 
   // WS 'visual_frame' intake: {source:'camera'|'image', w, h, rgba_b64, label}.
@@ -417,7 +564,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // EXPERIENCES every frame (sem grounding below); she only FILES the ones
     // whose label says what they are. Labels are capped to the first 3
     // content words — a subject is a couple of words, never a sentence.
-    const tokens = this._vmContentTokens(msg.label).slice(0, 3);
+    const words = this._vmContentWords(msg.label).slice(0, 3);
     const store = this._vmStore();
     // GENERATED-IMAGE CONFIRMATION GATE (operator directive) — an image
     // generator is a NOISY oracle: "drag" can come back a balloon; an
@@ -438,24 +585,33 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
       const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
     };
+    // VMPHRASE.3 — KEEP THE WHOLE PHRASE. The keys are stopword-free on
+    // purpose (binding a field C to a preposition or article would make every
+    // future thought recall random imagery through glue collisions), but that
+    // stripping used to be the ONLY record of the label: a subject phrase with
+    // a prepositional tail survived as an unordered bag of content words, and
+    // the RELATION was gone — the two nouns filed as unrelated keys with
+    // nothing recording how they stood to each other. The full phrase now
+    // rides the entry, so nothing is discarded and the keys stay clean.
+    const _phrase = String(msg.label || '').trim().slice(0, 160) || null;
     let _anyTrustedBind = fromCamera;
-    for (const t of tokens) {
+    for (const t of words) {
       const prev = store.get(t);
       if (fromCamera || !newPercept) {
         store.delete(t);                                      // LRU touch
-        store.set(t, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: true, p: newPercept || (prev && prev.p) || null });
+        store.set(t, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: true, p: newPercept || (prev && prev.p) || null, phrase: _phrase || (prev && prev.phrase) || null });
         _anyTrustedBind = true;
         continue;
       }
       if (!prev || !prev.p) {
         store.delete(t);
-        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept });
+        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept, phrase: _phrase });
         continue;                                             // provisional — awaits a confirming render
       }
       const _s = _vmCosP(newPercept, prev.p);
       if (_s >= 0.45) {
         store.delete(t);
-        store.set(t, { rec, at: now, seen: (prev.seen || 0) + 1, conf: true, p: newPercept });
+        store.set(t, { rec, at: now, seen: (prev.seen || 0) + 1, conf: true, p: newPercept, phrase: _phrase || (prev && prev.phrase) || null });
         _anyTrustedBind = true;                               // two independent renders agree — the look is real
       } else if (prev.conf !== false) {
         this._vmOutlierSkips = (this._vmOutlierSkips || 0) + 1;
@@ -465,7 +621,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         }
       } else {
         store.delete(t);
-        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept });   // newer provisional replaces provisional
+        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept, phrase: _phrase });   // newer provisional replaces provisional
       }
     }
     while (store.size > VM_CAP) store.delete(store.keys().next().value);
@@ -483,7 +639,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // which is exactly the kind of cost that needs measuring first (the
     // CELLBOUND lesson)". So it is measured, not assumed, and it cannot become
     // a hidden tax:
-    //   * CONFIRMED tokens only — a provisional look (one unconfirmed render)
+    //   * CONFIRMED words only — a provisional look (one unconfirmed render)
     //     is not worth abstracting, and `conf` already encodes that judgement.
     //   * the first FEW looks only (`looks < 3`), NOT "new schemas only" — my
     //     first draft guarded on absence, which fights this method's own design:
@@ -501,12 +657,29 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     //     measuring first" is answered with numbers instead of being carried
     //     forever as a reason not to try.
     try {
-      const _ingestMs = Number(process.env.DREAM_OWNART_INGEST_MS) > 0
+      // ⛔ THIS RAN ONLY WHEN IDLE, AND SHE IS NEVER IDLE.
+      //
+      // The guard was `!this._curriculumInProgress`, and that flag is set once
+      // when the walk starts and cleared only when the whole K→PhD walk
+      // RESOLVES — weeks. So learning the shape of a thing at the moment she
+      // saw it never happened during the entire curriculum, which is exactly
+      // the stretch where she is seeing the most.
+      //
+      // ⚠ The gate was for COST, not correctness — this is a trace on the
+      // perception path, and the header above says so. But a cost gate that
+      // resolves to "never" is not a bound, it is a deletion. The throttle
+      // below IS the bound, so it carries the cost instead: the normal spacing
+      // when she is idle, and a wider one mid-walk so the walk keeps its
+      // priority without the capability disappearing.
+      const _idleMs = Number(process.env.DREAM_OWNART_INGEST_MS) > 0
         ? Number(process.env.DREAM_OWNART_INGEST_MS) : 5000;
-      if (_ingestMs > 0 && !this._curriculumInProgress
+      const _walkMs = Number(process.env.DREAM_OWNART_INGEST_WALK_MS) > 0
+        ? Number(process.env.DREAM_OWNART_INGEST_WALK_MS) : 60000;
+      const _ingestMs = this._curriculumInProgress ? _walkMs : _idleMs;
+      if (_ingestMs > 0
           && typeof this._learnShapeSchema === 'function'
           && (!this._ownArtIngestAt || (now - this._ownArtIngestAt) >= _ingestMs)) {
-        const _cand = tokens.find((t) => {
+        const _cand = words.find((t) => {
           const e = store.get(t);
           if (!e || e.conf !== true || !e.rec) return false;
           const _looks = (e.schema && Number(e.schema.looks)) || 0;
@@ -528,15 +701,59 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     } catch { /* never let this path affect seeing */ }
 
     // grounding — the percept vector lands in sem at LOW strength (real
-    // seeing, not imagination). Skipped mid-teach so the walk's Hebbian
-    // patterns stay pristine, same rule as the imagine tick.
+    // seeing, not imagination).
+    //
+    // ⭐ VMUSE.5d — DEFERRED, NOT DROPPED. This was skipped outright whenever
+    // `_curriculumInProgress` was set, and that flag is true for the ENTIRE
+    // multi-week walk — so a percept reached her sem region essentially never,
+    // across exactly the stretch where she sees the most. ⚠ The reason for the
+    // skip is real and unchanged: injecting while a teach pattern is IN FLIGHT
+    // corrupts it. But "in flight" is the operative word — mid-walk the
+    // grounding is now QUEUED onto the same drain the teach jobs use and
+    // applied in the gap BETWEEN teach calls, where nothing is mid-pattern.
+    // Idle it still injects immediately; there is nothing to defer around.
     try {
-      if (_anyTrustedBind && !this._curriculumInProgress && this.cortexCluster
+      if (_anyTrustedBind && this.cortexCluster
           && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
         const percept = newPercept || await this.mindSpace.describe(rec);   // trusted frames only — provisional renders stay out of sem
-        if (percept) this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
+        if (percept) {
+          if (!this._curriculumInProgress) {
+            this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
+            this._perceptGroundDirect = (this._perceptGroundDirect || 0) + 1;
+          } else {
+            if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+            // ⚠ Bounded like every other drain producer. A percept that cannot
+            // find room is DROPPED and COUNTED rather than queued forever — a
+            // stale percept is worth less than a fresh one, and this queue must
+            // never become the thing that pins the walk.
+            const MAXQ = Number(process.env.DREAM_PERCEPT_GROUND_MAX_QUEUE) || 16;
+            if (this._chatTeachJobQueue.length < MAXQ) {
+              this._chatTeachJobQueue.push({
+                kind: 'inject',
+                region: 'sem',
+                vector: Array.from(percept),
+                strength: 0.10,
+                opts: { label: 'PERCEPT-GROUNDING' },
+              });
+              this._perceptGroundQueued = (this._perceptGroundQueued || 0) + 1;
+            } else {
+              this._perceptGroundSkipped = (this._perceptGroundSkipped || 0) + 1;
+            }
+          }
+        }
       }
     } catch { /* non-fatal */ }
+
+    // VMRELATE — a TRUSTED look teaches the phrase that named it. Gated on the
+    // same `_anyTrustedBind` as the sem grounding above: a provisional render
+    // is one unconfirmed guess, and binding a phrase to it would teach the
+    // wording of a picture she may yet reject. Queued, never awaited — the
+    // drain runs it between her lessons.
+    try {
+      if (_anyTrustedBind && _phrase && typeof this._queuePhraseTeach === 'function') {
+        this._queuePhraseTeach(_phrase);
+      }
+    } catch { /* non-fatal — a look must never fail on its teach */ }
 
     // she SEES it — swap the shared mind's-eye snapshot to the live percept
     // so the viewer shows the eye receiving. CAMPOISON (operator law):
@@ -549,7 +766,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       this._lastGroundedEyeAt = now;   // SEE.6 — a seen frame is a grounded frame
       this._mindsEyeJson = JSON.stringify({
         type: 'mindsEye', rec, terms: rec.equation_count || 0,
-        source: 'seen' + (tokens.length ? ':' + tokens[0] : ''),
+        source: 'seen' + (words.length ? ':' + words[0] : ''),
         at: now,
       });
     } catch { /* non-fatal */ }
@@ -558,7 +775,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     this._vmIngestCount = (this._vmIngestCount || 0) + 1;
     if (!this._vmLogAt || (now - this._vmLogAt) > 60000) {
       this._vmLogAt = now;
-      console.log(`[VisualMemory] 👁 seen ${fromCamera ? 'camera frame' : 'image'} ${w}x${h} → field C (${rec.equation_count} terms) bound to [${tokens.join(', ') || 'unbound'}] — ${store.size} concept(s) held, ${this._vmIngestCount} frame(s) this boot`);
+      console.log(`[VisualMemory] 👁 seen ${fromCamera ? 'camera frame' : 'image'} ${w}x${h} → field C (${rec.equation_count} terms) bound to [${words.join(', ') || 'unbound'}] — ${store.size} concept(s) held, ${this._vmIngestCount} frame(s) this boot`);
     }
   },
 
@@ -571,10 +788,10 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   _recallVisualMemory(text) {
     const store = this._vmStore();
     if (store.size === 0) return null;
-    const tokens = this._vmContentTokens(text);
-    if (tokens.length === 0) return null;
+    const words = this._vmContentWords(text);
+    if (words.length === 0) return null;
     const hits = [];
-    for (const t of tokens) {
+    for (const t of words) {
       const e = store.get(t);
       if (e && e.rec) hits.push({ word: t, e });
     }
@@ -642,7 +859,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // Cheap: it runs on strokes she already traced, and stores plain numbers.
   async _learnShapeSchema(concept, rec) {
     if (!rec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
-    const key = (this._vmContentTokens(concept)[0] || String(concept || '').toLowerCase().trim());
+    const key = (this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim());
     if (!key) return null;
     let strokes = null;
     try {
@@ -1026,6 +1243,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   _referenceImagePrompt(concept) {
     const c = String(concept || '').toLowerCase().replace(/[^a-z' -]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!c) return '';
+    // ⚠ Hoisted to function scope: the definition-tail filter below computes
+    // this inside a nested try, and the subject framing at the end of the
+    // function needs it too. Left where it was it is a ReferenceError that
+    // `node --check` cannot see. Defaults FALSE — an unavailable taxonomy
+    // means "not known to be a person", which is the safe framing.
+    let conceptIsPerson = false;
     let defTail = '';
     try {
       const cx = this.cortexCluster;
@@ -1043,7 +1266,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         let words = d.toLowerCase().split(/[^a-z]+/).filter(w2 => w2.length > 2 && w2 !== c);
         try {
           const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
-          const conceptIsPerson = tax.primaryLex(c) === 18;
+          conceptIsPerson = tax.primaryLex(c) === 18;
           words = words.filter(w => tax.knownDescriptor(w) && (conceptIsPerson || tax.primaryLex(w) !== 18));
         } catch { /* taxonomy unavailable — the raw tail stands */ }
         if (words.length) defTail = ' ' + [...new Set(words)].slice(0, 6).join(' ');
@@ -1076,9 +1299,42 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     let ageSteer = '';
     try {
       const tax = this._drawTaxonomy || (this._drawTaxonomy = require('../drawable-taxonomy.js'));
-      if (tax.primaryLex(c) === 18 && typeof tax.descendsFromJuvenile === 'function' && !tax.descendsFromJuvenile(c)) ageSteer = ', adult';
+      // ⚠ Person-ness is decided HERE, not in the definition-tail block above:
+      // that block only runs when a definition is available, so a person word
+      // with no cached definition would fall through to object framing.
+      conceptIsPerson = tax.primaryLex(c) === 18;
+      if (conceptIsPerson && typeof tax.descendsFromJuvenile === 'function' && !tax.descendsFromJuvenile(c)) ageSteer = ', adult';
     } catch { /* taxonomy unavailable — the un-steered prompt stands */ }
-    return `${c}${ageSteer}${defTail}, realistic photograph, true to life, documentary photography, natural lighting, full color, richly detailed, single centered subject, plain uncluttered background`;
+    // ⛔ PROMPTBLEED — THE TAIL WAS A PORTRAIT RECIPE, APPLIED TO EVERYTHING.
+    //
+    // Operator: *"every concept she looks up is just a profile image of a
+    // younge person"*. The concept words were CLEAN — printed for eight
+    // concepts, and object words carried no person steering at all, so the
+    // age-steer was not misfiring. The bleed was the shared tail:
+    // *"documentary photography, natural lighting, single centered subject,
+    // plain uncluttered background"* is the canonical description of a
+    // PORTRAIT SHOOT, and a generator handed that resolves an ambiguous or
+    // weak subject noun into a person.
+    //
+    // ⚠ The previous pass SAW this and did not follow it — its own note reads
+    // *"teacher + our full documentary steering → a schoolgirl"*. It fixed the
+    // AGE (adult vs child) and never questioned the PERSON-NESS, so the
+    // steering kept pulling toward people and `adult` only made them older.
+    //
+    // ⭐ Verified the way this lane demands: PINNED-SEED A/B on the same word,
+    // only the tail differing, judged by the operator — *"B's are all 100%
+    // better"* across chair / hammer / apple.
+    //
+    // ⚠ KEPT deliberately: `color photograph` + `full color, richly detailed`.
+    // Those carry the two earlier fixes in this same string — photographic
+    // realism (which killed the cartoon-mascot problem) and full colour (which
+    // killed the black-on-white line drawings that field-rendered as pencil).
+    // Only the portrait-recipe terms are gone.
+    //
+    // ⚠ POSITIVE terms only, per the standing rule: nothing here says "not a
+    // person", because an image model attends to the nouns it is given.
+    const subjectFraming = conceptIsPerson ? 'color photograph' : 'color photograph of the object';
+    return `${c}${ageSteer}${defTail}, ${subjectFraming}, full color, richly detailed, plain background`;
   },
 
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C
@@ -1119,6 +1375,23 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         alreadyKnown: 0, definitionServed: 0,
         inFlightSkips: 0, noPrompt: 0, httpFails: 0, fetchErrs: 0, decodeFails: 0,
         perceiveFails: 0, blankRefs: 0, lastErr: null, lastErrAt: 0, lastGroundedKey: null, lastGroundedAt: 0,
+        // LOOKBACKOFF.1 — the rate-limit lane, declared here for the same
+        // reason as the rest: a lane that has never fired must read 0, not
+        // undefined. `rateLimitSkips` is the count of looks NOT attempted
+        // because the generator had already told us to stop.
+        rateLimitSkips: 0, rateLimitHits: 0, backoffMs: 0, backoffUntil: 0,
+        // LOOKQUEUE.1 — `globalInFlightSkips` is the number of looks NOT
+        // started because one was already running (the pipe is one lane
+        // wide); `chatYields` is the number stood down so a human's image
+        // request could have the lane. Both are the system behaving
+        // CORRECTLY, so they must be readable rather than inferred.
+        globalInFlightSkips: 0, chatYields: 0,
+        // CHATPREEMPT.1 — declared up front so the published block always
+        // carries them. `chatYields` counts looks that STOOD DOWN before
+        // starting; `chatPreempts` counts looks KILLED MID-FETCH to free the
+        // pipe. Different events, and only the second one explains a 429 that
+        // stopped happening.
+        chatPreempts: 0, lastChatPreemptKey: null,
       };
     }
     return this._vmLookStats;
@@ -1185,7 +1458,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // opts.promptOverride — the caller supplies the full generation prompt
     // (imagination's unified-scene phrasing) instead of the def-driven single-
     // concept prompt.
-    const key = opts.keyOverride || (this._vmContentTokens(concept)[0]) || String(concept || '').toLowerCase().trim();
+    const key = opts.keyOverride || this._vmHeadWord(concept) || String(concept || '').toLowerCase().trim();
     if (!key) return null;
     const now = Date.now();
 
@@ -1251,6 +1524,41 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // can't trigger a fetch storm
     if (!this._vmRefInFlight) this._vmRefInFlight = new Set();
     if (this._vmRefInFlight.has(key)) { this._vmLook().inFlightSkips++; return null; }
+    // ⛔ LOOKQUEUE.1 (2026-08-26) — ONE LOOK IN THE PIPE, BRAIN-WIDE.
+    //
+    // Operator, diagnosing it himself: *"only beiong able to have one image gen
+    // in the pipe with ananymous teir seems to suck up all the image gen with
+    // the minds eye ... can we put them in a que or something and not allow the
+    // minds eye to have more than one in the que"*. He was right, and the guard
+    // directly above is exactly why: it is keyed by CONCEPT, so it only ever
+    // stopped the same word twice. **Different words were never guarded at all.**
+    //
+    // ⛔ The arithmetic that makes it bite: `_lookUpAndDraw` is launched
+    // FIRE-AND-FORGET from the imagine tick (~8s), a look takes 2-60s, and
+    // since EYEPIN.2 every launch carries a DIFFERENT unseen word — so the
+    // per-concept guard matches nothing and up to ~7 fetches run concurrently
+    // against a tier that serves about one. The lane was not merely fast, it
+    // was PARALLEL, and that is what starved the chat request.
+    //
+    // ⚠ Concurrency 1, NOT a time budget — this is not the global gap Gee
+    // revoked (*"its the anonymous free"*). Nothing here says "look less
+    // often"; it says "finish the one you started before beginning another",
+    // which is what a single-lane pipe means. Over an hour she still looks just
+    // as many times, and each look now actually completes.
+    if (!opts.force && (this._vmRefGlobalInFlight | 0) > 0) {
+      this._vmLook().globalInFlightSkips++;
+      return null;
+    }
+    // ⛔ CHAT WINS THE PIPE. The person in the room outranks the background
+    // errand — the whole visible symptom was the operator's image request answering
+    // "(image generation failed)" while she quietly ground her vocabulary.
+    // `_imageLanePriorityUntil` is stamped by the chat path the moment it
+    // returns `action: 'generate_image'`, so the browser's request (built
+    // client-side, same public IP, same anonymous quota) gets a clear lane.
+    if (!opts.force && this._imageLanePriorityUntil && now < this._imageLanePriorityUntil) {
+      this._vmLook().chatYields++;
+      return null;
+    }
     // GLOBAL look-up gap — REVOKED by operator directive 2026-08-21 (default now
     // 0 = no brain-wide gap). The 10-minute budget was a KEYED-ACCOUNT-era rule:
     // renders cost real pollen then. The account keys are dead (2026-08-17 law)
@@ -1262,7 +1570,47 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // positive ms value to re-arm a global gap for ops tuning.
     const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) > 0 ? Number(process.env.DREAM_REF_FETCH_GAP_MS) : 0;
     if (!opts.force && GAP > 0 && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) { this._vmLook().gapSkips++; return null; }
+    // ⛔ LOOKBACKOFF.1 (2026-08-26) — HONOUR A 429. NOT A BUDGET.
+    //
+    // ⚠ This is deliberately NOT a re-arming of the global gap Gee revoked on
+    // 2026-08-21 (*"its the anonymous free"*). That was a SELF-IMPOSED spend
+    // budget from the keyed-account era, and revoking it was right. This is the
+    // generator explicitly answering **HTTP 429 — stop**. Ignoring an explicit
+    // refusal is not generosity toward her ability; it wins nothing, because a
+    // refused request returns no image either way.
+    //
+    // ⛔ What made it urgent: the comment above claims the remaining pacing is
+    // "natural — the per-concept in-flight guard plus the 2-60s a look takes".
+    // That held while the look lane fired rarely. EYEPIN.2's acquisition rank
+    // now picks a DIFFERENT unseen word on ~75% of ticks, and the per-concept
+    // cooldown by construction only throttles REPEATS of one word — so it
+    // throttles a walk through fresh vocabulary not at all. Measured 15 minutes
+    // after that change shipped: **130 attempts, 108 of them HTTP 429**.
+    //
+    // ⛔ Worse, it was a POSITIVE FEEDBACK LOOP: `_vmLookFail` rolls the burns
+    // back so a failed concept retries in 10 min instead of 6 h — so every 429
+    // SCHEDULED ANOTHER RETRY. The harder we were refused, the harder we asked.
+    //
+    // ⭐ And the visible cost was not hers, it was the operator's: her chat
+    // image generation is built BROWSER-side from the same public IP, so the
+    // background acquisition lane was spending the shared anonymous quota and
+    // the operator's own request came back "(image generation failed)". **A background
+    // errand must not outbid the person in the room.**
+    if (!opts.force && this._vmRef429Until && now < this._vmRef429Until) {
+      const st = this._vmLook();
+      st.rateLimitSkips++;
+      st.backoffUntil = this._vmRef429Until;
+      return null;
+    }
     this._vmRefInFlight.add(key);
+    // ⚠ LOOKQUEUE.1 — CLAIMED HERE, beside the per-concept guard, and NOT at
+    // the gate above. The first draft incremented at the gate, which sits
+    // ABOVE two `return null` paths (the global gap and the 429 backoff) that
+    // never reach the `try`/`finally` releasing it. That leaks the only slot —
+    // and a leaked slot does not slow the lane, it CLOSES it permanently. The
+    // 429 path guaranteed it would happen on the first rate limit. Claim and
+    // release must share one lifetime, so they share one statement pair.
+    this._vmRefGlobalInFlight = (this._vmRefGlobalInFlight | 0) + 1;
     this._vmLastRefFetchAt = now;
     this._vmRefFetchAt.set(key, now);
     this._vmLook().attempts++;
@@ -1287,6 +1635,25 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       let buf;
       try {
         const ctrl = new AbortController();
+        // ── CHATPREEMPT.1 — publish the controller so CHAT can free the pipe ──
+        //
+        // ⛔ The 45s chat-priority yield only stops the NEXT look. It cannot
+        // touch the one already running, and a reference fetch holds the single
+        // anonymous slot for up to 60s. So the failing sequence was: the eye
+        // starts a look → the operator asks for an image → chat stamps priority
+        // and the BROWSER fires immediately → two concurrent requests on one
+        // anonymous quota → 429 → "(image generation failed)".
+        //
+        // ⚠ The two contenders are separate PROCESSES — the look runs here, the
+        // chat image is fetched client-side — so no server queue can sequence
+        // them. Aborting our own half is the only lever this process actually
+        // holds, and it frees the slot in milliseconds instead of up to 60s.
+        //
+        // ⚠ Losing this look costs nothing durable: the burns roll back on
+        // failure (LOOKBACKOFF) and the concept is retried on its next turn.
+        // A person waiting outranks a background errand.
+        this._vmRefAbort = ctrl;
+        this._vmRefAbortKey = key;
         // timeout 25s→60s (Gee log 2026-07-17: EVERY reference fetch aborting on
         // the box while Pollinations itself answers in ~2.5s — the box's uplink
         // sits at 16-19MB buffered under the teach-pattern flood, starving other
@@ -1302,8 +1669,36 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           // its burns back and retries on cooldown). The old text said "verify
           // the Pollinations key", sending the operator hunting a key that
           // does not exist.
-          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image${r && r.status === 429 ? ' (anonymous-tier rate limit — expected; retries on cooldown)' : ''}.`); }
+          // LOOKBACKOFF.1 — ARM THE BACKOFF on an explicit rate-limit refusal.
+          // Exponential from 15s, doubling per consecutive 429, capped at 10min,
+          // and `Retry-After` WINS when the server sends one — it is the only
+          // party that actually knows when it will answer again.
+          if (r && r.status === 429) {
+            const st429 = this._vmLook();
+            st429.rateLimitHits++;
+            const prev = Number(this._vmRef429BackoffMs) || 0;
+            let wait = prev > 0 ? Math.min(prev * 2, 600000) : 15000;
+            const ra = Number(r.headers && typeof r.headers.get === 'function' ? r.headers.get('retry-after') : 0);
+            // Retry-After is in SECONDS per RFC; only trust a sane positive value.
+            if (Number.isFinite(ra) && ra > 0 && ra < 3600) wait = Math.max(wait, ra * 1000);
+            this._vmRef429BackoffMs = wait;
+            this._vmRef429Until = now + wait;
+            st429.backoffMs = wait;
+            st429.backoffUntil = this._vmRef429Until;
+          }
+          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image${r && r.status === 429 ? ` (anonymous-tier rate limit — backing off ${Math.round((Number(this._vmRef429BackoffMs) || 0) / 1000)}s so the chat image lane keeps its share of the shared anonymous quota)` : ''}.`); }
           return this._vmLookFail(key, 'httpFails', 'HTTP ' + (r ? r.status : '?'));
+        }
+        // LOOKBACKOFF.1 — the generator answered, so the escalation resets.
+        // ⚠ Without this the backoff RATCHETS: one 429 an hour would keep
+        // doubling a value that never came back down, and the lane would
+        // quietly stop looking forever while every counter still read healthy.
+        if (this._vmRef429BackoffMs) {
+          this._vmRef429BackoffMs = 0;
+          this._vmRef429Until = 0;
+          const stOk = this._vmLook();
+          stOk.backoffMs = 0;
+          stOk.backoffUntil = 0;
         }
         buf = Buffer.from(await r.arrayBuffer());
       } catch (e) {
@@ -1374,9 +1769,22 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // a first sight that passed LOOKTWICE binds CONFIRMED
         const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45) || (!(prev && prev.p) && !!percept && !opts.keyOverride);
         store.delete(key);
-        store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt });
+        // VMPHRASE.3 — the concept she asked to look at, whole. `key` is the
+        // head noun; this keeps the phrase that produced it.
+        store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt, phrase: (String(concept || '').trim().slice(0, 160) || (prev && prev.phrase) || null) });
         while (store.size > VM_CAP) store.delete(store.keys().next().value);
         this._vmSaveSoon();
+        // VMRELATE — the look taught. `concept` is what she asked to see, whole:
+        // its modifiers, its glue and its relation, not the head noun `key` was
+        // reduced to. ⚠ CONFIRMED looks only, for the same reason the ingest
+        // path gates on a trusted bind — LOOKTWICE exists because one render is
+        // a noisy oracle, and teaching the wording of a picture she may reject
+        // is exactly the poisoning that gate was built to stop.
+        try {
+          if (confirmed && !opts.keyOverride && typeof this._queuePhraseTeach === 'function') {
+            this._queuePhraseTeach(concept);
+          }
+        } catch { /* non-fatal — a look must never fail on its teach */ }
         // MIND'S-EYE — she SEES the reference she looked up (Gee 2026-07-15: "the
         // minds eye shows the shit she sees period"). The looked-up image IS what
         // her eyes receive, so publish the perceived field C to the shared viewer
@@ -1401,7 +1809,44 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       return rec;
     } finally {
       this._vmRefInFlight.delete(key);
+      // LOOKQUEUE.1 — release the brain-wide slot. ⚠ In `finally` beside the
+      // per-concept delete, because a leaked global slot does not degrade the
+      // lane, it CLOSES it: one missed decrement and she never looks again.
+      this._vmRefGlobalInFlight = Math.max(0, (this._vmRefGlobalInFlight | 0) - 1);
+      // CHATPREEMPT.1 — drop the published controller in the SAME finally as
+      // the slot release. A stale controller would let a later chat turn abort
+      // a fetch that already finished, or worse, one belonging to a different
+      // concept. Cleared only if it is still OURS: a newer look may have
+      // replaced it while this one was unwinding.
+      if (this._vmRefAbortKey === key) { this._vmRefAbort = null; this._vmRefAbortKey = null; }
     }
+  },
+
+  /**
+   * CHATPREEMPT.1 — free the anonymous image slot for a human, right now.
+   *
+   * Called by the chat path the instant an image intent becomes real. Aborts
+   * the reference fetch currently holding the single anonymous lane so the
+   * browser's request does not collide with it and 429.
+   *
+   * ⚠ Safe to call when nothing is in flight — that is the common case, and it
+   * must not throw or log noise on the hot chat path.
+   * Returns true only when a fetch was actually aborted, so the counter counts
+   * real preemptions rather than attempts.
+   */
+  _vmPreemptLookForChat() {
+    const ctrl = this._vmRefAbort;
+    if (!ctrl) return false;
+    const key = this._vmRefAbortKey;
+    try { ctrl.abort(); } catch { /* already settled — nothing to free */ }
+    this._vmRefAbort = null;
+    this._vmRefAbortKey = null;
+    try {
+      const lk = this._vmLook();
+      lk.chatPreempts = (lk.chatPreempts | 0) + 1;
+      lk.lastChatPreemptKey = key || null;
+    } catch { /* counters must never break chat */ }
+    return true;
   },
 
   // Magic-byte image decode → { w, h, data:Uint8ClampedArray RGBA }. Pure-JS

@@ -997,7 +997,38 @@ export class SparseMatrix {
       if (maxAbs > 0 && scale * maxAbs > wBound) {
         scale = wBound / maxAbs;
       }
-      if (scale === 1) continue;
+      // ⭐ NORMROWS.2 (2026-08-25, Gee's call) — DEADBAND, not an exact compare.
+      //
+      // This read `if (scale === 1) continue`, an EXACT float comparison that
+      // essentially never fires — so a row already sitting at target norm was
+      // multiplied by ~1.0 on every single pass. The self-profile put this
+      // function at **27.5% of main-thread self-time**, the walk's largest cost
+      // once the SCALEWALK fixes landed, and the write loop below is roughly
+      // half of it.
+      //
+      // ⛔ THIS IS A NUMERICAL CHANGE, NOT A FREE ONE, and it was decided rather
+      // than assumed. `values` is a Float64Array, so NO epsilon makes the skip
+      // bit-identical — measured, after an earlier draft of this analysis used
+      // the wrong array type and had to be redone.
+      //
+      // ⭐ Why 1e-12 specifically — it sits in a wide, measured gap:
+      //   • an UNTOUCHED row has `sumSq` exactly unchanged, so `scale` comes back
+      //     as 1.0 ± ~1e-16 (pure float noise from the previous scaling). 1e-12
+      //     is ~4 orders ABOVE that, so those rows are caught reliably.
+      //   • a row the Hebbian actually touched moves by ~`lr`, which is ~9 orders
+      //     BELOW... i.e. far ABOVE the band, so a real change can never be
+      //     masked by it.
+      //
+      // ⚠ And the error is SELF-LIMITING, which is the property that makes this
+      // safe rather than merely small: a row that ever drifts past the band
+      // stops being skipped and is corrected on that pass. **The deviation is
+      // bounded at 1e-12 relative and cannot accumulate over any number of
+      // passes.** Verified by harness over repeated passes, not reasoned.
+      //
+      // The effect is readable through an instrument that already exists: the
+      // caller logs `row-norm [<key>:<count>]` from the return value below, so
+      // a large drop in that count IS this working.
+      if (Math.abs(scale - 1) < 1e-12) continue;
       for (let k = start; k < end; k++) {
         values[k] = values[k] * scale;
       }

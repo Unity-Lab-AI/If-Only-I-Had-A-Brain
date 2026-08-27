@@ -1,0 +1,30 @@
+# Unity brain control plane — narrow privilege for brain-ctl.js.
+#
+# Grants the `unity` service account exactly ONE command with no password:
+# the fixed-path helper at /usr/local/sbin/brain-ctl-helper, which itself only
+# accepts a closed set of verbs against the single unit "unity-brain"
+# (see deploy/brain-ctl-helper.sh).
+#
+# WHY NOT `NOPASSWD: /usr/bin/systemctl start unity-brain` DIRECTLY:
+# This box also runs Forgejo and the lab's git. A sudoers entry naming systemctl
+# grants a general-purpose privileged tool, and sudoers argument matching is
+# easy to get subtly wrong (wildcards, argument reordering, and several
+# systemctl verbs that can be steered at other units). Naming ONE purpose-built
+# script keeps the privileged surface auditable in a single file, and that file
+# hardcodes the unit name rather than accepting it from the caller.
+#
+# NOTE the helper takes NO arguments from the network. brain-ctl.js only ever
+# passes hardcoded argv from its own allowlist, and the helper re-validates.
+#
+# The trailing "" means: no arguments other than those matched. We deliberately
+# allow any args here because the HELPER is the validator (it rejects unknown
+# verbs with exit 77/64); pinning argument patterns in sudoers as well would
+# duplicate that logic in the one place it is hardest to test.
+#
+# Install:
+#   sudo install -o root -g root -m 440 deploy/sudoers.d/unity-brain-ctl /etc/sudoers.d/unity-brain-ctl
+#   sudo visudo -cf /etc/sudoers.d/unity-brain-ctl    # MUST print "parsed OK"
+#
+# A malformed sudoers file can lock everyone out of sudo — ALWAYS visudo -c it.
+
+unity ALL=(root) NOPASSWD: /usr/local/sbin/brain-ctl-helper

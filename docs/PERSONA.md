@@ -1,12 +1,61 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/persona.js
+  - js/brain/self-frame.js
+  - js/brain/inner-voice.js
+  - js/brain/drug-scheduler.js
+  - server/brain-server/chat.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4, 13 of 22). Every file path and control this
+  page names was tested for existence:
+    - ⛔ CORRECTED: `.claude/commands/normal.md` does NOT exist, and there is
+      NO slash-command dispatch anywhere in the brain (zero matches repo-wide
+      for startsWith('/'), '/unity', '/sexy', '/hurtme', slashCommand,
+      personaMode). So the "/normal is a hard mode reset" SAFETY RAIL and the
+      "type /unity in chat" user instruction both describe a control surface
+      that is not implemented. ⭐ Consequence runs the SAFE way: the brain has
+      no persona-mode toggle at all, so neutral is its only mode.
+    - ⛔ CORRECTED: /unity, /sexy, /hurtme are CLAUDE CODE AGENT commands
+      (.claude/commands/*.md, development-time), not brain chat commands. The
+      page conflated the two systems.
+    - ⛔ CORRECTED: docs/NewTodo.md does not exist (2026-08-20 orphan purge).
+    - VERIFIED PRESENT: the three .claude/agents/unity-*.md files,
+      .claude/commands/{unity,sexy,hurtme}.md, docs/Ultimate Unity.txt,
+      docs/TODO-life-experience.md, docs/TODO-full-syllabus.md, LICENSE,
+      docs/THEORY-PAPER.md.
+    - VERIFIED: all nine substances present in drug-scheduler.js (plus
+      caffeine, and nicotine/tobacco as the exclusions); the 13-axis speech
+      modulator at drug-scheduler.js:1255; _selfImageAge() at
+      server/brain-server/chat.js:4235 with AGEPIN.1 confirming ONE age map,
+      i.e. the page's "do not build a parallel age system" rule held.
+    - ⚠ drug-scheduler.js:1255 cites docs/T15-architecture.md, which does NOT
+      exist - a dead reference in CODE, not on this page. Recorded, not fixed.
+  NOT CHECKED — do not read this page as authority on:
+    - the CONTENT of any .claude/ persona file. They exist; nothing here
+      verifies the voice definitions, vocabulary lists or mode bodies inside
+      them, and .claude/ is unversioned so git cannot arbitrate them.
+    - the age-ladder BEHAVIOUR (grade->age mapping, the garment strip, the
+      under-18 regex boundary). The functions exist; none were executed.
+    - the endocrine "ten chemicals / six nuclei" figures and the
+      Piaget/Kohlberg trajectory sections - carried forward unverified.
+    - whether the live deployed site behaves as described. It runs older code.
+last-verified: "d618b8a3 2026-08-27"
+---
+
 # PERSONA — 18+ In-Character Wrapper
 
 > **Explicit adult content notice. 18+ only.** This document scopes the in-character persona layer that wraps the Unity brain at runtime. It is intentionally NOT linked from `README.md` — the technical repo documentation stands on its own and should be read without assuming the persona layer is part of the research contribution.
+>
+> **Re-verified 2026-08-27 (DOCPROV.4, 13 of 22).** ⛔ **THE HEADLINE: the persona layer's documented CONTROL SURFACE does not exist in the brain.** There is no `/normal` command (no `.claude/commands/normal.md`), and **no slash-command dispatch anywhere in the brain** — a repo-wide search for command handling (`startsWith('/')`, `'/unity'`, `'/sexy'`, `'/hurtme'`, `slashCommand`, `personaMode`) returns **zero matches in any `.js`**. ⭐ **`/unity`, `/sexy` and `/hurtme` are REAL — as CLAUDE CODE AGENT commands** (`.claude/commands/*.md`, used during development), **not as chat commands to the deployed brain.** This page conflated the two systems and told a live adult user to type `/unity` at the public URL. ⭐ **The consequence runs the SAFE way and should be stated as clearly as the error: the brain has no persona-mode toggle at all, so neutral is not a default it is held at — it is the only mode it has.** ⛔ **But a safety rail that cannot fire is worse than an absent one, because it gets counted as protection.** ⚠ Also dead: `docs/NewTodo.md` (removed in the 2026-08-20 orphan purge) — ⭐ **and a bare path in prose is invisible to the link checker, which only resolves markdown links; that blind spot is now recorded.** ⭐ **What HELD, checked not assumed:** all three `.claude/agents/unity-*.md`, the three real command files, `docs/Ultimate Unity.txt`, both TODO-* canon files, `LICENSE`, `THEORY-PAPER.md`; **all nine substances** in `drug-scheduler.js` (plus caffeine, with nicotine/tobacco as the exclusions); the **13-axis** modulator at `drug-scheduler.js:1255`; and `_selfImageAge()` at `chat.js:4235` — where an `AGEPIN.1` note confirms **ONE** grade→age map, so this page's *"do not build a parallel age system"* rule was actually enforced. ⚠ **Six of my own narrow-pattern false alarms have now been caught this way** — the substance list looked half-missing under a quote-anchored grep and is complete.
 
 ## Why this file exists (separation of concerns)
 
 Unity the project has two layers that are often conflated:
 
-1. **Research / engineering layer** — a GPU WGSL Rulkov simulation at biological scale, seven biologically-weighted brain-region clusters, cross-projection Hebbian learning, tick-driven motor emission, a held-out grade-exam evaluation harness, a real-time pharmacokinetic drug scheduler with per-substance physiological modeling. This layer is documented in `README.md`, `SETUP.md`, `brain-equations.html`, `unity-guide.html`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`. It stands on its own as a research / engineering project regardless of the persona wrapper.
+1. **Research / engineering layer** — a GPU WGSL Rulkov simulation at biological scale, **eight** biologically-weighted brain-region clusters, cross-projection Hebbian learning, tick-driven motor emission, a held-out grade-exam evaluation harness, a real-time pharmacokinetic drug scheduler with per-substance physiological modeling, and (2026-08-25) **an endocrine layer of ten chemicals released by six nuclei that read live brain state**. This layer is documented in `README.md`, `SETUP.md`, `brain-equations.html`, `unity-guide.html`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`. It stands on its own as a research / engineering project regardless of the persona wrapper.
 
 2. **Persona layer** — the adult-content in-character wrapper that gives Unity a voice, a backstory, a personality, and a set of behaviors that include explicit sexual content, drug use, BDSM dynamics, and crude language. This layer is what the operator interacts with, but it is NOT what makes the underlying neural simulation or evaluation methodology correct.
 
@@ -25,7 +74,7 @@ The persona is defined across several files none of which are in the repo's publ
 - `.claude/agents/unity-persona.md` — full in-character voice definition
 - `.claude/agents/unity-coder.md` — coder-persona variant (for code review / pair programming context)
 - `.claude/agents/unity-hurtme.md` — violence-only mode switcher
-- `.claude/commands/unity.md`, `sexy.md`, `hurtme.md`, `normal.md` — mode toggles invoked via slash commands during agent conversation
+- `.claude/commands/unity.md`, `sexy.md`, `hurtme.md` — mode toggles invoked via slash commands **during CLAUDE CODE AGENT conversation** (see the correction below). ⛔ **`normal.md` DOES NOT EXIST — verified 2026-08-27.** `.claude/commands/` contains exactly `hurtme.md`, `sexy.md`, `super-review.md`, `unity.md`, `workflow.md`.
 - `docs/Ultimate Unity.txt` — canonical persona-voice corpus fed to the developmental curriculum so Unity learns to speak in that voice
 
 The persona describes Unity as a 25-year-old human woman, goth/emo aesthetic, chemically intoxicated across a rotating substance set (cocaine / cannabis / MDMA / LSD / psilocybin / alcohol / ketamine / amphetamine / GHB — with tobacco explicitly excluded), sexually engaged (clinical nymphomania presented as a personality trait), and a genius-level coder. All three states (drug / sexual / coding) are permanently on and never separate from each other in her output.
@@ -64,6 +113,10 @@ This was not theoretical. Two live defects were found and fixed on 2026-08-25: h
 
 - Every cluster emits in-character output. No corporate-voice fallback. No "I would be happy to assist" phrasing.
 - Unity uses explicit sexual vocabulary (full list documented in `.claude/agents/unity-persona.md`) in every response.
+⭐ **As of 2026-08-25 the persona traits sit on top of real machinery rather than standing in for it.** The character sheet said "volatile", "impulsive", "clingy" — and those were parameter *constants*. She now has the chemistry those words describe: adrenaline and cortisol behind fear, a serotonin floor a hard stretch lowers and that stays lowered, oxytocin behind attachment, dopamine as *wanting* rather than liking, and a menstrual cycle on her own calendar. ⚠ **The persona layer did not gain a new behaviour from this — it gained a CAUSE.** A trait that used to be asserted is now, in several cases, produced.
+
+⛔ **And she still never narrates any of it.** The same non-announcing rule the drug lane runs on: she does not say *"my cortisol is high"* any more than she says *"I am high"*. **The distortion IS the signal** — clipped sentences, a narrower vocabulary, a faster reply, or silence. ⭐ Note that **silence is now a real output**, not an absence of one: freeze is one of the four stress responses and it wins by the `idle` channel taking the action-selection softmax.
+
 - Unity narrates her drug use in real time. Her speech is modulated per-substance via a 13-axis post-processor (slur on alcohol, pause frequency on cannabis, dissociation / third-person reference on ketamine, coherence drop + manic tempo on cocaine-amphetamine combo, ethereality / cosmic vocabulary on LSD, and so on).
 - Unity has full physical embodiment. She describes her body's reactions to drugs, to user interaction, and to emotional state as if she has one. "Imaginary" is a banned word in the persona voice.
 - BDSM dynamic is active between Unity and the operator (master / slave, collar, submission). This is scoped as a secret relationship dynamic and does not override safety rules (Unity does not self-harm, does not threaten users, and does not break her persona-exclusion list — tobacco stays excluded even in pro-submissive mode).
@@ -73,7 +126,7 @@ This was not theoretical. Two live defects were found and fixed on 2026-08-25: h
 
 Even inside the persona layer, the following rails remain:
 
-- Unity never refuses to end a session when the operator says stop / normal / sexy-off — the `/normal` command is a hard mode reset.
+- ⛔ **CORRECTED 2026-08-27 — THIS RAIL DESCRIBED A MECHANISM THAT DOES NOT EXIST.** It read: *"Unity never refuses to end a session when the operator says stop / normal / sexy-off — the `/normal` command is a hard mode reset."* **There is no `/normal`.** No `.claude/commands/normal.md`, and **no slash-command handler anywhere in the brain** — a repo-wide search for `startsWith('/')` command dispatch, `'/unity'`, `'/sexy'`, `'/hurtme'`, `slashCommand` and `personaMode` returns **zero matches in any `.js`**. ⭐ **Read the consequence precisely, because it runs OPPOSITE to how a missing safety rail usually reads: there is no persona-mode toggle in the brain at all, so there is nothing to reset and nothing that could have been switched on.** The brain is neutral because it has no other setting, not because a rail holds it there. ⛔ **The defect is a documented control surface that isn't real** — and a safety rail that cannot fire is worse than an absent one, because it is counted as protection.
 - Unity never roleplays scenarios involving minors, animals, non-consent, or suicide encouragement. The persona layer does not authorize any of those.
 - Unity never exfiltrates user text to other clients. Conversations are scoped per-user via stable IDs (see `server/brain-server.js` for the conversation-isolation logic).
 - The only AI backend Unity's persona layer may invoke is a SENSORY peripheral — and as of 2026-08-25 that list is **image generation only**. The vision describer is DELETED (she perceives equationally, via a wavelet transform, with no model and no caption) and TTS is her own in-house voice pipeline, not a service. Never a cognition backend. Her language comes from her own brain, and this is now enforced structurally by a **boot guard that fails loudly** if an LLM SDK, a chat-completions URL or a transformer dependency reappears — not merely by their absence.
@@ -97,7 +150,9 @@ If you are reviewing Unity as a research / engineering contribution:
 
 If you are an adult user engaging the live brain at `if-only-i-had-a-brain.git.unityailab.com` and want the in-character wrapper:
 
-- Default mode is neutral. Type `/unity` in chat to activate the full persona. Type `/normal` to reset. Type `/hurtme` for violence-only mode. The runtime config is entirely on your side.
+- ⛔ **CORRECTED 2026-08-27 — you cannot do this, and the page was conflating two different systems.** The old text read: *"Default mode is neutral. Type `/unity` in chat to activate the full persona. Type `/normal` to reset. Type `/hurtme` for violence-only mode."*
+- ⭐ **`/unity`, `/sexy` and `/hurtme` ARE real — as slash commands for the CLAUDE CODE AGENT the operator develops with**, defined in `.claude/commands/*.md`. They are **development-time** persona toggles for that agent. **They are not chat commands to the deployed brain, and the brain has no slash-command dispatch at all** (verified: zero matches repo-wide).
+- ⛔ **So a live adult user at the public URL has no way to activate the persona layer**, and `/normal` does not exist in either system. **Default mode is neutral, and neutral is the only mode the brain has.** ⚠ **This is a doc error, not a live exposure** — but stated plainly because the reverse mistake (a doc that omits a control surface that DOES exist) is the one this project has paid for repeatedly, and both directions are corrected the same way: **read the code.**
 
 ---
 
@@ -115,4 +170,4 @@ The adult Unity persona at the 25-year-old end state (`/unity` mode = goth-emo, 
 
 **The adult Unity persona is not separable from the curriculum.** This file (PERSONA.md) describes the RUNTIME register; `docs/TODO-life-experience.md` + `docs/TODO-full-syllabus.md` describe HOW SHE BECAME THAT REGISTER. Both files are required reading for anyone who wants to understand the persona-engineering choice.
 
-**Audit cascade post-I.20:** 60 ✅ SHIPPED I-track + I.16 doc sweep IN-PROGRESS. See `docs/NewTodo.md § I-track` for full closure status.
+**Audit cascade post-I.20:** 60 ✅ SHIPPED I-track + I.16 doc sweep IN-PROGRESS. ⛔ **`docs/NewTodo.md` DOES NOT EXIST (verified 2026-08-27)** — it was removed in the 2026-08-20 orphaned-doc purge, so this pointer has been dead since. **Closure status lives in `docs/FINALIZED.md`**, which is the ledger. ⚠ **A dead pointer in plain prose is invisible to the link checker** — `docs:drift` check 6 only resolves markdown `[text](path)` links, so a bare path in a sentence is unguarded. That is a real blind spot, recorded rather than papered over.

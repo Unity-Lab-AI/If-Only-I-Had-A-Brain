@@ -1339,7 +1339,17 @@ export class Brain3D {
 .b3d-lbl{position:absolute;font-size:11px;letter-spacing:1.5px;font-weight:800;white-space:nowrap;transform:translate(-50%,-50%);opacity:1;padding:3px 9px;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.25);border-radius:4px;text-shadow:0 0 6px rgba(0,0,0,1),0 0 12px currentColor;box-shadow:0 0 20px rgba(0,0,0,.6);transition:opacity .3s}
 .b3d-foot{position:absolute;bottom:8px;left:12px;right:12px;display:flex;justify-content:space-between;font-size:9px;color:#444;pointer-events:none;z-index:1}
 .b3d-notif-wrap{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
-.b3d-notif{position:absolute;font-family:inherit;pointer-events:none;padding:8px 14px;background:linear-gradient(135deg,rgba(14,14,16,.94),rgba(24,14,28,.94));border-radius:8px;border:1px solid currentColor;border-left:3px solid currentColor;backdrop-filter:blur(6px);max-width:320px;box-shadow:0 0 24px rgba(0,0,0,.85),0 0 40px currentColor,inset 0 0 12px rgba(0,0,0,.4);transform:translate(-50%,-100%);animation:b3d-notif-in .45s cubic-bezier(.2,1.4,.3,1)}
+/* Solid bubble. The fill was .94 alpha over a blur, so two overlapping
+   popups showed each other's text through the glass and read as one
+   garbled block. Fully opaque + a rounded bubble radius gives each one a
+   real boundary; the separation pass in _updateNotifications keeps them
+   from touching in the first place.
+   NO transition on top/left. Both are rewritten every frame by the 3D
+   projection (the bubble floats slowly upward as it ages), so a
+   transition would never reach its target and the bubble would trail
+   behind its own cluster. Separation snaps instead, which is invisible
+   at one new popup per ~5s. */
+.b3d-notif{position:absolute;font-family:inherit;pointer-events:none;padding:9px 15px;background:#111014;background-image:linear-gradient(135deg,#141317,#1d1420);border-radius:14px;border:1px solid currentColor;border-left:3px solid currentColor;max-width:320px;box-shadow:0 0 0 1px rgba(0,0,0,.9),0 6px 22px rgba(0,0,0,.95),0 0 34px currentColor;transform:translate(-50%,-100%);will-change:top,left,opacity;animation:b3d-notif-in .45s cubic-bezier(.2,1.4,.3,1)}
 .b3d-notif-label{font-size:10px;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;text-shadow:0 0 8px currentColor,0 0 2px rgba(0,0,0,1);white-space:nowrap;opacity:.95}
 .b3d-notif-readout{font-size:10px;color:#a0a0b0;margin-top:3px;line-height:1.4;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;text-shadow:0 1px 2px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b3d-notif-comment{font-size:13px;font-style:italic;color:#f5d7e6;margin-top:5px;line-height:1.35;text-shadow:0 1px 2px rgba(0,0,0,.9);font-family:'Georgia','JetBrains Mono',serif;letter-spacing:.2px;word-wrap:break-word;white-space:normal}
@@ -2123,14 +2133,43 @@ export class Brain3D {
    * category: motor events show channel distributions, arousal
    * events show arousal deltas, Ψ events show Ψ numbers, etc.
    */
+  // ⛔ MYSTPCT.1 — returns null for ABSENT, a number for MEASURED. It used to
+  // return 0 for both, so a cluster missing from the payload and a cluster
+  // sitting genuinely silent rendered identically — and the reader had no way
+  // to tell "not in this broadcast" from "not firing".
   _clusterAct(state, name) {
     const c = state.clusters?.[name];
-    if (!c || !c.size) return 0;
+    if (!c || !c.size) return null;
     return (c.spikeCount || 0) / c.size;
   }
 
   _eventReadout(event, state) {
-    const pct = (v) => (v * 100).toFixed(0) + '%';
+    // ⛔ MYSTPCT.1 (2026-08-26) — `(v*100).toFixed(0)` RENDERED THE ENTIRE
+    // BRAIN AS 0%. Operator saw `mystery 0%` and asked if that was normal; the
+    // mystery cluster was firing at `spikeCount 254,669 / size 55,173,073` =
+    // **0.46%**, which zero decimal places prints as `0%`.
+    //
+    // ⭐ This is not one cluster's bad luck — it is structural. At biological
+    // scale she is a SPARSE coder: cortex 0.34%, hippocampus 0.43%, cerebellum
+    // 0.47%, mystery 0.46%. **Every cluster lives inside the first decimal
+    // place**, so an integer percent could never report anything but 0% and
+    // the readout was incapable of saying otherwise.
+    //
+    // Precision now follows magnitude, so a big value keeps its clean form
+    // (arousal 0.8996 → `90%`, unchanged) while a sparse rate says what it is.
+    // ⚠ `null` (absent) is rendered as `—`, never as a number: an unwired
+    // cluster and a silent one must not look the same.
+    const pct = (v) => {
+      if (v === null || v === undefined || !Number.isFinite(Number(v))) return '—';
+      const p = Number(v) * 100;
+      if (p === 0) return '0%';
+      if (p >= 10) return p.toFixed(0) + '%';
+      if (p >= 1) return p.toFixed(1) + '%';
+      if (p >= 0.01) return p.toFixed(2) + '%';
+      // Below a hundredth of a percent, decimals stop being informative —
+      // say it is non-zero rather than round it to the zero it is not.
+      return '<0.01%';
+    };
     const f3 = (v) => Number(v || 0).toFixed(3);
     const f4 = (v) => Number(v || 0).toFixed(4);
     const t = event.type;
@@ -2183,8 +2222,27 @@ export class Brain3D {
     // Coherence
     if (t === 'coherence_lock' || t === 'coherence_scatter') {
       const c = state.coherence ?? state.oscillations?.coherence ?? 0;
-      const bp = state.bandPower || {};
-      return `coh=${pct(c)}  γ=${f3(bp.gamma || 0)} α=${f3(bp.alpha || 0)}`;
+      // ⛔ BANDPOP.1 (2026-08-26) — THIS READ ONE OF THE TWO SHAPES AND
+      // RENDERED THE OTHER AS ZERO. Operator saw `γ=0.000 α=0.000`; live on
+      // the box `bandPower` was `{gamma: 0.4008, beta: 0.2422, alpha: 2.9006,
+      // theta: 0.3829}` — populated and moving the whole time.
+      //
+      // Two shapes reach this file: the FLAT server state (`state.bandPower`)
+      // and the NORMALIZED one this class builds itself, which nests the same
+      // object under `state.oscillations.bandPower` (see the normalizer). The
+      // sibling reader in this very file already uses the nested path, so the
+      // two disagreed and only one could be right per call. `coh` survived
+      // because it has the `?? state.oscillations?.coherence` twin; the band
+      // read had no such twin. Same dual-path form `brain-viz.js` already uses
+      // in three places.
+      //
+      // ⚠ `|| 0` is what made it SILENT rather than wrong-looking: an absent
+      // field and a genuinely quiet band both printed `0.000`. An absent band
+      // now prints `—`, so a missing field can never again pose as a
+      // measurement of zero.
+      const bp = state.bandPower || state.oscillations?.bandPower || {};
+      const band = (v) => (v === null || v === undefined || !Number.isFinite(Number(v))) ? '—' : f3(v);
+      return `coh=${pct(c)}  γ=${band(bp.gamma)} α=${band(bp.alpha)}`;
     }
 
     // Drives
@@ -2288,6 +2346,26 @@ export class Brain3D {
       };
     }
 
+    // ⛔ AND NESTED → FLAT. This normalization only ever ran ONE WAY, and that
+    // is why the popups reported `valence:0.00` against a live 0.084.
+    //
+    // The two state shapes are mirror images: the SERVER sends flat fields and
+    // no `amygdala`, while the local browser engine builds `amygdala` and no
+    // flat fields. Synthesizing only the nested side left `state.valence`
+    // undefined whenever the local brain was driving — and the readers are
+    // split across both conventions, so `_describeInternalState` (which reads
+    // FLAT) fell to its `?? 0` default and printed a confident zero, while the
+    // legacy pool (which reads NESTED) printed the same zero from the other
+    // side. Neither reader was wrong; the normalization was half-done.
+    //
+    // ⚠ Written as an explicit `=== undefined` test, NOT `??` or `||`: a real
+    // valence of 0 is a legitimate value and must not be overwritten, and 0 is
+    // falsy — which is the same trap that made `s.amygdala?.valence ?? s.valence`
+    // return a stale nested zero instead of the live flat one.
+    if (norm.valence === undefined) norm.valence = norm.amygdala?.valence ?? 0;
+    if (norm.arousal === undefined) norm.arousal = norm.amygdala?.arousal ?? 0.5;
+    if (norm.fear === undefined) norm.fear = norm.amygdala?.fear ?? 0;
+
     // OSCILLATIONS — flat → nested, carry bandPower if present
     if (!norm.oscillations) {
       norm.oscillations = {
@@ -2295,6 +2373,12 @@ export class Brain3D {
         bandPower: state.bandPower || {},
       };
     }
+    // …and back the other way, for the same reason as the amygdala pair above.
+    // Placed AFTER the block that builds `norm.oscillations` — reading it from
+    // inside the amygdala section would have read an undefined it had not
+    // created yet, which is the same ordering mistake in miniature.
+    if (norm.coherence === undefined) norm.coherence = norm.oscillations?.coherence ?? 0.5;
+    if (norm.bandPower === undefined && norm.oscillations?.bandPower) norm.bandPower = norm.oscillations.bandPower;
 
     // CORTEX — synthesize predictionError from cerebellum activity
     // (cerebellum fires in proportion to error, so high cereb firing
@@ -2712,7 +2796,17 @@ export class Brain3D {
     const arousal = (state.arousal ?? 0.5).toFixed(2);
     const valence = (state.valence ?? 0).toFixed(2);
     const psi = (state.psi ?? 0).toFixed(3);
-    return `arousal:${arousal} valence:${valence} Ψ:${psi}`;
+    // ⚠ NAME THE BRAIN. This line reported `valence:0.00` for three rounds of
+    // fixes while the server's real valence was 0.084 — and the reason it was
+    // so hard to pin down is that the number was CORRECT for the brain it was
+    // reading. The tiny local browser fallback genuinely sits near zero.
+    // Without a source tag, "the local brain is driving" and "the server value
+    // is broken" render identically, and only one of them is a bug.
+    // Server states carry a neuron count in the hundreds of millions; the
+    // fallback is ~6.7K, so the count is the honest discriminator.
+    const n = Number(state.totalNeurons || 0);
+    const src = n > 1e6 ? 'server' : 'local-fallback';
+    return `arousal:${arousal} valence:${valence} Ψ:${psi} [${src}]`;
   }
 
   _addNotification(text, clusterIdx) {
@@ -2769,6 +2863,10 @@ export class Brain3D {
   }
 
   _updateNotifications(mvp, canvas) {
+    // Pass 1 — age, project, fade, reap. Screen position is STORED, not
+    // applied: two popups whose clusters project near each other would land
+    // on top of one another, and that can only be resolved once every
+    // position for this frame is known.
     for (let i = this._notifications.length - 1; i >= 0; i--) {
       const n = this._notifications[i];
       n.age++;
@@ -2776,10 +2874,9 @@ export class Brain3D {
       // Project 3D cluster center to screen — notification appears AT the cluster
       const floatOffset = n.age * 0.003; // slow float upward
       const screen = this._project3Dto2D(n.x, n.y + 0.3 + floatOffset, n.z, mvp, canvas);
-      if (screen) {
-        n.el.style.left = screen.x + 'px';
-        n.el.style.top = screen.y + 'px';
-      }
+      n.sx = screen ? screen.x : n.sx;
+      n.sy = screen ? screen.y : n.sy;
+      n.visible = !!screen || Number.isFinite(n.sx);
 
       // Fade: quick appear, hold, then fade out in last 30%
       const life = n.age / n.maxAge;
@@ -2792,6 +2889,86 @@ export class Brain3D {
         this._notifications.splice(i, 1);
       }
     }
+
+    this._separateNotifications(canvas);
+  }
+
+  /**
+   * Keep the popups from ever sitting on top of each other.
+   *
+   * Requested behaviour: solid bubbles that push apart, with the MOST RECENT
+   * one lowest and older ones bubbling upward off it.
+   *
+   * `_notifications` is push-ordered, so the last entry is the newest. That
+   * one keeps the position its cluster actually projects to — it is the one
+   * the eye should go to, and moving it would break the link between a popup
+   * and the cluster that produced it. Every older bubble is then lifted only
+   * as far as it must be to clear the one below, and only when they genuinely
+   * overlap horizontally: two popups on opposite sides of the brain are not
+   * colliding and must not be stacked as if they were.
+   *
+   * ⚠ Each element is `translate(-50%,-100%)`, so `top` is its BOTTOM edge and
+   * it grows upward. That is why clearing means moving to `bottomOfNeighbour −
+   * height − gap`, and why the viewport clamp is applied to the top edge.
+   */
+  _separateNotifications(canvas) {
+    const list = this._notifications;
+    if (list.length < 2) {
+      // Single bubble — nothing to resolve, just place it.
+      for (const n of list) this._placeNotification(n);
+      return;
+    }
+
+    const GAP = 10;             // breathing room between bubbles, px
+    const EDGE = 8;             // keep a bubble off the very top edge
+    const viewH = (canvas && canvas.clientHeight) || 0;
+
+    // Newest first — it anchors, everything older gets pushed off it.
+    const ordered = list.slice().reverse();
+    const placed = [];
+
+    for (const n of ordered) {
+      // Measure lazily and cache: offsetHeight forces layout, and with a cap
+      // of 3 bubbles doing it once each is free — doing it every frame for
+      // every bubble would not be.
+      if (!n.h || !n.w) {
+        n.h = n.el.offsetHeight || 0;
+        n.w = n.el.offsetWidth || 0;
+      }
+      let y = n.sy;
+
+      // Lift above any already-placed bubble it would overlap. Repeated
+      // because clearing one can push it into another.
+      for (let pass = 0; pass < placed.length + 1; pass++) {
+        let moved = false;
+        for (const p of placed) {
+          const hOverlap = Math.abs(n.sx - p.sx) < ((n.w + p.w) / 2);
+          if (!hOverlap) continue;
+          const nTop = y - n.h, nBot = y;
+          const pTop = p.y - p.h, pBot = p.y;
+          if (nBot > pTop && nTop < pBot) {
+            y = pTop - GAP;     // sit fully above it
+            moved = true;
+          }
+        }
+        if (!moved) break;
+      }
+
+      // Never let a lifted bubble escape off the top of the view.
+      if (viewH && (y - n.h) < EDGE) y = EDGE + n.h;
+
+      n.ty = y;
+      placed.push({ sx: n.sx, y, h: n.h, w: n.w });
+      this._placeNotification(n);
+    }
+  }
+
+  _placeNotification(n) {
+    if (!Number.isFinite(n.sx)) return;
+    const y = Number.isFinite(n.ty) ? n.ty : n.sy;
+    if (!Number.isFinite(y)) return;
+    n.el.style.left = n.sx + 'px';
+    n.el.style.top = y + 'px';
   }
 
   _project3Dto2D(x, y, z, mvp, canvas) {

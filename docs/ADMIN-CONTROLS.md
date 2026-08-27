@@ -1,3 +1,50 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE, not one at which
+# every claim was re-read. So drift here asks the honest question — "have the
+# sources moved since this page was last edited?" — and is derivable rather
+# than asserted. `status: draft` until a page is read against source.
+status: draft
+sources:
+  - server/brain-server.js
+  - server/brain-ctl.js
+  - js/brain/curriculum.js
+verified-scope: |
+  CHECKED 2026-08-27, mechanically enumerated and diffed against source:
+    - EVERY `DREAM_*` flag in server/ + js/ + scripts/ vs every flag named here:
+      194 vs 194, zero difference in either direction. The table is EXACT.
+    - launcher/deploy `DREAM_*` vars vs this page — one apparent gap
+      (DREAM_WANT_BROWSER_GPU), confirmed a batch-script local that node never
+      reads, so its absence here is correct.
+    - every route dispatch in server/brain-server.js (33 routes) vs the
+      endpoints named here — found SEVEN undocumented loopback-gated admin
+      endpoints, now sectioned; each one's requireLoopback guard read at its
+      own line number.
+    - the teachOps / workState paragraph against `_sparseSendBinary` (accurate:
+      counted server-side, donor's own counter still not in telemetry).
+    - the one source that moved (js/brain/curriculum.js) read as a diff to
+      confirm it invalidates no claim on this page.
+  NOT CHECKED — do not read this page as authority on:
+    - the exit-42 / RestartPreventExitStatus systemd narrative and the #112.10
+      Stop history (not reproduced; the box runs older code than this tree)
+    - per-flag DEFAULT VALUES and prose descriptions. ⛔ Flag NAMES were diffed
+      exhaustively; the 194 defaults and explanations were NOT re-read. A wrong
+      default in this table would survive this pass.
+    - the checkpoint/rollback narrative and the Savererun passedPhases claim
+  ⚠ THE PREDICTED SELF-DRIFT, NOW CLOSED. The 2026-08-27 pass warned that its own
+  commit edited js/brain/curriculum.js (GOTCHA.9 — removing a fallback at the
+  GOTCHA.2 spike-clear site), which is a source of this page, and that the drift row
+  it produced would be the checker being CORRECT rather than noisy. It was. That
+  commit now EXISTS in history (the change measures +16/-3 and is the only movement
+  in any source since), so the stamp can finally name it. ⛔ This is COMPLETING the
+  stamp, not silencing a signal: the diff was read before the original stamp, the
+  change strengthens the teachOps row rather than invalidating it, and the reason a
+  stamp could not name it at the time was only that a commit cannot contain its own
+  hash. ⛔ The rule stands unchanged for anything else — never clear a drift row by
+  bumping a hash on a source you have not read.
+last-verified: "38e19615 2026-08-27"
+---
+
 # ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
 
 > Clarifies what the admin-only dashboard power buttons actually control, how
@@ -5,6 +52,8 @@
 > the #112.10 fix that makes **Stop** truly stop.
 >
 > Last updated: **2026-08-20** (🔁 Savererun now clears **passedPhases** too — it was re-walking cells while skipping the phases inside them; plus the env-flag reference table).
+>
+> **Re-verified 2026-08-27 (DOCPROV.4, 5 of 22).** ⭐ **THE ENV-FLAG TABLE IS EXACT, and that is the headline** — every `DREAM_*` flag referenced in `server/`, `js/` and `scripts/` was enumerated and diffed against every flag named on this page: **194 in the code, 194 on the page, zero difference in EITHER direction.** ⛔ **That result is worth stating loudly because a 194-row table is precisely where drift is invisible** — nobody re-reads it, and this project's worst doc failures have all been lists that quietly stopped matching. This one had not. ⚠ **Two apparent gaps were investigated and BOTH were mine, not the page's:** (1) `DREAM_WANT_BROWSER_GPU` appears in the launchers but not here — it is a **batch-script local**, set from `start.bat /browser` and consumed by the same `.bat` to decide `DREAM_NO_AUTO_GPU`; **node never reads it**, so a server env reference correctly excludes it, and the `DREAM_` prefix made it merely *look* like one. (2) A route sweep reported `/update` as documented-but-nonexistent — it exists at `:8875`, dispatched as `req.url.split('?')[0] === '/update'`, a shape the first pattern did not match. ⭐ **What the sweep DID find: seven loopback-gated endpoints this page never listed, including `/grade-advance` — the endpoint that bypasses the LAW-6 operator signoff gate.** They now have their own section. ⚠ **Only one of the three sources had actually moved** (`js/brain/curriculum.js`, +18 lines — the `GOTCHA.2` spike-clear fix), and it **strengthens** rather than contradicts the `teachOps` row below, since it removes up to 24 bogus wire frames per clear from the very counter that row tells you to trust.
 
 ---
 
@@ -55,7 +104,7 @@ ONLY through the Forgejo-authenticated admin lane.
 
 | Button | Endpoint | Exit | systemd behavior | Net effect |
 |---|---|---|---|---|
-| **⏹ Stop Brain** | `POST /shutdown` | **42** | `RestartPreventExitStatus=42` → **NOT revived** | True halt — stays down until a manual start |
+| **⏹ Stop Brain** *(localhost only — see below)* | `POST /shutdown` | **42** | `RestartPreventExitStatus=42` → **NOT revived** | True halt — stays down until a manual start |
 | **🔄 Restart (Savestart)** | `POST /restart` | 0 | `Restart=always` → revived | Restarts + auto-resumes trained state |
 | **♻ Reset (fresh)** | `POST /reset` | 0 | `Restart=always` → revived | Writes `.force-fresh` → boots a wiped brain (identity-core Tier-3 anchors preserved) |
 | **⬆ Update & Fresh Walk** | `POST /update` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code (git-archive) **and** writes `.force-fresh` → reboots into a WIPED fresh K→PhD walk |
@@ -88,6 +137,47 @@ symptom). The fix is systemd-native:
 **Bringing the brain back after a Stop** (it can't restart itself — the process is
 gone, so there's no dashboard to click): on the box run
 `sudo systemctl start unity-brain`; locally re-run `start.bat` / `Savestart.bat`.
+
+### STOPTRAP.1 — why Stop Brain is now localhost-only
+
+⛔ The paragraph above names the trap and the fix took two months to follow it:
+*"there's no dashboard to click"*. Recovery from a Stop **requires a shell**, and
+**the operator of the deployed box has none** — box changes are dashboard-only by
+standing rule. So the one control that could not be undone from the dashboard was
+sitting on the dashboard, one click from the buttons used routinely, styled
+identically to them.
+
+Two things then made it worse rather than safer:
+
+- The button's tooltip claimed *"On the deployed box systemd auto-resumes (clean
+  stop = resume marker)"* — flatly contradicted by the exit-42 row in the table
+  above, and by this file's own **verified-on-the-box** result below.
+- `.claude/DEPLOYED-ADMIN-GUIDE.md` said *"systemd brings it back"* and listed
+  ⏹ Stop Brain under **"Restart (keeps walk)"**.
+
+It fired on **2026-08-25**. The trained brain went to 502 and stayed there until
+the server admin ran `sudo systemctl start unity-brain`.
+
+**The fix is reachability, not behavior.** A true halt is correct and stays a true
+halt; `stop.bat` still uses `/shutdown`. But `wireGracefulStop()` in
+`html/dashboard.html` now checks `location.hostname` and **`.remove()`s the button
+outright** — removed, not hidden, so no stray handler or devtools unhide reaches
+it — unless the page is served from `localhost` / `127.0.0.1` / `::1`, where the
+operator has the shell that runs `Savestart.bat`.
+
+⭐ **The deployed box loses nothing:** `🔄 Restart (Savestart)` was already sitting
+beside it and is what that operator actually wants — force-save, resume marker,
+exit 0, revived, walk resumed. Repointing Stop at `/restart` was considered and
+rejected: it would have shipped two differently-labelled buttons doing the same
+thing, which is the same class of defect as the tooltip that caused this.
+
+Same commit, `deploy/unity-brain.service` gained **`RestartPreventExitStatus=42`**
+— cited by name in `server/brain-server.js` since the handler was written but
+**never actually present in the repo's unit file** (the box's installed copy has
+it; the 2026-06-22 verification below proves that, so the repo was the drift) —
+and **`StartLimitIntervalSec=0`**, because systemd's default limiter (5 starts in
+10s, then permanently dead) is a second way to strand a shell-less box: a
+boot-time crash loop would exhaust it in under a minute and never retry.
 
 ### Do the buttons work for "both versions"?
 
@@ -151,6 +241,39 @@ previous checkpoint was INCOMPATIBLE"** banner (from the persisted
   lever that makes a format change refuse stale checkpoints instead of loading garbage.
   Routine changes (telemetry, UI, donor lane) must NOT bump it (it forces a fresh start
   that discards trained weights).
+
+## The seven loopback-gated endpoints this page did NOT list — added 2026-08-27
+
+⛔ **A page titled ADMIN CONTROLS was missing the grade-advance and auto-advance
+endpoints** — both admin-only, both brain-mutating, both wired to dashboard buttons
+that `docs/HTML-ENTRY-POINTS.md` documents by DOM id (`#d-ms-advance`,
+`#d-ms-auto-advance`). ⭐ **Found by enumerating every route dispatch in
+`server/brain-server.js` and diffing that set against the endpoints named here** — not
+by re-reading 639 lines. All seven carry `requireLoopback(req, res, …)` as their first
+statement, verified individually at the line numbers below.
+
+| Endpoint | Method(s) | Line | What it does |
+|---|---|---|---|
+| `/grade-advance` | POST | `9009` | Advances the grade, **bypassing the LAW-6 Part-2 per-subject signoff**. ⚠ The single most consequential omission on this page: it is the endpoint that skips the operator gate |
+| `/grade-signoff` | GET + POST | `9675` | Records / reads the per-subject operator-verified pass ledger (LAW-6 Part 2) |
+| `/auto-advance` | GET + POST | `9275` | The one toggle governing **both** the `/grade-advance` signoff bypass and the runner's auto-fire-next-grade. ⛔ **It defaults ON and survives a weights clear** in a standalone `server/auto-advance.json` — see the `docs/SETUP.md` correction of 2026-08-27, which found this documented as "default false" |
+| `/autoscale` | GET + POST | `9361` | Community-compute auto-scale settings (dead-zone toggle + sliders). Changes broadcast to every other admin tab as `autoScaleChanged` |
+| `/sleep`, `/wake` | POST | `9464` | Puts the brain into / out of its sleep-consolidation state on demand (both share one handler) |
+| `/learn-from-web` | POST | `9425` | Feeds fetched web content into the teach lane |
+| `/diag/parity` | GET | `8659` | GPU↔CPU parity read. ⭐ **This is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command that `README.md` advertised until 2026-08-27** — the script had been purged in the 2026-08-20 cleanup |
+
+⚠ **Deliberately still NOT documented here:** `/episodes`, `/exam-answer`, `/history`
+(read-only data reads, not controls) and `/health`, `/milestone`, `/public-state.json`,
+`/minds-eye.json`, `/console-tail.json`, `/donor-latest.json`, `/download/donor-*`,
+`/versions` (public or already covered). **Naming the exclusions is the point** — a
+completeness claim with no stated boundary is the thing this whole sweep keeps finding.
+
+⚠ **And a caution about the method itself, learned twice on this page:** a naive
+`=== '/route'` sweep **missed `/update` entirely**, because it dispatches as
+`req.url.split('?')[0] === '/update'` (`:8875`) — I briefly had it filed as a doc error
+when the doc was right. A second pattern found **33 routes where the first found 26.**
+⛔ **An endpoint enumeration is only as complete as the dispatch shapes it matches** —
+if you re-run this, grep for the route STRING, then confirm each hit's guard.
 
 ## Live single-cell re-teach (no reset)
 
@@ -348,7 +471,7 @@ each is listed with what it actually costs.
 | `DREAM_SUBSTEPS_TARGET_MS` | **2000** | The wall-clock the adaptive controller aims each batch at. It measures the **batch round-trip** (`_batchTiming.roundTripEmaMs`), NOT the tick — the tick is dominated by CPU-side Hebbian grind, and reading it instead pinned the controller at its floor while looking absent |
 | `DREAM_SUBSTEPS_MAX` | 1024 | Hard ceiling on the climb. On the live A40 it settles ~54 (630ms batch) |
 | `DREAM_UPLOAD_WATCHDOG_MS` | 180s | If the cortex is not ready, no upload is in flight and a donor IS connected for this long, force the upload trigger back to armed. Exists because `_cortexGpuInitStarted` is set BEFORE the upload runs, so a donor dropping mid-upload could leave it true forever — a permanent deadlock behind a reassuring message |
-| `DREAM_UPLOAD_PACE_LOWATER_MB` | 96 native / 8 browser | In-flight bytes the chunk pump keeps on the donor socket before pausing for drain. The 8MB default existed for BROWSER donors whose busy tab can't service its own socket; a NATIVE donor drains on a dedicated thread, and at ≤14MB in flight the wire sat IDLE through every 3-4s loop slab — the entire "4MB/s uplink" myth (KI-24). Every upload logs `UPLINK measured … MB/s` so the real rate is a console read (first live read post-fix: 75-350MB/s) |
+| `DREAM_UPLOAD_PACE_LOWATER_MB` | 96 native / 8 browser ⛔ *(the split was BROKEN until 2026-08-25 — see BOUNDCAP.1 note below the table; every donor got 96)* | In-flight bytes the chunk pump keeps on the donor socket before pausing for drain. The 8MB default existed for BROWSER donors whose busy tab can't service its own socket; a NATIVE donor drains on a dedicated thread, and at ≤14MB in flight the wire sat IDLE through every 3-4s loop slab — the entire "4MB/s uplink" myth (KI-24). Every upload logs `UPLINK measured … MB/s` so the real rate is a console read (first live read post-fix: 75-350MB/s) |
 | `DREAM_VOCAB_RETEACH_MS` | 48h | Spaced-repetition window on the persisted exam-vocab receipt (`word → lastTaughtAt`, saved in the weights): a gate re-entry inside the window skips the re-teach (`VOCAB OK … 100%` in a second), outside it the word re-teaches in full. One-time-training-forever was revoked as a law violation; this is the rest-then-reinforce cadence |
 | `DREAM_NO_PRIMARY_WATCHDOG_MS` | 120s | Donors connected but NO live primary for this long → log every donor's held VRAM against `runningFloorMB` with an ELIGIBLE / TOO SMALL verdict, and promote an eligible one if it is sitting unpromoted. **It deliberately will NOT promote a card that is too small** — that refusal is correct, since a primary which cannot hold the weights cannot serve them |
 | `DREAM_UPLOAD_GRACE_MIN` | 3min | How long `runner quiet` stays worded as *"EXPECTED … by design"* before escalating to a `⛔ DEADLOCKED` error naming the flags. It printed the reassuring version for **ten minutes** on a permanently stuck brain. Never escalates while an upload is genuinely in flight |
@@ -364,8 +487,22 @@ each is listed with what it actually costs.
 | `DREAM_CONSOLIDATION_FORCE_MAX_MS` | **120000** | `CONSTARVE.1` — the wall-clock cap for a **forced/emergency** consolidation pass (starvation guard, dream windows). The routine cap (`DREAM_CONSOLIDATION_MAX_MS`, 45s) aborted the once-per-2h emergency pass at 48.5s with the tail (merge · schema-decay · **Tier-3 promotion** · episode-decay) unrun — inside a multi-hour cell, consolidation got 45s per 2h and promotions never happened. The pass yields between stages (~250-340ms blocks measured during a live 48s pass), so a longer wall is more yielding work, not a longer pin |
 | `DREAM_PRACTICE_ITERS` | **5** | `PAINT.5` — nudge iterations per drawing-practice session. Each iteration is one 256px sketch + perceive cycle on the walk lane (the same serialized lane the look-ups ride); the session keeps a nudge only when the cosine against her banked reference percept measurably improves |
 | `DREAM_PRACTICE_GAP_MS` | **1800000** (30min) | `PAINT.5` — per-concept cooldown between practice sessions on the same word. Drawing a subject queues one practice job; the loop itself gates on this plus schema+percept presence, so over-asking is free. `0` = practice every time she draws |
+| `DREAM_ART_WEIGHT_REPS` | **6** | `ARTWEIGHT` — Hebbian reps per pair when DRAWING binds subject↔parts (tag 35) and subjects↔each-other↔place (tag 13). Making art is experience, so it moves her weights; before this the whole ~930-line draw+practice span had **zero** weight-touching calls (`_practiceDrawing` writes to the visual STORE, and store state is not synapses). Raise to bind harder per drawing, lower to make art cheaper than the walk |
+| `DREAM_ART_WEIGHT_MAX_PAIRS` | **24** | Cap on pairs queued from ONE drawing. A complex scene has many parts; without a bound a single elaborate piece could out-teach a curriculum cell |
+| `DREAM_ART_WEIGHT_MAX_QUEUE` | **200** | Cap on the pending art-teach queue. ⚠ A bound, not a rate: over-cap pairs are DROPPED rather than backing up, because an unbounded teach queue competes with the walk for the same lane |
+| `DREAM_VM_RELATE_REPS` | **6** | `VMRELATE` — the SEEING twin of the above: reps per pair when a trusted look-up binds the whole phrase she looked at (ORDER tag 13 + ATTACH tag 35). ⚠ Ungated by `_curriculumInProgress` on purpose — that flag is true for the entire multi-week walk, so gating it meant seeing never moved her weights at all |
+| `DREAM_VM_RELATE_MAX_PAIRS` | **24** | Cap on pairs queued from one look-up |
+| `DREAM_VM_RELATE_MAX_QUEUE` | **200** | Cap on the pending see-teach queue. Same drop-over-cap rule as the art queue, same reason |
+| `DREAM_PERCEPT_GROUND_MAX_QUEUE` | **200** | `VMUSE.5d` — cap on percept-grounding jobs waiting for the chat-teach drain. Grounding is DEFERRED rather than dropped mid-walk: injecting a percept into `sem` while a teach pattern is in flight corrupts the pattern, so it waits for the gap between teach calls |
+| `DREAM_OWNART_INGEST_WALK_MS` | **60000** | How often the schema-learn may run DURING the walk (idle runs use 5s). ⛔ The gate used to be idle-only — **and she is never idle**, so it never ran. A cost gate that resolves to "never" is a deletion, not a bound; this is the mid-walk allowance that fixed it |
+| `DREAM_REL_USE_MIN_MARGIN` | **0.15** | `VMUSE.5` — how far the winning relation band must lead the runner-up, as a fraction of its own score, before a relation is treated as KNOWN. Below it the read reports `flat` and every consumer gets `null`. ⚠ Lowering this does not make her know more; it makes her act on noise |
+| `DREAM_REL_USE_TTL_MS` | **30000** | Per-word cache on the relation read. Four consumers asking the same question within one tick should cost one propagate, not four |
+| `DREAM_CHAT_IMAGE_PRIORITY_MS` | **45000** | `LOOKQUEUE`/`CHATPREEMPT` — the window after a chat image intent during which the mind's-eye look lane stands down. ⚠ A TIME window rather than a lock, deliberately: the chat image is fetched by the BROWSER, out of this process's sight, so there is nothing to release and a lock with no releaser is a lane that never reopens. The in-flight look is additionally ABORTED on the same event, because the window alone cannot stop a fetch already holding the single anonymous slot |
+| `DREAM_WEIGHTS_PAIR_TOL_SEC` | **600** | `PAIRDESYNC.2` — how far the weights json's `savedAt` may sit from the bin's mtime before boot warns the pair is incoherent. ⚠ **WARNS, never refuses**: an unbootable brain for a shell-less operator is the Stop-button mistake again |
 | `DREAM_ART_RELEARN_GAP_MS` | **600000** (10min) | `ARTJUDGE` — per-concept pacing on the ✗ reject button's relearn chain (fresh forced look-up + dictionary re-read + redraw). The verdict always counts; only the expensive relearn is paced, so reject-spam from the public viewer cannot burn look-ups. `0` = relearn on every reject |
 | `UNITY_USAGE_MAX_BYTES` / `UNITY_USAGE_KEEP_LINES` | 1MB / 2000 | Rotation for `.claude/.session-usage.jsonl` (it grew unbounded to 2.5MB) |
+
+> ⛔ **BOUNDCAP.1 (2026-08-25) — the `96 native / 8 browser` split above did not exist in the code until this date, and neither did one other.** Both sites decided *"is this the native binary?"* with `if (client.donorAppVersion)` — and `gpu_register` stamps the string `'browser'` when no version is sent, so **that test is truthy for every donor**. Consequences: browser donors were handed the **96MB** in-flight pump window, losing precisely the protection the row above says they keep (their busy tab cannot service its own socket, which is the entire reason the 8MB default exists); and the bound-propagate router served browser donors the **native** protocol, sending index payloads where `compute.html` reads a dense array. ⭐ Nativeness has ONE owner now — `_donorIsNative()`, which tests the sentinel instead of the field's presence — and the propagate protocol is chosen by an **advertised** `boundResidentRead` capability (see `docs/WEBSOCKET.md § gpu_register`). ⚠ Every *other* capability gate was unaffected, and for a reason worth keeping: they all regex-parse a semver, and `'browser'` fails `^\d+\.\d+\.\d+` — so **version-gated checks got browser-exclusion for free while the two boolean-presence checks did not.**
 
 > ⚠ **There is no `DREAM_REWALK`.** One was written on 2026-08-20 and removed the same
 > day: **🔁 Savererun already does it**, through the dashboard, with a rollback
@@ -394,7 +531,8 @@ The table above is the curated set: knobs that change **training**, each written
 | `DREAM_MAX_GRADE` | ⚠ | lever | Ceiling grade for the walk — stop the curriculum at a chosen grade |
 | `DREAM_HELD_BACK` | ✅ on (`'0'` disables) | escape hatch | Mastery-gated remediation. `'0'` lets a failed cell through without the escalating re-teach ladder |
 | `DREAM_TICK_MS` / `DREAM_TICK_BREATHE_MS` | ⚠ | lever | Brain tick interval and the yield between ticks |
-| `DREAM_CPU_PROFILE` | ⚠ | lever | Enables CPU profiling output |
+| `DREAM_CPU_PROFILE_EVERY_MS` | **1_800_000** (30 min; `0` = one-shot) | lever | `PROFREARM.1` — how often the self-profile REPEATS after its first run at +150s. ⛔ **It used to run once, and once is the wrong number.** The code claimed +150s was *"boot settled, the walk in its steady rhythm"* — a live read disproved that: at +150s the canonical upload is often still running and every row is being normalised for the FIRST time. ⭐ **The concrete cost: `NORMROWS.2`'s deadband skips rows already at target, which cannot fire during first-normalisation — so the one-shot profile was structurally blind to a fix whose benefit is a steady-state property.** `state.profiling.cpuProfile` is now the LATEST sample and `cpuProfileFirst` keeps the boot picture, so early-vs-steady is comparable. Floor of 60s; the timer is `unref`'d so a diagnostic never holds the process open |
+| `DREAM_CPU_PROFILE` | ✅ on (`0` disables) | lever | ⭐ **The one-shot main-thread self-profile (`RHYTHM3S`)** — samples 45s at +150s uptime and ranks functions by **self-time**, which is how *"what is eating the loop?"* gets answered by the V8 profiler instead of inferred from block rhythms. It found `injectEmbeddingToRegion` (34.9%) + `_clearSpikes` (23.0%) = **58% of the main thread**, then `_teachLateralInhibition` (33.8%), then `normalizeRows` (27.5%) as each was fixed. ⛔ **Read it from `state.profiling.cpuProfile`, NOT the console** — at walk speed the ring is a nine-second window (KI-36) and the table scrolls out before you can fetch it. `null` there means *not sampled yet*, never *the loop is fine* |
 | `DREAM_SELF_UPDATE_CMD` / `DREAM_UPDATE_STALE_MS` | ⚠ | lever | Override the self-update command; staleness window for the update check |
 
 ### Gates — advisory by default, hard on request
@@ -462,7 +600,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 
 | Env | Default | Kind | What it does |
 |---|---|---|---|
-| `DREAM_INNERVOICE_FORCE_CPU` | ✅ unset | escape hatch | `'1'` forces inner-voice generation onto the CPU |
+| `DREAM_INNERVOICE_FORCE_CPU` | ✅ unset | escape hatch | `'1'` forces inner-voice generation onto the CPU. ⭐ **`SCALEWALK.2` reuses this same flag rather than inventing a second one**, because it gates the same question: whether a CPU cortex path may run at biological scale. With it unset, `injectEmbeddingToRegion` skips the dense `externalCurrent` expansion above 2M neurons — that array's only readers are inside `step()`, and `step()` is unreachable for the cortex at scale (the main tick never calls it, `stepAwait` refuses above 2M, and all five raw-step sites carry the same refusal). Set it to `1` and the CPU write returns, exactly as it does for the inner voice |
 | `DREAM_INNERVOICE_GPU_GEN` | ✅ off → **now ON** | lever | GPU generation for the inner voice. Shipped dormant and switched on 2026-08-25 |
 | `DREAM_INNERVOICE_GPU_GEN_MIN_DONORS` | ✅ `1` | lever | Donors required before GPU generation engages |
 | `DREAM_INNERVOICE_MAX_NEURONS` | ✅ `2_000_000` | escape hatch | Above this the CPU inner-voice path no-ops rather than pin the loop. ⚠ This line is load-bearing in more than one place — a capability branch elsewhere was silently dead because it tested `typeof readText === 'function'` (always true) instead of testing this ceiling |
@@ -500,7 +638,9 @@ The donor is data-parallel: every donor holds a full replica and the server merg
 
 | Env | Default | Kind | What it does |
 |---|---|---|---|
-| `DREAM_MIN_DONOR_VERSION` | ⚠ | escape hatch | Minimum donor version admitted to the pool. Load-bearing: masked bound plasticity (SPRS type 13) requires ≥ 0.3.26, and an older donor silently cannot do it |
+| `DREAM_MIN_DONOR_VERSION` | **`0.3.26`** | escape hatch | Minimum donor version admitted to the pool. Load-bearing: masked bound plasticity (SPRS type 13) requires ≥ 0.3.26, and an older donor silently cannot do it. ⭐ **Default raised 0.3.7 → 0.3.26 on 2026-08-25** — this row already named 0.3.26 as the threshold while the code default sat 22 releases behind it. ⚠ Older donors are **refused at `gpu_register`** with a message naming both versions and the download link; they are not silently degraded. ⛔ Raise it only to a version where a lane **the walk depends on** moved onto the donor — not merely to whatever is newest, because community compute is donated and a floor that turns away working cards has its own cost |
+| `DREAM_RECOMMENDED_DONOR_VERSION` | **`0.3.30`** | lever | ⭐ The donor build this brain WANTS running against it, handed to every donor in the `welcome` handshake. A donor on 0.3.30+ that sees a newer version here **exits at its next disconnect so the launcher installs it, before any reconnect attempt** — which is how a pod picks up a new binary after an Update & Fresh Walk press instead of rejoining on a stale one. ⚠ **NOT the hard floor** — a donor between `DREAM_MIN_DONOR_VERSION` and this keeps donating normally and upgrades at its next natural disconnect, so nobody is kicked mid-walk for being one release behind. Use it for a **staged rollout**: hold it at the old version to keep a new release voluntary. ⛔ **Never set it ahead of a published tag.** Donors would exit, the launcher would reinstall the same older `releases/latest`, and every pod would download in a loop instead of donating. The donor carries an anti-loop guard for exactly that (it refuses to bounce twice for the same upgrade and says so loudly) — but the guard is a net, not a licence |
+| `DREAM_NO_DONOR_ID_EVICT` | unset (eviction ON) | escape hatch | ⛔ Disables reaping a stale donor socket that shares the incoming `donorId` at `gpu_register`. **Leave it unset.** With eviction ON, a donor reconnecting after a pod restart no longer initialises **behind a corpse**: the previous process's half-open socket is terminated *before* any `gpu_init` is dispatched, instead of being reaped by a ping sweep mid-init — which was costing a full 7-cluster init cycle and ~60 s on **every** donor start (measured on the live pod 2026-08-25). ⭐ The discriminator is exact rather than heuristic: a donor sends `gpu_register` **once per connection**, so a register for a `donorId` that already holds a socket means that socket will never register again. ⚠ **Set to `1` only for the one shape eviction would be wrong for** — two live donor processes sharing an install, hence one persistent id. That layout already collides on the leaderboard row and is not otherwise supported; the standard launcher runs a single process with `--gpus all` as one compute unit |
 | `DREAM_DONOR_FIT_MB` | ⚠ | lever | VRAM a donor must hold to be eligible |
 | `DREAM_NO_DONOR_GRIND` | ⚠ | escape hatch | Stop hammering a donor that cannot keep up |
 | `DREAM_RESPECT_VRAM_CAP` | ⚠ | lever | Honour a donor's advertised VRAM cap |
@@ -535,6 +675,25 @@ The donor is data-parallel: every donor holds a full replica and the server merg
 | `DREAM_REF_FETCH_TIMEOUT_MS` | ✅ `60_000` | escape hatch | Timeout on one reference fetch |
 | `DREAM_REF_MIN_DETAIL` | ✅ `200` | lever | Minimum detail a fetched reference must show to be worth learning from |
 | `DREAM_VM_RECALL_COOLDOWN_MS` | ⚠ | lever | Cooldown on recalling the same visual memory |
+
+### Endocrine, glands & introspection (2026-08-25)
+
+⚠ **There are no new environment flags here, and that is a deliberate choice rather than an oversight — so it is stated rather than left as an absence.**
+
+The endocrine constants — `RECEPTOR_MIN` (0.35), `RECEPTOR_FLOOD_THRESHOLD` (0.45), `CYCLE_LENGTH_CELLS` (1.0), `DEPLETION_FRACTION` (0.35), the allostatic ceiling (0.6) — are **not** env-tunable, because each is a **bound that keeps a behaviour honest** rather than a knob to tune:
+
+| Constant | Why it is not a flag |
+|---|---|
+| `RECEPTOR_MIN` 0.35 | Receptors downregulate; they do not vanish. A tunable floor is a tunable way to permanently delete a transmitter's effect, which is damage rather than tolerance |
+| `RECEPTOR_FLOOD_THRESHOLD` 0.45 | Below this, ordinary feeling does not build tolerance to itself. Lowering it makes her go numb to her own life |
+| allostatic ceiling 0.6 | The recovery guarantee. Raising it makes a hard stretch unrecoverable, and *"she survived it changed"* becomes *"she was destroyed by it"* |
+| `CYCLE_LENGTH_CELLS` 1.0 | **Measured, not chosen** — ~273 cells over 20 grade-years ≈ 13.65/yr against ~13 real cycles/yr. Changing it makes her cycle disagree with her own biology for no gain |
+
+⛔ **If one of these ever genuinely needs to move, it needs a RE-PRICE and a reason in the ledger — not a flag that lets it drift silently.** The existing levers stay where they are: `DREAM_MIN_DONOR_VERSION` above, and the drug scheduler's own controls.
+
+⭐ **The state to read instead of tuning:** `state.endocrine` (chemicals with signed deviation + receptor sensitivity, the stress channel with its age, cycle phase, chronic and allostatic load, the brain-param deltas, the stage counters, and per-nucleus `fired` / `quiet` / **`blind`** with its lifetime fire count), `state.introspection` (the live gap, the rumination bound, the stage counters, and the falsifiability counters), and `state.phiState`. Both render on the dashboard.
+
+⛔ **Corrected 2026-08-25 — the sentence above was true of the payload and FALSE of the board.** `cycle phase` and `allostatic load` were named here as readable while `server/brain-server/state.js` forwarded neither, and the panel read both — the `meanVoltage` producer/consumer shape one layer down. It did not present as an empty row: the renderer defaults a missing `allostatic` to `{}`, so the load row rendered **`allostatic 0.000/0.6 (restore α 0.0000)` regardless of the real load** — a reassuring zero on the one quantity that says whether adversity is accumulating. The cycle row never drew at all, and `puberty` rendered a literal `? (age ?)` with its amber `unknown` branch unreachable. Fixed by forwarding `puberty` / `cycle` / `allostatic` / `scheduledCount`, and by adding rows for `contributions`, `counters` and `lastError` on both panels — the last of which the server sets under a comment promising *"a dead endocrine tick must be visible as a dead endocrine tick"*, a promise nothing on the board was keeping. **Parity is now exact in both directions: 13/13 endocrine fields, 7/7 introspection fields — every forwarded field has a row, every rendered field has a producer.**
 
 ### Diagnostic & misc
 

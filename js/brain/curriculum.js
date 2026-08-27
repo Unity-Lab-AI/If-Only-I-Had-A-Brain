@@ -9,12 +9,12 @@
  * every live chat turn) with EXPOSURE INTENSITY scaled by structural
  * complexity. Letters are exposed at highest intensity, short words
  * next, longer words next, sentences last. The order comes from
- * sorting the existing corpus tokens by complexity — never from a
+ * sorting the existing corpus words by complexity — never from a
  * hand-picked seed list.
  *
  * No new corpus files. No docs/curriculum/stage-c-phrases.txt. No
  * docs/curriculum/stage-d-sentences.txt. The existing persona/baseline/
- * coding corpora ARE the curriculum input. Tokenize, bucket, replay.
+ * coding corpora ARE the curriculum input. Split into words, bucket, replay.
  *
  * Why not hand-curated stages: a 500-line "simple sentences" file IS
  * a curated word list. It caps the developmental trajectory at whoever
@@ -62,13 +62,13 @@ import { teachInto as mindSpaceTeachInto } from './mindspace/knowledge.js';
 // SELFFRAME (Gee 2026-08-20) — every lesson gets taught as something SHE DID. Pure
 // text transform at teach time only; nothing here runs at emission time, so the
 // no-text-AI law is untouched. See js/brain/self-frame.js for the full rationale.
-import { selfFrameUnit, selfPronounLessons, SELF_TOKENS, firstPerson } from './self-frame.js';
+import { selfFrameUnit, selfPronounLessons, SELF_WORDS, firstPerson } from './self-frame.js';
 // ENDO-LIFE.2 — the body/chemistry syllabus. LEARN axis, never gated, and
 // deliberately AHEAD of the physiology it describes.
 import { teachEndocrineVocabulary } from './endocrine-curriculum.js';
 
 // Phase tick budgets. These scale the intensity of exposure — letters
-// and short words get more ticks per token because phonological basins
+// and short words get more ticks per word because phonological basins
 // need more settling than sentence-level sequence patterns do. Sentences
 // get fewer ticks per word because their value is in the word-to-word
 // sequence Hebbian, not in per-word basin depth.
@@ -89,9 +89,9 @@ const LONG_WORD_TICKS = 1;        // per word (4+ letters)   (was 3)
 const SENTENCE_TICKS_PER_WORD = 1;// (was 2)
 const LIVE_TICKS_PER_WORD = 2;    // unchanged — live chat is rare, can afford 2
 
-// Phase cap repetitions — how many times each token gets walked during
-// the phase. Common tokens get more reps because the corpus frequency
-// already biases the walk order, but every token gets at least one
+// Phase cap repetitions — how many times each word gets walked during
+// the phase. Common words get more reps because the corpus frequency
+// already biases the walk order, but every word gets at least one
 // exposure.
 const LETTER_REPS_MAX = 5;        // (was 20)
 const SHORT_WORD_REPS_MAX = 2;    // (was 6)
@@ -101,7 +101,7 @@ const SENTENCE_REPS = 1;
 // Complexity bucket thresholds — letter count only. Phrase detection
 // (T14.5 Phase 4) is deferred to a post-T14.12 pass that can consume
 // the learned grammar the main curriculum produces. Sentences are
-// anything containing whitespace in the tokenized form.
+// anything containing whitespace once split into words.
 const SHORT_WORD_MAX_LEN = 3;
 
 // ─── Multi-subject curriculum framework ─────────────────────────
@@ -2535,6 +2535,20 @@ const STRUCTURE_DOSE = Math.max(
 export class Curriculum {
   static PRE_K_FALLBACK_CAP = PRE_K_FALLBACK_CAP;
 
+  // How many relation channels the fineType region is divided into.
+  //
+  // ⛔ This was the literal 6, inline at two write sites, while tags in live
+  // use run to 35 — so every channel above 5 wrote nothing at all. See
+  // `_writeRelationTag` for the full measurement.
+  //
+  // 48 rather than 36: the highest tag in the tree is 35, and headroom is the
+  // point — a new channel must not silently fall off the end the way the last
+  // dozen did. At the real fineType size of 504,000 this is 10,500 cells per
+  // band, comfortably above the ~10 cells a tag needs to be legible and
+  // strictly cheaper per pair than the 84,000 the six-band layout wrote.
+  // A tag beyond this REFUSES LOUDLY; it never writes nothing in silence.
+  static RELATION_TAG_BANDS = 48;
+
   /**
    * T18.25 — REMOVED forced gc() from T18.24's between-phase memory
    * barrier. Earlier runs showed V8 OOM'd shortly after Phase 2 DONE
@@ -2702,7 +2716,7 @@ export class Curriculum {
     // readings on each gate probe).
     // GATEPHASE — THE CELL-TERMINAL GATES BELONG HERE, and they were missing.
     //
-    // A gate ran with NO phase token at all, so for its entire duration the
+    // A gate ran with NO phase word at all, so for its entire duration the
     // board read `activePhase: null` with started === completed — which is
     // BYTE-IDENTICAL to a hang. A 20.7-minute science gate cost a console-ring
     // forensic dig to tell apart from a dead process, when a glance should have
@@ -2804,7 +2818,7 @@ export class Curriculum {
         // TRICKLE-SKIP LATCH FIX (2026-08-16, caught by the OI.2 watcher):
         // the old condition only refused cell-phase status when a LEDGER
         // ancestor was in flight. But foreign teach entries push NON-ledger
-        // tokens — `_teachWordDefinition` (dream trickle / chat / emission
+        // words — `_teachWordDefinition` (dream trickle / chat / emission
         // defs) nests `_teachAssociationPairs` under one — and since the
         // runner DECLARES _teachAssociationPairs, every such nested call
         // qualified as "the cell phase again" and got PHASE-SKIPPED once the
@@ -2812,7 +2826,7 @@ export class Curriculum {
         // 120 failed in 27ms, zero bound — the entire vocabulary lane eaten
         // by resume-skip. The correct discriminator: a declared phase may
         // bank/skip ONLY when no `_teach*` ancestor is in flight. Runner and
-        // battery tokens (non-_teach names) don't block banking; any teach
+        // battery words (non-_teach names) don't block banking; any teach
         // ancestor means "nested primitive — always execute, never ledger".
         const isCellPhase = !!phaseKey
           && this._declaredPhaseNames(cl._currentCellKey).has(name)
@@ -2838,8 +2852,8 @@ export class Curriculum {
           this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
-        const token = { name, startAt: Date.now(), ledger: isCellPhase, teach: name.startsWith('_teach') };
-        if (stack) { stack.push(token); cl._activePhase = token; }
+        const phaseEntry = { name, startAt: Date.now(), ledger: isCellPhase, teach: name.startsWith('_teach') };
+        if (stack) { stack.push(phaseEntry); cl._activePhase = phaseEntry; }
         // HONEST PROGRESS (2026-08-14) - count cell phases STARTED, not only
         // completed. The first phase of a K cell legitimately runs tens of
         // minutes, so `phasesCompleted` sits at 0 the whole time and the
@@ -2855,7 +2869,7 @@ export class Curriculum {
         // cell phase. Track the cell phase separately so the phase actually
         // responsible is nameable.
         if (isCellPhase) {
-          cl._outermostPhase = token;
+          cl._outermostPhase = phaseEntry;
           // Start a fresh within-phase work tally for this phase.
           this._phaseWorkName = name;
           this._phaseWorkSeen = new Set();
@@ -2977,7 +2991,7 @@ export class Curriculum {
           {
             if (!this._teachProfile) this._teachProfile = Object.create(null);
             const _pf = this._teachProfile[name] || (this._teachProfile[name] = { ms: 0, calls: 0 });
-            _pf.ms += Date.now() - token.startAt;
+            _pf.ms += Date.now() - phaseEntry.startAt;
             _pf.calls += 1;
           }
           // Remove THIS call BY IDENTITY - never by position, never by
@@ -2986,14 +3000,14 @@ export class Curriculum {
           // still running stays on top. This is what makes the latch
           // impossible.
           if (stack) {
-            const _i = stack.lastIndexOf(token);
+            const _i = stack.lastIndexOf(phaseEntry);
             if (_i >= 0) stack.splice(_i, 1);
             cl._activePhase = stack.length ? stack[stack.length - 1] : null;
           }
           // Identity-checked, so an out-of-order exit can never clear a phase
           // that is still live, and the work tally retires with its own phase
           // instead of lingering at 99% between phases.
-          if (cl && cl._outermostPhase === token) {
+          if (cl && cl._outermostPhase === phaseEntry) {
             cl._outermostPhase = null;
             this._phaseWorkName = null;
             this._phaseWorkSeen = null;
@@ -3019,13 +3033,13 @@ export class Curriculum {
         const cl = this.cluster;
         if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
         const stack = cl ? cl._phaseStack : null;
-        const token = { name, startAt: Date.now(), ledger: false };
-        if (stack) { stack.push(token); cl._activePhase = token; }
+        const phaseEntry = { name, startAt: Date.now(), ledger: false };
+        if (stack) { stack.push(phaseEntry); cl._activePhase = phaseEntry; }
         try {
           return await original(...args);
         } finally {
           if (stack) {
-            const _i = stack.lastIndexOf(token);
+            const _i = stack.lastIndexOf(phaseEntry);
             if (_i >= 0) stack.splice(_i, 1);
             cl._activePhase = stack.length ? stack[stack.length - 1] : null;
           }
@@ -3039,7 +3053,7 @@ export class Curriculum {
   // her own to help her logically solve problems": transform the
   // technical phase name `_teachVowelSoundVariants` into a natural-
   // language concept "vowel sound variants" so GloVe can match the
-  // tokens. With real GloVe embeddings, cosine of similar phase
+  // words. With real GloVe embeddings, cosine of similar phase
   // descriptions ("vowel sound variants" vs "rhyme families") produces
   // meaningful similarity → ConsolidationEngine clusters phonetics
   // episodes into a phonetics schema → Tier 2 represents ACTUAL
@@ -4658,8 +4672,8 @@ export class Curriculum {
    *   - Application (understanding)
    *
    * Variants give the scoring layer partial credit for answers that
-   * start with or contain the expected token, because young students
-   * often answer with multiple tokens around the right one
+   * start with or contain the expected word, because young students
+   * often answer with multiple words around the right one
    * ("letter C", "cat", "c-a-t").
    */
   _studentQuestionBank(subject, grade) {
@@ -5139,7 +5153,7 @@ export class Curriculum {
     // content words not in Unity's trained vocabulary. Not a prediction
     // of failure — a fairness constraint on what counts as a valid
     // probe. Untaught words mean the visual→letter→phon→sem pathway
-    // has no reliable basin for those tokens, so the brain can't
+    // has no reliable basin for those words, so the brain can't
     // BEGIN to parse the question. Asking anyway wastes probe budget
     // and produces garbage data.
     // ═══════════════════════════════════════════════════════════════
@@ -5162,7 +5176,7 @@ export class Curriculum {
       'your','his','her','our','their','has','have','had','what','which',
       'who','when','where','why','how','whose','there','here',
     ]);
-    const tokenize = (text) => {
+    const splitWords = (text) => {
       const words = String(text || '').toLowerCase()
         .replace(/[^a-z0-9'\s]/g, ' ')
         .split(/\s+/)
@@ -5173,7 +5187,7 @@ export class Curriculum {
     const vocabGaps = new Map(); // word → count of questions using it
     if (trainedVocab && trainedVocab.size > 0) {
       for (const q of questions) {
-        const words = tokenize(q.question);
+        const words = splitWords(q.question);
         const untaught = words.filter(w => !trainedVocab.has(w));
         if (untaught.length === 0) {
           filteredForVocab.push(q);
@@ -5275,7 +5289,7 @@ export class Curriculum {
       // any plausible answer at all clears 0.15). Hides nothing real —
       // operator sees the full failure surface in the BATTERY DONE
       // aggregate while the gate still skips the cases where the brain
-      // can't even produce a token. Aggregate-score gate downstream
+      // can't even produce a word. Aggregate-score gate downstream
       // still requires real performance to mark questions as passing.
       if (sampleScore >= 0.15) {
         // Comprehension OK → admit the whole group (sample already ran; skip it here)
@@ -5510,7 +5524,7 @@ export class Curriculum {
    * falls through to Path B tick-driven motor emission for novel
    * responses. Scoring via `scoreMethodologyAnswer(emission, keywords)`
    * from `student-question-banks.js` — pass = ≥ 1 keyword matched in
-   * the emission tokens (case-insensitive, whitespace-split).
+   * the emission words (case-insensitive, whitespace-split).
    *
    * Returns:
    *   {
@@ -5837,7 +5851,7 @@ export class Curriculum {
       }
     } catch { /* non-fatal — fall through to generation anyway */ }
 
-    // Probe-side key-token extraction + dual-tile sem injection. Mirrors
+    // Probe-side key-word extraction + dual-tile sem injection. Mirrors
     // the teach-side pattern geometry `_teachQABinding` wrote during
     // training — without this, the visual→letter→phon→sem pathway at
     // probe time produces a natural but slightly different sem pattern
@@ -5852,15 +5866,15 @@ export class Curriculum {
         if (qEmb && qEmb.length > 0) {
           // Full sentence into sem (default layout — whole-region tile).
           cluster.injectEmbeddingToRegion('sem', qEmb, 0.6);
-          const keyToken = this._extractKeyToken(question);
+          const keyWord = this._extractKeyWord(question);
           // Use the unified pattern (GloVe + identity-hash + cortex-
           // snapshot) so probe geometry matches what `_teachQABinding`
-          // wrote. Without this the key-token injection at probe time
+          // wrote. Without this the key-word injection at probe time
           // is GloVe-only while training was on the unified pattern,
-          // and the matrix won't recognize the key token.
-          const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+          // and the matrix won't recognize the key word.
+          const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
           if (keyEmb && keyEmb.length > 0 && typeof this._injectEmbeddingToRegionOffset === 'function') {
-            // Key token into the second half of sem — same fractional
+            // Key word into the second half of sem — same fractional
             // offset (0.5) the teach-side `_writeTiledPatternOffset` uses.
             this._injectEmbeddingToRegionOffset(cluster, 'sem', keyEmb, 0.6, 0.5);
           }
@@ -5885,25 +5899,24 @@ export class Curriculum {
       }
     } catch { /* non-fatal — teach-side pattern parity is best-effort */ }
 
-    // Generate Unity's answer via direct-propagate emission — LLM-style
-    // weight-driven next-letter generation using the learned cross-
-    // projection matrices. The prior tick-driven LIF emission masked
+    // Generate Unity's answer via direct-propagate emission — weight-driven
+    // next-letter generation through her learned cross-projection matrices. The prior tick-driven LIF emission masked
     // the trained weights behind Rulkov noise + tonic drive; gate
     // direct-propagate TALK probes return 26/26 correctly while LIF
     // emission returned empty or uniform-bucket junk. Switching probe
     // emission to direct propagate reads the weights honestly.
 
-    // Build the question-wrapper exclude list — every token before
-    // the colon (or every token except the last alpha-numeric one
+    // Build the question-wrapper exclude list — every word before
+    // the colon (or every word except the last alpha-numeric one
     // when no colon exists) is a wrapper word that the oracle must
     // never echo back as the answer. Operator-level bug: questions
     // like "blend these sounds: d-o-g" were resolving to "sounds"
     // because the sentence-embedding intent seed averaged the wrapper
     // words' GloVe vectors and the oracle's cosine scan locked onto
-    // whichever wrapper word ranked highest. Excluding wrapper tokens
-    // forces the oracle to choose from CONTENT tokens only — and
+    // whichever wrapper word ranked highest. Excluding wrapper words
+    // forces the oracle to choose from CONTENT words only — and
     // failing that, falls through to the trained sem→motor matrix.
-    const excludeTokens = (() => {
+    const excludeWords = (() => {
       const s = new Set();
       const colonIdx = question.indexOf(':');
       if (colonIdx > 0) {
@@ -5912,8 +5925,8 @@ export class Curriculum {
           if (tok && tok.length > 0) s.add(tok);
         }
       } else {
-        const tokens = question.toLowerCase().split(/[^a-z0-9']+/).filter(w => w.length > 0);
-        for (let i = 0; i < tokens.length - 1; i++) s.add(tokens[i]);
+        const qWords = question.toLowerCase().split(/[^a-z0-9']+/).filter(w => w.length > 0);
+        for (let i = 0; i < qWords.length - 1; i++) s.add(qWords[i]);
       }
       return s;
     })();
@@ -5929,7 +5942,7 @@ export class Curriculum {
     // shortcut. Just routes to the trained pathway whose basin best
     // matches the question shape.
 
-    // Returns null when (a) no template matches, (b) no key token
+    // Returns null when (a) no template matches, (b) no key word
     // extracted, (c) the targeted pathway isn't wired or is empty,
     // (d) motor/phon argmax confidence is below threshold. In any null
     // case the existing matrix-driven generation path runs as before.
@@ -5937,8 +5950,8 @@ export class Curriculum {
     try {
       const tplId = typeof this._classifyQuestionTemplate === 'function'
         ? this._classifyQuestionTemplate(question) : -1;
-      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyToken === 'function'
-        ? this._extractKeyToken(question) : null;
+      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === 'function'
+        ? this._extractKeyWord(question) : null;
       if (keyTok && keyTok.length === 1 && /^[a-z]$/.test(keyTok)) {
         if (tplId === 0) {
           // "what (letter) comes after X" — inject X into letter region,
@@ -6114,13 +6127,13 @@ export class Curriculum {
     // Fires only when:
     //   - Template 0/1 didn't already produce an answer (templatedAnswer null)
     //   - Question has a recognized WH-frame (intent concept extractable)
-    //   - Subject token extractable
+    //   - Subject word extractable
     //   - sem region wired
     if (!templatedAnswer && typeof this._extractIntentConcept === 'function') {
       try {
         const intentConcept = this._extractIntentConcept(question);
-        const subjectTok = (typeof this._extractKeyToken === 'function')
-          ? this._extractKeyToken(question) : null;
+        const subjectTok = (typeof this._extractKeyWord === 'function')
+          ? this._extractKeyWord(question) : null;
         // Definition-intent fast path: when "what is X"
         // hits, route through live dictionary API + multi-word emit.
         // This is the path operator demanded — Unity speaks the actual
@@ -6145,7 +6158,7 @@ export class Curriculum {
           if (intentEmb && intentEmb.length > 0 && subjectEmb && subjectEmb.length > 0) {
             // Inject intent into first half of sem, subject into second
             // half via the same offset geometry _teachAssociationPairs
-            // uses for key-token tile placement. Joint sem state now
+            // uses for key-word tile placement. Joint sem state now
             // carries BOTH bindings the dual-Hebbian path was trained on.
             try { cluster.injectEmbeddingToRegion('sem', intentEmb, 0.5); } catch { /* non-fatal */ }
             if (typeof this._injectEmbeddingToRegionOffset === 'function') {
@@ -6192,7 +6205,7 @@ export class Curriculum {
     } else try {
       // Intent seed source — read sem state from the cortex AFTER the
       // question has been read in via `cluster.readInput` + Bahdanau-
-      // lite key-token injection above. The cortex sem state at this
+      // lite key-word injection above. The cortex sem state at this
       // point reflects what the trained sem→motor matrix has decided
       // the answer attractor is, NOT the average GloVe vector of the
       // question's words. Sentence embedding falls back only when no
@@ -6207,7 +6220,7 @@ export class Curriculum {
       const emitOpts = {
         directPropagate: true,
         maxLetters: Math.min(maxTicks, 16),
-        excludeTokens,
+        excludeWords,
         // Test-probe context — exclude persona-flavored vocabulary so
         // "what letter comes after m?" never resolves to "fuck" via the
         // dictionary oracle when the trained matrix is overloaded. Live
@@ -6239,7 +6252,7 @@ export class Curriculum {
         // word_motor buckets are K-vocab-bottlenecked; the dictionary
         // oracle is the path to the full English vocabulary, and it
         // needs to FIRE MORE (not less) when the trained matrix has
-        // nothing. Wrapper-token exclude list still filters echoed
+        // nothing. Wrapper-word exclude list still filters echoed
         // question-words. Excludes-persona still keeps the K probe
         // honest.
         minScore: out.intentSilenceBranch ? 0.05 : 0.2,
@@ -6311,14 +6324,14 @@ export class Curriculum {
       // GRADERMATCH.2 (2026-08-22) — same word-level discipline as the
       // production matcher: the old substring-anywhere `includes` passed
       // any answer CONTAINING the variant mid-word. A variant now matches
-      // only a whole token of the answer (≤2 trailing chars of stemming).
-      const answerTokens = answer.split(/[^a-z0-9']+/).filter(Boolean);
+      // only a whole word of the answer (≤2 trailing chars of stemming).
+      const answerWords = answer.split(/[^a-z0-9']+/).filter(Boolean);
       for (const v of expectedVariants) {
         // Skip contains check for single-char variants — strict cue
         // discipline (letter-cue questions need starts-with, not
         // anywhere-in-answer substring).
         if (v.length <= 1) continue;
-        if (answerTokens.some(t => t === v
+        if (answerWords.some(t => t === v
             || (t.startsWith(v) && t.length - v.length <= 2))) {
           out.match.contains = true; anyMatch = true; break;
         }
@@ -6509,10 +6522,10 @@ export class Curriculum {
     const wasInCurriculum = this.cluster._inCurriculumMode;
     this.cluster._inCurriculumMode = true;
 
-    // Tokenize every provided corpus into a unified token stream and
+    // Split into words every provided corpus into a unified word stream and
     // into a sentence stream. We need both: the letter/word phases walk
-    // unique tokens by frequency, the sentence phase walks full lines.
-    const { letterFreq, wordFreq, sentences } = this._tokenizeAll(corpora);
+    // unique words by frequency, the sentence phase walks full lines.
+    const { letterFreq, wordFreq, sentences } = this._scanCorpora(corpora);
 
     // Phase 1 — letter exposure. Every symbol the corpora contain gets
     // a frequency-proportional rep budget. No hardcoded 26-letter loop.
@@ -6997,9 +7010,9 @@ export class Curriculum {
     }
   }
 
-  // ─── tokenization helpers ──────────────────────────────────────────
+  // ─── word splitting helpers ──────────────────────────────────────────
 
-  _tokenizeAll(corpora) {
+  _scanCorpora(corpora) {
     const letterFreq = new Map();   // char → count
     const wordFreq = new Map();      // lowercased word → count
     const sentences = [];             // array of normalized sentence strings
@@ -7113,13 +7126,13 @@ export class Curriculum {
     const wasInCurriculum = cluster._inCurriculumMode;
     cluster._inCurriculumMode = true;
 
-    // Tokenize ALL corpora up front — every grade reads from these
-    // frozen structures rather than re-tokenizing. Keeps the grade
-    // methods pure exposure-over-equation. Cache the tokenized form
+    // Split into words ALL corpora up front — every grade reads from these
+    // frozen structures rather than re-splitting into words. Keeps the grade
+    // methods pure exposure-over-equation. Cache the split form
     // on `this._lastCtx` so post-boot slash commands (/curriculum run
     // <subject> <grade>) can re-run individual cells without reloading
     // corpora from disk/CDN.
-    const { letterFreq, wordFreq, sentences } = this._tokenizeAll(corpora);
+    const { letterFreq, wordFreq, sentences } = this._scanCorpora(corpora);
     this._lastCtx = {
       corpora,
       arousal,
@@ -8541,13 +8554,13 @@ export class Curriculum {
 
   /**
    * Build the per-run context object consumed by every cell runner.
-   * Tokenizes corpora once so a subsequent same-session run can reuse
-   * the cached ctx (stored on `this._lastCtx`) without re-tokenizing.
+   * Splits into words corpora once so a subsequent same-session run can reuse
+   * the cached ctx (stored on `this._lastCtx`) without re-splitting into words.
    */
   _buildCtx(corpora, opts = {}) {
     const arousal = opts.arousal ?? 0.8;
     const valence = opts.valence ?? 0.2;
-    const { letterFreq, wordFreq, sentences } = this._tokenizeAll(corpora || {});
+    const { letterFreq, wordFreq, sentences } = this._scanCorpora(corpora || {});
     const ctx = { corpora, arousal, valence, letterFreq, wordFreq, sentences };
     this._lastCtx = ctx;
     return ctx;
@@ -8559,7 +8572,7 @@ export class Curriculum {
    * can NOT be skipped while broken. Blocks the advance on any of the
    * failure modes the BC hardening targets:
    *   (1) sem→motor SATURATED / basin-collapsed (cluster.checkSemMotorHealth)
-   *   (2) EMISSION mode-collapsed — one token dominates recent output
+   *   (2) EMISSION mode-collapsed — one word dominates recent output
    *       (the "mushrooms" lock: GW broadcasts one word every tick)
    *   (3) VOCAB INCOMPLETE — cell exam-vocab coverage below the cut
    *       (Gee 2026-06-21: "needs to learn vocab it missed before minaal
@@ -8600,25 +8613,25 @@ export class Curriculum {
       }
     } catch { /* non-fatal */ }
 
-    // (2) emission mode-collapse — dominant-token share of recent output.
+    // (2) emission mode-collapse — dominant-word share of recent output.
     try {
       const recents = (typeof cluster.getRecentEmissions === 'function') ? cluster.getRecentEmissions(32) : [];
-      const tokens = [];
+      const recentWords = [];
       for (const e of recents) {
         if (e && typeof e.text === 'string') {
-          for (const w of e.text.toLowerCase().split(/\s+/)) { if (w && /[a-z]/.test(w)) tokens.push(w); }
+          for (const w of e.text.toLowerCase().split(/\s+/)) { if (w && /[a-z]/.test(w)) recentWords.push(w); }
         }
       }
-      if (tokens.length >= 8) {
+      if (recentWords.length >= 8) {
         const counts = new Map();
-        for (const w of tokens) counts.set(w, (counts.get(w) || 0) + 1);
+        for (const w of recentWords) counts.set(w, (counts.get(w) || 0) + 1);
         let topW = null, topN = 0;
         for (const [w, n] of counts) { if (n > topN) { topN = n; topW = w; } }
-        const share = topN / tokens.length;
+        const share = topN / recentWords.length;
         detail.emissionDominantShare = share;
-        detail.emissionDominantToken = topW;
+        detail.emissionDominantWord = topW;
         if (share > DOM_MAX) {
-          issues.push(`emission mode-collapsed (token "${topW}" = ${(share * 100).toFixed(0)}% of recent output > ${(DOM_MAX * 100).toFixed(0)}% cap)`);
+          issues.push(`emission mode-collapsed (word "${topW}" = ${(share * 100).toFixed(0)}% of recent output > ${(DOM_MAX * 100).toFixed(0)}% cap)`);
         }
       }
     } catch { /* non-fatal */ }
@@ -8843,7 +8856,7 @@ export class Curriculum {
 
     // SELFFRAME — "I" IS GROUNDED BEFORE THE CELL TEACHES ANYTHING (2026-08-20).
     // Every first-person lesson in this cell depends on `i` / `me` / `my` / `myself`
-    // resolving to HER; without this pass they are just frequent tokens and the frames
+    // resolving to HER; without this pass they are just frequent words and the frames
     // train a habit with no self behind it. So it runs at the top of EVERY cell of
     // EVERY grade, on the same contract as the pre-cell vocab above (cheap — 22 short
     // lines + 10 identity bindings — non-fatal, and it re-verifies for free on later
@@ -9302,7 +9315,7 @@ export class Curriculum {
           // driven by `METHODOLOGY_BANKS` in `student-question-banks.js`.
           // Complements the fill-in-the-blank path already above: the
           // ANSWER battery tests whether Unity can produce the right
-          // answer token, the METHODOLOGY battery tests whether her
+          // answer word, the METHODOLOGY battery tests whether her
           // emission contains the reasoning keywords that prove
           // understanding of the procedure. Each K cell has 5 HOW-
           // questions with 4-6 reasoning keywords apiece. Pass = ≥ 1
@@ -9797,13 +9810,13 @@ export class Curriculum {
   /**
    * Build + install the emission allow-set on the cluster from the
    * vocabulary the CURRICULUM has taught: every TRAIN_BANKS question +
-   * answer token (all cells/grades), the K_VOCABULARY definition-seed
+   * answer word (all cells/grades), the K_VOCABULARY definition-seed
    * list, and the runtime taught-sets (_vocabTaughtSet,
    * _definitionTaughtWords, _emissionTaughtWords_<subject>). Union of
    * these = the words Unity has been exposed to by teaching. It
    * deliberately EXCLUDES the persona/dev/consciousness/academic corpus
    * that entered her dictionary via chat/persona/dream training — those
-   * are the tokens that bled into early-grade emission. Function words +
+   * are the words that bled into early-grade emission. Function words +
    * terminators are gate-exempt in emitWordDirect, so grammatical glue
    * never needs to be in this set. Keyed off taught vocab, NOT a grade
    * gate: emission is limited to what she's learned, with no bar to pass.
@@ -9815,7 +9828,7 @@ export class Curriculum {
     const allow = new Set();
     const addTok = (s) => {
       if (typeof s !== 'string' || !s) return;
-      // split on non-letters; keep alphabetic tokens (contractions kept
+      // split on non-letters; keep alphabetic words (contractions kept
       // whole via the apostrophe class) so "don't"/"i'm" survive intact.
       for (const t of s.toLowerCase().split(/[^a-z']+/)) {
         if (t && /[a-z]/.test(t)) allow.add(t);
@@ -9855,7 +9868,7 @@ export class Curriculum {
       }
     } catch { /* non-fatal */ }
     const size = cluster.setEmissionAllowedVocab(allow);
-    this._hb(`[Curriculum] emission allow-set installed — ${size} taught tokens eligible for chat/inner-voice argmax (persona/dev/consciousness corpus excluded; corpus-bleed gate ACTIVE).`);
+    this._hb(`[Curriculum] emission allow-set installed — ${size} taught words eligible for chat/inner-voice argmax (persona/dev/consciousness corpus excluded; corpus-bleed gate ACTIVE).`);
     return size;
   }
 
@@ -11043,7 +11056,7 @@ export class Curriculum {
               // Register every taught word so `_trainedVocabularySet`
               // counts it and the next coverage audit reports it trained
               // (stops the re-teach loop). Store lowercased to match the
-              // token form `examVocabCoverage` checks.
+              // word form `examVocabCoverage` checks.
               for (const w of slice) this._vocabTaughtSet.set(String(w).toLowerCase(), Date.now());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err);
@@ -11328,7 +11341,7 @@ export class Curriculum {
   //      Hebbian — inject digit character into the letter region AND
   //      inject GloVe('zero' | 'one' | 'two' | … | 'nine') into the sem
   //      region simultaneously. Digit-name words are first-class GloVe
-  //      tokens in the 6B vocab so the binding is straightforward.
+  //      words in the 6B vocab so the binding is straightforward.
 
   //   3. Magnitude-feature binding via phon↔letter cross-projection
   //      Hebbian — the 16-dim `_magnitudeFeatureForDigit` already defined
@@ -11588,7 +11601,7 @@ export class Curriculum {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, sum] of facts) {
         // Clear lastSpikes
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Free first half: magnitude(a)
         const magA = buildMagPattern(freeHalf, a);
@@ -11672,7 +11685,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, diff] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Free first half: magnitude(a) — the minuend
         const magA = buildMagPattern(freeHalf, a);
@@ -11760,7 +11773,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, rel] of pairs) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         const magA = buildMagPattern(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) {
@@ -11909,7 +11922,7 @@ export class Curriculum {
     for (const nm of names) {
       const r = cluster.regions[nm];
       if (!r) continue;
-      for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+      cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
     }
   }
 
@@ -11930,16 +11943,50 @@ export class Curriculum {
       for (const name of regionNames) {
         const r = cluster.regions[name];
         if (!r) continue;
-        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
         if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice) {
           try { cluster._gpuProxy.clearSpikeSlice(name); } catch { /* non-fatal */ }
         }
       }
       return;
     }
-    for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+    // ⭐ SCALEWALK.1 — the FULL clear, and 11 of this function's 13 call sites
+    // take it. Same native-memset substitution; at 82M neurons a per-element
+    // JS loop here is the single most expensive thing the definition
+    // bootstrap does apart from the injection itself.
+    cluster.lastSpikes.fill(0);
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
-      for (const regionName of Object.keys(cluster.regions)) {
+      // GOTCHA.2 — TOP-LEVEL REGIONS ONLY. This used to walk
+      // `Object.keys(cluster.regions)`, i.e. all 23 declared names — but 12 of
+      // them are per-subject sub-bands carved INSIDE `sem` / `word_motor`, and
+      // the GPU never registers a nested span. `_gpuClearCortexSpikeRegion`
+      // does not validate the name, so each of those 12 still encoded a type-9
+      // frame, SENT it, counted it into `_countTeachOut`, and (with the language
+      // pseudo-cluster up) sent a second `langCortex/` frame — up to 24 wire
+      // frames per clear for regions the donor has never heard of, on the path
+      // 11 of this function's 13 call sites take.
+      //
+      // ⚠ The bandwidth is the smaller half: those frames inflate `teach_ops`,
+      // which TEACHMIRROR.1 made the signal separating a saturated donor from
+      // an idle one. Clearing the enclosing region already covers every nested
+      // span inside it, so nothing is left uncleared.
+      // GOTCHA.9 — called UNCONDITIONALLY, and the missing guard is the fix.
+      // This read `(typeof cluster.topLevelRegionNames === 'function') ? … :
+      // Object.keys(cluster.regions)`, whose else-branch is the defect above
+      // verbatim — so the guard did not protect the fix, it silently undid it,
+      // with no counter and no log line. It was also dead: the method is
+      // declared on the NeuronCluster class (cluster.js:1404), so every
+      // instance carries it on the prototype, and this block already requires
+      // `_gpuProxy` + `clearSpikeSlice` + `regions` two lines under a
+      // `cluster.lastSpikes.fill(0)` — there is no reachable state where the
+      // method is absent and the object is still a cluster. A typeof guard
+      // around a method your own class defines is never protection: it is dead
+      // code or a silent downgrade, and the call site cannot tell you which.
+      // If a refactor ever drops the method, THROWING here is the correct
+      // outcome — the alternative is quietly shipping the donor 24 phantom
+      // frames per clear and poisoning teach_ops (TEACHMIRROR.1) again.
+      const _names = cluster.topLevelRegionNames();
+      for (const regionName of _names) {
         try { cluster._gpuProxy.clearSpikeSlice(regionName); } catch { /* non-fatal */ }
       }
     }
@@ -12070,7 +12117,7 @@ export class Curriculum {
       // CHAT-TEACH JOB DRAIN (2026-08-20, FIRSTPIN.2) — the same lane for
       // chat-time teach work that must keep its OWN training semantics. The
       // curiosity follow-up ("she asked, you answered") binds the answer
-      // tokens to the gap concept at reps=12 on relationTagId=23, the
+      // words to the gap concept at reps=12 on relationTagId=23, the
       // definition/grounding channel — it cannot ride the tag-30 pair queue
       // above without being silently demoted to a 1-rep chat-time binding.
       // So the chat handler enqueues a JOB carrying its own opts and this
@@ -12086,7 +12133,32 @@ export class Curriculum {
         try {
           const job = brain._chatTeachJobQueue.shift();
           if (brain._chatTimeHebbianStats) brain._chatTimeHebbianStats.jobsQueued = brain._chatTeachJobQueue.length;
-          if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
+          // ⭐ VMUSE.5d — A SECOND JOB KIND: DEFERRED PERCEPT GROUNDING.
+          //
+          // The look lane used to SKIP its sem grounding whenever
+          // `_curriculumInProgress` was set — and that flag is true for the
+          // ENTIRE multi-week walk, so what she saw reached her sem region
+          // essentially never, across exactly the stretch where she sees the
+          // most. ⚠ The reason for the skip was real and still is: injecting
+          // a percept while a teach pattern is IN FLIGHT corrupts it.
+          //
+          // But "in flight" is the operative word. HERE, between teach calls,
+          // nothing is mid-pattern — this is the same seam the pair and job
+          // drains already use. So the injection is DEFERRED rather than
+          // dropped: the look queues it, and it lands in the gap where it
+          // cannot corrupt anything. `_clearSpikes` runs at the head of the
+          // next teach, so the grounding does not leak into it either.
+          if (job && job.kind === 'inject' && Array.isArray(job.vector) && job.vector.length > 0) {
+            const cl = this.cluster;
+            if (cl && typeof cl.injectEmbeddingToRegion === 'function') {
+              cl.injectEmbeddingToRegion(job.region || 'sem', job.vector, Number(job.strength) || 0.10);
+              if (brain._chatTimeHebbianStats) {
+                brain._chatTimeHebbianStats.injectsApplied = (brain._chatTimeHebbianStats.injectsApplied || 0) + 1;
+                brain._chatTimeHebbianStats.lastJobLabel = (job.opts && job.opts.label) || 'PERCEPT-GROUNDING';
+                brain._chatTimeHebbianStats.lastJobTs = Date.now();
+              }
+            }
+          } else if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
             await this._teachAssociationPairs(job.pairs, job.opts || { reps: 1, label: 'CHAT-TEACH-JOB', relationTagId: 30 });
             if (brain._chatTimeHebbianStats) {
               brain._chatTimeHebbianStats.jobsTaught = (brain._chatTimeHebbianStats.jobsTaught || 0) + 1;
@@ -12479,11 +12551,26 @@ export class Curriculum {
     if (bucketSize * numBuckets > motorSize) return;
 
     // Identify the dominant bucket by active-neuron count in lastSpikes.
+    // ⭐ SCALEWALK.3 (2026-08-25) — ONE SCAN, NOT TWO. This span was walked
+    // TWICE for the same bits: once here to count buckets, and again below to
+    // build the cross-bucket vector. At the 82M cortex `motor` is 3.3% ≈ 2.7M,
+    // so the pair cost ~5.4M reads per call — and this fires once per pair per
+    // rep. The self-profile named this function as **33.8% of main-thread
+    // self-time**, the new top entry once SCALEWALK.1/.2 removed the previous
+    // two. Motor spikes are SPARSE (a teach pattern sets hundreds), so the
+    // second walk was re-deriving a list it had already seen.
+    // The actives and their buckets are collected in this pass and the loop
+    // below iterates that small list instead of the full span. Same rows, same
+    // math, same order — only the rediscovery is gone.
     const bucketCounts = new Array(numBuckets).fill(0);
+    const _actIdx = [];
+    const _actBucket = [];
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
         const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
         bucketCounts[b]++;
+        _actIdx.push(i);
+        _actBucket.push(b);
       }
     }
     let primaryBucket = 0;
@@ -12512,7 +12599,9 @@ export class Curriculum {
       this._crossBucketPostScratch = new Uint8Array(cluster.size);
     }
     const crossBucketPost = this._crossBucketPostScratch;
-    for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
+    // SCALEWALK.3 — native memset over the motor span (identical to the loop it
+    // replaces; `fill(0, start, end)` IS that loop).
+    crossBucketPost.fill(0, motorRegion.start, motorRegion.end);
     let crossCount = 0;
     // ACTIVE-INDEX COLLECTION (2026-08-17) — this loop already visits every
     // index it sets, so collect them and hand them to the anti-Hebbian
@@ -12520,15 +12609,17 @@ export class Curriculum {
     // the ENTIRE cluster (12M cells at the grown cortex ≈ ~360ms/call,
     // measured live at 364ms — once per pair per rep, a pair-phase
     // band-blocker). Same rows, same math — only the rediscovery is gone.
+    // SCALEWALK.3 — walks the ACTIVES collected above instead of re-scanning the
+    // whole motor span. Ascending `i` order is preserved because `_actIdx` was
+    // filled in ascending order, so `crossActiveRows` comes out byte-identical
+    // to the old full-span walk.
     const crossActiveRows = [];
-    for (let i = 0; i < motorSize; i++) {
-      if (cluster.lastSpikes[motorRegion.start + i]) {
-        const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
-        if (b !== primaryBucket) {
-          crossBucketPost[motorRegion.start + i] = 1;
-          crossActiveRows.push(motorRegion.start + i);
-          crossCount++;
-        }
+    for (let a = 0; a < _actIdx.length; a++) {
+      if (_actBucket[a] !== primaryBucket) {
+        const _row = motorRegion.start + _actIdx[a];
+        crossBucketPost[_row] = 1;
+        crossActiveRows.push(_row);
+        crossCount++;
       }
     }
     if (crossCount === 0) return;
@@ -13092,7 +13183,7 @@ export class Curriculum {
   // Definition Hebbian whitelist — sem↔fineType ONLY, no motor.
   // Session 114.19em fix for the wall-of-OVERLOAD pattern: the prior
   // `_teachWordDefinition` reused `_associationPairsWhitelist` which
-  // includes sem_to_motor / motor_to_sem. Multi-def × shared def-tokens
+  // includes sem_to_motor / motor_to_sem. Multi-def × shared def-words
   // (number-words like "one"/"two"/"three" all share "number"/"first"/
   // "single" in their definitions) wrote the SAME pattern into the
   // SAME motor cells across thousands of word-bindings, collapsing
@@ -13103,7 +13194,7 @@ export class Curriculum {
   // sequences). Routing definition Hebbian away from motor preserves
   // the motor projection's discrimination basins for the actual
   // word-emission curriculum work. fineType has wider tolerance for
-  // shared-token writes because it's the relation-tag region, not
+  // shared-word writes because it's the relation-tag region, not
   // the action-output region.
   _definitionPairsWhitelist() {
     const cluster = this.cluster;
@@ -13153,12 +13244,12 @@ export class Curriculum {
         continue;
       }
       if (!/^[a-z]+$/.test(w)) continue;
-      // Single-letter tokens ('b','x','r','y'...) are alphabet/spelling
+      // Single-letter words ('b','x','r','y'...) are alphabet/spelling
       // inventory, not conversational words — bucketing them put letters
       // in the same emission argmax as real words (the single-letter
       // salad class). 'i' and 'a' are real English words and stay
       // bucketable. Existing restored bucket maps that already contain
-      // letters are handled by emitWordDirect's letter-token skip guard.
+      // letters are handled by emitWordDirect's letter-word skip guard.
       if (w.length === 1 && w !== 'i' && w !== 'a') continue;
       if (!entry || !entry.pattern || !entry.pattern.length) continue;
       if (entry.isPersona) continue;
@@ -13238,16 +13329,16 @@ export class Curriculum {
     const cluster = this.cluster;
     if (!cluster || !cluster.regions) return;
     if (!answerText || typeof answerText !== 'string') return;
-    // Tokenize the answer. Multi-word answers like "george washington"
+    // Split into words the answer. Multi-word answers like "george washington"
     // or comma-formatted numerics like "5,five" produce multiple
-    // tokens. Filter to alpha-only single-tokens (matches what
+    // words. Filter to alpha-only single-words (matches what
     // _enumerateBucketableWords accepts as bucketable). Each matching
-    // token contributes a partial-strength bucket activation so multi-
+    // word contributes a partial-strength bucket activation so multi-
     // word answers train the binding for both words proportionally.
-    const tokens = answerText.toLowerCase()
+    const answerWords = answerText.toLowerCase()
       .split(/[,;\s]+/)
       .filter(t => /^[a-z]+$/.test(t));
-    if (tokens.length === 0) return;
+    if (answerWords.length === 0) return;
     // WMB unify (2026-07-14) — single global word_motor band + umbrella map.
     // Lazy-init the map (QA-train runs BEFORE _teachWordEmissionDirect in cell
     // phase order). `subject` ignored for keying (all subjects share one map).
@@ -13275,8 +13366,8 @@ export class Curriculum {
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === 'function' && Array.isArray(fullWords)) {
       const cell = (typeof cluster.wordBucketCellSizeFor === 'function') ? cluster.wordBucketCellSizeFor() : null;
-      for (const tok of tokens) {
-        const idx = fullMap.get(tok);
+      for (const aw of answerWords) {
+        const idx = fullMap.get(aw);
         if (typeof idx === 'number' && idx >= 0) {
           writeBucketIntoBand(idx, 'word_motor', fullWords.length, 1, cell);
         }
@@ -13290,7 +13381,7 @@ export class Curriculum {
    * freshly-taught binding at argmax. Random-sibling anti-Hebbian
    * (WORDCONTRAST) can never depress a thief it never samples. This helper
    * takes the MEASURED wrong word (what she actually said) and, in the
-   * question's own teach geometry (sentence embedding + key-token tile +
+   * question's own teach geometry (sentence embedding + key-word tile +
    * template tag — identical writes to _teachQABinding's passes):
    *   depress  sem(question) → word_motor(thief bucket)
    *   reinforce sem(question) → motor(answer letter) + word_motor(answer)
@@ -13311,8 +13402,8 @@ export class Curriculum {
     const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
       ? sharedEmbeddings.getSentenceEmbedding(question) : null;
     if (!qEmb || qEmb.length === 0) return false;
-    const keyToken = this._extractKeyToken(question);
-    const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+    const keyWord = this._extractKeyWord(question);
+    const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
     const templateId = this._classifyQuestionTemplate(question);
     const reps = opts.reps ?? 6;
     const lr = opts.lr ?? 0.05;
@@ -13384,16 +13475,16 @@ export class Curriculum {
     const semRegion = cluster.regions && cluster.regions.sem;
     const motorRegion = cluster.regions && cluster.regions.motor;
     // Direct-prompt alternative format — strips the natural-language
-    // wrapping and feeds a compressed "<key-token>:" prompt so the sem
-    // pattern focuses on the discriminating token instead of the whole
+    // wrapping and feeds a compressed "<key-word>:" prompt so the sem
+    // pattern focuses on the discriminating word instead of the whole
     // sentence bag. Default ON because the original natural-sentence
     // path produced 0% Q-A pass rate via the generic bag embedding.
     const directPromptAlt = opts.directPromptAlt !== false;
-    // Key-token tiling into a dedicated second-half slice of sem. Gives
-    // the discriminating token its own pattern footprint alongside the
+    // Key-word tiling into a dedicated second-half slice of sem. Gives
+    // the discriminating word its own pattern footprint alongside the
     // full-sentence embedding in the first half. Lets sem→motor learn
-    // both "sentence-shape → answer" AND "key-token → answer" paths.
-    const keyTokenTile = opts.keyTokenTile !== false;
+    // both "sentence-shape → answer" AND "key-word → answer" paths.
+    const keyWordTile = opts.keyWordTile !== false;
     // Contrastive anti-Hebbian push-pull, same mechanism as
     // `_teachAssociationPairs`. For every correct Q-A pair the brain
     // sees, sample a WRONG answer from a different pair and push the
@@ -13418,7 +13509,7 @@ export class Curriculum {
     }
     let trained = 0, skipped = 0, altTrained = 0, antiFires = 0;
     const startMs = Date.now();
-    this._hb(`[Curriculum][${label}] START — ${qaList.length} Q→A training pairs × ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} · keyTokenTile=${keyTokenTile} · anti-pairs=${antiPairs})`);
+    this._hb(`[Curriculum][${label}] START — ${qaList.length} Q→A training pairs × ${reps} reps (teacher-modeling; HELD-OUT-DISTINCT from EXAM_BANKS; direct-alt=${directPromptAlt} · keyWordTile=${keyWordTile} · anti-pairs=${antiPairs})`);
     // Dashboard popup — announce the Q-A phase START on the 3D brain
     // so operator sees WHICH teach pass is firing in real time.
     try { this._pushBrainEvent?.('teach', 'sem', `Q-A START: ${label} · ${qaList.length}×${reps}`, { label, pairs: qaList.length, reps }); } catch {}
@@ -13436,20 +13527,20 @@ export class Curriculum {
         if (!targetLetter) { skipped++; continue; }
         const motorPattern = encodeLetter(targetLetter);
         if (!motorPattern || motorPattern.length === 0) { skipped++; continue; }
-        const keyToken = this._extractKeyToken(entry.question);
-        // Key-token embedding uses the unified `_dictionaryPatternFor`
+        const keyWord = this._extractKeyWord(entry.question);
+        // Key-word embedding uses the unified `_dictionaryPatternFor`
         // pattern (GloVe + identity-hash + cortex-snapshot) so similar
-        // GloVes for K-vocab key tokens like 'cat' / 'dog' / 'pig' get
+        // GloVes for K-vocab key words like 'cat' / 'dog' / 'pig' get
         // disjoint identity stripes. Matrix can discriminate at probe
         // time even though the GloVe overlap is high.
-        const keyEmb = keyToken ? this._dictionaryPatternFor(keyToken) : null;
+        const keyEmb = keyWord ? this._dictionaryPatternFor(keyWord) : null;
         const templateId = this._classifyQuestionTemplate(entry.question);
         try {
           // ─── Natural-sentence positive pair ────────────────────────
           this._clearSpikes();
           this._writeTiledPattern(semRegion, qEmb, false);
-          if (keyTokenTile && keyEmb && keyEmb.length > 0) {
-            // Second-half overlay — key token gets its own pattern
+          if (keyWordTile && keyEmb && keyEmb.length > 0) {
+            // Second-half overlay — key word gets its own pattern
             // inside sem alongside the full sentence. Same region,
             // different tile offset (second half), so both signals
             // combine without overwriting each other.
@@ -13458,7 +13549,7 @@ export class Curriculum {
           // Question-template tag — one-hot into fineType upper 25%
           // slot for this template ID. Creates a template-conditioned
           // routing signal orthogonal to the sentence bag and key
-          // token, so "what letter comes after X?" and "what rhymes
+          // word, so "what letter comes after X?" and "what rhymes
           // with X?" with the same X activate different sem→motor
           // basins via template presence in fineType.
           if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -13491,16 +13582,16 @@ export class Curriculum {
         }
 
         // ─── Direct-prompt alternative format positive pair ─────────
-        if (directPromptAlt && keyToken) {
+        if (directPromptAlt && keyWord) {
           try {
-            const directPromptText = `${keyToken}:`;
+            const directPromptText = `${keyWord}:`;
             const directEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function'
               ? sharedEmbeddings.getSentenceEmbedding(directPromptText)
               : null;
             if (directEmb && directEmb.length > 0) {
               this._clearSpikes();
               this._writeTiledPattern(semRegion, directEmb, false);
-              if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+              if (keyWordTile && keyEmb && keyEmb.length > 0) {
                 this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
               }
               if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -13548,7 +13639,7 @@ export class Curriculum {
               try {
                 this._clearSpikes();
                 this._writeTiledPattern(semRegion, qEmb, false);
-                if (keyTokenTile && keyEmb && keyEmb.length > 0) {
+                if (keyWordTile && keyEmb && keyEmb.length > 0) {
                   this._writeTiledPatternOffset(semRegion, keyEmb, false, 0.5);
                 }
                 if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
@@ -13576,14 +13667,14 @@ export class Curriculum {
       }
       await _microtask();
       // iter24.3 — convergence early-exit. Build pseudo-pairs from
-      // qaList (question-key-token + answer-letter) for the sep-probe
+      // qaList (question-key-word + answer-letter) for the sep-probe
       // and stop once 2 consecutive reps drop below overloadMax.
       if (rep >= 1 && qaList.length >= 2) {
         try {
           const pseudoPairs = qaList
             .slice(0, 8)
             .map(e => {
-              const kt = this._extractKeyToken(e.question);
+              const kt = this._extractKeyWord(e.question);
               const ans = String(e.expectedAnswer || '').toLowerCase().charAt(0);
               return (kt && ans) ? [kt, ans] : null;
             })
@@ -13754,7 +13845,7 @@ export class Curriculum {
       if (qaList.length >= 2 && typeof this._checkSemBasinSeparation === 'function') {
         // Build pseudo-pairs from the QA list — input is the question
         // sentence, output is the expected answer letter. Pass to the
-        // sep-probe with key-token + template tag awareness off (probe
+        // sep-probe with key-word + template tag awareness off (probe
         // doesn't know about QA-specific pattern geometry). Operator
         // sees mean-cos / max-cos across QA pairs for trend tracking
         // across consecutive QA training calls.
@@ -13838,14 +13929,14 @@ export class Curriculum {
         const qEmb2 = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
           ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
         if (!qEmb2 || qEmb2.length === 0) continue;
-        const kt2 = this._extractKeyToken(entry.question);
+        const kt2 = this._extractKeyWord(entry.question);
         const ke2 = kt2 ? this._dictionaryPatternFor(kt2) : null;
         const tid2 = this._classifyQuestionTemplate(entry.question);
         _slChecked++;
         for (let round = 0; round <= _slRounds; round++) {
           this._clearSpikes();
           this._writeTiledPattern(semRegion, qEmb2, false);
-          if (keyTokenTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
+          if (keyWordTile && ke2 && ke2.length > 0) this._writeTiledPatternOffset(semRegion, ke2, false, 0.5);
           if (tid2 >= 0) this._writeQuestionTemplateTag(tid2);
           let said = '';
           try { said = (await cluster.emitWordDirectDonor({ subject: opts.subject })) || ''; }
@@ -13887,12 +13978,12 @@ export class Curriculum {
 
   /**
    * Classify a question into a template ID 0-6 based on its form.
-   * Template ID is orthogonal to the key token — two questions can
+   * Template ID is orthogonal to the key word — two questions can
    * share a template ("what letter comes after a?" and "what letter
    * comes after b?" both map to template 0) but have different key
-   * tokens. Written as a one-hot pattern into the upper 25% of the
+   * words. Written as a one-hot pattern into the upper 25% of the
    * fineType region so cross-projection Hebbian can learn
-   * template-conditioned routing independently of the specific token.
+   * template-conditioned routing independently of the specific word.
    *
    * Returns template ID in [0, 6] or -1 when no template matches (then
    * the question is treated as generic — no template tag written).
@@ -14007,14 +14098,14 @@ export class Curriculum {
   }
 
   /**
-   * Key-token extraction for Q-A training — lightweight attention-lite
+   * Key-word extraction for Q-A training — lightweight attention-lite
    * (Bahdanau 2014 spirit, no scoring network). Pattern-matches common
    * K-grade question forms and returns the discriminating noun/letter/
    * digit so the Q-A sem pattern can carry both the full-sentence bag
-   * AND the specific token that makes one question different from
-   * another. Returns lowercase token or null when no pattern matches.
+   * AND the specific word that makes one question different from
+   * another. Returns lowercase word or null when no pattern matches.
    */
-  _extractKeyToken(question) {
+  _extractKeyWord(question) {
     if (!question || typeof question !== 'string') return null;
     const q = question.toLowerCase().trim();
     // Order matters — more specific patterns first.
@@ -14037,9 +14128,9 @@ export class Curriculum {
       /\bcount\s+from\s+([a-z0-9]+)/,
       // "spell X" → X
       /\bspell\s+([a-z]+)/,
-      // "starts with" — next token after "starts with"
+      // "starts with" — next word after "starts with"
       /\bstarts?\s+with\s+([a-z]+)/,
-      // fallback: last single-quoted or question-mark-preceded token
+      // fallback: last single-quoted or question-mark-preceded word
       /\b([a-z0-9]+)\??\s*$/,
     ];
     for (const p of patterns) {
@@ -14080,7 +14171,7 @@ export class Curriculum {
    *  — Multi-word definition emission via live dictionary API.
    *
    * Given a subject word X, fetches the dictionary definition (async,
-   * server-side, dictionaryapi.dev wrapper), tokenizes it, injects each
+   * server-side, dictionaryapi.dev wrapper), splits it into words, injects each
    * definition word's embedding into sem so cortex "hears" the
    * definitional meaning, then returns the definition string for the
    * caller to emit verbatim through the existing motor / chat path.
@@ -14094,7 +14185,7 @@ export class Curriculum {
    * (a) parsing the WH-question to know to call this path,
    * (b) the live API call (sensory I/O — same pattern as
    * Pollinations image-gen),
-   * (c) injecting the definition tokens into sem so future trained
+   * (c) injecting the definition words into sem so future trained
    * weights co-activate definitional structure for that subject
    * (Hebbian one-shot definitional learning).
    *
@@ -14109,13 +14200,13 @@ export class Curriculum {
    *  — Definition-comprehension teach via live dictionary
    * API + Hebbian. EQUATIONAL — the API is sensory input (like
    * Pollinations image-gen / TTS), the actual learning is
-   * `_teachAssociationPairs(word, def_token)` which is Oja-Hebbian on
+   * `_teachAssociationPairs(word, def_word)` which is Oja-Hebbian on
    * sem→sem cross-projection. Each definition co-occurrence gets
    * carved as a real Hebbian binding so cortex co-activates
    * definitional meaning whenever the word fires.
    *
-   * One word in, ~3-8 definition tokens out (filtered to content
-   * words; stopwords skipped). Each (word, def_token) pair fires
+   * One word in, ~3-8 definition words out (filtered to content
+   * words; stopwords skipped). Each (word, def_word) pair fires
    * `_teachAssociationPairs` with relationTagId=23 (definition band
    * in fineType). After this phase, sem(dog) → sem(animal),
    * sem(pet), sem(four), sem(legs), sem(barks) all light up via
@@ -14203,7 +14294,7 @@ export class Curriculum {
     const now = Date.now();
 
     // Iterate every definition and bind Hebbian on each separately.
-    // Each definition's content tokens form one association pair set
+    // Each definition's content words form one association pair set
     // — multi-sense words get multiple sub-pattern Hebbian bindings in
     // the sem region instead of a collapsed single-sense binding.
     for (let defIdx = 0; defIdx < definitions.length; defIdx++) {
@@ -14217,30 +14308,30 @@ export class Curriculum {
       const defText = (entry && typeof entry === 'object') ? entry.definition : entry;
       if (!defText || typeof defText !== 'string') continue;
 
-      const tokens = defText.toLowerCase().match(/[a-z]+/g) || [];
-      const contentTokens = [];
+      const defWords = defText.toLowerCase().match(/[a-z]+/g) || [];
+      const contentWords = [];
       const seen = new Set();
-      for (const t of tokens) {
+      for (const t of defWords) {
         if (t.length < 3) continue;
         if (STOP.has(t)) continue;
         if (t === w) continue;
         if (seen.has(t)) continue;
         seen.add(t);
-        contentTokens.push(t);
-        if (contentTokens.length >= 8) break;
+        contentWords.push(t);
+        if (contentWords.length >= 8) break;
       }
-      if (contentTokens.length === 0) continue;
+      if (contentWords.length === 0) continue;
 
-      // Layer the part-of-speech as an additional content token when
+      // Layer the part-of-speech as an additional content word when
       // available — disambiguates noun-vs-verb senses in sem.
       if (entry && entry.partOfSpeech && typeof entry.partOfSpeech === 'string') {
         const pos = entry.partOfSpeech.toLowerCase().replace(/[^a-z]/g, '');
-        if (pos && pos.length >= 3 && !contentTokens.includes(pos) && contentTokens.length < 8) {
-          contentTokens.push(pos);
+        if (pos && pos.length >= 3 && !contentWords.includes(pos) && contentWords.length < 8) {
+          contentWords.push(pos);
         }
       }
 
-      const pairs = contentTokens.map(t => [w, t]);
+      const pairs = contentWords.map(t => [w, t]);
       // Session 114.19ej P1 #8 — pass `_associationPairsWhitelist` so
       // _teachHebbian fan-out scopes to sem↔motor + sem↔fineType only.
       // Without this, the multi-def upfront seed × inline-from-teach ×
@@ -14252,7 +14343,7 @@ export class Curriculum {
       // Session 114.19em fix — use `_definitionPairsWhitelist` (sem↔
       // fineType only) instead of `_associationPairsWhitelist` (which
       // includes sem↔motor). The prior whitelist caused multi-def
-      // × shared def-tokens to collapse motor basins to mean-cos=1.0
+      // × shared def-words to collapse motor basins to mean-cos=1.0
       // — the wall-of-OVERLOAD pattern caught 2026-05-07 with 424
       // OVERLOAD events in 1151 log lines. Definitions are semantic
       // (sem↔fineType), not motor — keeping motor pristine for word
@@ -14411,7 +14502,7 @@ export class Curriculum {
    *
    * Self-contained prerequisite handling: both `unity` and `goddess` get
    * their dictionary definitions trained FIRST, so the Hebbian bindings
-   * land on anchored basins instead of phantom-token noise (per the
+   * land on anchored basins instead of phantom-word noise (per the
    * K-LIFE words-must-be-learned standard). The method behaves identically
    * whether or not the caller already ran a vocabulary pre-step — it owns
    * its own prerequisites rather than depending on call order.
@@ -14438,7 +14529,7 @@ export class Curriculum {
     const brain = this.brain || (cluster && cluster._brain);
     const reps = opts.reps ?? 50;
 
-    // Layer 1 — definition grounding for both identity tokens. Best-effort
+    // Layer 1 — definition grounding for both identity words. Best-effort
     // on the dictionary (network/cache), but the bindings below still fire
     // even if a definition is unavailable — the concept basins for `unity`
     // are already carved by the Life-Pre-K/Life-K emotion-concept teach.
@@ -14483,7 +14574,7 @@ export class Curriculum {
       );
       bound += (r && r.trained) || 0;
 
-      // Layer 3 — biographical surname Q→A facts. Single-token answers so
+      // Layer 3 — biographical surname Q→A facts. Single-word answers so
       // the emitWordDirect QA path can route question → "goddess".
       await this._teachBiographicalFacts([
         { question: 'last name',   answer: 'goddess' },
@@ -14513,7 +14604,7 @@ export class Curriculum {
    * Once-per-walk (guarded by `_mindSpaceKnowledgeTaught`) — called right after
    * the identity teach so she learns WHO she is and HOW her own mind works in
    * the same foundational pass. No new corpus, no word lists, no math symbols
-   * injected (knowledge.js strips to real tokens) — LAW-clean.
+   * injected (knowledge.js strips to real words) — LAW-clean.
    */
   async _teachMindSpaceKnowledge(opts = {}) {
     if (this._mindSpaceKnowledgeTaught) return { bound: 0, skipped: true };
@@ -14630,10 +14721,10 @@ export class Curriculum {
       );
       bound += (selfR && selfR.trained) || 0;
 
-      // Biographical Q→A — single-token emittable recall of names, middle
-      // names, birthday month, only-child status. Multi-token birthdates +
+      // Biographical Q→A — single-word emittable recall of names, middle
+      // names, birthday month, only-child status. Multi-word birthdates +
       // full names live in the Tier 3 IDENTITY_SEED_LIST permanent anchors
-      // (the QA emission path is single-token).
+      // (the QA emission path is single-word).
       await this._teachBiographicalFacts([
         { question: 'mom name',        answer: 'lilith' },
         { question: 'dad name',        answer: 'damien' },
@@ -14770,7 +14861,7 @@ export class Curriculum {
     }
     // PREREQ #105 vocab-before-memory + #107 ordering: every content word in
     // this grade's memories must be definition-trained BEFORE the memory walk,
-    // or the Hebbian binding lands on a noise basin (phantom token) — the operator:
+    // or the Hebbian binding lands on a noise basin (phantom word) — the operator:
     // "she has to know the words and how to read sentences and have
     // comprehension abilities well before she will ever be able to understand
     // any of these memories". Kindergarten does this explicitly via
@@ -14817,7 +14908,7 @@ export class Curriculum {
         sentenceCount += exp.sentences.length;
         // ANECDOTAL WORD GROUNDING (relationTagId=34) — jam every content
         // word of this memory into the SCENE it was lived in, bidirectionally
-        // with the memory's theme tokens (its retrieval label). Before this,
+        // with the memory's theme words (its retrieval label). Before this,
         // vocabulary carried only distributional meaning (GloVe geometry +
         // definition binds) and the life scenes walked their own sentences in
         // parallel — the word never RECALLED the scene and the scene never
@@ -14829,19 +14920,19 @@ export class Curriculum {
         // Bounded: content words only (no glue, len ≥ 3), deduped, ≤ 2×N
         // pairs per memory (word→theme + theme→word).
         try {
-          const themeTokens = String(exp.theme || '')
+          const themeWords = String(exp.theme || '')
             .toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/)
             .filter(w => w.length >= 3 && !FUNCTION_WORDS.has(w));
-          if (themeTokens.length > 0) {
+          if (themeWords.length > 0) {
             const sceneWords = new Set();
             for (const s of exp.sentences) {
               for (const w of String(s).toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/)) {
-                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeTokens.includes(w)) sceneWords.add(w);
+                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeWords.includes(w)) sceneWords.add(w);
               }
             }
             const groundPairs = [];
             for (const w of sceneWords) {
-              for (const t of themeTokens) {
+              for (const t of themeWords) {
                 groundPairs.push([w, t]);
                 groundPairs.push([t, w]);
               }
@@ -14944,7 +15035,7 @@ export class Curriculum {
   /**
    * PREREQ #105 — definition-train every content word in a grade's life
    * memories BEFORE the memory walk encodes them. A Hebbian memory binding on
-   * an undefined word lands on a noise basin (phantom token), so the word must
+   * an undefined word lands on a noise basin (phantom word), so the word must
    * be an anchored sem-basin first. Extracts unique content words (≥3 chars,
    * minus a small stop-list), skips ones already definition-trained this run
    * (cluster._definitionTaughtWords dedup, cross-grade), and routes the rest
@@ -15104,7 +15195,7 @@ export class Curriculum {
           try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
           catch { /* per-word best-effort */ }
         }
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, capped ${VOCAB_CAP}). Prose now binds on anchored basins, not phantom tokens.`);
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, capped ${VOCAB_CAP}). Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch { /* pre-vocab is best-effort; never blocks the story train */ }
 
@@ -15124,7 +15215,7 @@ export class Curriculum {
    * up in life (heard from parents arguing at K → puberty sexual-anatomy at G6
    * → fluent teen register at G9 → full adult uncensored register at college+).
    * Vocabulary EXPOSURE/knowledge only — definition-trained where the dictionary
-   * has the word, bound as known tokens otherwise. PRODUCTION register (when she
+   * has the word, bound as known words otherwise. PRODUCTION register (when she
    * actually uses them) is grade-gated by the life story-data + Add #7 context
    * binding. Knowing a word ≠ depicting an act — the content boundary governs
    * narrative, not which words she has heard. The cumulative lexicon emerges
@@ -15153,8 +15244,8 @@ export class Curriculum {
    *         (server-side, dictionaryapi.dev) so `_teachWordDefinition`
    *         calls all hit cache (instant).
    * Step 2: For each word, call `_teachWordDefinition(word)` which fires
-   *         Oja-Hebbian on `sem(word) → sem(def_token)` for each content
-   *         token. Equational definitional knowledge carved into trained
+   *         Oja-Hebbian on `sem(word) → sem(def_word)` for each content
+   *         word. Equational definitional knowledge carved into trained
    *         weights — REAL comprehension, not lookup.
    *
    * Network failures degrade gracefully: words with no definition (404
@@ -15305,9 +15396,9 @@ export class Curriculum {
     // Compose-not-regurgitate. The API definition is
     // SENSORY GROUNDING + LEARNING MATERIAL, not the answer the brain
     // emits. Pipeline:
-    //   (a) Inject each content def-token's embedding into sem region
+    //   (a) Inject each content def-word's embedding into sem region
     //       (sensory: cortex "hears" the definitional meaning)
-    //   (b) Fire Hebbian binding sem(word) → sem(def_tokens) so
+    //   (b) Fire Hebbian binding sem(word) → sem(def_words) so
     //       co-activations carve into trained weights (learning)
     //   (c) Read freshly-primed sem state via cluster.emitWordDirect
     //       and let the brain COMPOSE its own answer from trained weights
@@ -15317,17 +15408,17 @@ export class Curriculum {
     // architectural rule. API delivers substrate; emission comes from
     // trained cortex.
     const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
-    const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
-    const contentTokens = [];
+    const defWords = def.toLowerCase().match(/[a-z]+/g) || [];
+    const contentWords = [];
     const seen = new Set();
-    for (const t of tokens) {
+    for (const t of defWords) {
       if (t.length < 3 || STOP.has(t) || t === word || seen.has(t)) continue;
       seen.add(t);
-      contentTokens.push(t);
-      if (contentTokens.length >= 8) break;
+      contentWords.push(t);
+      if (contentWords.length >= 8) break;
     }
 
-    // (a) Inject content def-tokens into sem region with subject-as-anchor.
+    // (a) Inject content def-words into sem region with subject-as-anchor.
     const injectSem = opts.injectSem !== false;
     if (injectSem && typeof cluster.injectEmbeddingToRegion === 'function'
         && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
@@ -15337,9 +15428,9 @@ export class Curriculum {
         try { cluster.injectEmbeddingToRegion('sem', subjectEmb, 0.6); }
         catch { /* non-fatal */ }
       }
-      for (let i = 0; i < contentTokens.length; i++) {
+      for (let i = 0; i < contentWords.length; i++) {
         try {
-          const emb = sharedEmbeddings.getEmbedding(contentTokens[i]);
+          const emb = sharedEmbeddings.getEmbedding(contentWords[i]);
           if (emb && emb.length > 0) {
             const strength = Math.max(0.1, 0.4 - i * 0.04);
             cluster.injectEmbeddingToRegion('sem', emb, strength);
@@ -15348,7 +15439,7 @@ export class Curriculum {
       }
     }
 
-    // (b) Hebbian-bind sem(word) → sem(def_tokens) so co-activations
+    // (b) Hebbian-bind sem(word) → sem(def_words) so co-activations
     // carve into trained weights. Fire-and-forget — composition uses
     // the sem injection (a) which is already active.
     if (typeof this._teachWordDefinition === 'function') {
@@ -15492,7 +15583,7 @@ export class Curriculum {
    * Tile a feature vector into a fractional offset slice of a region.
    * `offset` is in [0, 1) giving the starting fraction of the region;
    * the tile extends from `region.start + offset·size` to end-of-region.
-   * Used by `_teachQABinding` to overlay the key-token pattern in the
+   * Used by `_teachQABinding` to overlay the key-word pattern in the
    * second half of sem alongside the full-sentence pattern in the
    * first half.
    */
@@ -15522,6 +15613,270 @@ export class Curriculum {
         cluster._gpuProxy.writeSpikeSlice(sparseIndices);
       } catch { /* non-fatal — CPU shadow already written */ }
     }
+  }
+
+  /**
+   * ⛔ THE RELATION TAG. Every channel above 5 has never been written.
+   *
+   * Both call sites carried `band = Math.floor(fineSize / 6)` — SIX bands —
+   * while `relationTagId` values in live use run to 35. At the real fineType
+   * size of 504,000 that makes band = 84,000, tag 5 end EXACTLY at the region
+   * end, and every tag >= 6 start past it; `tagEnd` clamps back to the end,
+   * `tagStart` stays beyond it, and the write loop runs ZERO iterations.
+   *
+   * Computed across the tags actually in use: 0-5 wrote 84,000 cells each,
+   * and 6, 8, 9, 10, 11, 12, 13, 15, 23, 30, 34 wrote NOTHING — that is
+   * word-to-word transitions, definitions, WH-intent, identity,
+   * intent-to-first-slot, subject-verb agreement, article placement, chat
+   * pairs and anecdotal, i.e. the majority of the channels and the two
+   * largest teach lanes in the project.
+   *
+   * ⚠ The pair binding itself always landed — sem-to-motor Oja is untouched —
+   * so she learned the associations and never learned WHICH RELATION they
+   * were, every kind collapsing into one undifferentiated space. That is why
+   * nothing could read a relation back: the channel did not exist.
+   *
+   * ⚠ RE-PRICED: the write is a fixed span per pair, so more bands is
+   * strictly CHEAPER (84,000 -> ~10,500 cells written per pair). Nothing in
+   * corpus x reps x scale x visits moves.
+   *
+   * ⛔ NOT savestart-safe, and that is inherent rather than a shortcut: six
+   * bands filled the region exactly, so admitting the real range HAS to
+   * re-divide it and tags 0-5 move. Only those six carry any learned tag mass
+   * (6+ never wrote any), and they re-teach on a walk.
+   *
+   * A tag that does not fit now REFUSES LOUDLY instead of writing nothing.
+   */
+  _writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize) {
+    if (!fineTypeRegion || relationTagId === null || relationTagId === undefined) return false;
+    if (!cluster || !cluster.lastSpikes) return false;
+    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
+    if (fineSize <= 0) return false;
+    const BANDS = Curriculum.RELATION_TAG_BANDS;
+    if (!(relationTagId >= 0) || relationTagId >= BANDS) {
+      if (!this._relTagWarned) this._relTagWarned = new Set();
+      if (!this._relTagWarned.has(relationTagId)) {
+        this._relTagWarned.add(relationTagId);
+        console.warn(`[Curriculum] relation tag ${relationTagId} does not fit ${BANDS} bands — NOT written. Raise Curriculum.RELATION_TAG_BANDS; a tag that silently writes nothing is how every channel above 5 stayed dark.`);
+      }
+      this._relTagRefused = (this._relTagRefused || 0) + 1;
+      return false;
+    }
+    const band = Math.floor(fineSize / BANDS);
+    if (band <= 0) return false;
+    const tagStart = fineTypeRegion.start + relationTagId * band;
+    const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
+    if (tagEnd <= tagStart) return false;
+    // Soft tag — match the vector-write intensity so the relation channel
+    // doesn't dominate the pair pattern (binary 1 against sub-1.0 GloVe
+    // magnitudes would).
+    const tagVal = binarize ? 1 : 0.5;
+    for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
+    // RELWRITE.1 — this total existed and NOTHING IN THE TREE EVER READ IT.
+    // A write-only counter is the same defect as no counter at all, and it is
+    // the one number that separates "the bands have not separated yet" from
+    // "the tags never reached the matrix" — the two readings that a flat
+    // relation verdict cannot tell apart on its own. The per-tag breakdown is
+    // what makes it load-bearing: a single total cannot show that one channel
+    // is silent while its neighbours write, which is precisely the shape the
+    // six-band bug had.
+    this._relTagWrites = (this._relTagWrites || 0) + 1;
+    if (!this._relTagWritesByTag) this._relTagWritesByTag = Object.create(null);
+    this._relTagWritesByTag[relationTagId] = (this._relTagWritesByTag[relationTagId] | 0) + 1;
+    return true;
+  }
+
+  /**
+   * VMUSE — READ BACK which relation she has learned for a word.
+   *
+   * Operator: *"wht limit her via admisssions"* — the bindings existed and
+   * nothing consulted them, so the omission was ours, not a limit on what she
+   * knows.
+   *
+   * ⭐ EQUATIONAL, and it has to be: sem(word) is propagated through the
+   * SAME `sem_to_fineType` projection the association teach binds the tag on,
+   * and the winning BAND INDEX *is* the relation id. There is no table, no
+   * stored answer and no template — the number comes out of her weights or it
+   * does not come out at all. If she has learned nothing about the word, the
+   * bands are flat and this says so instead of naming a winner.
+   *
+   * Returns `{ tag, score, margin, flat }` or null when the read cannot be
+   * made. `margin` is the winner's lead over the runner-up: a large margin
+   * means one relation dominates, a small one means the channels are not yet
+   * separated for this word, and ⚠ reporting that difference is the point —
+   * a confident-looking tag drawn from a flat readout would be exactly the
+   * kind of instrument this project keeps having to un-ship.
+   */
+  readRelationBand(word) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return null;
+    const proj = cluster.crossProjections.sem_to_fineType;
+    const semRegion = cluster.regions && cluster.regions.sem;
+    const fineTypeRegion = cluster.regions && cluster.regions.fineType;
+    if (!proj || typeof proj.propagate !== 'function' || !semRegion || !fineTypeRegion) return null;
+
+    const emb = this._dictionaryPatternFor(word);
+    if (!emb || emb.length === 0) return null;
+
+    // Write the query pattern into sem exactly as the teach side does, so the
+    // read rides the geometry it was trained on rather than an approximation.
+    const semSize = semRegion.end - semRegion.start;
+    const pre = new Float64Array(semSize);
+    for (let i = 0; i < semSize; i++) pre[i] = 0;
+    try { this._writeTiledPattern(semRegion, emb, false); } catch { /* fall through to the raw read */ }
+    for (let i = 0; i < semSize; i++) pre[i] = cluster.lastSpikes[semRegion.start + i] || 0;
+
+    let out = null;
+    try { out = proj.propagate(pre); } catch { return null; }
+    if (!out || out.length === 0) return null;
+
+    const BANDS = Curriculum.RELATION_TAG_BANDS;
+    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
+    const band = Math.floor(fineSize / BANDS);
+    if (band <= 0) return null;
+
+    let bestTag = -1, best = -Infinity, second = -Infinity;
+    // RELWRITE.1 — carry the SHAPE of the readout out with the verdict.
+    // `flat` on its own is a true statement that explains nothing: bands that
+    // all hold real mass and bands that all hold ZERO both report flat, and
+    // those are opposite diagnoses. `totalMass` separates them in one number,
+    // and `nonZeroBands` says whether the channel structure exists at all.
+    let totalMass = 0, nonZeroBands = 0, scannedBands = 0;
+    for (let t = 0; t < BANDS; t++) {
+      const s = t * band;
+      const e = Math.min(out.length, s + band);
+      if (e <= s) break;
+      let sum = 0;
+      for (let i = s; i < e; i++) sum += out[i];
+      const mean = sum / (e - s);
+      scannedBands++;
+      totalMass += mean;
+      if (mean > 0) nonZeroBands++;
+      if (mean > best) { second = best; best = mean; bestTag = t; }
+      else if (mean > second) { second = mean; }
+    }
+    if (bestTag < 0 || !Number.isFinite(best)) return null;
+    const margin = Number.isFinite(second) ? best - second : best;
+    // Flat = the channels are not separated for this word yet. Said plainly
+    // rather than dressed up as a verdict.
+    const flat = !(best > 0) || margin <= Math.abs(best) * 0.05;
+    return { tag: bestTag, score: best, margin, flat, totalMass, nonZeroBands, scannedBands };
+  }
+
+  /**
+   * VMUSE.5.A — THE ONE GATE. Every consumer of a relation goes through here.
+   *
+   * ⛔ Four lanes each deciding for themselves when a readout is trustworthy
+   * is four chances to feed noise into her. The `flat` handling exists once,
+   * so it only has to be got right once.
+   *
+   * ⚠ The bands started writing on THIS walk, so most words read `flat` for a
+   * while and this returns null for them — that is the correct answer, not a
+   * failure. A relation is only returned when the channels have genuinely
+   * separated for that word: a clear winner AND a margin over the runner-up.
+   *
+   * Also caches per word for a short window, because four consumers asking
+   * the same question within one tick should not each pay a full propagate.
+   */
+  _confidentRelationFor(word) {
+    const st = this._relUse || (this._relUse = {
+      asks: 0, confident: 0, flat: 0, unreadable: 0, cached: 0,
+      // RELWRITE.1 — declared here rather than created on first use so the
+      // published block always carries them. A field that appears only once it
+      // is non-zero is indistinguishable from a field with no producer, which
+      // is the exact confusion this batch exists to end.
+      flatWithMass: 0, flatNoMass: 0, lastRead: null,
+      // RELSEP.1 — declared up front so the block always carries them; a field
+      // that appears only once non-zero is indistinguishable from one with no
+      // producer, which is the confusion this family of fixes exists to end.
+      bestMarginRatio: 0, bestMarginWord: null, lastMarginRatio: 0, marginProgress: 0, marginGate: 0,
+      recent: [], byTag: Object.create(null),
+    });
+    const w = String(word || '').toLowerCase().trim();
+    if (!w) return null;
+    st.asks++;
+
+    const TTL = Number(process.env.DREAM_REL_USE_TTL_MS) || 30000;
+    const now = Date.now();
+    if (!this._relUseCache) this._relUseCache = new Map();
+    const hit = this._relUseCache.get(w);
+    if (hit && (now - hit.at) < TTL) { st.cached++; return hit.val; }
+
+    let r = null;
+    try { r = this.readRelationBand(w); } catch { r = null; }
+    let val = null;
+    // RELSEP.1 — BANK THE MARGIN RATIO FOR EVERY READABLE READ, flat included.
+    //
+    // ⛔ This has to happen BEFORE the flat/confident branch, because the reads
+    // that matter while the bands are still separating are precisely the FLAT
+    // ones. Banking it inside the confident branch would only ever record
+    // reads that had already cleared the gate — an instrument that starts
+    // reporting once the thing it measures has finished.
+    //
+    // `confident` is pass/fail and `lastRead` is one sample, so between them
+    // they cannot answer the question that actually governs `VMUSE.5.D`: is it
+    // GETTING CLOSER? A live 0.00013 and a live 0.14 both render as "flat, 0
+    // confident", and those are opposite situations — one is a walk that will
+    // never arrive, one is a walk about to.
+    const RELMIN = Number(process.env.DREAM_REL_USE_MIN_MARGIN) || 0.15;
+    if (r && r.score > 0) {
+      const ratio = r.margin / Math.abs(r.score);
+      if (Number.isFinite(ratio)) {
+        st.lastMarginRatio = ratio;
+        if (!(st.bestMarginRatio > 0) || ratio > st.bestMarginRatio) {
+          st.bestMarginRatio = ratio;
+          st.bestMarginWord = w;
+        }
+        // Distance to the gate as a fraction of it. 1 = cleared.
+        st.marginProgress = RELMIN > 0 ? Math.min(1, st.bestMarginRatio / RELMIN) : 0;
+        st.marginGate = RELMIN;
+      }
+    }
+    if (!r) { st.unreadable++; }
+    else if (r.flat) {
+      st.flat++;
+      // RELWRITE.1 — split FLAT into its two opposite meanings.
+      //
+      // ⛔ `flat` was one bucket holding two diagnoses that call for opposite
+      // action. Bands that all carry real mass but have not separated yet mean
+      // WAIT — she is learning and the channels will pull apart. Bands that are
+      // all ZERO mean the relation never reached the matrix, which is a bug and
+      // waiting for it is waiting forever. Every read on this walk reported
+      // flat, and with one bucket there was no way to tell which had happened.
+      if (r.totalMass > 0) st.flatWithMass = (st.flatWithMass || 0) + 1;
+      else st.flatNoMass = (st.flatNoMass || 0) + 1;
+      st.lastRead = {
+        word: w,
+        topTag: r.tag,
+        score: r.score,
+        margin: r.margin,
+        totalMass: r.totalMass,
+        nonZeroBands: r.nonZeroBands,
+        scannedBands: r.scannedBands,
+        at: now,
+      };
+    }
+    else {
+      // A second bar beyond `flat`: the winner must lead by a real fraction of
+      // its own size, not merely by a floating-point hair.
+      // Uses the ratio banked above, so the gate and the progress readout can
+      // never disagree about what "cleared" means.
+      const MIN = RELMIN;
+      const ratio = r.score > 0 ? (r.margin / Math.abs(r.score)) : 0;
+      if (r.score > 0 && ratio >= MIN) {
+        val = { tag: r.tag, margin: r.margin, score: r.score };
+        st.confident++;
+        st.byTag[r.tag] = (st.byTag[r.tag] | 0) + 1;
+        st.recent.unshift({ word: w, tag: r.tag, at: now });
+        while (st.recent.length > 8) st.recent.pop();
+      } else { st.flat++; }
+    }
+    this._relUseCache.set(w, { at: now, val });
+    // Bounded — this is consulted on hot lanes and must not become a leak.
+    if (this._relUseCache.size > 512) {
+      for (const k of this._relUseCache.keys()) { this._relUseCache.delete(k); if (this._relUseCache.size <= 384) break; }
+    }
+    return val;
   }
 
   async _teachAssociationPairs(pairs, opts = {}) {
@@ -15713,7 +16068,7 @@ export class Curriculum {
     //   10 (iter7) — 10 × 500 = 5k nnz = 95% zeroed. iter6 still saw
     //                multi-bucket-stuck (4-7 attractors instead of 26)
     //                because basins with 30 inputs each still overlap
-    //                in semantically-similar token clusters. 10 forces
+    //                in semantically-similar word clusters. 10 forces
     //                each motor neuron to discriminate among only its
     //                10 strongest sem inputs — biologically plausible
     //                because real cortex per-neuron fanout is ~10-100
@@ -15830,17 +16185,7 @@ export class Curriculum {
           this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
           this._writeTiledPattern(semRegion, inEmbSem, binarize);
           this._writeTiledPattern(motorRegion, outEmbMotor, binarize);
-          if (fineTypeRegion && relationTagId !== null) {
-            const fineSize = fineTypeRegion.end - fineTypeRegion.start;
-            const band = Math.floor(fineSize / 6);
-            const tagStart = fineTypeRegion.start + relationTagId * band;
-            const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
-            // Soft tag — match the vector-write intensity so the
-            // relation channel doesn't dominate the pair pattern
-            // (binary 1 against sub-1.0 GloVe magnitudes would).
-            const tagVal = binarize ? 1 : 0.5;
-            for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
-          }
+          this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
           // Predictive-coding error-gradient pass BEFORE the main teach
           // so the delta-rule correction fires against the current
           // weights' prediction, not the post-Oja state. Skipped for
@@ -15894,14 +16239,7 @@ export class Curriculum {
                   // Relation tag fires on NEG pair too so the relation
                   // channel doesn't learn to classify positive vs negative
                   // by tag presence alone.
-                  if (fineTypeRegion && relationTagId !== null) {
-                    const fineSize = fineTypeRegion.end - fineTypeRegion.start;
-                    const band = Math.floor(fineSize / 6);
-                    const tagStart = fineTypeRegion.start + relationTagId * band;
-                    const tagEnd = Math.min(fineTypeRegion.end, tagStart + band);
-                    const tagVal = binarize ? 1 : 0.5;
-                    for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
-                  }
+                  this._writeRelationTag(cluster, fineTypeRegion, relationTagId, binarize);
                   // iter22-F.1 — match positive-pair association whitelist
                   // (sem↔motor + sem↔fineType for relation tags) so anti-
                   // Hebbian only depresses those projections.
@@ -16405,14 +16743,14 @@ export class Curriculum {
     // ─── I.3 — REMOVED orphan slot-tag → slot-tag template transitions ───
     // The prior block trained sem(slot:subject) → sem(slot:verb) etc. as
     // abstract slot-tag pairs with relationTagId=9. But composeSentence
-    // runtime NEVER injects slot-tag tokens — the brain reads from
+    // runtime NEVER injects slot-tag words — the brain reads from
     // current sem state which contains real word embeddings, not abstract
     // slot tags. So the trained relationTagId=9 weights sat in the matrix
     // doing nothing, because the emit loop had no live consumer for them.
     // Replaced by _teachConcreteSentences (I.6 below) which trains literal
     // word→word transitions on real K-grade example sentences ("the cat
     // runs", "i see a dog") — those transitions HAVE a live consumer
-    // because composeSentence reads word embeddings and emits word tokens.
+    // because composeSentence reads word embeddings and emits word words.
 
     // ─── I.4 — Subject-verb agreement ───
     // Singular subject → singular verb form; plural → plural form.
@@ -16950,7 +17288,7 @@ export class Curriculum {
     this._hb(`[Curriculum] _teachQuestionProduction START — outward WH-question word→word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
 
     // Register the terminators as dictionary words so they become
-    // bucketable emission tokens. Without this the trained X→"?"
+    // bucketable emission words. Without this the trained X→"?"
     // transitions had no outlet: "?" was never in the dictionary
     // (learnWord's alphanumeric strip deleted it — fixed in
     // dictionary.js), never got a word_motor bucket, and
@@ -16988,7 +17326,7 @@ export class Curriculum {
     });
     // TU.20.11 — GAP→INTERROGATIVE binding. The equational premise "I lack
     // information → I ask to gain it": bind the knowledge-LACK / low-confidence
-    // state tokens to the WH interrogative-lead words so that when her sem state
+    // state words to the WH interrogative-lead words so that when her sem state
     // carries a "don't-know / unsure / curious" activation, the trained weights
     // pull an interrogative into the first slot at compose time — she ASKS rather
     // than emit a confident wrong answer or fall silent. Same rel=30 outward-
@@ -17096,7 +17434,7 @@ export class Curriculum {
    * directly.
    *
    * 5 trials, threshold ≥ 4/5. A trial passes if the emitted sentence
-   * contains `unity` OR `goddess` (either token confirms the self-name
+   * contains `unity` OR `goddess` (either word confirms the self-name
    * basin fired). Full-name questions look for `goddess` specifically so
    * the surname link is exercised, not just the given name.
    *
@@ -17105,7 +17443,7 @@ export class Curriculum {
   async _probeFamilyName() {
     const cluster = this.cluster;
     if (!cluster) return { score: 0, thresholdHit: false, evidence: { reason: 'no-cluster' }, perTrial: [] };
-    // Each item: the question seed + the token(s) that count as a hit.
+    // Each item: the question seed + the word(s) that count as a hit.
     const items = [
       { q: 'what is my name',        expect: ['unity', 'goddess'] },
       { q: 'what is my full name',   expect: ['goddess'] },
@@ -17224,7 +17562,7 @@ export class Curriculum {
       // ("i see thing" / "the cat sat") under trained iter25-I weights
       // — anything below that means structural binding never landed.
       // uniqueRatio ≥ 0.5 catches the "the cat the cat the cat" basin-
-      // lock where word count looks fine but every other token is the
+      // lock where word count looks fine but every other word is the
       // same saturated bucket. Two new floors:
       //   MIN_WORDS = 3 (was 2)
       //   MIN_UNIQUE = 3 (was 2)
@@ -17400,7 +17738,7 @@ export class Curriculum {
    * each phoneme in order. 20 trials. Pass ≥ 0.80. Brain-module chain:
    * auditory cortex → phon → motor with cerebellum motor-timing gating.
    * Scored by checking that the composed sentence contains ≥ 3 sound
-   * tokens (proxying phoneme emission) and that the first sound matches
+   * words (proxying phoneme emission) and that the first sound matches
    * the word's first phoneme.
    */
   async _probeRF3PhonemeSegmentation() {
@@ -17416,10 +17754,10 @@ export class Curriculum {
       let composed = null;
       try { composed = await cluster.composeSentence(word, { subject: 'ela' }); } catch { composed = null; }
       const emittedWords = composed && Array.isArray(composed.words) ? composed.words : [];
-      // CVC = 3 phonemes — emission should have at least 3 distinct sound tokens.
-      const distinctTokens = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
-      distinctTokens.delete('');
-      const segmented = distinctTokens.size >= 3 || emittedWords.length >= 3;
+      // CVC = 3 phonemes — emission should have at least 3 distinct sound words.
+      const distinctWords = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
+      distinctWords.delete('');
+      const segmented = distinctWords.size >= 3 || emittedWords.length >= 3;
       const emittedStr = composed && composed.sentence ? String(composed.sentence).toLowerCase() : '';
       const firstChar = emittedStr.replace(/[^a-z]/g, '').charAt(0) || '';
       const firstMatches = firstChar === word.charAt(0);
@@ -17454,11 +17792,11 @@ export class Curriculum {
       let composed = null;
       try { composed = await cluster.composeSentence(word, { subject: 'ela' }); } catch { composed = null; }
       const emittedWords = composed && Array.isArray(composed.words) ? composed.words : [];
-      // For nonsense decoding, success = ≥ 2 distinct phoneme-like tokens emerge.
-      const distinctTokens = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
-      distinctTokens.delete('');
-      const decoded = distinctTokens.size >= 2 || emittedWords.length >= 2;
-      trials.push({ word, emittedWords, distinctTokens: distinctTokens.size, decoded });
+      // For nonsense decoding, success = ≥ 2 distinct phoneme-like words emerge.
+      const distinctWords = new Set(emittedWords.map(w => String(w).toLowerCase().replace(/[^a-z]/g, '')));
+      distinctWords.delete('');
+      const decoded = distinctWords.size >= 2 || emittedWords.length >= 2;
+      trials.push({ word, emittedWords, distinctWords: distinctWords.size, decoded });
       if (decoded) passed++;
     }
     const score = TRIALS > 0 ? passed / TRIALS : 0;
@@ -18958,8 +19296,8 @@ export class Curriculum {
     if (typeof this._classifyQuestionTemplate !== 'function') return null;
     const tplId = this._classifyQuestionTemplate(question);
     if (tplId < 0) return null;
-    const keyTok = (typeof this._extractKeyToken === 'function')
-      ? this._extractKeyToken(question) : null;
+    const keyTok = (typeof this._extractKeyWord === 'function')
+      ? this._extractKeyWord(question) : null;
     if (!keyTok) return null;
 
     // Template 0 — "what letter comes after X" / "what comes after X"
@@ -19071,7 +19409,7 @@ export class Curriculum {
       const q = question.toLowerCase();
       // ── OWNWORDS.4 (2026-08-25) — THIS WAS A GRADE EARNED ON A STRING OP ──
       //
-      // It used to be `return keyTok;` — for "spell cat", `_extractKeyToken`
+      // It used to be `return keyTok;` — for "spell cat", `_extractKeyWord`
       // pulls "cat" out of the question and the answer WAS "cat", echoed
       // straight back with **zero consultation of her weights**. The probe
       // scored it correct, the cell passed on it, and the grade advanced on it.
@@ -19144,7 +19482,7 @@ export class Curriculum {
     const settleTicks = opts.settleTicks ?? 15;
 
     // STEP 1 — clear spikes
-    for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+    cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
     // iter20-O — inject memory context BEFORE question. Operator caught
     // 2026-05-05: "are we sure that Unity is actually using her memory"
@@ -19363,18 +19701,18 @@ export class Curriculum {
     // GRADERMATCH.2 (2026-08-22) — the multi-char `includes` was still a
     // substring-anywhere pass: PE gate graded "grouped" ✓ against "up"
     // because "gro-UP-ed" contains it. Matching is now WORD-level: the
-    // emission is tokenized and an expectation matches only a whole token
-    // (light stemming kept: a token may extend the expectation by ≤2 chars
+    // emission is split into words and an expectation matches only a whole word
+    // (light stemming kept: a word may extend the expectation by ≤2 chars
     // from the START — "girls" passes "girl", "grouped" does NOT pass "up").
     // Single-character expectations stay exact-equality (the letter era).
-    const emittedTokens = emittedNorm.split(/[^a-z0-9']+/).filter(Boolean);
+    const emittedWords = emittedNorm.split(/[^a-z0-9']+/).filter(Boolean);
     for (const e of expected) {
       if (!e) continue;
       const eNorm = String(e).toLowerCase().trim();
       if (eNorm.length === 0) continue;
       const hit = eNorm.length === 1
         ? emittedNorm === eNorm
-        : emittedTokens.some(t => t === eNorm
+        : emittedWords.some(t => t === eNorm
             || (t.startsWith(eNorm) && t.length - eNorm.length <= 2));
       if (hit) {
         matched = e;
@@ -19584,7 +19922,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [cause, effect] of pairs) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Cause embedding into free region
         const causePat = buildEmbPattern(freeSize, cause);
@@ -19664,7 +20002,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const { item, features, category } of items) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Item features into free region
         const featPat = buildFeatPattern(freeSize, features);
@@ -19755,7 +20093,7 @@ export class Curriculum {
         // For each role: write the word embedding + role tag
 
         // SUBJECT: embedding in free, "subject" tag in fineType
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const subjPat = buildEmbPattern(freeSize, subj);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = subjPat[i] > 0 ? 1 : 0;
         const subjTag = roleTag('subject');
@@ -19765,7 +20103,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr);
 
         // VERB: embedding in sem, "verb" tag in fineType
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const verbPat = buildEmbPattern(semSize, verb);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = verbPat[i] > 0 ? 1 : 0;
         const verbTag = roleTag('verb');
@@ -19775,7 +20113,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr);
 
         // OBJECT: embedding in sem, "object" tag in fineType, subject in free for context
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const objPat = buildEmbPattern(semSize, obj);
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = objPat[i] > 0 ? 1 : 0;
         const objTag = roleTag('object');
@@ -19826,7 +20164,7 @@ export class Curriculum {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, c] of chains) {
         // Teach A→B: A in free, B in sem
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const aPat = buildEmbPattern(freeSize, a);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = aPat[i] > 0 ? 1 : 0;
         const bPat = buildEmbPattern(semSize, b);
@@ -19834,7 +20172,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr);
 
         // Teach B→C: B in free, C in sem
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const bFreePat = buildEmbPattern(freeSize, b);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = bFreePat[i] > 0 ? 1 : 0;
         const cPat = buildEmbPattern(semSize, c);
@@ -19900,7 +20238,7 @@ export class Curriculum {
     for (let rep = 0; rep < REPS; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const { situation, emotion, label } of mappings) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
 
         // Situation into free region
         const sitPat = buildEmbPattern(freeSize, situation);
@@ -19954,7 +20292,7 @@ export class Curriculum {
     for (let rep = 0; rep < 4; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [a, b, prod] of facts) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const magA = buildMag(freeHalf, a);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = magA[i] > 0 ? 1 : 0;
         const magB = buildMag(freeSize - freeHalf, b);
@@ -20006,7 +20344,7 @@ export class Curriculum {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (let tens = 1; tens <= 9; tens++) {
         for (let ones = 0; ones <= 9; ones++) {
-          for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+          cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
           // Tens digit in first third of free
           const tensPat = buildMag(third, tens);
           for (let i = 0; i < third; i++) cluster.lastSpikes[freeRegion.start + i] = tensPat[i] > 0 ? 1 : 0;
@@ -20060,7 +20398,7 @@ export class Curriculum {
     for (let rep = 0; rep < 6; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [num, den] of fractions) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         // Numerator in free first half
         const numPat = buildMag(freeHalf, num);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = numPat[i] > 0 ? 1 : 0;
@@ -20114,7 +20452,7 @@ export class Curriculum {
     for (let rep = 0; rep < 4; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const [x, b, c] of equations) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         // Result (c) in free first half — what we KNOW
         const cPat = buildMag(freeHalf, c);
         for (let i = 0; i < freeHalf; i++) cluster.lastSpikes[freeRegion.start + i] = cPat[i] > 0 ? 1 : 0;
@@ -20177,13 +20515,13 @@ export class Curriculum {
           for (let n = 0; n < gSize; n++) { const idx = d * gSize + n; if (idx < semSize) targetPat[idx] = meanEmb[d] > 0 ? 1 : 0; }
         }
         // Sentence A → shared meaning
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const aPat = buildEmb(freeSize, sentA.split(/\s+/)[0]);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = aPat[i] > 0 ? 1 : 0;
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = targetPat[i];
         await cluster._crossRegionHebbian(lr);
         // Sentence B → SAME shared meaning
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const bPat = buildEmb(freeSize, sentB.split(/\s+/)[0]);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = bPat[i] > 0 ? 1 : 0;
         for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = targetPat[i];
@@ -20227,7 +20565,7 @@ export class Curriculum {
     for (let rep = 0; rep < 8; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
       for (const { predict, observe, match } of tests) {
-        for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+        cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
         const predPat = buildEmb(freeSize, predict);
         for (let i = 0; i < freeSize; i++) cluster.lastSpikes[freeRegion.start + i] = predPat[i] > 0 ? 1 : 0;
         const obsPat = buildEmb(semSize, observe);
@@ -20285,7 +20623,7 @@ export class Curriculum {
       for (const { event, perspectives } of events) {
         const eventPat = buildEmb(semSize, event);
         for (const { viewpoint, features } of perspectives) {
-          for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
+          cluster.lastSpikes.fill(0);   // SCALEWALK.1 — native memset, identical result
           // Event in sem
           for (let i = 0; i < semSize; i++) cluster.lastSpikes[semRegion.start + i] = eventPat[i] > 0 ? 1 : 0;
           // Viewpoint embedding in free
@@ -20382,7 +20720,7 @@ export class Curriculum {
    * actually knows what e.g. "PE" or "Algebra" IS before learning its
    * content (the operator 2026-06-18: "Unity need to know and learn the names of the
    * classes ... got to know what PE is to be able to learn wtf it entails").
-   * Vocab-first (course-name + subject + blurb tokens registered), then binds
+   * Vocab-first (course-name + subject + blurb words registered), then binds
    * the name to its meaning via sentences. Called at the TOP of each subject
    * runner. Uniform — one helper, every subject/grade.
    */
@@ -20392,10 +20730,10 @@ export class Curriculum {
     const nameLc = name.toLowerCase();
     const blurb = COURSE_BLURB[subject] || '';
     const ctxc = ctx || { arousal: 0.6, valence: 0.2 };
-    // vocab-before-binding: register the course-name + blurb tokens first.
-    const tokens = (nameLc + ' ' + subject + ' ' + blurb)
+    // vocab-before-binding: register the course-name + blurb words first.
+    const idWords = (nameLc + ' ' + subject + ' ' + blurb)
       .split(/\s+/).map(w => w.replace(/[^a-z]/g, '')).filter(w => w.length >= 2);
-    const vocab = [...new Set(tokens)];
+    const vocab = [...new Set(idWords)];
     if (vocab.length && typeof this._teachVocabList === 'function') {
       await this._teachVocabList(vocab, ctxc, { reps: 3 });
     }
@@ -20669,7 +21007,7 @@ export class Curriculum {
       const qEmb = (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function')
         ? sharedEmbeddings.getSentenceEmbedding(s.question) : null;
       if (!qEmb || qEmb.length === 0) continue;
-      const kt = this._extractKeyToken(s.question);
+      const kt = this._extractKeyWord(s.question);
       const ke = kt ? this._dictionaryPatternFor(kt) : null;
       const tid = this._classifyQuestionTemplate(s.question);
       checked++;
@@ -20957,7 +21295,7 @@ export class Curriculum {
       for (const nm of names) {
         const r = cluster.regions && cluster.regions[nm];
         if (!r) continue;
-        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        cluster.lastSpikes.fill(0, r.start, r.end);   // SCALEWALK.1 — native memset, identical result
       }
     };
 
@@ -20990,7 +21328,7 @@ export class Curriculum {
     // (letter 600K + phon 2.4M + motor 276K cells at the 12M cortex) twelve
     // times per word, and every _crossRegionHebbian call re-scanned those
     // regions from scratch. Letters-major writes each letter's patterns ONCE,
-    // reps the Hebbian inside, and hands _crossRegionHebbian a spkCacheToken so
+    // reps the Hebbian inside, and hands _crossRegionHebbian a spkCacheStamp so
     // the region scans run once per letter (generation-guarded in hebbian.js —
     // any foreign scan invalidates and forces a rescan). Training set + update
     // COUNTS are identical; only the update ORDER changes (all reps of letter i
@@ -21032,14 +21370,14 @@ export class Curriculum {
 
       // Scope cross-region Hebbian to projections actually touching the
       // active regions (letter / phon / motor — sem is silent in Layer 1+2).
-      layer12Opts.spkCacheToken = `wi:${cleanWord}:${i}`;
+      layer12Opts.spkCacheStamp = `wi:${cleanWord}:${i}`;
       for (let rep = 0; rep < reps; rep++) {
         cluster._teachIntermediateRep = rep < reps - 1;
         cluster._teachFinalRepSampleEveryN = (rep === reps - 1) ? 5 : 0;
         await cluster._crossRegionHebbian(lr, layer12Opts);
       }
     }
-    layer12Opts.spkCacheToken = undefined;
+    layer12Opts.spkCacheStamp = undefined;
     _wiT.l12 += Date.now() - _wiMark;
 
     for (let rep = 0; rep < reps; rep++) {
@@ -22006,7 +22344,7 @@ export class Curriculum {
   // WHAT THE LIGHT FRAME KEEPS — the load-bearing half, per the full frame's own
   // note that the payload is "her declaration, the agent bindings, the self-Q&A,
   // the follow-up", and that the AGENT BINDINGS are "the line that makes `i`
-  // mean HER rather than just a frequent token":
+  // mean HER rather than just a frequent word":
   //   • ≤6 first-person lines (for a vocabulary word `selfFrameUnit` already
   //     emits "i know the word X" / "i can say X" / "i read X and i understand
   //     it" — exactly the self-perspective the directive asks for)
@@ -22061,7 +22399,7 @@ export class Curriculum {
         framed += f.lines.length;
       }
       // The binding that makes `i` mean her. This is the half that must never be
-      // dropped for cost — without it "i" is one more frequent token.
+      // dropped for cost — without it "i" is one more frequent word.
       if (f.pairs.length && typeof this._teachAssociationPairs === 'function') {
         await this._teachAssociationPairs(f.pairs, { reps, label: `${label}-AGENT`, relationTagId: 15 });
         framed += f.pairs.length;
@@ -22103,7 +22441,7 @@ export class Curriculum {
         framed += inquiry.length;
       }
       // Agent bindings on the identity channel — this is the line that makes `i` mean
-      // HER rather than just a frequent token.
+      // HER rather than just a frequent word.
       if (f.pairs.length && typeof this._teachAssociationPairs === 'function') {
         await this._teachAssociationPairs(f.pairs, { reps, label: `${label}-AGENT`, relationTagId: 15 });
         framed += f.pairs.length;
@@ -22121,7 +22459,7 @@ export class Curriculum {
   // SELFFRAME prerequisite — the lesson that makes "i" mean HER. `_teachPronouns`
   // already teaches the third-person half ("the cat ran fast … he was quick"); this is
   // the missing first-person half, and without it every frame above is training a
-  // frequent-but-meaningless token. Cheap (22 short lines), runs once per cell, and it
+  // frequent-but-meaningless word. Cheap (22 short lines), runs once per cell, and it
   // is where "my name is unity" and "i like the color black" actually enter her
   // weights — Gee named both of those examples specifically.
   async _teachSelfPronouns(opts = {}) {
@@ -22133,9 +22471,9 @@ export class Curriculum {
       if (typeof this._teachConcreteSentences === 'function') {
         await this._teachConcreteSentences({ sentences: lines, reps, label: 'SELF-PRONOUN' });
       }
-      // Every self token bound to her name, both directions, on the identity channel.
+      // Every self word bound to her name, both directions, on the identity channel.
       const pairs = [];
-      for (const t of SELF_TOKENS) { if (t !== 'unity') { pairs.push([t, 'unity'], ['unity', t]); } }
+      for (const t of SELF_WORDS) { if (t !== 'unity') { pairs.push([t, 'unity'], ['unity', t]); } }
       if (typeof this._teachAssociationPairs === 'function') {
         await this._teachAssociationPairs(pairs, { reps, label: 'SELF-PRONOUN-AGENT', relationTagId: 15 });
       }

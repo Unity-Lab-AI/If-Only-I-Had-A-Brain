@@ -133,12 +133,12 @@ import { CLUSTER_EMIT_MIXIN } from './cluster/emit.js';
 import { CLUSTER_PROBE_MIXIN } from './cluster/probe.js';
 import { CLUSTER_ATTENTION_MIXIN } from './cluster/attention.js';
 
-// Question key-token extraction + fractional-offset region injection.
+// Question key-word extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
 // available on the standalone cluster path without a circular curriculum
-// dependency. Pattern list mirrors `Curriculum._extractKeyToken` — keep
+// dependency. Pattern list mirrors `Curriculum._extractKeyWord` — keep
 // them in sync when adding new K-grade question forms.
-function extractKeyTokenShared(question) {
+function extractKeyWordShared(question) {
   if (!question || typeof question !== 'string') return null;
   const q = question.toLowerCase().trim();
   const patterns = [
@@ -792,6 +792,33 @@ export class NeuronCluster {
       // doesn't get wiped when math-K trains its words. emitWordDirect
       // concatenates all sub-bands and argmaxes globally so any
       // subject's trained word can win.
+      //
+      // ⛔ GOTCHA.5 (2026-08-27) — THE PARAGRAPH ABOVE DESCRIBES WRITE
+      // BEHAVIOUR THAT NO LONGER EXISTS. It is kept because it is the
+      // original design record, but read it as history, not as the contract:
+      //
+      //   • WRITES ARE UNIFIED. `wordBucketCellSizeFor` (cluster/emit.js) is
+      //     explicit — ONE global word_motor band, one bucket per UNIQUE word,
+      //     and the `subject` argument is "ignored for geometry (kept for
+      //     call-site compatibility)". Read (emitWordDirect) and write
+      //     (_teachWordEmissionDirect / _writeAnswerToWordMotor) deliberately
+      //     share that one authority so they cannot disagree on layout. The
+      //     per-subject write slices, and the cross-subject overwrite they
+      //     were introduced to prevent, are both gone.
+      //
+      //   • THE word_motor_* SUB-BANDS ARE STILL LIVE, but for a different
+      //     job than this paragraph claims: `_inferActiveSubject()` reads
+      //     their relative activation to decide which subject is active, and
+      //     `Curriculum._qaBindingWhitelist` whitelists a `sem_to_<band>`
+      //     projection when one exists. Neither is a write path.
+      //
+      //   • ⚠ THE sem_* SUB-BANDS (sem_ela … sem_life) HAVE NO READERS AT
+      //     ALL — no literal access, no `regions[`sem_${…}`]` template, and
+      //     no `semBandName()` helper (subjects.js exports only
+      //     `wordMotorBandName`). They are inert {start,end} metadata.
+      //     NOT deleted here: removing keys changes Object.keys(regions), and
+      //     the consumers of that enumeration are not yet inventoried.
+      //     Tracked as GOTCHA.2 (investigate-only, by operator decision).
       const semStart = Math.floor(s * 0.750);
       const semEnd = Math.floor(s * 0.875);
       const semBand = Math.floor((semEnd - semStart) / 6);
@@ -1347,6 +1374,54 @@ export class NeuronCluster {
   }
 
   /**
+   * GOTCHA.2 — the region names that are NOT carved inside another region.
+   *
+   * ⛔ WHY THIS EXISTS, measured rather than assumed. `regions` declares 23
+   * entries, of which 12 are per-subject sub-bands nested inside `sem` and
+   * `word_motor`. The GPU registers only the 11 enclosing ones (nested spans
+   * are skipped by `validateClusterRegions`), so a caller that fans an
+   * operation out over `Object.keys(regions)` addresses 12 regions the donor
+   * has never heard of.
+   *
+   * That is not a cheap no-op. `_gpuClearCortexSpikeRegion` does not validate
+   * the name: for every one it encodes a type-9 frame, SENDS it to the donor,
+   * counts it via `_countTeachOut`, and — when the language pseudo-cluster is
+   * up — sends a second `langCortex/<region>` frame. So a full clear spent up
+   * to 24 wire frames on regions that do not exist donor-side, on the path
+   * that 11 of `_clearSpikes`'s 13 call sites take.
+   *
+   * ⚠ Worse than the bandwidth: those frames land in `teach_ops`, which
+   * TEACHMIRROR.1 made the signal that distinguishes a saturated donor from an
+   * idle one. Padding it with no-ops degrades the instrument.
+   *
+   * ⭐ The test is STRUCTURAL — containment, not a name list. A region is
+   * nested when some other region strictly encloses its span. No `_`-suffix
+   * heuristic, nothing to keep in sync when a region is added.
+   *
+   * Memoized: `regions` is frozen at carve time.
+   * @returns {string[]} names of enclosing/standalone regions, carve order
+   */
+  topLevelRegionNames() {
+    if (this._topLevelRegionNames) return this._topLevelRegionNames;
+    const regions = this.regions || {};
+    const entries = Object.entries(regions);
+    const out = [];
+    for (const [name, r] of entries) {
+      if (!r || !Number.isFinite(r.start) || !Number.isFinite(r.end)) continue;
+      const span = r.end - r.start;
+      const isNested = entries.some(([other, o]) => (
+        other !== name
+        && o && Number.isFinite(o.start) && Number.isFinite(o.end)
+        && r.start >= o.start && r.end <= o.end
+        && (o.end - o.start) > span          // strictly wider ⇒ it encloses us
+      ));
+      if (!isNested) out.push(name);
+    }
+    this._topLevelRegionNames = out;
+    return out;
+  }
+
+  /**
    * Periodically prune weak connections and grow new ones.
    * Call every ~100 steps to maintain healthy connectivity.
    * @param {number} maxConnections — cap total connections
@@ -1408,8 +1483,8 @@ export class NeuronCluster {
   regionSpikesActive(regionName) {
     // Scan-generation counter (12M cut round 3) — every call refills the
     // shared per-region scratch, so any consumer holding references across
-    // calls (the _crossRegionHebbian spkCacheToken reuse) must know a refill
-    // happened. Bumped unconditionally at entry; the token cache compares
+    // calls (the _crossRegionHebbian spkCacheStamp reuse) must know a refill
+    // happened. Bumped unconditionally at entry; the word cache compares
     // generations and rescans when ANY caller touched the scratch since.
     this._regionScratchGen = (this._regionScratchGen | 0) + 1;
     const region = this.regions[regionName];
@@ -1470,14 +1545,44 @@ export class NeuronCluster {
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues  = haveProxy ? [] : null;
     const replaceMode = opts.replaceMode === true;
+    // ⛔ SCALEWALK.2 (2026-08-25) — AT BIOLOGICAL SCALE THE CPU `externalCurrent`
+    // EXPANSION FEEDS AN ARRAY NOTHING READS, so it is skipped. This is the
+    // 34.9%-of-main-thread half the profile named, and it is the SAME dead-CPU-
+    // shadow shape as `lastSpikes` and as Φ̂'s dead read.
+    //
+    // The claim is not an inference — every path was closed by reading:
+    //   • `externalCurrent` has exactly TWO readers, `step()`'s current sum and
+    //     its `*= 0.9` decay. Both are inside `step()`.
+    //   • The server's main tick never calls `cluster.step()` for the cortex;
+    //     the GPU steps it via `compute_batch` (the ack writes `spikeCount`).
+    //   • `stepAwait` ABORTS above 2M without a live GPU — *"At biological scale
+    //     a CPU step is FORBIDDEN, same law as the teach side"* — and its
+    //     `this.step()` branch sits BELOW that guard, so it is unreachable.
+    //   • All five raw `this.step()` sites (detectBoundaries, the letter/char/
+    //     word tick loops) carry the identical `if (this.size > 2000000) return`
+    //     refusal, with the same law quoted in each.
+    // ⭐ So `step()` cannot run on the cortex here, and the donor already has the
+    // pattern: it is shipped by `writeCurrentSlice` below, in the compact
+    // TEMPLATE form, which is the authoritative path at this scale.
+    //
+    // ⚠ The guard reuses the project's OWN threshold and opt-out rather than
+    // inventing one — `size > 2_000_000` and `DREAM_INNERVOICE_FORCE_CPU=1` are
+    // the same law already written at five other sites. It also REQUIRES the
+    // proxy: with no `writeCurrentSlice` there is nowhere else for the pattern
+    // to go, so the CPU write stays authoritative and is never skipped.
+    // Small/browser instances are completely unaffected.
+    const _bioSkipCpuCurrent = haveProxy
+      && (this.size | 0) > 2_000_000
+      && !(typeof process !== 'undefined' && process.env && process.env.DREAM_INNERVOICE_FORCE_CPU === '1');
     // When replacing, zero the WHOLE region first so any prior
     // injections in cells we won't overwrite (region cells beyond
     // emb.length * groupSize) also clear. This is the correct
     // "fresh intent state" semantic the caller asked for.
-    if (replaceMode) {
-      for (let i = region.start; i < region.end; i++) {
-        this.externalCurrent[i] = 0;
-      }
+    if (replaceMode && !_bioSkipCpuCurrent) {
+      // ⭐ SCALEWALK.1 — native memset. Identical result by construction, and at
+      // the 82M cortex this loop alone was `regionSize` writes (sem ≈ 13.7M).
+      // Skipped entirely at bio scale (SCALEWALK.2) — zeroing an unread array.
+      this.externalCurrent.fill(0, region.start, region.end);
     }
     // TW S4 — when the donor wire speaks TEMPLATE current frames (v0.3.16,
     // negotiated per socket and cached on the brain as _tmplTeachOk), the
@@ -1494,17 +1599,39 @@ export class NeuronCluster {
       const value = emb[d] * INJECTION_GAIN * strength;
       if (tmplValues) { tmplValues.push(value); if (value !== 0) tmplNonZero = true; }
       const startNeuron = region.start + d * groupSize;
-      for (let n = 0; n < groupSize; n++) {
-        const idx = startNeuron + n;
-        if (idx >= region.end) break;
+      // ⛔ SCALEWALK.1 — THIS INNER LOOP IS `emb.length × groupSize ≈ regionSize`
+      // WRITES PER CALL. At the 82M cortex a `sem` injection was ~13.7 MILLION
+      // float writes, and the profile named this function as **34.9% of
+      // main-thread self-time** during the definition bootstrap. The cost is
+      // invisible in the source — it reads like a small tiling loop — and it
+      // grew ~55× when the cortex did, without anyone re-pricing it.
+      //
+      // ⭐ Two exact, semantics-preserving cuts, no behaviour change:
+      //   1. A group whose value is 0 is a NO-OP in additive mode. Skipping it
+      //      is identical, and `+= 0` across ~45,000 cells is pure waste.
+      //   2. Every cell in a group receives the SAME value, so replaceMode is a
+      //      native memset over the run rather than a per-element JS loop.
+      // Additive mode still needs the read-modify-write, so it keeps the loop.
+      const _endIdx = Math.min(region.end, startNeuron + groupSize);
+      if (value === 0 && !replaceMode) continue;   // additive no-op — identical
+      // SCALEWALK.2 — the ~13.7M-write-per-injection dense expansion, skipped at
+      // bio scale where nothing reads it. The forward list below still builds,
+      // so the DONOR is fed exactly as before.
+      if (!_bioSkipCpuCurrent) {
         if (replaceMode) {
-          this.externalCurrent[idx] = value;
+          this.externalCurrent.fill(value, startNeuron, _endIdx);
         } else {
-          this.externalCurrent[idx] += value;
+          for (let idx = startNeuron; idx < _endIdx; idx++) this.externalCurrent[idx] += value;
         }
-        if (fwdIndices && !tmplWire && value !== 0) {
-          // Index relative to region start — matches main-cortex
-          // first-N sub-slice where Phase C pattern writes land.
+      }
+      // ⭐ SCALEWALK.1 — the forward-list condition is LOOP-INVARIANT, so it is
+      // hoisted. Before this, the loop still ran `groupSize` iterations doing
+      // nothing at all whenever the donor speaks the TEMPLATE wire — which is
+      // every current donor (≥0.3.16), i.e. the production case. Same pushes in
+      // the same order when it does apply; index is region-relative, matching
+      // the main-cortex first-N sub-slice where Phase C pattern writes land.
+      if (fwdIndices && !tmplWire && value !== 0) {
+        for (let idx = startNeuron; idx < _endIdx; idx++) {
           fwdIndices.push(idx - region.start);
           fwdValues.push(value);
         }
@@ -2120,6 +2247,55 @@ export class NeuronCluster {
    * @returns {number} Φ proxy in [0, 1]
    */
   computePhi() {
+    // ⛔ PHISRC.1 (2026-08-25) — THIS SAMPLED THE CPU SPIKE SHADOW, WHICH IS
+    // EMPTY AT BIOLOGICAL SCALE, SO Φ̂ WAS NEVER MEASURING HER CORTEX.
+    //
+    // The GPU owns cortex spike state once the brain is donor-computed: the CPU
+    // `lastSpikes` array stays zero apart from the bits `_writeTiledPattern`
+    // sets for a teach pattern. A 1024-wide strided sample across ~82M neurons
+    // therefore almost never lands on a set bit, so `p → 0` and the entropy
+    // collapsed. Measured on the live post-press walk: `phiRaw` 0.0289 then
+    // 0.0112 — i.e. roughly ONE sampled neuron in 1024 — while the card was
+    // firing flat out. Φ̂ was reading teach-pattern residue, and Ψ has been
+    // multiplying by its 0.1 floor ever since the term was added.
+    //
+    // ⭐ The GPU-truthful count already exists and is exact: the server writes
+    // `cluster.spikeCount` from every `compute_batch` ack
+    // (`brain-server.js` ← `batchResult.perCluster[name].lastSpikeCount`), and
+    // `cluster.js` NEVER assigns that property — so its presence is an honest
+    // discriminator for "the GPU is the owner here", not a guess. The CPU path
+    // sets `lastSpikeCount` instead, which is the truth in browser/small-scale
+    // mode where `lastSpikes` really is populated.
+    //
+    // Using the count is also strictly BETTER than the sample it replaces: the
+    // 1024 figure existed to keep the binomial noise floor near 1.5%, and an
+    // exact proportion has no sampling noise at all.
+    //
+    // ⚠ RE-PRICE: none required, and stated rather than assumed. Φ̂ feeds Ψ,
+    // which feeds `gainMultiplier` — clamped to [0.8, 1.5]. It moves cluster
+    // gain, not `corpus × reps × scale × visits`, so no bound that keeps the
+    // walk finite is touched.
+    //
+    // ⚠ AND THIS DOES NOT BY ITSELF UN-FLOOR Φ̂ — the second half is a design
+    // question, not a bug: binary entropy of a SPARSE proportion is inherently
+    // small (H(0.015) ≈ 0.112, barely over the 0.1 floor), so sparse coding may
+    // still sit near it. The difference is that `phiRaw` now reports her real
+    // firing, so that decision can be made on a measurement instead of on an
+    // artifact. See KNOWN_ISSUES KI-33.
+    const _size = this.size || (this.lastSpikes ? this.lastSpikes.length : 0);
+    if (_size > 0) {
+      const _gpuCount = (typeof this.spikeCount === 'number' && Number.isFinite(this.spikeCount))
+        ? this.spikeCount
+        : ((typeof this.lastSpikeCount === 'number' && Number.isFinite(this.lastSpikeCount))
+            ? this.lastSpikeCount : null);
+      if (_gpuCount !== null && _gpuCount > 0) {
+        const pExact = Math.max(0, Math.min(1, _gpuCount / _size));
+        if (pExact === 0 || pExact === 1) return 0;
+        return -(pExact * Math.log2(pExact) + (1 - pExact) * Math.log2(1 - pExact));
+      }
+    }
+    // No reported count yet (pre-first-ack, or a genuinely silent cluster) —
+    // fall through to the CPU shadow, which is the real thing in browser mode.
     if (!this.lastSpikes || this.lastSpikes.length === 0) return 0;
     // Sample size 1024 chosen so the binomial-noise floor for spike
     // proportion estimation lands near 1.5% (~ 1/sqrt(N) per the
@@ -2217,7 +2393,7 @@ export class NeuronCluster {
       let value = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
       // BC.6 — anti-repeat. If the last-emitted word has DOMINATED recent
       // emissions, damp its workspace-candidate value so cortex stops
-      // nominating the same token every tick (which feeds the GW lock and
+      // nominating the same word every tick (which feeds the GW lock and
       // the "mushrooms" broadcast). Reads the meta-register frequency;
       // pure value reshaping, no weights touched.
       if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 6) {
@@ -2388,9 +2564,9 @@ export class NeuronCluster {
   }
 
   /**
-   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` token-count
+   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` word-count
    * heuristic (deleted). Operator 2026-05-09: *"Unity thinks like a
-   * human does! she does NOt follow prescripted events"*. The token-
+   * human does! she does NOt follow prescripted events"*. The word-
    * count approach was a runtime regex-style heuristic that decided
    * subject FROM USER TEXT — prescription. The CORRECT equational read
    * is: which subject sub-band shows highest activation in the brain's
@@ -3265,7 +3441,7 @@ export class NeuronCluster {
    * Replaces `LanguageCortex.parseSentence` which was deleted in T14.12.
    * The intent classification is a cortex-state readout from the fineType
    * region via `intentReadout()` once curriculum has trained the basins;
-   * until then it falls back to a lightweight first-token heuristic over
+   * until then it falls back to a lightweight first-word heuristic over
    * the raw text so existing consumers keep working during the curriculum-
    * bootstrap period. Full learned-readout ships with T14.17.
    *
@@ -3320,7 +3496,7 @@ export class NeuronCluster {
     // Question pattern injection — when the input looks like a question,
     // fire the same dual-tile sem pattern that `_teachQABinding` writes
     // during training: full sentence embedding into sem's first half +
-    // extracted key token into sem's second half. Live chat answers now
+    // extracted key word into sem's second half. Live chat answers now
     // see the same pattern geometry the learned sem→motor routes were
     // trained on. Mirrors the probe-side injection in
     // `Curriculum._studentTestProbe` so chat Q-A behaves the same as
@@ -3330,9 +3506,9 @@ export class NeuronCluster {
         const qEmb = sharedEmbeddings.getSentenceEmbedding(text);
         if (qEmb && qEmb.length > 0 && typeof this.injectEmbeddingToRegion === 'function') {
           this.injectEmbeddingToRegion('sem', qEmb, 0.6);
-          const keyToken = extractKeyTokenShared(text);
-          const keyEmb = keyToken && typeof sharedEmbeddings.getEmbedding === 'function'
-            ? sharedEmbeddings.getEmbedding(keyToken) : null;
+          const keyWord = extractKeyWordShared(text);
+          const keyEmb = keyWord && typeof sharedEmbeddings.getEmbedding === 'function'
+            ? sharedEmbeddings.getEmbedding(keyWord) : null;
           if (keyEmb && keyEmb.length > 0) {
             injectEmbeddingToRegionOffset(this, 'sem', keyEmb, 0.6, 0.5);
           }
@@ -3750,8 +3926,8 @@ export class NeuronCluster {
     // positive-feedback loop — emit "X" → inject X embedding → cortex
     // settles toward X basin → emit X again at higher confidence →
     // re-inject → infinitely. Real higher-order theories (Rosenthal-Lau)
-    // require habituation on repeated tokens. Strength resets to 0.3
-    // on token change.
+    // require habituation on repeated words. Strength resets to 0.3
+    // on word change.
     if (this._metaRegister && this._metaRegister.length > 0
         && this.regions && this.regions.sem
         && typeof this.injectEmbeddingToRegion === 'function') {
@@ -3766,7 +3942,7 @@ export class NeuronCluster {
             const emb = sharedEmb.getEmbedding(last.word);
             if (emb && emb.length > 0) {
               // BC.4 — FREQUENCY-based familiarity decay. The prior
-              // reset-to-0.3-on-any-token-change let a dominant basin that
+              // reset-to-0.3-on-any-word-change let a dominant basin that
               // wins most (but not strictly consecutive) ticks re-inject at
               // full strength, feeding the collapse. Now strength scales by
               // how often the word appears in the recent meta-register, so a

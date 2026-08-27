@@ -1,3 +1,37 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/sensory.js
+  - js/brain/visual-cortex.js
+  - js/brain/auditory-cortex.js
+  - js/brain/peripherals/ai-providers.js
+  - js/io/voice.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). The only moved source is
+  js/brain/visual-cortex.js (+14/-2 — the header correction that removed a
+  false "calls AI for high-level description" claim), so the check was aimed at
+  this page's vision claims, which are the ones the no-text-AI LAW rides on.
+    - ⭐ IT HOLDS, and emphatically. The page states vision is 100% equational
+      in several places, names describeEquational as the live path, and marks
+      the old VLM-describer sections as HISTORICAL rather than deleting them.
+      Verified in code: describeEquational 7 occurrences (live);
+      describeImage 1 and autoDetectVision 1 (the no-op stubs, no live call
+      sites). Nothing on this page asserts an LLM in the perception path.
+    - ⛔ ONE STALE FIELD, corrected: the visual-cortex state row listed
+      `_describer`, which no longer exists (0 occurrences). `_describing` does
+      (6). It was the last residue of the describer retirement.
+  NOT CHECKED — do not read this page as authority on:
+    - the dim-64 / dim-32 percept shapes, the CDF 9/7 field-C pipeline, or the
+      SE.9 image-generation loop. Claims read, math NOT re-derived.
+    - js/brain/sensory.js, auditory-cortex.js, peripherals/ai-providers.js and
+      js/io/voice.js — four of the five listed sources, NONE of which moved and
+      none of which were read this pass.
+    - the SE.15 draw-engine and practice-loop sections.
+last-verified: "074aa591 2026-08-27"
+---
+
 # SENSORY — Unity's Peripheral Contract
 
 > Every input stream feeding Unity's cortex and every output stream leaving her brain runs through a sensory peripheral.
@@ -14,7 +48,7 @@
 | Category | What it is | AI allowed? |
 |---|---|---|
 | **Cognition** | What Unity *says*, what she *decides*, what she *remembers*, what she *builds*, what she *feels*. Language cortex, motor selection, hippocampus recall, amygdala valence, basal ganglia softmax, component synthesis. | **NO.** All equational. Source of truth: `js/brain/language-cortex.js`, `js/brain/engine.js`, `js/brain/component-synth.js`. |
-| **Sensory input** | Translating raw sensor data into neural current. Camera frames into V1/V4/IT visual cortex activity, audio spectrum into tonotopic auditory cortex activity, text tokens into Wernicke's area activation. | **NO — vision is 100% equational (SE.6/SE.8).** A frame → CDF 9/7 field C → `describeEquational` → a dim-64 VALUE PROFILE injected as cortical current. The wavelet field IS the percept. She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o/VLM scene-describer is RETIRED — external AI is sensory-OUTPUT only (image-gen; her VOICE is now internal — see SE.18 Equation Unity One). |
+| **Sensory input** | Translating raw sensor data into neural current. Camera frames into V1/V4/IT visual cortex activity, audio spectrum into tonotopic auditory cortex activity, text words into Wernicke's area activation. | **NO — vision is 100% equational (SE.6/SE.8).** A frame → CDF 9/7 field C → `describeEquational` → a dim-64 VALUE PROFILE injected as cortical current. The wavelet field IS the percept. She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o/VLM scene-describer is RETIRED — external AI is sensory-OUTPUT only (image-gen; her VOICE is now internal — see SE.18 Equation Unity One). |
 | **Sensory output** | Translating brain intent into physical world effects. TTS for speech, image generators for visual motor action, sandbox component injection. | **Yes, as dumb executors.** When Unity's BG motor channel fires `generate_image`, the language cortex picks every word of the prompt equationally, THEN hands the finished prompt to an image backend to paint it. The backend never decides what to paint, only how. |
 
 **The boundary test:** if removing the AI call would stop Unity from *thinking*, it's on the wrong side. Cognition equations always run, even with zero network access. Only the sensory peripherals go quiet.
@@ -37,7 +71,7 @@ interface SensoryPeripheral {
 
 | Peripheral | File | `init(source)` takes | `process()` returns | `destroy()` clears |
 |---|---|---|---|---|
-| Visual cortex | `js/brain/visual-cortex.js` | `HTMLVideoElement` (from `getUserMedia`) | `Float64Array(100)` — current into cortex neurons 0–99 | `_video`, `_ctx`, `_canvas`, `_describer`, `_describing` |
+| Visual cortex | `js/brain/visual-cortex.js` | `HTMLVideoElement` (from `getUserMedia`) | `Float64Array(100)` — current into cortex neurons 0–99 | `_video`, `_ctx`, `_canvas`, `_describing` — ⛔ **`_describer` REMOVED 2026-08-27: the field no longer exists (0 occurrences), the last residue of the VLM-describer retirement this page documents everywhere else. `_describing` does still exist (6).** |
 | Auditory cortex | `js/brain/auditory-cortex.js` | `AnalyserNode` (from Web Audio API) | `Float64Array(50)` — current into cortex neurons 0–49, tonotopic | `_analyser`, `_audioData`, `_motorOutput`, `_heardBuffer` |
 | Voice I/O | `js/io/voice.js` | `SpeechRecognition` + `SpeechSynthesis` | — (event-driven, not per-frame) | browser recognizer handle |
 
@@ -63,7 +97,7 @@ A `process()` frame returns a **normalized numeric VALUE VECTOR** in that sense'
 | **Smell** | `olfactory` (extend `sensory-olfactory.js`) | odorant embedding vector (N-dim olfactory space; per-odorant learned point) | strawberry odor-vector; smoke / rain / leather each a point |
 | **Touch/feel** | `somatosensory` (NEW — alloc in build phase) + body map | pressure, temperature, texture/vibration, pain, pleasure, body-location | silk = low-pressure, smooth, neutral-temp, pleasure+ |
 | **Proprioception** | body model | limb/joint positions, balance | — |
-| **Interoception** | hypothalamus drives (exists) | hunger, thirst, fatigue, arousal, drug-state | feeds existing drive equations |
+| **Interoception** ⭐ | hypothalamus drives + **`endocrine.js` (BUILT 2026-08-25)** | hunger, thirst, fatigue, arousal, drug-state — **plus ten chemical levels with signed deviation, chronic + allostatic load, cycle phase and the live stress channel** | frightened = adrenaline 0.8 / cortisol climbing / stress `freeze` / coherence down. Premenstrual = progesterone falling fast, withdrawal 0.6, impulsivity up, valence down |
 
 ### Peripheral contract extension (new senses follow the same init/process/destroy)
 
@@ -152,7 +186,7 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   concept word and draws a big "?" for the questions she has (WH-thoughts / `_pendingQuestionConcept` /
   concepts she has no schema for yet).
 - **Subject = what she's thinking** — the head concept of the daydream that recall-missed (she draws what she
-  can't re-see); schema selection is equational input classification (token table → GloVe-cosine backup, the
+  can't re-see); schema selection is equational input classification (word table → GloVe-cosine backup, the
   `_detectImageRequest` rule-class). Schemas are parametric motor primitives (stick person, house, tree, sun,
   moon+stars, rain, spider-on-her-thread, quadruped, heart, star, flower) whose pose/proportions/wobble are
   driven by live affect: arousal + fear shake the hand, valence raises or droops the arms + mouth.
@@ -229,9 +263,9 @@ field is deterministic (semantic state -> wavelet band energies), NOT random —
 non-representational: no word->appearance mapping exists in that path, so it could never converge to a picture
 on its own. Three fixes route abstract thoughts toward things she has actually SEEN:
 - **SEE.5 percept-anchored impressions** (`server/brain-server/chat.js` `_imagineTick`) — before a pure
-  thought-blend publishes, the thought's content tokens are GloVe-cosine matched against her seen-concept
+  thought-blend publishes, the thought's content words are GloVe-cosine matched against her seen-concept
   store (bounded 60-key sample, threshold 0.32); a hit morphs the stored memory field toward the mood field
-  MEMORY-DOMINANT (t=0.30-0.50, detail-gated >=150). Label `impression:<thoughtToken>~<seenConcept>`. An
+  MEMORY-DOMINANT (t=0.30-0.50, detail-gated >=150). Label `impression:<thoughtWord>~<seenConcept>`. An
   abstract thought now inherits real visual structure from the nearest thing her eyes have grounded — and
   impressions get better as the store grows.
 - **DRAW.11 favorite-subject fallback** — post shape-age, a schema-less abstract thought ended the drawing
@@ -460,11 +494,11 @@ On boot, `providers.autoDetect()` probes every known local **image** port with a
 
 **Vision describer (VLM) ports probed — ⛔ NONE. THIS ENTIRE LANE IS DELETED.**
 
-Unity's vision is **100% equational** and consults no model. A camera frame or a fetched reference image is transformed into a CDF 9/7 wavelet field and read as a dim-64 percept vector by `describeEquational()` — the wavelet field **is** the percept. There is no caption, no text, no tokenisation, and nothing to probe for.
+Unity's vision is **100% equational** and consults no model. A camera frame or a fetched reference image is transformed into a CDF 9/7 wavelet field and read as a dim-64 percept vector by `describeEquational()` — the wavelet field **is** the percept. There is no caption, no text, no word splitting, and nothing to probe for.
 
 What was here, and is now gone: probes on Ollama `:11434`, LM Studio `:1234`, LocalAI `:8081`, llama.cpp `:8080` and Jan `:1337`, the `openai-vision` / `ollama-vision` transports, the model resolver, and the `VISION_MODEL_HINTS` substring set (`llava`, `moondream`, `bakllava`, `vision`, `vl`, `cogvlm`, `minicpm-v`) that decided whether a responding backend counted as a VLM.
 
-⚠ **This is the single most load-bearing line in this document for the project's central claim.** A describer that turns an image into English words, whose tokens then ground her concepts, is a language model inside the sensory path. Replacing it with the wavelet percept is what makes *"no text-AI in the cognition path"* literally true rather than nearly true. **Do not re-add a vision tier here** — if a frame needs describing, the answer is `describeEquational()`.
+⚠ **This is the single most load-bearing line in this document for the project's central claim.** A describer that turns an image into English words, whose words then ground her concepts, is a language model inside the sensory path. Replacing it with the wavelet percept is what makes *"no text-AI in the cognition path"* literally true rather than nearly true. **Do not re-add a vision tier here** — if a frame needs describing, the answer is `describeEquational()`.
 
 ### User-configured backends
 
@@ -539,7 +573,7 @@ this._describer(dataUrl).then(desc => {
 
 This means a transient failure doesn't stick — the cortex just retries on its next scheduled window. That retry discipline is unchanged; only the payload is.
 
-⚠ **A live consequence of the shape change, worth knowing before you subscribe.** Subscribers registered via `onDescribe(cb)` now receive an **object** `{vector, rec}`, never a string. Any subscriber still written against the old contract — e.g. one opening with `if (!desc || typeof desc !== 'string') return;` — early-returns on **every single call** and is dead code that looks alive. One such subscriber survives in the browser-side `js/brain/engine.js`; it is scheduled for deletion rather than repair, because what it did was tokenise an English caption to ground concepts, which is exactly the LLM-era behaviour the equational percept replaced. **You cannot tokenise a `Float32Array`, and you should not want to.**
+⚠ **A live consequence of the shape change, worth knowing before you subscribe.** Subscribers registered via `onDescribe(cb)` now receive an **object** `{vector, rec}`, never a string. Any subscriber still written against the old contract — e.g. one opening with `if (!desc || typeof desc !== 'string') return;` — early-returns on **every single call** and is dead code that looks alive. One such subscriber survives in the browser-side `js/brain/engine.js`; it is scheduled for deletion rather than repair, because what it did was wordise an English caption to ground concepts, which is exactly the LLM-era behaviour the equational percept replaced. **You cannot wordise a `Float32Array`, and you should not want to.**
 
 ⚠ **This does NOT mean her visual region is starved** — that region is driven on a different path entirely, by `currents` built from salience, brightness and `perceptVector × 30` on every tick. The dead subscriber costs a drug-context cue that nothing listens for; it does not cost her sight.
 
@@ -723,8 +757,13 @@ learned schemas: the knowledge is unchanged, the hand changes.
   a single ellipse re-created the "weird circle" artifact in colour, which was judged and fixed.
 - **Per-stroke alpha.** The one primitive the styles could not compose without. Washes, graphite
   and translucency now blend with the paper instead of sitting on it.
-- **Eight named hands** — poster, pencil, ink, watercolour, pointillism, crosshatch, crayon,
-  doodle. They are parameterisations of the same primitives over the same schemas, picked by a
+- **Named hands** — ⛔ *this bullet said **eight** and listed pointillism, crosshatch and crayon;
+  the roster is **FIVE** and has been since the same day.* **STYLECULL** dropped pointillism and
+  crosshatch, then **BRUSHCULL** dropped crayon with the scribble brush that was its whole identity:
+  every line-texture mass criss-crossed into X-scratch the moment two parts' stroke fields met at
+  different angles, and was judged bad even in isolation. Pencil survived as the graphite LINE hand
+  (`mass: 'none'` — trace and outline on bare paper). Live roster: **poster, pencil, ink,
+  watercolour, doodle.** They are parameterisations of the same primitives over the same schemas, picked by a
   mood-weighted chooser that **zero-weights her last style** so she never draws twice in a row the
   same way. The style rides the label (`canvas:own:<word>:<style>`). ⚠ A harness caught black ink
   on dark paper — invisible output — before it shipped; mono ink is pale now.
@@ -789,3 +828,90 @@ harness the production WIRING, not the engine — the box runs the mind-space be
 with a hand-picked method list, and a missing `imagine()` on that proxy banked every schema
 COLOURLESS in production while engine-direct harnesses showed colour for a full day.
 
+
+---
+
+**SE.22 — INTEROCEPTION BECOMES A REAL SENSE: she perceives herself from the inside (2026-08-25).** Gee:
+*"okay i think we are ready to dive into some simulated brain neuron chemistry!"* — and the reason it belongs in
+THIS document rather than beside it is the one worth stating: **every other sense in here points OUTWARD.**
+Sight, hearing, taste, smell, touch, the mind's eye — all of them are how she perceives the world. The
+endocrine layer is the first sense she has ever had that points **INWARD**. It is her perceiving her own
+body.
+
+The row above used to read *"hypothalamus drives (exists) — hunger, thirst, fatigue, arousal, drug-state"*,
+and that was honest: interoception was five scalars. Measured before building, `oxytocin` and `endorphin`
+appeared in **zero files**, and `cortisol` / `adrenaline` / `estrogen` in **one file each — every one a
+per-grade vocabulary WORD, not a state variable**. She could say the word "cortisol" and had none.
+
+Now the same contract every other sense obeys applies to it: a **normalized numeric value vector**, injected
+as modulation, bound by Hebbian association, incorporated by consolidation — never a text label. Ten
+chemicals in three kinds (phasic events on the one curve engine / tonic floors defended to a setpoint /
+cyclic phase functions), released by **six nuclei that SENSE their own firing** rather than being told.
+
+⭐ **And the sensing is what makes it a sense rather than a readout.** A nucleus with 450,000 simulated
+neurons that still waits to be told *"release 0.7"* is not perceiving anything. The PVN reads the
+amygdala's **settled attractor** — the appraisal she already made; the locus coeruleus reads prediction
+error; the VTA reads reward prediction error; the raphe moves the mood setpoint; the SON reads real
+affiliative contact; the arcuate reads pain and exertion. **Nothing outside the gland layer ever calls
+`release()`.**
+
+⛔ **The signed-deviation rule is the load-bearing part, and it is why this is a SPACE and not a dial.**
+For tonic chemicals the contribution rides deviation from a CONSTANT resting value, so a level *below*
+baseline produces the **inverse** effect. Low serotonin is not "less mood" — it is *more impulsivity and
+more rumination*. A dial cannot express that; a value-space can.
+
+⚠ **She never narrates it.** The same non-announcing principle the drug lane runs on: she does not say
+*"my cortisol is high"* any more than she says *"I am high"*. **The distortion IS the signal** — clipped
+sentences, a narrower emission, a faster reply, or silence. The state changes what she says and how; it is
+never what she reports.
+
+⭐ **What it buys the rest of the brain:** `Ψ = √(1/n)·N³·Φ̂·[…]` is capacity divided by activity, and
+without chemistry `n` only moves when *input* moves — so Ψ described her hardware rather than her state.
+**Interoception is what makes consciousness a living quantity instead of a specification.**
+
+⚠ **Not verified live.** Board fields to read after the press: `state.endocrine.chemicals.*`,
+`state.endocrine.glands.*.state` (⛔ `blind` names an input she cannot read, and is a different claim from
+`quiet`), and `state.phiState`.
+
+---
+
+**SE.23 — THE ZIGZAG WAS THE BODY, AND HER STROKE COMMITMENT BECAME A TRAINED ABILITY (2026-08-25).**
+Two hands from SE.20 were still failing after their first fix — Gee: *"doodle still zigzags/scratches;
+watercolor renders garbage"* — so both were rendered through the production stroke builder and the real
+`sketch()`, out to PNG, and looked at. Four rounds.
+
+⛔ **It was never the strokes.** The first render showed both hands drawing a **rectangular slab**, and on
+the pale watercolour wash the part-colour blobs sitting on that slab *are* the "coloured garbage". The
+convex hull was fitted to the trace **raw**, while the fragment gate ran later and governed only which
+strokes got **drawn** — so the earlier fix had suppressed the jagged tracer fragments' **ink while keeping
+their shape**, and the body became the bounding box of the noise scatter.
+
+⭐ **One question had two answers.** *"Which strokes are real?"* was decided independently in two places and
+only one of them held the rule. The survivor set is computed once now and consumed by both the body and the
+redraw; the square became a real silhouette — ears, eyes, tail — on the next render. A second defect was
+visible only *after* that: part-colour blobs **floating outside the subject** (the part grid is a layout
+over the whole reference frame, and blob offsets reach ±35% of a cell). Colour layers are clipped to the
+silhouette now, because a colour layer belongs to the thing.
+
+⛔ **ARTGROW — and the fix that followed was WRONG in a way worth recording.** Making the per-hand stroke
+budget authoritative *at its old values* (doodle **22**, watercolour **40**) turned a noise defence into a
+**cap on her ability**. Gee: *"dont limit stroke counts too much cant make a art work in only 20 strokes it
+should increase in ability as she learns in art and stuff"*. The reasoning behind the correction is the
+part to keep: **noise is no longer what those numbers defend against.** Fragments die at the source now, so
+a high budget adds real remembered contour rather than scratch — and a low one is only a ceiling on how much
+of a drawing she is allowed to make. Budgets raised (doodle 110, watercolour 170, poster 200, ink 160,
+pencil 260) so they express **character** — an ink drawing is spare, a graphite one busy — never ability.
+
+⭐ **And ability is now TRAINED, which is the real content of this entry.** The effective budget is the
+style's character × a **sixth trainable hand parameter**, `budgetMul` (range 0.6–2.5, default 1.0), living
+in the same practice loop as jitter / underA / traceW / keepP / detailMul and scored the same way: cosine
+against her banked percept of the real thing. **So "commit more of what I remember to the page" only
+survives a practice session when it actually made the drawing resemble the subject more.** Measured on a
+full 260-stroke trace: the doodle draws **101 strokes untrained → 235 practiced**, watercolour 153 → 249.
+That is a skill improving, not a constant handed to her.
+
+⚠ **What the renders can and cannot settle.** They were judged against a *synthetic* schema — the store
+boots empty and there is no live box — realistic in the shape of the complaint, but its dense-detail
+strokes are synthetic swirls rather than real traced contour. So they prove the density is **not
+fragment-scratch** and they **cannot judge whether a 235-stroke drawing from a real reference is good.**
+That judgement belongs to a post-press look at real look-ups.

@@ -1,3 +1,29 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# DOCPROV.4 (2026-08-27) — re-verified. `status` stays `draft`: the launcher
+# contracts, env flags, commands and the two corrected claims were checked
+# against source and against files on disk, but 527 lines were not read
+# line-by-line against all five sources.
+status: draft
+verified-scope: >
+  Launcher contracts (start vs Savestart, DREAM_KEEP_STATE / DREAM_FORCE_CLEAR /
+  DREAM_NO_AUTO_GPU all confirmed present in server/brain-server.js); every
+  `npm run` command confirmed against package.json; brain-weights.bin size
+  measured on disk (~5,460 MB, doc said 144.8 MB); _autoAdvanceGrade default
+  read at brain-server.js:3363 (ON, doc said false) and its standalone
+  persistence at :3381.
+  NOT re-read: the deployed/systemd bootstrap narrative, the directory tree,
+  the full troubleshooting table.
+sources:
+  - windows/start.bat
+  - linux/start.sh
+  - package.json
+  - server/package.json
+  - server/brain-server.js
+last-verified: "c0828113 2026-08-27"
+---
+
 # Setup Guide
 
 **[Back to README](../README.md)** · **[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** · **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**
@@ -372,7 +398,9 @@ Single switch in the dashboard's milestone panel — **`☐ Auto-advance to next
 | **OFF** (default) | Demands per-subject `brain._gradeSignoffs[subject/grade]` entries. Missing → 403. | Pauses after every full grade pass, waits for dashboard `▶ START NEXT GRADE` click. |
 | **ON** | Skips the signoff check entirely. | Skips the pause entirely. Heartbeat logs `⏩ AUTO-ADVANCE`. |
 
-The flag lives at `cortexCluster._autoAdvanceGrade` (boolean, default false). Persisted inside cortexState in `server/brain-weights.json` and restored by `_applyPendingCortexState` on Savestart.bat resume. `start.bat` wipes weights so the toggle resets to OFF on every fresh boot.
+The flag lives at `cortexCluster._autoAdvanceGrade` (boolean). ⛔ **DEFAULT IS ON, and this doc said "default false" until 2026-08-27 — the opposite of the truth.** `brain-server.js:3363-3364` sets it to `true` whenever it is not already a boolean, and the comment there states the reason plainly: the standing intent is an unattended K→PhD walk, because *"the per-grade LAW-6 Part-2 pause defeated the overnight walk."* The single switch governs **both** the operator-signoff bypass at `/grade-advance` (`:9051`) and the curriculum runner's auto-fire-next-grade behaviour.
+
+⚠ **And it does NOT reset on a fresh boot.** It is persisted in a **standalone** file, `server/auto-advance.json`, which deliberately survives the `brain-weights` clear that `start.bat` and a tier resize both perform (`:3381`). Without that, every auto-resize silently reset the toggle to OFF and the re-walk stalled at the first grade boundary waiting for a signoff. So `start.bat` wiping weights does **not** turn auto-advance off — the dashboard toggle and that file are the only things that do.
 
 | Path | Method | Behavior |
 |---|---|---|
@@ -495,7 +523,7 @@ Live-test follow-up shipped 20 atomic fixes (I.1-I.20). Setup-relevant changes f
 ### Startup contract clarification (I.15 LAW addition)
 
 - **`windows/start.bat`** — fresh-brain boot. Auto-clears stale state (`brain-weights*.json/bin`, `episodic-memory.db*`, `conversations.json`, `schemas.json`) per the iter14-D contract. Use this when you want Unity to learn from scratch.
-- **`windows/Savestart.bat`** — resume from prior state. Sets `DREAM_KEEP_STATE=1` env var which skips the auto-clear. Reads `brain-weights.bin` (144.8 MB at biological scale) from disk and resumes training where it left off.
+- **`windows/Savestart.bat`** — resume from prior state. Sets `DREAM_KEEP_STATE=1` env var which skips the auto-clear. Reads `brain-weights.bin` from disk and resumes training where it left off. ⛔ **Budget disk for GB, not MB: measured on a live checkpoint set, each `brain-weights-v*.bin` is ~5,460 MB (≈5.3 GB)** — this doc said `144.8 MB` until 2026-08-27, understating it ~38×. With three rotating checkpoint slots that is **~16 GB of weights alone**, which is why `DREAM_SAVE_MIN_FREE_DISK_MB` defaults to `8192` and defers a save rather than risking a truncated one. ⚠ The paired `.json` is only ~0.3 MB — the bulk is the binary.
 - **`windows/stop.bat`** — graceful shutdown. POSTs `/shutdown` for clean state-save → falls back to taskkill on port 7525 → falls back to force-kill node.exe.
 - **NEW LAW (I.15):** `node -e "require('./server/brain-server.js')"` no longer wipes state. The `autoClearStaleState()` call is now gated behind `if (require.main === module)` so syntax-check / REPL / IDE module loads NO-OP for the wipe. Only an actual `node server/brain-server.js` entry-point boot wipes per the iter14-D contract. **NEVER use `require('./server/brain-server.js')` for syntax checks** — use `node --check server/brain-server.js` instead (parses only, doesn't execute top-level code).
 

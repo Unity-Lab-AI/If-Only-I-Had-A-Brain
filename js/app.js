@@ -647,7 +647,7 @@ function loadPersonaSelfImage(targetBrain) {
     }
 
     // T15-C17 — Load the ethereal / Oz / psychedelic corpus so the cortex
-    // has real tokens for the cosmic-bias vector to pull toward when drug
+    // has real words for the cosmic-bias vector to pull toward when drug
     // scheduler's ethereality is elevated (LSD / psilocybin / high MDMA
     // peak). Non-announcing: no "I'm tripping" keywords, just the TYPE of
     // vocabulary a person at peak psychedelic state uses.
@@ -660,7 +660,7 @@ function loadPersonaSelfImage(targetBrain) {
     // the legacy loaders so cortex + dictionary already contain the
     // vocabulary, then replays the same corpora through the complexity-
     // sorted walk (letters → short words → long words → sentences) with
-    // per-token tick budgets that scale with structural complexity and
+    // per-word tick budgets that scale with structural complexity and
     // corpus frequency. Letters get up to 20 reps × 8 ticks each, short
     // words get up to 6 reps × 4 ticks, long words 3 reps × 3 ticks,
     // sentences walk word-by-word at 2 ticks/word. This is the pass
@@ -749,8 +749,15 @@ function renderLandingTab(tab, s) {
   const metric = (label, val, color = '#e0e0e0') => `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;"><span style="color:#555;">${label}</span><span style="color:${color};">${val}</span></div>`;
   const bar = (pct, color) => `<div style="height:4px;background:#1a1a1a;border-radius:2px;margin-top:3px;"><div style="width:${Math.min(100,pct)}%;height:100%;background:${color};border-radius:2px;"></div></div>`;
 
-  const arousal = s.amygdala?.arousal ?? s.sharedMood?.arousal ?? 0;
-  const valence = s.amygdala?.valence ?? s.sharedMood?.valence ?? 0;
+  // ⛔ FLAT FIRST. `??` only falls through on null/undefined, so a nested
+  // `amygdala.valence` holding a REAL 0 beats a live flat 0.084 — and the local
+  // browser engine initialises exactly that (`amygdala: { arousal: 0.5,
+  // valence: 0 }`). Whenever a state object carried both, the stale nested zero
+  // won and the readout rendered a confident 0.00. The server sends these FLAT;
+  // `brain-viz.js` already reads them flat-first and says so in a comment. Only
+  // fall back to the nested block for the local engine, which has no flat form.
+  const arousal = s.arousal ?? s.amygdala?.arousal ?? s.sharedMood?.arousal ?? 0;
+  const valence = s.valence ?? s.amygdala?.valence ?? s.sharedMood?.valence ?? 0;
   const coherence = s.oscillations?.coherence ?? s.sharedMood?.coherence ?? 0;
   const psi = s.psi ?? 0;
   const spikes = s.spikeCount ?? s.totalSpikes ?? 0;
@@ -1045,8 +1052,10 @@ function updateLandingStats(state) {
   const $ = id => document.getElementById(id);
   const neurons = state.totalNeurons ?? state.neurons ?? 1000;
   const psi = state.psi ?? 0;
-  const arousal = state.amygdala?.arousal ?? state.sharedMood?.arousal ?? 0;
-  const valence = state.amygdala?.valence ?? state.sharedMood?.valence ?? 0;
+  // Flat first — see the note at the sibling chain above. A nested zero from
+  // the local engine must never outrank a live flat value from the server.
+  const arousal = state.arousal ?? state.amygdala?.arousal ?? state.sharedMood?.arousal ?? 0;
+  const valence = state.valence ?? state.amygdala?.valence ?? state.sharedMood?.valence ?? 0;
   const coherence = state.oscillations?.coherence ?? state.sharedMood?.coherence ?? 0;
   const spikes = state.spikeCount ?? state.totalSpikes ?? 0;
   const users = state.connectedUsers ?? 0;
@@ -3050,7 +3059,26 @@ Vision: ${state.visionDescription || 'none'}`;
   voice.on('speech_end', () => setAvatarState('idle'));
 
   // ── Wire brain state updates to visualizers ──
-  const serverConnected = landingBrainSource && landingBrainSource.isConnected();
+  // ⛔ THIS WAS A ONE-TIME SNAPSHOT USED AS A LIVE GUARD.
+  //
+  // `isConnected()` was read ONCE, here, at wiring time — and the brain socket
+  // connects asynchronously, so at this moment it is normally still false. The
+  // value was then used for the rest of the session in three places, with two
+  // consequences that compound:
+  //
+  //   1. the server's `stateUpdate` listener was never ATTACHED at all, so no
+  //      server state ever reached the HUD, the 3D popups or the 2D viz; and
+  //   2. the `!serverConnected` guards stayed open, so the small untrained
+  //      local browser brain drove every readout instead.
+  //
+  // That is why valence rendered as a confident 0.00 while the server's real
+  // valence was ~0.08: the number on screen was a different brain's. Arousal,
+  // coherence and the bands came from that same wrong brain.
+  //
+  // It is a predicate now, evaluated at each event, so authority follows the
+  // socket in BOTH directions — the server takes over the moment it connects,
+  // and the local brain takes back over if it drops.
+  const isServerDriving = () => !!(landingBrainSource && landingBrainSource.isConnected());
 
   // 3D brain state-update downsample. We don't need to render every
   // connection every tick — firing neurons and their connections on
@@ -3067,10 +3095,14 @@ Vision: ${state.visionDescription || 'none'}`;
 
   brain.on('stateUpdate', (state) => {
     // Only let local brain drive HUD if no server is connected
-    if (!serverConnected) updateBrainIndicator(state);
-    if (brainViz) brainViz.updateState(state);
+    if (!isServerDriving()) updateBrainIndicator(state);
+    // ⚠ brainViz had NO guard while its two siblings did, so it received the
+    // local brain here AND the server below — last writer wins, and the two
+    // disagree. Same rule as the 3D brain now: the server is the authority
+    // whenever it is connected.
+    if (!isServerDriving() && brainViz) brainViz.updateState(state);
     // Don't send local brain state to 3D — server drives that
-    if (!serverConnected && brain3d) {
+    if (!isServerDriving() && brain3d) {
       _brain3dDownsampleCounter++;
       if (_brain3dDownsampleCounter >= BRAIN3D_DOWNSAMPLE) {
         _brain3dDownsampleCounter = 0;
@@ -3079,8 +3111,14 @@ Vision: ${state.visionDescription || 'none'}`;
     }
   });
 
-  // Server state → HUD + 3D: server is the authority when connected
-  if (serverConnected) {
+  // Server state → HUD + 3D: server is the authority when connected.
+  //
+  // ⛔ Attached UNCONDITIONALLY. Gating the listener on a connection that had
+  // not happened yet meant that on every normal load — where the socket opens
+  // a moment after this code runs — the page wired up a server feed it then
+  // never subscribed to. The handler itself is inert until the socket delivers
+  // something, so there is nothing to guard against by withholding it.
+  if (landingBrainSource) {
     landingBrainSource.on('stateUpdate', (serverState) => {
       _landingState = serverState;
       updateBrainIndicator(serverState);
@@ -3334,8 +3372,12 @@ function updateBrainIndicator(state) {
   const l = _landingState || {};
 
   const coherence = s.oscillations?.coherence ?? s.coherence ?? l.oscillations?.coherence ?? l.coherence ?? 0;
-  const arousal = s.amygdala?.arousal ?? s.arousal ?? l.amygdala?.arousal ?? l.arousal ?? 0;
-  const valence = s.amygdala?.valence ?? s.valence ?? l.amygdala?.valence ?? l.valence ?? 0;
+  // ⛔ THE HUD ON THE 3D BRAIN. Flat first — this is the chain that rendered
+  // `hud-valence` as 0.00 against a live 0.084. `s.amygdala?.valence` came
+  // first, and the local engine's nested `valence: 0` is a REAL number, so
+  // `??` kept it instead of falling through to the correct flat field.
+  const arousal = s.arousal ?? s.amygdala?.arousal ?? l.arousal ?? l.amygdala?.arousal ?? 0;
+  const valence = s.valence ?? s.amygdala?.valence ?? l.valence ?? l.amygdala?.valence ?? 0;
   const psi = s.psi ?? l.psi ?? 0;
   const bandPower = s.oscillations?.bandPower || s.bandPower || l.oscillations?.bandPower || l.bandPower || {};
 

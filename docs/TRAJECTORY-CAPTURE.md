@@ -1,3 +1,58 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - server/brain-server/state.js
+verified-scope: |
+  CHECKED 2026-08-27 — every documented state path looked up key-by-key in the
+  LIVE GET /public-state.json (local build 2673d14c, booted 04:22Z):
+    - CORRECTED (5 nonexistent paths): curriculum.activeSubject ->
+      currentSubject, activeGrade -> currentGrade, cellsPassed ->
+      passedCellsTotal, and passedCells / passedPhases have NO published
+      equivalent (they exist on the cluster, they are not in the payload).
+    - CORRECTED: "5 subjects" -> 6; totalNeurons is published top-level and
+      must not be re-derived by summing clusters.*.size; the quoted neuron
+      figures were stale (the count is derived at boot from free host RAM).
+    - FOUND present-and-undocumented: curriculum.lastGateVerdict,
+      curriculum.examTranscript, curriculum.cellPhasesStarted.
+    - VERIFIED PRESENT: cellPhasesCompleted/Started/Total, cellSubPhases,
+      activePhase.name+.elapsedMs, all consciousness.* and voice.* fields
+      listed, build.short/.sha/.deployedAt, perf.batchTiming.substeps,
+      clusters.<name>.size+.firingRate, profiling.hostRam, profiling.clients.
+    - ⛔ SIXTH BAD PATH, caught in a SECOND pass and NOT by the first:
+      clusters.langCortex.size is UNDEFINED - there is no langCortex cluster,
+      the language cortex is 25 separate lang_* clusters. ⚠ My first pass
+      listed this row as verified because I checked the PATTERN
+      clusters.<name>.size against `cortex` and generalised. VERIFYING A
+      PATTERN IS NOT VERIFYING AN INSTANCE - and that over-reach is exactly
+      what this method is supposed to replace, so it is recorded not buried.
+  NOT CHECKED — do not read this page as authority on:
+    - whether curriculum.subjects listing 6 while the roster is 9 courses is
+      by design or under-reporting. Named as an open question, NOT resolved.
+    - profiling.clients.list[] per-donor field names (.gpuName / .df7Primary /
+      .primaryFloorMB) - the list was empty at read time, so the row shapes
+      could not be confirmed. Absence of a donor is not absence of a field.
+    - the three capture RULES at the top (cumulative/freshness/denominator) -
+      these are methodology, verified only as still-consistent, not re-derived.
+    - the sampling cadence, rotation and arXiv publication sections.
+  ⚠ ONE FIELD-SHAPE CAVEAT: the live brain predates this session's server
+  fixes, so a field ADDED after 2673d14c would read absent here and that
+  would NOT mean the doc is wrong. Every correction above is a path the doc
+  names that the payload contradicts, not a path the payload merely lacks.
+  ⭐ SELF-DRIFT, restamped 2026-08-27 — and this one ADDS a field to capture.
+  The moved source is server/brain-server/state.js (BUCKETPUB.1), which now
+  publishes `voice.wordsBucketed` and `voice.bucketSubjects`. Both belong in the
+  "Emission quality" table above: wordsBucketed is the field that distinguishes
+  "no candidate exists yet" from "a winner was rejected by a floor", which is
+  exactly the trap that section warns about. ⚠ Capture them as CUMULATIVE
+  (difference per rule 1) and expect `null`, not 0, before the capability scan
+  is available — a 0 there would read as "nothing bucketed", the very claim the
+  field exists to establish.
+last-verified: "cdfcf8b5 2026-08-27"
+---
+
 # Developmental trajectory — the capture spec
 
 > **What this is.** `GRANT.3` names the highest-value asset this project can produce: *"the documented developmental trajectory (vocab size, gate pass rates, emission quality, basin separation, grade by grade)"*, because it converts "impressive engineering" into **a scientific instrument producing data nobody else can produce**.
@@ -5,6 +60,8 @@
 > **What this file is NOT.** It is not a trajectory. It is the **capture spec**: every field, where it already exists in the live state payload, and the sampling rule. Written this way on purpose — the walk restarted from zero cells today, so any curve published now would be fabricated, and a made-up trajectory is worse than no trajectory for exactly the audience this is aimed at.
 >
 > **Everything below is already emitted by the running brain.** No new instrumentation is required — that is the point. The work is *recording* it, and the recorder is defined here.
+>
+> **Re-verified 2026-08-27 (DOCPROV.4, 7 of 22 — both sources had moved).** ⭐ **Every documented path was looked up in the LIVE `/public-state.json`, key by key. Most held. Five did not exist.** ⛔ **`curriculum.activeSubject`, `curriculum.activeGrade`, `curriculum.cellsPassed`, `curriculum.passedCells` and `curriculum.passedPhases` are all UNDEFINED** — the real names are `currentSubject`, `currentGrade`, `passedCellsTotal`, and for the last two there is **no published equivalent at all**. ⛔ **In a capture spec that is not a typo: it is a recorder writing `undefined` into the x-axis of a curve that then looks captured and is empty** — the same fabricated-trajectory outcome the header warns against, arriving through the front door. ⛔ **Worst of all, the spec's OWN validity rule depended on one of the missing fields** (*"a row is only valid once that cell appears in `passedCells`"*), so the correctness criterion was unimplementable and would have failed silently in whichever direction it was coded. ⭐ **Two present-and-undocumented fields found while checking: `curriculum.lastGateVerdict` and `curriculum.examTranscript`** — the actual gate-outcome carriers this page needed. ⚠ Also corrected: **six subjects, not five**; `totalNeurons` is published directly and must not be re-derived by summing clusters; and the neuron figures quoted here were stale because **the count is derived at boot from free host RAM** (459,775,607 this boot). ⭐ **VERIFIED PRESENT, so nobody re-checks:** `cellPhasesCompleted`/`.cellPhasesStarted`/`.cellPhasesTotal`, `cellSubPhases`, `activePhase.name`+`.elapsedMs` (shape confirmed), every `consciousness.*` field listed, every `voice.*` field listed, `build.short`/`.sha`/`.deployedAt`, `perf.batchTiming.substeps` (54), `clusters.<name>.size`+`.firingRate`, `profiling.hostRam.*`, `profiling.clients.list`.
 
 ---
 
@@ -26,14 +83,18 @@ All paths are relative to `state` in `GET /public-state.json`.
 
 ### Grade / progress axis (the x-axis)
 
+⛔ **CORRECTED 2026-08-27 — THREE OF THESE SIX PATHS DID NOT EXIST.** Read off the live payload, key by key. ⭐ **In a capture spec a wrong path is not a typo — it is a recorder that logs `undefined` for the x-axis and a trajectory that looks captured and is empty.** That is the same fabricated-curve outcome this file was written to prevent.
+
 | field | path | kind | note |
 |---|---|---|---|
-| subject | `curriculum.activeSubject` | label | one of the 5 subjects |
-| grade | `curriculum.activeGrade` | label | `kindergarten` … `phd` |
-| cells passed | `curriculum.cellsPassed` | cumulative | the honest progress counter |
-| phases done / total | `curriculum.cellPhasesCompleted` / `.cellPhasesTotal` | ratio | **capture both** (rule 3) |
-| sub-phases | `curriculum.cellSubPhases` | cumulative | within-phase progress |
-| active phase + age | `curriculum.activePhase.name` / `.elapsedMs` | point | `GATEPHASE.1` made gates visible here; before it they read `null`, i.e. identical to a hang |
+| subject | **`curriculum.currentSubject`** | label | ⛔ was `activeSubject` — **undefined**. ⚠ And **six** subjects, not five: `curriculum.subjects` reads `["ela","math","science","social","art","life"]` |
+| grade | **`curriculum.currentGrade`** | label | ⛔ was `activeGrade` — **undefined**. `kindergarten` … `phd`. Companions worth capturing: `currentGradeLabel`, `currentGradeShort`, `currentCourseName` |
+| cells passed | **`curriculum.passedCellsTotal`** | cumulative | ⛔ was `cellsPassed` — **undefined**. The honest progress counter; read **0** live |
+| phases done / started / total | `curriculum.cellPhasesCompleted` / **`.cellPhasesStarted`** / `.cellPhasesTotal` | ratio | ✅ all present. **capture all three** (rule 3) — `cellPhasesStarted` was missing from this table and it is the field `WALKPROG.1` was closed on |
+| sub-phases | `curriculum.cellSubPhases` | cumulative | ✅ present |
+| active phase + age | `curriculum.activePhase.name` / `.elapsedMs` | point | ✅ present, exact shape confirmed live: `{"name":"_teachHebbian","elapsedMs":70}`. `GATEPHASE.1` made gates visible here; before it they read `null`, i.e. identical to a hang |
+
+⚠ **Open question, deliberately NOT resolved here:** `curriculum.subjects` lists **6**, while the course roster is **9** (`pe` / `music` / `health` are real courses — `WALKORDER.1` was filed precisely because they had no entry in `cluster.grades` and defaulted to `pre-K` forever). **Whether `subjects` is the core set by design or is under-reporting is a separate question** and guessing it here would repeat that bug's own cause.
 
 ### Vocabulary size
 
@@ -46,13 +107,20 @@ All paths are relative to `state` in `GET /public-state.json`.
 
 ### Gate pass rates
 
+⛔ **CORRECTED 2026-08-27 — AND THIS IS THE DEEPEST ERROR ON THE PAGE.** Both documented arrays are **absent from `/public-state.json`**, and the capture rule below was written to depend on one of them.
+
 | field | path | kind |
 |---|---|---|
-| per-cell pass/fail | `curriculum.passedCells` (array) | set |
-| phase pass record | `curriculum.passedPhases` (array) | set |
+| cells passed (total) | **`curriculum.passedCellsTotal`** | cumulative — ⛔ `curriculum.passedCells` is **UNDEFINED** in the public payload |
+| per-subject progress | **`curriculum.perSubject`** / **`curriculum.subjects`** | ⚠ these are what the payload actually exposes; **not** verified as a per-cell pass/fail set |
+| last gate verdict | **`curriculum.lastGateVerdict`** | point — ⭐ **present and undocumented until now.** This is the field carrying an actual gate outcome |
+| exam transcript | **`curriculum.examTranscript`** | series — ⭐ also present and undocumented |
+| phase pass record | ⛔ **`curriculum.passedPhases` is UNDEFINED in the public payload** | — use `cellPhasesCompleted` / `.cellPhasesStarted` / `.cellPhasesTotal` |
 | exam-bank sizes | `[Curriculum] Held-out sanitize` boot line | log |
 
-**Capture rule:** a gate's verdict is its RETURN VALUE, and gates are wrapped `TRACKED_NO_SKIP` (`GATEPHASE.1`) precisely so they never get skipped-and-return-`undefined`. A trajectory row for a cell is only valid once that cell appears in `passedCells` **or** a fail is logged — "phase completed" is not "gate passed".
+⛔ **The old capture rule was UNIMPLEMENTABLE AS WRITTEN.** It said: *"A trajectory row for a cell is only valid once that cell appears in `passedCells` or a fail is logged."* **`passedCells` is not in the payload the rest of this file tells the recorder to read** — so the spec's own correctness criterion referenced a field the recorder cannot see. ⭐ **A recorder built strictly to this page would have validated every row against `undefined`, and `undefined` is falsy — so either every row is rejected or, if the check was written the other way, every row passes unchecked. Both are silent.**
+
+**Capture rule (corrected):** a gate's verdict is its RETURN VALUE, and gates are wrapped `TRACKED_NO_SKIP` (`GATEPHASE.1`) precisely so they never get skipped-and-return-`undefined`. **A trajectory row for a cell is only valid once `passedCellsTotal` INCREMENTS** (difference it per rule 1 — it is cumulative) **or `lastGateVerdict` records a fail.** "phase completed" is still not "gate passed". ⚠ `passedCells` / `passedPhases` **do exist on the cluster** as the authoritative ledger `WALKORDER.1` made position read from — they are simply **not published**, so a capture spec must not name them as sources. **If the recorder needs the ledger itself, that is a new field to publish, not a path to write down.**
 
 ### Emission quality — the hardest axis, and the one with the most traps
 
@@ -79,8 +147,8 @@ All paths are relative to `state` in `GET /public-state.json`.
 | field | path | why |
 |---|---|---|
 | build sha | `build.short` / `.sha` / `.deployedAt` | which code produced the row |
-| total neurons | sum of `clusters.*.size` | **changed 320,678,816 → 425,436,550 today**; a trajectory spanning a geometry change must say so |
-| langCortex size | `clusters.langCortex.size` | the vocabulary ceiling |
+| total neurons | **`totalNeurons` (top-level)** | ⛔ **CORRECTED: do not sum `clusters.*.size` — the payload publishes `totalNeurons` directly** (read **459,775,607** live, local build `2673d14c`, booted `04:22Z`). Deriving a number the payload already states is how the two disagree. ⚠ **The stale figures this row used to quote — *"changed 320,678,816 → 425,436,550 today"* — are exactly why the count must never be written as a constant:** it is **DERIVED AT BOOT from free host RAM**, so the same code has booted at 425,436,550, 411,216,550 and 459,775,607. **Quote it with the boot that produced it.** A trajectory spanning a geometry change must say so |
+| langCortex size | ⛔ **`clusters.langCortex.size` IS UNDEFINED — there is no `langCortex` cluster.** The language cortex is published as **25 separate `lang_*` clusters**: `lang_auditory`, `lang_visual`, `lang_gustatory`, `lang_somatosensory`, `lang_free`, `lang_letter`, `lang_phon`, `lang_sem` (+ 6 `lang_sem_*`), `lang_fineType`, `lang_motor`, `lang_word_motor` (+ 6 `lang_word_motor_*`). **Sum the `lang_*` sizes, or name the specific band you mean.** | the vocabulary ceiling. ⚠ **CAUGHT 2026-08-27 IN A SECOND PASS — this was the SIXTH bad path on this page and my first pass marked it "verified".** I checked the *pattern* `clusters.<name>.size` against `cortex` and generalised, which is the same over-reach the enumerate-and-diff method is supposed to replace. **Verifying a pattern is not verifying an instance.** |
 | donor + primary | `profiling.clients.list[].gpuName` / `.df7Primary` / `.primaryFloorMB` | `PRIMARYFLOOR`: a donor below the floor takes NO matrices, so rows captured then are not comparable |
 | substeps | `perf.batchTiming.substeps` | throughput context |
 | host RAM | `profiling.hostRam.freeMB` / `.usedPct` | `RAMHEAD` |

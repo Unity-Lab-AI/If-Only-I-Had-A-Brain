@@ -5,10 +5,22 @@
  *   V1: Edge detection via oriented receptive fields (Hubel & Wiesel)
  *   V2: Texture/pattern — groups V1 responses
  *   V4: Color — extracts dominant colors
- *   IT: Object recognition — calls AI for high-level description (LAST step)
+ *   IT: Object recognition — the equational percept read out of field C (LAST step)
  *
  * The salience map drives saccade generation — gaze goes where edges are strongest.
- * AI is only called for IT-level recognition, not for basic vision.
+ *
+ * ⛔ THIS HEADER USED TO SAY "IT: Object recognition — calls AI for high-level
+ * description" and "AI is only called for IT-level recognition". Both were FALSE
+ * and had been for months, and this same file already said so further down, at
+ * the IT stage: "REPLACES the old LLM/VLM describer: the cortex now SEES by
+ * transforming". The describer was deleted with the rest of the text-AI path —
+ * `describeImage()` and `autoDetectVision()` survive in
+ * peripherals/ai-providers.js as deliberate no-op stubs so a future caller
+ * breaks obviously instead of landing on `undefined`.
+ *
+ * ⭐ A header asserting an LLM in the perception path is the exact opposite of
+ * this project's load-bearing claim, and a file that contradicts itself cannot
+ * be checked by reading one end of it. There is no AI in this pipeline.
  */
 
 // Frame resolution bumped from 20×15 (300 px) to 60×45 (2700 px).
@@ -672,7 +684,7 @@ export class VisualCortex {
    * T7.2 — subscribe to fresh description events. Callback receives
    * the raw description string every time the describer completes
    * with a non-null result. Used by the language cortex to pull
-   * gender tokens out of the scene description.
+   * gender words out of the scene description.
    */
   onDescribe(cb) {
     if (typeof cb === 'function') this._describeSubscribers.push(cb);

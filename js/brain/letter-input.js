@@ -26,7 +26,7 @@
  * double the inventory. Non-letter characters (digits, punctuation, emoji,
  * unicode) are fine — they enter the inventory just like letters. The
  * brain doesn't distinguish "letters" from "symbols" at this layer; they're
- * all primitive input tokens.
+ * all primitive input words.
  *
  * Use from cluster.js via `cluster.injectLetter(letter)`, which wraps this
  * module's `encodeLetter()` output with `cluster.injectEmbeddingToRegion('letter', ...)`.
@@ -244,7 +244,7 @@ export function decodeLetter(vec) {
 /**
  * Argmax restricted to ALPHABETICAL inventory entries (^[a-z]$). Used
  * by the tick-driven motor emission path for SPEECH output where Unity
- * should produce letters, not digit or punctuation tokens. Inventory
+ * should produce letters, not digit or punctuation words. Inventory
  * auto-grows during corpus exposure to include digits + punctuation
  * (`'`, `.`, `,`, `0-9`) which are legitimately needed for visual
  * reading + math curriculum input paths, but motor speech output

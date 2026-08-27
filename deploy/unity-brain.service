@@ -18,6 +18,13 @@
 Description=Unity brain-server (distributed-compute brain backend)
 After=network-online.target
 Wants=network-online.target
+# STOPTRAP.1 — NEVER give up on the brain. The default rate limiter (5 starts
+# in 10s, then "start request repeated too quickly" and the unit stays dead)
+# is a SECOND way to strand a box whose operator has no shell: a boot-time
+# crash loop would exhaust the budget in under a minute and then never retry,
+# with no dashboard left to press. 0 disables the limiter, so RestartSec=5
+# keeps retrying forever and a fixed overlay recovers on its own.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -58,6 +65,14 @@ Environment=DREAM_DF7_FANOUT=1
 
 Restart=always
 RestartSec=5
+# STOPTRAP.1 — the deliberate-halt sentinel. server/brain-server.js has cited
+# this directive by name since the /shutdown handler was written, but the
+# directive itself was never in this file — the code documented a contract the
+# unit did not carry. Exit 42 means a human asked for a TRUE halt (stop.bat or
+# the localhost-only Stop button); every other exit is an incident and gets
+# revived. The dashboard's savestart path (/restart) deliberately exits 0 so
+# that it IS revived, which is what makes it a savestart.
+RestartPreventExitStatus=42
 
 # ── Resource caps — SHARED BOX (Forgejo + all the lab's git run here too).
 # Keep the brain under ~75% of the host (the lab box is 8c/16t · 32 GB) so it

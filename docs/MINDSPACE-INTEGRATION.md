@@ -1,3 +1,17 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ mindspace-proxy.js is listed deliberately: its hand-picked method list is
+# what shipped colour-blind schemas for a day while the engine itself was fine.
+status: draft
+sources:
+  - js/brain/mindspace/transform.js
+  - js/brain/mindspace/gpu.js
+  - js/brain/mindspace/audio.js
+  - server/brain-server/mindspace-proxy.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # MIND-SPACE INTEGRATION — UniVsMatics inside Unity's brain
 
 > IF ONLY I HAD A BRAIN · Unity AI Lab
@@ -98,7 +112,7 @@ is persisted to `server/mindspace-memory.json` (atomic write, gitignored, deriva
 The recall layer that turns the mind's eye from a de-novo renderer into IMAGINATION:
 - **`server/brain-server/visual-memory.js`** — `_ingestVisualFrame` (WS `visual_frame` intake:
   ≤96×96 RGBA → `mindSpace.perceive` → full-color field C, bound to the concepts active at
-  perception time) + `_recallVisualMemory` (thought tokens → stored field C; two matches fuse
+  perception time) + `_recallVisualMemory` (thought words → stored field C; two matches fuse
   via `MindSpaceGPU.morph` → `transform.js morphField`, equation-domain recombination).
 - **`js/visual-feeder.js`** — standalone raw-served client module (index.html, NOT bundled):
   camera frames (permission-gated) + generated-image renders (Pollinations URL → prompt label).
@@ -152,7 +166,7 @@ The operator: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and ca
 | Stage | What crosses the line | Where |
 |---|---|---|
 | **Look** | a reference is perceived into a field C as before | `_fetchReferenceAndGround` |
-| **Abstract** | ≤9 coarse 3×3 part cells `{cx, cy, w, h, ang, density, weight}` + aspect + frame + a 4-entry colour family — **~1-2% of the reference's information** | `_learnShapeSchema` |
+| **Abstract** | ⛔ *this row said "≤9 coarse 3×3 part cells"; it has been superseded TWICE.* **LOOKEYES** widened the grid to **5×5 (≤25 cells)** because 3×3 could not carry a legible subject, and **PAINT.6/7** added the layer that now carries the read: her **full vector trace** — the contours she followed at 256px, ≤260 strokes, each with the colour sampled where it sat (a live cat: 142 strokes, 11.4KB). Cells `{cx, cy, w, h, ang, density, weight, rgb}` + aspect + frame + palette remain as the colour/layout layer. Still **~3-5% of the reference**, so copying is still impossible — the budget grew, the principle did not. ⚠ **ARTZIG2 (2026-08-25):** the jagged tail of that trace is tracer NOISE, gated by one owner consulted by both the silhouette and the redraw — fitting the body to the ungated trace made it the bounding box of the noise and rendered a rectangular slab. | `_learnShapeSchema` |
 | **Construct** | her layout, marks ∝ part weight, arcs bowed per attempt, ink ≤60% toward the learned colour family, ground+tufts for a named place | `_drawOwnCreation` → `mindSpace.sketch` |
 
 **The reference's field C never reaches the renderer** — copying is not discouraged, it is impossible, because the pixels are out of scope. A second look refines the schema (`looks` counts how well she knows a shape). Per-attempt seed = `words + arousal + valence + attempt#`, so two drawings of one word are two attempts, not a cache. Runs on the walk-lane drain, never the reply path.

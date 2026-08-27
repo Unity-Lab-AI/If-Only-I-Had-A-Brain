@@ -1093,6 +1093,33 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // on normal deploys, but DREAM_KEEP_STATE=1 BYPASSES the hash check — this format bump is the
 // belt-and-suspenders that still rejects v1 weights on that path, forcing the mandatory fresh
 // K→PhD walk that trains the new senses in from scratch (no migration, no garbage-weight load).
+// ── The donor build this server wants running against it.
+//
+// ⚠ MUST BE BUMPED WITH EVERY DONOR RELEASE. It is the number the `welcome`
+// handshake hands every donor so a pod can upgrade itself at its next
+// disconnect instead of reconnecting on a stale binary. Kept beside
+// WEIGHTS_FORMAT_VERSION deliberately — both are "things that must move when
+// something else moves", and the donor version has already been forgotten once
+// (DREAM_MIN_DONOR_VERSION sat at 0.3.7 for 22 releases).
+//
+// ⛔ This is NOT the hard floor. A donor between the floor and this keeps
+// working; it just upgrades at its next natural disconnect. Overridable with
+// DREAM_RECOMMENDED_DONOR_VERSION for a staged rollout.
+// ⚠ SAFE TO NAME A VERSION BEFORE ITS TAG IS PUSHED — but only because of how
+// the handshake degrades. Only 0.3.30+ READS `recommendedDonorVersion`; older
+// donors ignore the field entirely and keep upgrading via the launcher's
+// watchdog exactly as before. So a donor can only act on this number if it is
+// already running a build that exists.
+//
+// ⛔ The dangerous case is a FUTURE bump landing here before its tag is
+// published: donors would exit to upgrade, the launcher would reinstall the
+// same (older) `releases/latest`, and every pod would download in a loop
+// instead of donating. The donor carries an anti-loop guard for exactly that
+// (`upgrade-attempt.txt` — it refuses to bounce twice for the same upgrade and
+// says so loudly), but the guard is a net, not a licence. **Bump this WITH the
+// tag, not ahead of it.**
+const CURRENT_DONOR_VERSION = '0.3.30';
+
 const WEIGHTS_FORMAT_VERSION = 5;   // ENDO (2026-08-25): `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed, so saved geometry no longer matches. Old weights auto-refuse → clean fresh walk, which is the ORDER the walk law already specifies (chemistry lands BEFORE the walk that teaches from it). (v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
@@ -3151,7 +3178,7 @@ class ServerBrain {
       // is caught at boot, never silently at emit time (the old overflow bug).
       {
         const _wmCells = Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940);
-        const _wmTargetVocab = 60000;   // ~17K curriculum floor + definition-token + headroom
+        const _wmTargetVocab = 60000;   // ~17K curriculum floor + definition-word + headroom
         const _msg = `[Brain] WMB word_motor capacity: ${_wmCells.toLocaleString()} cells (6% of ${langCortexSize.toLocaleString()} langCortexSize) — UNIFIED single band, 1 bucket/unique word. Full K→PhD vocab target ~${_wmTargetVocab.toLocaleString()}.`;
         if (_wmCells < _wmTargetVocab) console.warn(`${_msg} ⚠ UNDER target — words past index ${_wmCells.toLocaleString()} would be silenced; raise DREAM_LANG_CORTEX or WORD_MOTOR_TARGET_LANG_CORTEX.`);
         else console.log(`${_msg} ✓ covers target.`);
@@ -3506,7 +3533,7 @@ class ServerBrain {
         lifeCurriculum.academicStorySentences(subject, grade);
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
-      // a successful definition lookup so sem(word) → sem(def_tokens)
+      // a successful definition lookup so sem(word) → sem(def_words)
       // gets carved INCREMENTALLY through actual user use, not upfront
       // blur. Fire-and-forget — chat doesn't await this.
       this.cortexCluster.teachWordDefinition = (word, opts) => {
@@ -3592,7 +3619,7 @@ class ServerBrain {
       // Periodic retry — first tick fires after 60s; the wrapper
       // re-arms with the appropriate interval based on current state.
       this._scheduleSmokeTestRetry();
-      // Fused-token dictionary purge — learnSentence's old sanitizer
+      // Fused-word dictionary purge — learnSentence's old sanitizer
       // DELETED punctuation/newlines instead of spacing them, fusing
       // adjacent words into fake compounds ("lightingto", "fuckeryyou")
       // that were then LEARNED as real dictionary words and pollute the
@@ -3603,8 +3630,8 @@ class ServerBrain {
       // (a candidate is only purged when dictionaryapi.dev has NO
       // definition for it — legit compounds like "football" survive).
       const _fusedPurgeTimer = setTimeout(() => {
-        try { this._purgeFusedDictionaryTokens(); } catch (err) {
-          console.warn('[Brain] fused-token dictionary purge threw:', err?.message || err);
+        try { this._purgeFusedDictionaryWords(); } catch (err) {
+          console.warn('[Brain] fused-word dictionary purge threw:', err?.message || err);
         }
       }, 45 * 1000);
       if (typeof _fusedPurgeTimer.unref === 'function') _fusedPurgeTimer.unref();
@@ -3821,11 +3848,6 @@ class ServerBrain {
         console.warn('[MindSpace] init failed:', err?.message || err);
         this.mindSpace = null;
       }
-      // Auto-attach transformer backend when the dep is installed AND
-      // the env flag is set. Default OFF — operator opts in via
-      // `cd server && npm install @xenova/transformers` + export
-      // DREAM_TRANSFORMER=1. Silent no-op in every other case so the
-      // left-brain-only path keeps working identically.
       // LLMGUT.2 (2026-08-25) — the GPT-2 / distilgpt2 transformer backend and
       // its boot attach are DELETED, along with DREAM_TRANSFORMER,
       // DREAM_TRANSFORMER_MODEL and DREAM_TRANSFORMER_MAX_LEN. It was a
@@ -3948,7 +3970,7 @@ class ServerBrain {
       // Two failure modes this catches at boot instead of in production: a
       // `minGrade` naming a grade that does not exist (the anchor would silently
       // never unlock, indistinguishable from one that was never written), and an
-      // anchor phrased as a bare descriptor list with no self token — an
+      // anchor phrased as a bare descriptor list with no self word — an
       // instruction about how to behave rather than something she can say about
       // herself. Grade typos throw; shape problems warn loudly.
       // ── LLMGUT.8 (2026-08-25) — KEEP THE CLAIM TRUE ──────────────────────
@@ -4309,7 +4331,7 @@ class ServerBrain {
 
 
   /**
-   * Fused-token dictionary purge. The old learnSentence sanitizer fused
+   * Fused-word dictionary purge. The old learnSentence sanitizer fused
    * words across deleted separators ("lighting\nto" → "lightingto") and
    * learned the concat as a word. Candidates: pure-alpha entries ≥ 7
    * chars, low frequency (runtime-learned, not curriculum-trained), not
@@ -4320,9 +4342,9 @@ class ServerBrain {
    * "something") always survive. Bounded at 200 API checks per boot;
    * the definition service's cache + backoff absorb the load. Persona
    * entries are candidates too (stricter ≥9-char floor, no freq gate)
-   * since the persona-lane tokenizer was itself a fusion source.
+   * since the persona-lane word splitter was itself a fusion source.
    */
-  async _purgeFusedDictionaryTokens() {
+  async _purgeFusedDictionaryWords() {
     if (this._fusedPurgeRan) return;
     this._fusedPurgeRan = true;
     const dict = this.dictionary;
@@ -4338,7 +4360,7 @@ class ServerBrain {
       if (!entry) continue;
       if (!/^[a-z]+$/.test(word)) continue;
       if (taught && taught.has(word)) continue;
-      // PERSONA entries are no longer skipped — the persona-lane tokenizer
+      // PERSONA entries are no longer skipped — the persona-lane word splitter
       // was the SECOND fusion source ("herselfthese", "conceptsresonate",
       // "meintensity" all rode persona text) and the old isPersona skip
       // meant those fusions could NEVER be purged while the identity
@@ -4367,7 +4389,7 @@ class ServerBrain {
       if (splits) candidates.push(word);
     }
     if (candidates.length === 0) return;
-    console.log(`[Brain] fused-token purge — ${candidates.length} candidate compound(s) queued for API verification: ${candidates.slice(0, 8).join(', ')}${candidates.length > 8 ? ', …' : ''}`);
+    console.log(`[Brain] fused-word purge — ${candidates.length} candidate compound(s) queued for API verification: ${candidates.slice(0, 8).join(', ')}${candidates.length > 8 ? ', …' : ''}`);
     let purged = 0;
     for (const word of candidates) {
       let def = null;
@@ -4380,7 +4402,7 @@ class ServerBrain {
       // ("prevent", "password", "overflow") before this guard existed.
       if (definitionService.lookupStatus(word) !== 'noDef') continue;
       words.delete(word);
-      // Bigram hygiene — drop the fake token as a key and as a follower.
+      // Bigram hygiene — drop the fake word as a key and as a follower.
       try {
         if (dict._bigrams) {
           dict._bigrams.delete(word);
@@ -4388,10 +4410,10 @@ class ServerBrain {
         }
       } catch { /* best-effort */ }
       purged++;
-      console.log(`[Brain] fused-token purge — removed "${word}" (two-known-word concat, no API definition)`);
+      console.log(`[Brain] fused-word purge — removed "${word}" (two-known-word concat, no API definition)`);
     }
     if (purged > 0) {
-      console.log(`[Brain] fused-token purge DONE — ${purged}/${candidates.length} fake compound(s) removed from the dictionary.`);
+      console.log(`[Brain] fused-word purge DONE — ${purged}/${candidates.length} fake compound(s) removed from the dictionary.`);
     }
   }
 
@@ -5009,8 +5031,65 @@ class ServerBrain {
     if (this.cortexCluster && typeof this.cortexCluster.computePhi === 'function') {
       try {
         phiRaw = this.cortexCluster.computePhi();
-        phiProxy = Math.max(0.1, phiRaw);
-        phiState = (phiRaw <= 0.1) ? 'floored' : 'live';
+        // ── PHISCALE.1 (2026-08-25, Gee's call: rescale to her operating range)
+        //
+        // Binary entropy peaks at p = 0.5, and her cortex is DELIBERATELY
+        // sparse — so H sits in the low tenths and the old 0.1 floor clamped it
+        // whenever firing dipped under ~1.3%. ⛔ Clamping is the real damage:
+        // a clamped value is CONSTANT, `psi` is log₁₀ so a constant multiplier
+        // is a constant addend, and `psiGain` rides `psi − psiBaseline` where
+        // the baseline carries that same addend — it cancels EXACTLY. Every
+        // clamped tick is a tick where consciousness contributes nothing.
+        //
+        // ⛔ THE REFERENCE IS MEASURED, NOT CHOSEN. A hardcoded `p_ref` (say 5%)
+        // would be a number nobody can defend, and worse, it would silently
+        // mean different things across boots — `totalNeurons` is derived at boot
+        // from free host RAM, so the same code has booted at 425,436,550 and at
+        // 411,216,550. An absolute anchor is not scale-invariant in meaning.
+        //
+        // ⭐ Instead the scale adapts to HER, which is the idiom this codebase
+        // already adopted twice for exactly this reason: `psiGain` rides Ψ's
+        // deviation from its own slow EMA ("auto-calibrates to any brain size"),
+        // and the amygdala arousal fix moved to a rolling baseline because an
+        // absolute threshold "saturates and then reports a constant" — which is
+        // precisely the failure being repaired here.
+        //
+        // Seeded at H(0.015) = 0.1124, the entropy at her DOCUMENTED ~1.5%
+        // design sparsity — an architectural property of the brain, not a
+        // preference of mine. ⛔ Deliberately NOT seeded from the first
+        // observation: that is the brainstem-nucleus lesson (seeding from the
+        // first sample habituates instantly to whatever it happened to see
+        // first, and here it would hand back Φ̂ = 1.0 on tick one).
+        //
+        // Rises quickly toward a genuine new high, decays very slowly and never
+        // below the seed, so one spike cannot permanently compress the scale.
+        // ⚠ Normalisation is monotonic and shared across a comparison, so the
+        // state ORDERING Φ̂ exists for (anaesthesia vs dissociation) is preserved.
+        const _PHI_REF_SEED = 0.1124;   // H(0.015) — her documented design sparsity
+        if (!(typeof this._phiScaleRef === 'number' && isFinite(this._phiScaleRef) && this._phiScaleRef > 0)) {
+          this._phiScaleRef = _PHI_REF_SEED;
+        }
+        // ⛔ FAST ATTACK, SLOW DECAY — and the first cut of this got it wrong in
+        // a way the harness caught before it shipped. With a gentle 5%-of-gap
+        // rise the reference LAGGED her, so every value at or above it clipped
+        // to 1.000: at her design sparsity Φ̂ read 1.000, and at 3% firing it
+        // read 1.000 as well. **A saturated value is a constant, and a constant
+        // is exactly what cancels out of `psiGain`** — the identical failure
+        // this change exists to repair, reintroduced at the other end of the
+        // range. The reference has to be her HIGH-WATER integration, not her
+        // TYPICAL integration, or typical always reads maximal.
+        if (phiRaw > this._phiScaleRef) {
+          this._phiScaleRef = phiRaw;                                        // reach a real peak at once
+        } else {
+          this._phiScaleRef = Math.max(_PHI_REF_SEED, this._phiScaleRef * 0.99995);   // let it come back down
+        }
+        const _phiRef = Math.max(1e-6, this._phiScaleRef);
+        const _phiNorm = Math.max(0, Math.min(1, phiRaw / _phiRef));
+        // A low collapse-guard remains so Ψ stays computable in true silence,
+        // set far enough down that it essentially never binds — its whole job
+        // is to catch p = 0, not to stand in for a measurement.
+        phiProxy = Math.max(0.01, _phiNorm);
+        phiState = (_phiNorm <= 0.01) ? 'floored' : 'live';
       } catch (err) {
         // ⛔ NOT a silent 1.0. The identity is used so Ψ stays computable,
         // but the failure NAMES itself instead of looking like a healthy
@@ -5022,6 +5101,13 @@ class ServerBrain {
     }
     this.phiRaw = phiRaw;
     this.phiState = phiState;
+    // PHISCALE.1 — ⛔ THE NORMALISER IS PUBLISHED. An adaptive reference that
+    // only exists inside this function would be a new hidden number deciding a
+    // headline quantity, which is the exact defect class this whole batch has
+    // been closing. Board reads raw → ref → normalised and can see for itself
+    // whether Φ̂ is varying or pinned.
+    this.phiScaleRef = (typeof this._phiScaleRef === 'number') ? this._phiScaleRef : null;
+    this.phiNorm = (phiState === 'live' || phiState === 'floored') ? phiProxy : null;
     const rawPsi = quantumVolume * (0.3 * id + 0.25 * ego + 0.2 * left + 0.25 * right) * phiProxy;
     // Log scale for usable range — consciousness measured in orders of magnitude.
     // Guard rawPsi finiteness: a NaN here would propagate to psiGain below and
@@ -7538,7 +7624,63 @@ class ServerBrain {
     }
   }
 
+  /**
+   * ⛔ PAIRDESYNC.2 — IS THE PAIR ON DISK COHERENT?
+   *
+   * The loader takes `brain-weights.json` and `brain-weights.bin` as a pair
+   * and never compared them. A save interrupted between the two writes
+   * therefore resumes SILENTLY with metadata ahead of synapses.
+   *
+   * That is not hypothetical. On 2026-08-26 a shutdown completed the small
+   * json at 09:12:24 and died 79% through the 5.72GB bin; atomic-write meant
+   * the partial was never renamed, so the live bin stayed at 08:33 while the
+   * json advanced to 09:12 — **her grade pointers and taught-word ledgers
+   * claiming 38 minutes of progress the weights did not hold.** The ONLY
+   * reason it was caught is that a human asked an unrelated question about
+   * leftover files.
+   *
+   * ⭐ The evidence was already on disk and free to check: the json carries
+   * its own `savedAt`, and the bin's mtime is one `statSync` away.
+   *
+   * ⚠ It WARNS, it does not refuse. Refusing to boot on a stale pair would
+   * hand a shell-less operator an unbootable brain over a condition that is
+   * usually survivable — the same one-way-door mistake as the Stop button.
+   * Naming it loudly, with the numbers and the fix, is the honest middle.
+   */
+  _checkWeightsPairCoherence() {
+    const out = { checked: false, coherent: null, gapSec: null, jsonSavedAt: null, binMtime: null };
+    try {
+      const binPath = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+      if (!fs.existsSync(WEIGHTS_FILE) || !fs.existsSync(binPath)) return out;
+      const raw = JSON.parse(fs.readFileSync(WEIGHTS_FILE, 'utf8'));
+      const savedAt = raw && raw.savedAt ? Date.parse(raw.savedAt) : NaN;
+      const binMs = fs.statSync(binPath).mtimeMs;
+      if (!Number.isFinite(savedAt) || !Number.isFinite(binMs)) return out;
+      out.checked = true;
+      out.jsonSavedAt = new Date(savedAt).toISOString();
+      out.binMtime = new Date(binMs).toISOString();
+      const gapSec = Math.round(Math.abs(savedAt - binMs) / 1000);
+      out.gapSec = gapSec;
+      // A coherent pair is written seconds apart. The observed good pairs sat
+      // at 43s / 103s / 268s; the broken one at 2311s. 600s is well clear of
+      // a slow-but-honest save and well under a real desync.
+      const TOL = Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) > 0
+        ? Number(process.env.DREAM_WEIGHTS_PAIR_TOL_SEC) : 600;
+      out.coherent = gapSec <= TOL;
+      if (!out.coherent) {
+        console.warn(`[Brain] ⛔ WEIGHTS PAIR INCOHERENT — brain-weights.json says savedAt ${out.jsonSavedAt} but brain-weights.bin was written ${out.binMtime}, a gap of ${gapSec}s (tolerance ${TOL}s). Her METADATA is ahead of her SYNAPSES: grade pointers and taught-word ledgers will claim progress the weights do not hold. Cause is almost always a save interrupted between the two writes — check for a leftover brain-weights.bin.tmp. FIX: copy the newest COHERENT checkpoint pair over the live one (brain-weights-vN.json + .bin, whose mtimes are seconds apart). Booting anyway.`);
+      } else {
+        console.log(`[Brain] weights pair coherent — json/bin ${gapSec}s apart.`);
+      }
+    } catch (err) {
+      console.warn(`[Brain] weights pair coherence check failed: ${err?.message || err}`);
+    }
+    return out;
+  }
+
   _loadWeights() {
+    // PAIRDESYNC.2 — before trusting the json, say whether it matches the bin.
+    try { this._weightsPair = this._checkWeightsPairCoherence(); } catch { /* never block the load */ }
     try {
       if (fs.existsSync(WEIGHTS_FILE)) {
         const data = JSON.parse(fs.readFileSync(WEIGHTS_FILE, 'utf8'));
@@ -8610,7 +8752,7 @@ const httpServer = http.createServer((req, res) => {
   // SAVERERUN — keep ALL trained weights, reset the grade pointers to the
   // very beginning, and re-walk the whole curriculum ON TOP of the existing
   // synapses. The re-walk re-teaches every cell with the CURRENT teach code
-  // (letter-token gating, glue-word production reinforcement, first-person
+  // (letter-word gating, glue-word production reinforcement, first-person
   // lead-ins, terminator outlet) so fixes that need teach-time Hebbian mass
   // land on the kept brain instead of requiring a from-zero rebuild. Oja
   // updates are self-normalizing — re-teaching on trained weights
@@ -9275,7 +9417,7 @@ const httpServer = http.createServer((req, res) => {
   // Exam-answer endpoint. Takes a single question string, runs it
   // through the brain's question → answer path (same pipeline a chat
   // iter23.5 — POST /learn-from-web { topic } fetches a Wikipedia
-  // summary for the topic, tokenizes alpha-only single-tokens, calls
+  // summary for the topic, splits it into alpha-only single words, calls
   // dictionary.learnWord on each new one, fires a Tier 1 episode with
   // the source URL. Unity's vocabulary grows from real-world content
   // without any text-AI in her cognition path. Body cap 4 KB —
@@ -9947,6 +10089,25 @@ wss.on('connection', (ws, req) => {
     // DEPLOY VERSION HANDSHAKE — donor tabs survive deploys running old code;
     // they compare this stamp across reconnects and reload on change.
     buildStamp: (global.__ualBuildStamp || (global.__ualBuildStamp = (() => { try { return String(Math.floor(fs.statSync(__filename).mtimeMs)); } catch { return String(process.pid); } })())),
+    // ── DONOR UPGRADE HANDSHAKE (2026-08-25, Gee: "when the pod disconnects
+    // after the update is pressed, it shall upgrade to the updated most
+    // updated doner version before reconnecting attempts").
+    //
+    // ⭐ WHY IT RIDES `welcome` RATHER THAN AN HTTP CHECK: the donor has no
+    // HTTP client — only a WebSocket — and adding one would fight the
+    // deliberate cross-compile simplicity in its Cargo.toml. It does not need
+    // one: it is ALREADY TALKING to the authority. The server knows which
+    // binary it wants, so it says so on every connect, the donor remembers it,
+    // and acts on it at the next disconnect. Zero new dependencies, zero API
+    // calls, and the number is authoritative rather than scraped.
+    //
+    // ⚠ DISTINCT FROM `minVersion`. `DREAM_MIN_DONOR_VERSION` is a HARD FLOOR —
+    // below it the connection is refused outright. This is the RECOMMENDED
+    // build: a donor above the floor but below this keeps working normally and
+    // upgrades at its next natural disconnect, so nobody is kicked mid-walk
+    // for being one release behind.
+    minDonorVersion: (process.env.DREAM_MIN_DONOR_VERSION || '0.3.26').trim(),
+    recommendedDonorVersion: (process.env.DREAM_RECOMMENDED_DONOR_VERSION || CURRENT_DONOR_VERSION).trim(),
     state: brain.getState(),
     emotionHistory: brain._emotionHistory.slice(-300),
   }));
@@ -10359,11 +10520,42 @@ wss.on('connection', (ws, req) => {
           // message instead of admitting a stale binary that speaks an out-of-date
           // protocol. Browser donors (compute.html) omit appVersion — they always
           // run the current bundle, so they're exempt. Floor is env-tunable
-          // (`DREAM_MIN_DONOR_VERSION`, default 0.3.7 = the parity-harness build);
-          // bump it whenever a donor-side protocol change ships.
+          // via `DREAM_MIN_DONOR_VERSION`.
+          //
+          // ── FLOOR BUMPED 0.3.7 → 0.3.26 (2026-08-25, DONORSHIP.1 audit).
+          //
+          // ⛔ The old default was 0.3.7 — twenty-two releases and SIX protocol
+          // additions behind the current build — while this very comment
+          // already said to bump it whenever a donor-side change ships. It
+          // never was.
+          //
+          // ⭐ WHY 0.3.26 AND NOT 0.3.29 — reasoned, not picked for looking new:
+          //
+          // Every capability since 0.3.11 is NEGOTIATED PER SOCKET and degrades
+          // to the CPU shadow, which runs IN FULL. So an old donor never
+          // corrupts anything — the maths is identical. What it does instead is
+          // hand the teach math back to the HOST, silently, and at 425M neurons
+          // that is precisely the failure that produced the ~57s/word freeze and
+          // the donor-drop war. An old donor does not break her; it starves the
+          // box, and it does so quietly because the fallback is CORRECT.
+          //
+          // 0.3.26 is where masked bound plasticity (SPRS 13) landed — the point
+          // at which "ALL training on the donor" became true. Below it the host
+          // absorbs teach passes the entire GPU-teaching architecture exists to
+          // offload.
+          //
+          // 0.3.28 (reduced bucket readout) and 0.3.29 add EMISSION-path speed,
+          // not teach offload. Requiring them would refuse otherwise-useful
+          // cards for a smaller gain — and community compute is DONATED, so a
+          // floor that turns away working hardware has its own real cost.
+          //
+          // ⚠ THE RULE FOR NEXT TIME, stated explicitly because "bump it
+          // whenever a protocol change ships" was too vague to actually happen:
+          // raise this to the version where a lane THE WALK DEPENDS ON moved
+          // onto the donor — not merely to whatever is newest.
           const _donorVer = (msg.appVersion || '').toString().trim();
           if (_donorVer) {
-            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || '0.3.7').trim();
+            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || '0.3.26').trim();
             const _cmp = (a, b) => {
               const pa = a.split('.').map(n => parseInt(n, 10) || 0);
               const pb = b.split('.').map(n => parseInt(n, 10) || 0);
@@ -10400,6 +10592,16 @@ wss.on('connection', (ws, req) => {
           // perceive/describe/stylizeField/traceLineArt first (de-novo
           // imagineFromState lands with its glyph-plane port); no list = all.
           ws._mindspaceV1 = msg.mindspaceV1 === true;
+          // BOUNDCAP.1 — does this donor read its RESIDENT bound buffer when a
+          // propagate arrives with an empty pre? Browser donors do (that is
+          // what `preLen === 0` means to compute.html); the native binary's
+          // propagate is standalone-only and needs the pre indices shipped.
+          // ⛔ Advertised, not inferred: the routing used to test whether
+          // `donorAppVersion` was truthy, and it is ALWAYS truthy — a browser
+          // donor is stamped with the string 'browser' — so the browser branch
+          // was dead code and browser donors were served the native protocol.
+          // A capability question gets a capability flag.
+          ws._boundResidentRead = msg.boundResidentRead === true;
           ws._mindspaceOps = Array.isArray(msg.mindspaceOps) ? new Set(msg.mindspaceOps) : null;
           // PA.4.3 multi-donor pool. Track every registered donor GPU. The
           // brain's weights live in the PRIMARY donor's VRAM and ALL dispatch
@@ -10410,6 +10612,64 @@ wss.on('connection', (ws, req) => {
           // so weak "STD" GPUs each hold a slice) is the next layer — this is
           // the non-breaking foundation it builds on.
           if (!brain._gpuClients) brain._gpuClients = new Set();
+
+          // ── PODARGS.3 — REAP THE CORPSE BEFORE DOING ANY WORK FOR THE NEW SOCKET.
+          //
+          // ⛔ MEASURED SYMPTOM: every donor start after a pod restart burned a
+          // FULL connect + 7-cluster init, died to `Connection reset without
+          // closing handshake` ~5s in, reconnected, and did all seven inits
+          // AGAIN. Timings off the live pod 2026-08-25: register 13:25:43 → 7
+          // inits → reset 13:25:48 → re-register 13:26:08 → inits again
+          // 13:26:20 → langCortex 13:26:46. ~60s of startup and seven wasted
+          // `gpu_init` dispatches at biological scale, on EVERY start.
+          //
+          // ⭐ THE CAUSE IS ALREADY DESCRIBED IN THIS FILE, in the heartbeat
+          // comment further down: a half-open socket cannot be detected by
+          // `readyState` or the close event, so a dead donor "keeps its slot and
+          // a fresh donor joins as an idle replica BEHIND A CORPSE" until a ping
+          // sweep reaps it — and that reap is the mid-init teardown. The reaper
+          // was working as designed. The defect is that the new donor was made
+          // to run a full init as a REPLICA first, against a primary that no
+          // longer exists.
+          //
+          // ⭐ THE DISCRIMINATOR IS `donorId`, and it is EXACT rather than
+          // heuristic: a donor process sends `gpu_register` EXACTLY ONCE PER
+          // CONNECTION. So a register arriving for a donorId that already holds
+          // a socket means that socket will never register again — it is the
+          // previous process's corpse. Reap it here, before a single init frame
+          // is dispatched, and the new donor comes up ONCE as PRIMARY instead of
+          // twice behind a dead one.
+          //
+          // ⚠ The one shape this would be wrong for is two live donor processes
+          // sharing an install (same data dir ⟹ same persistent id), which
+          // already collides on the leaderboard row and is not a supported
+          // layout — the launcher runs ONE process with `--gpus all` as one
+          // compute unit. `DREAM_NO_DONOR_ID_EVICT=1` opts out.
+          //
+          // ⚠ `terminate()`, not `close()`: a corpse cannot complete a closing
+          // handshake, which is exactly why the heartbeat sweep uses terminate
+          // too. It fires `ws.on('close')`, so the existing failover /
+          // standby-promotion path runs unchanged.
+          const _incomingDonorId = (msg.donorId && String(msg.donorId).slice(0, 64)) || null;
+          if (_incomingDonorId && process.env.DREAM_NO_DONOR_ID_EVICT !== '1') {
+            for (const _old of brain._gpuClients) {
+              if (_old === ws) continue;
+              const _oc = brain.clients && brain.clients.get ? brain.clients.get(_old) : null;
+              if (!_oc || _oc.donorId !== _incomingDonorId) continue;
+              const _ageMs = Date.now() - (_oc.lastSeen || 0);
+              console.warn(
+                `[Server] donor RE-REGISTER for donorId=${_incomingDonorId} — reaping the previous socket ${_oc.id} `
+                + `(last seen ${(_ageMs / 1000).toFixed(1)}s ago, was${brain._gpuClient === _old ? '' : ' NOT'} PRIMARY) `
+                + `BEFORE any init dispatch. A donor registers once per connection, so that socket is the old process's `
+                + `corpse; reaping it here is what stops the new donor initialising behind a dead primary and being torn `
+                + `down mid-init.`
+              );
+              brain._gpuClients.delete(_old);
+              if (brain._gpuClient === _old) brain._gpuClient = null;
+              try { _old.terminate(); } catch { /* already gone */ }
+            }
+          }
+
           brain._gpuClients.add(ws);
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
@@ -11305,8 +11565,32 @@ try {
 // thread for 45s and the TOP SELF-TIME functions print to the ring — the
 // thief gets named by file:line, not inferred from block cadence. One-shot
 // per boot; ~1ms sampling overhead for 45s; DREAM_CPU_PROFILE=0 disables.
+// ⛔ PROFREARM.1 (2026-08-25) — IT RAN ONCE, AND ONCE IS THE WRONG NUMBER.
+//
+// The comment above claims +150s is "boot settled, the walk in its steady
+// rhythm". **That premise is false**, and a live read proved it: at +150s the
+// canonical sparse upload is frequently still running and the definition
+// bootstrap is in its FIRST-normalisation era. A single sample there is not a
+// picture of the walk — it is a picture of the walk's least representative
+// three minutes.
+//
+// ⭐ The concrete cost of that: `NORMROWS.2`'s deadband skips rows already AT
+// target norm, which by construction cannot fire while every row is being
+// normalised for the very first time. The harness measured the real effect
+// (pass 1 rewrote 4000 rows, pass 2 rewrote **0**) — and the one-shot profile
+// is **structurally blind to it**, because the benefit is a steady-state
+// property and the instrument never samples steady state.
+//
+// So it re-arms. First run stays at +150s (the early picture is still worth
+// having, and it is what caught the SCALEWALK thieves), then every
+// `DREAM_CPU_PROFILE_EVERY_MS` — default 30 min. The LATEST lands in
+// `_cpuProfile`; the FIRST is kept separately as `_cpuProfileFirst`, because
+// comparing early-vs-steady is exactly the question a one-shot could not
+// answer. Cost is ~1ms sampling overhead for 45s per interval.
+// `DREAM_CPU_PROFILE=0` still disables entirely; `DREAM_CPU_PROFILE_EVERY_MS=0`
+// keeps the original one-shot behaviour.
 if (process.env.DREAM_CPU_PROFILE !== '0') {
-  setTimeout(() => {
+  const _profileOnce = () => {
     try {
       const inspector = require('inspector');
       const session = new inspector.Session();
@@ -11337,6 +11621,37 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
                 for (const [k, us] of top) {
                   console.log(`[CPUProfile]   ${(us / 1000).toFixed(0).padStart(6)}ms (${(us / total * 100).toFixed(1).padStart(4)}%) ${k}`);
                 }
+                // ⛔ ONESHOT.1 (2026-08-25) — A ONE-SHOT DIAGNOSTIC CANNOT LIVE
+                // IN A CONSOLE LINE, and this profile proved it by being
+                // unreadable the very first time it was needed.
+                //
+                // The console ring is capped at 500 lines. Once the SCALEWALK
+                // fixes landed, definitions went from ~5-7s each to ~128ms, so
+                // the walk began logging ~55 lines/second — and a 500-line ring
+                // became a **NINE SECOND** window. The profile printed and was
+                // gone before it could be read, which is exactly how `UPLINK.1`
+                // was missed on the press before this one.
+                //
+                // ⭐ The irony is the lesson: the log got unreadable BECAUSE the
+                // fix worked. Any measurement that happens once must be a STATE
+                // FIELD, not a line — a line is a thing you had to be watching
+                // for, and this board is supposed to answer questions late.
+                try {
+                  brain._cpuProfile = {
+                    at: Date.now(),
+                    sampledMs: Math.round(total / 1000),
+                    top: top.map(([k, us]) => ({
+                      fn: k,
+                      ms: Math.round(us / 1000),
+                      pct: +(us / total * 100).toFixed(1),
+                    })),
+                  };
+                  // PROFREARM.1 — keep the FIRST sample forever alongside the
+                  // latest. Early-vs-steady is the comparison a one-shot could
+                  // never make, and it is exactly the question that matters for
+                  // any fix whose benefit accrues over time.
+                  if (!brain._cpuProfileFirst) brain._cpuProfileFirst = brain._cpuProfile;
+                } catch { /* telemetry must never break the profiler's exit path */ }
               } catch (e2) { console.warn('[CPUProfile] summarize failed:', e2 && e2.message); }
               try { session.disconnect(); } catch { /* done */ }
             });
@@ -11344,6 +11659,21 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
         });
       });
     } catch (e) { console.warn('[CPUProfile] unavailable:', e && e.message); }
+  };
+  // First sample at +150s — the early picture, which is what named the
+  // SCALEWALK thieves. Then repeat, so steady state is observable at all.
+  setTimeout(() => {
+    _profileOnce();
+    const _everyRaw = process.env.DREAM_CPU_PROFILE_EVERY_MS;
+    const _every = _everyRaw === undefined ? 1_800_000 : Number(_everyRaw);
+    // `0` (or a non-positive / unparseable value) keeps the original one-shot
+    // behaviour rather than silently picking a default — an interval nobody
+    // asked for is a cost nobody priced.
+    if (Number.isFinite(_every) && _every > 0) {
+      const _t = setInterval(_profileOnce, Math.max(60_000, _every));
+      // Never hold the process open for a diagnostic.
+      if (typeof _t.unref === 'function') _t.unref();
+    }
   }, 150_000);
 }
 

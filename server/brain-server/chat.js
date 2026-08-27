@@ -379,6 +379,38 @@ const SERVER_CHAT_MIXIN = {
             while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
           }
         } catch { /* learning-loop push non-fatal */ }
+        // ⛔ LOOKQUEUE.1 (2026-08-26) — CLAIM THE IMAGE PIPE FOR THE HUMAN.
+        //
+        // The client builds this image URL itself (PROMPT ONLY, by design) and
+        // fetches Pollinations from the SAME PUBLIC IP as this server — so the
+        // background reference-look lane and the operator's own image request
+        // are competing for one anonymous quota, and the background errand was
+        // winning. Operator: *"it doesnt error out image gen in chat and will
+        // eventually generate the image"*.
+        //
+        // Stamping the window HERE is what makes that possible: this is the
+        // exact instant the intent becomes real, and it is server-side, so the
+        // look lane can see it even though the fetch itself happens in the
+        // browser. ⚠ A TIME window rather than a lock, deliberately — the
+        // client's fetch is out of this process's sight, so there is nothing to
+        // release; a lock with no releaser is a lane that never reopens.
+        this._imageLanePriorityUntil = Date.now()
+          + (Number(process.env.DREAM_CHAT_IMAGE_PRIORITY_MS) || 45000);
+        // ⛔ CHATPREEMPT.1 — the stamp alone was not enough, and this is why
+        // "(image generation failed)" survived the priority window.
+        //
+        // The stamp stops the NEXT look. A reference fetch already running
+        // holds the single anonymous slot for up to 60s, and the browser fires
+        // its image request the moment this returns — so the two collided on
+        // one anonymous quota and one of them got a 429. Aborting the in-flight
+        // look here frees the pipe in milliseconds.
+        //
+        // ⚠ Best-effort by construction: it is a no-op when nothing is in
+        // flight (the common case), and a failure to preempt must never turn a
+        // chat turn into an error — the worst case is the old behaviour.
+        try {
+          if (typeof this._vmPreemptLookForChat === 'function') this._vmPreemptLookForChat();
+        } catch { /* never let lane management break a reply */ }
         return { text: imgPrompt, action: 'generate_image' };
       }
     }
@@ -391,11 +423,11 @@ const SERVER_CHAT_MIXIN = {
     // relationTagId=30 carves a dedicated chat-time channel so
     // conversation-driven writes can be distinguished from curriculum
     // writes for telemetry + dream-cycle scoring.
-    // Past-notes rule: pair tokens MUST be already-vocab-trained —
-    // we filter to /^[a-z']+$/ K-grade-style tokens AND verify each
+    // Past-notes rule: pair words MUST be already-vocab-trained —
+    // we filter to /^[a-z']+$/ K-grade-style words AND verify each
     // appears in the dictionary _words map before binding. Unknown
-    // tokens (typos, rare vocabulary) are skipped so chat input never
-    // lands Hebbian writes on phantom-token noise basins.
+    // words (typos, rare vocabulary) are skipped so chat input never
+    // lands Hebbian writes on phantom-word noise basins.
     try {
       this._chatStamp('pair-enqueue');
       if (this.cortexCluster
@@ -403,12 +435,12 @@ const SERVER_CHAT_MIXIN = {
           && typeof this.curriculum._teachAssociationPairs === 'function'
           && typeof text === 'string'
           && text.length > 0) {
-        const tokens = text.toLowerCase()
+        const words = text.toLowerCase()
           .replace(/[.!?,;:'"()]/g, ' ')
           .split(/\s+/)
           .filter(t => /^[a-z]+$/.test(t) && t.length >= 1 && t.length <= 20);
         const dictWords = this.cortexCluster.dictionary?._words;
-        const filtered = tokens.filter(t => !dictWords || dictWords.has(t));
+        const filtered = words.filter(t => !dictWords || dictWords.has(t));
         if (filtered.length >= 2) {
           const pairs = [];
           for (let i = 0; i < filtered.length - 1; i++) {
@@ -755,7 +787,26 @@ const SERVER_CHAT_MIXIN = {
         this._chatPriorityUntil = 0;   // CHAT.3 — close the priority window on failure too
         console.error('[Brain] languageCortex.generate threw:', err.message);
         console.error(err.stack);
-        return { text: '', action: 'respond_text' };
+        // ⛔ LOOPCHAT.2 (2026-08-26) — THIS RETURNED BARE EMPTY TEXT, AND THE
+        // TRANSPORT DROPS THAT ON THE FLOOR.
+        //
+        // `brain-server.js` sends the reply `if (result.text)`, with an
+        // `else if (result.silent)` that forwards a reason to the client. A
+        // THROW here satisfied neither branch, so the user got **total dead
+        // air** — no bubble, no note, no error — and the only trace was this
+        // console line, which at walk speed scrolls out of the ring in minutes.
+        //
+        // ⛔ Three distinct outcomes existed and only two were distinguishable
+        // from the chat window: she answered, she chose silence and said why,
+        // or **her reply lane crashed and looked exactly like nothing
+        // happened.** A crash must never be quieter than a deliberate silence.
+        return {
+          text: '',
+          action: 'respond_text',
+          silent: true,
+          silentReason: 'reply_error',
+          silentDetail: `Her reply pass threw before composing: ${err && err.message ? err.message : String(err)}. This is a FAULT, not her choosing not to speak — the message reached her and the lane broke. Server log has the stack.`,
+        };
       }
       this._chatPriorityUntil = 0;   // CHAT.3 — reply composed; teach lane reopens immediately
     }
@@ -850,7 +901,7 @@ const SERVER_CHAT_MIXIN = {
 
     // Curiosity FOLLOW-UP — if Unity ASKED a question last tick
     // (_pendingQuestionConcept set by _maybeAskCuriousQuestion), this user
-    // message is the ANSWER. Bind the answer tokens to the gap concept so she
+    // message is the ANSWER. Bind the answer words to the gap concept so she
     // LEARNS it (Hebbian, definition channel) + store the Q→A as an episode,
     // then clear the pending flag. Closes the ask → answer → incorporate loop
     // so she follows up on what she asked, like a real curious entity.
@@ -859,10 +910,10 @@ const SERVER_CHAT_MIXIN = {
       this._pendingQuestionConcept = null;
       try {
         const curric = this.cortexCluster && this.cortexCluster._curriculum;
-        const answerTokens = text.toLowerCase().split(/\s+/)
+        const answerWords = text.toLowerCase().split(/\s+/)
           .filter(w => /^[a-z]{2,}$/.test(w)).slice(0, 8);
-        if (curric && typeof curric._teachAssociationPairs === 'function' && answerTokens.length > 0) {
-          const pairs = answerTokens.map(t => [concept, t]);
+        if (curric && typeof curric._teachAssociationPairs === 'function' && answerWords.length > 0) {
+          const pairs = answerWords.map(t => [concept, t]);
           // ONE TEACHER AT A TIME, HERE TOO (2026-08-20). This awaited
           // _teachAssociationPairs INLINE — 8 pairs x 12 reps on the
           // definition channel, on the reply path, on the same cluster and
@@ -902,7 +953,7 @@ const SERVER_CHAT_MIXIN = {
         // cleared. One question, no curiosity.
         //
         // Now the answer's own content picks the next question, which is what makes it
-        // a FOLLOW-UP rather than a second unrelated question: a content token from
+        // a FOLLOW-UP rather than a second unrelated question: a content word from
         // what YOU said becomes the concept she asks about next, and it is armed as the
         // pending question so the same answer→bind→follow-up machinery runs again.
         //
@@ -918,7 +969,7 @@ const SERVER_CHAT_MIXIN = {
           while (this._inquireChain.length > 8) this._inquireChain.shift();
           if (this._inquireDepth < MAXD) {
             // A content word from the ANSWER she has not already chased this chain.
-            const next = answerTokens.find(t => t !== concept && !this._inquireChain.includes(t) && t.length > 2);
+            const next = answerWords.find(t => t !== concept && !this._inquireChain.includes(t) && t.length > 2);
             if (next) {
               this._pendingQuestionConcept = next;
               this._inquireFollowUpOf = concept;
@@ -1374,8 +1425,8 @@ const SERVER_CHAT_MIXIN = {
       // mind, she GENERATES it: auto-emit an image of the concrete concept so it
       // renders client-side, her eyes (visual-feeder) harvest it, perceive binds
       // it to the concept — and the NEXT time she thinks it, recall shows the
-      // real thing. This turns "talk to her about an apple → she imagines an
-      // apple" into truth (after the first generate). Gated hard so it's
+      // real thing. This turns "talk to her about a thing → she imagines that
+      // thing" into truth (after the first generate). Gated hard so it's
       // curiosity, not spam: concrete-noun head only, not already seen, cooldown,
       // low probability, never mid-teach-perturbing (broadcast only).
       // DRAW-ENGINE (Gee 2026-07-15) — NON-BLOCKING GROUND + DRAW. Grounding a
@@ -1425,18 +1476,54 @@ const SERVER_CHAT_MIXIN = {
         // DRAWS the very thing she looked up (`canvas:draw:` frame) — 1:1, the
         // reference then her own traced version. Its per-concept cooldown / gap /
         // in-flight guards keep it to ~one real look-up + draw per 15s.
-        if (typeof this._lookUpAndDraw === 'function') {
-          this._lookUpAndDraw(_seedText).catch(() => { /* background look-up + draw best-effort */ });
-        }
-        // DRAW NOW from what she has ALREADY grounded (recall / provisional) — never
-        // a fetch (allowFetch:false), so the tick stays microsecond-fast and the
-        // viewer cycles every ~6-8s instead of stalling on the network round-trip.
-        // Only for a DRAWABLE concept — an OBJECT/noun (abstract thought-words trace
-        // to garbage scatter → skip to the favorite below). Dynamic POS gate.
-        if (typeof this._conceptIsDrawable !== 'function' || await this._conceptIsDrawable(_seedText)) {
+        // ⛔ EYEPIN.1/.2 (2026-08-25) — THIS BLOCK USED `_seedText` DIRECTLY FOR
+        // BOTH THE LOOK-UP AND THE DRAW, AND `_seedText` IS THE TAIL OF
+        // `_innerThoughtChain`. A chain that stops advancing therefore pinned
+        // the whole lane to ONE WORD forever.
+        //
+        // Measured on the live box: 8 of 8 sampled frames were `church`, in
+        // three different styles, while `emitDiagnostic` read `no-best-word`
+        // with `sampleCount 0` at an age of 1.07s — i.e. emission was failing
+        // on every tick, so no new thought ever reached the chain.
+        //
+        // ⭐ Every anti-repetition mechanism already here sits DOWNSTREAM of
+        // that seed: the 70/30 recombination above rotates an older thought
+        // into the FIELD, and the style picker zero-weights the last style —
+        // neither can change the SUBJECT. That is why the lane looked healthy
+        // (383/383 drawn, every error counter 0) while repeating itself: it
+        // was faithfully redrawing a stalled thought.
+        //
+        // ⛔ And it starved her acquisition at the same time: handing the same
+        // word to `_lookUpAndDraw` every tick meant it hit its own 6h
+        // per-concept cooldown forever — `attempts: 1` for an entire boot
+        // against `alreadyKnown: 368`. She learned no new sights because she
+        // only ever asked about one.
+        //
+        // ⭐ Fixed at the CHOKEPOINT rather than here: `_pickEyeSubject()` is
+        // the single owner of "what is she looking at", and it returns the
+        // acquisition decision with it. ⚠ This is a ROTATION POLICY, not a
+        // fallback — there is one subject chooser, always consulted, and no
+        // degraded second path. Her thought still wins whenever it is moving.
+        const _pick = await this._pickEyeSubject(_seedText);
+        if (_pick && _pick.word) {
+          // The look-up rides the CHOSEN subject. When the pick is an
+          // acquisition (`_pick.lookup`), this is a concept she has never
+          // seen, so the fetch is real work rather than a cooldown no-op.
+          if (_pick.lookup && typeof this._lookUpAndDraw === 'function') {
+            this._lookUpAndDraw(_pick.word).catch(() => { /* background look-up + draw best-effort */ });
+          }
+          // DRAW NOW from what she has ALREADY grounded (recall / provisional) —
+          // never a fetch (allowFetch:false), so the tick stays microsecond-fast
+          // and the viewer cycles every ~6-8s instead of stalling on the network.
+          // ⚠ Drawability was already checked inside the picker; re-testing here
+          // would be a second async taxonomy hop per tick for no new information.
           try {
-            const drawn = await this._drawConcept(_seedText, { allowFetch: false });
-            if (drawn && drawn.rec) { rec = drawn.rec; _seedSource = drawn.source || drawn.label; }
+            const drawn = await this._drawConcept(_pick.word, { allowFetch: false });
+            if (drawn && drawn.rec) {
+              rec = drawn.rec;
+              _seedSource = drawn.source || drawn.label;
+              this._eyeNoteDrawn(_pick);
+            }
           } catch { /* draw best-effort */ }
         }
         // FAVORITE fallback (Gee 2026-07-15) — the current thought couldn't ground
@@ -1451,8 +1538,68 @@ const SERVER_CHAT_MIXIN = {
             // words banked as lookup frames), and drawing one traces to garbage.
             // A few random tries, each gated; none pass → no favorite this tick.
             const _favKeys = Array.from(this._visualMemory.keys());
+            // ── VMUSE.5 — THE RELATION IS FINALLY CONSUMED ───────────────────
+            // Gee: "art concepts are stored with text concepts the brain
+            // consciousness interjects". Both halves are true in the code: art
+            // percepts bind through the SAME channels as text (ARTWEIGHT writes
+            // tag 35 / 13 when she draws, VMRELATE the same when she sees), into
+            // the same sem region — so a concept she has SEEN and a concept she
+            // has READ live in one space and one relation read covers both.
+            //
+            // ⛔ Until now nothing consumed the reader. The draw plan set
+            // `s.relationTag` and NOTHING IN THE TREE EVER READ IT — the same
+            // write-only-counter shape as `_relTagWrites`, one level up.
+            //
+            // What it does here: when she reaches into memory for something to
+            // interject about, prefer a concept whose relation she actually
+            // KNOWS. A confident band means she has learned what KIND of thing
+            // it is, not merely that it exists — so it is the better thing to
+            // surface and think about.
+            //
+            // ⚠ This is a PREFERENCE over candidates she was already willing to
+            // pick, never a filter: nothing is excluded, and if no candidate has
+            // a confident relation the loop below behaves exactly as before.
+            // ⚠ And it does NOT touch what she DRAWS — subjects are still never
+            // added, removed or reordered on the strength of a band, which was
+            // the standing constraint. It changes what she REACHES FOR.
+            // ⚠ Costs nothing today and nothing later: `_confidentRelationFor`
+            // is cached per word and returns null while the bands are still
+            // separating (currently ~3% of the gate), so this is inert until
+            // she has genuinely learned the relations — which is the correct
+            // behaviour, not a disabled feature.
+            // ⛔ PER-TICK, not the cumulative counter. Keying the first-try bias
+            // off `_eyeRelationPicks` would make it true forever after the first
+            // success, so every later tick would take _favKeys[0] whether or not
+            // this tick actually reordered anything — pinning the eye to one
+            // concept. That is EYEPIN exactly, and it is already in the ledger.
+            let _relOrdered = false;
+            try {
+              const _cur = this.curriculum;
+              if (_cur && typeof _cur._confidentRelationFor === 'function' && _favKeys.length > 1) {
+                const _known = [];
+                // Bounded scan — this runs on the mind's-eye tick, so it samples
+                // rather than walking a store that can hold tens of thousands.
+                const _scan = Math.min(_favKeys.length, 24);
+                for (let _i = 0; _i < _scan; _i++) {
+                  const _k = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+                  if (_cur._confidentRelationFor(_k)) _known.push(_k);
+                }
+                if (_known.length) {
+                  // Put the relation-known ones first; the rest still follow, so
+                  // the candidate pool is reordered and never shrunk.
+                  const _knownSet = new Set(_known);
+                  _favKeys.sort((a, b) => (_knownSet.has(b) ? 1 : 0) - (_knownSet.has(a) ? 1 : 0));
+                  _relOrdered = true;
+                  this._eyeRelationPicks = (this._eyeRelationPicks || 0) + 1;
+                }
+              }
+            } catch { /* non-fatal — a relation read must never break the eye */ }
             for (let _ft = 0; _ft < 4 && !rec; _ft++) {
-              const _fav = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+              // Bias the first try toward the front of the (possibly relation-
+              // ordered) list; later tries stay random so rotation is preserved.
+              const _fav = (_ft === 0 && _relOrdered)
+                ? _favKeys[0]
+                : _favKeys[Math.floor(Math.random() * _favKeys.length)];
               if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(_fav))) continue;
               const drawnFav = await this._drawConcept(_fav, { allowFetch: false });
               if (drawnFav && drawnFav.rec) { rec = drawnFav.rec; _seedSource = 'draw:fav:' + _fav; }
@@ -1471,7 +1618,7 @@ const SERVER_CHAT_MIXIN = {
         // structurally NON-representational: no word→appearance mapping exists
         // in that path, so it can never converge to a picture on its own.
         // Anchor it instead: find the stored SEEN percept whose concept is
-        // nearest (GloVe cosine) to the thought's content tokens and morph the
+        // nearest (GloVe cosine) to the thought's content words and morph the
         // memory toward the mood field (memory-dominant). Abstract thoughts
         // inherit real visual structure from what her eyes have grounded, and
         // the impressions get BETTER as her seen-store grows.
@@ -1634,7 +1781,7 @@ const SERVER_CHAT_MIXIN = {
   // real sketchbook. `_drawSkill` tracks the per-concept resemblance ceiling.
   async _rememberDrawing(concept, drawnRec) {
     if (!drawnRec || typeof this._vmStore !== 'function') return;
-    const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
+    const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
     if (!key) return;
     const store = this._vmStore();
     const e = store.get(key);
@@ -1675,12 +1822,260 @@ const SERVER_CHAT_MIXIN = {
   // assigned to a word; the FORM comes from an image she actually looked at. If
   // she can ground nothing (never seen it, no reference), she draws NOTHING for it
   // yet — honest, like she stays silent on words she can't say — never a fake shape.
+  /**
+   * EYEPIN.1/.2 — THE SINGLE OWNER OF "WHAT IS SHE LOOKING AT".
+   *
+   * Returns `{ word, lookup, why }` or null. `lookup` is the acquisition
+   * decision travelling WITH the subject, because the two questions were
+   * previously answered in different places against different words, which is
+   * how the look-up lane ended up permanently pointed at a cooldown.
+   *
+   * Priority, in order, and the reason each rank exists:
+   *
+   *   1. ACQUISITION — a word she has been TAUGHT but has never SEEN. This is
+   *      the rank that makes look-ups real work instead of cooldown no-ops. It
+   *      is FIRST, and gated, rather than last and unreachable: it fires when
+   *      her thought is pinned, and every `_EYE_ACQUIRE_EVERY`th pick even when
+   *      she is perfectly healthy, so she keeps learning new sights during a
+   *      normal walk instead of only when something has already gone wrong.
+   *   2. HER THOUGHT, while it is actually moving. She should draw what she is
+   *      thinking about — that is the point of the lane. It only loses priority
+   *      once it demonstrably stops advancing.
+   *   3. RECALL — something she HAS grounded and has not drawn recently.
+   *
+   * ⚠ The rank ORDER is load-bearing and was wrong on the first cut: with
+   * acquisition below the thought rank, an early `return` meant 12 consecutive
+   * healthy ticks produced ZERO acquisitions while this comment claimed
+   * otherwise. Harness `A healthy thought` exists to hold that line.
+   *
+   * ⚠ NOT a fallback chain in the banned sense: there is one chooser, always
+   * consulted, and every rank produces the same kind of answer at full
+   * capability. Nothing here degrades behaviour when a rank is unavailable —
+   * it simply is not the best available subject this tick.
+   *
+   * ⛔ The recent-subject ring is what actually kills the repeat. Ranks alone
+   * would not: a pinned thought would still win rank 1 forever. The ring is
+   * checked at EVERY rank, so no path can return a subject she just drew.
+   */
+  async _pickEyeSubject(seedText) {
+    // How many consecutive ticks the same thought must persist before it stops
+    // being treated as "what she is thinking about" and starts being treated as
+    // a stuck pointer. 2 is deliberate: one repeat is normal dwell, and the
+    // observed failure held ONE word across an entire boot, so the bar does not
+    // need to be high to separate the two cases.
+    const _EYE_PIN_TICKS = 2;
+    // One acquisition every N picks even when nothing is wrong.
+    const _EYE_ACQUIRE_EVERY = 4;
+    // How many of her most recent subjects are barred from being re-picked.
+    // ⚠ ONE OWNER: the ring's cap IS the window, so the picker and the recorder
+    // cannot disagree. Sized against her small early concept store (21 grounded
+    // on the box that exposed this) so the bar can never exclude everything she
+    // knows and leave her with no subject at all.
+    if (typeof this._eyeRecentMax !== 'number') this._eyeRecentMax = 5;
+
+    const _word = (typeof seedText === 'string') ? seedText.trim().toLowerCase() : '';
+    if (!Array.isArray(this._eyeRecent)) this._eyeRecent = [];
+    if (!this._eyeStats) {
+      this._eyeStats = {
+        picks: 0, fromThought: 0, fromAcquisition: 0, fromRecall: 0, none: 0,
+        pinTicks: 0, maxPinTicks: 0, rotations: 0,
+        lastSubject: null, lastWhy: null, lastAt: 0,
+      };
+    }
+    const st = this._eyeStats;
+    st.picks++;
+
+    // ── PIN DETECTION. Counts CONSECUTIVE ticks on one thought. ⚠ Tracked even
+    // when the thought is empty: "she is thinking nothing, repeatedly" is the
+    // same stuck-pointer condition and must not read as healthy variety.
+    // ⚠ The comparison uses a SENTINEL for the empty thought rather than the
+    // empty string, because `'' && ...` is falsy and would have reset the
+    // counter every tick — reading "she keeps changing her mind" when the truth
+    // is "she is thinking nothing, over and over". That is the same stuck
+    // pointer and must not render as healthy variety.
+    //
+    // ⛔ The sentinel is a READABLE, GREPPABLE literal, and it is spelled out
+    // for a reason: the first version of this line shipped a raw NUL byte
+    // (`'\0empty'`). It worked — no real word collides with it — but a NUL in
+    // source makes the whole file read as BINARY to `grep`, which then stops
+    // reporting matches in it *silently*. A search that comes back clean
+    // because the tool gave up is worse than one that errors. No control
+    // characters in sentinels.
+    const _seedKey = _word || '__eye_no_thought__';
+    if (_seedKey === this._eyeLastSeed) st.pinTicks++;
+    else st.pinTicks = 0;
+    this._eyeLastSeed = _seedKey;
+    if (st.pinTicks > st.maxPinTicks) st.maxPinTicks = st.pinTicks;
+
+    const _recent = (w) => this._eyeRecent.indexOf(w) !== -1;
+    // ⚠ Judged on the HEAD of the phrase. The taxonomy answers about a LEMMA,
+    // and a modifier+subject phrase is not one — asking about the whole phrase returns
+    // unknown and would refuse every multi-word subject, re-creating the
+    // one-word-only limit by the back door. A modified subject is drawable because
+    // APPLE is.
+    const _drawable = async (w) => {
+      if (typeof this._conceptIsDrawable !== 'function') return true;
+      let probe = w;
+      if (/\s/.test(String(w || '')) && typeof this._vmHeadWord === 'function') {
+        try { probe = this._vmHeadWord(w) || w; } catch { probe = w; }
+      }
+      try { return await this._conceptIsDrawable(probe); } catch { return false; }
+    };
+
+    // ── RANK 1 — ACQUISITION: taught but never seen.
+    //
+    // ⛔ THIS RANK IS FIRST, AND THE HARNESS IS WHY. It began below the thought
+    // rank, which returns early — so across 12 ticks of a HEALTHY moving
+    // thought it fired ZERO times, because the periodic check was never
+    // reached. The comment above already promised acquisition "even when her
+    // thought is healthy" while the code could only ever acquire once
+    // something was wrong. **Ordering silently made the guarantee unreachable.**
+    //
+    // It runs when EITHER condition holds:
+    //   • the thought is pinned — she has nothing new to look at, so go learn
+    //     something rather than redraw a stalled pointer; or
+    //   • every `_EYE_ACQUIRE_EVERY`th pick regardless of health — so she works
+    //     THROUGH the vocabulary she has been taught during a normal walk,
+    //     instead of only ever seeing whatever words her thought happened to
+    //     land on. That difference is what "actual do lookups" means here.
+    const _wantAcquire = (st.pinTicks >= _EYE_PIN_TICKS) || (st.picks % _EYE_ACQUIRE_EVERY === 0);
+    if (_wantAcquire) {
+      const unseen = await this._pickUnseenTaughtWord(_recent, _drawable);
+      if (unseen) {
+        st.fromAcquisition++;
+        return { word: unseen, lookup: true, why: 'acquire' };
+      }
+    }
+
+    // ── RANK 2 — HER THOUGHT, if it is moving and she has not just drawn it.
+    // ⚠ `lookup: true` — a thought word she has never seen is itself worth
+    // looking up; the per-concept cooldown makes a repeat cheap.
+    // A subject is a single word: whitespace or sentence punctuation means
+    // the seed is a phrase, and a phrase is not a thing she can look at.
+    // A SUBJECT PHRASE, not a single word. ⛔ The first cut of this guard
+    // required one word, which stopped the leaked generator prompt but also
+    // made every modifier+subject phrase impossible — a subject that can
+    // never be more than one word is not a real subject.
+    //
+    // The real distinction is PHRASE vs PROMPT. A subject is short and natural:
+    // a few words, no commas, no clause punctuation. A generation prompt is
+    // comma-separated and style-laden, which is exactly what leaked in
+    // (a comma-separated string of a subject followed by unrelated nouns and
+    // a train of generator style directives). Commas and length separate the
+    // two without naming a single style word — ⚠ no word list, per the law.
+    const _isSubjectPhrase = (w) => {
+      if (!w) return false;
+      if (w.length > 48) return false;                 // a prompt runs long
+      if (/[,;:!?"()]/.test(w)) return false;          // list/clause punctuation = prompt
+      const parts = w.split(/\s+/).filter(Boolean);
+      // 8 admits a subject carrying a prepositional tail — a real subject WITH its
+      // relation, which is the whole point. A prompt is excluded by its commas
+      // and by the 48-char cap regardless of how many words it has.
+      if (parts.length === 0 || parts.length > 8) return false;
+      return parts.every(p => /^[a-z][a-z'-]*$/i.test(p));        // plain words only
+    };
+    if (_word && !_isSubjectPhrase(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
+    if (_word && _isSubjectPhrase(_word)
+        && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
+      st.fromThought++;
+      return { word: _word, lookup: true, why: 'thought' };
+    }
+    if (_word && st.pinTicks >= _EYE_PIN_TICKS) st.rotations++;
+
+    // ── RANK 3 — RECALL: grounded already, not drawn recently. No fetch is
+    // requested for this rank; she is revisiting, not learning.
+    try {
+      const store = this._visualMemory;
+      if (store && store.size > 0) {
+        const keys = Array.from(store.keys());
+        // Bounded random probing rather than a full shuffle — the store is
+        // allowed to reach 25,000 entries (DREAM_VM_CAP) and this runs on the
+        // imagine tick, which must stay microseconds.
+        for (let t = 0; t < 8; t++) {
+          const k = keys[Math.floor(Math.random() * keys.length)];
+          if (typeof k !== 'string' || _recent(k)) continue;
+          if (!(await _drawable(k))) continue;
+          st.fromRecall++;
+          return { word: k, lookup: false, why: 'recall' };
+        }
+      }
+    } catch { /* store unreadable — she simply has no recall subject this tick */ }
+
+    st.none++;
+    return null;
+  },
+
+  /**
+   * EYEPIN.2 — a word she has been TAUGHT but has never SEEN.
+   *
+   * ⭐ This is what turns the look-up lane back into acquisition. The pool is
+   * `cluster._definitionTaughtWords` — words she genuinely holds a definition
+   * for — so she can only ever go looking at something she already has a
+   * concept of, never a random string.
+   *
+   * ⚠ NOT a word list. Membership is earned by having been taught, and
+   * drawability is decided by the live taxonomy gate, exactly as everywhere
+   * else. Nothing here enumerates subjects by hand.
+   */
+  async _pickUnseenTaughtWord(isRecent, isDrawable) {
+    const cluster = this.cortexCluster;
+    const taught = cluster && cluster._definitionTaughtWords;
+    if (!(taught instanceof Set) || taught.size === 0) return null;
+    const store = this._visualMemory;
+    // Cache the array form and refresh it only when the taught set grows —
+    // this runs every imagine tick and the set reaches tens of thousands.
+    if (!this._eyeTaughtCache || this._eyeTaughtCacheSize !== taught.size) {
+      this._eyeTaughtCache = Array.from(taught).filter(w => typeof w === 'string' && w.length > 1);
+      this._eyeTaughtCacheSize = taught.size;
+      // Cursor walks the pool so she works THROUGH what she has been taught
+      // instead of re-rolling the same lucky words. ⚠ Not reset on refresh:
+      // a growing vocabulary must not send her back to the beginning.
+      if (typeof this._eyeTaughtCursor !== 'number') this._eyeTaughtCursor = 0;
+    }
+    const pool = this._eyeTaughtCache;
+    if (pool.length === 0) return null;
+    // Bounded scan per tick — the cursor makes progress even when this tick
+    // finds nothing, so a long run of already-seen words cannot stall her.
+    const SCAN = 24;
+    for (let i = 0; i < SCAN; i++) {
+      const w = pool[this._eyeTaughtCursor % pool.length];
+      this._eyeTaughtCursor = (this._eyeTaughtCursor + 1) % pool.length;
+      if (isRecent(w)) continue;
+      // ⚠ UNSEEN is the whole point — a confirmed store entry means she already
+      // knows what it looks like, and asking again is the cooldown no-op this
+      // fix exists to remove.
+      try {
+        const known = store && store.get(w);
+        if (known && known.conf === true && known.rec) continue;
+      } catch { /* store unreadable — treat as unseen and let the look-up decide */ }
+      if (!(await isDrawable(w))) continue;
+      return w;
+    }
+    return null;
+  },
+
+  /** EYEPIN.1 — record what actually reached the eye, so the ring bars repeats. */
+  _eyeNoteDrawn(pick) {
+    if (!pick || !pick.word) return;
+    if (!Array.isArray(this._eyeRecent)) this._eyeRecent = [];
+    this._eyeRecent.push(pick.word);
+    // ⚠ ONE OWNER — the same `_eyeRecentMax` the picker reads. Two literals
+    // that "must agree" is how a bar silently stops barring anything.
+    const _max = (typeof this._eyeRecentMax === 'number') ? this._eyeRecentMax : 5;
+    while (this._eyeRecent.length > _max) this._eyeRecent.shift();
+    if (this._eyeStats) {
+      this._eyeStats.lastSubject = pick.word;
+      this._eyeStats.lastWhy = pick.why || null;
+      this._eyeStats.lastAt = Date.now();
+    }
+  },
+
   async _drawConcept(concept, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function'
         || typeof this.mindSpace.sketch !== 'function') return null;
     const seed = String(concept || '').trim();
     if (!seed) return null;
-    const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(seed)[0] || '') : seed.toLowerCase().split(/\s+/)[0]) || '';
+    const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(seed)[0] || '') : seed.toLowerCase().split(/\s+/)[0]) || '';
     if (!key) return null;
 
     // 1) RECALL — a confirmed grounded field C she has seen before (cooled).
@@ -1845,10 +2240,121 @@ const SERVER_CHAT_MIXIN = {
     return true;
   },
 
+  /**
+   * ARTWEIGHT — what she MADE moves her weights.
+   *
+   * Called once per completed piece, from the single point every draw lane
+   * flows through. Two bindings, on two channels, because they are two
+   * different facts:
+   *
+   *   • STRUCTURE (tag 35, the attach channel) — subject <-> the part words
+   *     she actually built it from, both directions. Drawing a thing forces
+   *     attention onto each piece of it, and that is what strengthens the
+   *     structure; a person who draws a thing knows its parts better after.
+   *   • COMPOSITION (tag 13, the sequence channel) — when a piece holds more
+   *     than one subject, those subjects bind to each other and to the place
+   *     they were set in, because she composed them together.
+   *
+   * ⚠ Only what she DREW. `contributed` is the set that actually put marks on
+   * the canvas — a subject that failed to build is not in it, and must not be
+   * learned as though it had been. Teaching from the plan rather than the
+   * result would bind things she never managed to draw.
+   */
+  _queueArtWeightTeach(contributed, plan) {
+    const st = this._artWeight || (this._artWeight = {
+      pieces: 0, queued: 0, pairs: 0, skippedBusy: 0, skippedEmpty: 0, lastAt: 0,
+    });
+    if (!Array.isArray(contributed) || contributed.length === 0) { st.skippedEmpty++; return 0; }
+    st.pieces++;
+    if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+    const MAX_QUEUE = Number(process.env.DREAM_ART_WEIGHT_MAX_QUEUE) || 24;
+    if (this._chatTeachJobQueue.length >= MAX_QUEUE) { st.skippedBusy++; return 0; }
+    const MAX_PAIRS = Number(process.env.DREAM_ART_WEIGHT_MAX_PAIRS) || 24;
+    const REPS = Number(process.env.DREAM_ART_WEIGHT_REPS) || 4;
+
+    const clean = (w) => String(w || '').toLowerCase().replace(/[^a-z']/g, '');
+    const subjects = [];
+    for (const s of contributed) {
+      const w = clean(s && s.word);
+      if (w.length >= 2 && !subjects.includes(w)) subjects.push(w);
+    }
+    if (subjects.length === 0) { st.skippedEmpty++; return 0; }
+
+    // STRUCTURE — subject <-> the parts she drew it from.
+    const structure = [];
+    for (const s of contributed) {
+      const w = clean(s && s.word);
+      if (w.length < 2) continue;
+      const parts = (s && s.schema && Array.isArray(s.schema.parts)) ? s.schema.parts : [];
+      for (const p of parts) {
+        if (structure.length + 2 > MAX_PAIRS) break;
+        const pw = clean(p && (p.name || p.kind || p.type || p));
+        if (pw.length < 2 || pw === w) continue;
+        structure.push([w, pw], [pw, w]);
+      }
+    }
+
+    // COMPOSITION — the subjects of one piece, and the place they were set in.
+    const composition = [];
+    const place = clean(plan && plan.place && (plan.place.word || plan.place.w));
+    for (let i = 0; i < subjects.length; i++) {
+      if (place && place !== subjects[i] && composition.length + 2 <= MAX_PAIRS) {
+        composition.push([subjects[i], place], [place, subjects[i]]);
+      }
+      for (let j = i + 1; j < subjects.length; j++) {
+        if (composition.length + 2 > MAX_PAIRS) break;
+        composition.push([subjects[i], subjects[j]], [subjects[j], subjects[i]]);
+      }
+    }
+
+    if (structure.length === 0 && composition.length === 0) { st.skippedEmpty++; return 0; }
+    if (structure.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: structure,
+        opts: { reps: REPS, label: 'ARTWEIGHT-STRUCTURE', relationTagId: 35 },
+      });
+      st.queued++; st.pairs += structure.length;
+    }
+    if (composition.length > 0) {
+      this._chatTeachJobQueue.push({
+        pairs: composition,
+        opts: { reps: REPS, label: 'ARTWEIGHT-COMPOSITION', relationTagId: 13 },
+      });
+      st.queued++; st.pairs += composition.length;
+    }
+    st.lastAt = Date.now();
+    return structure.length + composition.length;
+  },
+
   async _drawOwnCreation(text, opts = {}) {
     if (!this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
     const plan = await this._drawPlanFromMessage(text, opts);
     if (!plan || !plan.subjects.length) return null;
+
+    // ⭐ VMUSE.5.C — SHE CONSULTS WHAT SHE HAS LEARNED ABOUT THE SUBJECT.
+    //
+    // The relation channels are written by VMRELATE (what she looked at) and
+    // ARTWEIGHT (what she drew). Reading them back HERE closes that loop: the
+    // subject's dominant relation is recorded on the plan, so the piece is
+    // informed by what she actually knows about the thing rather than by the
+    // schema alone.
+    //
+    // ⚠ Everything goes through the ONE gate, so a band that has not separated
+    // yet returns null and this simply does not fire — which is the correct
+    // behaviour early in a walk, not a failure. ⚠ And it only ANNOTATES: no
+    // subject is added, removed or reordered on the strength of a relation,
+    // because a wrong band must never be able to change what she draws.
+    try {
+      const cur = this.curriculum;
+      if (cur && typeof cur._confidentRelationFor === 'function') {
+        for (const s of plan.subjects) {
+          const w = (typeof s === 'string') ? s : (s && s.word);
+          if (!w) continue;
+          const rel = cur._confidentRelationFor(w);
+          if (rel && typeof s === 'object') s.relationTag = rel.tag;
+        }
+      }
+    } catch { /* non-fatal — a drawing never fails on a relation read */ }
 
     // Per-attempt seed: the words + her live mood + the attempt counter. Same words
     // on a different day (or a different mood) compose differently — that is her
@@ -1900,12 +2406,18 @@ const SERVER_CHAT_MIXIN = {
         h: b0.h * (0.9 + rnd() * 0.2),
       };
       boxes.push(box);
-      // PAINT.10 — grounding shadow FIRST (under the subject), so it stands
-      // on the ground instead of floating. The shadow rides the STYLE-SCALED
-      // footprint (a doodle draws small inside its box; judged live — the
-      // shadow floated below the feet on the raw box).
-      const ss = artStyle && Number.isFinite(artStyle.scale) ? artStyle.scale : 1;
-      strokes.push(this._groundShadow({ cx: box.cx, cy: box.cy, w: box.w * ss, h: box.h * ss }, rnd));
+      // ⛔ SHADOWKILL — the grounding cast shadow is GONE. Operator: *"the
+      // shadow effect in her drawings that is just a dark tinted oval below
+      // everything she draws need to go: it crappy and looks like shit"*.
+      //
+      // It was a `blob` at rgb(16,15,19) alpha 0.35 under every subject, and
+      // that is exactly what it looked like — a flat tinted ellipse, not
+      // light. ⚠ It had already been tuned once, when the doodle hand floated
+      // it and the fix was to scale the footprint; the question that pass did
+      // not ask is whether an ellipse reads as a shadow AT ALL at her stroke
+      // fidelity. It does not, so the lane is deleted rather than tuned a
+      // third time. Grounding still comes from the ground line, the tufts and
+      // the floor bands in the backdrop, which are drawn, not tinted.
       const built = this._ownArtStrokesFromSchema(s.schema, box, rnd, s.word, artStyle);
       if (built.length > 0) contributed.push(s);
       for (const st of built) { if (!st.layer) st.layer = 'subject'; strokes.push(st); }
@@ -1938,6 +2450,31 @@ const SERVER_CHAT_MIXIN = {
     // point all lanes flow through. The old counter lived in one drain lane
     // while the mind's-eye tick published art all day: 0 drawn, 56 attempts.
     this._ownArtDrawn = (this._ownArtDrawn | 0) + 1;
+    // ⛔ ARTWEIGHT — MAKING ART USED TO CHANGE NOTHING IN HER BRAIN.
+    //
+    // Measured across the whole draw + practice span: ZERO weight-touching
+    // calls. `_practiceDrawing` writes `e.skill` — params, cosine, session
+    // count — into the visual STORE, and store state is not synapses. So she
+    // could draw the same subject a hundred times and not one synapse moved.
+    // Operator: *"an image one sees and art they make has real effects on all
+    // kinds of brain processes"*.
+    //
+    // ⭐ The act of drawing is now a bind, on the same drain VMRELATE uses:
+    // the subject she drew binds to the PARTS she built it from, both ways.
+    // That is what drawing a thing does to a person — it strengthens the
+    // structure of the thing, because you had to attend to every piece of it
+    // to put it down. And when she drew more than one subject in a scene,
+    // those subjects bind to each other and to the place, because they were
+    // composed together.
+    //
+    // ⚠ Bounded like every other drain job, and for the same measured reason
+    // (an unbounded teach layer cost 70 min/cell once): a hard pair cap, low
+    // reps, and it refuses when the drain is already deep.
+    try {
+      if (typeof this._queueArtWeightTeach === 'function') {
+        this._queueArtWeightTeach(contributed, plan);
+      }
+    } catch { /* non-fatal — a drawing must never fail on its teach */ }
     // ARTSTYLE — the style rides the label so the viewer SHOWS her changing it up.
     const styleName = artStyle ? artStyle.name : 'poster';
     const label = 'canvas:own:' + contributed.map(s => s.word).join('+') + ':' + styleName;
@@ -1950,7 +2487,7 @@ const SERVER_CHAT_MIXIN = {
   // DRAWCTX (Gee 2026-08-20: *"when Unity is told to 'draw' she should draw the
   // topic, thing, place, person, in context in the message from the user"*).
   //
-  // The old path took `_vmContentTokens(seed)[0]` — the FIRST content word — so
+  // The old path took `_vmContentWords(seed)[0]` — the FIRST content word — so
   // "draw a <modifier> <subject> sitting on a <place>" drew whatever the modifier
   // resolved to and threw the rest away. This reads the WHOLE message: every
   // drawable noun in order, the PLACE if one is named, and the modifiers that
@@ -1973,11 +2510,11 @@ const SERVER_CHAT_MIXIN = {
     let placeWord = null;
     const pm = body.match(/\b(?:on|in|at|under|inside|beside|near|by|over|behind|against)\s+(?:a|an|the)?\s*([a-z][a-z'-]{2,})/i);
     if (pm) placeWord = pm[1].toLowerCase();
-    const tokens = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(body) : body.toLowerCase().split(/\s+/);
+    const words = (typeof this._vmContentWords === 'function') ? this._vmContentWords(body) : body.toLowerCase().split(/\s+/);
     const seen = new Set();
     const subjects = [];
     const MAX_SUBJ = Number(process.env.DREAM_OWNART_MAX_SUBJECTS) > 0 ? Number(process.env.DREAM_OWNART_MAX_SUBJECTS) : 3;
-    for (const t of tokens) {
+    for (const t of words) {
       if (seen.has(t) || t === placeWord) continue;
       seen.add(t);
       let drawable = true;
@@ -2103,11 +2640,23 @@ const SERVER_CHAT_MIXIN = {
       // color masses, the PAINT.8 bare-paper intent). Crayon's whole
       // identity was the scribble stroke, so it leaves the roster with its
       // brush (STYLECULL precedent: pointillism + crosshatch).
-      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0,  traceBudget: 90 },
-      { name: 'pencil',      mass: 'none',     ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 150 },
-      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0,  traceBudget: 120 },
-      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0,  traceBudget: 40 },
-      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 22 },
+      // ⛔ ARTGROW (2026-08-25) — THESE NUMBERS WERE A CAP ON HER ABILITY AND
+      // THEY ARE NOT ANY MORE. Gee: *"dont limit stroke counts too much cant
+      // make a art work in only 20 strokes it should increase in ability as she
+      // learns in art and stuff"*. The old budgets (doodle 22, watercolor 40)
+      // were sized as a NOISE defence — and noise is no longer what they are
+      // defending against: `_traceSurvivors` gates the jagged tracer fragments
+      // at the source now, for the body AND the redraw, so a high budget adds
+      // real remembered contour instead of scratch. What is left for these
+      // numbers to express is CHARACTER — an ink drawing is spare, a graphite
+      // one is busy — never a ceiling on how much of a drawing she can make.
+      // The effective budget is this × the TRAINED `budgetMul` (up to 2.5×),
+      // so her commitment grows with practice like the rest of her hand.
+      { name: 'poster',      mass: 'fill',     ink: 'palette',  outlineW: 0.010, outlineA: 1.0, detailMul: 1.0, scale: 1.0,  traceBudget: 200 },
+      { name: 'pencil',      mass: 'none',     ink: 'graphite', outlineW: 0.004, outlineA: 0.9, detailMul: 1.6, scale: 1.0,  traceBudget: 260 },
+      { name: 'ink',         mass: 'none',     ink: 'mono',     outlineW: 0.013, outlineA: 1.0, detailMul: 0.4, scale: 1.0,  traceBudget: 160 },
+      { name: 'watercolor',  mass: 'wash',     ink: 'palette',  outlineW: 0.006, outlineA: 0.5, detailMul: 0.5, scale: 1.0,  traceBudget: 170 },
+      { name: 'doodle',      mass: 'fill',     ink: 'palette',  outlineW: 0.006, outlineA: 1.0, detailMul: 0.7, scale: 0.55, traceBudget: 110 },
     ];
   },
   _artStylePick(rnd, subjectWords) {
@@ -2298,20 +2847,11 @@ const SERVER_CHAT_MIXIN = {
   // ── PAINT.10 — THE GROUNDING SHADOW. The oldest trick in drawing: a squashed
   // dark ellipse where the subject meets the ground makes it STAND THERE
   // instead of floating. Light direction varies per attempt.
-  _groundShadow(box, rnd) {
-    const lightX = (rnd() - 0.5) * 0.5;
-    return {
-      type: 'blob',
-      cx: box.cx + lightX * box.w * 0.15,
-      cy: box.cy + box.h * 0.44,
-      rx: box.w * (0.34 + rnd() * 0.08),
-      ry: box.h * 0.05,
-      ang: 0,
-      rgb: [16, 15, 19],
-      a: 0.35,
-      layer: 'backdrop',
-    };
-  },
+  // ⛔ `_groundShadow` REMOVED (SHADOWKILL, operator judgement on the live
+  // renders). It returned one `blob` at rgb(16,15,19) alpha 0.35 beneath each
+  // subject. Deleted rather than left unreferenced: a dead painter primitive
+  // is an invitation to switch it back on, and the reason it went is that the
+  // SHAPE was wrong, not its parameters.
 
   // ── PAINT.11 — THE ERASER (her revision pass). A painter doesn't only add —
   // she steps back and REMOVES what hurts the picture. Two revisions, both
@@ -2425,7 +2965,15 @@ const SERVER_CHAT_MIXIN = {
   // the constants the hand used before practice existed — a concept she has
   // never practiced draws identically to yesterday.
   _skillDefaults() {
-    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0 };
+    // ARTGROW (2026-08-25, Gee: *"dont limit stroke counts too much cant make a
+    // art work in only 20 strokes it should increase in ability as she learns
+    // in art and stuff"*) — `budgetMul` is the sixth TRAINABLE param: how much
+    // of her remembered trace this hand commits to the page. It is her DRAWING
+    // ABILITY, so it belongs in the practice loop with the rest of the hand,
+    // not frozen in a style constant. Starts at 1.0 (the untrained hand already
+    // draws a real drawing) and the practice loop can take it to 2.5×, at which
+    // point she is redrawing essentially everything she remembers.
+    return { jitter: 0.006, underA: 0.55, traceW: 1.0, keepP: 0.85, detailMul: 1.0, budgetMul: 1.0 };
   },
   _skillFor(word) {
     const d = this._skillDefaults();
@@ -2647,6 +3195,12 @@ const SERVER_CHAT_MIXIN = {
       traceW:    [0.7, 1.4, 0.12],
       keepP:     [0.75, 0.97, 0.04],
       detailMul: [0.5, 1.5, 0.2],
+      // ARTGROW — her stroke commitment is TRAINED like every other part of the
+      // hand. The score is cosine against her banked percept of the real thing,
+      // so "more strokes" only survives a session when it actually made the
+      // drawing resemble the subject more — which is the honest way for an
+      // ability to grow rather than being handed to her as a constant.
+      budgetMul: [0.6, 2.5, 0.25],
     };
     const params = { ...this._skillDefaults(), ...(e.skill && e.skill.params) };
     const sessions = (e.skill && e.skill.sessions) || 0;
@@ -2674,6 +3228,47 @@ const SERVER_CHAT_MIXIN = {
     };
     try { console.log(`[OwnArt] 🎨 PRACTICE "${key}" session ${sessions + 1}: resemblance ${base.toFixed(4)} → ${best.toFixed(4)} (${kept} of ${ITERS} nudges kept)${kept ? ' — technique improved and saved' : ' — no nudge beat her current hand'}`); } catch { /* nf */ }
     return { word: key, base, best, kept };
+  },
+
+  // ── ARTZIG2.2 (2026-08-25) — THE FRAGMENT GATE, AS ONE OWNER.
+  //
+  // ⛔ The gate existed and was applied in exactly ONE place: the layer that
+  // DRAWS remembered strokes. The layer that decides the BODY read the RAW
+  // trace, so the convex hull was fitted to every jagged tracer fragment —
+  // i.e. to the bounding box of the noise scatter, not to the subject. Judged
+  // on real renders: the body came out a RECTANGULAR SLAB in both hands, and
+  // on the pale watercolor wash the part-colour blobs sitting on that slab
+  // read as the "coloured garbage" the complaint names.
+  //
+  // So ARTZIG2 suppressed the fragments' INK while keeping their SHAPE. The
+  // survivors are computed once here and consumed by both layers — the hull
+  // and the redraw — because "which strokes are real?" is one question and it
+  // had two different answers.
+  //
+  // The rule itself is unchanged (short AND jagged = tracer noise; whiskers
+  // are short but straight, an ear is one clean turn — both pass).
+  _traceSurvivors(schema, fx) {
+    const tN = (Array.isArray(schema.trace) ? schema.trace.length : 0);
+    if (tN === 0) return [];
+    const diag = Math.hypot(Math.max(1e-3, fx.w), Math.max(1e-3, fx.h));
+    const keep = [];
+    for (let ti = 0; ti < tN; ti++) {
+      const tp = schema.trace[ti];
+      if (!Array.isArray(tp) || tp.length < 2) continue;
+      let L = 0, turns = 0, nTurn = 0;
+      for (let i = 1; i < tp.length; i++) {
+        L += Math.hypot(tp[i][0] - tp[i - 1][0], tp[i][1] - tp[i - 1][1]);
+        if (i >= 2) {
+          const a1 = Math.atan2(tp[i - 1][1] - tp[i - 2][1], tp[i - 1][0] - tp[i - 2][0]);
+          const a2 = Math.atan2(tp[i][1] - tp[i - 1][1], tp[i][0] - tp[i - 1][0]);
+          let da = Math.abs(a2 - a1); if (da > Math.PI) da = 2 * Math.PI - da;
+          turns += da; nTurn++;
+        }
+      }
+      if (L < diag * 0.025 && nTurn > 0 && (turns / nTurn) > 1.22) continue;   // tracer noise
+      keep.push(ti);
+    }
+    return keep;
   },
 
   _ownArtStrokesFromSchema(schema, box, rnd, word, style, skillOverride) {
@@ -2722,6 +3317,9 @@ const SERVER_CHAT_MIXIN = {
     const mAng = (a2) => (mirror ? -a2 : a2);
     const mapX = (x) => { let u = (x - fx.x) / Math.max(1e-3, fx.w); if (mirror) u = 1 - u; return box.cx + (u - 0.5) * box.w; };
     const mapY = (y) => box.cy + (((y - fx.y) / Math.max(1e-3, fx.h)) - 0.5) * box.h;
+    // ARTZIG2.2 — computed ONCE, before anything reads the trace, so the body
+    // and the redraw agree about which strokes are real.
+    const _traceKeep = this._traceSurvivors(schema, fx);
     const defAttr = this._defDrawAttributes ? this._defDrawAttributes(word) : null;
     const defColor = defAttr && defAttr.colors && defAttr.colors[0];
     const mixDef = (rgb) => defColor ? [Math.round(rgb[0] * 0.45 + defColor[0] * 0.55), Math.round(rgb[1] * 0.45 + defColor[1] * 0.55), Math.round(rgb[2] * 0.45 + defColor[2] * 0.55)] : rgb;
@@ -2750,8 +3348,12 @@ const SERVER_CHAT_MIXIN = {
         // edges and rendered as a trapezoid (live-judged). Points hugging the
         // frame border, and strokes that span most of the frame in one axis
         // (the ground line, backdrop gradients), are scenery — not the subject.
-        const src = (Array.isArray(schema.trace) && schema.trace.length >= 10)
-          ? schema.trace.map(pts => ({ pts }))
+        // ⛔ ARTZIG2.2 — SURVIVORS, not the raw trace. Fitting the hull to every
+        // jagged fragment fitted it to the bounding box of the tracer's noise
+        // scatter, which is why the body rendered as a rectangular slab in
+        // both judged hands. Same survivor set the redraw layer uses.
+        const src = (_traceKeep.length >= 10)
+          ? _traceKeep.map(ti => ({ pts: schema.trace[ti] }))
           : schema.outlines;
         for (const o of src) {
           if (!o || !Array.isArray(o.pts)) continue;
@@ -2810,12 +3412,29 @@ const SERVER_CHAT_MIXIN = {
       // old 3-part single-ink shading for pre-color schemas.
       if (style.mass === 'fill' || style.mass === 'wash') {
         const colored = schema.parts.filter(p => Array.isArray(p.rgb) && !p.bg);   // BGPART — backdrop-colored cells paint no mass
+        // ⛔ ARTZIG2.2 — COLOUR LAYERS BELONG INSIDE THE SUBJECT. The part grid
+        // is a LAYOUT over the whole reference frame, so cells near the subject's
+        // edge placed their blobs (offset up to ±35% of the cell) OUTSIDE the
+        // silhouette — judged on the re-render as pastel dots floating off the
+        // body, which is the other half of the "coloured garbage" complaint.
+        // `p.bg` already drops cells whose colour came from the backdrop; this
+        // drops cells that are simply not on the thing. Even-odd ray cast
+        // against the silhouette the body was just filled with.
+        const _inSil = (x, y) => {
+          let inside = false;
+          for (let i = 0, j = sPts.length - 1; i < sPts.length; j = i++) {
+            const xi = sPts[i][0], yi = sPts[i][1], xj = sPts[j][0], yj = sPts[j][1];
+            if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi)) inside = !inside;
+          }
+          return inside;
+        };
         if (colored.length) {
           // each part = THREE offset soft blobs at low alpha, not one crisp
           // ellipse — a single blob per cell rendered as an obvious column of
           // circles (judged live, the very artifact this layer replaces)
           for (const p of colored) {
             const cx = mapX(p.cx), cy = mapY(p.cy);
+            if (!_inSil(cx, cy)) continue;   // ARTZIG2.2 — not on the subject
             const pw = Math.max(0.02, p.w / Math.max(1e-3, fx.w) * box.w);
             const ph = Math.max(0.02, p.h / Math.max(1e-3, fx.h) * box.h);
             for (let bi = 0; bi < 3; bi++) {
@@ -2889,31 +3508,34 @@ const SERVER_CHAT_MIXIN = {
       // this fix leaked exactly that way: 30% of 220 strokes force-drew 46
       // fragments and the doodle stayed a hairball). Structural = the first
       // slice of the SURVIVORS, capped absolute.
-      const _fw = Math.max(1e-3, fx.w), _fh = Math.max(1e-3, fx.h);
-      const _diag = Math.hypot(_fw, _fh);
-      const _keepIdx = [];
-      for (let ti = 0; ti < tN; ti++) {
-        const tp = schema.trace[ti];
-        if (!Array.isArray(tp) || tp.length < 2) continue;
-        let L = 0, turns = 0, nTurn = 0;
-        for (let i = 1; i < tp.length; i++) {
-          L += Math.hypot(tp[i][0] - tp[i - 1][0], tp[i][1] - tp[i - 1][1]);
-          if (i >= 2) {
-            const a1 = Math.atan2(tp[i - 1][1] - tp[i - 2][1], tp[i - 1][0] - tp[i - 2][0]);
-            const a2 = Math.atan2(tp[i][1] - tp[i - 1][1], tp[i][0] - tp[i - 1][0]);
-            let da = Math.abs(a2 - a1); if (da > Math.PI) da = 2 * Math.PI - da;
-            turns += da; nTurn++;
-          }
-        }
-        const short2 = L < _diag * 0.025;
-        const jagged = nTurn > 0 && (turns / nTurn) > 1.22;
-        if (short2 && jagged) continue;   // tracer noise — not a feature
-        _keepIdx.push(ti);
-      }
+      // ARTZIG2.2 — the SAME survivor set the body was fitted to. This loop
+      // used to recompute the identical rule here, which is how the hull came
+      // to disagree with the redraw: one copy was applied, the other was not
+      // written at all. One owner, `_traceSurvivors`, consulted twice.
+      const _keepIdx = _traceKeep;
       // budget: structural survivors always; the rest longest-first (the trace
       // is length-sorted DESC at learn time, so kept order IS longest-first).
-      const _structN = Math.min(40, Math.max(10, Math.ceil(_keepIdx.length * 0.3)));
-      const _budget = Math.max(_structN, (style.traceBudget | 0) || 120);
+      // ⛔ ARTZIG2.2 — THE BUDGET IS AUTHORITATIVE. This was:
+      //     _structN = min(40, max(10, ceil(keep * 0.3)))
+      //     _budget  = max(_structN, style.traceBudget)
+      // i.e. the structural count was a FLOOR on the budget, so a hand could
+      // never draw fewer strokes than 30% of the survivors — and the two
+      // smallest budgets are exactly the two hands in this complaint. On a
+      // clean trace of ~120 survivors the floor is 36, so the doodle's
+      // declared budget of 22 was silently raised to 36 and *"a doodle is
+      // LOOSE"* stopped being true. Worse, when the floor met or exceeded the
+      // budget the two sets became IDENTICAL — every drawn stroke counted as
+      // structural, which force-drew all of them (killing the PAINT.12
+      // per-attempt subset) and gave every one of them the aggressive
+      // contrast value-shift meant for the structural read alone.
+      // Structural is a FRACTION OF the budget now, so the declared number
+      // means what it says and both tiers survive at every budget.
+      // ARTGROW — the style's character × her TRAINED commitment. A practiced
+      // hand reaches every stroke she remembers; an untrained one still draws a
+      // real drawing. No hard ceiling: when the effective budget exceeds the
+      // survivor count, she simply draws all of it.
+      const _budget = Math.max(24, Math.round(((style.traceBudget | 0) || 160) * (skill.budgetMul || 1)));
+      const _structN = Math.max(6, Math.ceil(_budget * 0.4));
       const _drawSet = new Set(_keepIdx.slice(0, _budget));
       const _structSet = new Set(_keepIdx.slice(0, _structN));
       // COLORLINE (2026-08-21, operator: "she is still using white lines to
@@ -3149,7 +3771,7 @@ const SERVER_CHAT_MIXIN = {
     const keys = [];
     for (const c of (Array.isArray(concepts) ? concepts : [])) {
       if (keys.length >= 3) break;
-      const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(c)[0] || '') : String(c || '').toLowerCase());
+      const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(c)[0] || '') : String(c || '').toLowerCase());
       if (!key || keys.includes(key)) continue;
       if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only DRAWABLE (noun) concepts
       keys.push(key);
@@ -3194,7 +3816,7 @@ const SERVER_CHAT_MIXIN = {
     const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
     const texts = chain.map(e => (typeof e === 'string' ? e : (e && e.sentence) || '')).filter(t => t && t.trim());
     const pool = texts.slice(-4).join(' ');
-    const toks = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(pool) : [];
+    const toks = (typeof this._vmContentWords === 'function') ? this._vmContentWords(pool) : [];
     const cand = [];
     for (const t of toks) if (t && !cand.includes(t)) cand.push(t);
     if (cand.length < 2) return;   // need ≥2 concepts to invent a combination
@@ -3342,7 +3964,7 @@ const SERVER_CHAT_MIXIN = {
   // The default flipped permissive→strict on purpose: refusing to draw an
   // abstraction is honest; scribbling letter-shapes at it never is.
   async _conceptIsDrawable(word) {
-    const w = (typeof this._vmContentTokens === 'function') ? (this._vmContentTokens(word)[0] || '') : String(word || '').toLowerCase().trim();
+    const w = (typeof this._vmContentWords === 'function') ? (this._vmContentWords(word)[0] || '') : String(word || '').toLowerCase().trim();
     if (!w || w.length < 2) return false;
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
@@ -3554,8 +4176,8 @@ const SERVER_CHAT_MIXIN = {
         if (pool.length === 0 && cluster._definitionTaughtWords instanceof Set) {
           for (const w of cluster._definitionTaughtWords) if (typeof w === 'string' && w.length > 1) pool.push(w);
         }
-        const reqTokens = base.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 2).slice(0, 3);
-        if (pool.length > 0 && reqTokens.length > 0) {
+        const reqWords = base.toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 2).slice(0, 3);
+        if (pool.length > 0 && reqWords.length > 0) {
           const cos = (a, b) => {
             let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
             for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
@@ -3564,8 +4186,8 @@ const SERVER_CHAT_MIXIN = {
           // bounded scoring pool so cost stays O(POOL·dim) at any vocab size
           const POOL = 300;
           const sample = pool.length <= POOL ? pool : Array.from({ length: POOL }, () => pool[Math.floor(Math.random() * pool.length)]);
-          const picked = new Set(reqTokens);
-          for (const tok of reqTokens) {
+          const picked = new Set(reqWords);
+          for (const tok of reqWords) {
             const tv = emb.getEmbedding(tok);
             if (!tv) continue;
             const scored = [];
@@ -3637,7 +4259,7 @@ const SERVER_CHAT_MIXIN = {
     const VISUAL = /\b(draw|sketch|paint|painting|render|illustrate|selfie|portrait|drawing)\b/;
     const NOUN = /\b(picture|image|photo|pic|wallpaper|artwork)\b/;
     const SHOW = /\b(show me|generate|create|make me|make us|give me)\b/;
-    // show-me-object routing: "show me an apple!" is a visual ask even without
+    // show-me-object routing: a bare "show me <thing>!" is a visual ask even without
     // a picture/image noun. Route "show me/us <object>" to image UNLESS the
     // object is a code/state/telemetry word ("show me the code" stays text).
     // Input classification only, same rule-class as the detectors above.
@@ -3693,7 +4315,7 @@ const SERVER_CHAT_MIXIN = {
         // (rather than an exposure word) strands articles as well as connectors
         // — "in a leather skirt" was left as "in a" — so the trailing run of
         // connectors, wear-verbs, articles and prepositions is dropped as a
-        // chain, not one token.
+        // chain, not one word.
         scene = scene
           // a wear-verb orphaned by the strip and now sitting in front of a
           // place/preposition ("wearing fishnets at the mall" → "wearing at the

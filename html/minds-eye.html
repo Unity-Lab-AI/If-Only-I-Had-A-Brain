@@ -121,6 +121,16 @@
         } catch (e) { /* try next endpoint */ }
       }
       if (!data) { setStatus('err', 'brain offline — no snapshot reachable'); return; }
+      // CTLPLANE.1 — nginx now answers 200 with an explicit brain-offline body
+      // when the backend is down, instead of a 502 HTML page that this loop
+      // could only report as "no snapshot reachable". Check the flag BEFORE the
+      // `rec` test below, or a genuine outage renders as the much softer
+      // "warming up…" — telling the viewer she is thinking when she is off.
+      if (data.brainOffline === true || data.brainOnline === false) {
+        setStatus('err', data.human || 'brain offline — the brain is not running right now');
+        elTerms.textContent = '—'; elSource.textContent = '—';
+        return;
+      }
       if (!data.rec || !data.rec.channels) {
         setStatus('warm', data.note || 'her mind’s eye is warming up…');
         elTerms.textContent = '—'; elSource.textContent = '—';

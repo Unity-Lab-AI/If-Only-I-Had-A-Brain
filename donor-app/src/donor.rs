@@ -18,7 +18,7 @@ use crate::config::DonorConfig;
 use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
-    ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
+    ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult, PhaseTimingMs,
     LetterSurpriseAck, MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck, RebindAck,
     ServerMessage,
 };
@@ -128,11 +128,24 @@ pub struct DonorStatus {
 pub struct Control {
     pub stop: Arc<AtomicBool>,
     pub status: Arc<Mutex<DonorStatus>>,
+    /// UPGRADE-BEFORE-RECONNECT — the donor build the brain said it wants, learned
+    /// from the `welcome` handshake on the most recent connect. Empty until a
+    /// brain has been reached.
+    ///
+    /// ⚠ Shared across sessions ON PURPOSE. It is read by the reconnect
+    /// supervisor AFTER the session that learned it has already ended, which is
+    /// the whole point: the decision to upgrade happens between a disconnect and
+    /// the next connect attempt.
+    pub wanted_version: Arc<Mutex<String>>,
 }
 
 impl Control {
     pub fn new() -> Self {
-        Self { stop: Arc::new(AtomicBool::new(false)), status: Arc::new(Mutex::new(DonorStatus::default())) }
+        Self {
+            stop: Arc::new(AtomicBool::new(false)),
+            status: Arc::new(Mutex::new(DonorStatus::default())),
+            wanted_version: Arc::new(Mutex::new(String::new())),
+        }
     }
 }
 
@@ -279,7 +292,11 @@ enum CachedTeach {
 /// keep flowing during a heavy teach burst.
 enum Work {
     Init(GpuInit),
-    Batch(ComputeBatch),
+    /// The `Instant` is when this batch was pushed onto the queue. Carried so
+    /// the reply can separate queue wait from compute -- without it the donor
+    /// can only report one number, and one number cannot tell the brain whether
+    /// it is saturating this donor or whether the math itself is slow.
+    Batch(ComputeBatch, std::time::Instant),
     Frame(Frame),
     WriteSpike { cluster: String, region: String, indices: Vec<u32> },
     WriteCurrent { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
@@ -344,7 +361,7 @@ impl WorkQueue {
         // minutes-deep teach flood (same reasoning as compute_batch).
         let hi = matches!(
             &work,
-            Work::Batch(_) | Work::Init(_) | Work::ChecksumMatrix { .. } | Work::Mindspace { .. }
+            Work::Batch(..) | Work::Init(_) | Work::ChecksumMatrix { .. } | Work::Mindspace { .. }
         ) || matches!(&work, Work::Frame(f) if matches!(f, Frame::Upload { .. } | Frame::Chunk { .. }));
         if let Ok(mut lanes) = self.inner.lock() {
             if hi { lanes.hi.push_back(work) } else { lanes.lo.push_back(work) }
@@ -390,6 +407,111 @@ impl WorkQueue {
 /// Note: each reconnect rebuilds the GPU engine (engine ownership moves into
 /// the per-session worker). Reconnects are infrequent, so the extra GPU init on
 /// a drop is acceptable; a fresh engine after a drop is also the safer state.
+/// This binary's own version, from Cargo — never hand-maintained.
+const MY_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Is `candidate` STRICTLY newer than `current`? Semver-ish numeric compare over
+/// dot-separated parts.
+///
+/// ⛔ Returns FALSE for anything it cannot confidently parse, and false for equal
+/// or older. That direction is deliberate: a `true` here ends the process, so an
+/// unparseable or malicious version string must never be able to bounce a working
+/// donor. Same principle the launcher already states — *a fallback should never
+/// be able to move you backwards.*
+fn version_is_newer(candidate: &str, current: &str) -> bool {
+    let parse = |s: &str| -> Option<Vec<u64>> {
+        let v: Vec<u64> = s
+            .trim()
+            .trim_start_matches('v')
+            .split('.')
+            .map(|p| p.trim().parse::<u64>().ok())
+            .collect::<Option<Vec<u64>>>()?;
+        if v.is_empty() { None } else { Some(v) }
+    };
+    let (a, b) = match (parse(candidate), parse(current)) {
+        (Some(a), Some(b)) => (a, b),
+        _ => return false, // unparseable → never upgrade-exit
+    };
+    for i in 0..a.len().max(b.len()) {
+        let x = *a.get(i).unwrap_or(&0);
+        let y = *b.get(i).unwrap_or(&0);
+        if x != y { return x > y; }
+    }
+    false // equal → not newer
+}
+
+/// ⛔ ANTI-LOOP GUARD — the failure this feature can cause if the brain names a
+/// version that is not actually downloadable.
+///
+/// The upgrade works by EXITING so the launcher installs `releases/latest`. If
+/// the brain's `recommendedDonorVersion` is ever ahead of the newest real
+/// release — a typo, a staged rollout, a bump landed before the tag — then the
+/// launcher reinstalls the SAME binary, reconnects, is told to upgrade again,
+/// and the pod spends forever downloading instead of donating. **Silently, and
+/// on every pod at once.**
+///
+/// So the exit is remembered. If we come back still on the same version and the
+/// brain still wants the same newer one, the upgrade demonstrably did NOT take
+/// effect, and we refuse to bounce again — logging loudly instead and continuing
+/// to donate on the binary we have. **Working-and-behind beats looping-and-idle.**
+///
+/// ⚠ Returns `true` = "this exact upgrade already failed once". Any I/O problem
+/// returns `false` (attempt the upgrade), because being unable to read a marker
+/// must not block a legitimate upgrade.
+fn upgrade_already_attempted(wanted: &str) -> bool {
+    let path = crate::config::data_dir().join("upgrade-attempt.txt");
+    match std::fs::read_to_string(&path) {
+        Ok(s) => {
+            let want_line = format!("{}->{}", MY_VERSION, wanted);
+            s.lines().any(|l| l.trim() == want_line)
+        }
+        Err(_) => false,
+    }
+}
+
+/// Record that we are exiting to upgrade, so a failed upgrade cannot loop.
+/// Best-effort: an unwritable data dir must not prevent the upgrade itself.
+fn mark_upgrade_attempt(wanted: &str) {
+    let dir = crate::config::data_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(dir.join("upgrade-attempt.txt"), format!("{}->{}\n", MY_VERSION, wanted));
+}
+
+/// Clear the marker once we are actually running a build the brain is happy
+/// with — otherwise a single stale marker would suppress every future upgrade
+/// from that version forever.
+fn clear_upgrade_marker() {
+    let _ = std::fs::remove_file(crate::config::data_dir().join("upgrade-attempt.txt"));
+}
+
+#[cfg(test)]
+mod upgrade_tests {
+    use super::version_is_newer;
+
+    #[test]
+    fn upgrades_only_forward() {
+        assert!(version_is_newer("0.3.30", "0.3.29"));
+        assert!(version_is_newer("0.4.0", "0.3.29"));
+        assert!(version_is_newer("1.0.0", "0.9.9"));
+        // equal or older must NEVER trigger an upgrade-exit
+        assert!(!version_is_newer("0.3.29", "0.3.29"));
+        assert!(!version_is_newer("0.3.28", "0.3.29"));
+        assert!(!version_is_newer("0.2.99", "0.3.0"));
+    }
+
+    #[test]
+    fn tolerates_shapes_and_refuses_garbage() {
+        assert!(version_is_newer("v0.3.30", "0.3.29"));   // leading v
+        assert!(version_is_newer("0.3.29.1", "0.3.29"));  // extra part
+        assert!(!version_is_newer("0.3.29", "0.3.29.0")); // padded equal
+        // ⛔ anything unparseable must be inert — a `true` here kills the process
+        assert!(!version_is_newer("", "0.3.29"));
+        assert!(!version_is_newer("latest", "0.3.29"));
+        assert!(!version_is_newer("0.3.x", "0.3.29"));
+        assert!(!version_is_newer("../../etc", "0.3.29"));
+    }
+}
+
 pub async fn run_donor_supervised(
     cfg: DonorConfig,
     gpus: Vec<GpuInfo>,
@@ -414,6 +536,68 @@ pub async fn run_donor_supervised(
         // Auto-restart disabled → legacy behavior: surface the outcome and stop.
         if !cfg.auto_restart_on_disconnect {
             return result;
+        }
+
+        // ── UPGRADE BEFORE RECONNECTING ────────────────────────────────────
+        //
+        // Gee: *"when the pod disconnects after the update is pressed, it shall
+        // upgrade to the updated most updated doner version before reconnecting
+        // attempts"*.
+        //
+        // A brain restart (the Update & Fresh Walk press) drops every donor. If
+        // the donor simply reconnects, it rejoins on the binary it already has —
+        // and the supervising launcher never re-checks, because its loop only
+        // turns over when this PROCESS EXITS. So the check belongs exactly here:
+        // after a disconnect, before the next attempt.
+        //
+        // ⭐ Exiting IS the upgrade. The launcher's supervisor loop re-resolves
+        // `releases/latest`, downloads, and relaunches — so ending the process is
+        // how a pod installs a new build. Nothing here downloads anything.
+        //
+        // ⚠ NEVER on a transient blip alone. This fires only when the brain has
+        // NAMED a newer version. A half-open link, a proxy drop, a brain that is
+        // simply down — none of those set `wanted_version` to anything newer, so
+        // the donor reconnects normally and keeps its replica. Turning every
+        // wobble into a process restart would cost a full 17-matrix re-upload.
+        //
+        // ⛔ And it can never move backwards: strictly-newer only. An older or
+        // equal value, an unparseable one, or a brain that never sent the field
+        // all mean "keep running" — the same rule the launcher already applies to
+        // an unreachable release API.
+        {
+            let wanted = control.wanted_version.lock().ok().map(|v| v.clone()).unwrap_or_default();
+            if !wanted.is_empty() && version_is_newer(&wanted, MY_VERSION) {
+                if upgrade_already_attempted(&wanted) {
+                    // ⛔ We exited for exactly this upgrade before and came back on
+                    // the SAME binary — the newer build is not actually installable
+                    // (tag not published, launcher pinned, download failing). Bouncing
+                    // again would idle the pod forever. Keep donating on what we have.
+                    eprintln!(
+                        "[donor] ⚠ UPGRADE DID NOT TAKE — exited for v{wanted} once already and restarted still on v{MY_VERSION}. \
+Not bouncing again; continuing to donate on this binary. Check that release {wanted} is actually published."
+                    );
+                    set_status(&control, |s| {
+                        s.note = format!("upgrade to v{wanted} unavailable — donating on v{MY_VERSION}");
+                    });
+                } else {
+                    eprintln!(
+                        "[donor] ⬆ UPGRADE BEFORE RECONNECT — the brain wants v{wanted}, this binary is v{MY_VERSION}. \
+Exiting so the supervisor installs the current build; it will reconnect on the new binary."
+                    );
+                    mark_upgrade_attempt(&wanted);
+                    set_status(&control, |s| {
+                        s.connected = false;
+                        s.note = format!("upgrading to v{wanted} before reconnecting…");
+                    });
+                    control.stop.store(true, Ordering::Relaxed);
+                    return result;
+                }
+            } else if !wanted.is_empty() {
+                // We are at or above what the brain wants — any earlier upgrade
+                // marker is spent. Clearing it keeps a single stale marker from
+                // suppressing every future upgrade from this version.
+                clear_upgrade_marker();
+            }
         }
 
         // Unexpected end. A clean session that simply dropped resets the backoff
@@ -634,7 +818,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
             activity_w.begin(match &work {
                 Work::Init(init) => format!("gpu_init {}", init.cluster_name),
-                Work::Batch(batch) => format!("compute_batch {}", batch.batch_id),
+                Work::Batch(batch, _) => format!("compute_batch {}", batch.batch_id),
                 Work::Frame(f) => match f {
                     Frame::Upload { name, .. } => format!("upload {name}"),
                     Frame::Chunk { name, chunk_seq, total_chunks, .. } => format!("upload-chunk {name} {}/{}", chunk_seq + 1, total_chunks),
@@ -667,14 +851,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let ack = GpuInitAck { msg_type: "gpu_init_ack", cluster_name: init.cluster_name.clone(), size: init.size };
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
-                Work::Batch(batch) => {
+                Work::Batch(batch, queued_at) => {
                     // Per-GPU duty-cycle now lives inside run_substeps (each card throttles to
                     // its own util target), so the worker just runs + replies. Pass the stop
                     // flag so a low-util idle bails fast on ⏹ Stop.
                     let _neurons: u64 = batch.clusters.iter().map(|c| c.size as u64).sum();
                     let _substeps = batch.substeps.max(1) as u64;
                     let _t0 = std::time::Instant::now();
-                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w);
+                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w, queued_at);
                     let _elapsed = _t0.elapsed().as_secs_f64().max(1e-6);
                     // Gneuron-steps/sec — same metric as compute.html: (Σ cluster sizes × substeps) / sec / 1e9.
                     let _gns = (_neurons as f64 * _substeps as f64) / _elapsed / 1e9;
@@ -953,7 +1137,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Message::Text(t) => {
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {
                             Ok(ServerMessage::GpuInit(init)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Init(init)); }
-                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Batch(batch)); }
+                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Batch(batch, std::time::Instant::now())); }
                             Ok(ServerMessage::RebindSparse(rb)) => {
                                 // Ack inline (no GPU work) so the brain doesn't hit its 30s
                                 // rebind timeout. The matrix stays standalone (carried preSpikes
@@ -997,6 +1181,19 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 control.stop.store(true, Ordering::Relaxed);
                                 let _ = tx.send(Message::Close(None)).await;
                                 break;
+                            }
+                            // UPGRADE-BEFORE-RECONNECT — remember which build this
+                            // brain wants. Acted on by the reconnect supervisor
+                            // AFTER this session ends, never mid-session: yanking a
+                            // working donor out from under a running teach to install
+                            // a point release would cost a full 17-matrix re-upload
+                            // for no reason.
+                            Ok(ServerMessage::Welcome(w)) => {
+                                if !w.recommended_donor_version.is_empty() {
+                                    if let Ok(mut v) = control.wanted_version.lock() {
+                                        *v = w.recommended_donor_version.clone();
+                                    }
+                                }
                             }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
@@ -1133,7 +1330,11 @@ fn handle_gpu_init(engine: &mut MultiEngine, init: &GpuInit) {
     println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
-fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize) -> ComputeBatchResult {
+fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize, queued_at: std::time::Instant) -> ComputeBatchResult {
+    // Queue wait is measured from the moment the WS task pushed this batch, so
+    // it covers the whole time it sat behind other work -- measuring from the
+    // top of this function would report zero by construction and look healthy.
+    let queue_wait_ms = queued_at.elapsed().as_secs_f64() * 1000.0;
     let substeps = batch.substeps.max(1);
     let mut per_cluster = std::collections::HashMap::new();
     let mut jobs: Vec<StepJob> = Vec::with_capacity(batch.clusters.len());
@@ -1151,14 +1352,33 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, st
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.
     *step_seed = step_seed.wrapping_mul(2654435761).wrapping_add(40503);
+    let compute_t0 = std::time::Instant::now();
     let outs = engine.run_substeps(&jobs, substeps, *step_seed, stop, pending);
+    let compute_ms = compute_t0.elapsed().as_secs_f64() * 1000.0;
     for (name, so) in outs {
         per_cluster.insert(
             name,
-            PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: None },
+            // GOTCHA.3b (v0.3.32) — was hardcoded `mean_voltage: None`, which is
+            // why the field read `null` on all seven clusters for the entire life
+            // of the native donor while the wire field, the server's EMA blend
+            // and the state publish were all already built and waiting.
+            PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: so.mean_voltage },
         );
     }
-    ComputeBatchResult { msg_type: "compute_batch_result", batch_id: batch.batch_id, per_cluster }
+    ComputeBatchResult {
+        msg_type: "compute_batch_result",
+        batch_id: batch.batch_id,
+        per_cluster,
+        // total = what the brain subtracts from its round trip. It is queue +
+        // compute deliberately: from the brain's point of view both are time
+        // the donor held the request, and only the remainder after subtracting
+        // it is genuinely wire.
+        phase_timing_ms: Some(PhaseTimingMs {
+            total_ms: queue_wait_ms + compute_ms,
+            queue_wait_ms,
+            compute_ms,
+        }),
+    }
 }
 
 /// Handle a decoded binary sparse frame; returns the SPRR ack bytes to send (if any).

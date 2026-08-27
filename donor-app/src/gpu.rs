@@ -12,6 +12,11 @@ pub const SYNAPSE_PROPAGATE_SHADER: &str = include_str!("shaders/synapse_propaga
 pub const PLASTICITY_SHADER: &str = include_str!("shaders/plasticity.wgsl");
 /// v0.3.26 — device-side sparse scatter for the masked bound-plasticity verb.
 pub const SCATTER_ONES_SHADER: &str = include_str!("shaders/scatter_ones.wgsl");
+/// GOTCHA.3b (v0.3.32) — mean of the Rulkov FAST variable (`state[i].x`), the
+/// membrane-potential analogue. Closes `mean_voltage: None`, which had made the
+/// field read `null` on all seven clusters for the native donor's whole life
+/// while every other link in the chain was already built and waiting.
+pub const VOLTAGE_MEAN_SHADER: &str = include_str!("shaders/voltage_mean.wgsl");
 /// GATEGPU.2 (v0.3.28) — device-side bucket-mean reduction of post currents.
 pub const BUCKET_MEAN_SHADER: &str = include_str!("shaders/bucket_mean.wgsl");
 /// GPUVERB.3 (v0.3.28) — max over post currents (predictive-error normaliser).

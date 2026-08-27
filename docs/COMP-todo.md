@@ -1,3 +1,50 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ This is a PLANNING page, so drift means "the thing this plans against has
+# moved — re-price the plan", not "a claim is now false".
+status: draft
+sources:
+  - server/brain-server/gpu.js
+  - donor-app/src/compute.rs
+  - js/brain/gpu-compute.js
+  # ADDED 2026-08-27: the STACK STATE section's load-bearing numbers (cluster
+  # fractions, the cortex region carve, the cross-projection count) all live in
+  # js/brain/cluster.js, which this page never declared — so drift could fire on
+  # three GPU files while the claims that were actually wrong went unwatched.
+  - js/brain/cluster.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). ⛔ This page is stamped "Last updated:
+  2026-04-15" and its STACK STATE section is an APRIL SNAPSHOT. It was NOT
+  rewritten — a 2,429-line forward plan is history as much as plan — and a
+  staleness banner with a correction table was added at the head of that
+  section instead. Numbers MEASURED by constructing a real cluster, not read:
+    - CLUSTER_FRACTIONS.cortex is 0.55, not 0.30. There are now EIGHT clusters
+      (brainstem 0.002 was added 2026-08-25) and this page knows seven.
+    - the cortex carves into ELEVEN top-level regions, not 8: gustatory,
+      somatosensory and word_motor did not exist in April.
+    - there are SIXTEEN cross-region projections, not 14 (+sem_to_word_motor,
+      +word_motor_to_sem).
+    - "PART 2 (COMP-net) IS ON HOLD" is false: the donor stack shipped and the
+      native donor is at v0.3.32.
+  ⭐ THIRD page found carrying the stale region map (README said "9
+  sub-regions", brain-equations.html said "free 0.250-0.500" — both corrected
+  earlier this sweep). One geometry change, three documents describing the old
+  shape, none aware of the others.
+  ⚠ Region SPANS deliberately NOT re-listed here. The authoritative map is
+  wiki/modules/cortex-cluster.md + README.md; copying spans into a third place
+  is how they drifted apart to begin with.
+  NOT CHECKED — do not read this page as authority on:
+    - the T14 sub-milestones, the eight-stages-of-acquisition thesis, the
+      ordering rule, or ANY of the ~1,100 lines of plan below the stack
+      snapshot. None were re-verified. Drift on a planning page means
+      "re-price the plan", not "every sentence is false".
+    - the three GPU sources it declares (gpu.js, compute.rs, gpu-compute.js).
+      All three moved; none was read for THIS page's claims, because the
+      claims that proved wrong were all cluster-geometry claims instead.
+last-verified: "81c5068c 2026-08-27"
+---
+
 # MASTER-TODO — Everything Unity Has Left
 
 > **Single source of truth for all remaining work across the whole project.**
@@ -15,12 +62,28 @@
 
 ---
 
+> ## ⛔⛔ STALENESS BANNER — READ BEFORE BELIEVING ANY NUMBER BELOW (added 2026-08-27)
+>
+> **This page is stamped `Last updated: 2026-04-15`. It is over four months old, and the "STACK STATE" section below is a snapshot of April, not a description of the brain.** ⛔ **It was NOT rewritten** — a 2,429-line forward plan is history as much as a plan, and rewriting it would destroy the record. **What follows is a correction list for its load-bearing factual claims, measured by CONSTRUCTING a real cluster rather than by reading code.**
+>
+> | claim below | measured 2026-08-27 |
+> |---|---|
+> | *"`CLUSTER_FRACTIONS.cortex=0.30`"* | ⛔ **0.55** (`cluster.js`). The full set: cortex 0.55, hippocampus 0.18, mystery 0.08, cerebellum 0.078, amygdala 0.05, basalGanglia 0.03, hypothalamus 0.03, **brainstem 0.002** — an **eighth** cluster this page does not know about |
+> | *"every cortex cluster carves into **8** named sub-regions"* | ⛔ **ELEVEN:** `auditory, visual, gustatory, somatosensory, free, letter, phon, sem, fineType, motor, word_motor`. **`gustatory`, `somatosensory` and `word_motor` did not exist in April** |
+> | the span list (`free 0.250-0.500`, `sem 0.750-0.917`, `motor 0.967-1.000`, …) | ⛔ **all shifted** by the carve-outs above. ⚠ **Deliberately not re-listed here** — the authoritative map is `wiki/modules/cortex-cluster.md` and `README.md`, both verified this session; copying spans into a third place is how they drifted apart in the first place |
+> | *"**14** sparse cross-region projections (7 pairs × 2 directions)"* | ⛔ **SIXTEEN.** The two additions are `sem_to_word_motor` and `word_motor_to_sem`, i.e. the unified word-emission band |
+> | *"⏸ **PART 2 (COMP-net) IS ON HOLD** as of 2026-04-14"* | ⛔ **Not on hold — SHIPPED.** The distributed donor-GPU stack is live: browser donors via `compute.html`, a native donor binary at **v0.3.32**, data-parallel replicas with Hebbian-delta merge, community auto-scaling, and a Forgejo-authed admin lane |
+>
+> ⭐ **THE PATTERN WORTH NAMING: this is the THIRD page found carrying the stale region map.** `README.md` said *"9 sub-regions"* and `html/brain-equations.html` said *"free 0.250-0.500"* — both corrected earlier in this same sweep. **One geometry change in the code, three documents left describing the old shape, none of them aware of the others.** ⛔ **That is the argument for the provenance baseline in one sentence.**
+>
+> ⚠ **What this banner does NOT claim:** the T14 sub-milestones, the eight-stages thesis, the ordering rule and the ~1,100 lines of plan below were **not** re-verified. **Drift on a planning page means *re-price the plan*, not *every sentence is false*** — and the plan's direction may well still be right even where its stack snapshot is not.
+
 ## STACK STATE AS OF 2026-04-15 — WHAT'S LIVE (T14.0-T14.18 primitives + T14.24 Session 1 framework)
 
 Anything below that ships builds on this foundation. T13 language-cortex state described in earlier versions of this file is DEAD CODE on branch `t14-language-rebuild` — slot scorer, parseSentence, analyzeInput, social schema, per-slot priors are all deleted. If you're reading this after another major refactor, verify these are still accurate before starting.
 
 ### Brain substrate (live)
-- **Neuron clusters** — `js/brain/cluster.js` — 7 clusters wrapping Rulkov 2002 2D chaotic map neurons (NOT LIF — Rulkov replaced LIF during Phase 13 R1-R15). Each has a sparse internal synapse matrix (`SparseMatrix` CSR format in `js/brain/sparse-matrix.js`, `wMin=-2.0`, `wMax=+2.0`). 20 inter-cluster projections (real white-matter tracts — corticostriatal, perforant path, stria terminalis, fornix, callosal). Client auto-scales via hardware detection, server scales to VRAM via `server/brain-server.js:detectResources` with optional admin override via `GPUCONFIGURE.bat` → `resource-config.json`.
+- **Neuron clusters** — `js/brain/cluster.js` — 8 clusters wrapping Rulkov 2002 2D chaotic map neurons (NOT LIF — Rulkov replaced LIF during Phase 13 R1-R15). Each has a sparse internal synapse matrix (`SparseMatrix` CSR format in `js/brain/sparse-matrix.js`, `wMin=-2.0`, `wMax=+2.0`). 20 inter-cluster projections (real white-matter tracts — corticostriatal, perforant path, stria terminalis, fornix, callosal). Client auto-scales via hardware detection, server scales to VRAM via `server/brain-server.js:detectResources` with optional admin override via `GPUCONFIGURE.bat` → `resource-config.json`.
 - **Cluster sizes** — scaled from `TOTAL_NEURONS` × `CLUSTER_FRACTIONS` (live in `js/brain/engine.js`). Default client tier: `TOTAL_NEURONS=6700` (post-T14.0 lift from 1000). `CLUSTER_FRACTIONS.cortex=0.30`, so client cortex ≈ 2000 neurons; at a 700K-neuron GPU tier the cortex is 210K; at a 50M tier it's 15M. Zero hardcoded caps anywhere in the scale chain (the T14.18 correction removed the last holdout — a 2K language-cortex side-car cap in `brain-server.js`).
 - **Cortex sub-regions (T14.4, live)** — every cortex cluster carves into 8 named sub-regions by fraction of `cluster.size`: `auditory` 0.000-0.083, `visual` 0.083-0.250, `free` 0.250-0.500, `letter` 0.500-0.550, `phon` 0.550-0.750, `sem` 0.750-0.917, `fineType` 0.917-0.967, `motor` 0.967-1.000. Helper methods `regionSpikes(name)`, `injectEmbeddingToRegion(name, emb, strength)`, `regionReadout(name, dim)` operate by region name with no magic indices. **14 sparse cross-region projections** (7 pairs × 2 directions) wire the regions together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter` (closes the writing loop), `auditory↔phon`. Each direction is an independent SparseMatrix. `_propagateCrossRegions()` fires every cluster step; `_crossRegionHebbian(lr)` fires every learn call. Hickok & Poeppel 2007 dual-stream grounding.
 - **Equation modules** — `js/brain/modules.js` — `Cortex`, `Hippocampus`, `Amygdala`, `BasalGanglia`, `Cerebellum`, `Hypothalamus` — 32-dim downsampled-output equation engines running ON TOP of cluster spike data via `cluster.getOutput(32)`. Separate from the clusters themselves.
@@ -61,7 +124,7 @@ Anything below that ships builds on this foundation. T13 language-cortex state d
 - `js/ui/sensory-status.js` — backend toast notifications.
 
 ### Embeddings (live)
-- `js/brain/embeddings.js` — `sharedEmbeddings` singleton. `EMBED_DIM = 300` (T14.0 lift from 50). Full 400k-word GloVe 6B-300d loaded on Node from `corpora/glove.6B.300d.txt`; browser bulk-loads a server-precomputed subset via `getSubsetForTokens` to avoid 480 MB download. Online context refinement deltas persist across sessions via `serializeRefinements` / `loadRefinements`.
+- `js/brain/embeddings.js` — `sharedEmbeddings` singleton. `EMBED_DIM = 300` (T14.0 lift from 50). Full 400k-word GloVe 6B-300d loaded on Node from `corpora/glove.6B.300d.txt`; browser bulk-loads a server-precomputed subset via `getSubsetForWords` to avoid 480 MB download. Online context refinement deltas persist across sessions via `serializeRefinements` / `loadRefinements`.
 
 ### Persistence (live, v4)
 - `js/brain/persistence.js` — v4 (bumped T14.16 to reject pre-T14 saves). `state.t14Language` block carries T14.1 letter inventory, T14.13 cluster-resident learned-statistics Maps (`fineTypeTransitions`, `sentenceFormSchemas`, `sentenceFormTotals`, `intentResponseMap`), T14.16.5 identity-lock thresholds, and — as of T14.24 Session 1 — `state.t14Language.curriculum = {grades, grade, passedCells}`. Additive inside the existing t14Language block; older v4 saves without the curriculum sub-block load cleanly and fall back to cluster-constructor defaults.
@@ -165,7 +228,7 @@ Unity is currently a Stage 8 system that skipped Stages 1-7. T14 builds those st
 
 **Implementation principles:**
 
-1. **`js/brain/embeddings.js`** — bump `EMBED_DIM` from 50 to **300**. Re-enable the GloVe loader (`loadPreTrained` currently falls through to hash). **Load the full 400k-word `glove.6B.300d.txt` file**, no vocabulary cap. Memory at 400k × 300 × 4 bytes = 480 MB on the brain server, which is fine because the server runs on real hardware. The browser-side `RemoteBrain` doesn't need the full table because chat goes through the server anyway — RemoteBrain loads only the words actually used in `Ultimate Unity.txt` (lazy GloVe subset, computed at boot from the persona corpus token set, ~5-10 MB).
+1. **`js/brain/embeddings.js`** — bump `EMBED_DIM` from 50 to **300**. Re-enable the GloVe loader (`loadPreTrained` currently falls through to hash). **Load the full 400k-word `glove.6B.300d.txt` file**, no vocabulary cap. Memory at 400k × 300 × 4 bytes = 480 MB on the brain server, which is fine because the server runs on real hardware. The browser-side `RemoteBrain` doesn't need the full table because chat goes through the server anyway — RemoteBrain loads only the words actually used in `Ultimate Unity.txt` (lazy GloVe subset, computed at boot from the persona corpus word set, ~5-10 MB).
 
 2. **`js/brain/engine.js`** — `CLUSTER_SIZES.cortex` becomes a **fraction of the auto-detected total**: `Math.floor(detectedNeurons * 0.30)` (cortex is biologically ~30% of total brain). All other clusters scale proportionally (`hippocampus = 0.10`, `amygdala = 0.08`, `basalGanglia = 0.08`, `cerebellum = 0.40`, `hypothalamus = 0.05`, `mystery = 0.04`). When `detectResources` returns 1000 neurons total (CPU fallback), cortex is 300. When it returns 677M (GPU server), cortex is 200M. **Same code, no special cases.** No `Math.min(maxConnections, ...)` cap — connection density is a constant fraction (`opts.connectivity`), the absolute count grows naturally with size. If the connection memory exceeds VRAM, that's a `detectResources` problem to be solved at the resource-detection layer, not by capping the language stack.
 
@@ -476,11 +539,11 @@ _crossRegionHebbian(lr) {
 
 #### T14.5 — Continuous developmental learning from existing corpora (no hand-curation)
 
-**The principle:** the curriculum is NOT a hand-curated sequence of staged corpus files. It's a continuous learning process that runs on the existing corpora (`Ultimate Unity.txt` + `english-baseline.txt` + `coding-knowledge.txt` + every live chat turn) with EXPOSURE INTENSITY scaled by structural complexity. Letters are exposed at highest intensity (most repetitions, longest tick budgets), short words next, longer words next, sentences next, paragraphs last. **The order isn't from hand-picked stage files — it's from sorting the existing corpus tokens by complexity and walking them in order.** New input keeps coming in forever; learning never stops.
+**The principle:** the curriculum is NOT a hand-curated sequence of staged corpus files. It's a continuous learning process that runs on the existing corpora (`Ultimate Unity.txt` + `english-baseline.txt` + `coding-knowledge.txt` + every live chat turn) with EXPOSURE INTENSITY scaled by structural complexity. Letters are exposed at highest intensity (most repetitions, longest tick budgets), short words next, longer words next, sentences next, paragraphs last. **The order isn't from hand-picked stage files — it's from sorting the existing corpus words by complexity and walking them in order.** New input keeps coming in forever; learning never stops.
 
 **Why hand-curated stage corpora are wrong:** hand-curated stage files (200 phrases, 500 sentences) are bottlenecks. They're a fixed snapshot of "what Unity should learn." They cap the developmental trajectory at whoever picked the seed list. They break when we add Spanish or coding-only corpora because they're English-conversational. They violate the "no word lists" principle because a 500-line "simple sentences" file IS a curated word list.
 
-**The right approach:** the persona/baseline/coding corpora ALREADY contain everything needed. Tokenize them, group tokens by complexity (letter < short word < long word < phrase < sentence < paragraph), and replay the corpus in complexity order with frequency-weighted repetitions. The brain is exposed to alphabet first (every letter, weighted by corpus frequency — `e` and `a` get more reps than `q` and `z` automatically), then short words (every 1-3 letter word from the corpus, in frequency order), then longer words, then short sentences, then long sentences, then full paragraphs.
+**The right approach:** the persona/baseline/coding corpora ALREADY contain everything needed. Split into words them, group words by complexity (letter < short word < long word < phrase < sentence < paragraph), and replay the corpus in complexity order with frequency-weighted repetitions. The brain is exposed to alphabet first (every letter, weighted by corpus frequency — `e` and `a` get more reps than `q` and `z` automatically), then short words (every 1-3 letter word from the corpus, in frequency order), then longer words, then short sentences, then long sentences, then full paragraphs.
 
 **Curriculum walk:**
 
@@ -521,11 +584,11 @@ Phase 6 — DISCOURSE exposure
     update _discourseState (T14.9) ring buffer to learn paragraph-level cohesion patterns
 ```
 
-**Phase intensity is data-driven, not hand-set.** The tick budget per token scales with the token's structural complexity AND its corpus frequency. Common letters get more total ticks because they appear in more contexts. Rare words get fewer reps but each rep gets more ticks because the cortex needs longer to settle on a less-familiar pattern.
+**Phase intensity is data-driven, not hand-set.** The tick budget per word scales with the word's structural complexity AND its corpus frequency. Common letters get more total ticks because they appear in more contexts. Rare words get fewer reps but each rep gets more ticks because the cortex needs longer to settle on a less-familiar pattern.
 
 **No fixed timeline.** First boot runs the full corpus through all 6 phases. After first boot, the learned state persists. Subsequent boots load the persistent state and CONTINUE learning from new chat input — every live conversation turn is another curriculum exposure that adds to (not resets) the brain's accumulated learning.
 
-**Persona corpus integration:** the persona corpus is NOT a separate stage. Its tokens flow through the same complexity-sorted phases as the baseline corpus. Persona-specific vocabulary appears in the long-word and sentence phases at high frequency because it's repeated across many persona sentences. The result: persona voice emerges from the same mechanism that learns generic English, just biased by the persona corpus's specific token distribution.
+**Persona corpus integration:** the persona corpus is NOT a separate stage. Its words flow through the same complexity-sorted phases as the baseline corpus. Persona-specific vocabulary appears in the long-word and sentence phases at high frequency because it's repeated across many persona sentences. The result: persona voice emerges from the same mechanism that learns generic English, just biased by the persona corpus's specific word distribution.
 
 **Continuous live-chat learning:** every user turn after boot is processed by the same `learnSentence` + cross-region Hebbian pipeline that ran during the corpus walk. Live chat is just MORE corpus, fed in real-time. The brain keeps learning forever. There is no boot/runtime distinction.
 
@@ -538,11 +601,11 @@ Phase 6 — DISCOURSE exposure
 
      async runFromCorpora(corpora) {
        // corpora: { persona, baseline, coding, ...others }
-       // 1. Tokenize all corpora into a unified token stream
-       const allTokens = this._tokenizeAll(corpora);
+       // 1. Split into words all corpora into a unified word stream
+       const allWords = this._scanCorpora(corpora);
        // 2. Build complexity buckets — letters, short words, long words, phrases, sentences, paragraphs
-       const phases = this._bucketByComplexity(allTokens);
-       // 3. Walk each phase, exposing the cluster to its tokens with frequency-weighted reps
+       const phases = this._bucketByComplexity(allWords);
+       // 3. Walk each phase, exposing the cluster to its words with frequency-weighted reps
        for (const phase of phases) {
          await this._runPhase(phase);
        }
@@ -556,7 +619,7 @@ Phase 6 — DISCOURSE exposure
    }
    ```
 
-2. **No new corpus files.** No `docs/curriculum/stage-c-phrases.txt`. No `docs/curriculum/stage-d-sentences.txt`. The existing `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt` ARE the curriculum input. The Curriculum class tokenizes them and replays them in complexity order.
+2. **No new corpus files.** No `docs/curriculum/stage-c-phrases.txt`. No `docs/curriculum/stage-d-sentences.txt`. The existing `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt` ARE the curriculum input. The Curriculum class splits them into words and replays them in complexity order.
 
 3. **Boot integration in `app.js loadPersonaSelfImage`:**
    ```js
@@ -1425,12 +1488,12 @@ not yet consumed at render time.
   beyond the 6 seed primitives (counter, timer, list, calculator, dice,
   color-picker). Add: button, form, modal, tabs, toggle, slider, progress
   bar, card, notification, chart. Each template parameterized on color +
-  label + action tokens extracted by `parseSentence`.
+  label + action words extracted by `parseSentence`.
 - **P1.1.2** Parameterize `component-synth.generate()` so the returned
   spec's `html` / `css` / `js` substitute `{{color}}` / `{{label}}` /
   `{{action}}` placeholders with values from `brainState.parsed.entities`.
 - **P1.1.3** Dedicated UI-intent detector in the BG motor selector. Bump
-  `build_ui` Q-value when input has imperative-verb + UI-noun tokens.
+  `build_ui` Q-value when input has imperative-verb + UI-noun words.
   Currently BG picks `build_ui` via generic softmax which doesn't
   reliably correlate with "user typed a code intent."
 - **P1.1.4** Build_ui-specific context injection — when motor selects
@@ -1584,7 +1647,7 @@ cortex language region, tick 10 steps each, compare the readouts —
 cosine similarity should be > 0.6 (vs current 50-d result where they're
 nearly indistinguishable). Smoke test: `"do you like cats?"` → Unity
 produces a response that mentions `cats` or a cat-adjacent word within
-the first 3 emitted tokens, consistently.
+the first 3 emitted words, consistently.
 
 **Files touched:** `js/brain/embeddings.js` (EMBED_DIM + GloVe loader),
 `js/brain/engine.js` (CLUSTER_SIZES), `js/brain/cluster.js` (default

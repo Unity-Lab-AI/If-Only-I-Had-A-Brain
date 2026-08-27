@@ -1,0 +1,91 @@
+# Unity brain CONTROL PLANE — the always-up service that can start a dead brain.
+#
+# ── WHY THIS UNIT EXISTS ───────────────────────────────────────────────────
+# unity-brain.service is a ~12 GB, 411M-neuron process that legitimately stops:
+# a deliberate halt (exit 42, which RestartPreventExitStatus tells systemd not
+# to fight), an OOM kill, a failed boot. Its own HTTP power controls die with
+# it, so a stopped brain had no reachable "start" button and needed someone with
+# SSH. This tiny sibling service holds those controls instead, so the operator
+# who owns the brain can always recover it.
+#
+# It is intentionally the OPPOSITE of the brain: no weights, no GPU, no worker
+# threads, a few MB of RSS. It should be boring enough to never need a deploy.
+#
+# Install:
+#   sudo cp deploy/unity-brain-ctl.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now unity-brain-ctl
+#   systemctl status unity-brain-ctl --no-pager
+#   curl -s http://127.0.0.1:7526/ctl/status | head
+#
+# Requires (see deploy/README.md — the control plane is inert without these):
+#   /usr/local/sbin/brain-ctl-helper      (from deploy/brain-ctl-helper.sh)
+#   /etc/sudoers.d/unity-brain-ctl        (from deploy/sudoers.d/unity-brain-ctl)
+
+[Unit]
+Description=Unity brain control plane (always-up start/stop/restart for unity-brain)
+Documentation=file:///opt/unity-brain/deploy/README.md
+After=network-online.target
+Wants=network-online.target
+
+# NOT BoundBy/Requires/PartOf unity-brain — that is the entire point. This
+# service must remain running precisely WHEN the brain is not, so it must have
+# no dependency that could stop it alongside the brain.
+
+# Never let the start-rate limiter strand the control plane. If the thing that
+# recovers the brain is itself permanently dead, the box needs SSH again — which
+# is the exact failure this whole design removes.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=unity
+Group=unity
+WorkingDirectory=/opt/unity-brain
+ExecStart=/usr/bin/node server/brain-ctl.js
+
+Environment=NODE_ENV=production
+Environment=UAL_CTL_PORT=7526
+Environment=UAL_CTL_BIND=127.0.0.1
+Environment=UAL_BRAIN_PORT=7525
+Environment=UAL_BRAIN_UNIT=unity-brain
+Environment=UAL_CTL_HELPER=/usr/local/sbin/brain-ctl-helper
+
+# Always come back, fast. There is no "deliberate halt" concept here: nobody
+# should ever want the recovery service down, so unlike the brain there is no
+# RestartPreventExitStatus.
+Restart=always
+RestartSec=2
+
+# Tiny by construction. The cap is a tripwire: if this service ever grows enough
+# to approach it, something has been added that does not belong in a control
+# plane, and it should be OOM-killed and restarted rather than compete with the
+# brain for the box's RAM.
+MemoryAccounting=true
+MemoryMax=256M
+CPUAccounting=true
+CPUQuota=25%
+
+# ── Hardening ──
+# This service can invoke a root helper, so it gets a tighter sandbox than the
+# brain. It only needs to read /opt/unity-brain, run node, and talk loopback.
+NoNewPrivileges=false
+# ^ MUST stay false: sudo needs to raise privilege for the helper. This is the
+#   one hardening directive deliberately NOT enabled, and it is why the helper
+#   validates its own input and hardcodes the unit name.
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=false
+# ^ also required for sudo.
+RestrictRealtime=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=unity-brain-ctl
+
+[Install]
+WantedBy=multi-user.target

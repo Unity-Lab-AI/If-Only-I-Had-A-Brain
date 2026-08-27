@@ -273,3 +273,22 @@ art-notdrawable.json
 # The admin's Pollinations key — a CREDENTIAL. Never tracked.
 pollinations-admin.json
 server/pollinations-admin.json
+
+# ── Fable Kit — OPERATOR TOOLING, not project source ─────────────────────────
+# A third-party kit (protocol launcher + LLM-maintained codebase wiki + central
+# vault) installed to browse THIS stack. The kit itself lives outside the repo
+# in ~/.claude/; these are the only artefacts that land in the project folder.
+#
+# ⛔ Ignored on the same principle that removed the ai-ministries CLI plugin:
+# tooling that helps someone READ the brain is not part of the brain, and the
+# repo is the brain. A wiki/ of generated pages beside docs/ would also give
+# the project two doc trees with different rules, and docs/ is the one the
+# LAWs govern.
+#
+# ⚠ Ignoring wiki/ does NOT break its staleness check: `last-verified` hashes
+# and every path in a page's `sources:` refer to TRACKED files, so
+# `git diff <hash>..HEAD -- <sources>` resolves exactly the same.
+wiki/
+fable-kit.zip
+fable-kit/
+graphify-out/

@@ -452,6 +452,16 @@ const SERVER_GPU_MIXIN = {
           t.donorComputeMs = donorMs;
           t.unaccountedMs = (donorMs != null) ? Math.max(0, rtMs - donorMs) : null;
           t.donorReports = donorMs != null;
+          // DONORTIME.1 — the donor's own split of the time it held the batch.
+          // `unaccountedMs` alone says "not the donor", which was enough when
+          // the donor was a remote pod behind a 205ms wire. With the donor on
+          // localhost the wire is effectively free, so the interesting question
+          // moved INSIDE the donor: is it queueing (saturated — batching and
+          // scheduling help) or computing (the kernels are the cost)? Those
+          // call for opposite work and one number cannot tell them apart.
+          const pt = value && value.phaseTimingMs;
+          t.donorQueueWaitMs = (pt && Number.isFinite(Number(pt.queueWaitMs))) ? Number(pt.queueWaitMs) : null;
+          t.donorComputeOnlyMs = (pt && Number.isFinite(Number(pt.computeMs))) ? Number(pt.computeMs) : null;
           t.substeps = substeps;
           // Sparse dispatches issued while this batch was in flight — the
           // queue-depth proxy (how much other traffic shared the donor socket).
@@ -459,9 +469,11 @@ const SERVER_GPU_MIXIN = {
           this._perfStats.batchTiming = t;
           if (!this._batchTimingLogMs || (Date.now() - this._batchTimingLogMs) > 30000) {
             this._batchTimingLogMs = Date.now();
+            const donorSplit = (t.donorQueueWaitMs != null && t.donorComputeOnlyMs != null)
+              ? ` [queue=${t.donorQueueWaitMs.toFixed(0)}ms compute=${t.donorComputeOnlyMs.toFixed(0)}ms]` : '';
             const donorTxt = donorMs != null
-              ? `donor=${donorMs.toFixed(0)}ms · UNACCOUNTED=${t.unaccountedMs.toFixed(0)}ms (wire + blocked loop)`
-              : 'donor=not-reported (native donor sends no phaseTimingMs — the unaccounted split needs a browser donor or a donor-side port)';
+              ? `donor=${donorMs.toFixed(0)}ms${donorSplit} · UNACCOUNTED=${t.unaccountedMs.toFixed(0)}ms (wire + blocked loop)`
+              : 'donor=not-reported (donor sent no phaseTimingMs — pre-0.3.31 native donor; the unaccounted split needs the donor-side port)';
             console.log(`[Brain] TICK-GAP — compute_batch round-trip ${rtMs}ms (ema ${t.roundTripEmaMs.toFixed(0)}ms) · substeps=${substeps} · ${donorTxt} · sparse dispatches in flight during batch=${t.dispatchesDuring}. Rate-limited 30s.`);
           }
         } catch { /* telemetry must never break a tick */ }
@@ -2757,8 +2769,14 @@ const SERVER_GPU_MIXIN = {
         // at worst-case 4MB/s), browser donors keep the 8MB protection.
         let _loDefMb = 8;
         try {
-          const _c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
-          if (_c && _c.donorAppVersion) _loDefMb = 96;
+          // ⛔ BOUNDCAP.1 — this WAS `if (_c && _c.donorAppVersion) _loDefMb = 96`,
+          // which is true for a browser donor too (register stamps the truthy
+          // string 'browser'). So the 96MB in-flight window meant for native
+          // donors was ALSO handed to browser donors — the exact opposite of
+          // the sentence three lines up, and it removed the protection that
+          // exists because a browser donor's busy main thread cannot drain its
+          // own socket. Routed through the one nativeness owner now.
+          if (this._donorIsNative(ws)) _loDefMb = 96;
         } catch { /* browser default stands */ }
         const _loBytes = (Number.isFinite(_loMbEnv) && _loMbEnv > 0 ? _loMbEnv : _loDefMb) * 1024 * 1024;
         let _pacedMs = 0;
@@ -2860,6 +2878,22 @@ const SERVER_GPU_MIXIN = {
       const _upSecs = Math.max(0.001, (Date.now() - _upT0) / 1000);
       const _upMBs = (_upBytes / 1048576) / _upSecs;
       console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack — UPLINK measured ${(_upBytes / 1048576).toFixed(1)}MB in ${_upSecs.toFixed(1)}s = ${_upMBs.toFixed(2)}MB/s (pump-limited if far below the port rating; DREAM_UPLOAD_PACE_LOWATER_MB tunes in-flight)`);
+      // ⛔ ONESHOT.1 — THE RATE ALSO LIVES IN STATE NOW. This number existed
+      // ONLY in the line above, and it was missed on a press for exactly that
+      // reason: the console ring caps at 500 lines and the walk can fill it in
+      // seconds. ⚠ Kept as a SMALL RING, not a single value, because the rate
+      // is not uniform — a 2.79GB matrix averages lower than a 48MB one since
+      // it spans many drain cycles, so a lone "last upload" figure would be a
+      // different lie depending on which matrix happened to finish last. The
+      // SIZE travels with every entry so the pair can never be read apart.
+      try {
+        if (!this._uplinkStats) this._uplinkStats = [];
+        this._uplinkStats.push({
+          at: Date.now(), name: String(name), mb: +(_upBytes / 1048576).toFixed(1),
+          secs: +_upSecs.toFixed(1), mbps: +_upMBs.toFixed(2), chunks: totalChunks | 0,
+        });
+        while (this._uplinkStats.length > 24) this._uplinkStats.shift();
+      } catch { /* telemetry never breaks an upload */ }
     }
     // TEACHMIRROR — RECORD RESIDENCY ON THE ACK, FOR BOTH LANES.
     //
@@ -3571,11 +3605,75 @@ const SERVER_GPU_MIXIN = {
     // declared semantics are already keep-latest, so reusing one persistent
     // buffer per matrix is safe here and nowhere else. Key by matrix name so
     // each projection keeps its own.
-    if (_c && _c.donorAppVersion) {
+    // ⛔ PROPBOUND.2 (2026-08-25) — THE REFUSAL IS COUNTED NOW.
+    //
+    // The rebuild above is correct and was verified four ways (the mirror is
+    // written in the SAME call as the wire frame, coordinates match on both
+    // sides, the clear path zeroes both, and the region fractions tile 1.000
+    // so a full clear leaves no GPU-only residue). What it did NOT have was an
+    // instrument: `return null` on an empty mirror sent every bound propagate
+    // to the CPU **silently**, so "how often does this lane fall back?" was
+    // unanswerable — and that is exactly the number RHYTHM3S.1 is hunting.
+    //
+    // ⚠ An empty mirror is NOT automatically a fault. Between teach writes the
+    // cortex genuinely has no resident pattern, and refusing is the correct
+    // behaviour there. It becomes a finding when it stays high *during* a
+    // teach era, which is a comparison the board can only make if the number
+    // exists. Counted by lane, so native-rebuild and browser-empty-pre can
+    // never be read as one thing.
+    if (!this._boundPropStats) {
+      this._boundPropStats = { native: 0, emptyMirror: 0, browserEmptyPre: 0, noMirrorObject: 0, lastEmptyAt: 0, lastEmptyName: null };
+    }
+    const _bps = this._boundPropStats;
+    // ⛔⛔ BOUNDCAP.1 (2026-08-25) — THE OLD TEST WAS `if (_c.donorAppVersion)`,
+    // AND IT WAS TRUE FOR EVERY DONOR, SO THE BROWSER PATH BELOW WAS DEAD CODE.
+    //
+    // `gpu_register` stamps `client.donorAppVersion = _donorVer || 'browser'` —
+    // a browser donor gets the truthy STRING `'browser'`, not a falsy value. So
+    // the presence test selected the native rebuild for browser donors too, and
+    // the empty-pre branch had been unreachable for any registered donor since
+    // the PROPBOUND fix landed 2026-08-21.
+    //
+    // ⛔ Why that was not merely redundant: `compute.html`'s type=2 handler
+    // reads the payload as a DENSE 0/1 spike array (`new Uint32Array(buf, off,
+    // preLen)` → `writeSparsePreSpikes`), and `_boundPreIndicesFor` returns
+    // INDICES. Sending indices where a dense vector is expected is not a
+    // smaller signal, it is a DIFFERENT one — and `preLen === 0` is precisely
+    // the browser's bound-mode trigger (compute.html:724), so a non-empty pre
+    // also forced standalone mode on a matrix whose standalone buffers are not
+    // allocated when it is cluster-bound. The fix for one donor type had become
+    // a mirror image of the same bug on the other.
+    //
+    // ⭐ Decided by CAPABILITY now, not by identity. The question this routes on
+    // is exactly "does this donor read its resident bound buffer when pre is
+    // empty?" — so that is what is asked. `boundResidentRead` is advertised at
+    // register (the `sparseV2` / `mindspaceV1` idiom); the explicit `'browser'`
+    // sentinel keeps ALREADY-LOADED pages correct without waiting for a reload,
+    // and it cannot silently flip the way a version-presence test did, because
+    // the server itself writes that sentinel from the absence of a version.
+    // ⚠ DELIBERATELY NOT `!this._donorIsNative(_ws)`, and this is not an
+    // oversight to tidy up: that helper answers `false` for an UNREGISTERED
+    // donor, so its negation would route an unknown donor to the empty-pre
+    // path — the one that silently returns all-zero currents on a native
+    // binary. The asymmetry is the safety property. Unknown must land on the
+    // rebuild path, which refuses with `null` instead of inventing a signal.
+    const _residentRead = (_ws && _ws._boundResidentRead === true)
+      || !!(_c && _c.donorAppVersion === 'browser');
+    if (!_residentRead) {
       const pre = this._boundPreIndicesFor(name);
-      if (!pre || !pre.length) return null;
+      if (!pre || !pre.length) {
+        // Split the two reasons: a MISSING mirror object is a wiring fault,
+        // an EMPTY one is an idle cortex. Collapsing them would hide the
+        // first behind the second, which is normal and constant.
+        if (!pre) _bps.noMirrorObject++; else _bps.emptyMirror++;
+        _bps.lastEmptyAt = Date.now();
+        _bps.lastEmptyName = name;
+        return null;
+      }
+      _bps.native++;
       return this.gpuSparsePropagate(name, pre, target, 30_000, `bound:${name}`);
     }
+    _bps.browserEmptyPre++;
     return this.gpuSparsePropagate(name, new Uint32Array(0), target, 30_000, `bound:${name}`);
   },
 
@@ -3602,6 +3700,26 @@ const SERVER_GPU_MIXIN = {
     const idx = [];
     for (let i = region.start; i < region.end; i++) { if (spikes[i]) idx.push(i - region.start); }
     return Uint32Array.from(idx);
+  },
+
+  // ⛔ BOUNDCAP.1 — THE ONE OWNER OF "IS THIS DONOR THE NATIVE BINARY?".
+  //
+  // Two separate call sites had each written `if (client.donorAppVersion)` to
+  // mean "native", and BOTH were wrong the same way: `gpu_register` stamps the
+  // string `'browser'` for a browser donor, which is truthy, so every donor
+  // read as native and each site's browser branch was dead code. Two instances,
+  // one root cause — so the question gets one owner rather than a second
+  // corrected copy.
+  //
+  // ⚠ Deliberately NOT a version comparison. Every other capability gate here
+  // regex-parses a semver and gets browser-exclusion for free (`'browser'` does
+  // not match `^\d+\.\d+\.\d+`), which is why those sites were never affected.
+  // This one asks about the donor's KIND, not its age, so it tests the sentinel
+  // the register handler actually writes.
+  _donorIsNative(ws) {
+    const c = (this.clients && this.clients.get && ws) ? this.clients.get(ws) : null;
+    if (!c || !c.donorAppVersion) return false;   // unregistered / unknown — never assume native
+    return c.donorAppVersion !== 'browser';
   },
 
   // TU.28.1 — shared soft-cap knob (same env knob as the TU.25.A hebbian

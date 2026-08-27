@@ -66,6 +66,39 @@ __global__ void lif(unsigned int n, float effectiveDrive, float noiseAmp,
   spikes[i] = (xN <= 0.0f && xNext > 0.0f) ? 1u : 0u;
 }
 
+// GOTCHA.3b (v0.3.32) — mean of the Rulkov FAST variable. Port of
+// voltage_mean.wgsl, and the CUDA half the board said this "must be written
+// TWICE" for.
+//
+// ⛔ `state` here is FLAT, not vec2: `state[2*i]` is x (the fast variable, the
+// membrane-potential analogue) and `state[2*i+1]` is y (the slow recovery
+// variable). The WGSL twin binds `array<vec2<f32>>` and reads `.x`; this reads
+// `state[2u*i]`. Same value, different memory view — reading `state[i]` here
+// would silently interleave x and y and produce a plausible number that means
+// nothing.
+//
+// ⚠ Partial sums, not an atomicAdd. CUDA *does* have atomicAdd(float*), unlike
+// WGSL — but this deliberately mirrors the WGSL structure so the two halves can
+// be compared line-for-line, and so both divide by the real `n` on the host
+// rather than accumulating rounding differently. Matching shape beats a
+// marginally shorter kernel when the whole point is cross-backend parity.
+//
+// One thread per partial slot; the host sums the slots. A slot starting past
+// the end still WRITES 0.0f — the host sums the whole buffer, so a stale value
+// from a previous larger cluster would otherwise read as real signal.
+__global__ void voltage_mean(unsigned int n, unsigned int chunk, const float* state, float* partials) {
+  unsigned int p = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int start = p * chunk;
+  if (start >= n) { partials[p] = 0.0f; return; }
+  unsigned int end = start + chunk;
+  if (end > n) end = n;
+  float sum = 0.0f;
+  for (unsigned int i = start; i < end; i++) {
+    sum += state[2u * i];
+  }
+  partials[p] = sum;
+}
+
 // Atomic spike count (port of spike_count.wgsl).
 __global__ void spike_count(unsigned int n, const unsigned int* spikes, unsigned int* count) {
   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;

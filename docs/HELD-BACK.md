@@ -1,3 +1,43 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - js/brain/student-question-banks.js
+  - js/brain/cluster.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4, 11 of 22) — every env flag, default and
+  magnitude on this page looked up in source:
+    - ⛔ CORRECTED: DREAM_NOISE_GATE was documented as `=1` / default OFF /
+      "ships dormant". cluster.js:2173 is `!(env === '0')` — it is ON by
+      default and `=0` is the OPT-OUT. The page therefore claimed plasticity
+      was "byte-identical to plain predictive coding" while the gate has been
+      live in production the whole time.
+    - ⛔ CORRECTED: the Status section's "default-OFF ... before it's switched
+      on in production" - same inversion, same fix.
+    - ⚠ ADDED: the surprise gate's CEILING (_surpriseMax, cluster.js:2191/2201)
+      and _surpriseStats{n,sum,atCeiling,max,ceiling}, undocumented here.
+    - VERIFIED CORRECT: DREAM_HELD_BACK default-on with `=0` opt-out;
+      DREAM_GRADE_MAJOR_ROUNDS default 2, clamped 1-5 via Math.floor;
+      surpriseGate = 0.5 + predErr, gated form 0.5 + predErr*coherence*inhib;
+      _noiseSuppressFactor 0.2 saturated / 1.0 clean; inhib 0.5 on rung 3.
+    - ⚠ js/brain/cluster.js ADDED as a source. This page's own banner names it
+      ("Source: curriculum.js, cluster.js") and the noise gate LIVES there, but
+      the frontmatter listed student-question-banks.js instead - so drift could
+      never fire on the file that owns half the page. FOURTH time this pattern
+      has appeared today.
+  NOT CHECKED — do not read this page as authority on:
+    - whether the 0.2 / 0.5 magnitudes are correct VALUES. They are confirmed
+      present; nothing here evaluates whether they help or hurt training, and
+      the code's own REPLAYOFF.5 note says the gate may be timid.
+    - the ladder's runtime behaviour (rungs, terminus, BOOTORDER.2 ordering).
+      Control flow read, NOT executed - no walk was run to exercise it.
+    - the "<= 3 re-teaches per failed cell" bound and the ledger interaction.
+    - why student-question-banks.js is a source; the page barely mentions banks.
+last-verified: "c4876d15 2026-08-27"
+---
+
 # HELD-BACK — mastery-gated remediation + outcome-gated noise suppression
 
 > Unity is promoted on **mastery**, not on age. A grade isn't "done" because every
@@ -6,7 +46,9 @@
 > meaningless noise is suppressed, but exploration that resolves into a coherent
 > answer is preserved.
 >
-> Last updated: **2026-06-24**. Source: `js/brain/curriculum.js`, `js/brain/cluster.js`.
+> Last updated: **2026-08-27** (DOCPROV.4 re-verification). Source: `js/brain/curriculum.js`, `js/brain/cluster.js`.
+>
+> ⛔ **ONE CORRECTION DOMINATES THIS PASS: `DREAM_NOISE_GATE` IS ON BY DEFAULT, AND THIS PAGE SAID IT SHIPS DORMANT.** `cluster.js:2173` is `!(env.DREAM_NOISE_GATE === '0')` — an **opt-out**, not an opt-in — and the comment above it says *"Opt OUT with `DREAM_NOISE_GATE=0`"*. ⛔ **So the sentence *"With it OFF, plasticity is byte-identical to plain predictive coding"* has been false for as long as it has been written, and the un-tuned `0.2` / `0.5` magnitudes this page says are "waiting for a live training run" have been shaping every pass of that training.** ⭐ **A doc that calls a live learning modifier dormant is worse than one that never mentions it, because it actively tells you not to look.** ⚠ **And this exact inversion was already caught once in this project** — the 2026-08-25 audit recorded *"`DREAM_NOISE_GATE` is ON by default"* among its own false-positive corrections; the finding never reached this page. ⭐ **Everything else checked out:** `DREAM_HELD_BACK` (default-on, `=0` opts out), `DREAM_GRADE_MAJOR_ROUNDS` (default **2**, clamped 1-5), the `0.5 + predErr × coherence × inhibition` formula, and the `0.2` / `1.0` / `0.5` magnitudes are all **exactly as described**. ⚠ One omission added: the gate has a **ceiling** (`_surpriseMax`) with `atCeiling` telemetry, which is the half that decides whether raising the boost would change anything.
 
 ---
 
@@ -21,7 +63,7 @@ cells getting another real shot, not on a perfect score.
 "Failure" already includes **noisy / degenerate output**. The existing advance gate
 (`_gradeAdvanceHealthGate`) fails a cell on sem→motor saturation and emission
 mode-collapse — so a cell that emits incoherent garbage is a *failed* cell here, even
-if it once produced a right token. This is why held-back remediation also targets the
+if it once produced a right word. This is why held-back remediation also targets the
 basin/mode-collapse problem ([[KNOWN_ISSUES]] KI-4).
 
 ## The ladder (`_remediateGradeFailures`, `curriculum.js`)
@@ -78,7 +120,7 @@ brain keeps variance that lands and prunes variance that fails.
 |------|---------|--------|
 | `DREAM_HELD_BACK=0` | on | Opt OUT of held-back remediation (walk force-advances fails as before). |
 | `DREAM_GRADE_MAJOR_ROUNDS=N` | **2** (was a hard-coded 1) | How many grade-major rounds a grade gets before force-advance. Accepts 1–5; anything else falls back to 2. `=1` restores the previous single-pass behaviour exactly — verified by running it, and at 1 the mid-round ladder call below is provably inert (`round + 1 < 1` is false). |
-| `DREAM_NOISE_GATE=1` | **OFF** | Enable the outcome-gated noise suppression in the surprise gate. **Ships dormant** — magnitudes (the 0.2 / 0.5 factors) want a live training run to tune, same posture as `DREAM_DF7_FANOUT`. With it OFF, plasticity is byte-identical to plain predictive coding. |
+| ⛔ `DREAM_NOISE_GATE=0` | ⛔ **ON — it is an OPT-OUT** | ⛔ **CORRECTED 2026-08-27. This row said `=1` / default **OFF** / "ships dormant". It is exactly INVERTED.** `js/brain/cluster.js:2173` reads `this._noiseGateEnabled = !(process.env.DREAM_NOISE_GATE === '0')` — **enabled unless explicitly set to the string `'0'`** — and the code comment two lines above says so outright: *"Opt OUT with `DREAM_NOISE_GATE=0` to A/B against plain predictive coding."* ⛔ **The consequence is the part that matters: this page told the reader that plasticity is "byte-identical to plain predictive coding" and that the un-tuned 0.2 / 0.5 magnitudes were waiting for a live run before being "switched on in production."** They are **live now**, and they have been shaping every training pass. **A doc that describes an active learning modifier as dormant is worse than one that omits it** — it tells you not to look. ⚠ The `DREAM_DF7_FANOUT` comparison also fails: that flag auto-enables (per the 2026-08-25 audit, where "`DREAM_NOISE_GATE` is ON by default" and "`MECH_EVERY_CELL` is an opt-out" were both recorded as **my own false positives** — i.e. **this exact inversion has been caught in this project before, and this page kept it**). |
 
 ## When the ladder runs (BOOTORDER.2, 2026-08-24)
 
@@ -108,6 +150,18 @@ re-attempts it, so "cannot pass" degrades to "retried next boot" rather than a h
 - The **orchestration** (ladder, terminus, ledger) is built on already-verified
   primitives (`forgetCell`, `runSubjectGrade`, `_dreamWindow`, `_rectifySemMotor`) and
   is control-flow only — low risk.
-- The **noise gate** (HB.4/HB.5) is implemented but **default-OFF**; its magnitudes
-  need a live training run to dial in before it's switched on in production. Until
-  then [[KNOWN_ISSUES]] KI-4 stays open.
+- ⛔ **CORRECTED 2026-08-27 — the noise gate (HB.4/HB.5) is NOT default-OFF. It is ON,
+  and it has been running in production.** The old text read: *"implemented but
+  **default-OFF**; its magnitudes need a live training run to dial in before it's
+  switched on in production."* ⭐ **The first half is right and the conclusion is
+  backwards: the magnitudes DO still want tuning, and they are tuning themselves
+  against her live training in the meantime.** Verified at `js/brain/cluster.js:2173`.
+  [[KNOWN_ISSUES]] KI-4 stays open either way.
+- ⚠ **Undocumented until now: the surprise gate has a CEILING.** `cluster.js:2191`
+  computes `_surpriseMax` and `:2201` clamps `surpriseGate` to it, with
+  `_surpriseStats { n, sum, atCeiling, max, ceiling }` counting how often the clamp
+  binds. ⭐ **`atCeiling` is the field that answers "is the gate saturated?"** — and the
+  code carries a `REPLAYOFF.5` note (*"MEASURE THE GATE BEFORE RAISING IT"*) recording
+  that the board suspects the gate is **timid**, since `0.5 + predErr` buys at most a
+  1.5× boost. **The formula section above described the gate without its ceiling, which
+  is the half that decides whether raising the other half would even do anything.**

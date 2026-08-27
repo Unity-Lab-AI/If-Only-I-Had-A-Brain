@@ -1,3 +1,47 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE — 2026-06-17, the
+# second-oldest of the 31.
+# ⛔ HONEST CAVEAT: this page's real subject is `.claude/statusline.sh`, which is
+# UNVERSIONED (`.gitignore:48` excludes `.claude/`). A `git diff` cannot see it,
+# so drift here can only ever report on the tracked state producer below. The
+# unversioned half is exactly what deploy/HOOK-FIXES.md exists to record.
+status: draft
+sources:
+  - server/brain-server/state.js
+  - .claude/settings.json
+verified-scope: |
+  CHECKED 2026-08-27 — and checked the way the drift tool CANNOT: by reading
+  the unversioned .claude/statusline.sh directly (28,138 bytes, mtime
+  Jun 26 16:00) rather than only its tracked wiring.
+    - CORRECTED (2 of the 5 "What gets shown" bullets): the effort indicator
+      (`effort` = 0 occurrences, case-insensitive) and the justice status
+      (`justice` = 0, `cryo` = 0) are NOT produced by the installed script.
+      That also makes the page's headline example wrong in 2 of 5 segments.
+    - VERIFIED PRESENT: context_pct.txt side channel (x3); model abbreviation,
+      which is VERSION-AGNOSTIC and renders O5 with no code change; the 5h and
+      7d rate-limit bars; uptime + thinking session timers; label/rename
+      auto-adapt; and the settings.json statusLine command wiring.
+    - 2 FALSE ALARMS of my own, caught: "model abbreviation missing" (pattern
+      was case-sensitive and suffix-anchored) and "7d weekly bar missing"
+      (the feature is spelled 7d, not weekly).
+  NOT CHECKED — do not read this page as authority on:
+    - ⛔ WHICH COPY OF statusline.sh IS CANONICAL. The file is untracked, so
+      "not present" means absent from the copy in THIS working tree. It does
+      NOT establish the feature was removed from the project, and git cannot
+      arbitrate. This is the page's own unversioned-subject caveat, stated as
+      a limit rather than resolved.
+    - the embedded Python block's internals beyond the context_pct write
+    - sections 4-7 (design rationale, how-to-add, past breakages, minimum repro)
+    - .claude/settings.json grew +670 lines since the stamp; only its
+      statusLine block was read.
+  ⚠ SELF-DRIFT, restamped 2026-08-27: the only source that moved is
+  server/brain-server/state.js (BUCKETPUB.1 — two new published voice fields).
+  This page's claims are about .claude/statusline.sh and the settings.json
+  wiring; nothing in that edit reaches either. Read as a diff before restamping.
+last-verified: "cdfcf8b5 2026-08-27"
+---
+
 # Claude Code Statusline — How It Works
 
 How the bot's status line (e.g. `[OSLO] | [######-------] 57% | O4.7 | ░▒▓ | FREE`) is wired in and rendered.
@@ -67,8 +111,27 @@ Bash then `eval`s that output, populating its own variables. Cleaner than passin
 - **`[BOT_NAME]`** — colored brackets indicate containment state (green=locked, yellow=admin open, red=containment off). Bot name color shows dangerous-tool state (green=safe, red=tools open).
 - **Context bar `[######-------] 57%`** — color shifts at thresholds (green <60%, yellow 60-80%, red >80%).
 - **Model abbreviation** — `O4.7` for Opus 4.7, `S4.6` for Sonnet, `H4.5` for Haiku.
-- **Effort indicator** — gradient blocks `░▒▓` for high, etc., from `effortLevel` in settings.
-- **Justice status** — pulled from `C:/claude/cryo/justice_status.json`, shows JAILED / PROBATION / FREE / etc. with countdown timers.
+- ⛔ **Effort indicator** — ~~gradient blocks `░▒▓` for high, etc., from `effortLevel` in settings.~~ **NOT PRESENT in the installed script (checked 2026-08-27): the string `effort` appears ZERO times in `.claude/statusline.sh`, case-insensitively, across all 28,138 bytes.**
+- ⛔ **Justice status** — ~~pulled from `C:/claude/cryo/justice_status.json`, shows JAILED / PROBATION / FREE / etc. with countdown timers.~~ **NOT PRESENT: `justice` = 0 occurrences, `cryo` = 0 occurrences, case-insensitive.**
+
+> ### ⛔ VERIFIED AGAINST THE UNVERSIONED SCRIPT ITSELF — 2026-08-27 (DOCPROV.4, 8 of 22)
+>
+> ⭐ **This is the check the drift tool structurally CANNOT do.** The frontmatter caveat is correct that `git diff` cannot see `.claude/statusline.sh` — but *a reader can open it*, and that is what was missing. **The two bullets struck through above describe segments the installed script does not produce**, which also makes the example at the top of this page wrong: `[OSLO] | [######-------] 57% | O4.7 | ░▒▓ | FREE` shows **`░▒▓`** (effort) and **`FREE`** (justice) — **two of its five segments.**
+>
+> ⚠ **Read the scope of that claim precisely.** `.claude/statusline.sh` is **untracked** (mtime `Jun 26 16:00`, 28,138 bytes). So "not present" means **absent from the copy installed in this working tree** — it does **not** establish that the feature was removed from the project, and **git cannot arbitrate which copy is canonical.** That is the unversioned-subject problem this page's own caveat names, stated as a limit rather than resolved.
+>
+> ⭐ **VERIFIED PRESENT — so nobody re-checks these:**
+>
+> | claim | evidence in `.claude/statusline.sh` |
+> |---|---|
+> | `context_pct.txt` side channel (§3) | `context_pct` × 3 — **holds**, including the watchdog side-channel write |
+> | Model abbreviation + family colour (§8.6) | `Opus`/`Sonnet`/`Haiku` × 3 each. ⭐ **And it is VERSION-AGNOSTIC** — `model_disp.split('Opus')[1]` parses whatever version follows the family name (`:180-189`), so it renders **`O5` for Opus 5 today with no code change.** `O4.7` above is an illustration, not a mapping |
+> | Rate-limit bars, 5h + 7d (§8.7) | `5h` × 6, `7d` × 6 — **both bars present** |
+> | Session timers, uptime + thinking (§8) | `uptime` × 7, `thinking` × 2 |
+> | Label + colour auto-adapt on `/rename` (§8.5) | `label` × 44, `rename` × 7 |
+> | statusLine wiring | `.claude/settings.json` → `{"type":"command","command":"bash \"$CLAUDE_PROJECT_DIR/.claude/statusline.sh\""}` — **matches** |
+>
+> ⚠ **TWO FALSE ALARMS OF MY OWN, both caught before they reached this page.** (1) A first pass reported the **model abbreviation missing entirely** — the pattern was case-sensitive and suffix-anchored; it is present 3× per family. (2) §8.7's *"7d weekly"* bar looked absent because **`weekly` = 0 occurrences** — the feature exists, spelled **`7d`**. ⛔ **Both were absence-claims from a too-narrow pattern, which is the same mistake that produced three false findings earlier the same day** (`<h2[^>]*>` truncating inside an attribute, `DREAM_WANT_BROWSER_GPU`, and `/update`). ⭐ **The rule this page now records: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.**
 
 ## 3. The side effect: `context_pct.txt`
 

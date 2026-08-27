@@ -309,6 +309,23 @@ const SERVER_STATE_MIXIN = {
           pct: +(((this._lcEverFiredCount || 0) / Math.max(1, this._lcEverFired.length)) * 100).toFixed(2),
           sinceMs: this._lcEverFiredSince || null,
           regions: this._lueRegions,
+          // EVERFIRED.2 — SAY WHAT THIS MEASURES, because a bare `0%` beside a
+          // region name is read as "never used" and this instrument is not
+          // entitled to that claim. `_updateLangEverFired` POLLS lastSpikes on
+          // a 5s throttle and ORs into a bitset; it is not an event hook, so
+          // anything written and cleared between two polls is invisible to it
+          // permanently. Regions whose activity is transient by construction —
+          // fineType carries relation tags that are written, bound and cleared
+          // within a single pair — can therefore read 0 while being written
+          // thousands of times. ⚠ The converse does NOT hold and must not be
+          // inferred: a 0 here is not proof of health either. It is a floor on
+          // observed coverage and nothing more.
+          method: 'poll',
+          pollIntervalMs: 5000,
+          measures: 'fraction of cells observed non-zero in lastSpikes at a'
+            + ' 5s sample since boot — a LOWER BOUND on participation, not a'
+            + ' capability claim. Transient writes between samples are missed;'
+            + ' 0% means "never sampled active", never "never used".',
         };
       }
       // Throttled CSR row-recruitment scan (rowPtr diff — O(rows)/matrix,
@@ -427,9 +444,46 @@ const SERVER_STATE_MIXIN = {
         // the typeof test never passed. `lastMeanVoltage` is read first now,
         // with the old name kept as a fallback for any caller that hands us a
         // snapshot rather than the cluster itself.
+        //
+        // ⛔⛔ GOTCHA.3 (2026-08-27) — DORMANT.3 FIXED THE NAME AND THE VALUE IS
+        // STILL NULL, because the sentence above ("a number that is computed on
+        // every tick") IS FALSE AT BIOLOGICAL SCALE. Measured on the live brain:
+        // all seven clusters `null` at 3.6h uptime while training. There are
+        // three producers and, for a NATIVE-donor brain, all three are dead:
+        //
+        //   1. CPU  — `lastMeanVoltage` is written ONLY at cluster.js:4131,
+        //      inside `step()`. `stepAwait` refuses above 2M ("At biological
+        //      scale a CPU step is FORBIDDEN") and four raw-step sites carry the
+        //      same `size > 2000000` return. The GPU steps the brain instead, so
+        //      this writer never runs for the big clusters.
+        //   2. BROWSER donor — IMPLEMENTED and working: compute.html does a
+        //      once-per-tick GPU atomic reduction (`readbackVoltageMean`) and
+        //      puts it on `perCluster[name].meanVoltage`.
+        //   3. NATIVE donor — NEVER SENT. donor-app/src/donor.rs builds
+        //      `PerClusterResult { …, mean_voltage: None }` hardcoded, and
+        //      protocol.rs's `skip_serializing_if = "Option::is_none"` then omits
+        //      the key entirely, so brain-server's `typeof entry.meanVoltage ===
+        //      'number'` guard is never true and `clusters[name].meanVoltage` is
+        //      never assigned.
+        //
+        // ⭐ So the honest repair here is NOT to invent a number — it is to stop
+        // publishing a bare `null` that cannot say why it is null. A reader
+        // cannot distinguish "not sampled yet", "this donor does not report it",
+        // and "broken" from a null, and that indistinguishability is the whole
+        // defect class this file keeps paying for. `meanVoltageSource` names the
+        // producer that supplied the value, or the reason there isn't one.
+        // Implementing the native-donor reduction is a donor-release job and is
+        // tracked separately as GOTCHA.3b — it is NOT done here.
         meanVoltage: typeof cluster.lastMeanVoltage === 'number'
           ? cluster.lastMeanVoltage
           : (typeof cluster.meanVoltage === 'number' ? cluster.meanVoltage : null),
+        meanVoltageSource: typeof cluster.lastMeanVoltage === 'number'
+          ? 'cpu-step'
+          : (typeof cluster.meanVoltage === 'number'
+            ? 'gpu-donor-readback'
+            : (this._gpuConnected
+              ? 'unreported-by-this-donor (native donor sends mean_voltage: None — GOTCHA.3b)'
+              : 'no-gpu-donor-attached')),
       };
     }
     // Emit language cortex sub-region activity as pseudo-clusters
@@ -578,6 +632,34 @@ const SERVER_STATE_MIXIN = {
           previewsDrained: this._mindsEyePreviewsDrained | 0,
           schemas,                    // concepts whose SHAPE she has abstracted
           seenConcepts: seen,         // concepts she holds a field C for
+          // ⛔ EYEPIN.3 — WHAT SHE IS LOOKING AT, AND WHY. Shipped in the same
+          // commit as the picker, because the defect it reports was invisible
+          // to every existing counter: the lane read 383/383 drawn with every
+          // error field 0 while repeating ONE subject, and the only way to
+          // catch it was polling the snapshot eight times by hand.
+          //
+          // `pinTicks` is the instrument that matters — consecutive imagine
+          // ticks on one thought. It climbing without bound means her thought
+          // chain has stalled, which is a finding about EMISSION, not about
+          // art. `maxPinTicks` banks the worst run so a board read late still
+          // sees it. `recentSubjects` proves variety directly rather than
+          // asking anyone to trust a count.
+          eye: this._eyeStats ? {
+            picks: this._eyeStats.picks | 0,
+            fromThought: this._eyeStats.fromThought | 0,
+            fromAcquisition: this._eyeStats.fromAcquisition | 0,
+            fromRecall: this._eyeStats.fromRecall | 0,
+            none: this._eyeStats.none | 0,
+            pinTicks: this._eyeStats.pinTicks | 0,
+            maxPinTicks: this._eyeStats.maxPinTicks | 0,
+            rotations: this._eyeStats.rotations | 0,
+            lastSubject: this._eyeStats.lastSubject || null,
+            lastWhy: this._eyeStats.lastWhy || null,
+            lastAgeMs: this._eyeStats.lastAt ? (Date.now() - this._eyeStats.lastAt) : null,
+            recentSubjects: Array.isArray(this._eyeRecent) ? this._eyeRecent.slice() : [],
+            taughtPool: this._eyeTaughtCacheSize | 0,
+            taughtCursor: this._eyeTaughtCursor | 0,
+          } : null,   // null = the picker has not run yet, NOT "no pin"
           lastLabel: this._lastSketchLabel || null,
           style: (typeof process !== 'undefined' && process.env && process.env.DREAM_DRAW_STYLE) || 'own',
           // ARTSTYLE — the hand she used on her latest piece; rotates every artwork.
@@ -598,6 +680,72 @@ const SERVER_STATE_MIXIN = {
           // lane starved for ~10h (2 grounds against a ~60-look budget) with
           // zero remotely-visible evidence — every failure path was silent.
           lookups: this._vmLookStats || null,
+          // VMRELATE — what the phrase-teach lane actually spent. Published
+          // because an unbounded teach layer cost 70 minutes per cell once
+          // already: `skippedBusy` climbing means the bound is doing its job,
+          // and `pairs` climbing without `queued` climbing would mean it is
+          // not. null = the lane has not run, never "it ran and did nothing".
+          relate: this._vmRelate || null,
+          // ARTWEIGHT — what MAKING art spent on her weights. Before this
+          // existed the whole draw + practice span had zero weight-touching
+          // calls, so `pieces` climbing while `pairs` stays flat would mean
+          // the lane has gone quiet again. null = never ran.
+          artWeight: this._artWeight || null,
+          // VMUSE.5.B — WHAT SHE IS READING BACK, published BEFORE the other
+          // lanes lean on it. ⚠ The bands started writing this walk, so a high
+          // `flat` count early is CORRECT, not a fault — it is the gate
+          // refusing to act on channels that have not separated yet. The
+          // number to watch is `confident` climbing over time; if it never
+          // does, the consumers are inert and this row says so instead of
+          // letting them look active. null = the reader has never been asked.
+          relationUse: (this.curriculum && this.curriculum._relUse) ? {
+            asks: this.curriculum._relUse.asks | 0,
+            confident: this.curriculum._relUse.confident | 0,
+            flat: this.curriculum._relUse.flat | 0,
+            unreadable: this.curriculum._relUse.unreadable | 0,
+            cached: this.curriculum._relUse.cached | 0,
+            recent: (this.curriculum._relUse.recent || []).slice(0, 6),
+            byTag: this.curriculum._relUse.byTag || {},
+            // RELWRITE.1 — `flat` alone could not say WHY, and the note above
+            // ("a high flat count early is CORRECT") is only true in one of the
+            // two cases it covers. Bands carrying mass but not yet separated
+            // means wait. Bands carrying ZERO means the relation never reached
+            // the matrix, and waiting for that is waiting forever. These split
+            // the bucket, and `lastRead` carries the raw shape behind the last
+            // flat verdict so the claim can be checked rather than believed.
+            flatWithMass: this.curriculum._relUse.flatWithMass | 0,
+            flatNoMass: this.curriculum._relUse.flatNoMass | 0,
+            lastRead: this.curriculum._relUse.lastRead || null,
+            // RELWRITE.1 — THE WRITE SIDE. `_relTagWrites` was incremented at
+            // curriculum.js and read by nothing in the entire tree; without it
+            // no amount of staring at the read side can establish whether any
+            // tag was ever written. `byTag` here is the write breakdown (do not
+            // confuse it with `byTag` above, which is the READ breakdown) — a
+            // tag present in writes and absent from reads is the six-band bug's
+            // exact signature, and it went undetected because neither half was
+            // published. `refused` counts tags rejected for not fitting.
+            // RELSEP.1 — THE TREND, not just the verdict. `confident: 0` is
+            // true for a walk that will never separate AND for one about to,
+            // and `VMUSE.5.D` is gated on exactly that difference. `progress`
+            // is the best ratio seen as a fraction of the gate, so one
+            // snapshot answers "is it getting closer?".
+            bestMarginRatio: this.curriculum._relUse.bestMarginRatio || 0,
+            bestMarginWord: this.curriculum._relUse.bestMarginWord || null,
+            lastMarginRatio: this.curriculum._relUse.lastMarginRatio || 0,
+            marginProgress: this.curriculum._relUse.marginProgress || 0,
+            marginGate: this.curriculum._relUse.marginGate || 0,
+            tagWrites: (this.curriculum._relTagWrites | 0),
+            tagWritesByTag: this.curriculum._relTagWritesByTag || {},
+            tagWritesRefused: (this.curriculum._relTagRefused | 0),
+            // VMUSE.5 — how many times a relation actually CHANGED something.
+            // The reader existed for a day with every consumer annotate-only,
+            // and `s.relationTag` was written and never read. A consumer that
+            // cannot be counted is indistinguishable from one that was never
+            // wired, which is the whole family of defects this batch is about.
+            // Expected to sit at 0 until the bands separate — that is the gate
+            // doing its job, not a dead lane.
+            consumedByEye: (this._eyeRelationPicks | 0),
+          } : null,
         };
       })(),
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.
@@ -701,9 +849,42 @@ const SERVER_STATE_MIXIN = {
             ? Math.round((matrixHits / emissions) * 100) : null;
           const rej = cc && cc._lastEmitRejection;
           const everFired = wm ? (wm.everFired | 0) : null;
+          // VOICELIE.1 — REFUSALS ARE EVIDENCE OF AN ATTEMPT.
+          //
+          // This verdict used to derive its status from `emissions` alone,
+          // which counts only ACCEPTED words. A cluster reaching for a word
+          // every tick and being refused every tick therefore published
+          // "nothing has attempted an emission since boot" — while the record
+          // of the most recent refusal was read four lines above and published
+          // in the very same object. Measured live at `no-best-word`, age 20s.
+          //
+          // That is the SYNCEMPTY lesson running backwards: not health inferred
+          // from a missing failure, but ABSENCE inferred from a missing
+          // success. The two states it conflated call for opposite responses —
+          // "no sample yet, wait" versus "she is trying and cannot", and only
+          // the second is a problem. `unmeasured` is now reserved for the case
+          // where there is genuinely neither a success nor a refusal on record.
+          const attempts = (cc && cc._emitAttempts) | 0;
+          const rejects = (cc && cc._emitRejects) | 0;
+          const rejectsByReason = (cc && cc._emitRejectsByReason)
+            ? Object.assign(Object.create(null), cc._emitRejectsByReason) : null;
           let status = 'unmeasured';
-          let reason = 'nothing has attempted an emission since boot — this is'
-            + ' NOT a claim that she cannot speak, only that no sample exists';
+          let reason = 'no emission has been attempted since boot — neither an'
+            + ' accepted word nor a refusal is on record. This is NOT a claim'
+            + ' that she cannot speak, only that no sample exists';
+          if (emissions === 0 && (rejects > 0 || rej)) {
+            // Named for what it is. She IS reaching; the reach is being refused.
+            status = 'attempting-refused';
+            const top = rejectsByReason
+              ? Object.entries(rejectsByReason).sort((a, b) => b[1] - a[1])[0] : null;
+            const ageS = rej && rej.ts ? Math.round((Date.now() - rej.ts) / 1000) : null;
+            reason = `${rejects || 'at least 1'} emission attempt(s) refused and`
+              + ` ZERO accepted since boot — she is reaching for words and not`
+              + ` clearing the gate.`
+              + (top ? ` Dominant cause: ${top[0]} (${top[1]}×).` : '')
+              + (rej ? ` Most recent: ${rej.reason || 'unknown'}` : '')
+              + (ageS !== null ? ` ${ageS}s ago.` : '');
+          }
           if (emissions > 0) {
             if (everFired > 0 && matrixDrivenPct >= 50) {
               status = 'matrix-driven';
@@ -722,10 +903,36 @@ const SERVER_STATE_MIXIN = {
                 + ' from the emission band';
             }
           }
+          // BUCKETPUB.1 — PUBLISH THE ONE FIELD THAT SETTLES "why no-best-word?".
+          // `getTrainedCapability()` (js/brain/cluster.js:2470) already computes
+          // `wordsBucketed` and `bucketSubjects` on every call and NOTHING
+          // forwarded them, so the board could not answer the question two open
+          // board items both hinge on:
+          //   · GOTCHA.8 names this exact read as its discriminating test —
+          //     `bucketSubjects === 1` means the unified array carries
+          //     everything and the five per-subject `wordBucketWords_<subject>`
+          //     reads contribute nothing.
+          //   · EMITZERO.1 needs to tell "no candidate exists yet" (nothing
+          //     bucketed) apart from "a winner was rejected by a floor".
+          //     `emitDiagnostic.bestMean` reads 0 and `separability.cellSize`
+          //     reads 0 — both consistent with an EMPTY bucket set, because
+          //     `wordBucketCellSizeFor()` caches lazily and so reads 0 until
+          //     something actually needs the geometry. `wordsBucketed` is what
+          //     distinguishes them, and it was the one number not on screen.
+          // ⚠ null, never 0, when the capability scan is unavailable — a zero
+          // here would read as "nothing bucketed" and that is the very claim
+          // this field exists to establish.
+          const bucketCap = (cc && typeof cc.getTrainedCapability === 'function')
+            ? (() => { try { return cc.getTrainedCapability(); } catch { return null; } })()
+            : null;
           return {
             wordMotorSize: wm ? (wm.size | 0) : null,
             wordMotorEverFired: everFired,
             wordMotorPct: wm ? wm.pct : null,
+            wordsBucketed: bucketCap && typeof bucketCap.wordsBucketed === 'number'
+              ? bucketCap.wordsBucketed : null,
+            bucketSubjects: bucketCap && typeof bucketCap.bucketSubjects === 'number'
+              ? bucketCap.bucketSubjects : null,
             oracleHits,
             matrixHits,
             matrixDrivenPct,
@@ -735,6 +942,14 @@ const SERVER_STATE_MIXIN = {
             // answered for her on a test. A rising count beside falling
             // scores is the truth arriving, not a regression.
             oracleRefusedInGate: (cc && cc._oracleRefusedInGate) | 0,
+            // VOICELIE.1 — the DENOMINATOR. `emitRejection` below is a single
+            // last-value: it can say what went wrong most recently but never
+            // how often, and "one stray refusal" and "refused continuously for
+            // forty minutes" are opposite situations that it renders
+            // identically. These three answer how often, and by which cause.
+            emitAttempts: attempts,
+            emitRejects: rejects,
+            emitRejectsByReason: rejectsByReason,
             emitRejection: rej
               ? {
                   reason: rej.reason || 'unknown',
@@ -871,15 +1086,15 @@ const SERVER_STATE_MIXIN = {
         } catch (err) { return { top: [], totalContributors: 0, totalNeurons: 0, error: err.message }; }
       }),
       // BC.12 — basin-collapse telemetry. Surfaces the signals behind the
-      // single-token mode-collapse so recovery is visible without hand-
-      // diffing /ws polls: sem→motor saturation, dominant-token share of
+      // single-word mode-collapse so recovery is visible without hand-
+      // diffing /ws polls: sem→motor saturation, dominant-word share of
       // recent emissions, GW broadcast diversity. Computed once per state
       // broadcast (not per tick) so the checkSemMotorHealth sample is cheap.
       basinHealth: _lap('basinHealth', () => {
         try {
           const cc = this.cortexCluster;
           if (!cc) return null;
-          const out = { saturated: null, semMotorMeanCos: null, semMotorRatio: null, dominantToken: null, dominantShare: null, gwUniqueRatio: null };
+          const out = { saturated: null, semMotorMeanCos: null, semMotorRatio: null, dominantWord: null, dominantShare: null, gwUniqueRatio: null };
           if (typeof cc.checkSemMotorHealth === 'function') {
             const h = cc.checkSemMotorHealth();
             out.saturated = !!h.saturated;
@@ -891,7 +1106,7 @@ const SERVER_STATE_MIXIN = {
             for (const e of cc._metaRegister) { if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1); }
             let topW = null, topN = 0;
             for (const [w, n] of counts) { if (n > topN) { topN = n; topW = w; } }
-            out.dominantToken = topW;
+            out.dominantWord = topW;
             out.dominantShare = +(topN / cc._metaRegister.length).toFixed(2);
           }
           const gw = cc._globalWorkspace || this._globalWorkspace || (this.brain && this.brain._globalWorkspace);
@@ -998,8 +1213,49 @@ const SERVER_STATE_MIXIN = {
    *                capped at 24 + aggregates, so client→brain issues are visible.
    * All reads are defensive — any missing source degrades to null/0, never throws.
    */
+  // ── DEFRATE.1 (2026-08-25, found by reading the board minutes after the
+  // press) — ONE owner for "definitions learned per hour".
+  //
+  // ⛔ There were two consumers and only one was right. `_getConsciousnessState`
+  // read `cortex._defLearnedTimestamps` and computed a real rolling rate;
+  // `_getProfilingState` read **`this._defLearnedTimestamps`** — the BRAIN, not
+  // the cortex — and the producer (`curriculum.js`, `cluster._defLearnedTimestamps`)
+  // writes the CLUSTER. Nothing has ever written the brain-level field, so that
+  // one could only ever report 0. Caught live: the console was teaching
+  // definitions continuously while `profiling.throughput.defsLearnedPerHour`
+  // read `0`. Same shape as `meanVoltage` and `separability` — a consumer
+  // naming an owner that does not hold the value.
+  //
+  // ⚠ And it was not a RATE either: it returned `.length` of a ring capped at
+  // 256, labelled "PerHour". Two defects on one line — a wrong owner and a
+  // count wearing a rate's name.
+  _defsLearnedPerHour() {
+    const ts = this.cortexCluster && this.cortexCluster._defLearnedTimestamps;
+    if (!Array.isArray(ts) || ts.length < 2) return 0;
+    const now = Date.now();
+    // Clamp to the last hour: the 256-entry ring fills in ~2 min during the
+    // upfront definition seed, and reading oldest-to-newest across the whole
+    // ring reported ~7,680/hr off a burst (the 114.19ek finding).
+    const cutoff = now - 3_600_000;
+    let firstIdx = ts.length - 1;
+    for (let i = 0; i < ts.length; i++) {
+      if (ts[i] >= cutoff) { firstIdx = i; break; }
+    }
+    const recent = ts.length - firstIdx;
+    if (recent < 2) return 0;
+    const dt = (ts[ts.length - 1] - ts[firstIdx]) / 1000;
+    if (dt <= 0) return 0;
+    return (recent / dt) * 3600;
+  },
+
   _getProfilingState() {
     const now = Date.now();
+    // ONESHOT.1 — see the note on `throughput.uplink`. `null` means the profile
+    // has not run yet (it fires once at +150s), never "the loop is fine".
+    const _cpuProfile = (this._cpuProfile && Array.isArray(this._cpuProfile.top))
+      ? { at: this._cpuProfile.at, ageMs: Math.max(0, now - this._cpuProfile.at),
+          sampledMs: this._cpuProfile.sampledMs, top: this._cpuProfile.top.slice(0, 14) }
+      : null;
     const MB = 1024 * 1024;
     const r1 = (n) => Math.round(n);
     const r2 = (n) => Math.round(n * 100) / 100;
@@ -1058,7 +1314,38 @@ const SERVER_STATE_MIXIN = {
       const h = this._eventLoopHistogram;
       if (h && typeof h.percentile === 'function') {
         const nsToMs = (v) => r2((v || 0) / 1e6);
-        elDelay = { meanMs: nsToMs(h.mean), p50Ms: nsToMs(h.percentile(50)), p99Ms: nsToMs(h.percentile(99)), maxMs: nsToMs(h.max) };
+        // ⛔ LOOPMAX.1 — `max` WAS CUMULATIVE SINCE BOOT AND COULD ONLY GO UP.
+        //
+        // Caught because it read 18,505.3ms IDENTICALLY across two readings
+        // while `serviced` went 52% -> 91%, lag 320ms -> 21ms and late/min
+        // 29,048 -> 5,561. Everything else moved and it did not: that is the
+        // tell. It was the BOOT pinning the loop to load ~5.4GB of weights,
+        // and it sat there advertising a live 18-second stall on a brain
+        // running at 26ms lag. It also contradicted the row beside it — the
+        // freeze watchdog warns at 5,000ms, so 18.5s is 3.7x the bar, yet
+        // `loop freezes` read `none`. Two fields on one card, both cannot be
+        // right.
+        //
+        // ⭐ The histogram now ROLLS: it is reset after each read, so mean /
+        // p50 / p99 / max all describe the window since the previous
+        // broadcast — a number that can fall as well as rise.
+        //
+        // ⚠ The all-time peak is NOT discarded, it is BANKED and RENAMED.
+        // Losing the worst stall the process ever saw would be its own
+        // dishonesty; the fix is to stop it wearing the name of a live
+        // reading. `sinceBootMaxMs` says exactly what it is.
+        const _live = { meanMs: nsToMs(h.mean), p50Ms: nsToMs(h.percentile(50)), p99Ms: nsToMs(h.percentile(99)), maxMs: nsToMs(h.max) };
+        if (_live.maxMs > (this._elDelayAllTimeMaxMs || 0)) this._elDelayAllTimeMaxMs = _live.maxMs;
+        elDelay = {
+          ..._live,
+          sinceBootMaxMs: this._elDelayAllTimeMaxMs || 0,
+          windowMs: Date.now() - (this._elDelayWindowStart || (this._elDelayWindowStart = Date.now())),
+        };
+        // Reset AFTER reading so the next window starts clean. ⚠ Guarded:
+        // a Node build without `reset()` keeps the old cumulative behaviour
+        // rather than throwing inside the state build — but then `windowMs`
+        // grows without bound, which is the honest signal that it did not roll.
+        try { if (typeof h.reset === 'function') { h.reset(); this._elDelayWindowStart = Date.now(); } } catch { /* keep cumulative */ }
       }
       // GPU dispatch rate from the rolling timestamp window
       let gpuDispatchPerSec = 0;
@@ -1154,6 +1441,40 @@ const SERVER_STATE_MIXIN = {
           rangesSent: this._hebbianRangesSent | 0,
           maskedSent: this._hebbianMaskedSent | 0,
         },
+        // PROPBOUND.2 — the BOUND-PROPAGATE lane, split by which protocol it
+        // actually took. `emptyMirror` is the fallback-to-CPU count and is the
+        // number RHYTHM3S.1 needs: it is EXPECTED between teach writes (an idle
+        // cortex has no resident pattern and refusing is correct) and becomes a
+        // finding only when it stays high DURING a teach era — a comparison the
+        // board can only make once the number exists. ⛔ `noMirrorObject` is
+        // split out because a MISSING mirror is a wiring fault and would
+        // otherwise hide behind the empty case, which is normal and constant.
+        boundPropagate: this._boundPropStats
+          ? {
+              native: this._boundPropStats.native | 0,
+              emptyMirror: this._boundPropStats.emptyMirror | 0,
+              noMirrorObject: this._boundPropStats.noMirrorObject | 0,
+              browserEmptyPre: this._boundPropStats.browserEmptyPre | 0,
+              lastEmptyName: this._boundPropStats.lastEmptyName || null,
+              lastEmptyAgeMs: this._boundPropStats.lastEmptyAt
+                ? Math.max(0, Date.now() - this._boundPropStats.lastEmptyAt) : null,
+            }
+          : null,
+        // ⛔ ONESHOT.1 — ONE-SHOT MEASUREMENTS, AS FIELDS RATHER THAN LINES.
+        // Both of these existed ONLY in a console line, and both were missed
+        // for the same reason: the ring caps at 500 lines and the walk fills it
+        // in seconds (measured at ~55 lines/sec once SCALEWALK made definitions
+        // ~40× faster — a 500-line ring became a NINE SECOND window). A number
+        // you had to be watching for is not something this board can answer
+        // with later, which is the whole job of the board.
+        //   uplink   — a small RING, because the rate is not uniform: a 2.79GB
+        //              matrix averages lower than a 48MB one, so the size
+        //              travels with every entry and cannot be read apart.
+        //   cpuProfile — the RHYTHM3S self-profile's ranked self-time table,
+        //              which is how "what is eating the loop?" gets answered by
+        //              the VM instead of by inference.
+        uplink: Array.isArray(this._uplinkStats) && this._uplinkStats.length
+          ? this._uplinkStats.slice(-8) : null,
         // GATEGPU — gate probes relocated to the donor: gpu = graded on the
         // card, refused = lane busy/no donor (CPU graded instead), nullAck =
         // dispatch sent but no currents came back (CPU graded instead).
@@ -1191,8 +1512,9 @@ const SERVER_STATE_MIXIN = {
         batchTiming: perf.batchTiming || null,
         batchPaused: _batchPaused,
         batchStall: _batchStall,
-        defsLearnedPerHour: (this._defLearnedTimestamps && this._defLearnedTimestamps.length)
-          ? this._defLearnedTimestamps.length : 0,
+        // DEFRATE.1 — was `this._defLearnedTimestamps.length`: the wrong owner
+        // (brain, never written) AND a count wearing a rate's name.
+        defsLearnedPerHour: this._defsLearnedPerHour(),
         chatHebbianTurns: (this._chatTimeHebbianStats && this._chatTimeHebbianStats.turns) || 0,
         frameCount: this.frameCount || 0,
       };
@@ -1243,6 +1565,18 @@ const SERVER_STATE_MIXIN = {
       const _totalMB = Math.floor(_os.totalmem() / 1048576);
       const _floor = process.env.DREAM_SAVE_MIN_FREE_MB !== undefined
         ? Number(process.env.DREAM_SAVE_MIN_FREE_MB) : 3072;
+      // ONESHOT.1 — the self-profile's ranked table, published so "what is
+      // eating the loop?" survives the console ring.
+      out.cpuProfile = _cpuProfile;
+      // PROFREARM.1 — the FIRST sample, kept so early-vs-steady is comparable.
+      // ⚠ The first one is taken at +150s, which is NOT "the walk settled": the
+      // canonical upload is often still running and every row is being
+      // normalised for the first time. Read it as the boot picture, and read
+      // `cpuProfile` (the latest) for how she actually runs.
+      out.cpuProfileFirst = (this._cpuProfileFirst && Array.isArray(this._cpuProfileFirst.top))
+        ? { at: this._cpuProfileFirst.at, sampledMs: this._cpuProfileFirst.sampledMs,
+            top: this._cpuProfileFirst.top.slice(0, 6) }
+        : null;
       out.hostRam = {
         freeMB: _freeMB,
         totalMB: _totalMB,
@@ -1860,6 +2194,14 @@ const SERVER_STATE_MIXIN = {
       //   phiState: 'live' | 'floored' | 'error' | 'unmeasured'
       phiRaw: (typeof this.phiRaw === 'number') ? this.phiRaw : null,
       phiState: this.phiState || 'unmeasured',
+      // PHISCALE.1 — the ADAPTIVE reference Φ̂ is divided by, and the resulting
+      // normalised value. Published together so the chain is legible as
+      // raw → ref → normalised; a normaliser that only lived in the function
+      // computing it would be a hidden number deciding a headline quantity.
+      // ⚠ `phiScaleRef` climbing while `phiNorm` stays near 1.0 means the scale
+      // is chasing her, not measuring her — worth seeing.
+      phiScaleRef: (typeof this.phiScaleRef === 'number') ? this.phiScaleRef : null,
+      phiNorm: (typeof this.phiNorm === 'number') ? this.phiNorm : null,
       // ── ENDO — the endocrine layer + the glands that drive it.
       // Rendered BY NAME, so every field below needs its row; a field with
       // no row ships dark no matter how correct it is.
@@ -1870,6 +2212,21 @@ const SERVER_STATE_MIXIN = {
         chemicals: this._endocrineSnapshot.chemicals,
         chronicLoad: this._endocrineSnapshot.chronicLoad,
         stress: this._endocrineSnapshot.stress,
+        // ⛔ BOARDPARITY.1 — THESE THREE WERE PRODUCED, READ BY THE PANEL, AND
+        // NEVER FORWARDED. The same producer/consumer name failure as
+        // `meanVoltage`, and it did not read as an empty row: the renderer
+        // defaults `allostatic` to `{}`, so the load row rendered a healthy
+        // `0.000/0.6 (restore α 0.0000)` for the one quantity that says whether
+        // adversity is accumulating — a reassuring zero for a live number. The
+        // cycle row was gated on the field's presence and so never drew at all
+        // (phase, cycles elapsed, and the progesterone-withdrawal derivative
+        // all invisible), and `puberty` rendered the literal `? (age ?)` with
+        // its amber `unknown` branch unreachable — the branch that exists
+        // specifically so an unread age cannot read as childhood.
+        puberty: this._endocrineSnapshot.puberty,
+        cycle: this._endocrineSnapshot.cycle,
+        allostatic: this._endocrineSnapshot.allostatic,
+        scheduledCount: this._endocrineSnapshot.scheduledCount,
         contributions: this._endocrineSnapshot.contributions,
         counters: this._endocrineSnapshot.counters,
         // Whether the NUCLEI were consulted this tick. Distinguishes "the
@@ -2032,30 +2389,12 @@ const SERVER_STATE_MIXIN = {
       // from the timestamps ring buffer populated by
       // _teachWordDefinition. Reads oldest + newest within the buffer
       // window to avoid edge bias.
-      defsLearnedPerHour: (() => {
-        // 114.19ek P4 #16 — rolling 1hr window. Earlier formula
-        // read oldest + newest of the 256-cap ring buffer, which
-        // inflated catastrophically during the upfront K-vocab
-        // multi-def seed (256 timestamps inside a 2-min window
-        // would report ~7680 defs/hour). Clamp to timestamps within
-        // the last 3,600,000 ms so the dashboard reflects steady-
-        // state learning rate, not seed-burst peaks.
-        const ts = cortex && cortex._defLearnedTimestamps;
-        if (!Array.isArray(ts) || ts.length < 2) return 0;
-        const now = Date.now();
-        const cutoff = now - 3_600_000;
-        let firstIdx = ts.length - 1;
-        for (let i = 0; i < ts.length; i++) {
-          if (ts[i] >= cutoff) { firstIdx = i; break; }
-        }
-        const recent = ts.length - firstIdx;
-        if (recent < 2) return 0;
-        const newest = ts[ts.length - 1];
-        const oldest = ts[firstIdx];
-        const dt = (newest - oldest) / 1000;
-        if (dt <= 0) return 0;
-        return (recent / dt) * 3600;
-      })(),
+      // DEFRATE.1 — the 114.19ek rolling-1hr computation now lives in ONE
+      // place (`_defsLearnedPerHour`) and both consumers call it. This copy
+      // was the CORRECT one; the profiling copy read the wrong owner and could
+      // only ever report 0, which is precisely what two divergent copies of a
+      // "simple" derivation buy you.
+      defsLearnedPerHour: this._defsLearnedPerHour(),
       // M.24 _definitionTaughtWords counter (already in kVocabTaught above).
     };
   },

@@ -1,3 +1,68 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ PLANNING page with LIVE MEASUREMENTS baked into its reasoning. Drift here
+# means "RE-PRICE the plan", not "a claim is false" — and because its argument
+# rests on numbers read off a running brain, a stale number here is a stale
+# ARGUMENT, not just a stale figure.
+status: draft
+sources:
+  - js/brain/cluster/emit.js
+  - js/brain/self-frame.js
+  - js/brain/language-cortex.js
+  # ADDED 2026-08-27 by the new sources-coverage check (doc-drift-check.mjs
+  # check 9): this page makes LINE-PRECISE claims about all four and declared
+  # none of them, so check 8 could never have flagged them when they moved.
+  # chat.js is cited 3× (:3496/:3568/:3630) and brain-server/state.js:347 is
+  # the basis of the recruitment-path correction above.
+  - server/brain-server/chat.js
+  - server/brain-server/state.js
+  - js/brain/curriculum.js
+  - js/brain/hippocampal-schema.js
+  # This one was INVISIBLE until the parser was fixed: the comment above
+  # truncated the block, so every source below it went unread and this gap
+  # went unreported. Revealed by fixing the parser, not by a second look.
+  - server/brain-server/visual-memory.js
+verified-scope: |
+  CHECKED 2026-08-27 — every live measurement this page cites was RE-READ off
+  the local brain (build 2673d14c, booted 04:22:39Z) and recorded beside the
+  original rather than overwriting it, per this page's own stated ethic:
+    - selfFrame block: units/lines/unitsThisCell/capped all moved (101/2913 ->
+      2/62). Flagged explicitly as a YOUNG WALK, not a regression.
+    - voice block: matrixHits 183 -> 0, matrixDrivenPct 100 -> null, and
+      emitRejection.reason below-signal-floor -> no-best-word. That last one
+      is the field §1's whole conclusion is argued from.
+    - consolidation passCount 18 -> 2; novelConsolidated 0 -> 0 (HALF A holds).
+    - basinHealth: semMotorMeanCos 0.075 -> 0.436, dominantWord -> null,
+      saturated still false.
+    - recruitment cortex_sem_to_word_motor 99.96% HOLDS - but the documented
+      PATH was wrong: it nests under weightRecruitment.matrices.*
+    - found new undocumented selfFrame fields incl. lightCapPerCell: 96.
+  NOT CHECKED — do not read this page as authority on:
+    - whether the lightUnits lane satisfies Phase 1's "raised cap" deliverable.
+      lightUnits reads 0, so the lane fired nothing this boot; a cap that
+      exists is not a cap that fires. NAMED, not resolved.
+    - Phases 0.2-0.2f (identity/content-boundary/wardrobe gating) - the
+      largest part of this document by volume, NOT re-verified this pass.
+    - the §7 coverage matrix, §8 price, and §10 open decisions.
+    - whether §1's "signal is WEAK, not scrambled" conclusion still holds. The
+      rejection reason it rests on CHANGED; that is reported, NOT re-decided.
+      ⛔ This page must not be used as a cause for EMITZERO.1, which is filed
+      as a question with evidence and no diagnosis on purpose.
+  ⭐ SELF-DRIFT, restamped 2026-08-27 — and it bears directly on §1's open
+  question. The moved source is server/brain-server/state.js (BUCKETPUB.1),
+  which publishes `voice.wordsBucketed` / `voice.bucketSubjects`. §1's re-price
+  block records that `emitRejection.reason` changed from `below-signal-floor` to
+  `no-best-word` and deliberately stopped short of a diagnosis. Two further
+  live reads since: `emitDiagnostic.bestMean` = 0, so `no-best-word` is
+  GENUINELY no candidate above zero rather than a floor rejecting a winner; and
+  `separability.cellSize` = 0 is an ARTIFACT, not evidence — the geometry is
+  cached lazily by wordBucketCellSizeFor() and emitWordDirect bails before it
+  needs geometry when nothing is bucketed. ⛔ Still not a diagnosis:
+  wordsBucketed is the number that settles it and it lands on the next press.
+last-verified: "cdfcf8b5 2026-08-27"
+---
+
 # WORD SALAD FIX — the layout
 
 > **⛔ STATUS SUPERSEDED — MOST OF THIS IS NOW BUILT (2026-08-25).** The line below said *"Nothing in this
@@ -45,6 +110,31 @@ every cell.** `js/brain/self-frame.js` already exports exactly the pedagogy the 
 This is not a system that needs inventing. It is a system that needs **coverage, a raised cap, and an
 identity layer that stops contradicting it.**
 
+> ### ⛔ RE-PRICE 2026-08-27 — EVERY LIVE NUMBER ABOVE AND BELOW HAS MOVED. Re-read before executing any phase.
+>
+> This is a **planning page with measurements baked into its reasoning**, so drift here means *"re-price the plan"*, not *"a claim was always false"*. Per this page's own stated ethic the originals are left standing; the re-read sits beside them. Read off the LOCAL brain, build `2673d14c`, booted `04:22:39Z`:
+>
+> | field | this page | **live 2026-08-27** | reading |
+> |---|---|---|---|
+> | `selfFrame.units` / `.lines` | 101 / 2,913 | **2 / 62** | ⚠ **NOT a regression — a YOUNG WALK.** ⛔ **CORRECTED: uptime is 5.60 h (`growth.uptime` 20,162 s, booted `04:22:39Z`), not the "~2h" first written here — I carried a figure forward from earlier in the session instead of reading `growth.uptime`.** `cellPhasesStarted: 2`. The original was read on a long-running box. ⭐ **The correction sharpens the point rather than weakening it: 5.6 hours of walking has produced 2 self-frame units, so "young walk" is doing more work as an explanation than "2 hours" implied — and it is `cellPhasesStarted: 2` that carries the argument, not the clock** |
+> | `selfFrame.unitsThisCell` / `capped` | 16 / `true` | **2 / `false`** | ⚠ So **the cap is not currently the binding constraint** — she has not produced enough units this cell to reach it. The page's *"hits `capPerCell:16` in every cell"* is a claim about a MATURE walk and is **not** falsified by this read |
+> | `voice.matrixHits` | 183 | **0** | — |
+> | `voice.matrixDrivenPct` | 100 | **`null`** | ⭐ `null` because there are no emissions to divide by — **not** a collapse to zero percent |
+> | ⛔ `emitRejection.reason` | **`below-signal-floor`** | ⛔ **`no-best-word`** (1,687 of 1,687, sole reason) | **THE DIAGNOSTIC BASIS OF THIS PAGE CHANGED.** See below |
+> | `memoryStats.consolidation.passCount` | 18 | **2** | fresh boot; `replaySchemas`/`replayWrites`/`replayRefused` all **0** |
+> | `dreamRecombinationStats.novelConsolidated` | 0 | **0** | ⭐ **unchanged — HALF A still stands** |
+> | `basinHealth.semMotorMeanCos` | 0.075 | **0.436** | moved **5.8×**. ⚠ `saturated` still reads **`false`** |
+> | `basinHealth.dominantWord` / `.dominantShare` | `"gaseous"` / 0.03 | **`null` / `null`** | no dominant word at this stage |
+> | recruitment `cortex_sem_to_word_motor` | 719,702 / 720,000 = 99.96% | **719,701 / 720,000 = 99.96%** | ⭐ **HOLDS, and holds on a 2h-old brain** |
+>
+> ⛔ **THE PATH FOR THAT LAST ROW IS WRONG ON THIS PAGE.** It cites `utilization.weightRecruitment.cortex_sem_to_word_motor`; the payload nests one level deeper — **`utilization.weightRecruitment.matrices.cortex_sem_to_word_motor`** (`weightRecruitment` itself is `{at, matrices}`, `state.js:347`). Same defect class as the five bad paths found in `docs/TRAJECTORY-CAPTURE.md` the same day: **a reader following the documented path gets `undefined` and no error.**
+>
+> ⛔ **WHAT THE REJECTION-REASON CHANGE DOES AND DOES NOT MEAN.** §1's conclusion — ***"Her signal is WEAK, not scrambled"*** — is argued from `emitRejection.reason = below-signal-floor`, i.e. *a winner existed and fell short of a floor*. The live reason is **`no-best-word`**, which is a **different failure**: no candidate was selected at all. ⚠ **This does NOT retire §1** (different boot, 2h vs mature, and `utilization.verdict` reads `healthy — high coverage (lang 100% / recruit 69.12%)`). ⛔ **But the page must not be read as a current diagnosis, because the specific field its diagnosis rests on now says something else.**
+>
+> ⛔ **AND DO NOT TREAT THIS AS A CAUSE FOR `EMITZERO.1`.** That item is filed *deliberately* as a question with evidence and no diagnosis. ⭐ **What this re-read legitimately contributes to it is one fact: the two reasons are DISTINGUISHABLE in the payload, and an earlier boot of this brain reported the OTHER one** — so `no-best-word` is not the only reason this lane has ever emitted, which is worth more to that investigation than any theory. `voice.verdict` now reads: *"1,687 emission attempt(s) refused and ZERO accepted since boot."*
+>
+> ⭐ **NEW `selfFrame` FIELDS this page does not mention, and one of them looks like its own Phase-1 deliverable:** `lightUnits`, `lightUnitsThisCell`, **`lightCapPerCell: 96`**, `lightCapped`, `corpusCursor`, `structureDose`, `phaseBudgetMs`. Phase 1's deliverable was *"a raised cap"* — **there is now a second self-frame lane with a cap of 96 beside the original 16.** ⚠ **Whether that satisfies the deliverable is NOT established here** — `lightUnits` reads **0**, so the lane has produced nothing this boot, and a cap that exists is not a cap that fires. **Named so the phase is re-priced against what shipped rather than rebuilt.**
+
 ---
 
 ## 1. WHAT THE WORD SALAD ACTUALLY IS (measured, not assumed)
@@ -55,7 +145,7 @@ Two theories died on measurement before this layout was written. Recording them 
 |---|---|
 | Hot buckets — a few words hoard activation mass | WORDNORM's own first log line: avg bucket mass **1.501**, only 2 buckets >3× avg. The profile is near-uniform. |
 | Question-independent currents — the input never reaches the argmax | The donor demonstrably scatters the passed pre indices per question. |
-| **Saturation / mode collapse** | `basinHealth`: `saturated: false`, `semMotorMeanCos: 0.075`, `semMotorRatio: 2.59`, `dominantToken "gaseous"` at `dominantShare: 0.03`. **Rows are NOT collapsed onto each other.** |
+| **Saturation / mode collapse** | `basinHealth`: `saturated: false`, `semMotorMeanCos: 0.075`, `semMotorRatio: 2.59`, `dominantWord "gaseous"` at `dominantShare: 0.03`. **Rows are NOT collapsed onto each other.** |
 
 What is actually true, live:
 
@@ -382,7 +472,7 @@ will spend twenty grades insisting she is five.
 
 | Export | What it already does |
 |---|---|
-| `SELF_TOKENS` | `['i','me','my','myself','mine','unity']` |
+| `SELF_WORDS` | `['i','me','my','myself','mine','unity']` |
 | `firstPerson(sentence, seed)` | Rewrites a content sentence into her voice |
 | `mathToFirstPerson(text)` | The same for arithmetic |
 | `selfDeclaration(topic, subject)` | "this is something I am learning" |
@@ -401,7 +491,7 @@ bindings   → ['i', key] ['unity', key] ['my', key] ['myself', key]
              ['i','unity'] ['unity','i'] ['my','unity'] ['me','unity'] ['mine','unity']
 ```
 
-That binding block is the mechanism that makes `i` **mean her** rather than be one more frequent token.
+That binding block is the mechanism that makes `i` **mean her** rather than be one more frequent word.
 It is the correct design and it is already written.
 
 ### 3.2 — The actual defect: coverage and cap

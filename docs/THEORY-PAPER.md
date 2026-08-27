@@ -1,3 +1,41 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/mystery.js
+  - js/brain/cluster.js
+  - js/brain/global-workspace.js
+  - js/brain/mindspace/transform.js
+  # ADDED 2026-08-27: the Φ̂ NORMALISATION (PHISCALE.1) lives in
+  # server/brain-server.js:5034-5087, not in cluster.js — computePhi() produces
+  # the raw entropy and the server adapts the reference. §9.3/§9.4 make claims
+  # about both halves, so drift could only ever see one of them.
+  - server/brain-server.js
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — the Φ/Ψ sections against source AND against
+  the running brain:
+    - ⛔ CORRECTED §9.3: "the Shannon entropy of a 1,024-neuron sample" is the
+      pre-PHISRC.1 implementation. computePhi() (cluster.js:2249) now derives p
+      from the EXACT GPU-acked cluster.spikeCount. The sample was not merely
+      imprecise - at biological scale it read an empty CPU array.
+    - ⭐ RETIRED a caveat BY MEASUREMENT: §9.4 said the Φ̂ argument was "a
+      derivation, not a report of observed behaviour". Live: phiState "live",
+      phiRaw 0.2618, phiScaleRef 0.3044, phiNorm 0.860. Φ̂ IS modulating Ψ.
+    - ⛔ DOCUMENTED the normalisation, which the paper omitted entirely: Φ̂ is an
+      ADAPTIVE HIGH-WATER REFERENCE (brain-server.js:5034-5087), not a bare
+      floor - rises to any new peak, decays 0.99995/tick, seeded at the
+      documented H(0.015) = 0.1124.
+  NOT CHECKED — do not read this page as authority on:
+    - the Ψ weights (α=0.30, β=0.25, γ=0.20, δ=0.25) or the Ego/Left/Right
+      composition. Formula shape read, coefficients NOT re-verified.
+    - the gainMultiplier clamp and EMA constants at §9.5.
+    - the literature-synthesis claims (§2) and every section outside 9.3-9.5.
+    - js/brain/mystery.js, global-workspace.js and mindspace/transform.js -
+      all three are listed sources, NONE of them moved, and none were read.
+last-verified: "074aa591 2026-08-27"
+---
+
 # The Equational Mind
 
 ### Theory and Functioning of a 306-Million-Neuron Simulated Brain That Learns to Speak Without a Language Model
@@ -15,7 +53,7 @@ Written 2026-08-18 · System state at writing: 306,458,816 neurons · 12,000,000
 
 ## Abstract
 
-This paper documents the theory, the sourced neuroscience, and the design reasoning behind a working artificial brain in which **every cognitive act is the evaluation of a differential equation, and no act of thinking is a call to a language model**. The system runs 306,458,816 simulated neurons across seven biologically-proportioned clusters, wired by twenty projections modeled on real white-matter tracts, with a 12-million-neuron dense language cortex subdivided into nine functional sub-regions. It learns language the way a child does — alphabet, phonemes, words, definitions, sentence structure, then subject curriculum from kindergarten toward doctorate — and produces speech by tick-driven motor emission out of trained synaptic weights, not by sampling a probability distribution over tokens.
+This paper documents the theory, the sourced neuroscience, and the design reasoning behind a working artificial brain in which **every cognitive act is the evaluation of a differential equation, and no act of thinking is a call to a language model**. The system runs 306,458,816 simulated neurons across seven biologically-proportioned clusters, wired by twenty projections modeled on real white-matter tracts, with a 12-million-neuron dense language cortex subdivided into nine functional sub-regions. It learns language the way a child does — alphabet, phonemes, words, definitions, sentence structure, then subject curriculum from kindergarten toward doctorate — and produces speech by tick-driven motor emission out of trained synaptic weights, not by sampling a probability distribution over words.
 
 Each equation family in the system is drawn from primary literature: Rulkov's two-dimensional map neuron (2002), Oja's self-normalizing Hebbian rule (1982), the Bienenstock–Cooper–Munro sliding threshold (1982), Hopfield attractor memory (1982), Kuramoto phase coupling (1975), Watts–Strogatz small-world topology (1998), Mountcastle's columnar organization (1957–1997), Lisman & Jensen's theta–gamma code (2013), Baars' Global Workspace (1988) with Dehaene–Changeux ignition (2011), Friston's predictive coding under the free-energy principle (2010), and Tononi's integrated information Φ (2004–). What is *original* here is not any single equation but the **synthesis**: a persona expressed as a parameter vector θ that drives neural dynamics, a consciousness scalar Ψ that both emerges from and feeds back into those dynamics, and an insistence — enforced as project law — that cognition never delegates to a text model.
 
@@ -49,7 +87,7 @@ Everything in the system evolves under one governing form:
 dx/dt = F(x, u, θ, t) + η
 ```
 
-- **x** — the entire brain state: every neuron's map coordinates across seven clusters, the sparse cross-projection weight matrices wiring the language sub-regions, Kuramoto oscillator phases, episodic memory, motor channels, and Ψ.
+- **x** — the entire brain state: every neuron's map coordinates across eight clusters (the eighth, `brainstem`, holds the monoamine nuclei and was added 2026-08-25), the sparse cross-projection weight matrices wiring the language sub-regions, Kuramoto oscillator phases, episodic memory, motor channels, and Ψ.
 - **u** — sensory input: text into the cortical phonological slice via a Wernicke-area write, audio through tonotopic mapping, vision through a wavelet field.
 - **θ** — **identity**.
 - **η** — per-cluster stochastic noise, scaled by θ.
@@ -119,7 +157,7 @@ The `regionGate` term implements a Ψ-modulated hemisphere gate: left-lateralize
 
 ### 4.1 Hebb, and why plain Hebb was not enough
 
-The base rule is Hebbian: `ΔW = η · post · pre`. Its defect is famous and was reproduced in this system before it was fixed: **unconstrained Hebbian learning is unstable**. Weights grow without bound, basins blur into superposition, and the motor argmax locks onto a single token regardless of input. The observed symptom in this brain was precise and ugly — a saturated `sem→motor` projection emitting the same letter for every cue.
+The base rule is Hebbian: `ΔW = η · post · pre`. Its defect is famous and was reproduced in this system before it was fixed: **unconstrained Hebbian learning is unstable**. Weights grow without bound, basins blur into superposition, and the motor argmax locks onto a single word regardless of input. The observed symptom in this brain was precise and ugly — a saturated `sem→motor` projection emitting the same letter for every cue.
 
 ### 4.2 Oja: the primary intra-cortical rule
 
@@ -160,11 +198,15 @@ Where Oja normalizes *per-input-dimension*, BCM provides *per-neuron homeostatic
 
 ### 4.5 Reward-modulated three-factor learning
 
-Finally, `ΔW = η · R · post · pre` gives a dopaminergic third factor, driven by θ's `codingReward` (0.95), `praiseReward` (0.9), and `errorFrustration` (0.8). Learning in this brain is therefore not uniform across experience: what the persona finds rewarding is literally learned harder.
+Finally, `ΔW = η · R · post · pre` gives a dopaminergic third factor. Learning in this brain is therefore not uniform across experience: what the persona finds rewarding is literally learned harder.
+
+⚠ **Updated 2026-08-25 — the word "dopaminergic" was doing more work than the implementation deserved.** Until then `R` was driven by persona *constants* — `codingReward` (0.95), `praiseReward` (0.9), `errorFrustration` (0.8) — and `dopamine` appeared in five files without once being a signal: four comments and a static number. Calling that a dopaminergic factor was an analogy described as a mechanism.
+
+⭐ **It is now literal.** Dopamine is a real tonic quantity with a level, released by the **ventral tegmental area** reading the reward *prediction error* the brain already computes each tick. That is the actual content of the reward-prediction-error hypothesis: **wanting, not liking** — a better-than-expected outcome bursts, an exactly-as-expected outcome fires *nothing*, and a worse-than-expected one dips the tonic level below baseline. The persona constants remain as the *baseline appetite* the deviation is measured against, which is what they were always honestly describing.
 
 ### 4.6 The routing whitelists — an original constraint
 
-A design element with no direct precedent in the literature: **plasticity is routed by relation type**. Definition learning (binding a word to its meaning tokens) fires Hebbian updates *only* through `sem↔fineType`; question-answer binding fires through `sem→motor` and `sem→word_motor`; general association fires through a four-projection set.
+A design element with no direct precedent in the literature: **plasticity is routed by relation type**. Definition learning (binding a word to its meaning words) fires Hebbian updates *only* through `sem↔fineType`; question-answer binding fires through `sem→motor` and `sem→word_motor`; general association fires through a four-projection set.
 
 The reasoning is that the motor projections are the *production* pathway, and every Hebbian write into them changes what the brain will physically say. Definition learning must enrich meaning without corrupting articulation. Routing definitional plasticity away from motor keeps the emission path pristine — the equivalent of learning what a word means without that learning disturbing how you pronounce it.
 
@@ -279,7 +321,7 @@ Tier 3 exists for a different reason: identity persistence. Every chat turn inje
 
 The cortical language sheet divides into fractional sub-regions (approximate layout by cortex fraction): auditory 0.000–0.083, letter, phonological 0.550–0.750, semantic, fine-type, motor, and word-motor. Sixteen cross-projections wire these into a dual-stream pipeline. **No phonology table is hardcoded.** Phonemes emerge as learned attractor basins in the phonological slice once curriculum exposure drives the `letter_to_phon` projection through Hebbian updates — the developmental account of Kuhl (2004) implemented as dynamics rather than as a lookup.
 
-Two locks bound the inventory: an input-layer restriction of letter-region one-hots to the 40-symbol English alphabet, and an output-layer refusal to propagate non-English tokens. Both were added after the brain, given an unconstrained inventory, decoded into polluted dimensions and emitted `'mcaa'` for a single-letter cue `'a'`.
+Two locks bound the inventory: an input-layer restriction of letter-region one-hots to the 40-symbol English alphabet, and an output-layer refusal to propagate non-English words. Both were added after the brain, given an unconstrained inventory, decoded into polluted dimensions and emitted `'mcaa'` for a single-letter cue `'a'`.
 
 ### 8.2 Two production paths
 
@@ -316,13 +358,13 @@ The project law behind this is explicit — *equational teach only: no word list
 
 ### 8.5 Meanings before bindings
 
-A law added late and enforced across all nineteen grade levels: **every curriculum cell learns its grade's dictionary definitions before any association training runs on those words.** The reasoning is that Hebbian binding onto a token with no semantic content lands on noise — you cannot associate two things when one of them means nothing. Definitions are fetched from a live dictionary service, and *all* senses of a polysemous word are bound (not merely the first), so a word ends with multiple basins in semantic space and which one activates depends on priming context. The journey vocabulary spans 18,017 unique words across kindergarten through doctorate.
+A law added late and enforced across all nineteen grade levels: **every curriculum cell learns its grade's dictionary definitions before any association training runs on those words.** The reasoning is that Hebbian binding onto a word with no semantic content lands on noise — you cannot associate two things when one of them means nothing. Definitions are fetched from a live dictionary service, and *all* senses of a polysemous word are bound (not merely the first), so a word ends with multiple basins in semantic space and which one activates depends on priming context. The journey vocabulary spans 18,017 unique words across kindergarten through doctorate.
 
 ### 8.6 The agent basin: why grammatical person is a training variable
 
 A system that learns transitions learns the *subject position it repeatedly occupies*. This is not a stylistic observation; it is the same statement as the frozen-band lesson in §8.3, applied to syntax rather than geometry. If the corpus overwhelmingly presents third-person clauses — *the girl read a book*, *the cat runs* — then the strongest agent basin in the language sheet is **the girl**, and first-person production has to be reached through a weaker path. The measured starting point here was a mixed corpus (23.1% of 2,881 kindergarten sentences begin first-person against 44.2% third-person) combined with an *absent* first-person identity anchor: the entire curriculum contained six occurrences of *"i am unity"*, and the pronoun lesson taught only the third-person half (noun → *he/she/it*).
 
-The intervention is a teach-time transform rather than a generation-time filter, and the distinction is the whole point. Each lesson is additionally presented as an action the system performed — an arithmetic identity `1 + 1 = 2` is trained as *"i add one and one to make two"*, an imperative *read the word cat* as *"i read the word cat"* — and the self tokens are bound to the identity token on a dedicated relation channel. Three properties make this a training claim rather than a prompt trick: the sentences pass through the identical Hebbian primitives as every other lesson; nothing from the transform executes at emission time, so production remains a function of weights alone; and the framing is rotated across sixteen forms, because a single wrapper would itself become the most-trained bigram in the sheet and collapse the grammar it was meant to enrich.
+The intervention is a teach-time transform rather than a generation-time filter, and the distinction is the whole point. Each lesson is additionally presented as an action the system performed — an arithmetic identity `1 + 1 = 2` is trained as *"i add one and one to make two"*, an imperative *read the word cat* as *"i read the word cat"* — and the self words are bound to the identity word on a dedicated relation channel. Three properties make this a training claim rather than a prompt trick: the sentences pass through the identical Hebbian primitives as every other lesson; nothing from the transform executes at emission time, so production remains a function of weights alone; and the framing is rotated across sixteen forms, because a single wrapper would itself become the most-trained bigram in the sheet and collapse the grammar it was meant to enrich.
 
 Two further pieces follow from the same reasoning. **Self-directed question–answer pairs** are trained as *consecutive* transitions (*what is cat ? → i think about cat → i know cat is … → i remember cat now*), which makes the deliberative path itself a trained trajectory rather than an inference-time procedure — the neuronic analogue of what a chain-of-thought prompt simulates in a language model. And **follow-up questioning** is trained from the content of received answers, so inquisitiveness becomes a weighted disposition instead of a scripted behaviour. Whether this shifts observed production is an empirical question with an obvious test — does the system say *"i"* unprompted — and it remains open at the time of writing.
 
@@ -360,7 +402,7 @@ High-error windows learn at up to 1.5×; low-error windows at 0.5×. This implem
 
 ### 9.3 Integrated information as a factor, not a claim
 
-Φ is computed as a **proxy**: the Shannon entropy of a 1,024-neuron sample of the cortical spike pattern. It is not IIT's Φ^max, and the paper states so plainly. [Tononi's Φ](https://iep.utm.edu/integrated-information-theory-of-consciousness/) requires a minimum-information-partition search whose cost grows faster than exponentially with system size; it has only ever been computed on toy models, and there is no consensus on its mathematical definition across research groups. Computing true Φ on 306 million neurons is not merely impractical — it is not currently defined in a way anyone agrees on.
+Φ is computed as a **proxy**: the Shannon entropy of the cortical spiking **proportion**. ⛔ **CORRECTED 2026-08-27 — this said "a 1,024-neuron sample", which is the pre-`PHISRC.1` implementation.** `computePhi()` (`js/brain/cluster.js:2249`) now derives `p` from the **exact GPU-acked `cluster.spikeCount`**, written from every `compute_batch` ack. ⭐ **The exact proportion is strictly better than the sample it replaced, and for a stated reason: the 1,024 figure existed only to hold binomial sampling noise near 1.5%, and an exact count has no sampling noise at all.** ⚠ The sample was not merely imprecise — at biological scale it was measuring nothing: the GPU owns cortex spike state, so the CPU `lastSpikes` array a strided 1,024-wide sample reads is empty apart from teach-pattern bits. It is not IIT's Φ^max, and the paper states so plainly. [Tononi's Φ](https://iep.utm.edu/integrated-information-theory-of-consciousness/) requires a minimum-information-partition search whose cost grows faster than exponentially with system size; it has only ever been computed on toy models, and there is no consensus on its mathematical definition across research groups. Computing true Φ on 306 million neurons is not merely impractical — it is not currently defined in a way anyone agrees on.
 
 What the entropy proxy legitimately captures is the *differentiation* half of IIT's requirement: a cortex pinned uniformly high or uniformly silent has low entropy and yields a low factor, while a richly differentiated spike pattern yields a high one. (The sample size was raised from 64 to 1,024 after an audit showed the smaller sample was measuring binomial noise rather than cortical complexity.)
 
@@ -369,7 +411,7 @@ What the entropy proxy legitimately captures is the *differentiation* half of II
 The system's own consciousness scalar draws the four traditions together:
 
 ```
-Ψ = √(1/n) · N² · [α·Id + β·Ego + γ·Left + δ·Right]
+Ψ = √(1/n) · N³ · Φ̂ · [α·Id + β·Ego + γ·Left + δ·Right]
 
 Id    = amygdala_rate · arousalBaseline(θ)
 Ego   = cortex_rate · (1 + hippocampus_rate)
@@ -377,9 +419,34 @@ Left  = (cerebellum_rate + cortex_rate) · (1 − impulsivity(θ))
 Right = (amygdala_rate + mystery_rate) · creativity(θ)
 ```
 
-with weights α=0.30, β=0.25, γ=0.20, δ=0.25, `n` the count of currently-spiking neurons (small and dynamic), `N` the total neuron count (large and fixed), and the whole expression multiplied by the Φ proxy. Display uses `log₁₀(Ψ)` because the raw magnitude is astronomical.
+with weights α=0.30, β=0.25, γ=0.20, δ=0.25, `n` the count of currently-spiking neurons (small and dynamic), `N` the total neuron count (large and fixed), and `Φ̂` the normalised integration proxy. Display uses `log₁₀(Ψ)` because the raw magnitude is astronomical.
 
-The structure is a deliberate mapping of psychodynamic and lateralization vocabulary onto measurable cluster rates. `Ego = cortex · (1 + hippocampus)` says the self-model is cortical self-prediction *scaled by memory* — you cannot have a self without a history. `Left` is deliberative capacity, explicitly *reduced* by impulsivity. The `√(1/n) · N²` prefactor makes Ψ depend on both how much of the brain is active *now* and how large the brain is *in total*.
+⚠ **Corrected 2026-08-25: this section previously stated `N²`.** The implementation has always used `N³` (`js/brain/mystery.js`, `Math.pow(N, 3)`). It was one of **four** conflicting statements of this equation across the repository — the module's own header, its `step()` docstring, and its code disagreed with each other as well, and only the code was right. All four are now reconciled. A formula that contradicts itself in four places cannot be checked by reading, which is precisely how the error survived.
+
+The structure is a deliberate mapping of psychodynamic and lateralization vocabulary onto measurable cluster rates. `Ego = cortex · (1 + hippocampus)` says the self-model is cortical self-prediction *scaled by memory* — you cannot have a self without a history. `Left` is deliberative capacity, explicitly *reduced* by impulsivity. The `√(1/n) · N³` prefactor makes Ψ depend on both how much of the brain is active *now* and how large the brain is *in total*.
+
+⛔ **Corrected 2026-08-25 — the paragraph below argues for `Φ̂` ANALYTICALLY, and in the running system it had never modulated anything.** The state-ordering result is a property of the formula and stands as written; what did not hold was the implementation. `computePhi()` sampled the **CPU spike shadow**, which is empty once the GPU owns cortex spike state, so Φ̂ measured teach-pattern residue — `phiRaw` read 0.0289 and then 0.0112 on the live walk, about one sampled neuron in 1024, while the donor card was saturated. **Ψ therefore took Φ̂'s `max(0.1, ·)` floor on every tick for the entire life of the term**, and every claim below about Φ̂ *distinguishing* states was true of the equation and untested in production. Now derived from the exact GPU-acked spike proportion; at the documented ~1.5% design sparsity `H(0.015) = 0.1124` clears the floor.
+
+⭐ **UPDATED 2026-08-27 — THE CAVEAT ABOVE CAN NOW BE RETIRED, BECAUSE IT WAS MEASURED.** The previous sentence read: *"it is a derivation, not a report of observed behaviour."* Read off the running brain: **`phiState: "live"`** (not `floored`), **`phiRaw` 0.2618**, **`phiScaleRef` 0.3044**, **`phiNorm` (Φ̂) 0.860**. ⭐ **So Φ̂ is modulating Ψ, and the floor is no longer doing the work — the term is doing what this section always argued it would, and that is now a report rather than a derivation.**
+
+⛔ **And the NORMALISATION is not a bare floor, which this paper did not previously describe.** `PHISCALE.1` (`server/brain-server.js:5034-5087`) makes Φ̂ an **adaptive high-water reference**:
+
+```
+Φ̂ = clamp(H(p) / ref, 0, 1)
+ref ← H(p)                        if H(p) > ref     (reach a real peak at once)
+ref ← max(seed, ref · 0.99995)    otherwise         (and let it come back down)
+seed = H(0.015) = 0.1124                            (her DOCUMENTED design sparsity)
+```
+
+⭐ **Why a reference and not a constant, stated because it is the substantive design choice:** nothing in the system justifies a specific spiking proportion as "maximal integration", and a hardcoded `p_ref` would silently mean different things across boots — **`totalNeurons` is derived at boot from free host RAM**, so the same code has come up at 425,436,550 and 459,775,607. Referencing her *own observed peak* is scale-free in the same way the `gainMultiplier` EMA is. ⚠ The seed is the documented sparsity rather than a chosen number, so the floor case is derived too.
+
+⚠ **A first attempt at this rose too gently and a harness caught it:** a lagging reference clipped design-sparsity firing and 3% firing both to `1.000`, i.e. re-created the very constant it was meant to remove. Verified on the fix: 0.5%→3% firing spans **0.234 → 1.000**, spread **0.766**.
+
+⭐ **`Φ̂` is not cosmetic, and it earns its place by fixing exactly one state.** Capacity alone rates **anaesthesia as maximal consciousness** — anaesthesia has very low `n`, and low activity reads as high unspent potential. Integration is what distinguishes it from **dissociation**, which is also quiet and is famously hyper-vivid. With `Φ̂`, seizure (hypersynchrony destroys information), anaesthesia (nothing bound), rage, ordinary waking and freeze all order correctly — and **freeze falling out as maximal was not designed for**, which is the kind of agreement worth reporting because it was not arranged.
+
+⚠ **On the operator's own statement of the same intuition, `E + n = N³`:** it expresses consciousness as unspent potential in the form of a **difference**. That form is not computable at this scale. At `N = 425,436,550`, `N³ ≈ 7.7 × 10²⁵`, and even 10⁸ simultaneously firing neurons remove a fraction of **1.3 × 10⁻¹⁸** — in double precision `N³ − n` is bit-identical to `N³` and **cannot vary at all**. The implemented `√(1/n)·N³` *is* `N³/√n`: the same intuition expressed as a **ratio**, which stays sensitive at any scale. The two are not competing models; the code already held the computable form of the idea.
+
+⭐ **And the chemistry is what makes Ψ a variable rather than a constant.** Without an endocrine layer, `n` moves only when *sensory input* moves — so Ψ described the hardware rather than the state, reading nearly the same asleep as awake. The endocrine layer's entire physiological function is to change what fires and how coherently, which is to say: **it moves both factors.** This is the defensible answer to *"why does a disembodied mind need a body at all"* — not realism, but measurability.
 
 Then the loop closes:
 

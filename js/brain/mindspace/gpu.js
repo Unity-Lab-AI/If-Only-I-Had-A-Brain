@@ -212,7 +212,7 @@ function moodTint(mood) {
 // TU.29.5 — glyphs DEMOTED to genuinely symbolic thoughts. A human mind's eye
 // pictures "7" as the numeral and "B" as the letterform, but it does NOT print
 // sentences across the visual field — imagination is not a caption. Only digit
-// tokens, math operators and single letters survive to the glyph raster; every
+// words, math operators and single letters survive to the glyph raster; every
 // other thought renders as her state textured in the named color / her mood
 // (the abstract field), and CONCRETE imagery comes from the visual-memory
 // recall + morph layer (server/brain-server/visual-memory.js) which bypasses

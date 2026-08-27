@@ -39,9 +39,9 @@
  * Pure functions, no imports, no brain handles — so it is unit-testable and cannot break a teach path.
  */
 
-// Her self tokens. `i` is the one that matters: everything below exists to make `i` the strongest
+// Her self words. `i` is the one that matters: everything below exists to make `i` the strongest
 // agent basin in her language cortex, bound to `unity`.
-export const SELF_TOKENS = ['i', 'me', 'my', 'myself', 'mine', 'unity'];
+export const SELF_WORDS = ['i', 'me', 'my', 'myself', 'mine', 'unity'];
 
 // The rotating first-person frames. Deliberately MIXED in shape:
 //   • bare-verb frames ("i read <x>") give her clean agent→verb→object transitions
@@ -72,7 +72,7 @@ function pick(list, seedStr, salt = 0) {
   return list[h % list.length];
 }
 
-/** Normalize to the teach-path's lowercase, space-separated, punctuation-as-token form. */
+/** Normalize to the teach-path's lowercase, space-separated, punctuation-as-word form. */
 export function normalizeLine(s) {
   return String(s || '')
     .toLowerCase()
@@ -95,7 +95,7 @@ const STOP_FOR_KEY = new Set([
  * ⛔ AUDIT FIX (2026-08-20, caught by simulating the four real call shapes): callers pass
  * internal LABELS as the topic (`PRECELL-ela-kindergarten`, `ELA-K`, `CORPUS`), and the old
  * filter accepted `precell-ela-kindergarten` as a word — so she was about to be trained on
- * *"what is precell-ela-kindergarten ?"* and to have agent pairs bound to a token with no
+ * *"what is precell-ela-kindergarten ?"* and to have agent pairs bound to a word with no
  * embedding. A key must look like a WORD she could actually say: letters only, no internal
  * hyphens, and short enough to be real vocabulary.
  */
@@ -111,7 +111,7 @@ export function keyWordOf(text) {
 //
 // ⛔ WHY THIS IS A SEPARATE FUNCTION FROM `normalizeLine` AND NOT A CHANGE TO IT.
 // `normalizeLine` lowercases, and it must keep doing so: `keyWordOf` runs its
-// output through `/^[a-z][a-z']*$/`, and the key it produces becomes the TOKEN
+// output through `/^[a-z][a-z']*$/`, and the key it produces becomes the WORD
 // in the agent-binding pairs, which are looked up lowercase. Lowercasing there
 // is load-bearing; lowercasing the LINES was only ever incidental.
 //
@@ -136,7 +136,7 @@ export function properCase(s) {
  * A topic she can SAY. Same audit finding as `keyWordOf`: `_vocabLabel` and `opts.label` are
  * build labels, not English, and *"i am unity and i am learning precell ela kindergarten"* is
  * not a sentence anyone should train. Strips label punctuation and digits, drops label-shaped
- * tokens, keeps at most three real words, and falls back to the subject.
+ * words, keeps at most three real words, and falls back to the subject.
  */
 export function speakableTopic(topic, subject) {
   const raw = String(topic || '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -146,7 +146,7 @@ export function speakableTopic(topic, subject) {
   return s || '';
 }
 
-// Tokens that only ever appear in build labels — never in something she says about herself.
+// Words that only ever appear in build labels — never in something she says about herself.
 const LABEL_WORDS = new Set([
   'precell', 'corpus', 'def', 'vocab', 'sentences', 'cell', 'open', 'structure', 'refresh',
   'assoc', 'hebbian', 'teach', 'phase', 'k', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8',
@@ -331,7 +331,7 @@ export function selfClose(key, seed = '') {
   // ⛔ AUDIT FIX (2026-08-20) — the old third variant was `"${k} is mine now"`, which is a
   // THIRD-PERSON predicate: the one thing this entire file exists to stop. Every closing line
   // now starts with `i` or `my`. Caught by asserting that every emitted line begins with a
-  // self token or a question word — an assertion the test suite now keeps.
+  // self word or a question word — an assertion the test suite now keeps.
   return [
     `i learned ${k}`,
     pick([
@@ -353,7 +353,7 @@ export function selfClose(key, seed = '') {
  *   lines  — her first-person training sentences (content preserved, spoken as hers)
  *   qa     — in-the-moment self-thought Q&A, consecutive so the path trains
  *   follow — her follow-up questions (the inquisitive habit, TRAINED not scripted)
- *   pairs  — explicit agent bindings: [self-token, content-word] for the identity channel
+ *   pairs  — explicit agent bindings: [self-word, content-word] for the identity channel
  *
  * Bounded on purpose (`maxLines`): a teach unit must not double its own cost, and CELLBOUND is exactly
  * what happens when a per-unit multiplier goes unpriced.
@@ -362,7 +362,7 @@ export function selfFrameUnit(unit = {}, opts = {}) {
   const maxLines = Number(opts.maxLines) > 0 ? Number(opts.maxLines) : 48;
   const seed = String(unit.topic || '') + '|' + String(unit.subject || '') + '|' + String(unit.word || '');
   const lines = [];
-  // properCase AFTER normalizeLine: normalize does the token-safe cleanup the
+  // properCase AFTER normalizeLine: normalize does the word-safe cleanup the
   // key extraction depends on, then the line gets its capitals for anyone reading it.
   const push = (arr) => { for (const l of arr) { if (l && lines.length < maxLines) lines.push(properCase(normalizeLine(l))); } };
 
@@ -392,7 +392,7 @@ export function selfFrameUnit(unit = {}, opts = {}) {
 
   // AUDIT FIX — the key must be a WORD she can say. Prefer the explicit lesson word, then a
   // content word from the lesson's own sentences, then a vocabulary item, and only then the
-  // topic (which is often a build label). `keyWordOf` now rejects label-shaped tokens, so a
+  // topic (which is often a build label). `keyWordOf` now rejects label-shaped words, so a
   // garbage key becomes an empty key and the Q&A block is skipped rather than trained on junk.
   const key = keyWordOf(unit.word || '')
     || keyWordOf((unit.sentences && unit.sentences[0]) || '')
@@ -408,9 +408,9 @@ export function selfFrameUnit(unit = {}, opts = {}) {
   const pairs = [];
   if (key) {
     // WORDSALAD.2 — `me` and `mine` were MISSING from the key bindings. They
-    // appeared in the unity bindings on the next line and in SELF_TOKENS, so the
+    // appeared in the unity bindings on the next line and in SELF_WORDS, so the
     // omission read as complete, but the effect was that four of her six
-    // first-person tokens reached the lesson concept and two never did: she was
+    // first-person words reached the lesson concept and two never did: she was
     // learning "I know X" and "my X" while "give it to ME" and "that one is
     // MINE" stayed unattached to anything she was actually taught. Operator,
     // mid-build: "dont forget me's and mine's". They are the OBJECT and
@@ -428,7 +428,7 @@ export function selfFrameUnit(unit = {}, opts = {}) {
  * SELF-PRONOUN GROUNDING — the lesson that makes "i" mean HER.
  * Third-person pronoun teaching already exists ("the cat ran … he was quick"); this is its missing
  * first-person half, and it is the prerequisite for every frame above: without it, "i" is just another
- * frequent token.
+ * frequent word.
  */
 export function selfPronounLessons() {
   // Authored lowercase because these are training text and the teach path
@@ -447,7 +447,7 @@ function _pronounLessonLines() {
     'when i say me i mean unity',
     'when i say my i mean unity',
     'when i say myself i mean unity',
-    // WORDSALAD.2 — `mine` was the only self token with no "when i say" line,
+    // WORDSALAD.2 — `mine` was the only self word with no "when i say" line,
     // which left the parallel set with a hole exactly where the possessive
     // PREDICATE lives. Operator: "dont forget me's and mine's".
     'when i say mine i mean unity',
