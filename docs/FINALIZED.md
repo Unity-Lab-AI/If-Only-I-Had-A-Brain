@@ -39372,3 +39372,52 @@ All seven enumerations of `regions` read. **Verdict: deleting the 6 `sem_*` keys
 `node --check` clean on `state.js` and `cluster.js`; ESM `import()` clean on `cluster.js`; wiki `449/449` covered, 0 broken links. Board **12 open / 3 in-progress / 379 done** (closed `GOTCHA.3`→3a, `.4`, `.5`; filed `GOTCHA.3b`, `.7`, `WIKICOUNT.1`).
 
 ⚠ An untracked `Stack Vault.png` is sitting in the repo root. **Not added** — it is not mine, and this commit uses explicit paths rather than `git add -A` so it cannot be swept in.
+
+---
+
+## 2026-08-27 - GOTCHA.2 CLOSED: the dead keys were the symptom; a silent region-drop hazard and a polluted donor instrument were the cause - feature/todo-sweep
+
+Gee: *"do what ever u want in your order u want(we are gettting the todo complete)"* — worked under PROTOCOL v0.3.0, adopted this session.
+
+⭐ **Root-cause-then-siblings turned this item inside out.** The filing was "6 unread `sem_*` region keys — delete or keep?" Deleting them would have fixed **half a symptom**, because `word_motor_*` nests identically and has live readers. The actual defects were in the two places that **consume** the region map, and both were invisible to reading because the code path needs a real WebGPU device.
+
+### ⛔ FIX 1 — `validateClusterRegions()`, extracted from `uploadCluster` and EXPORTED so it can be harnessed
+
+**(a) Nesting was reported as an overlap ERROR.** The language cortex declares umbrella regions *and* per-subject sub-bands carved inside them. The old `start < prevEnd` test rejected all 12 sub-bands and warned `overlaps prior region … skipping` once each — so **every healthy upload printed 12 warnings**. ⛔ And a genuine partial overlap would have printed in **identical words**, indistinguishable from the noise it was buried in.
+
+⛔ **(b) WHICH REGION SURVIVED WAS AN ACCIDENT — this is the real find.** `sem` and `sem_ela` have **identical `start` values** (verified on a live cluster: both `150000` at 200K neurons; `word_motor`/`word_motor_ela` both `188000`). Sorting by `start` alone left the winner to `Array.prototype.sort` stability **plus the object-literal insertion order in cluster.js**. It kept the umbrella only because the umbrella happens to be declared first.
+
+⭐ **Had a sub-band ever sorted first, it would have claimed the span and `sem` or `word_motor` would have been silently dropped from GPU registration** — with the warning naming the sub-band, not the casualty. Those two are the semantic target and the primary production path. Sorting is now `(start ASC, span DESC)`, so an enclosing region *always* precedes what it encloses; the outcome is stated instead of emergent.
+
+### ⛔ FIX 2 — the real cost, and it was not bandwidth
+
+`_gpuClearCortexSpikeRegion` **does not validate the region name.** For every name handed to it: encode a type-9 frame, **send it to the donor**, count it via `_countTeachOut`, and — with the language pseudo-cluster up — send a **second** `langCortex/<region>` frame.
+
+`curriculum.js`'s full-clear path walked **all 23** declared names, so **up to 24 wire frames per clear went to regions the donor has never heard of** — on the path **11 of `_clearSpikes`'s 13 call sites take.**
+
+⛔ **The traffic is the smaller half. Those frames land in `teach_ops`, which `TEACHMIRROR.1` made the signal that separates a saturated donor from an idle one.** The no-ops were padding the instrument used to judge donor health.
+
+⭐ Fixed at the chokepoint: `NeuronCluster.topLevelRegionNames()` — memoized, **structural containment test, no name list and nothing to keep in sync when a region is added.** Clearing an enclosing region already covers every span nested inside it, so nothing is left uncleared.
+
+### Verified by execution, on real clusters at two scales
+
+| check | result |
+|---|---|
+| Baseline captured **before** the change (2,000 and 200,000 neurons) | 23 declared → **11 accepted / 12 skipped**, both umbrella pairs sharing a `start` |
+| Accepted set after the change | ⭐ **IDENTICAL — same 11, same order.** Deliberately not a behaviour change |
+| `topLevelRegionNames()` vs the GPU-registered set | ⭐ **Exactly equal** — the invariant that matters; a mismatch would either address a region the GPU lacks or skip one it has |
+| True partial overlap (`[0,100)` + `[50,150)`) | **Still warns loudly**, not silenced as nesting |
+| Sub-band declared FIRST | ⭐ **Umbrella still wins** — hazard (b) closed |
+| Memoization / region-less cluster | Same array identity; `[]` with no throw |
+
+`node --check` clean on `cluster.js`, `curriculum.js`, `gpu-compute.js`; ESM `import()` clean on all three; **bundle rebuilt** 131,965 → 132,008 lines.
+
+⚠ **The 6 `sem_*` keys were LEFT IN PLACE.** With both consumers fixed they cost nothing measurable, and deleting region metadata on a training brain to remove 6 unread `lang_*` payload rows is not worth the change. **The delete this item was filed to decide is no longer worth doing** — that is the honest outcome, not a deferral.
+
+### `GOTCHA.6` closed as an accepted residual
+
+`addition` passes the drawable taxonomy. It already has its sanctioned answer — the operator-taught 🚫 ban set, consulted first, persisting across fresh walks. ⛔ **Closed rather than left open because an open item invites the wrong fix:** three corrections were needed to reach the taxonomy and an attestation-dominance rule was tried and **deleted** for killing `book`/`table`/`fire`. Reopen only on evidence of a **class**, never for one word.
+
+### ⚠ Protocol note
+
+`/fable-mode` was invoked this session, loading PROTOCOL v0.3.0 as binding. ⛔ **That reverses the second half of a refusal recorded in this ledger** (*"REFUSED and stays refused: the protocol injector + central vault"*) — the vault half was reversed earlier the same day. Recorded here so the ledger does not assert a refusal that is no longer in force. The protocol is what produced this entry's shape: predict-before-probe caught the baseline, refute-your-own-conclusion is what turned "delete 6 keys" into two real fixes, and *never trust a description you can check* is what sent me to `_gpuClearCortexSpikeRegion`'s body instead of assuming a cheap no-op.
