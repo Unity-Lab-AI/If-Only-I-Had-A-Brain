@@ -1686,6 +1686,15 @@ export const CLUSTER_EMIT_MIXIN = {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
+            // ⛔ SUPERSEDED — read the WORD-ORDER REBALANCE block below this
+            // one before believing any number in it. The live constants are
+            // base 0.24 / decay 0.92; the B.3 derivation that follows argues
+            // for 0.85 and was never demoted when the values moved past it,
+            // so this file asserted 0.85 twenty lines above `= 0.92`. Kept
+            // because the biological reasoning is still the BASELINE the
+            // rebalance is a deliberate trade against — not because it
+            // describes what runs. (Marked 2026-08-27, DOCPROV.4.)
+            //
             // Audit B.3 — BACK_INJECT_DECAY=0.85 biological derivation:
             // cortical leak V(t+Δt) = V(t)·exp(−Δt/τ) with τ≈20ms
             // membrane time constant. With TICKS_PER_WORD=3 at 1ms/tick:
