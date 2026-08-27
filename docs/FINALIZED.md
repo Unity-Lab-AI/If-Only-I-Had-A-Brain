@@ -39565,3 +39565,47 @@ An `<h2[^>]*>` sweep reported a section heading numbered **`0.15`** on the publi
 `docs/RESUME.md` carried `main 6b053155` / `develop a0ba6396` — **the PRE-CASCADE values.** The brief recorded them, then the commit and cascade that shipped the brief moved them. Re-read to **`471b5248` / `6b6c32b8`** against `refs/heads/*`. ⭐ **A hash written into a tracked file is stale the instant that file is committed** — which is precisely why the line above that table tells the reader to run `git rev-parse` rather than trust it, **including when the table was filled in by someone who checked every number.**
 
 **Drift list 23 → 22.** `wiki:coverage` **449/449 files, 0 broken links, 0 orphans, 176 exact + 4 approximate line counts.** **4 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`). Board **8 open / 4 in-progress / 383 done**. ⭐ **The method is proven on four pages now: enumerate the set the code itself defines, diff it against the set the page defines, do not proof-read prose.** It has produced an undocumented wire frame type, four undocumented message types, an 18-vs-8 whitelist and three nonexistent paths — **and all four pages read perfectly well while being wrong.**
+
+## 2026-08-27 - ADMIN-CONTROLS: a 194-row table that was EXACT, seven endpoints that were missing, and a fallback of mine that silently un-did its own fix
+
+Gee: *"then read resume.md only after the workflow finishes"*
+
+### ⭐ `docs/ADMIN-CONTROLS.md` (5 of 22) — the env-flag table is EXACT, and that is the headline
+
+Every `DREAM_*` flag referenced in `server/` + `js/` + `scripts/` enumerated and diffed against every flag named on the page: **194 in the code, 194 on the page, ZERO difference in either direction.**
+
+⭐ **This is worth recording as loudly as a defect would be.** A 194-row table is exactly where drift is invisible — nobody re-reads it, and every one of this project's worst documentation failures has been a list that quietly stopped matching reality. **This one had not.** ⛔ **A hunt that comes back empty must be written down, or the next session re-runs it** — same rule as the six 2026-08-27 hunts where four were clean.
+
+### ⚠ TWO apparent gaps, BOTH mine rather than the page's
+
+⛔ **(1) `DREAM_WANT_BROWSER_GPU` looked like a flag missing from the reference.** It is a **batch-script local** — `windows/start.bat:135` sets it from a `/browser` argument and the **same `.bat` consumes it** at `:138` to decide whether to set `DREAM_NO_AUTO_GPU`. **Node never reads it.** A server env reference correctly excludes it; the `DREAM_` prefix merely made it *look* like one. **Pattern-matching a naming convention is not the same as finding a consumer.**
+
+⛔ **(2) A route sweep filed `/update` as documented-but-nonexistent — and `/update` is the box-deploy endpoint, so that would have been a bad claim to publish.** It exists at `brain-server.js:8875`, dispatched as `req.url.split('?')[0] === '/update'` — a shape my `=== '/route'` pattern did not match. A second pattern found **33 routes where the first found 26.** ⭐ **An endpoint enumeration is only as complete as the dispatch shapes it matches**, and that caution is now written on the page for whoever re-runs it.
+
+⭐ **Three false positives in two pages this session — `<h2[^>]*>` truncating inside a `title` attribute, `DREAM_WANT_BROWSER_GPU`, and `/update` — every one caught by going to confirm before writing it down.** ⛔ **A doc-verification pass can manufacture errors as fast as it fixes them; the discipline is that a finding is not a finding until it has been checked individually.**
+
+### ⛔ What the sweep DID find: seven loopback-gated admin endpoints the page never listed
+
+**`/grade-advance` (`:9009`) is the one that matters — it advances the grade while BYPASSING the LAW-6 Part-2 per-subject operator signoff.** A page titled ADMIN CONTROLS did not mention the endpoint that skips the operator gate. Also absent: `/grade-signoff` (`:9675`), `/auto-advance` (`:9275`), `/autoscale` (`:9361`), `/sleep` + `/wake` (`:9464`), `/learn-from-web` (`:9425`), `/diag/parity` (`:8659`).
+
+⚠ **Two of them were documented as dashboard buttons in a DIFFERENT doc** — `docs/HTML-ENTRY-POINTS.md` names `#d-ms-advance` and `#d-ms-auto-advance` as admin-only controls — **so the information existed and simply was not on the page whose job it is.** ⭐ `/diag/parity` is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command the README advertised until this morning. All seven guards read individually: every one carries `requireLoopback` as its first statement. **The exclusions are named on the page too** — `/episodes`, `/exam-answer`, `/history` are reads, not controls — because a completeness claim with no stated boundary is the failure this sweep keeps finding.
+
+### ⛔ `GOTCHA.9` — my own `GOTCHA.2` fix shipped behind a guard whose else-branch was the original bug
+
+Found by reading the diff of the **one source that had moved**, which was my own change. `js/brain/curriculum.js:11973` read:
+
+`(typeof cluster.topLevelRegionNames === 'function') ? cluster.topLevelRegionNames() : Object.keys(cluster.regions)`
+
+⛔ **`Object.keys(cluster.regions)` is precisely what `GOTCHA.2` was filed to eliminate** — all 23 declared names, 12 of them nested sub-bands the GPU never registers, up to **24 junk wire frames per clear**, inflating `teach_ops`, which is the counter `TEACHMIRROR.1` was built to separate a saturated donor from an idle one. **So the guard did not protect the fix. It silently un-did it — no counter, no log line.**
+
+⭐ **And the guard was provably dead.** `topLevelRegionNames()` is a **method on the `NeuronCluster` class** (`cluster.js:1404`), present on every instance via the prototype. The enclosing `_clearSpikes(regionNames = null)` (`:11929`) binds `const cluster = this.cluster`, and the block already requires `cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions`, two lines below a `cluster.lastSpikes.fill(0)`. **There is no reachable state where the method is absent and the object is still a cluster.**
+
+⛔ **`feedback_no_fallbacks_law` violation** — capability-degradation `if-X-else-Y`, which that law explicitly separates from legitimate defensive I/O `try/catch`. ⭐ **And the exact mirror of `DORMANT.1`:** there, `_teachWordSpellingDirectFinal` had **37 `typeof`-guarded call sites and zero definitions**, so the guards concealed a *missing* function; here the definition exists and the guard concealed a *live bug*. **The rule that generalises: a `typeof` guard around a method your own class defines is never protection — it is dead code or a silent downgrade, and the call site cannot tell you which.**
+
+**Fixed by calling it unconditionally**, with the reasoning left in the code so nobody re-guards it while trying to be careful. If a refactor drops the method, **throwing is the correct outcome.** Verified: `node --check` OK, ESM `import()` OK, **bundle rebuilt in the same commit** (`js/app.bundle.js` — guarded expression **0 occurrences**, direct call **1**; the bundle is deliberately not auto-cleared at boot).
+
+⚠ **Read scope stated honestly: `curriculum.js` is 28,340 lines and I did not read all 36 chunks.** I read the enclosing function, its binding of `cluster`, the definition site, and every call site of the method repo-wide. **Claiming a full read of 28,340 lines would be the same class of lie this sweep exists to fix.**
+
+⚠ **This edit re-drifts `ADMIN-CONTROLS.md` by one source the instant it lands** — recorded in that page's `verified-scope` with the reason, because the alternative is bumping a hash to silence a signal that is telling the truth. ⛔ **A stamp cannot name the commit that contains it**, so the honest value is *the tree I actually read*.
+
+**Drift list 22 → 21** (and back to 22 on commit, by design, per the note above). **5 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`, `ADMIN-CONTROLS`). Board **8 open / 4 in-progress / 384 done** — ⚠ **counted with `grep`, not derived.** I first wrote *"3 in-progress"* by reasoning that `GOTCHA.9` had closed one; it did not move the count, because `GOTCHA.9` was **filed and closed inside the same session**, entering as `[~]` and leaving as `[x]`. ⭐ **Same lesson as the line counts: a tally is a READING, not an inference** — and it was wrong in the direction that flatters the work.

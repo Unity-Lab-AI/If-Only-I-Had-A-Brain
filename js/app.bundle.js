@@ -103711,7 +103711,7 @@ var Curriculum = class _Curriculum {
     }
     cluster.lastSpikes.fill(0);
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
-      const _names = typeof cluster.topLevelRegionNames === "function" ? cluster.topLevelRegionNames() : Object.keys(cluster.regions);
+      const _names = cluster.topLevelRegionNames();
       for (const regionName of _names) {
         try {
           cluster._gpuProxy.clearSpikeSlice(regionName);

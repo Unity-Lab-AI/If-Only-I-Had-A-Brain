@@ -9,7 +9,35 @@ sources:
   - server/brain-server.js
   - server/brain-ctl.js
   - js/brain/curriculum.js
-last-verified: "05ab84a7 2026-08-27"
+verified-scope: |
+  CHECKED 2026-08-27, mechanically enumerated and diffed against source:
+    - EVERY `DREAM_*` flag in server/ + js/ + scripts/ vs every flag named here:
+      194 vs 194, zero difference in either direction. The table is EXACT.
+    - launcher/deploy `DREAM_*` vars vs this page — one apparent gap
+      (DREAM_WANT_BROWSER_GPU), confirmed a batch-script local that node never
+      reads, so its absence here is correct.
+    - every route dispatch in server/brain-server.js (33 routes) vs the
+      endpoints named here — found SEVEN undocumented loopback-gated admin
+      endpoints, now sectioned; each one's requireLoopback guard read at its
+      own line number.
+    - the teachOps / workState paragraph against `_sparseSendBinary` (accurate:
+      counted server-side, donor's own counter still not in telemetry).
+    - the one source that moved (js/brain/curriculum.js) read as a diff to
+      confirm it invalidates no claim on this page.
+  NOT CHECKED — do not read this page as authority on:
+    - the exit-42 / RestartPreventExitStatus systemd narrative and the #112.10
+      Stop history (not reproduced; the box runs older code than this tree)
+    - per-flag DEFAULT VALUES and prose descriptions. ⛔ Flag NAMES were diffed
+      exhaustively; the 194 defaults and explanations were NOT re-read. A wrong
+      default in this table would survive this pass.
+    - the checkpoint/rollback narrative and the Savererun passedPhases claim
+  ⚠ EXPECT ONE DRIFT ROW IMMEDIATELY: this same commit edits js/brain/curriculum.js
+  (GOTCHA.9 — removing a fallback at the GOTCHA.2 spike-clear site), which is a
+  source of this page. That is the checker being CORRECT, not noisy. The change was
+  read as a diff before stamping and it strengthens the teachOps row rather than
+  invalidating it. ⛔ Do not clear that row by bumping the hash — the honest stamp
+  is "the tree I actually read", and a stamp cannot name the commit that contains it.
+last-verified: "9177c862 2026-08-27"
 ---
 
 # ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
@@ -19,6 +47,8 @@ last-verified: "05ab84a7 2026-08-27"
 > the #112.10 fix that makes **Stop** truly stop.
 >
 > Last updated: **2026-08-20** (🔁 Savererun now clears **passedPhases** too — it was re-walking cells while skipping the phases inside them; plus the env-flag reference table).
+>
+> **Re-verified 2026-08-27 (DOCPROV.4, 5 of 22).** ⭐ **THE ENV-FLAG TABLE IS EXACT, and that is the headline** — every `DREAM_*` flag referenced in `server/`, `js/` and `scripts/` was enumerated and diffed against every flag named on this page: **194 in the code, 194 on the page, zero difference in EITHER direction.** ⛔ **That result is worth stating loudly because a 194-row table is precisely where drift is invisible** — nobody re-reads it, and this project's worst doc failures have all been lists that quietly stopped matching. This one had not. ⚠ **Two apparent gaps were investigated and BOTH were mine, not the page's:** (1) `DREAM_WANT_BROWSER_GPU` appears in the launchers but not here — it is a **batch-script local**, set from `start.bat /browser` and consumed by the same `.bat` to decide `DREAM_NO_AUTO_GPU`; **node never reads it**, so a server env reference correctly excludes it, and the `DREAM_` prefix made it merely *look* like one. (2) A route sweep reported `/update` as documented-but-nonexistent — it exists at `:8875`, dispatched as `req.url.split('?')[0] === '/update'`, a shape the first pattern did not match. ⭐ **What the sweep DID find: seven loopback-gated endpoints this page never listed, including `/grade-advance` — the endpoint that bypasses the LAW-6 operator signoff gate.** They now have their own section. ⚠ **Only one of the three sources had actually moved** (`js/brain/curriculum.js`, +18 lines — the `GOTCHA.2` spike-clear fix), and it **strengthens** rather than contradicts the `teachOps` row below, since it removes up to 24 bogus wire frames per clear from the very counter that row tells you to trust.
 
 ---
 
@@ -206,6 +236,39 @@ previous checkpoint was INCOMPATIBLE"** banner (from the persisted
   lever that makes a format change refuse stale checkpoints instead of loading garbage.
   Routine changes (telemetry, UI, donor lane) must NOT bump it (it forces a fresh start
   that discards trained weights).
+
+## The seven loopback-gated endpoints this page did NOT list — added 2026-08-27
+
+⛔ **A page titled ADMIN CONTROLS was missing the grade-advance and auto-advance
+endpoints** — both admin-only, both brain-mutating, both wired to dashboard buttons
+that `docs/HTML-ENTRY-POINTS.md` documents by DOM id (`#d-ms-advance`,
+`#d-ms-auto-advance`). ⭐ **Found by enumerating every route dispatch in
+`server/brain-server.js` and diffing that set against the endpoints named here** — not
+by re-reading 639 lines. All seven carry `requireLoopback(req, res, …)` as their first
+statement, verified individually at the line numbers below.
+
+| Endpoint | Method(s) | Line | What it does |
+|---|---|---|---|
+| `/grade-advance` | POST | `9009` | Advances the grade, **bypassing the LAW-6 Part-2 per-subject signoff**. ⚠ The single most consequential omission on this page: it is the endpoint that skips the operator gate |
+| `/grade-signoff` | GET + POST | `9675` | Records / reads the per-subject operator-verified pass ledger (LAW-6 Part 2) |
+| `/auto-advance` | GET + POST | `9275` | The one toggle governing **both** the `/grade-advance` signoff bypass and the runner's auto-fire-next-grade. ⛔ **It defaults ON and survives a weights clear** in a standalone `server/auto-advance.json` — see the `docs/SETUP.md` correction of 2026-08-27, which found this documented as "default false" |
+| `/autoscale` | GET + POST | `9361` | Community-compute auto-scale settings (dead-zone toggle + sliders). Changes broadcast to every other admin tab as `autoScaleChanged` |
+| `/sleep`, `/wake` | POST | `9464` | Puts the brain into / out of its sleep-consolidation state on demand (both share one handler) |
+| `/learn-from-web` | POST | `9425` | Feeds fetched web content into the teach lane |
+| `/diag/parity` | GET | `8659` | GPU↔CPU parity read. ⭐ **This is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command that `README.md` advertised until 2026-08-27** — the script had been purged in the 2026-08-20 cleanup |
+
+⚠ **Deliberately still NOT documented here:** `/episodes`, `/exam-answer`, `/history`
+(read-only data reads, not controls) and `/health`, `/milestone`, `/public-state.json`,
+`/minds-eye.json`, `/console-tail.json`, `/donor-latest.json`, `/download/donor-*`,
+`/versions` (public or already covered). **Naming the exclusions is the point** — a
+completeness claim with no stated boundary is the thing this whole sweep keeps finding.
+
+⚠ **And a caution about the method itself, learned twice on this page:** a naive
+`=== '/route'` sweep **missed `/update` entirely**, because it dispatches as
+`req.url.split('?')[0] === '/update'` (`:8875`) — I briefly had it filed as a doc error
+when the doc was right. A second pattern found **33 routes where the first found 26.**
+⛔ **An endpoint enumeration is only as complete as the dispatch shapes it matches** —
+if you re-run this, grep for the route STRING, then confirm each hit's guard.
 
 ## Live single-cell re-teach (no reset)
 
