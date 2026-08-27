@@ -36,14 +36,19 @@ verified-scope: |
       constants (timeouts, log thresholds, ring sizes) - NOT re-read.
     - the equation-library primitives at the top (Hebbian/Oja, leak, softmax,
       Erdos-Renyi, GloVe variance) - these are math, not code claims.
-  ⚠ EXPECT DRIFT IMMEDIATELY ON COMMIT: this same commit edits two of the
-  sources above - js/brain/cluster/emit.js and js/brain/consolidation-engine.js
-  - to demote the stale comments described in this page. Both edits are
-  COMMENT-ONLY (verified: the rebuilt bundle is byte-identical at 4,426,103
-  bytes, because esbuild strips comments). That drift row is the checker being
-  CORRECT. ⛔ Do not clear it by bumping the hash: a stamp cannot name the
-  commit that contains it, so the honest value is "the tree I actually read".
-last-verified: "02d92a14 2026-08-27"
+  ⚠ THE PREDICTED SELF-DRIFT, NOW CLOSED. The pass that wrote this page also
+  edited two of its sources - js/brain/cluster/emit.js and
+  js/brain/consolidation-engine.js - to demote the stale comments it documents,
+  and warned that the resulting drift row would be the checker being CORRECT.
+  It was. Those commits now EXIST (the change measures +13/-1 across the two
+  files and is the only movement in either since), so the stamp can name them.
+  ⛔ COMPLETING the stamp, not silencing it: both edits are COMMENT-ONLY -
+  verified, not assumed, because the rebuilt bundle is byte-identical at
+  4,426,103 bytes since esbuild strips comments - and the only reason the
+  original stamp could not name them is that a commit cannot contain its own
+  hash. ⛔ The rule stands for everything else: never clear a drift row by
+  bumping a hash on a source you have not read.
+last-verified: "38e19615 2026-08-27"
 ---
 
 # THRESHOLD-DERIVATION — Math grounding for every named constant

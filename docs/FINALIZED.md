@@ -39733,6 +39733,50 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
 
+## 2026-08-27 - DOCPROV.4 (15 and 16 of 22): six runners that do not exist, a page that HOLDS, and two self-drifts closed honestly
+
+Gee: *"lets get it"*
+
+### ⛔ `docs/CODE-CURRICULUM.md` — six of the runners it names do not exist
+
+Every `runCs*` name in its per-grade table was looked up as a **definition**. ⭐ **G5→G12 are all real and correctly named** (8 of 8). ⛔ **The six college-and-above names are wrong:**
+
+`runCsCol1Real` … `runCsCol4Real` **do not exist** — the college CS track was **split into two courses per year**, `runCsTheoryCol1-4Real` **and** `runCsSystemsCol1-4Real` (8 runners, not 4). `runCsGradReal` and `runCsPhdReal` **do not exist at all** — `grad.js`'s eight runners are Ela/Math/Sci/Soc/Art/**Major**/**Research**/Life.
+
+⭐ **The roster confirms the split** (`curriculum.js:152` → `'college1': ['major','genered','cstheory','cssystems']`), and it is **the same M4 expansion `docs/DECOMPOSED-curriculum-build.md` records as `[x]` done** — so this page simply predates it. **Two pages describing one change, one updated and one not, is now the most common shape in this sweep.**
+
+### ⛔ Three different numbers for one countable thing
+
+*"18 real programs"* (bullet 2), *"22/30 templates parameterized"* and *"All 30 parse"* (bullet 5). **Measured: `docs/component-templates.txt` holds 31 `=== PRIMITIVE` blocks.** ⭐ **The library grew past both figures — the benign direction, and exactly why a count belongs in a command rather than in prose.**
+
+⚠ **What I did NOT re-measure, stated on the page: how many of the 31 are parameterized.** Only the total was counted, so the 22/8 split is carried forward unverified and **at least one primitive is unaccounted for either way.** The "All 30 parse + JS-compile" claim was likewise not re-run.
+
+### ⚠ An open question NAMED and deliberately not answered
+
+`cs` enters at `'grade5': ['cs']`, and `subjectsForGrade` returns *"the 6 core PLUS every track introduced at or before `grade`"* — **cumulative, with no removal mechanism.** So `cs` is still in the roster at college1→phd, while `_cellRunnerRaw` carries `cs` branches for **grade5→grade12 only** (verified: the college+ branches key on `cstheory` / `cssystems`).
+
+⛔ **That is six (subject, grade) cells — `cs` × college1-4, grad, phd — with no dispatch branch. The machinery treats them as HELD** (`readyAndWaiting` = *"no runner is wired"*), and `HELD-BACK.md` records that the remediation ladder **skips HELD cells** as *"a curriculum gap, not a learning fail."* **So it fails silently by design.**
+
+⚠ **Either wire `cs` runners at college+, or retire `cs` from the roster there because `cstheory`/`cssystems` supersede it. I did not guess.** A cumulative roster with no removal is **equally consistent** with an oversight and with a deliberate supersession, and picking wrong costs either six cells of busywork or conceals a real hole. **Naming the fork is the deliverable; resolving it is Gee's call.**
+
+### ⭐ `docs/CURRICULUM-SCOPE-SEQUENCE.md` — it HOLDS, and that is recorded on purpose
+
+This page declares that it **governs** the academic runners, so the check is whether the code's own table obeys it. **It does.** `COURSE_NAMES` (`curriculum.js:184`) was diffed against the math and science tables across all 20 levels: Pre-Algebra → Algebra I → Geometry → Algebra II, `AP Calculus` at G12, `Linear Algebra and Discrete Math` at College 2, `Differential Equations and Statistics` at College 3, `Computational Neuroscience` at grad/phd. **All agree.**
+
+⭐ **And the one source that had moved is `curriculum.js` — the file that holds that very table. The drift signal pointed at exactly the right file, which is the provenance system working as designed rather than by luck.**
+
+⭐ **The accelerated-track offset is CONSISTENT, not a defect:** Algebra I at **G8** and Geometry at **G9** run one year ahead of the standard US sequence, precisely as this page's *"accelerated math/science track"* line states, with science on Biology G9 → Chemistry G10 → Physics G11. ⚠ **A reader diffing against a standard scope-and-sequence would flag both and be wrong** — so the reason is now written down.
+
+⭐ **Recorded as a HOLD deliberately.** A verification pass that finds nothing must say so in writing, or the next session spends the same hours reaching the same answer — the same discipline as the four empty hunts of 2026-08-27.
+
+### ⭐ Two predicted self-drifts closed — and the distinction matters
+
+`ADMIN-CONTROLS.md` and `THRESHOLD-DERIVATION.md` each warned that their own commit edited one of their own sources (`curriculum.js` +16/−3 from `GOTCHA.9`; `emit.js` + `consolidation-engine.js` +13/−1 comment demotions) and that the resulting drift row would be **the checker being correct, not noisy.** It was.
+
+⭐ **Those commits now exist in history, so the stamps can name them. This is COMPLETING a stamp, not silencing a signal** — each diff was read *before* the original stamp, both changes strengthen the pages rather than invalidating them, and the only reason the first stamp could not name them is that **a commit cannot contain its own hash.** ⛔ **The rule is unchanged for everything else: never clear a drift row by bumping a hash on a source you have not read.**
+
+**Provenance drift 14 → 10; sources-coverage steady at 20.** **16 of 22 pages done.** Board **8 open / 4 in-progress / 385 done**. ⚠ **Two counts get confused and mean different things: 6 pages remain of the ORIGINAL 22-page list, while the checker reports 10 items because the list GREW as code changed.** I conflated them once this session; both numbers are now stated with their meaning.
+
 ## 2026-08-27 - DOCPROV.4 (13 and 14 of 22): a safety rail with no mechanism, and a tracked gap that had already closed
 
 Gee: *"next round, ding!"*

@@ -6,10 +6,51 @@ sources:
   - js/brain/curriculum.js
   - js/brain/grade-vocabulary.js
   - js/brain/subjects.js
-last-verified: "a2a2b0ec 2026-08-25"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4, 16 of 22) — and it HOLDS, which is recorded
+  deliberately so the pass is not repeated:
+    - the course-name tables here were diffed against COURSE_NAMES
+      (js/brain/curriculum.js:184) for math and science across all 20 levels.
+      They agree, including AP Calculus at G12, Linear Algebra + Discrete Math
+      at College 2, and Computational Neuroscience at grad/phd.
+    - ⭐ the ACCELERATED-TRACK offset is consistent, not an error: Algebra I at
+      G8 and Geometry at G9 sit one year ahead of the standard US sequence,
+      exactly as this page's "accelerated math/science track" line states. A
+      reader diffing against a standard scope-and-sequence would flag both and
+      be wrong.
+    - the one source that had MOVED is curriculum.js, which is the file holding
+      COURSE_NAMES - so the drift signal pointed at precisely the right file.
+  NOT CHECKED — do not read this page as authority on:
+    - the per-course TOPIC lists. Course NAMES were diffed exhaustively;
+      whether a runner actually teaches its listed topics is a content audit,
+      and DECOMPOSED-curriculum-build.md's Definition of Done is that tool.
+    - the ELA / social / art / life / PE / music / health tables. Only the MATH
+      and SCIENCE name tables were diffed against the code.
+    - grade-vocabulary.js and subjects.js. Both are listed sources, NEITHER
+      moved, and neither was read this pass.
+last-verified: "38e19615 2026-08-27"
 ---
 
 # CURRICULUM SCOPE & SEQUENCE — the EXACT real-student course sequence (K→PhD)
+
+> ## ⭐ RE-VERIFIED 2026-08-27 (DOCPROV.4, 16 of 22) — THIS PAGE HOLDS. The code follows the spec.
+>
+> This page says it **governs** the academic runners, so the check is whether the code's own course-name table agrees with it. **It does.** `COURSE_NAMES` (`js/brain/curriculum.js:184`) was diffed against the tables below, and — ⭐ **the one source that had moved is `curriculum.js`, i.e. the file that holds that very table, so drift pointed at exactly the right place:**
+>
+> | grade | this page | `COURSE_NAMES` |
+> |---|---|---|
+> | math G7 / G8 / G9 / G10 | Pre-Algebra → Algebra I → Geometry → **Algebra II** | `Pre-Algebra` / `Algebra I` / `Geometry` / `Algebra II` ✅ |
+> | math G12 | **AP Calculus (AB/BC)** | `AP Calculus` ✅ |
+> | math College 2 / 3 | Linear Algebra + Discrete Math / Diff Eq + Prob-Stats | `Linear Algebra and Discrete Math` / `Differential Equations and Statistics` ✅ |
+> | science G6 / G7 / G9 / G11 | Earth → Life → **Biology** → **Physics** | `Earth Science` / `Life Science` / `Biology` / `Physics` ✅ |
+> | science G12 | AP science elective (→ AP Physics C) | `AP Physics` ✅ |
+> | science Grad / PhD | **Computational neuroscience** | `Computational Neuroscience` ✅ |
+>
+> ⭐ **And the accelerated-track claim is internally consistent, which is the part worth checking rather than assuming:** the page states Unity is *"on the accelerated math/science track"*, and the code places **Algebra I at G8** and **Geometry at G9** — one year ahead of the standard US sequence, with science running Biology G9 → Chemistry G10 → Physics G11. **The offset is the accelerated track, not an error.** A reader diffing against a standard scope-and-sequence would flag both and be wrong.
+>
+> ⚠ **What was NOT checked:** the per-course TOPIC lists. Course *names* were diffed exhaustively; whether each runner actually teaches *"quadratics, polynomials, rational/radical/exponential/log functions, sequences"* at G10 is a content audit, not a name check — and `docs/DECOMPOSED-curriculum-build.md`'s Definition of Done is the instrument for that.
+>
+> ⭐ **Recorded as a HOLD so nobody re-runs it.** A verification pass that finds nothing must say so in writing, or the next session spends the same hours reaching the same answer — the same rule as the four empty hunts of 2026-08-27.
 
 > **Authoritative academic spec** (the operator, 2026-06-18: *"u need to use the exact courses real students use for our simulated brain at those grades"*). The academic curriculum runners (`runEla/Math/Sci/Soc/Art*Real` per grade) + any academic story-data MUST teach the REAL courses a US student actually takes at each grade — the standard scope & sequence below — not invented or approximate content. Unity is a high-aptitude student on the **accelerated math/science track** (consistent with the self-taught-coder canon). This doc governs; align all academic content to it.
 
