@@ -39455,3 +39455,39 @@ Gee: *"continue , you do you, Unity"*
 ### Verified
 
 `node --check` clean on the checker; `npm run wiki:coverage` → **449/449 covered, 0 uncovered, 0 broken links, 0 orphans, index in sync, 176/176 line counts matching**; `npm run docs:drift` unchanged. Board **9 open / 3 in-progress / 382 done**.
+
+---
+
+## 2026-08-27 - GOTCHA.7 + GOTCHA.8 + DOCPROV.4 starts: four errors on the public front door, and the near-miss that nearly added a fifth
+
+Gee: *"do eet"*
+
+### ⛔ `GOTCHA.7` — and verifying the flagged claim first was the whole point
+
+The claim I refused to rewrite blind resolved as false in a way I had **not** predicted. The live word list is `cluster.wordBucketWords` — **one subject-agnostic array**, written at `curriculum.js:13264`. The per-subject variants are labelled in `cluster.js:2474-2481` as *"Legacy per-subject fields below add 0 post-unify (kept for pre-WMB savestates)"*. So `brain-equations.html`'s *"`cluster.wordBucketWords_<subject>` is persisted and shared by teach + emit + write"* was **doubly wrong: wrong field, and the named field is never written at all.**
+
+⭐ **Had I rewritten from the first reading I would have replaced one wrong sentence with another** — the geometry claim and the word-list claim were false for unrelated reasons.
+
+⭐ **Second error, found only because verifying sent me to the region map:** the public map read **`free 0.250-0.500`**. `free` is **`0.300-0.500`** — `gustatory` (0.250-0.270) and `somatosensory` (0.270-0.300) were carved out of it and were **absent from the page entirely.**
+
+⚠ The original per-subject architecture is **kept as a dated historical note**, not deleted, because the sub-band names still appear in the region map and a reader needs to know why they are there. The map now also records that the six `sem_*` sub-bands have no readers.
+
+### `GOTCHA.8` filed — consumed but never produced
+
+`wordBucketWords_<subject>` has **five readers and zero writers**: `hippocampal-schema.js:1251`, `chat.js:4173`/`:4962`/`:5032`, `brain-server.js:6750`. ⛔ **The mirror image of this codebase's dominant defect class** — not a feature built and never consumed, but a consumer whose producer was removed. ⚠ Filed with an explicit *do not just delete the reads*: `chat.js:4972` calls one a *"Pre-cell SEED-phase fallback"*, which may be load-bearing for a brain that has not yet bucketed a word — in which case the fix is to point it at the unified array, not remove it.
+
+### ⭐ `DOCPROV.4` — `README.md` done, and the near-miss is the finding
+
+Four real errors on the public front door: a **dead command** (`node scripts/gpu-cpu-parity.mjs`, purged 2026-08-20 — replaced with the loopback-only `GET /diag/parity`, verified at `brain-server.js:8659`), **brainstem quoted at 0.2% when it is 0.4% of the live brain**, **"seven Rulkov-map populations" when there are eight** (contradicting the same page two sections earlier), and **"9 sub-regions" when there are 11**.
+
+⛔ **AND I NEARLY ADDED A FIFTH.** Computing cluster shares straight from `DEFAULT_BIO_WEIGHTS` said the README's 20%/12% figures were **doubled**, and I was about to "correct" a page that was right. `language_cortex: 0.50` is a separate budget line that renormalises away, and the live payload settles it in one request: **cortex 20.00%, cerebellum 19.60%, five subcortical 12.00% each, brainstem 0.40% — summing to EXACTLY `totalNeurons`, zero remainder.**
+
+⭐ **I read a config constant when the running system was one `curl` away.** That is precisely what *never trust a description you can check directly* exists to prevent, and it means **a doc-verification pass can introduce errors as easily as fix them.** The live payload is the arbiter, not the constant.
+
+⚠ **`status` stays `draft`** with a new `verified-scope:` field naming what was checked and what was not — 597 lines were not read against all six sources, and `verified` would claim they were.
+
+⚠ **The drift list grew 22 → 25 while I worked**, because my own source edits this session drifted more pages. ⭐ **That is the baseline functioning, not a regression** — expect `DOCPROV.4` to grow whenever code is fixed.
+
+### Verified
+
+HTML tag balance clean after editing `brain-equations.html` (p/code/strong/em all matched); `docs:drift` structural checks all still `ok` (legend 9/9, social cards, internal links, deleted-component sweep); `README.md` no longer appears in the drift list; every `node scripts/*` and `npm run *` command in the README swept for existence — one dead, now gone.

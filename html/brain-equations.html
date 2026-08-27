@@ -442,7 +442,8 @@ errorCorrection = −(Σ error² / n) × 2<br>
  <div class="eq-desc">
  <p>Production is a three-path priority cascade — fastest structured paths first, slowest most-flexible substrate as final fallback. The prior slot scorer (weighted <code>semanticFit + moodFit + drugFit + bigramFit + trigramFit + recencyPenalty</code> argmax per slot) was deleted entirely; what replaced it propagates through the trained attractor basins on the same substrate that handles reading + thinking, different direction for production (Hickok &amp; Poeppel 2007 dual-stream).</p>
 
- <p style="margin-top:10px;"><strong>Path A — single-tick word emission via <code>word_motor</code> (PRIMARY).</strong> Cortex grew a dedicated <code>word_motor</code> sub-region split into six per-subject sub-bands carved by <code>word_motor_ela / _math / _sci / _soc / _art / _life</code>. The <code>sem ↔ word_motor</code> cross-projection is trained during the curriculum on Q→A bindings + word-pattern bindings (the answer's word-bucket is written inline during QA training; <code>cluster.wordBucketWords_&lt;subject&gt;</code> is persisted and shared by teach + emit + write). At chat time:</p>
+ <p style="margin-top:10px;"><strong>Path A — single-tick word emission via <code>word_motor</code> (PRIMARY).</strong> Cortex grew a dedicated <code>word_motor</code> sub-region. Since the WMB unification (2026-07-14) it is <strong>ONE global band with one bucket per unique word</strong>, argmaxed globally — <em>not</em> six per-subject write slices. The <code>sem ↔ word_motor</code> cross-projection is trained during the curriculum on Q→A bindings + word-pattern bindings (the answer's word-bucket is written inline during QA training; the word list is the single subject-agnostic <code>cluster.wordBucketWords</code> array, persisted and shared by teach + emit + write, so read and write cannot disagree on layout). At chat time:</p>
+        <p style="margin-top:6px;font-size:0.92em;opacity:0.85;">Historical note, kept because the sub-band names still appear in the region map below: <code>word_motor</code> was originally carved into six per-subject sub-bands (<code>word_motor_ela / _math / _sci / _soc / _art / _life</code>) so each subject wrote to its own slice. That geometry was replaced — the sub-bands survive only as a read-only signal for inferring which subject is currently active, never as write targets. The per-subject <code>wordBucketWords_&lt;subject&gt;</code> arrays this paragraph used to describe are legacy save-state fields that are no longer written at all.</p>
  <div class="eq" style="font-size:13px;">
 // Path A — single-tick emission<br>
 sem ← cluster.getSemanticReadout(sharedEmbeddings)<br>
@@ -1587,9 +1588,12 @@ CORTEX SUBSTRATE:
  EMBED_DIM = 300 (full GloVe 6B.300d + fastText subword fallback, no vocab cap)
  TOTAL_NEURONS = 6700 (default client tier, auto-scales to hardware)
  cortex sub-regions (fractions of cluster.size):
- auditory 0.000-0.083 visual 0.083-0.250 free 0.250-0.500
+ auditory 0.000-0.083 visual 0.083-0.250
+ gustatory 0.250-0.270 somatosensory 0.270-0.300   (carved out of free)
+ free 0.300-0.500
  letter 0.500-0.550 phon 0.550-0.750
  sem 0.750-0.875 sem_ela/_math/_sci/_soc/_art/_life carved within
+                 (the six sem_* sub-bands have NO readers — inert metadata)
  fineType 0.875-0.917 motor 0.917-0.940
  word_motor 0.940-1.000 UNIFIED single band (WMB 2026-07-14) — one bucket per UNIQUE word, argmaxed globally (no per-subject sub-bands)
  16 cross-projections (8 pairs × both directions, SparseMatrix):
