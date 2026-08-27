@@ -38969,3 +38969,70 @@ Also: `--strict` still exits 1 on real drift, and the whole run is report-only �
 12 `DREAM_*` flags shipped undocumented — **all of them mine, from today**: the `ARTWEIGHT` trio, the `VM_RELATE` trio, `PERCEPT_GROUND_MAX_QUEUE`, `OWNART_INGEST_WALK_MS`, `REL_USE_MIN_MARGIN`, `REL_USE_TTL_MS`, `CHAT_IMAGE_PRIORITY_MS`, `WEIGHTS_PAIR_TOL_SEC`. **Docs-before-push is a LAW and I broke it twelve times today.** Documented rather than filed — each row carries its default, its effect, and the reasoning that makes it a lever or a bound.
 
 **`npm run docs:drift` now reports: No drift found.** That clean baseline is the prerequisite for `DOCPROV.2`, the Stop-hook half.
+
+---
+
+## 2026-08-27 - HOOKDEBRIS.1: an accidental backup copy of hooks/ inside hooks/ - feature/hookdebris-docprov
+
+Gee (verbatim): *"read resume.md when done start up"*
+
+### What was there
+
+`.claude/hooks/` held `New folder/` and `New folder.zip` (58,432 B, 2026-08-25 02:10) — a backup copy of the hook directory, inside the hook directory.
+
+### Verified before deleting, not inferred from the names
+
+All **22** files in `New folder/` `diff`ed **IDENTICAL** to their live siblings. The zip's entry list is the same 22 names at the same byte lengths. **Nothing unique existed in either copy**, so nothing was lost — which is the only basis on which a delete is safe.
+
+⚠ **The reference grep was re-run rather than trusted from the filing, and it found a third example the filing did not list:** `.claude/.claudereadme.md:221` carries `C:\Users\foo\New folder (2)` as a path-encoding example, the same false-positive class as `.claude/start.sh:100`. No `settings.json` entry, no real reference anywhere in the repo or in `.claude/`.
+
+⛔ **Why this was a hazard and not just clutter:** a duplicated hook that ever gets wired in runs yesterday's logic, and three of those copies (`session-start-env-dump.cjs`, `usage-track.cjs`, `pre-tool-public-repo-guard.cjs`) are files that have been edited since. `.claude/hooks/` is now exactly the 22 live hook files.
+
+---
+
+## 2026-08-27 - DOCPROV.2: the docs-before-push LAW stops being enforced by discipline alone - feature/hookdebris-docprov
+
+Gee (verbatim): *"read resume.md when done start up"*
+
+### What shipped
+
+`scripts/doc-prov-stop-check.mjs`, wired as the second Stop hook in `.claude/settings.json`, plus `npm run docs:prov` for asking the question by hand. It answers one thing: **this session moved a file that a doc page CLAIMS as one of its sources, and no claim page was touched.**
+
+`DOCPROV.1` reports only when someone asks. This one runs itself. That is the whole difference, and it is the difference between a LAW with a guard and a LAW enforced by the same discipline that produced every doc lie in this repo's history.
+
+### ⛔ Two stated deviations from the filing
+
+**1. It is NOT in `.claude/hooks/`.** The filing said that directory *"already carries five hooks, so the shape is familiar"* — and the shape is a trap here. **Zero hooks in `.claude/hooks/` are tracked** (`.gitignore:48` excludes `.claude/`; 24 `.claude/` files predate that line and are tracked, `settings.json` among them). A hook body in there would exist on one machine while the **committed** wiring pointed at it for the whole team. It lives in `scripts/` beside the reporting half it shares a parser with, and the reason is written into its header.
+
+**2. It has NO bash sibling, and every other hook here does.** The check hinges on the CRLF-tolerant multi-line frontmatter parser that shipped **wrong** in `DOCPROV.1` — capturing only the first source of every page while reporting success. A second hand-written parser is a second chance at the same silently-under-reporting failure with nothing keeping the two in step. One implementation. The `.sh` I first wrote was a delegator; when the body moved to `scripts/` it became redundant and was deleted rather than kept as decoration.
+
+### The design decisions that carry the weight
+
+| decision | why |
+|---|---|
+| **Two scopes, reported separately** | `uncommitted` (worktree + index + untracked vs HEAD) is the early warning; `unmerged` (`merge-base(base)..HEAD`) is what the LAW is literally about — docs land in the SAME commit as the code |
+| ⛔ **The board and the ledger do NOT count as "a doc was touched"** | `TODO` / `RESUME` / `FINALIZED` / `NOW` are worklist and history, not claim pages — the same exclusion check 8 uses. Editing the board while a described subsystem moves underneath a page is precisely the state this exists to name, so accepting the board as proof would defeat it |
+| **Repeat suppression by FINGERPRINT, not by a timer** | Stop fires on every turn boundary. A warning that reprints unchanged for an hour is the wall of BLOCKED notices again (`BLOCKREAD.1`). Detection stays complete; only the printing is deduplicated — it speaks when the SET of offending pages changes |
+| ⛔ **`nothing-covered-nothing-checked` is a different verdict from `no-covered-source-moved`** | With 2 of 31 pages covered, most changes are not evaluated at all. `DOCPROV.1` shipped that exact lie in the reassuring direction once; silence here must never be readable as a pass |
+| ⛔ **An unresolvable base REFUSES to report clean** | No local `develop`, no merge-base, detached HEAD → scope B is marked unusable with the reason recorded. *"I could not check"* and *"this is fine"* are different answers |
+| **Coarse, and it says so in its own output** | It establishes THAT a claim page was edited, never that the RIGHT one was. Claiming more precision than it has would make it the thing it hunts |
+
+### Verified by RUNNING it — 7 cases on the shipped path
+
+| case | expected | result |
+|---|---|---|
+| Clean tree | silent, verdict recorded | silent · `no-covered-source-moved` |
+| A declared source moves, no claim page touched | **WARN**, naming page + file | `docs/ARCHITECTURE.md (uncommitted) — moved: js/brain/sparse-matrix.js` |
+| Same offence again | **SILENT** (dedup) | silent |
+| A second page's source also moves | **WARN** (fingerprint changed) | both pages named |
+| A claim page IS touched | silent | silent |
+| **Only `docs/TODO.md` touched** | **WARN** — the board is not a claim page | warned |
+| Committed but unmerged | **WARN** with scope `unmerged` | `docs/SKILL_TREE.md (unmerged) — moved: js/brain/language-cortex.js` |
+
+Every source touch was reverted with `git checkout --`, the temporary harness commit was unwound with `reset --soft` + `restore`, and the tree was confirmed clean after each. `node --check` clean, ESM entry executed (it is a script and exits 0 by design, so `import()` returning nothing is the pass), `settings.json` and `package.json` both re-parsed after editing.
+
+⛔ **Warn-only, fail-open, exit 0 on every path including its own crash** — and the crash path prints *why*, because swallowing it would make the check's own breakage indistinguishable from a clean session. The kit's version of this idea blocks; ours must not, for the reason `STOPTRAP` already cost: a hook that can wedge a session is the same shape as a halt button on the one box whose operator has no shell.
+
+### Drift fixed in place while here
+
+`docs/ARCHITECTURE.md`'s directory tree listed `scripts/` as **two** files, one of which (`verify-curriculum-runtime.mjs`) no longer exists. It is now the real **13**, each with what it is for and why it survives the no-scripts-that-edit-files LAW.
