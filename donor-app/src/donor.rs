@@ -1358,7 +1358,11 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, st
     for (name, so) in outs {
         per_cluster.insert(
             name,
-            PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: None },
+            // GOTCHA.3b (v0.3.32) — was hardcoded `mean_voltage: None`, which is
+            // why the field read `null` on all seven clusters for the entire life
+            // of the native donor while the wire field, the server's EMA blend
+            // and the state publish were all already built and waiting.
+            PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: so.mean_voltage },
         );
     }
     ComputeBatchResult {
