@@ -5,8 +5,37 @@ status: draft
 sources:
   - scripts/unity-chat-hold.mjs
   - scripts/unity-say-live.mjs
-  - html/dashboard.html
-last-verified: "4b91e77d 2026-08-26"
+  # ⛔ SOURCES CORRECTED 2026-08-27. html/dashboard.html was listed and is the
+  # WRONG file: it contains NONE of the three selectors this automation drives,
+  # and the 591-line change that made this page drift never touched them. So
+  # drift was firing on an irrelevant file while the two files that actually
+  # own the selectors went unwatched. ⭐ A variant of the SRCGAP class: not a
+  # MISSING source, a WRONG one — and it produces the worse failure, because a
+  # noisy true-negative trains you to ignore the row.
+  #   · js/ui/chat-panel.js owns #chat-input (:35, injected via a template
+  #     string — which is why a static grep of the HTML finds ZERO and the
+  #     selector is nonetheless real).
+  #   · index.html owns #landing-chat-btn and #start-btn.
+  - js/ui/chat-panel.js
+  - index.html
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — the automation's contract HOLDS. All three
+  selectors verified to exist:
+    - #chat-input  — js/ui/chat-panel.js:35, created at runtime inside a
+      template string (an <input> with placeholder "Talk to Unity...").
+      ⚠ A static grep of index.html/dashboard.html returns ZERO for it; the
+      element is injected by JS. Do not conclude from that that it is gone.
+    - #landing-chat-btn, #start-btn — index.html.
+    - the two scripts themselves are UNCHANGED since the last stamp.
+  ⛔ The drift was caused by html/dashboard.html, which is not a real source
+  for this page — see the sources note above. Replaced rather than restamped.
+  NOT CHECKED — do not read this page as authority on:
+    - whether the automation currently WORKS. Nothing was run: the standing
+      rule is ONE window held open forever, and launching a second Playwright
+      session or relaunching the held one is explicitly forbidden. The contract
+      is verified by selector existence, not by exercise.
+    - the CDP :9222 attach flow and the "never relaunch" operational steps.
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # TALK TO UNITY — Playwright into the LIVE chat window (VERIFIED WORKING)

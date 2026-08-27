@@ -31,14 +31,32 @@ verified-scope: |
   NOT CHECKED — do not read this page as authority on:
     - the ~1.49GB structure figure. Only the DENOMINATOR was re-measured; the
       numerator is carried forward unverified.
-    - donor-app/src/compute.rs. It is a listed source and was NOT read; every
-      Rust-side claim here (what Rust can/cannot reproduce, the protocol
-      addition) is unverified this pass.
+    - ⭐ UPGRADED 2026-08-27 (second pass): donor-app/src/compute.rs HAS now been
+      read, during the GOTCHA.3b donor work. Two things confirmed:
+        (1) The donor does NOT generate topology. `upload_sparse` RECEIVES a CSR
+            triple (row_ptr / values / col_idx) and binds buffers; there is no
+            construction path on that side. So "nothing here is implemented"
+            holds on the Rust half too, not just the JS half.
+        (2) ⭐ A DETERMINISTIC PRNG PRECEDENT ALREADY EXISTS IN THE DONOR and
+            this spec does not mention it: `run_substeps` advances noise with
+            `seed = seed.wrapping_mul(2654435761).wrapping_add(40503)`, and
+            per-GPU streams are decorrelated with `base_seed.wrapping_add(g *
+            0x9e3779b9)` (the golden-ratio constant). So requirement 1 of "what
+            implementation would require" — a reproducible integer generator
+            implemented identically both sides — has a working, shipping
+            reference in this very file rather than needing splitmix64 from
+            scratch. ⚠ It is a plain LCG, NOT splitmix64/xorshift128+, and it is
+            used for NOISE not TOPOLOGY, so it is a precedent for the mechanism
+            and not a drop-in for the requirement.
+      ⚠ Still NOT verified: the protocol-addition claim (a structure-from-seed
+      message), and whether the JS and Rust integer arithmetic would agree
+      bit-for-bit across the draw ORDER, which is requirement 2 and the hard
+      half.
     - the "60,000 neurons: 192ms -> 0ms" WALKFIX measurement.
     - whether the 39.7s upload figure still holds on the CURRENT build. It is
       taken from the SCALEWALK record, not re-measured - and no upload
       happened this pass to measure.
-last-verified: "c4876d15 2026-08-27"
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # SEEDED TOPOLOGY — spec for donor-side structure generation

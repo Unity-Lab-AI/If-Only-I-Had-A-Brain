@@ -49,7 +49,18 @@ verified-scope: |
       rejection reason it rests on CHANGED; that is reported, NOT re-decided.
       ⛔ This page must not be used as a cause for EMITZERO.1, which is filed
       as a question with evidence and no diagnosis on purpose.
-last-verified: "375dd978 2026-08-27"
+  ⭐ SELF-DRIFT, restamped 2026-08-27 — and it bears directly on §1's open
+  question. The moved source is server/brain-server/state.js (BUCKETPUB.1),
+  which publishes `voice.wordsBucketed` / `voice.bucketSubjects`. §1's re-price
+  block records that `emitRejection.reason` changed from `below-signal-floor` to
+  `no-best-word` and deliberately stopped short of a diagnosis. Two further
+  live reads since: `emitDiagnostic.bestMean` = 0, so `no-best-word` is
+  GENUINELY no candidate above zero rather than a floor rejecting a winner; and
+  `separability.cellSize` = 0 is an ARTIFACT, not evidence — the geometry is
+  cached lazily by wordBucketCellSizeFor() and emitWordDirect bails before it
+  needs geometry when nothing is bucketed. ⛔ Still not a diagnosis:
+  wordsBucketed is the number that settles it and it lands on the next press.
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # WORD SALAD FIX — the layout

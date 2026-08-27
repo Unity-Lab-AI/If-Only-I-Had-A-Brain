@@ -39733,6 +39733,50 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
 
+## 2026-08-27 - donor v0.3.32 SHIPPED + the cs check answered + 7 more provenance pages
+
+Gee: *"yea lets do the doner release on those and if cs at college isnt needed your telling me then i suppose its suppereceded like u say but check, and we need to finish those 6 docprov pages"* — then, on my deferral of COMP.1c: *"we arent updating the brains till all is done anyways so ur recommendation is mute, right? get to whats left"*
+
+### ⭐ HE WAS RIGHT, AND I HAD THE LAW BACKWARDS
+
+I deferred `COMP.1c` on two grounds and **both were wrong.** The A40 reconnect cost is moot if nothing updates until everything is done — it gets paid once at the press regardless. And the "mid-walk physics change" objection was worse than moot: `WEIGHTS_FORMAT_VERSION` 4→5 makes the next press a **fresh walk**, so the current walk is throwaway and landing a port now is **exactly what `WALKLAST.1` asks for** — build everything that changes what she is taught BEFORE the walk. ⛔ **I cited the law as a reason to defer when the law is a reason to land it.** Conceded.
+
+What survives is narrower and is not about timing: a plain-LIF→her-dynamics port needs a parity harness or the fresh walk teaches a differently-shaped brain. That is a **correctness** requirement, not a deferral.
+
+### ⛔ THE `cs` CHECK — answered, and the answer is NO
+
+`subjectsForGrade` was **executed, not reasoned about**. It is **purely additive with no retirement mechanism**, so `cs` genuinely remains in the roster at college1→phd. **It is not superseded in code**, whatever it arguably should be.
+
+⛔ **And it corrected my own earlier correction.** The real rosters are **19 at college, 20 at grad/phd** — not the 17/18 the doc carried (which I had flagged as unverified, and which were wrong). So the gaps are **−9 and −12**, not the −7/−10 I wrote. ⭐ **`cs` is one of NINE missing college subjects:** `pe`, `music`, `health`, `language`, `cs`, `civics`, `economics`, `psychology`, `ap` — **every track introduced between K and grade11 has no college runner.** It is not a special case at all.
+
+⭐ **The walk will NOT wedge, verified:** the `readyAndWaiting` branch does **not** clear `allPassedThisGrade`, so HELD cells skip cleanly. ⚠ **The fork is left for Gee** because his own standing directive cuts against the obvious answer: `ap` is definitionally high-school-only and `cs` is plausibly covered by `cstheory`/`cssystems`/`major`, but **PE/Health/Music are specified as distinct courses at "all grades"** — so those want *runners*, not retirement. Some of the nine want a `SUBJECTS_RETIRED_AT` map and some want college runners; guessing which would cost either busywork or a hidden hole.
+
+### ⭐ donor v0.3.32 SHIPPED — `mean_voltage` stops being `null`
+
+Tag `donor-v0.3.32` (`f555373b`) pushed to **both** remotes. `unity-donor 0.3.32` confirmed by running the built binary. `cargo check` clean on default **and** `--features cuda`; `cargo build --release` clean.
+
+⛔ **A BUG CAUGHT IN MY OWN SHADER BEFORE IT SHIPPED.** The first draft used `@workgroup_size(64)` while the host dispatches through the shared `dispatch_dims()`, which divides by `const WORKGROUP: u32 = 256`. For 256 slots that returns **one workgroup** — 64 threads launch, `partials[64..255]` are **never written**, and the host sums stale memory into the mean **every tick, producing a plausible number with no error anywhere.** The constant is a contract with the host, not a tuning knob; that is now written on the shader.
+
+⛔ **A SECOND, WORSE BUG CAUGHT BY READING HOW THE PTX IS PRODUCED.** The CUDA kernels are **not compiled from `cuda_kernels.cu` at build time** — `cuda.rs:31` does `include_str!("kernels.ptx")`, a **precompiled PTX checked into the repo**. So adding a kernel to the `.cu` does nothing on its own, and my first version used a hard `load_function("voltage_mean")?` — which would have failed against the current PTX and taken **all of `CudaEngine::new`** with it. ⭐ **Every CUDA donor would have refused to start, for one telemetry field.** Fixed to an `Option<CudaFunction>` with an optional load: absent from the PTX means the donor simply does not report, and the server reads `unreported-by-this-donor` — exactly what `meanVoltageSource` was built to say.
+
+⚠ **The PTX is deliberately NOT regenerated:** it targets `compute_60` and the available nvcc is CUDA 13.0, which dropped that arch. Rebuilding all eight existing kernels on a newer toolkit to add a ninth is a donor-compatibility risk out of all proportion to a diagnostic.
+
+⛔ **THE EXPECTATION THIS SETS, recorded on `deploy/runpod-donor-create.md` because it will otherwise read as a regression: a RunPod pod is a CUDA donor, so `meanVoltage` will STILL read `null` there after 0.3.32.** That is the instrument being honest, not the fix failing.
+
+⚠ **What is NOT verified and I will not claim otherwise:** the WGSL is validated by naga at `build_pipeline`, i.e. **at runtime**, and `cargo check` does not parse `include_str!` shaders. **This machine has exactly ONE GPU — the RTX 4070 Ti SUPER display card at index 0.** The standing hazard rule forbids stressing GPU 0 (it crashed the desktop once) and the RTX 2060 test card is not in this machine. The failure mode is **loud** — a bad shader errors at donor startup — and nothing installs it until the press. ⚠ **KI-22's four surfaces are also unverified: the release API returned "target couldn't be found" because CI was still in flight when the tag landed. That check is outstanding.**
+
+### Provenance: 5 self-drifts closed + 2 pages verified (drift 15 → 8)
+
+**Five pages re-drifted from my OWN later edits** (`state.js` via `BUCKETPUB.1`, `compute.rs` via the donor work) and were restamped with the diff read first: `DECOMPOSED`, `SEEDED-TOPOLOGY-SPEC`, `STATUSLINE`, `TRAJECTORY-CAPTURE`, `WORD-SALAD-FIX`. ⭐ **Three of them gained real content rather than just a hash:** `TRAJECTORY-CAPTURE` now lists `voice.wordsBucketed`/`bucketSubjects` as fields to capture (cumulative, `null` not 0); `WORD-SALAD-FIX` records that `bestMean = 0` means genuinely-no-candidate and that `cellSize: 0` is an **artifact** of lazy caching rather than evidence; and `SEEDED-TOPOLOGY` upgraded its scope because **I have now actually read `donor-app/src/compute.rs`** — confirming the donor does not generate topology, and ⭐ **finding a deterministic-PRNG precedent the spec never mentions**: `run_substeps` already advances noise with an LCG and decorrelates per-GPU streams with the golden-ratio constant.
+
+⭐ **`deploy/runpod-donor-create.md` HOLDS** — the launcher's `donor-v0.3.26` PIN survives only inside a comment documenting its removal (`:29`) while the live path resolves `releases/latest` (`:56`).
+
+⛔ **`TALK-TO-UNITY-PLAYWRIGHT.md` had a WRONG source, which is worse than a missing one.** It listed `html/dashboard.html`, which contains **none** of the three selectors the automation drives, and whose 591-line change (the thing that made the page drift) never touched them. **So drift fired on an irrelevant file while the two files that actually own the selectors went unwatched.** Replaced with `js/ui/chat-panel.js` and `index.html`. ⭐ **A noisy true-negative is worse than a missing check, because it trains you to ignore the row.**
+
+⚠ **Ninth narrow-pattern catch of the session:** `#chat-input` returns **zero** occurrences in both HTML files — and it is real, created at runtime by `js/ui/chat-panel.js:35` inside a template string. **A static grep finding nothing is not the element being gone**, and that caution is now on the page.
+
+**Provenance drift 15 → 8.** Board **8 open / 5 in-progress / 386 done**.
+
 ## 2026-08-27 - FABLEKIT: the wiki had gone EIGHT rounds untouched, and the checker I built caught it
 
 Gee: *"is there anything else we need to do for the fable kit or the finishing the setup of the vault?"*
