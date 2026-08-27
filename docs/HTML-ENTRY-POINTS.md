@@ -37,7 +37,16 @@ verified-scope: |
 # ⚠ This is the commit whose CODE was verified against — the tree state at the
 # time of the read. This pass touched only docs, so none of the sources above
 # moved in it, and drift correctly reads clean from here.
-last-verified: "6b6c32b8 2026-08-27"
+  ⭐ RESTAMPED 2026-08-27 — and the cause is the provenance system catching CI.
+  Two sources moved (html/compute.html, html/legend.html) because the
+  donor-release workflow committed `site(donor): bump download links ->
+  donor-v0.3.32`. Read as a diff: it is PURELY the version string in three
+  places (one label, two release hrefs), 0.3.31 -> 0.3.32. No page contract,
+  route, message type or inventory claim is affected.
+  ⭐ It also independently confirms KI-22's fourth surface AT SOURCE LEVEL
+  rather than only over HTTP: the download links on the shipped page really do
+  point at donor-v0.3.32.
+last-verified: "b382e731 2026-08-27"
 ---
 
 # HTML-ENTRY-POINTS — every page, its contract, its failure modes
