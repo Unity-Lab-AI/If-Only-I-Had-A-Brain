@@ -35,7 +35,11 @@ verified-scope: |
     - sections 4-7 (design rationale, how-to-add, past breakages, minimum repro)
     - .claude/settings.json grew +670 lines since the stamp; only its
       statusLine block was read.
-last-verified: "375dd978 2026-08-27"
+  ⚠ SELF-DRIFT, restamped 2026-08-27: the only source that moved is
+  server/brain-server/state.js (BUCKETPUB.1 — two new published voice fields).
+  This page's claims are about .claude/statusline.sh and the settings.json
+  wiring; nothing in that edit reaches either. Read as a diff before restamping.
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # Claude Code Statusline — How It Works

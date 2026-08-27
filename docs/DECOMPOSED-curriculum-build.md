@@ -42,7 +42,21 @@ verified-scope: |
       the roster as PREVIOUSLY RECORDED.
     - the DoD list, the strict build order, nomenclature and milestone-mapping
       sections.
-last-verified: "d618b8a3 2026-08-27"
+  ⚠ SELF-DRIFT, restamped 2026-08-27: the only source that moved since the last
+  stamp is server/brain-server/state.js, changed by BUCKETPUB.1 (publishing
+  voice.wordsBucketed / bucketSubjects). That edit adds two published fields and
+  touches no curriculum runner, roster or count, so it invalidates nothing on
+  this page. Read as a diff before restamping.
+  ⛔ AND A CORRECTION TO THIS PAGE'S OWN 2026-08-27 RE-MEASUREMENT: the roster
+  column was carried forward from the old table and was WRONG. subjectsForGrade()
+  was executed (not reasoned about) and returns 19 at college1-4 and 20 at
+  grad/phd, not 17/18. So the real coverage gaps are -9 at college and -12 at
+  grad/phd, not the -7/-10 recorded above. The nine missing at college are
+  pe, music, health, language, cs, civics, economics, psychology, ap - i.e.
+  EVERY track introduced between K and grade11 has no college runner, and `cs`
+  is not a special case. ⭐ The page's CONCLUSION is unchanged and still right:
+  college+ is the real gap.
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # DECOMPOSED — Full Curriculum Build to Depth (K→PhD, skip-proof layout)

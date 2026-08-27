@@ -41,7 +41,16 @@ verified-scope: |
   fixes, so a field ADDED after 2673d14c would read absent here and that
   would NOT mean the doc is wrong. Every correction above is a path the doc
   names that the payload contradicts, not a path the payload merely lacks.
-last-verified: "02d92a14 2026-08-27"
+  ⭐ SELF-DRIFT, restamped 2026-08-27 — and this one ADDS a field to capture.
+  The moved source is server/brain-server/state.js (BUCKETPUB.1), which now
+  publishes `voice.wordsBucketed` and `voice.bucketSubjects`. Both belong in the
+  "Emission quality" table above: wordsBucketed is the field that distinguishes
+  "no candidate exists yet" from "a winner was rejected by a floor", which is
+  exactly the trap that section warns about. ⚠ Capture them as CUMULATIVE
+  (difference per rule 1) and expect `null`, not 0, before the capability scan
+  is available — a 0 there would read as "nothing bucketed", the very claim the
+  field exists to establish.
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # Developmental trajectory — the capture spec

@@ -5,7 +5,25 @@ status: draft
 sources:
   - deploy/runpod-donor-launcher.sh
   - donor-app/Cargo.toml
-last-verified: "0d208505 2026-08-26"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — and it HOLDS:
+    - deploy/runpod-donor-launcher.sh carries the donor-v0.3.26 PIN ONLY inside
+      a comment documenting its removal (:29); the live path resolves
+      releases/latest (:56). The page's claim that "the repo has been correct
+      since that rewrite" is verified, not assumed.
+    - the only moved source is donor-app/Cargo.toml, bumped to 0.3.32.
+  ADDED: an expectation-setter for the next recreate — donor-v0.3.32 reports
+  mean_voltage on the WGPU backend only; the CUDA half is inert until
+  src/kernels.ptx is regenerated, and a RunPod pod is a CUDA donor, so
+  meanVoltage will still read null there. That is the instrument being honest,
+  and it is exactly the shape that gets mis-read as "the fix didn't work".
+  NOT CHECKED — do not read this page as authority on:
+    - the LIVE pod's actual args. KI-35 records that they cannot be read back
+      as mutable and that the pod runs the pre-fix launcher; nothing here
+      re-probed the running pod.
+    - the create-command steps themselves (image, disk, ports, env) - not
+      exercised, since creating a pod costs money and drops the A40.
+last-verified: "cdfcf8b5 2026-08-27"
 ---
 
 # RUNPOD DONOR — CREATE SPEC
@@ -37,6 +55,14 @@ been correct since that rewrite; the pod could never receive the fix.
 
 ⚠ **Creation is the only chance to get the command right. That is the whole
 point of this file.**
+
+> ## ⭐ RE-VERIFIED 2026-08-27 — this page HOLDS, and one expectation needs setting for the next recreate
+>
+> **Checked:** `deploy/runpod-donor-launcher.sh` carries the `donor-v0.3.26` PIN **only inside a comment** documenting its own removal (`:29`), and the live path resolves `releases/latest` (`:56`). ⭐ **So the claim *"the repo has been correct since that rewrite"* is true, verified rather than taken on trust.** The only source that moved is `donor-app/Cargo.toml`, bumped to **0.3.32** by the release below.
+>
+> ⛔ **THE EXPECTATION TO SET, because it will otherwise look like a regression.** `donor-v0.3.32` (GOTCHA.3b) makes `mean_voltage` report — **on the wgpu backend only.** The CUDA half is written but **inert**: the CUDA kernels load from a precompiled `src/kernels.ptx`, and `voltage_mean` is not in it, so the load is deliberately optional and returns "not reported".
+>
+> ⚠ **A RunPod pod is a CUDA donor.** So after a recreate on `releases/latest`, `clusters.<name>.meanVoltage` **will still read `null`** for the pod, and `meanVoltageSource` will read `unreported-by-this-donor`. ⭐ **That is the instrument being honest, not the fix failing** — and it is exactly the shape that gets mis-diagnosed as "GOTCHA.3b didn't work". **To actually enable it on the pod, `kernels.ptx` must be regenerated with the `voltage_mean` entry** (see `donor-app/RELEASE-0.3.32.md` for why that was not done in the same pass: the PTX targets `compute_60` and the available nvcc is CUDA 13.0, which dropped that arch).
 
 ---
 
