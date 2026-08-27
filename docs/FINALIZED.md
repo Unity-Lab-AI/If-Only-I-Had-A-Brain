@@ -38840,3 +38840,50 @@ Loopback origins only — `localhost`, `127.0.0.1`, `[::1]`, any port.
 ### ⚠ A trap I built earlier, and the cost of it
 
 `LOCALCTL.1` made a second `brain-ctl` exit quietly on `EADDRINUSE` so relaunching never stacks instances. Correct for that problem — but it means **a launcher relaunch does NOT replace an already-running brain-ctl**, so a NEW build of this service never takes over on its own. Upgrading it needs the old process stopped first (`stop.bat all` / `./stop.sh all`, which exist for exactly this).
+
+---
+
+## 2026-08-26 - CHATPREEMPT.1: the priority stamp could not stop a look already in flight - feature/chat-abort-look
+
+### Gee ask (verbatim per LAW #0)
+
+> *"its still saying image generation failed in chat as im pretty sure the que i told u to put in for both lanes the chat and minds eye do we need , ie: the minds eye is admin lane and the chat is user leane but testing purposes im both so that errors with the ananymoues one lane of pollinations... do you understand the biggger and complete picture of the issue?"*
+
+### The complete picture, stated
+
+⛔ **One anonymous concurrency slot, and TWO PROCESSES contending for it — not two lanes inside one process.** The mind's eye fetches from the **server**; chat's image is fetched by the **browser**. Same public IP, same anonymous quota, but a server-side queue can only sequence its own half. **Chat was never IN the queue, because chat's request does not exist in this process.** That is the half of "put them both in a queue" that `LOOKQUEUE.1` could not deliver, and saying so is the honest correction.
+
+### Why the existing priority window was not enough
+
+`LOOKQUEUE.1` gave the look lane single-flight plus a 45s chat-priority yield. ⚠ **That yield stops the NEXT look. It cannot touch the one already running** — and a reference fetch holds the slot for up to 60s (`DREAM_REF_FETCH_TIMEOUT_MS`).
+
+So the failing sequence was:
+
+1. The eye starts a look and holds the anonymous slot.
+2. The operator asks for an image.
+3. Chat stamps priority and returns `action: 'generate_image'` — **the browser fires immediately**.
+4. The in-flight look is still running → two concurrent requests on one anonymous quota → **429** → *"(image generation failed)"*.
+
+Corroborated by the live counters: `rateLimitHits` 6-8 on BOTH brains.
+
+### Fixed — abort our own half, the only lever this process holds
+
+⭐ **The mechanism already existed and was merely unreachable:** the reference fetch has had an `AbortController` all along, scoped local to the call. It is now published as `_vmRefAbort`/`_vmRefAbortKey`, and `_vmPreemptLookForChat()` aborts it the instant a chat image intent becomes real — freeing the pipe in **milliseconds** instead of up to 60 seconds.
+
+⚠ **Nothing durable is lost.** The burns roll back on failure (`LOOKBACKOFF`) and the concept is retried on its next turn. A person waiting outranks a background errand.
+
+⚠ **Best-effort by construction.** A no-op when nothing is in flight (the common case); a throwing `abort()` on an already-settled fetch is swallowed; broken counters cannot break a reply. **The worst case is exactly the old behaviour.**
+
+⚠ **The controller is cleared in the same `finally` as the slot release, and only if it is still OURS** — a newer look may have replaced it while this one unwound. A stale controller would let a later chat turn abort a fetch belonging to a different concept.
+
+### Two counters, deliberately not one
+
+`chatYields` = looks that **stood down before starting**. `chatPreempts` = looks **killed mid-fetch** to free the pipe. ⭐ Only the second explains a 429 that stopped happening, so they must not share a number. Dashboard renders *"N cut short for chat (last "word")"* beside the existing *"gave way to chat"*.
+
+### Verified — 10/10 against the real method source
+
+Evaluated the actual method (as an object literal, not a re-typed copy): no-in-flight returns false without touching counters; a real in-flight look is aborted, counted once, and its concept recorded; the controller is cleared; a second call is a no-op; **a throwing `abort()` never reaches chat**; and broken counters never break chat. Plus `node --check` ×2, a NUL scan of the file, and dashboard divs/scripts clean.
+
+⚠ **Server-side — lands on the next restart.** Watch `cut short for chat` climb while `rateLimitHits` stops climbing.
+
+⚠ **NOT claimed fixed: the architectural half.** Chat's fetch is still client-side, so this is preemption, not a shared queue. Moving chat's image fetch server-side into one priority queue remains the durable answer, and Gee chose the surgical fix first, knowingly.

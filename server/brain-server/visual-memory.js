@@ -1386,6 +1386,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // request could have the lane. Both are the system behaving
         // CORRECTLY, so they must be readable rather than inferred.
         globalInFlightSkips: 0, chatYields: 0,
+        // CHATPREEMPT.1 — declared up front so the published block always
+        // carries them. `chatYields` counts looks that STOOD DOWN before
+        // starting; `chatPreempts` counts looks KILLED MID-FETCH to free the
+        // pipe. Different events, and only the second one explains a 429 that
+        // stopped happening.
+        chatPreempts: 0, lastChatPreemptKey: null,
       };
     }
     return this._vmLookStats;
@@ -1629,6 +1635,25 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       let buf;
       try {
         const ctrl = new AbortController();
+        // ── CHATPREEMPT.1 — publish the controller so CHAT can free the pipe ──
+        //
+        // ⛔ The 45s chat-priority yield only stops the NEXT look. It cannot
+        // touch the one already running, and a reference fetch holds the single
+        // anonymous slot for up to 60s. So the failing sequence was: the eye
+        // starts a look → the operator asks for an image → chat stamps priority
+        // and the BROWSER fires immediately → two concurrent requests on one
+        // anonymous quota → 429 → "(image generation failed)".
+        //
+        // ⚠ The two contenders are separate PROCESSES — the look runs here, the
+        // chat image is fetched client-side — so no server queue can sequence
+        // them. Aborting our own half is the only lever this process actually
+        // holds, and it frees the slot in milliseconds instead of up to 60s.
+        //
+        // ⚠ Losing this look costs nothing durable: the burns roll back on
+        // failure (LOOKBACKOFF) and the concept is retried on its next turn.
+        // A person waiting outranks a background errand.
+        this._vmRefAbort = ctrl;
+        this._vmRefAbortKey = key;
         // timeout 25s→60s (Gee log 2026-07-17: EVERY reference fetch aborting on
         // the box while Pollinations itself answers in ~2.5s — the box's uplink
         // sits at 16-19MB buffered under the teach-pattern flood, starving other
@@ -1788,7 +1813,40 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // per-concept delete, because a leaked global slot does not degrade the
       // lane, it CLOSES it: one missed decrement and she never looks again.
       this._vmRefGlobalInFlight = Math.max(0, (this._vmRefGlobalInFlight | 0) - 1);
+      // CHATPREEMPT.1 — drop the published controller in the SAME finally as
+      // the slot release. A stale controller would let a later chat turn abort
+      // a fetch that already finished, or worse, one belonging to a different
+      // concept. Cleared only if it is still OURS: a newer look may have
+      // replaced it while this one was unwinding.
+      if (this._vmRefAbortKey === key) { this._vmRefAbort = null; this._vmRefAbortKey = null; }
     }
+  },
+
+  /**
+   * CHATPREEMPT.1 — free the anonymous image slot for a human, right now.
+   *
+   * Called by the chat path the instant an image intent becomes real. Aborts
+   * the reference fetch currently holding the single anonymous lane so the
+   * browser's request does not collide with it and 429.
+   *
+   * ⚠ Safe to call when nothing is in flight — that is the common case, and it
+   * must not throw or log noise on the hot chat path.
+   * Returns true only when a fetch was actually aborted, so the counter counts
+   * real preemptions rather than attempts.
+   */
+  _vmPreemptLookForChat() {
+    const ctrl = this._vmRefAbort;
+    if (!ctrl) return false;
+    const key = this._vmRefAbortKey;
+    try { ctrl.abort(); } catch { /* already settled — nothing to free */ }
+    this._vmRefAbort = null;
+    this._vmRefAbortKey = null;
+    try {
+      const lk = this._vmLook();
+      lk.chatPreempts = (lk.chatPreempts | 0) + 1;
+      lk.lastChatPreemptKey = key || null;
+    } catch { /* counters must never break chat */ }
+    return true;
   },
 
   // Magic-byte image decode → { w, h, data:Uint8ClampedArray RGBA }. Pure-JS
