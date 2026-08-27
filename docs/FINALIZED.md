@@ -39525,3 +39525,43 @@ Gee: *"lets get it"*
 `verified-scope:` names what was checked and what was not: the **wire contract exhaustively**, the JSON message schemas not; the **launcher contracts and flags**, the systemd bootstrap narrative not. ⛔ Marking either `verified` would claim a line-by-line pass that did not happen — and the point of the field is that `draft` becomes a boundary rather than a shrug.
 
 **Drift list 25 → 23.** 3 of 22 pages done (`README`, `WEBSOCKET`, `SETUP`). Board **8 open / 4 in-progress / 383 done**.
+
+## 2026-08-27 - DOCPROV.4 continues: the page that said a restriction still applied, and a false defect I filed against a page that was fine
+
+Gee: *"then read resume.md only after the workflow finishes"* — and then, mid-work: *"u didnt read resume.md"*. ⛔ **He was right.** The pipeline reached Work Mode and I kept walking into the sweep instead of stopping at the boundary he named. Read on the correction, before any further edits landed.
+
+### ⭐ `docs/HTML-ENTRY-POINTS.md` — 5 of 5 sources moved, the worst ratio on the board
+
+**The 11-page inventory it leads with was EXACTLY right** — verified against `git ls-files '*.html'`. **Every error was in an enumeration underneath it**, which is the shape this whole sweep keeps finding: the headline claim is maintained, the lists below it rot.
+
+⛔ **(1) The docs-viewer whitelist is 18 slugs. The page said 8 — and named the ones it claimed were excluded.** `DOC_PATHS` (`html/docs.html:189-207`) also serves `THEORY_PAPER`, `KNOWN_ISSUES`, `ADMIN_CONTROLS`, `THRESHOLD_DERIVATION`, `HELD_BACK`, `PERSONA`, `MINDSPACE`, `SEEDED_TOPOLOGY`, `CURRICULUM_SCOPE` and **`HTML_ENTRY_POINTS` — the page itself.** The old sentence said workflow/planning docs *"are not surfaced in the public legend or docs viewer"* and listed `PERSONA`, `THRESHOLD-DERIVATION` and *"this HTML-ENTRY-POINTS doc"* by name.
+
+⭐ **The widening is DELIBERATE and gated, so this is a stale doc and not a leak:** the comment sitting directly above `DOC_PATHS` records the rule every added doc passed — *a quote may never be edited to make a doc publishable* — meaning each was published with its verbatim quotes intact rather than sanitized to qualify. ⚠ **But it failed in the REASSURING direction, which is the expensive one:** it asserted a privacy restriction that had lapsed. **The half that still holds is that the legend links only the original 8** (verified: 8 `docs.html?doc=` hrefs in `html/legend.html`). ⛔ ***"Not advertised"* and *"not reachable"* are different claims and only the first one is true** — the viewer's own topbar dropdown enumerates all 18 from `Object.keys(DOC_PATHS)`.
+
+⛔ **(2) The dashboard consumes NINE WS message types; five were documented.** Missing: `autoScaleChanged`, `gateProbe`, `serverLog`, `serverLogBacklog`. ⭐ **`gateProbe` is the one that mattered** — it raises the banner that separates *"the brain is paused on purpose while curriculum holds the GPU for a cell gate"* from *"the brain is wedged"*, which is exactly the distinction an operator stares at a dashboard to make. ⛔ **And the page contradicted ITSELF:** its own prose two paragraphs above describes the live server-console panel and the gate-probe banner, while the consumed-types list omitted the messages that drive both. **A doc can disagree with itself across 40 lines and read fine in both places.**
+
+⛔ **(3) Three of the five paths in the deploy-safe `js/` bullet do not exist.** `js/brain3d-*.js` matches **nothing**; the real files are `js/ui/brain-3d.js`, `js/brain/embeddings.js`, `js/brain/letter-input.js`. ⚠ **Not cosmetic:** the ❌ bullet immediately below carves out `js/brain/` as *"heavy Node-side modules, only loaded via brain-server context"* — so two client-safe files were filed as living **outside** the directory they are actually **inside**. A deploy exclusion written off that list would have dropped them.
+
+⛔ **(4) `brain-equations.html` was described as *"No external dependencies, no module imports — pure HTML + inline CSS."*** It links `../css/tooltip.css` **and `@import`s Google Fonts** (JetBrains Mono + Inter). ⭐ **All five "static" pages share `css/tooltip.css`** (`brain-equations`, `legend`, `unity-guide`, `webgpu-prep`, `docs`) — so `css/` is deploy-required for every one of them, and "pure inline CSS" was wrong wherever it appeared. ⚠ Honest severity: the remote font degrades to the fallback stack offline — **visually different, never broken, no equation content lost.**
+
+⛔ **(5) The legend's three sections split by ACCESS LEVEL, not by purpose.** Documented as "Live brain UI / Setup & admin / Reference"; actually `🌐 For everyone — open & use (no login)` (8 cards), `🔑 Admin / operator — login required` (3, including the legend's self-card), `📝 Public docs (rendered in-browser)`. **All three names wrong — and `dashboard-public.html` + `minds-eye.html` were missing from the narrative while sitting in the inventory table 100 lines above it.** That is how a page can be in a doc and invisible in it.
+
+⛔ **(6) The `brain-equations` Status line stopped at 2026-06-17 while a banner on the SAME page recorded section 6.5 landing on 2026-08-25.** Two places asserting the same thing, drifted apart. Replaced with mechanical counts: **34 `<h2>` sections, 91 `eq-title` cards, section 6.5 present.**
+
+### ⚠ ONE FALSE DEFECT — filed against the page, retracted in under a minute
+
+An `<h2[^>]*>` sweep reported a section heading numbered **`0.15`** on the public equations page. ⭐ **I went to confirm it before claiming it, and it was my regex:** the pattern truncated **inside a `title` attribute that contains a literal `>`** (`… coherence > 0.15. Low social need = quiet …`), so attribute prose was reported as a heading. The real heading is `8.15. Inner Voice — Pre-Verbal Thought Threshold`. **The page was fine; the detector was not.**
+
+⭐ **Same class as the dynamic-key grep that nearly condemned live `word_motor_*` code, and the `DEFAULT_BIO_WEIGHTS` read that nearly "corrected" a correct README.** The rule is now written on the page: **count `<h2` occurrences, not `<h2[^>]*>` matches** — `grep` sees text, not structure. **Three near-misses in this sweep, all caught by verifying before asserting; a doc-verification pass can introduce errors as fast as it fixes them.**
+
+### ⚠ Two sources ADDED, and the reason is the interesting part
+
+`html/docs.html` and `html/brain-equations.html` are now in the page's `sources`. ⛔ **Two of the six errors came from files this page made load-bearing claims about while not listing them as sources — so `docs:drift` could never have flagged either one.** A provenance baseline only fires on the files it names. Costs a noisier drift signal; buys a check that can actually go off.
+
+⚠ `status` stays `draft`. `verified-scope:` names the **eight enumerations checked** and the four narrative areas deliberately **not** — the H.1/H.2/H.6/H.9 failure-mode banners (runtime states, and both brains run older code), the `_spawnGpuClient` browser-by-browser chain, the diagnostic protocol's log strings, and `compute.html` / `minds-eye.html` internals (both named sources, both moved, inventory rows re-read but contracts not).
+
+### ⚠ And the pick-up brief's own hashes were stale
+
+`docs/RESUME.md` carried `main 6b053155` / `develop a0ba6396` — **the PRE-CASCADE values.** The brief recorded them, then the commit and cascade that shipped the brief moved them. Re-read to **`471b5248` / `6b6c32b8`** against `refs/heads/*`. ⭐ **A hash written into a tracked file is stale the instant that file is committed** — which is precisely why the line above that table tells the reader to run `git rev-parse` rather than trust it, **including when the table was filled in by someone who checked every number.**
+
+**Drift list 23 → 22.** `wiki:coverage` **449/449 files, 0 broken links, 0 orphans, 176 exact + 4 approximate line counts.** **4 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`). Board **8 open / 4 in-progress / 383 done**. ⭐ **The method is proven on four pages now: enumerate the set the code itself defines, diff it against the set the page defines, do not proof-read prose.** It has produced an undocumented wire frame type, four undocumented message types, an 18-vs-8 whitelist and three nonexistent paths — **and all four pages read perfectly well while being wrong.**
