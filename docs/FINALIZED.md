@@ -39317,3 +39317,58 @@ Read off the LIVE local brain, ~3.6 h uptime, actively training: **every cluster
 ### Board
 
 **5 open → 12 open** (`GOTCHA.1`-`.6` + `DOCPROV.4`), 3 in-progress, 376 done. Wiki `449/449` covered, 0 broken links. ⚠ Temp hunt scripts were read-only and **deleted the moment they ran**, per the standing rule.
+
+---
+
+## 2026-08-27 - GOTCHA.3a/.4/.5 shipped + GOTCHA.2 investigated: a null that explains itself, and a latent region-skip hazard - feature/gotcha-fixes
+
+Gee: *"keep working the todo items till none are left that you can do"* → *"todo items should include but not limited to the gotchas found if real"*
+
+### ⭐ `GOTCHA.3` — cause isolated to ONE hardcoded literal, and the null now explains itself
+
+Three producers of `meanVoltage`, and for a **native-donor** brain all three are dead:
+
+| producer | state |
+|---|---|
+| **CPU** | `lastMeanVoltage` is written only at `js/brain/cluster.js:4131`, **inside `step()`** — which the cortex cannot run (`stepAwait` refuses above 2M, four raw-step sites carry the same return). The GPU steps the brain instead |
+| **Browser donor** | ⭐ **Fully implemented and working** — `html/compute.html:1481-1493` does a once-per-tick GPU atomic reduction (`gpu.readbackVoltageMean`) and sets `perCluster[name].meanVoltage` |
+| **Native donor** | ⛔ **Never sent.** `donor-app/src/donor.rs:1361` builds `PerClusterResult { …, mean_voltage: None }` **hardcoded**, and `protocol.rs:129-130`'s `skip_serializing_if = "Option::is_none"` then **omits the key entirely** — so `brain-server.js:6282`'s `typeof entry.meanVoltage === 'number'` is never true |
+
+⭐ **The wire field, the serde rename and the server-side EMA blend all already exist.** The only missing piece is the donor computing the number — filed as `GOTCHA.3b`, and it is **not a one-liner**: `engine.run_substeps` returns only spike totals, so a voltage-mean reduction must be written **twice**, once in WGSL and once in CUDA.
+
+**What shipped instead: the instrument.** `state.js` now publishes `meanVoltageSource` beside the value — `cpu-step`, `gpu-donor-readback`, `unreported-by-this-donor (native donor sends mean_voltage: None — GOTCHA.3b)`, or `no-gpu-donor-attached`.
+
+⛔ **Why that and not a number:** a bare `null` cannot distinguish *"not sampled yet"* from *"this donor does not report it"* from *"broken"*, and **that indistinguishability IS the defect class.** Inventing a value would have been strictly worse than publishing nothing.
+
+⚠ **Verified before relying on it:** `this._gpuConnected` is reachable from `state.js` — `Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN)` at `brain-server.js:8125`, and `state.js` already reads `this._gpuClient` at three sites. **Not repeating the ownership trap this very item is about.**
+
+### ⭐ `GOTCHA.2` — investigated as instructed, and it found a latent hazard worth more than the cleanup
+
+All seven enumerations of `regions` read. **Verdict: deleting the 6 `sem_*` keys is geometry-neutral and strictly positive; `word_motor_*` must stay** (two live readers).
+
+⭐ **The sub-bands are ALREADY being skipped.** `gpu-compute.js:738` sorts regions by `start` and refuses any whose `start < prevEnd`, warning *"overlaps prior region … skipping"*. Nested sub-bands overlap their umbrella **by construction**, so **23 declared regions become 11 validated and 12 warnings print on every `uploadCluster`.**
+
+⛔ **THE HAZARD:** `sem` and `sem_ela` have **identical `start` values.** Which one survives depends on `Array.prototype.sort` stability **plus object-literal insertion order**. It is correct today only because the umbrella is declared first and ES2019 sort is stable — **if a sub-band ever sorted first, the umbrella `sem` region would be silently skipped instead**, with the warning naming the sub-band. ⚠ And `MAX_REGIONS = 16` with a `.slice(0, 16)` pack is safe only because the skip works: **23 declared would truncate to 16 silently.** Two independent guards resting on the same accident.
+
+⭐ **The real cost of the dead keys:** `curriculum.js:11959` calls `_gpuProxy.clearSpikeSlice(regionName)` for **every** key, so 12 of 23 are proxy round-trips for regions the GPU never registered — in the loop whose own comment calls it *"the single most expensive thing the definition bootstrap does apart from the injection itself."* And `state.js:521/532` emits all of them as `lang_<name>` pseudo-clusters with per-span CPU spike counts, **which no frontend code reads.**
+
+⛔ **Not deleted — that decision was explicitly reserved to Gee.**
+
+### `GOTCHA.5` + `GOTCHA.4` shipped, and both kept the old text instead of overwriting it
+
+`cluster.js`'s layout comment keeps its original paragraph (it is why the sub-bands exist) with a `⛔ GOTCHA.5` block under it stating precisely what changed: writes are unified; `word_motor_*` survives for **inference, not writing**; `sem_*` has no readers at all. `cluster/README.md` gets a **second dated** drift line — the 2026-08-20 one stays, because *"a single undated 'is now N lines' is exactly what let the old figure read as current for a week."*
+
+### ⛔ Two errors of my own, both caught and both recorded
+
+1. **A systematic off-by-one across ~8 wiki pages.** The ingest dossier counted with `len(read.split('\n'))`, which is **one greater than `wc -l`** on any file ending in a newline. Confirmed on six sampled files (`neurons.js` 201/202, `cluster.js` 4984/4985, `brain-server.js` 12414/12415). Filed as `WIKICOUNT.1` with the exact affected/unaffected page lists.
+2. ⭐ **A count went stale INSIDE the commit that recorded it.** `cluster.js` measured 4,984 — then the `GOTCHA.5` comment I added in the same batch took it to **5,011**. **A line count is a READING, not a property**, and it now carries both numbers with the edit that moved them, the same rule as quoting `state.totalNeurons` with its boot.
+
+### New finding filed: `GOTCHA.7`
+
+`html/brain-equations.html` — **the public equations page** — still describes the superseded per-subject write architecture at line 445 (*"six per-subject sub-bands … the answer's word-bucket is written inline during QA training"*) and line 1592 (the region map showing `sem_ela/_math/…`). ⚠ Filed rather than fixed blind, because the `cluster.wordBucketWords_<subject>` claim in the same sentence needs separate verification — a per-subject **word list** may still exist even though the per-subject **geometry** does not, and conflating them would replace one wrong sentence with another.
+
+### Verified
+
+`node --check` clean on `state.js` and `cluster.js`; ESM `import()` clean on `cluster.js`; wiki `449/449` covered, 0 broken links. Board **12 open / 3 in-progress / 379 done** (closed `GOTCHA.3`→3a, `.4`, `.5`; filed `GOTCHA.3b`, `.7`, `WIKICOUNT.1`).
+
+⚠ An untracked `Stack Vault.png` is sitting in the repo root. **Not added** — it is not mine, and this commit uses explicit paths rather than `git add -A` so it cannot be swept in.
