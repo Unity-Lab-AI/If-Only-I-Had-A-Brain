@@ -56554,6 +56554,48 @@ var NeuronCluster = class {
     this.MAX_EMISSION_TICKS = 2e3;
   }
   /**
+   * GOTCHA.2 — the region names that are NOT carved inside another region.
+   *
+   * ⛔ WHY THIS EXISTS, measured rather than assumed. `regions` declares 23
+   * entries, of which 12 are per-subject sub-bands nested inside `sem` and
+   * `word_motor`. The GPU registers only the 11 enclosing ones (nested spans
+   * are skipped by `validateClusterRegions`), so a caller that fans an
+   * operation out over `Object.keys(regions)` addresses 12 regions the donor
+   * has never heard of.
+   *
+   * That is not a cheap no-op. `_gpuClearCortexSpikeRegion` does not validate
+   * the name: for every one it encodes a type-9 frame, SENDS it to the donor,
+   * counts it via `_countTeachOut`, and — when the language pseudo-cluster is
+   * up — sends a second `langCortex/<region>` frame. So a full clear spent up
+   * to 24 wire frames on regions that do not exist donor-side, on the path
+   * that 11 of `_clearSpikes`'s 13 call sites take.
+   *
+   * ⚠ Worse than the bandwidth: those frames land in `teach_ops`, which
+   * TEACHMIRROR.1 made the signal that distinguishes a saturated donor from an
+   * idle one. Padding it with no-ops degrades the instrument.
+   *
+   * ⭐ The test is STRUCTURAL — containment, not a name list. A region is
+   * nested when some other region strictly encloses its span. No `_`-suffix
+   * heuristic, nothing to keep in sync when a region is added.
+   *
+   * Memoized: `regions` is frozen at carve time.
+   * @returns {string[]} names of enclosing/standalone regions, carve order
+   */
+  topLevelRegionNames() {
+    if (this._topLevelRegionNames) return this._topLevelRegionNames;
+    const regions = this.regions || {};
+    const entries = Object.entries(regions);
+    const out = [];
+    for (const [name, r] of entries) {
+      if (!r || !Number.isFinite(r.start) || !Number.isFinite(r.end)) continue;
+      const span = r.end - r.start;
+      const isNested = entries.some(([other, o]) => other !== name && o && Number.isFinite(o.start) && Number.isFinite(o.end) && r.start >= o.start && r.end <= o.end && o.end - o.start > span);
+      if (!isNested) out.push(name);
+    }
+    this._topLevelRegionNames = out;
+    return out;
+  }
+  /**
    * Periodically prune weak connections and grow new ones.
    * Call every ~100 steps to maintain healthy connectivity.
    * @param {number} maxConnections — cap total connections
@@ -103669,7 +103711,8 @@ var Curriculum = class _Curriculum {
     }
     cluster.lastSpikes.fill(0);
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
-      for (const regionName of Object.keys(cluster.regions)) {
+      const _names = typeof cluster.topLevelRegionNames === "function" ? cluster.topLevelRegionNames() : Object.keys(cluster.regions);
+      for (const regionName of _names) {
         try {
           cluster._gpuProxy.clearSpikeSlice(regionName);
         } catch {

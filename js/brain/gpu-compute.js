@@ -382,6 +382,87 @@ const SPIKE_COUNT_SHADER = /* wgsl */`
 
 // ── GPU Compute Manager ─────────────────────────────────────────
 
+const VALID_REGION_SIDES = new Set(['left', 'right', 'bilateral', 'center']);
+
+/**
+ * GOTCHA.2 — validate a cluster's sub-region map for GPU registration.
+ *
+ * EXTRACTED FROM `uploadCluster` SO IT CAN BE HARNESSED. The loop it replaces
+ * could only be exercised through a real WebGPU device, so its behaviour was
+ * verified by reading. Reading is what let the two problems below survive.
+ *
+ * ── PROBLEM 1: nesting was reported as an overlap ERROR ──────────────────
+ * The language cortex declares umbrella regions (`sem`, `word_motor`) AND
+ * per-subject sub-bands carved inside them (`sem_ela`, `word_motor_math`, …).
+ * A sub-band sits fully inside its umbrella, so the old `start < prevEnd` test
+ * rejected all 12 of them and warned `overlaps prior region … skipping` for
+ * each. Measured on a real cortex cluster at both 2,000 and 200,000 neurons:
+ * 23 declared → 11 registered, 12 warnings, on every single healthy upload.
+ * A dozen warnings that mean "working as designed" train the reader to ignore
+ * the channel — and a REAL partial overlap would have printed in exactly the
+ * same words, indistinguishable from the noise.
+ *
+ * ── PROBLEM 2: which one survived was an ACCIDENT ────────────────────────
+ * ⛔ `sem` and `sem_ela` have IDENTICAL `start` values (verified: 150000 and
+ * 150000 at 200K; same for `word_motor`/`word_motor_ela` at 188000). Sorting by
+ * `start` alone therefore left their order to `Array.prototype.sort` stability
+ * plus the object-literal insertion order in cluster.js. It happened to keep
+ * the umbrella because the umbrella is declared first — but if a sub-band had
+ * ever sorted first, it would have claimed the span and THE UMBRELLA WOULD HAVE
+ * BEEN SKIPPED, with the warning naming the sub-band. `sem` and `word_motor`
+ * are the semantic target and the primary production path; losing either from
+ * GPU registration is not a cosmetic failure.
+ *
+ * ⭐ Both are fixed by making the intent explicit rather than emergent: sort by
+ * (start ASC, span DESC) so an enclosing region ALWAYS precedes what it
+ * encloses, then classify each rejection as `nested` (expected) or
+ * `overlapping` (a real boundary-crossing bug, still loud).
+ *
+ * ⚠ The ACCEPTED SET IS UNCHANGED — this is deliberately not a behaviour
+ * change. Verified against the real region map: same 11 regions, same order,
+ * before and after.
+ *
+ * @returns {{validated: Object, nested: string[], overlapping: string[], invalid: string[]}}
+ */
+export function validateClusterRegions(regions, size, clusterName = '?') {
+  const validated = {};
+  const nested = [];
+  const overlapping = [];
+  const invalid = [];
+  if (!regions || typeof regions !== 'object') return { validated, nested, overlapping, invalid };
+
+  // (start ASC, span DESC) — the span tiebreak is the whole fix for PROBLEM 2.
+  const sorted = Object.entries(regions).sort((a, b) => {
+    const sa = a[1]?.start ?? 0, sb = b[1]?.start ?? 0;
+    if (sa !== sb) return sa - sb;
+    const spanA = (a[1]?.end ?? 0) - sa, spanB = (b[1]?.end ?? 0) - sb;
+    return spanB - spanA;                       // wider (enclosing) region first
+  });
+
+  let prevStart = -1;
+  let prevEnd = 0;
+  for (const [regName, range] of sorted) {
+    const start = Number.isFinite(range?.start) ? Math.floor(range.start) : 0;
+    const end = Number.isFinite(range?.end) ? Math.floor(range.end) : 0;
+    if (start < 0 || end > size || start >= end) {
+      invalid.push(`region ${regName}: invalid range [${start}, ${end}) vs cluster size ${size}; skipping this region.`);
+      continue;
+    }
+    if (start < prevEnd) {
+      // Fully inside the previously accepted span → a carved sub-band. Expected.
+      if (start >= prevStart && end <= prevEnd) nested.push(regName);
+      // Crosses a boundary → genuinely malformed geometry. Stays loud.
+      else overlapping.push(`region ${regName} [${start}, ${end}) partially overlaps the prior region [${prevStart}, ${prevEnd}) without being contained by it; skipping. THIS IS NOT NESTING — the spans cross.`);
+      continue;
+    }
+    const side = VALID_REGION_SIDES.has(range?.side) ? range.side : 'bilateral';
+    validated[regName] = { start, end, side };
+    prevStart = start;
+    prevEnd = end;
+  }
+  return { validated, nested, overlapping, invalid };
+}
+
 export class GPUCompute {
   constructor() {
     this._device = null;
@@ -732,27 +813,20 @@ export class GPUCompute {
     // existing code doesn't regress. Phase B wires the actual L/R
     // gate into LIF via a Ψ-modulated hemisphere binding coefficient
     // — mystery Ψ must remain involved in the main equation.
-    const VALID_SIDES = new Set(['left', 'right', 'bilateral', 'center']);
     if (regions && typeof regions === 'object') {
-      const validated = {};
-      const sortedByStart = Object.entries(regions).sort((a, b) => (a[1]?.start ?? 0) - (b[1]?.start ?? 0));
-      let prevEnd = 0;
-      for (const [regName, range] of sortedByStart) {
-        const start = Number.isFinite(range?.start) ? Math.floor(range.start) : 0;
-        const end = Number.isFinite(range?.end) ? Math.floor(range.end) : 0;
-        if (start < 0 || end > size || start >= end) {
-          console.warn(`[GPUCompute] uploadCluster ${name} region ${regName}: invalid range [${start}, ${end}) vs cluster size ${size}; skipping this region.`);
-          continue;
-        }
-        if (start < prevEnd) {
-          console.warn(`[GPUCompute] uploadCluster ${name} region ${regName} [${start}, ${end}) overlaps prior region (ending at ${prevEnd}); skipping.`);
-          continue;
-        }
-        const side = VALID_SIDES.has(range?.side) ? range.side : 'bilateral';
-        validated[regName] = { start, end, side };
-        prevEnd = end;
-      }
+      const { validated, nested, overlapping, invalid } = validateClusterRegions(regions, size, name);
       buffers.regions = validated;
+      // GOTCHA.2 — NESTING IS EXPECTED AND IS NOT AN ERROR. It used to be
+      // reported as `overlaps prior region … skipping` once per sub-band, so a
+      // healthy upload printed 12 warnings that read like a defect. Nested
+      // sub-bands are summarised on one line; a TRUE partial overlap (one that
+      // crosses a boundary rather than sitting inside) still warns loudly,
+      // because that one really is a bug.
+      if (nested.length > 0) {
+        console.log(`[GPUCompute] uploadCluster ${name}: ${nested.length} nested sub-band(s) not registered separately (they live inside an enclosing region, which is registered): ${nested.join(', ')}`);
+      }
+      for (const w of overlapping) console.warn(`[GPUCompute] uploadCluster ${name} ${w}`);
+      for (const w of invalid) console.warn(`[GPUCompute] uploadCluster ${name} ${w}`);
       if (Object.keys(validated).length > 0) {
         const sideSummary = Object.entries(validated)
           .map(([n, r]) => `${n}(${r.side})`)

@@ -11956,7 +11956,24 @@ export class Curriculum {
     // bootstrap does apart from the injection itself.
     cluster.lastSpikes.fill(0);
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
-      for (const regionName of Object.keys(cluster.regions)) {
+      // GOTCHA.2 — TOP-LEVEL REGIONS ONLY. This used to walk
+      // `Object.keys(cluster.regions)`, i.e. all 23 declared names — but 12 of
+      // them are per-subject sub-bands carved INSIDE `sem` / `word_motor`, and
+      // the GPU never registers a nested span. `_gpuClearCortexSpikeRegion`
+      // does not validate the name, so each of those 12 still encoded a type-9
+      // frame, SENT it, counted it into `_countTeachOut`, and (with the language
+      // pseudo-cluster up) sent a second `langCortex/` frame — up to 24 wire
+      // frames per clear for regions the donor has never heard of, on the path
+      // 11 of this function's 13 call sites take.
+      //
+      // ⚠ The bandwidth is the smaller half: those frames inflate `teach_ops`,
+      // which TEACHMIRROR.1 made the signal separating a saturated donor from
+      // an idle one. Clearing the enclosing region already covers every nested
+      // span inside it, so nothing is left uncleared.
+      const _names = (typeof cluster.topLevelRegionNames === 'function')
+        ? cluster.topLevelRegionNames()
+        : Object.keys(cluster.regions);
+      for (const regionName of _names) {
         try { cluster._gpuProxy.clearSpikeSlice(regionName); } catch { /* non-fatal */ }
       }
     }
