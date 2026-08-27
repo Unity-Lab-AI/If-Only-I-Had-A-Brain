@@ -39161,3 +39161,46 @@ It only ever counted `.md` pages, which measures **how much was written** rather
 `npm run wiki:coverage` **449/449, 0 broken links, 0 orphans, index in sync** · `dashboard.py` compiles and runs, tiles read `449 / 100% / 0 named nowhere` · junction resolves under Python.
 
 ⚠ Owned: one registry edit went through `python -c` — the banned edit-by-script pattern. Flagged, not hidden; every other edit used the editor.
+
+---
+
+## 2026-08-27 - INGEST.CURRICULUM: the hub read properly, and a constant that was never a mechanism - feature/wiki-ingest-curriculum
+
+Gee: `/wiki-ingest` (no argument — target chosen by the graph)
+
+⛔ **Recorded HERE and not only in `wiki/log.md`, deliberately: `wiki/` is gitignored, so anything written only there dies with the working tree.** The finding below is a fact about `curriculum.js` and belongs in the tracked ledger.
+
+### Why `curriculum` was the target
+
+No argument was given, so the graph picked: `Curriculum` is the **single god node at 349 edges**, more than 4× the next, and its wiki page was `status: draft` with a `TODO: ingest` naming four unread things. `graphify explain "Curriculum"` gave every method's exact line before a file was opened — which is what made a **28,340-line** file tractable in one pass.
+
+### ⭐ THE FINDING: `GRADE_TIMEOUT_MS` was never a mechanism
+
+It was declared, described in prose as *"each subject gets 3 minutes of wall-clock time to pass its grade"*, and referenced in exactly **one** other place: **the failure message that printed it.** No timer, no race, no abort.
+
+⛔ **So every one of those warnings announced a 3-minute timeout that had not happened — while a live cell was measured running 90.4 minutes.**
+
+⭐ **It was DELETED rather than enforced, and the reasoning is the transferable part:** enforcing 3 minutes would have aborted essentially every real cell (measured average ~26 min, observed max 90+), *"a catastrophic behaviour change smuggled in under the word 'fix'. A constant that only feeds a log line is not a budget — it is an instrument reporting a cause it never measured, and the honest repair is to stop claiming it."*
+
+⚠ **Three more of the same shape** are now collected on one page with the two honest repairs: `DREAM_PHASE_BUDGET_MS=0` (documented as *"disables the bound"*, actually produced **one rep per phase** — the harshest cut possible), `_teachWordSpellingDirectFinal` (**37 call sites, zero definitions**), and a cost gate gated on *idle* when **she is never idle** — *a cost gate that resolves to "never" is a deletion, not a bound.*
+
+### The four `TODO: ingest` items, closed from source
+
+1. **The phase list is DERIVED, not tabled.** `_declaredPhaseNames` (`curriculum.js:7772`) reads the runner's own `Function.prototype.toString` and counts distinct `this._teach*(` names. ⛔ It must **follow the delegating arrow** — `_cellRunnerRaw` returns `async (ctx) => this.runElaKReal(ctx)`, so scanning that finds **zero** `_teach` names and `ela/kindergarten` reported **2** phases; the real count is **27**, cross-checked two independent ways. ⭐ The dashboard had divided by a hardcoded `EXPECTED_PHASES_PER_CELL = 12` living in a public HTML **that cannot know which cell is running** — the bar read **50% at phase 6 when the truth was 22%**, wrong by 2.25×.
+2. **Every cell is wrapped.** `_cellRunner` (`:7817`) prepends `_teachCourseIdentity` (every subject but `life`), `_teachLanguageMechanics` (ela only), and `_trainAcademicStories` (prose-academic subjects — maths stays equational, the lived year stays bespoke, an absent corpus trains nothing). All three `try/catch`'d non-fatal.
+3. **`_gateSubjectProduction` (`:21034`)** — drill every question through the closed loop first, raise probe noise 0.5→0.6 (**restored in `finally`**), then grade. Failed questions are retried **reframed into her own voice**; ⛔ **the two rates are reported separately, never blended** (`prodRate`, `firstPassRate`, `selfFrameRecovered`) because *"a recovered answer is a different fact about her than a first-pass answer and hiding that would be its own lying instrument."* `GATE_PROD_MIN` = **0.80**, from DIBELS 8 below-benchmark cut scores.
+4. **Grade-major ordering.** `MAX_GRADE_ROUNDS` = **2** (`DREAM_GRADE_MAJOR_ROUNDS`, clamped 1-5). Unbounded, **the walk wedges at grade1 forever**. RE-PRICE measured live: R=1 ⇒ ~78 h ≈ 3.3 days; R=2 ⇒ ~5 days; unbounded ⇒ infinite. Position comes from the `passedCells` **ledger**, and ⛔ **the ledger gets no opinion below `_ledgerFloorIdx`** — `passedCells` recording postdates the pre-K era, so a naive "first cell not in the ledger" scan reports `pre-K` owed on a long-trained brain and **restarts the entire walk from the bottom**.
+
+### Also documented
+
+**`_gradeAdvanceHealthGate` (`:8591`)** — advancement is not only scores: it refuses on sem→motor saturation, **emission mode-collapse** (dominant word > 45% of recent output), and exam-vocab coverage below 85%.
+
+**The phase-ledger admission rule (`:2831`)** — a declared phase may bank or skip **only when no `_teach*` ancestor is in flight**. Without that third clause, `_teachWordDefinition` nesting `_teachAssociationPairs` made every nested call qualify as "the cell phase again": **first live dream window, 120 words processed, 120 failed in 27 ms, the entire vocabulary lane eaten by resume-skip.**
+
+### Verified
+
+`curriculum.md` → **`status: verified`**, `last-verified: 120bca1c`. ⚠ Its `sources` keep four per-grade files that were **not** read in depth this session, and **the page says so explicitly** rather than letting `verified` imply more than it earned. Wiki now **39 pages, 22 of 26 modules verified**, `449/449` covered, 0 broken links, 0 orphans, index in sync.
+
+⚠ Fixed in the same pass: my `log.md` edit duplicated a paragraph (the anchor re-emitted text already present). Caught by grepping the file rather than assuming the edit was clean.
+
+⭐ **Next most valuable ingest: `cortex-cluster`** — `NeuronCluster` is the #3 god node (70 edges), still `draft`, and its `TODO: ingest` names the region layout table, the K-microstructure layers and the donor upload path.
