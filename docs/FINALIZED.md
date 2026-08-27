@@ -39733,6 +39733,48 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
 
+## 2026-08-27 - DOCPROV.4 (13 and 14 of 22): a safety rail with no mechanism, and a tracked gap that had already closed
+
+Gee: *"next round, ding!"*
+
+### ⛔ `docs/PERSONA.md` — the persona layer's documented control surface does not exist in the brain
+
+**There is no `/normal`.** No `.claude/commands/normal.md` — that directory holds exactly `hurtme.md`, `sexy.md`, `super-review.md`, `unity.md`, `workflow.md` — **and no slash-command dispatch anywhere in the brain.** A repo-wide search for `startsWith('/')` command handling, `'/unity'`, `'/sexy'`, `'/hurtme'`, `slashCommand` and `personaMode` returns **zero matches in any `.js`**.
+
+So two documented controls describe mechanisms that are not implemented: the **safety rail** *"the `/normal` command is a hard mode reset"*, and the live-user instruction *"Type `/unity` in chat to activate the full persona."*
+
+⭐ **`/unity`, `/sexy` and `/hurtme` ARE real — as CLAUDE CODE AGENT commands**, defined in `.claude/commands/*.md` and used at development time. **The page conflated the dev-agent overlay with the deployed brain's chat**, and told an adult user at the public URL to type a command the brain cannot receive.
+
+⭐ **The consequence runs the SAFE way, and that deserves saying as plainly as the error: the brain has no persona-mode toggle at all. Neutral is not a default it is held at — it is the only mode it has.** ⛔ **But a safety rail that cannot fire is worse than an absent one, because it gets counted as protection.** This is the mirror of the failure this project usually hits (a doc omitting a control that DOES exist), and both are corrected the same way: read the code.
+
+⚠ Also dead: `docs/NewTodo.md`, removed in the 2026-08-20 orphan purge, still pointed at for *"full closure status"*. ⭐ **A bare path in prose is invisible to `docs:drift` check 6, which only resolves markdown `[text](path)` links — so an unlinked path in a sentence is unguarded. Blind spot recorded on the page rather than papered over.**
+
+⭐ **What HELD, checked rather than assumed:** all three `.claude/agents/unity-*.md`, the three real command files, `docs/Ultimate Unity.txt`, `docs/TODO-life-experience.md`, `docs/TODO-full-syllabus.md`, `LICENSE`, `docs/THEORY-PAPER.md`; **all nine substances** present in `drug-scheduler.js` (plus caffeine, with nicotine/tobacco as the exclusions); the **13-axis** speech modulator at `drug-scheduler.js:1255`; and `_selfImageAge()` at `server/brain-server/chat.js:4235`, where an `AGEPIN.1` note confirms **ONE** grade→age map — ⭐ **so this page's own *"do not build a parallel age system"* rule was actually enforced, which is the nicest thing a verification pass can find.**
+
+⚠ **Sixth narrow-pattern false alarm of mine, caught before writing:** the substance list looked half-missing under a quote-anchored grep (`'psilocybin'` etc.) and is complete case-insensitively. ⚠ `drug-scheduler.js:1255` cites `docs/T15-architecture.md`, which **does not exist** — a dead reference in CODE, recorded not fixed.
+
+### ⛔ `docs/DECOMPOSED-curriculum-build.md` — the gap it tracks across twelve grades had already closed
+
+Oldest baseline on the board (2026-06-26). Its central claim is a **20-row count table**, so it was re-measured rather than re-read.
+
+⭐ **THE `−1` COVERAGE GAP ACROSS ALL TWELVE GRADES IS CLOSED. Every grade 1-12 now has runners == roster.** The build ledger below the table still instructed *"verify the −1 missing runner."* **Verified: there is none.**
+
+⛔ **And the table contradicted this page's own ledger.** College rows read 7 runners / −10, while the ledger records *"college1 → college4 — `[x]` EXPANDED 2026-06-26 to a real CS degree (8→10 concurrent courses/year)"*. **The measurement agrees with the ledger** — 10 runners each (`Ela`, `Math`, `Sci`, `Soc`, `Art`, `Major`, `Genered`, `CsTheory`, `CsSystems`, `Life`) — so the gap is **−7**, not −10. grad/phd: 7 → **8** runners, gap −11 → **−10**.
+
+Lines moved as well: pre-K 525 → **915**, kindergarten 8947 → **9200**, grade1 703 → **747**, college1-4 all up ~25%. ⚠ **Even the ledger's own updated figure is stale** — §pre-K records *"DEEPENED (525→738 lines)"* against an actual **915**. Third instance today of *a count is a reading, not a property*.
+
+⭐ **THE PAGE'S CONCLUSION SURVIVES INTACT:** *"the big remaining curriculum build is M4/M5 (college+) + targeted G1-12 gap-fills."* College+ is still the real gap at −7/−10. **Only the numbers moved; the plan was right.** That is the third page this session where correcting stale figures **strengthened** the page's own recommendation rather than undermining it.
+
+### ⚠ THE COUNTING METHOD TOOK THREE ATTEMPTS, and the first two were wrong
+
+`run[A-Za-z]*(` matched the literal word **"runners ("** in prose. `run[A-Z]*(` then also matched **call sites** (`this.runElaK(…)`), inflating kindergarten to 11 and phd to 14. Only **definitions anchored at line start** give a stable count, and it was cross-checked by hand against `grad.js` (8 real runners) and `college1.js` (10).
+
+⛔ **The method is written onto the page** so nobody re-derives it with a looser pattern and concludes the numbers changed. ⭐ **Seventh and eighth narrow-pattern errors of the session — every one caught by checking against a hand count before publishing. The pattern is now unmistakable: enumerate-and-diff finds what reading cannot, and its errors run overwhelmingly toward false positives.**
+
+⚠ **Only COVERAGE was measured, never DEPTH** — the page's own recalibration warns line count is a bad depth proxy, and nothing here assesses whether a cell meets the Definition of Done. ⚠ **Roster sizes are carried forward unverified**, so "gap 0" means runners match the roster *as previously recorded*.
+
+**Provenance drift 16 → 14; sources-coverage 21 → 20.** **14 of 22 pages done.** Board **8 open / 4 in-progress / 385 done**.
+
 ## 2026-08-27 - SRCGAP.1: a guard for the gap that bit four pages in one day - and four defects of my own, the first of which killed its own premise
 
 Gee: *"16 to go"*
