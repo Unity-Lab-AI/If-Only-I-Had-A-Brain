@@ -8,8 +8,8 @@
 >
 > | | |
 > |---|---|
-> | `main` | **6b053155** (confirmed on both remotes by `git ls-remote`) |
-> | `develop` | **a0ba6396** (confirmed on both remotes) |
+> | `main` | **471b5248** — ⚠ **re-read 2026-08-27.** This row said `6b053155` and that was **the pre-cascade value**: the brief recorded the hash, then the commit + cascade that shipped the brief moved it. |
+> | `develop` | **6b6c32b8** — same correction (was `a0ba6396`). ⭐ **A hash written into a tracked file is stale the instant that file is committed.** This is why the row above the table says verify with `git rev-parse` rather than quote this table — **including when the table was written carefully by someone who checked.** |
 > | Board | **8 open / 4 in-progress / 383 done** |
 > | Tree | clean except one untracked file — see the ⚠ below |
 > | `npm run docs:drift` | **31 covered, 0 uncovered, 23 drifted** (exits 0; `--strict` is wired into no CI or hook) |

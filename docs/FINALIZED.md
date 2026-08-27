@@ -39525,3 +39525,87 @@ Gee: *"lets get it"*
 `verified-scope:` names what was checked and what was not: the **wire contract exhaustively**, the JSON message schemas not; the **launcher contracts and flags**, the systemd bootstrap narrative not. ⛔ Marking either `verified` would claim a line-by-line pass that did not happen — and the point of the field is that `draft` becomes a boundary rather than a shrug.
 
 **Drift list 25 → 23.** 3 of 22 pages done (`README`, `WEBSOCKET`, `SETUP`). Board **8 open / 4 in-progress / 383 done**.
+
+## 2026-08-27 - DOCPROV.4 continues: the page that said a restriction still applied, and a false defect I filed against a page that was fine
+
+Gee: *"then read resume.md only after the workflow finishes"* — and then, mid-work: *"u didnt read resume.md"*. ⛔ **He was right.** The pipeline reached Work Mode and I kept walking into the sweep instead of stopping at the boundary he named. Read on the correction, before any further edits landed.
+
+### ⭐ `docs/HTML-ENTRY-POINTS.md` — 5 of 5 sources moved, the worst ratio on the board
+
+**The 11-page inventory it leads with was EXACTLY right** — verified against `git ls-files '*.html'`. **Every error was in an enumeration underneath it**, which is the shape this whole sweep keeps finding: the headline claim is maintained, the lists below it rot.
+
+⛔ **(1) The docs-viewer whitelist is 18 slugs. The page said 8 — and named the ones it claimed were excluded.** `DOC_PATHS` (`html/docs.html:189-207`) also serves `THEORY_PAPER`, `KNOWN_ISSUES`, `ADMIN_CONTROLS`, `THRESHOLD_DERIVATION`, `HELD_BACK`, `PERSONA`, `MINDSPACE`, `SEEDED_TOPOLOGY`, `CURRICULUM_SCOPE` and **`HTML_ENTRY_POINTS` — the page itself.** The old sentence said workflow/planning docs *"are not surfaced in the public legend or docs viewer"* and listed `PERSONA`, `THRESHOLD-DERIVATION` and *"this HTML-ENTRY-POINTS doc"* by name.
+
+⭐ **The widening is DELIBERATE and gated, so this is a stale doc and not a leak:** the comment sitting directly above `DOC_PATHS` records the rule every added doc passed — *a quote may never be edited to make a doc publishable* — meaning each was published with its verbatim quotes intact rather than sanitized to qualify. ⚠ **But it failed in the REASSURING direction, which is the expensive one:** it asserted a privacy restriction that had lapsed. **The half that still holds is that the legend links only the original 8** (verified: 8 `docs.html?doc=` hrefs in `html/legend.html`). ⛔ ***"Not advertised"* and *"not reachable"* are different claims and only the first one is true** — the viewer's own topbar dropdown enumerates all 18 from `Object.keys(DOC_PATHS)`.
+
+⛔ **(2) The dashboard consumes NINE WS message types; five were documented.** Missing: `autoScaleChanged`, `gateProbe`, `serverLog`, `serverLogBacklog`. ⭐ **`gateProbe` is the one that mattered** — it raises the banner that separates *"the brain is paused on purpose while curriculum holds the GPU for a cell gate"* from *"the brain is wedged"*, which is exactly the distinction an operator stares at a dashboard to make. ⛔ **And the page contradicted ITSELF:** its own prose two paragraphs above describes the live server-console panel and the gate-probe banner, while the consumed-types list omitted the messages that drive both. **A doc can disagree with itself across 40 lines and read fine in both places.**
+
+⛔ **(3) Three of the five paths in the deploy-safe `js/` bullet do not exist.** `js/brain3d-*.js` matches **nothing**; the real files are `js/ui/brain-3d.js`, `js/brain/embeddings.js`, `js/brain/letter-input.js`. ⚠ **Not cosmetic:** the ❌ bullet immediately below carves out `js/brain/` as *"heavy Node-side modules, only loaded via brain-server context"* — so two client-safe files were filed as living **outside** the directory they are actually **inside**. A deploy exclusion written off that list would have dropped them.
+
+⛔ **(4) `brain-equations.html` was described as *"No external dependencies, no module imports — pure HTML + inline CSS."*** It links `../css/tooltip.css` **and `@import`s Google Fonts** (JetBrains Mono + Inter). ⭐ **All five "static" pages share `css/tooltip.css`** (`brain-equations`, `legend`, `unity-guide`, `webgpu-prep`, `docs`) — so `css/` is deploy-required for every one of them, and "pure inline CSS" was wrong wherever it appeared. ⚠ Honest severity: the remote font degrades to the fallback stack offline — **visually different, never broken, no equation content lost.**
+
+⛔ **(5) The legend's three sections split by ACCESS LEVEL, not by purpose.** Documented as "Live brain UI / Setup & admin / Reference"; actually `🌐 For everyone — open & use (no login)` (8 cards), `🔑 Admin / operator — login required` (3, including the legend's self-card), `📝 Public docs (rendered in-browser)`. **All three names wrong — and `dashboard-public.html` + `minds-eye.html` were missing from the narrative while sitting in the inventory table 100 lines above it.** That is how a page can be in a doc and invisible in it.
+
+⛔ **(6) The `brain-equations` Status line stopped at 2026-06-17 while a banner on the SAME page recorded section 6.5 landing on 2026-08-25.** Two places asserting the same thing, drifted apart. Replaced with mechanical counts: **34 `<h2>` sections, 91 `eq-title` cards, section 6.5 present.**
+
+### ⚠ ONE FALSE DEFECT — filed against the page, retracted in under a minute
+
+An `<h2[^>]*>` sweep reported a section heading numbered **`0.15`** on the public equations page. ⭐ **I went to confirm it before claiming it, and it was my regex:** the pattern truncated **inside a `title` attribute that contains a literal `>`** (`… coherence > 0.15. Low social need = quiet …`), so attribute prose was reported as a heading. The real heading is `8.15. Inner Voice — Pre-Verbal Thought Threshold`. **The page was fine; the detector was not.**
+
+⭐ **Same class as the dynamic-key grep that nearly condemned live `word_motor_*` code, and the `DEFAULT_BIO_WEIGHTS` read that nearly "corrected" a correct README.** The rule is now written on the page: **count `<h2` occurrences, not `<h2[^>]*>` matches** — `grep` sees text, not structure. **Three near-misses in this sweep, all caught by verifying before asserting; a doc-verification pass can introduce errors as fast as it fixes them.**
+
+### ⚠ Two sources ADDED, and the reason is the interesting part
+
+`html/docs.html` and `html/brain-equations.html` are now in the page's `sources`. ⛔ **Two of the six errors came from files this page made load-bearing claims about while not listing them as sources — so `docs:drift` could never have flagged either one.** A provenance baseline only fires on the files it names. Costs a noisier drift signal; buys a check that can actually go off.
+
+⚠ `status` stays `draft`. `verified-scope:` names the **eight enumerations checked** and the four narrative areas deliberately **not** — the H.1/H.2/H.6/H.9 failure-mode banners (runtime states, and both brains run older code), the `_spawnGpuClient` browser-by-browser chain, the diagnostic protocol's log strings, and `compute.html` / `minds-eye.html` internals (both named sources, both moved, inventory rows re-read but contracts not).
+
+### ⚠ And the pick-up brief's own hashes were stale
+
+`docs/RESUME.md` carried `main 6b053155` / `develop a0ba6396` — **the PRE-CASCADE values.** The brief recorded them, then the commit and cascade that shipped the brief moved them. Re-read to **`471b5248` / `6b6c32b8`** against `refs/heads/*`. ⭐ **A hash written into a tracked file is stale the instant that file is committed** — which is precisely why the line above that table tells the reader to run `git rev-parse` rather than trust it, **including when the table was filled in by someone who checked every number.**
+
+**Drift list 23 → 22.** `wiki:coverage` **449/449 files, 0 broken links, 0 orphans, 176 exact + 4 approximate line counts.** **4 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`). Board **8 open / 4 in-progress / 383 done**. ⭐ **The method is proven on four pages now: enumerate the set the code itself defines, diff it against the set the page defines, do not proof-read prose.** It has produced an undocumented wire frame type, four undocumented message types, an 18-vs-8 whitelist and three nonexistent paths — **and all four pages read perfectly well while being wrong.**
+
+## 2026-08-27 - ADMIN-CONTROLS: a 194-row table that was EXACT, seven endpoints that were missing, and a fallback of mine that silently un-did its own fix
+
+Gee: *"then read resume.md only after the workflow finishes"*
+
+### ⭐ `docs/ADMIN-CONTROLS.md` (5 of 22) — the env-flag table is EXACT, and that is the headline
+
+Every `DREAM_*` flag referenced in `server/` + `js/` + `scripts/` enumerated and diffed against every flag named on the page: **194 in the code, 194 on the page, ZERO difference in either direction.**
+
+⭐ **This is worth recording as loudly as a defect would be.** A 194-row table is exactly where drift is invisible — nobody re-reads it, and every one of this project's worst documentation failures has been a list that quietly stopped matching reality. **This one had not.** ⛔ **A hunt that comes back empty must be written down, or the next session re-runs it** — same rule as the six 2026-08-27 hunts where four were clean.
+
+### ⚠ TWO apparent gaps, BOTH mine rather than the page's
+
+⛔ **(1) `DREAM_WANT_BROWSER_GPU` looked like a flag missing from the reference.** It is a **batch-script local** — `windows/start.bat:135` sets it from a `/browser` argument and the **same `.bat` consumes it** at `:138` to decide whether to set `DREAM_NO_AUTO_GPU`. **Node never reads it.** A server env reference correctly excludes it; the `DREAM_` prefix merely made it *look* like one. **Pattern-matching a naming convention is not the same as finding a consumer.**
+
+⛔ **(2) A route sweep filed `/update` as documented-but-nonexistent — and `/update` is the box-deploy endpoint, so that would have been a bad claim to publish.** It exists at `brain-server.js:8875`, dispatched as `req.url.split('?')[0] === '/update'` — a shape my `=== '/route'` pattern did not match. A second pattern found **33 routes where the first found 26.** ⭐ **An endpoint enumeration is only as complete as the dispatch shapes it matches**, and that caution is now written on the page for whoever re-runs it.
+
+⭐ **Three false positives in two pages this session — `<h2[^>]*>` truncating inside a `title` attribute, `DREAM_WANT_BROWSER_GPU`, and `/update` — every one caught by going to confirm before writing it down.** ⛔ **A doc-verification pass can manufacture errors as fast as it fixes them; the discipline is that a finding is not a finding until it has been checked individually.**
+
+### ⛔ What the sweep DID find: seven loopback-gated admin endpoints the page never listed
+
+**`/grade-advance` (`:9009`) is the one that matters — it advances the grade while BYPASSING the LAW-6 Part-2 per-subject operator signoff.** A page titled ADMIN CONTROLS did not mention the endpoint that skips the operator gate. Also absent: `/grade-signoff` (`:9675`), `/auto-advance` (`:9275`), `/autoscale` (`:9361`), `/sleep` + `/wake` (`:9464`), `/learn-from-web` (`:9425`), `/diag/parity` (`:8659`).
+
+⚠ **Two of them were documented as dashboard buttons in a DIFFERENT doc** — `docs/HTML-ENTRY-POINTS.md` names `#d-ms-advance` and `#d-ms-auto-advance` as admin-only controls — **so the information existed and simply was not on the page whose job it is.** ⭐ `/diag/parity` is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command the README advertised until this morning. All seven guards read individually: every one carries `requireLoopback` as its first statement. **The exclusions are named on the page too** — `/episodes`, `/exam-answer`, `/history` are reads, not controls — because a completeness claim with no stated boundary is the failure this sweep keeps finding.
+
+### ⛔ `GOTCHA.9` — my own `GOTCHA.2` fix shipped behind a guard whose else-branch was the original bug
+
+Found by reading the diff of the **one source that had moved**, which was my own change. `js/brain/curriculum.js:11973` read:
+
+`(typeof cluster.topLevelRegionNames === 'function') ? cluster.topLevelRegionNames() : Object.keys(cluster.regions)`
+
+⛔ **`Object.keys(cluster.regions)` is precisely what `GOTCHA.2` was filed to eliminate** — all 23 declared names, 12 of them nested sub-bands the GPU never registers, up to **24 junk wire frames per clear**, inflating `teach_ops`, which is the counter `TEACHMIRROR.1` was built to separate a saturated donor from an idle one. **So the guard did not protect the fix. It silently un-did it — no counter, no log line.**
+
+⭐ **And the guard was provably dead.** `topLevelRegionNames()` is a **method on the `NeuronCluster` class** (`cluster.js:1404`), present on every instance via the prototype. The enclosing `_clearSpikes(regionNames = null)` (`:11929`) binds `const cluster = this.cluster`, and the block already requires `cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions`, two lines below a `cluster.lastSpikes.fill(0)`. **There is no reachable state where the method is absent and the object is still a cluster.**
+
+⛔ **`feedback_no_fallbacks_law` violation** — capability-degradation `if-X-else-Y`, which that law explicitly separates from legitimate defensive I/O `try/catch`. ⭐ **And the exact mirror of `DORMANT.1`:** there, `_teachWordSpellingDirectFinal` had **37 `typeof`-guarded call sites and zero definitions**, so the guards concealed a *missing* function; here the definition exists and the guard concealed a *live bug*. **The rule that generalises: a `typeof` guard around a method your own class defines is never protection — it is dead code or a silent downgrade, and the call site cannot tell you which.**
+
+**Fixed by calling it unconditionally**, with the reasoning left in the code so nobody re-guards it while trying to be careful. If a refactor drops the method, **throwing is the correct outcome.** Verified: `node --check` OK, ESM `import()` OK, **bundle rebuilt in the same commit** (`js/app.bundle.js` — guarded expression **0 occurrences**, direct call **1**; the bundle is deliberately not auto-cleared at boot).
+
+⚠ **Read scope stated honestly: `curriculum.js` is 28,340 lines and I did not read all 36 chunks.** I read the enclosing function, its binding of `cluster`, the definition site, and every call site of the method repo-wide. **Claiming a full read of 28,340 lines would be the same class of lie this sweep exists to fix.**
+
+⚠ **This edit re-drifts `ADMIN-CONTROLS.md` by one source the instant it lands** — recorded in that page's `verified-scope` with the reason, because the alternative is bumping a hash to silence a signal that is telling the truth. ⛔ **A stamp cannot name the commit that contains it**, so the honest value is *the tree I actually read*.
+
+**Drift list 22 → 21** (and back to 22 on commit, by design, per the note above). **5 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`, `ADMIN-CONTROLS`). Board **8 open / 4 in-progress / 384 done** — ⚠ **counted with `grep`, not derived.** I first wrote *"3 in-progress"* by reasoning that `GOTCHA.9` had closed one; it did not move the count, because `GOTCHA.9` was **filed and closed inside the same session**, entering as `[~]` and leaving as `[x]`. ⭐ **Same lesson as the line counts: a tally is a READING, not an inference** — and it was wrong in the direction that flatters the work.
