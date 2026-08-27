@@ -39204,3 +39204,59 @@ It was declared, described in prose as *"each subject gets 3 minutes of wall-clo
 ⚠ Fixed in the same pass: my `log.md` edit duplicated a paragraph (the anchor re-emitted text already present). Caught by grepping the file rather than assuming the edit was clean.
 
 ⭐ **Next most valuable ingest: `cortex-cluster`** — `NeuronCluster` is the #3 god node (70 edges), still `draft`, and its `TODO: ingest` names the region layout table, the K-microstructure layers and the donor upload path.
+
+---
+
+## 2026-08-27 - INGEST.REST: the last four drafts, and four findings that outlive the wiki - feature/wiki-ingest-cluster
+
+Gee: *"keep going"*
+
+⛔ **Recorded here because `wiki/` is gitignored** — these are facts about `cluster.js`, `brain-server.js`, `gpu.js` and `visual-memory.js`, and they must survive a fresh clone.
+
+⭐ **All 26 module pages are now `status: verified`, and ZERO `TODO: ingest` markers remain.** Four ingests shipped as one batch: `cortex-cluster`, `brain-server`, `donor-lane`, `visual-memory`. Every page carries a **read-depth** line naming exactly which files were opened, so `verified` cannot imply more than it earned.
+
+### ⭐ FINDING 1 — the near-miss: I almost recorded live code as dead
+
+`cluster.js` declares 12 sub-band regions (`sem_ela`…`sem_life`, `word_motor_ela`…`word_motor_life`). A literal grep showed **no consumers**, and the emission geometry is provably unified (`wordBucketCellSizeFor`, `cluster/emit.js:1301`: ONE global band, one bucket per unique word, the `subject` argument *"ignored for geometry"*).
+
+⛔ **They are not dead.** Checking for **dynamic** access found two real readers: `_inferActiveSubject()` (`cluster.js:2508`) reads `regions[\`word_motor_${subj}\`]` activation to decide the active subject, and `_qaBindingWhitelist()` (`curriculum.js:13184`) builds `sem_to_${subjBand}` keys via `wordMotorBandName()`.
+
+⚠ **The dead-code detector's blind spot is template-built keys and callback registration** — six findings in an earlier audit were false positives from exactly this class. **Verify individually before acting on that scan.** What IS true: the layout comment block (`:762`-`:790`) still describes per-subject write slices, which is superseded.
+
+### ⭐ FINDING 2 — `BOUNDCAP.1`: a version gate that was true for every donor
+
+The test was `if (client.donorAppVersion)`. `gpu_register` stamps `donorAppVersion = _donorVer || 'browser'` — **a browser donor gets the truthy STRING `'browser'`** — so the presence test selected the native path for browser donors too, and **the browser branch was dead code**.
+
+⛔ **Not harmlessly.** `compute.html`'s type=2 handler reads the payload as a **dense 0/1 spike array**; `_boundPreIndicesFor` returns **indices**. *"Sending indices where a dense vector is expected is not a smaller signal, it is a DIFFERENT one"* — and `preLen === 0` is the browser's bound-mode trigger, so a non-empty pre also forced standalone mode on a matrix whose standalone buffers are unallocated when cluster-bound. **The fix for one donor type had become a mirror image of the same bug on the other.**
+
+⭐ Now routed on advertised **capability** (`boundResidentRead`), and ⛔ **deliberately NOT `!_donorIsNative(ws)`** — that helper answers `false` for an *unregistered* donor, so its negation would route an unknown donor to the path that *"silently returns all-zero currents on a native binary."* **Unknown must land on the rebuild path, which refuses with `null` instead of inventing a signal. The asymmetry is the safety property.**
+
+### ⭐ FINDING 3 — the checkpoint ring pinned while the dashboard read healthy
+
+Slot index was `_saveVersion % CHECKPOINT_SLOTS`, computed at a copy that is **hourly-gated**, while `_saveVersion` advances on **every** save. At the steady cadence (12 saves/hour, `12 % 3 = 0`) **every hourly copy landed in the same slot** — one fresh, two fossils — and *"the dashboard's 'checkpoints (last 3)' read healthy the whole time."*
+
+⛔ **And the pairs were incoherent:** `.json` written every save, `.bin` hourly, so *"a slot's json said '2 minutes ago' while the bin beside it was 50 minutes old, and a rollback restored that mismatched pair."* `_nextCheckpointSlot()` (`brain-server.js:1199`) now advances **once per real copy** and initialises **from disk** — empty slots first, else oldest, because *"every restart would stomp whichever slot happened to be newest."*
+
+### ⭐ FINDING 4 — a NUL byte made a 320KB file invisible to grep
+
+`_pickEyeSubject()`'s empty-thought sentinel shipped as a raw NUL (`'\0empty'`). It worked — no real word collides — but **a NUL in source makes the whole file read as BINARY to `grep`, which returns empty results with no error.** Three searches for the chat handler came back clean because of it. The sentinel is now a readable, greppable literal, and the comment says why.
+
+⚠ Related on the same function: pin detection counts consecutive ticks **even when the thought is empty**, because `'' && …` is falsy and would reset the counter every tick — reading *"she keeps changing her mind"* when the truth is *"thinking nothing, over and over."*
+
+### Also documented, from source
+
+**`requireLoopback` is TWO gates** (`brain-server.js:8412`) — loopback, then, under `UAL_PROXY_AUTH=1`, a proxy-vouched `X-UAL-User`, because *"behind the reverse proxy, loopback is universal."* Trustworthy **only** because the proxy strips client-supplied copies.
+
+**Donor election has no fixed primary** — `strength = base × health`, multiplicative, re-elected each rebalance tick with a **1.25× margin** (each handoff re-uploads the brain). RTT health **floors at 0.05 rather than 0**, because `filter(w > 0)` had been removing willing high-RTT donors from every plan — *"no amount of reconnecting helped."* Multiplicativity is what stops a floored donor being promoted PRIMARY.
+
+**`SPRS` wire** — the **4-byte header pad is load-bearing**: Chrome throws `RangeError` on unaligned TypedArray views, which *"was silently killing all previous uploads for matrix names whose length wasn't 1 mod 4."*
+
+**`_recDetail`** (`visual-memory.js:1209`) reading only `val_b64` returned **0 for every restored memory**, so recall silently refused everything reloaded. ⭐ **A storage-format change makes every reader of the old shape a candidate silent-refusal site.**
+
+**Region layout is entirely fractional** — `CLUSTER_FRACTIONS` + `clusterSizesFor()` called by **both client and server** so they cannot disagree at a tier; eleven language sub-regions, `cortex` only. ⛔ `motor` (letter identity) and `word_motor` (word identity) are **not alternatives** — *"NO FALLBACK between them."* Cross-projection density scales **inversely** with source-region size: 10% on `phon→sem` at 375K cortex would be **940M entries per direction**.
+
+**Nine K-microstructure features, cortex-only**, all declared FUNCTIONAL APPROXIMATIONS. ⭐ Three mechanisms actually READ `layerId` (cross-projection endpoints L2/3→L4, plasticity lr scaling, hub eligibility), and `hubMask` is deterministic-hash-seeded **because Hebbian weights are tied to hub indices** and reshuffling on reload would invalidate learned structure. ⚠ The first-pass assignment ran **before `regions` existed**, so ~9 columns straddled every region boundary; that pass is deleted and the per-region pass is the single source.
+
+### Verified
+
+Wiki **39 pages, 26/26 modules verified, 0 `TODO: ingest`**, `449/449` covered, 0 broken links, 0 orphans, index in sync. `npm run docs:drift` **No drift found**. No source files were modified by this batch — it is reading and recording only.
