@@ -11970,9 +11970,22 @@ export class Curriculum {
       // which TEACHMIRROR.1 made the signal separating a saturated donor from
       // an idle one. Clearing the enclosing region already covers every nested
       // span inside it, so nothing is left uncleared.
-      const _names = (typeof cluster.topLevelRegionNames === 'function')
-        ? cluster.topLevelRegionNames()
-        : Object.keys(cluster.regions);
+      // GOTCHA.9 — called UNCONDITIONALLY, and the missing guard is the fix.
+      // This read `(typeof cluster.topLevelRegionNames === 'function') ? … :
+      // Object.keys(cluster.regions)`, whose else-branch is the defect above
+      // verbatim — so the guard did not protect the fix, it silently undid it,
+      // with no counter and no log line. It was also dead: the method is
+      // declared on the NeuronCluster class (cluster.js:1404), so every
+      // instance carries it on the prototype, and this block already requires
+      // `_gpuProxy` + `clearSpikeSlice` + `regions` two lines under a
+      // `cluster.lastSpikes.fill(0)` — there is no reachable state where the
+      // method is absent and the object is still a cluster. A typeof guard
+      // around a method your own class defines is never protection: it is dead
+      // code or a silent downgrade, and the call site cannot tell you which.
+      // If a refactor ever drops the method, THROWING here is the correct
+      // outcome — the alternative is quietly shipping the donor 24 phantom
+      // frames per clear and poisoning teach_ops (TEACHMIRROR.1) again.
+      const _names = cluster.topLevelRegionNames();
       for (const regionName of _names) {
         try { cluster._gpuProxy.clearSpikeSlice(regionName); } catch { /* non-fatal */ }
       }

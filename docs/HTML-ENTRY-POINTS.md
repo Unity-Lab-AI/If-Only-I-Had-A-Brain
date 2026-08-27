@@ -1,6 +1,9 @@
 ---
 # DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ `status` stays `draft` DELIBERATELY. `verified-scope` names exactly what was
+# checked against source and what was NOT. Marking this `verified` would claim a
+# line-by-line pass over 242 lines that did not happen.
 status: draft
 sources:
   - index.html
@@ -8,12 +11,40 @@ sources:
   - html/compute.html
   - html/minds-eye.html
   - html/legend.html
-last-verified: "f4d304a9 2026-08-25"
+  - html/docs.html
+  - html/brain-equations.html
+verified-scope: |
+  CHECKED 2026-08-27 against source, mechanically enumerated and diffed:
+    - the 11-page inventory vs `git ls-files '*.html'` (exact match)
+    - `DOC_PATHS` whitelist in html/docs.html (18 slugs) vs the documented 8
+    - `docs.html?doc=` hrefs in html/legend.html (8) vs the whitelist (18)
+    - every `msg.type ===` test in html/dashboard.html (9) vs the documented 5
+    - the legend's `<h2>` sections + every page card, vs the documented split
+    - every path in the deploy-safe `js/` bullet vs `git ls-files`
+    - external CSS/JS deps of all 5 "static" pages (`<link>`, `@import`, `<script src>`)
+    - html/brain-equations.html section + eq-card counts (34 / 91)
+  NOT CHECKED — do not read this page as authority on:
+    - the per-page failure-mode narratives (H.1/H.2/H.6/H.9 banner behaviour) — not
+      reproduced live; they describe runtime states, and the box runs older code
+    - the `_spawnGpuClient` 5-step auto-launch chain, browser-by-browser
+    - the diagnostic protocol's log-line strings and the 114.19fp session section
+    - html/compute.html and html/minds-eye.html internals (both are named sources
+      and both moved; their inventory rows were re-read, their contracts were not)
+  ⚠ TWO SOURCES ADDED this pass: html/docs.html and html/brain-equations.html.
+  Two of the six errors came from files this page made claims about while not
+  listing them as sources — so drift could never have flagged them. Adding them
+  costs a noisier drift signal and buys a check that can actually fire.
+# ⚠ This is the commit whose CODE was verified against — the tree state at the
+# time of the read. This pass touched only docs, so none of the sources above
+# moved in it, and drift correctly reads clean from here.
+last-verified: "6b6c32b8 2026-08-27"
 ---
 
 # HTML-ENTRY-POINTS — every page, its contract, its failure modes
 
 > **Status:** drafted 2026-06-17 per audit H.5 + H.8 — operator's live-test reported "only two opened and they both said no connection." This doc inventories every HTML, how it's launched, what it needs from the server, what's deploy-safe vs require-Node, and the per-HTML failure-mode signature.
+>
+> **Re-verified 2026-08-27 (DOCPROV.4 — all 5 sources had moved, the worst ratio on the drift board): the 11-page inventory is still EXACT, and SIX enumerations inside it were not.** ⭐ **Every one was found by diffing the code's own enumeration against this page's — not by re-reading 242 lines of prose.** ⛔ **(1) The docs-viewer whitelist is 18 slugs, not 8** — and the page claimed that workflow/planning docs *"are not surfaced in the public legend or docs viewer"* while `PERSONA`, `THRESHOLD_DERIVATION` and **this file** were all in `DOC_PATHS`. The widening is deliberate and gated on a quote check; the doc had simply not caught up, and it was the **reassuring** direction — asserting a restriction that no longer held. ⛔ **(2) The dashboard consumes NINE WS message types; five were listed.** The missing `gateProbe` is what raises the banner distinguishing *"paused on purpose"* from *"wedged"*, and `serverLog`/`serverLogBacklog` were already described in this page's own prose two paragraphs up — **the table contradicted its own section.** ⛔ **(3) Three of five paths in the deploy-safe `js/` bullet did not exist** (`js/brain3d-*.js` matches nothing; `embeddings.js` and `letter-input.js` are under `js/brain/`). ⛔ **(4) `brain-equations.html` was called "no external dependencies — pure HTML + inline CSS"; it links `../css/tooltip.css` and `@import`s Google Fonts** — and all five static pages share that stylesheet, so `css/` is deploy-required for every one. ⛔ **(5) The legend's three sections split by ACCESS LEVEL, not purpose** — all three documented names were wrong and two pages (`dashboard-public`, `minds-eye`) were missing from the narrative while present in the table above it. ⛔ **(6) The `brain-equations` Status line stopped at 2026-06-17 while a banner on this same page recorded section 6.5 landing on 2026-08-25.** ⚠ **And one FALSE defect I filed against the page and retracted within a minute:** an `<h2[^>]*>` sweep reported a heading numbered `0.15` — the regex had truncated inside a `title` attribute containing a literal `>`. **The page was fine; the detector was not.** ⭐ **Counts are now recorded mechanically (34 `<h2>`, 91 `eq-title`, 11 pages, 18 slugs, 9 message types) so the next reader diffs numbers instead of trusting adjectives.**
 > **Updated 2026-08-25 (SCALEWALK / ONESHOT):** inventory unchanged at 11 pages. `html/dashboard.html` gained two rows, both added **because a console line could not be read in time**. **`uplink`** — the chunked-upload rate, which existed only in a log line and was missed on an entire press; ⚠ it renders the last upload **and the largest in the ring**, with the **size beside every rate**, because the rate is not uniform (measured live: 73.92 MB/s on a 192MB matrix vs 1520.82 MB/s on a 13.7MB one — a bare "last upload" figure is a different claim depending on which matrix finished last). **`loop profile`** — the top three entries of the `RHYTHM3S` self-profile, colour-graded by share, which is how the walk's dominant cost is now read; `null` renders **"not sampled yet"**, never a reassuring zero, because the profile fires once at +150s. ⛔ **The rule behind both rows (KI-36): a measurement that happens ONCE cannot live in a console line** — at walk speed the 500-line ring is a **nine-second** window, and it got that way *because* SCALEWALK made the walk ~40× faster.
 >
 > **Updated 2026-08-25 (BOARDPARITY / PROPBOUND / DARKHEB / ARTZIG2 sweep):** inventory unchanged at 11 pages. Two surfaces changed content, and the first is a correction to the entry directly below this one. `html/dashboard.html` — ⛔ **the Endocrine and Introspection panels added in that entry were rendering only PART of their layer.** The panels, renderers and call sites all existed, so the fix *looked* landed; a producer/consumer parity check showed `puberty` / `cycle` / `allostatic` were **read by the page and never forwarded by the server**, and it did not present as an empty row — the renderer defaults a missing `allostatic` to `{}`, so the load row rendered a healthy **`0.000/0.6`** regardless of real load, the cycle row never drew at all, and `puberty` printed a literal `? (age ?)`. Fixed by forwarding the fields and adding rows for `contributions`, `counters` and `lastError` on both panels; **parity is now exact in both directions — 13/13 endocrine, 7/7 introspection.** Also gained a `bound propagate` row (`N on-card · N →CPU (N%)`) and three `teach ops` / `teach refusals` / `teach verbs` rows for the `boundHebbian` block, which was publishing seven fields into the dark. `html/unity-guide.html` — ⛔ **"She has eight different hands" was false**: three of the eight (dot-stipple, cross-hatch, crayon) were culled the day they were judged, and the live roster is **five**. Corrected, with the reason kept — *a style that doesn't survive being judged doesn't stay in the set* — plus a plain-English line on her stroke commitment now being a **trained** ability rather than a constant. ⭐ **The lesson this entry exists to record: adding the row is not the check. The check is proving the field arrives.**
@@ -35,7 +66,7 @@ last-verified: "f4d304a9 2026-08-25"
 | `html/compute.html` | Browser-GPU donor worker (WebGPU sparse-matrix forward, data-parallel replica) | Deployed: visitor opens it, donates their GPU via donor lane `wss://<host>/ws`. Local: brain-server `_spawnGpuClient()` auto-launches in isolated Chrome against `http://localhost:7525/compute.html` | YES — depends on WS handshake + module imports | NO (requires server HTTP route) |
 | `html/webgpu-prep.html` | Pre-flight WebGPU setup — browser-by-browser flag instructions | Deployed + local: linked from boot modal on `index.html` + `html/dashboard.html` when adapter unavailable; can be visited manually | NO (static, runs adapter check via `navigator.gpu`) | YES |
 | `html/legend.html` | Page legend / quick-access index — every HTML + public-facing doc | Deployed + local: floating `📑 Pages` button on every HTML's top-right corner | NO (static) | YES |
-| `html/docs.html` | Markdown doc viewer (public docs only) with whitelist + inline renderer | Deployed + local: linked from `html/legend.html` Public Docs section + the `📑 Pages` button | NO (static, fetches `.md` files via `fetch()`) | YES |
+| `html/docs.html` | Markdown doc viewer — **18-slug whitelist** (`DOC_PATHS`, `html/docs.html:189-207`) + inline renderer | Deployed + local: linked from `html/legend.html` Public Docs section + the `📑 Pages` button. ⚠ The legend links **8** of the 18; the other 10 are reachable by typing the slug | NO (static, fetches `.md` files via `fetch()`) | YES |
 | `html/brain-equations.html` | Public-facing math reference for equational cognition | Deployed + local: manual (link from index.html) | NO (static) | YES |
 | `html/unity-guide.html` | Persona + capabilities tour | Deployed + local: manual (link from index.html) | NO (static) | YES |
 | `html/gpu-configure.html` | Admin GPU tier-config UI | Local: `windows/GPUCONFIGURE.bat` (config-write endpoint is loopback-only) | YES (config-write endpoint) | NO |
@@ -87,12 +118,16 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 - `gpuClientSpawnFailed` WS event from brain-server `_spawnGpuClient` → banner per H.6 shows browser/exePath/errno
 - Server crashed mid-stream → onclose handler fires → banner shows + 3s auto-retry countdown
 
-**WS message types consumed:**
+**WS message types consumed — NINE.** ⛔ **CORRECTED 2026-08-27: this list held FIVE. Enumerated mechanically from every `msg.type ===` test in `html/dashboard.html` and diffed against the list below — four were missing, and the page's own prose above already described two of them** (the "live server-console panel" and the `gate-probe-banner`), so the table contradicted its own section:
 - `welcome` — initial state + emotion history
 - `state` — periodic full state broadcast (~5-10Hz)
 - `modeAssigned` — admin/viewer role assigned by server ~500 ms after WS connect (loopback origin → admin, else viewer). Sets `window.state.viewerMode`, toggles `body.is-admin` class to reveal admin-only controls.
 - `autoAdvanceChanged` — broadcast when any admin tab POSTs `/auto-advance`; every other open dashboard syncs the auto-advance checkbox UI without polling.
 - `gpuClientSpawnFailed` — H.6 surfacing event (rare, fires on browser-launch failure)
+- `autoScaleChanged` — community-compute auto-scale settings changed by another admin tab; syncs the toggle/slider UI without polling (the sibling of `autoAdvanceChanged`, and undocumented for as long as it)
+- `gateProbe` — drives the `gate-probe-banner` (I.6) with its live duration tick while curriculum holds the GPU exclusively for a cell gate. ⚠ **This is the one whose absence mattered most:** the banner is how an operator distinguishes *"the brain is paused on purpose"* from *"the brain is wedged"*, and the message that raises it was not in the contract
+- `serverLog` — one live console line appended to the server-console panel
+- `serverLogBacklog` — the console ring replayed on connect, so a dashboard opened at minute 40 is not staring at an empty console. ⚠ **Distinct from `serverLog` on purpose** — a client that handled only the singular form would look healthy and show nothing until the next line happened to fire
 
 **Admin-only controls (hidden in viewer mode):**
 - `#btn-graceful-stop` — `⏹ Stop Brain` button in connection-status row. ⛔ **Removed from the DOM (not hidden) unless `location.hostname` is `localhost` / `127.0.0.1` / `::1`** — it exits 42, which `RestartPreventExitStatus=42` makes final, so it is a one-way door on a box whose operator has no shell. See `wireGracefulStop()` and `docs/ADMIN-CONTROLS.md §STOPTRAP.1`.
@@ -147,9 +182,17 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 
 **Purpose:** Single canonical index for every HTML + workflow doc in the project. Operator callout 2026-06-18: *"need a glossary or legend for quick access to all the htmls not only just hospogged all around all over the place"*. Every other HTML carries a small floating `📑 Pages` button (top-right, z-index 99998) that opens this page.
 
-**No server required.** GH-Pages-safe. Pure static, no imports.
+**No server required.** GH-Pages-safe. No JS imports at all — but it does link the shared `../css/tooltip.css` (see the `brain-equations.html` correction below; `css/` is deploy-required for all five static pages).
 
-**Page structure:** three card-grid sections — Live brain UI (index, dashboard, compute), Setup & admin (webgpu-prep, gpu-configure, docs viewer, legend self-card), Reference (brain-equations, unity-guide). Followed by a **public-docs** list pointing at `docs.html?doc=<slug>` for in-browser markdown rendering plus a raw-`.md` fallback link per doc — README + SETUP + ARCHITECTURE + EQUATIONS + ROADMAP + SKILL_TREE + SENSORY + WEBSOCKET only. Workflow + planning docs (Supertodo, TODO/FINALIZED/NOW/RESUME, TODO-life-experience, TODO-full-syllabus, COMP-todo, PUSH_WORKFLOW, STATUSLINE, PERSONA, THRESHOLD-DERIVATION, this HTML-ENTRY-POINTS doc) are LAB-INTERNAL per operator directive 2026-06-18 — not surfaced in the public legend or docs viewer.
+**Page structure — three sections, split by ACCESS LEVEL, not by purpose.** ⛔ **CORRECTED 2026-08-27: the previous description named the sections "Live brain UI / Setup & admin / Reference" and listed 9 of the 11 pages. All three names were wrong and two pages were missing.** The live headings, verbatim:
+
+| # | Heading (`html/legend.html`) | Pages carded |
+|---|------------------------------|--------------|
+| 1 | `🌐 For everyone — open & use (no login)` | `index.html`, `compute.html`, `unity-guide.html`, `brain-equations.html`, `docs.html`, `webgpu-prep.html`, `dashboard-public.html`, `minds-eye.html` — **8** |
+| 2 | `🔑 Admin / operator — login required` | `dashboard.html`, `gpu-configure.html`, `legend.html` (self-card) — **3** |
+| 3 | `📝 Public docs (rendered in-browser)` | the 8 doc links, not pages |
+
+⭐ **All 11 pages are carded** — the old text omitted `dashboard-public.html` and `minds-eye.html` entirely, which is how a page can exist in the inventory table above and be invisible in the narrative below it. Section 3 points at `docs.html?doc=<slug>` plus a raw-`.md` fallback per doc, and lists **README + SETUP + ARCHITECTURE + EQUATIONS + ROADMAP + SKILL_TREE + SENSORY + WEBSOCKET only** — that part is still accurate. ⚠ **But read the docs-viewer section below before repeating "workflow + planning docs are not surfaced":** the legend's own lede scopes that claim correctly (*"not for public legend"*), and the viewer's whitelist has since grown to 18. **The legend is the advertisement, not the gate.**
 
 **Failure modes:** none meaningful — pure static. Stale tag info gets caught when this doc updates.
 
@@ -159,7 +202,7 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 
 **No server required.** GH-Pages-safe — `fetch()` resolves relative paths from the page URL.
 
-**Whitelist-gated + public-only.** The `DOC_PATHS` object inside the page maps each allowed slug to its relative path (e.g. `README` → `../README.md`). Slugs outside the whitelist render an error page, not a directory traversal. Per operator directive 2026-06-18 the whitelist contains PUBLIC docs only (README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET); workflow + planning docs are intentionally excluded so a public dashboard visitor can't paw through internal task ledgers. Adding a new public doc means adding a row to `DOC_PATHS`; internal docs stay out.
+**Whitelist-gated — and the whitelist is 18 slugs, not 8.** The `DOC_PATHS` object inside the page maps each allowed slug to its relative path (e.g. `README` → `../README.md`). Slugs outside the whitelist render an error page, not a directory traversal. ⛔ **CORRECTED 2026-08-27 — this paragraph previously claimed the whitelist "contains PUBLIC docs only (README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET)" and that "workflow + planning docs are intentionally excluded." That was true when written and is now false.** `DOC_PATHS` (`html/docs.html:189-207`) holds those original 8 **plus ten more**: `THEORY_PAPER`, `KNOWN_ISSUES`, `ADMIN_CONTROLS`, `THRESHOLD_DERIVATION`, `HELD_BACK`, `PERSONA`, `MINDSPACE`, `SEEDED_TOPOLOGY`, `CURRICULUM_SCOPE`, and `HTML_ENTRY_POINTS` — **this page itself.** ⭐ **The widening is DELIBERATE, not a leak:** the comment directly above `DOC_PATHS` records the gate every added doc passes — *a quote may never be edited to make a doc publishable* — so each was published with its verbatim quotes intact rather than sanitized. ⚠ **What the reader must not conclude:** the still-accurate half is that the **public legend links only the original 8** (verified: 8 `docs.html?doc=` hrefs in `html/legend.html`). The other 10 are not advertised, but they ARE served to anyone who types the slug — **"not in the legend" and "not reachable" are different claims, and only the first one holds.** The dropdown in the page topbar enumerates all 18 from `Object.keys(DOC_PATHS)`, so the viewer's own UI lists them. Adding a doc means adding a row **and** passing the quote check.
 
 **Inline parser scope:** ATX headers (# through ######), fenced code blocks ``` (with language tag preserved as CSS class), GFM tables (|---|---| separator), unordered + ordered lists, blockquotes (`>`), horizontal rules (`---`), inline `**bold**` / `*italic*` / `` `code` `` / `[link](url)`. Good enough for OUR docs; not a full CommonMark implementation. Edge cases that don't render perfectly still produce readable output, and the "📝 Raw .md" link in the topbar lets the user open the canonical file directly.
 
@@ -174,9 +217,9 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 
 **Purpose:** Static math-reference page documenting the equational cognition system. Hebbian/Oja, cortical leak, K wiring, P6.1-P6.8 channels.
 
-**No server required.** GH-Pages-safe. Can be loaded via `file://` directly. **No external dependencies, no module imports — pure HTML + inline CSS.**
+**No server required.** GH-Pages-safe. Can be loaded via `file://` directly. **No module imports — no JS is loaded at all.** ⛔ **CORRECTED 2026-08-27: "No external dependencies … pure HTML + inline CSS" was wrong on both counts.** The page links a shared stylesheet — `<link rel="stylesheet" href="../css/tooltip.css">` — and `@import`s **Google Fonts** (`fonts.googleapis.com`, JetBrains Mono + Inter). ⚠ **Why it matters and why it is not urgent:** the remote font is a real external network dependency, so an offline or air-gapped open degrades to the fallback font stack — visually different, **never broken**, and no equation content is lost. `../css/tooltip.css` is repo-relative and resolves fine under `file://`. ⭐ **All five "static" pages share `css/tooltip.css`** (`brain-equations`, `legend`, `unity-guide`, `webgpu-prep`, `docs`), so `css/` is deploy-required for every one of them — a claim of "pure inline CSS" anywhere in this doc is the same error.
 
-**Status:** Updated 2026-06-17 (audit C.5 + I-track session 114.19fp) with relationTagId 13-32 + P6.6 novelty metric + P5.3 quality formula + P3.4 back-injection decay + I.13 `SparseMatrix.propagate(spikes, outBuf?)` output-buffer-pool equation + I.14 `setImmediate` event-loop yield throttling equation + I.8 `DREAM_CONSOLIDATION_MAX_MS` deadline check.
+**Status:** counted 2026-08-27 — **34 `<h2>` sections, 91 `eq-title` cards**, including `6.5. The Endocrine Layer — Chemistry as Equations`. ⚠ **The prior Status line stopped at 2026-06-17** (audit C.5 + I-track session 114.19fp: relationTagId 13-32 + P6.6 novelty metric + P5.3 quality formula + P3.4 back-injection decay + I.13 `SparseMatrix.propagate(spikes, outBuf?)` output-buffer-pool equation + I.14 `setImmediate` event-loop yield throttling equation + I.8 `DREAM_CONSOLIDATION_MAX_MS` deadline check) — **while a banner at the top of this same page already recorded section 6.5 landing on 2026-08-25.** A per-page Status line and a page-top banner are two places to say the same thing, and they drifted apart; the counts above are the mechanical form. ⚠ **Count `<h2` occurrences, not `<h2[^>]*>` matches** — several `title` attributes contain a literal `>` (e.g. `… coherence > 0.15`), which truncates a naive regex mid-attribute and reports attribute prose as a heading. **That misread cost a false defect report during this very verification.**
 
 ### `html/unity-guide.html` — persona tour
 
@@ -213,7 +256,8 @@ The pages ship as a deployed static site fronting a persistent brain-server (rea
 - "Backend crashed" = WS attempts fire and fail → audit H.9 recovery banner shows (deployed `wss://<host>/...` or local `ws://localhost:7525`)
 
 **Deployed-safe inventory of `js/`:**
-- ✅ `js/app.js`, `js/app.bundle.js`, `js/brain3d-*.js`, `js/embeddings.js`, `js/letter-input.js` — pure-static, no Node-only APIs
+- ✅ `js/app.js`, `js/app.bundle.js` — pure-static, no Node-only APIs. ⛔ **CORRECTED 2026-08-27: three of the five paths in this bullet did not exist.** `js/brain3d-*.js` matches **nothing**; `js/embeddings.js` and `js/letter-input.js` are not at those paths. The real files are **`js/ui/brain-3d.js`**, **`js/brain/embeddings.js`** and **`js/brain/letter-input.js`** — all three still deploy-safe, all three filed under the wrong directory here. ⚠ **The mislocation is not cosmetic:** the ❌ bullet directly below carves out `js/brain/` as "heavy Node-side modules", so two client-safe files were being described as living outside a directory they are actually inside — a deploy exclusion written off this list would have dropped them. **Verified by `git ls-files`, not by memory of the tree.**
+- ✅ `js/visual-feeder.js` — loaded raw by `index.html` (`<script type="module" src="js/visual-feeder.js">`), deliberately NOT bundled; static
 - ❌ `js/brain/curriculum*.js`, `js/brain/cluster*.js` — heavy Node-side modules, only loaded via brain-server context
 - ✅ `js/brain/gpu-compute.js` — WebGPU client-side, but requires compute.html which requires server
 - ✅ `js/version.js`, `js/env.example.js` — static
