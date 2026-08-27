@@ -39260,3 +39260,60 @@ Slot index was `_saveVersion % CHECKPOINT_SLOTS`, computed at a copy that is **h
 ### Verified
 
 Wiki **39 pages, 26/26 modules verified, 0 `TODO: ingest`**, `449/449` covered, 0 broken links, 0 orphans, index in sync. `npm run docs:drift` **No drift found**. No source files were modified by this batch — it is reading and recording only.
+
+---
+
+## 2026-08-27 - GOTCHAWORK + DOCPROV.3: the gotchas become board work, a fresh hunt, and 29 pages get a baseline - feature/gotcha-review-docprov
+
+Gee (verbatim): *"review the gotcha's add them to the todo work and use ask me question where needed... and rerun the ingestion to search for more gotchas"*
+
+### ⛔ THE FINDING: `meanVoltage` is null on all seven clusters, and the fix that closed it corrected the NAME while the PRODUCER stays unreachable
+
+Read off the LIVE local brain, ~3.6 h uptime, actively training: **every cluster in `state.clusters` carries a `meanVoltage` key whose value is `null`.**
+
+`DORMANT.3` closed this on 2026-08-25. Its comment at `server/brain-server/state.js:440-446` states the read *"NAMED THE WRONG FIELD, so all seven clusters reported `null` forever for a number that is computed on every tick"*, and the read now tries `cluster.lastMeanVoltage` first with `cluster.meanVoltage` as fallback. **Both are null.**
+
+⭐ **The cause is inside that comment's own words.** *"A number that is computed on every tick"* is **false at biological scale.** The only writer is `this.lastMeanVoltage = vSum / size` at `js/brain/cluster.js:4131` — **inside `step(dt, opts)`** (`:3839`) — and `step()` is exactly what the cortex cannot run: `stepAwait` refuses at `:4235` (*"At biological scale a CPU step is FORBIDDEN"*) and four raw-step sites carry `if (this.size > 2000000) return`. The GPU steps the brain via `compute_batch`.
+
+⛔ **This is the same class a fifth time, with a twist that makes it worse than the previous four: the fix's comment asserts the value is live, which is what stops the next reader re-checking.**
+
+⚠ **Filed as an investigation, not a fix, and the reason is specific:** `server/brain-server.js:6282-6283` assigns `this.clusters[name].meanVoltage` from **GPU ack telemetry**, so `state.js`'s fallback *should* catch it. Both being null means one of three things — the donor is not sending voltage telemetry, the ack path is not reaching those objects, or the assignment lands on a different object than `getState` reads (the `brain._x` vs `this._x` ownership trap, which has already produced three dead reads). ⛔ **Those last two are indistinguishable from the source. Establish which before writing a line.** Also: `brainstem` is ~822K neurons at this tier and therefore **not** excluded by the 2M refusal, yet reads null too — if a cluster that CAN step also reads null, `step()` is not the whole story.
+
+### ⭐ Six hunts, and the four that came back EMPTY are recorded so nobody re-runs them
+
+| hunt | pattern | result |
+|---|---|---|
+| **A** | `typeof this.X === 'function'` where `X` has no definition anywhere (the 37-call-sites / 0-definitions class) | **CLEAN — zero.** That class is genuinely closed |
+| **B** | NUL bytes in tracked text files | **CLEAN — zero** |
+| **C** | cost gates that resolve to *never* | **CLEAN** — every `idle` hit is an avatar/motor action state |
+| **D** | consts used once, only from a log line (the `GRADE_TIMEOUT_MS` shape) | **5 candidates, ALL FALSE POSITIVES.** My heuristic fired on "line contains a backtick"; the real test is "referenced only from inside a template/console **argument**" |
+| **E** | region keys with no readers | ⭐ **HIT** — `GOTCHA.2` |
+| **F** | dashboard reads a field nothing publishes | ⚠ **INCONCLUSIVE, deliberately NOT filed.** 25 candidates, but `s`/`st` in `dashboard.html` is often a local (checkpoint row, ctl status, curriculum row) and separating those needs scope analysis. **Filing 25 phantom items would be worse than filing none** |
+
+⭐ **Hunt F's failure is what produced the real finding.** The substitute for a grep that cannot see scope was to check named instruments against the **live payload** — and that is how `meanVoltage` fell out. The source looked correct.
+
+⚠ **One live-payload absence that is NOT a bug:** `bundleFreshness` is missing from the running snapshot, but `server/brain-server.js:8969` publishes it — the local brain runs `2673d14c`, which predates it. **Checked the code before filing**, because *"the page can be current while the server is old"* applies to state fields too.
+
+### Three forks put to Gee rather than guessed
+
+| fork | his call |
+|---|---|
+| 6 `sem_*` sub-bands with zero readers | **Investigate-only** — enumerate every `Object.keys(regions)` consumer and prove deletion is geometry-neutral first |
+| `emit.js` pre-existing circular-import TDZ | **Leave documented** — it bites harnesses, not production |
+| Doc provenance coverage | **All 31 pages** (over my recommendation of ~10) |
+
+⭐ **And my objection to the third was mostly WRONG, so it is retracted here rather than quietly dropped.** I warned that stamping everything would make ledgers drift constantly and turn the output into noise — but the checker's own `ARCHIVE` rule already excludes `FINALIZED` / `RESUME` / `TODO*` / `NOW`, so **those were never among the 31.** His choice was cleaner than I represented it.
+
+### `DOCPROV.3` — 2 covered → 31 covered, and 22 of them immediately reported drift
+
+⛔ **`status` was NOT set to `verified` and `last-verified` was NOT set to HEAD.** That would assert claims were checked when they were not. Each page is stamped with **the commit that last touched it**, so the drift test asks the honest, derivable question: *have this page's sources moved since the page itself was last edited?*
+
+⭐ **Result: `31 covered, 0 uncovered` — and 22 report DRIFT.** Those pages genuinely describe code that has moved, and **until this commit not one of them could say so.** Filed as `DOCPROV.4`, ordered by blast radius: `README.md` (3 of 4 sources moved — the public front door), `WEBSOCKET.md` (3 of 4 — the wire contract), `SETUP.md` (3 of 4 — what a new operator follows), then the oldest baselines (`THRESHOLD-DERIVATION.md`, `TRAJECTORY-CAPTURE.md`, `STATUSLINE.md`).
+
+⚠ **Checked before shipping: `docs:drift` still exits 0**, and `docs:drift:strict` is an npm script wired into **no CI and no hook** — so making the truth visible broke no gate. Breaking the pre-push signal to win an argument about honesty would be its own defect.
+
+⚠ **Where a pretend source would have been easy, a caveat went in instead.** `STATUSLINE.md` and `deploy/HOOK-FIXES.md` describe `.claude/` files that are **unversioned**, so `git diff` structurally cannot see their real subject — their frontmatter says so and lists only the tracked wiring. `KNOWN_ISSUES.md`, `ROADMAP.md`, `COMP-todo.md` and `deploy/REDEPLOY-NOTES.md` state that drift there means *re-check* or *re-price*, not *a claim is false*.
+
+### Board
+
+**5 open → 12 open** (`GOTCHA.1`-`.6` + `DOCPROV.4`), 3 in-progress, 376 done. Wiki `449/449` covered, 0 broken links. ⚠ Temp hunt scripts were read-only and **deleted the moment they ran**, per the standing rule.

@@ -1,3 +1,17 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE, not one at which
+# every claim was re-read. So drift here asks the honest question — "have the
+# sources moved since this page was last edited?" — and is derivable rather
+# than asserted. `status: draft` until a page is read against source.
+status: draft
+sources:
+  - server/brain-server.js
+  - server/brain-ctl.js
+  - js/brain/curriculum.js
+last-verified: "05ab84a7 2026-08-27"
+---
+
 # ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
 
 > Clarifies what the admin-only dashboard power buttons actually control, how

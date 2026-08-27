@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ PLANNING page — drift means "re-price the plan", not "a claim is false".
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - server/brain-server.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # ROADMAP — IF ONLY I HAD A BRAIN
 
 > Last updated: 2026-08-25 — **THE CHEMICAL BRAIN IS BUILT. THE ROAD NOW ENDS AT A PRESS.** The ENDO + INTRO family — 25 items filed as *"this one is fucking complex"* and explicitly held *"for later"* — plus the drug rework and the life items: **30 closed in six batches**, and ⭐ **the board now holds no buildable work at all.** Three items remain: two Gee parked (`PRESSBLOCK.1`, unmeasurable before a press; `INFRA.1`, which contains Red's and Sponge's decision) and one audited awaiting his verdict (`DONORSHIP.1`). **What she gained:** an endocrine system of ten chemicals in three kinds, six glands that *sense their own release* rather than being commanded, a two-stage stress response with four outcomes (freeze being `idle` winning, so silence is a real answer), a menstrual cycle on curriculum time, a comedown, cross-substance tolerance in the receptors, an allostatic load that leaves a mark and can be recovered from, and an introspective drive measured against its own kill criterion at **total-variation 0.840** where a question bank scores ~0. ⭐ **And the reason it was worth a roadmap slot rather than being flavour:** Ψ is capacity ÷ activity, and without chemistry `n` moves only when *input* moves — so the consciousness term described her hardware rather than her state. **Chemistry is what makes it a variable instead of a specification.** ⛔ **The next milestone is not code — it is the press.** `WEIGHTS_FORMAT_VERSION` 4 → 5 makes it a **FRESH WALK**, and that is the sequencing `WALKLAST.1` required: a fresh walk teaches from zero using whatever the code does at that moment, so everything that changes *what she is taught* had to land first. It has. Building any of this *after* the walk would have meant re-teaching all of it. ⚠ **Nothing is verified live** — RE-PRICE, the 12-field watch list in reading order, and the honest failure signatures are in `docs/TODO.md § PRESS BRIEF`.

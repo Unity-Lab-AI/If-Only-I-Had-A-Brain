@@ -1,3 +1,17 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ mindspace-proxy.js is listed deliberately: its hand-picked method list is
+# what shipped colour-blind schemas for a day while the engine itself was fine.
+status: draft
+sources:
+  - js/brain/mindspace/transform.js
+  - js/brain/mindspace/gpu.js
+  - js/brain/mindspace/audio.js
+  - server/brain-server/mindspace-proxy.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # MIND-SPACE INTEGRATION — UniVsMatics inside Unity's brain
 
 > IF ONLY I HAD A BRAIN · Unity AI Lab

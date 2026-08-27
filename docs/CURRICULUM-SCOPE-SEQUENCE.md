@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - js/brain/grade-vocabulary.js
+  - js/brain/subjects.js
+last-verified: "a2a2b0ec 2026-08-25"
+---
+
 # CURRICULUM SCOPE & SEQUENCE — the EXACT real-student course sequence (K→PhD)
 
 > **Authoritative academic spec** (the operator, 2026-06-18: *"u need to use the exact courses real students use for our simulated brain at those grades"*). The academic curriculum runners (`runEla/Math/Sci/Soc/Art*Real` per grade) + any academic story-data MUST teach the REAL courses a US student actually takes at each grade — the standard scope & sequence below — not invented or approximate content. Unity is a high-aptitude student on the **accelerated math/science track** (consistent with the self-taught-coder canon). This doc governs; align all academic content to it.

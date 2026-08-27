@@ -1,3 +1,17 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ This page is a LEDGER of known issues, so a source moving does not
+# necessarily invalidate an entry — it means "re-check whether this issue still
+# reproduces". Treat drift here as a prompt, not a defect.
+status: draft
+sources:
+  - server/brain-server.js
+  - server/brain-server/gpu.js
+  - deploy/self-update.sh
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # KNOWN ISSUES — running ledger
 
 > Lightweight, scannable list of known bugs, limitations, and intentional

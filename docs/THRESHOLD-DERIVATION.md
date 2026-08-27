@@ -1,3 +1,15 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE — 2026-06-17 here,
+# so its sources have had two months to move. That is the point of the stamp.
+status: draft
+sources:
+  - js/brain/neurons.js
+  - js/brain/gpu-compute.js
+  - js/brain/cluster.js
+last-verified: "5f2f2b83 2026-06-17"
+---
+
 # THRESHOLD-DERIVATION — Math grounding for every named constant
 
 > **Status:** drafted 2026-06-17 per audit B.1 — "ZERO mathematical derivation for any threshold introduced this session".

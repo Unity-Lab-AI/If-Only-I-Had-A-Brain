@@ -1,3 +1,17 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ This is the PUBLIC front door, so a wrong claim here is the most expensive
+# kind. Its sources are the entry points a visitor actually lands on.
+status: draft
+sources:
+  - index.html
+  - html/dashboard.html
+  - package.json
+  - js/version.js
+last-verified: "f4d304a9 2026-08-25"
+---
+
 # IF ONLY I HAD A BRAIN
 
 A brain that *is* the application — not a chatbot wrapped around a language model. Hundreds of millions of artificial neurons running real neuroscience equations on the GPU, organized into eight biologically-weighted clusters, learning to read and speak the way a human child does: alphabet → phonemes → words → sentences. There is no text-AI in the cognition path. Every word she says falls out of live spike patterns.

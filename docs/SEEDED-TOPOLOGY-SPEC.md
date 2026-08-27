@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/cluster.js
+  - js/brain/sparse-matrix.js
+  - donor-app/src/compute.rs
+last-verified: "a2a2b0ec 2026-08-25"
+---
+
 # SEEDED TOPOLOGY — spec for donor-side structure generation
 
 **Written 2026-08-18.** Spec only. **Nothing here is implemented, and none of it should be bolted onto an unrelated batch.**
