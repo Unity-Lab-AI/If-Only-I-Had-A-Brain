@@ -1,3 +1,16 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ Two POLICY decisions on this page are still the operator's and are not
+# engineering drift: retention (`--keep-daily 3`) and the repo living on the same
+# array as the brain.
+status: draft
+sources:
+  - deploy/dropins/nightly-backup/10-fix-restic-password.conf
+  - deploy/dropins/README.md
+last-verified: "665a5cac 2026-08-26"
+---
+
 # Backup hardening — the two decisions left for Gee (2026-08-26)
 
 Both came out of the 2026-08-26 wipe incident, where the search for a restore

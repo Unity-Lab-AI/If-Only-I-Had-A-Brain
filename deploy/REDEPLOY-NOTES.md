@@ -1,3 +1,18 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ This page is a chronological RECORD, so drift means "the deploy mechanism
+# changed since the last entry — the next entry should say so", not "an entry
+# is now false". Past entries are history and stay as written.
+status: draft
+sources:
+  - deploy/self-update.sh
+  - deploy/unity-brain.service
+  - deploy/nginx-unity-brain.conf
+  - .forgejo/workflows/deploy.yml
+last-verified: "d99f9b2c 2026-08-26"
+---
+
 # REDEPLOY NOTES — for the box Claude / server admin
 
 > Living handoff for redeploying `unity-brain` on the box after a backend change lands on `main`.

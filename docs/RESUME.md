@@ -30,7 +30,23 @@
 >
 > It proves each file is **named**, not that the description is right. It counts **tracked** files only, so `.claude/hooks/` and gitignored runtime state are outside it. ⛔ **100% coverage plus a `status: draft` page is still a page nobody checked** — 21 of 26 module pages are `verified`, the 5 pre-existing keep their `TODO: ingest` markers.
 >
-> ### 7. ⭐ THE WIKI IS FULLY INGESTED — 26/26 module pages verified, zero `TODO: ingest`
+> ### 7. ⛔⛔ `meanVoltage` READS NULL ON ALL SEVEN CLUSTERS — and the fix that closed it corrected the NAME while the producer stays unreachable
+>
+> Live, local brain, ~3.6h up, training: every cluster's `meanVoltage` is **`null`**. `DORMANT.3` closed this on 2026-08-25 and its own comment says the number *"is computed on every tick"* — ⭐ **that sentence is FALSE at biological scale.** The only writer is `cluster.js:4131`, **inside `step()`**, and `step()` is exactly what the cortex cannot run (`stepAwait` refuses at `:4235`; four raw-step sites carry `size > 2000000` returns). **Fifth instance of the producer/consumer class, and the worst kind — the fix's comment asserts the value is live, which is what stops the next reader re-checking.**
+>
+> ⚠ **Filed as `GOTCHA.3`, an INVESTIGATION not a fix.** `brain-server.js:6282-6283` assigns `clusters[name].meanVoltage` from **GPU ack telemetry**, so the fallback should have caught it. Three candidate causes, and **the last two are indistinguishable from the source.** Also `brainstem` (~822K) is under the 2M refusal and still reads null — so `step()` may not be the whole story.
+>
+> ### 8. ⭐ Six hunts; four came back EMPTY and that is recorded so nobody re-runs them
+>
+> `typeof`-guarded-with-no-definition: **clean**. NUL bytes: **clean**. Idle-only cost gates: **clean**. Single-use-const-only-in-a-log-line: **5 candidates, all false positives** (my heuristic fired on "line contains a backtick"). Region keys with no readers: **HIT** (`GOTCHA.2`). Dashboard-reads-with-no-producer: ⚠ **inconclusive and deliberately not filed** — `s`/`st` is often a local, and **filing 25 phantom items would be worse than filing none.**
+>
+> ⭐ **That last failure produced the real finding:** the substitute for a grep that cannot see scope was checking named instruments against the **live payload**, which is how `meanVoltage` fell out. The source looked correct.
+>
+> ### 9. `DOCPROV.3` — provenance 2 → 31 pages, and 22 immediately reported drift
+>
+> Gee chose all 31 over my recommended ~10. ⭐ **My objection was mostly wrong and is retracted:** the checker's `ARCHIVE` rule already excludes `FINALIZED`/`RESUME`/`TODO*`/`NOW`, so ledgers were never in the 31. ⛔ **`status` stayed `draft` and `last-verified` is each page's own last-touch commit, NOT HEAD** — stamping HEAD would assert a re-read that did not happen. **22 of 31 drift**, filed as `DOCPROV.4` ordered by blast radius (`README.md`, `WEBSOCKET.md`, `SETUP.md` first). ⚠ `docs:drift` still exits 0 and `--strict` is wired into no CI or hook — checked, because breaking the pre-push signal to make a point would be its own defect.
+>
+> ### 10. ⭐ THE WIKI IS FULLY INGESTED — 26/26 module pages verified, zero `TODO: ingest`
 >
 > Five ingests on Gee's *"keep going"*: `curriculum`, `cortex-cluster`, `brain-server`, `donor-lane`, `visual-memory`. Targets picked by the **graph's god-node ranking**, not preference. Every page carries a **read-depth** line naming which files were actually opened, so `verified` cannot imply more than it earned.
 >
@@ -43,7 +59,7 @@
 >
 > ⚠ **The near-miss worth keeping:** I nearly recorded 12 sub-band regions as dead code. A literal grep showed no consumers; **dynamic** access found two real readers. The detector's blind spot is template-built keys — **verify individually before acting on that scan.**
 >
-> ### 8. ⛔ The central vault is now REAL, which reverses a refusal in this ledger
+> ### 11. ⛔ The central vault is now REAL, which reverses a refusal in this ledger
 >
 > Gee ran `/vault-dashboard` twice, then: *"it should be alll files not just pages"*. **A repeated instruction is a decision**, so `C:/Users/gfour/FableVault` exists, with a **junction** into this repo's `wiki/`. ⛔ **The protocol injector stays refused** (`PROTOCOL.md` + `fable.ps1` installed but unwired, nothing loads them). ⚠ **Removal hazard:** a recursive delete of the vault can traverse *into* `wiki/` through the junction — remove the link first.
 >
@@ -51,7 +67,7 @@
 >
 > ⚠ **Verified the junction against Python, not the shell:** git-bash `find` returns **0** pages through it (it will not traverse a reparse point) while `os.walk` sees all 38. Reporting the `find` number would have made the registry row read `0 pages` and look broken.
 >
-> ### 9. Also this session, before the wiki work
+> ### 12. Also this session, before the wiki work
 >
 > The stranded `feature/fable-kit-adapt` batch was **cascaded** (`DOCPROV.1` + the Fable Kit gitignore + board corrections), `DOCPROV.2` shipped as a Stop hook, `HOOKDEBRIS.1` closed, and the graphify knowledge graph was **built for the first time** — 2,747 nodes over 167 code files, code-only, **0 tokens**. ⛔ Its first build was **45.5% generated bundles**; excluding them took edge-collapse 851 → 278. Full detail in the entry below.
 >

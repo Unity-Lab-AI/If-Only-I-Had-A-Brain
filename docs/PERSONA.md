@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/persona.js
+  - js/brain/self-frame.js
+  - js/brain/inner-voice.js
+last-verified: "7da8236d 2026-08-25"
+---
+
 # PERSONA — 18+ In-Character Wrapper
 
 > **Explicit adult content notice. 18+ only.** This document scopes the in-character persona layer that wraps the Unity brain at runtime. It is intentionally NOT linked from `README.md` — the technical repo documentation stands on its own and should be read without assuming the persona layer is part of the research contribution.

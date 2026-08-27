@@ -1,3 +1,15 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - server/brain-server.js
+  - server/brain-server/gpu.js
+  - js/brain/remote-brain.js
+  - donor-app/src/protocol.rs
+last-verified: "7eadbccb 2026-08-25"
+---
+
 # WEBSOCKET — Unity Brain Server Wire Protocol
 
 > Complete reference for the WebSocket protocol between `server/brain-server.js` and its clients.

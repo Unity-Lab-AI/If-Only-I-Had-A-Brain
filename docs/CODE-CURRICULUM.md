@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/component-synth.js
+  - docs/component-templates.txt
+  - js/brain/curriculum.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # CODE CURRICULUM — Unity's G5→PhD HTML / CSS / JS Proficiency Layout
 
 > **Task #28** — "Unity learns to BUILD UI." This is the laid-out plan for the

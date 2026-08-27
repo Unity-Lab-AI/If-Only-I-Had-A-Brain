@@ -1,3 +1,15 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/mystery.js
+  - js/brain/cluster.js
+  - js/brain/global-workspace.js
+  - js/brain/mindspace/transform.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # The Equational Mind
 
 ### Theory and Functioning of a 306-Million-Neuron Simulated Brain That Learns to Speak Without a Language Model

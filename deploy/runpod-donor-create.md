@@ -1,3 +1,13 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - deploy/runpod-donor-launcher.sh
+  - donor-app/Cargo.toml
+last-verified: "0d208505 2026-08-26"
+---
+
 # RUNPOD DONOR — CREATE SPEC
 
 > **Ready-to-run recipe for building the replacement donor pod.** Do not execute

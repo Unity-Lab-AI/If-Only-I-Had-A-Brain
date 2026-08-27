@@ -1,3 +1,18 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⛔ HONEST CAVEAT, and it is this page's entire reason for existing: its subject
+# is `.claude/hooks/*`, which is UNVERSIONED (`.gitignore:48`). `git diff` cannot
+# see those files, so the drift check can only ever report on the tracked WIRING
+# below. A hook body changing is invisible here by construction — that is the
+# gap this page is the manual compensation for.
+status: draft
+sources:
+  - .claude/settings.json
+  - scripts/doc-prov-stop-check.mjs
+last-verified: "1284d3df 2026-08-20"
+---
+
 # `.claude/hooks/` fixes — the tracked record of code that cannot be tracked
 
 > **Why this file exists.** Two hook fixes live in `.claude/hooks/*.cjs`, and that tree can be version-controlled in **neither** available place:

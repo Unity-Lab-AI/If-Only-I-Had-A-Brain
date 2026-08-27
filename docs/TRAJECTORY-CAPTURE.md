@@ -1,3 +1,13 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - server/brain-server/state.js
+last-verified: "330a54bf 2026-08-20"
+---
+
 # Developmental trajectory — the capture spec
 
 > **What this is.** `GRANT.3` names the highest-value asset this project can produce: *"the documented developmental trajectory (vocab size, gate pass rates, emission quality, basin separation, grade by grade)"*, because it converts "impressive engineering" into **a scientific instrument producing data nobody else can produce**.

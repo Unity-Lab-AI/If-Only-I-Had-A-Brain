@@ -1,3 +1,16 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⚠ This is a PLANNING page, so drift means "the thing this plans against has
+# moved — re-price the plan", not "a claim is now false".
+status: draft
+sources:
+  - server/brain-server/gpu.js
+  - donor-app/src/compute.rs
+  - js/brain/gpu-compute.js
+last-verified: "cc648941 2026-08-26"
+---
+
 # MASTER-TODO — Everything Unity Has Left
 
 > **Single source of truth for all remaining work across the whole project.**
