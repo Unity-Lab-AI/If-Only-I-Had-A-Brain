@@ -2262,11 +2262,55 @@ const SERVER_CHAT_MIXIN = {
    */
   _queueArtWeightTeach(contributed, plan) {
     const st = this._artWeight || (this._artWeight = {
-      pieces: 0, queued: 0, pairs: 0, skippedBusy: 0, skippedEmpty: 0, lastAt: 0,
+      pieces: 0, queued: 0, pairs: 0, skippedBusy: 0, skippedEmpty: 0, skippedRate: 0, lastAt: 0,
     });
     if (!Array.isArray(contributed) || contributed.length === 0) { st.skippedEmpty++; return 0; }
     st.pieces++;
     if (!Array.isArray(this._chatTeachJobQueue)) this._chatTeachJobQueue = [];
+
+    // ── ARTHOG.1 — AN AGGREGATE RATE LIMIT, because nothing bounded one ─────
+    //
+    // MEASURED on a live 8.64-hour `ela/kindergarten` cell: of 3,536
+    // `_teachAssociationPairs` calls, ~3,518 came from THIS lane and ~18 from
+    // the ELA curriculum, and that method consumed 2.71 of the 8.64 hours. She
+    // was drawing a piece every ~10 seconds and every finished piece queued
+    // pairs onto `_chatTeachJobQueue`, which drains on the WALK lane. So the
+    // curriculum cell was teaching around eighteen association-pair calls in
+    // 8.6 hours while art taught three and a half thousand.
+    //
+    // ⛔ THE GAP WAS THAT THE ONLY EXISTING PACING IS PER-CONCEPT. The draw
+    // lane has a 30-minute per-CONCEPT cooldown, which sounds like a rate limit
+    // and is not one: she has thousands of concepts, so the AGGREGATE rate it
+    // permits is unbounded. `MAX_QUEUE` is a depth cap, not a rate cap — it
+    // only refuses while the queue is already full, and a queue that drains
+    // promptly never blocks anything.
+    //
+    // ⚠ This bounds the TEACH cost, not the DRAW rate. She still draws as often
+    // as before; she just does not fire weight updates from every single piece.
+    // Rate-limiting the drawing itself would be a bigger change to a different
+    // lane, and the measured 2.71 hours is here.
+    //
+    // ⚠ A refused piece is DROPPED, not deferred — the same thing `skippedBusy`
+    // has always done on this path, so it is not a new class of loss. At the
+    // observed draw rate she still banks ~60 pieces an hour, which is ~30× the
+    // curriculum's own association-pair rate.
+    //
+    // ⚠ RE-PRICE: not required, and stated rather than assumed. This ADDS a
+    // bound; it removes and weakens nothing. `corpus × reps × scale × visits`
+    // is untouched, and the walk gets shorter rather than longer.
+    //
+    // ESCAPE HATCH, and every case was checked rather than trusted:
+    //   unset        → NaN >= 0 is false → 60000 (the default)
+    //   =0           → 0 >= 0 is true    → 0, limit OFF, exact prior behaviour
+    //   =30000       → 30000             → a 30s gap
+    //   =nonsense    → NaN >= 0 is false → 60000, the safe default
+    const _rawGap = Number(process.env.DREAM_ART_WEIGHT_MIN_GAP_MS);
+    const MIN_GAP_MS = _rawGap >= 0 ? _rawGap : 60000;
+    if (MIN_GAP_MS > 0 && st.lastAt && (Date.now() - st.lastAt) < MIN_GAP_MS) {
+      st.skippedRate++;
+      return 0;
+    }
+
     const MAX_QUEUE = Number(process.env.DREAM_ART_WEIGHT_MAX_QUEUE) || 24;
     if (this._chatTeachJobQueue.length >= MAX_QUEUE) { st.skippedBusy++; return 0; }
     const MAX_PAIRS = Number(process.env.DREAM_ART_WEIGHT_MAX_PAIRS) || 24;
