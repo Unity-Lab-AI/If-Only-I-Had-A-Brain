@@ -39733,6 +39733,36 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
 
+## 2026-08-27 - SRCGAP.1: a guard for the gap that bit four pages in one day - and four defects of my own, the first of which killed its own premise
+
+Gee: *"16 to go"*
+
+### ⭐ The class, and why it deserved a guard instead of a fifth manual catch
+
+Four times in one day a page turned out to make **load-bearing, line-precise claims about a file it never declared as a source**: `HTML-ENTRY-POINTS` → `html/docs.html:189-207`; `THRESHOLD-DERIVATION` → `emit.js:1719`; `KNOWN_ISSUES`' `KI-16` → `curriculum.js`; `HELD-BACK`'s entire noise-gate section → `cluster.js:2173`.
+
+⛔ **That is worse than a wrong `sources` list. Check 8 can only ever fire on the files a page NAMES — so a page making claims about an undeclared file is a page drift is structurally blind to.** All four were caught by a human reading the page. `docs:drift` check 9 makes the mechanical subset mechanical: **21 gaps standing after 6 were fixed.**
+
+**Signal = a line number**, deliberately. `path.js:1404` is a precise claim about a file's contents, which is exactly what `sources` is for; a bare filename in prose is a mention. Basename-only citations resolve **only when unique across tracked files** — ambiguous ones skipped, not guessed, because this repo has eleven `README.md` files.
+
+### ⛔ FOUR defects of my own, all found by RUNNING it — and the first one killed the premise
+
+**(1) The line-number rule would have caught NONE of the four motivating gaps.** Run against the pre-fix pages at `471b5248`: `HELD-BACK`, `THRESHOLD-DERIVATION` and `HTML-ENTRY-POINTS` carried **zero** line-precise citations, and `KNOWN_ISSUES`' single one pointed at a file **already** in its sources. ⭐ **The signal was wrong for the class it was built for, and the only reason that is known is that I ran it against the pre-fix versions instead of asserting it worked.** Same discipline as the `DREAM_PHASE_BUDGET_MS=0` lesson — verify an escape hatch by running it.
+
+**(2) The alternative was built, MEASURED, and deleted on the numbers.** A bare-mention signal ("page names file N× but does not declare it") scored: `cluster.js` 2, `emit.js` 1, **`consolidation-engine.js` 0**, `curriculum.js` 2, `docs.html` 4, `brain-equations.html` 5 — so ≥2 catches four of six, and ⛔ **`consolidation-engine.js` at ZERO is unreachable by any mention-based rule at all**, because that page discussed `DREAM_CONSOLIDATION_MAX_MS` without ever naming the file. Its cost: **+300 items at threshold 2, +175 at 3, +67 at 6, +13 even at 15**, against a 43-item baseline. ⛔ **Deleted.** This file's own law is that a check which cries wolf gets ignored, and `sources` is explicitly a **FOCUSED** set — a page naming a file ten times may still have no claims that depend on it.
+
+**(3) I capped the count instead of the display.** `note(..., gaps.slice(0, 30), ...)` meant every threshold reported *"46 item(s)"* and the check looked completely insensitive to its own tuning knob — which is how defect (2) nearly went unmeasured. ⭐ **A guard that silently under-reports is precisely the reassuring-direction lie this file's header exists to name, self-inflicted.** Fixed — **and the identical latent cap was fixed on check 6 (`dead.slice(0, 40)`) while in the file.**
+
+**(4) The parser hid its own fix.** The sources-block regex required every line after `sources:` to be `- item`, so a YAML **`#` comment inside the list truncated the parse** and every source below it went unread. ⛔ **The four sources I added with an explaining comment above them silently did not register, and the check reported the same 27 gaps as before the fix.** Made comment-tolerant, with item extraction switched to line-based (a block-wide `- ` sweep would harvest dash-space out of comment prose as a source). ⭐ **Fixing it immediately revealed one further real gap on `WORD-SALAD-FIX` — `visual-memory.js` — that had been invisible behind the truncation.** A partial read reporting `ok` is the same failure in a new costume.
+
+### ⭐ The honest limit, written on the check itself
+
+**This narrows the gap. It does not close it.** A page can be *about* a file it never cites precisely, and no mechanical rule available here finds that — `consolidation-engine.js` at zero mentions proves it. **Choosing the right `sources` list stays a judgment made at verification time.** What the check buys is the subset that IS mechanical, plus a stated remainder instead of a guard implying full coverage.
+
+**6 gaps fixed** — `WORD-SALAD-FIX` (+`chat.js`, `state.js`, `curriculum.js`, `hippocampal-schema.js`, `visual-memory.js`) and `SEEDED-TOPOLOGY-SPEC` (+`brain-server.js`). **21 remain, deliberately left to each page's own verification pass** rather than bulk-added, because bulk-adding is how you manufacture the noise the bare-mention signal was deleted for.
+
+**Provenance drift steady at 16; sources-coverage 27 → 21.** Board **8 open / 4 in-progress / 385 done**.
+
 ## 2026-08-27 - DOCPROV.4 (11 and 12 of 22): a live learning modifier documented as dormant, and a spec priced off a myth its own ledger had already retired
 
 Gee: *"get to it"*

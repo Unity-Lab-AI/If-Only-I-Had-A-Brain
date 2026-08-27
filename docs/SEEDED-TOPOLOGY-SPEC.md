@@ -6,6 +6,10 @@ sources:
   - js/brain/cluster.js
   - js/brain/sparse-matrix.js
   - donor-app/src/compute.rs
+  # ADDED 2026-08-27 by the new sources-coverage check: this page cites
+  # brain-server.js:7546 (_applyPendingCortexWeights) twice as load-bearing
+  # evidence and did not declare the file.
+  - server/brain-server.js
 verified-scope: |
   CHECKED 2026-08-27 (DOCPROV.4, 12 of 22):
     - ⭐ "Nothing here is implemented" CONFIRMED, not assumed: 22 Math.random()
