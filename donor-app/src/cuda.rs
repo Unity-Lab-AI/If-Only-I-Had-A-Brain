@@ -131,6 +131,25 @@ pub struct CudaEngine {
     compute_capability: String,
     f_lif: CudaFunction,
     f_spike: CudaFunction,
+    /// GOTCHA.3b (v0.3.32) — voltage-mean reduction, the CUDA twin of
+    /// `shaders/voltage_mean.wgsl`.
+    ///
+    /// ⛔ `Option`, and this is the whole reason the CUDA half is safe to ship.
+    /// The kernels are NOT compiled from `cuda_kernels.cu` at build time — they
+    /// are loaded from `include_str!("kernels.ptx")`, a PRECOMPILED PTX checked
+    /// into the repo. So adding a kernel to the `.cu` does nothing until that
+    /// PTX is regenerated with `nvcc`, and a hard `load_function("voltage_mean")?`
+    /// would have failed against the current PTX and taken ALL of
+    /// `CudaEngine::new` down with it — breaking every CUDA donor outright for
+    /// the sake of one telemetry field.
+    ///
+    /// ⚠ The PTX is deliberately NOT regenerated here: it is built for
+    /// `compute_60`, and the nvcc on this machine is CUDA 13.0, which has
+    /// dropped that arch. Rebuilding all eight existing kernels on a newer
+    /// toolkit to add a ninth is a donor-compatibility risk out of all
+    /// proportion to the field. When the PTX IS regenerated with `voltage_mean`
+    /// present, this starts reporting with no further code change.
+    f_volt: Option<CudaFunction>,
     f_prop: CudaFunction,
     f_hebb: CudaFunction,
     // Device-side pattern ops: zero a span / scatter sparse indices in-place. These replace
@@ -175,6 +194,19 @@ impl CudaEngine {
         })?;
         let f_lif = module.load_function("lif").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'lif' load failed on '{name}': {e}"); format!("load lif: {e}") })?;
         let f_spike = module.load_function("spike_count").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'spike_count' load failed on '{name}': {e}"); format!("load spike_count: {e}") })?;
+        // GOTCHA.3b — OPTIONAL load. Absent from the shipped PTX means the
+        // voltage mean is simply not reported by this donor (the server then
+        // reads `unreported-by-this-donor`, which is exactly what
+        // `meanVoltageSource` was built to say). It must NEVER fail engine
+        // construction: a diagnostic that can refuse to start the compute
+        // backend is worse than no diagnostic.
+        let f_volt = match module.load_function("voltage_mean") {
+            Ok(f) => Some(f),
+            Err(_) => {
+                eprintln!("[cuda] note: kernel 'voltage_mean' not present in this PTX on '{name}' — mean_voltage will read unreported for this donor (GOTCHA.3b; regenerate kernels.ptx to enable)");
+                None
+            }
+        };
         let f_prop = module.load_function("synapse_propagate").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'synapse_propagate' load failed on '{name}': {e}"); format!("load propagate: {e}") })?;
         let f_hebb = module.load_function("plasticity").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity' load failed on '{name}': {e}"); format!("load plasticity: {e}") })?;
         let f_fill_u32 = module.load_function("fill_zero_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_u32' load failed on '{name}': {e}"); format!("load fill_zero_u32: {e}") })?;
@@ -189,6 +221,7 @@ impl CudaEngine {
             compute_capability,
             f_lif,
             f_spike,
+            f_volt,
             f_prop,
             f_hebb,
             f_fill_u32,
@@ -293,6 +326,40 @@ impl CudaEngine {
         let host = self.stream.memcpy_dtov(&count).map_err(|e| e.to_string())?;
         self.stream.synchronize().map_err(|e| e.to_string())?;
         Ok(*host.first().unwrap_or(&0))
+    }
+
+    /// GOTCHA.3b (v0.3.32) — mean of the Rulkov fast variable, CUDA half.
+    ///
+    /// Mirrors `ComputeEngine::voltage_mean` exactly: fixed partial slots, host
+    /// sums them, host divides by the REAL `n`. ⛔ `None` on any failure, never
+    /// `Some(0.0)` — `0.0` is a legitimate mean for a population straddling
+    /// zero, so a zero-on-error is indistinguishable from a real quiet cluster,
+    /// which is the precise failure this field exists to end.
+    ///
+    /// ⛔ Call ONCE PER TICK, not per substep.
+    pub fn voltage_mean(&self, name: &str) -> Option<f32> {
+        let c = self.clusters.get(name)?;
+        let n = c.size;
+        if n == 0 { return None; }
+        // Must match VOLT_PARTIALS in compute.rs — the two halves are compared
+        // line-for-line and a divergence here would show up as a backend-
+        // dependent mean, which is the hardest kind of number to disbelieve.
+        const PARTIALS: u32 = 256;
+        let chunk = (n + PARTIALS - 1) / PARTIALS;
+        // Absent kernel ⇒ not reported. See the `f_volt` field note.
+        let f = self.f_volt.as_ref()?;
+        let mut partials = self.stream.alloc_zeros::<f32>(PARTIALS as usize).ok()?;
+        let mut b = self.stream.launch_builder(f);
+        b.arg(&n).arg(&chunk).arg(&c.state).arg(&mut partials);
+        unsafe { b.launch(cfg(PARTIALS)) }.ok()?;
+        let host = self.stream.memcpy_dtov(&partials).ok()?;
+        self.stream.synchronize().ok()?;
+        // f64 accumulator for the same reason as the wgpu half: 256 partials
+        // each holding tens of thousands of summed f32s is exactly where f32
+        // accumulation starts shedding low-order bits.
+        let sum: f64 = host.iter().map(|v| *v as f64).sum();
+        let mean = (sum / (n as f64)) as f32;
+        if mean.is_finite() { Some(mean) } else { None }
     }
 
     pub fn has_sparse(&self, name: &str) -> bool {
