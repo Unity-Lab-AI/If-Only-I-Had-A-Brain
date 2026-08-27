@@ -39036,3 +39036,79 @@ Every source touch was reverted with `git checkout --`, the temporary harness co
 ### Drift fixed in place while here
 
 `docs/ARCHITECTURE.md`'s directory tree listed `scripts/` as **two** files, one of which (`verify-curriculum-runtime.mjs`) no longer exists. It is now the real **13**, each with what it is for and why it survives the no-scripts-that-edit-files LAW.
+
+---
+
+## 2026-08-27 - WIKIFULL.1: the wiki covers the whole stack, and coverage is a number - feature/wiki-full-stack
+
+Gee (verbatim): *"12 pages i want the full fucking stack all files in it"*
+
+### The state that provoked it
+
+`wiki/` had shipped that morning with **12 files: 3 infrastructure and only 9 content pages** — against a **448-file tracked repo**. It was seeded from one session's findings, which is a demonstration, not a map.
+
+### What shipped
+
+**26 new pages, 5 existing pages extended, 35 content pages in all** (26 modules · 3 concepts · 2 decisions · 4 gotchas), plus `scripts/wiki-coverage-check.mjs`.
+
+⭐ **The ask is answered as a recomputable number, not a sentence:**
+
+```
+npm run wiki:coverage
+  pages 38 · tracked files 448 · COVERED 448 (100.0%) · UNCOVERED 0
+  wikilinks: 35 targets · 0 broken · 0 orphans · 0 missing from index
+```
+
+⛔ **Why a checker at all.** The failure mode of "make the wiki cover everything" is a page that *says* it covers everything. That sentence is the same class of lie as `SKILL_TREE.md:358` claiming a route had been removed while it ran in production for four more months. Coverage had to be something anyone can recompute.
+
+### ⭐ The matching rule, and why it is picky about ambiguity
+
+1. Exact repo-relative path in some page → covered.
+2. Basename present **and unique across the whole tracked tree** → covered.
+3. Ambiguous basename (`README.md`, `package.json`, `ROADMAP.md`, `memory.js`, `grade3.json`) → a **disambiguating path suffix** is required.
+
+⛔ **Rule 3 is the point.** There are eleven `README.md` files in this repo. Letting one mention of `README.md` cover all eleven is a false pass in the reassuring direction — exactly the direction this tooling exists to catch.
+
+### ⛔ The first run said 67.4%, and every gap was an ellipsis
+
+| what the page wrote | what it actually covered |
+|---|---|
+| `bank-000.json … bank-009.json` | 2 of 11 |
+| `RELEASE-0.3.{11,17,21,…}.md` | 0 of 10 |
+| `college1.js … college4.js` | 2 of 4 |
+| `grade1-` / `grade2-vocabulary.js` shorthand | 0 of 20 |
+
+⭐ **An ellipsis reads as completeness to a human and as nothing to a checker.** Fixed by writing 448 literal paths. 146 → 0 uncovered.
+
+### Facts came from the graph and the headers, not from memory
+
+Per-file symbol lists were **AST-extracted** from `graphify-out/graph.json` — built the same day, code-only, 2,747 nodes over 167 files, **0 LLM calls and 0 tokens** — and combined with each file's own header comment. `sources:` and `last-verified: c5e9d412` are real on every new page.
+
+### ⛔ Four things found by reading the code instead of the docs
+
+**1. `js/brain/visual-cortex.js`'s header asserted an LLM in the perception path.** It read *"IT: Object recognition — calls AI for high-level description"* and *"AI is only called for IT-level recognition"*. **Both false, for months — and contradicted at `visual-cortex.js:214` in the same file**, which says the IT stage *"REPLACES the old LLM/VLM describer: the cortex now SEES by transforming."* Verified rather than assumed: `describeImage()` and `autoDetectVision()` are **deliberate no-op stubs** (`ai-providers.js:290-301`, `:441-449`), kept under their old names so a future caller breaks obviously instead of landing on `undefined`. Zero live call sites. **Fixed in the code**, with the old claim recorded in the new comment so the correction cannot be silently undone. `node --check` + ESM `import()` clean.
+
+⭐ **A header claiming an LLM in her perception path is the exact inverse of this project's load-bearing claim**, and a file that contradicts itself cannot be checked by reading one end of it.
+
+**2. `docs/ARCHITECTURE.md` said `curriculum.js` is `~12500 lines`. It is 28,340** — stale by roughly 16,000. ⚠ **And it nearly propagated:** the wiki page's first draft carried `12,530` because I trusted the doc. Corrected in both, with the correction itself recorded.
+
+**3. `js/brain/cluster/README.md` says `cluster.js` "is now 4,728 lines"; it reads 4,985.** Recorded on the page rather than silently fixed — it is that file's own historical note.
+
+**4. My own draft fabricated a filename.** The `docs-tree` page listed `docs/ADMIN-ONBOARDING.md`, which does not exist, and **omitted five real files**. Caught by listing the directory instead of recalling it. ⭐ The five turned out to be load-bearing corpus the running brain fetches by name — `Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt`, `persona-cosmic.txt`, `component-templates.txt` — fetched in `js/app.js:538-563` and fed to `inner-voice.js`'s `load*` methods. ⚠ **A grep for "orphaned doc" would flag all five.**
+
+### ⚠ Two self-inflicted checker faults, both caught by running it
+
+- **`wiki/CLAUDE.md`'s schema examples parsed as broken links.** `[[page-name]]` and `[[...]]` are illustrations of the syntax, not references. The schema doc is now excluded as a link *source* only — it is still read for file coverage.
+- **Two page counts of mine went stale within the same session** (`33 pages`, `31 content pages`) as pages were added. Recomputed to 38/35 and re-stated with the breakdown.
+
+### ⚠ The honest limit, written onto the page itself
+
+`wiki/concepts/wiki-coverage.md` states what the number does **not** prove: it proves each file is **named**, not that the description is right, current or useful; it counts **tracked** files only, so `.claude/hooks/` and gitignored runtime state are outside it by construction; and it cannot see a **wrong** claim — that is what `sources:` + `last-verified:` and `npm run docs:drift` are for.
+
+⛔ **So 100% coverage plus a `status: draft` page is still a page nobody has checked.** 21 of 26 module pages are `status: verified`; the 5 pre-existing ones keep their `TODO: ingest` markers where sections remain unread.
+
+### Verified
+
+`npm run wiki:coverage` 448/448 · `npm run docs:drift` **No drift found** (9/9 checks ok) · `npm run docs:prov` silent and correct (no declared source moved) · `node --check` + ESM `import()` clean on both new/edited JS · `package.json` re-parsed.
+
+⚠ `wiki/` itself is **gitignored on Gee's word**, so the 35 pages land untracked. The checker is tracked, because it is tooling that governs.
