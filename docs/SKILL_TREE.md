@@ -1,3 +1,17 @@
+---
+# DOCPROV.1 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⭐ THE DOC IS THE MAP, THE CODE IS THE TERRITORY.
+# ⚠ This page is seeded FIRST for a reason: line 358 once claimed a route had
+# been removed in April while that route ran in production for four more
+# months. It is the page that proved a doc can lie in the reassuring
+# direction, so it is the page that most needs a mechanical baseline.
+status: verified
+sources:
+  - js/brain/curriculum.js
+  - js/brain/language-cortex.js
+last-verified: "79215585 2026-08-27"
+---
+
 # SKILL TREE — IF ONLY I HAD A BRAIN
 
 > **CURRENT-STATE (2026-08-17):** **Pre-K + K ONLY scope REVOKED 2026-06-18** — the full K→PhD curriculum (all 19 grades: K, G1-G12, College 1-4, Grad, PhD — every subject + full lived-year per grade; per-grade vocabulary lists totaling 49,921 words / **18,017 unique** across the journey) is BUILT and WALKING on the grown **12,000,000-neuron language cortex** (306M brain). Current phase = the training walk at full speed (teach/min 200 → 1,100+ after the 2026-08-17 stalling war; the 1300–1500 pair-phase band is the next live confirmation) → final test → push. The "SCOPE LAW (2026-04-18): Pre-K + K ONLY" line in the dated banners below is HISTORICAL.
