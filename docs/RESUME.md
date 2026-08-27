@@ -1,6 +1,52 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-26 (latest) — THE DAY THE CHANNELS TURNED OUT NOT TO EXIST
+> ## ⭐⭐⭐ 2026-08-27 (latest) — FOUR FIXES FOR ONE NUMBER, AND THE INSTRUMENTS BUILT YESTERDAY PAID FOR THEMSELVES
+>
+> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). At writing: `main` **3893e980**, `develop` **2673d14c**, board **6 open / 3 in-progress / 372 done**. ⭐ **BOTH BRAINS ARE TRAINING** — local on `2673d14c` and the box on `3893e980`, each ~119 min up, **each with 1 donor**, both in `ela/kindergarten` at 2,197 and 1,603 teach/min. The control plane answers on 7526. ⛔ **`feature/fable-kit-adapt` has 5 UNMERGED commits** — `DOCPROV.1`, the board corrections and the gitignore live only there. Decide whether to cascade it.
+>
+> ### 1. ⛔ The valence bug took FOUR attempts, and only the fourth was the cause
+>
+> Gee: *"valence is STILL READING 0.00!!! IS IT A SCALING PROBLEM WTF IS IT?"* — no, it was **a different brain**. The number was CORRECT for the brain it was reading: the tiny untrained local browser fallback, whose valence genuinely sits near zero. ⛔ **The root cause was a HALF-FINISHED NORMALIZER.** The server sends flat `state.valence` and no `amygdala`; the local engine builds `amygdala` and no flat fields. `brain-3d.js` synthesized **flat → nested only**, so when the fallback drove the view `state.valence` stayed `undefined`, and `_describeInternalState` (which reads FLAT) fell to `?? 0`. The legacy pool (which reads NESTED) printed the same zero from the other side. **Neither reader was wrong.** ⚠ **The three earlier attempts were all real bugs and all still stand** — `VALSNAP.1` (`serverConnected` was a one-time snapshot used as a live guard, so the server listener was **never attached** on a normal load), `VALFLAT.1` (`??` does not fall through on a real `0`, so a stale nested zero beat the live value), and a `brain-3d` no-op I reverted before commit. ⭐ **The popup now NAMES ITS SOURCE** — `[server]` or `[local-fallback]` — because without that tag "the local brain is driving" and "the value is broken" render identically, and only one is a bug.
+>
+> ### 2. ⭐ Sponge's control plane now works locally — and four things stood between it and working
+>
+> The buttons had **never** worked on a local run. Four separate faults, each of which fully hid the next: **(a)** `brain-ctl` is systemd end-to-end, so nothing answered 7526 locally — fixed at the **three primitives** (`runHelper`, `systemctlShow`, `journal`) rather than the eleven verbs, so every verb inherits it; detection is `/run/systemd/system`, not `platform === 'linux'`, because a Linux box without systemd is as local as Windows. **(b)** The new panel never **replaced** the legacy `/admin/*` row — both rendered, two Update buttons pointing at two different backends. **(c)** ⛔ **A plain inline `display:none` LOSES to the stylesheet's `!important`** (`body.is-admin button.admin-only`), so the hide silently did nothing. **(d)** ⛔⛔ **`brain-ctl` had NO CORS.** On the box nginx proxies `/ctl/` same-origin; locally `:7525 → :7526` is cross-origin, so the browser blocked every request. ⚠ **`curl` does not enforce CORS** — every command-line probe returned a healthy 200 while the browser saw nothing, which is exactly how it survived three rounds. **Gee's screenshot is what ended it**, by showing the same build working on one origin and not the other.
+>
+> ### 3. ⛔ The public dashboard was demanding admin credentials from strangers
+>
+> `/ctl/` sits behind `auth_basic`, and the panel polled it **unconditionally** — a 401 with `WWW-Authenticate` makes the browser pop its **native** login dialog, which no JS error handling can suppress. ⚠ **This exact bug happened on 2026-06-27** for the milestone panel, and **that guard is still in the same file**. The precedent existed; the new caller did not inherit it. Now gated: blocked for a deployed non-admin, allowed for admin, **allowed on local** (loopback ctl has no auth lane).
+>
+> ### 4. ⭐ The image lane: one slot, two PROCESSES — and the queue could never hold both
+>
+> Gee asked whether I understood the complete picture. I did not, fully. ⛔ **The mind's eye fetches from the SERVER; chat's image is fetched by the BROWSER.** Same anonymous quota, but a server-side queue can only sequence its own half — **chat was never in the queue**, and that is the half `LOOKQUEUE.1` could not deliver. The 45s priority stamp stops the NEXT look but cannot touch one already running, and a reference fetch holds the slot up to 60s. `CHATPREEMPT.1` now **aborts the in-flight look** via a published `AbortController`, freeing the pipe in milliseconds. ⚠ **Still preemption, not a shared queue** — moving chat's fetch server-side remains the durable answer.
+>
+> ### 5. ⭐ Yesterday's instruments answered three board items within hours
+>
+> **`COMP.1` — VERDICT, across three boots:** queue **0.0% every time**, compute **94.8-99.9%**, wire 1.5-5.2%. The donor queue is EMPTY — the brain is not saturating the card. ⛔ **`(d)` fatter batches and `(b)` readout reduction are CLOSED**: both target the wire. `(c) GPUVERB.3` survives as the only compute-aimed part, and the same verdict promotes the kernel port to *the right target*. **`GPUTEACH.1-B` CLOSED** — its premise does not reproduce (loop service **99%**, p99 lag 50ms) and its named 31,818ms target was already cut 2.3× by `SCALEWALK.3`. ⭐ **And the relation alarm resolved the GOOD way:** `tagWrites 55,105` — `{23: 51,987 · 13: 2,284 · 35: 577 · 15: 257}`, **refused 0**. The tags land, the bands hold mass (48/48), so *"0 confident"* is the **WAIT** case, not the broken one — exactly the split `RELWRITE.1` was built to make. `RELSEP.1` now banks how CLOSE separation is (~3% of gate) on **every readable read including flat ones**.
+>
+> ### 6. `VMUSE.5` closed, and a near-miss worth remembering
+>
+> The reader finally has a consumer: concepts whose relation she confidently knows move to the front of the pool when she reaches into visual memory. ⚠ A **preference, never a filter**, and it does not touch what she draws. ⛔ **Caught before commit: the first-try bias was keyed off a CUMULATIVE counter**, which would have pinned the mind's eye to one concept forever once it fired — that is `EYEPIN`, already in the ledger, nearly re-shipped.
+>
+> ### 7. ⭐ The donor pod was rebuilt, and the old A40 was already gone
+>
+> `PODPIN.1` unparked. ⚠ **The "start the old pod" plan failed on facts, not judgement** — the exited pod could not start (*"not enough free GPUs on the host"*), so the host had already reclaimed its A40 while it sat stopped. Terminating cost nothing. New pod **`i03ihi54kccu0l`**, A40 48GB, **CA-MTL-1**, $0.44/hr — same GPU, same DC, same price, now on the **corrected** launcher (no version pin, atomic install, watchdog that kills by captured PID). ⚠ There are **three** Montreal DCs; asking only `CA-MTL-1` 500'd, asking all three landed on `CA-MTL-1` anyway. Also shipped **`donor-v0.3.31`** (`DONORTIME.1` — the donor reports its own queue/compute split), verified on all four KI-22 surfaces including the **live** pages.
+>
+> ### 8. `DOCPROV.1` — docs get the provenance the code side already had
+>
+> Check 8 in `doc-drift-check.mjs`: a page declares its `sources:` and `last-verified:` commit, and `git diff` answers whether the ground moved. ⭐ **Checks 1-7 catch lies someone predicted; this catches the ones nobody thought of.** Seeded on two pages, not 31. ⛔ **Two self-inflicted reassuring lies caught by RUNNING it:** zero coverage rendered as `ok` (*"verified"* when nothing was looked at — the exact failure the file exists to catch, inside the check written to prevent it), and **CRLF truncated every source list to its FIRST entry**. ⭐ **It found MY drift within a minute** — 12 undocumented `DREAM_*` flags, all mine from that day. `npm run docs:drift` now reports **No drift found**.
+>
+> ### 9. Fable Kit — installed to READ the stack, deliberately not absorbed into it
+>
+> ⚠ **I misread the ask once** (treated it as "harvest ideas" when it was "install it and look at our stack"). Now installed **outside the repo**: uv 0.12.6, graphify 0.9.50, 9 skills, the `grunt` agent. A 9-page `wiki/` seeded from this session's verified findings. ⛔ **`wiki/`, `fable-kit*`, `graphify-out/` are GITIGNORED on Gee's word** — tooling that helps someone READ the brain is not part of the brain, and a second doc tree beside `docs/` would have different rules from the one the LAWs govern. ⚠ Ignoring `wiki/` does **not** break its staleness check: `sources:` paths and `last-verified` hashes refer to tracked files. ⛔ **REFUSED and stays refused:** the protocol injector + central vault — `PLUGINPURGE.1` is the precedent. ⚠ `/graphify` and `/wiki-*` need a session restart to appear as commands.
+>
+> ### 10. What is actually open
+>
+> **Only the 3 in-progress wait on a math gate** (`GATEDOSE.1`, `RELDEPTH.1`, `PRESSBLOCK.1` — `cellPhasesStarted` still 0). Of the 6 open: **4 are buildable now** — `DOCPROV.2` (the Stop-hook half, unblocked by a clean baseline), `HOOKDEBRIS.1` (duplicate hooks inside `.claude/hooks/`), `COMP.1(c) GPUVERB.3`, and the `COMP.1c`/`RHYTHM3S.2` kernel port (⚠ `WALKLAST.1` governs it — it changes her dynamics). The other 2 are the `VMUSE.5.D` pair, waiting on **band separation**, not a gate.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-08-26 — THE DAY THE CHANNELS TURNED OUT NOT TO EXIST
 >
 > **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main` + `git ls-remote --heads origin main`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`) — do not trust a number written here. ⛔ **Checkout `develop`.** At writing: `main` **10e900ef** on both remotes, board **4 open / 3 in-progress / 362 done**. **Local is WALKING on today's code** — build `375b33b0`, booted 18:47, GPU 97%, `ela/kindergarten` phase 0 (the pre-phase definition bootstrap; `cellPhasesStarted: 0` is NORMAL there, Gee's own prior ruling). ⛔ **The DEPLOYED box is still 502** and needs Sponge: `sudo systemctl start unity-brain` — ⚠ **`start`, NOT `restart`**, hand-off at the top of `deploy/REDEPLOY-NOTES.md`. ⚠ **The donor pod is STOPPED and must stay stopped until the brain is up** (it idled at 0% for 24.9h against a dead brain); `deploy/runpod-donor-create.md` is the parked recreate spec.
 >
