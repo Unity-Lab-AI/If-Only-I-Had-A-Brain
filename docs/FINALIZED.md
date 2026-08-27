@@ -38887,3 +38887,44 @@ Evaluated the actual method (as an object literal, not a re-typed copy): no-in-f
 ⚠ **Server-side — lands on the next restart.** Watch `cut short for chat` climb while `rateLimitHits` stops climbing.
 
 ⚠ **NOT claimed fixed: the architectural half.** Chat's fetch is still client-side, so this is preemption, not a shared queue. Moving chat's image fetch server-side into one priority queue remains the durable answer, and Gee chose the surgical fix first, knowingly.
+
+---
+
+## 2026-08-26 - CTLAUTH.1: the public dashboard was probing the admin lane - feature/ctl-admin-gate
+
+### Gee ask (verbatim per LAW #0)
+
+> *"the public facing dashboard is pinging everyone to log in when it shouldnt be doing that its the public facing one"*
+
+### What was happening
+
+On the deployed box `/ctl/` sits behind `auth_basic "Unity admin"` (`deploy/nginx-unity-brain-ctl.conf:37`). `wireBrainPower()` polls `/ctl/status` **unconditionally** — no admin gate at all. An unauthenticated visitor's fetch therefore returned **401 with `WWW-Authenticate`**, and the browser answers that by popping its **native login dialog**.
+
+⛔ **No JS error handling can suppress that prompt** — it happens below the fetch API. So every public viewer of the live dashboard was being asked for admin credentials by a page that is meant to be read-only.
+
+### ⚠ This exact bug has happened before, and the fix was already in the file
+
+2026-06-27, the milestone/save-state panel: *"public version of the dashboard is asking for admin login"*. The fix then was to bail before any admin fetch, and **that guard is still present a few hundred lines below** (`if (PUBLIC_MODE) return;`).
+
+⭐ **The precedent existed; the new caller did not inherit it.** That is the actual defect class here — not a missing idea, a missing application of an idea already written down in the same file.
+
+### Fixed
+
+`ctlPollAllowed()` gates the poll:
+
+| case | result |
+|---|---|
+| Deployed, not yet admin | **BLOCKED** — the login-prompt case |
+| `?public=1` / `/public` path | **BLOCKED** |
+| Deployed **admin** | allowed |
+| **LOCAL run** | allowed — `brain-ctl` on :7526 binds loopback and has no auth lane |
+
+⚠ **Local is deliberately exempt**, or the panel this whole batch exists to light up goes dark again.
+
+⚠ **Admin arrives ~500ms after WS connect**, so the first poll or two are blocked by design and the panel appears a beat later. **A late panel beats a login box for strangers.** The 15s schedule re-checks, so it starts on its own once the mode lands — no reload needed.
+
+### Verified — 7/7 against the real predicate
+
+Public visitor blocked; `?public=1` blocked even when admin; deployed admin allowed; local allowed; local + public flag still blocked. Dashboard divs 492/492, scripts parse.
+
+⚠ **Frontend only — lands on deploy, no press.**

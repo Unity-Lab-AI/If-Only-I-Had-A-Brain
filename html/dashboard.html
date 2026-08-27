@@ -4157,7 +4157,40 @@
           : 'SAVERERUN needs the brain RUNNING — it rewrites the grade pointers inside the loaded weights, which cannot be done while it is stopped. Press Start first.';
       }
 
+      // ── CTLAUTH.1 — NEVER probe the admin lane as a public visitor ─────────
+      //
+      // ⛔ On the deployed box `/ctl/` sits behind `auth_basic "Unity admin"`.
+      // A fetch to it as an unauthenticated visitor returns 401 with a
+      // `WWW-Authenticate` header, and the BROWSER answers that by popping its
+      // native login dialog — no JS error handling can suppress it, because the
+      // prompt happens below the fetch API. Every public viewer of the live
+      // dashboard was being asked for admin credentials.
+      //
+      // ⚠ This exact bug has happened before, on 2026-06-27, for the milestone
+      // panel: "public version of the dashboard is asking for admin login". The
+      // fix then was to bail before any admin fetch, and the guard is still
+      // there a few hundred lines below. The control-plane poll simply never
+      // got it. The precedent existed; the new caller did not inherit it.
+      //
+      // ⚠ LOCAL is deliberately exempt: brain-ctl on :7526 has no auth (it
+      // binds loopback), so a local run must keep polling or the panel this
+      // whole batch exists to light up would go dark again.
+      function ctlPollAllowed() {
+        if (typeof PUBLIC_MODE !== 'undefined' && PUBLIC_MODE) return false;
+        if (_dashIsLocal) return true;              // loopback, no auth lane
+        // Deployed: only once the WS has actually assigned admin. Mode arrives
+        // ~500ms after connect, so this is false for the first few polls by
+        // design — better a late panel than a login box for strangers.
+        return document.body.classList.contains('is-admin');
+      }
+
       async function poll() {
+        if (!ctlPollAllowed()) {
+          // Not entitled to the control lane. Leave the panel hidden and the
+          // legacy row alone (it is `.admin-only`, so a viewer sees neither).
+          panel.classList.remove('active');
+          return;
+        }
         try {
           const r = await fetch(ctlUrl('status'), { cache: 'no-store', credentials: 'same-origin' });
           const j = await r.json();
