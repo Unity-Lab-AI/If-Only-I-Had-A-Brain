@@ -792,6 +792,33 @@ export class NeuronCluster {
       // doesn't get wiped when math-K trains its words. emitWordDirect
       // concatenates all sub-bands and argmaxes globally so any
       // subject's trained word can win.
+      //
+      // ⛔ GOTCHA.5 (2026-08-27) — THE PARAGRAPH ABOVE DESCRIBES WRITE
+      // BEHAVIOUR THAT NO LONGER EXISTS. It is kept because it is the
+      // original design record, but read it as history, not as the contract:
+      //
+      //   • WRITES ARE UNIFIED. `wordBucketCellSizeFor` (cluster/emit.js) is
+      //     explicit — ONE global word_motor band, one bucket per UNIQUE word,
+      //     and the `subject` argument is "ignored for geometry (kept for
+      //     call-site compatibility)". Read (emitWordDirect) and write
+      //     (_teachWordEmissionDirect / _writeAnswerToWordMotor) deliberately
+      //     share that one authority so they cannot disagree on layout. The
+      //     per-subject write slices, and the cross-subject overwrite they
+      //     were introduced to prevent, are both gone.
+      //
+      //   • THE word_motor_* SUB-BANDS ARE STILL LIVE, but for a different
+      //     job than this paragraph claims: `_inferActiveSubject()` reads
+      //     their relative activation to decide which subject is active, and
+      //     `Curriculum._qaBindingWhitelist` whitelists a `sem_to_<band>`
+      //     projection when one exists. Neither is a write path.
+      //
+      //   • ⚠ THE sem_* SUB-BANDS (sem_ela … sem_life) HAVE NO READERS AT
+      //     ALL — no literal access, no `regions[`sem_${…}`]` template, and
+      //     no `semBandName()` helper (subjects.js exports only
+      //     `wordMotorBandName`). They are inert {start,end} metadata.
+      //     NOT deleted here: removing keys changes Object.keys(regions), and
+      //     the consumers of that enumeration are not yet inventoried.
+      //     Tracked as GOTCHA.2 (investigate-only, by operator decision).
       const semStart = Math.floor(s * 0.750);
       const semEnd = Math.floor(s * 0.875);
       const semBand = Math.floor((semEnd - semStart) / 6);

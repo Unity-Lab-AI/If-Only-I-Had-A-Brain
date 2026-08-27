@@ -2,6 +2,9 @@
 
 Per the per-module split directive — break the (then) 6,374-line cluster.js god-class into focused modules attached to `NeuronCluster.prototype`
 <!-- Drift check 2026-08-20: cluster.js is now 4,728 lines — it SHRANK by ~1,650, which is the split doing exactly what it was for. The 6,374 above is the pre-split baseline and is kept so the reduction stays legible. -->
+<!-- Drift check 2026-08-27 (GOTCHA.4): cluster.js measured 4,984 lines (`wc -l`) BEFORE this same batch added the GOTCHA.5 comment block, and 5,011 after it. Both numbers are given deliberately: quoting one without the edit that moved it is how the 2026-08-20 figure came to look current for a week. Mixin sizes, unchanged by this batch, all `wc -l`: emit 2,653 · hebbian 1,373 · telemetry 331 · attention 268 · probe 67. -->
+<!-- ⚠ A LINE COUNT IS A READING, NOT A PROPERTY. It goes stale on the next comment edit — including this one. Quote it with the commit or the change that produced it, exactly as `state.totalNeurons` must be quoted with its boot. -->
+<!-- ⚠ COUNTING CONVENTION, stated because it produced a real off-by-one: these are `wc -l` (newline count). A `split('\n')` length is ONE HIGHER on any file ending in a newline, and that difference put 4,985 into the wiki for this file. If a count here disagrees with another doc by exactly 1, this is why. -->
  via `Object.assign` mixin pattern (same approach as `js/brain/curriculum/` per-grade split).
 
 ## Target layout (per-module files)
