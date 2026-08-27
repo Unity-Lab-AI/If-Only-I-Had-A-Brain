@@ -444,9 +444,46 @@ const SERVER_STATE_MIXIN = {
         // the typeof test never passed. `lastMeanVoltage` is read first now,
         // with the old name kept as a fallback for any caller that hands us a
         // snapshot rather than the cluster itself.
+        //
+        // ⛔⛔ GOTCHA.3 (2026-08-27) — DORMANT.3 FIXED THE NAME AND THE VALUE IS
+        // STILL NULL, because the sentence above ("a number that is computed on
+        // every tick") IS FALSE AT BIOLOGICAL SCALE. Measured on the live brain:
+        // all seven clusters `null` at 3.6h uptime while training. There are
+        // three producers and, for a NATIVE-donor brain, all three are dead:
+        //
+        //   1. CPU  — `lastMeanVoltage` is written ONLY at cluster.js:4131,
+        //      inside `step()`. `stepAwait` refuses above 2M ("At biological
+        //      scale a CPU step is FORBIDDEN") and four raw-step sites carry the
+        //      same `size > 2000000` return. The GPU steps the brain instead, so
+        //      this writer never runs for the big clusters.
+        //   2. BROWSER donor — IMPLEMENTED and working: compute.html does a
+        //      once-per-tick GPU atomic reduction (`readbackVoltageMean`) and
+        //      puts it on `perCluster[name].meanVoltage`.
+        //   3. NATIVE donor — NEVER SENT. donor-app/src/donor.rs builds
+        //      `PerClusterResult { …, mean_voltage: None }` hardcoded, and
+        //      protocol.rs's `skip_serializing_if = "Option::is_none"` then omits
+        //      the key entirely, so brain-server's `typeof entry.meanVoltage ===
+        //      'number'` guard is never true and `clusters[name].meanVoltage` is
+        //      never assigned.
+        //
+        // ⭐ So the honest repair here is NOT to invent a number — it is to stop
+        // publishing a bare `null` that cannot say why it is null. A reader
+        // cannot distinguish "not sampled yet", "this donor does not report it",
+        // and "broken" from a null, and that indistinguishability is the whole
+        // defect class this file keeps paying for. `meanVoltageSource` names the
+        // producer that supplied the value, or the reason there isn't one.
+        // Implementing the native-donor reduction is a donor-release job and is
+        // tracked separately as GOTCHA.3b — it is NOT done here.
         meanVoltage: typeof cluster.lastMeanVoltage === 'number'
           ? cluster.lastMeanVoltage
           : (typeof cluster.meanVoltage === 'number' ? cluster.meanVoltage : null),
+        meanVoltageSource: typeof cluster.lastMeanVoltage === 'number'
+          ? 'cpu-step'
+          : (typeof cluster.meanVoltage === 'number'
+            ? 'gpu-donor-readback'
+            : (this._gpuConnected
+              ? 'unreported-by-this-donor (native donor sends mean_voltage: None — GOTCHA.3b)'
+              : 'no-gpu-donor-attached')),
       };
     }
     // Emit language cortex sub-region activity as pseudo-clusters
