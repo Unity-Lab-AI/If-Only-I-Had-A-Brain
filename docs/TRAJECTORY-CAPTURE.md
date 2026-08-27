@@ -21,6 +21,13 @@ verified-scope: |
       activePhase.name+.elapsedMs, all consciousness.* and voice.* fields
       listed, build.short/.sha/.deployedAt, perf.batchTiming.substeps,
       clusters.<name>.size+.firingRate, profiling.hostRam, profiling.clients.
+    - ⛔ SIXTH BAD PATH, caught in a SECOND pass and NOT by the first:
+      clusters.langCortex.size is UNDEFINED - there is no langCortex cluster,
+      the language cortex is 25 separate lang_* clusters. ⚠ My first pass
+      listed this row as verified because I checked the PATTERN
+      clusters.<name>.size against `cortex` and generalised. VERIFYING A
+      PATTERN IS NOT VERIFYING AN INSTANCE - and that over-reach is exactly
+      what this method is supposed to replace, so it is recorded not buried.
   NOT CHECKED — do not read this page as authority on:
     - whether curriculum.subjects listing 6 while the roster is 9 courses is
       by design or under-reporting. Named as an open question, NOT resolved.
@@ -132,7 +139,7 @@ All paths are relative to `state` in `GET /public-state.json`.
 |---|---|---|
 | build sha | `build.short` / `.sha` / `.deployedAt` | which code produced the row |
 | total neurons | **`totalNeurons` (top-level)** | ⛔ **CORRECTED: do not sum `clusters.*.size` — the payload publishes `totalNeurons` directly** (read **459,775,607** live, local build `2673d14c`, booted `04:22Z`). Deriving a number the payload already states is how the two disagree. ⚠ **The stale figures this row used to quote — *"changed 320,678,816 → 425,436,550 today"* — are exactly why the count must never be written as a constant:** it is **DERIVED AT BOOT from free host RAM**, so the same code has booted at 425,436,550, 411,216,550 and 459,775,607. **Quote it with the boot that produced it.** A trajectory spanning a geometry change must say so |
-| langCortex size | `clusters.langCortex.size` | the vocabulary ceiling |
+| langCortex size | ⛔ **`clusters.langCortex.size` IS UNDEFINED — there is no `langCortex` cluster.** The language cortex is published as **25 separate `lang_*` clusters**: `lang_auditory`, `lang_visual`, `lang_gustatory`, `lang_somatosensory`, `lang_free`, `lang_letter`, `lang_phon`, `lang_sem` (+ 6 `lang_sem_*`), `lang_fineType`, `lang_motor`, `lang_word_motor` (+ 6 `lang_word_motor_*`). **Sum the `lang_*` sizes, or name the specific band you mean.** | the vocabulary ceiling. ⚠ **CAUGHT 2026-08-27 IN A SECOND PASS — this was the SIXTH bad path on this page and my first pass marked it "verified".** I checked the *pattern* `clusters.<name>.size` against `cortex` and generalised, which is the same over-reach the enumerate-and-diff method is supposed to replace. **Verifying a pattern is not verifying an instance.** |
 | donor + primary | `profiling.clients.list[].gpuName` / `.df7Primary` / `.primaryFloorMB` | `PRIMARYFLOOR`: a donor below the floor takes NO matrices, so rows captured then are not comparable |
 | substeps | `perf.batchTiming.substeps` | throughput context |
 | host RAM | `profiling.hostRam.freeMB` / `.usedPct` | `RAMHEAD` |

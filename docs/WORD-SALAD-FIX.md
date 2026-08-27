@@ -92,7 +92,7 @@ identity layer that stops contradicting it.**
 >
 > | field | this page | **live 2026-08-27** | reading |
 > |---|---|---|---|
-> | `selfFrame.units` / `.lines` | 101 / 2,913 | **2 / 62** | ⚠ **NOT a regression — a YOUNG WALK.** ~2h uptime, `cellPhasesStarted: 2`. The original was read on a long-running box |
+> | `selfFrame.units` / `.lines` | 101 / 2,913 | **2 / 62** | ⚠ **NOT a regression — a YOUNG WALK.** ⛔ **CORRECTED: uptime is 5.60 h (`growth.uptime` 20,162 s, booted `04:22:39Z`), not the "~2h" first written here — I carried a figure forward from earlier in the session instead of reading `growth.uptime`.** `cellPhasesStarted: 2`. The original was read on a long-running box. ⭐ **The correction sharpens the point rather than weakening it: 5.6 hours of walking has produced 2 self-frame units, so "young walk" is doing more work as an explanation than "2 hours" implied — and it is `cellPhasesStarted: 2` that carries the argument, not the clock** |
 > | `selfFrame.unitsThisCell` / `capped` | 16 / `true` | **2 / `false`** | ⚠ So **the cap is not currently the binding constraint** — she has not produced enough units this cell to reach it. The page's *"hits `capPerCell:16` in every cell"* is a claim about a MATURE walk and is **not** falsified by this read |
 > | `voice.matrixHits` | 183 | **0** | — |
 > | `voice.matrixDrivenPct` | 100 | **`null`** | ⭐ `null` because there are no emissions to divide by — **not** a collapse to zero percent |
