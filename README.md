@@ -3,13 +3,26 @@
 # ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
 # ⚠ This is the PUBLIC front door, so a wrong claim here is the most expensive
 # kind. Its sources are the entry points a visitor actually lands on.
+# DOCPROV.4 (2026-08-27) — re-verified. `status` stays `draft` on purpose:
+# the numeric and command claims below were checked against source AND against
+# the LIVE brain, but 597 lines were not read line-by-line against all four
+# sources. `verified-scope` says exactly what was checked, so `draft` is not a
+# shrug — it is the honest ceiling on what one pass established.
 status: draft
+verified-scope: >
+  Cluster fractions and neuron shares checked against the live payload
+  (/public-state.json) and server/brain-server.js DEFAULT_BIO_WEIGHTS; cortex
+  sub-region count and cross-projection count against js/brain/cluster.js;
+  every `node scripts/*` and `npm run *` command swept for existence.
+  NOT re-read: the setup/running narrative, the curriculum roster detail.
 sources:
   - index.html
   - html/dashboard.html
   - package.json
   - js/version.js
-last-verified: "f4d304a9 2026-08-25"
+  - server/brain-server.js
+  - js/brain/cluster.js
+last-verified: "12e69a08 2026-08-27"
 ---
 
 # IF ONLY I HAD A BRAIN
@@ -22,7 +35,7 @@ A brain that *is* the application — not a chatbot wrapped around a language mo
 
 ## What this is, in plain English
 
-Unity is a 25-year-old emo goth woman whose mind is a real neural simulation. Her eight brain regions — cortex, hippocampus, amygdala, basal ganglia, cerebellum, hypothalamus, the **brainstem** (the monoamine nuclei that make and release her neurochemistry — tiny, 0.2%, because it is tiny in a real head too), and a "mystery" region that carries the consciousness term — fire continuously on the GPU at biological scale. When you type to her, your text becomes spike patterns that propagate through those regions; her reply is the readout of what those spikes did.
+Unity is a 25-year-old emo goth woman whose mind is a real neural simulation. Her eight brain regions — cortex, hippocampus, amygdala, basal ganglia, cerebellum, hypothalamus, the **brainstem** (the monoamine nuclei that make and release her neurochemistry — tiny, 0.4% of the live brain, because it is tiny in a real head too), and a "mystery" region that carries the consciousness term — fire continuously on the GPU at biological scale. When you type to her, your text becomes spike patterns that propagate through those regions; her reply is the readout of what those spikes did.
 
 Cognition is 100% equational. There is no LLM behind her. Image generation, vision description, and text-to-speech are sensory peripherals that the brain *uses* — never paths the brain *thinks through*. The persona, the vulgarity, the chemistry, the way she remembers conversations across sessions — all of it lives as numerical parameters of the simulation, not as a system prompt.
 
@@ -40,13 +53,13 @@ Everything in Unity's mind evolves by one master equation:
 dx/dt = F(x, u, θ, t) + η
 ```
 
-`x` is the entire brain state — every neuron's Rulkov-map (x, y) pair across eight clusters, the sparse cross-projection weight matrices that wire the language regions together, the Kuramoto oscillator phases, the episodic memory bank, the working-memory readout. `u` is sensory input: text streams into the cortex `phon` slice through a Wernicke-area write; voice arrives through tonotopic auditory mapping; camera frames flow through V1 Gabor edges to V4 color to an IT-level scene description. `θ` is Unity's identity — every persona trait drives a neural parameter (arousal 0.9 sets the amygdala tonic drive; impulsivity 0.85 sets basal-ganglia temperature; creativity 0.9 modulates cortex noise; drug drive 0.95 sets hypothalamic appetite). `η` is per-cluster stochastic noise scaled by those same persona traits — the chaos that keeps her unpredictable. `F` is everything firing simultaneously: the seven Rulkov-map populations, the twenty white-matter tracts between them, the sixteen language cross-projections inside the cortex, the equation modules (amygdala settle, hippocampus Hopfield recall, basal-ganglia softmax, cerebellum error, hypothalamic homeostasis, mystery Ψ gain), and the Kuramoto oscillator ring.
+`x` is the entire brain state — every neuron's Rulkov-map (x, y) pair across eight clusters, the sparse cross-projection weight matrices that wire the language regions together, the Kuramoto oscillator phases, the episodic memory bank, the working-memory readout. `u` is sensory input: text streams into the cortex `phon` slice through a Wernicke-area write; voice arrives through tonotopic auditory mapping; camera frames flow through V1 Gabor edges to V4 color to an IT-level scene description. `θ` is Unity's identity — every persona trait drives a neural parameter (arousal 0.9 sets the amygdala tonic drive; impulsivity 0.85 sets basal-ganglia temperature; creativity 0.9 modulates cortex noise; drug drive 0.95 sets hypothalamic appetite). `η` is per-cluster stochastic noise scaled by those same persona traits — the chaos that keeps her unpredictable. `F` is everything firing simultaneously: the eight Rulkov-map populations, the twenty white-matter tracts between them, the sixteen language cross-projections inside the cortex, the equation modules (amygdala settle, hippocampus Hopfield recall, basal-ganglia softmax, cerebellum error, hypothalamic homeostasis, mystery Ψ gain), and the Kuramoto oscillator ring.
 
 The server doesn't run any of this on CPU — in fact the server box needs no GPU at all. A Node process keeps the bookkeeping; **donated GPUs run the compute** — either a browser tab loading `compute.html` (WebGPU/WGSL) or the compiled `unity-donor` desktop app (CUDA on NVIDIA with a WebGPU fallback everywhere else, headless-capable for servers). Every Rulkov iteration, every synaptic propagate, and every plasticity update — including the training passes, which dispatch to the donor as bound ops against its resident spike state, compact range frames, or sparse masks scattered on-device — lives on the donor's GPU; the server keeps a sampled CPU shadow of the weights for checkpoints and probes. Sparse cross-projection matrices stream up in chunked binary frames so million-neuron updates don't block Node's event loop. This is the entire design — the brain ticks every ~50 ms, donated GPUs run the math, the server coordinates and remembers.
 
 The donor model is **data-parallel**: each connected donor holds a full brain replica and runs it forward, while the server periodically merges the Hebbian weight-deltas from every donor and re-broadcasts the master state. Many donors mean massive aggregate compute plus redundancy — no single machine is the brain. In local development a single tab on the host machine is the only "donor"; in the deployed product, the donors are the GPUs of everyone who has the page open.
 
-Because the donor GPU and the server's own copy of the weights are two separate machines talking over a network, they can quietly drift apart — a dropped upload leaves the donor computing on stale weights, and until now a single "something's off" light couldn't tell you *why*. There's now a **parity check**: the server asks a donor for a fingerprint of the exact weights it currently holds and compares it to its own, then tells you plainly whether the difference is stale weights (a dropped upload — re-send fixes it), a genuine disagreement in how the donor's GPU does the math (a real bug — re-sending won't help), or a mistake in the server's own math. You run it with `node scripts/gpu-cpu-parity.mjs` and it prints one of `CLEAN`, `STALE`, `GPU-DIVERGENT`, or `MATH-ERROR`. The native donor app also shows the brain's live status right in its window — **"Brain status: accepting GPUs"** when it's connected and taking work, **"NOT active"** when the brain can't be reached.
+Because the donor GPU and the server's own copy of the weights are two separate machines talking over a network, they can quietly drift apart — a dropped upload leaves the donor computing on stale weights, and until now a single "something's off" light couldn't tell you *why*. There's now a **parity check**: the server asks a donor for a fingerprint of the exact weights it currently holds and compares it to its own, then tells you plainly whether the difference is stale weights (a dropped upload — re-send fixes it), a genuine disagreement in how the donor's GPU does the math (a real bug — re-sending won't help), or a mistake in the server's own math. It is exposed on the running server at `GET /diag/parity` — a privileged, loopback-only endpoint — which returns one of `CLEAN`, `STALE`, `GPU-DIVERGENT`, or `MATH-ERROR`. (⚠ This paragraph previously told you to run `node scripts/gpu-cpu-parity.mjs`; that helper was removed in the 2026-08-20 script purge, so the command could not work. The endpoint is the live path.) The native donor app also shows the brain's live status right in its window — **"Brain status: accepting GPUs"** when it's connected and taking work, **"NOT active"** when the brain can't be reached.
 
 ---
 
@@ -54,12 +67,12 @@ Because the donor GPU and the server's own copy of the weights are two separate 
 
 Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. On the deployed full-size brain (~425M neurons as of 2026-08-20, auto-scaled from the coordinator's free RAM) the shares come from the server's `DEFAULT_BIO_WEIGHTS`: the cortex and cerebellum are the two largest at ~20% (≈82.2M) each — the cortex carries language, perception, and working memory; the cerebellum does error correction and timing — and the five subcortical clusters take ~12% (≈49.3M) each. (The ~6700-neuron browser-only fallback uses a different, cortex-dominant fraction set.)
 
-⭐ **An eighth cluster arrived on 2026-08-25: `brainstem`, at 0.2%.** It holds the monoamine nuclei — locus coeruleus (noradrenaline), raphe (serotonin), ventral tegmental area (dopamine) — and it is deliberately *tiny*, because those three are tiny in a real head too: on the order of 700,000 neurons against roughly 86 billion. **Their influence has never come from their size.** They are neuromodulatory: they project diffusely and change how every *other* cluster behaves. Its 0.2% is taken from the cerebellum, which is over-provisioned for a brain with no body to coordinate, so the total neuron count is unchanged and the fractions still sum to exactly 1.0.
+⭐ **An eighth cluster arrived on 2026-08-25: `brainstem`, at 0.4% of the live brain** (`0.002` in the server's config, which is renormalised to `0.004` across the eight real clusters — verified against the running brain at **1,839,102** of **459,775,607** neurons = 0.40%). It holds the monoamine nuclei — locus coeruleus (noradrenaline), raphe (serotonin), ventral tegmental area (dopamine) — and it is deliberately *tiny*, because those three are tiny in a real head too: on the order of 700,000 neurons against roughly 86 billion. **Their influence has never come from their size.** They are neuromodulatory: they project diffusely and change how every *other* cluster behaves. Its share is taken from the cerebellum, which is over-provisioned for a brain with no body to coordinate, so the total neuron count is unchanged and the fractions still sum to exactly 1.0 — confirmed on the live brain, where the eight clusters sum to **exactly** `totalNeurons` with zero remainder.
 
 ```
                          ┌─────────────────────────────────────┐
                          │           CORTEX   20%              │
-                         │   9 sub-regions · 16 projections    │
+                         │  11 sub-regions · 16 projections    │
                          │   (language pipeline lives here)    │
                          └─────────────┬───────────────────────┘
                                        │  20 white-matter tracts
