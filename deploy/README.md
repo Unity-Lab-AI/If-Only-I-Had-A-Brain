@@ -11,7 +11,32 @@ sources:
   - deploy/unity-brain-ctl.service
   - deploy/brain-ctl-helper.sh
   - deploy/sudoers.d/unity-brain-ctl
-last-verified: "1b4260a7 2026-08-26"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4) — the endpoint enumeration HOLDS, EXACTLY.
+  The only moved source is server/brain-ctl.js, and the endpoint list is this
+  page's load-bearing claim, so it was diffed against the code's own dispatch:
+    - POST table (brain-ctl.js:937-945) serves 8: /start /stop /restart /kick
+      /reset /savererun /update /update-savestart
+    - GET routes serve 3: /health (also /), /status, /logs
+    - Total 11 served verbs — matching the 11 documented here, with no
+      omissions and no extras.
+  ⚠ TWO FALSE POSITIVES OF MINE, caught before writing them down. A string
+  grep for "'/<verb>'" in brain-ctl.js reported two undocumented endpoints:
+    · '/shutdown' — an OUTBOUND call brain-ctl makes TO the brain, not a verb
+      it serves.
+    · '/c' — literally `cmd.exe /c`, a Windows shell flag (:133), not an
+      endpoint at all.
+  ⛔ String presence in a file is not the same as a served route. The dispatch
+  TABLE is the source of truth, and that distinction is the whole finding.
+  NOT CHECKED — do not read this page as authority on:
+    - the WIPE INTERLOCK behaviour. The refusal path is documented here and was
+      NOT exercised — the page's own rule is "never probe the wiping verbs
+      against a live box to watch them refuse", and that rule was honoured.
+    - the systemd unit, the helper script or the sudoers rule. All three are
+      listed sources, NONE of them moved, and none were read this pass.
+    - the "needs the brain up?" column per endpoint.
+    - the bootstrap-backend / bootstrap-deployed narratives.
+last-verified: "074aa591 2026-08-27"
 ---
 
 # Unity brain — deploy hand-off (PA.4.7, amended 2026-08-20)

@@ -8,7 +8,28 @@ sources:
   - js/brain/auditory-cortex.js
   - js/brain/peripherals/ai-providers.js
   - js/io/voice.js
-last-verified: "4b91e77d 2026-08-26"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4). The only moved source is
+  js/brain/visual-cortex.js (+14/-2 — the header correction that removed a
+  false "calls AI for high-level description" claim), so the check was aimed at
+  this page's vision claims, which are the ones the no-text-AI LAW rides on.
+    - ⭐ IT HOLDS, and emphatically. The page states vision is 100% equational
+      in several places, names describeEquational as the live path, and marks
+      the old VLM-describer sections as HISTORICAL rather than deleting them.
+      Verified in code: describeEquational 7 occurrences (live);
+      describeImage 1 and autoDetectVision 1 (the no-op stubs, no live call
+      sites). Nothing on this page asserts an LLM in the perception path.
+    - ⛔ ONE STALE FIELD, corrected: the visual-cortex state row listed
+      `_describer`, which no longer exists (0 occurrences). `_describing` does
+      (6). It was the last residue of the describer retirement.
+  NOT CHECKED — do not read this page as authority on:
+    - the dim-64 / dim-32 percept shapes, the CDF 9/7 field-C pipeline, or the
+      SE.9 image-generation loop. Claims read, math NOT re-derived.
+    - js/brain/sensory.js, auditory-cortex.js, peripherals/ai-providers.js and
+      js/io/voice.js — four of the five listed sources, NONE of which moved and
+      none of which were read this pass.
+    - the SE.15 draw-engine and practice-loop sections.
+last-verified: "074aa591 2026-08-27"
 ---
 
 # SENSORY — Unity's Peripheral Contract
@@ -50,7 +71,7 @@ interface SensoryPeripheral {
 
 | Peripheral | File | `init(source)` takes | `process()` returns | `destroy()` clears |
 |---|---|---|---|---|
-| Visual cortex | `js/brain/visual-cortex.js` | `HTMLVideoElement` (from `getUserMedia`) | `Float64Array(100)` — current into cortex neurons 0–99 | `_video`, `_ctx`, `_canvas`, `_describer`, `_describing` |
+| Visual cortex | `js/brain/visual-cortex.js` | `HTMLVideoElement` (from `getUserMedia`) | `Float64Array(100)` — current into cortex neurons 0–99 | `_video`, `_ctx`, `_canvas`, `_describing` — ⛔ **`_describer` REMOVED 2026-08-27: the field no longer exists (0 occurrences), the last residue of the VLM-describer retirement this page documents everywhere else. `_describing` does still exist (6).** |
 | Auditory cortex | `js/brain/auditory-cortex.js` | `AnalyserNode` (from Web Audio API) | `Float64Array(50)` — current into cortex neurons 0–49, tonotopic | `_analyser`, `_audioData`, `_motorOutput`, `_heardBuffer` |
 | Voice I/O | `js/io/voice.js` | `SpeechRecognition` + `SpeechSynthesis` | — (event-driven, not per-frame) | browser recognizer handle |
 

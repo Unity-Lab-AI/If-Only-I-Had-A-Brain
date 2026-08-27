@@ -39733,6 +39733,54 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
 
+## 2026-08-27 - KI-22 verified green, a theory-paper caveat retired BY MEASUREMENT, and 4 more pages (drift 8 → 4)
+
+Gee: *"get to it"*
+
+### ⭐ KI-22's FOUR SURFACES — verified, not assumed
+
+`donor-v0.3.32`, checked after CI landed:
+
+| surface | state |
+|---|---|
+| tag | `f555373b` on **both** remotes |
+| release | id 9494, `draft:false`, `prerelease:false` |
+| assets | **both** attached — linux 18MB, windows 12MB |
+| public download page | shows `donor-v0.3.32`; `/download/donor-windows` → 200 |
+| shipped `.exe --version` | `unity-donor 0.3.32` |
+
+⭐ **`PAGESTALE.1`'s fix held** — the release job rsynced the frontend itself, which is exactly the failure KI-22 was filed for (a release publishing nothing while logging all-green). **The check that was outstanding at the end of the last batch is now closed with evidence.**
+
+### ⭐ `docs/THEORY-PAPER.md` — a caveat RETIRED because it became measurable
+
+⛔ **§9.3 said Φ is "the Shannon entropy of a 1,024-neuron sample".** That is the pre-`PHISRC.1` implementation. `computePhi()` (`cluster.js:2249`) now derives `p` from the **exact GPU-acked `cluster.spikeCount`**. ⚠ The sample was not merely imprecise — **at biological scale it was measuring nothing**, because the GPU owns cortex spike state and the CPU array a strided 1,024-wide sample reads is empty apart from teach bits. ⭐ The exact proportion is also strictly better: the 1,024 figure existed *only* to hold binomial noise near 1.5%, and an exact count has none.
+
+⭐ **§9.4 carried an honest caveat — *"it is a derivation, not a report of observed behaviour"* — and it can now be retired, by measurement.** Read off the running brain: **`phiState: "live"`**, `phiRaw` **0.2618**, `phiScaleRef` **0.3044**, `phiNorm` (Φ̂) **0.860**. **Φ̂ is modulating Ψ.** The floor is no longer doing the work, and the term is doing what that section always argued it would. ⭐ **Turning a stated limitation into a measured result is the most satisfying kind of doc update there is.**
+
+⛔ **And the paper omitted the NORMALISATION entirely.** Φ̂ is not a bare floor — `PHISCALE.1` (`brain-server.js:5034-5087`) makes it an **adaptive high-water reference**: rises to any new peak at once, decays `0.99995`/tick, seeded at the *documented* `H(0.015) = 0.1124`. ⭐ **Why a reference and not a constant, which is the substantive design point:** nothing justifies a particular spiking proportion as "maximal integration", and a hardcoded `p_ref` would silently mean different things across boots because **`totalNeurons` is derived at boot from free host RAM** (the same code has come up at 425,436,550 and 459,775,607). ⚠ `server/brain-server.js` **added as a source** — the normalisation lives there, not in `cluster.js`, so drift could only ever see one half of a two-half claim.
+
+### ⭐ `deploy/README.md` HOLDS — exactly 11, no omissions, no extras
+
+The POST dispatch table serves **8** verbs; the GET routes serve **3**. **Total 11, matching the 11 documented.**
+
+⛔ **TWO FALSE POSITIVES OF MINE, caught before they were written down.** A string grep for `'/<verb>'` in `brain-ctl.js` reported two undocumented endpoints: `'/shutdown'` — an **outbound** call brain-ctl makes *to* the brain, not a verb it serves — and `'/c'`, which is **literally `cmd.exe /c`**, a Windows shell flag. ⭐ **String presence in a file is not a served route. The dispatch TABLE is the source of truth**, and that is the whole finding.
+
+### ⭐ `deploy/HOOK-FIXES.md` — verified by RUNNING its own recipe
+
+This page's subject is unversioned, so `docs:drift` can only ever see its tracked wiring. ⭐ **But the page ships its own two-command check, and nobody had run it.** `SCRIPT_SCAN_ROOTS` → **3**, `USAGE_MAX_BYTES` → **5**, both against a recipe expecting `>0`. **Neither fix has been reverted by a framework refresh — the exact failure the page exists to catch has not happened.**
+
+⚠ **Read the strength of that precisely:** a marker constant proves the fix was not *reverted*; it does **not** prove the surrounding logic is intact. **A marker can outlive an edit that breaks what it marks.**
+
+⭐ **And the drift resolved as GROWTH, with a pleasing twist:** `scripts/doc-prov-stop-check.mjs` is +177 lines *because it did not exist at the last stamp* — a new second Stop hook — and `settings.json` +4 wiring it. **That hook was deliberately sited in `scripts/` rather than `.claude/hooks/`, so it is version-controlled and cannot silently vanish on the next refresh.** This page's entire thesis is *"a fix that vanishes without a word"*, and **the very next hook built after it was placed to be immune. The compensation worked, then stopped being needed.**
+
+### ⭐ `docs/SENSORY.md` HOLDS on the claim that matters most
+
+Its only moved source is `visual-cortex.js` (+14/−2 — the header correction that removed a false *"calls AI for high-level description"*). So the check aimed at its vision claims, which are what the **no-text-AI LAW** rides on. ⭐ **It holds emphatically**: vision stated as 100% equational in several places, `describeEquational` named as the live path (7 occurrences in code), the old VLM-describer sections marked **HISTORICAL** rather than deleted, and `describeImage`/`autoDetectVision` confirmed as the no-op stubs. **Nothing on that page asserts an LLM in the perception path.**
+
+⛔ One stale field corrected: the state row listed **`_describer`**, which no longer exists (0 occurrences). `_describing` does (6). **The last residue of the describer retirement.**
+
+**Provenance drift 8 → 4.** Remaining: `ARCHITECTURE`, `COMP-todo`, `ROADMAP`, `SKILL_TREE` — the four densest pages in the repo. Board **9 open / 5 in-progress / 386 done**.
+
 ## 2026-08-27 - donor v0.3.32 SHIPPED + the cs check answered + 7 more provenance pages
 
 Gee: *"yea lets do the doner release on those and if cs at college isnt needed your telling me then i suppose its suppereceded like u say but check, and we need to finish those 6 docprov pages"* — then, on my deferral of COMP.1c: *"we arent updating the brains till all is done anyways so ur recommendation is mute, right? get to whats left"*
