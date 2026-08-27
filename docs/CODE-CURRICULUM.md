@@ -6,7 +6,37 @@ sources:
   - js/brain/component-synth.js
   - docs/component-templates.txt
   - js/brain/curriculum.js
-last-verified: "4b91e77d 2026-08-26"
+verified-scope: |
+  CHECKED 2026-08-27 (DOCPROV.4, 15 of 22). Every countable and every named
+  symbol on this page was looked up:
+    - ⛔ SIX RUNNERS NAMED IN THE TABLE DO NOT EXIST. runCsCol1Real..Col4Real
+      were SPLIT into runCsTheoryCol1-4Real + runCsSystemsCol1-4Real (8, not
+      4) by the M4 college expansion, and there is NO runCs* at grad or phd at
+      all. G5..G12 (8 of 8) are real and correctly named.
+    - ⛔ THREE DIFFERENT COUNTS for one countable thing: "18 real programs",
+      "22/30 templates", "All 30 parse". Measured: 31 PRIMITIVE blocks.
+    - ⚠ OPEN QUESTION NAMED, NOT ANSWERED: `cs` enters the roster at grade5
+      and subjectsForGrade is CUMULATIVE with no removal, so `cs` is still
+      active at college1..phd - while _cellRunnerRaw has `cs` branches for
+      grade5..grade12 ONLY. That is 6 cells the machinery treats as HELD
+      (readyAndWaiting = "no runner wired"), which HELD-BACK.md says the
+      ladder SKIPS. Either wire them or retire `cs` at college - a design
+      call, and guessing costs either 6 cells of busywork or a hidden hole.
+    - VERIFIED PRESENT: .claude/scripts/fetch-code-corpora.mjs; corpora/coding
+      with 14 files (grade5-12, college1-4, grad, phd - matching G5->PhD);
+      generateMany / _deriveParams / _fillParams / _hueFromPattern in
+      component-synth.js; _trainCodingStories; codingWords in
+      .claude/scripts/gen-grade-vocab.mjs.
+  NOT CHECKED — do not read this page as authority on:
+    - how many of the 31 primitives are parameterized. Only the TOTAL was
+      counted; the 22/8 split is carried forward unverified and at least one
+      primitive is unaccounted for.
+    - the "All 30 parse + JS-compile" claim. Not re-run this pass.
+    - the per-grade TOPIC contents of either the ideal table or the
+      "SOURCE OF TRUTH" coverage list - runner NAMES were checked, not what
+      each runner teaches.
+    - whether corpora/coding/*.json have real content. Files exist; unread.
+last-verified: "38e19615 2026-08-27"
 ---
 
 # CODE CURRICULUM — Unity's G5→PhD HTML / CSS / JS Proficiency Layout
@@ -59,6 +89,20 @@ By PhD, Unity should **understand and reason fluently** about:
 
 *A `—` means that language has no NEW rung at that grade (prior mastery compounds); it does not mean she stops using it.*
 
+> ## ⛔ RE-VERIFIED 2026-08-27 (DOCPROV.4) — SIX OF THE RUNNERS NAMED ABOVE DO NOT EXIST
+>
+> Every `runCs*` name in the table was looked up as a definition in `js/brain/curriculum/*.js`. ⭐ **G5→G12 are all real and correctly named** (`runCsG5Real` … `runCsG12Real`, 8 of 8). ⛔ **The six college-and-above names are wrong:**
+>
+> | this page said | reality |
+> |---|---|
+> | `runCsCol1Real` … `runCsCol4Real` | ⛔ **do not exist.** The college CS track was **SPLIT INTO TWO courses per year**: `runCsTheoryCol1Real`…`Col4Real` **and** `runCsSystemsCol1Real`…`Col4Real` — 8 runners, not 4 |
+> | `runCsGradReal` | ⛔ **does not exist.** `grad.js` has no `runCs*` at all (its 8 runners are Ela/Math/Sci/Soc/Art/**Major**/**Research**/Life) |
+> | `runCsPhdReal` | ⛔ **does not exist** either |
+>
+> ⭐ **The split is the M4 college expansion, and the roster confirms it:** `curriculum.js:152` registers `'college1': ['major', 'genered', 'cstheory', 'cssystems']`. **So this page predates the expansion and still names the old single-blob runner** — the same expansion `docs/DECOMPOSED-curriculum-build.md` records as `[x]` DONE (8→10 concurrent courses/year).
+>
+> ⛔ **AND AN OPEN QUESTION THAT IS NOT MINE TO ANSWER.** `cs` is introduced at `'grade5': ['cs']` and `subjectsForGrade` returns *"the 6 core PLUS every track introduced at or before `grade`"* — **cumulative, with no removal shown.** So `cs` is still in the roster at college1→phd, while `_cellRunnerRaw` has `cs` branches for **grade5→grade12 ONLY** (verified: the college+ branches key on `cstheory`/`cssystems`). ⚠ **That is six (subject, grade) cells — `cs` × college1-4, grad, phd — with no dispatch branch**, which the machinery treats as **HELD** (`readyAndWaiting` = *"no runner is wired"*), and `docs/HELD-BACK.md` says the remediation ladder **skips HELD cells** as *"a curriculum gap, not a learning fail"*. ⛔ **So it fails silently by design.** ⚠ **The decision is a design call: either wire `cs` runners at college+, or retire `cs` from the roster there because `cstheory`/`cssystems` supersede it. I am not guessing which** — a cumulative roster with no removal mechanism is equally consistent with "oversight" and "deliberate, superseded in practice", and choosing wrong here adds six cells of busywork or hides a real hole.
+
 ### Implemented cs-runner coverage (SOURCE OF TRUTH — what actually trains)
 
 The table above is the proficiency-target ideal. The **shipped `runCs*Real` runners** implement a valid **JS-early** variant (audited 2026-06-18) — together with the corpus + exemplars they deliver full HTML/CSS/JS proficiency by G12:
@@ -79,12 +123,12 @@ Every cs runner: teaches its band VOCAB + bespoke sentences + causal chains, cal
 ## Build status (what trains this)
 
 1. **Concept-prose corpus** (UNDERSTANDING) — `corpora/coding/<grade>.json`, populated by `.claude/scripts/fetch-code-corpora.mjs` (Simple/English-Wikipedia CC-BY-SA, merge-additive) per the TOPICS map above + hand-authored autobiographical coding memories. Trained by `_trainCodingStories(grade)` in every cs cell G5→PhD. ✅ pipeline live; corpus deepening ongoing (re-run ingest / add TOPICS to extend).
-2. **Exemplar library** (GENERATION) — `docs/component-templates.txt`, 18 real programs (games/tools/creative), parsed + composed by `ComponentSynth`, rendered in the Shadow-DOM sandbox. Extend by appending `=== PRIMITIVE: ===` blocks. ✅
+2. **Exemplar library** (GENERATION) — `docs/component-templates.txt`, ⛔ **31 real programs — counted 2026-08-27 (`grep -c '=== PRIMITIVE'`).** This line said **18** and the synth bullet below said **30** twice (*"22/30 templates parameterized"*, *"All 30 parse"*). **Three different numbers on one page for one countable thing, and none of them was right.** ⭐ **The library GREW past both figures** — which is the benign direction, and exactly why a count belongs in a command rather than in prose. Programs are games/tools/creative, parsed + composed by `ComponentSynth`, rendered in the Shadow-DOM sandbox. Extend by appending `=== PRIMITIVE: ===` blocks. ✅
 3. **cs runners** — `runCsG5Real`…`runCsPhdReal` dispatch per (cs, grade); each teaches its rung's vocab + bespoke sentences + `_trainCodingStories`. ✅ wired G5→PhD.
 4. **Vocab** — code terms folded into per-grade vocab (`gen-grade-vocab.mjs` pulls `codingWords`), anchored before binding. ✅
 5. **Compositional + parametric synth (#71, DONE — coded right):**
    - **Multi-primitive composition** — `ComponentSynth.generateMany()` splits a request on conjunctions/commas, matches each part, and returns one spec per DISTINCT primitive (primary whole-match + stricter-threshold extras, deduped). "a clock and a calculator" → both; a single request → one; names with internal "and" (rock-paper-scissors) stay whole via the primary match. `engine.js _handleBuild` injects EACH spec, each in its own Shadow-DOM isolation boundary (no cross-component selector/JS collisions). Verified: synth+engine parse clean, split logic confirmed across single/and/comma/with/name cases.
-   - **Parameterization** — `_deriveParams`/`_fillParams`/`_hueFromPattern` fill `{{word}}` from equational brain state: `{{accent}}` = a user-named color or a hue from the cortex activation pattern (her neural state colors the build). No-op on unparameterized templates. **22/30 templates parameterized** (every one with a decorative primary accent); the 8 left fixed have *semantic* color (color-picker RGB, drawing-pad user-picked, reaction-timer red/green state, quiz right/wrong) so splitting into words them would break meaning. All 30 parse + JS-compile; fill produces valid CSS.
+   - **Parameterization** — `_deriveParams`/`_fillParams`/`_hueFromPattern` fill `{{word}}` from equational brain state: `{{accent}}` = a user-named color or a hue from the cortex activation pattern (her neural state colors the build). No-op on unparameterized templates. ⛔ **The "22/30" and "All 30" figures are STALE — the library holds 31 primitives as of 2026-08-27 (see the corrected bullet 2 above), so 22 + 8 = 30 no longer accounts for the set.** ⚠ **What is NOT re-measured: how many of the 31 are parameterized.** Only the total was counted; the 22/8 split is carried forward unverified, and **at least one primitive is now unaccounted for either way.** The reasoning behind the exclusions still stands and is worth keeping: the ones left fixed have *semantic* color (color-picker RGB, drawing-pad user-picked, reaction-timer red/green state, quiz right/wrong), so parameterizing them would break meaning. ⚠ "All 30 parse + JS-compile" is likewise a stale denominator — **the parse claim was not re-run this pass.**
    - **Runtime verification** of the live sandbox/synth/training loop happens at the K→PhD walk + final test (the terminal phase, per the no-test-until-finished rule) — the CODE is complete.
 
 ---

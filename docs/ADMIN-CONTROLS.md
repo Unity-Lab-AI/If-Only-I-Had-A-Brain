@@ -31,13 +31,18 @@ verified-scope: |
       exhaustively; the 194 defaults and explanations were NOT re-read. A wrong
       default in this table would survive this pass.
     - the checkpoint/rollback narrative and the Savererun passedPhases claim
-  ⚠ EXPECT ONE DRIFT ROW IMMEDIATELY: this same commit edits js/brain/curriculum.js
-  (GOTCHA.9 — removing a fallback at the GOTCHA.2 spike-clear site), which is a
-  source of this page. That is the checker being CORRECT, not noisy. The change was
-  read as a diff before stamping and it strengthens the teachOps row rather than
-  invalidating it. ⛔ Do not clear that row by bumping the hash — the honest stamp
-  is "the tree I actually read", and a stamp cannot name the commit that contains it.
-last-verified: "9177c862 2026-08-27"
+  ⚠ THE PREDICTED SELF-DRIFT, NOW CLOSED. The 2026-08-27 pass warned that its own
+  commit edited js/brain/curriculum.js (GOTCHA.9 — removing a fallback at the
+  GOTCHA.2 spike-clear site), which is a source of this page, and that the drift row
+  it produced would be the checker being CORRECT rather than noisy. It was. That
+  commit now EXISTS in history (the change measures +16/-3 and is the only movement
+  in any source since), so the stamp can finally name it. ⛔ This is COMPLETING the
+  stamp, not silencing a signal: the diff was read before the original stamp, the
+  change strengthens the teachOps row rather than invalidating it, and the reason a
+  stamp could not name it at the time was only that a commit cannot contain its own
+  hash. ⛔ The rule stands unchanged for anything else — never clear a drift row by
+  bumping a hash on a source you have not read.
+last-verified: "38e19615 2026-08-27"
 ---
 
 # ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
