@@ -39709,7 +39709,7 @@ This page bakes measurements into its reasoning, so drift means **re-price**, no
 | `basinHealth.semMotorMeanCos` | 0.075 | **0.436** | 5.8×; `saturated` still `false` |
 | `dominantWord` | `"gaseous"` | **`null`** | — |
 | `novelConsolidated` | 0 | **0** | ⭐ **HALF A stands unchanged** |
-| recruitment `sem_to_word_motor` | 99.96% | **99.96%** | ⭐ holds, **on a 2-hour-old brain** |
+| recruitment `sem_to_word_motor` | 99.96% | **99.96%** | ⭐ holds. ⛔ **CORRECTION appended same session: the brain was 5.60 h old, not 2 hours** — `growth.uptime` reads 20,162 s against a `04:22:39Z` boot. I carried a stale figure forward instead of reading the field. **A clock is a reading too** |
 
 ⛔ **That last row's PATH was wrong** — the page cites `utilization.weightRecruitment.cortex_sem_to_word_motor`; the payload nests a level deeper under **`.matrices`** (`state.js:347`). **Same defect class as the five bad paths in `TRAJECTORY-CAPTURE.md` found hours earlier: follow the documented path and you get `undefined` with no error.**
 
@@ -39732,5 +39732,47 @@ Its frontmatter correctly warns that the page's real subject, `.claude/statuslin
 ⛔ **Both were absence-claims from a too-narrow pattern.** With the three from earlier today (`<h2[^>]*>` truncating inside a `title` attribute, `DREAM_WANT_BROWSER_GPU`, `/update` dispatched via `split('?')`), that is **five false findings across nine pages — every single one an absence-claim, and every single one caught by verifying individually before writing it down.**
 
 ⭐ **THE RULE, now written on the page: an absence proven by one grep is not proven. Widen the pattern, drop the anchors, go case-insensitive — then claim it.** ⭐ **And the meta-lesson worth more than any of the nine pages: the enumerate-and-diff method is powerful precisely because it finds things a linear read cannot — but its errors are systematically biased toward FALSE POSITIVES, so the verification step is not optional politeness. It is the method.**
+
+## 2026-08-27 - DOCPROV.4 (10 of 22): a ledger that sat two days lying by omission, a KI that is worse than filed, and two corrections to my own work
+
+Gee: *"get to it"*
+
+### ⭐ `docs/KNOWN_ISSUES.md` — a ledger's checkable claim is its STATUS
+
+⭐ **`KI-33` CONFIRMED on live state.** The row's own instruction was *"watch after the next press: `phiState` should read `live`, not `floored`."* **It reads `live`** — `phiRaw` **0.2618**, `phiScaleRef` **0.3044**, `phiNorm` **0.8600**. **Φ̂ is modulating Ψ for the first time**, clear of the old `max(0.1, ·)` floor, with the adaptive high-water reference doing its job instead of clipping to a constant. **Every watch-line in that entry is discharged.**
+
+⛔ **`KI-27`'s STATUS WAS STALE — 🔴 OPEN → ⛔ BY DESIGN.** `profiling.throughput.batchPaused` reads `{reason: "probe-gate (cortex owns the GPU exclusively for this cell)", cell: "ela/kindergarten", expected: true}` with **`batchStall: null`**. `sinceLastBatchMs` **20,072,438 ms ≈ 5.58 h** against **5.60 h** uptime — **no batch has run this boot at all, and that is the designed pause.** ⭐ **`expected: true` is the entire fix: "zero batches" and a genuine stall used to be one indistinguishable symptom and are now two fields.** And the controller's input is healthy when batches do flow — `batchTiming` reads **round-trip** (`roundTripMs` / `roundTripEmaMs`), which was the specific trap the row flagged.
+
+⛔ **It had been answered on 2026-08-25 as `SUBSTEPS.6`, in `docs/TODO.md`, and the answer never propagated here. The ledger sat two days asserting an open bug that had been resolved.** ⭐ **A ledger nobody re-reads is a ledger that lies by omission** — which is the same failure as `SKILL_TREE.md:358`, just in the opposite direction.
+
+### ⛔ `KI-16`'s verification pass — done, and it is worse than filed
+
+The row asked: *"find its callers, confirm whether it's dead code or a live mis-write."*
+
+**(a) NOT dead code — 13 live call sites.** `_writeTiledPatternOffset` has **6**; `_writeQuestionTemplateTag` (`curriculum.js:14028`) has **7** — ⛔ **a SECOND defective site the row never named.**
+
+**(b) It does NOT throw, so nothing is logged.** `gpu.js:4606-4610` is defensive (`Array.isArray ? … : length-check ? … : []`), so with `sparseIndices === undefined` **`arr` becomes `[]`** — and the surrounding `catch { /* non-fatal */ }` **never fires.**
+
+**(c) There is NO length guard, so a frame IS SENT.** `name = ` `` `cortex/${regionName}` `` with `regionName` bound to the **index array** — a header naming `cortex/<the entire comma-joined index list>`, `writeUInt32LE(0)`, empty payload.
+
+⛔ **So the defect is not "it ships garbage region names." It is that the spikes NEVER REACH THE GPU while `cluster.lastSpikes[idx] = 1` writes the CPU shadow — a silent CPU/GPU divergence across 13 call sites on definition and question teach paths — plus a junk frame inflating the exact `teach_ops` counter that `TEACHMIRROR.1` created and `GOTCHA.9` was filed to stop polluting.**
+
+⚠ **Invisible without a donor:** two early returns (`!this._gpuClient`, `!this._donorPatternLaneOpen()`) mean a local no-donor run reproduces nothing. ⚠ **Deliberately NOT fixed:** the correct region name must be established *per site* (both also push cluster-ABSOLUTE indices, the anomaly's second half), and `feedback_fix_the_chokepoint_not_the_instance` applies — patching one leaves the twin. ⚠ **One consequence flagged, NOT claimed:** the repeat-compression cache keys on `'7:' + name`, so a per-call-unique garbage name may defeat or grow it — **I did not check whether that cache is bounded, and I am not going to imply I did.**
+
+⚠ **`js/brain/curriculum.js` added as a source.** `KI-16` lives there and the page never listed it — **so drift could never have fired on the file the row is about.** Third time this pass pattern has appeared (`HTML-ENTRY-POINTS`, `THRESHOLD-DERIVATION`, now here).
+
+⚠ **What could NOT be discharged, stated rather than left blank:** `KI-1`/`2`/`4`/`5`/`9`/`15`/`19`/`20`/`21` mostly say *"stays open until a live walk confirms X"*. **This brain is 5.60 h in at `cellPhasesStarted: 2`, running code that predates this session, so it cannot confirm any of them. Absence of confirmation is not evidence.**
+
+### ⚠ TWO CORRECTIONS TO MY OWN WORK FROM EARLIER TODAY
+
+⛔ **(1) A SIXTH bad path in `docs/TRAJECTORY-CAPTURE.md` — and my first pass had marked it "verified".** `clusters.langCortex.size` is **UNDEFINED**; there is no `langCortex` cluster. The language cortex publishes as **25 separate `lang_*` clusters** (`lang_sem`, `lang_word_motor`, `lang_phon`, plus 6 `lang_sem_*` and 6 `lang_word_motor_*`). ⭐ **I checked the PATTERN `clusters.<name>.size` against `cortex` and generalised. Verifying a pattern is not verifying an instance — which is exactly the over-reach the enumerate-and-diff method exists to replace, committed by the person running it.**
+
+⛔ **(2) "~2h uptime" was wrong — it is 5.60 h** (`growth.uptime` 20,162 s, boot `04:22:39Z`). I carried a figure forward from earlier in the session instead of reading the field. ⭐ **A clock is a reading too.** And the correction *strengthens* what it was supporting: 5.6 hours of walking producing **2** self-frame units means `cellPhasesStarted: 2` was carrying that argument all along, not the clock.
+
+⭐ **Both corrections were found by measuring something I had already written down — which is the whole argument for `verified-scope` naming what was NOT checked.**
+
+**Drift list 19 → 18.** **10 of 22 pages done.** Board **8 open / 4 in-progress / 384 done**. ⚠ **One measurement error of mine caught in the tooling too:** `grep -c 'KNOWN_ISSUES'` reported the page still drifting — it was matching the checker's own passing line `ok KNOWN_ISSUES ids unique (36 rows)`. **A narrow pattern, this time in the measurement rather than the finding.**
+
+## Prior entry — 2026-08-27 (9 of 22)
 
 **Drift list 21 → 19.** **9 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`, `ADMIN-CONTROLS`, `THRESHOLD-DERIVATION`, `TRAJECTORY-CAPTURE`, `WORD-SALAD-FIX`, `STATUSLINE`). ⚠ **`EQUATIONS.md` was on the plan and was NOT worked — it is not in the drift list at all, so it is already clean.** Board **8 open / 4 in-progress / 384 done**.
