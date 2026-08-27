@@ -46,7 +46,12 @@ verified-scope: |
   ⭐ It also independently confirms KI-22's fourth surface AT SOURCE LEVEL
   rather than only over HTTP: the download links on the shipped page really do
   point at donor-v0.3.32.
-last-verified: "b382e731 2026-08-27"
+  ⚠ RESTAMPED again 2026-08-27 (third time this day, and each cause is recorded
+  rather than smoothed over). The moved source is html/brain-equations.html,
+  changed by the stale-geometry sweep: "9 sub-regions" -> 11 in two places. That
+  is a FIGURE fix inside a page this doc inventories; no page contract, route,
+  message type or the 11-page inventory itself is affected.
+last-verified: "e0eb98ec 2026-08-27"
 ---
 
 # HTML-ENTRY-POINTS — every page, its contract, its failure modes
