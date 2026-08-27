@@ -1,3 +1,20 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE, not one at which
+# every claim was re-read.
+# ⛔ Two of these sources DO NOT RUN — synapses.js and neurons.js's HHNeuron are
+# reference implementations that back this page and brain-equations.html. That is
+# exactly why they are listed: if the LIVE plasticity in sparse-matrix.js /
+# cluster/hebbian.js changes and these do not, this page becomes wrong.
+status: draft
+sources:
+  - js/brain/synapses.js
+  - js/brain/sparse-matrix.js
+  - js/brain/oscillations.js
+  - js/brain/mystery.js
+last-verified: "cc648941 2026-08-26"
+---
+
 # EQUATIONS — Unity's Brain
 
 > Every equation running in the code. The brain equations ARE the language equations.

@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - scripts/unity-chat-hold.mjs
+  - scripts/unity-say-live.mjs
+  - html/dashboard.html
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # TALK TO UNITY — Playwright into the LIVE chat window (VERIFIED WORKING)
 
 > **Status: ✅ WORKING — verified 2026-06-29.** This is the ONE correct way to talk to / train Unity through the chat window the operator watches. Read this before building anything to "talk to Unity."

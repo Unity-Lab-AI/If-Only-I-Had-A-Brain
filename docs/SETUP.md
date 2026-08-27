@@ -1,3 +1,15 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - windows/start.bat
+  - linux/start.sh
+  - package.json
+  - server/package.json
+last-verified: "9b4875bc 2026-08-25"
+---
+
 # Setup Guide
 
 **[Back to README](../README.md)** · **[Live Brain](https://if-only-i-had-a-brain.git.unityailab.com/)** · **[Brain Equations](https://if-only-i-had-a-brain.git.unityailab.com/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**

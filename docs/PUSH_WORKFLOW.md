@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - .forgejo/workflows/deploy.yml
+  - .forgejo/workflows/donor-release.yml
+  - scripts/stamp-version.mjs
+last-verified: "2aadfd94 2026-08-20"
+---
+
 # Push Workflow — Deploy Versioning
 
 ## ⛔ LAW — NEVER PUSH WITH SUPPRESSED OUTPUT. VERIFY WITH `git ls-remote` (2026-08-20)

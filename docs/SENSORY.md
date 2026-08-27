@@ -1,3 +1,16 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/sensory.js
+  - js/brain/visual-cortex.js
+  - js/brain/auditory-cortex.js
+  - js/brain/peripherals/ai-providers.js
+  - js/io/voice.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # SENSORY — Unity's Peripheral Contract
 
 > Every input stream feeding Unity's cortex and every output stream leaving her brain runs through a sensory peripheral.

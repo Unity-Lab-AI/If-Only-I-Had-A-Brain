@@ -1,3 +1,16 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - index.html
+  - html/dashboard.html
+  - html/compute.html
+  - html/minds-eye.html
+  - html/legend.html
+last-verified: "f4d304a9 2026-08-25"
+---
+
 # HTML-ENTRY-POINTS — every page, its contract, its failure modes
 
 > **Status:** drafted 2026-06-17 per audit H.5 + H.8 — operator's live-test reported "only two opened and they both said no connection." This doc inventories every HTML, how it's launched, what it needs from the server, what's deploy-safe vs require-Node, and the per-HTML failure-mode signature.

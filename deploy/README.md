@@ -1,3 +1,19 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# ⛔ This page went stale once in the most dangerous way: it documented six
+# endpoints with NO MENTION of the WIPE interlock, so the next operator would hit
+# the refusal and assume a bug. Its sources are the files that decide what those
+# endpoints actually do.
+status: draft
+sources:
+  - server/brain-ctl.js
+  - deploy/unity-brain-ctl.service
+  - deploy/brain-ctl-helper.sh
+  - deploy/sudoers.d/unity-brain-ctl
+last-verified: "1b4260a7 2026-08-26"
+---
+
 # Unity brain — deploy hand-off (PA.4.7, amended 2026-08-20)
 
 > ⚠ **THIS IS LIVE NOW. The line below said "Nothing here has been applied to any box" — that has been false for months.** The brain runs on the lab box and is driven **entirely from the dashboard buttons** (Update & Savestart / Update & Fresh Walk / Reset), with `deploy/self-update.sh` doing the git-archive overlay + `systemctl restart`. Treat everything below as a description of the installed system, not a proposal.

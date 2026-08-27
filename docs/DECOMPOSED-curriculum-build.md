@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE — 2026-06-26 here,
+# the oldest of the 31. Expect drift; that is information, not a fault.
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - js/brain/curriculum/kindergarten.js
+last-verified: "0bbdbd93 2026-06-26"
+---
+
 # DECOMPOSED — Full Curriculum Build to Depth (K→PhD, skip-proof layout)
 
 > **Gee verbatim per LAW #0 (2026-06-26):** *"We are doing it all even the large builds nothing is deffered and dont skip work becasue its large so you need properl layout of large work so u dont fuck up and skip work becasue its too hard or something stupid like that"* + *"why only courses? highschool has 6 per year college even more in graduate master and phsd"* + *"grade only count for k-12 are grade , college is difgferent"*

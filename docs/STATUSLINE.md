@@ -1,3 +1,18 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE — 2026-06-17, the
+# second-oldest of the 31.
+# ⛔ HONEST CAVEAT: this page's real subject is `.claude/statusline.sh`, which is
+# UNVERSIONED (`.gitignore:48` excludes `.claude/`). A `git diff` cannot see it,
+# so drift here can only ever report on the tracked state producer below. The
+# unversioned half is exactly what deploy/HOOK-FIXES.md exists to record.
+status: draft
+sources:
+  - server/brain-server/state.js
+  - .claude/settings.json
+last-verified: "786243c3 2026-06-17"
+---
+
 # Claude Code Statusline — How It Works
 
 How the bot's status line (e.g. `[OSLO] | [######-------] 57% | O4.7 | ░▒▓ | FREE`) is wired in and rendered.

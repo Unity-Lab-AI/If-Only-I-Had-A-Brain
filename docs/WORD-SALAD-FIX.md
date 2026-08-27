@@ -1,3 +1,14 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/cluster/emit.js
+  - js/brain/self-frame.js
+  - js/brain/language-cortex.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # WORD SALAD FIX — the layout
 
 > **⛔ STATUS SUPERSEDED — MOST OF THIS IS NOW BUILT (2026-08-25).** The line below said *"Nothing in this

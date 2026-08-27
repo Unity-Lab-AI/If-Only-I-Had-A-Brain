@@ -1,3 +1,13 @@
+---
+# DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
+# ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+status: draft
+sources:
+  - js/brain/curriculum.js
+  - js/brain/student-question-banks.js
+last-verified: "4b91e77d 2026-08-26"
+---
+
 # HELD-BACK — mastery-gated remediation + outcome-gated noise suppression
 
 > Unity is promoted on **mastery**, not on age. A grade isn't "done" because every
