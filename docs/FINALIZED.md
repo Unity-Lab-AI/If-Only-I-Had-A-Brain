@@ -39421,3 +39421,37 @@ Gee: *"do what ever u want in your order u want(we are gettting the todo complet
 ### ⚠ Protocol note
 
 `/fable-mode` was invoked this session, loading PROTOCOL v0.3.0 as binding. ⛔ **That reverses the second half of a refusal recorded in this ledger** (*"REFUSED and stays refused: the protocol injector + central vault"*) — the vault half was reversed earlier the same day. Recorded here so the ledger does not assert a refusal that is no longer in force. The protocol is what produced this entry's shape: predict-before-probe caught the baseline, refute-your-own-conclusion is what turned "delete 6 keys" into two real fixes, and *never trust a description you can check* is what sent me to `_gpuClearCortexSpikeRegion`'s body instead of assuming a cheap no-op.
+
+---
+
+## 2026-08-27 - WIKICOUNT.1 CLOSED: 48 wrong counts fixed, 14 more found, and the class is now enforced by a checker instead of by care
+
+Gee: *"continue , you do you, Unity"*
+
+### ⭐ The deliverable is the CHECK, not the corrections
+
+`npm run wiki:coverage` now validates **every** `| \`path\` | N |` row in the wiki against `wc -l`. **176 exact counts verified, 4 deliberately approximate, 0 wrong.**
+
+⛔ **Hand-correcting 48 rows would have been worthless on its own** — the same drift returns on the next edit, and it demonstrably does: `cluster.js` went **4,984 → 5,011 → 5,059** across two consecutive batches, going stale inside the commit that recorded it *twice running*. A number that decays needs a guard, not a proofread.
+
+⚠ **`~N` is the honest escape hatch, and it is load-bearing.** `FINALIZED.md`, `TODO.md`, `RESUME.md` and `deploy/REDEPLOY-NOTES.md` grow on essentially every commit; an exact count for them cannot stay true for an hour, and pinning one would make the check cry wolf — which the drift tool's own header warns is how a guard gets ignored. Those four carry `~N`, are skipped by the check, and the reason is written onto the page.
+
+### ⭐ It found a 100-line error the moment it existed
+
+`scripts/Gattling Gun Savestart Forced.txt` was recorded as **94** lines. It is **194** — a transcription error from an adjacent measurement (the neighbouring `.txt` in the same inventory *is* 94), in a row **no human re-read would ever have questioned.** That single find justifies the check.
+
+### The two distinct classes, separated
+
+| class | count | cause |
+|---|---:|---|
+| **Off-by-one** | 48 rows | The ingest dossier measured with `len(text.split('\n'))`, one greater than `wc -l` on any file ending in a newline. Confirmed systematic on six sampled files before fixing any |
+| **Ordinary growth** | 13 rows | The filing did not know about these. Mostly **my own edits this session** — `state.js` +37 from `GOTCHA.3a`, `cluster.js` +75 across two batches, the five `deploy/*.md` pages +10 to +16 each from `DOCPROV.3`'s frontmatter |
+| **Transcription** | 1 row | The 94/194 above |
+
+⚠ **Prose mentions were swept separately**, because the checker only sees table rows: `pk-curve.js` "70 lines" → 69 (two pages), `subjects.js` "41 lines" → 40 (three places, including a page `description:`), `curriculum.js` 28,340 → 28,357.
+
+⚠ **Historical statements in `wiki/log.md` were LEFT ALONE.** An append-only log recording what was measured at the time is correct — the same rule `FINALIZED.md` gets. Only claims presented as *current* were changed, and where a corrected figure has since moved again the page now says so explicitly ("28,340 when corrected on 2026-08-27, 28,357 at the time of writing").
+
+### Verified
+
+`node --check` clean on the checker; `npm run wiki:coverage` → **449/449 covered, 0 uncovered, 0 broken links, 0 orphans, index in sync, 176/176 line counts matching**; `npm run docs:drift` unchanged. Board **9 open / 3 in-progress / 382 done**.
