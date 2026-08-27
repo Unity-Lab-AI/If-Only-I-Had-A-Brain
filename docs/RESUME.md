@@ -30,7 +30,20 @@
 >
 > It proves each file is **named**, not that the description is right. It counts **tracked** files only, so `.claude/hooks/` and gitignored runtime state are outside it. ⛔ **100% coverage plus a `status: draft` page is still a page nobody checked** — 21 of 26 module pages are `verified`, the 5 pre-existing keep their `TODO: ingest` markers.
 >
-> ### 7. ⛔ The central vault is now REAL, which reverses a refusal in this ledger
+> ### 7. ⭐ THE WIKI IS FULLY INGESTED — 26/26 module pages verified, zero `TODO: ingest`
+>
+> Five ingests on Gee's *"keep going"*: `curriculum`, `cortex-cluster`, `brain-server`, `donor-lane`, `visual-memory`. Targets picked by the **graph's god-node ranking**, not preference. Every page carries a **read-depth** line naming which files were actually opened, so `verified` cannot imply more than it earned.
+>
+> ⛔ **Four findings that outlive the wiki, all in `docs/FINALIZED.md` because `wiki/` is gitignored:**
+>
+> 1. **`GRADE_TIMEOUT_MS` was never a mechanism** — referenced only by the log line that printed it, announcing a 3-minute timeout for months while a cell ran **90.4 minutes**. Deleted, not enforced. New page collects three more of the same shape.
+> 2. **`BOUNDCAP.1`** — `if (client.donorAppVersion)` was **true for every donor** (`'browser'` is a truthy string), so the browser branch was dead code *and* the native path sent **indices where a dense array was expected**. Now routed on capability, with the unregistered-donor asymmetry as the safety property.
+> 3. **The checkpoint ring pinned** — `_saveVersion % 3` at an hourly-gated copy with 12 saves/hour meant every copy hit the same slot (one fresh, two fossils) while the dashboard read healthy; and `.json`/`.bin` written at different cadences meant **rollback restored a mismatched pair**.
+> 4. **A raw NUL byte in `chat.js`** made a 320KB file read as **binary to `grep`** — empty results, no error, three clean searches for a handler that was right there.
+>
+> ⚠ **The near-miss worth keeping:** I nearly recorded 12 sub-band regions as dead code. A literal grep showed no consumers; **dynamic** access found two real readers. The detector's blind spot is template-built keys — **verify individually before acting on that scan.**
+>
+> ### 8. ⛔ The central vault is now REAL, which reverses a refusal in this ledger
 >
 > Gee ran `/vault-dashboard` twice, then: *"it should be alll files not just pages"*. **A repeated instruction is a decision**, so `C:/Users/gfour/FableVault` exists, with a **junction** into this repo's `wiki/`. ⛔ **The protocol injector stays refused** (`PROTOCOL.md` + `fable.ps1` installed but unwired, nothing loads them). ⚠ **Removal hazard:** a recursive delete of the vault can traverse *into* `wiki/` through the junction — remove the link first.
 >
@@ -38,7 +51,7 @@
 >
 > ⚠ **Verified the junction against Python, not the shell:** git-bash `find` returns **0** pages through it (it will not traverse a reparse point) while `os.walk` sees all 38. Reporting the `find` number would have made the registry row read `0 pages` and look broken.
 >
-> ### 8. Also this session, before the wiki work
+> ### 9. Also this session, before the wiki work
 >
 > The stranded `feature/fable-kit-adapt` batch was **cascaded** (`DOCPROV.1` + the Fable Kit gitignore + board corrections), `DOCPROV.2` shipped as a Stop hook, `HOOKDEBRIS.1` closed, and the graphify knowledge graph was **built for the first time** — 2,747 nodes over 167 code files, code-only, **0 tokens**. ⛔ Its first build was **45.5% generated bundles**; excluding them took edge-collapse 851 → 278. Full detail in the entry below.
 >
