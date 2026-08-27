@@ -122,6 +122,54 @@ if (uncovered.length) {
   }
 }
 
+// ── LINE-COUNT CHECK (WIKICOUNT.1) ────────────────────────────────────────
+//
+// ⛔ WHY THIS EXISTS. The wiki's module pages tabulate `| `path` | N |` line
+// counts, and they were wrong twice over:
+//
+//   1. Every count produced by the ingest dossier was ONE TOO HIGH, because it
+//      measured with `len(text.split('\n'))` — one greater than `wc -l` on any
+//      file ending in a newline. 48 rows, all silently off by one.
+//   2. Then a count went stale INSIDE the commit that recorded it: cluster.js
+//      read 4,984, and a comment added in the same batch took it to 5,011.
+//
+// ⭐ A LINE COUNT IS A READING, NOT A PROPERTY. Hand-checking 157 rows found a
+// 100-line error nobody would ever have noticed (a `.txt` recorded as 94 lines
+// that is 194). So the check is mechanical from here on.
+//
+// ⚠ ESCAPE HATCH, and it is the honest half: a count written as `~N` is treated
+// as deliberately approximate and is NOT checked. Files that change on every
+// commit — FINALIZED.md, TODO.md, RESUME.md — cannot carry an exact count that
+// stays true for an hour, and forcing one would make this check cry wolf. For
+// those, an approximate figure carries every bit of information the reader
+// needs.
+const countRe = /\|\s*`([^`]+\.(?:js|mjs|cjs|md|rs|wgsl|html|json|txt|sh|bat|conf|service|yml|toml|cu|ptx|css))`\s*\|\s*(~?)([\d,]+)\s*\|/g;
+const countWrong = [];
+let countChecked = 0, countApprox = 0;
+for (const p of pages) {
+  const txt = readFileSync(p, 'utf8');
+  const pageRel = path.relative(ROOT, p).replace(/\\/g, '/');
+  for (const m of txt.matchAll(countRe)) {
+    const [, rel, approx, shownRaw] = m;
+    if (approx === '~') { countApprox++; continue; }
+    const target = path.join(ROOT, rel);
+    if (!existsSync(target)) continue;         // covered by the provenance check
+    countChecked++;
+    const shown = parseInt(shownRaw.replace(/,/g, ''), 10);
+    let real;
+    try { real = readFileSync(target).toString('binary').split('\n').length - 1; } catch { continue; }
+    if (real !== shown) countWrong.push({ pageRel, rel, shown, real });
+  }
+}
+
+console.log('\n  LINE COUNTS IN TABLES');
+console.log(`    checked            ${countChecked}   (${countApprox} written as ~N, deliberately unchecked)`);
+console.log(`    wrong              ${countWrong.length}`);
+for (const w of countWrong.slice(0, 25)) {
+  console.log(`      · ${w.rel} — page says ${w.shown.toLocaleString()}, wc -l says ${w.real.toLocaleString()}  [${w.pageRel}]`);
+}
+if (countWrong.length > 25) console.log(`      · … and ${countWrong.length - 25} more`);
+
 // ── second check: wikilinks, orphans, index drift ─────────────────────────
 //
 // ⚠ A [[link]] to a page that does not exist is the wiki's own version of a
@@ -175,6 +223,9 @@ const linkIssues = broken.length + orphans.length + missingFromIndex.length;
 console.log(linkIssues === 0
   ? 'No broken wikilinks, no orphans, index is in sync.'
   : `${linkIssues} link/index issue(s) above.`);
+console.log(countWrong.length === 0
+  ? `Every checked line count matches \`wc -l\` (${countChecked} exact, ${countApprox} approximate).`
+  : `${countWrong.length} line count(s) disagree with \`wc -l\` — write \`~N\` if the file churns too fast to pin.`);
 console.log('⛔ This tool reports only — it never edits a page.\n');
 
-if (STRICT && (uncovered.length || linkIssues)) process.exit(1);
+if (STRICT && (uncovered.length || linkIssues || countWrong.length)) process.exit(1);
