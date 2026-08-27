@@ -807,7 +807,7 @@ If-Only-I-Had-A-Brain/
 │   │   ├── sensory.js          # Sensory input pipeline (text/audio/video → cortex)
 │   │   ├── motor.js            # Motor output (6 BG channels, winner-take-all)
 │   │   ├── component-synth.js  # Equational component synthesis — parses component-templates.txt, cosine-matches user request vs primitive descriptions, returns {id, html, css, js}
-│   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — pre-K→PhD, growing roster (core: ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. ~12500 lines.
+│   │   ├── curriculum.js       # T14.5+T14.24 developmental curriculum — pre-K→PhD, growing roster (core: ELA, Math, Science, Social Studies, Arts, Life Experience), 114 cells, direct pattern Hebbian + emotional concept features, 3-pathway gates, memory-weighted tiers. **28,340 lines at `c5e9d412` (2026-08-27)** — the largest file in the repo, and the AST graph's single hub (`Curriculum`, 349 edges, bridging ten communities). ⛔ This row read `~12500 lines` until 2026-08-27, stale by ~16,000; per-grade bodies live in `curriculum/` (kindergarten.js alone is 9,200).
 │   │   ├── letter-input.js     # LETTER_INVENTORY Set seeded at module load with a-z + 0-9 + space , . ' (40 symbols). Locked by default — ensureLetter rejects symbols outside the seeded alphabet. encodeLetter/decodeLetter one-hot primitives. ~260 lines.
 │   │   ├── peripherals/
 │   │   │   └── ai-providers.js # SensoryAIProviders — multi-provider image gen (custom → auto-detect → env.js → Pollinations), TTS, NO text chat
@@ -844,7 +844,7 @@ If-Only-I-Had-A-Brain/
 │   ├── brain-server.js         # Node.js brain server (always-on, WebSocket, GPU exclusive, curriculum auto-boot)
 │   ├── configure.js            # Server configuration helper
 │   └── package.json            # Server deps (ws, better-sqlite3, node-fetch)
-├── scripts/                    # ⚠ 13 files as of 2026-08-27, and the LAW governs what may be here: no scripts that edit
+├── scripts/                    # ⚠ 14 files as of 2026-08-27, and the LAW governs what may be here: no scripts that edit
 │   │                           #   code, files or the stack. A genuinely-necessary one-shot is deleted in the same commit
 │   │                           #   that used it (the 2026-08-20 purge took this dir 55 → 6). Build tools, live probes and
 │   │                           #   read-only reporters are not patchers and stay.
@@ -856,6 +856,10 @@ If-Only-I-Had-A-Brain/
 │   │                           #   session is the STOPTRAP shape. ⚠ It lives HERE and not in `.claude/hooks/` because
 │   │                           #   `.gitignore` excludes `.claude/` while `settings.json` is tracked: a hook body in there
 │   │                           #   exists on one machine while the tracked wiring points at it for everyone
+│   ├── wiki-coverage-check.mjs # WIKIFULL.1 — `npm run wiki:coverage`. Is every tracked file named on a wiki page?
+│   │                           #   Report-only. ⚠ Fail-soft when `wiki/` is absent (it is gitignored, so a fresh clone
+│   │                           #   has none) and it says "nothing was checked — this is NOT a pass" rather than green.
+│   │                           #   Also checks broken wikilinks, orphan pages and index drift
 │   ├── social-shots.mjs        # Regenerates the social cards (a BUILD tool that writes PNGs, not a patcher)
 │   ├── vox-build-bank.mjs      # Banks the piper word/phrase units for the offline voice fallback
 │   ├── gatling-savestart.js    # Operator's press-retry harness (+ its pasteable console twin, the .txt beside it)

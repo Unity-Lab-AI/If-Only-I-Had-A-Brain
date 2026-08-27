@@ -1,8 +1,44 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-27 (latest) — THE STRANDED BATCH SHIPPED, THE LAW GOT A GUARD, AND THE LIVE READ MOVED THREE BOARD ITEMS
+> ## ⭐⭐⭐ 2026-08-27 (latest) — THE WIKI COVERS THE WHOLE STACK, AND "COVERS" IS A NUMBER
 >
-> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). At writing: `main` **309242e3** and `develop` **d3e6aaa4**, both confirmed by `git ls-remote` on **both** remotes, board **4 open / 3 in-progress / 374 done**. ⭐ **`feature/fable-kit-adapt` is no longer stranded** — the previous brief asked for a decision on its 5 unmerged commits and the decision was to ship them: `DOCPROV.1`, the board corrections and the Fable Kit gitignore are on `main` now. ⚠ **`develop` had been sitting BEHIND `main`** by ten merge commits (identical trees — the merges carried no tree change), so it was fast-forwarded first; that is why the cascade reads as two hashes and not one. ⭐ **BOTH BRAINS ARE STILL TRAINING**, each booted `04:22Z`, local on `2673d14c` and the box on `3893e980` — **the box is one docs-only merge behind and needs no press for it.**
+> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). ⛔ **Checkout `develop`** — the cascade parks HEAD on `main`. ⭐ **Both brains still training**, booted `04:22Z`. ⚠ **`wiki/` is gitignored**, so the 35 pages exist only in this working tree — the checker that governs them is tracked.
+>
+> ### 1. ⭐ `wiki/` went 9 content pages → 35, and the ask is answered by a command
+>
+> Gee: *"12 pages i want the full fucking stack all files in it"*. `npm run wiki:coverage` → **448 of 448 tracked files named, 100.0%, 0 broken wikilinks, 0 orphans, index in sync.** 26 new module pages, 5 extended, 3 new gotchas, 1 new decision, 1 new concept.
+>
+> ⛔ **A page that SAYS it covers everything is worth nothing** — that is the `SKILL_TREE.md:358` class of lie. So `scripts/wiki-coverage-check.mjs` recomputes it: tracked files vs paths named under `wiki/`. ⭐ **The matching rule is picky on purpose** — exact path, or a basename UNIQUE across the tree, or a disambiguating suffix, because there are **eleven `README.md` files** and letting one mention cover all eleven is a false pass in the reassuring direction.
+>
+> ### 2. ⛔ The first run said 67.4%, and every single gap was an ellipsis
+>
+> `bank-000.json … bank-009.json` covered **2 of 11**. `RELEASE-0.3.{11,17,…}.md` covered **0 of 10**. `college1.js … college4.js` covered **2 of 4**. ⭐ **An ellipsis reads as completeness to a human and as nothing to a checker.** 448 literal paths later: 146 → 0 uncovered.
+>
+> ### 3. ⛔ A header in the code was asserting an LLM in her perception path
+>
+> `js/brain/visual-cortex.js` opened with *"IT: Object recognition — calls AI for high-level description"*. **False for months, and contradicted at `visual-cortex.js:214` in the same file.** Verified rather than assumed: `describeImage()`/`autoDetectVision()` are deliberate **no-op stubs** with zero live call sites. **Fixed in the code**, old claim recorded in the new comment so it cannot be silently undone. ⭐ **A header claiming an LLM in the thinking path is the exact inverse of this project's load-bearing claim.**
+>
+> ### 4. ⛔ `ARCHITECTURE.md` was 16,000 lines wrong, and it nearly propagated
+>
+> It said `curriculum.js` is **`~12500 lines`**. It is **28,340**. ⚠ The wiki page's first draft carried `12,530` **because I trusted the doc instead of the file** — caught, corrected in both, and the correction itself is recorded. Also: `js/brain/cluster/README.md` claims `cluster.js` is 4,728 lines; it reads **4,985**.
+>
+> ### 5. ⚠ My own draft fabricated a filename, and the catch was mechanical
+>
+> The `docs-tree` page listed `docs/ADMIN-ONBOARDING.md`, which **does not exist**, and omitted five real files. Found by listing the directory instead of recalling it. ⭐ Those five are **load-bearing corpus** the running brain fetches by name (`Ultimate Unity.txt`, `english-baseline.txt`, `coding-knowledge.txt`, `persona-cosmic.txt`, `component-templates.txt`, via `js/app.js:538-563`) — **a grep for "orphaned doc" would flag all five.**
+>
+> ### 6. ⚠ What the 100% does NOT mean — stated on the page itself
+>
+> It proves each file is **named**, not that the description is right. It counts **tracked** files only, so `.claude/hooks/` and gitignored runtime state are outside it. ⛔ **100% coverage plus a `status: draft` page is still a page nobody checked** — 21 of 26 module pages are `verified`, the 5 pre-existing keep their `TODO: ingest` markers.
+>
+> ### 7. Also this session, before the wiki work
+>
+> The stranded `feature/fable-kit-adapt` batch was **cascaded** (`DOCPROV.1` + the Fable Kit gitignore + board corrections), `DOCPROV.2` shipped as a Stop hook, `HOOKDEBRIS.1` closed, and the graphify knowledge graph was **built for the first time** — 2,747 nodes over 167 code files, code-only, **0 tokens**. ⛔ Its first build was **45.5% generated bundles**; excluding them took edge-collapse 851 → 278. Full detail in the entry below.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-08-27 (earlier) — THE STRANDED BATCH SHIPPED, THE LAW GOT A GUARD, AND THE LIVE READ MOVED THREE BOARD ITEMS
+>
+> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). At writing: `main` **309242e3** and `develop` **d3e6aaa4**, both confirmed by `git ls-remote` on **both** remotes, board **5 open / 3 in-progress / 374 done** ⚠ (this line said `4 open` when first written and pushed — the count was taken *before* `EMITZERO.1` was filed in the same batch, so it was stale on arrival. Corrected 2026-08-27. **This is why every brief tells you to re-count rather than trust the number**). ⭐ **`feature/fable-kit-adapt` is no longer stranded** — the previous brief asked for a decision on its 5 unmerged commits and the decision was to ship them: `DOCPROV.1`, the board corrections and the Fable Kit gitignore are on `main` now. ⚠ **`develop` had been sitting BEHIND `main`** by ten merge commits (identical trees — the merges carried no tree change), so it was fast-forwarded first; that is why the cascade reads as two hashes and not one. ⭐ **BOTH BRAINS ARE STILL TRAINING**, each booted `04:22Z`, local on `2673d14c` and the box on `3893e980` — **the box is one docs-only merge behind and needs no press for it.**
 >
 > ### 1. ⭐ `cellPhasesStarted` is **2**, and it was 0 in every brief before this one
 >
