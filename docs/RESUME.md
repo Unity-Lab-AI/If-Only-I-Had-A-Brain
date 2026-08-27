@@ -6,7 +6,7 @@
 >
 > ### 1. ⭐ `wiki/` went 9 content pages → 35, and the ask is answered by a command
 >
-> Gee: *"12 pages i want the full fucking stack all files in it"*. `npm run wiki:coverage` → **448 of 448 tracked files named, 100.0%, 0 broken wikilinks, 0 orphans, index in sync.** 26 new module pages, 5 extended, 3 new gotchas, 1 new decision, 1 new concept.
+> Gee: *"12 pages i want the full fucking stack all files in it"*. `npm run wiki:coverage` → **449 of 449 tracked files named, 100.0%, 0 broken wikilinks, 0 orphans, index in sync.** 26 new module pages, 5 extended, 3 new gotchas, 1 new decision, 1 new concept. ⚠ It read **448/448** at `c5e9d412` and **449/449** at `d8bca839` — committing the checker added a tracked file. **A coverage number is a reading, not a property; quote it with its commit.**
 >
 > ⛔ **A page that SAYS it covers everything is worth nothing** — that is the `SKILL_TREE.md:358` class of lie. So `scripts/wiki-coverage-check.mjs` recomputes it: tracked files vs paths named under `wiki/`. ⭐ **The matching rule is picky on purpose** — exact path, or a basename UNIQUE across the tree, or a disambiguating suffix, because there are **eleven `README.md` files** and letting one mention cover all eleven is a false pass in the reassuring direction.
 >
@@ -30,7 +30,15 @@
 >
 > It proves each file is **named**, not that the description is right. It counts **tracked** files only, so `.claude/hooks/` and gitignored runtime state are outside it. ⛔ **100% coverage plus a `status: draft` page is still a page nobody checked** — 21 of 26 module pages are `verified`, the 5 pre-existing keep their `TODO: ingest` markers.
 >
-> ### 7. Also this session, before the wiki work
+> ### 7. ⛔ The central vault is now REAL, which reverses a refusal in this ledger
+>
+> Gee ran `/vault-dashboard` twice, then: *"it should be alll files not just pages"*. **A repeated instruction is a decision**, so `C:/Users/gfour/FableVault` exists, with a **junction** into this repo's `wiki/`. ⛔ **The protocol injector stays refused** (`PROTOCOL.md` + `fable.ps1` installed but unwired, nothing loads them). ⚠ **Removal hazard:** a recursive delete of the vault can traverse *into* `wiki/` through the junction — remove the link first.
+>
+> ⭐ **`dashboard.py` was counting `.md` pages, which measures how much was WRITTEN, not how much of the project is REACHED.** It now runs `git ls-files` per project and reports **Stack files / Files on a page / Files named nowhere**, plus a list of what no page mentions. Reads `449 / 100% / 0`.
+>
+> ⚠ **Verified the junction against Python, not the shell:** git-bash `find` returns **0** pages through it (it will not traverse a reparse point) while `os.walk` sees all 38. Reporting the `find` number would have made the registry row read `0 pages` and look broken.
+>
+> ### 8. Also this session, before the wiki work
 >
 > The stranded `feature/fable-kit-adapt` batch was **cascaded** (`DOCPROV.1` + the Fable Kit gitignore + board corrections), `DOCPROV.2` shipped as a Stop hook, `HOOKDEBRIS.1` closed, and the graphify knowledge graph was **built for the first time** — 2,747 nodes over 167 code files, code-only, **0 tokens**. ⛔ Its first build was **45.5% generated bundles**; excluding them took edge-collapse 851 → 278. Full detail in the entry below.
 >
