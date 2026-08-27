@@ -39491,3 +39491,37 @@ Four real errors on the public front door: a **dead command** (`node scripts/gpu
 ### Verified
 
 HTML tag balance clean after editing `brain-equations.html` (p/code/strong/em all matched); `docs:drift` structural checks all still `ok` (legend 9/9, social cards, internal links, deleted-component sweep); `README.md` no longer appears in the drift list; every `node scripts/*` and `npm run *` command in the README swept for existence — one dead, now gone.
+
+---
+
+## 2026-08-27 - DOCPROV.4 continues: an undocumented WIRE FRAME TYPE, a wrong admission floor, and a doc that said a gate was on when it is off
+
+Gee: *"lets get it"*
+
+### ⭐ `docs/WEBSOCKET.md` — the method mattered more than the doc
+
+561 lines, and re-reading them was the wrong move. Instead: **enumerate every `_encodeSparseHeader(N` site in the server and diff the set against the documented table.** One command, and it found what a careful read very likely would not.
+
+⛔ **Frame type 6 was missing from the wire contract.** `CHAT.1` sparse-index propagate — payload is the active spike **indices** only (**KBs instead of the ~6MB dense array**); the donor rebuilds the dense pre buffer into a cached scratch, runs the same `propagateSparse` dispatch, and answers with nonzero `(index, value)` pairs, **or a dense type-2 ack when currents are pathologically near-dense, with the handler accepting both.** The encoder had been emitting a frame type the protocol document did not mention.
+
+⛔ **`DREAM_MIN_DONOR_VERSION` was documented as `0.3.7`. It is `0.3.26`** (`brain-server.js:10109`, and a comment notes it *"sat at 0.3.7 for 22 releases"*). **That is the admission floor on the page other people implement donors against** — the single most consequential number on it.
+
+⚠ Also fixed: *"three WebSocket message types"* introducing a table with **four** rows; and `DONORTIME.1`'s `phaseTimingMs { totalMs, queueMs, computeMs }` was entirely undocumented despite being the field that split the round trip and **closed two planned wire optimisations** (queue 0.0%, compute 94.8-99.9% across three boots).
+
+⭐ **Recorded the generalisable rule while there:** type 6 gates on an advertised **capability** (`ws._sparseV2`), not a version string — **because `BOUNDCAP.1` proved a version-presence test lies.** `if (client.donorAppVersion)` is truthy for a browser donor, since the server itself stamps the string `'browser'`. A capability the peer announces cannot silently flip the way a presence test can.
+
+### ⛔ `docs/SETUP.md` — a correction that inverts a behavioural claim
+
+**`_autoAdvanceGrade` was documented as "default false". It defaults to ON** (`brain-server.js:3363-3364`), and the code says why: the standing intent is an unattended K→PhD walk, because *"the per-grade LAW-6 Part-2 pause defeated the overnight walk."* The one switch governs both the signoff bypass at `/grade-advance` and the runner's auto-fire-next-grade.
+
+⚠ **Worse for an operator:** the page said `start.bat` wipes weights so the toggle resets OFF on every fresh boot. **It does not.** The flag lives in a **standalone** `server/auto-advance.json` that deliberately survives the weights clear (`:3381`) — without that, every auto-resize silently reset it and the re-walk stalled at the first grade boundary. ⛔ **Anyone relying on that sentence would believe grade advancement was gated on their signoff when it is not.**
+
+⛔ **`brain-weights.bin` was documented as `144.8 MB`. Measured on disk: ~5,460 MB — understated ~38×.** Three rotating slots is ~16 GB of weights, which is precisely why `DREAM_SAVE_MIN_FREE_DISK_MB` defaults to `8192` and defers a save rather than truncating one. A setup guide that understates disk by 38× is a setup guide that fills a disk.
+
+⚠ All three `DREAM_*` flags the page names were confirmed present in `brain-server.js`; every `npm run` command confirmed against `package.json`.
+
+### ⚠ Both pages keep `status: draft`, with scope stated
+
+`verified-scope:` names what was checked and what was not: the **wire contract exhaustively**, the JSON message schemas not; the **launcher contracts and flags**, the systemd bootstrap narrative not. ⛔ Marking either `verified` would claim a line-by-line pass that did not happen — and the point of the field is that `draft` becomes a boundary rather than a shrug.
+
+**Drift list 25 → 23.** 3 of 22 pages done (`README`, `WEBSOCKET`, `SETUP`). Board **8 open / 4 in-progress / 383 done**.

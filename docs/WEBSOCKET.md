@@ -1,13 +1,26 @@
 ---
 # DOCPROV.3 — provenance. See docs/ARCHITECTURE.md for the full note.
 # ⚠ `last-verified` is the commit that last TOUCHED THIS PAGE.
+# DOCPROV.4 (2026-08-27) — re-verified against source. `status` stays `draft`:
+# the WIRE CONTRACT was checked exhaustively (every frame type the encoder can
+# emit, the version/capability gates, the admission floor), but the JSON message
+# schemas in the first half of this page were not re-read field by field.
+# `verified-scope` says which is which, so `draft` is a boundary, not a shrug.
 status: draft
+verified-scope: >
+  Binary frame table checked EXHAUSTIVELY: every `_encodeSparseHeader(N` site in
+  server/brain-server/gpu.js was enumerated and diffed against the documented
+  set — that is how the undocumented type 6 was found. Version-negotiation gates
+  and DREAM_MIN_DONOR_VERSION checked against brain-server.js:10109.
+  PhaseTimingMs checked against donor-app/src/protocol.rs.
+  NOT re-read field-by-field: the `welcome` / `state` / `response` / `build` /
+  `image` JSON schemas, rate limiting, reconnection behaviour.
 sources:
   - server/brain-server.js
   - server/brain-server/gpu.js
   - js/brain/remote-brain.js
   - donor-app/src/protocol.rs
-last-verified: "7eadbccb 2026-08-25"
+last-verified: "c0828113 2026-08-27"
 ---
 
 # WEBSOCKET — Unity Brain Server Wire Protocol
@@ -236,7 +249,7 @@ Broadcast to all clients when Unity imagines (server `_imagineTick`, idle-gated)
 
 ### GPU compute messages
 
-`brain-server.js` offloads all Rulkov-map neuron iteration and synapse propagation to a browser GPU compute client running `compute.html`. The live neural rule is the Rulkov 2002 2D chaotic map (`x_{n+1} = α/(1+x²) + y`, `y_{n+1} = y − μ(x − σ)`) running as a WGSL compute shader in `js/brain/gpu-compute.js` — the `LIF_SHADER` constant name is historical, the kernel body is the Rulkov iteration. Server talks to the GPU client via three WebSocket message types on the same connection:
+`brain-server.js` offloads all Rulkov-map neuron iteration and synapse propagation to a browser GPU compute client running `compute.html`. The live neural rule is the Rulkov 2002 2D chaotic map (`x_{n+1} = α/(1+x²) + y`, `y_{n+1} = y − μ(x − σ)`) running as a WGSL compute shader in `js/brain/gpu-compute.js` — the `LIF_SHADER` constant name is historical, the kernel body is the Rulkov iteration. Server talks to the GPU client via four WebSocket message types on the same connection (two each way — the table below lists all four; it said "three" until 2026-08-27):
 
 | Direction | Type | Payload | Meaning |
 |---|---|---|---|
@@ -253,7 +266,7 @@ On the public donor lane (`wss://<host>/ws`), any number of `compute.html` donor
 
 | Direction | Type | Payload | Meaning |
 |---|---|---|---|
-| Donor → Server | `gpu_register` | `{ …, appVersion }` (native binary) | Donor joins the replica pool; server uploads the full brain to it. **TU.20.12:** a native binary sends `appVersion` (Cargo pkg version); if it's below `DREAM_MIN_DONOR_VERSION` (default 0.3.7) the server replies `{type:"incompatible_version", yourVersion, minVersion, message}` + closes (code 4001) and does NOT admit it. Browser donors omit `appVersion` → exempt. The refused donor stops reconnecting + shows "Brain status: refused — update". |
+| Donor → Server | `gpu_register` | `{ …, appVersion }` (native binary) | Donor joins the replica pool; server uploads the full brain to it. **TU.20.12:** a native binary sends `appVersion` (Cargo pkg version); if it's below `DREAM_MIN_DONOR_VERSION` (**default `0.3.26` as of `brain-server.js:10109`** — ⛔ this doc said `0.3.7` until 2026-08-27, which is a materially wrong admission floor: it *"sat at 0.3.7 for 22 releases"* and has since been raised) the server replies `{type:"incompatible_version", yourVersion, minVersion, message}` + closes (code 4001) and does NOT admit it. Browser donors omit `appVersion` → exempt. The refused donor stops reconnecting + shows "Brain status: refused — update". |
 | Server → Donor | (full-brain upload + periodic master re-broadcast) | weights | Replica receives the complete brain on join, then periodic merged-master pushes |
 
 Admin-only telemetry rides the admin lane (`wss://<host>/admin/ws`): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
@@ -269,6 +282,7 @@ Bulk teach + matrix traffic rides BINARY WebSocket frames, not JSON — they byp
 | 3 | matrix | preLen, pre[], postLen, post[], lr | Standalone Hebbian/Oja — full pre/post active-index arrays (the intra-cortex teach path). Acked |
 | 4 | matrix | chunkSeq, totalChunks, flags, [first: rows/cols/nnz/rowPtr + **binding** when flags&2], values slice, colIdx slice | Chunked upload (750k nnz/chunk). The first chunk's binding block (`srcCluster` + `dstCluster` names + src/dst start..end) is what makes a matrix cluster-BOUND — captured by BOTH donors as of donor-v0.3.15 (the native donor parsed + discarded it before). Ack on the LAST chunk only |
 | 5 | (empty) | opCount, then per op: name + lr | Batched bound-Hebbian — the BULK of teach GPU work. NO index arrays: plasticity reads the RESIDENT cluster spike buffers (written by types 7/9) at the bound offsets. Browser donors always did this; the native donor STUBBED it (ack, no-op) from v0.3.11 until donor-v0.3.15 implemented it for real (engine affinity: a bound matrix lives on the same GPU as its clusters) |
+| 6 | matrix | count, indices[] (u32) | **SPARSE-INDEX propagate** (CHAT.1). Payload is the active spike INDICES only — **KBs instead of the ~6MB dense array**. The donor rebuilds the dense pre buffer into a cached scratch, runs the SAME `propagateSparse` dispatch, and answers with nonzero `(index, value)` current pairs — **or a dense type-2 ack when currents are pathologically near-dense, and the handler accepts both**. ⚠ Gated per-socket on the advertised `_sparseV2` capability, **not** on a version number: DF.7 fan-out replicas may be native donors without the handler and keep the legacy dense path. ⛔ This row was **missing from this table until 2026-08-27** while the encoder had been emitting it — found by `DOCPROV.4` grepping every `_encodeSparseHeader(N` in the server against the documented set |
 | 7 | `cluster/region` | count, indices[] (u32) | write_spike_slice as binary (donor-v0.3.13+; fire-and-forget, reqId 0). Replaced the ~153KB-average JSON integer arrays whose serde_json parse was the measured drain bottleneck |
 | 8 | `cluster/region` | count, indices[], vcount, values[] (f32), psi | write_current_slice as binary (fire-and-forget) |
 | 9 | `cluster/region` | (header only) | clear_spike_region as binary (fire-and-forget). The clear OPENS each atomic teach-pattern group. Also emitted as a `langCortex/<region>` TWIN when the GINTRA pseudo-cluster is live, so the GPU-bound intra Hebbian never reads a previous pattern's residual spikes |
@@ -283,7 +297,9 @@ Bulk teach + matrix traffic rides BINARY WebSocket frames, not JSON — they byp
 
 ⚠ **Types 14 and 15 pair with SPARSEACK and the pairing is the point.** SPARSEACK made a large result cheaper to *ship*; type 15 removed the need to ship it at all. The generalisable rule is **push the reduction to where the data already lives**, which is worth more than either fix alone.
 
-Version negotiation (never a fallback — each donor gets the best protocol it announces at `gpu_register`): types 7/8/9 require `donorAppVersion ≥ 0.3.13`, type 12 requires `≥ 0.3.15`, type 10 requires `≥ 0.3.16`, type 11 requires `≥ 0.3.17`, type 13 requires `≥ 0.3.26` (and the JSON `hebbian_ranges` verb requires `≥ 0.3.18`); browser donors report `'browser'` and keep JSON teach patterns. The server logs its encoding decisions one-shot per socket, the clients list exposes `donorAppVersion` + `binaryTeach`, and `wsPressure.teachOutByType` + `teachOutBytesSaved` publish per-type outbound frames/bytes so the wire's composition is read, not inferred.
+Version negotiation (never a fallback — each donor gets the best protocol it announces at `gpu_register`): types 7/8/9 require `donorAppVersion ≥ 0.3.13`, type 12 requires `≥ 0.3.15`, type 10 requires `≥ 0.3.16`, type 11 requires `≥ 0.3.17`, type 13 requires `≥ 0.3.26` (and the JSON `hebbian_ranges` verb requires `≥ 0.3.18`); browser donors report `'browser'` and keep JSON teach patterns. ⚠ **Type 6 is the exception and it matters:** it is gated on an advertised **capability** (`ws._sparseV2`), not a version string. ⛔ **Capability beats version, and `BOUNDCAP.1` is why** — a version-presence test read `if (client.donorAppVersion)`, which is truthy for a browser donor because the server itself stamps the string `'browser'`, so the "native" branch captured browser donors too. **A capability the peer announces cannot silently flip the way a presence test can.**
+
+**Donor-reported timing (`DONORTIME.1`, `donor-v0.3.31`).** A `compute_batch` reply now carries `phaseTimingMs { totalMs, queueMs, computeMs }`. Before it, the brain measured dispatch→reply as `roundTripMs` and **could not distinguish three causes that call for opposite fixes**: time on the wire, time queued on the donor, and time doing the math. Only the third is a reason to touch kernels — and on a localhost donor the wire is effectively free, which makes the split the whole answer. ⭐ Read live across three boots it settled the question: **queue 0.0% every time, compute 94.8-99.9%**, which closed two planned wire optimisations as pointless. The server logs its encoding decisions one-shot per socket, the clients list exposes `donorAppVersion` + `binaryTeach`, and `wsPressure.teachOutByType` + `teachOutBytesSaved` publish per-type outbound frames/bytes so the wire's composition is read, not inferred.
 
 **Template canonicalization (2026-08-17 — encoder-side law, both template types).** Before a template ships, the encoder canonicalizes it: the zero head/tail of the values array is trimmed, and a single contiguous nonzero run FOLDS into the groupSize (`{rowStart + d₀·g, groupSize·(d₁−d₀), values:[1]}`) — lossless for t11 because the donor only tests `value > 0`, and applied to t10 only when every nonzero value is exactly equal (amplitudes bit-identical). This exists because a full-region band pattern fed through the template path shipped as a 504,000-value / 1,968.8KB frame (twice per rep with the GINTRA twin) — the measured wire-drowner behind 95K sheds, 7.6s donor RTT, and drop-on-chat donor deaths. Post-canonicalization the same band is ~30 bytes. Any template still carrying >4096 values after canonicalization warns loudly (30s rate-limit) — a silent flood cannot return.
 
