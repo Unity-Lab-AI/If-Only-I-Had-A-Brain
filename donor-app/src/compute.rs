@@ -11,7 +11,7 @@ use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 use crate::frames::Binding;
-use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
+use crate::gpu::{BUCKET_MEAN_SHADER, CURRENT_MAX_SHADER, LIF_SHADER, PLASTICITY_SHADER, PREDICTIVE_ERROR_SHADER, SCATTER_ONES_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER, VOLTAGE_MEAN_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -39,6 +39,26 @@ struct SpikeParams {
     n: u32,
     grid_x: u32,
 }
+
+/// GOTCHA.3b (v0.3.32) — params for the voltage-mean reduction.
+/// ⚠ `_pad` is REQUIRED, not cosmetic: a WGSL uniform block is 16-byte aligned,
+/// and three `u32`s would leave the Rust side 4 bytes short of what the shader
+/// reads. The shader declares the same `_pad` so both sides agree by inspection.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct VoltParams {
+    n: u32,
+    chunk: u32,
+    grid_x: u32,
+    _pad: u32,
+}
+
+/// GOTCHA.3b — fixed partial-sum slot count. WGSL has no atomic float add, so
+/// the reduction is one serial sum per slot and the host adds the slots. Fixed
+/// (not derived from cluster size) so the readback is a constant ~1KB whether
+/// the cluster is 50K or 12M — the board's own cost note for this field is
+/// "one reduction + one small readback per tick, not a hot path".
+const VOLT_PARTIALS: u32 = 256;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -153,6 +173,14 @@ pub struct ComputeEngine {
     /// GPUVERB.3 (v0.3.28) — max over post currents + the predictive-error write.
     current_max_pipeline: wgpu::ComputePipeline,
     predictive_error_pipeline: wgpu::ComputePipeline,
+    /// GOTCHA.3b (v0.3.32) — voltage-mean reduction + its two buffers.
+    /// ⭐ ENGINE-LEVEL, not per-cluster, and deliberately: `step_cluster` reduces
+    /// one cluster at a time, so a single fixed VOLT_PARTIALS-slot buffer serves
+    /// every cluster and adds ~1KB total instead of ~1KB × clusters. It also
+    /// means adding this field touched no `Cluster` allocation site.
+    voltage_mean_pipeline: wgpu::ComputePipeline,
+    volt_partials: wgpu::Buffer,
+    volt_staging: wgpu::Buffer,
     clusters: HashMap<String, Cluster>,
     sparse: HashMap<String, SparseMatrix>,
 }
@@ -206,6 +234,20 @@ impl ComputeEngine {
         let bucket_mean_pipeline = build_pipeline(&device, "bucket_mean", BUCKET_MEAN_SHADER);
         let current_max_pipeline = build_pipeline(&device, "current_max", CURRENT_MAX_SHADER);
         let predictive_error_pipeline = build_pipeline(&device, "predictive_error", PREDICTIVE_ERROR_SHADER);
+        let voltage_mean_pipeline = build_pipeline(&device, "voltage_mean", VOLTAGE_MEAN_SHADER);
+        // GOTCHA.3b — one fixed partials buffer for every cluster (see the field note).
+        let volt_partials = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("volt-partials"),
+            size: (VOLT_PARTIALS as u64) * 4,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let volt_staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("volt-staging"),
+            size: (VOLT_PARTIALS as u64) * 4,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
 
         Ok(Self {
             device,
@@ -219,6 +261,9 @@ impl ComputeEngine {
             bucket_mean_pipeline,
             current_max_pipeline,
             predictive_error_pipeline,
+            voltage_mean_pipeline,
+            volt_partials,
+            volt_staging,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
         })
@@ -476,6 +521,82 @@ impl ComputeEngine {
         drop(data);
         c.count_staging.unmap();
         Ok(count)
+    }
+
+    /// GOTCHA.3b (v0.3.32) — mean of the Rulkov FAST variable across a cluster.
+    ///
+    /// Closes `donor.rs`'s hardcoded `mean_voltage: None`. The wire field
+    /// (`protocol.rs:129`), the server's EMA blend (`brain-server.js:6282`) and
+    /// the `state.js` publish were all already in place; the browser donor
+    /// proves the shape. This is the only piece that was missing.
+    ///
+    /// ⛔ Call ONCE PER TICK, never per substep. `compute.html` carries the same
+    /// rule with its own comment saying per-substep "would be wasteful", and
+    /// this is a diagnostic, not part of the step.
+    ///
+    /// Returns `None` when the cluster is unknown or the readback fails — never
+    /// `Some(0.0)` on failure. ⚠ That distinction is the whole point: `0.0` is a
+    /// legitimate mean for a Rulkov population straddling zero, so returning it
+    /// on error would be indistinguishable from a real quiet cluster, and this
+    /// field exists precisely because a `null` that looked like a number wasted
+    /// months.
+    pub fn voltage_mean(&self, name: &str) -> Option<f32> {
+        let c = self.clusters.get(name)?;
+        if c.size == 0 { return None; }
+
+        // Ceiling division so the last slot covers the remainder; the host
+        // divides by the REAL n, so a short final chunk cannot skew the mean.
+        let chunk = (c.size + VOLT_PARTIALS - 1) / VOLT_PARTIALS;
+        let (dx, dy, grid_x) = dispatch_dims(VOLT_PARTIALS);
+        let params = VoltParams { n: c.size, chunk, grid_x, _pad: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("volt-params"),
+            contents: bytemuck::bytes_of(&params),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("volt-bg"),
+            layout: &self.voltage_mean_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: c.state.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: self.volt_partials.as_entire_binding() },
+            ],
+        });
+
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("volt") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("voltage-mean"), timestamp_writes: None });
+            cp.set_pipeline(&self.voltage_mean_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(dx, dy, 1);
+        }
+        enc.copy_buffer_to_buffer(&self.volt_partials, 0, &self.volt_staging, 0, (VOLT_PARTIALS as u64) * 4);
+        self.queue.submit(std::iter::once(enc.finish()));
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.volt_staging.slice(..).map_async(wgpu::MapMode::Read, move |res| { let _ = tx.send(res); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        // Any failure here unmaps and reports None. ⚠ The unmap must happen on
+        // every path or the buffer stays mapped and the NEXT tick's map_async
+        // fails too — one bad tick would poison the field permanently.
+        match rx.recv() {
+            Ok(Ok(())) => {}
+            _ => { self.volt_staging.unmap(); return None; }
+        }
+        let data = self.volt_staging.slice(..).get_mapped_range();
+        // f64 accumulator: 256 partials each holding up to ~47K summed f32s is
+        // exactly where f32 accumulation starts losing low-order bits, and this
+        // number is compared against a CPU shadow computed in f64.
+        let mut sum: f64 = 0.0;
+        for k in 0..(VOLT_PARTIALS as usize) {
+            let o = k * 4;
+            sum += f32::from_le_bytes(data[o..o + 4].try_into().unwrap()) as f64;
+        }
+        drop(data);
+        self.volt_staging.unmap();
+        let mean = (sum / (c.size as f64)) as f32;
+        if mean.is_finite() { Some(mean) } else { None }
     }
 
     pub fn has_sparse(&self, name: &str) -> bool {
@@ -1106,6 +1227,23 @@ impl Backend {
             Backend::Cuda(e) => e.init_cluster(name, size, regions, tonic, noise),
         }
     }
+    /// GOTCHA.3b (v0.3.32) — voltage mean, per backend.
+    ///
+    /// ⚠ THE CUDA ARM RETURNS `None` ON PURPOSE, and this is the honest shape
+    /// rather than a stub pretending to work. The board's own cost note for this
+    /// field says the reduction "must be written TWICE, once for wgpu and once
+    /// for CUDA" — the wgpu half ships here; the CUDA half needs a kernel in
+    /// `cuda_kernels.cu` and is NOT written. Returning `None` means the server
+    /// reads `unreported-by-this-donor` for a CUDA donor, which is exactly what
+    /// `meanVoltageSource` (GOTCHA.3a) was built to say. ⛔ Returning `Some(0.0)`
+    /// here would be a lie indistinguishable from a real quiet cluster.
+    fn voltage_mean(&self, name: &str) -> Option<f32> {
+        match self {
+            Backend::Wgpu(e) => e.voltage_mean(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(_) => None,
+        }
+    }
     fn has_cluster(&self, name: &str) -> bool {
         match self {
             Backend::Wgpu(e) => e.has_cluster(name),
@@ -1276,6 +1414,11 @@ pub struct StepJob {
 pub struct StepOut {
     pub total: u64,
     pub last: u64,
+    /// GOTCHA.3b (v0.3.32) — mean of the Rulkov fast variable, sampled ONCE at
+    /// the end of the substep run rather than per substep. `None` means "not
+    /// measured this run", never "zero" — see `voltage_mean()` for why that
+    /// distinction is load-bearing.
+    pub mean_voltage: Option<f32>,
 }
 
 impl MultiEngine {
@@ -1628,7 +1771,12 @@ impl MultiEngine {
                                 Err(e) => eprintln!("[donor] step error on '{}': {e}", job.name),
                             }
                         }
-                        local.push((job.name.clone(), StepOut { total, last }));
+                        // GOTCHA.3b — sample the voltage mean ONCE per run, after
+                        // the substep loop, not inside it. Per-substep would be
+                        // one extra dispatch + blocking readback per substep on
+                        // the hot path for a number the dashboard reads at ~1Hz.
+                        let mean_voltage = engine.voltage_mean(&job.name);
+                        local.push((job.name.clone(), StepOut { total, last, mean_voltage }));
                     }
                     // Per-GPU duty-cycle: idle a slice so THIS card's busy-fraction ≈ util_g%.
                     // (Independent per GPU — a gentle display card + a hard spare card coexist.)
