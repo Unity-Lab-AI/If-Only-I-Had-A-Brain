@@ -903,10 +903,36 @@ const SERVER_STATE_MIXIN = {
                 + ' from the emission band';
             }
           }
+          // BUCKETPUB.1 — PUBLISH THE ONE FIELD THAT SETTLES "why no-best-word?".
+          // `getTrainedCapability()` (js/brain/cluster.js:2470) already computes
+          // `wordsBucketed` and `bucketSubjects` on every call and NOTHING
+          // forwarded them, so the board could not answer the question two open
+          // board items both hinge on:
+          //   · GOTCHA.8 names this exact read as its discriminating test —
+          //     `bucketSubjects === 1` means the unified array carries
+          //     everything and the five per-subject `wordBucketWords_<subject>`
+          //     reads contribute nothing.
+          //   · EMITZERO.1 needs to tell "no candidate exists yet" (nothing
+          //     bucketed) apart from "a winner was rejected by a floor".
+          //     `emitDiagnostic.bestMean` reads 0 and `separability.cellSize`
+          //     reads 0 — both consistent with an EMPTY bucket set, because
+          //     `wordBucketCellSizeFor()` caches lazily and so reads 0 until
+          //     something actually needs the geometry. `wordsBucketed` is what
+          //     distinguishes them, and it was the one number not on screen.
+          // ⚠ null, never 0, when the capability scan is unavailable — a zero
+          // here would read as "nothing bucketed" and that is the very claim
+          // this field exists to establish.
+          const bucketCap = (cc && typeof cc.getTrainedCapability === 'function')
+            ? (() => { try { return cc.getTrainedCapability(); } catch { return null; } })()
+            : null;
           return {
             wordMotorSize: wm ? (wm.size | 0) : null,
             wordMotorEverFired: everFired,
             wordMotorPct: wm ? wm.pct : null,
+            wordsBucketed: bucketCap && typeof bucketCap.wordsBucketed === 'number'
+              ? bucketCap.wordsBucketed : null,
+            bucketSubjects: bucketCap && typeof bucketCap.bucketSubjects === 'number'
+              ? bucketCap.bucketSubjects : null,
             oracleHits,
             matrixHits,
             matrixDrivenPct,
