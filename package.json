@@ -14,7 +14,9 @@
     "social:shots:admin": "node scripts/social-shots.mjs --admin-only",
     "//docs": "doc-drift-check is READ-ONLY by design — it reports and never edits a doc. It is the doc-side twin of the boot guard that refuses to start if an LLM SDK reappears: the code side had a guard and the docs did not, which is how a doc claimed a route was removed in April while that route ran in production for four more months.",
     "docs:drift": "node scripts/doc-drift-check.mjs",
-    "docs:drift:strict": "node scripts/doc-drift-check.mjs --strict"
+    "docs:drift:strict": "node scripts/doc-drift-check.mjs --strict",
+    "//docs-prov": "DOCPROV.2 — the enforcement half, wired as the Stop hook in .claude/settings.json. Exposed here as well because a Stop hook writes to stderr and stderr is easy to miss; running it by hand is the way to ask the question deliberately. Same laws as its sibling: warn-only, fail-open, exits 0 even on its own crash.",
+    "docs:prov": "node scripts/doc-prov-stop-check.mjs"
   },
   "devDependencies": {
     "playwright": "^1.49.0"

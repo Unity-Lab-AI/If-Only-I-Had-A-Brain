@@ -1,6 +1,40 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-27 (latest) — FOUR FIXES FOR ONE NUMBER, AND THE INSTRUMENTS BUILT YESTERDAY PAID FOR THEMSELVES
+> ## ⭐⭐⭐ 2026-08-27 (latest) — THE STRANDED BATCH SHIPPED, THE LAW GOT A GUARD, AND THE LIVE READ MOVED THREE BOARD ITEMS
+>
+> **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). At writing: `main` **309242e3** and `develop` **d3e6aaa4**, both confirmed by `git ls-remote` on **both** remotes, board **4 open / 3 in-progress / 374 done**. ⭐ **`feature/fable-kit-adapt` is no longer stranded** — the previous brief asked for a decision on its 5 unmerged commits and the decision was to ship them: `DOCPROV.1`, the board corrections and the Fable Kit gitignore are on `main` now. ⚠ **`develop` had been sitting BEHIND `main`** by ten merge commits (identical trees — the merges carried no tree change), so it was fast-forwarded first; that is why the cascade reads as two hashes and not one. ⭐ **BOTH BRAINS ARE STILL TRAINING**, each booted `04:22Z`, local on `2673d14c` and the box on `3893e980` — **the box is one docs-only merge behind and needs no press for it.**
+>
+> ### 1. ⭐ `cellPhasesStarted` is **2**, and it was 0 in every brief before this one
+>
+> That single field is the gate three in-progress items have been waiting on since 2026-08-25 (`GATEDOSE.1`, `RELDEPTH.1`, `PRESSBLOCK.1` — all three read *"she is at phase 0"*). She is past the pre-phase definition bootstrap. `fullMindK` is still `null`, so the math-gate VERDICT has not landed yet — **the wait is now for a number, not for a phase.** ⚠ Read at ~2h uptime on both brains minutes apart; re-read before acting, because `_tstage`-class fields have lied by staleness before.
+>
+> ### 2. ⭐ The relation bands ARE separating — 3% of the gate yesterday, **43.9%** today
+>
+> `relationUse.marginProgress` **0.4388** on the box (`bestMarginRatio 0.0658` against `marginGate 0.15`), local **0.1781**. Yesterday's brief recorded ~3%. `tagWrites` **164,332** box / **165,493** local, `tagWritesRefused` **0**, `nonZeroBands 48/48`. ⛔ **`confident` is still 0, so `VMUSE.5.D` stays parked** — its own prerequisite is written as *"do not build until `relationUse.confident` starts climbing"*, and 44% of the way to a gate is not through it. ⭐ But the trajectory is the one that item predicted, which is the first evidence the 48-band fix is doing what it claimed.
+>
+> ### 3. `memoryStats.consolidation.passCount` is **1** — `REPLAYOFF.4`'s stated gate is met
+>
+> That item is parked behind *"needs consolidation passes > 0"*. It has one, on both brains. ⚠ `replaySchemas`, `replayWrites` and `replayRefused` are all still **0**, so a pass has RUN but replay has not yet written anything — the gate is open, the evidence it was opened for does not exist yet.
+>
+> ### 4. ⛔ `EMITZERO.1` filed — 683 speech attempts, 683 refusals, one reason
+>
+> `emitAttempts 683 / emitRejects 683` local, `712 / 712` box, `emitRejectsByReason { "no-best-word": … }` at **100.0% with no other reason present**, `emitRejection.ageMs` 17.3s / 7.9s — continuous, not idle. `wordMotorEverFired 720000/720000`. ⛔ **Filed as a QUESTION with its evidence and no diagnosis**, because this exact shape has a documented innocent reading (Gee's own `WALKPROG.1` ruling that the bootstrap is where she belongs; `WORDNORM.2` parked for want of a sample) and a documented lethal one (`EYEPIN` read 383/383 green while redrawing one stalled thought). The board names the three cheap reads that separate them.
+>
+> ### 5. `DOCPROV.2` — the docs-before-push LAW stops being enforced by discipline alone
+>
+> `scripts/doc-prov-stop-check.mjs`, second Stop hook in `.claude/settings.json`, `npm run docs:prov` to ask by hand. ⛔ **Two stated deviations from the filing.** It is **not** in `.claude/hooks/`: zero hooks there are tracked (`.gitignore:48`) while `settings.json` **is**, so a hook body there lives on one machine while the committed wiring points at it for everyone. And it has **no bash sibling** though every other hook does — the check hinges on the CRLF-tolerant frontmatter parser that shipped WRONG in `DOCPROV.1`, and a second hand-written parser is a second chance at the same silently-under-reporting bug. ⭐ **The sharp design call: the BOARD does not count as "a doc was touched"** — editing `TODO.md` while a described subsystem moves underneath a page is exactly the state it exists to name. **7/7 cases run on the shipped path**, including *only-TODO-touched → still warns* and *committed-but-unmerged → warns with scope `unmerged`*. Repeats are deduplicated by FINGERPRINT, not a timer, because Stop fires every turn and `BLOCKREAD.1` already paid for that lesson. ⛔ Warn-only, fail-open, exit 0 even on its own crash — the kit's version blocks, ours must not (`STOPTRAP`).
+>
+> ### 6. `HOOKDEBRIS.1` closed, and the delete was earned
+>
+> `New folder/` + `New folder.zip` inside `.claude/hooks/` — **all 22 files `diff`ed IDENTICAL** to the live hooks and the zip's entry list matched name-for-name and byte-for-byte before anything was removed. ⚠ Re-running the reference grep rather than trusting the filing turned up a **third** path-encoding example (`.claude/.claudereadme.md:221`) the filing had not listed. 22 live hooks remain.
+>
+> ### 7. Drift fixed in place, and one thing NOT done
+>
+> `ARCHITECTURE.md`'s directory tree claimed `scripts/` held **two** files, one of which has not existed for months; it is now the real **13** with what each is for. ⚠ **`docs/NOW.md` was deliberately not touched** — `CLAUDE.md` names RESUME → TODO → FINALIZED as the authoritative live state and NOW.md's banner sequence is a different rhythm; say so rather than half-updating it.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-08-27 (earlier) — FOUR FIXES FOR ONE NUMBER, AND THE INSTRUMENTS BUILT YESTERDAY PAID FOR THEMSELVES
 >
 > **PICK-UP STATE.** ⛔ **Verify hashes yourself** (`git rev-parse --short main develop`) and **count the board yourself** (`grep -c '^- \[ \]' docs/TODO.md`). At writing: `main` **3893e980**, `develop` **2673d14c**, board **6 open / 3 in-progress / 372 done**. ⭐ **BOTH BRAINS ARE TRAINING** — local on `2673d14c` and the box on `3893e980`, each ~119 min up, **each with 1 donor**, both in `ela/kindergarten` at 2,197 and 1,603 teach/min. The control plane answers on 7526. ⛔ **`feature/fable-kit-adapt` has 5 UNMERGED commits** — `DOCPROV.1`, the board corrections and the gitignore live only there. Decide whether to cascade it.
 >
