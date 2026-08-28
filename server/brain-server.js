@@ -11106,6 +11106,28 @@ wss.on('connection', (ws, req) => {
             } else {
               lb._idleFrames = (lb._idleFrames || 0) + 1;   // visible in the row: connected but not computing
             }
+            // TEACHCREDIT (2026-08-27) — credit the TEACH lane's real work too.
+            // During a walk, teach frames (full-matrix Hebbian passes, the
+            // predictive-error correction) are MOST of what a donor does — a
+            // card saturated with training banked zero while the compute lane
+            // sat deliberately paused behind the probe gate. The server counts
+            // each credited frame's measured giga-ops at the send chokepoint
+            // (matrix nnz × reps — sizes recorded at upload, never invented);
+            // this drains the delta into the PRIMARY donor's row, because the
+            // teach lane only ever rides the primary socket. Same currency
+            // class (giga neural ops), same honesty rule as MIRRORID.6: credit
+            // is work actually dispatched, an idle card still earns nothing.
+            if (brain._gpuClient === ws) {
+              const _tgNow = Number(brain._teachWorkGops) || 0;
+              const _tgPrev = Number(lb._lastTeachGops);
+              if (Number.isFinite(_tgPrev) && _tgNow > _tgPrev) {
+                const _tgDelta = _tgNow - _tgPrev;
+                lb.neurons += _tgDelta;                              // giga-ops of synaptic work
+                lb.teachGops = (lb.teachGops || 0) + _tgDelta;       // composition stays visible
+                lb._lastComputeTs = now;
+              }
+              lb._lastTeachGops = _tgNow;
+            }
             lb._lastSteps = _stepsNow;
             lb._lastTs = now;
             lb.lastSeen = now;

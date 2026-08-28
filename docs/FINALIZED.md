@@ -40407,3 +40407,15 @@ The `/update` handler (fresh mode) now **writes `.force-fresh` itself, into the 
 ## 2026-08-27 - BOOTVIA: the force-fresh boot reason named a button that was never pressed - feature/bootreason-via
 
 Found while proving to Gee that his fresh walk took: `lastBootReason.detail` read *"operator Reset Brain (dashboard)"* — but the wipe was armed by the FRESHFLAG direct write, not the Reset button. Three writers arm `.force-fresh` (`/reset`, `/update` fresh mode, a hand-armed file) and each stamps `via` in the flag JSON; the boot path **hardcoded the Reset string regardless**, so the boot record attributed every fresh wipe to one button. Now the flag's own `via` is read before unlink and carried into both the console line and the boot reason; a malformed or via-less flag reads `unknown writer` rather than inventing a cause. An unreadable flag still wipes — behavior unchanged, only the attribution stops lying. `node --check` clean; lands locally on the next restart.
+
+---
+
+## 2026-08-27 - TEACHCREDIT: teach work reaches the leaderboard - feature/teach-credit
+
+### Gee (verbatim per LAW #0)
+
+> *"no that is wrong!!! im fucking connec ted with my doner now and its fucking using my GPU i should be on the board you FUCK!@!!!!~"*
+
+**He was right.** His card was running 17,884 teach calls/min — the training itself — and banked zero, because the leaderboard credited only `compute_batch` steps and the compute lane sits deliberately paused behind the probe gate during a walk. `TEACHMIRROR.1` fixed this blind spot on the status label in August; the accounting kept it.
+
+**The fix, measured never invented:** matrix nnz recorded at upload; each full-matrix teach frame credits `nnz × reps / 1e9` giga-ops at the `_countTeachOut` chokepoint (t3 ×1, t12-repeat-of-3 ×1, t13 ×reps, t14 ×2); the telemetry accrual drains the delta into the **primary** donor's row — the teach lane only ever rides the primary socket. Scatter/write frames credit nothing (under-crediting is the right rounding for a competed number); unknown matrices credit 0. `lb.teachGops` keeps the composition visible. **MIRRORID.6 unchanged:** compute credit still gates on steps advancing; an idle card earns nothing on either lane.
