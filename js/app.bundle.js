@@ -93223,8 +93223,16 @@ var SUBJECTS_RETIRED_AT = {
   civics: "grade12",
   economics: "grade12",
   psychology: "grade12",
-  ap: "grade12"
+  ap: "grade12",
   // AP is a high-school-only course band by definition
+  // SUBJRETIRE.2 — the college-only tracks end with the bachelor's. gen-ed is
+  // definitionally undergraduate, and at grad level the CS theory/systems
+  // tracks fold into 'research' + 'major', both of which have real grad/phd
+  // runners. Same ledger gate as the nine above: never passed college4 ⇒
+  // still rostered, still owed.
+  genered: "college4",
+  cstheory: "college4",
+  cssystems: "college4"
 };
 function ledgerFloorIdx(passedCells) {
   const ledger = passedCells instanceof Set ? passedCells : new Set(Array.isArray(passedCells) ? passedCells : []);

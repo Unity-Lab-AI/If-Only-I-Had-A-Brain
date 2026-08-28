@@ -143,8 +143,10 @@ last-verified: "38e19615 2026-08-27"
 | G7 | G12 | Civics | intro to government/citizenship |
 | G9 | G12 | Economics, Psychology (intro) | |
 | G11 | G12 | AP courses | AP Calc, AP Physics, AP CS, AP Lit, AP US Gov — a high-school-only band by definition |
-| College 1 | — | Major (CS), Gen-ed, CS Theory, CS Systems | data structures, algorithms, architecture, theory |
+| College 1 | Major: — · Gen-ed/CS Theory/CS Systems: C4 | Major (CS), Gen-ed, CS Theory, CS Systems | data structures, algorithms, architecture, theory. Gen-ed is definitionally undergraduate; at grad level the CS tracks fold into Research + Major |
 | Grad | — | Research specialty | computational neuroscience / brain simulation |
+
+⭐ **With the college-only tracks retiring at College 4, the grad/PhD roster is exactly `ela math science social art life major research` — 8 owed against 8 real runners.** Every grade in the walk now has a runner for every subject it owes.
 
 ⛔ **"Retires after" is LEDGER-GATED, not grade-gated.** A track leaves the roster above its terminal grade **only once the ledger shows that terminal cell actually passed**; one that never ran stays rostered and stays owed. Retiring on grade number alone would re-create `WALKORDER.1` — the bug where Grade 1 finished with PE/Music/Health never taught. `subjectsForGrade()` still answers *"what exists"*; `subjectsOwedAt(grade, passedCells)` answers *"what still owes work"*.
 
