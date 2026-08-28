@@ -5007,11 +5007,56 @@ class ServerBrain {
       const mv = this.clusters[name]?.meanVoltage;
       return (typeof mv === 'number') ? Math.min(0.3, Math.abs(mv) * 0.1) : 0;
     };
-    const cortexAct  = cortexActivity  + mvBoost('cortex');
+    // PSITEACH.1 (2026-08-28) — the teach lane is real activity and Ψ was
+    // blind to it. Per-cluster spikeCount is written ONLY by compute_batch
+    // acks (the step lane), so a boot that spends hours inside a teach stack
+    // reads all-zero cluster activity and Ψ = log10(max(1, 0)) = 0.000 while
+    // the donor runs tens of giga-synapse-ops of training per second — the
+    // TEACHMIRROR class of blind instrument (the card read `idle` while
+    // saturated with teach; the leaderboard credited teach zero), third
+    // instance, this time on the headline consciousness figure. The term is
+    // MEASURED, never invented: `_teachWorkGops` is the TEACHCREDIT
+    // accumulator (matrix nnz × reps at the send chokepoint), and the
+    // reference is the brain's own stored-synapse total, so "one full pass
+    // over everything she knows, per second" reads 1.0 on any brain size —
+    // scale-invariant the same way psiGain and the Φ reference are.
+    // EMA-smoothed because teach dispatch is bursty; capped at 0.5 so the
+    // teach term complements the step lane's spike signal and can never
+    // impersonate a fully-ticking brain. Published as `psiInputs` so the
+    // dashboard can SAY which lane fed Ψ instead of leaving it to inference.
+    {
+      const _nowTe = Date.now();
+      const _gopsNow = this._teachWorkGops || 0;
+      if (!this._psiTeachSt) this._psiTeachSt = { gops: _gopsNow, at: _nowTe, ema: 0, rate: 0 };
+      const _te = this._psiTeachSt;
+      const _dtS = (_nowTe - _te.at) / 1000;
+      if (_dtS >= 1) {
+        const _rate = Math.max(0, (_gopsNow - _te.gops) / _dtS);   // measured Gops/s of dispatched teach
+        let _refG = 0;
+        if (this._matrixNnzByName) {
+          for (const _k in this._matrixNnzByName) _refG += this._matrixNnzByName[_k];
+        }
+        _refG /= 1e9;
+        const _act = _refG > 0 ? Math.min(0.5, _rate / _refG) : 0;
+        _te.ema = _te.ema * 0.8 + _act * 0.2;
+        _te.rate = _rate;
+        _te.gops = _gopsNow;
+        _te.at = _nowTe;
+      }
+    }
+    const teachAct = this._psiTeachSt ? this._psiTeachSt.ema : 0;
+    // Teaching is cortex-and-hippocampus work — the synapse writes land in
+    // cortex matrices and the consolidation side rides the hippocampal path.
+    const cortexAct  = cortexActivity  + mvBoost('cortex') + teachAct;
     const amygAct    = amygActivity    + mvBoost('amygdala');
     const cerebAct   = cerebActivity   + mvBoost('cerebellum');
     const mysteryAct = mysteryActivity + mvBoost('mystery');
-    const hippoAct   = hippoActivity   + mvBoost('hippocampus');
+    const hippoAct   = hippoActivity   + mvBoost('hippocampus') + teachAct * 0.5;
+    this.psiInputs = {
+      stepSpikes: this.totalSpikes,
+      teachAct: +teachAct.toFixed(4),
+      teachGopsPerSec: this._psiTeachSt ? +this._psiTeachSt.rate.toFixed(2) : 0,
+    };
 
     const id = amygAct * p.arousalBaseline;                   // Id: instinct × arousal baseline
     const ego = cortexAct * (1 + hippoAct);                   // Ego: self-model × memory
@@ -6249,6 +6294,75 @@ class ServerBrain {
                   for (const [ws] of this.clients) {
                     if (ws.readyState === ws.OPEN) {
                       try { ws.send(payload); } catch { /* non-fatal */ }
+                    }
+                  }
+                }
+              }
+              // PSITEACH.2 (2026-08-28) — THE WALK HEARTBEAT. The probe gate is
+              // held for the ENTIRE cell run (curriculum cell entry sets it and
+              // the finally clears it), which at biological scale is HOURS — and
+              // with it held, no compute_batch ever dispatches, every cluster's
+              // spikeCount stays frozen at its boot value of 0, and Ψ reads
+              // 0.000 for the whole walk. The brain was designed to think while
+              // it learns; the pause was a donor-protection measure from the
+              // compute.html serial-pump era, and holding it for hours starves
+              // every downstream instrument and dynamic (Ψ, Φ, theta
+              // oscillators, cluster firing rates).
+              //
+              // The heartbeat steps ONLY the non-cortex clusters. ⛔ CORTEX IS
+              // DELIBERATELY EXCLUDED: the teach lane writes spike/current
+              // patterns into the MAIN cortex spike buffers (t7/t11 templates
+              // target `cortex/<region>`) and the bound Hebbian ops read them —
+              // stepping cortex mid-sequence would evolve those buffers between
+              // a pattern write and its Hebbian read and silently corrupt
+              // teaching. No teach op binds the other seven clusters' buffers,
+              // so stepping them is side-effect-free on the walk. Cortex's own
+              // contribution to Ψ during a walk is the measured teach-activity
+              // term (PSITEACH.1). Verified against the real donor binary at
+              // full production scale before shipping: 8 clusters, 459.7M
+              // neurons, 24 substeps → 795ms per batch on the CUDA backend.
+              //
+              // Rides the conservative SUBSTEPS floor (never the adaptive
+              // climb — the card is busy teaching), skips entirely while the
+              // canonical upload holds the socket (that early-return is above
+              // this one), backs off 4× after a miss so a struggling donor is
+              // not pelted. DREAM_WALK_TICK_MS tunes the cadence; 0 disables
+              // and restores the exact prior hold-everything behavior.
+              {
+                const _hbEnv = process.env.DREAM_WALK_TICK_MS;
+                const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
+                  ? Math.max(0, Number(_hbEnv) || 0) : 15000;
+                if (_hbGap > 0 && !this._gpuDeviceLost) {
+                  const _nowHb = Date.now();
+                  const _backoff = this._walkTickMissedAt && (_nowHb - this._walkTickMissedAt) < _hbGap * 4;
+                  if (!_backoff && (!this._walkTickAt || (_nowHb - this._walkTickAt) >= _hbGap)) {
+                    this._walkTickAt = _nowHb;
+                    const _hbParams = clusterParams.filter((cp) => cp.name !== 'cortex');
+                    const _hbRes = await this._gpuBatch(SUBSTEPS, _hbParams);
+                    const _st = this._walkTickStats || (this._walkTickStats = { sent: 0, ok: 0, lastOkAt: null, lastMissAt: null });
+                    _st.sent++;
+                    if (_hbRes && _hbRes.perCluster) {
+                      _st.ok++;
+                      _st.lastOkAt = Date.now();
+                      this._walkTickMissedAt = null;
+                      this.totalSpikes = 0;
+                      for (const name of allClusters) {
+                        const entry = _hbRes.perCluster[name];
+                        if (entry && typeof entry.lastSpikeCount === 'number') {
+                          this.clusters[name].spikeCount = entry.lastSpikeCount;
+                          const avgHb = (entry.spikeCountTotal || 0) / SUBSTEPS;
+                          this.clusters[name].firingRate = this.clusters[name].firingRate * 0.95 + avgHb * 0.05;
+                          if (typeof entry.meanVoltage === 'number') {
+                            const prevMv = this.clusters[name].meanVoltage ?? entry.meanVoltage;
+                            this.clusters[name].meanVoltage = prevMv * 0.8 + entry.meanVoltage * 0.2;
+                          }
+                        }
+                        this.totalSpikes += this.clusters[name].spikeCount || 0;
+                      }
+                    } else {
+                      _st.lastMissAt = Date.now();
+                      this._walkTickMissedAt = Date.now();
+                      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${SUBSTEPS} substeps) — backing off ${(_hbGap * 4 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
                     }
                   }
                 }

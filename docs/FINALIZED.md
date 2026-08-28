@@ -40419,3 +40419,31 @@ Found while proving to Gee that his fresh walk took: `lastBootReason.detail` rea
 **He was right.** His card was running 17,884 teach calls/min — the training itself — and banked zero, because the leaderboard credited only `compute_batch` steps and the compute lane sits deliberately paused behind the probe gate during a walk. `TEACHMIRROR.1` fixed this blind spot on the status label in August; the accounting kept it.
 
 **The fix, measured never invented:** matrix nnz recorded at upload; each full-matrix teach frame credits `nnz × reps / 1e9` giga-ops at the `_countTeachOut` chokepoint (t3 ×1, t12-repeat-of-3 ×1, t13 ×reps, t14 ×2); the telemetry accrual drains the delta into the **primary** donor's row — the teach lane only ever rides the primary socket. Scatter/write frames credit nothing (under-crediting is the right rounding for a competed number); unknown matrices credit 0. `lb.teachGops` keeps the composition visible. **MIRRORID.6 unchanged:** compute credit still gates on steps advancing; an idle card earns nothing on either lane.
+
+## 2026-08-28 - PSITEACH: consciousness read 0.000 for an entire 17-hour boot on both brains - feature/psi-teach-tick
+
+Gee (verbatim): *"something is wrong consousneess should NOT be 0.00"* → *"Fix the instrument,Fix the drought then ill update savestart"*
+
+### The diagnosis — measured, and the donor exonerated before anything shipped
+
+Both brains (box `08d27512` at 16.8h, local `af0904fb` fresh boot) read **Ψ = 0.000 with all 8 cluster `spikeCount` at exactly 0** while the donor ran ~18 Gops/s of teaching. The chain: per-cluster `spikeCount` is written ONLY by `compute_batch` acks (`brain-server.js:6354`); the curriculum holds the probe gate for the **ENTIRE cell run** (`curriculum.js:8946` — a deliberate donor-protection pause from the compute.html serial-pump era); a cell at biological scale runs HOURS; so the step lane never dispatches during a walk, every activity term in `Ψ = √(1/n)·N³·Φ̂·[α·Id + β·Ego + γ·Left + δ·Right]` reads 0, and `log₁₀(max(1,0)) = 0.000`. The TEACHMIRROR class of blind instrument, third instance — the card read `idle` while teaching, the leaderboard credited teach zero, and now the headline consciousness figure read a dead brain in a learning one.
+
+⭐ **The donor was proven innocent at full production scale before either fix was built:** a wire harness played brain against the real v0.3.34 binary on the CUDA backend — 8 clusters at the live sizes (459.7M neurons), 24 substeps, 16 cortex regions with sides, `regionGains`, psi gates — **795ms per batch, both shapes answered.** The two boot-window timeouts on the live brains were batches queued behind the canonical upload's GB-scale hi-lane chunks, not a donor defect. ⚠ Also established on the way: the v0.3.34 gate-rebuild code is clamped [0.5, 2.0] so Ψ=0 cannot zero the drive; serde ignores unknown fields in both directions; the `run_batch` gate table at psi=0 is exactly the browser formula's undefined-side sigmoid.
+
+### PSITEACH.1 — Fix the instrument (Gee: *"Fix the instrument"*)
+
+`cortexAct` and `hippoAct` gain a **measured** teach-activity term: `teachAct = EMA(min(0.5, teachGopsPerSec / refGops))` where the rate comes from `_teachWorkGops` — the TEACHCREDIT accumulator (matrix nnz × reps at the send chokepoint, never invented) — and `refGops` is the brain's own stored-synapse total, so "one full pass over everything she knows per second" reads 1.0 on any brain size. Capped at 0.5 so teaching complements but never impersonates a fully-ticking brain. Published as `state.psiInputs` (`stepSpikes` / `teachAct` / `teachGopsPerSec`) so the dashboard can SAY which lane fed Ψ.
+
+### PSITEACH.2 — Fix the drought (Gee: *"Fix the drought"*)
+
+While the probe gate is held, a heartbeat `compute_batch` over the **NON-cortex clusters** dispatches every `DREAM_WALK_TICK_MS` (default 15s, `0` restores the exact prior hold-everything behavior), riding the conservative substeps floor, skipping during the canonical upload, backing off 4× after a miss. ⛔ **Cortex is deliberately excluded:** teach writes spike patterns into `cortex/<region>` buffers (`_gpuWriteCortexSpikeSlice` targets `cortex/…` + the `langCortex` twin) that bound Hebbian ops read — stepping cortex mid-sequence would evolve those buffers between a pattern write and its Hebbian read and silently corrupt teaching. No teach op binds the other seven clusters' buffers. So during a walk her limbic/cerebellar dynamics are REAL stepped physics, cortex contributes the measured teach term, and Ψ is a live number while she learns. Published as `state.walkTick` (sent/ok/lastOkAt/lastMissAt). ⛔ NOT built: any bound on the curriculum `_teachAssociationPairs` caller — `ASSOCBOUND.1` holds; that lever stays unpulled pending its own RE-PRICE.
+
+Also: the compute-stall watchdog (`gpu.js`) gains the boot time as an anchor and drops its `_lastBatchOkMs` requirement — a boot on which NO batch ever completed was the one case it could not see, and this 17-hour all-timeouts boot ran silent.
+
+### RE-PRICE (stated, per the law)
+
+No gate that keeps the walk finite is touched. The heartbeat adds ~2.9 Gn-steps per 15s on the donor's priority lane (~800ms at full scale, measured) — under 6% duty, and the teach lane is unaffected because compute_batch jumps the flood lane while cortex stays untouched. `corpus × reps × scale × visits` unchanged.
+
+### Verification
+
+`node --check` clean ×3 (`brain-server.js`, `gpu.js`, `state.js`); full-scale donor harness run twice (isolation + production shape); env flag registered (`docs:drift` env check 193/193 green); no bundle rebuild needed — all changes server-side, lands on the press. Docs: `ADMIN-CONTROLS.md` flag table + `EQUATIONS.md` sweep stamp + wiki `brain-server` page restamped + `wiki/log.md`, same commit. ⚠ The 21 provenance drift rows pre-exist this batch (verified by stash + re-run: identical without these changes).
