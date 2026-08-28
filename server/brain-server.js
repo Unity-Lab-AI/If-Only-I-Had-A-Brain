@@ -4958,6 +4958,48 @@ class ServerBrain {
   // 0 disables), backs off 4× after a miss. Called from BOTH walk-time tick
   // paths: the probe-gate hold and the gate-clear _curriculumInProgress
   // branch — one cadence, one stats object (`state.walkTick`).
+  // FIREKNOB (2026-08-28, Gee: the brain "should be like 5-10% of the brain at
+  // any moment" firing) — a self-calibrating firing-rate controller, the same
+  // idiom as psiGain and SUBSTEPS.2: never a hand-tuned constant. Every
+  // answered step batch samples the true fired fraction, EMA-smooths it, and
+  // nudges a bounded multiplicative scale on tonicDrive toward the target.
+  // DREAM_FIRING_TARGET_PCT (default 7.5, the middle of the operator's band;
+  // 0 disables — scale pins at 1.0, the exact pre-knob behavior). Bounds
+  // [0.25, 10] and a ±50%-clamped relative error at ±15%/sample keep one
+  // noisy batch from yanking the brain; a scale pinned at a bound is
+  // published rather than hidden (state.firing.scale), because a controller
+  // that cannot reach its target must SAY so.
+  _firingTargetPct() {
+    if (this._fireTargetCached === undefined) {
+      const raw = process.env.DREAM_FIRING_TARGET_PCT;
+      const v = (raw === undefined || raw === '') ? 7.5 : Number(raw);
+      this._fireTargetCached = (Number.isFinite(v) && v > 0) ? Math.min(50, v) : 0;
+    }
+    return this._fireTargetCached;
+  }
+
+  _firingDriveScale() {
+    return (this._fireCtl && this._firingTargetPct() > 0) ? this._fireCtl.scale : 1.0;
+  }
+
+  _firingControllerSample(spikes, steppedSize) {
+    const target = this._firingTargetPct();
+    if (!(target > 0) || !(steppedSize > 0)) return;
+    const c = this._fireCtl || (this._fireCtl = { scale: 1.0, ema: null, pct: 0, samples: 0 });
+    const pct = (spikes / steppedSize) * 100;
+    c.pct = pct;
+    c.ema = c.ema == null ? pct : c.ema * 0.8 + pct * 0.2;
+    c.samples++;
+    const err = Math.max(-0.5, Math.min(0.5, (target - c.ema) / target));
+    const next = Math.max(0.25, Math.min(10, c.scale * (1 + 0.15 * err)));
+    if (next !== c.scale) c.scale = next;
+    if (!this._fireCtlLogMs || (Date.now() - this._fireCtlLogMs) > 60000) {
+      this._fireCtlLogMs = Date.now();
+      const pinned = (c.scale <= 0.25 || c.scale >= 10) ? ' ⚠ SCALE PINNED AT ITS BOUND — the target is out of the drive knob\'s reach; that is a report, not a retry loop' : '';
+      console.log(`[Brain] FIREKNOB — firing ${pct.toFixed(2)}% (ema ${c.ema.toFixed(2)}%) vs target ${target}% → driveScale ${c.scale.toFixed(3)} over ${c.samples} samples.${pinned} Rate-limited 60s; DREAM_FIRING_TARGET_PCT=0 disables.`);
+    }
+  }
+
   async _walkHeartbeat(clusterParams, allClusters) {
     const _hbEnv = process.env.DREAM_WALK_TICK_MS;
     const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
@@ -4984,10 +5026,13 @@ class ServerBrain {
       _st.lastOkAt = Date.now();
       this._walkTickMissedAt = null;
       this.totalSpikes = 0;
+      let _ackSpikes = 0, _ackSize = 0;   // FIREKNOB — acked clusters only
       for (const name of allClusters) {
         const entry = _hbRes.perCluster[name];
         if (entry && typeof entry.lastSpikeCount === 'number') {
           this.clusters[name].spikeCount = entry.lastSpikeCount;
+          _ackSpikes += entry.lastSpikeCount;
+          _ackSize += CLUSTER_SIZES[name] || 0;
           const avgHb = (entry.spikeCountTotal || 0) / SUBSTEPS;
           this.clusters[name].firingRate = this.clusters[name].firingRate * 0.95 + avgHb * 0.05;
           if (typeof entry.meanVoltage === 'number') {
@@ -4997,6 +5042,7 @@ class ServerBrain {
         }
         this.totalSpikes += this.clusters[name].spikeCount || 0;
       }
+      this._firingControllerSample(_ackSpikes, _ackSize);
     } else {
       _st.lastMissAt = Date.now();
       this._walkTickMissedAt = Date.now();
@@ -6287,7 +6333,10 @@ class ServerBrain {
                 // and serde defaulted it to 0 — the guard below restores
                 // exactly that behavior. Captured red-handed by a mirror-probe
                 // replica reading the live payload: brainstem.tonicDrive=null.
-                tonicDrive: (Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate,
+                // FIREKNOB (2026-08-28) — × the self-calibrating firing-rate
+                // scale (see _firingControllerSample): the controller aims the
+                // measured fired-fraction at DREAM_FIRING_TARGET_PCT.
+                tonicDrive: (Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale(),
                 noiseAmp: this.noiseAmplitudes[name],
                 gainMultiplier: psiGain,
                 emotionalGate,
@@ -6512,12 +6561,15 @@ class ServerBrain {
             this._cortexDivergence = 0;
             this._cortexDivergenceByRegion = {};
             this.totalSpikes = 0;
+            let _fkSpikes = 0, _fkSize = 0;   // FIREKNOB — acked clusters only
             if (batchResult && batchResult.perCluster) {
               for (const name of allClusters) {
                 const entry = batchResult.perCluster[name];
                 if (entry && typeof entry.lastSpikeCount === 'number') {
                   this._gpuHits++;
                   this.clusters[name].spikeCount = entry.lastSpikeCount;
+                  _fkSpikes += entry.lastSpikeCount;
+                  _fkSize += CLUSTER_SIZES[name] || 0;
                   // Blend firing rate across the whole batch using the
                   // substep-average spike count, not just the last one.
                   const avg = (entry.spikeCountTotal || 0) / (this._substepsLastTick || SUBSTEPS);
@@ -6542,6 +6594,7 @@ class ServerBrain {
                 this.totalSpikes += this.clusters[name].spikeCount || 0;
               }
             }
+            if (_fkSize > 0) this._firingControllerSample(_fkSpikes, _fkSize);
 
             this._updateDerivedState();
 
