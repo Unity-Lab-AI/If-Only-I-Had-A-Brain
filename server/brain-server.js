@@ -10475,6 +10475,14 @@ wss.on('connection', (ws, req) => {
       // SPRR compute responses; a faked frame could resolve a pending sparse
       // promise with garbage currents. Drop frames from non-pool senders.
       if (!brain._gpuClients || !brain._gpuClients.has(ws)) return;
+      // ALIGNKILL (2026-08-28) — a malformed or unparseable donor ack must
+      // NEVER kill the process. This handler runs as a raw ws event: a throw
+      // here is an uncaughtException and the whole brain dies mid-walk, which
+      // is exactly how the Float32Array alignment crash presented. Defensive
+      // I/O boundary, not a capability fallback: the frame is dropped LOUDLY,
+      // the pending (if already popped) rides its own timeout, and the walk
+      // survives.
+      try {
       const typeByte = data[4];
       // SPRR header layout (16 bytes for propagate, 9 bytes for
       // upload_ack/hebbian_ack):
@@ -10500,9 +10508,22 @@ wss.on('connection', (ws, req) => {
             } else if (pending.reuseKey) {
               // COMP.1b — opted-in caller: copy into that matrix's persistent
               // buffer instead of allocating a fresh 48MB array per round.
+              // ALIGNKILL (2026-08-28) — this used to construct a Float32Array
+              // VIEW at data.byteOffset + 16, and a ws Buffer's byteOffset in
+              // Node's pool carries NO 4-byte alignment guarantee. When the
+              // pool happened to hand back an unaligned slice, `new
+              // Float32Array(...)` threw "start offset of Float32Array should
+              // be a multiple of 4" as an uncaughtException INSIDE the ws
+              // message handler and KILLED THE PROCESS — the intermittent
+              // whole-brain crash of 2026-08-28, twice in one evening, named
+              // by the operator's terminal paste. The byte-level copy below is
+              // the same memcpy with no alignment requirement and no
+              // allocation. The header's own offset-16 alignment fix (the
+              // comment above) only aligned the offset WITHIN the frame; the
+              // frame's position within the pool was the remaining die roll.
               const e = brain._currentsReuseBuf(pending.reuseKey, currentsLen);
-              const src = new Float32Array(data.buffer, data.byteOffset + currentsOffset, currentsLen);
-              e.buf.set(src);
+              new Uint8Array(e.buf.buffer, e.buf.byteOffset, currentsLen * 4)
+                .set(data.subarray(currentsOffset, currentsOffset + currentsLen * 4));
               e.prevIdx = null; e.prevN = 0;   // dense write — nothing stale survives
               pending.resolve({ currents: e.buf });
             } else {
@@ -10556,6 +10577,11 @@ wss.on('connection', (ws, req) => {
             pending.resolve({ ok: true, reqId });
           }
         }
+      }
+      } catch (err) {
+        // ALIGNKILL — the frame is dropped, the process lives, and the line
+        // names the frame so the next such crash is a grep instead of a hunt.
+        console.error(`[Brain] ⛔ SPRR ack parse FAILED (type=${data[4]} len=${data.length} byteOffset=${data.byteOffset}) — frame DROPPED, process alive. A popped pending resolves via its own timeout. ${err?.message || err}`);
       }
       return;
     }
