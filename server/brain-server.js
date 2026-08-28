@@ -6094,6 +6094,29 @@ class ServerBrain {
             const divergence = this._cortexDivergence || 0;
             const psiCorrectionGain = 1 + (this.psi || 0) * 0.25;
             const divergenceContrib = -divergence * psiCorrectionGain * 3;  // negative = dampening
+            // RHYTHM3S.2 (2026-08-27) — the TWO host-side drive factors the
+            // donor formula never received. The CPU step's effective drive is
+            // tonic · driveBaseline · emotionalGate · actionGate ·
+            // gainMultiplier · thetaMod; the donor computes
+            // tonic · driveBaseline · emotionalGate · gainMultiplier
+            // + errorCorrection — actionGate and thetaMod were simply never
+            // sent, so at biological scale (where ONLY donors step her) the
+            // theta entrainment and basal-ganglia gating were absent from the
+            // stepping physics. Both are cluster-level SCALARS, so they fold
+            // into the tonicDrive term algebraically — the donor's own product
+            // then equals the CPU's full five-factor formula with zero wire or
+            // kernel change, on every donor version ever shipped.
+            //
+            // The theta oscillator is the SPEAK.5a Kuramoto substrate,
+            // constants identical to cluster.js step(): per-cluster phase
+            // accumulator whose instantaneous frequency is modulated by the
+            // cluster's own population rate (ack'd spikeCount / size — the
+            // exact quantity the CPU estimates by strided lastSpikes
+            // sampling), EMA baseline 0.99/0.01, deviation clamp ±0.9 × 4,
+            // coupling K = 0.5, thetaPeriod 167, thetaAmplitude 0.15.
+            // Active clusters run fast, quiet ones slow → real phase
+            // dispersion, not a cosmetic shared clock.
+            if (!this._thetaOsc) this._thetaOsc = {};
             const clusterParams = allClusters.map((name) => {
               const cerebFeedback = name === 'cortex' || name === 'basalGanglia'
                 ? -(this.clusters.cerebellum?.spikeCount || 0) / (CLUSTER_SIZES.cerebellum || 1) * 2 : 0;
@@ -6105,10 +6128,28 @@ class ServerBrain {
               const errorSignal = (name === 'cortex')
                 ? cerebFeedback + divergenceContrib
                 : cerebFeedback;
+              // Per-cluster activity-modulated theta phase (SPEAK.5a, host side).
+              const osc = this._thetaOsc[name]
+                || (this._thetaOsc[name] = { theta: 0, gamma: 0, baseline: 0.1 });
+              const _sz = CLUSTER_SIZES[name] || 1;
+              const _rate = Math.max(0, Math.min(1, (this.clusters[name]?.spikeCount || 0) / _sz));
+              osc.baseline = 0.99 * osc.baseline + 0.01 * _rate;
+              const _dev = Math.max(-0.9, Math.min(0.9, (_rate - osc.baseline) * 4));
+              const _K = 0.5;
+              osc.theta = (osc.theta + (2 * Math.PI / 167) * (1 + _K * _dev)) % (2 * Math.PI);
+              osc.gamma = (osc.gamma + (2 * Math.PI / 25) * (1 + _K * _dev)) % (2 * Math.PI);
+              const thetaMod = 1.0 + 0.15 * Math.sin(osc.theta);
+              // Basal-ganglia action gate. Constructor default is 1.0 and no
+              // server-side writer exists yet (engine.js drives it in the
+              // browser), so this reads 1.0 today — folded in anyway so the
+              // formula is COMPLETE and any future writer takes effect here
+              // instead of silently not.
+              const actionGate = (name === 'cortex')
+                ? (this.cortexCluster?.actionGate || 1.0) : 1.0;
               return {
                 name,
                 size: CLUSTER_SIZES[name],
-                tonicDrive: this.tonicDrives[name],
+                tonicDrive: this.tonicDrives[name] * thetaMod * actionGate,
                 noiseAmp: this.noiseAmplitudes[name],
                 gainMultiplier: psiGain,
                 emotionalGate,
@@ -6117,6 +6158,18 @@ class ServerBrain {
                 reward: this.reward,
               };
             });
+            // Keep the cortex cluster's step-loop gamma field honest for the
+            // dashboard + K-wiring diagnostics (state.js gammaScale). ⚠ NOT a
+            // teaching input: the curriculum deliberately computes its own
+            // per-phase gamma from _curriculumTickCounter (cluster.js:2139) —
+            // that decoupling is documented as intentional and is untouched.
+            if (this.cortexCluster && this._thetaOsc.cortex) {
+              const o = this._thetaOsc.cortex;
+              const inTheta = (o.theta / (2 * Math.PI)) < 0.5;
+              this.cortexCluster._gammaLrScale = inTheta
+                ? (1.0 + (this.cortexCluster.gammaAmplitude ?? 0.5) * Math.sin(o.gamma))
+                : 1.0;
+            }
 
             // Pause compute_batch while curriculum is running its gate
             // probe. cortexCluster.stepAwait floods compute.html's
