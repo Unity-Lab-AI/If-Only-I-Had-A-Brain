@@ -174,6 +174,91 @@ export function subjectsForGrade(grade) {
   return out;
 }
 
+// SUBJRETIRE — the counterpart to SUBJECTS_INTRODUCED_AT. Until this existed the
+// roster was purely ADDITIVE: every track ever introduced stayed rostered
+// forever, so college listed 19 subjects against 10 runners and grad/PhD 20
+// against 8. These nine are K-12 courses; GRADE_ORDER puts 'college1' directly
+// after 'grade12', where a separate roster (major/genered/cstheory/cssystems,
+// then research) takes over — which is what real school does.
+//
+// Value = the LAST grade the subject is offered, inclusive.
+export const SUBJECTS_RETIRED_AT = {
+  pe: 'grade12',
+  music: 'grade12',
+  health: 'grade12',
+  language: 'grade12',
+  cs: 'grade12',          // superseded at college by cstheory / cssystems / major
+  civics: 'grade12',
+  economics: 'grade12',
+  psychology: 'grade12',
+  ap: 'grade12',          // AP is a high-school-only course band by definition
+};
+
+/**
+ * Index into GRADE_ORDER of the EARLIEST grade the ledger has any record of.
+ *
+ * ⛔ `passedCells` recording postdates the pre-K era, so the ledger gets NO
+ * OPINION below its own floor: unrecorded history is treated as DONE, not owed.
+ * A naive "not in the ledger → owed" scan reports pre-K as owed on a long-trained
+ * brain and restarts the entire walk from the bottom.
+ *
+ * Extracted so the boot resolver and the retirement test share ONE definition —
+ * two copies of this rule drifting apart is how a walk silently restarts.
+ * An empty ledger is genuinely fresh and correctly yields 0.
+ */
+export function ledgerFloorIdx(passedCells) {
+  const ledger = (passedCells instanceof Set)
+    ? passedCells
+    : new Set(Array.isArray(passedCells) ? passedCells : []);
+  if (ledger.size === 0) return 0;
+  for (let g = 0; g < GRADE_ORDER.length; g++) {
+    for (const k of ledger) {
+      if (typeof k === 'string' && k.endsWith(`/${GRADE_ORDER[g]}`)) return g;
+    }
+  }
+  return 0;   // ledger holds only unrecognised keys — behave as if fresh
+}
+
+/**
+ * Returns the subjects that still OWE WORK at `grade`.
+ *
+ * This is a DIFFERENT QUESTION from subjectsForGrade(), which answers "what
+ * subjects exist at this grade" and stays pure. Callers deciding what to WALK,
+ * what must PASS, or what is HELD BACK want this one; callers reporting the full
+ * roster want the other. They are deliberately two named functions rather than
+ * one function with an optional ledger argument, because the same call silently
+ * meaning two things is the capability-degradation branch the no-fallbacks rule
+ * exists to stop.
+ *
+ * ⛔ RETIREMENT IS GATED ON THE LEDGER, NOT ON A GRADE NUMBER. The ruling was
+ * "retired at the correct grade ONCE THEY HAVE BEEN TRAINED", and the condition
+ * is load-bearing: WALKORDER.1 was Grade 1 finishing with PE/Music/Health never
+ * taught because a subject got skipped without its debt being cleared. Retiring
+ * on grade number alone re-creates that bug by design — an untrained subject
+ * would vanish from the roster and take its debt with it. MAX_GRADE_ROUNDS
+ * exhaustion makes this reachable: it lets the walk proceed past a grade whose
+ * cell never passed, and then only the ledger remembers.
+ */
+export function subjectsOwedAt(grade, passedCells) {
+  const roster = subjectsForGrade(grade);
+  const idx = GRADE_ORDER.indexOf(grade);
+  if (idx < 0) return roster;   // unknown grade → nothing retires (safe default)
+  const ledger = (passedCells instanceof Set)
+    ? passedCells
+    : new Set(Array.isArray(passedCells) ? passedCells : []);
+  const floorIdx = ledgerFloorIdx(ledger);
+  return roster.filter((s) => {
+    const term = SUBJECTS_RETIRED_AT[s];
+    if (!term) return true;                    // this track never retires
+    const tIdx = GRADE_ORDER.indexOf(term);
+    if (tIdx < 0) return true;                 // unrecognised terminal → keep
+    if (idx <= tIdx) return true;              // still within its offered band
+    // Past its terminal grade. Retire ONLY on evidence it was actually taught.
+    if (tIdx < floorIdx) return false;         // predates the ledger → treat as trained
+    return !ledger.has(`${s}/${term}`);        // untrained → stays rostered + owed
+  });
+}
+
 // ── REAL COURSE NAMES per (subject, grade) — the operator 2026-06-18: "in school they
 // dont call the classes math.. its geometry algebra arithmetic etc based on
 // grade level". Schools group under departments (≈ our subject keys) but the
@@ -9986,23 +10071,18 @@ export class Curriculum {
     {
       const _ledger = (cluster && Array.isArray(cluster.passedCells))
         ? new Set(cluster.passedCells) : new Set();
-      let _ledgerFloorIdx = 0;
-      if (_ledger.size > 0) {
-        _ledgerFloorIdx = GRADE_ORDER.length;
-        for (let g = 0; g < GRADE_ORDER.length; g++) {
-          let _hit = false;
-          for (const _k of _ledger) {
-            if (typeof _k === 'string' && _k.endsWith(`/${GRADE_ORDER[g]}`)) { _hit = true; break; }
-          }
-          if (_hit) { _ledgerFloorIdx = g; break; }
-        }
-        if (_ledgerFloorIdx >= GRADE_ORDER.length) _ledgerFloorIdx = 0;
-      }
+      // SUBJRETIRE — this floor rule now lives in ONE place (`ledgerFloorIdx`)
+      // and is shared with the retirement test, because two copies of it
+      // drifting apart is how a walk silently restarts from the bottom.
+      const _ledgerFloorIdx = ledgerFloorIdx(_ledger);
       let _owed = null;
       for (let g = _ledgerFloorIdx; g < GRADE_ORDER.length && !_owed; g++) {
         if (maxIdx >= 0 && g > maxIdx) break;
         let _roster = null;
-        try { _roster = subjectsForGrade(GRADE_ORDER[g]); } catch { _roster = null; }
+        // SUBJRETIRE — OWED, not merely offered: a K-12 track that has passed
+        // its terminal grade stops being owed above it, and one that has NOT
+        // stays owed so this resolver still finds it.
+        try { _roster = subjectsOwedAt(GRADE_ORDER[g], _ledger); } catch { _roster = null; }
         if (!Array.isArray(_roster)) continue;
         for (const _sub of _roster) {
           if (!_ledger.has(`${_sub}/${GRADE_ORDER[g]}`)) {
@@ -10278,7 +10358,9 @@ export class Curriculum {
         // health, language, ap, major, genered, research) only appear once
         // introduced, and now actually WALK + train their corpora. Lazy-init
         // passed/failed for them (the static init block only seeded the core).
-        for (const subject of subjectsForGrade(grade)) {
+        // SUBJRETIRE — walk what is OWED at this grade. Retirement is ledger-gated,
+        // so a K-12 track that never passed its terminal grade is still in here.
+        for (const subject of subjectsOwedAt(grade, this.cluster && this.cluster.passedCells)) {
           if (!Array.isArray(passed[subject])) passed[subject] = [];
           if (!(subject in failed)) failed[subject] = null;
           // ── WALKORDER (2026-08-23) — POSITION COMES FROM THE LEDGER, AND A ──
@@ -10547,7 +10629,7 @@ export class Curriculum {
         const SENTENCE_MIN_LOOSE = 0.2;
         const PROD_MIN_LOOSE = 0.2;
         const STUDENT_MIN_LOOSE = 0.1;
-        for (const subject of subjectsForGrade(grade)) {   // #110 — expanded subjects too
+        for (const subject of subjectsOwedAt(grade, cl && cl.passedCells)) {   // #110 — expanded subjects too; SUBJRETIRE — owed, not merely offered
           if (!Array.isArray(passed[subject])) passed[subject] = [];
           if (!(subject in failed)) failed[subject] = null;
           const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || 'pre-K');
@@ -10595,7 +10677,9 @@ export class Curriculum {
         // same path runs again at that grade.
         continue;
       }
-      this._hb(`[Curriculum] ═══ ALL ${subjectsForGrade(grade).length} subjects passed ${grade} — advancing to next grade ═══`);
+      // SUBJRETIRE — count what was actually WALKED, not the full offered roster,
+      // or the line claims a denominator this grade never had to satisfy.
+      this._hb(`[Curriculum] ═══ ALL ${subjectsOwedAt(grade, this.cluster && this.cluster.passedCells).length} subjects passed ${grade} — advancing to next grade ═══`);
 
       // Grade-advance pause — default-on after every full grade pass so
       // the operator can chat-test the learned grade level without
@@ -10732,7 +10816,12 @@ export class Curriculum {
     if (typeof process !== 'undefined' && process.env && process.env.DREAM_HELD_BACK === '0') {
       return { remediated: [], heldBack: [] };
     }
-    const subjects = (typeof subjectsForGrade === 'function') ? subjectsForGrade(grade) : SUBJECTS;
+    // SUBJRETIRE — held-back applies to what is OWED at this grade.
+    // ⛔ The `typeof subjectsForGrade === 'function'` guard that used to wrap this
+    // was a GOTCHA.9-class dead branch: it is a module-level import, always
+    // defined, so the else-arm (`SUBJECTS`, the flat core 6) was unreachable —
+    // and had it ever fired it would have silently dropped every expanded track.
+    const subjects = subjectsOwedAt(grade, cluster.passedCells);
     if (!cluster._cellLedger) cluster._cellLedger = {};
     const remediated = [];
     const heldBack = [];

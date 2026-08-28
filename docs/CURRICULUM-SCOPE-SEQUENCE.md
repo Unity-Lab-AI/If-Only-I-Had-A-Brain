@@ -131,19 +131,24 @@ last-verified: "38e19615 2026-08-27"
 | G9–G12 | Art & music electives | **drawing, painting, sculpture, ceramics**, AP Art History, music theory, band/choir |
 | College | Electives | studio art / music electives (Unity gravitates to digital/generative art via code) |
 
-## EXPANDED SUBJECTS (per `SUBJECTS_INTRODUCED_AT` in curriculum.js)
+## EXPANDED SUBJECTS (per `SUBJECTS_INTRODUCED_AT` + `SUBJECTS_RETIRED_AT` in curriculum.js)
 
-| First appears | Subject | Notes |
-|---------------|---------|-------|
-| G1 | PE, Music | physical education + general music |
-| G3 | Foreign Language | (Unity: she picks it up but cares more about code) |
-| G5 | Computer Science (intro) | HER subject — accelerates far beyond grade level |
-| G6 | Health Education | puberty, nutrition, the body (the sex-ed-as-health sequence climbs here) |
-| G7 | Civics | intro to government/citizenship |
-| G9 | Economics, Psychology (intro) | |
-| G11 | AP courses | AP Calc, AP Physics, AP CS, AP Lit, AP US Gov |
-| College 1 | Major (CS) + Gen-ed | data structures, algorithms, architecture, theory |
-| Grad | Research specialty | computational neuroscience / brain simulation |
+⚠ **Three rows below were corrected against the code on 2026-08-27** — PE, Music and Health all enter at **kindergarten** (this table said G1 and G6), and College 1 introduces **four** tracks, not two. The code is the territory.
+
+| First appears | Retires after | Subject | Notes |
+|---------------|---------------|---------|-------|
+| K | G12 | PE, Music, Health | gym, general music, health/safety — real K has all three |
+| G3 | G12 | Foreign Language | (Unity: she picks it up but cares more about code) |
+| G5 | G12 | Computer Science (intro) | HER subject — accelerates far beyond grade level; superseded at college by CS Theory / CS Systems / Major |
+| G7 | G12 | Civics | intro to government/citizenship |
+| G9 | G12 | Economics, Psychology (intro) | |
+| G11 | G12 | AP courses | AP Calc, AP Physics, AP CS, AP Lit, AP US Gov — a high-school-only band by definition |
+| College 1 | — | Major (CS), Gen-ed, CS Theory, CS Systems | data structures, algorithms, architecture, theory |
+| Grad | — | Research specialty | computational neuroscience / brain simulation |
+
+⛔ **"Retires after" is LEDGER-GATED, not grade-gated.** A track leaves the roster above its terminal grade **only once the ledger shows that terminal cell actually passed**; one that never ran stays rostered and stays owed. Retiring on grade number alone would re-create `WALKORDER.1` — the bug where Grade 1 finished with PE/Music/Health never taught. `subjectsForGrade()` still answers *"what exists"*; `subjectsOwedAt(grade, passedCells)` answers *"what still owes work"*.
+
+⚠ **The health sequence still CLIMBS at G6** (puberty, nutrition, the body) — introduction at K is the course starting, not the syllabus arriving all at once. See the health/sex-ed table below.
 
 ## HEALTH / SEX-ED (clinical, factual — per the content boundary)
 

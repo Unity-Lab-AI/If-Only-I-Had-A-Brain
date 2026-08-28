@@ -15,13 +15,25 @@ verified-scope: |
       all. G5..G12 (8 of 8) are real and correctly named.
     - ⛔ THREE DIFFERENT COUNTS for one countable thing: "18 real programs",
       "22/30 templates", "All 30 parse". Measured: 31 PRIMITIVE blocks.
-    - ⚠ OPEN QUESTION NAMED, NOT ANSWERED: `cs` enters the roster at grade5
-      and subjectsForGrade is CUMULATIVE with no removal, so `cs` is still
-      active at college1..phd - while _cellRunnerRaw has `cs` branches for
-      grade5..grade12 ONLY. That is 6 cells the machinery treats as HELD
-      (readyAndWaiting = "no runner wired"), which HELD-BACK.md says the
-      ladder SKIPS. Either wire them or retire `cs` at college - a design
-      call, and guessing costs either 6 cells of busywork or a hidden hole.
+    - ✅ ANSWERED 2026-08-27 - `cs` RETIRES at grade12, and it was one of NINE,
+      not one. The operator's ruling: retire them at the correct grade "once
+      they have been trainined". SUBJECTS_RETIRED_AT now carries pe, music,
+      health, language, cs, civics, economics, psychology and ap - all at
+      grade12, because GRADE_ORDER puts college1 straight after grade12 where
+      a separate roster (major/genered/cstheory/cssystems, then research)
+      takes over. `cs` is superseded there by cstheory/cssystems/major.
+      ⛔ RETIREMENT IS LEDGER-GATED, NOT GRADE-GATED. subjectsForGrade() is
+      unchanged and still answers "what exists"; the new subjectsOwedAt(grade,
+      passedCells) answers "what still owes work" and drops a track only on
+      evidence its terminal cell actually passed. A subject that never ran
+      stays rostered and stays owed - retiring on grade number alone would
+      re-create WALKORDER.1, where Grade 1 finished with PE/Music/Health
+      never taught. Measured: college 19 offered -> 10 owed, against 10
+      runners; grad/phd 20 -> 11.
+    - ⚠ STILL OPEN, and a DIFFERENT decision: genered, cstheory and cssystems
+      enter at college1 and have no grad/phd runner, so grad/phd is 11 owed
+      against 8 runners. Those three were NOT part of the nine and are not
+      retired here.
     - VERIFIED PRESENT: .claude/scripts/fetch-code-corpora.mjs; corpora/coding
       with 14 files (grade5-12, college1-4, grad, phd - matching G5->PhD);
       generateMany / _deriveParams / _fillParams / _hueFromPattern in
@@ -101,7 +113,13 @@ By PhD, Unity should **understand and reason fluently** about:
 >
 > ⭐ **The split is the M4 college expansion, and the roster confirms it:** `curriculum.js:152` registers `'college1': ['major', 'genered', 'cstheory', 'cssystems']`. **So this page predates the expansion and still names the old single-blob runner** — the same expansion `docs/DECOMPOSED-curriculum-build.md` records as `[x]` DONE (8→10 concurrent courses/year).
 >
-> ⛔ **AND AN OPEN QUESTION THAT IS NOT MINE TO ANSWER.** `cs` is introduced at `'grade5': ['cs']` and `subjectsForGrade` returns *"the 6 core PLUS every track introduced at or before `grade`"* — **cumulative, with no removal shown.** So `cs` is still in the roster at college1→phd, while `_cellRunnerRaw` has `cs` branches for **grade5→grade12 ONLY** (verified: the college+ branches key on `cstheory`/`cssystems`). ⚠ **That is six (subject, grade) cells — `cs` × college1-4, grad, phd — with no dispatch branch**, which the machinery treats as **HELD** (`readyAndWaiting` = *"no runner is wired"*), and `docs/HELD-BACK.md` says the remediation ladder **skips HELD cells** as *"a curriculum gap, not a learning fail"*. ⛔ **So it fails silently by design.** ⚠ **The decision is a design call: either wire `cs` runners at college+, or retire `cs` from the roster there because `cstheory`/`cssystems` supersede it. I am not guessing which** — a cumulative roster with no removal mechanism is equally consistent with "oversight" and "deliberate, superseded in practice", and choosing wrong here adds six cells of busywork or hides a real hole.
+> ✅ **ANSWERED 2026-08-27 — RETIRED, and it was nine subjects rather than one.** The question above was correctly left for the operator, and the ruling was: *"those subject can be retired at the correct grade once they have been trainined"*. ⭐ **`SUBJECTS_RETIRED_AT` (`curriculum.js`) now retires `pe · music · health · language · cs · civics · economics · psychology · ap`, all at `grade12`** — `GRADE_ORDER` places `college1` immediately after `grade12`, where a separate roster takes over, which is exactly what real school does. `cs` is superseded there by `cstheory` / `cssystems` / `major`.
+>
+> ⛔ **THE CONDITION IS THE DESIGN, NOT A DETAIL: retirement is gated on the LEDGER, never on a grade number.** `subjectsForGrade()` is **unchanged and still pure** — it answers *"what subjects exist at this grade"*. The new **`subjectsOwedAt(grade, passedCells)`** answers the different question *"what still owes work"*, and drops a track **only on evidence that its terminal cell actually passed**. ⚠ **A subject that never ran stays rostered and stays owed.** ⛔ **Retiring on grade number alone would re-create `WALKORDER.1` by design** — the bug where Grade 1 finished with PE/Music/Health never taught, because a subject was skipped without its debt being cleared. `MAX_GRADE_ROUNDS` exhaustion makes that reachable: it lets the walk proceed past a grade whose cell never passed, and then **only the ledger remembers**.
+>
+> ⚠ **Deliberately two named functions, not one with an optional ledger argument** — the same call silently meaning two things is the capability-degradation branch the no-fallbacks rule exists to stop. ⚠ **And the ledger-floor rule is now shared** (`ledgerFloorIdx`), because `passedCells` recording postdates the pre-K era and two drifting copies of that rule is how a walk silently restarts from the bottom.
+>
+> **Measured after the change:** college **19 offered → 10 owed, against 10 runners**; grad/phd **20 → 11**. ⚠ **A DIFFERENT gap remains and is not covered by this ruling:** `genered`, `cstheory` and `cssystems` enter at `college1` and have **no grad/phd runner**, leaving grad/phd at 11 owed against 8 runners. Those three were not among the nine.
 
 ### Implemented cs-runner coverage (SOURCE OF TRUTH — what actually trains)
 
