@@ -180,7 +180,11 @@ if exist server.log del server.log
 REM LOCALCTL - control plane first (separate always-up process on 7526, which
 REM is what lets the Start button work while the brain is DOWN). Already
 REM running = exits 0 quietly, so re-launching never stacks instances.
-start /b "" cmd /c "node brain-ctl.js > brain-ctl.log 2>&1"
+REM CTLWINDOW (2026-08-28) - was `start /b`, which parents brain-ctl to THIS
+REM console: closing an old launcher window silently killed the control plane,
+REM port 7526 went dark, and the dashboard fell back to the legacy button row.
+REM Its own minimized window survives launcher-window closes; log APPENDS.
+start "unity-brain-ctl (leave running)" /min cmd /c "node brain-ctl.js >> brain-ctl.log 2>&1"
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"

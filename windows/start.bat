@@ -334,7 +334,13 @@ REM work locally. It is a separate always-up process on 7526 by design: that is
 REM what lets the Start button work while the brain is DOWN. If one is already
 REM running it sees the port taken and exits 0 quietly, so re-running a launcher
 REM never stacks them.
-start /b "" cmd /c "node brain-ctl.js > brain-ctl.log 2>&1"
+REM CTLWINDOW (2026-08-28) - was `start /b`, which parents brain-ctl to THIS
+REM console: closing an old launcher window silently killed the control plane,
+REM port 7526 went dark, the ctl panel could not render, and the dashboard fell
+REM back to the legacy button row ("why dont i have sponge's buttons any more").
+REM Its own minimized window survives launcher-window closes. Log APPENDS so a
+REM did-not-bind relaunch cannot truncate the live instance's log.
+start "unity-brain-ctl (leave running)" /min cmd /c "node brain-ctl.js >> brain-ctl.log 2>&1"
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
 start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
