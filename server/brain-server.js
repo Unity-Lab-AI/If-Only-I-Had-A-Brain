@@ -6275,7 +6275,19 @@ class ServerBrain {
               return {
                 name,
                 size: CLUSTER_SIZES[name],
-                tonicDrive: this.tonicDrives[name] * thetaMod * actionGate,
+                // BATCHNULL (2026-08-28) — brainstem has NO entry in
+                // tonicDrives, and RHYTHM3S.2's fold multiplied that
+                // undefined by thetaMod: undefined × x = NaN, JSON writes NaN
+                // as null, and serde REJECTS null for an f32 — so the donor
+                // silently discarded EVERY compute_batch since the fold
+                // shipped (Err(_) => ignore). That one null was the entire
+                // "no batch ever answers mid-walk" mystery: 180s timeouts on
+                // both brains, Ψ starved, spikes 0, the zombie-kick pod-drop
+                // loop. Pre-fold the bare undefined was DROPPED from the JSON
+                // and serde defaulted it to 0 — the guard below restores
+                // exactly that behavior. Captured red-handed by a mirror-probe
+                // replica reading the live payload: brainstem.tonicDrive=null.
+                tonicDrive: (Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate,
                 noiseAmp: this.noiseAmplitudes[name],
                 gainMultiplier: psiGain,
                 emotionalGate,
