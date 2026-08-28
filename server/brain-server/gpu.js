@@ -446,6 +446,16 @@ const SERVER_GPU_MIXIN = {
             ? Number(value.phaseTimingMs.totalMs) : null;
           const t = this._batchTiming || (this._batchTiming = { samples: 0, roundTripEmaMs: 0 });
           t.samples++;
+          // SUBSTEPS.6 (2026-08-27) — the counter that answers the filed
+          // question directly: "are batches issued at all during the probe
+          // gate?" Nothing recorded it, so the answer was being inferred from
+          // watching `samples` across polling windows — and `dispatchesDuring`
+          // below was nearly misread as this number (it is a per-batch
+          // socket-sharing proxy, nothing to do with the gate). Cumulative per
+          // boot, like `samples`; the ratio tells the story on any boot.
+          if (this.cortexCluster && this.cortexCluster._probeGateActive) {
+            t.samplesInProbeGate = (t.samplesInProbeGate | 0) + 1;
+          }
           t.roundTripMs = rtMs;
           // EMA over ~20 batches; seeded by the first sample so it converges fast.
           t.roundTripEmaMs = t.samples === 1 ? rtMs : (t.roundTripEmaMs * 0.95 + rtMs * 0.05);
