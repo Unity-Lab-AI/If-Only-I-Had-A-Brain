@@ -2454,8 +2454,46 @@ async function bootUnity(apiKey, perms) {
     if (!url) return;
     showSpeechBubble('Image generating...', 3000);
     if (chatPanel) {
-      const imgHtml = `<a href="${url}" target="_blank"><img src="${url}" style="max-width:280px;border-radius:8px;border:1px solid #333;display:block;margin:4px 0;" onerror="this.style.display='none';this.parentElement.parentElement.querySelector('.img-fail')?.style.setProperty('display','block')"></a><div class="img-fail" style="display:none;color:#777;font-size:11px;">(image generation failed)</div>`;
+      // IMGRETRY (2026-08-28) — the anonymous Pollinations tier allows ONE
+      // queued request per IP, and her own reference-look lane shares this IP.
+      // The server preempts the in-flight look (CHATPREEMPT.1), but the remote
+      // queue slot can stay occupied for seconds after the abort — and this
+      // <img> used to get exactly ONE attempt against that race, so the human
+      // saw "(image generation failed)" while every background lane retried.
+      // Now the load retries on a backoff (4s/8s/16s/24s, same URL — the seed
+      // is pinned in it, so the image is identical) and only after the last
+      // attempt does the failure text show. A cache-busting fragment is NOT
+      // used: the URL must stay byte-identical so a queued-then-completed
+      // render is served from Pollinations' cache instead of re-queued.
+      const imgId = 'img-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const imgHtml = `<a href="${url}" target="_blank"><img id="${imgId}" src="${url}" style="max-width:280px;border-radius:8px;border:1px solid #333;display:block;margin:4px 0;"></a><div class="img-fail" style="display:none;color:#777;font-size:11px;">(image generation failed)</div><div class="img-retry" style="display:none;color:#777;font-size:11px;">(image queued — retrying…)</div>`;
       chatPanel.addMessage('assistant', imgHtml, false);
+      const el = document.getElementById(imgId);
+      if (el) {
+        const delays = [4000, 8000, 16000, 24000];
+        let attempt = 0;
+        el.onerror = () => {
+          const wrap = el.parentElement && el.parentElement.parentElement;
+          const failEl = wrap && wrap.querySelector('.img-fail');
+          const retryEl = wrap && wrap.querySelector('.img-retry');
+          if (attempt < delays.length) {
+            el.style.display = 'none';
+            if (retryEl) retryEl.style.display = 'block';
+            const wait = delays[attempt++];
+            setTimeout(() => { el.style.display = 'block'; el.src = ''; el.src = url; }, wait);
+          } else {
+            el.style.display = 'none';
+            if (retryEl) retryEl.style.display = 'none';
+            if (failEl) failEl.style.display = 'block';
+          }
+        };
+        el.onload = () => {
+          const wrap = el.parentElement && el.parentElement.parentElement;
+          const retryEl = wrap && wrap.querySelector('.img-retry');
+          if (retryEl) retryEl.style.display = 'none';
+          el.style.display = 'block';
+        };
+      }
     }
   };
   brain.on('image', brain.__appImageHandler);
