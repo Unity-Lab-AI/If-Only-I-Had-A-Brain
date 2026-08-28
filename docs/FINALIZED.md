@@ -40401,3 +40401,9 @@ The `/update` handler (fresh mode) now **writes `.force-fresh` itself, into the 
 ### Verification
 
 `node --check` clean; the boot ordering (flag → marker → keep) read from `autoClearStaleState` rather than assumed; no stale `.force-fresh` or resume marker currently on disk locally. Server-side only — the local brain gets it on its next pull; `docs/ADMIN-CONTROLS.md`'s button table updated in the same commit.
+
+---
+
+## 2026-08-27 - BOOTVIA: the force-fresh boot reason named a button that was never pressed - feature/bootreason-via
+
+Found while proving to Gee that his fresh walk took: `lastBootReason.detail` read *"operator Reset Brain (dashboard)"* — but the wipe was armed by the FRESHFLAG direct write, not the Reset button. Three writers arm `.force-fresh` (`/reset`, `/update` fresh mode, a hand-armed file) and each stamps `via` in the flag JSON; the boot path **hardcoded the Reset string regardless**, so the boot record attributed every fresh wipe to one button. Now the flag's own `via` is read before unlink and carried into both the console line and the boot reason; a malformed or via-less flag reads `unknown writer` rather than inventing a cause. An unreadable flag still wipes — behavior unchanged, only the attribution stops lying. `node --check` clean; lands locally on the next restart.
