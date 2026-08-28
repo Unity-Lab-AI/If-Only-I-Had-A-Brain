@@ -237,8 +237,13 @@ const SERVER_GPU_MIXIN = {
       // stale pre-pause anchor with the flag already false (the 709s ⛔ false
       // alarm right as the canonical upload settled).
       if (_pausedByDesign) this._designedPauseSeenMs = _now;
-      const _sinceAnchorMs = _now - Math.max(this._lastBatchOkMs || 0, this._designedPauseSeenMs || 0);
-      if (!_pausedByDesign && _live && this._lastBatchOkMs && _sinceAnchorMs > _STALL_MS) {
+      // PSITEACH.2 — the boot time joins the anchor and the `_lastBatchOkMs`
+      // gate is gone: a boot on which NO batch has EVER completed used to be
+      // exactly the case this watchdog could never see (no anchor → no alarm),
+      // and a 17-hour all-timeouts boot ran silent. "Never completed since
+      // boot" is a stall, not an absence of data.
+      const _sinceAnchorMs = _now - Math.max(this._lastBatchOkMs || 0, this._designedPauseSeenMs || 0, this._startedAt || 0);
+      if (!_pausedByDesign && _live && _sinceAnchorMs > _STALL_MS) {
         this._perfStats.batchStall = {
           stalledMs: _sinceAnchorMs,
           lastOkAt: this._lastBatchOkMs,
