@@ -93213,6 +93213,45 @@ function subjectsForGrade(grade) {
   }
   return out;
 }
+var SUBJECTS_RETIRED_AT = {
+  pe: "grade12",
+  music: "grade12",
+  health: "grade12",
+  language: "grade12",
+  cs: "grade12",
+  // superseded at college by cstheory / cssystems / major
+  civics: "grade12",
+  economics: "grade12",
+  psychology: "grade12",
+  ap: "grade12"
+  // AP is a high-school-only course band by definition
+};
+function ledgerFloorIdx(passedCells) {
+  const ledger = passedCells instanceof Set ? passedCells : new Set(Array.isArray(passedCells) ? passedCells : []);
+  if (ledger.size === 0) return 0;
+  for (let g = 0; g < GRADE_ORDER.length; g++) {
+    for (const k of ledger) {
+      if (typeof k === "string" && k.endsWith(`/${GRADE_ORDER[g]}`)) return g;
+    }
+  }
+  return 0;
+}
+function subjectsOwedAt(grade, passedCells) {
+  const roster = subjectsForGrade(grade);
+  const idx = GRADE_ORDER.indexOf(grade);
+  if (idx < 0) return roster;
+  const ledger = passedCells instanceof Set ? passedCells : new Set(Array.isArray(passedCells) ? passedCells : []);
+  const floorIdx = ledgerFloorIdx(ledger);
+  return roster.filter((s) => {
+    const term = SUBJECTS_RETIRED_AT[s];
+    if (!term) return true;
+    const tIdx = GRADE_ORDER.indexOf(term);
+    if (tIdx < 0) return true;
+    if (idx <= tIdx) return true;
+    if (tIdx < floorIdx) return false;
+    return !ledger.has(`${s}/${term}`);
+  });
+}
 var COURSE_NAMES = {
   math: {
     "pre-K": "Early Math",
@@ -102303,30 +102342,13 @@ var Curriculum = class _Curriculum {
     let _bootStartIdx = 0;
     {
       const _ledger = cluster && Array.isArray(cluster.passedCells) ? new Set(cluster.passedCells) : /* @__PURE__ */ new Set();
-      let _ledgerFloorIdx = 0;
-      if (_ledger.size > 0) {
-        _ledgerFloorIdx = GRADE_ORDER.length;
-        for (let g = 0; g < GRADE_ORDER.length; g++) {
-          let _hit = false;
-          for (const _k of _ledger) {
-            if (typeof _k === "string" && _k.endsWith(`/${GRADE_ORDER[g]}`)) {
-              _hit = true;
-              break;
-            }
-          }
-          if (_hit) {
-            _ledgerFloorIdx = g;
-            break;
-          }
-        }
-        if (_ledgerFloorIdx >= GRADE_ORDER.length) _ledgerFloorIdx = 0;
-      }
+      const _ledgerFloorIdx = ledgerFloorIdx(_ledger);
       let _owed = null;
       for (let g = _ledgerFloorIdx; g < GRADE_ORDER.length && !_owed; g++) {
         if (maxIdx >= 0 && g > maxIdx) break;
         let _roster = null;
         try {
-          _roster = subjectsForGrade(GRADE_ORDER[g]);
+          _roster = subjectsOwedAt(GRADE_ORDER[g], _ledger);
         } catch {
           _roster = null;
         }
@@ -102463,7 +102485,7 @@ var Curriculum = class _Curriculum {
           this._hb(`[Curriculum] \u{1F504} grade ${grade} round ${round + 1} \u2014 retrying failed subjects...`);
         }
         allPassedThisGrade = true;
-        for (const subject of subjectsForGrade(grade)) {
+        for (const subject of subjectsOwedAt(grade, this.cluster && this.cluster.passedCells)) {
           if (!Array.isArray(passed[subject])) passed[subject] = [];
           if (!(subject in failed)) failed[subject] = null;
           const _passedSet = cluster && Array.isArray(cluster.passedCells) ? new Set(cluster.passedCells) : /* @__PURE__ */ new Set();
@@ -102591,7 +102613,7 @@ var Curriculum = class _Curriculum {
         const SENTENCE_MIN_LOOSE = 0.2;
         const PROD_MIN_LOOSE = 0.2;
         const STUDENT_MIN_LOOSE = 0.1;
-        for (const subject of subjectsForGrade(grade)) {
+        for (const subject of subjectsOwedAt(grade, cl && cl.passedCells)) {
           if (!Array.isArray(passed[subject])) passed[subject] = [];
           if (!(subject in failed)) failed[subject] = null;
           const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || "pre-K");
@@ -102634,7 +102656,7 @@ var Curriculum = class _Curriculum {
         console.warn(`[Curriculum] \u26D4 grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds \u2014 force-advanced cells that met capability minimums; cells without minimum capability evidence held at prior grade. Curriculum walk continues to next grade.`);
         continue;
       }
-      this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${subjectsForGrade(grade).length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
+      this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${subjectsOwedAt(grade, this.cluster && this.cluster.passedCells).length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
       const nextIdx = i + 1;
       const nextGrade = nextIdx < GRADE_ORDER.length && (maxIdx < 0 || nextIdx <= maxIdx) ? GRADE_ORDER[nextIdx] : null;
       if (nextGrade === null) {
@@ -102742,7 +102764,7 @@ var Curriculum = class _Curriculum {
     if (typeof process !== "undefined" && process.env && process.env.DREAM_HELD_BACK === "0") {
       return { remediated: [], heldBack: [] };
     }
-    const subjects = typeof subjectsForGrade === "function" ? subjectsForGrade(grade) : SUBJECTS2;
+    const subjects = subjectsOwedAt(grade, cluster.passedCells);
     if (!cluster._cellLedger) cluster._cellLedger = {};
     const remediated = [];
     const heldBack = [];
