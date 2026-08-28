@@ -23,10 +23,22 @@ use crate::frames::Binding;
 
 const THREADS: u32 = 256;
 
-/// Precompiled PTX for the four kernels (see cuda_kernels.cu). Loaded via the driver
+/// Precompiled PTX for the nine kernels (see cuda_kernels.cu). Loaded via the driver
 /// (`cuModuleLoadData`) — NO nvrtc at runtime, so a host needs only libcuda, and we sidestep
-/// the nvrtc ABI-version mismatch between toolkit releases. The driver JITs this PTX
-/// (built for compute_60) to whatever NVIDIA arch the host actually has.
+/// the nvrtc ABI-version mismatch between toolkit releases. The driver JITs this PTX to
+/// whatever NVIDIA arch the host actually has.
+///
+/// ⛔ REGENERATION IS VERSION-PINNED, and the pin is a shipped fix, not a preference.
+/// This PTX is `.version 8.0` / `.target sm_75`, built with CUDA 12.0.140 — the ISA 8.0
+/// pin is v0.3.21 ("the CUDA path comes back on r570 hosts"): a newer toolkit emits a
+/// newer PTX ISA that older drivers cannot JIT, and the module load fails WHOLE — every
+/// kernel, not just the new one — kicking that donor to wgpu (headless pods often have
+/// no Vulkan, so that can mean no compute at all). Regenerate ONLY with a CUDA 12.0
+/// toolchain, e.g.:
+///   docker run --rm -v <this dir>:/w nvidia/cuda:12.0.1-devel-ubuntu22.04 \
+///     nvcc -ptx -arch=sm_75 -o /w/kernels.ptx /w/cuda_kernels.cu
+/// then diff against the previous PTX: with labels normalized, pre-existing kernels
+/// must come out byte-identical (same compiler build = same codegen).
 const KERNELS_PTX: &str = include_str!("kernels.ptx");
 
 fn cfg(n: u32) -> LaunchConfig {
@@ -143,12 +155,18 @@ pub struct CudaEngine {
     /// `CudaEngine::new` down with it — breaking every CUDA donor outright for
     /// the sake of one telemetry field.
     ///
-    /// ⚠ The PTX is deliberately NOT regenerated here: it is built for
-    /// `compute_60`, and the nvcc on this machine is CUDA 13.0, which has
-    /// dropped that arch. Rebuilding all eight existing kernels on a newer
-    /// toolkit to add a ninth is a donor-compatibility risk out of all
-    /// proportion to the field. When the PTX IS regenerated with `voltage_mean`
-    /// present, this starts reporting with no further code change.
+    /// ⭐ v0.3.33 — the PTX WAS regenerated, with the toolchain matched rather
+    /// than upgraded: the same CUDA 12.0.140 compiler build (via the
+    /// nvidia/cuda:12.0.1-devel container) at the same `sm_75` / ISA 8.0, so the
+    /// compatibility envelope is unchanged and the eight pre-existing kernels
+    /// came out byte-identical under label normalization. `voltage_mean` is in
+    /// the shipped PTX and this loads `Some` — the code path below needed no
+    /// change, exactly as designed.
+    ///
+    /// The `Option` STAYS: it is what makes any future PTX regeneration unable
+    /// to take `CudaEngine::new` down over one telemetry kernel, and a
+    /// diagnostic that can refuse to start the compute backend is worse than no
+    /// diagnostic.
     f_volt: Option<CudaFunction>,
     f_prop: CudaFunction,
     f_hebb: CudaFunction,
