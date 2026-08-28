@@ -163,7 +163,7 @@ K is the proven template and stays the reference. Build **up** to it, level by l
 
 `pre-K → [K = template, DONE] → grade1 → grade2 → … → grade12 → college1(Freshman) → college2(Sophomore) → college3(Junior) → college4(Senior) → grad(Master's) → phd(Doctoral)`
 
-Within each level: build/deepen EVERY subject in `subjectsForGrade(level)` to the DoD before the level is marked complete.
+Within each level: build/deepen EVERY subject in `subjectsOwedAt(level, passedCells)` to the DoD before the level is marked complete. ⚠ **Changed 2026-08-27 from `subjectsForGrade(level)`** — that function is cumulative with no removal, so it kept the nine K-12 tracks rostered at college and grad. `subjectsOwedAt` retires them **only once the ledger shows their terminal cell passed**, so a subject that never ran still owes its cell and still appears here.
 
 ---
 
