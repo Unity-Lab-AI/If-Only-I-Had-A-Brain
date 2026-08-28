@@ -808,6 +808,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut engine = engine;
         let mut partials: HashMap<String, PartialUpload> = HashMap::new();
         let mut step_seed: u32 = 0x9e3779b9;
+        // RHYTHM3S.2 (v0.3.34) — full protocol regions (incl. `side`) per
+        // cluster, cached at gpu_init for the per-batch Ψ-gate rebuild.
+        let mut cluster_regions: HashMap<String, HashMap<String, crate::protocol::Region>> = HashMap::new();
         while let Some(work) = workq_w.pop() {
             pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
@@ -848,6 +851,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             match work {
                 Work::Init(init) => {
                     handle_gpu_init(&mut engine, &init);
+                    // RHYTHM3S.2 (v0.3.34) — keep the FULL protocol regions
+                    // (start/end/side) per cluster: the engines only store
+                    // (start, end), and `side` is what the per-batch Ψ
+                    // hemisphere gate is computed from.
+                    cluster_regions.insert(init.cluster_name.clone(), init.regions.clone());
                     let ack = GpuInitAck { msg_type: "gpu_init_ack", cluster_name: init.cluster_name.clone(), size: init.size };
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
@@ -858,7 +866,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let _neurons: u64 = batch.clusters.iter().map(|c| c.size as u64).sum();
                     let _substeps = batch.substeps.max(1) as u64;
                     let _t0 = std::time::Instant::now();
-                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w, queued_at);
+                    let result = run_batch(&mut engine, &cluster_regions, &batch, &mut step_seed, &control_w.stop, &pending_w, queued_at);
                     let _elapsed = _t0.elapsed().as_secs_f64().max(1e-6);
                     // Gneuron-steps/sec — same metric as compute.html: (Σ cluster sizes × substeps) / sec / 1e9.
                     let _gns = (_neurons as f64 * _substeps as f64) / _elapsed / 1e9;
@@ -1330,7 +1338,56 @@ fn handle_gpu_init(engine: &mut MultiEngine, init: &GpuInit) {
     println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
-fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize, queued_at: std::time::Instant) -> ComputeBatchResult {
+/// RHYTHM3S.2 (v0.3.34) — the Ψ hemisphere gate, byte-for-byte the browser
+/// donor's `GPUCompute.hemisphereGate` (gpu-compute.js:943): bilateral/center
+/// regions gate 1.0; lateralized regions gate `0.5 + 0.5·sigmoid(Ψ·4)`. An
+/// absent side takes the sigmoid path, exactly as `undefined` does in JS.
+fn hemisphere_gate(side: Option<&str>, psi: f32) -> f32 {
+    match side {
+        Some("bilateral") | Some("center") => 1.0,
+        _ => {
+            let sig = 1.0 / (1.0 + (-(psi) * 4.0).exp());
+            0.5 + 0.5 * sig
+        }
+    }
+}
+
+/// RHYTHM3S.2 (v0.3.34) — rebuild one cluster's `[start, end, gate, pad]`
+/// table for this batch: Ψ hemisphere gate × per-region attention gain.
+///
+/// Until this existed the native donor set every gate to 1.0 at init and
+/// never touched it again (`compute.rs`: "psi modulation is a later
+/// refinement") — while the browser donor has recomputed gates from Ψ on
+/// every batch since T17.7. So a pod donor stepped the brain WITHOUT the
+/// hemisphere modulation browser donors apply: a silent physics divergence
+/// between donor types, live in production until this release.
+///
+/// Regions are emitted in SORTED-NAME order — deterministic, and decoupled
+/// from HashMap iteration order (the table carries start/end per entry, so
+/// order need not match init; the kernel scans all entries).
+fn build_region_gates(
+    regions: &std::collections::HashMap<String, crate::protocol::Region>,
+    gains: &HashMap<String, f32>,
+    psi: f32,
+) -> Vec<f32> {
+    let mut names: Vec<&String> = regions.keys().collect();
+    names.sort();
+    let mut packed = Vec::with_capacity(names.len() * 4);
+    for name in names {
+        let r = &regions[name];
+        let hemi = hemisphere_gate(r.side.as_deref(), psi);
+        // Server clamps attention to [0.5, 2.0] before sending (the CPU step's
+        // own clamp); clamp again here so a malformed value cannot saturate.
+        let gain = gains.get(name).copied().unwrap_or(1.0).clamp(0.5, 2.0);
+        packed.push(r.start as f32);
+        packed.push(r.end as f32);
+        packed.push(hemi * gain);
+        packed.push(0.0);
+    }
+    packed
+}
+
+fn run_batch(engine: &mut MultiEngine, cluster_regions: &HashMap<String, HashMap<String, crate::protocol::Region>>, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize, queued_at: std::time::Instant) -> ComputeBatchResult {
     // Queue wait is measured from the moment the WS task pushed this batch, so
     // it covers the whole time it sat behind other work -- measuring from the
     // top of this function would report zero by construction and look healthy.
@@ -1345,8 +1402,20 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, st
             continue;
         }
         // effectiveDrive = tonic * driveBaseline * emotionalGate * gainMultiplier + errorCorrection
+        // (RHYTHM3S.2: the server folds actionGate + thetaMod into tonicDrive
+        // per batch, so this product IS the CPU step's full formula.)
         let effective_drive =
             c.tonic_drive * c.drive_baseline * c.emotional_gate * c.gain_multiplier + c.error_correction;
+        // RHYTHM3S.2 (v0.3.34) — per-batch gate rebuild: Ψ hemisphere gate ×
+        // attention gains, matching the browser donor's updateRegionGates
+        // cadence. ~256 bytes per cluster per batch; skipped for clusters the
+        // init never gave regions (table stays 1.0, the historical behavior).
+        if let Some(regions) = cluster_regions.get(&c.name) {
+            if !regions.is_empty() {
+                let packed = build_region_gates(regions, &c.region_gains, batch.psi);
+                engine.update_region_gates(&c.name, &packed);
+            }
+        }
         jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp });
     }
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
