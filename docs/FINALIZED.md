@@ -40353,3 +40353,25 @@ The theta term is the **SPEAK.5a Kuramoto substrate run host-side**: per-cluster
 ### ⭐ The session's recurring lesson, third instance today
 
 `GOTCHA.3b`'s fork (compute_60), `COMP.1(c)`'s phantom lane, and now this row's inverted kernel premise — **three consecutive items whose filed premises failed on a direct read of the artifact they described.** Measure the premise before building the branch.
+
+---
+
+## 2026-08-27 - FINISHBOARD (batch 3) - donor v0.3.34: the native donor gets the psi hemisphere gate, and per-region attention reaches donor stepping for the first time - feature/finish-the-board
+
+### What shipped
+
+The second half of `RHYTHM3S.2`, closing the two gate-side gaps the same measurement found:
+
+⛔ **The native donor never applied Ψ to region gates** — `compute.rs` pinned every gate to 1.0 at init (*"psi modulation is a later refinement"*) while **the browser donor has recomputed gates from Ψ on every batch since T17.7.** The A40 pod stepped her without the hemisphere modulation browser donors apply — a silent physics divergence between donor types, live in production until this release.
+
+⛔ **Per-region attention reached NO donor** — the server's `attentionGain` writes fed only the CPU-step lookup, which never runs for cortex at scale. A designed biasing signal that was a physics no-op.
+
+**Now:** `donor.rs` caches full protocol regions at `gpu_init` — including `side`, which the engines' `(start, end)` maps had been DROPPING — and rebuilds `[start, end, gate, pad]` every batch: `hemisphereGate(side, Ψ) × attentionGain`, byte-for-byte the browser formula (**JS-vs-Rust maxDiff = 0 over the probe set, including the undefined-side case**). Regions emit in sorted-name order — deterministic, decoupled from HashMap iteration so an init↔update order dependency never gets to exist. `regionGains` rides `compute_batch` (optional field, clamped [0.5, 2.0] both ends — the CPU step's own clamp), **compatible in both directions**: old donors ignore it, old servers never send it, old pages pass undefined. The browser donor consumes the same gains (`gpu-compute.js` + `compute.html`), so **both donor types now apply identical gate physics.** Engine plumbing on both backends; the CUDA side replaces the ~256-byte slice via the already-proven `memcpy_stod`, failure keeping previous values loudly rather than zeroing.
+
+### Verification
+
+`cargo check` clean on **both** feature sets (default wgpu + `--features cuda`); `node --check` + ESM import on the JS halves; gate-math harness exact. ⚠ **Not run on a GPU before tagging** (display-GPU rule) — and the release note sets the live expectation explicitly: lateralized-region rates shifting with Ψ on the first 0.3.34 pod boot **is the fix landing, not a regression**; at high Ψ the sigmoid saturates toward 1.0 so the delta is small.
+
+### RHYTHM3S.2 closes as a whole
+
+Drive: the server fold (batch 2 — actionGate + theta Kuramoto, oscillator maxDiff = 0 over 100k ticks). Gates: this release. **Explicitly NOT built, reasons on the row:** K.5 (inactive in the CPU contract at scale — porting it ADDS physics, a separate decision for the walk's owner) and a CPU↔donor integrator parity harness (LIF vs Rulkov are different equations by design).

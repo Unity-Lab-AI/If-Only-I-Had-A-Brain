@@ -540,6 +540,22 @@ impl ComputeEngine {
     /// on error would be indistinguishable from a real quiet cluster, and this
     /// field exists precisely because a `null` that looked like a number wasted
     /// months.
+    /// RHYTHM3S.2 (v0.3.34) — overwrite a cluster's `[start,end,gate,pad]`
+    /// table with a host-built one (Ψ hemisphere gate × attention gains, built
+    /// in donor.rs where the regions' `side` metadata lives). Capped at the
+    /// capacity allocated at init: the table always carries the same region
+    /// set, so a longer packed slice means a caller bug, and truncating loudly
+    /// beats writing past the buffer.
+    pub fn update_region_gates(&mut self, name: &str, packed: &[f32]) {
+        let Some(c) = self.clusters.get_mut(name) else { return };
+        let cap_entries = (c.num_regions.max(1)) as usize;
+        let entries = (packed.len() / 4).min(cap_entries);
+        if entries == 0 { return; }
+        let slice = &packed[..entries * 4];
+        self.queue.write_buffer(&c.region_gates, 0, bytemuck::cast_slice(slice));
+        c.num_regions = entries as u32;
+    }
+
     pub fn voltage_mean(&self, name: &str) -> Option<f32> {
         let c = self.clusters.get(name)?;
         if c.size == 0 { return None; }
@@ -1243,6 +1259,14 @@ impl Backend {
             Backend::Cuda(e) => e.voltage_mean(name),
         }
     }
+    /// RHYTHM3S.2 (v0.3.34) — per-batch Ψ-gate table rewrite, per backend.
+    fn update_region_gates(&mut self, name: &str, packed: &[f32]) {
+        match self {
+            Backend::Wgpu(e) => e.update_region_gates(name, packed),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.update_region_gates(name, packed),
+        }
+    }
     fn has_cluster(&self, name: &str) -> bool {
         match self {
             Backend::Wgpu(e) => e.has_cluster(name),
@@ -1617,6 +1641,14 @@ impl MultiEngine {
         let placed = self.engines[g].adapter_name().to_string();
         self.engines[g].init_cluster(name, size, regions, tonic, noise);
         println!("[multi] cluster '{name}' → GPU {g} ({placed})");
+    }
+
+    /// RHYTHM3S.2 (v0.3.34) — route the per-batch Ψ-gate table rewrite to the
+    /// GPU that holds the cluster. No-op for unknown clusters.
+    pub fn update_region_gates(&mut self, name: &str, packed: &[f32]) {
+        if let Some(&g) = self.cluster_gpu.get(name) {
+            self.engines[g].update_region_gates(name, packed);
+        }
     }
 
     pub fn has_cluster(&self, name: &str) -> bool {

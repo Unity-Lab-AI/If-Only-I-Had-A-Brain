@@ -6146,6 +6146,22 @@ class ServerBrain {
               // instead of silently not.
               const actionGate = (name === 'cortex')
                 ? (this.cortexCluster?.actionGate || 1.0) : 1.0;
+              // RHYTHM3S.2 — per-region attention gains ride the batch so
+              // donor stepping finally sees them (the server-side attentionGain
+              // writes previously fed ONLY the CPU-step lookup, which never
+              // runs for cortex at biological scale). Clamped [0.5, 2.0], the
+              // CPU step's own clamp. Sent only when non-empty; older donors
+              // ignore the unknown field, older browser pages pass undefined.
+              let regionGains;
+              if (name === 'cortex' && this.cortexCluster?.attentionGain) {
+                const src = this.cortexCluster.attentionGain;
+                for (const rn of Object.keys(src)) {
+                  const g = src[rn];
+                  if (typeof g !== 'number' || g === 1.0) continue;
+                  if (!regionGains) regionGains = {};
+                  regionGains[rn] = Math.max(0.5, Math.min(2.0, g));
+                }
+              }
               return {
                 name,
                 size: CLUSTER_SIZES[name],
@@ -6156,6 +6172,7 @@ class ServerBrain {
                 driveBaseline: driveFactor,
                 errorCorrection: errorSignal,
                 reward: this.reward,
+                ...(regionGains ? { regionGains } : {}),
               };
             });
             // Keep the cortex cluster's step-loop gamma field honest for the
