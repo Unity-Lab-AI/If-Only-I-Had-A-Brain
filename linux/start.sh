@@ -345,7 +345,7 @@ if [ -f server.log ]; then rm server.log; fi
 # it sees EADDRINUSE and exits 0 quietly, so re-running never stacks them.
 # ⚠ On a systemd box this is redundant (the unit owns it) and harmless for the
 # same reason — the running instance keeps the port.
-node brain-ctl.js > brain-ctl.log 2>&1 &
+nohup node brain-ctl.js >> brain-ctl.log 2>&1 &   # CTLWINDOW (2026-08-28): nohup + append — the control plane must survive the launcher terminal closing, and a did-not-bind relaunch must not truncate the live instance's log
 node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1 &
 SERVER_PID=$!
 sleep 2
