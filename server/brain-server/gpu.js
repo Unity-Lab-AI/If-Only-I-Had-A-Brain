@@ -2421,6 +2421,17 @@ const SERVER_GPU_MIXIN = {
    * shipped originally.
    */
   async gpuSparseUpload(name, matrix, binding, targetWs = null) {
+    // TEACHCREDIT — record the matrix's stored-synapse count so teach frames
+    // can be credited with their real giga-ops (see _countTeachOut). Values
+    // length IS the nnz; a matrix without one records nothing (no invented
+    // credit, ever).
+    try {
+      const _nnz = (matrix && matrix.values && matrix.values.length) || (matrix && matrix.nnz) || 0;
+      if (_nnz > 0) {
+        if (!this._matrixNnzByName) this._matrixNnzByName = {};
+        this._matrixNnzByName[name] = _nnz;
+      }
+    } catch { /* accounting only — never blocks an upload */ }
     // DF.7 — target a specific donor when given (replica sync), else the
     // primary (canonical upload). Track every CANONICAL upload in the replica
     // registry so a newly-joined donor can be brought to a FULL brain replica
@@ -3507,7 +3518,7 @@ const SERVER_GPU_MIXIN = {
       meta.writeFloatLE(typeof wMax === 'number' ? wMax : 2.0, 8);
       const frame = Buffer.concat([hdr, meta]);
       if (!this._donorPatternSendGated(frame)) return false;
-      this._countTeachOut(14, frame.length);
+      this._countTeachOut(14, frame.length, 0, this._teachGopsFor(name, 2));  // TEACHCREDIT — propagate + weight write = two full-matrix passes
       this._predErrSent = (this._predErrSent || 0) + 1;
       if (!this._predErrLogOnce) {
         this._predErrLogOnce = true;
@@ -4447,7 +4458,7 @@ const SERVER_GPU_MIXIN = {
     const ta = Uint32Array.from(arr);
     const frame = Buffer.concat([hdr, meta, Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)]);
     if (!this._donorPatternSendGated(frame)) return false;
-    this._countTeachOut(13, frame.length);
+    this._countTeachOut(13, frame.length, 0, this._teachGopsFor(name, Math.max(1, reps >>> 0)));  // TEACHCREDIT — reps full-matrix Hebbian passes
     this._hebbianMaskedSent = (this._hebbianMaskedSent || 0) + 1;
     return true;
   },
@@ -4470,13 +4481,33 @@ const SERVER_GPU_MIXIN = {
   // composition is READ off the state payload instead of inferred from
   // average message sizes ever again. savedBytes accumulates what repeat
   // frames avoided shipping.
-  _countTeachOut(type, bytes, savedBytes = 0) {
+  _countTeachOut(type, bytes, savedBytes = 0, workGops = 0) {
     if (!this._teachOutByType) this._teachOutByType = {};
     const k = 't' + type;
     const e = this._teachOutByType[k] || (this._teachOutByType[k] = { frames: 0, bytes: 0 });
     e.frames += 1;
     e.bytes += bytes;
     if (savedBytes > 0) this._teachOutBytesSaved = (this._teachOutBytesSaved || 0) + savedBytes;
+    // TEACHCREDIT (2026-08-27, Gee: the donor is "fucking using my GPU i
+    // should be on the board") — teach frames carry REAL GPU work (a full-
+    // matrix Hebbian pass touches every stored synapse) but the leaderboard
+    // credited only compute_batch steps, so a donor saturated with the walk's
+    // training banked ZERO. The same blind spot TEACHMIRROR.1 fixed on the
+    // status label, one layer down in the accounting. Callers that drive a
+    // full-matrix op pass its measured giga-ops (matrix nnz × reps, from the
+    // sizes recorded at upload); small scatter/write frames pass nothing —
+    // under-crediting is the correct rounding direction for a number people
+    // compete on. The telemetry accrual drains this into the PRIMARY donor's
+    // leaderboard row, because the teach lane only ever rides the primary.
+    if (workGops > 0) this._teachWorkGops = (this._teachWorkGops || 0) + workGops;
+  },
+
+  // TEACHCREDIT — giga-ops for one full pass over a matrix's stored synapses,
+  // from the nnz recorded at gpuSparseUpload. Unknown matrix → 0 (no invented
+  // credit).
+  _teachGopsFor(name, passes = 1) {
+    const nnz = (this._matrixNnzByName && this._matrixNnzByName[name]) || 0;
+    return (nnz * Math.max(1, passes)) / 1e9;
   },
 
   /**
@@ -5219,7 +5250,7 @@ const SERVER_GPU_MIXIN = {
         const prevBody = cache.get(key);
         if (prevBody && prevBody.equals(body)) {
           const rep = this._encodeRepeatFrame(3, reqId, name);
-          this._countTeachOut(12, rep.length, (hdr.length + body.length) - rep.length);
+          this._countTeachOut(12, rep.length, (hdr.length + body.length) - rep.length, this._teachGopsFor(name, 1));  // TEACHCREDIT — a repeat re-executes the same full-matrix op
           return this._sparseSendBinary(rep, reqId, 30_000);
         }
         cache.set(key, body);
@@ -5228,7 +5259,7 @@ const SERVER_GPU_MIXIN = {
       }
     }
     const full = Buffer.concat([hdr, body]);
-    this._countTeachOut(3, full.length);
+    this._countTeachOut(3, full.length, 0, this._teachGopsFor(name, 1));  // TEACHCREDIT — one full-matrix Hebbian pass
     return this._sparseSendBinary(full, reqId, 30_000);
   },
 };
