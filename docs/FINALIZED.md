@@ -40447,3 +40447,15 @@ No gate that keeps the walk finite is touched. The heartbeat adds ~2.9 Gn-steps 
 ### Verification
 
 `node --check` clean ×3 (`brain-server.js`, `gpu.js`, `state.js`); full-scale donor harness run twice (isolation + production shape); env flag registered (`docs:drift` env check 193/193 green); no bundle rebuild needed — all changes server-side, lands on the press. Docs: `ADMIN-CONTROLS.md` flag table + `EQUATIONS.md` sweep stamp + wiki `brain-server` page restamped + `wiki/log.md`, same commit. ⚠ The 21 provenance drift rows pre-exist this batch (verified by stash + re-run: identical without these changes).
+
+## 2026-08-28 - PSITEACH.3: the heartbeat never fired because full batches ate the tick - feature/psi-teach-tick
+
+Gee (verbatim): *"yeah big problem tho 0 neurons are firing"* / *"0 neurons firing"*
+
+Ψ came alive off the teach term (both brains measured ~23.1-23.3 once teaching flowed — the ~19-21 zone Gee remembers), but `totalSpikes` stayed 0 and `walkTick` stayed null: the heartbeat only lived in the probe-gate early-return, and whenever the gate briefly cleared mid-walk (between cells, inside teach windows) the tick dispatched a FULL 8-cluster batch instead — measured live timing out at 180s on every attempt against a teach-flooded donor (`gpuMisses=8`, `stepTimeMs=180911`), parking the tick in a dead await with no heartbeats and spikes frozen at 0. ⛔ **The full batch mid-walk is also the corruption path** — it steps CORTEX while teach writes `cortex/<region>` spike buffers the bound Hebbian ops read.
+
+**Fix — the chokepoint, not the instance:** the heartbeat logic extracted to `_walkHeartbeat(clusterParams, allClusters)` and called from BOTH walk-time tick paths — the probe-gate hold AND a new `_curriculumInProgress` gate-clear branch that SKIPS the full 8-cluster dispatch entirely while the walk runs. One cadence, one stats object (`state.walkTick`). Full batches return the moment the walk is not running, which preserves the historical behavior Gee named as the regression marker: Ψ jumping to ~19-21 at donor connect, before teaching starts. `node --check` clean; docs (ADMIN-CONTROLS flag row, EQUATIONS stamp) same commit.
+
+⚠ **Open, filed honestly:** WHY a full 8-cluster batch times out at 180s against a teach-flooded donor when the same batch answers in 795ms idle is measured-but-unexplained — the donor services teach acks continuously through the same worker loop, so the batch should pop the hi lane within one work item. With walk-time full batches gone, the reproduction window is the idle brain, where they complete. If idle batches ever start missing, the stall alarm (boot-anchored, this batch) now names it.
+
+⚠ **Also this hour: the local brain crashed on its own** (port dead, no STALLED stamp from the watchdog = abrupt death, not a loop hang). The crash text is only in the operator's console window — cause unnamed at close; the heartbeat path is inside the tick's try/catch (`[Brain] GPU error` warn, not a crash), verified by reading the boundaries.
