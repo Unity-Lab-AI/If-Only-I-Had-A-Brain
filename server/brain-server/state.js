@@ -588,6 +588,18 @@ const SERVER_STATE_MIXIN = {
       // PSITEACH.2 — the walk heartbeat (non-cortex step batches dispatched
       // while the curriculum holds the probe gate). null = never armed.
       walkTick: this._walkTickStats || null,
+      // FIREKNOB — the firing-rate controller: measured fired-% (last / ema),
+      // the DREAM_FIRING_TARGET_PCT it aims at, and the bounded drive scale it
+      // reached. A scale sitting at 0.25 or 10 means the target is out of the
+      // drive knob's reach — a report, not a hidden clamp. null = disabled or
+      // no answered batch yet.
+      firing: (this._fireCtl && this._firingTargetPct && this._firingTargetPct() > 0) ? {
+        pct: +this._fireCtl.pct.toFixed(3),
+        ema: this._fireCtl.ema == null ? null : +this._fireCtl.ema.toFixed(3),
+        targetPct: this._firingTargetPct(),
+        driveScale: +this._fireCtl.scale.toFixed(3),
+        samples: this._fireCtl.samples,
+      } : null,
       coherence: this.coherence,
       coherenceTheta: this.coherenceTheta,
       coherenceGamma: this.coherenceGamma,
