@@ -40262,3 +40262,29 @@ nvcc -ptx -arch=sm_75 -o kernels.ptx cuda_kernels.cu
 ### ⭐ The rule this batch earned
 
 **A fork handed to you is a claim like any other — measure its premises before choosing between its branches.** Both premises here failed on a one-command read (`head` of the PTX; `grep` of the .cu), and the best answer was outside the offered options. Same class as the README near-miss: the artifact's own header was one look away the whole time.
+
+---
+
+## 2026-08-27 - SUBJRETIRE.2: the college-only tracks retire, and every grade in the walk now has a runner for every subject it owes - feature/college-track-retirement
+
+### Gee ruling (verbatim per LAW #0)
+
+> *"retire"*
+
+Answering the fork `SUBJRETIRE.1` deliberately left open: `genered`, `cstheory` and `cssystems` enter at college1 with no grad/phd runner.
+
+### What shipped
+
+Three lines in `SUBJECTS_RETIRED_AT` — all three retire at **`college4`**, under the same ledger gate as the nine. The reasoning is the same real-school shape the first ruling followed: **gen-ed is definitionally undergraduate**, and at grad level the CS theory/systems tracks fold into `research` + `major`, both of which have real grad/phd runners (`runResearchGradReal`, `runMajorGradReal`).
+
+### Measured result
+
+**Grad/phd owed is now exactly `ela math science social art life major research` — 8 owed against 8 runners.** With `SUBJRETIRE.1`'s college balance (10 against 10), ⭐ **the roster/runner gap is closed at every grade in the walk** — the condition `CODE-CURRICULUM.md` had carried as an open design hole since the M4 college expansion.
+
+### Verification
+
+`node --check` clean; **7/7 edge cases** — the ones that carry the ruling's condition: a track that never passed `<subject>/college4` **stays owed at phd** (untrained `cstheory` verified rostered), everything is **still owed AT college4 itself** (retirement is exclusive of the terminal grade), and an **empty ledger retires nothing**. Bundle rebuilt in the same commit (132,030 → 132,038; all three entries confirmed present — ⚠ first grep read 0 because **esbuild rewrites single quotes to double**, a one-minute lesson worth recording: grep the bundle with the BUNDLER'S quoting, not the source's).
+
+### Docs updated in the same commit
+
+`docs/CODE-CURRICULUM.md` (both open-gap notes closed with the measured roster), `docs/CURRICULUM-SCOPE-SEQUENCE.md` (retires-after column completed for the college rows + the closing statement).

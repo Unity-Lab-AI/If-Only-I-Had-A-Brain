@@ -30,10 +30,12 @@ verified-scope: |
       re-create WALKORDER.1, where Grade 1 finished with PE/Music/Health
       never taught. Measured: college 19 offered -> 10 owed, against 10
       runners; grad/phd 20 -> 11.
-    - ⚠ STILL OPEN, and a DIFFERENT decision: genered, cstheory and cssystems
-      enter at college1 and have no grad/phd runner, so grad/phd is 11 owed
-      against 8 runners. Those three were NOT part of the nine and are not
-      retired here.
+    - ✅ CLOSED 2026-08-27 - the operator ruled "retire": genered, cstheory and
+      cssystems retire at college4, same ledger gate. gen-ed is definitionally
+      undergraduate, and at grad level the CS tracks fold into research +
+      major, both of which have real grad/phd runners. Measured: grad/phd owed
+      is now exactly `ela math science social art life major research` - 8
+      owed against 8 runners. The roster/runner gap is closed at EVERY grade.
     - VERIFIED PRESENT: .claude/scripts/fetch-code-corpora.mjs; corpora/coding
       with 14 files (grade5-12, college1-4, grad, phd - matching G5->PhD);
       generateMany / _deriveParams / _fillParams / _hueFromPattern in
@@ -120,6 +122,8 @@ By PhD, Unity should **understand and reason fluently** about:
 > ⚠ **Deliberately two named functions, not one with an optional ledger argument** — the same call silently meaning two things is the capability-degradation branch the no-fallbacks rule exists to stop. ⚠ **And the ledger-floor rule is now shared** (`ledgerFloorIdx`), because `passedCells` recording postdates the pre-K era and two drifting copies of that rule is how a walk silently restarts from the bottom.
 >
 > **Measured after the change:** college **19 offered → 10 owed, against 10 runners**; grad/phd **20 → 11**. ⚠ **A DIFFERENT gap remains and is not covered by this ruling:** `genered`, `cstheory` and `cssystems` enter at `college1` and have **no grad/phd runner**, leaving grad/phd at 11 owed against 8 runners. Those three were not among the nine.
+>
+> ✅ **CLOSED 2026-08-27 — the operator ruled *"retire"*.** The three retire at `college4` under the same ledger gate. Grad/phd owed is now exactly `ela math science social art life major research` — **8 owed against 8 runners; the roster/runner gap is closed at every grade in the walk.**
 
 ### Implemented cs-runner coverage (SOURCE OF TRUTH — what actually trains)
 
