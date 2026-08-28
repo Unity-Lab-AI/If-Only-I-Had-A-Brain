@@ -40107,3 +40107,55 @@ The box booted **`13:46:34Z` on `main` `51da0c23`** (deploy `13:45:56Z`), weight
 - **`Stack Vault.png` still untracked and NOT mine** — staged explicit paths, never `git add -A`.
 - **Board 9 open / 6 in-progress.** ⚠ An earlier loose grep of mine reported 9 in-progress; the anchored `^- \[~\]` count is **6**. A pattern is not a count.
 - `docs:drift` env flags **192/192**, geometry tripwire clean, provenance **3**, `sources`-coverage **22**. `wiki:coverage` 449/449, 0 broken, 0 orphans.
+
+---
+
+## 2026-08-27 - BOARDCLEAN: five rows closed on live evidence, one filed forward, and the board stops claiming she has never spoken - feature/board-cleanup
+
+### Gee ask (verbatim per LAW #0)
+
+> *"yeah clean up the todo, close out whats done, then tell me one at a time what i need to do to finish all todo items"*
+
+Board **9 open / 6 in-progress → 7 open / 4 in-progress.** Every closure below was tested against the live box, not inferred from the fact that work happened. ⛔ **Status markers changed ONLY — every original word of every row is preserved under an `ORIGINAL FILING:` marker, per the never-delete-TODO-info LAW.**
+
+### 1. ⭐ `EMITZERO.1` — CLOSED, and nothing was fixed to close it
+
+The row read *"she has attempted to speak 683 times this boot and been refused every single time."* Live after the press: **`emitAttempts` 5,264 / `emitRejects` 2,654 = 2,610 SUCCESSFUL emissions, `matrixDrivenPct` 100, `oracleHits` 0.**
+
+⭐ **It closed on the exact discriminator the row specified** — read (1), *"a bootstrap drought must END when the phases start producing."* The phases moved to `cellPhasesCompleted` 23 of 25 and the drought ended. ⭐ **And the counter proves it structurally: `no-best-word` is FROZEN at 2,258**, every rejection since being `below-signal-floor` — a floor declining a real candidate, not an absent one. **The 100%-one-reason shape it was filed on is gone.**
+
+⛔ **The row was filed as a QUESTION with its evidence and explicitly refused to guess a cause. That refusal was correct** — the innocent explanation (`WALKPROG.1` closed NORMAL) was right all along, and three of this project's worst days came from acting on a diagnosis before establishing one.
+
+### 2. ⭐ `ARTHOG.1` — CLOSED with its own fallback answer
+
+`artWeight.skippedRate` **2,262, +8 per 5 min**, art still producing 12 pieces / 94 pairs in the same window. **Rate-limited, not starved** — watch-item 1 satisfied.
+
+⛔ **But the phase kept dragging, which is the row's stated fallback:** *"if the phase still does not advance, art was not the cause and that is equally useful to know."* **It was not the cause.** `_teachAssociationPairs` measures **874 calls / 14,031,365 ms** — 238× fewer calls than `_teachHebbian` at nearly the same total — and **has two independent callers, only one of which we bounded.** Filed forward as `ASSOCBOUND.1`.
+
+⚠ **The stall reading was wrong and the row pre-empted it:** `curriculum.activePhase` changed between samples and `cellSubPhases` advanced +2,592 in 11.5 min. **Two state samples is the whole check.**
+
+### 3. `DOCPROV.4` — CLOSED (read "1 of 22"; was complete)
+
+Provenance drift **23 → 0** across all 22 pages, plus `docs:drift` checks 9 and 10. ⚠ **The 22 `sources`-coverage gaps stay OPEN deliberately** and are not part of the row — bulk-adding them manufactures the cries-wolf noise the bare-mention signal was deleted for.
+
+### 4. `GOTCHA.3b` release row — CLOSED; feature row moved to HALF SHIPPED
+
+Donor **v0.3.32** tagged and shipped, all four KI-22 surfaces verified live. ⭐ **The CUDA half is still deliberately unwritten, so the A40 reports `unreported-by-this-donor` — that string is the fix WORKING**, exactly what `GOTCHA.3a` was built to say.
+
+⛔ **The remainder is a FORK, not a build step:** the kernel ships via a precompiled `kernels.ptx` targeting `compute_60`, and local nvcc is CUDA 13.0 which dropped that arch. **Needs a toolchain with `compute_60`, a decision to raise the minimum arch (dropping older donor GPUs), or a second PTX target.** Recorded on the row so it is not re-attempted as an afternoon's work.
+
+### 5. `COMP.1c` "RECOMMENDED OUT" — CLOSED as SUPERSEDED
+
+> *"we arent updating the brains till all is done anyways so ur recommendation is mute, right? get to whats left"*
+
+⛔ **I had `WALKLAST.1` backwards.** `WEIGHTS_FORMAT_VERSION` 4→5 makes the next press a fresh walk, so the current walk is throwaway and landing a physics port now is what that law *asks*. **The mid-walk objection dissolves when the walk it would corrupt is already being discarded.** ⭐ **What survives untouched is the CORRECTNESS requirement** — the parity harness to `maxDiff = 0`. That was never a scheduling argument and is not superseded by one.
+
+### 6. Filed forward — `ASSOCBOUND.1`
+
+⚠ **Filed with an explicit warning against the obvious fix.** The art caller is a side effect of drawing and is safely paced; **the curriculum caller IS the teaching** — rate-limiting it does not save work, it deletes curriculum, which is the `STRUCTURE_DOSE` class and needs a **RE-PRICE written down first**. ⭐ **The honest first move is a per-caller tally**, since the whole `ARTHOG` investigation was slowed by having to infer attribution from correlated samples.
+
+⭐ **The rule it earned: bounding one caller of a shared hot method is fixing an INSTANCE. Ask who else calls it before claiming the class is closed.**
+
+### 7. ⚠ Tooling limit stated rather than papered over
+
+`docs/TODO.md` is **665 KB / 1,460 lines**, and 800 lines of it is ~135k tokens against a 25k read cap — **a literal full-file read is not possible with the available tools.** Instead the whole heading structure was mapped and every region edited was read in full. ⛔ **Recorded because claiming a full read here would be the same class of lie this board exists to catch**, and the same admission was made for `curriculum.js` under `GOTCHA.9`.
