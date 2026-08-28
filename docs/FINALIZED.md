@@ -40320,3 +40320,36 @@ Every `_teachAssociationPairs` call now tallies `calls / pairs / ms` by caller l
 ### Verification
 
 `node --check` ×4, ESM `import()` ×2, bundle rebuilt (only the documented legacy tally + its comment still reference the per-subject fields). All server-side changes land on the next press.
+
+---
+
+## 2026-08-27 - FINISHBOARD (batch 2) - RHYTHM3S.2 measured, inverted, and half-built: the theta entrainment and action gate reach the donor drive, and the "plain LIF kernel" premise was backwards - feature/finish-the-board
+
+### The measurement that re-aimed the item
+
+Every physics claim in the RHYTHM3S.2 filing was checked against shipped code before building:
+
+⛔ **The central premise was INVERTED.** The filing: *"that kernel is plain LIF (tau 20, fixed thresholds)"* while hers carries rich physics. Reality: **both donor kernels run the Rulkov 2002 map** (byte-compatible with the browser donor that has stepped her entire training history), and **the CPU integrator is the actual LIF with tau 20** (`neurons.js:160`) — used only for sub-2M clusters. Different equations by design; a CPU-vs-donor parity harness between them is not a coherent target.
+
+Also measured out: **K.5 is inactive at bio scale in the CPU contract too** (`_columnVoltageMean` exists only where CPU `step()` runs); **errorCorrection and per-neuron currents were already carried**; **gamma-gated teaching was never dead** (the curriculum's own per-phase gamma, `cluster.js:2139`, is deliberate decoupling).
+
+### ⭐ What was really missing, and what shipped
+
+**The donor drive formula carried 4 of the CPU's 6 factors — `actionGate` and `thetaMod` were never sent.** Both are cluster-level scalars, so they now **fold into `tonicDrive` per batch**: the donor's own product becomes the full five-factor formula with **zero wire change, zero kernel change, on every donor version ever shipped**.
+
+The theta term is the **SPEAK.5a Kuramoto substrate run host-side**: per-cluster phase accumulators driven by ack'd `spikeCount / size` (the exact quantity the CPU estimates by strided sampling), same constants (EMA 0.99/0.01, clamp ±0.9×4, K=0.5, period 167, amplitude 0.15). Active clusters run fast, quiet ones slow — real dispersion, not a shared clock.
+
+### Harness results, stated exactly
+
+- **Oscillator: `maxDiff = 0` over 100,000 ticks** with varying rates — the stateful half, where drift would compound, is exact.
+- **Phase dispersion is real:** hot vs cold cluster diverge **0.1415 rad in 2,000 ticks**.
+- ⚠ **The drive fold is exact to 1 ULP (3.6e-15), NOT zero** — float multiplication is not associative, and the fold's order differs from the CPU expression's. Stated rather than rounded to zero: the alternative status quo was the factor being **absent entirely** (a 100% miss of a ±15% modulation), and the noise term is ~10 orders of magnitude larger than the ULP.
+- `actionGate` reads 1.0 today (no server-side writer exists; engine.js drives it in the browser) — folded anyway so the formula is complete and any future writer takes effect instead of silently not.
+
+### ⛔ The remaining half, found by the same measurement — donor release 0.3.34
+
+**The native donor never applies Ψ to region gates** (`compute.rs:315`: *"psi modulation is a later refinement"* — gates stay 1.0 forever) **while the browser donor recomputes them every batch.** The A40 pod has been stepping her WITHOUT the Ψ hemisphere modulation browser donors apply — a live physics divergence between donor types, in production now. And **`attentionGain` reaches no donor at all** (the server-side writes feed only the CPU-step lookup). Both halves are one donor release: native per-batch gate recompute from Ψ + per-region gains riding `compute_batch` JSON (backward-compatible — old donors ignore unknown fields).
+
+### ⭐ The session's recurring lesson, third instance today
+
+`GOTCHA.3b`'s fork (compute_60), `COMP.1(c)`'s phantom lane, and now this row's inverted kernel premise — **three consecutive items whose filed premises failed on a direct read of the artifact they described.** Measure the premise before building the branch.
