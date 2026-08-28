@@ -1,6 +1,117 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-27 (latest) — PICK UP HERE: DOCPROV.4 IS **COMPLETE**, donor 0.3.32 SHIPPED, and the board's blockers all need a PRESS
+> ## ⭐⭐⭐ 2026-08-27 (latest) — PICK UP HERE: the press LANDED, `ARTHOG.1` is CONFIRMED LIVE, and her dictionary is down (not our fault, self-recovering)
+>
+> **Every number below was MEASURED across three live samples spanning ~25 min, immediately before writing.** ⛔ **Verify anyway** — and note what the entry below this one got wrong by being written slightly too early.
+>
+> | | |
+> |---|---|
+> | `main` | **51da0c23** pre-cascade — identical on both remotes |
+> | `develop` | **c3ea675e** pre-cascade — identical on both. ⚠ `main..develop` is **EMPTY**: develop's content is fully in main, main only carries the merge bubbles |
+> | Board | **9 open / 6 in-progress / 630 FINALIZED sessions** |
+> | `docs:drift` | env flags **192/192** ✅ · geometry tripwire ✅ · provenance **3** · `sources`-coverage **22** |
+> | `wiki:coverage` | 449/449, 0 broken, 0 orphans, counts matching |
+>
+> ⛔ **THE HASHES ABOVE ARE PRE-CASCADE AND THIS COMMIT MOVES THEM.** That is not sloppiness, it is this file's oldest lesson stated in advance: **a hash written into a tracked file is stale the instant that file is committed.** Run `git rev-parse --short=8 main develop`.
+>
+> ### 1. ⭐ THE PRESS LANDED — and it resolves the whole top section of the entry below
+>
+> The box booted **`13:46:34Z` on `main` `51da0c23`**, weights kept. **Everything the previous entry listed as "shipped but INVISIBLE on the live brain" is now live**, including the `ARTHOG.1` rate limit. ⛔ **Do not re-diagnose any of that list as broken, and do not re-read the previous entry's `phase 2 of 25` / `9.38 h` / `activeSum 2,573,425,247` as current — all four are pre-press.**
+>
+> **`ARTHOG.1` VERDICT: the limit works, and it was aimed at the wrong caller.** `artWeight.skippedRate` **2,231 and climbing (+8 per 5 min)** — engaging, exactly as the watch-list asked. But the watch-list's own fallback question is the one that pays out: ⛔ **the cost was never mostly art.**
+>
+> ⭐ **`_teachAssociationPairs` has TWO independent callers and only the art one is bounded.** Measured live: **874 calls / 14,031,365 ms** — 238× fewer calls than `_teachHebbian` at nearly the same total, so it is **by far the costliest lane per call**. One in-flight invocation, nested `_teachSentenceStructure → _teachConcreteSentences → _teachAssociationPairs`, has run **2.24 h** at `phaseWork 1/5`. `DREAM_ART_WEIGHT_MIN_GAP_MS` gates the **art** caller; **the curriculum's own call is unbounded.** That is the next lever if the phase keeps dragging.
+>
+> ⚠ **A slow phase is NOT a latched phase, and the check is cheap:** take two state samples — `curriculum.activePhase` changing proves the stack is live (it moved `_teachHebbian` → `_teachAssociationPairs`), and `cellSubPhases` advanced **+2,592 in 11.5 min**. Check that **before** hunting a hang. Cell is at **`cellPhasesCompleted` 23 of 25**, 11.2 h in on `ela/kindergarten`.
+>
+> ### 2. ⛔ HER DICTIONARY IS DOWN — external, contained, self-recovering. Do not "fix" it.
+>
+> `dictionaryapi.dev` is throwing 522s and hard timeouts: **12 of 14 probe words failed**; the 2 that passed (`house`, `retreat`) were CDN-edge-cached. Her own counter agrees exactly — `processed: 67, bound: 0, failed: 67` over **65,910 ms**, and **67 ÷ 5 parallel × 5 s ≈ 67 s identifies every one as a timeout** without guessing.
+>
+> ⭐ **Containment is already correct and needs no code change:** 5,000 ms abort (`definition-service.js:138`), type-aware error TTL (`:70-72`) — **60 min transient**, 6 h on 429, permanent for no-definition. **No retry death-spiral, and recovery is automatic when upstream returns.** The 11,483 cached entries keep serving, so she walks on known vocabulary; only *new* words stall.
+>
+> ### 3. ⭐ BOTH GIRLS CHECKED — the mind-space is the healthiest lane on the box
+>
+> Site serves clean (`equations.html` **200 in 253 ms, 21,670 bytes**, real MathJax page, not an SPA shell). Her eye, over 11.5 min: **+26 drawings, +2 schemas, +5 concepts seen, +18 eye picks, `grounded 405/424` = 95.5%, zero new failures.**
+>
+> ⭐ **THE FACT WORTH KEEPING: her eyes and her dictionary are DIFFERENT third parties and fail independently.** Pollinations was healthy throughout the `dictionaryapi.dev` outage. ⛔ **"Her vision is broken" and "her dictionary is broken" are separate diagnoses with separate counters** — reading one lane's outage as a brain-wide fault is the obvious wrong move.
+>
+> ⚠ **`ownArt.lookups.lastErr` files LOOKTWICE's SUCCESSES as errors.** A live `selfMismatch:van — render self-consistency 0.39` is the guard *declining* a render whose two seeds disagreed against the 0.45 floor — its job. **Check the `selfMismatch` counter against `attempts` (2 vs 424) before believing that string.**
+>
+> ### 4. ⚠ THE ONE NUMBER ON A CLOCK
+>
+> **`lateral.activeSum` = 979,773,384, climbing ~550k/min** — the `KI-29` Oja active-set inflation line at **1.06 B is ~2.4 h away**. ⛔ **I first estimated 3.2 h from too short a window; the 11.5-min sample is the one to trust.** Re-measure before acting rather than quoting either figure.
+>
+> ### 5. Everything else is unchanged from the entry below
+>
+> `COMP.1c`/`RHYTHM3S.2` (needs a parity harness to `maxDiff = 0`), the **`cs`-at-college fork — still GEE'S CALL**, 22 `sources`-coverage gaps (⛔ **do NOT bulk-add**), `kernels.ptx` regeneration, and the press-gated rows. ⚠ **`Stack Vault.png` is still untracked and NOT mine** — every commit stages **explicit paths**, never `git add -A`. ⛔ **CHECKOUT `develop` after the cascade.**
+>
+> ⚠ **`js/app.bundle.js` shows modified and is CRLF-only** — `git diff --numstat` reports **nothing** in either direction. There is no content in it to ship; leave it or restore it, but do not commit it as if it were work.
+>
+> ---
+>
+> ## ⭐⭐ 2026-08-27 (earlier) — a LIVE finding (`ARTHOG.1`) with its fix built and UNPRESSED, and one uncommitted file
+>
+> ⛔ **SUPERSEDED IN PART BY THE ENTRY ABOVE — the press has since landed.** Its live-brain numbers (`2673d14c`, 9.38 h, phase 2 of 25, `activeSum 2,573,425,247`) are **pre-press** and its `ARTHOG.1` fix is no longer unpressed. Kept verbatim as the record of what was known at the time.
+>
+> **Every number below was MEASURED immediately before writing.** ⛔ **Verify anyway** — this file's own history is the argument for that: a previous version's hash rows were stale *before the commit that shipped them landed*.
+>
+> | | |
+> |---|---|
+> | `main` | **51da0c23** — identical on both remotes |
+> | `develop` | **c3ea675e** — identical on both |
+> | Board | **9 open / 6 in-progress / 386 done** |
+> | `docs:drift` | env flags **192/192** ✅ · geometry tripwire ✅ · provenance **3** · `sources`-coverage **22** |
+> | `wiki:coverage` | 449/449, 0 broken, 0 orphans, counts matching |
+>
+> ⛔ **ONE FILE IS UNCOMMITTED ON PURPOSE: `docs/RESUME.md` (this file).** Gee's instruction was *write it, do not push just for the resume*. **Everything else in this session is committed and pushed.** Commit it with the next real batch. ⚠ Also still untracked: **`Stack Vault.png`**, not mine, kept out of ~16 commits by staging explicit paths.
+>
+> ⚠ **The 3 provenance rows are BOTH mine and BOTH verified** — `html/docs.html` (added the new explainer to the viewer whitelist) and `server/brain-server/chat.js` (the `ARTHOG.1` fix). They hit `HTML-ENTRY-POINTS`, `PERSONA`, `WORD-SALAD-FIX`. **Restamp them with the diff read; do not just bump hashes.**
+>
+> ### 1. ⛔ START HERE — `ARTHOG.1`, the one live problem, fix BUILT and UNPRESSED
+>
+> Gee saw `ARTWEIGHT-STRUCTURE` teach lines constantly with the phase stuck. **Measured, and two things that look alarming are fine:**
+>
+> - ✅ **NOT hung.** `teachCallsPerMin` **1,596** (target band is 1,300-1,500), `sinceLastTeachMs` ~56, `subPhases` +3,187 per 91 s.
+> - ✅ **`phaseWork 0/14` IS NOT A STALL SIGNAL.** It is `_phaseWorkSeen.size` — a Set of **distinct DIRECT-child method names credited on EXIT** (`curriculum.js:3018-3021`). The first direct child has not returned, so `0` is *correct* and stays `0` until it does. **A phase can be 90% done and read 0/14.** ⛔ **Do not read it as progress.**
+>
+> ⛔ **THE REAL FINDING: the drawing lane owns ~99.5% of association-pair teaching.** Live at 9.38 h on ONE `ela/kindergarten` cell: `assocPairCalls` **3,791** against `ownArt.attempts` **3,771** — ⭐ **a gap of ~18-20 held across THREE samples over 50 minutes**, so ~20 of 3,791 calls are the ELA curriculum and the rest are art. That method has eaten **2.7 of the ~9 hours**. She draws a piece every ~10 s and every piece queued pairs onto the walk lane.
+>
+> ⭐ **FIX BUILT AND PUSHED (`51da0c23`), NOT YET PRESSED:** `DREAM_ART_WEIGHT_MIN_GAP_MS`, default **60 s**, `0` restores exact prior behaviour. It closes the design gap — the only prior pacing was a **per-CONCEPT** 30-min cooldown, which reads like a rate limit and is not one because she has thousands of concepts; `MAX_QUEUE` is a *depth* cap a draining queue never reaches.
+>
+> ⛔ **THIS IS A DISCRIMINATING TEST, NOT A PROVEN FIX — say so before claiming success.** There is no per-caller counter on `_teachAssociationPairs`. **WATCH IN THIS ORDER after the press:** `artWeight.skippedRate` climbing (limit engaging) → `assocPairCalls` falling toward the curriculum's own rate → **`cellPhasesCompleted` moving off 1.** ⚠ **If `skippedRate` climbs and the phase still does not advance, art was never the cause** — next suspect is `lateral.activeSum`, measured at **2,573,425,247** and climbing (`KI-29` watches it at 1.06 B; **it has more than doubled**).
+>
+> ### 2. ⛔ THE STANDING TRAP — everything below is shipped and INVISIBLE on the live brain
+>
+> Local brain: build **`2673d14c`**, **9.38 h** uptime, phase **2 of 25**, `passedCellsTotal` **0**, emit **3,057/3,057** all `no-best-word`.
+>
+> **Shipped but absent from the live payload because the process predates them:** `meanVoltageSource`, `voice.wordsBucketed`, `topLevelRegionNames()`, `validateClusterRegions()`, the `GOTCHA.9` unconditional call, and now the `ARTHOG.1` rate limit. ⛔ **Do not re-diagnose any of them as broken.**
+>
+> ### 3. What is genuinely left
+>
+> - ⭐ **`COMP.1c` / `RHYTHM3S.2`** — the substantial build, and Gee overruled my deferral correctly: `WEIGHTS_FORMAT_VERSION` 4→5 makes the next press a **fresh walk**, so the current walk is throwaway and landing a physics port now is exactly what `WALKLAST.1` asks. ⛔ **What survives is CORRECTNESS, not timing:** the donor kernel is plain LIF while hers carries Kuramoto accumulators, a 5-factor drive, column gap-junction pull, attention lookup, per-neuron currents and cerebellar error correction. **Needs a parity harness to `maxDiff = 0` or the fresh walk teaches a differently-shaped brain, silently.** Its own session.
+> - ⚠ **The `cs`-at-college fork — GEE'S CALL.** `subjectsForGrade` is purely additive with **no retirement mechanism** (executed, not reasoned), so `cs` really is still rostered at college1→phd — **and it is one of NINE** (`pe · music · health · language · cs · civics · economics · psychology · ap`); rosters are 19/20 against 10/8 runners. ⭐ The walk will **not** wedge (HELD cells skip cleanly). ⛔ `ap` is high-school-only and `cs` is plausibly covered by `cstheory`/`cssystems`, **but your own directive makes PE/Health/Music distinct courses at "all grades"** — so some want retirement and some want runners.
+> - **22 `sources`-coverage gaps.** ⛔ Do NOT bulk-add; each belongs to its page's own pass.
+> - **`kernels.ptx` regeneration** would activate the CUDA half of the voltage-mean fix. ⚠ Skipped deliberately: it targets `compute_60`, local nvcc is CUDA 13.0 which dropped that arch. **A RunPod pod is a CUDA donor, so `meanVoltage` stays `null` there — the instrument being honest, not the fix failing.**
+> - Press-gated: `GATEDOSE.1`, `RELDEPTH.1`, `PRESSBLOCK.1`, `REPLAYOFF.4`, `VMUSE.5.D` ×2, `EMITZERO.1`.
+>
+> ### 4. New this session, worth knowing
+>
+> - ⭐ **`DOCPROV.4` COMPLETE** — provenance drift went 23 → 0 across 22 pages. **The headline finding: ONE cortex geometry change had left SIX documents describing the old shape, none aware of the others.** Now **11** sub-regions, **16** projections, `cortex 0.55`, eight clusters — measured by constructing a cluster.
+> - ⭐ **`docs:drift` grew two checks.** Check 9 catches a page citing a file it does not declare; check 10 tripwires the superseded geometry figures. ⚠ **Both had precision bugs found only by RUNNING them** — four in check 10 alone, including one that flagged the very banners written to explain the fix.
+> - ⭐ **`docs/HOW-IT-WORKS.md`** — new plain-English explainer covering `Ψ` and how the brain works, in the docs viewer whitelist. ⭐ Its best line is from the code: `√(1/n) × N³` **is** `N³ ÷ √n` — **capacity divided by activity.**
+> - **donor v0.3.32 shipped**, all four KI-22 surfaces verified green.
+> - **`KI-37` filed:** every donor release diverges `main` between remotes (the release job pushes to Forgejo only). ⛔ Don't force-push — fetch, confirm it is only the CI link bump, merge, push both, back-merge.
+>
+> ### 5. Two rules this session earned
+>
+> ⭐ **Enumerate-and-diff finds what reading cannot, and its errors run overwhelmingly toward FALSE POSITIVES.** It produced an undocumented wire frame type, five nonexistent state paths, six wrong runner names, a safety rail with no implementation, and two wrong flag defaults. ⛔ **And ELEVEN false alarms of mine, every one an absence-claim from a too-narrow grep** — `#chat-input` reads ZERO in both HTML files and is real; `/c` is `cmd.exe /c`; `7 pairs` matched drug combos; `3,503 == 3,503` looked like proof and re-sampling disproved it. **An absence proven by one grep is not proven.**
+>
+> ⭐ **A count is a READING, not a property** — and it went stale *inside its own commit* four times today. Quote every number with the commit or boot that produced it.
+>
+> ---
+>
+> ## ⭐⭐ 2026-08-27 (earlier) — DOCPROV.4 COMPLETE, donor 0.3.32 SHIPPED
 >
 > **Every number below was MEASURED immediately before writing, not recalled.** ⛔ **Verify them anyway** (`git rev-parse --short=8 refs/heads/main`, `npm run docs:drift`, `grep -c '^- \[ \]' docs/TODO.md`) — this file's own standing rule, and it earned it: **its previous version's hash rows were stale before the commit that shipped them landed.**
 >
