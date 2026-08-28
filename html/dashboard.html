@@ -1608,6 +1608,14 @@
     }
 
     function updateDashboard(s) {
+      // NUMSCOPE (2026-08-28) — the voice panel below calls num(), which until
+      // now existed ONLY inside renderProfiling's scope. The moment the voice
+      // block first received a non-null verdict, updateDashboard THREW
+      // "num is not defined" on EVERY state message, and every panel rendered
+      // after that line froze at its last value while looking live — the
+      // whole-dashboard variant of the lying-instrument class. Same formatter,
+      // now in this scope; renderProfiling keeps its own copy.
+      const num = (n, d = 0) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString(undefined, { maximumFractionDigits: d }) : '—';
       // COPY-FRIENDLY (2026-07-09) — the dashboard re-renders on every WS state
       // push (~1s), and the innerHTML/textContent swaps below collapse any text
       // the user is highlighting (e.g. the donor table), so a copy had to happen
