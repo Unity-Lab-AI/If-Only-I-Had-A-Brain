@@ -580,6 +580,14 @@ const SERVER_STATE_MIXIN = {
       valence: this.valence,
       fear: this.fear,
       psi: this.psi,
+      // PSITEACH.1 — which lane fed Ψ this tick: step-lane spikes and the
+      // measured teach-lane activity term (TEACHCREDIT Gops/s, normalized).
+      // Ψ = 0.000 with teachGopsPerSec > 0 is the blind-instrument shape this
+      // field exists to make impossible to misread.
+      psiInputs: this.psiInputs || null,
+      // PSITEACH.2 — the walk heartbeat (non-cortex step batches dispatched
+      // while the curriculum holds the probe gate). null = never armed.
+      walkTick: this._walkTickStats || null,
       coherence: this.coherence,
       coherenceTheta: this.coherenceTheta,
       coherenceGamma: this.coherenceGamma,
