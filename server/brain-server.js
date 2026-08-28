@@ -1297,8 +1297,18 @@ function autoClearStaleState() {
   // This is the UI path to a clean server-side fresh start without shell access.
   const _forceFreshPath = path.join(__dirname, '.force-fresh');
   let _forceFresh = false;
+  // FRESHFLAG (2026-08-27) — carry the flag's own `via` into the boot reason.
+  // Three writers arm this flag (/reset, /update fresh mode, and a hand-armed
+  // file) and each stamps `via`; the boot reason used to hardcode "operator
+  // Reset Brain (dashboard)" regardless, so the record named a button that was
+  // never pressed. Read before unlink; an unreadable flag still wipes.
+  let _forceFreshVia = null;
   try {
-    if (fs.existsSync(_forceFreshPath)) { _forceFresh = true; fs.unlinkSync(_forceFreshPath); }
+    if (fs.existsSync(_forceFreshPath)) {
+      _forceFresh = true;
+      try { _forceFreshVia = JSON.parse(fs.readFileSync(_forceFreshPath, 'utf8')).via || null; } catch { /* malformed flag JSON — via stays unknown */ }
+      fs.unlinkSync(_forceFreshPath);
+    }
   } catch { /* unreadable flag → fall through to normal logic */ }
 
   // #38 — consume the clean-shutdown resume marker (one resume per clean stop).
@@ -1313,8 +1323,9 @@ function autoClearStaleState() {
   const _currentTotal = (typeof TOTAL_NEURONS === 'number') ? TOTAL_NEURONS : 0;
 
   if (_forceFresh) {
-    console.log('[Brain] ⚠ FORCE-FRESH requested (dashboard Reset Brain) — wiping all trained state for a clean fresh start (identity-core Tier 3 anchors preserved).');
-    _writeBootReason({ mode: 'wipe', reason: 'force-fresh', detail: 'operator Reset Brain (dashboard)' });
+    const _viaTxt = _forceFreshVia || 'unknown writer (flag carried no via field)';
+    console.log(`[Brain] ⚠ FORCE-FRESH requested (${_viaTxt}) — wiping all trained state for a clean fresh start (identity-core Tier 3 anchors preserved).`);
+    _writeBootReason({ mode: 'wipe', reason: 'force-fresh', detail: _viaTxt });
     // fall through to the wipe below
   } else {
     // #38 — resume is requested when the operator ran Savestart (DREAM_KEEP_STATE=1)
