@@ -131141,8 +131141,39 @@ async function bootUnity(apiKey, perms) {
     if (!url) return;
     showSpeechBubble("Image generating...", 3e3);
     if (chatPanel) {
-      const imgHtml = `<a href="${url}" target="_blank"><img src="${url}" style="max-width:280px;border-radius:8px;border:1px solid #333;display:block;margin:4px 0;" onerror="this.style.display='none';this.parentElement.parentElement.querySelector('.img-fail')?.style.setProperty('display','block')"></a><div class="img-fail" style="display:none;color:#777;font-size:11px;">(image generation failed)</div>`;
+      const imgId = "img-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const imgHtml = `<a href="${url}" target="_blank"><img id="${imgId}" src="${url}" style="max-width:280px;border-radius:8px;border:1px solid #333;display:block;margin:4px 0;"></a><div class="img-fail" style="display:none;color:#777;font-size:11px;">(image generation failed)</div><div class="img-retry" style="display:none;color:#777;font-size:11px;">(image queued \u2014 retrying\u2026)</div>`;
       chatPanel.addMessage("assistant", imgHtml, false);
+      const el = document.getElementById(imgId);
+      if (el) {
+        const delays = [4e3, 8e3, 16e3, 24e3];
+        let attempt = 0;
+        el.onerror = () => {
+          const wrap = el.parentElement && el.parentElement.parentElement;
+          const failEl = wrap && wrap.querySelector(".img-fail");
+          const retryEl = wrap && wrap.querySelector(".img-retry");
+          if (attempt < delays.length) {
+            el.style.display = "none";
+            if (retryEl) retryEl.style.display = "block";
+            const wait = delays[attempt++];
+            setTimeout(() => {
+              el.style.display = "block";
+              el.src = "";
+              el.src = url;
+            }, wait);
+          } else {
+            el.style.display = "none";
+            if (retryEl) retryEl.style.display = "none";
+            if (failEl) failEl.style.display = "block";
+          }
+        };
+        el.onload = () => {
+          const wrap = el.parentElement && el.parentElement.parentElement;
+          const retryEl = wrap && wrap.querySelector(".img-retry");
+          if (retryEl) retryEl.style.display = "none";
+          el.style.display = "block";
+        };
+      }
     }
   };
   brain.on("image", brain.__appImageHandler);
