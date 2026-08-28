@@ -8874,6 +8874,19 @@ const httpServer = http.createServer((req, res) => {
       const phasesBefore = Array.isArray(cortex.passedPhases) ? cortex.passedPhases.length : 0;
       const cursorBefore = (cortex._phaseRepCursor && typeof cortex._phaseRepCursor === 'object')
         ? Object.keys(cortex._phaseRepCursor).length : 0;
+      // FRESHFLAG (2026-08-27) — LAST PRESS WINS. Savererun's whole contract is
+      // "weights KEPT"; a stale .force-fresh from an earlier fresh-walk press
+      // whose restart never happened would wipe them at the reboot this handler
+      // is about to trigger. Clear it, loudly. (/restart deliberately does NOT
+      // get this clear — it is the no-sudo restart mechanism the box's fresh
+      // path itself rides, so a pending flag through /restart is intended.)
+      try {
+        const _staleFlag = path.join(__dirname, '.force-fresh');
+        if (fs.existsSync(_staleFlag)) {
+          fs.unlinkSync(_staleFlag);
+          console.warn('[Brain] /savererun — cleared a STALE .force-fresh flag from an earlier fresh-walk press. Savererun keeps weights; the flag would have wiped them at the reboot below.');
+        }
+      } catch (err) { console.warn('[Brain] /savererun — could not clear stale .force-fresh:', err && err.message); }
       // (2) Reset the walk pointers — weights untouched.
       cortex.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K', life: 'pre-K' };
       cortex.passedCells = [];
@@ -8974,10 +8987,39 @@ const httpServer = http.createServer((req, res) => {
     global._brainShutdownRequested = true;
     global._brainShutdownRequestedAt = Date.now();   // WL.4 — stamp so a failed update can be detected stale + cleared
     if (keepState) {
+      // FRESHFLAG (2026-08-27) — LAST PRESS WINS. If a previous Update & Fresh
+      // Walk armed .force-fresh but its restart never happened (the exact local
+      // failure mode below), this SAVESTART press must not be ambushed by the
+      // stale flag into a surprise wipe. Clear it, loudly.
+      try {
+        const _staleFlag = path.join(__dirname, '.force-fresh');
+        if (fs.existsSync(_staleFlag)) {
+          fs.unlinkSync(_staleFlag);
+          console.warn('[Brain] /update?keep=1 — cleared a STALE .force-fresh flag from an earlier fresh-walk press whose restart never happened. This savestart press wins; weights will be KEPT.');
+        }
+      } catch (err) { console.warn('[Brain] /update?keep=1 — could not clear stale .force-fresh:', err && err.message); }
       console.log(`[Brain] HTTP /update?keep=1 — UPDATE + SAVESTART requested (dashboard). Spawning ${updateScript} detached with UAL_KEEP_STATE=1: overlay latest code → SKIP .force-fresh → systemctl restart (resumes saved weights via the unit's DREAM_KEEP_STATE=1).`);
       res.end(JSON.stringify({ status: 'update armed — pulling latest code, RESUMING saved weights (savestart), restarting (~1-2 min)', mode: 'savestart', script: updateScript }));
     } else {
-      console.log(`[Brain] HTTP /update — UPDATE + FRESH WALK requested (dashboard). Spawning ${updateScript} detached: overlay latest code → write .force-fresh → systemctl restart.`);
+      // FRESHFLAG (2026-08-27) — write .force-fresh HERE, in the handler, into
+      // the REAL server dir. The self-update script also writes it, but only
+      // into $UAL_BACKEND_DIR (default /opt/unity-brain — a BOX path): on a
+      // local Windows/dev brain that lands in a phantom directory, the
+      // script's systemctl/sudo restarts fail, its loopback /restart fallback
+      // is swallowed by the _brainShutdownRequested interlock it itself set —
+      // and the operator's eventual manual restart then RESUMES via the
+      // clean-shutdown marker. Net effect: the Fresh Walk button kept booting
+      // the past walk's passed phases. Writing the flag here makes the wipe
+      // independent of platform AND of which restart path eventually runs —
+      // .force-fresh beats the resume marker at boot by design. The script's
+      // own write on the box remains as a harmless second write.
+      try {
+        fs.writeFileSync(path.join(__dirname, '.force-fresh'), JSON.stringify({ requestedAt: Date.now(), via: 'dashboard /update (fresh walk)' }, null, 2));
+        // Mirror /reset: drop any resume marker now so the intent on disk is
+        // unambiguous even before the exit handlers run.
+        try { if (fs.existsSync(RESUME_MARKER_PATH)) fs.unlinkSync(RESUME_MARKER_PATH); } catch { /* best-effort */ }
+      } catch (err) { console.warn('[Brain] /update — could not write .force-fresh in the handler (falling back to the script\'s own write):', err && err.message); }
+      console.log(`[Brain] HTTP /update — UPDATE + FRESH WALK requested (dashboard). .force-fresh ARMED in the server dir (handler-side; survives any restart path). Spawning ${updateScript} detached: overlay latest code → write .force-fresh (box path) → systemctl restart.`);
       res.end(JSON.stringify({ status: 'update armed — pulling latest code, clearing weights, restarting into a fresh walk (~1-2 min)', mode: 'fresh', script: updateScript }));
     }
     try {
