@@ -40218,3 +40218,47 @@ Donor **v0.3.32** tagged and shipped, all four KI-22 surfaces verified live. ⭐
 ⚠ **There was no excuse available:** the target was a **single line**, so a single-line `Edit` anchor — the exact tool the CRLF guidance already prescribes for this file — would have done it. I reached for a script out of habit on a large file, which is precisely the habit the rule exists to break.
 
 **The edit itself is correct and verified** (row present exactly once, no stray file written, nothing else in the tree changed by it), and **no script file was created on disk** — it ran from stdin. **Recorded rather than quietly moved past, because a violation that only gets mentioned when someone catches it is worse than the violation.** Every other edit in this batch used `Edit`/`Write`.
+
+---
+
+## 2026-08-27 - PTXPIN: the CUDA half of mean_voltage ships, and the fork it was stuck on dissolves under measurement - feature/cuda-voltage-mean
+
+### Gee ask (verbatim per LAW #0)
+
+> *"go ahead and review all of that make the best decision for what Unity needs while following the laws and decide and build it"*
+
+The decision handed over was a three-way fork: install an old CUDA toolkit, raise the donor minimum arch, or ship a multi-target PTX. **The review found the fork's premise wrong twice, and the right move was none of the three.**
+
+### 1. ⛔ Both facts under the fork were false
+
+- **"The PTX targets `compute_60`"** — the checked-in header reads **`.target sm_75` / `.version 8.0`**, built by CUDA **12.0.140** (`CL-32267302`). The `compute_60` claim lived in a stale `cuda.rs` comment and propagated from there into the 0.3.32 release note, the board row, and the fork itself.
+- **"The kernel must be written"** — `voltage_mean` was already in `cuda_kernels.cu` (the 0.3.32 staging) and the full launch path already existed in `cuda.rs`, `Option`-guarded. **The only missing artifact was the PTX regeneration.**
+
+⭐ **The real constraint was never the arch — it was the PTX ISA version, and the pin is a shipped fix:** v0.3.21 is literally *"kernels.ptx rebuilt at PTX ISA 8.0; the CUDA path comes back on r570 hosts."* A CUDA-13 regeneration emits ISA 9.x (r580+ drivers only), and a module that fails to JIT fails **whole** — every kernel, kicking the donor to wgpu, which on a headless pod with no Vulkan can mean **no compute at all**. Regenerating on the newer toolkit would have silently un-fixed v0.3.21 while adding one telemetry kernel.
+
+### 2. ⭐ The decision: match the toolchain, don't upgrade it
+
+Docker was already on the machine, so the regeneration ran in a `nvidia/cuda:12.0.1-devel-ubuntu22.04` container — which carries the **exact compiler build that made the original PTX** (12.0.140, same `CL-32267302` build id; compiling needs no GPU):
+
+```
+nvcc -ptx -arch=sm_75 -o kernels.ptx cuda_kernels.cu
+```
+
+**No toolkit install on the machine, no arch raise, no multi-target complexity, zero compatibility change.** Same `sm_75` floor, same ISA 8.0, same r525+ driver envelope.
+
+### 3. ⭐ Verification — strong, and honest about the one thing it is not
+
+- **Identity diff:** with basic-block labels normalized (`$L__BB<n>_` renumbers when a function is inserted — the first raw diff showed 68 changed hunks that were ALL label shifts), the **eight pre-existing kernels are byte-identical** to the PTX that has served the A40 in production. The new file is the proven file plus one function.
+- **Assemble-proof at three real targets:** `ptxas` performs the same PTX→SASS compilation the driver JIT does. Clean at `sm_75` (floor), `sm_86` (the A40), `sm_89` (Ada) on the 12.0 stack, and `sm_89` on the 13.0 stack — old and new drivers covered from both sides.
+- **Launch-wiring audit:** `.cu` `(n, chunk, state, partials)` against `cuda.rs`'s arg order; `cfg(256)` = one block × 256 threads for 256 slots; every slot written including the out-of-range ones (stale memory would read as signal).
+- ⚠ **NOT run on a GPU before tagging, stated in the release note** — the only local NVIDIA card is the display GPU, which compute stays off per standing rule. The live verdict is loud either way: `meanVoltageSource` flips from `unreported-by-this-donor` to a real value when the pod updates, and keeps saying why if it does not.
+
+### 4. Shipped
+
+`donor-app/src/kernels.ptx` (8 → 9 entries), two stale `compute_60` comments in `cuda.rs` replaced with the regeneration recipe + the ISA-pin reasoning **written at the constant where the next person will look**, `Cargo.toml` 0.3.32 → 0.3.33, `RELEASE-0.3.33.md`, and the pod-recreate expectation in `deploy/runpod-donor-create.md` **flipped with a superseded banner** (the old text kept — it was true when written): a pod recreated at 0.3.33+ REPORTS `mean_voltage`, and a `null` there is now a real finding rather than the expected shape.
+
+⚠ **Tagging does not touch the running A40** — it keeps its 0.3.32 binary until deliberately updated (donor drop + full 17-matrix re-upload; ride the next scheduled pod restart rather than spend a reconnect on telemetry alone). ⚠ **The HTML download pins are CI's** — `donor-release.yml` bumps `compute.html` + `legend.html` and rsyncs the frontend itself on tag; hand-editing them would collide with the robot. **KI-37 applies after the release lands:** the CI link-bump commit reaches Forgejo `main` only, so fetch → confirm → merge → push both → back-merge, never force.
+
+### ⭐ The rule this batch earned
+
+**A fork handed to you is a claim like any other — measure its premises before choosing between its branches.** Both premises here failed on a one-command read (`head` of the PTX; `grep` of the .cu), and the best answer was outside the offered options. Same class as the README near-miss: the artifact's own header was one look away the whole time.

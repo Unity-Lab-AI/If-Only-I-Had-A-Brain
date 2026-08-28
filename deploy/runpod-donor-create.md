@@ -17,6 +17,10 @@ verified-scope: |
   src/kernels.ptx is regenerated, and a RunPod pod is a CUDA donor, so
   meanVoltage will still read null there. That is the instrument being honest,
   and it is exactly the shape that gets mis-read as "the fix didn't work".
+  UPDATED 2026-08-27 (donor-v0.3.33): kernels.ptx regenerated (same CUDA
+  12.0.140 build, same sm_75/ISA-8.0 envelope) — the expectation FLIPS; a pod
+  recreated at 0.3.33+ reports mean_voltage, and a null there is now a real
+  finding. Cargo.toml is at 0.3.33.
   NOT CHECKED — do not read this page as authority on:
     - the LIVE pod's actual args. KI-35 records that they cannot be read back
       as mutable and that the pod runs the pre-fix launcher; nothing here
@@ -63,6 +67,8 @@ point of this file.**
 > ⛔ **THE EXPECTATION TO SET, because it will otherwise look like a regression.** `donor-v0.3.32` (GOTCHA.3b) makes `mean_voltage` report — **on the wgpu backend only.** The CUDA half is written but **inert**: the CUDA kernels load from a precompiled `src/kernels.ptx`, and `voltage_mean` is not in it, so the load is deliberately optional and returns "not reported".
 >
 > ⚠ **A RunPod pod is a CUDA donor.** So after a recreate on `releases/latest`, `clusters.<name>.meanVoltage` **will still read `null`** for the pod, and `meanVoltageSource` will read `unreported-by-this-donor`. ⭐ **That is the instrument being honest, not the fix failing** — and it is exactly the shape that gets mis-diagnosed as "GOTCHA.3b didn't work". **To actually enable it on the pod, `kernels.ptx` must be regenerated with the `voltage_mean` entry** (see `donor-app/RELEASE-0.3.32.md` for why that was not done in the same pass: the PTX targets `compute_60` and the available nvcc is CUDA 13.0, which dropped that arch).
+>
+> ✅ **SUPERSEDED BY `donor-v0.3.33` (2026-08-27) — the expectation above FLIPS.** The PTX was regenerated with the toolchain **matched rather than upgraded** — the same CUDA 12.0.140 compiler build in a container, same `sm_75` / ISA 8.0 envelope, eight pre-existing kernels byte-identical under label normalization — so `voltage_mean` is now in the shipped PTX and the compatibility floor moved nothing. ⭐ **A pod recreated on `releases/latest` at 0.3.33+ REPORTS `mean_voltage`.** If it still reads `unreported-by-this-donor` after a 0.3.33 recreate, **that is now a real finding, not the expected shape.** ⚠ The 0.3.32 note's `compute_60` claim was wrong against the PTX's own header (`.target sm_75`) — the real constraint was the PTX **ISA version** (the v0.3.21 r570-hosts fix), which is why the regeneration pinned the toolchain. Full story: `donor-app/RELEASE-0.3.33.md`.
 
 ---
 
