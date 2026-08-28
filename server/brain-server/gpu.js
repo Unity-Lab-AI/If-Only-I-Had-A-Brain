@@ -201,7 +201,7 @@ const SERVER_GPU_MIXIN = {
    *                emotionalGate, driveBaseline, errorCorrection, reward}>} clusterParams
    * @returns {Promise<{perCluster: Object} | null>}
    */
-  async _gpuBatch(substeps, clusterParams) {
+  async _gpuBatch(substeps, clusterParams, opts = {}) {
     // ── SILENT-STALL WATCHDOG (2026-08-14) ──
     // On 2026-08-14 the brain stopped computing for MINUTES and nothing
     // said a word: `gpuHits` frozen at 147, `gpuMisses` 0 (so no timeout
@@ -498,6 +498,22 @@ const SERVER_GPU_MIXIN = {
       setTimeout(() => {
         if (this._gpuBatchPending && this._gpuBatchPending.batchId === batchId) {
           this._gpuBatchPending = null;
+          // PODKICK (2026-08-28) — walk-heartbeat probes must NEVER feed the
+          // zombie kick. On the live box every heartbeat timed out (walkTick
+          // 6 sent / 0 ok), each one incremented the consecutive-timeout
+          // counter, and at 3 the kick TERMINATED the pod's socket — the
+          // donor saw "Connection reset without closing handshake" every
+          // ~11 minutes, and each kick forced a full matrix re-upload that
+          // the NEXT heartbeats then queued behind and timed out too: a
+          // self-sustaining drop loop, seeded by any one transient drop.
+          // A heartbeat is a 2.9 Gn-step probe with its own 4×→8× backoff
+          // and the walkTick/stall instruments — losing one is information,
+          // not an emergency. The kick stays armed for REAL batches.
+          if (opts.noKick) {
+            console.warn(`[Brain] walk heartbeat batch ${batchId} timed out after ${TIMEOUT_MS / 1000}s — probe dropped (no zombie-kick credit; the donor keeps its socket). walkTick counts it.`);
+            resolve(null);
+            return;
+          }
           // Consecutive-timeout counter — diagnostic. If the GPU is
           // really hung we'll see this number climb while successful
           // batches stay at 0. Reset by the compute_batch_result

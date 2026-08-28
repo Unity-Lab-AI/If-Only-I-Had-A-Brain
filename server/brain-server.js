@@ -4963,12 +4963,20 @@ class ServerBrain {
     const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
       ? Math.max(0, Number(_hbEnv) || 0) : 15000;
     if (!(_hbGap > 0) || this._gpuDeviceLost) return;
+    // PODKICK (2026-08-28) — never probe through a resync/upload window: after
+    // every reconnect the donor's priority lane carries minutes of matrix
+    // chunks, a probe behind them can only time out, and on the live box that
+    // timeout chain fed the zombie kick and dropped the pod every ~11 min.
+    if (this._cortexUploadInFlight) return;
     const _nowHb = Date.now();
-    const _backoff = this._walkTickMissedAt && (_nowHb - this._walkTickMissedAt) < _hbGap * 4;
+    const _backoff = this._walkTickMissedAt && (_nowHb - this._walkTickMissedAt) < _hbGap * 8;
     if (_backoff || (this._walkTickAt && (_nowHb - this._walkTickAt) < _hbGap)) return;
     this._walkTickAt = _nowHb;
     const _hbParams = clusterParams.filter((cp) => cp.name !== 'cortex');
-    const _hbRes = await this._gpuBatch(SUBSTEPS, _hbParams);
+    // noKick — a heartbeat timeout is information for walkTick/the stall
+    // alarm, never zombie-kick credit (PODKICK: the kick terminating the pod
+    // on probe timeouts was the drop loop itself).
+    const _hbRes = await this._gpuBatch(SUBSTEPS, _hbParams, { noKick: true });
     const _st = this._walkTickStats || (this._walkTickStats = { sent: 0, ok: 0, lastOkAt: null, lastMissAt: null });
     _st.sent++;
     if (_hbRes && _hbRes.perCluster) {
@@ -4992,7 +5000,7 @@ class ServerBrain {
     } else {
       _st.lastMissAt = Date.now();
       this._walkTickMissedAt = Date.now();
-      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${SUBSTEPS} substeps) — backing off ${(_hbGap * 4 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
+      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${SUBSTEPS} substeps) — backing off ${(_hbGap * 8 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
     }
   }
 
