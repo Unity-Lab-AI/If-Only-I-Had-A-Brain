@@ -314,6 +314,26 @@ impl CudaEngine {
         self.clusters.contains_key(name)
     }
 
+    /// RHYTHM3S.2 (v0.3.34) — overwrite this cluster's `[start,end,gate,pad]`
+    /// table with the host-built one (Ψ hemisphere gate × attention gains).
+    /// Replaces the device slice rather than copying into it: memcpy_stod is
+    /// the one upload primitive this file already proves everywhere, the table
+    /// is ~256 bytes, and `step()` reads `c.region_gates` fresh per launch so
+    /// the swap is safe. Entry count follows the packed table (the kernel
+    /// scans `num_regions` entries carrying their own start/end).
+    pub fn update_region_gates(&mut self, name: &str, packed: &[f32]) {
+        let entries = packed.len() / 4;
+        if entries == 0 { return; }
+        let Some(c) = self.clusters.get_mut(name) else { return };
+        match self.stream.memcpy_stod(&packed[..entries * 4]) {
+            Ok(buf) => {
+                c.region_gates = buf;
+                c.num_regions = entries as u32;
+            }
+            Err(e) => eprintln!("[cuda] update_region_gates '{name}' failed (gates keep previous values): {e}"),
+        }
+    }
+
     pub fn step(&self, name: &str, effective_drive: f32, noise_amp: f32, seed: u32) -> Result<u32, String> {
         let c = self.clusters.get(name).ok_or_else(|| format!("cluster '{name}' not initialized"))?;
         let n = c.size;

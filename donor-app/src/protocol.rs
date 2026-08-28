@@ -252,6 +252,12 @@ pub struct ClusterParams {
     pub error_correction: f32,
     #[serde(default)]
     pub reward: f32,
+    /// RHYTHM3S.2 (v0.3.34) — per-region attention gains, multiplied into the
+    /// Ψ hemisphere gate when the per-batch gate table is rebuilt. Absent from
+    /// older servers (serde default = empty map), ignored by older donors
+    /// (serde skips unknown JSON fields) — compatible in both directions.
+    #[serde(rename = "regionGains", default)]
+    pub region_gains: HashMap<String, f32>,
 }
 
 /// Batched multi-cluster step request.

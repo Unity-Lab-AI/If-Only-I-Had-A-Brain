@@ -893,7 +893,7 @@ export class GPUCompute {
    * @param {string} clusterName
    * @param {number} psi — current consciousness value
    */
-  updateRegionGates(clusterName, psi) {
+  updateRegionGates(clusterName, psi, regionGains) {
     const bufs = this._buffers[clusterName];
     if (!bufs?.regionGates) return;
     if (!bufs.regions) {
@@ -904,11 +904,17 @@ export class GPUCompute {
     const entries = Object.entries(bufs.regions).slice(0, MAX_REGIONS);
     const packed = new Float32Array(MAX_REGIONS * 4); // zero-init
     let i = 0;
-    for (const [, region] of entries) {
+    for (const [regionName, region] of entries) {
       const base = i * 4;
       packed[base]     = region.start;
       packed[base + 1] = region.end;
-      packed[base + 2] = GPUCompute.hemisphereGate(region.side, psi);
+      // RHYTHM3S.2 (2026-08-27) — per-region attention gain multiplies the Ψ
+      // hemisphere gate. The gains ride compute_batch (absent from older
+      // servers → 1.0), server-clamped to [0.5, 2.0] like the CPU step's own
+      // attention lookup; re-clamped here so a malformed value cannot saturate.
+      const g = (regionGains && typeof regionGains[regionName] === 'number')
+        ? Math.max(0.5, Math.min(2.0, regionGains[regionName])) : 1.0;
+      packed[base + 2] = GPUCompute.hemisphereGate(region.side, psi) * g;
       packed[base + 3] = 0.0;
       i++;
     }

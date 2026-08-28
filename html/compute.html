@@ -1444,7 +1444,11 @@ async function handleComputeBatch(msg) {
   // consciousness architecture.
   if (typeof psi === 'number' && typeof gpu.updateRegionGates === 'function') {
     for (const c of ready) {
-      try { gpu.updateRegionGates(c.name, psi); } catch { /* non-fatal */ }
+      // RHYTHM3S.2 (2026-08-27) — per-region attention gains ride the batch
+      // (c.regionGains, absent from older servers) and multiply into the Ψ
+      // hemisphere gate, so per-region attention finally reaches donor
+      // stepping instead of living only in the CPU step's lookup.
+      try { gpu.updateRegionGates(c.name, psi, c.regionGains); } catch { /* non-fatal */ }
     }
   }
 
