@@ -4950,6 +4950,52 @@ class ServerBrain {
     return true;
   }
 
+  // PSITEACH.2/.3 (2026-08-28) — the walk heartbeat. Steps ONLY the non-cortex
+  // clusters (teach writes spike patterns into `cortex/<region>` buffers that
+  // bound Hebbian ops read — stepping cortex mid-sequence would corrupt
+  // teaching; no teach op binds the other seven clusters' buffers). Rides the
+  // conservative SUBSTEPS floor, paced by DREAM_WALK_TICK_MS (15s default,
+  // 0 disables), backs off 4× after a miss. Called from BOTH walk-time tick
+  // paths: the probe-gate hold and the gate-clear _curriculumInProgress
+  // branch — one cadence, one stats object (`state.walkTick`).
+  async _walkHeartbeat(clusterParams, allClusters) {
+    const _hbEnv = process.env.DREAM_WALK_TICK_MS;
+    const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
+      ? Math.max(0, Number(_hbEnv) || 0) : 15000;
+    if (!(_hbGap > 0) || this._gpuDeviceLost) return;
+    const _nowHb = Date.now();
+    const _backoff = this._walkTickMissedAt && (_nowHb - this._walkTickMissedAt) < _hbGap * 4;
+    if (_backoff || (this._walkTickAt && (_nowHb - this._walkTickAt) < _hbGap)) return;
+    this._walkTickAt = _nowHb;
+    const _hbParams = clusterParams.filter((cp) => cp.name !== 'cortex');
+    const _hbRes = await this._gpuBatch(SUBSTEPS, _hbParams);
+    const _st = this._walkTickStats || (this._walkTickStats = { sent: 0, ok: 0, lastOkAt: null, lastMissAt: null });
+    _st.sent++;
+    if (_hbRes && _hbRes.perCluster) {
+      _st.ok++;
+      _st.lastOkAt = Date.now();
+      this._walkTickMissedAt = null;
+      this.totalSpikes = 0;
+      for (const name of allClusters) {
+        const entry = _hbRes.perCluster[name];
+        if (entry && typeof entry.lastSpikeCount === 'number') {
+          this.clusters[name].spikeCount = entry.lastSpikeCount;
+          const avgHb = (entry.spikeCountTotal || 0) / SUBSTEPS;
+          this.clusters[name].firingRate = this.clusters[name].firingRate * 0.95 + avgHb * 0.05;
+          if (typeof entry.meanVoltage === 'number') {
+            const prevMv = this.clusters[name].meanVoltage ?? entry.meanVoltage;
+            this.clusters[name].meanVoltage = prevMv * 0.8 + entry.meanVoltage * 0.2;
+          }
+        }
+        this.totalSpikes += this.clusters[name].spikeCount || 0;
+      }
+    } else {
+      _st.lastMissAt = Date.now();
+      this._walkTickMissedAt = Date.now();
+      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${SUBSTEPS} substeps) — backing off ${(_hbGap * 4 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
+    }
+  }
+
   _updateDerivedState() {
     // Arousal — Session 114.19eq fix. Prior formula
     // `p.arousalBaseline * 0.8 + Math.min(1, amygRate * 5) * 0.2`
@@ -6328,45 +6374,9 @@ class ServerBrain {
               // this one), backs off 4× after a miss so a struggling donor is
               // not pelted. DREAM_WALK_TICK_MS tunes the cadence; 0 disables
               // and restores the exact prior hold-everything behavior.
-              {
-                const _hbEnv = process.env.DREAM_WALK_TICK_MS;
-                const _hbGap = (_hbEnv !== undefined && _hbEnv !== '')
-                  ? Math.max(0, Number(_hbEnv) || 0) : 15000;
-                if (_hbGap > 0 && !this._gpuDeviceLost) {
-                  const _nowHb = Date.now();
-                  const _backoff = this._walkTickMissedAt && (_nowHb - this._walkTickMissedAt) < _hbGap * 4;
-                  if (!_backoff && (!this._walkTickAt || (_nowHb - this._walkTickAt) >= _hbGap)) {
-                    this._walkTickAt = _nowHb;
-                    const _hbParams = clusterParams.filter((cp) => cp.name !== 'cortex');
-                    const _hbRes = await this._gpuBatch(SUBSTEPS, _hbParams);
-                    const _st = this._walkTickStats || (this._walkTickStats = { sent: 0, ok: 0, lastOkAt: null, lastMissAt: null });
-                    _st.sent++;
-                    if (_hbRes && _hbRes.perCluster) {
-                      _st.ok++;
-                      _st.lastOkAt = Date.now();
-                      this._walkTickMissedAt = null;
-                      this.totalSpikes = 0;
-                      for (const name of allClusters) {
-                        const entry = _hbRes.perCluster[name];
-                        if (entry && typeof entry.lastSpikeCount === 'number') {
-                          this.clusters[name].spikeCount = entry.lastSpikeCount;
-                          const avgHb = (entry.spikeCountTotal || 0) / SUBSTEPS;
-                          this.clusters[name].firingRate = this.clusters[name].firingRate * 0.95 + avgHb * 0.05;
-                          if (typeof entry.meanVoltage === 'number') {
-                            const prevMv = this.clusters[name].meanVoltage ?? entry.meanVoltage;
-                            this.clusters[name].meanVoltage = prevMv * 0.8 + entry.meanVoltage * 0.2;
-                          }
-                        }
-                        this.totalSpikes += this.clusters[name].spikeCount || 0;
-                      }
-                    } else {
-                      _st.lastMissAt = Date.now();
-                      this._walkTickMissedAt = Date.now();
-                      console.warn(`[Brain] walk heartbeat step MISSED (non-cortex clusters, ${SUBSTEPS} substeps) — backing off ${(_hbGap * 4 / 1000).toFixed(0)}s. If these persist the donor genuinely cannot service its priority lane and the zombie-kick recovery applies.`);
-                    }
-                  }
-                }
-              }
+              // PSITEACH.3 — logic lives in _walkHeartbeat, shared with the
+              // gate-clear walk branch below.
+              await this._walkHeartbeat(clusterParams, allClusters);
               this._updateDerivedState();
               if (this.running) setTimeout(tick, Math.max(200, BRAIN_TICK_MS * 4));
               return;
@@ -6394,6 +6404,28 @@ class ServerBrain {
               }
               this._probeGateStartedAt = null;
               this._probeGateCellKey = null;
+            }
+
+            // PSITEACH.3 (2026-08-28, Gee: 0 neurons firing) — DURING THE WALK,
+            // THE STEP LANE IS ALWAYS THE HEARTBEAT, gate held or not. The gate
+            // clears briefly between cells and inside some teach windows, and in
+            // those moments this tick used to dispatch a FULL 8-cluster batch —
+            // measured live timing out at 180s every attempt on a teach-flooded
+            // donor, which parked the tick in a dead await (no heartbeats, no
+            // derived-state updates, spikes frozen at 0) AND stepped CORTEX
+            // mid-teach, the exact corruption risk the heartbeat exists to
+            // avoid. So while the curriculum is in progress the full dispatch
+            // is skipped entirely: the non-cortex heartbeat carries the spikes
+            // (proved 795ms at full scale on the real donor), cortex's Ψ
+            // contribution rides the measured teach term, and the full
+            // 8-cluster batch returns the moment the walk is not running —
+            // which is when Ψ historically jumped to ~19-21 at donor connect,
+            // a behavior this branch preserves.
+            if (this._curriculumInProgress) {
+              await this._walkHeartbeat(clusterParams, allClusters);
+              this._updateDerivedState();
+              if (this.running) setTimeout(tick, BRAIN_TICK_MS);
+              return;
             }
 
             // SUBSTEPS.1 — per-donor, resolved fresh each tick because the primary
