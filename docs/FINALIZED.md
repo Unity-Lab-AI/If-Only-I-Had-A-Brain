@@ -40288,3 +40288,35 @@ Three lines in `SUBJECTS_RETIRED_AT` — all three retire at **`college4`**, und
 ### Docs updated in the same commit
 
 `docs/CODE-CURRICULUM.md` (both open-gap notes closed with the measured roster), `docs/CURRICULUM-SCOPE-SEQUENCE.md` (retires-after column completed for the college rows + the closing statement).
+
+---
+
+## 2026-08-27 - FINISHBOARD (batch 1): the dead identity-anchor bump resurrected, the attribution instrument built, and a phantom donor-kernel item closed by finding the call that never fires - feature/finish-the-board
+
+### Gee ask (verbatim per LAW #0)
+
+> *"wtf do you not understand about! we are not updateing the brain until the fucking todo is complete!"*
+
+The correction stands: the board gets FINISHED, and nobody stops to ask which item comes first. This batch: `GOTCHA.8` done, `ASSOCBOUND.1` instrument built, `SUBSTEPS.6` counter added, `COMP.1` closed whole. `COMP.1c`/`RHYTHM3S.2` (the physics port) is the sole remaining build and starts immediately after this ships.
+
+### 1. ⭐ `GOTCHA.8` — four dead readers re-pointed, and one was carrying a real feature
+
+**The casualty: `hippocampal-schema.js:1251`** — the Tier-3 identity anchor bump at the OUTPUT layer, built for the "Hey/Medicines/Controls" failure, has silently no-opped on every post-unify brain (empty per-subject list → `continue` on every subject). It now reads **`wordBucketMap` + the umbrella `word_motor` band + `wordBucketCellSizeFor()` — the same trio emission reads**, so the anchor bias lands on the exact buckets `emitWordDirect` scores. **Her name and biographical anchors compete at the output layer again.**
+
+The other three (`_sampleCurrentVocab`, `_sampleCurrentSentence`, the image-prompt enrichment in `chat.js`) all gathered empty pools and lived **permanently** on fallbacks documented as pre-cell-only; all now read the unified `wordBucketWords`. ⚠ **The fifth "reader" was a comment** (`brain-server.js:6750`) — the filing over-counted by one. ⚠ The legacy tally in `getTrainedCapability` is kept deliberately (counts a restored pre-WMB brain honestly).
+
+### 2. `ASSOCBOUND.1` — the instrument that did not exist when ARTHOG.1 needed it
+
+Every `_teachAssociationPairs` call now tallies `calls / pairs / ms` by caller label (`cluster._assocCallers`; ms added at BOTH real exits — clean finish and budget stop), published bounded at `state.curriculum.liveness.assocCallers`. ⛔ **The lever stays unpulled:** the curriculum caller IS the teaching, so bounding it is the `STRUCTURE_DOSE` class and needs a RE-PRICE — priced off the tally's first live read, not off another inference.
+
+### 3. `SUBSTEPS.6` — the counter, and a mis-read caught before it shipped
+
+`batchTiming.samplesInProbeGate` (cumulative per boot) makes the umbrella's answered-by-design verdict a READ on any boot. ⛔ **`dispatchesDuring` was one mis-read from being quoted as this number** — it is a per-batch socket-sharing proxy, established by reading its producer (`gpu.js:468`) before writing a word. Also measured on the way: the box rebooted at `02:13:17Z` (same build `51da0c23`, weights kept, 23/25 phases held) — a Savestart press, noted so nobody diffs across the boot boundary.
+
+### 4. ⭐ `COMP.1` — CLOSED, and the close is a finding, not a build
+
+**(c)'s kernel already shipped** (donor v0.3.28, SPRS 14, verified live). **Its residual half is a phantom:** the hippocampus WM encode does not exist on the server runtime — `this.memorySystem` is constructed ONLY in `js/brain/engine.js:230` (browser brain); **no server-side assignment exists**, so `chat.js:4968`'s guard fails silently and `_fireHippocampalLearning` never runs on the machine with GPUs. Sealed three ways: the hippocampus intra's CPU CSR is freed at scale (the encode is a silent no-op even where reachable), the WM pattern is a **50-float embedding** (the "attractor" was ever only a 50×50 corner-write), and the server's real memory tiers come from the hippocampal-schema store. ⛔ **Building the verb would have been GPU transport for a call that never fires** — the `DORMANT` class, dodged by tracing the caller chain to its root before writing a kernel.
+
+### Verification
+
+`node --check` ×4, ESM `import()` ×2, bundle rebuilt (only the documented legacy tally + its comment still reference the per-subject fields). All server-side changes land on the next press.

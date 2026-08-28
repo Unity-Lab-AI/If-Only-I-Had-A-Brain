@@ -4210,12 +4210,15 @@ const SERVER_CHAT_MIXIN = {
       const cluster = this.cortexCluster;
       const emb = this.sharedEmbeddings;
       if (cluster && emb && typeof emb.getEmbedding === 'function') {
-        // her trained pool — the same gather as _sampleCurrentVocab
-        const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+        // her trained pool — the same gather as _sampleCurrentVocab.
+        // GOTCHA.8 (2026-08-27): read the UNIFIED `wordBucketWords` array. The
+        // per-subject `wordBucketWords_<subj>` fields have had zero writers
+        // since the WMB unify (2026-07-14), so the old loop gathered an empty
+        // pool on every current brain and this whole enrichment silently fell
+        // through to the definition-set fallback below.
         const pool = [];
-        for (const subj of SUBJECTS) {
-          const list = cluster[`wordBucketWords_${subj}`];
-          if (Array.isArray(list)) for (const w of list) if (typeof w === 'string' && w.length > 1) pool.push(w);
+        if (Array.isArray(cluster.wordBucketWords)) {
+          for (const w of cluster.wordBucketWords) if (typeof w === 'string' && w.length > 1) pool.push(w);
         }
         if (pool.length === 0 && cluster._definitionTaughtWords instanceof Set) {
           for (const w of cluster._definitionTaughtWords) if (typeof w === 'string' && w.length > 1) pool.push(w);
@@ -4997,17 +5000,15 @@ const SERVER_CHAT_MIXIN = {
   _sampleCurrentVocab() {
     const cluster = this.cortexCluster;
     if (!cluster) return null;
-    // SYNC: mirror of js/brain/subjects.js `SUBJECTS` — this is a CommonJS
-    // module and subjects.js is ESM, so it can't be require()'d here. Keep
-    // this list identical if the canonical subject roster ever changes.
-    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+    // GOTCHA.8 (2026-08-27) — read the UNIFIED `wordBucketWords` array.
+    // The per-subject `wordBucketWords_<subj>` fields this used to loop have
+    // had zero writers since the WMB unify (2026-07-14), so on every current
+    // brain the showcase pool was empty and this function lived off its
+    // SEED-phase definition fallback below — permanently, not just pre-cell.
     const candidates = [];
-    for (const subj of SUBJECTS) {
-      const list = cluster[`wordBucketWords_${subj}`];
-      if (Array.isArray(list) && list.length > 0) {
-        for (const w of list) {
-          if (typeof w === 'string' && w.length > 0) candidates.push(w);
-        }
+    if (Array.isArray(cluster.wordBucketWords)) {
+      for (const w of cluster.wordBucketWords) {
+        if (typeof w === 'string' && w.length > 0) candidates.push(w);
       }
     }
     if (candidates.length > 0) {
@@ -5067,17 +5068,14 @@ const SERVER_CHAT_MIXIN = {
     // showcase emit can never trigger composeSentence()'s brain ticks (which
     // would re-introduce the event-loop block this change fixes).
     const allowCompose = opts.allowCompose !== false;
-    // SYNC: mirror of js/brain/subjects.js `SUBJECTS` — this is a CommonJS
-    // module and subjects.js is ESM, so it can't be require()'d here. Keep
-    // this list identical if the canonical subject roster ever changes.
-    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+    // GOTCHA.8 (2026-08-27) — read the UNIFIED `wordBucketWords` array (the
+    // per-subject fields have had zero writers since the WMB unify; the old
+    // loop gathered nothing on every current brain, leaving this permanently
+    // on its definition fallback).
     const candidates = [];
-    for (const subj of SUBJECTS) {
-      const list = cluster[`wordBucketWords_${subj}`];
-      if (Array.isArray(list) && list.length > 0) {
-        for (const w of list) {
-          if (typeof w === 'string' && w.length > 0) candidates.push(w);
-        }
+    if (Array.isArray(cluster.wordBucketWords)) {
+      for (const w of cluster.wordBucketWords) {
+        if (typeof w === 'string' && w.length > 0) candidates.push(w);
       }
     }
     // Pre-cell SEED-phase fallback. Mirror of `_sampleCurrentVocab` — see
