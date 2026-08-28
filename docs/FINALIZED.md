@@ -40375,3 +40375,29 @@ The second half of `RHYTHM3S.2`, closing the two gate-side gaps the same measure
 ### RHYTHM3S.2 closes as a whole
 
 Drive: the server fold (batch 2 — actionGate + theta Kuramoto, oscillator maxDiff = 0 over 100k ticks). Gates: this release. **Explicitly NOT built, reasons on the row:** K.5 (inactive in the CPU contract at scale — porting it ADDS physics, a separate decision for the walk's owner) and a CPU↔donor integrator parity harness (LIF vs Rulkov are different equations by design).
+
+---
+
+## 2026-08-27 - FRESHFLAG: the Fresh Walk button delegated its wipe to a box path, and the local brain kept resurrecting the old walk - feature/freshwalk-wipe
+
+### Gee report (verbatim per LAW #0)
+
+> *"local brain is not properly starting a fresh walk when i press update and fresh walk it keeps starting up with the pash walks phases passed on the dashboard"*
+
+### The mechanism, traced end to end before touching anything
+
+`POST /update` (fresh mode) delegated the ENTIRE wipe to `deploy/self-update.sh`, which writes `.force-fresh` to **`$UAL_BACKEND_DIR/server/` — default `/opt/unity-brain`, a box path**. On the local Windows brain that is a phantom directory. The script's restart fallbacks then fail in sequence: `sudo`/`systemctl` absent; the loopback `POST /restart` **swallowed by the very `_brainShutdownRequested` interlock `/update` had just set** (returns `already restarting`, which `curl -fsS` counts as success — the script logs DONE); `pgrep` absent in git-bash, so the PID escalation has nothing to signal.
+
+**Net: no flag where boot looks, no restart from the press.** The operator's eventual manual restart then RESUMES — `stop.bat` → `start.bat` auto-Savestarts via the #38 clean-shutdown marker, and `Savestart.bat` resumes via `DREAM_KEEP_STATE=1`. **The dashboard shows the past walk's phases passed. Exactly as reported.**
+
+### The fix — the chokepoint, not the instance
+
+The `/update` handler (fresh mode) now **writes `.force-fresh` itself, into the real server dir, at press time**, and drops any resume marker. Platform-independent, restart-path-independent: `autoClearStaleState` consumes the flag FIRST and wipes regardless of the marker or `DREAM_KEEP_STATE` — that priority already existed; the flag just never landed where boot looks. The box script's own write remains as a harmless second write.
+
+⭐ **Last press wins, in both directions:** `/update?keep=1` and `/savererun` clear a stale flag loudly — a fresh press whose restart never happened must not ambush a later keep-weights press with a surprise wipe. ⚠ **`/restart` deliberately does NOT clear it** — it is the no-sudo restart mechanism the box's own fresh path rides, so a pending flag through `/restart` is intended. Getting that one wrong would have broken the box's fresh walk while fixing the local one.
+
+⚠ **Recorded semantics:** press Fresh Walk locally, then relaunch with `Savestart.bat` → the boot still wipes. Press intent wins once — the same way `.force-fresh` exists to override the box unit's permanent `DREAM_KEEP_STATE=1`.
+
+### Verification
+
+`node --check` clean; the boot ordering (flag → marker → keep) read from `autoClearStaleState` rather than assumed; no stale `.force-fresh` or resume marker currently on disk locally. Server-side only — the local brain gets it on its next pull; `docs/ADMIN-CONTROLS.md`'s button table updated in the same commit.
