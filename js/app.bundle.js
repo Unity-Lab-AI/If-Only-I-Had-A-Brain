@@ -97460,6 +97460,11 @@ var Curriculum = class _Curriculum {
           emissionTicksPerMin: emitRate,
           sinceLastEmitTickMs: sinceEmit,
           teachProfile,
+          // ASSOCBOUND.1 (2026-08-27) — per-CALLER tally on
+          // _teachAssociationPairs (calls / pairs / ms by teach label), the
+          // attribution ARTHOG.1 had to infer from correlated samples. Top 12
+          // by ms, bounded like teachProfile.
+          assocCallers: cluster && cluster._assocCallers ? Object.entries(cluster._assocCallers).map(([n, p]) => ({ label: n, calls: p.calls | 0, pairs: p.pairs | 0, ms: p.ms | 0 })).sort((a, b) => b.ms - a.ms).slice(0, 12) : null,
           // STAGE PROFILE (2026-08-17) — per-stage wall-ms INSIDE the pair
           // primitives (substrate-wait / cross-projection / intra / scan /
           // anti), so a stuck per-call average is decomposed from the field
@@ -106875,6 +106880,10 @@ var Curriculum = class _Curriculum {
     let reps = opts.reps ?? 24;
     const lr = opts.lr ?? 0.03;
     const label = opts.label || "ASSOC";
+    const _acTally = cluster._assocCallers || (cluster._assocCallers = {});
+    const _acRow = _acTally[label] || (_acTally[label] = { calls: 0, pairs: 0, ms: 0 });
+    _acRow.calls++;
+    _acRow.pairs += pairs.length;
     const _cursorKey = cluster._phaseDeadlineName && label ? `${cluster._phaseDeadlineName}::${label}` : null;
     if (_cursorKey) {
       if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
@@ -106922,6 +106931,7 @@ var Curriculum = class _Curriculum {
           cluster._phaseRepCursor[_cursorKey] = _deferred;
         }
         console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || "?"}' spent its ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded${_cursorKey ? ` \xB7 cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ""}. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
+        _acRow.ms += Date.now() - startMs;
         return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
       }
       cluster._teachIntermediateRep = rep < reps - 1;
@@ -107168,6 +107178,7 @@ var Curriculum = class _Curriculum {
       this._pushBrainEvent?.("teach", "motor", `ASSOC DONE: ${label} \xB7 ${trained}/${antiFires}`, { label, trained, antiFires, wtaApplied, elapsedSec });
     } catch {
     }
+    _acRow.ms += Date.now() - startMs;
     return { trained, skipped };
   }
   /**

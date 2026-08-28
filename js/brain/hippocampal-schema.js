@@ -1224,7 +1224,8 @@ export class Tier3Store {
     if (!this.cluster || typeof this.cluster.injectEmbeddingToRegion !== 'function') return 0;
     if (this.identitySchemas.size === 0) return 0;
     let injected = 0;
-    const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
+    // (the local SUBJECTS list died with the per-subject bucket loop —
+    // GOTCHA.8: the unified word_motor band has no per-subject geometry)
     for (const schema of this.identitySchemas.values()) {
       if (!schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
       try {
@@ -1243,24 +1244,26 @@ export class Tier3Store {
         // and biographical anchors compete at OUTPUT layer, not just
         // input. Strength scaled to half the sem injection so it biases
         // without drowning user-input answer paths.
+        // GOTCHA.8 (2026-08-27) — this bump was DEAD on every post-WMB-unify
+        // brain: it read `wordBucketWords_<subj>` (five orphaned readers, zero
+        // writers since 2026-07-14) and the empty-list `continue` silently
+        // skipped every subject, so the output-layer anchor bias this block
+        // exists to provide never fired. Now it reads the UNIFIED authorities —
+        // `wordBucketMap` (word→index) + the umbrella `word_motor` band +
+        // `wordBucketCellSizeFor()` — the same trio emission reads, so the bump
+        // lands on the exact buckets `emitWordDirect` scores.
         const anchorRaw = String(schema.label || '').split(/[-_\s]+/)[0] || '';
         const anchorWord = anchorRaw.toLowerCase().replace(/[^a-z0-9']/g, '');
         if (anchorWord && this.cluster.regions && this.cluster.lastSpikes) {
           const motorBumpStrength = perSchemaStrength * 0.5;
-          for (const subj of SUBJECTS) {
-            const wordsList = this.cluster[`wordBucketWords_${subj}`];
-            if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-            const bucketIdx = wordsList.indexOf(anchorWord);
-            if (bucketIdx < 0) continue;
-            const subjRegion = this.cluster.regions[`word_motor_${subj}`];
-            if (!subjRegion) continue;
-            const subjStart = subjRegion.start;
-            const subjEnd = subjRegion.end;
-            const subjSize = subjEnd - subjStart;
-            if (subjSize <= 0) continue;
-            const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
-            const bStart = subjStart + bucketIdx * bucketSize;
-            const bEnd = Math.min(subjEnd, bStart + bucketSize);
+          const band = this.cluster.regions.word_motor;
+          const map = this.cluster.wordBucketMap;
+          const bucketIdx = (map && typeof map.get === 'function') ? map.get(anchorWord)
+            : (Array.isArray(this.cluster.wordBucketWords) ? this.cluster.wordBucketWords.indexOf(anchorWord) : -1);
+          if (band && bucketIdx >= 0 && bucketIdx !== undefined) {
+            const cell = this.cluster.wordBucketCellSizeFor();
+            const bStart = band.start + bucketIdx * cell;
+            const bEnd = Math.min(band.end, bStart + cell);
             for (let n = bStart; n < bEnd; n++) {
               this.cluster.lastSpikes[n] = Math.min(255, (this.cluster.lastSpikes[n] || 0) + Math.round(motorBumpStrength * 255));
             }
