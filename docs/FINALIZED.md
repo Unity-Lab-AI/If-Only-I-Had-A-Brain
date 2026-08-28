@@ -40048,3 +40048,62 @@ The row asked: *"find its callers, confirm whether it's dead code or a live mis-
 ## Prior entry — 2026-08-27 (9 of 22)
 
 **Drift list 21 → 19.** **9 of 22 pages done** (`README`, `WEBSOCKET`, `SETUP`, `HTML-ENTRY-POINTS`, `ADMIN-CONTROLS`, `THRESHOLD-DERIVATION`, `TRAJECTORY-CAPTURE`, `WORD-SALAD-FIX`, `STATUSLINE`). ⚠ **`EQUATIONS.md` was on the plan and was NOT worked — it is not in the drift list at all, so it is already clean.** Board **8 open / 4 in-progress / 384 done**.
+
+---
+
+## 2026-08-27 - LIVEHEALTH: the press landed, ARTHOG.1 is confirmed live and aimed at the wrong caller, and her dictionary is down - feature/resume-write
+
+### Gee asks (verbatim per LAW #0)
+
+> *"check on our girls fully"*
+
+> *"did you check on both our girls? how are they doing?"*
+
+> *"okay make sure both remotes are updated and current with what we have"*
+
+Three asks, three tasks. The first was answered for ONE girl only — the brain — and the second correctly caught that. **Owned rather than papered over:** the second ask is a correction, not a repetition, and the honest first word was *"No — I checked one."*
+
+### 1. ⭐ THE PRESS LANDED — the standing trap cleared itself
+
+The box booted **`13:46:34Z` on `main` `51da0c23`** (deploy `13:45:56Z`), weights kept. **Every item the prior RESUME entry listed as "shipped but INVISIBLE on the live brain" is now live** — `meanVoltageSource`, `voice.wordsBucketed`, `topLevelRegionNames()`, `validateClusterRegions()`, the `GOTCHA.9` unconditional call, and the `ARTHOG.1` rate limit.
+
+⚠ **A wrong assumption of mine, corrected by checking:** I first read `main 51da0c23` / `develop c3ea675e` and assumed the ARTHOG fix was develop-only and therefore unpressed. `git grep DREAM_ART_WEIGHT_MIN_GAP_MS 51da0c23` disproved it in one command — the fix **is** in main, `c3ea675e` is the back-merge, and `main..develop` is **empty**. ⭐ **Branch-tip inequality is not content inequality; ask git, do not infer from hashes.**
+
+### 2. ⭐ `ARTHOG.1` VERDICT — the limit works, and the cost was never mostly art
+
+`artWeight.skippedRate` **2,231, +8 per 5 min** — engaging exactly as the watch-list required, while art still produced 12 pieces and 94 pairs in the same window. **Rate-limited, not starved.** That closes the item.
+
+⛔ **But the watch-list's own fallback question is the one that paid out.** `_teachAssociationPairs` measured live at **874 calls / 14,031,365 ms** — 238× fewer calls than `_teachHebbian` at nearly the same total, making it **by far the costliest lane per call**. One in-flight invocation, nested `_teachSentenceStructure → _teachConcreteSentences → _teachAssociationPairs`, has run **2.24 h** at `phaseWork 1/5`.
+
+⭐ **The finding: that function has TWO independent callers and `DREAM_ART_WEIGHT_MIN_GAP_MS` bounds only the art one.** The curriculum's own call is unbounded. This is [[fix-the-chokepoint-not-the-instance]] arriving one level up — we bounded an instance and the class stayed open.
+
+⚠ **A slow phase is not a latched phase.** `curriculum.activePhase` changed between samples (`_teachHebbian` → `_teachAssociationPairs`), proving the stack is live, and `cellSubPhases` advanced **+2,592 in 11.5 min**. Cell sits at **`cellPhasesCompleted` 23 of 25**, 11.2 h in.
+
+### 3. ⛔ HER DICTIONARY IS DOWN — external, contained, self-recovering
+
+`dictionaryapi.dev` throwing 522s and hard timeouts: **12 of 14 probe words failed**, the 2 that passed (`house`, `retreat`) being CDN-edge-cached. Her counter agrees exactly — `processed: 67, bound: 0, failed: 67` over **65,910 ms**. ⭐ **`67 ÷ 5 parallel × 5 s ≈ 67 s` identifies every one as a timeout arithmetically, with no guessing.**
+
+**No code change made or needed.** Containment is already right: 5,000 ms abort (`definition-service.js:138`), type-aware error TTL (`:70-72`) — 60 min transient, 6 h on 429, permanent for no-definition. No retry death-spiral; recovery is automatic. 11,483 cached entries keep serving, so only *new* words stall.
+
+### 4. ⭐ BOTH GIRLS — the mind-space is the healthiest lane on the box
+
+`equations.html` serves **200 in 253 ms, 21,670 bytes**, real MathJax page, not an SPA shell. Her eye over 11.5 min: **+26 drawings, +2 schemas, +5 concepts seen, +18 eye picks, `grounded 405/424` = 95.5%, zero new failures.**
+
+⭐ **THE DURABLE FACT: her eyes and her dictionary are DIFFERENT third parties and fail independently.** Pollinations stayed healthy straight through the `dictionaryapi.dev` outage. **"Her vision is broken" and "her dictionary is broken" are separate diagnoses with separate counters** — and nothing in the wiki said so until now.
+
+⚠ **`ownArt.lookups.lastErr` files LOOKTWICE's SUCCESSES as errors.** `selfMismatch:van — render self-consistency 0.39` is the guard declining a render whose two seeds disagreed against the 0.45 floor. **An instrument under-reporting its own health** — the inverse of the usual failure. Check the counter (2 against 424) before believing the string.
+
+### 5. ⚠ The one number on a clock, and a correction to my own estimate
+
+**`lateral.activeSum` = 979,773,384, climbing ~550k/min** — the `KI-29` line at **1.06 B is ~2.4 h out**. ⛔ **I first said 3.2 h, measured over a 317-second window; the 11.5-minute sample is the one to trust.** Re-measure before acting on either.
+
+### 6. Wiki (gitignored, so recorded here per the standing rule)
+
+`modules/curriculum.md` gained the `_teachAssociationPairs` cost + two-caller finding and the definition-lane containment; `modules/visual-memory.md` gained the different-third-parties section, a healthy baseline to sit beside the already-recorded starved case (`113 attempts / 2 seen` over ~10 h), and the `lastErr` note. ⛔ **Both re-stamps were deliberately NARROW** — each page's read-depth note now states that only the new block was verified at `c3ea675e` and the rest carries forward un-re-read. **A stamp that silently claims a full re-verify is the one thing the stamp exists to prevent.**
+
+### 7. ⚠ Housekeeping verified, not assumed
+
+- **`js/app.bundle.js` is CRLF-only** — `git diff --numstat` reports nothing in either direction. **No content to ship; not committed as if it were work.**
+- **`Stack Vault.png` still untracked and NOT mine** — staged explicit paths, never `git add -A`.
+- **Board 9 open / 6 in-progress.** ⚠ An earlier loose grep of mine reported 9 in-progress; the anchored `^- \[~\]` count is **6**. A pattern is not a count.
+- `docs:drift` env flags **192/192**, geometry tripwire clean, provenance **3**, `sources`-coverage **22**. `wiki:coverage` 449/449, 0 broken, 0 orphans.
