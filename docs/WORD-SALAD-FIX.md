@@ -60,7 +60,19 @@ verified-scope: |
   cached lazily by wordBucketCellSizeFor() and emitWordDirect bails before it
   needs geometry when nothing is bucketed. ⛔ Still not a diagnosis:
   wordsBucketed is the number that settles it and it lands on the next press.
-last-verified: "cdfcf8b5 2026-08-27"
+  ⭐ RESTAMPED 2026-08-29 — four sources moved (curriculum.js SUBJRETIRE/
+  PSITEACH/FIREKNOB, hippocampal-schema.js FINISHBOARD anchor-bump,
+  chat.js ARTHOG.1, state.js PSITEACH/FIREKNOB). Re-checked in CURRENT code:
+  state.js:347 `weightRecruitment = {at, matrices}` HOLDS at exactly :347;
+  voice.wordsBucketed / bucketSubjects still published; the selfFrame block
+  still carries lightUnits / lightCapPerCell / corpusCursor / structureDose.
+  ⚠ The chat.js line numbers in the PRESERVED plan text below have drifted
+  ~+700 lines (e.g. _composeImagePrompt :3496 → :4196, _selfImageAge :3568 →
+  :4282, the isSelf block :3611 → :4329) and the curriculum.js:367 grade-11
+  vocab gate is now :463. The plan text stays as written per this page's own
+  header ("preserved unchanged — a plan with a build log"); use function
+  names, not those line numbers, to find the code.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # WORD SALAD FIX — the layout

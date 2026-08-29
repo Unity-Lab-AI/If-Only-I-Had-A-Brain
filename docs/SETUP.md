@@ -5,6 +5,16 @@
 # contracts, env flags, commands and the two corrected claims were checked
 # against source and against files on disk, but 527 lines were not read
 # line-by-line against all five sources.
+# ⚠ Drift pass 2026-08-29 — three sources moved since the prior stamp, read as
+# diffs: windows/start.bat + linux/start.sh (CTLWINDOW — brain-ctl.js now
+# launches in its own titled minimized window / nohup with an APPEND-mode log;
+# every launcher claim below still holds, a sentence was added so the window
+# enumeration stays exhaustive) and server/brain-server.js (+455 lines: walk
+# heartbeat + firing controller + FRESHFLAG + TEACHCREDIT drain — no launcher
+# contract, wipe list, or endpoint in the table changed, but the insertions
+# shifted the cited line numbers, updated in the body: 3363→3380-3381,
+# 3381→3394, 9051→9384; the :3363/:3381 in verified-scope stay as the record
+# of where those lines sat when that pass ran).
 status: draft
 verified-scope: >
   Launcher contracts (start vs Savestart, DREAM_KEEP_STATE / DREAM_FORCE_CLEAR /
@@ -21,7 +31,7 @@ sources:
   - package.json
   - server/package.json
   - server/brain-server.js
-last-verified: "c0828113 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # Setup Guide
@@ -185,7 +195,7 @@ For headless or remote deployments, set `DREAM_NO_AUTO_GPU=1` to skip the auto-l
 
 These convenience batch files drive the **local-dev path only** — they boot the brain on your own machine and GPU. The deployed server does not use them; it runs as a systemd service (see [Deployed server brain](#deployed-server-brain-primary-path)). Windows users get three convenience batch files at the repo root.
 
-**`start.bat`** handles first-run `npm install`, runs the `esbuild` bundle build, downloads the GloVe corpus if it's missing, redirects stdout/stderr to `server/server.log`, opens the landing page and the dashboard in separate browser tabs, and spawns a separate "Unity Brain Log Tail" PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible. It does not open `compute.html` itself — the server auto-launches that tab once the HTTP listener is up.
+**`start.bat`** handles first-run `npm install`, runs the `esbuild` bundle build, downloads the GloVe corpus if it's missing, redirects stdout/stderr to `server/server.log`, opens the landing page and the dashboard in separate browser tabs, and spawns a separate "Unity Brain Log Tail" PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible. It does not open `compute.html` itself — the server auto-launches that tab once the HTTP listener is up. Since 2026-08-28 (CTLWINDOW) it also spawns the control-plane process (`node brain-ctl.js`) in its **own titled minimized window — "unity-brain-ctl (leave running)"** — instead of parenting it to the launcher console (closing an old launcher window used to silently kill the control plane and dark port 7526), with `brain-ctl.log` opened in APPEND mode so a did-not-bind relaunch can't truncate the live instance's log; `start.sh` mirrors this with `nohup` + `>>`.
 
 **`Savestart.bat`** is identical to `start.bat` except it sets `DREAM_KEEP_STATE=1` so the server's `autoClearStaleState()` skips its wipe block regardless of whether the curriculum code hash changed. Use this when you want to resume from a prior session's saved weights, passed cells, and grades instead of starting fresh.
 
@@ -398,9 +408,9 @@ Single switch in the dashboard's milestone panel — **`☐ Auto-advance to next
 | **OFF** (default) | Demands per-subject `brain._gradeSignoffs[subject/grade]` entries. Missing → 403. | Pauses after every full grade pass, waits for dashboard `▶ START NEXT GRADE` click. |
 | **ON** | Skips the signoff check entirely. | Skips the pause entirely. Heartbeat logs `⏩ AUTO-ADVANCE`. |
 
-The flag lives at `cortexCluster._autoAdvanceGrade` (boolean). ⛔ **DEFAULT IS ON, and this doc said "default false" until 2026-08-27 — the opposite of the truth.** `brain-server.js:3363-3364` sets it to `true` whenever it is not already a boolean, and the comment there states the reason plainly: the standing intent is an unattended K→PhD walk, because *"the per-grade LAW-6 Part-2 pause defeated the overnight walk."* The single switch governs **both** the operator-signoff bypass at `/grade-advance` (`:9051`) and the curriculum runner's auto-fire-next-grade behaviour.
+The flag lives at `cortexCluster._autoAdvanceGrade` (boolean). ⛔ **DEFAULT IS ON, and this doc said "default false" until 2026-08-27 — the opposite of the truth.** `brain-server.js:3380-3381` (was `:3363-3364` before the 2026-08-28 server insertions shifted it) sets it to `true` whenever it is not already a boolean, and the comment there states the reason plainly: the standing intent is an unattended K→PhD walk, because *"the per-grade LAW-6 Part-2 pause defeated the overnight walk."* The single switch governs **both** the operator-signoff bypass at `/grade-advance` (`:9384`) and the curriculum runner's auto-fire-next-grade behaviour.
 
-⚠ **And it does NOT reset on a fresh boot.** It is persisted in a **standalone** file, `server/auto-advance.json`, which deliberately survives the `brain-weights` clear that `start.bat` and a tier resize both perform (`:3381`). Without that, every auto-resize silently reset the toggle to OFF and the re-walk stalled at the first grade boundary waiting for a signoff. So `start.bat` wiping weights does **not** turn auto-advance off — the dashboard toggle and that file are the only things that do.
+⚠ **And it does NOT reset on a fresh boot.** It is persisted in a **standalone** file, `server/auto-advance.json`, which deliberately survives the `brain-weights` clear that `start.bat` and a tier resize both perform (`:3394`). Without that, every auto-resize silently reset the toggle to OFF and the re-walk stalled at the first grade boundary waiting for a signoff. So `start.bat` wiping weights does **not** turn auto-advance off — the dashboard toggle and that file are the only things that do.
 
 | Path | Method | Behavior |
 |---|---|---|

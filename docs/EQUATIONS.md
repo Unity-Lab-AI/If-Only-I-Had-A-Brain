@@ -12,7 +12,13 @@ sources:
   - js/brain/sparse-matrix.js
   - js/brain/oscillations.js
   - js/brain/mystery.js
-last-verified: "cc648941 2026-08-26"
+  # ADDED 2026-08-29: the K-STUDENT strict-cue-match section cites
+  # curriculum.js:2177-2181 — a HISTORICAL (iter5-era) location left
+  # byte-identical as ledger text; the v.length<=1 skip now lives at
+  # curriculum.js:6436 inside the GRADERMATCH.2 word-level matcher. The page
+  # cited the file without declaring it, so drift could not fire on it.
+  - js/brain/curriculum.js
+last-verified: "cd465955 2026-08-29"
 ---
 
 # EQUATIONS — Unity's Brain

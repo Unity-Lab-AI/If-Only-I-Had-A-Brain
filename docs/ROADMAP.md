@@ -6,6 +6,11 @@ status: draft
 sources:
   - js/brain/curriculum.js
   - server/brain-server.js
+  - html/compute.html
+  - index.html
+  - js/app.js
+  - js/brain/language-cortex.js
+  - js/brain/sparse-matrix.js
 verified-scope: |
   CHECKED 2026-08-27 (DOCPROV.4). ⛔ NOT rewritten, and deliberately: this page
   is a stack of DATED banners plus a milestone ledger, and its old geometry
@@ -27,7 +32,20 @@ verified-scope: |
       were NOT re-verified. Drift on a ROADMAP means "re-price the plan".
     - its two declared sources (curriculum.js, brain-server.js). BOTH moved;
       neither was read for this page's claims.
-last-verified: "81c5068c 2026-08-27"
+  CHECKED 2026-08-29 (provenance pass): both prior sources moved again since the
+  2026-08-27 stamp (curriculum.js — SUBJRETIRE roster retirement + ASSOCBOUND.1;
+  brain-server.js — PSITEACH walk heartbeat, FIREKNOB, ALIGNKILL, PODKICK,
+  BATCHNULL, donor 0.3.35). No claim this page asserts as CURRENT is falsified
+  by those diffs — the affected statements all live inside dated banners /
+  milestone records, which stay byte-identical per this page's own rule. The
+  five previously-unlisted cited files were added to sources; every one of
+  those citations sits in a dated historical section (T13.1 2026-04-14, Phase
+  12 U-audit 2026-04-13), so the line numbers are left as they were on their
+  dates (in current code: serialize() is at sparse-matrix.js:1333,
+  loadCodingKnowledge at language-cortex.js:408, _isCompleteSentence is
+  deleted entirely, and compute.html:10 / index.html:85 / app.js:27 now hold
+  unrelated lines).
+last-verified: "cd465955 2026-08-29"
 ---
 
 # ROADMAP — IF ONLY I HAD A BRAIN

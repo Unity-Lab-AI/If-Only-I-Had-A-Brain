@@ -35,7 +35,16 @@ verified-scope: |
       Control flow read, NOT executed - no walk was run to exercise it.
     - the "<= 3 re-teaches per failed cell" bound and the ledger interaction.
     - why student-question-banks.js is a source; the page barely mentions banks.
-last-verified: "c4876d15 2026-08-27"
+  RE-CHECKED 2026-08-29 (provenance pass): curriculum.js moved — SUBJRETIRE now
+  feeds the ladder's subject list from subjectsOwedAt(grade, passedCells)
+  instead of subjectsForGrade (retired tracks stop being drilled; a track that
+  never passed its terminal cell stays owed, so the wedge-proof next-boot
+  resolver claim below still holds), and the dead `typeof subjectsForGrade`
+  guard at that call site was deleted. No sentence on this page named either
+  function there, and every ladder/rung/bound/flag claim re-read against the
+  current _remediateGradeFailures body — nothing is invalidated. cluster.js
+  and student-question-banks.js did not move.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # HELD-BACK — mastery-gated remediation + outcome-gated noise suppression

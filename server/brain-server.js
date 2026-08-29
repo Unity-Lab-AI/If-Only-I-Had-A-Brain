@@ -4961,7 +4961,8 @@ class ServerBrain {
   // bound Hebbian ops read — stepping cortex mid-sequence would corrupt
   // teaching; no teach op binds the other seven clusters' buffers). Rides the
   // conservative SUBSTEPS floor, paced by DREAM_WALK_TICK_MS (15s default,
-  // 0 disables), backs off 4× after a miss. Called from BOTH walk-time tick
+  // 0 disables), backs off 8× after a miss (PODKICK widened it from 4×).
+  // Called from BOTH walk-time tick
   // paths: the probe-gate hold and the gate-clear _curriculumInProgress
   // branch — one cadence, one stats object (`state.walkTick`).
   // FIREKNOB (2026-08-28, Gee: the brain "should be like 5-10% of the brain at
@@ -6473,7 +6474,7 @@ class ServerBrain {
               // Rides the conservative SUBSTEPS floor (never the adaptive
               // climb — the card is busy teaching), skips entirely while the
               // canonical upload holds the socket (that early-return is above
-              // this one), backs off 4× after a miss so a struggling donor is
+              // this one), backs off 8× after a miss so a struggling donor is
               // not pelted. DREAM_WALK_TICK_MS tunes the cadence; 0 disables
               // and restores the exact prior hold-everything behavior.
               // PSITEACH.3 — logic lives in _walkHeartbeat, shared with the

@@ -8,6 +8,13 @@ sources:
   - js/brain/auditory-cortex.js
   - js/brain/peripherals/ai-providers.js
   - js/io/voice.js
+  # ADDED 2026-08-29 by the sources-coverage check: this page cites
+  # js/app.js:1022 (the pre-R13 inline Pollinations fallback) but never listed
+  # the file. The citation is HISTORICAL — it names where the removed bug used
+  # to live, so no current line can carry it. Verified against current code:
+  # 'Camera active, processing...' has 0 occurrences in js/app.js, so the
+  # "R13 ripped that fallback" claim holds.
+  - js/app.js
 verified-scope: |
   CHECKED 2026-08-27 (DOCPROV.4). The only moved source is
   js/brain/visual-cortex.js (+14/-2 — the header correction that removed a
@@ -29,7 +36,7 @@ verified-scope: |
       js/io/voice.js — four of the five listed sources, NONE of which moved and
       none of which were read this pass.
     - the SE.15 draw-engine and practice-loop sections.
-last-verified: "074aa591 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # SENSORY — Unity's Peripheral Contract
