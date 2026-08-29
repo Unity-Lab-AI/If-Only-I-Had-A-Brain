@@ -4964,11 +4964,27 @@ class ServerBrain {
   // answered step batch samples the true fired fraction, EMA-smooths it, and
   // nudges a bounded multiplicative scale on tonicDrive toward the target.
   // DREAM_FIRING_TARGET_PCT (default 7.5, the middle of the operator's band;
-  // 0 disables — scale pins at 1.0, the exact pre-knob behavior). Bounds
-  // [0.25, 10] and a ±50%-clamped relative error at ±15%/sample keep one
-  // noisy batch from yanking the brain; a scale pinned at a bound is
-  // published rather than hidden (state.firing.scale), because a controller
-  // that cannot reach its target must SAY so.
+  // 0 disables — scale pins at 1.0, the exact pre-knob behavior). A ±50%-
+  // clamped relative error at ±15%/sample keeps one noisy batch from yanking
+  // the brain; a scale pinned at a bound is published rather than hidden
+  // (state.firing.scale), because a controller that cannot reach its target
+  // must SAY so.
+  // FIREMATH (2026-08-28) — bounds re-aimed at the map's MEASURED authority.
+  // The donor kernel maps drive to Rulkov σ via σ = −1 + clamp(drive/40)·1.5,
+  // so the knob's whole usable range is drive ∈ [0, 40]: with base tonics of
+  // 16-24, any scale above 40/16 = 2.5 lands in the clamp's dead zone (the
+  // original [0.25, 10] bound spent 75% of its range doing literally nothing —
+  // ×10 was ×2 wearing a bigger number). Measured σ→firing curve at production
+  // constants (α=4.5, μ=0.001, reference jitter, basin seeding, 20k neurons ×
+  // 4k steps): σ=−1 → 9.6% (the map's intrinsic FLOOR — drive cannot go
+  // lower), σ=−0.4..−0.1 (nominal tonic) → 19-24%, σ=+0.5 → 33%. Bounds are
+  // now [0.01, 2.5]: 0.01 reaches σ≈−1 (the floor), 2.5 reaches σ=+0.5 (the
+  // ceiling) — full authority, no dead zone. Consequence written down: the
+  // 7.5% default target sits BELOW the 9.6% floor, so the controller settles
+  // pinned LOW at ~9.6% — the top edge of the operator's 5-10% band. Getting
+  // UNDER the floor is not a drive question (it needs a refractory mechanism
+  // or a different α — a physics change on all three kernel implementations)
+  // and is the operator's decision, filed on the board, never automatic.
   _firingTargetPct() {
     if (this._fireTargetCached === undefined) {
       const raw = process.env.DREAM_FIRING_TARGET_PCT;
@@ -4991,11 +5007,14 @@ class ServerBrain {
     c.ema = c.ema == null ? pct : c.ema * 0.8 + pct * 0.2;
     c.samples++;
     const err = Math.max(-0.5, Math.min(0.5, (target - c.ema) / target));
-    const next = Math.max(0.25, Math.min(10, c.scale * (1 + 0.15 * err)));
+    // FIREMATH bounds: [0.01, 2.5] — the drive knob's real authority (see the
+    // controller comment above; 2.5 saturates the donor's σ clamp, 0.01 sits
+    // at the map's σ≈−1 firing floor of ~9.6%).
+    const next = Math.max(0.01, Math.min(2.5, c.scale * (1 + 0.15 * err)));
     if (next !== c.scale) c.scale = next;
     if (!this._fireCtlLogMs || (Date.now() - this._fireCtlLogMs) > 60000) {
       this._fireCtlLogMs = Date.now();
-      const pinned = (c.scale <= 0.25 || c.scale >= 10) ? ' ⚠ SCALE PINNED AT ITS BOUND — the target is out of the drive knob\'s reach; that is a report, not a retry loop' : '';
+      const pinned = (c.scale <= 0.01 || c.scale >= 2.5) ? ' ⚠ SCALE PINNED AT ITS BOUND — the target is outside the drive knob\'s measured authority (the map floors at ~9.6% firing at zero drive); going lower is a physics decision (refractory/α), not a knob retry' : '';
       console.log(`[Brain] FIREKNOB — firing ${pct.toFixed(2)}% (ema ${c.ema.toFixed(2)}%) vs target ${target}% → driveScale ${c.scale.toFixed(3)} over ${c.samples} samples.${pinned} Rate-limited 60s; DREAM_FIRING_TARGET_PCT=0 disables.`);
     }
   }
@@ -6313,11 +6332,19 @@ class ServerBrain {
                 const src = this.cortexCluster.attentionGain;
                 for (const rn of Object.keys(src)) {
                   const g = src[rn];
-                  if (typeof g !== 'number' || g === 1.0) continue;
+                  // Number.isFinite, not typeof: NaN IS typeof 'number', and a
+                  // NaN here becomes JSON null — the exact BATCHNULL shape that
+                  // cost the whole step lane. (Math.min/max propagate NaN.)
+                  if (!Number.isFinite(g) || g === 1.0) continue;
                   if (!regionGains) regionGains = {};
                   regionGains[rn] = Math.max(0.5, Math.min(2.0, g));
                 }
               }
+              // BATCHNULL chokepoint guard — EVERY numeric leaving in this
+              // payload passes a finite check, because one NaN → JSON null →
+              // (pre-v0.3.35 donors) the WHOLE message silently discarded.
+              // Gates default 1, additive terms default 0.
+              const _fin = (v, d) => (Number.isFinite(v) ? v : d);
               return {
                 name,
                 size: CLUSTER_SIZES[name],
@@ -6336,13 +6363,13 @@ class ServerBrain {
                 // FIREKNOB (2026-08-28) — × the self-calibrating firing-rate
                 // scale (see _firingControllerSample): the controller aims the
                 // measured fired-fraction at DREAM_FIRING_TARGET_PCT.
-                tonicDrive: (Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale(),
-                noiseAmp: this.noiseAmplitudes[name],
-                gainMultiplier: psiGain,
-                emotionalGate,
-                driveBaseline: driveFactor,
-                errorCorrection: errorSignal,
-                reward: this.reward,
+                tonicDrive: _fin((Number.isFinite(this.tonicDrives[name]) ? this.tonicDrives[name] : 0) * thetaMod * actionGate * this._firingDriveScale(), 0),
+                noiseAmp: _fin(this.noiseAmplitudes[name], 0),
+                gainMultiplier: _fin(psiGain, 1),
+                emotionalGate: _fin(emotionalGate, 1),
+                driveBaseline: _fin(driveFactor, 1),
+                errorCorrection: _fin(errorSignal, 0),
+                reward: _fin(this.reward, 0),
                 ...(regionGains ? { regionGains } : {}),
               };
             });
