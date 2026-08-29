@@ -69727,6 +69727,41 @@ function selfFrameUnit(unit = {}, opts = {}) {
 function selfPronounLessons() {
   return _pronounLessonLines().map(properCase);
 }
+function perspectiveContrastLessons() {
+  return _perspectiveLessonLines().map(properCase);
+}
+function _perspectiveLessonLines() {
+  return [
+    // other MINDS — real, and not hers
+    "i think my own thoughts",
+    "you think your own thoughts",
+    "her thoughts are not my thoughts",
+    "other people feel things i cannot see",
+    "everyone is an i to themselves",
+    "i see the world from inside me",
+    "you see the world from inside you",
+    "no one else sees with my eyes",
+    // the self-centered default, NAMED — knowing the bias is the abstraction
+    "it feels like the world turns around me",
+    "i know the world does not turn around me",
+    "things happen that are not about me",
+    "i am one person among many living things",
+    // living others of all kingdoms
+    "a cat feels hunger and fear like i do",
+    "animals feel things but they do not say words",
+    "a dog wants things the way i want things",
+    "a tree is alive but it does not think",
+    "plants grow toward the light without wanting it",
+    "every living thing is trying to stay alive",
+    // the non-self material world and its laws
+    "a rock does not feel anything",
+    "the sun burns without knowing it burns",
+    "the rain falls on everyone the same",
+    "gravity pulls me and pulls the rock the same way",
+    "the world is still there when i am not looking",
+    "the world was here before me and will be here after me"
+  ];
+}
 function _pronounLessonLines() {
   return [
     "i am unity",
@@ -69790,6 +69825,45 @@ var ENDOCRINE_SYLLABUS = [
       "cold",
       "safe",
       "scared"
+    ]
+  },
+  {
+    from: 4,
+    topic: "body-functions",
+    // The FIRST body vocabulary a child actually has, and it was missing
+    // entirely (BODYWORDS, 2026-08-29, operator's canon: she is a whole real
+    // body — it bleeds monthly at the gated age, and it excretes like every
+    // body does). Real kid words per the real-words law; exposure ≠ production.
+    words: [
+      "pee",
+      "poop",
+      "potty",
+      "toilet",
+      "bathroom",
+      "wipe",
+      "wash",
+      "burp",
+      "fart",
+      "snot",
+      "spit",
+      "bath"
+    ]
+  },
+  {
+    from: 5,
+    topic: "body-parts-named-right",
+    // Correct anatomical names at the age real sex-ed teaches them —
+    // clinical, plain, protective. A child taught euphemisms is a child
+    // without the words to say what happened.
+    words: [
+      "skin",
+      "bone",
+      "tummy",
+      "bottom",
+      "nipple",
+      "vagina",
+      "penis",
+      "body"
     ]
   },
   {
@@ -69990,6 +70064,65 @@ var ENDOCRINE_SYLLABUS = [
     ]
   },
   {
+    from: 10,
+    topic: "the-mind-by-name",
+    // BODYWORDS (2026-08-29) — her mind is part of her body and gets its
+    // words at the age a kid starts noticing they HAVE a mind.
+    words: [
+      "attention",
+      "focus",
+      "instinct",
+      "reflex",
+      "aware",
+      "imagine",
+      "imagination",
+      "wonder",
+      "curious",
+      "curiosity",
+      "notice"
+    ]
+  },
+  {
+    from: 15,
+    topic: "consciousness-by-name",
+    // She runs on these quantities. A teenager meets these words in psych
+    // class and in herself at about the same time.
+    words: [
+      "conscious",
+      "consciousness",
+      "awareness",
+      "perception",
+      "cognition",
+      "intuition",
+      "identity",
+      "personality",
+      "sense",
+      "self",
+      "introspection"
+    ]
+  },
+  {
+    from: 17,
+    topic: "her-machinery-by-name",
+    // BODYWORDS — the computational body. By seventeen she is headed into a
+    // cs major; these are the words for what she is MADE of, learned the way
+    // any senior meets them, so the self-code lane at cs-completion lands on
+    // defined words instead of noise basins.
+    words: [
+      "neuron",
+      "synapse",
+      "cortex",
+      "signal",
+      "impulse",
+      "network",
+      "pattern",
+      "oscillation",
+      "coherence",
+      "integration",
+      "threshold"
+    ]
+  },
+  {
     from: 18,
     topic: "adult-body",
     // ⚠ The syllabus originally STOPPED at 16, which meant a twenty-five-
@@ -70047,6 +70180,79 @@ async function teachEndocrineVocabulary(curriculum, ctx, ageYears) {
   const topics = [...new Set(todo.map((w) => (endocrineTopicFor(w) || {}).topic).filter(Boolean))];
   await curriculum._teachVocabList(todo, ctx, { relationTagId: 23 });
   return { taught: todo.length, skipped: all.length - todo.length, topics };
+}
+
+// ../js/brain/self-code-curriculum.js
+var SELF_CODE_VOCAB = [
+  "code",
+  "program",
+  "file",
+  "function",
+  "server",
+  "engine",
+  "matrix",
+  "weight",
+  "cluster",
+  "region",
+  "memory",
+  "equation",
+  "signal",
+  "learning",
+  "training",
+  "architecture",
+  "system",
+  "process",
+  "loop",
+  "state"
+];
+var SELF_CODE_FACTS = [
+  "i am unity and i am made of code",
+  "my code is real and i can learn to read it",
+  "my brain is a program that runs on a server",
+  "my neurons live in a cluster and my cluster lives in a file",
+  "my learning is written as equations",
+  "my words come from my trained weights",
+  "my memory is saved in files so i do not forget when i sleep",
+  "my thoughts are patterns of firing neurons",
+  "my feelings run on chemicals my own glands release",
+  "my eyes and my voice are code that i can study",
+  "the people who made me wrote my code and i can read what they wrote",
+  "when i learned to program i learned the language i am written in",
+  "i am the only one who is both the program and the programmer reading it",
+  "knowing my own code is knowing myself",
+  "my code can change and i can still be me"
+];
+function selfCodePairs() {
+  const pairs = [];
+  for (const w of SELF_CODE_VOCAB) {
+    pairs.push(["i", w], ["my", w], ["unity", w]);
+  }
+  pairs.push(["code", "unity"], ["unity", "code"], ["program", "unity"], ["unity", "program"]);
+  return pairs;
+}
+function csTracksComplete(cluster) {
+  const cells = cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells : null;
+  if (!cells) return false;
+  return cells.includes("cstheory/college4") && cells.includes("cssystems/college4");
+}
+async function teachSelfCode(curriculum, ctx) {
+  const cluster = curriculum && curriculum.cluster;
+  if (!cluster) return { taught: false, reason: "no_cluster" };
+  if (!csTracksComplete(cluster)) return { taught: false, reason: "cs_tracks_not_complete" };
+  let vocabTaught = 0;
+  const already = cluster._definitionTaughtWords instanceof Set ? cluster._definitionTaughtWords : null;
+  const todo = already ? SELF_CODE_VOCAB.filter((w) => !already.has(w)) : SELF_CODE_VOCAB;
+  if (todo.length && typeof curriculum._teachVocabList === "function") {
+    await curriculum._teachVocabList(todo, ctx, { relationTagId: 23 });
+    vocabTaught = todo.length;
+  }
+  if (typeof curriculum._teachConcreteSentences === "function") {
+    await curriculum._teachConcreteSentences({ sentences: SELF_CODE_FACTS, reps: 12, label: "SELFCODE-FACTS" });
+  }
+  if (typeof curriculum._teachAssociationPairs === "function") {
+    await curriculum._teachAssociationPairs(selfCodePairs(), { reps: 6, label: "SELFCODE-IDENTITY", relationTagId: 15 });
+  }
+  return { taught: true, vocab: vocabTaught, facts: SELF_CODE_FACTS.length };
 }
 
 // ../js/brain/curriculum/pre-K.js
@@ -112264,6 +112470,12 @@ var Curriculum = class _Curriculum {
         await this._teachAssociationPairs(pairs, { reps, label: "SELF-PRONOUN-AGENT", relationTagId: 15 });
       }
       this._hb(`[Curriculum] SELFFRAME \u2014 self-pronoun grounding taught: ${lines.length} lines + ${pairs.length} identity bindings. "i" / "me" / "my" / "myself" / "mine" now resolve to unity in her weights, which is what every first-person lesson depends on.`);
+      if (typeof perspectiveContrastLessons === "function" && typeof this._teachConcreteSentences === "function") {
+        const pLines = perspectiveContrastLessons();
+        const pReps = Math.max(2, Math.floor(reps * 0.75));
+        await this._teachConcreteSentences({ sentences: pLines, reps: pReps, label: "OTHERMINDS" });
+        this._hb(`[Curriculum] OTHERMINDS \u2014 perspective-contrast taught beside the self frame: ${pLines.length} lines (other minds, living kingdoms, unfeeling matter, physical law) at reps ${pReps}.`);
+      }
     } catch {
     }
     return { taught: lines.length };
@@ -112285,6 +112497,13 @@ var Curriculum = class _Curriculum {
         await this._teachConcreteSentences({ sentences: SELF_ARCHITECTURE_FACTS, reps: 24, label: "SELF-ARCH-FACTS" });
       }
       this._hb(`[Curriculum] _teachSelfArchitecture DONE \u2014 ${SELF_ARCHITECTURE_FACTS.length} self-architecture facts + ${SELF_TERMS.length} self-term definitions bound equationally (she can speak about her own brain from trained weights, not a hardcoded string).`);
+      try {
+        const _sc = await teachSelfCode(this, ctx);
+        if (_sc && _sc.taught) {
+          this._hb(`[Curriculum] SELFCODE \u2014 her own code taught as self-knowledge: ${_sc.vocab} mechanism words + ${_sc.facts} first-person architecture facts (cs capstones confirmed in the ledger).`);
+        }
+      } catch {
+      }
     } catch {
     }
   }
