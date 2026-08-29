@@ -70252,7 +70252,20 @@ async function teachSelfCode(curriculum, ctx) {
   if (typeof curriculum._teachAssociationPairs === "function") {
     await curriculum._teachAssociationPairs(selfCodePairs(), { reps: 6, label: "SELFCODE-IDENTITY", relationTagId: 15 });
   }
-  return { taught: true, vocab: vocabTaught, facts: SELF_CODE_FACTS.length };
+  let stems = 0;
+  try {
+    if (typeof cluster.selfCodeInventory === "function" && typeof curriculum._teachConcreteSentences === "function") {
+      const inv = cluster.selfCodeInventory();
+      if (inv && Array.isArray(inv.stems) && inv.stems.length) {
+        const lines = ["my code lives in many files and i know their names"];
+        for (const s of inv.stems) lines.push(`one of my files is called ${s.replace(/-/g, " ")}`);
+        await curriculum._teachConcreteSentences({ sentences: lines, reps: 4, label: "SELFCODE-TREE" });
+        stems = inv.stems.length;
+      }
+    }
+  } catch {
+  }
+  return { taught: true, vocab: vocabTaught, facts: SELF_CODE_FACTS.length, stems };
 }
 
 // ../js/brain/curriculum/pre-K.js

@@ -1717,7 +1717,27 @@ const SERVER_CHAT_MIXIN = {
       // BLOBSTORE — recall frames carry STORE recs whose payload is resident
       // binary; the viewer's wire format stays base64, so convert at the door.
       const wireRec = (typeof this._recJsonSafe === 'function') ? this._recJsonSafe(rec) : rec;
-      this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, terms: rec.equation_count || 0, source, at: now });
+      const finalJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, terms: rec.equation_count || 0, source, at: now });
+      // MINDMOTION.3 — the eye CALCULATES one image into the next instead of
+      // jump-cutting. The transition is computed in the engine's OWN
+      // representation — the sparse wavelet coefficient field (pos/val per
+      // channel) — a union-lerp in equation space, not a pixel crossfade.
+      // Viewer-only: intermediate frames touch _mindsEyeJson and nothing else
+      // (never the imagined-field ring, never the store — they are display
+      // physics, not memories). Last-wins: a newer publish aborts an older
+      // transition mid-flight via the sequence token. DREAM_EYE_TRANSITION_MS
+      // (default 1600) times the whole morph; 0 restores the instant swap.
+      const prevWire = this._lastEyeWireRec || null;
+      this._lastEyeWireRec = wireRec;
+      const _seq = this._eyePubSeq = (this._eyePubSeq | 0) + 1;
+      const _tEnv = process.env.DREAM_EYE_TRANSITION_MS;
+      const _tMs = (_tEnv === undefined || _tEnv === '') ? 1600 : Math.max(0, Number(_tEnv) || 0);
+      if (_tMs > 0 && prevWire && this._eyeRecsCompatible(prevWire, wireRec)) {
+        this._eyeFieldTransition(prevWire, wireRec, finalJson, source, _seq, _tMs)
+          .catch(() => { if (this._eyePubSeq === _seq) this._mindsEyeJson = finalJson; });
+      } else {
+        this._mindsEyeJson = finalJson;
+      }
     } catch { /* non-fatal */ }
     if (this.clients && this.clients.size > 0) {
       const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0, source, ts: now });
@@ -1725,6 +1745,99 @@ const SERVER_CHAT_MIXIN = {
         if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
       }
     }
+  },
+
+  // MINDMOTION.2/.3 — viewer-only frame swap: the CURRENTLY DISPLAYED image,
+  // with none of _publishMindsEyeFrame's memory side effects (no ring push,
+  // no _lastImagineRec, no WS ping). Used by the drawing-process frames and
+  // the field transitions — display physics, never memories.
+  _publishEyeTransient(rec, source) {
+    if (!rec) return;
+    try {
+      const wireRec = (typeof this._recJsonSafe === 'function') ? this._recJsonSafe(rec) : rec;
+      this._lastEyeWireRec = wireRec;   // the morph tracker follows what is SHOWN
+      this._eyePubSeq = (this._eyePubSeq | 0) + 1;
+      this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: wireRec, terms: rec.equation_count || 0, source, at: Date.now() });
+    } catch { /* non-fatal */ }
+  },
+
+  // MINDMOTION.3 — two wire recs can morph only when they describe the same
+  // field geometry; anything else falls back to the instant swap honestly.
+  _eyeRecsCompatible(a, b) {
+    try {
+      return !!(a && b && a.channels && b.channels
+        && a.model === b.model && a.colorspace === b.colorspace
+        && a.width === b.width && a.height === b.height
+        && a.pad_w === b.pad_w && a.pad_h === b.pad_h
+        && Object.keys(a.channels).length && Object.keys(b.channels).length);
+    } catch { return false; }
+  },
+
+  // MINDMOTION.3 — the calculated transition. Decodes both recs' sparse
+  // wavelet channels through the engine's OWN codec (transform.js exports),
+  // union-lerps coefficient values in field space (a coefficient absent from
+  // one side fades from/to zero), re-encodes each step in the same wire
+  // format, and publishes N intermediate frames before the final one.
+  // Bounded: 4 steps, a per-channel union cap (largest-|v| coefficients kept)
+  // so a step can never dwarf the real frames it sits between.
+  async _eyeFieldTransition(fromWire, toWire, finalJson, source, seq, tMs) {
+    const STEPS = 4;
+    const UNION_CAP = 60000;
+    const codec = this._msCodec || (this._msCodec = await import('../../js/brain/mindspace/transform.js'));
+    const names = Object.keys(toWire.channels);
+    // Decode once: name → Map(pos → realValue) per side.
+    const decode = (wire) => {
+      const out = {};
+      for (const n of names) {
+        const c = wire.channels[n];
+        if (!c) continue;
+        try {
+          const val = codec.chanVal(c);
+          const pos = codec.decodePositions(c, val.length);
+          const m = new Map();
+          for (let i = 0; i < val.length; i++) m.set(pos[i], val[i] * c.qscale);
+          out[n] = m;
+        } catch { /* channel undecodable → treated as empty */ }
+      }
+      return out;
+    };
+    const A = decode(fromWire), B = decode(toWire);
+    const dt = Math.max(60, Math.floor(tMs / (STEPS + 1)));
+    for (let k = 1; k <= STEPS; k++) {
+      if (this._eyePubSeq !== seq) return;   // a newer frame took the eye — abort
+      const t = k / (STEPS + 1);
+      const chans = {};
+      for (const n of names) {
+        const a = A[n] || new Map(), b = B[n] || new Map();
+        // union of coefficient positions, values lerped (absent side = 0)
+        const entries = [];
+        for (const [p, va] of a) entries.push([p, va + ((b.get(p) || 0) - va) * t]);
+        for (const [p, vb] of b) if (!a.has(p)) entries.push([p, vb * t]);
+        let kept = entries.filter(e => e[1] !== 0);
+        if (kept.length > UNION_CAP) {
+          kept.sort((x, y) => Math.abs(y[1]) - Math.abs(x[1]));
+          kept = kept.slice(0, UNION_CAP);
+        }
+        kept.sort((x, y) => x[0] - y[0]);
+        let maxAbs = 0;
+        for (const e of kept) { const v = Math.abs(e[1]); if (v > maxAbs) maxAbs = v; }
+        if (!kept.length || maxAbs === 0) { chans[n] = { keep: 0, qscale: 1, pos_enc: 'dv1', pos_b64: '', val_b64: '' }; continue; }
+        const qscale = maxAbs / 32767;
+        const q = new Int16Array(kept.length);
+        const idx = new Array(kept.length);
+        for (let i = 0; i < kept.length; i++) { idx[i] = kept[i][0]; q[i] = Math.max(-32767, Math.min(32767, Math.round(kept[i][1] / qscale))); }
+        chans[n] = {
+          keep: kept.length, qscale, pos_enc: 'dv1',
+          pos_b64: codec.bytesToB64(new Uint8Array(codec.encPos(idx))),
+          val_b64: codec.i16ToB64(q),
+        };
+      }
+      let terms = 0; for (const n of names) terms += (chans[n] && chans[n].keep) || 0;
+      const stepRec = { ...toWire, channels: chans, equation_count: terms };
+      try { this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec: stepRec, terms, source: 'transition:' + source, at: Date.now() }); } catch { /* step best-effort */ }
+      await new Promise(r => setTimeout(r, dt));
+    }
+    if (this._eyePubSeq === seq) this._mindsEyeJson = finalJson;
   },
 
   // LOOK UP → DRAW (Gee 2026-07-15: "she shall draw more often!!!! ... twn -
@@ -1781,7 +1894,9 @@ const SERVER_CHAT_MIXIN = {
   // real sketchbook. `_drawSkill` tracks the per-concept resemblance ceiling.
   async _rememberDrawing(concept, drawnRec) {
     if (!drawnRec || typeof this._vmStore !== 'function') return;
-    const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
+    // MINDMOTION.1 — phrases key by head word, matching _vmHeadWord's own rule.
+    const key = ((/\s/.test(String(concept || '')) && typeof this._vmHeadWord === 'function') ? (this._vmHeadWord(concept) || '') : '')
+      || (typeof this._vmContentWords === 'function' ? (this._vmContentWords(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
     if (!key) return;
     const store = this._vmStore();
     const e = store.get(key);
@@ -1975,10 +2090,36 @@ const SERVER_CHAT_MIXIN = {
       return parts.every(p => /^[a-z][a-z'-]*$/i.test(p));        // plain words only
     };
     if (_word && !_isSubjectPhrase(_word)) st.seedNotConcept = (st.seedNotConcept | 0) + 1;
-    if (_word && _isSubjectPhrase(_word)
-        && st.pinTicks < _EYE_PIN_TICKS && !_recent(_word) && await _drawable(_word)) {
+    // MINDMOTION.1 — a human imagines PHRASES, not bare nouns ("she is still
+    // only looking up single words at a time"). When the seed is one word,
+    // mine HER OWN recent thought stream for the word she actually thought
+    // right before it: if that neighbor is an adjective by the live
+    // dictionary's own part-of-speech (no word list), the subject becomes the
+    // modifier+head phrase — "black cat", not "cat". Everything downstream
+    // already speaks phrase: the drawability probe judges the head, the
+    // reference prompt carries the whole phrase, the store keys by head word.
+    // Best-effort: any miss leaves the bare word standing.
+    let _subject = _word;
+    try {
+      if (_word && !/\s/.test(_word) && Array.isArray(this._innerThoughtChain)) {
+        for (let i = this._innerThoughtChain.length - 1; i >= 0; i--) {
+          const s = String(this._innerThoughtChain[i] && this._innerThoughtChain[i].sentence || '').toLowerCase();
+          if (!s || s.indexOf(_word) === -1) continue;
+          const toks = s.split(/[^a-z'-]+/).filter(Boolean);
+          const at = toks.indexOf(_word);
+          const mod = at > 0 ? toks[at - 1] : '';
+          if (mod && mod !== _word && mod.length > 2 && this._wordIsAdjective(mod)) {
+            _subject = `${mod} ${_word}`;
+            st.phrases = (st.phrases | 0) + 1;
+          }
+          break;   // only her most recent thought containing the word counts
+        }
+      }
+    } catch { /* phrase composition best-effort — the bare word stands */ }
+    if (_word && _isSubjectPhrase(_subject)
+        && st.pinTicks < _EYE_PIN_TICKS && !_recent(_subject) && await _drawable(_subject)) {
       st.fromThought++;
-      return { word: _word, lookup: true, why: 'thought' };
+      return { word: _subject, lookup: true, why: _subject === _word ? 'thought' : 'thought-phrase' };
     }
     if (_word && st.pinTicks >= _EYE_PIN_TICKS) st.rotations++;
 
@@ -2003,6 +2144,19 @@ const SERVER_CHAT_MIXIN = {
 
     st.none++;
     return null;
+  },
+
+  // MINDMOTION.1 — is this word an adjective, by the live dictionary's own
+  // part-of-speech evidence (cache-only read, no network on the tick). NOT a
+  // word list: the dictionary answers, or the word is not treated as a
+  // modifier. Handles both entry shapes the definition service returns.
+  _wordIsAdjective(w) {
+    try {
+      const c = this.cortexCluster;
+      if (!c || typeof c.lookupDefinitionsSync !== 'function') return false;
+      const defs = c.lookupDefinitionsSync(w);   // cache-only full entries with partOfSpeech
+      return Array.isArray(defs) && defs.some(d => d && d.partOfSpeech === 'adjective');
+    } catch { return false; }
   },
 
   /**
@@ -2075,7 +2229,11 @@ const SERVER_CHAT_MIXIN = {
         || typeof this.mindSpace.sketch !== 'function') return null;
     const seed = String(concept || '').trim();
     if (!seed) return null;
-    const key = (typeof this._vmContentWords === 'function' ? (this._vmContentWords(seed)[0] || '') : seed.toLowerCase().split(/\s+/)[0]) || '';
+    // MINDMOTION.1 — a PHRASE keys by its HEAD word ("black cat" → cat), the
+    // same rule the visual store itself uses (_vmHeadWord); the old first-
+    // content-word key would have filed "black cat" under "black".
+    const key = ((/\s/.test(seed) && typeof this._vmHeadWord === 'function') ? (this._vmHeadWord(seed) || '') : '')
+      || (typeof this._vmContentWords === 'function' ? (this._vmContentWords(seed)[0] || '') : seed.toLowerCase().split(/\s+/)[0]) || '';
     if (!key) return null;
 
     // 1) RECALL — a confirmed grounded field C she has seen before (cooled).
@@ -2481,6 +2639,26 @@ const SERVER_CHAT_MIXIN = {
       try { for (const g of this._labelStrokes(plan.subjects[0].word)) finalStrokes.push(g); } catch { /* label best-effort */ }
     }
 
+    // MINDMOTION.2 — SHE SHOWS HER WORK. The piece was always drawn stroke by
+    // stroke internally and the viewer only ever saw the finished frame — the
+    // process was invisible ("its like she is being nuetered in here
+    // experimentation drawing not ever showing"). Two in-progress renders of
+    // the REAL stroke list (35% and 70%) publish to the viewer only (transient
+    // — never the ring, never a memory: an unfinished drawing is not something
+    // she remembers, it is something she is doing). The final frame then
+    // publishes through the normal lane and MINDMOTION.3 morphs from the last
+    // progress frame — the whole birth reads continuously. DREAM_EYE_PROCESS=0
+    // disables; short pieces (<24 strokes) skip — nothing to show.
+    if (process.env.DREAM_EYE_PROCESS !== '0' && finalStrokes.length >= 24 && opts.progress !== false) {
+      for (const frac of [0.35, 0.7]) {
+        try {
+          const part = finalStrokes.slice(0, Math.max(4, Math.floor(finalStrokes.length * frac)));
+          const partial = await this.mindSpace.sketch(part, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } });
+          if (partial) this._publishEyeTransient(partial, `draw:progress:${Math.round(frac * 100)}`);
+          await new Promise(r => setTimeout(r, 450));
+        } catch { break; /* process frames are best-effort — the piece itself still lands */ }
+      }
+    }
     let drawn = null;
     try {
       drawn = await this.mindSpace.sketch(finalStrokes, {
@@ -3834,7 +4012,7 @@ const SERVER_CHAT_MIXIN = {
       // kittens puppies and funky characters" — "illustration" pulled the
       // generator cutesy/cartoon; her imagined scenes ground TRUE-TO-LIFE too).
       // POSITIVE terms ONLY (a model attends to the nouns — "no cartoon" paints one).
-      const prompt = `${phrase} together in one unified scene, realistic photograph, true to life, natural lighting, full color, richly detailed, plain uncluttered background`;
+      const prompt = `${phrase} together in one unified scene, ${require('./eye-style.js').EYE_STYLE.sceneTail}`;   // STYLEBLEED — one owner
       try { rec = await this._fetchReferenceAndGround(comboKey, { keyOverride: comboKey, promptOverride: prompt }); } catch { rec = null; }
     }
     if (!rec) return null;   // cooldown / fetch-fail / blank → honest decline
@@ -4013,6 +4191,21 @@ const SERVER_CHAT_MIXIN = {
     // ARTJUDGE 🚫 — the operator taught her this word is not a drawing
     // subject; that verdict outranks every other judge.
     try { if (this._artBanSet().has(w)) return false; } catch { /* ban set best-effort */ }
+    // STYLEBLEED (2026-08-29, operator: "ist always looks up color crisp which
+    // is a green pallat neom colored full screen that taints every image she
+    // tries to combine with it") — SELF-CONTAMINATION guard, by PROVENANCE not
+    // opinion: a subject whose content words ALL come from her own
+    // code-authored style vocabulary ("color", "crisp", "saturated"...) is her
+    // prompt talking to itself, not a thought — WordNet honestly calls those
+    // words concrete (a crisp is a potato chip) so the taxonomy cannot catch
+    // them. The set derives from the SAME eye-style.js strings the prompt
+    // builders consume, so the guard and the tails can never drift apart. A
+    // phrase with any non-style word ("crisp apple") passes on its own merits.
+    try {
+      const styleSet = require('./eye-style.js').styleWords();
+      const toks = String(word || '').toLowerCase().split(/[^a-z'-]+/).filter(t => t.length > 2);
+      if (toks.length && toks.every(t => styleSet.has(t))) return false;
+    } catch { /* provenance guard best-effort */ }
     // THE TAXONOMY IS THE JUDGE — no word lists anywhere (operator law,
     // 2026-08-21: lists cannot cover the real world). WordNet's lexicographer
     // categories file every English noun sense at build time:
@@ -4261,15 +4454,18 @@ const SERVER_CHAT_MIXIN = {
     // neon-on-black energy, never fog. Every branch keeps "crisp"/"clean"
     // steering so no mood can smear the picture.
     try {
-      const style = ['vibrant saturated color, crisp sharp focus'];
+      // STYLEBLEED — the strings live in eye-style.js (byte-identical; the ONE
+      // owner the drawability gate derives its provenance set from).
+      const { EYE_STYLE } = require('./eye-style.js');
+      const style = [EYE_STYLE.moodBase];
       const arousal = (typeof this.arousal === 'number') ? this.arousal : 0.4;
       const valence = (typeof this.valence === 'number') ? this.valence : 0;
       const fear = (typeof this.fear === 'number') ? this.fear : 0;
-      if (valence < 0.15) style.push('bold dramatic contrast');   // dark mood = punchy blacks, not fog
-      else style.push('bright playful energy');
-      if (arousal > 0.7) style.push('electric high energy');
-      if (fear > 0.5) style.push('edgy dramatic lighting');
-      try { if (typeof this._drugStateLabel === 'function' && this._drugStateLabel() !== 'sober') style.push('psychedelic swirling color'); } catch { /* sober default */ }
+      if (valence < 0.15) style.push(EYE_STYLE.moodDark);   // dark mood = punchy blacks, not fog
+      else style.push(EYE_STYLE.moodBright);
+      if (arousal > 0.7) style.push(EYE_STYLE.moodEnergy);
+      if (fear > 0.5) style.push(EYE_STYLE.moodFear);
+      try { if (typeof this._drugStateLabel === 'function' && this._drugStateLabel() !== 'sober') style.push(EYE_STYLE.moodHigh); } catch { /* sober default */ }
       parts.push(style.join(', '));
     } catch { /* style tail best-effort */ }
     const prompt = parts.filter(Boolean).join(', ').slice(0, 220);
@@ -4423,7 +4619,7 @@ const SERVER_CHAT_MIXIN = {
       // MOODPOP — the CORE noun already carries her identity; the tail only
       // steers image quality: crisp + rich color, never smeared, no aesthetic
       // doubling (operator: "take out goth asthetic i already told u this")
-      const TAIL = 'crisp sharp focus, rich color, ultra detailed';
+      const TAIL = require('./eye-style.js').EYE_STYLE.chatTail;   // STYLEBLEED — one owner
       // her stated wear — INCLUDING bare skin / named body parts — replaces
       // the wardrobe entirely so clothing never collides with exposed skin
       // ("bare breasts" used to render in the leather because the outfit was
