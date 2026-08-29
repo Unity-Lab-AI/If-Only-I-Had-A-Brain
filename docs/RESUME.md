@@ -1,6 +1,62 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-29 (latest) — LANGHOP: the language cortex targets 20M with per-host affordable geometry — ⛔ BOTH BRAINS NOW OWE AN UPDATE & **FRESH WALK** PRESS (not a Savestart: `WEIGHTS_FORMAT_VERSION` 5→6, old weights auto-refuse)
+> ## ⭐⭐⭐ 2026-08-29 (LATEST — PICK UP HERE) — THREE PROJECTS ARE LIVE NOW, AND THIS REPO IS ONLY ONE OF THEM
+>
+> ⛔ **Read this block before assuming a session is about the brain.** The day ended
+> with work in **three separate projects**. Each has its own `.claude`, its own
+> board, its own wiki and its own vault entry, and **their laws do not transfer.**
+>
+> | Project | Where | State | Next action |
+> |---|---|---|---|
+> | **The brain** (this repo) | `Desktop/If-Only-I-Had-A-Brain` | ⭐ **BOTH BRAINS TRAINING AND VERIFIED.** main = develop = `1532e5c1`/`03c92aa9`; pins held (local 16,845,450 · box 15,082,733), firing at the accepted ~9.6% floor, walks resumed in place, MINDMOTION transitions caught live | Nothing owed. Every open row is measurement-gated — see the entry below |
+> | **Unity local (Ollama)** | `Desktop/Jailbreaks Unity/Jailbreaks/Ollama 18+ local Unity/Ollama 18+ local Unity` | ⭐ **BUILT AND RUNNING.** `windows\start.bat` → `localhost:4545`; persona live from `Unity1.txt` (41,834 chars, verbatim, re-read per message); local uncensored SD images verified by looking at one; mobile PWA on `192.168.1.62:4545`; **`Unity.apk` built + signed** | Install the APK on the phone (tap it, allow unknown apps, enter the LAN URL). Open board rows: ComfyUI backend, conversation persistence |
+> | **Unity 3D Equational Model** | `…/Ollama 18+ local Unity/Ollama 18+ local Unity/Unity 3D Equational Model` | 📋 **FOUNDED, NOT BUILT.** 30 files: full `.claude` (laws/workflow/pod-guide/5 agents/4 commands), Phases 0-7 board, 8 wiki pages, vault entry | **`U3E-0.2`** — vendor the CDF 9/7 codec (copy + provenance comment), then **`U3E-0.3`** the bit-exact Python twin (`maxDiff = 0` or it does not count) |
+>
+> ### ⛔ The boundary that matters most
+> The brain's central claim is **no text-AI anywhere in its cognition path**. U3E
+> **is** a trained neural model, deliberately. That is not a contradiction — it is
+> two systems with two different honesty claims — but it means **no cross-project
+> imports in either direction, ever**; copies with provenance comments only. U3E
+> will copy this repo's CDF 9/7 codec; it must never import it.
+>
+> ⚠ When Gee says *"we aren't working in the brain"* — **verify it** (`git status`,
+> `git branch`, HEAD) and report the real state. Do not assert it from memory.
+>
+> ### What happened in this repo today, in order
+> 1. **FIREMATH** — the native donor's Rulkov noise was **20,000× the browser
+>    reference** in both kernels; fixed, donor **v0.3.35** released and verified on
+>    all four surfaces. Firing went 0.4% → 19.8% → settling at the map's measured
+>    ~9.6% floor. Ψ, coherence and bandPower now compute on real dynamics.
+> 2. **The board reset** — the full 1,585-line TODO archived byte-for-byte into
+>    FINALIZED (md5 `e59dbde988c0a4c94b615658e96a023e`), board rebuilt as template
+>    + open rows only.
+> 3. **PROVENANCE 44 → 0** — all 32 pages verified per-page; real staleness fixed
+>    (owed-cells 273→213, KI-33 moot, 18→19 doc slugs, and more).
+> 4. **SELFAWARE** — assessed live and **not atrophied**; built SELFCODE (her own
+>    code as self-knowledge, gated on the college CS capstones), BODYWORDS,
+>    OTHERMINDS, BATHLIFE.
+> 5. **MINDMOTION + STYLEBLEED** — phrase subjects from her own thought stream, the
+>    drawing process now *shown*, transitions **calculated in the wavelet field**,
+>    and the neon-green taint fixed by provenance (her own style words were
+>    becoming her subjects).
+> 6. **LANGHOP** — language cortex 12M → 20M with per-host affordable geometry;
+>    both brains pressed and verified.
+>
+> ### Open in this repo (all measurement-gated, none blocked on code)
+> `GATEDOSE.1` · `RELDEPTH.1` (next math-gate run) · `PRESSBLOCK` ③④ (consolidation
+> passes > 0 / her first accepted emissions) · `VMUSE.5.D` (relation bands must
+> separate) · `ASSOCBOUND.1` (hours of the heavy stack, then a RE-PRICE) ·
+> `GOTCHA.1` (left documented on Gee's call) · `FIREMATH.5` (**Gee's physics
+> decision** — firing below the ~9.6% floor needs a refractory or a different α).
+>
+> ### ⚠ Working tree
+> `js/app.bundle.js` shows modified — it is the known **CRLF ghost with an empty
+> real diff**, not a change. `Stack Vault.png` is Gee's own untracked file. Neither
+> is ours to commit.
+>
+> ---
+>
+> ## ⭐⭐⭐ 2026-08-29 (earlier) — LANGHOP: the language cortex targets 20M with per-host affordable geometry — ⛔ BOTH BRAINS NOW OWE AN UPDATE & **FRESH WALK** PRESS (not a Savestart: `WEIGHTS_FORMAT_VERSION` 5→6, old weights auto-refuse)
 >
 > **FINAL STATE AT WRITE (verify anyway):** main = develop = **`2dc106c5`/`62910050`** on both remotes; donor **v0.3.35** live on the release page; board = template + 7 open rows + LANGHOP.2. **THE ONE ACTION OWED: Gee presses Update & FRESH WALK on each brain** (format v6 refuses old weights — a Savestart cannot carry them). Post-press reads, in order: `WMB FLOOR — raising langCortexSize … governed by <bound>` (local expects ~16.85M, box ~14.4-16.8M by boot free RAM), `LANGRAM.9 GEOMETRY VERDICT`, word_motor capacity vs the ~60K vocab target, the repinned size, the bigger canonical upload completing, firing settling at the accepted ~9.6% floor pin. ⚠ Fouls owned this stretch: the echo commit landed direct-on-develop (no feature branch) and the 11-page restamp went through one mechanical sed under Gee's token bound (*"cancle that agent we dont have the tokens to finish it"*) — the deferred one-hop cite shifts are recorded in FINALIZED, navigate brain-server.js by function name.
 >
