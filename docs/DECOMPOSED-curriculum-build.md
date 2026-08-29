@@ -56,7 +56,21 @@ verified-scope: |
   EVERY track introduced between K and grade11 has no college runner, and `cs`
   is not a special case. ⭐ The page's CONCLUSION is unchanged and still right:
   college+ is the real gap.
-last-verified: "cdfcf8b5 2026-08-27"
+  RE-CHECKED 2026-08-29 (provenance pass): two sources moved since the stamp.
+  (1) js/brain/curriculum.js — SUBJRETIRE/SUBJRETIRE.2 added SUBJECTS_RETIRED_AT
+  + subjectsOwedAt + ledgerFloorIdx and moved the walk/held-back/boot-resolver
+  loops from subjectsForGrade to subjectsOwedAt, closing the college/grad
+  COVERAGE gap by ledger-gated retirement (college 10 owed / 10 runners,
+  grad/phd 8 / 8) — so "college+ is the real gap" above now means DEPTH, not
+  coverage. Body fixed in place: the two "walk iterates subjectsForGrade
+  (curriculum.js:8637)" claims (now subjectsOwedAt, curriculum.js:10381), a
+  SUPERSEDED note on the roster-expansion section, and the grad/phd
+  carried-tracks clauses. ASSOCBOUND.1 (per-caller teach tally) also landed —
+  diagnostic only, touches nothing here. (2) server/brain-server/state.js —
+  PSITEACH (psiInputs, walkTick) + FIREKNOB (firing) published fields, all
+  additive at ~:583, after the :178 cite in the nomenclature section; they
+  touch no curriculum runner, roster or count, so they invalidate nothing.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # DECOMPOSED — Full Curriculum Build to Depth (K→PhD, skip-proof layout)
@@ -94,7 +108,7 @@ A first audit claimed "100% complete, all subjects REAL, no stubs." **That was c
 | grad (Master's) | 281 | 7 | 18 | **−11** | thin |
 | phd (Doctoral) | 310 | 7 | 18 | **−11** | thin |
 
-**Two work dimensions per cell:** (A) COVERAGE — does a real runner exist for this (level, subject)? (B) DEPTH — is it built to the K bar? Today: scaffolding wired end-to-end + walk iterates `subjectsForGrade` (#110, curriculum.js:8637), but G1→PhD are shallow and college+ is massively under-covered.
+**Two work dimensions per cell:** (A) COVERAGE — does a real runner exist for this (level, subject)? (B) DEPTH — is it built to the K bar? Today: scaffolding wired end-to-end + walk iterates `subjectsOwedAt` (#110; it was `subjectsForGrade` until SUBJRETIRE, 2026-08-27; curriculum.js:10381), but G1→PhD are shallow and college+ is massively under-covered.
 
 > ## ⛔ RE-MEASURED 2026-08-27 (DOCPROV.4) — THE −1 GAP ACROSS ALL TWELVE GRADES IS CLOSED
 >
@@ -186,6 +200,8 @@ Internal keys stay (`college1..4`, `grad`, `phd`) so weights/persistence don't c
 
 College currently runs ~8 subjects (art/ela/genered/life/major/math/sci/soc); the major is one "Computer Science Major" blob ×4 years. Real CS-degree load — break into concurrent named courses per year, ADD the missing tracks (kinesiology/health/foreign-language elective + gen-ed breadth as distinct courses). Target ≥8-12 real concurrent courses/undergrad year; Master's/PhD = named seminars + research. Finalize exact course lists against a real CS BS/MS/PhD curriculum.
 
+⚠ **SUPERSEDED IN PART 2026-08-27 (SUBJRETIRE / SUBJRETIRE.2):** the coverage gap closed by RETIREMENT, not by adding tracks. `SUBJECTS_RETIRED_AT` (curriculum.js) retires the nine carried K-12 tracks (pe · music · health · language · cs · civics · economics · psychology · ap) at grade12 and genered/cstheory/cssystems at college4 — ledger-gated via `subjectsOwedAt(grade, passedCells)`, so a track retires only once its terminal cell actually passed (a never-taught track stays rostered and stays owed). Measured: college 19 offered → **10 owed against 10 runners**; grad/phd owe exactly `ela math science social art life major research` — **8 against 8**. The missing-tracks ADD above is no longer owed; what remains at college+ is DEPTH.
+
 ---
 
 ## PER-LEVEL BUILD LEDGER (check each cell at DoD)
@@ -223,11 +239,11 @@ OPTIONAL FURTHER POLISH `[ ]`: kinesiology/health/foreign-language electives as 
 
 ### grad Master's (18) — adds **research**
 PRESENT `[~]`: ela · math · science · social · art · major · life
-MISSING `[c]`: research(thesis) + specialization seminars (split major) + the carried tracks needing Master's-level cells
+MISSING `[c]`: research(thesis) + specialization seminars (split major) + the carried tracks needing Master's-level cells — ⚠ the carried-tracks clause is SUPERSEDED 2026-08-27 (SUBJRETIRE: they retire ledger-gated at grade12/college4, no Master's cells owed)
 
 ### phd Doctoral (18)
 PRESENT `[~]`: ela · math · science · social · art · major · life
-MISSING `[c]`: research(dissertation) + advanced seminars + carried tracks
+MISSING `[c]`: research(dissertation) + advanced seminars + carried tracks — ⚠ carried tracks likewise RETIRED ledger-gated (SUBJRETIRE, 2026-08-27)
 
 ---
 
@@ -248,6 +264,6 @@ Each milestone = a harness task; closing it requires every cell in the ledger ba
 ---
 
 ## NOTES
-- `subjectsForGrade()` walk migration (#110, curriculum.js:8637) is DONE — every introduced subject is iterated; the gap is per-cell COVERAGE + DEPTH, not the loop.
+- `subjectsForGrade()` walk migration (#110) is DONE — and SUBJRETIRE (2026-08-27) moved the walk loop to `subjectsOwedAt` (curriculum.js:10381), so every subject still OWED is iterated (a retired track drops out only once the ledger shows its terminal cell passed); the gap is per-cell COVERAGE + DEPTH, not the loop.
 - Math stays equational (excluded from PROSE_ACADEMIC); prose subjects get the hybrid academic corpus ([[feedback_hybrid_academic_corpus]]).
 - This build is SEPARATE from the emission/voice/memory tracks (A / A-Q / A-R) — it's WHAT she's taught, not how she speaks. Both proceed; neither is deferred.

@@ -50,7 +50,15 @@ verified-scope: |
       "SOURCE OF TRUTH" coverage list - runner NAMES were checked, not what
       each runner teaches.
     - whether corpora/coding/*.json have real content. Files exist; unread.
-last-verified: "38e19615 2026-08-27"
+  RE-CHECKED 2026-08-29 (provenance pass): curriculum.js moved again since the
+  stamp — the SUBJRETIRE + SUBJRETIRE.2 rulings this page already records above
+  (ANSWERED / CLOSED) landed as code, plus the ASSOCBOUND.1 per-caller tally on
+  _teachAssociationPairs (diagnostic telemetry only, nothing this page claims).
+  curriculum.js:152 (the college1 roster line quoted in the banner) did NOT
+  shift — the retirement block landed below it. SUBJECTS_RETIRED_AT,
+  subjectsOwedAt and ledgerFloorIdx read exactly as described. Nothing on this
+  page is invalidated.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # CODE CURRICULUM — Unity's G5→PhD HTML / CSS / JS Proficiency Layout

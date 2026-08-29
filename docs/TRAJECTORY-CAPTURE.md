@@ -50,7 +50,18 @@ verified-scope: |
   (difference per rule 1) and expect `null`, not 0, before the capability scan
   is available — a 0 there would read as "nothing bucketed", the very claim the
   field exists to establish.
-last-verified: "cdfcf8b5 2026-08-27"
+  ⭐ RESTAMPED 2026-08-29 — both sources moved again (curriculum.js: SUBJRETIRE
+  subjectsOwedAt retirement + PSITEACH walk heartbeat + FIREKNOB; state.js:
+  PSITEACH/FIREKNOB adding psiInputs / walkTick / firing). All ADDITIVE against
+  this page: every documented path re-checked in CURRENT code — currentSubject,
+  currentGrade, passedCellsTotal, cellPhases*, lastGateVerdict, examTranscript,
+  perSubject, subjects all still published (curriculum.js getState block,
+  ~:3766-3792). ⚠ One leftover fixed: the SAMPLING RULE still said
+  "cellsPassed increment" — the exact undefined path this page corrects. ⚠ Note
+  `subjects` is DYNAMIC (canon-ordered perSubject keys, ROSTERROWS) — the
+  6-subject read above is a young-walk snapshot, and SUBJRETIRE now retires
+  college-only tracks from the walk roster; the §"6 vs 9" open question stands.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # Developmental trajectory — the capture spec
@@ -157,7 +168,7 @@ All paths are relative to `state` in `GET /public-state.json`.
 
 ## Sampling rule
 
-- **Cadence:** one row per **phase change** (from `curriculum.activePhase.name`), plus one row on every `cellsPassed` increment. Phase changes are seconds-to-minutes, so this is a few hundred rows per grade — enough to plot, small enough to keep forever.
+- **Cadence:** one row per **phase change** (from `curriculum.activePhase.name`), plus one row on every `passedCellsTotal` increment (⛔ this line said `cellsPassed` until 2026-08-29 — the very path the corrections above establish is UNDEFINED; the sampling rule itself was still carrying it). Phase changes are seconds-to-minutes, so this is a few hundred rows per grade — enough to plot, small enough to keep forever.
 - **Storage:** append-only JSONL, one JSON object per row, `at` as ISO-8601. **Rotate by BYTES, keep whole LINES** — `SCRIPTKILL.2` shipped with a lines-cap and a bytes-trigger, a gate that read correct and enforced nothing.
 - **Never interpolate across a geometry change.** A fresh walk or a tier change makes rows either side non-comparable. Start a new series and record the build sha.
 - **Never publish a cumulative counter as a rate** without differencing it against the previous row (rule 1).

@@ -39,7 +39,12 @@ verified-scope: |
   server/brain-server/state.js (BUCKETPUB.1 — two new published voice fields).
   This page's claims are about .claude/statusline.sh and the settings.json
   wiring; nothing in that edit reaches either. Read as a diff before restamping.
-last-verified: "cdfcf8b5 2026-08-27"
+  ⚠ SELF-DRIFT again, restamped 2026-08-29: same shape as the last one — the
+  only source that moved is server/brain-server/state.js (PSITEACH.1/.2 +
+  FIREKNOB — three new published fields: psiInputs, walkTick, firing). This
+  page's claims are about .claude/statusline.sh and the settings.json wiring;
+  nothing in that edit reaches either. Read as a diff before restamping.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # Claude Code Statusline — How It Works

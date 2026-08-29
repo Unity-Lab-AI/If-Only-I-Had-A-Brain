@@ -10,7 +10,18 @@ sources:
   - deploy/unity-brain.service
   - deploy/nginx-unity-brain.conf
   - .forgejo/workflows/deploy.yml
-last-verified: "d99f9b2c 2026-08-26"
+  # ADDED 2026-08-29 by the sources-coverage check: the 2026-06-28 slow-link
+  # entry cites server/brain-server/gpu.js:1198 ("default 45s") without
+  # listing the file. Verified against current code: that entry stays as
+  # written (it is a dated record, per this page's own rule above), but the
+  # code has moved TWICE since — the check now lives at ~:2566-2615 and the
+  # flat 45s default was replaced by a SIZE+QUEUE-SCALED deadline
+  # (DREAM_UPLOAD_MIN_MBPS share ÷ concurrent streams + bufferedAmount
+  # queued-ahead + 120s margin, cap DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS 30min).
+  # An explicit DREAM_SPARSE_UPLOAD_TIMEOUT_MS still wins outright, so the
+  # unit's 180000 from that entry remains live and correct.
+  - server/brain-server/gpu.js
+last-verified: "cd465955 2026-08-29"
 ---
 
 # REDEPLOY NOTES — for the box Claude / server admin

@@ -21,13 +21,18 @@ verified-scope: |
   12.0.140 build, same sm_75/ISA-8.0 envelope) — the expectation FLIPS; a pod
   recreated at 0.3.33+ reports mean_voltage, and a null there is now a real
   finding. Cargo.toml is at 0.3.33.
+  UPDATED 2026-08-29: Cargo.toml is at 0.3.35 (v0.3.34 psi hemisphere gate +
+  attention; v0.3.35 FIREMATH Rulkov-noise fix, kernels.ptx regenerated again
+  on the same CUDA 12.0 toolchain). voltage_mean is still in the shipped PTX
+  (checked donor-app/src/kernels.ptx), so the 0.3.33 expectation-flip above
+  still HOLDS: a pod recreated on releases/latest reports mean_voltage.
   NOT CHECKED — do not read this page as authority on:
     - the LIVE pod's actual args. KI-35 records that they cannot be read back
       as mutable and that the pod runs the pre-fix launcher; nothing here
       re-probed the running pod.
     - the create-command steps themselves (image, disk, ports, env) - not
       exercised, since creating a pod costs money and drops the A40.
-last-verified: "cdfcf8b5 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # RUNPOD DONOR — CREATE SPEC

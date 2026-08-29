@@ -11,7 +11,8 @@ verified-scope: >
   Binary frame table checked EXHAUSTIVELY: every `_encodeSparseHeader(N` site in
   server/brain-server/gpu.js was enumerated and diffed against the documented
   set — that is how the undocumented type 6 was found. Version-negotiation gates
-  and DREAM_MIN_DONOR_VERSION checked against brain-server.js:10109.
+  and DREAM_MIN_DONOR_VERSION checked against brain-server.js:10959 (line
+  re-read 2026-08-29: default still 0.3.26, the check moved down the file).
   PhaseTimingMs checked against donor-app/src/protocol.rs.
   NOT re-read field-by-field: the `welcome` / `state` / `response` / `build` /
   `image` JSON schemas, rate limiting, reconnection behaviour.
@@ -20,7 +21,7 @@ sources:
   - server/brain-server/gpu.js
   - js/brain/remote-brain.js
   - donor-app/src/protocol.rs
-last-verified: "c0828113 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # WEBSOCKET — Unity Brain Server Wire Protocol
@@ -266,7 +267,7 @@ On the public donor lane (`wss://<host>/ws`), any number of `compute.html` donor
 
 | Direction | Type | Payload | Meaning |
 |---|---|---|---|
-| Donor → Server | `gpu_register` | `{ …, appVersion }` (native binary) | Donor joins the replica pool; server uploads the full brain to it. **TU.20.12:** a native binary sends `appVersion` (Cargo pkg version); if it's below `DREAM_MIN_DONOR_VERSION` (**default `0.3.26` as of `brain-server.js:10109`** — ⛔ this doc said `0.3.7` until 2026-08-27, which is a materially wrong admission floor: it *"sat at 0.3.7 for 22 releases"* and has since been raised) the server replies `{type:"incompatible_version", yourVersion, minVersion, message}` + closes (code 4001) and does NOT admit it. Browser donors omit `appVersion` → exempt. The refused donor stops reconnecting + shows "Brain status: refused — update". |
+| Donor → Server | `gpu_register` | `{ …, appVersion }` (native binary) | Donor joins the replica pool; server uploads the full brain to it. **TU.20.12:** a native binary sends `appVersion` (Cargo pkg version); if it's below `DREAM_MIN_DONOR_VERSION` (**default `0.3.26` as of `brain-server.js:10959`** — ⛔ this doc said `0.3.7` until 2026-08-27, which is a materially wrong admission floor: it *"sat at 0.3.7 for 22 releases"* and has since been raised) the server replies `{type:"incompatible_version", yourVersion, minVersion, message}` + closes (code 4001) and does NOT admit it. Browser donors omit `appVersion` → exempt. The refused donor stops reconnecting + shows "Brain status: refused — update". |
 | Server → Donor | (full-brain upload + periodic master re-broadcast) | weights | Replica receives the complete brain on join, then periodic merged-master pushes |
 
 Admin-only telemetry rides the admin lane (`wss://<host>/admin/ws`): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
@@ -441,7 +442,7 @@ The server logs `[<id>] Unknown message type: <type>` and drops the message. Cli
 
 | Message type | Limit | Enforced by |
 |---|---|---|
-| `text` | `MAX_TEXT_PER_SEC = 2` per client (500 ms minimum gap) | `brain-server.js:1534` — gap check against `client.lastInput`, returns `error` on violation |
+| `text` | `MAX_TEXT_PER_SEC = 2` per client (500 ms minimum gap) | `brain-server.js:10699` — gap check against `client.lastInput`, returns `error` on violation |
 | Everything else | Unlimited | Relies on client sanity + TCP backpressure |
 
 There's no global rate limit or burst budget — it's purely per-client per-message-type. The cross-client `conversation` broadcast that used to fan-out was removed 2026-04-13 (see the `conversation` section above), so a chatty server no longer multiplies traffic by `N clients × text rate`. Each user's text is a 1:1 conversation with the server.
