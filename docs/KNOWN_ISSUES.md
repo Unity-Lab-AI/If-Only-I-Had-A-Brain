@@ -59,7 +59,7 @@ verified-scope: |
       "Published the frontend with ... download links." is present (line 221).
   NOT re-investigated this pass: everything the 2026-08-27 NOT-CHECKED list
   names, unchanged.
-last-verified: "cd465955 2026-08-29"
+last-verified: "58510f6d 2026-08-29"
 ---
 
 # KNOWN ISSUES — running ledger
