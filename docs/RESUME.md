@@ -1,6 +1,56 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-27 (latest) — PICK UP HERE: the press LANDED, `ARTHOG.1` is CONFIRMED LIVE, and her dictionary is down (not our fault, self-recovering)
+> ## ⭐⭐⭐ 2026-08-28 (latest) — PICK UP HERE: ONE NULL had killed every compute_batch since the drive fold; nine fixes shipped in a chain, and the last press each brain owes is FIREKNOB
+>
+> **Every number below was MEASURED live before writing.** ⛔ **Verify anyway** — `git rev-parse --short=8 main develop`, both brains' `/public-state.json`.
+>
+> | | |
+> |---|---|
+> | `main` | **33fca8f2** — identical on both remotes |
+> | `develop` | **34750327** — identical on both remotes; `git diff main develop` EMPTY |
+> | LOCAL brain | running **c6fe0eb9** (booted 23:09Z) — has everything through CTLWINDOW; ⛔ **NOT FIREKNOB/IMGRETRY** |
+> | BOX brain | running **c511ab61** (booted 23:12Z) — same content as local; ⛔ **NOT FIREKNOB/IMGRETRY** |
+> | Step lane | **ALIVE on both**: walkTick local 46/46 ok, box 34/34 ok; spikes 1,667,784 / 1,570,342; Ψ 21-25 |
+> | `docs:drift` | env flags **194/194** ✅ · structural checks 9/9 ✅ · the 22+22 provenance/sources rows remain per-page work |
+>
+> ### 1. ⭐ THE ROOT CAUSE OF THE WHOLE NIGHT — `BATCHNULL.1`, one null field
+>
+> `brainstem` has NO entry in `tonicDrives`. RHYTHM3S.2's drive fold (2026-08-27) multiplied that `undefined` by `thetaMod` → `NaN` → `JSON.stringify` wrote an EXPLICIT `null` → **serde rejects null for `f32`, so the donor discarded the ENTIRE `compute_batch` silently (`Err(_) => ignore`) on every batch, every donor, since the fold shipped.** Captured red-handed by a mirror-probe replica reading the live payload. One `Number.isFinite` guard restores the exact pre-fold semantics. ⛔ **Downstream casualties now all attributable to this line:** 180s batch timeouts on both brains, the dead step lane, **Ψ = 0.000 for entire walks** (Gee: *"consousneess should NOT be 0.00"* — he also called the cause: *"the work yesterday broke it"*, correctly), spikes 0, and the pod-drop loop. ⭐ **The discriminating observation for next time: lo-lane binary gate probes answered in 14ms mid-teach while hi-lane JSON batches starved 180s — saturation starves LANES; a parse failure starves exactly one message TYPE.**
+>
+> ### 2. The chain shipped tonight, in order (all on `main`, ledgered in FINALIZED §2026-08-28)
+>
+> - **`PSITEACH.1/.2/.3`** — Ψ gains a MEASURED teach-activity term (`state.psiInputs`); a walk heartbeat steps the NON-cortex clusters every `DREAM_WALK_TICK_MS` (15s) for the ENTIRE walk (`state.walkTick`); ⛔ cortex is never stepped mid-walk (teach writes `cortex/<region>` spike buffers the bound Hebbian ops read). Full 8-cluster batches return when `_curriculumInProgress` is false — the historical Ψ-jump-at-donor-connect behavior preserved.
+> - **`NUMSCOPE.1`** — the dashboard threw `num is not defined` on EVERY WS message (helper scoped to `renderProfiling`, called from `updateDashboard`); every panel after line 1916 froze at stale values while looking live.
+> - **`ALIGNKILL.1`** — the intermittent whole-process crash: an unaligned `Float32Array` VIEW on a donor ack (`brain-server.js:10504`) threw as an uncaughtException. Byte-copy + the SPRR branch now drops malformed frames LOUDLY instead of dying.
+> - **`PODKICK.1`** — the pod dropped every ~11 min: heartbeat timeouts fed the zombie kick, each kick's forced re-upload made the next probes time out behind it. Probes pass `{ noKick: true }`; the kick stays armed for real batches.
+> - **`CTLWINDOW.1`** — brain-ctl died with the launcher console (`start /b` / bare `&`); Sponge's ctl panel went dark and the legacy admin row came back. Own minimized window on Windows / `nohup` on Linux, append-mode logs. ⚠ **The minimized `unity-brain-ctl (leave running)` window is LOAD-BEARING — do not close it.**
+> - **`FIREKNOB.1`** — `DREAM_FIRING_TARGET_PCT` (default **7.5**, Gee: *"should be like 5-10% of the brain at any moment"*; `0` = exact prior physics): a self-calibrating bounded drive scale (×[0.25, 10], psiGain/SUBSTEPS.2 idiom) published at `state.firing`. A scale pinned at a bound is a REPORT that the drive knob alone cannot reach the target — the next lever (noise/threshold) is a NEW decision, never automatic.
+> - **`IMGRETRY.1`** — chat images retry on backoff (4/8/16/24s, byte-identical URL) instead of failing on one race: the anonymous Pollinations tier queues **ONE request per IP** (measured 429 body) and her look lane shares the IP. ⚠ Owned: this commit landed direct-on-develop instead of the feature branch.
+>
+> ### 3. ⛔ THE ONE PRESS EACH BRAIN STILL OWES — SUPERSEDED SAME DAY BY FIREMATH (below)
+>
+> Both brains run pre-FIREKNOB code, so **firing sits at ~0.4% of stepped neurons** (below the ~1.5% design sparsity AND Gee's 5-10% band). One local `Savestart.bat` + one box Update & Savestart lands FIREKNOB + IMGRETRY. ~~Watch after: `state.firing.driveScale` climbing from 1.0, `ema` walking toward 7.5.~~ **FIREMATH (same evening) found WHY the knob couldn't work and re-aimed everything — read §3b.**
+>
+> ### 3b. ⭐ FIREMATH — the real root of the 0.4% firing, fixed end-to-end (branch `feature/firemath`)
+>
+> - **The native donor's Rulkov noise was 20,000× the browser reference** — both `lif.wgsl` and `cuda_kernels.cu` dropped the `×0.0001` jitter scaling in the port (`±5-13` into y per step vs the design's `±noiseAmp×5e-5`). y random-walked out of the attractor basin → firing collapsed to accidental crossings → drive (σ, worth ±0.0015/step on y) was INVISIBLE, which is why FIREKNOB ×10 moved nothing. Both kernels fixed to the reference formula + the browser's basin-reseed guard (also dropped in the port — damaged y now heals on the first step). PTX regenerated (Docker CUDA 12.0.1, ISA 8.0/sm_75, constants hex-verified). **Donor release v0.3.35** (+ BATCHNULL hardening: null-tolerant serde on every batch numeric, unparseable messages logged not silent; server side got a `Number.isFinite` chokepoint on the whole payload + gpu.js `psi`).
+> - **The σ→firing curve, MEASURED** (20k×4k steps, production constants): σ=−1/drive 0 → **9.56% — the map's intrinsic FLOOR**; nominal tonic → 19-24%; drive 40 → 33.3%; noiseAmp is not a rate lever (<0.1pp across 3→13). Broken formula reproduces live production exactly (5.8% transient → 0.85% steady).
+> - **FIREKNOB re-aimed:** bounds ×[0.25,10] → **×[0.01, 2.5]** (2.5 = the σ clamp's saturation at the lowest tonic; the old ×10 was ×2 wearing a bigger number). ⚠ **Post-press EXPECTED steady state: firing ~9.6%, `driveScale` pinned LOW (~0.01), ema ABOVE the 7.5 target — that pin is CORRECT, not a defect** (7.5 sits below the map's floor). In-band per Gee's *"like 5-10%"* at the top edge.
+> - **`FIREMATH.5` is Gee's open physics decision:** firing BELOW ~9.6% needs a refractory mechanism or a different α (all three kernels). No code until he picks. `FIREMATH.4` = live verification, pending the press + donors on v0.3.35 (pod self-upgrades at next disconnect; local exe staged at `donor-app/target-v35/release/unity-donor.exe` — Gee's running 0.3.34 donor holds the default target's exe lock, swap on his next donor restart).
+> - `UNITYCMD.1` looked at honestly (mechanics all work; the persona register is declined, not broken — command-file retune offered, Gee's call).
+>
+> ### 4. ⚠ Facts a next session will otherwise re-derive
+>
+> - **The local walk is FRESH from a dashboard press at 22:33:41Z** (`brain-ctl.log`: `/update` fresh-walk) — local weights were wiped by that press; attribution recorded, not a bug.
+> - **`js/app.bundle.js` is now genuinely committed** (rebuilt by IMGRETRY, 4,429,477 bytes) — the previous entry's "CRLF-only ghost, do not commit" note is OBSOLETE.
+> - `Stack Vault.png` is still untracked and still not ours to touch.
+> - The flashing console windows Gee asked about are OUR OWN short-lived `git`/`gh`/`node` children (30s process watch: 4 new processes, all accounted) — not a compromise.
+> - Wiki current at `d275e756` ([[brain-server]], [[donor-lane]], [[html-pages]] + log); vault registry synced 2026-08-28; dashboard regenerated.
+> - ⚠ This RESUME entry is written but deliberately uncommitted (the 2026-08-27 precedent: *write it, do not push just for the resume*) — commit it with the next real batch.
+>
+> ---
+>
+> ## ⭐⭐ 2026-08-27 (earlier) — the press LANDED, `ARTHOG.1` is CONFIRMED LIVE, and her dictionary is down (not our fault, self-recovering)
 >
 > **Every number below was MEASURED across three live samples spanning ~25 min, immediately before writing.** ⛔ **Verify anyway** — and note what the entry below this one got wrong by being written slightly too early.
 >

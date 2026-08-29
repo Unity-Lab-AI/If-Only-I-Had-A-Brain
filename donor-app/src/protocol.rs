@@ -4,8 +4,35 @@
 //!
 //! See ../BUILD-PLAN.md and the mapped spec for the full contract.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
+
+// ─── BATCHNULL hardening (v0.3.35) — null-tolerant numerics ───────
+//
+// serde rejects JSON `null` for a bare f32, and the tagged-enum dispatch
+// discards the WHOLE message on any field error (`Err(_) => ignore`, silent
+// by design). One NaN-turned-null modulation field (brainstem tonicDrive ×
+// an undefined map entry) therefore cost the entire step lane for a full
+// day on both brains: every compute_batch unparseable, 180s timeouts,
+// spikes 0, Ψ starved, and the zombie-kick pod-drop loop. A modulation
+// input must DEGRADE TO ITS DEFAULT, never take the message down with it.
+
+/// `null` (or absent, via `#[serde(default)]`) → 0.0.
+fn f32_null_zero<'de, D: Deserializer<'de>>(d: D) -> Result<f32, D::Error> {
+    Ok(Option::<f32>::deserialize(d)?.unwrap_or(0.0))
+}
+
+/// `null` (or absent) → 1.0 — for multiplicative gates.
+fn f32_null_one<'de, D: Deserializer<'de>>(d: D) -> Result<f32, D::Error> {
+    Ok(Option::<f32>::deserialize(d)?.unwrap_or(1.0))
+}
+
+/// Gain maps: a `null` VALUE inside the map drops that entry instead of
+/// rejecting the message (the kernel treats a missing region as gain 1.0).
+fn gains_null_tolerant<'de, D: Deserializer<'de>>(d: D) -> Result<HashMap<String, f32>, D::Error> {
+    let raw = HashMap::<String, Option<f32>>::deserialize(d)?;
+    Ok(raw.into_iter().filter_map(|(k, v)| v.map(|x| (k, x))).collect())
+}
 
 // ─── Donor → Server ───────────────────────────────────────────────
 
@@ -225,38 +252,41 @@ pub struct GpuInit {
     #[serde(rename = "clusterName")]
     pub cluster_name: String,
     pub size: u32,
-    #[serde(rename = "tonicDrive", default)]
+    #[serde(rename = "tonicDrive", default, deserialize_with = "f32_null_zero")]
     pub tonic_drive: f32,
-    #[serde(rename = "noiseAmp", default)]
+    #[serde(rename = "noiseAmp", default, deserialize_with = "f32_null_zero")]
     pub noise_amp: f32,
     #[serde(default)]
     pub regions: HashMap<String, Region>,
 }
 
 /// One cluster's modulation inputs within a `compute_batch`.
+/// Every numeric here is null-tolerant (BATCHNULL, v0.3.35): a `null` field
+/// degrades to that field's default instead of discarding the whole batch.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ClusterParams {
     pub name: String,
     pub size: u32,
-    #[serde(rename = "tonicDrive", default)]
+    #[serde(rename = "tonicDrive", default, deserialize_with = "f32_null_zero")]
     pub tonic_drive: f32,
-    #[serde(rename = "noiseAmp", default)]
+    #[serde(rename = "noiseAmp", default, deserialize_with = "f32_null_zero")]
     pub noise_amp: f32,
-    #[serde(rename = "gainMultiplier", default = "one")]
+    #[serde(rename = "gainMultiplier", default = "one", deserialize_with = "f32_null_one")]
     pub gain_multiplier: f32,
-    #[serde(rename = "emotionalGate", default = "one")]
+    #[serde(rename = "emotionalGate", default = "one", deserialize_with = "f32_null_one")]
     pub emotional_gate: f32,
-    #[serde(rename = "driveBaseline", default = "one")]
+    #[serde(rename = "driveBaseline", default = "one", deserialize_with = "f32_null_one")]
     pub drive_baseline: f32,
-    #[serde(rename = "errorCorrection", default)]
+    #[serde(rename = "errorCorrection", default, deserialize_with = "f32_null_zero")]
     pub error_correction: f32,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "f32_null_zero")]
     pub reward: f32,
     /// RHYTHM3S.2 (v0.3.34) — per-region attention gains, multiplied into the
     /// Ψ hemisphere gate when the per-batch gate table is rebuilt. Absent from
     /// older servers (serde default = empty map), ignored by older donors
     /// (serde skips unknown JSON fields) — compatible in both directions.
-    #[serde(rename = "regionGains", default)]
+    /// A `null` gain drops that region's entry (kernel default 1.0).
+    #[serde(rename = "regionGains", default, deserialize_with = "gains_null_tolerant")]
     pub region_gains: HashMap<String, f32>,
 }
 
@@ -266,7 +296,7 @@ pub struct ComputeBatch {
     #[serde(rename = "batchId")]
     pub batch_id: u64,
     pub substeps: u32,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "f32_null_zero")]
     pub psi: f32,
     pub clusters: Vec<ClusterParams>,
 }

@@ -314,7 +314,9 @@ const SERVER_GPU_MIXIN = {
       // main equation; lateralized cortex regions modulate drive by
       // Ψ-driven binding coefficient, matching biological split-brain +
       // global-workspace consciousness interpretation.
-      psi: this.psi ?? 0,
+      // Number.isFinite, not ??: a NaN Ψ becomes JSON null, and one null
+      // discards the WHOLE message on pre-v0.3.35 donors (BATCHNULL).
+      psi: Number.isFinite(this.psi) ? this.psi : 0,
     };
     this._gpuClient.send(JSON.stringify(_batchMsg));
 

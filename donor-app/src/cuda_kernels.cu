@@ -58,7 +58,20 @@ __global__ void lif(unsigned int n, float effectiveDrive, float noiseAmp,
   float sigmaEff = -1.0f + fminf(fmaxf(drive / 40.0f, 0.0f), 1.0f) * 1.5f;
   float xN = state[2u*i];
   float yN = state[2u*i + 1u];
-  float jitter = rnd(seed, i) * noiseAmp;
+  // Escaped/NaN state reseeds into the bursting-attractor basin — same guard
+  // as the browser reference (gpu-compute.js) and the WGSL twin.
+  if (xN != xN || yN != yN || fabsf(xN) > 100.0f || fabsf(yN) > 100.0f) {
+    const float PHI = 0.61803398875f;
+    float f1 = (float)i * PHI;        float b1 = f1 - floorf(f1);
+    float f2 = (float)i * PHI * 1.7f; float b2 = f2 - floorf(f2);
+    xN = -1.0f + b1 * 0.5f;
+    yN = -3.2f + b2 * 0.4f;
+  }
+  // Noise lives in the SLOW variable's units (±noiseAmp×5e-5, the browser
+  // reference's (rand[0,1]-0.5)×noiseAmp×0.0001; rnd here spans [-1,1] so
+  // ×0.5 gives the identical amplitude). The unscaled port injected
+  // ±noiseAmp per step — 20,000× the reference — see the WGSL twin's note.
+  float jitter = rnd(seed, i) * 0.5f * noiseAmp * 0.0001f;
   float xNext = ALPHA / (1.0f + xN * xN) + yN;
   float yNext = yN - MU * (xN - sigmaEff) + jitter;
   state[2u*i]      = xNext;
