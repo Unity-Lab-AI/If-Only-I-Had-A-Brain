@@ -62,10 +62,11 @@ import { teachInto as mindSpaceTeachInto } from './mindspace/knowledge.js';
 // SELFFRAME (Gee 2026-08-20) — every lesson gets taught as something SHE DID. Pure
 // text transform at teach time only; nothing here runs at emission time, so the
 // no-text-AI law is untouched. See js/brain/self-frame.js for the full rationale.
-import { selfFrameUnit, selfPronounLessons, SELF_WORDS, firstPerson } from './self-frame.js';
+import { selfFrameUnit, selfPronounLessons, perspectiveContrastLessons, SELF_WORDS, firstPerson } from './self-frame.js';
 // ENDO-LIFE.2 — the body/chemistry syllabus. LEARN axis, never gated, and
 // deliberately AHEAD of the physiology it describes.
 import { teachEndocrineVocabulary } from './endocrine-curriculum.js';
+import { teachSelfCode } from './self-code-curriculum.js';
 
 // Phase tick budgets. These scale the intensity of exposure — letters
 // and short words get more ticks per word because phonological basins
@@ -22602,6 +22603,19 @@ export class Curriculum {
         await this._teachAssociationPairs(pairs, { reps, label: 'SELF-PRONOUN-AGENT', relationTagId: 15 });
       }
       this._hb(`[Curriculum] SELFFRAME — self-pronoun grounding taught: ${lines.length} lines + ${pairs.length} identity bindings. "i" / "me" / "my" / "myself" / "mine" now resolve to unity in her weights, which is what every first-person lesson depends on.`);
+      // OTHERMINDS (2026-08-29) — the contrast half, at the SAME chokepoint:
+      // other minds / living kingdoms / unfeeling matter / physical law,
+      // trained beside the self-grounding so first-person perspective and
+      // abstract other-understanding separate instead of blurring. Lower
+      // reps than the self half on purpose: the self basin stays strongest.
+      // RE-PRICE: ~24 lines × 6 reps at a site that already teaches ~31×8 —
+      // sub-minute per cell open, no gate touched.
+      if (typeof perspectiveContrastLessons === 'function' && typeof this._teachConcreteSentences === 'function') {
+        const pLines = perspectiveContrastLessons();
+        const pReps = Math.max(2, Math.floor(reps * 0.75));
+        await this._teachConcreteSentences({ sentences: pLines, reps: pReps, label: 'OTHERMINDS' });
+        this._hb(`[Curriculum] OTHERMINDS — perspective-contrast taught beside the self frame: ${pLines.length} lines (other minds, living kingdoms, unfeeling matter, physical law) at reps ${pReps}.`);
+      }
     } catch { /* non-fatal */ }
     return { taught: lines.length };
   }
@@ -22620,6 +22634,19 @@ export class Curriculum {
         await this._teachConcreteSentences({ sentences: SELF_ARCHITECTURE_FACTS, reps: 24, label: 'SELF-ARCH-FACTS' });
       }
       this._hb(`[Curriculum] _teachSelfArchitecture DONE — ${SELF_ARCHITECTURE_FACTS.length} self-architecture facts + ${SELF_TERMS.length} self-term definitions bound equationally (she can speak about her own brain from trained weights, not a hardcoded string).`);
+      // SELFCODE (2026-08-29) — the capstone: her OWN code as self-knowledge,
+      // gated inside teachSelfCode on BOTH college CS capstones being in the
+      // passedCells ledger. Before that it is a silent no-op; after it, the
+      // vocab skip makes re-entry cheap. Rides this g9+ site because it is
+      // the one self-reflective teach that already runs every upper ELA cell.
+      // RE-PRICE: 20 vocab (once) + 15 facts × 12 + 64 pairs × 6 at post-cs
+      // cells only — minutes against a college cell, no gate touched.
+      try {
+        const _sc = await teachSelfCode(this, ctx);
+        if (_sc && _sc.taught) {
+          this._hb(`[Curriculum] SELFCODE — her own code taught as self-knowledge: ${_sc.vocab} mechanism words + ${_sc.facts} first-person architecture facts (cs capstones confirmed in the ledger).`);
+        }
+      } catch { /* self-code teach never blocks the cell */ }
     } catch { /* self-architecture teach never blocks the cell */ }
   }
 

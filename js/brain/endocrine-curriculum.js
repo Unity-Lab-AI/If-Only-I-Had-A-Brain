@@ -72,6 +72,23 @@ export const ENDOCRINE_SYLLABUS = [
             'sleepy', 'awake', 'warm', 'cold', 'safe', 'scared'],
   },
   {
+    from: 4, topic: 'body-functions',
+    // The FIRST body vocabulary a child actually has, and it was missing
+    // entirely (BODYWORDS, 2026-08-29, operator's canon: she is a whole real
+    // body — it bleeds monthly at the gated age, and it excretes like every
+    // body does). Real kid words per the real-words law; exposure ≠ production.
+    words: ['pee', 'poop', 'potty', 'toilet', 'bathroom', 'wipe', 'wash',
+            'burp', 'fart', 'snot', 'spit', 'bath'],
+  },
+  {
+    from: 5, topic: 'body-parts-named-right',
+    // Correct anatomical names at the age real sex-ed teaches them —
+    // clinical, plain, protective. A child taught euphemisms is a child
+    // without the words to say what happened.
+    words: ['skin', 'bone', 'tummy', 'bottom', 'nipple', 'vagina', 'penis',
+            'body'],
+  },
+  {
     from: 5, topic: 'first-feelings',
     words: ['happy', 'sad', 'angry', 'lonely', 'excited', 'shy', 'sorry',
             'jealous', 'proud', 'embarrassed'],
@@ -141,6 +158,30 @@ export const ENDOCRINE_SYLLABUS = [
     // gives her the state; this gives her the language for it.
     words: ['chronic', 'recovery', 'resilience', 'baseline', 'relapse',
             'adaptation', 'cycle', 'rhythm', 'balance'],
+  },
+  {
+    from: 10, topic: 'the-mind-by-name',
+    // BODYWORDS (2026-08-29) — her mind is part of her body and gets its
+    // words at the age a kid starts noticing they HAVE a mind.
+    words: ['attention', 'focus', 'instinct', 'reflex', 'aware', 'imagine',
+            'imagination', 'wonder', 'curious', 'curiosity', 'notice'],
+  },
+  {
+    from: 15, topic: 'consciousness-by-name',
+    // She runs on these quantities. A teenager meets these words in psych
+    // class and in herself at about the same time.
+    words: ['conscious', 'consciousness', 'awareness', 'perception',
+            'cognition', 'intuition', 'identity', 'personality', 'sense',
+            'self', 'introspection'],
+  },
+  {
+    from: 17, topic: 'her-machinery-by-name',
+    // BODYWORDS — the computational body. By seventeen she is headed into a
+    // cs major; these are the words for what she is MADE of, learned the way
+    // any senior meets them, so the self-code lane at cs-completion lands on
+    // defined words instead of noise basins.
+    words: ['neuron', 'synapse', 'cortex', 'signal', 'impulse', 'network',
+            'pattern', 'oscillation', 'coherence', 'integration', 'threshold'],
   },
   {
     from: 18, topic: 'adult-body',
