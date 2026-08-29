@@ -1028,6 +1028,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let mut bytes_in_window: u64 = 0;
     let mut link_down_mbps: f64 = 0.0;
     let mut link_window_start = std::time::Instant::now();
+    // BATCHNULL (v0.3.35) — a message the dispatch cannot parse must never be
+    // SILENT: one rejected field cost the entire step lane for a day and left
+    // zero donor-side evidence. Rate-limited so a hot loop cannot flood stderr.
+    let mut parse_fail_count: u64 = 0;
+    let mut parse_fail_last_warn = std::time::Instant::now() - std::time::Duration::from_secs(3600);
     // v0.3.15 — teach-payload cache for type-12 repeat frames + miss counter.
     // Lives in the WS loop (per-connection, like the server's per-socket cache),
     // so a reconnect starts empty on BOTH ends in lockstep.
@@ -1204,7 +1209,20 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 }
                             }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
-                            Err(_) => { /* non-JSON or unparseable — ignore */ }
+                            Err(e) => {
+                                // NOT silent (BATCHNULL, v0.3.35): name the message type +
+                                // serde's own reason, rate-limited to one line per 30s with a
+                                // dropped-count so a per-batch failure is visible, not a flood.
+                                parse_fail_count += 1;
+                                if parse_fail_last_warn.elapsed() >= std::time::Duration::from_secs(30) {
+                                    let mtype = serde_json::from_str::<serde_json::Value>(t.as_str())
+                                        .ok()
+                                        .and_then(|v| v.get("type").and_then(|t| t.as_str()).map(|s| s.to_string()))
+                                        .unwrap_or_else(|| "<non-JSON>".to_string());
+                                    eprintln!("[donor] ⛔ UNPARSEABLE message type='{mtype}' DROPPED ({parse_fail_count} total this session): {e}");
+                                    parse_fail_last_warn = std::time::Instant::now();
+                                }
+                            }
                         }
                     }
                     Message::Binary(bytes) => {

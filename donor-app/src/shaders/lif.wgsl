@@ -58,9 +58,23 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let sigmaEff = -1.0 + clamp(drive / 40.0, 0.0, 1.0) * 1.5;
 
   let s = state[i];
-  let xN = s.x;
-  let yN = s.y;
-  let jitter = randomFloat(params.seed, i) * params.noiseAmp;
+  var xN = s.x;
+  var yN = s.y;
+  // Escaped/NaN state reseeds into the bursting-attractor basin — same guard
+  // as the browser reference (gpu-compute.js). Without it a corrupted slow
+  // variable strands the neuron outside the spiking regime permanently.
+  if (xN != xN || yN != yN || abs(xN) > 100.0 || abs(yN) > 100.0) {
+    let phi = 0.61803398875;
+    xN = -1.0 + fract(f32(i) * phi) * 0.5;
+    yN = -3.2 + fract(f32(i) * phi * 1.7) * 0.4;
+  }
+  // Noise lives in the SLOW variable's units: the browser reference scales
+  // jitter by 1e-4 ((rand[0,1] - 0.5) × noiseAmp × 0.0001 → ±noiseAmp×5e-5,
+  // comparable to the map's own μ=0.001 drift). randomFloat here spans
+  // [-1,1], so × 0.5 gives the identical ±amplitude. The unscaled port
+  // injected ±noiseAmp (~±5-13) per step — 20,000× the reference — which
+  // random-walked y out of the basin and collapsed firing to noise crossings.
+  let jitter = randomFloat(params.seed, i) * 0.5 * params.noiseAmp * 0.0001;
 
   let xNext = ALPHA / (1.0 + xN * xN) + yN;
   let yNext = yN - MU * (xN - sigmaEff) + jitter;
