@@ -28,14 +28,21 @@ verified-scope: |
       and SCIENCE name tables were diffed against the code.
     - grade-vocabulary.js and subjects.js. Both are listed sources, NEITHER
       moved, and neither was read this pass.
-last-verified: "38e19615 2026-08-27"
+  RE-CHECKED 2026-08-29 (provenance pass): curriculum.js moved again —
+  SUBJRETIRE inserted the retirement block (+93 lines) ABOVE COURSE_NAMES, so
+  the table now sits at curriculum.js:277, not the :184 recorded above. The
+  table's CONTENT did not move; the math/science name checks above still hold,
+  and the expanded-subjects table below already records SUBJECTS_RETIRED_AT
+  (nine K-12 tracks at grade12, genered/cstheory/cssystems at college4,
+  ledger-gated via subjectsOwedAt). Nothing else on this page is invalidated.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # CURRICULUM SCOPE & SEQUENCE — the EXACT real-student course sequence (K→PhD)
 
 > ## ⭐ RE-VERIFIED 2026-08-27 (DOCPROV.4, 16 of 22) — THIS PAGE HOLDS. The code follows the spec.
 >
-> This page says it **governs** the academic runners, so the check is whether the code's own course-name table agrees with it. **It does.** `COURSE_NAMES` (`js/brain/curriculum.js:184`) was diffed against the tables below, and — ⭐ **the one source that had moved is `curriculum.js`, i.e. the file that holds that very table, so drift pointed at exactly the right place:**
+> This page says it **governs** the academic runners, so the check is whether the code's own course-name table agrees with it. **It does.** `COURSE_NAMES` (`js/brain/curriculum.js:277` — was `:184` until SUBJRETIRE inserted the +93-line retirement block above it) was diffed against the tables below, and — ⭐ **the one source that had moved is `curriculum.js`, i.e. the file that holds that very table, so drift pointed at exactly the right place:**
 >
 > | grade | this page | `COURSE_NAMES` |
 > |---|---|---|

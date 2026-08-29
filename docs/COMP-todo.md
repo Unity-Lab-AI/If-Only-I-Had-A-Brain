@@ -13,6 +13,14 @@ sources:
   # js/brain/cluster.js, which this page never declared — so drift could fire on
   # three GPU files while the claims that were actually wrong went unwatched.
   - js/brain/cluster.js
+  # ADDED 2026-08-29: the page cites server/brain-server.js:2995-3048 (the
+  # gpuSparseHebbianBound batching note), js/brain/engine.js:381/:63 and
+  # js/brain/embeddings.js:32/:45-49 in its April/May plan text without
+  # declaring any of the three — drift could never fire on files the plan
+  # cites. All three citations are HISTORICAL (see verified-scope).
+  - server/brain-server.js
+  - js/brain/engine.js
+  - js/brain/embeddings.js
 verified-scope: |
   CHECKED 2026-08-27 (DOCPROV.4). ⛔ This page is stamped "Last updated:
   2026-04-15" and its STACK STATE section is an APRIL SNAPSHOT. It was NOT
@@ -42,7 +50,26 @@ verified-scope: |
     - the three GPU sources it declares (gpu.js, compute.rs, gpu-compute.js).
       All three moved; none was read for THIS page's claims, because the
       claims that proved wrong were all cluster-geometry claims instead.
-last-verified: "81c5068c 2026-08-27"
+  RE-VERIFIED 2026-08-29 (provenance pass on cd465955). 3 of 4 declared sources
+  moved since the 2026-08-27 stamp (gpu.js +82, compute.rs +32, gpu-compute.js
+  +12 — the FIREMATH/FIREKNOB/ALIGNKILL/PODKICK/TEACHCREDIT batch; cluster.js
+  unchanged). None of that falsifies the April plan body — it predates the
+  donor stack entirely — and only ONE claim in the 2026-08-27 correction layer
+  aged: the donor version. Corrected in the banner: v0.3.32 -> v0.3.35
+  (CURRENT_DONOR_VERSION, server/brain-server.js:1127).
+  CITATION AUDIT (all historical, body left byte-identical, files added to
+  sources instead):
+    - server/brain-server.js:2995-3048 (iter24 audit note, 2026-05-06): the
+      gpuSparseHebbianBound proxy entry now sits at brain-server.js:3242.
+    - engine.js:381 ("Cortex learn() runs every step"): the cluster learn loop
+      now sits at engine.js:751; line 381 is unrelated doc-comment today.
+    - engine.js:63 (P1.3.3 "CLUSTER_SIZES.cortex"): the constant NO LONGER
+      EXISTS — sizing is CLUSTER_FRACTIONS now, and TOTAL_NEURONS=6700 sits at
+      engine.js:67. There is no correct new N for this citation.
+    - embeddings.js:32 ("_refinements ... online delta") and :45-49 ("falls
+      through to hash"): both lines are GloVe-300d comments today; the
+      refinement machinery and the loader shipped in T14.0 as planned.
+last-verified: "cd465955 2026-08-29"
 ---
 
 # MASTER-TODO — Everything Unity Has Left
@@ -72,7 +99,7 @@ last-verified: "81c5068c 2026-08-27"
 > | *"every cortex cluster carves into **8** named sub-regions"* | ⛔ **ELEVEN:** `auditory, visual, gustatory, somatosensory, free, letter, phon, sem, fineType, motor, word_motor`. **`gustatory`, `somatosensory` and `word_motor` did not exist in April** |
 > | the span list (`free 0.250-0.500`, `sem 0.750-0.917`, `motor 0.967-1.000`, …) | ⛔ **all shifted** by the carve-outs above. ⚠ **Deliberately not re-listed here** — the authoritative map is `wiki/modules/cortex-cluster.md` and `README.md`, both verified this session; copying spans into a third place is how they drifted apart in the first place |
 > | *"**14** sparse cross-region projections (7 pairs × 2 directions)"* | ⛔ **SIXTEEN.** The two additions are `sem_to_word_motor` and `word_motor_to_sem`, i.e. the unified word-emission band |
-> | *"⏸ **PART 2 (COMP-net) IS ON HOLD** as of 2026-04-14"* | ⛔ **Not on hold — SHIPPED.** The distributed donor-GPU stack is live: browser donors via `compute.html`, a native donor binary at **v0.3.32**, data-parallel replicas with Hebbian-delta merge, community auto-scaling, and a Forgejo-authed admin lane |
+> | *"⏸ **PART 2 (COMP-net) IS ON HOLD** as of 2026-04-14"* | ⛔ **Not on hold — SHIPPED.** The distributed donor-GPU stack is live: browser donors via `compute.html`, a native donor binary at **v0.3.32** (**v0.3.35** as of the 2026-08-29 re-verify), data-parallel replicas with Hebbian-delta merge, community auto-scaling, and a Forgejo-authed admin lane |
 >
 > ⭐ **THE PATTERN WORTH NAMING: this is the THIRD page found carrying the stale region map.** `README.md` said *"9 sub-regions"* and `html/brain-equations.html` said *"free 0.250-0.500"* — both corrected earlier in this same sweep. **One geometry change in the code, three documents left describing the old shape, none of them aware of the others.** ⛔ **That is the argument for the provenance baseline in one sentence.**
 >

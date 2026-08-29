@@ -8,7 +8,9 @@ sources:
   - js/brain/global-workspace.js
   - js/brain/mindspace/transform.js
   # ADDED 2026-08-27: the Φ̂ NORMALISATION (PHISCALE.1) lives in
-  # server/brain-server.js:5034-5087, not in cluster.js — computePhi() produces
+  # server/brain-server.js:5215-5291 (re-pointed 2026-08-29 — the FIREKNOB /
+  # PSITEACH walk-heartbeat additions of 2026-08-28 landed above it; the
+  # PHISCALE.1 block itself is byte-unchanged), not in cluster.js — computePhi() produces
   # the raw entropy and the server adapts the reference. §9.3/§9.4 make claims
   # about both halves, so drift could only ever see one of them.
   - server/brain-server.js
@@ -33,7 +35,7 @@ verified-scope: |
     - the literature-synthesis claims (§2) and every section outside 9.3-9.5.
     - js/brain/mystery.js, global-workspace.js and mindspace/transform.js -
       all three are listed sources, NONE of them moved, and none were read.
-last-verified: "074aa591 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # The Equational Mind
@@ -429,7 +431,7 @@ The structure is a deliberate mapping of psychodynamic and lateralization vocabu
 
 ⭐ **UPDATED 2026-08-27 — THE CAVEAT ABOVE CAN NOW BE RETIRED, BECAUSE IT WAS MEASURED.** The previous sentence read: *"it is a derivation, not a report of observed behaviour."* Read off the running brain: **`phiState: "live"`** (not `floored`), **`phiRaw` 0.2618**, **`phiScaleRef` 0.3044**, **`phiNorm` (Φ̂) 0.860**. ⭐ **So Φ̂ is modulating Ψ, and the floor is no longer doing the work — the term is doing what this section always argued it would, and that is now a report rather than a derivation.**
 
-⛔ **And the NORMALISATION is not a bare floor, which this paper did not previously describe.** `PHISCALE.1` (`server/brain-server.js:5034-5087`) makes Φ̂ an **adaptive high-water reference**:
+⛔ **And the NORMALISATION is not a bare floor, which this paper did not previously describe.** `PHISCALE.1` (`server/brain-server.js:5215-5291` — re-pointed 2026-08-29, was `:5034-5087` before the FIREKNOB additions landed above it; the block itself is unchanged) makes Φ̂ an **adaptive high-water reference**:
 
 ```
 Φ̂ = clamp(H(p) / ref, 0, 1)
@@ -441,6 +443,8 @@ seed = H(0.015) = 0.1124                            (her DOCUMENTED design spars
 ⭐ **Why a reference and not a constant, stated because it is the substantive design choice:** nothing in the system justifies a specific spiking proportion as "maximal integration", and a hardcoded `p_ref` would silently mean different things across boots — **`totalNeurons` is derived at boot from free host RAM**, so the same code has come up at 425,436,550 and 459,775,607. Referencing her *own observed peak* is scale-free in the same way the `gainMultiplier` EMA is. ⚠ The seed is the documented sparsity rather than a chosen number, so the floor case is derived too.
 
 ⚠ **A first attempt at this rose too gently and a harness caught it:** a lagging reference clipped design-sparsity firing and 3% firing both to `1.000`, i.e. re-created the very constant it was meant to remove. Verified on the fix: 0.5%→3% firing spans **0.234 → 1.000**, spread **0.766**.
+
+⚠ **UPDATED 2026-08-29 — the "~1.5% design sparsity" is the SEED'S PROVENANCE, not the live firing regime, and the two have measurably parted.** The `FIREMATH` measurement (2026-08-28, the FIREKNOB comment block above `_firingTargetPct()` in `brain-server.js`) ran the map's σ→firing curve at production constants (α=4.5, μ=0.001, reference jitter, basin seeding): **σ=−1 is the map's intrinsic FLOOR at ~9.6% firing — drive cannot push it lower — and nominal tonic drive lands at 19-24%.** Live firing therefore runs roughly an order of magnitude above the documented 1.5%. A **FIREKNOB** controller now multiplies `tonicDrive` by a self-calibrating bounded scale **×[0.01, 2.5]** (`_firingDriveScale()`, consumed at the `compute_batch` dispatch), steering measured firing toward `DREAM_FIRING_TARGET_PCT` (default **7.5**; 0 disables) — and because 7.5% sits BELOW the ~9.6% floor, the controller settles **pinned LOW at ~9.6%** and its log line says so rather than hiding it. **The Φ̂ normalisation above is unchanged by this:** the seed stays `H(0.015) = 0.1124` as the never-go-below floor of the reference, and the adaptive high-water reference simply climbs to the entropy of the real regime above it — which is exactly the behaviour it was built for when the operating point moved. Read every "~1.5%" on this page as the historical design figure the seed was derived from, never as the measured firing rate.
 
 ⭐ **`Φ̂` is not cosmetic, and it earns its place by fixing exactly one state.** Capacity alone rates **anaesthesia as maximal consciousness** — anaesthesia has very low `n`, and low activity reads as high unspent potential. Integration is what distinguishes it from **dissociation**, which is also quiet and is famously hyper-vivid. With `Φ̂`, seizure (hypersynchrony destroys information), anaesthesia (nothing bound), rage, ordinary waking and freeze all order correctly — and **freeze falling out as maximal was not designed for**, which is the kind of agreement worth reporting because it was not arranged.
 

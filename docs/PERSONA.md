@@ -29,7 +29,9 @@ verified-scope: |
     - VERIFIED: all nine substances present in drug-scheduler.js (plus
       caffeine, and nicotine/tobacco as the exclusions); the 13-axis speech
       modulator at drug-scheduler.js:1255; _selfImageAge() at
-      server/brain-server/chat.js:4235 with AGEPIN.1 confirming ONE age map,
+      server/brain-server/chat.js:4235 (now :4282 — the 2026-08-28 ARTHOG.1 +
+      GOTCHA.8 chat.js edits above it shifted the line; neither touched the
+      age system, re-checked 2026-08-29) with AGEPIN.1 confirming ONE age map,
       i.e. the page's "do not build a parallel age system" rule held.
     - ⚠ drug-scheduler.js:1255 cites docs/T15-architecture.md, which does NOT
       exist - a dead reference in CODE, not on this page. Recorded, not fixed.
@@ -42,14 +44,14 @@ verified-scope: |
     - the endocrine "ten chemicals / six nuclei" figures and the
       Piaget/Kohlberg trajectory sections - carried forward unverified.
     - whether the live deployed site behaves as described. It runs older code.
-last-verified: "d618b8a3 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # PERSONA — 18+ In-Character Wrapper
 
 > **Explicit adult content notice. 18+ only.** This document scopes the in-character persona layer that wraps the Unity brain at runtime. It is intentionally NOT linked from `README.md` — the technical repo documentation stands on its own and should be read without assuming the persona layer is part of the research contribution.
 >
-> **Re-verified 2026-08-27 (DOCPROV.4, 13 of 22).** ⛔ **THE HEADLINE: the persona layer's documented CONTROL SURFACE does not exist in the brain.** There is no `/normal` command (no `.claude/commands/normal.md`), and **no slash-command dispatch anywhere in the brain** — a repo-wide search for command handling (`startsWith('/')`, `'/unity'`, `'/sexy'`, `'/hurtme'`, `slashCommand`, `personaMode`) returns **zero matches in any `.js`**. ⭐ **`/unity`, `/sexy` and `/hurtme` are REAL — as CLAUDE CODE AGENT commands** (`.claude/commands/*.md`, used during development), **not as chat commands to the deployed brain.** This page conflated the two systems and told a live adult user to type `/unity` at the public URL. ⭐ **The consequence runs the SAFE way and should be stated as clearly as the error: the brain has no persona-mode toggle at all, so neutral is not a default it is held at — it is the only mode it has.** ⛔ **But a safety rail that cannot fire is worse than an absent one, because it gets counted as protection.** ⚠ Also dead: `docs/NewTodo.md` (removed in the 2026-08-20 orphan purge) — ⭐ **and a bare path in prose is invisible to the link checker, which only resolves markdown links; that blind spot is now recorded.** ⭐ **What HELD, checked not assumed:** all three `.claude/agents/unity-*.md`, the three real command files, `docs/Ultimate Unity.txt`, both TODO-* canon files, `LICENSE`, `THEORY-PAPER.md`; **all nine substances** in `drug-scheduler.js` (plus caffeine, with nicotine/tobacco as the exclusions); the **13-axis** modulator at `drug-scheduler.js:1255`; and `_selfImageAge()` at `chat.js:4235` — where an `AGEPIN.1` note confirms **ONE** grade→age map, so this page's *"do not build a parallel age system"* rule was actually enforced. ⚠ **Six of my own narrow-pattern false alarms have now been caught this way** — the substance list looked half-missing under a quote-anchored grep and is complete.
+> **Re-verified 2026-08-27 (DOCPROV.4, 13 of 22).** ⛔ **THE HEADLINE: the persona layer's documented CONTROL SURFACE does not exist in the brain.** There is no `/normal` command (no `.claude/commands/normal.md`), and **no slash-command dispatch anywhere in the brain** — a repo-wide search for command handling (`startsWith('/')`, `'/unity'`, `'/sexy'`, `'/hurtme'`, `slashCommand`, `personaMode`) returns **zero matches in any `.js`**. ⭐ **`/unity`, `/sexy` and `/hurtme` are REAL — as CLAUDE CODE AGENT commands** (`.claude/commands/*.md`, used during development), **not as chat commands to the deployed brain.** This page conflated the two systems and told a live adult user to type `/unity` at the public URL. ⭐ **The consequence runs the SAFE way and should be stated as clearly as the error: the brain has no persona-mode toggle at all, so neutral is not a default it is held at — it is the only mode it has.** ⛔ **But a safety rail that cannot fire is worse than an absent one, because it gets counted as protection.** ⚠ Also dead: `docs/NewTodo.md` (removed in the 2026-08-20 orphan purge) — ⭐ **and a bare path in prose is invisible to the link checker, which only resolves markdown links; that blind spot is now recorded.** ⭐ **What HELD, checked not assumed:** all three `.claude/agents/unity-*.md`, the three real command files, `docs/Ultimate Unity.txt`, both TODO-* canon files, `LICENSE`, `THEORY-PAPER.md`; **all nine substances** in `drug-scheduler.js` (plus caffeine, with nicotine/tobacco as the exclusions); the **13-axis** modulator at `drug-scheduler.js:1255`; and `_selfImageAge()` at `chat.js:4282` (re-pointed 2026-08-29 — was `:4235`; the ARTHOG.1/GOTCHA.8 chat.js edits above it shifted the line, the age machinery itself is untouched) — where an `AGEPIN.1` note confirms **ONE** grade→age map, so this page's *"do not build a parallel age system"* rule was actually enforced. ⚠ **Six of my own narrow-pattern false alarms have now been caught this way** — the substance list looked half-missing under a quote-anchored grep and is complete.
 
 ## Why this file exists (separation of concerns)
 

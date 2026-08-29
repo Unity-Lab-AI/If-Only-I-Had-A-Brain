@@ -15,6 +15,14 @@ verified-scope: >
   sub-region count and cross-projection count against js/brain/cluster.js;
   every `node scripts/*` and `npm run *` command swept for existence.
   NOT re-read: the setup/running narrative, the curriculum roster detail.
+  Drift pass 2026-08-29 — two sources moved since the prior stamp, read as
+  diffs: html/dashboard.html (NUMSCOPE — a num() formatter scope fix in
+  updateDashboard; no claim here touches it) and server/brain-server.js
+  (+455 lines: walk heartbeat, firing controller, FRESHFLAG, PSITEACH, and
+  TEACHCREDIT — the last one changes what the leaderboard credits, so the
+  leaderboard paragraph gained the teach-lane sentence; every other claim
+  checked against the diff holds, including the boot-derived neuron-count
+  hedge and the endpoints named here).
 sources:
   - index.html
   - html/dashboard.html
@@ -22,7 +30,7 @@ sources:
   - js/version.js
   - server/brain-server.js
   - js/brain/cluster.js
-last-verified: "12e69a08 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # IF ONLY I HAD A BRAIN
@@ -484,7 +492,7 @@ The endpoint stays loopback-only (`requireLoopback` gate at the HTTP layer) just
 
 The dashboard ships a **public read-only mode** built for crowds. Rather than every viewer opening a live WebSocket and streaming the full state (which doesn't scale to hundreds of watchers), the server caches one state snapshot per broadcast cadence and serves it at a public `GET /public-state.json` endpoint; the public page polls that single cached file. Open `html/dashboard-public.html` (or `html/dashboard.html?public=1`) — it renders the same panels as the admin dashboard but with **every admin control force-hidden** (`body.public-mode .admin-only { display:none }`) and no admin WebSocket. nginx should serve/proxy `/public-state.json` publicly; a 2–3 s `proxy_cache` makes any number of viewers cost ~one backend hit per window. The same path also carries the read-only console tail under `?console=N` (the deployed proxy forwards only known endpoints, so auxiliary public reads ride its query parameters).
 
-**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution (Gneuron-seconds). Each donor keeps a persistent `donorId` in `localStorage` (maintained across reconnects + reloads) and can set a display name; the server accumulates their contribution on every `gpu_telemetry` tick into `brain._neuronLeaderboard`. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
+**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution (Gneuron-seconds). Each donor keeps a persistent `donorId` in `localStorage` (maintained across reconnects + reloads) and can set a display name; the server accumulates their contribution on every `gpu_telemetry` tick into `brain._neuronLeaderboard`. And as of 2026-08-27 (TEACHCREDIT) the **teach lane counts too**: during a walk the compute lane is deliberately paused behind the probe gate, so a donor saturated with the walk's own training used to bank zero — now each full-matrix teach frame credits its measured giga-ops (matrix nnz × reps, recorded at the send chokepoint) into the primary donor's row on the same telemetry drain, with the teach share kept visible as its own field. Scatter frames credit nothing — under-crediting is the right rounding for a competed number — and idle cards still earn nothing on either lane. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
 
 **Update buttons.** Two admin-only dashboard buttons ship the latest code without a terminal. **⬆ Update & Fresh Walk** (`POST /update`) overlays the latest code and wipes weights for a clean walk — one click to ship a fix and restart training from scratch. **⬆ Update & Savestart** (`POST /update?keep=1`) overlays the latest code but RESUMES the saved weights, so you can deploy a fix without losing training. Both run `deploy/self-update.sh`: a git-archive overlay of the latest code → `systemctl restart` (fresh adds `.force-fresh` to clear weights, savestart skips it). The backend dir has no `.git` (deploys are archive overlays), so the script clones the remote fresh and rsync-overlays it, preserving runtime state + secrets. See `deploy/REDEPLOY-NOTES.md` for box setup (deploy key + `sudo` restart permission + the `UAL_*` env vars).
 

@@ -16,7 +16,9 @@ verified-scope: |
       calls in sparse-matrix.js, ZERO deterministic PRNG in it or cluster.js;
       all four named init fns exist at :50/:175/:278/:414;
       ensureIntraTopology() at cluster.js:4266 and
-      _applyPendingCortexWeights() at brain-server.js:7546 behave as described.
+      _applyPendingCortexWeights() at brain-server.js:7546 (now :7879 — the
+      2026-08-28 FIREKNOB/PSITEACH additions above it shifted the line; the
+      function body is unchanged, re-checked 2026-08-29) behave as described.
       The spec's reasoning and risk analysis are intact.
     - ⛔ CORRECTED: "~12 minutes at the observed ~4MB/s wire". The 4MB/s is a
       myth KI-24 already marked FIXED (it was the pump, not the link; post-fix
@@ -56,14 +58,14 @@ verified-scope: |
     - whether the 39.7s upload figure still holds on the CURRENT build. It is
       taken from the SCALEWALK record, not re-measured - and no upload
       happened this pass to measure.
-last-verified: "cdfcf8b5 2026-08-27"
+last-verified: "cd465955 2026-08-29"
 ---
 
 # SEEDED TOPOLOGY — spec for donor-side structure generation
 
 **Written 2026-08-18.** Spec only. **Nothing here is implemented, and none of it should be bolted onto an unrelated batch.**
 
-> **Re-verified 2026-08-27 (DOCPROV.4, 12 of 22).** ⭐ **"Nothing here is implemented" is STILL TRUE, and that was checked rather than assumed:** `js/brain/sparse-matrix.js` holds **22 `Math.random()` calls** and **zero** deterministic PRNG (no splitmix, no xorshift, no seeded generator) in either it or `cluster.js`; all four named constructors exist (`initRandom:50`, `initTopographic:175`, `initSmallWorld:278`, `initTopographicProjection:414`); `ensureIntraTopology()` is at `cluster.js:4266` and `_applyPendingCortexWeights()` at `brain-server.js:7546`, both behaving as described. **So the spec's REASONING is intact and its risk analysis stands unchanged.**
+> **Re-verified 2026-08-27 (DOCPROV.4, 12 of 22).** ⭐ **"Nothing here is implemented" is STILL TRUE, and that was checked rather than assumed:** `js/brain/sparse-matrix.js` holds **22 `Math.random()` calls** and **zero** deterministic PRNG (no splitmix, no xorshift, no seeded generator) in either it or `cluster.js`; all four named constructors exist (`initRandom:50`, `initTopographic:175`, `initSmallWorld:278`, `initTopographicProjection:414`); `ensureIntraTopology()` is at `cluster.js:4266` and `_applyPendingCortexWeights()` at `brain-server.js:7879` (re-pointed 2026-08-29 — was `:7546`; the 2026-08-28 FIREKNOB/PSITEACH additions above it shifted the line, the function body is unchanged), both behaving as described. The only donor-side movement since the previous stamp is RHYTHM3S.2's `update_region_gates` in `compute.rs` — a Ψ-gate table writer, **not** a construction path, so *"nothing here is implemented"* still holds on the Rust half. **So the spec's REASONING is intact and its risk analysis stands unchanged.**
 >
 > ⛔ **What was wrong was its PRICING, and the correction is ~18×.** The motivating cost — *"roughly 12 minutes at the observed ~4MB/s wire"* — rests on a rate this project's own `KNOWN_ISSUES` **KI-24 has marked 🟢 FIXED and explicitly labelled a myth**: the 4MB/s was the *pump*, never the link. **KI-24's note even predicts this page:** *"Every doc comment that treated 4MB/s as the physical link inherited the pump's shadow."* The same 2.79GB matrix now measures **39.7s**. ⛔ **Also corrected: the checkpoint is ~5,460 MB (measured on disk), not ~4.4GB, so structure is ~27% of it rather than 34%.**
 >
