@@ -1118,7 +1118,13 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // (`upgrade-attempt.txt` — it refuses to bounce twice for the same upgrade and
 // says so loudly), but the guard is a net, not a licence. **Bump this WITH the
 // tag, not ahead of it.**
-const CURRENT_DONOR_VERSION = '0.3.30';
+// FIREMATH (2026-08-28): 0.3.30 → 0.3.35 — bumped AFTER the donor-v0.3.35
+// release was verified live on all four surfaces (tag, assets, download-page
+// links, shipped `.exe --version`), per the bump-WITH-the-tag law above. The
+// constant had sat at 0.3.30 for five releases — the exact forgetting this
+// comment block warns about — so pods running .31-.34 were never TOLD to
+// self-upgrade via the Welcome lane and only moved by launcher watchdog.
+const CURRENT_DONOR_VERSION = '0.3.35';
 
 const WEIGHTS_FORMAT_VERSION = 5;   // ENDO (2026-08-25): `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed, so saved geometry no longer matches. Old weights auto-refuse → clean fresh walk, which is the ORDER the walk law already specifies (chemistry lands BEFORE the walk that teaches from it). (v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
