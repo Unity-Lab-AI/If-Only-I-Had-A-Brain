@@ -1,6 +1,10 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-28 (latest) — PICK UP HERE: ONE NULL had killed every compute_batch since the drive fold; nine fixes shipped in a chain, and the last press each brain owes is FIREKNOB
+> ## ⭐⭐⭐ 2026-08-29 (latest) — LANGHOP: the language cortex targets 20M with per-host affordable geometry — ⛔ BOTH BRAINS NOW OWE AN UPDATE & **FRESH WALK** PRESS (not a Savestart: `WEIGHTS_FORMAT_VERSION` 5→6, old weights auto-refuse)
+>
+> The day's arc, newest work first: **Gee's four ask-me-question decisions** — FIREMATH.5 = accept the ~9.6% firing floor (closed, zero code); /unity command file retuned to the working arrangement (.claude-local); backups = leave as-is (risk accepted, written in the incident record); **the language-cortex hop = NOW, both brains re-walk fresh**. LANGHOP.1 shipped: target 12M→**20M**, and ⛔ the naive bump was a trap caught pre-ship — the all-or-nothing WMB floor would have COLLAPSED the local 16GB host to ~349K (20M prices 7.649GB > its 6GiB ceiling) and PIN WITHHELD would have refused the 32GB box a pin forever. Fix = **per-host affordable geometry** (binary-searched largest size ≤ target fitting the real bounds; all three LANGRAM pin guards re-aimed at it). Priced by harness: local lands **~16.85M**, box **~14.4-16.8M** by boot free RAM. **LANGHOP.2 open: after each press, read the WMB FLOOR line's governing bound + LANGRAM.9's GEOMETRY VERDICT + word_motor capacity + the repinned size.** Earlier same day: **the board reset** (full 1,585-line TODO archived byte-for-byte, md5 `e59dbde988c0a4c94b615658e96a023e`; board = template + open rows), **PROVENANCE 44→0** (all 32 pages per-page verified, drift fully green), and **FIREMATH.4 verified live on both brains** (firing 0.4%→19.8%/19.1% on v0.3.35 donors, controllers converging to the designed floor pin, bandPower noise→structure). The entry below (2026-08-28) remains the full BATCHNULL/FIREMATH night record.
+>
+> ## ⭐⭐⭐ 2026-08-28 (earlier) — ONE NULL had killed every compute_batch since the drive fold; nine fixes shipped in a chain, and the last press each brain owes is FIREKNOB
 >
 > **Every number below was MEASURED live before writing.** ⛔ **Verify anyway** — `git rev-parse --short=8 main develop`, both brains' `/public-state.json`.
 >
