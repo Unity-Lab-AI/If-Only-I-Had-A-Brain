@@ -21,7 +21,7 @@ sources:
   - server/brain-server/gpu.js
   - js/brain/remote-brain.js
   - donor-app/src/protocol.rs
-last-verified: "cd465955 2026-08-29"
+last-verified: "58510f6d 2026-08-29"
 ---
 
 # WEBSOCKET — Unity Brain Server Wire Protocol
