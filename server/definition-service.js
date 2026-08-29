@@ -243,6 +243,20 @@ function getDefinitionSync(word) {
 }
 
 /**
+ * MINDMOTION.1 — the FULL cached definitions (with partOfSpeech), cache-only:
+ * never a network call, so a tick-path caller (the eye-subject picker's
+ * adjective probe) stays microseconds. Returns null on any miss — an unknown
+ * word is simply not treated as a modifier.
+ */
+function getDefinitionsSync(word) {
+  const key = _normalize(word);
+  if (!key) return null;
+  const cached = _cacheGet(key);
+  if (!cached || cached.error || !Array.isArray(cached.definitions)) return null;
+  return cached.definitions;
+}
+
+/**
  * Fetch the full definition array for a word.
  * Returns [] on failure or when no definitions exist.
  *
@@ -419,6 +433,7 @@ function lookupStatus(word) {
 module.exports = {
   getDefinition,
   getDefinitionSync,
+  getDefinitionsSync,
   getDefinitions,
   prefetch,
   getCacheStats,
