@@ -1126,7 +1126,7 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // self-upgrade via the Welcome lane and only moved by launcher watchdog.
 const CURRENT_DONOR_VERSION = '0.3.35';
 
-const WEIGHTS_FORMAT_VERSION = 5;   // ENDO (2026-08-25): `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed, so saved geometry no longer matches. Old weights auto-refuse → clean fresh walk, which is the ORDER the walk law already specifies (chemistry lands BEFORE the walk that teaches from it). (v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
+const WEIGHTS_FORMAT_VERSION = 6;   // language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -2834,7 +2834,26 @@ class ServerBrain {
       // ~4.8GB (under the 6GB safety ceiling below; donor total ~8.5GB of 16GB)
       // and the CPU master ~7.1GB. Geometry change ⟹ WEIGHTS_FORMAT_VERSION
       // 3→4 ⟹ FRESH WALK required both directions.
-      const WORD_MOTOR_TARGET_LANG_CORTEX = 12_000_000;
+      //
+      // language-growth hop 2 (2026-08-29): 12M → 20M — the hop NOW.md had
+      // already sketched as "hop 2 ~20M (single-donor VRAM ceiling)", taken on
+      // the operator's word. RE-PRICE (written before the constant moved, per
+      // the law): 20M prices at ~7.65GB real VRAM (the corrected estimator —
+      // the exact figure the WMBCEIL note below computed) and ~11.8GB CPU
+      // master (7.1GB × 20/12); word_motor grows 720K → 1.2M cells; pure size
+      // scale again — proportions, fanouts, layouts, equations all unchanged,
+      // ~1.67× the nnz on the language matrices only; the consolidation gate
+      // and every walk bound are untouched. ⛔ THE TARGET IS NOW BIGGER THAN
+      // SOME HOSTS CAN HOLD, BY DESIGN: a 32GB coordinator's RAM floor tops
+      // out below 20M, and a 16GB donor's derived VRAM ceiling floors at 6GB
+      // (~15M affordable). So the floor below no longer raises all-or-nothing
+      // to the target (that cliff would have COLLAPSED a blocked host to the
+      // ~349K budget-slice value — a regression dressed as a hop); it raises
+      // to the LARGEST AFFORDABLE size ≤ target, and the pin guards reference
+      // the same affordable figure. Each host hops as far as its own bounds
+      // allow, loudly, and the pin freezes that geometry. Geometry change ⟹
+      // WEIGHTS_FORMAT_VERSION 5→6 ⟹ FRESH WALK required both directions.
+      const WORD_MOTOR_TARGET_LANG_CORTEX = 20_000_000;
       // WMB FLOOR (Gee 2026-07-14, fix v2): the VRAM-budget rescale (vramBasedMax)
       // clamps langCortexSize to whatever fits `LANG_CORTEX_VRAM_BUDGET_BYTES` — a
       // badly under-provisioned ~115MB slice that pinned the language cortex at
@@ -2900,18 +2919,40 @@ class ServerBrain {
           return _HIST;
         }
       })();
+      // ── hop 2 (2026-08-29): the per-host AFFORDABLE size ≤ target ─────────
+      // The largest language cortex THIS host's real bounds allow, never more
+      // than the target: binary-search the true geometry estimator against the
+      // derived VRAM ceiling, then cap by the RAM/V8 floor. Every guard below
+      // (the floor raise, the fresh-walk rescue, the pin-withheld check)
+      // references THIS number instead of the raw target, because a target
+      // bigger than a host can hold must degrade to "as far as this host can
+      // go", never to the ~349K budget-slice cliff and never to a pin refused
+      // forever on a box whose RAM can't reach 20M.
+      const _ramFloor = Math.min(ramBasedMax, v8BasedMax);
+      const _langAffordable = (() => {
+        let lo = Math.max(1, RESCALE_MIN_NEURONS);
+        let hi = WORD_MOTOR_TARGET_LANG_CORTEX;
+        if (estimateLangCortexVramBytes(hi) <= WMB_VRAM_SAFETY_BYTES) {
+          lo = hi;                                   // the full target fits the ceiling
+        } else {
+          for (let i = 0; i < 40 && hi - lo > 1000; i++) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (estimateLangCortexVramBytes(mid) <= WMB_VRAM_SAFETY_BYTES) lo = mid; else hi = mid;
+          }
+        }
+        return Math.max(1, Math.min(lo, _ramFloor, WORD_MOTOR_TARGET_LANG_CORTEX));
+      })();
       let langCortexSize = (Number.isFinite(envOverride) && envOverride > 0)
         ? envOverride
         : Math.min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX);
-      if (!(Number.isFinite(envOverride) && envOverride > 0) && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX) {
-        const _targetVram = estimateLangCortexVramBytes(WORD_MOTOR_TARGET_LANG_CORTEX);
-        const _ramFloor = Math.min(ramBasedMax, v8BasedMax);
-        if (_targetVram <= WMB_VRAM_SAFETY_BYTES && WORD_MOTOR_TARGET_LANG_CORTEX <= _ramFloor) {
-          console.log(`[Brain] WMB FLOOR — raising langCortexSize ${langCortexSize.toLocaleString()} → ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} (target real VRAM ${(_targetVram/1e6).toFixed(0)}MB ≤ ${(WMB_VRAM_SAFETY_BYTES/1e9).toFixed(0)}GB ceiling; under RAM/V8 floor ${_ramFloor.toLocaleString()}) — bypassing the under-provisioned ${(LANG_CORTEX_VRAM_BUDGET_BYTES/1e6).toFixed(0)}MB budget slice.`);
-          langCortexSize = WORD_MOTOR_TARGET_LANG_CORTEX;
-        } else {
-          console.warn(`[Brain] WMB FLOOR SKIPPED — target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} blocked by ${_targetVram > WMB_VRAM_SAFETY_BYTES ? `real VRAM ${(_targetVram/1e9).toFixed(2)}GB > ${(WMB_VRAM_SAFETY_BYTES/1e9).toFixed(0)}GB ceiling` : `RAM/V8 floor ${_ramFloor.toLocaleString()}`}; staying at ${langCortexSize.toLocaleString()}.`);
-        }
+      if (!(Number.isFinite(envOverride) && envOverride > 0) && langCortexSize < _langAffordable) {
+        const _affVram = estimateLangCortexVramBytes(_langAffordable);
+        const _bound = _langAffordable >= WORD_MOTOR_TARGET_LANG_CORTEX ? 'the full target'
+          : (_langAffordable >= _ramFloor ? `the RAM/V8 floor (${_ramFloor.toLocaleString()})` : `the ${(WMB_VRAM_SAFETY_BYTES / 1e9).toFixed(1)}GB VRAM ceiling`);
+        console.log(`[Brain] WMB FLOOR — raising langCortexSize ${langCortexSize.toLocaleString()} → ${_langAffordable.toLocaleString()} (largest affordable ≤ target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()}, governed by ${_bound}; real VRAM ${(_affVram / 1e6).toFixed(0)}MB ≤ ${(WMB_VRAM_SAFETY_BYTES / 1e9).toFixed(1)}GB ceiling) — bypassing the under-provisioned ${(LANG_CORTEX_VRAM_BUDGET_BYTES / 1e6).toFixed(0)}MB budget slice.`);
+        langCortexSize = _langAffordable;
+      } else if (!(Number.isFinite(envOverride) && envOverride > 0) && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX) {
+        console.warn(`[Brain] WMB FLOOR — this host's affordable size is ${_langAffordable.toLocaleString()} (< target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()}; RAM/V8 floor ${_ramFloor.toLocaleString()}, VRAM ceiling ${(WMB_VRAM_SAFETY_BYTES / 1e9).toFixed(1)}GB) and the derived size ${langCortexSize.toLocaleString()} already meets it; staying.`);
       }
       // ─── LANGRAM.6 (2026-08-20) — THE GEOMETRY PIN ─────────────────────────
       //
@@ -3003,9 +3044,14 @@ class ServerBrain {
       // free-RAM dip is not a real constraint; it is a sampling artefact.
       else if (_pinnedGeom && !_explicitResize && !_unpinRequested && !_weightsOnDisk) {
         const _pinSize = Math.floor(Number(_pinnedGeom.langCortexSize));
-        if (_pinSize >= WORD_MOTOR_TARGET_LANG_CORTEX && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX) {
+        // hop 2 (2026-08-29): the rescue restores ANY previously-run size up to
+        // the target, not only a pin that met the (possibly host-unreachable)
+        // full target — same floor-never-inflation contract: the pin records a
+        // size this box has actually run, and the guard can only raise a
+        // coin-flip loss back to it, never past the target.
+        if (_pinSize > langCortexSize && _pinSize <= WORD_MOTOR_TARGET_LANG_CORTEX) {
           console.warn(
-            `[Brain] ⛔ LANGRAM.7 FRESH-WALK GEOMETRY FLOOR — no weights on disk (fresh walk), so the pin would normally step aside, and this boot's live bounds derived ${langCortexSize.toLocaleString()} neurons: BELOW the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target. ` +
+            `[Brain] ⛔ LANGRAM.7 FRESH-WALK GEOMETRY FLOOR — no weights on disk (fresh walk), so the pin would normally step aside, and this boot's live bounds derived ${langCortexSize.toLocaleString()} neurons: BELOW the pinned ${_pinSize.toLocaleString()} (target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()}). ` +
             `The existing pin records ${_pinSize.toLocaleString()} (written ${_pinnedGeom.writtenAt || 'unknown date'} under ${_pinnedGeom.freeRamGB != null ? _pinnedGeom.freeRamGB + 'GB' : 'unknown'} free RAM), a size THIS box has already run. BOOTING AT THE PINNED SIZE. ` +
             `Reason the floor exists: without it a fresh walk on a momentarily-busy box comes up small AND repins small, making a coin-flip loss permanent — the difference is boot-time free RAM (${(freeRamBytes / 1e9).toFixed(1)}GB × ${(LANG_RAM_FRACTION * 100).toFixed(0)}% → ${ramBasedMax.toLocaleString()} neurons), not a decision anyone made. ` +
             `To take the derived size on purpose instead: DREAM_LANG_CORTEX=${langCortexSize}, or DREAM_LANG_UNPIN=1 to re-derive and repin.`
@@ -3014,7 +3060,7 @@ class ServerBrain {
         } else if (_pinSize !== langCortexSize) {
           // Not a rescue case — say so, so a fresh walk that legitimately moves
           // the geometry is never mistaken for the floor having fired.
-          console.log(`[Brain] LANGRAM.7 — fresh walk, pin present at ${_pinSize.toLocaleString()} and this boot derived ${langCortexSize.toLocaleString()}. The floor does NOT apply (it fires only when the pin is at/above the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target AND the derived size is below it); booting at the derived size and repinning it.`);
+          console.log(`[Brain] LANGRAM.7 — fresh walk, pin present at ${_pinSize.toLocaleString()} and this boot derived ${langCortexSize.toLocaleString()}. The floor does NOT apply (it fires only when the derived size is BELOW the pinned size, and never past the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target); booting at the derived size and repinning it.`);
         }
       }
       // ⛔ NEVER PIN A DEGRADED COIN-FLIP OUTCOME (2026-08-20, caught before the
@@ -3038,12 +3084,18 @@ class ServerBrain {
       // bounds'. Whether weights exist has nothing to do with whether THIS
       // size is below the target it is supposed to reach — that is the only
       // question the guard asks, and it is answerable either way.
+      // hop 2 (2026-08-29): withheld against THIS HOST'S affordable size, not
+      // the raw target — a 32GB coordinator can never reach a 20M target, and
+      // demanding it would refuse the pin forever, reviving the exact
+      // flip-flop the pin exists to stop. "Below affordable" is the coin-flip
+      // loss; "at affordable but below target" is this host's honest maximum
+      // and deserves the pin's protection.
       const _pinWouldDegrade = !_pinnedGeom
         && !_explicitResize
         && !_unpinRequested
-        && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX;
+        && langCortexSize < _langAffordable;
       if (_pinWouldDegrade) {
-        console.warn(`[Brain] ⛔ LANGRAM.6 — PIN WITHHELD. This boot derived ${langCortexSize.toLocaleString()} neurons, BELOW the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target, and there is no existing pin to hold. Writing one now would make this boot's RAM coin-flip PERMANENT (word_motor ${(Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940)).toLocaleString()} emittable buckets vs ${(Math.floor(WORD_MOTOR_TARGET_LANG_CORTEX) - Math.floor(WORD_MOTOR_TARGET_LANG_CORTEX * 0.940)).toLocaleString()} at target). No pin is written; a boot that clears the target takes it. To pin THIS size on purpose: DREAM_LANG_CORTEX=${langCortexSize}.`);
+        console.warn(`[Brain] ⛔ LANGRAM.6 — PIN WITHHELD. This boot derived ${langCortexSize.toLocaleString()} neurons, BELOW this host's affordable ${_langAffordable.toLocaleString()} (target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()}), and there is no existing pin to hold. Writing one now would make this boot's RAM coin-flip PERMANENT (word_motor ${(Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940)).toLocaleString()} emittable buckets vs ${(Math.floor(_langAffordable) - Math.floor(_langAffordable * 0.940)).toLocaleString()} at this host's affordable size). No pin is written; a boot that clears the affordable size takes it. To pin THIS size on purpose: DREAM_LANG_CORTEX=${langCortexSize}.`);
       }
       // Write / refresh the pin. Explicit acts repin loudly; a fresh box pins on
       // its first boot so the SECOND boot is already protected.
