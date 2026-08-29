@@ -38,7 +38,7 @@ verified-scope: |
   citation was re-verified against current code (line numbers refreshed; the
   passedPhases stale-load-filter row was found SUPERSEDED by 114.19fe and
   marked). Dated banners stay byte-identical per this page's own rule.
-last-verified: "58510f6d 2026-08-29"
+last-verified: "0ee5ac68 2026-08-29"
 ---
 
 # SKILL TREE — IF ONLY I HAD A BRAIN

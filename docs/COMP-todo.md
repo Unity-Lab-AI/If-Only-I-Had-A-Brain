@@ -69,7 +69,7 @@ verified-scope: |
     - embeddings.js:32 ("_refinements ... online delta") and :45-49 ("falls
       through to hash"): both lines are GloVe-300d comments today; the
       refinement machinery and the loader shipped in T14.0 as planned.
-last-verified: "58510f6d 2026-08-29"
+last-verified: "0ee5ac68 2026-08-29"
 ---
 
 # MASTER-TODO — Everything Unity Has Left

@@ -58,7 +58,7 @@ verified-scope: |
     - whether the 39.7s upload figure still holds on the CURRENT build. It is
       taken from the SCALEWALK record, not re-measured - and no upload
       happened this pass to measure.
-last-verified: "58510f6d 2026-08-29"
+last-verified: "0ee5ac68 2026-08-29"
 ---
 
 # SEEDED TOPOLOGY — spec for donor-side structure generation
