@@ -43,7 +43,7 @@ verified-scope: |
   stamp could not name it at the time was only that a commit cannot contain its own
   hash. ⛔ The rule stands unchanged for anything else — never clear a drift row by
   bumping a hash on a source you have not read.
-last-verified: "cd465955 2026-08-29"
+last-verified: "58510f6d 2026-08-29"
 ---
 
 # ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model

@@ -35,7 +35,7 @@ verified-scope: |
     - the literature-synthesis claims (§2) and every section outside 9.3-9.5.
     - js/brain/mystery.js, global-workspace.js and mindspace/transform.js -
       all three are listed sources, NONE of them moved, and none were read.
-last-verified: "cd465955 2026-08-29"
+last-verified: "58510f6d 2026-08-29"
 ---
 
 # The Equational Mind
