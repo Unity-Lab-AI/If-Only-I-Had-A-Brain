@@ -45,7 +45,7 @@ verified-scope: |
   loadCodingKnowledge at language-cortex.js:408, _isCompleteSentence is
   deleted entirely, and compute.html:10 / index.html:85 / app.js:27 now hold
   unrelated lines).
-last-verified: "58510f6d 2026-08-29"
+last-verified: "0ee5ac68 2026-08-29"
 ---
 
 # ROADMAP — IF ONLY I HAD A BRAIN

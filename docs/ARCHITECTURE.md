@@ -50,7 +50,7 @@ verified-scope: |
     - ⚠ nothing mechanically checks the per-file LINE COUNTS in this page's
       directory tree. wiki:coverage enforces that for wiki pages only, so the
       figures here are maintained by hand and WILL drift again.
-last-verified: "58510f6d 2026-08-29"
+last-verified: "0ee5ac68 2026-08-29"
 ---
 
 # ARCHITECTURE — IF ONLY I HAD A BRAIN

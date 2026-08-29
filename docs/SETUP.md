@@ -31,7 +31,7 @@ sources:
   - package.json
   - server/package.json
   - server/brain-server.js
-last-verified: "58510f6d 2026-08-29"
+last-verified: "0ee5ac68 2026-08-29"
 ---
 
 # Setup Guide
