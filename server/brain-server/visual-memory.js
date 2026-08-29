@@ -1333,8 +1333,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     //
     // ⚠ POSITIVE terms only, per the standing rule: nothing here says "not a
     // person", because an image model attends to the nouns it is given.
-    const subjectFraming = conceptIsPerson ? 'color photograph' : 'color photograph of the object';
-    return `${c}${ageSteer}${defTail}, ${subjectFraming}, full color, richly detailed, plain background`;
+    // STYLEBLEED — the strings live in eye-style.js (byte-identical; the ONE
+    // owner the drawability gate derives its provenance set from).
+    const { EYE_STYLE } = require('./eye-style.js');
+    const subjectFraming = conceptIsPerson ? EYE_STYLE.photoPerson : EYE_STYLE.photoObject;
+    return `${c}${ageSteer}${defTail}, ${subjectFraming}${EYE_STYLE.refTail}`;
   },
 
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C

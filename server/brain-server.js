@@ -3567,6 +3567,18 @@ class ServerBrain {
         definitionService.getDefinition(word, opts);
       this.cortexCluster.lookupDefinitionSync = (word) =>
         definitionService.getDefinitionSync(word);
+      // MINDMOTION.1 — cache-only FULL definitions (partOfSpeech included) for
+      // tick-path part-of-speech reads; never fetches.
+      this.cortexCluster.lookupDefinitionsSync = (word) =>
+        definitionService.getDefinitionsSync(word);
+      // SELFCODE.2 — her real source tree's speakable file stems, read by fs
+      // server-side (the life-curriculum attach pattern: browser-bundled
+      // curriculum code never imports fs). Consumed by teachSelfCode AFTER the
+      // cs-capstone gate, so the drift-proof inventory replaces nothing — it
+      // rides beside the authored facts.
+      try {
+        this.cortexCluster.selfCodeInventory = () => require('./self-code-inventory.js').inventory();
+      } catch { /* inventory attach best-effort — the authored facts stand alone */ }
       this.cortexCluster.lookupDefinitionFull = (word, opts) =>
         definitionService.getDefinitions(word, opts);
       this.cortexCluster.prefetchDefinitions = (words, opts) =>
