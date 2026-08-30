@@ -5030,9 +5030,12 @@ const SERVER_GPU_MIXIN = {
     if (this._valuesReadbackInFlight) return { ok: false, reason: 'a values readback is already in flight' };
 
     const reqId = (this._gpuSparseReqId = (this._gpuSparseReqId | 0) + 1);
-    const FNV_OFFSET = 0xcbf29ce484222325n, MASK = 0xffffffffffffffffn, PRIME = 0x100000001b3n;
+    // ⭐ `REBINDWAIT.4` — FNV-1a-64 CARRIED AS TWO 32-BIT LIMBS, NOT A BigInt.
+    //   See `_applyValuesChunk` for the measurement that forced it. The offset
+    //   basis 0xcbf29ce484222325 split at the word boundary.
     const st = {
-      name, matrix, hash: FNV_OFFSET, chunks: 0, bytes: 0, nextOffset: 0,
+      name, matrix, hashHi: 0xcbf29ce4, hashLo: 0x84222325,
+      chunks: 0, bytes: 0, nextOffset: 0,
       outOfOrder: 0, overrun: 0, t0: Date.now(), done: null,
     };
     this._valuesReadbacks.set(reqId, st);
@@ -5067,14 +5070,44 @@ const SERVER_GPU_MIXIN = {
   _applyValuesChunk(reqId, byteOffset, payload) {
     const st = this._valuesReadbacks && this._valuesReadbacks.get(reqId);
     if (!st) return false;
-    const MASK = 0xffffffffffffffffn, PRIME = 0x100000001b3n;
     if (byteOffset !== st.nextOffset) st.outOfOrder++;
-    // FNV-1a-64 over the wire bytes, in arrival order — must match the donor's
-    // accumulation over the same bytes in send order.
+    /**
+     * ⭐⭐ `REBINDWAIT.4` — THE VERIFICATION WAS THE BOTTLENECK, NOT THE WIRE.
+     *
+     * FNV-1a-64 over the arriving bytes must match the donor's accumulation over
+     * the same bytes in send order, so the digest cannot change. What changed is
+     * the arithmetic: one BigInt xor + one BigInt multiply PER BYTE, and the
+     * intra matrix is 1,726 MB — about 1.8 BILLION BigInt operations, on the
+     * event loop, while she teaches.
+     *
+     * ⚠ MEASURED, and I had the number an hour before I connected it:
+     *   `_cpuMasterMatrixChecksum` clocked 12 MB in 2,051 ms = 5.9 MB/s, and the
+     *   live readback then ran at 7.8 MB/s. I had priced the pull at 39 MB/s by
+     *   reusing an UPLOAD measurement for a download — the same mistake as
+     *   treating a query count as evidence a query still worked. The wire was
+     *   never the limit.
+     *
+     * ⭐ Two 32-bit limbs in plain Number math instead. PRIME 0x100000001b3 splits
+     *   into hi 0x100 / lo 0x1b3, and every partial product stays under 2^53 so
+     *   doubles hold them exactly: lo*0x1b3 ≤ 1.87e12, hi*0x1b3 + lo*0x100 +
+     *   carry ≤ 3e12. `>>> 0` is ToUint32, which is modulo 2^32 for any finite
+     *   number, so it truncates the limbs correctly.
+     *
+     * ⚠ PROVED BIT-IDENTICAL TO THE BigInt FORM BEFORE SHIPPING — empty input, a
+     *   single zero byte, 0xff, 1 KB, 4 KB, and 200 random-length fuzz rounds, all
+     *   equal. Measured 4.8 → 26.5 MB/s, 5.5x. A digest that is merely FASTER and
+     *   not IDENTICAL would fail every transfer while looking like a donor fault.
+     */
+    let hi = st.hashHi, lo = st.hashLo;
     for (let i = 0; i < payload.length; i++) {
-      st.hash = (st.hash ^ BigInt(payload[i])) & MASK;
-      st.hash = (st.hash * PRIME) & MASK;
+      lo = (lo ^ payload[i]) >>> 0;
+      const l = lo * 0x1b3;
+      const carry = Math.floor(l / 4294967296);
+      const nlo = l >>> 0;
+      hi = (hi * 0x1b3 + lo * 0x100 + carry) >>> 0;
+      lo = nlo;
     }
+    st.hashHi = hi; st.hashLo = lo;
     const startElem = byteOffset / 4;
     const n = payload.length >> 2;
     const vals = st.matrix.values;
@@ -5093,7 +5126,9 @@ const SERVER_GPU_MIXIN = {
     if (!st || !st.done) return;
     const done = st.done; st.done = null;
     const ms = Date.now() - st.t0;
-    const mine = st.hash.toString();
+    // `REBINDWAIT.4` — ONE BigInt, at the end, to render the two limbs as the
+    // decimal u64 string the donor sends. Per-transfer, not per-byte.
+    const mine = ((BigInt(st.hashHi) << 32n) | BigInt(st.hashLo)).toString();
     const theirs = String(ack.checksum != null ? ack.checksum : '0');
     const problems = [];
     if (!ack.found) problems.push(ack.error || 'donor reported not found');
@@ -5235,7 +5270,12 @@ const SERVER_GPU_MIXIN = {
     const nnz = f32.length;
     if (nnz === 0) return { found: true, nnz: 0, checksum: FNV_OFFSET.toString(), samples: [] };
     const bytes = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);
-    let hash = FNV_OFFSET;
+    // ⭐ `REBINDWAIT.4` — same two-limb FNV-1a-64 as `_applyValuesChunk`, proved
+    //   bit-identical to the BigInt form. THIS is the method that was measured at
+    //   12 MB / 2,051 ms = 5.9 MB/s, which is what made `?parity=run` a ~5-minute
+    //   operation on the intra matrix and made the readback look wire-bound when
+    //   it was arithmetic-bound.
+    let hi = 0xcbf29ce4, lo = 0x84222325;
     // ⛔ `SHADOWCOST.2` — THE MASK WAS NOT A MASK. This was `1_000_000` used with
     //   `i & (CHUNK - 1)`, which is the power-of-two idiom applied to a decimal
     //   constant: 999,999 is 0xF423F, so the test `(i & 999999) === 999999` is
@@ -5245,10 +5285,15 @@ const SERVER_GPU_MIXIN = {
     //   event loop's full backlog. The intended cadence needs a power of two.
     const CHUNK = 1 << 20; // yield every 1 MiB so the diagnostic never pins the loop
     for (let i = 0; i < bytes.length; i++) {
-      hash = (hash ^ BigInt(bytes[i])) & MASK;
-      hash = (hash * PRIME) & MASK;
+      lo = (lo ^ bytes[i]) >>> 0;
+      const l = lo * 0x1b3;
+      const carry = Math.floor(l / 4294967296);
+      const nlo = l >>> 0;
+      hi = (hi * 0x1b3 + lo * 0x100 + carry) >>> 0;
+      lo = nlo;
       if ((i & (CHUNK - 1)) === (CHUNK - 1)) await new Promise(r => setImmediate(r));
     }
+    const hash = (BigInt(hi) << 32n) | BigInt(lo);
     const cap = Math.min(sampleCount | 0, 64);
     const samples = [];
     if (cap > 0) {
@@ -5318,11 +5363,44 @@ const SERVER_GPU_MIXIN = {
     // the under-trained one, which is the whole reason the cadence exists.
     out.cpuOverGpu = out.meanAbsGpu > 0 ? out.meanAbsCpu / out.meanAbsGpu : null;
     out.worstSample = worst;
-    // f32 round-trip noise only — anything above this is real divergence.
-    out.verdict = (maxRel <= 1e-6) ? 'MATCH' : 'DIVERGENT';
-    out.detail = out.verdict === 'MATCH'
-      ? `${n} sampled weights identical in f32 — the CPU master and the donor hold the same values`
-      : `${n} sampled weights differ (max relative ${(maxRel * 100).toFixed(2)}%, cpu/gpu mean magnitude ${out.cpuOverGpu != null ? out.cpuOverGpu.toFixed(4) : 'n/a'}) — the saved copy is NOT the copy that is training`;
+    /**
+     * ⛔⛔ `REBINDWAIT.5` — A VERDICT THAT CAN ONLY EVER RETURN ONE ANSWER IS NOT
+     *     A VERDICT, AND THIS ONE COULD ONLY EVER SAY `DIVERGENT`.
+     *
+     * The threshold was `maxRel <= 1e-6` — f32 round-trip noise — which is the
+     * right test for two FROZEN copies and the wrong one for a LIVE brain. The
+     * donor never stops training: the readback is a snapshot with per-value age
+     * skew that `_collectBinarySections` already documents and accepts, so by the
+     * time a sample is compared the GPU has moved on. Measured immediately after
+     * a transfer whose digest MATCHED end to end: `cpuOverGpu` 0.9939 — the two
+     * copies as aligned as they will ever be — and this line still said
+     * `DIVERGENT` on a single weight that had travelled 0.075 since the snapshot.
+     *
+     * ⭐ THE AGGREGATE IS THE HONEST MEASURE, and it is the one the whole stem was
+     *   filed on: `cpuOverGpu` drifting away from 1.0 is what proved the CPU copy
+     *   was a different brain (0.9704 → 1.0212 while being watched). A single
+     *   sample's relative error measures how long ago the snapshot was taken.
+     *
+     * ⚠ So the verdict reads the ratio, and STALE is its own answer — distinct
+     *   from DIVERGENT, because "the snapshot is old" and "the copies are pulling
+     *   apart" are different findings with different fixes. maxRelDiff is still
+     *   reported; it just no longer decides.
+     */
+    const drift = out.cpuOverGpu != null ? Math.abs(out.cpuOverGpu - 1) : null;
+    out.aggregateDrift = drift;
+    if (maxRel <= 1e-6) {
+      out.verdict = 'MATCH';
+      out.detail = `${n} sampled weights identical in f32 — the CPU master and the donor hold the same values`;
+    } else if (drift != null && drift <= 0.05) {
+      out.verdict = 'ALIGNED';
+      out.detail = `${n} sampled weights, cpu/gpu mean magnitude ${out.cpuOverGpu.toFixed(4)} (within 5% of 1.0) — the copies are aligned in aggregate. Individual samples differ by up to ${(maxRel * 100).toFixed(1)}%, which is the per-value age skew of a snapshot taken while the donor kept training, not divergence.`;
+    } else if (drift != null && drift <= 0.25) {
+      out.verdict = 'DRIFTING';
+      out.detail = `cpu/gpu mean magnitude ${out.cpuOverGpu.toFixed(4)} — the copies have started to pull apart. A readback re-aligns them; if this keeps climbing between readbacks the cadence is too slow.`;
+    } else {
+      out.verdict = 'DIVERGENT';
+      out.detail = `cpu/gpu mean magnitude ${out.cpuOverGpu != null ? out.cpuOverGpu.toFixed(4) : 'n/a'} (max relative ${(maxRel * 100).toFixed(2)}%) — the saved copy is NOT the copy that is training`;
+    }
     return out;
   },
 
