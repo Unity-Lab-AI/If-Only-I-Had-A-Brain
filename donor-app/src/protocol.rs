@@ -380,6 +380,55 @@ pub struct HebbianRanges {
 
 fn one_u32() -> u32 { 1 }
 
+// `SHADOWCOST.3` (v0.3.36) — CHECKPOINT THE WEIGHTS THE GPU ACTUALLY TRAINED.
+// The brain's checkpoint has always been written from its CPU-side arrays, and
+// those are not a lagging copy of the resident weights — they are a different
+// brain. 94% of plasticity arrives via `hebbian_bound`, which trains on the
+// RESIDENT spike state the host never sees, at ~49x the host's update rate;
+// measured live the two drift apart at +0.0124 mean-magnitude ratio per minute
+// and never reconverge. Until this op existed, every Savestart restored weights
+// that had not done the learning.
+//
+// Chunked because the intra matrix is ~452M nnz = ~1.81 GB of f32: one frame
+// cannot carry it (~16 MiB donor ceiling) and one staging allocation should not.
+// `chunkBytes` is advisory — the donor clamps it to its own frame ceiling and
+// re-aligns to 4 bytes, and reports what it actually used in the ack.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReadbackMatrixValues {
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    pub name: String,
+    #[serde(rename = "chunkBytes", default = "default_chunk_bytes")]
+    pub chunk_bytes: u32,
+}
+
+fn default_chunk_bytes() -> u32 { 8 * 1024 * 1024 }
+
+// Sent AFTER the last binary chunk. `checksum` is FNV-1a-64 over the same
+// little-endian f32 bytes the chunks carried, so the server proves the transfer
+// intact by hashing what it received rather than trusting a byte count — the
+// same digest `readback_matrix_checksum` already returns, so a mismatch is
+// distinguishable from a stale matrix. `found: false` means no donor GPU holds
+// the matrix; the server reports that instead of writing a half checkpoint.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReadbackMatrixValuesAck {
+    #[serde(rename = "type")]
+    pub msg_type: &'static str, // "readback_matrix_values_ack"
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    pub name: String,
+    pub found: bool,
+    pub nnz: u32,
+    #[serde(rename = "byteLen")]
+    pub byte_len: u64,
+    pub chunks: u32,
+    #[serde(rename = "chunkBytes")]
+    pub chunk_bytes: u32,
+    pub checksum: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
 // v0.3.20 — LETTER-SURPRISE WALK, device-side.
 // The brain's episode-salience metric streams a clause's letters through the
 // cortex and averages |Δ letter-region spike rate| per letter. Done from the
@@ -568,6 +617,8 @@ pub enum ServerMessage {
     ReadbackLetterBuckets(ReadbackLetterBuckets),
     #[serde(rename = "readback_matrix_checksum")]
     ReadbackMatrixChecksum(ReadbackMatrixChecksum),
+    #[serde(rename = "readback_matrix_values")]
+    ReadbackMatrixValues(ReadbackMatrixValues),
     #[serde(rename = "mindspace_op")]
     MindspaceOp(MindspaceOp),
     #[serde(other)]

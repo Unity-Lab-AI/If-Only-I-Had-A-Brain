@@ -428,6 +428,36 @@ pub fn ack_propagate(req_id: u32, currents: &[f32]) -> Vec<u8> {
     v
 }
 
+/// `SHADOWCOST.3` (v0.3.36) — type=7: ONE CHUNK of a resident matrix's values,
+/// streamed back so the brain can checkpoint the weights the GPU actually trained.
+///
+/// Layout — 32-byte header so the f32 payload lands 4- AND 8-byte aligned, which
+/// matters because the server reads it as a typed array and a misaligned view is
+/// how the ALIGNKILL crash presented:
+///   'SPRR' | 7 | pad(3) | reqId(u32 @8) | chunkIdx(u32 @12) | totalChunks(u32 @16)
+///   | byteOffsetLo(u32 @20) | byteOffsetHi(u32 @24) | payloadBytes(u32 @28)
+///   | payload @32
+///
+/// ⚠ byteOffset is carried as TWO u32s, not one. The intra matrix is already
+/// ~1.81 GB and the language cortex is on a growth ladder — a u32 byte offset
+/// wraps silently at 4 GiB and would reassemble a checkpoint with two chunks
+/// written to the same place, which no checksum on the READ side would catch
+/// because each chunk is individually valid.
+pub fn ack_values_chunk(req_id: u32, chunk_idx: u32, total_chunks: u32, byte_offset: u64, payload: &[u8]) -> Vec<u8> {
+    let mut v = Vec::with_capacity(32 + payload.len());
+    v.extend_from_slice(b"SPRR");
+    v.push(7);
+    v.extend_from_slice(&[0u8, 0, 0]); // pad 5..7
+    v.extend_from_slice(&req_id.to_le_bytes()); // 8..11
+    v.extend_from_slice(&chunk_idx.to_le_bytes()); // 12..15
+    v.extend_from_slice(&total_chunks.to_le_bytes()); // 16..19
+    v.extend_from_slice(&((byte_offset & 0xffff_ffff) as u32).to_le_bytes()); // 20..23
+    v.extend_from_slice(&((byte_offset >> 32) as u32).to_le_bytes()); // 24..27
+    v.extend_from_slice(&(payload.len() as u32).to_le_bytes()); // 28..31
+    v.extend_from_slice(payload); // 32..
+    v
+}
+
 /// SPARSEACK (v0.3.27) — type=6 ack: the SAME currents, encoded as (index, value)
 /// pairs instead of a dense f32 array.
 ///
@@ -555,6 +585,40 @@ pub fn self_check() -> Result<(), String> {
     // it is not verified at all.
     let hex: String = a.iter().map(|b| format!("{b:02x}")).collect();
     println!("self-test: sparse-ack frame hex = {hex}");
+
+    // `SHADOWCOST.3` (v0.3.36) — type=7 values chunk. Same discipline as the
+    // masked-plasticity frame: the layout is a TEST, not a comment, because a
+    // silent drift here writes the WRONG WEIGHTS into a checkpoint that then
+    // looks like a successful save. The high-offset case is the one that matters
+    // — it is the split u64 that stops a >4 GiB matrix from wrapping two chunks
+    // onto the same destination, which no per-chunk checksum could catch.
+    let vals: Vec<f32> = vec![0.5, -0.25, 1.0, -2.0];
+    let mut payload = Vec::new();
+    for v in &vals { payload.extend_from_slice(&v.to_le_bytes()); }
+    let big_off: u64 = 5_000_000_000; // past 4 GiB on purpose
+    let c = ack_values_chunk(4242, 3, 9, big_off, &payload);
+    if &c[0..4] != b"SPRR" || c[4] != 7 {
+        return Err("values-chunk magic/type wrong".to_string());
+    }
+    let rd_c = |o: usize| u32::from_le_bytes([c[o], c[o + 1], c[o + 2], c[o + 3]]);
+    if rd_c(8) != 4242 || rd_c(12) != 3 || rd_c(16) != 9 {
+        return Err(format!("values-chunk header wrong: req={} idx={} total={}", rd_c(8), rd_c(12), rd_c(16)));
+    }
+    let off_back = (rd_c(20) as u64) | ((rd_c(24) as u64) << 32);
+    if off_back != big_off {
+        return Err(format!("values-chunk byteOffset wrapped: {off_back} != {big_off}"));
+    }
+    if rd_c(28) as usize != payload.len() || c.len() != 32 + payload.len() {
+        return Err(format!("values-chunk length wrong: declared={} actual={}", rd_c(28), c.len() - 32));
+    }
+    // Payload must start 4- AND 8-byte aligned, and round-trip bit-exact.
+    if 32 % 8 != 0 { return Err("values-chunk payload offset not 8-byte aligned".to_string()); }
+    let back: Vec<f32> = (0..vals.len()).map(|k| f32::from_bits(rd_c(32 + k * 4))).collect();
+    if back != vals {
+        return Err(format!("values-chunk payload round-trip mismatch: {back:?} != {vals:?}"));
+    }
+    let chex: String = c.iter().map(|b| format!("{b:02x}")).collect();
+    println!("self-test: values-chunk frame hex = {chex}");
     Ok(())
 }
 

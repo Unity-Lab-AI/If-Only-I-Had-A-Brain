@@ -1240,6 +1240,35 @@ function _pruneStaleCheckpointSlots() {
 // A crash / hard-kill leaves NO marker → next boot wipes (correct: crash state
 // is stale per the clear-stale-state LAW). Consumed (deleted) on boot — one
 // resume per clean stop.
+// ⭐ `SHADOWCOST.3` — PULL THE GPU'S WEIGHTS BEFORE A DELIBERATE STOP.
+//
+// The hourly refresh bounds crash loss to an hour; a PLANNED stop should lose
+// nothing, and a stop is the one moment we know more work is not coming. Awaited
+// with its own bound because this runs in shutdown paths that have a grace window
+// (systemd SIGTERM), and the shutdown save already pins the loop for ~112 s — so
+// an unbounded multi-GB transfer here could turn a clean stop into a SIGKILL,
+// which WDCLEAN.1 would then correctly record as a hard death.
+//
+// ⚠ Best-effort BY DESIGN: if it does not finish in time the stop proceeds and
+// the last hourly refresh stands. Never let checkpoint freshness cost us a clean
+// exit — a slightly older coherent checkpoint beats a forged STALLED verdict.
+async function _readbackBeforeStop(reason) {
+  try {
+    if (!brain || typeof brain.refreshCheckpointFromDonor !== 'function') return;
+    const BUDGET_MS = Number.isFinite(+process.env.DREAM_READBACK_STOP_BUDGET_MS)
+      ? Math.max(0, +process.env.DREAM_READBACK_STOP_BUDGET_MS) : 120_000;
+    if (BUDGET_MS === 0) return;
+    console.log(`[Brain] SHADOWCOST.3 pre-stop readback (${reason}) — pulling the GPU's weights so this stop loses nothing; budget ${(BUDGET_MS / 1000) | 0}s.`);
+    const r = await Promise.race([
+      brain.refreshCheckpointFromDonor(`pre-stop:${reason}`, { force: true }),
+      new Promise((res) => setTimeout(() => res({ ok: false, reason: 'pre-stop budget exhausted' }), BUDGET_MS)),
+    ]);
+    if (!r || !r.ok) console.warn(`[Brain] SHADOWCOST.3 pre-stop readback did not complete (${(r && r.reason) || 'unknown'}) — stopping anyway; the last hourly refresh stands.`);
+  } catch (e) {
+    console.warn('[Brain] SHADOWCOST.3 pre-stop readback threw (non-fatal, stopping anyway):', (e && e.message) || e);
+  }
+}
+
 function _writeResumeMarker(reason) {
   // Force the latest state to disk FIRST — stop()/SIGTERM don't save on their
   // own, so without this the marker would claim "good state" while the on-disk
@@ -8793,6 +8822,36 @@ setInterval(() => {
   }
 }, PRIMARY_REBALANCE_MS);
 
+// ⭐ `SHADOWCOST.3` — HOURLY CHECKPOINT REFRESH FROM THE DONOR.
+//
+// The checkpoint has always been written from the CPU arrays, and SHADOWCOST.8
+// established those are not a lagging copy of the resident weights — they are a
+// DIFFERENT brain (94% of plasticity arrives via `hebbian_bound`, which trains on
+// the donor's resident spike state the host never sees, at ~49x the host's rate;
+// measured drift +0.0124 mean-magnitude ratio per minute, never reconverging).
+// So every Savestart restored weights that had not done the learning.
+//
+// HOURLY, and the cadence is the whole trade, priced before it shipped: the pull
+// is ~2.3 GB and ~59 s at the measured 39 MB/s. Hourly that is 1.6% of wall clock
+// and bounds crash loss to an hour. Every-save (~5 min) would be 20% of wall clock
+// on the same socket the walk teaches over — a worse deal than the problem.
+// `DREAM_READBACK_MIN_GAP_MS` moves it; `refreshCheckpointFromDonor` owns the gate
+// so a manual/pre-stop call cannot double-fire on top of this one.
+//
+// The tick is deliberately NOT paused for it: the donor streams from its own
+// buffers while training continues, so values arrive with per-value age skew —
+// exactly the tolerance `_collectBinarySections` already documents and accepts
+// for the CPU-side save. Structurally consistent, not instantaneous.
+const READBACK_TICK_MS = 5 * 60 * 1000;
+setInterval(() => {
+  if (typeof brain.refreshCheckpointFromDonor !== 'function') return;
+  // Fire-and-forget on purpose — this must never join the tick's critical path.
+  // The gap gate inside means most of these calls return immediately.
+  brain.refreshCheckpointFromDonor('hourly').catch((e) => {
+    console.warn('[Brain] SHADOWCOST.3 hourly checkpoint refresh threw (non-fatal):', (e && e.message) || e);
+  });
+}, READBACK_TICK_MS);
+
 // Loopback gate for privileged HTTP endpoints (/shutdown, /grade-advance,
 // /grade-signoff). Defense-in-depth on top of the BIND_HOST=127.0.0.1
 // default — even when the operator opts in to BRAIN_BIND=0.0.0.0 to
@@ -10759,6 +10818,28 @@ wss.on('connection', (ws, req) => {
       // a 4-byte boundary (compute.html used to emit new Float32Array(
       // resp, 13, clen) which is a WebGPU-validator violation —
       // "start offset of Float32Array should be a multiple of 4").
+      // ⭐ `SHADOWCOST.3` (donor v0.3.36) — type=7 is ONE CHUNK of a matrix values
+      // readback, and it is handled BEFORE the pending-map lookup below because it
+      // deliberately does NOT resolve a pending: a readback is many frames closed
+      // by a JSON ack, not one request/one reply. Header (32 bytes, so the f32
+      // payload lands 8-byte aligned):
+      //   'SPRR' | 7 | pad(3) | reqId@8 | chunkIdx@12 | totalChunks@16
+      //   | byteOffsetLo@20 | byteOffsetHi@24 | payloadBytes@28 | payload@32
+      // byteOffset is split across two u32 on purpose — the intra matrix is
+      // already 1.81 GB and a u32 offset wraps silently at 4 GiB, which would
+      // reassemble two chunks onto the same destination with every chunk still
+      // individually valid.
+      if (typeByte === 7) {
+        if (data.length < 32) return;
+        const rbReqId = data.readUInt32LE(8);
+        const byteOffset = data.readUInt32LE(20) + data.readUInt32LE(24) * 4294967296;
+        const payloadBytes = data.readUInt32LE(28);
+        if (data.length < 32 + payloadBytes) return;
+        if (typeof brain._applyValuesChunk === 'function') {
+          brain._applyValuesChunk(rbReqId, byteOffset, data.subarray(32, 32 + payloadBytes));
+        }
+        return;
+      }
       const reqId = (typeByte === 2 || typeByte === 6) ? data.readUInt32LE(8) : data.readUInt32LE(5);
       if (brain._gpuSparsePending) {
         const pending = brain._gpuSparsePending.get(reqId);
@@ -10869,7 +10950,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'letter_surprise_ack', 'device_lost'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'readback_matrix_values_ack', 'letter_surprise_ack', 'device_lost'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -11767,6 +11848,16 @@ wss.on('connection', (ws, req) => {
         case 'rebind_sparse_ack':
         case 'readback_letter_buckets_ack':
         case 'letter_surprise_ack':
+        // ⭐ `SHADOWCOST.3` — the CLOSING ack of a values readback. Not a pending
+        // resolve: the payload arrived as many type=7 binary chunks and this frame
+        // is the completeness proof (chunk count + FNV-1a-64 over the same bytes
+        // the donor put on the wire). Verified in `_settleValuesReadback`, which
+        // fails the transfer on ANY of: not-found, chunk-count mismatch,
+        // out-of-order arrival, overrun past the CPU array, or digest mismatch.
+        case 'readback_matrix_values_ack': {
+          if (typeof brain._settleValuesReadback === 'function') brain._settleValuesReadback(msg);
+          break;
+        }
         case 'readback_matrix_checksum_ack': { // TU.19-D parity digest
           if (!brain._gpuSparsePending || !msg.reqId) break;
           const pending = brain._gpuSparsePending.get(msg.reqId);
@@ -12983,11 +13074,18 @@ process.on('SIGTERM', () => {
   // #38 — SIGTERM is a DELIBERATE clean stop (systemctl). Force-save + drop the
   // resume marker so the next spin-up auto-resumes (unless a heavy update made
   // the weights incompatible — then it fresh-starts with a notice).
-  try { _writeResumeMarker('SIGTERM / systemctl'); } catch (err) {
-    console.warn('[Brain] resume-marker on SIGTERM failed:', err && err.message);
-  }
-  try { brain.stop(); } catch {}
-  process.exit(0);
+  // ⭐ SHADOWCOST.3 — pull the GPU's weights FIRST so a planned stop loses
+  //   nothing, then write the marker. The handler goes async for this; every
+  //   path below still runs exactly once, and the readback carries its own
+  //   budget so it can never be the reason a clean stop turns into a SIGKILL.
+  (async () => {
+    await _readbackBeforeStop('SIGTERM / systemctl');
+    try { _writeResumeMarker('SIGTERM / systemctl'); } catch (err) {
+      console.warn('[Brain] resume-marker on SIGTERM failed:', err && err.message);
+    }
+    try { brain.stop(); } catch {}
+    process.exit(0);
+  })();
 });
 
 // Per-concern mixins now attach BEFORE `new ServerBrain()` (above, near
