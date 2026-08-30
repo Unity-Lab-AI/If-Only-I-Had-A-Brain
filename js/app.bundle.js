@@ -54240,6 +54240,90 @@ var CLUSTER_HEBBIAN_MIXIN = {
   }
 };
 
+// ../js/brain/cluster/lexical-constants.js
+var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
+var FUNCTION_WORDS = /* @__PURE__ */ new Set([
+  // Articles + determiners
+  "a",
+  "an",
+  "the",
+  "this",
+  "that",
+  "these",
+  "those",
+  // Auxiliaries + copulas
+  "is",
+  "am",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "can",
+  "could",
+  "should",
+  "may",
+  "might",
+  // Pronouns
+  "i",
+  "you",
+  "he",
+  "she",
+  "it",
+  "we",
+  "they",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+  "my",
+  "your",
+  "his",
+  "its",
+  "our",
+  "their",
+  // Prepositions
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "by",
+  "for",
+  "with",
+  "from",
+  "up",
+  "down",
+  "out",
+  "off",
+  "over",
+  "under",
+  "into",
+  // Conjunctions
+  "and",
+  "or",
+  "but",
+  "so",
+  "if",
+  "because",
+  "when",
+  "while",
+  "as",
+  // Negation
+  "not",
+  "no"
+]);
+
 // ../js/brain/cluster/emit.js
 var CLUSTER_EMIT_MIXIN = {
   /**
@@ -56074,88 +56158,6 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
     }
   }
 }
-var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
-var FUNCTION_WORDS = /* @__PURE__ */ new Set([
-  // Articles + determiners
-  "a",
-  "an",
-  "the",
-  "this",
-  "that",
-  "these",
-  "those",
-  // Auxiliaries + copulas
-  "is",
-  "am",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "being",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "will",
-  "would",
-  "can",
-  "could",
-  "should",
-  "may",
-  "might",
-  // Pronouns
-  "i",
-  "you",
-  "he",
-  "she",
-  "it",
-  "we",
-  "they",
-  "me",
-  "him",
-  "her",
-  "us",
-  "them",
-  "my",
-  "your",
-  "his",
-  "its",
-  "our",
-  "their",
-  // Prepositions
-  "of",
-  "to",
-  "in",
-  "on",
-  "at",
-  "by",
-  "for",
-  "with",
-  "from",
-  "up",
-  "down",
-  "out",
-  "off",
-  "over",
-  "under",
-  "into",
-  // Conjunctions
-  "and",
-  "or",
-  "but",
-  "so",
-  "if",
-  "because",
-  "when",
-  "while",
-  "as",
-  // Negation
-  "not",
-  "no"
-]);
 var COHERENCE_MIN = (() => {
   try {
     const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_COHERENCE_MIN);
