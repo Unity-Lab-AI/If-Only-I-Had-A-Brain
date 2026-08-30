@@ -1,5 +1,77 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-08-30 (LATEST — PICK UP HERE) — THE CHECKPOINT WAS SAVING A DIFFERENT BRAIN, AND NOW IT IS NOT
+>
+> ### Where it is
+> ```
+> main 2004fbc6 · develop 1246a2a2   (both remotes in sync)
+> box  838bfa6a · up 108 min · ela/kindergarten · 426 teach/min · firing 9.677%
+>      walkTick 408/408 · donorAppVersion 0.3.36 · zero rebind timeouts
+> ⚠ box is 3 commits behind main — the gap is ONLY the stray-screenshot removal
+>   plus a .gitignore rule. Inert. No press is owed for it.
+> ```
+>
+> ### ⭐ WHAT SHIPPED — the donor can hand its weights back
+> `SHADOWCOST.8` established the CPU arrays were never a lagging copy of the
+> resident weights, they were a **different brain**: 94% of plasticity arrives via
+> `hebbian_bound`, which trains on the donor's RESIDENT spike state the host never
+> sees, at ~49× the host's rate, drifting **+0.0124 mean-magnitude ratio per
+> minute** and never reconverging. ⭐ **Both kernels were READ before either was
+> blamed** — `plasticity.wgsl` and `ojaUpdate` compute the identical function once
+> spikes are known to be `Uint8Array` (y²=y), `reward` is 1.0 and the clamps match.
+> The math agreed; the inputs and the update counts did not.
+>
+> **donor v0.3.36 `readback_matrix_values`** — released, all four KI-22 surfaces
+> verified, and the SHIPPED binary downloaded and run (`unity-donor 0.3.36`, whose
+> own self-test emits frame hex byte-identical to what the server parser was
+> checked against). First live pull: **216 chunks / 1,726 MB, checksum MATCHED**,
+> and `?parity=samples` went from drifting away to **cpuOverGpu 0.9939**.
+>
+> ### ⛔ THREE THINGS I BROKE AND FIXED THE SAME DAY — read these first
+> 1. **A `case` inserted into a seven-label fall-through chain** severed SIX labels
+>    from the body they shared. All 16 rebinds timed out at 30 s (~8 minutes of
+>    dead boot, every projection dropped to the degraded standalone path), and
+>    `readback_letter_buckets` + `letter_surprise` broke **silently** — those lanes
+>    have no loud line. ⚠ `node --check` cannot see it and the diff shows only
+>    additions. Worse than the bug: I suspected my own build, could not find the
+>    mechanism, and **retracted a correct suspicion** citing evidence I had already
+>    called too weak. New gotcha page + two memories.
+> 2. **The readback ran at 7.8 MB/s** against a 39 MB/s price — because I reused an
+>    **upload** measurement for a download. The real limit was my own per-byte
+>    BigInt FNV (~1.8 billion ops on the event loop). Rewritten as two 32-bit
+>    limbs, proved bit-identical over 200 fuzz rounds and against the real method:
+>    **5.9 → 24.3 MB/s**.
+> 3. **The parity verdict could only ever return `DIVERGENT`** — judged on
+>    `maxRel <= 1e-6`, correct for two frozen copies and wrong for a live brain
+>    that never stops training. Now graded on the aggregate: MATCH / ALIGNED /
+>    DRIFTING / DIVERGENT.
+>
+> ### ⏳ NEXT ACTION — one press, then one read
+> `REBINDWAIT.4/.5` are on main and **not yet running**. After the next Update &
+> Savestart the hourly readback should complete in **~60 s instead of 222**, with
+> **no walkTick miss** in that window, and `?parity=samples` should read
+> **ALIGNED**. ⚠ If it still takes 200+ s then the limb arithmetic was not the
+> bottleneck and I was wrong twice about the same number — which is worth knowing.
+>
+> ### ⛔ THE ONE REAL COST CENTRE LEFT — `REBINDWAIT.2`
+> `cpuMs` is **21% of the boot** because teach patterns have stopped compressing:
+> **150,388 runs for 154,827 active indices** — nearly every index is its own run,
+> so the `hebbian_ranges` premise (*"teach patterns are group-tiled writes, so they
+> collapse"*) is no longer true. ⛔ **The answer is not a bigger cap:** at ~1.09M
+> runs a frame is ~34.8 MB ≈ 893 ms of wire against an 886 ms CPU pass — dead
+> break-even. Either a different verb (the donor already carries an index-river,
+> SPRS type 3, and a masked form, type 13) or find out why the patterns stopped
+> being tiled upstream.
+>
+> ### Walk-gated — nothing owed, each with its watch-number
+> `tier1.totalEpisodes` **0** (replay has never run) · voice **282 attempts / 282
+> refusals**, all `no-best-word` (expected this early in an ELA-K walk) ·
+> `relationUse.confident` **0** with marginProgress 0.2511 against gate 0.15 ·
+> `perSubject.math` still **pre-K**, so GATEDOSE.1 and RELDEPTH.1 have no gate run
+> to measure. **Board: 6 open — every one either walk-gated with a named number to
+> watch, or `REBINDWAIT.2`.**
+>
+
 > ## ⭐⭐⭐ 2026-08-29 (LATEST — PICK UP HERE) — THREE PROJECTS ARE LIVE NOW, AND THIS REPO IS ONLY ONE OF THEM
 >
 > ⛔ **Read this block before assuming a session is about the brain.** The day ended
