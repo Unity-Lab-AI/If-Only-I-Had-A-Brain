@@ -292,3 +292,13 @@ wiki/
 fable-kit.zip
 fable-kit/
 graphify-out/
+
+# Stray screenshots dropped at the repo root. `Stack Vault.png` (3.0 MB) was
+# committed by a `git add -A` and sat tracked for a day, and the only thing that
+# noticed was the vault's file-coverage number reading 99.8% — a wiki page names
+# every other file in the tree, so one un-nameable binary is exactly what shows.
+# Root only: server/shot-*.png above is a real capture path and stays.
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
