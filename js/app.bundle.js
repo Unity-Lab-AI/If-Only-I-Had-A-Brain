@@ -53426,9 +53426,13 @@ var CLUSTER_TELEMETRY_MIXIN = {
 };
 
 // ../js/brain/cluster/hebbian.js
-var RANGE_MAX_RUNS = 512;
+var RANGE_MAX_RUNS = Math.max(1, typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 8192);
 var RANGE_MAX_TOTAL = 2e6;
+var rangeFail = { reason: null, runs: 0, total: 0 };
 function denseActiveRanges(arr) {
+  rangeFail.reason = null;
+  rangeFail.runs = 0;
+  rangeFail.total = 0;
   const out = [];
   let total = 0;
   let runStart = -1;
@@ -53439,7 +53443,18 @@ function denseActiveRanges(arr) {
     } else if (runStart >= 0) {
       const len = i - runStart;
       total += len;
-      if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+      if (out.length >= RANGE_MAX_RUNS) {
+        rangeFail.reason = "runs";
+        rangeFail.runs = out.length;
+        rangeFail.total = total;
+        return null;
+      }
+      if (total > RANGE_MAX_TOTAL) {
+        rangeFail.reason = "total";
+        rangeFail.runs = out.length;
+        rangeFail.total = total;
+        return null;
+      }
       out.push([runStart, len]);
       runStart = -1;
     }
@@ -53447,14 +53462,41 @@ function denseActiveRanges(arr) {
   if (runStart >= 0) {
     const len = n - runStart;
     total += len;
-    if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+    if (out.length >= RANGE_MAX_RUNS) {
+      rangeFail.reason = "runs";
+      rangeFail.runs = out.length;
+      rangeFail.total = total;
+      return null;
+    }
+    if (total > RANGE_MAX_TOTAL) {
+      rangeFail.reason = "total";
+      rangeFail.runs = out.length;
+      rangeFail.total = total;
+      return null;
+    }
     out.push([runStart, len]);
   }
-  return out.length ? out : null;
+  rangeFail.runs = out.length;
+  rangeFail.total = total;
+  if (!out.length) {
+    rangeFail.reason = "empty";
+    return null;
+  }
+  return out;
 }
 function indexRanges(sortedIdx) {
-  if (!sortedIdx || !sortedIdx.length) return null;
-  if (sortedIdx.length > RANGE_MAX_TOTAL) return null;
+  rangeFail.reason = null;
+  rangeFail.runs = 0;
+  rangeFail.total = 0;
+  if (!sortedIdx || !sortedIdx.length) {
+    rangeFail.reason = "empty";
+    return null;
+  }
+  rangeFail.total = sortedIdx.length;
+  if (sortedIdx.length > RANGE_MAX_TOTAL) {
+    rangeFail.reason = "total";
+    return null;
+  }
   const out = [];
   let runStart = sortedIdx[0];
   let prev = sortedIdx[0];
@@ -53464,13 +53506,22 @@ function indexRanges(sortedIdx) {
       prev = v;
       continue;
     }
-    if (out.length >= RANGE_MAX_RUNS) return null;
+    if (out.length >= RANGE_MAX_RUNS) {
+      rangeFail.reason = "runs";
+      rangeFail.runs = out.length;
+      return null;
+    }
     out.push([runStart, prev - runStart + 1]);
     runStart = v;
     prev = v;
   }
-  if (out.length >= RANGE_MAX_RUNS) return null;
+  if (out.length >= RANGE_MAX_RUNS) {
+    rangeFail.reason = "runs";
+    rangeFail.runs = out.length;
+    return null;
+  }
   out.push([runStart, prev - runStart + 1]);
+  rangeFail.runs = out.length;
   return out;
 }
 var CLUSTER_HEBBIAN_MIXIN = {
@@ -54005,8 +54056,18 @@ var CLUSTER_HEBBIAN_MIXIN = {
         try {
           const _postRanges = indexRanges(_act);
           const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
-          if (!_postRanges) _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
-          else if (!_preRanges) _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
+          if (!_postRanges) {
+            _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
+            const _r = rangeFail.reason || "unknown";
+            _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
+            if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
+          } else if (!_preRanges) {
+            _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
+            const _r = rangeFail.reason || "unknown";
+            _sPre[`rangesFailPre_${_r}`] = (_sPre[`rangesFailPre_${_r}`] || 0) + 1;
+          } else if (rangeFail.runs > (_sPre.rangesRunsOkMax || 0)) {
+            _sPre.rangesRunsOkMax = rangeFail.runs;
+          }
           if (_preRanges && _postRanges) {
             _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
           }
@@ -54023,7 +54084,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
         else _s.cpuFull = (_s.cpuFull || 0) + 1;
         const _shadow0 = Date.now();
         await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: "intraSynapses" });
-        _s.cpuMs = (_s.cpuMs || 0) + (Date.now() - _shadow0);
+        const _cpuDt = Date.now() - _shadow0;
+        _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
+        if (_gpuCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
+        else _s.cpuFullMs = (_s.cpuFullMs || 0) + _cpuDt;
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {

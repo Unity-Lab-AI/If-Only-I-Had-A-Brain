@@ -28,9 +28,45 @@
 // SILENTLY SKIPS oversized ranges (2M cap per range and per side) and a
 // truncated pattern trained on the GPU is wrong math with no loud failure —
 // refusing to dispatch is the only honest move past the cap.
-const RANGE_MAX_RUNS = 512;
+// ⭐ `SHADOWCOST.5` — THE RUN CAP WAS OURS, NOT THE DONOR'S.
+//
+// The live counter that `SHADOWCOST.1` woke up reported `rangesNullPost` on
+// 24.2% of intra calls, and every one of those became a FULL CPU pass — 176
+// full passes against 109 sampled shadows, i.e. most of the CPU time in the
+// heaviest op was NOT the shadow cadence at all. So the cap got read against
+// the donor's own source instead of assumed.
+//
+// `Work::HebbianRanges` in donor-app/src/donor.rs expands ranges with:
+//     if len == 0 || len > 2_000_000 || v.len() + len > 2_000_000 { continue; }
+// That is a cap on TOTAL EXPANDED INDICES and on any single range. There is no
+// cap on the NUMBER of ranges — `pre_ranges: Vec<[u32; 2]>` is an unbounded Vec.
+// So `RANGE_MAX_TOTAL` mirrors a real donor limit and must stay exactly where it
+// is (past it the donor SILENTLY SKIPS ranges and trains truncated math with no
+// loud failure — the reason refusing to dispatch is the only honest move). 512
+// runs was a wire-size judgement with nothing on the other side enforcing it.
+//
+// RE-PRICE before raising it, MEASURED not estimated: a full frame carrying
+// 8,192 runs on BOTH sides serialises to 208.1 KB = 5.46 ms of wire at the
+// measured 39 MB/s donor uplink (512 runs = 13.1 KB / 0.34 ms), and it replaces
+// a CPU pass measured at 123.8 ms (cpuMs 35,288 over 285 passes) that also
+// spends the event loop's backlog on every chunk yield. 23x cheaper. Donor
+// work is unchanged either way because the expanded index count is still capped
+// at 2M. Raising this cannot corrupt math and cannot cost more than it saves;
+// worst case it changes nothing, which is what it does if the refusals turn out
+// to be empty patterns rather than scattered ones — `rangeFailReason` below is
+// what tells the two apart, and it is now recorded rather than reasoned about.
+// ⚠ `typeof` guard, not `process?.env` — optional chaining does NOT shield an
+//   UNDECLARED identifier, and this module is bundled for the browser where
+//   `process` does not exist at all: `process?.env` would throw ReferenceError
+//   at module load and take the whole bundle with it.
+const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 8192);
 const RANGE_MAX_TOTAL = 2_000_000;
+// Why the LAST range-compression refusal happened. Module-scoped because the
+// caller reads it on the very next line — the helpers return null either way and
+// a signature change would touch every call site to carry one diagnostic word.
+const rangeFail = { reason: null, runs: 0, total: 0 };
 function denseActiveRanges(arr) {
+  rangeFail.reason = null; rangeFail.runs = 0; rangeFail.total = 0;
   const out = [];
   let total = 0;
   let runStart = -1;
@@ -41,7 +77,8 @@ function denseActiveRanges(arr) {
     } else if (runStart >= 0) {
       const len = i - runStart;
       total += len;
-      if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+      if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; rangeFail.total = total; return null; }
+      if (total > RANGE_MAX_TOTAL) { rangeFail.reason = 'total'; rangeFail.runs = out.length; rangeFail.total = total; return null; }
       out.push([runStart, len]);
       runStart = -1;
     }
@@ -49,29 +86,40 @@ function denseActiveRanges(arr) {
   if (runStart >= 0) {
     const len = n - runStart;
     total += len;
-    if (out.length >= RANGE_MAX_RUNS || total > RANGE_MAX_TOTAL) return null;
+    if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; rangeFail.total = total; return null; }
+    if (total > RANGE_MAX_TOTAL) { rangeFail.reason = 'total'; rangeFail.runs = out.length; rangeFail.total = total; return null; }
     out.push([runStart, len]);
   }
-  return out.length ? out : null;
+  rangeFail.runs = out.length; rangeFail.total = total;
+  if (!out.length) { rangeFail.reason = 'empty'; return null; }
+  return out;
 }
 function indexRanges(sortedIdx) {
-  if (!sortedIdx || !sortedIdx.length) return null;
-  if (sortedIdx.length > RANGE_MAX_TOTAL) return null;
+  rangeFail.reason = null; rangeFail.runs = 0; rangeFail.total = 0;
+  // `empty` and `runs` are the two refusals that look identical from the caller
+  // and cost wildly different amounts: an empty pattern makes the "full CPU
+  // pass" a no-op, while a scattered one makes it the most expensive thing in
+  // the walk. Naming them is the difference between knowing there is a problem
+  // and knowing there is nothing to fix.
+  if (!sortedIdx || !sortedIdx.length) { rangeFail.reason = 'empty'; return null; }
+  rangeFail.total = sortedIdx.length;
+  if (sortedIdx.length > RANGE_MAX_TOTAL) { rangeFail.reason = 'total'; return null; }
   const out = [];
   let runStart = sortedIdx[0];
   let prev = sortedIdx[0];
   for (let i = 1; i < sortedIdx.length; i++) {
     const v = sortedIdx[i];
     if (v === prev + 1) { prev = v; continue; }
-    if (out.length >= RANGE_MAX_RUNS) return null;
+    if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; return null; }
     out.push([runStart, prev - runStart + 1]);
     runStart = v; prev = v;
   }
-  if (out.length >= RANGE_MAX_RUNS) return null;
+  if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; return null; }
   out.push([runStart, prev - runStart + 1]);
+  rangeFail.runs = out.length;
   return out;
 }
-export { denseActiveRanges, indexRanges };
+export { denseActiveRanges, indexRanges, rangeFail, RANGE_MAX_RUNS, RANGE_MAX_TOTAL };
 
 export const CLUSTER_HEBBIAN_MIXIN = {
   /**
@@ -1166,8 +1214,26 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         try {
           const _postRanges = indexRanges(_act);
           const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
-          if (!_postRanges) _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
-          else if (!_preRanges) _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
+          if (!_postRanges) {
+            _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
+            // ⭐ `SHADOWCOST.5` — WHICH refusal, and how far over. `empty` costs
+            //   nothing (the "full CPU pass" is a no-op on a zero active set);
+            //   `runs` is the expensive one and is the only one a bigger cap can
+            //   fix; `total` is the donor's real 2M limit and must stay refused.
+            //   `runsMax` says how far past the cap the worst pattern went, so
+            //   the next cap choice is a read rather than a guess.
+            const _r = rangeFail.reason || 'unknown';
+            _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
+            if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
+          } else if (!_preRanges) {
+            _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
+            const _r = rangeFail.reason || 'unknown';
+            _sPre[`rangesFailPre_${_r}`] = (_sPre[`rangesFailPre_${_r}`] || 0) + 1;
+          } else if (rangeFail.runs > (_sPre.rangesRunsOkMax || 0)) {
+            // The winning side needs a distribution too: if successes are
+            // routinely near the cap, the cap is still the binding constraint.
+            _sPre.rangesRunsOkMax = rangeFail.runs;
+          }
           if (_preRanges && _postRanges) {
             _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
           }
@@ -1190,7 +1256,15 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         //   cadence buy?" becomes a subtraction on the board.
         const _shadow0 = Date.now();
         await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
-        _s.cpuMs = (_s.cpuMs || 0) + (Date.now() - _shadow0);
+        const _cpuDt = Date.now() - _shadow0;
+        _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
+        // ⭐ `SHADOWCOST.5` — SPLIT THE TWO CPU COSTS. `cpuMs` alone cannot say
+        //   whether the CPU time is the sampled shadow (a checkpoint-fidelity
+        //   choice, and a trade to widen) or a full pass the GPU refused to
+        //   carry (pure waste, and free to remove). Aiming a fix at the wrong
+        //   half is exactly what the aggregate invited once already.
+        if (_gpuCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
+        else _s.cpuFullMs = (_s.cpuFullMs || 0) + _cpuDt;
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
