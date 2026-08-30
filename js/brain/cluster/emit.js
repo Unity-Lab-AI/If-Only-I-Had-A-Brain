@@ -41,7 +41,15 @@
 // during ULTRATHINK boot audit per operator 2026-06-17 "this is why
 // we dont half ass shit" directive.
 import { sharedEmbeddings } from '../embeddings.js';
-import { T14_TERMINATORS, FUNCTION_WORDS } from '../cluster.js';
+// ⭐ `GOTCHA.1` — taken from the LEAF module, not from `../cluster.js`. That one
+// import was the entire circular dependency: cluster.js imports
+// CLUSTER_EMIT_MIXIN from this file, so importing this file FIRST reached
+// cluster.js mid-evaluation and threw `Cannot access 'CLUSTER_EMIT_MIXIN' before
+// initialization`. Production never hit it (curriculum.js warms the cycle) but
+// the file that owns emission was the one file no harness could import alone.
+// `lexical-constants.js` imports nothing, so it cannot participate in a cycle;
+// cluster.js re-exports both symbols, so nothing else changed.
+import { T14_TERMINATORS, FUNCTION_WORDS } from './lexical-constants.js';
 // Subject-key helpers used by emitWordDirect's per-subject word_motor
 // sub-band argmax. These live in subjects.js; the P4.2 emission-method
 // split moved emitWordDirect here but not its subjects import, so the ESM
