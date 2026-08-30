@@ -8873,6 +8873,102 @@ const httpServer = http.createServer((req, res) => {
       }
       return;
     }
+    // ⭐ `SHADOWCOST.2` — PARITY TUNNEL. The CPU↔GPU weight verdict already
+    // existed and already defaulted to the intra matrix (`parityCheckMatrix`,
+    // three modes: STALE / GPU-DIVERGENT / MATH-ERROR / CLEAN), served at
+    // /diag/parity and gated LOOPBACK-ONLY — on a box that deploys by dashboard
+    // press and takes no shell, which means it had never once been readable.
+    // An instrument nobody can reach is the same as an instrument that does not
+    // exist, and the question it answers is worth hours per boot. Ridden through
+    // the SAME query-string tunnel as the console ring for the same reason: the
+    // public origin forwards only routes it already knows, so a new path is
+    // SPA-swallowed and answers 200-with-HTML, which is a lie.
+    //
+    // ⚠ THIS IS NOT A FREE READ. The digest is FNV-1a-64 over every weight byte
+    // of the CPU master — on the intra matrix that is ~452M nnz x 4B = ~1.8
+    // BILLION byte steps, minutes of CPU the walk otherwise gets, plus a full
+    // CPU propagate in mode 2. So: the default read is the CACHED verdict and
+    // costs nothing, a fresh run happens ONLY on ?parity=run, one at a time,
+    // behind a wall-clock floor, and it reports what it cost so the next caller
+    // can decide honestly. It never blocks the request.
+    // `?parity=samples` — the cheap read. One donor round trip plus 64 CPU array
+    // reads, so it answers inline and can be polled; the full hash below is the
+    // one that costs minutes. This is the mode that answers the actual question
+    // (is the SAVED copy under-trained relative to the one that is training),
+    // because a five-fold weight gap shows in a handful of samples.
+    if (qs && String(qs.get('parity') || '') === 'samples') {
+      (async () => {
+        const pName = qs.get('name') || 'cortex_intraSynapses';
+        try {
+          if (typeof brain.parityCheckMatrixSamples !== 'function') {
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ ok: false, error: 'sample parity not available on this brain instance' }));
+            return;
+          }
+          const _t0 = Date.now();
+          const v = await brain.parityCheckMatrixSamples(pName, 64);
+          brain._parityLastSamples = { ...v, costMs: Date.now() - _t0 };
+          console.log(`[Brain] SHADOWCOST.2 parity(samples) ${pName} → ${v.verdict}${v.detail ? ' — ' + v.detail : ''}`);
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ ok: true, now: Date.now(), nowLabel: humanStamp(), ...brain._parityLastSamples }));
+        } catch (err) {
+          try { if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }); } catch { /* raced */ }
+          try { res.end(JSON.stringify({ ok: false, error: String((err && err.message) || err) })); } catch { try { res.end(); } catch { /* gone */ } }
+        }
+      })();
+      return;
+    }
+    if (qs && qs.get('parity') !== null) {
+      try {
+        const pName = qs.get('name') || 'cortex_intraSynapses';
+        const fresh = String(qs.get('parity') || '') === 'run';
+        const gapMs = Number.isFinite(+process.env.DREAM_PARITY_MIN_GAP_MS)
+          ? Math.max(0, +process.env.DREAM_PARITY_MIN_GAP_MS) : 1_800_000;
+        const last = brain._parityLast || null;
+        const sinceMs = last ? (Date.now() - last.ts) : null;
+        let started = false;
+        let refused = null;
+        if (fresh) {
+          if (brain._parityInFlight) refused = 'a parity run is already in flight';
+          else if (typeof brain.parityCheckMatrix !== 'function') refused = 'parity harness not available on this brain instance';
+          else if (last && sinceMs < gapMs) refused = `last run was ${(sinceMs / 1000).toFixed(0)}s ago; the floor is ${(gapMs / 1000).toFixed(0)}s (DREAM_PARITY_MIN_GAP_MS)`;
+          else {
+            started = true;
+            brain._parityInFlight = true;
+            const _t0 = Date.now();
+            // Floating on purpose — the response goes out now; the verdict lands
+            // in the cache for the next poll. A run that throws still clears the
+            // in-flight flag and records WHY, because a silent refusal here is
+            // the exact failure this whole item exists to stop repeating.
+            Promise.resolve()
+              .then(() => brain.parityCheckMatrix(pName, 8))
+              .then((v) => { brain._parityLast = { ...v, ts: Date.now(), costMs: Date.now() - _t0, name: pName }; })
+              .catch((e) => { brain._parityLast = { name: pName, verdict: 'ERROR', detail: String((e && e.message) || e), ts: Date.now(), costMs: Date.now() - _t0 }; })
+              .finally(() => { brain._parityInFlight = false; console.log(`[Brain] SHADOWCOST.2 parity ${pName} → ${(brain._parityLast && brain._parityLast.verdict) || '?'} in ${((Date.now() - _t0) / 1000).toFixed(1)}s`); });
+          }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({
+          now: Date.now(), nowLabel: humanStamp(), name: pName,
+          inFlight: !!brain._parityInFlight, started, refused,
+          minGapMs: gapMs,
+          last: last ? { ...last, ageMs: sinceMs, tsLabel: humanTime(last.ts) } : null,
+          lastSamples: brain._parityLastSamples
+            ? { ...brain._parityLastSamples, ageMs: Date.now() - brain._parityLastSamples.ts, tsLabel: humanTime(brain._parityLastSamples.ts) }
+            : null,
+          note: last
+            ? 'cached verdict — ?parity=samples is the cheap live read; ?parity=run re-hashes every weight (minutes of CPU, see minGapMs)'
+            : 'no FULL parity run has completed on this boot — ?parity=samples answers now for free; ?parity=run arms the exact one',
+        }));
+      } catch (err) {
+        // Head may already be out (the 200 above is written before the body is
+        // serialised) — writing it twice throws INSIDE the catch and takes the
+        // request down with no reply at all. Report on whichever half is left.
+        try { if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }); } catch { /* raced */ }
+        try { res.end(JSON.stringify({ error: String((err && err.message) || err) })); } catch { try { res.end(); } catch { /* gone */ } }
+      }
+      return;
+    }
     brain._lastPublicPollTs = Date.now();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2' });
     res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));

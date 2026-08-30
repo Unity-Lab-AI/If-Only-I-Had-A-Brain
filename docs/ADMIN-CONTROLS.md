@@ -261,7 +261,7 @@ statement, verified individually at the line numbers below.
 | `/autoscale` | GET + POST | `9361` | Community-compute auto-scale settings (dead-zone toggle + sliders). Changes broadcast to every other admin tab as `autoScaleChanged` |
 | `/sleep`, `/wake` | POST | `9464` | Puts the brain into / out of its sleep-consolidation state on demand (both share one handler) |
 | `/learn-from-web` | POST | `9425` | Feeds fetched web content into the teach lane |
-| `/diag/parity` | GET | `8659` | GPU↔CPU parity read. ⭐ **This is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command that `README.md` advertised until 2026-08-27** — the script had been purged in the 2026-08-20 cleanup |
+| `/diag/parity` | GET | `8659` | GPU↔CPU parity read. ⭐ **This is the live replacement for the dead `node scripts/gpu-cpu-parity.mjs` command that `README.md` advertised until 2026-08-27** — the script had been purged in the 2026-08-20 cleanup. ⛔ **Loopback-only, and the deployed box takes no shell — so from outside it was unreachable, which is the same as absent.** Since 2026-08-30 it also rides the public tunnel: `GET /public-state.json?parity=samples` (cheap live read) and `?parity=run` (the exact one) — see `docs/WEBSOCKET.md` |
 
 ⚠ **Deliberately still NOT documented here:** `/episodes`, `/exam-answer`, `/history`
 (read-only data reads, not controls) and `/health`, `/milestone`, `/public-state.json`,
