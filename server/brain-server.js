@@ -1124,7 +1124,16 @@ if (BUNDLE_FRESHNESS.ok === false) {
 // constant had sat at 0.3.30 for five releases — the exact forgetting this
 // comment block warns about — so pods running .31-.34 were never TOLD to
 // self-upgrade via the Welcome lane and only moved by launcher watchdog.
-const CURRENT_DONOR_VERSION = '0.3.35';
+// ⭐ `SHADOWCOST.3` — 0.3.35 → 0.3.36 (`readback_matrix_values`). Moved ONLY after
+// the tag was verified live on all four surfaces: tag exists, both release assets
+// attached, `html/compute.html` + `html/legend.html` links bumped on the deployed
+// site, and the SHIPPED binary downloaded and run — `unity-donor 0.3.36`, whose
+// own `--self-test` emits the byte-identical values-chunk frame the server's
+// parser was checked against.
+// ⛔ THE ORDER IS THE RULE, not a preference: set ahead of a published tag, every
+// donor exits at its next disconnect, the launcher reinstalls the same older
+// `releases/latest`, and the pod loops downloading instead of donating.
+const CURRENT_DONOR_VERSION = '0.3.36';
 
 const WEIGHTS_FORMAT_VERSION = 6;   // language-growth hop 2 (2026-08-29): WORD_MOTOR_TARGET_LANG_CORTEX 12M→20M with per-host AFFORDABLE geometry (each host hops as far as its own RAM/VRAM bounds allow, ≤ target) — saved lang-cortex geometry no longer matches, old weights auto-refuse → fresh walk both directions, per the operator's word. (v5 was ENDO 2026-08-25: `brainstem` cluster added (monoamine nuclei) — cluster set + cerebellum fraction changed. v4 was language-growth hop 1 2026-08-16: langCortexSize 1.5M→12M. v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
