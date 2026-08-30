@@ -11854,19 +11854,21 @@ wss.on('connection', (ws, req) => {
         case 'sparse_upload_ack':
         case 'sparse_propagate_ack':
         case 'sparse_hebbian_ack':
+        // ⛔⛔ `REBINDWAIT.1` — DO NOT INSERT A CASE BETWEEN THESE LABELS AND THEIR
+        //   BODY. These four are a deliberate FALL-THROUGH chain sharing the one
+        //   pending-resolve below. `SHADOWCOST.3` added a values-readback case in
+        //   the middle of them, which severed the first three from their body and
+        //   routed `rebind_sparse_ack`, `readback_letter_buckets_ack` and
+        //   `letter_surprise_ack` into the readback settler — so their pendings
+        //   NEVER RESOLVED and every one of them rode its full timeout. Live cost:
+        //   all 16 cross-projection rebinds timing out at 30 s each, ~8 minutes of
+        //   dead boot, and every projection dropped to the degraded standalone
+        //   path. ⚠ The failure is SILENT at the language level — a fall-through
+        //   chain looks identical whether it is intact or hijacked, and `node
+        //   --check` cannot see it. A new ack case goes BELOW this block.
         case 'rebind_sparse_ack':
         case 'readback_letter_buckets_ack':
         case 'letter_surprise_ack':
-        // ⭐ `SHADOWCOST.3` — the CLOSING ack of a values readback. Not a pending
-        // resolve: the payload arrived as many type=7 binary chunks and this frame
-        // is the completeness proof (chunk count + FNV-1a-64 over the same bytes
-        // the donor put on the wire). Verified in `_settleValuesReadback`, which
-        // fails the transfer on ANY of: not-found, chunk-count mismatch,
-        // out-of-order arrival, overrun past the CPU array, or digest mismatch.
-        case 'readback_matrix_values_ack': {
-          if (typeof brain._settleValuesReadback === 'function') brain._settleValuesReadback(msg);
-          break;
-        }
         case 'readback_matrix_checksum_ack': { // TU.19-D parity digest
           if (!brain._gpuSparsePending || !msg.reqId) break;
           const pending = brain._gpuSparsePending.get(msg.reqId);
@@ -11875,6 +11877,18 @@ wss.on('connection', (ws, req) => {
           clearTimeout(pending.timeout);
           if (msg.error) pending.reject(new Error(msg.error));
           else pending.resolve(msg);
+          break;
+        }
+
+        // ⭐ `SHADOWCOST.3` — the CLOSING ack of a values readback. Placed BELOW
+        // the fall-through chain above, never inside it: this one does NOT resolve
+        // a pending, because the payload arrived as many type=7 binary chunks and
+        // this frame is the completeness proof (chunk count + FNV-1a-64 over the
+        // same bytes the donor put on the wire). `_settleValuesReadback` fails the
+        // transfer on ANY of: not-found, chunk-count mismatch, out-of-order
+        // arrival, overrun past the CPU array, or digest mismatch.
+        case 'readback_matrix_values_ack': {
+          if (typeof brain._settleValuesReadback === 'function') brain._settleValuesReadback(msg);
           break;
         }
 
