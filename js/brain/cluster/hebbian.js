@@ -59,7 +59,30 @@
 //   UNDECLARED identifier, and this module is bundled for the browser where
 //   `process` does not exist at all: `process?.env` would throw ReferenceError
 //   at module load and take the whole bundle with it.
-const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 8192);
+// ⭐ `SHADOWCOST.7` — 8,192 → 65,536, and this time the cap is a READ, not a
+//   judgement, because `SHADOWCOST.6` made the telemetry report true run counts
+//   instead of saturating. Live at 9.1 min on the 8,192 build:
+//     rangesRunsOkMax  8,037  — the largest ACCEPTED pattern, crowding the cap
+//     rangesRunsMax   51,330  — the true run count of the worst refusal
+//     cpuFull 30 passes = 24,181 ms   vs   cpuShadow 160 passes = 2,850 ms
+//   A refusal pass costs 806 ms against a shadow's 17.8 ms — 45x — because
+//   refusals land on exactly the large scattered patterns that are expensive to
+//   walk. Those 30 passes are 24.2 s of the 27.0 s of total CPU in the walk's
+//   heaviest op, so clearing them takes `cpuMs` from 4.94% of the boot to ~0.5%.
+//
+//   RE-PRICE, measured on the live worst case rather than estimated: the actual
+//   51,330-run pattern serialises both sides to 1.01 MB = 27 ms at the measured
+//   39 MB/s uplink, replacing an 806 ms CPU pass — 30x cheaper. (The theoretical
+//   ceiling, a full 65,536 runs of 8-digit indices, is ~2.1 MB = ~54 ms; real
+//   patterns come in under it because their indices are smaller.) They fire
+//   3.3 times a minute, so the added uplink is ~0.12 MB/s against 39.
+//   65,536 clears the observed 51,330 worst case with headroom. The binding
+//   constraint is WIRE BYTES (~16 per range, both sides), so if patterns grow
+//   again, recompute from `rangesRunsMax` rather than doubling on instinct.
+//   ⛔ `RANGE_MAX_TOTAL` is NOT touched and must not be: it mirrors the donor's
+//   real 2M expansion limit, and two refusals in that same window were already
+//   `rangesFail_total` — those are correct refusals and have to stay refused.
+const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 65536);
 const RANGE_MAX_TOTAL = 2_000_000;
 // Why the LAST range-compression refusal happened. Module-scoped because the
 // caller reads it on the very next line — the helpers return null either way and
