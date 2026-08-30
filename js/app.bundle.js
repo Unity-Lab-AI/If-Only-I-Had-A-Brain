@@ -53445,7 +53445,18 @@ function denseActiveRanges(arr) {
       total += len;
       if (out.length >= RANGE_MAX_RUNS) {
         rangeFail.reason = "runs";
-        rangeFail.runs = out.length;
+        let runs = out.length + 1;
+        let inRun = false;
+        for (let k = i + 1; k < n; k++) {
+          if (arr[k]) {
+            if (!inRun) {
+              runs++;
+              inRun = true;
+            }
+            total++;
+          } else inRun = false;
+        }
+        rangeFail.runs = runs;
         rangeFail.total = total;
         return null;
       }
@@ -53508,7 +53519,14 @@ function indexRanges(sortedIdx) {
     }
     if (out.length >= RANGE_MAX_RUNS) {
       rangeFail.reason = "runs";
-      rangeFail.runs = out.length;
+      let runs = out.length + 2;
+      let p = v;
+      for (let k = i + 1; k < sortedIdx.length; k++) {
+        const w = sortedIdx[k];
+        if (w !== p + 1) runs++;
+        p = w;
+      }
+      rangeFail.runs = runs;
       return null;
     }
     out.push([runStart, prev - runStart + 1]);
@@ -53517,7 +53535,7 @@ function indexRanges(sortedIdx) {
   }
   if (out.length >= RANGE_MAX_RUNS) {
     rangeFail.reason = "runs";
-    rangeFail.runs = out.length;
+    rangeFail.runs = out.length + 1;
     return null;
   }
   out.push([runStart, prev - runStart + 1]);
