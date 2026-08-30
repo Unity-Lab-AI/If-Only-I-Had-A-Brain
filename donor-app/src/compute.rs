@@ -1110,6 +1110,64 @@ impl ComputeEngine {
         Some((nnz, hash, samples))
     }
 
+    /// `SHADOWCOST.3` — read a BYTE RANGE of a resident matrix's values back to the
+    /// host, so the brain can checkpoint the weights the GPU actually trained.
+    ///
+    /// WHY THIS EXISTS: the server's checkpoint writes `cortex.synapses` from its
+    /// CPU array, and the CPU array is not a lagging copy of this buffer — it is a
+    /// different brain. 94% of the GPU's plasticity arrives via `hebbian_bound`,
+    /// which trains on the RESIDENT spike state the host never sees, at ~49x the
+    /// host's update rate. Measured live, the two drift apart at +0.0124 mean-
+    /// magnitude ratio per minute and never reconverge. Without this op every
+    /// Savestart silently restores the wrong weights.
+    ///
+    /// WHY IT IS CHUNKED and not one call: the intra matrix is ~452M nnz = ~1.81 GB
+    /// of f32. That is too big for one staging allocation to be sane and far too big
+    /// for one WebSocket frame (the donor's frame ceiling is ~16 MiB). The caller
+    /// walks byte ranges and streams each one.
+    ///
+    /// `COPY_SRC` on the values buffers already exists — TU.19-D added it for the
+    /// parity digest, so no upload path changes.
+    ///
+    /// ⚠ `copy_buffer_to_buffer` requires 4-byte-aligned offset AND size
+    /// (COPY_BUFFER_ALIGNMENT). f32 is 4 bytes so any whole-element range is legal,
+    /// but the range is clamped and re-aligned here rather than trusted from the
+    /// wire — a misaligned copy is a validation error, and this runs on a device
+    /// whose uncaptured-error handler deliberately does NOT panic, so it would
+    /// otherwise fail silently and hand back a short buffer.
+    pub fn read_values_chunk(&self, name: &str, byte_offset: u64, byte_len: u64) -> Option<Vec<u8>> {
+        let m = self.sparse.get(name)?;
+        let total = (m.nnz as u64) * 4;
+        if total == 0 || byte_offset >= total { return None; }
+        let off = byte_offset & !3u64;
+        let len = (byte_len.min(total - off)) & !3u64;
+        if len == 0 { return None; }
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("matrix-values-readback-staging"),
+            size: len,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("matrix-values-readback") });
+        enc.copy_buffer_to_buffer(&m.values, off, &staging, 0, len);
+        self.queue.submit(std::iter::once(enc.finish()));
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        if rx.recv().ok().and_then(|r| r.ok()).is_none() { return None; }
+        let data = staging.slice(..).get_mapped_range();
+        let out = data.to_vec();
+        drop(data);
+        staging.unmap();
+        Some(out)
+    }
+
+    /// Total byte length of a resident matrix's values buffer (nnz * 4), so the
+    /// caller can plan its chunk walk without guessing at nnz.
+    pub fn values_byte_len(&self, name: &str) -> Option<u64> {
+        self.sparse.get(name).map(|m| (m.nnz as u64) * 4)
+    }
+
     /// Run Oja/anti-Hebbian plasticity on a sparse matrix (in place).
     pub fn hebbian(&self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32) -> Result<(), String> {
         let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
@@ -1394,6 +1452,23 @@ impl Backend {
             Backend::Wgpu(e) => e.readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
+        }
+    }
+    /// `SHADOWCOST.3` — byte range of a resident matrix's values, for checkpointing
+    /// the weights the GPU actually trained.
+    fn read_values_chunk(&self, name: &str, byte_offset: u64, byte_len: u64) -> Option<Vec<u8>> {
+        match self {
+            Backend::Wgpu(e) => e.read_values_chunk(name, byte_offset, byte_len),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.read_values_chunk(name, byte_offset, byte_len),
+        }
+    }
+    /// `SHADOWCOST.3` — nnz * 4 for a resident matrix, so the caller can plan chunks.
+    fn values_byte_len(&self, name: &str) -> Option<u64> {
+        match self {
+            Backend::Wgpu(e) => e.values_byte_len(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.values_byte_len(name),
         }
     }
     /// TU.19-D — resident weight digest for GPU↔CPU parity (checksum + samples).
@@ -1735,6 +1810,21 @@ impl MultiEngine {
     pub fn checksum_matrix(&self, name: &str, sample_count: u32) -> Option<(u32, u64, Vec<(u32, f32)>)> {
         let g = *self.matrix_gpu.get(name)?;
         self.engines[g].checksum_matrix(name, sample_count)
+    }
+
+    /// `SHADOWCOST.3` — values readback, routed to the engine that actually holds
+    /// the matrix (`matrix_gpu`), exactly like propagate and the parity digest.
+    /// `None` when no donor GPU holds it, which the server reads as "cannot
+    /// checkpoint from the GPU" and reports rather than papering over.
+    pub fn read_values_chunk(&self, name: &str, byte_offset: u64, byte_len: u64) -> Option<Vec<u8>> {
+        let g = *self.matrix_gpu.get(name)?;
+        self.engines[g].read_values_chunk(name, byte_offset, byte_len)
+    }
+
+    /// `SHADOWCOST.3` — nnz * 4 for a resident matrix, routed the same way.
+    pub fn values_byte_len(&self, name: &str) -> Option<u64> {
+        let g = *self.matrix_gpu.get(name)?;
+        self.engines[g].values_byte_len(name)
     }
 
     pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {

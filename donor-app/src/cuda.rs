@@ -752,6 +752,39 @@ impl CudaEngine {
         Some((nnz, hash, samples))
     }
 
+    /// `SHADOWCOST.3` — CUDA twin of `ComputeEngine::read_values_chunk`. Same
+    /// contract, same byte semantics: a little-endian f32 byte range of the
+    /// resident values buffer, so a CUDA donor and a wgpu donor hand the brain
+    /// byte-identical checkpoint data (both targets are x86-64 LE, the same
+    /// property F10 already relies on for the parity digest).
+    ///
+    /// ⚠ SLICED ON THE DEVICE, not copied whole and then cut. `memcpy_dtov` over
+    /// the full buffer would allocate ~1.81 GB on the host for EVERY chunk of the
+    /// intra matrix — the exact cost the chunking exists to avoid. `CudaSlice`
+    /// views a sub-range without moving anything, and only that range crosses.
+    pub fn read_values_chunk(&self, name: &str, byte_offset: u64, byte_len: u64) -> Option<Vec<u8>> {
+        let m = self.sparse.get(name)?;
+        let total = (m.nnz as u64) * 4;
+        if total == 0 || byte_offset >= total { return None; }
+        let off = byte_offset & !3u64;
+        let len = (byte_len.min(total - off)) & !3u64;
+        if len == 0 { return None; }
+        // Element indices — the wire talks bytes, cudarc slices elements.
+        let start = (off / 4) as usize;
+        let end = start + (len / 4) as usize;
+        let view = m.values.slice(start..end);
+        let vals = self.stream.memcpy_dtov(&view).ok()?;
+        self.stream.synchronize().ok()?;
+        let mut out = Vec::with_capacity(vals.len() * 4);
+        for v in &vals { out.extend_from_slice(&v.to_le_bytes()); }
+        Some(out)
+    }
+
+    /// Total byte length of a resident matrix's values buffer (nnz * 4).
+    pub fn values_byte_len(&self, name: &str) -> Option<u64> {
+        self.sparse.get(name).map(|m| (m.nnz as u64) * 4)
+    }
+
     fn region(&self, cluster: &str, region: &str) -> Option<(u32, u32)> {
         self.clusters.get(cluster).and_then(|c| c.regions.get(region).copied())
     }

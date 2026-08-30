@@ -4989,6 +4989,207 @@ const SERVER_GPU_MIXIN = {
   //                          against a hand-computed tiny reference.
   // Verdict: STALE | GPU-DIVERGENT | MATH-ERROR | CLEAN.
 
+  /**
+   * ⭐ `SHADOWCOST.3` (donor v0.3.36) — PULL THE WEIGHTS THE GPU ACTUALLY TRAINED.
+   *
+   * The checkpoint has always been written from the CPU-side arrays, and
+   * `SHADOWCOST.8` established those are not a lagging copy of the resident
+   * weights — they are a different brain. 94% of plasticity arrives through
+   * `hebbian_bound`, which trains on the donor's RESIDENT spike state the host
+   * never sees, at ~49x the host's update rate; measured live the two drift at
+   * +0.0124 mean-magnitude ratio per minute and never reconverge. So every
+   * Savestart has been restoring weights that did not do the learning.
+   *
+   * ⚠ STREAMS DIRECTLY INTO `matrix.values`, no full-size staging buffer. The
+   * intra matrix is ~452M nnz: 1.81 GB as the f32 the wire carries, 3.6 GB as
+   * the Float64 the CPU keeps. Buffering either would be a multi-GB allocation
+   * spike on a 32 GB box that is already holding the brain. Each ~8 MiB chunk
+   * carries its own absolute byte offset, so it is applied and dropped.
+   *
+   * ⚠ THE WIRE IS f32 AND THE CPU IS f64 — the upload downcasts, so this widens
+   * on the way back. That is lossless in this direction; the precision was
+   * already spent at upload time.
+   *
+   * ⛔ ON FAILURE THE CALLER MUST NOT SAVE. A partial transfer leaves
+   * `matrix.values` a mix of old-CPU and new-GPU rows. That is not corrupt — both
+   * halves are real trained weights and Oja is robust to it — but it is not a
+   * coherent snapshot either, so a checkpoint written from it would be a third
+   * brain. The return value is the completeness proof, and it is a CHECKSUM, not
+   * a byte count: the donor accumulates FNV-1a-64 over exactly the bytes it put
+   * on the wire and ships it in the closing ack, so "did I receive all of it,
+   * intact, in order" is answered by hashing what arrived.
+   */
+  async gpuReadbackMatrixValues(name, targetWs = null, chunkBytes = 8 * 1024 * 1024) {
+    const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
+    if (!ws || ws.readyState !== 1) return { ok: false, reason: 'no donor connected' };
+    const reg = this._replicaMatrixRegistry;
+    const entry = (reg && typeof reg.get === 'function') ? reg.get(name) : null;
+    const matrix = entry && entry.matrix;
+    if (!matrix || !matrix.values) return { ok: false, reason: `no CPU master matrix '${name}' to write into` };
+    if (!this._valuesReadbacks) this._valuesReadbacks = new Map();
+    if (this._valuesReadbackInFlight) return { ok: false, reason: 'a values readback is already in flight' };
+
+    const reqId = (this._gpuSparseReqId = (this._gpuSparseReqId | 0) + 1);
+    const FNV_OFFSET = 0xcbf29ce484222325n, MASK = 0xffffffffffffffffn, PRIME = 0x100000001b3n;
+    const st = {
+      name, matrix, hash: FNV_OFFSET, chunks: 0, bytes: 0, nextOffset: 0,
+      outOfOrder: 0, overrun: 0, t0: Date.now(), done: null,
+    };
+    this._valuesReadbacks.set(reqId, st);
+    this._valuesReadbackInFlight = true;
+
+    const settle = new Promise((resolve) => { st.done = resolve; });
+    // Generous: 2.3 GB at the measured 39 MB/s is ~59 s, and the flood lane can
+    // queue it behind teach work. A too-tight timeout here would abandon a
+    // transfer that is progressing, and the donor would keep streaming into a
+    // pending nobody owns.
+    const timer = setTimeout(() => { if (st.done) { const d = st.done; st.done = null; d({ ok: false, reason: `timed out after ${st.chunks} chunk(s) / ${st.bytes} bytes` }); } }, 600_000);
+    try {
+      ws.send(JSON.stringify({ type: 'readback_matrix_values', reqId, name, chunkBytes: chunkBytes | 0 }));
+    } catch (e) {
+      clearTimeout(timer); this._valuesReadbacks.delete(reqId); this._valuesReadbackInFlight = false;
+      return { ok: false, reason: `send failed: ${(e && e.message) || e}` };
+    }
+    const out = await settle;
+    clearTimeout(timer);
+    this._valuesReadbacks.delete(reqId);
+    this._valuesReadbackInFlight = false;
+    return out;
+  },
+
+  /**
+   * `SHADOWCOST.3` — apply ONE type=7 chunk. Called from the SPRR binary handler.
+   * Widens f32 → the CPU's Float64 in place at the chunk's own absolute offset.
+   * Order is VERIFIED rather than assumed: a chunk landing anywhere but the next
+   * expected offset is counted and the transfer fails at the ack, because a
+   * silently mis-placed chunk is individually valid and no per-chunk check finds it.
+   */
+  _applyValuesChunk(reqId, byteOffset, payload) {
+    const st = this._valuesReadbacks && this._valuesReadbacks.get(reqId);
+    if (!st) return false;
+    const MASK = 0xffffffffffffffffn, PRIME = 0x100000001b3n;
+    if (byteOffset !== st.nextOffset) st.outOfOrder++;
+    // FNV-1a-64 over the wire bytes, in arrival order — must match the donor's
+    // accumulation over the same bytes in send order.
+    for (let i = 0; i < payload.length; i++) {
+      st.hash = (st.hash ^ BigInt(payload[i])) & MASK;
+      st.hash = (st.hash * PRIME) & MASK;
+    }
+    const startElem = byteOffset / 4;
+    const n = payload.length >> 2;
+    const vals = st.matrix.values;
+    if (startElem + n > vals.length) { st.overrun++; return false; }
+    // Read f32 LE out of the frame and widen into the CPU's f64 store.
+    for (let k = 0; k < n; k++) vals[startElem + k] = payload.readFloatLE(k * 4);
+    st.chunks++;
+    st.bytes += payload.length;
+    st.nextOffset = byteOffset + payload.length;
+    return true;
+  },
+
+  /** `SHADOWCOST.3` — the closing JSON ack: verify and settle. */
+  _settleValuesReadback(ack) {
+    const st = this._valuesReadbacks && this._valuesReadbacks.get(ack.reqId);
+    if (!st || !st.done) return;
+    const done = st.done; st.done = null;
+    const ms = Date.now() - st.t0;
+    const mine = st.hash.toString();
+    const theirs = String(ack.checksum != null ? ack.checksum : '0');
+    const problems = [];
+    if (!ack.found) problems.push(ack.error || 'donor reported not found');
+    if (ack.chunks !== st.chunks) problems.push(`chunk count ${st.chunks} received vs ${ack.chunks} sent`);
+    if (st.outOfOrder) problems.push(`${st.outOfOrder} chunk(s) arrived out of order`);
+    if (st.overrun) problems.push(`${st.overrun} chunk(s) ran past the CPU array`);
+    if (mine !== theirs) problems.push(`checksum ${mine} != donor ${theirs}`);
+    if (problems.length) {
+      done({ ok: false, reason: problems.join('; '), chunks: st.chunks, bytes: st.bytes, ms });
+      return;
+    }
+    const mbps = ms > 0 ? (st.bytes / 1048576) / (ms / 1000) : 0;
+    console.log(`[Brain] SHADOWCOST.3 readback ${st.name} — ${st.chunks} chunks / ${(st.bytes / 1048576).toFixed(1)} MB in ${(ms / 1000).toFixed(1)}s = ${mbps.toFixed(1)} MB/s, checksum MATCHED; the CPU master now holds the weights the GPU trained.`);
+    done({ ok: true, chunks: st.chunks, bytes: st.bytes, ms, mbps, checksum: mine });
+  },
+
+  /**
+   * ⭐ `SHADOWCOST.3` — REFRESH THE CPU MASTER FROM THE DONOR, THEN SAVE.
+   *
+   * Deliberately NOT hooked inside `saveWeights`: that method is synchronous and
+   * called from a dozen places (cell-pass, grade-advance, ramhead retry, the
+   * periodic interval, shutdown). Making it async to await a ~60 s transfer would
+   * either ripple through every caller or silently return a promise nobody awaits
+   * — and a save that appears to have happened but has not is the same class of
+   * lie this whole stem was filed against. So the readback owns its own cadence
+   * and TRIGGERS a save when it succeeds.
+   *
+   * ⛔ ON FAILURE IT DOES NOT SAVE. A partial transfer leaves `matrix.values` a
+   * mix of old-CPU and new-GPU rows; both halves are real trained weights, but a
+   * checkpoint written from that is a third brain. The previous checkpoint slots
+   * survive untouched (CHECKROT keeps 3), which is the correct outcome — an older
+   * coherent snapshot beats a newer incoherent one.
+   *
+   * ⚠ Gated on donor >= 0.3.36. An older donor has no `readback_matrix_values`
+   * opcode and would silently ignore the request, so the pending would ride its
+   * timeout and burn 10 minutes proving nothing. Negotiated per socket, the same
+   * law every other verb here follows.
+   */
+  async refreshCheckpointFromDonor(reason = 'hourly', opts = {}) {
+    const ws = this._gpuClient;
+    if (!ws || ws.readyState !== 1) return { ok: false, reason: 'no donor connected' };
+    let versionOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) versionOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3036; // 0.3.36
+    } catch { versionOk = false; }
+    if (!versionOk) {
+      if (!this._readbackVersionWarned) {
+        this._readbackVersionWarned = true;
+        console.warn('[Brain] SHADOWCOST.3 checkpoint readback UNAVAILABLE — the primary donor is older than 0.3.36, so checkpoints keep being written from the CPU shadow (which SHADOWCOST.8 measured as a DIFFERENT brain, not a lagging copy). Update the donor.');
+      }
+      return { ok: false, reason: 'donor < 0.3.36' };
+    }
+    const GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
+      ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
+    if (!opts.force && this._lastReadbackMs && (Date.now() - this._lastReadbackMs) < GAP_MS) {
+      return { ok: false, reason: 'inside the readback gap' };
+    }
+    // ⛔ Never two at once, and never during an upload — the values buffer is
+    // being written from the other direction and a readback mid-upload would
+    // capture a half-replaced matrix.
+    if (this._valuesReadbackInFlight) return { ok: false, reason: 'already in flight' };
+    if (this._cortexUploadInFlight) return { ok: false, reason: 'a cortex upload is in flight' };
+    this._lastReadbackMs = Date.now();
+    // The intra matrix is the whole point — it is the biggest thing in the
+    // cluster and the one `hebbian_bound` trains behind the CPU's back. The
+    // cross-projections ride the same dual-write posture and are far smaller;
+    // they are pulled too, in registry order, and any single failure aborts the
+    // save rather than mixing a fresh intra with stale cross weights.
+    const names = ['cortex_intraSynapses'];
+    try {
+      const reg = this._replicaMatrixRegistry;
+      if (reg && reg.keys) for (const k of reg.keys()) if (k !== 'cortex_intraSynapses') names.push(k);
+    } catch { /* registry best-effort; the intra alone is still worth pulling */ }
+    const t0 = Date.now();
+    let bytes = 0;
+    for (const n of names) {
+      const r = await this.gpuReadbackMatrixValues(n);
+      if (!r || !r.ok) {
+        console.warn(`[Brain] SHADOWCOST.3 readback ABORTED on '${n}' (${reason}): ${(r && r.reason) || 'unknown'} — NOT saving, so the existing checkpoint slots stay coherent.`);
+        return { ok: false, reason: (r && r.reason) || 'readback failed', name: n };
+      }
+      bytes += r.bytes || 0;
+    }
+    const secs = (Date.now() - t0) / 1000;
+    console.log(`[Brain] SHADOWCOST.3 checkpoint refresh (${reason}) — ${names.length} matrix(es), ${(bytes / 1048576).toFixed(1)} MB in ${secs.toFixed(1)}s. Saving the weights the GPU trained.`);
+    try { this.saveWeights({ force: true, trigger: `gpu-readback:${reason}` }); } catch (e) {
+      console.warn('[Brain] SHADOWCOST.3 save after readback failed:', (e && e.message) || e);
+      return { ok: false, reason: `save failed: ${(e && e.message) || e}` };
+    }
+    this._lastReadbackOk = { at: Date.now(), reason, bytes, secs, matrices: names.length };
+    return { ok: true, bytes, secs, matrices: names.length };
+  },
+
   /** Ask a donor for its resident weight digest (checksum + samples). */
   async gpuReadbackMatrixChecksum(name, sampleCount = 0, targetWs = null) {
     const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
