@@ -42257,3 +42257,29 @@ Gee (verbatim): *"okay she is back up and trainin. but this looks wrong:Current 
 ⭐ **AND ONE BUG THAT WAS GENUINELY MINE, FOUND AND FIXED (`REBINDWAIT.3`):** `refreshCheckpointFromDonor` gated on `_lastReadbackMs`, **undefined at boot**, so `!this._lastReadbackMs` made the gap check fall through — the first scheduler tick would have pulled the whole ~6.8 GB **five minutes into every boot**, in the exact window the upload and rebinds need the wire. It was refused this time only by the upload-in-flight guard: **by luck of ordering, not by the gate doing its job.** The clock is now seeded on first call so the first real pull lands one full gap after boot; `force` (pre-stop) still bypasses. Verified across five paths on the real mixin: boot tick seeds and refuses, +5 min inside-gap, +1 h pulls and saves, `force` bypasses, donor 0.3.35 refused with the loud UNAVAILABLE warning.
 
 ⚠ **`REBINDWAIT.2` filed:** `rangesRunsMax` is now **362,859** (from 51,330 one press ago) against the `SHADOWCOST.7` cap of 65,536. Not urgent — the bound path absorbs nearly everything (`boundGpu` 1,338, `boundNoShadow` 1,336, only **2** fall-throughs, `cpuMs` 612 total) — but the cap is behind the pattern sizes again and should be re-priced from `rangesRunsMax`, not doubled on instinct.
+
+### 2026-08-30 — REBINDWAIT.1 CLOSED: the cause was mine, and I had already talked myself out of it once
+
+Gee (verbatim): *"okay she is back up, training i guess its just a waiting game then till we can do those checks?"* → *"boom!"* → *"write it up then"*
+
+**It was not a waiting game and it was not the donor.** `SHADOWCOST.3` added `case 'readback_matrix_values_ack'` **with its own body IN THE MIDDLE of a seven-label fall-through chain**, severing **SIX** labels from the pending-resolve body they shared and routing them into the readback settler:
+
+```
+case 'sparse_upload_ack':          ← severed
+case 'sparse_propagate_ack':       ← severed
+case 'sparse_hebbian_ack':         ← severed
+case 'rebind_sparse_ack':          ← severed
+case 'readback_letter_buckets_ack':← severed
+case 'letter_surprise_ack':        ← severed
+case 'readback_matrix_checksum_ack': { ...resolve the pending... }
+```
+
+Every severed pending **never resolved and rode its full timeout** — which is precisely the 16 rebinds × 30 s ≈ 8 minutes of dead boot, with every cross-projection dropped to the degraded standalone path. ⛔ **And it was never only the rebinds:** `readback_letter_buckets` (gate probes, motor argmax) and `letter_surprise` (episode salience) broke identically and said nothing, because a timeout on those lanes has no loud line. The rebind failures were merely the ones that shout.
+
+**Fix + verification.** The case moved BELOW the block. The chain is verified **byte-identical to the pre-regression tree (`349ec380~1`) across all seven labels**, and a scan of the entire file confirms it is the ONLY fall-through chain in it. ⭐ **Live on `8dada846`:** `rebinding 16 cortex cross-projections` — **one line, sixteen silent successes**, `timeouts anywhere in the ring: 0`, `cortexCluster._cortexFullyReady = true`, `donorAppVersion='0.3.36'`, and **teaching in progress at 3.6 min against 11–12 min on the two broken boots.**
+
+⚠ **WHY NOTHING CAUGHT IT.** A fall-through chain is *syntactically identical* whether it is intact or hijacked. Inserting a case with a body between labels and their body is perfectly valid JavaScript that silently reroutes six message types — `node --check` cannot see it, ESM `import()` cannot see it, and no harness could, because the switch lives inside a live WebSocket handler. A DO-NOT-INSERT-HERE warning now sits at the chain head naming this exact failure. **The generalisable trap: adding a `case` to a `switch` is only safe at the END of a body, never between a label and the body it shares.**
+
+⛔⛔ **THE PROCESS LESSON, AND IT IS THE PART WORTH KEEPING.** I suspected my own build first — correctly. I could not find the mechanism, so I **traded the suspicion for a comfortable verdict**, telling Gee it was "not established" and probably pre-existing, and citing as support a previous-boot console snapshot **I had myself already labelled as taken too early to mean anything**. That is worse than having no verdict at all: it retired a live, correct lead and pointed the next investigation at the donor. **The rule earned: when you suspect your own change and cannot find the mechanism, keep looking for the mechanism — do not promote "unestablished" to "pre-existing."** The honest form of that message would have been *"I suspect my change, I cannot yet name how"* — which is exactly what I had, and exactly what I should have said.
+
+**Also landed in the same window:** `REBINDWAIT.3` (the readback clock seeded at boot — `_lastReadbackMs` was undefined so "hourly" would have pulled ~6.8 GB five minutes into every boot, saved only by luck of the upload-in-flight guard) and `REBINDWAIT.2`'s distribution instrument (`rangesRunsSum` + four buckets relative to the live cap, because `rangesRunsMax` climbed 51,330 → 362,859 → 1,088,767 across three presses and at ~1.09M runs a frame is ~34.8 MB ≈ 893 ms of wire against an 886 ms CPU pass — dead break-even, so the max is the one number that cannot price the cap). **Awaiting:** the first `SHADOWCOST.3 readback … checksum MATCHED` line, one hour after this boot.
