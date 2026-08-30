@@ -1284,6 +1284,21 @@ export const CLUSTER_HEBBIAN_MIXIN = {
             const _r = rangeFail.reason || 'unknown';
             _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
             if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
+            // ⭐ `REBINDWAIT.2` — A MAX CANNOT PRICE A CAP, and this is the second
+            //   time that has bitten. `rangesRunsMax` climbed 51,330 → 362,859 →
+            //   1,088,767 in three presses, and at ~1.09M runs a frame is ~34.8 MB
+            //   ≈ 893 ms of wire against a CPU pass measured at 886 ms — dead
+            //   break-even, so "raise the cap to the max" is NOT automatically
+            //   right. What decides it is the DISTRIBUTION: if most refusals sit
+            //   just past the cap, a small raise captures them cheaply; if they
+            //   cluster near the max, ranges are the wrong carrier and the answer
+            //   is a different verb, not a bigger number. Sum + buckets, so the
+            //   next choice is a read.
+            _sPre.rangesRunsSum = (_sPre.rangesRunsSum || 0) + rangeFail.runs;
+            const _b = rangeFail.runs <= RANGE_MAX_RUNS * 2 ? 'le2x'
+              : rangeFail.runs <= RANGE_MAX_RUNS * 4 ? 'le4x'
+                : rangeFail.runs <= RANGE_MAX_RUNS * 16 ? 'le16x' : 'gt16x';
+            _sPre[`rangesRunsBucket_${_b}`] = (_sPre[`rangesRunsBucket_${_b}`] || 0) + 1;
           } else if (!_preRanges) {
             _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
             const _r = rangeFail.reason || 'unknown';

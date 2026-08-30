@@ -54079,6 +54079,9 @@ var CLUSTER_HEBBIAN_MIXIN = {
             const _r = rangeFail.reason || "unknown";
             _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
             if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
+            _sPre.rangesRunsSum = (_sPre.rangesRunsSum || 0) + rangeFail.runs;
+            const _b = rangeFail.runs <= RANGE_MAX_RUNS * 2 ? "le2x" : rangeFail.runs <= RANGE_MAX_RUNS * 4 ? "le4x" : rangeFail.runs <= RANGE_MAX_RUNS * 16 ? "le16x" : "gt16x";
+            _sPre[`rangesRunsBucket_${_b}`] = (_sPre[`rangesRunsBucket_${_b}`] || 0) + 1;
           } else if (!_preRanges) {
             _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
             const _r = rangeFail.reason || "unknown";
