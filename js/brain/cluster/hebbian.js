@@ -77,7 +77,21 @@ function denseActiveRanges(arr) {
     } else if (runStart >= 0) {
       const len = i - runStart;
       total += len;
-      if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; rangeFail.total = total; return null; }
+      if (out.length >= RANGE_MAX_RUNS) {
+        // SHADOWCOST.6 — same reason as indexRanges: finish the scan counting
+        // runs only, so the recorded number is the TRUE one and not the cap.
+        // This loop was already walking the full dense array; the remainder is
+        // the cheap part of a call that is about to pay a full CPU Oja pass.
+        rangeFail.reason = 'runs';
+        let runs = out.length + 1;
+        let inRun = false;
+        for (let k = i + 1; k < n; k++) {
+          if (arr[k]) { if (!inRun) { runs++; inRun = true; } total++; }
+          else inRun = false;
+        }
+        rangeFail.runs = runs; rangeFail.total = total;
+        return null;
+      }
       if (total > RANGE_MAX_TOTAL) { rangeFail.reason = 'total'; rangeFail.runs = out.length; rangeFail.total = total; return null; }
       out.push([runStart, len]);
       runStart = -1;
@@ -110,11 +124,33 @@ function indexRanges(sortedIdx) {
   for (let i = 1; i < sortedIdx.length; i++) {
     const v = sortedIdx[i];
     if (v === prev + 1) { prev = v; continue; }
-    if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; return null; }
+    if (out.length >= RANGE_MAX_RUNS) {
+      // ⭐ `SHADOWCOST.6` — COUNT PAST THE CAP BEFORE REFUSING. Returning here
+      //   records `runs = RANGE_MAX_RUNS` on every refusal, so the telemetry
+      //   saturates at the cap and reports "at least this many" forever — which
+      //   answers "did the raise help?" with the one number that cannot answer
+      //   it. Finish counting runs WITHOUT building them (no push, no
+      //   allocation) so the true run count is recorded and the next cap choice
+      //   is a read. The caller is about to spend >100 ms on a full CPU pass;
+      //   walking the remaining indices costs microseconds by comparison.
+      rangeFail.reason = 'runs';
+      // +2, not +1: `out` holds the COMPLETED runs, the run [runStart..prev] has
+      // not been pushed yet, and `v` opens another. Counting only one of those
+      // two under-reports by exactly one on every refusal.
+      let runs = out.length + 2;
+      let p = v;
+      for (let k = i + 1; k < sortedIdx.length; k++) {
+        const w = sortedIdx[k];
+        if (w !== p + 1) runs++;
+        p = w;
+      }
+      rangeFail.runs = runs;
+      return null;
+    }
     out.push([runStart, prev - runStart + 1]);
     runStart = v; prev = v;
   }
-  if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length; return null; }
+  if (out.length >= RANGE_MAX_RUNS) { rangeFail.reason = 'runs'; rangeFail.runs = out.length + 1; return null; }
   out.push([runStart, prev - runStart + 1]);
   rangeFail.runs = out.length;
   return out;
