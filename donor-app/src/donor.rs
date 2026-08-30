@@ -19,7 +19,8 @@ use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
     ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult, PhaseTimingMs,
-    LetterSurpriseAck, MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck, RebindAck,
+    LetterSurpriseAck, MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck,
+    ReadbackMatrixValuesAck, RebindAck,
     ServerMessage,
 };
 
@@ -310,6 +311,12 @@ enum Work {
     Readback { req_id: u32, cluster: String, region: String, bucket_count: u32, sub_slice_len: u32, start_offset: u32 },
     // TU.19-D — GPU↔CPU parity: read back a resident matrix's weight digest.
     ChecksumMatrix { req_id: u32, name: String, sample_count: u32 },
+    // `SHADOWCOST.3` (v0.3.36) — stream a resident matrix's VALUES back so the
+    // brain can checkpoint the weights the GPU actually trained. Deliberately in
+    // the FLOOD lane, not the priority lane: it is a ~1.81 GB transfer for the
+    // intra matrix and it must never jump ahead of a deadline-bearing
+    // compute_batch, which is exactly how the zombie-kick incident happened.
+    ReadbackValues { req_id: u32, name: String, chunk_bytes: u32 },
     // ONE PROCESS — a mind-space op (her imagery) computed on this donor.
     // Pure CPU (no engine state); answered with a mindspace_result JSON.
     Mindspace { id: u64, op: String, payload: serde_json::Map<String, serde_json::Value> },
@@ -846,6 +853,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::LetterSurprise { cluster, region, letters, .. } => format!("letter_surprise {cluster}/{region} x{}", letters.len()),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
                 Work::ChecksumMatrix { name, .. } => format!("checksum {name}"),
+                Work::ReadbackValues { name, .. } => format!("readback_values {name}"),
                 Work::Mindspace { op, .. } => format!("mindspace {op}"),
             });
             match work {
@@ -995,6 +1003,70 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         },
                     };
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
+                }
+                // `SHADOWCOST.3` (v0.3.36) — stream a resident matrix's VALUES back
+                // so the brain checkpoints the weights the GPU actually trained
+                // instead of its own divergent CPU shadow. Chunks go out as type=7
+                // binary frames in ascending order; a JSON ack closes the transfer
+                // and carries the FNV-1a-64 digest of the SAME bytes, so the server
+                // proves the transfer intact by hashing what it received rather
+                // than trusting a byte count.
+                Work::ReadbackValues { req_id, name, chunk_bytes } => {
+                    // Clamp the requested chunk to something a frame can carry
+                    // (~16 MiB donor ceiling) and align it to f32. An oversized
+                    // request would otherwise be silently fragmented or dropped —
+                    // and a dropped chunk in the middle of a checkpoint is the
+                    // worst failure this op can have, because every surviving
+                    // chunk is individually valid.
+                    let chunk = (chunk_bytes.max(4 * 1024).min(8 * 1024 * 1024) & !3u32) as u64;
+                    let total_bytes = engine.values_byte_len(&name).unwrap_or(0);
+                    if total_bytes == 0 {
+                        let ack = ReadbackMatrixValuesAck {
+                            msg_type: "readback_matrix_values_ack", req_id, name: name.clone(), found: false,
+                            nnz: 0, byte_len: 0, chunks: 0, chunk_bytes: chunk as u32,
+                            checksum: "0".to_string(),
+                            error: Some("no resident matrix with that name on this donor".to_string()),
+                        };
+                        let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
+                    } else {
+                        let total_chunks = ((total_bytes + chunk - 1) / chunk) as u32;
+                        // FNV-1a-64 accumulated ACROSS chunks in wire order — the
+                        // same digest checksum_matrix returns for the whole buffer,
+                        // so server and donor can compare without a second read.
+                        let mut hash: u64 = 0xcbf29ce484222325;
+                        let mut sent: u32 = 0;
+                        let mut failed: Option<String> = None;
+                        let mut off: u64 = 0;
+                        while off < total_bytes {
+                            match engine.read_values_chunk(&name, off, chunk) {
+                                Some(bytes) if !bytes.is_empty() => {
+                                    for &b in &bytes { hash ^= b as u64; hash = hash.wrapping_mul(0x100000001b3); }
+                                    let frame = crate::frames::ack_values_chunk(req_id, sent, total_chunks, off, &bytes);
+                                    let n = bytes.len() as u64;
+                                    let _ = reply_tx.send(Out::Binary(frame));
+                                    sent += 1;
+                                    off += n;
+                                    set_status(&control_w, |s| { s.note = format!("checkpoint readback {sent}/{total_chunks}"); });
+                                }
+                                // ⛔ STOP AND SAY SO. A short or missing chunk cannot
+                                // be skipped: the brain would reassemble a buffer with
+                                // a hole and write it to disk as a good checkpoint.
+                                _ => { failed = Some(format!("read_values_chunk failed at byte offset {off}")); break; }
+                            }
+                        }
+                        let ack = ReadbackMatrixValuesAck {
+                            msg_type: "readback_matrix_values_ack", req_id, name: name.clone(),
+                            found: failed.is_none(),
+                            nnz: (total_bytes / 4) as u32,
+                            byte_len: off,
+                            chunks: sent,
+                            chunk_bytes: chunk as u32,
+                            checksum: hash.to_string(),
+                            error: failed,
+                        };
+                        let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
+                        set_status(&control_w, |s| { s.note = "idle".into(); });
+                    }
                 }
                 // ONE PROCESS — her imagery on this donor. Pure CPU op → one
                 // mindspace_result reply (ok:false inside on any parse/op error,
@@ -1181,6 +1253,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
                             Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
+                            Ok(ServerMessage::ReadbackMatrixValues(rv)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ReadbackValues { req_id: rv.req_id, name: rv.name, chunk_bytes: rv.chunk_bytes }); }
                             Ok(ServerMessage::MindspaceOp(m)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Mindspace { id: m.id, op: m.op, payload: m.payload }); }
                             // TU.20.12 — the brain refused this binary as incompatible. Surface it
                             // and set stop so the supervisor does NOT reconnect-loop a version it
