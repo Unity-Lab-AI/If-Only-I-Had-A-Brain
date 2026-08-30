@@ -376,7 +376,9 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           // weights stay current regardless.
           await this._ojaUpdateChunked(
             proj, preF, postF, lrEff,
-            ojaOpts ? { ...ojaOpts, activeRows } : { activeRows },
+            // `projName` rides the options bag purely so the slow-Oja warning
+            // can name what it just spent seconds on — `ASSOCBOUND.2`.
+            ojaOpts ? { ...ojaOpts, activeRows, projName: name } : { activeRows, projName: name },
           );
         }
         continue;
@@ -447,7 +449,9 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // residual ~5s [EventLoop] BLOCK during teach. _ojaUpdateChunked slices it
       // + yields between slices (row-independent math = identical result), so a
       // /ws donor/chat handshake gets an event-loop slot even on the CPU path.
-      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2 } : { activeRows: activeRows2 };
+      const ojaOpts2 = ojaOpts
+        ? { ...ojaOpts, activeRows: activeRows2, projName: name }
+        : { activeRows: activeRows2, projName: name };
       if (this._sparsePool && this._sparsePool.ready) {
         try {
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
@@ -518,7 +522,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         proj.ojaUpdate(preF, postF, lr, ojaOpts);
         const _dt = Date.now() - _t0;
         if (_dt > 250) {
-          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? '?'}) — under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
+          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (proj=${(ojaOpts && ojaOpts.projName) || '?'} nnz=${proj.nnz ?? '?'}) — under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
         }
         return;
       }
@@ -552,7 +556,14 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       }
       const _tot = Date.now() - _tStart;
       if (_tot > 2000) {
-        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (nnz=${proj.nnz ?? '?'}) — but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
+        // ⭐ `ASSOCBOUND.2` — THE PROJECTION IS NAMED. This line reported the
+        //   row count and the nnz but never WHICH projection, so a live read
+        //   could measure the cost exactly (358k-439k active rows, nnz 452.5M,
+        //   2.3-8.0s a pass) and still not say where it lands. Every candidate
+        //   region's reported firing rate x its size missed 400k, so the answer
+        //   was not derivable from the published state either — it needed this
+        //   one word. Passed through `ojaOpts` so no call site changes.
+        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (proj=${(ojaOpts && ojaOpts.projName) || '?'} nnz=${proj.nnz ?? '?'}) — but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
       }
       return;
     }
@@ -1146,7 +1157,12 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       if (_gpuCarried) _s.gpu += 1;
       if (!_gpuCarried || (this._intraOjaShadowCounter % 5 === 0)) {
         if (_gpuCarried) _s.cpuShadow += 1; else _s.cpuFull += 1;
-        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
+        // ⚠ Named because this is the PRIME SUSPECT for the slow-Oja line, and
+        //   it was indistinguishable from a cross-projection in the log. The
+        //   intra matrix is the biggest thing in the cluster — `stageProfile`
+        //   put `hebbian.intra` at 8.57 h of a 18.9 h run — and its non-zero
+        //   count is the right order for the 452.5M the warning reports.
+        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
