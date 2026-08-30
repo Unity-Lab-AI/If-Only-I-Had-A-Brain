@@ -53599,7 +53599,9 @@ var CLUSTER_HEBBIAN_MIXIN = {
             preF2,
             postF2,
             lrEff,
-            ojaOpts ? { ...ojaOpts, activeRows } : { activeRows }
+            // `projName` rides the options bag purely so the slow-Oja warning
+            // can name what it just spent seconds on — `ASSOCBOUND.2`.
+            ojaOpts ? { ...ojaOpts, activeRows, projName: name } : { activeRows, projName: name }
           );
         }
         continue;
@@ -53630,7 +53632,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const preF = preS2.vec;
       const postF = postS2.vec;
       const activeRows2 = postS2.active;
-      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2 } : { activeRows: activeRows2 };
+      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2, projName: name } : { activeRows: activeRows2, projName: name };
       if (this._sparsePool && this._sparsePool.ready) {
         try {
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
@@ -53671,7 +53673,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
         proj.ojaUpdate(preF, postF, lr, ojaOpts);
         const _dt = Date.now() - _t0;
         if (_dt > 250) {
-          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? "?"}) \u2014 under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
+          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (proj=${ojaOpts && ojaOpts.projName || "?"} nnz=${proj.nnz ?? "?"}) \u2014 under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
         }
         return;
       }
@@ -53699,7 +53701,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       }
       const _tot = Date.now() - _tStart;
       if (_tot > 2e3) {
-        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (nnz=${proj.nnz ?? "?"}) \u2014 but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
+        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (proj=${ojaOpts && ojaOpts.projName || "?"} nnz=${proj.nnz ?? "?"}) \u2014 but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
       }
       return;
     }
@@ -53971,12 +53973,20 @@ var CLUSTER_HEBBIAN_MIXIN = {
         this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr);
       } catch {
       }
-      if (this._teachIntermediateRep === true) return;
+      const _sB = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+      _sB.boundGpu = (_sB.boundGpu || 0) + 1;
+      if (this._teachIntermediateRep === true) {
+        _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
+        return;
+      }
       const _sampleN = this._teachFinalRepSampleEveryN | 0;
       if (_sampleN > 1) {
         const _nowSh = Date.now();
         const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
-        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) return;
+        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) {
+          _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
+          return;
+        }
         this._lastIntraShadowMs = _nowSh;
       }
     }
@@ -53988,24 +53998,32 @@ var CLUSTER_HEBBIAN_MIXIN = {
         if (post[_i]) _act.push(_i);
       }
       let _gpuCarried = false;
+      const _sPre = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+      _sPre.activeSum = (_sPre.activeSum || 0) + _act.length;
+      _sPre.calls = (_sPre.calls || 0) + 1;
       if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === "function") {
         try {
           const _postRanges = indexRanges(_act);
           const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
+          if (!_postRanges) _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
+          else if (!_preRanges) _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
           if (_preRanges && _postRanges) {
             _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
           }
         } catch {
           _gpuCarried = false;
+          _sPre.rangesThrew = (_sPre.rangesThrew || 0) + 1;
         }
       }
       this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
-      const _s = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0 });
-      if (_gpuCarried) _s.gpu += 1;
+      const _s = _sPre;
+      if (_gpuCarried) _s.gpu = (_s.gpu || 0) + 1;
       if (!_gpuCarried || this._intraOjaShadowCounter % 5 === 0) {
-        if (_gpuCarried) _s.cpuShadow += 1;
-        else _s.cpuFull += 1;
-        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
+        if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1;
+        else _s.cpuFull = (_s.cpuFull || 0) + 1;
+        const _shadow0 = Date.now();
+        await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: "intraSynapses" });
+        _s.cpuMs = (_s.cpuMs || 0) + (Date.now() - _shadow0);
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
@@ -97708,8 +97726,9 @@ var Curriculum = class _Curriculum {
           stageProfile: (() => {
             const sp = this._teachStageProfile;
             const hp = cluster && cluster._hopProf;
-            if (!sp && !hp) return null;
-            return { ...sp || {}, chunkerHops: hp || null };
+            const io = cluster && cluster._intraOjaStats;
+            if (!sp && !hp && !io) return null;
+            return { ...sp || {}, chunkerHops: hp || null, intraOja: io || null };
           })()
         };
       })(),

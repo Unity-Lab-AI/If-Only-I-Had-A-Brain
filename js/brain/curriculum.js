@@ -3638,8 +3638,18 @@ export class Curriculum {
           stageProfile: (() => {
             const sp = this._teachStageProfile;
             const hp = cluster && cluster._hopProf;
-            if (!sp && !hp) return null;
-            return { ...(sp || {}), chunkerHops: hp || null };
+            // ⭐ `SHADOWCOST.1` — THE DEAD COUNTER GETS A CONSUMER. The intra Oja
+            //   keeps `{ gpu, cpuFull, cpuShadow }` on every call and NOTHING has
+            //   ever read it, so the one question it exists to answer — does the
+            //   heaviest op in the walk run on the donor or on this box's CPU? —
+            //   had to be derived by dividing `hebbian.intraMs` by the hardcoded
+            //   shadow cadence instead of being read off the board. Published at
+            //   the SAME chokepoint as chunkerHops so the counts land beside the
+            //   ms they explain. Diagnostic only: rebuilt from zero each boot,
+            //   never persisted, gates nothing.
+            const io = cluster && cluster._intraOjaStats;
+            if (!sp && !hp && !io) return null;
+            return { ...(sp || {}), chunkerHops: hp || null, intraOja: io || null };
           })(),
         };
       })(),

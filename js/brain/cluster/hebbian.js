@@ -1025,7 +1025,15 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         && this._gpuProxy && this._gpuProxy.hebbianBound
         && this._brain && this._brain._langPseudoInit === true) {
       try { this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr); } catch { /* non-fatal */ }
-      if (this._teachIntermediateRep === true) return;   // GPU carried it; the shadow catches up on the final rep
+      // ⭐ `SHADOWCOST.1` — count THIS branch too. `_intraOjaStats` is created at
+      //   the ranges branch below, and a call that leaves through either early
+      //   return here never reaches it — so a board reading only the ranges
+      //   counters would under-report GPU-carried work and make the CPU share
+      //   look larger than it is. Keys are read with `|| 0` at every bump so
+      //   whichever branch initialises the object first, both still tally.
+      const _sB = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+      _sB.boundGpu = (_sB.boundGpu || 0) + 1;
+      if (this._teachIntermediateRep === true) { _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1; return; }   // GPU carried it; the shadow catches up on the final rep
       // TIME-BASED SHADOW CADENCE (2026-08-17). The every-Nth-call sampler
       // scaled shadow cost WITH the call rate: at the 12M cortex one CPU
       // shadow pass costs ~3.9s over 360M nnz, so every-5th pinned the
@@ -1041,7 +1049,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       if (_sampleN > 1) {
         const _nowSh = Date.now();
         const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
-        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) return;
+        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) { _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1; return; }
         this._lastIntraShadowMs = _nowSh;
       }
     }
@@ -1143,26 +1151,46 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // runs every 5th call (the emission lanes' trained-equivalent posture);
       // when it can't, the CPU pass runs in full — nothing is ever dropped.
       let _gpuCarried = false;
+      // ⭐ `SHADOWCOST.1` — RECORD WHY, not just whether. `cpuFull` and
+      //   `cpuShadow` differ by a factor of five in cost, and the total stage ms
+      //   is the SAME number under either reading (few expensive full passes vs
+      //   many cheap sampled ones), so the stage timer alone cannot tell them
+      //   apart — an attribution was derived from it that this counter has to
+      //   settle. The discriminator is whether the spike pattern COMPRESSED into
+      //   ranges: teach writes are group-tiled and should, a scattered pattern
+      //   cannot, and the difference decides who runs the heaviest op in the walk.
+      const _sPre = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
+      _sPre.activeSum = (_sPre.activeSum || 0) + _act.length;
+      _sPre.calls = (_sPre.calls || 0) + 1;
       if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === 'function') {
         try {
           const _postRanges = indexRanges(_act);
           const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
+          if (!_postRanges) _sPre.rangesNullPost = (_sPre.rangesNullPost || 0) + 1;
+          else if (!_preRanges) _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
           if (_preRanges && _postRanges) {
             _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;
           }
-        } catch { _gpuCarried = false; }
+        } catch { _gpuCarried = false; _sPre.rangesThrew = (_sPre.rangesThrew || 0) + 1; }
       }
       this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
-      const _s = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0 });
-      if (_gpuCarried) _s.gpu += 1;
+      const _s = _sPre;
+      if (_gpuCarried) _s.gpu = (_s.gpu || 0) + 1;
       if (!_gpuCarried || (this._intraOjaShadowCounter % 5 === 0)) {
-        if (_gpuCarried) _s.cpuShadow += 1; else _s.cpuFull += 1;
+        if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1; else _s.cpuFull = (_s.cpuFull || 0) + 1;
         // ⚠ Named because this is the PRIME SUSPECT for the slow-Oja line, and
         //   it was indistinguishable from a cross-projection in the log. The
         //   intra matrix is the biggest thing in the cluster — `stageProfile`
         //   put `hebbian.intra` at 8.57 h of a 18.9 h run — and its non-zero
         //   count is the right order for the 452.5M the warning reports.
+        // ⭐ `SHADOWCOST.1` — TIME the CPU pass, don't make the reader divide.
+        //   `hebbian.intraMs` is the whole stage; attributing it to the shadow
+        //   meant dividing by the hardcoded cadence and trusting the arithmetic.
+        //   `cpuMs` is the shadow's own wall cost, so "what would widening the
+        //   cadence buy?" becomes a subtraction on the board.
+        const _shadow0 = Date.now();
         await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: 'intraSynapses' });
+        _s.cpuMs = (_s.cpuMs || 0) + (Date.now() - _shadow0);
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {

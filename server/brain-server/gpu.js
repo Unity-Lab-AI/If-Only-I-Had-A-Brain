@@ -5021,7 +5021,14 @@ const SERVER_GPU_MIXIN = {
     if (nnz === 0) return { found: true, nnz: 0, checksum: FNV_OFFSET.toString(), samples: [] };
     const bytes = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);
     let hash = FNV_OFFSET;
-    const CHUNK = 1_000_000; // yield every ~1MB so the diagnostic never pins the loop
+    // ⛔ `SHADOWCOST.2` — THE MASK WAS NOT A MASK. This was `1_000_000` used with
+    //   `i & (CHUNK - 1)`, which is the power-of-two idiom applied to a decimal
+    //   constant: 999,999 is 0xF423F, so the test `(i & 999999) === 999999` is
+    //   not "every millionth step", it is "i has all TWELVE of those bits set" —
+    //   true for about 1 in 4,096 steps. Over the intra matrix's ~1.8 billion
+    //   byte steps that is ~440,000 yields instead of ~1,800, each paying the
+    //   event loop's full backlog. The intended cadence needs a power of two.
+    const CHUNK = 1 << 20; // yield every 1 MiB so the diagnostic never pins the loop
     for (let i = 0; i < bytes.length; i++) {
       hash = (hash ^ BigInt(bytes[i])) & MASK;
       hash = (hash * PRIME) & MASK;
@@ -5034,6 +5041,74 @@ const SERVER_GPU_MIXIN = {
       for (let i = 0; i < nnz && samples.length < cap; i += step) samples.push({ idx: i, val: f32[i] });
     }
     return { found: true, nnz, checksum: hash.toString(), samples };
+  },
+
+  /**
+   * ⭐ `SHADOWCOST.2` — THE CHEAP HALF OF THE VERDICT.
+   *
+   * `parityCheckMatrix` hashes every weight byte of the CPU master. On a
+   * cross-projection that is nothing; on the intra matrix it is ~452M nnz x 4B
+   * = ~1.8 BILLION byte steps of BigInt arithmetic, and it also runs a full CPU
+   * propagate for mode 2. That price is worth paying once, deliberately — it is
+   * not worth paying to answer the question actually being asked, which is not
+   * "is one bit different" but "is the CPU copy UNDER-TRAINED relative to the
+   * donor's". A five-fold weight difference is visible in a handful of samples.
+   *
+   * The donor already ships up to 64 sampled `{idx, val}` beside its digest, and
+   * the CPU side of that comparison is 64 array reads. So this is the read that
+   * costs nothing and can run often; the full hash stays for when the answer
+   * needs to be exact. Compared in f32 (Math.fround) because the CPU keeps
+   * Float64 and the upload downcasts — comparing raw f64 would report a
+   * divergence that is only the wire format.
+   */
+  async parityCheckMatrixSamples(name, sampleCount = 64) {
+    const out = { name, mode: 'samples', verdict: 'UNKNOWN', ts: Date.now() };
+    const cap = Math.min(64, Math.max(1, sampleCount | 0));
+    const reg = this._replicaMatrixRegistry;
+    const entry = (reg && typeof reg.get === 'function') ? reg.get(name) : null;
+    const matrix = entry && entry.matrix;
+    if (!matrix || !matrix.values) { out.detail = `no CPU master matrix '${name}' in the replica registry`; return out; }
+    const gpu = await this.gpuReadbackMatrixChecksum(name, cap);
+    if (!gpu) { out.detail = 'no donor connected / readback timed out'; return out; }
+    out.cpuNnz = matrix.values.length | 0;
+    out.gpuNnz = gpu.nnz | 0;
+    if (!gpu.found) { out.verdict = 'STALE'; out.detail = `donor holds no resident '${name}' — never uploaded, or dropped`; return out; }
+    if (out.gpuNnz !== out.cpuNnz) {
+      out.verdict = 'STALE';
+      out.detail = `nnz differs (cpu ${out.cpuNnz} vs gpu ${out.gpuNnz}) — the donor is training a structurally different matrix; sample indices do not align, so no value comparison is meaningful`;
+      return out;
+    }
+    if (!gpu.samples.length) { out.detail = 'donor returned no samples'; return out; }
+    let maxAbs = 0, maxRel = 0, sumCpu = 0, sumGpu = 0, n = 0, worst = null;
+    for (const s of gpu.samples) {
+      const i = s.idx | 0;
+      if (i < 0 || i >= out.cpuNnz) continue;
+      const c = Math.fround(matrix.values[i]);
+      const g = Math.fround(s.val);
+      const d = Math.abs(g - c);
+      const scale = Math.max(Math.abs(g), Math.abs(c));
+      const rel = scale > 0 ? d / scale : 0;
+      if (d > maxAbs) maxAbs = d;
+      if (rel > maxRel) { maxRel = rel; worst = { idx: i, cpu: c, gpu: g }; }
+      sumCpu += Math.abs(c); sumGpu += Math.abs(g); n++;
+    }
+    out.compared = n;
+    out.maxAbsDiff = maxAbs;
+    out.maxRelDiff = maxRel;
+    out.meanAbsCpu = n ? sumCpu / n : 0;
+    out.meanAbsGpu = n ? sumGpu / n : 0;
+    // The headline number for the shadow-cadence question: how much smaller is
+    // the copy we SAVE than the copy that is actually training? ~1 means the
+    // shadow is keeping up; a ratio far below 1 means the checkpoint on disk is
+    // the under-trained one, which is the whole reason the cadence exists.
+    out.cpuOverGpu = out.meanAbsGpu > 0 ? out.meanAbsCpu / out.meanAbsGpu : null;
+    out.worstSample = worst;
+    // f32 round-trip noise only — anything above this is real divergence.
+    out.verdict = (maxRel <= 1e-6) ? 'MATCH' : 'DIVERGENT';
+    out.detail = out.verdict === 'MATCH'
+      ? `${n} sampled weights identical in f32 — the CPU master and the donor hold the same values`
+      : `${n} sampled weights differ (max relative ${(maxRel * 100).toFixed(2)}%, cpu/gpu mean magnitude ${out.cpuOverGpu != null ? out.cpuOverGpu.toFixed(4) : 'n/a'}) — the saved copy is NOT the copy that is training`;
+    return out;
   },
 
   /**
