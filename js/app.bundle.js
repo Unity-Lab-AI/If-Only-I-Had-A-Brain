@@ -53426,7 +53426,7 @@ var CLUSTER_TELEMETRY_MIXIN = {
 };
 
 // ../js/brain/cluster/hebbian.js
-var RANGE_MAX_RUNS = Math.max(1, typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 8192);
+var RANGE_MAX_RUNS = Math.max(1, typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 65536);
 var RANGE_MAX_TOTAL = 2e6;
 var rangeFail = { reason: null, runs: 0, total: 0 };
 function denseActiveRanges(arr) {
