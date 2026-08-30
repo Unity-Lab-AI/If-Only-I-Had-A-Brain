@@ -5151,7 +5151,21 @@ const SERVER_GPU_MIXIN = {
     }
     const GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
       ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
-    if (!opts.force && this._lastReadbackMs && (Date.now() - this._lastReadbackMs) < GAP_MS) {
+    // ⛔ `SHADOWCOST.3` FIX — SEED THE CLOCK, or "hourly" is not hourly on the
+    //   first fire. `_lastReadbackMs` starts undefined, so `!this._lastReadbackMs`
+    //   made the gap check fall through and the FIRST scheduler tick pulled the
+    //   whole ~6.8 GB — five minutes into the boot, in the exact window the
+    //   canonical upload and the cross-projection rebinds need the wire. Caught
+    //   live on the 0.3.36 press: the pull was refused only by the
+    //   upload-in-flight guard below, i.e. by luck of ordering rather than by
+    //   this gate doing its job. Seeding it at first call means the first real
+    //   pull lands one full gap after boot, which is what the cadence was priced
+    //   for. `force` (the pre-stop pull) still bypasses it.
+    if (!this._lastReadbackMs) {
+      this._lastReadbackMs = Date.now();
+      if (!opts.force) return { ok: false, reason: 'first tick — clock seeded, first pull is one gap from now' };
+    }
+    if (!opts.force && (Date.now() - this._lastReadbackMs) < GAP_MS) {
       return { ok: false, reason: 'inside the readback gap' };
     }
     // ⛔ Never two at once, and never during an upload — the values buffer is
