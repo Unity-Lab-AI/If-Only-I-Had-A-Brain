@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-08-31 - REPLAY WAS NEVER RUNNING, AND ONE GATE IS WHY - feature/replay-heartbeat-gate
+
+Gee (verbatim): *"okay, so your telling me we are going to need to do a fresh walk
+once you complete all the todo stuff, so wtf why in the hell would i keep
+training on a pod if we are going to freshwalk as soon as you do the fucking
+work, do the fucking work"*
+
+⛔ **HE IS RIGHT ABOUT THE POD, AND I GAVE HIM A BAD ANSWER FIRST.** The current
+run's weights are wiped by the fresh walk — that is his own standing law and I
+quoted it back at him as though it were news, while telling him to press
+Savestart as if it were progress. The run's only value is bug-finding, and it
+should have been said in those words.
+
+- [x] **✅ `REPLAYGATE.1` — `tier1.totalEpisodes` has been 0 on every boot because the Tier-1 episodic heartbeat is gated OFF whenever the curriculum is running, and the curriculum runs ~100% of the time.** `server/brain-server/memory.js:1109` read `… && !this._curriculumInProgress && !this._operatorSleepRequested`. So nothing ever reached Tier 1, nothing could consolidate to Tier 2, and replay — the mechanism that makes few-shot learning possible — had **no input at all**. ⭐ **This single condition blocks three board rows** (`REPLAYOFF.4`, `REPCOMP.2`, PRESSBLOCK ③), and `REPCOMP.2` already stated the consequence: *"the 100 reps are partly compensating for a dead consolidation system, and finding out WHY tier1 has zero episodes is worth more than any rep arithmetic."*
+- [x] **✅ THE TELL WAS DEAD CODE INSIDE THE BLOCK THE GATE PROTECTS.** The first branch after the guard is `if (this._curriculumInProgress)`, which builds a `learning <phase> in <subject> <grade>` context string — **unreachable under the old condition**. The author plainly intended learning episodes to be recorded; the guard forbade exactly those. A block whose first branch cannot execute is the shape of a guard that outlived its purpose.
+- [x] **✅ THE GATE WAS DELIBERATE, ITS REASON WAS REAL, AND A LATER FIX HAD ALREADY KILLED IT.** ⚠ Not removed on taste — `git log -S` found `e27caa90` (2026-07-13): *"~2s computeTransitionSurprise each, setImmediate-batched -> 8-27s blocks"*, a real freeze. ⭐ **But `SURPSYNC.1` (2026-08-21) made `storeEpisode` call the synchronous `computeTransitionSurprise` ONLY when `cortexCluster.size <= 2000000`.** At 411M neurons that branch is never entered, so **the entire 2-second term the gate exists to defend against is structurally zero at biological scale.** ⚠ **And `e27caa90`'s second justification — *"Consolidation had 0 candidates so nothing lost"* — has become CIRCULAR:** consolidation has 0 candidates *because* these writes are suspended. A gate cannot cite the silence it causes as proof it costs nothing.
+- [x] **✅ THE GATE NOW READS THE COST DIRECTLY INSTEAD OF STANDING IN FOR IT.** Suspend only where the expensive sync-surprise path could actually fire: `!(_surpriseCouldRun && _curriculumInProgress)`. **Below 2M cortex the old protection is preserved byte-for-byte**; above it the write is one GloVe embedding plus an indexed exact-text lookup and a LIMIT-bounded cosine scan — the same `storeEpisode` the chat lane already calls on every message in production. `!_operatorSleepRequested` is **kept**: that flag is a deliberate operator quiet request, not a cost proxy, and dream windows are when consolidation RUNS rather than when it needs new input. **Truth table verified 6/6** — opens at 411M during the walk, stays CLOSED at 1M during the walk, sleep respected in both.
+
+⛔ **RE-PRICE, written before the gate moved, per the standing law.** OLD cost per
+write ≈ **2,000 ms** (two full CPU cortex ticks per letter), batched into the
+8-27 s blocks that forced `e27caa90`. NEW cost at >2M cortex: that term **cannot
+execute**, leaving an embedding plus two indexed statements at one write per
+**30 s**. ⚠ **The remaining per-write cost is NOT measured on this box and I am
+not quoting one as if it were** — the honest claim is that the 2 s term is
+structurally unreachable and the remainder already runs on the chat path.
+**Watch after the press: `tier1.totalEpisodes` leaving 0, and `[EventLoop]
+BLOCKED` NOT gaining a new ~30 s-periodic entry.**
+
+⚠ **What this does NOT claim.** At kindergarten the active phase alternates
+between a few methods, so the context strings repeat and the exact-text merge
+will fold them — expect `totalEpisodes` to reach a *small* number with
+`frequency_count` climbing, **not** hundreds. That is the designed behaviour
+(`iter20-E`) and it is enough to give consolidation candidates, which is the
+thing that was missing. Richer episodic variety at K is a separate question.
+
 ## 2026-08-31 - THE ACADEMIC CORPUS HAD 24 UNDECLARED CELLS, AND THE VOCABULARY WAS THE SYMPTOM - feature/academic-corpus-gaps
 
 Gee (verbatim): *"and check the vault it looks to me all grades are not correctly
