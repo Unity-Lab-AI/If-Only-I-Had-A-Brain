@@ -59,7 +59,9 @@ The `/workflow` slash command executes this pipeline:
 
 ### Phase 4 — Work Mode
 
-- Read ALL existing workflow docs (TODO/ARCHITECTURE/SKILL_TREE/ROADMAP/FINALIZED) before any work
+- Read the live-state docs before any work, **each on a BOUNDED slice**, in authority order: `RESUME.md` (latest block) → `TODO.md` (full, **paged to EOF**) → `FINALIZED.md` (**newest section only**, found with `Grep`) → `NOW.md` → the reference tier (ARCHITECTURE / SKILL_TREE / ROADMAP) on the slice the work touches
+- ⛔ **The old instruction here was "read ALL … (TODO/ARCHITECTURE/SKILL_TREE/ROADMAP/FINALIZED)" and it was unsatisfiable** — those five measure ~9.8 MB on this project and `FINALIZED.md` alone is ~8 MB, so the demand quietly became "read whatever fits". It also **never named `RESUME.md`**, the file `CLAUDE.md` calls the authoritative pickup brief
+- ⚠ **A truncated read is NOT a read** — page to EOF. `docs/TODO.md` alone now exceeds one call
 - Pick up tasks from `docs/TODO.md`
 - Execute with pre/post-edit hooks
 - **Gate 4.1:** Work mode ready
@@ -81,12 +83,15 @@ The `/workflow` slash command executes this pipeline:
 | `docs/TODO.md` | **ACTIVE tasks ONLY** — pending / in-progress work |
 | `docs/ROADMAP.md` | Milestones, phases, current status |
 | `docs/FINALIZED.md` | **PERMANENT ARCHIVE** — every completed task with full description |
+| `docs/RESUME.md` | **Session pickup brief, newest first — READ ITS TOP BLOCK FIRST.** The authority order in `CLAUDE.md` is RESUME → TODO → FINALIZED |
 | `docs/NOW.md` | Current session snapshot (optional) |
 | `docs/EQUATIONS.md` | Workflow equation reference |
 
 When updating these files: write out ACTUAL system changes — how things work now, what was added, what changed architecturally. NOT just bumping numbers or adding counts.
 
 All files read in 800-line chunks. Full file must be read before any edit.
+
+⛔ **But some of these files can no longer be read whole, and pretending otherwise is how the Phase 4 gate came to be ignored.** `docs/FINALIZED.md` is append-only and is now ~8 MB — bigger than any context window — and `docs/TODO.md` has crossed the single-call limit too. **The 800-line rule governs files you are about to EDIT; a file you are only CONSULTING gets a stated slice.** Check with `wc -l -c` before reading, name the slice you took, and never report a file as read when the tool returned a partial view.
 
 ---
 

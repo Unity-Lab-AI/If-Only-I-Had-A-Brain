@@ -27,6 +27,15 @@ sources:
   # bound that verb differently — while donor.rs was not a declared source, so
   # check 8 could never have flagged the claim that turned out to be false.
   - donor-app/src/donor.rs
+  # CHECKED 2026-08-31 (doc sweep) and deliberately NOT restamped. This page was
+  # examined against that batch's changes — the episodic/consolidation gate, the
+  # declared-roster training-card fields, and the academic-corpus coverage — and
+  # is UNAFFECTED by all three: none of them touch the wire protocol, the frame
+  # types, or the client contract. ⛔ Saying so explicitly because a silent
+  # omission from a sweep reads as "checked and clean" when it usually means
+  # "not opened". ⚠ last-verified stays at the older commit ON PURPOSE: its
+  # sources HAVE moved for unrelated reasons and this pass did not re-verify the
+  # protocol claims themselves, so the drift check should keep reporting it.
 last-verified: "0ee5ac68 2026-08-29"
 ---
 

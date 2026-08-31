@@ -642,7 +642,7 @@
             <div>items: <span id="d-mem-working" style="color:#22c55e;">0</span></div>
             <div id="d-mem-working-labels" style="margin-top:4px;color:#888;font-size:10px;font-style:italic;max-height:90px;overflow-y:auto;line-height:1.3;">no items yet</div>
           </div>
-          <div title="Tier 1 episodic memory in episodic-memory.db. Every chat turn + every curriculum phase completion + every brain-heartbeat encodes an episode with salience metadata (emotional_valence + arousal + surprise + novelty + frequency_count + consolidation_count). Frequency-merge gate at cosine ≥ 0.5 within 48h merges identical-text episodes into anchor rows instead of creating new ones. Promoted episodes get promoted_to_schema_id pointing at the Tier 2 schema they joined.">
+          <div title="Tier 1 episodic memory in episodic-memory.db. Three writers encode episodes with salience metadata (emotional_valence + arousal + surprise + novelty + frequency_count + consolidation_count): every chat turn, every curriculum phase completion, and the periodic thinking heartbeat. Frequency-merge gate at cosine ≥ 0.5 within 48h merges identical-text episodes into anchor rows instead of creating new ones, so READ 'frequency-merged' as the health signal — a small episode count with the merge counter climbing is the correct shape during a walk, and hundreds would be the surprise. Promoted episodes get promoted_to_schema_id pointing at the Tier 2 schema they joined. NOTE: until 2026-08-31 all three writers were inert during curriculum training (two were gated on a flag that stays true for the entire multi-week walk, and the third fires on phase completion while phases were not completing), so this read 0 on every boot in the project's history. A zero here during an active walk is now a real finding, not an expected idle state.">
             <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📚 TIER 1 — EPISODIC (SQLite)</div>
             <div>episodes: <span id="d-mem-t1-count" style="color:#22c55e;">0</span></div>
             <div>recent salience avg: <span id="d-mem-t1-sal" style="color:#ff4d9a;">0.000</span></div>
@@ -3485,11 +3485,11 @@
           + `<div style="text-align:right;">${formatEvents(s.teachEvents | 0)}</div>`
           + `</div>`);
       }
-      // ROSTERDECLARED — the courses that exist but have not opened yet, with the
-      // grade that opens each. Without this the board says nothing at all about a
-      // track introduced later, and "absent" reads identically to "does not
-      // exist". Grouped by opening grade so it stays a few short lines rather
-      // than one row per course, per the bounded-panel discipline.
+      // The courses that exist but have not opened yet, with the grade that opens
+      // each. Without this the board says nothing at all about a track introduced
+      // later, and "absent" reads identically to "does not exist". Grouped by
+      // opening grade so it stays a few short lines rather than one row per
+      // course, per the bounded-panel discipline.
       const upcoming = Array.isArray(c.rosterUpcoming) ? c.rosterUpcoming : [];
       if (upcoming.length) {
         const byGrade = new Map();
@@ -3499,7 +3499,7 @@
         }
         const lines = [...byGrade.entries()]
           .map(([g, subs]) => `<div style="display:grid;grid-template-columns:1fr 84px;gap:4px;font-size:10px;color:#555;padding:1px 0;">`
-            + `<div title="declared in SUBJECTS_INTRODUCED_AT — not started">${subs.join(' · ')}</div>`
+            + `<div title="Declared on the roster for a later grade, not started. These rows exist so &quot;not offered yet&quot; can be told apart from &quot;missing&quot; — the course list is read from the declared roster for the current grade, NOT from the courses that happen to have run already.">${subs.join(' · ')}</div>`
             + `<div style="color:#555;">opens ${g}</div></div>`)
           .join('');
         rows.push('<div style="font-size:9px;color:#555;border-top:1px solid #222;margin-top:5px;padding-top:4px;">not started yet</div>');

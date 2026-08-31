@@ -35,7 +35,15 @@ verified-scope: |
   and the expanded-subjects table below already records SUBJECTS_RETIRED_AT
   (nine K-12 tracks at grade12, genered/cstheory/cssystems at college4,
   ledger-gated via subjectsOwedAt). Nothing else on this page is invalidated.
-last-verified: "cd465955 2026-08-29"
+  ADDED 2026-08-31: a section stating what prose corpus actually exists behind
+  the sequence — 89/89 cells, 874/874 topics, 12,075 sentences, counted from
+  corpora/academic/ rather than recalled. It also records the shape of the gap
+  that existed until that day (cs had ZERO corpus across all eight of its K-12
+  grades; ela/kindergarten held 1 topic of 6) because a cell with no corpus
+  does not fail — it teaches less and reports the same "done". ⚠ Coverage
+  only: whether each cell's prose carries the topics listed in the tables
+  above is a content audit and has NOT been done.
+last-verified: "f06ea30e 2026-08-31"
 ---
 
 # CURRICULUM SCOPE & SEQUENCE — the EXACT real-student course sequence (K→PhD)
@@ -177,6 +185,33 @@ last-verified: "cd465955 2026-08-29"
 - Content is real curriculum facts taught via the sentence-training pipeline + comprehension gates (the established good pattern), climbing in rigor per the sequence.
 - Unity is **accelerated** in math/science/CS (gifted + self-taught coder) but follows the real course *names* and *scope* — she just masters them early and deeply.
 - Thin spots flagged in RESUME (sculpture/painting/poetry/Shakespeare/civics depth) get filled to match this sequence.
+
+## What the prose corpus actually COVERS, per cell (2026-08-31)
+
+The sequence above says what each course *should* teach. This section says what
+real reading material exists behind it, because for most of this project's life
+the answer was "less than the table implies" and nothing said so.
+
+**Coverage is now complete against the declared roster: 89 of 89 cells · 874 of
+874 topics · 12,075 sentences** (from 729 topics / 10,083 sentences before the
+2026-08-31 pass). A "cell" here is one subject at one grade; a "topic" is one
+openly-licensed article summarised into training prose.
+
+⛔ **What the gap looked like before, and why it was invisible:**
+
+- **`cs` held ZERO corpus across all eight of its K-12 grades.** The course was
+  declared, the runner existed, and there was no prose behind any of it.
+- **`ela/kindergarten` held 1 topic of 6** — the cell the current walk begins in.
+- 24 cells were never declared to the fetcher at all, and 39 more were declared
+  but short. **A cell with no corpus does not fail; it teaches less and reports
+  the same "done".**
+
+⚠ **This is a coverage claim, not a quality claim.** That the sentences exist and
+are grade-appropriate has been checked; whether each cell's prose fully carries
+the topics listed in the tables above is a content audit and has not been done.
+
+⚠ **Corpus is read INSIDE a cell's academic phase**, so a cell that has not been
+reached yet has never touched its prose no matter how complete the files are.
 
 ## How it is SPOKEN — first person, every course, every grade (2026-08-20)
 
