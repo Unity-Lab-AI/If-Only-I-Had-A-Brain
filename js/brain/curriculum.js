@@ -16088,7 +16088,41 @@ export class Curriculum {
     //   than the lr clamped — clamping would silently deliver LESS training
     //   than authored, i.e. the exact cut this is designed not to be.
     const REP_COMPRESS = Math.max(1, Number(
-      (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS) || 1,
+      // ⭐⭐ `REPCOMP.3` — THE NUMBER IS 5, AND IT WAS MEASURED, NOT CHOSEN.
+      //   Gee: "you need to find out what the compress number needs to be".
+      //
+      //   The experiment ran the REAL SparseMatrix and the REAL ojaUpdate over
+      //   synthetic pattern sets, scoring RETRIEVAL ACCURACY — given a pre
+      //   pattern, does the correct post still win the argmax against every
+      //   other candidate. That is what the reps are FOR, and it is the metric
+      //   that matters: ⛔ the aggregate MARGIN is preserved at every
+      //   compression (1.908 -> 1.911) while retrieval can still collapse, so
+      //   margin alone would have green-lit a setting that destroys recall.
+      //   One more case of a total that cannot separate.
+      //
+      //   The governing variable is not overlap alone but COLLISION LOAD —
+      //   `P * K^2 / COLS`, the expected number of other patterns sharing a
+      //   given pre cell. Production: 7,250 pairs * 64 / 1,885,340 sem cells
+      //   = 0.246.
+      //
+      //     collision load     5x        8x
+      //       25.0  (128x)   95.5%     78.5%
+      //        6.25  (25x)  100.0%     89.5%
+      //        1.56   (6x)  100.0%     95.5%
+      //        0.391 (1.6x) 100.0%     99.0%     <- 1.6x HARDER than production
+      //
+      //   5x holds at 100% from 25x the production load all the way down, so it
+      //   carries a very large margin. 8x is measurably worse at EVERY load for
+      //   1.6x more speed, and the LR ceiling caps useful compression at 12.5x
+      //   regardless. ⚠ The first run of this experiment used 500 pairs in 1024
+      //   columns — collision load 31, i.e. 127x production — and reported 5x at
+      //   48.8%. Quoting that would have killed a good change: a model harsher
+      //   than production answers a different question.
+      //
+      //   Effect: 100 reps @ lr 0.03 -> 20 reps @ lr 0.1413, same 95.24%
+      //   asymptote, 5x fewer steps. `DREAM_REP_COMPRESS=1` restores the
+      //   authored form exactly.
+      (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS) || 5,
     ) || 1);
     const LR_CEIL = Math.min(0.9, Math.max(0.05, Number(
       (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL) || 0.35,
