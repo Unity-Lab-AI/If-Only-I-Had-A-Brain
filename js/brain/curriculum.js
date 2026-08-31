@@ -16127,9 +16127,39 @@ export class Curriculum {
     const LR_CEIL = Math.min(0.9, Math.max(0.05, Number(
       (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL) || 0.35,
     ) || 0.35));
-    if (REP_COMPRESS > 1 && reps > 1 && lr > 0 && lr < 1) {
+    // ⛔ `REPCOMP.4` (2026-08-30) — COMPRESS ONLY THE DOSES THE EXPERIMENT
+    //   ACTUALLY VALIDATED, AND NEVER DOWN TO A SINGLE REP.
+    //
+    // Caught on the FIRST live boot after `REPCOMP.3`, in the box's own log:
+    //     [ARTWEIGHT-STRUCTURE] REPCOMP.1 — 4 reps → 1 reps × lr 0.1147
+    // The arithmetic is right (11.47% asymptote preserved exactly) but the
+    // REGIME is one the sweep never measured. Retrieval was validated at the
+    // 100-rep scale, 100 → 20; collapsing a 4-rep dose to ONE presentation is a
+    // different question, because at n=1 there is no interleaved reinforcement
+    // left at all — a pair writes once and every later pair's interference lands
+    // on it with no chance to re-assert. The whole reason rep-major ordering
+    // works is that each pair gets to come back.
+    //
+    // ⭐ AND COMPRESSING SMALL DOSES BUYS NOTHING. The cost is entirely in the
+    //   big calls — the live log is 7,250 pairs × 100 reps against
+    //   ARTWEIGHT's 24 pairs × 4. Skipping the small ones costs no measurable
+    //   wall clock and removes an unvalidated regime, which is the trade every
+    //   time.
+    // ⚠ Neither bound binds at the shipped 5×: 100 → 20, 80 → 16, MID 150 → 30,
+    //   HI 200 → 40, all far above the floor. They are guards against a future
+    //   larger `DREAM_REP_COMPRESS`, not constraints on today's setting.
+    const MIN_REPS_TO_COMPRESS = Math.max(2, Number(
+      (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_MIN_DOSE) || 12,
+    ) || 12);
+    const MIN_RESULT_REPS = Math.max(1, Number(
+      (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_FLOOR) || 4,
+    ) || 4);
+    if (REP_COMPRESS > 1 && reps >= MIN_REPS_TO_COMPRESS && lr > 0 && lr < 1) {
       const _target = 1 - Math.pow(1 - lr, reps);      // what the authored dose reaches
-      let _n = Math.max(1, Math.round(reps / REP_COMPRESS));
+      // `REPCOMP.4` — the result floor. Never fewer than MIN_RESULT_REPS
+      // presentations, so a pair always gets to come back at least a few times
+      // and the interleaving that makes rep-major ordering work survives.
+      let _n = Math.max(MIN_RESULT_REPS, Math.round(reps / REP_COMPRESS));
       let _lr = 1 - Math.pow(1 - _target, 1 / _n);
       // Back off the compression until the required lr is inside the ceiling,
       // so the asymptote is always preserved exactly and never traded away.

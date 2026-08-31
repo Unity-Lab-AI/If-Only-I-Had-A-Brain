@@ -107248,9 +107248,15 @@ var Curriculum = class _Curriculum {
     const LR_CEIL = Math.min(0.9, Math.max(0.05, Number(
       typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL || 0.35
     ) || 0.35));
-    if (REP_COMPRESS > 1 && reps > 1 && lr > 0 && lr < 1) {
+    const MIN_REPS_TO_COMPRESS = Math.max(2, Number(
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_MIN_DOSE || 12
+    ) || 12);
+    const MIN_RESULT_REPS = Math.max(1, Number(
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_FLOOR || 4
+    ) || 4);
+    if (REP_COMPRESS > 1 && reps >= MIN_REPS_TO_COMPRESS && lr > 0 && lr < 1) {
       const _target = 1 - Math.pow(1 - lr, reps);
-      let _n = Math.max(1, Math.round(reps / REP_COMPRESS));
+      let _n = Math.max(MIN_RESULT_REPS, Math.round(reps / REP_COMPRESS));
       let _lr = 1 - Math.pow(1 - _target, 1 / _n);
       while (_lr > LR_CEIL && _n < reps) {
         _n += 1;
