@@ -1107,7 +1107,65 @@ const SERVER_MEMORY_MIXIN = {
     }
 
     // Tier 1 thinking-episode — every ≥30000ms wall-clock
-    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function' && !this._curriculumInProgress && !this._operatorSleepRequested) {
+    //
+    // ⛔⛔ `REPLAYGATE.1` (2026-08-31) — THE `!_curriculumInProgress` GATE IS GONE,
+    //   AND IT IS REPLACED BY A GATE ON THE COST IT WAS ACTUALLY DEFENDING.
+    //
+    // Gee: the board had `tier1.totalEpisodes` at 0 across every boot, which
+    // blocks `REPLAYOFF.4`, `REPCOMP.2` and PRESSBLOCK ③ — and `REPCOMP.2` says
+    // outright that the 100-rep dose is partly compensating for a dead
+    // consolidation system. This gate is why it was dead: the walk is running
+    // ~100% of the time on the box, so `!_curriculumInProgress` meant the Tier-1
+    // heartbeat NEVER fired, nothing reached Tier 1, nothing could consolidate to
+    // Tier 2, and replay — the thing that makes few-shot learning possible —
+    // had no input at all.
+    //
+    // ⭐ THE TELL WAS DEAD CODE INSIDE THE BLOCK. The first branch below is
+    //   `if (this._curriculumInProgress)`, building a `learning <phase> in
+    //   <subject> <grade>` context — unreachable under the old guard. The author
+    //   plainly intended learning episodes to be recorded; the guard forbade
+    //   exactly them.
+    //
+    // ⚠ THE GATE WAS DELIBERATE AND ITS REASON WAS REAL — `e27caa90`
+    //   (2026-07-13): *"~2s computeTransitionSurprise each, setImmediate-batched
+    //   -> 8-27s blocks"*. It is not being removed on taste.
+    // ⭐ IT IS BEING REMOVED BECAUSE A LATER FIX ALREADY KILLED THAT COST.
+    //   `SURPSYNC.1` (2026-08-21) made `storeEpisode` call the synchronous
+    //   `computeTransitionSurprise` ONLY when `cortexCluster.size <= 2000000`.
+    //   At biological scale that branch never runs, so the 2s-per-write term —
+    //   the entire justification for this gate — is already zero here.
+    // ⚠ And `e27caa90`'s other justification, *"Consolidation had 0 candidates
+    //   so nothing lost"*, has become CIRCULAR: consolidation has 0 candidates
+    //   BECAUSE these writes are suspended. A gate cannot cite the silence it
+    //   causes as evidence that it costs nothing.
+    //
+    // ⭐ SO THE GATE NOW READS THE COST DIRECTLY instead of standing in for it:
+    //   suspend only where the expensive sync-surprise path could actually fire.
+    //   Below 2M cortex the old protection is preserved exactly; above it, the
+    //   write is an embedding plus two indexed SQL statements at a 30-second
+    //   cadence — the same `storeEpisode` the chat lane already calls on every
+    //   message in production without incident.
+    //
+    // ⛔ RE-PRICE, written before the gate moved, per the standing law:
+    //   OLD cost per write ~2000 ms (2 full CPU cortex ticks per letter via
+    //   computeTransitionSurprise) × batched = the 8-27 s blocks that forced
+    //   `e27caa90`. NEW cost per write at >2M cortex: that term is structurally
+    //   ZERO (the branch is not entered), leaving one GloVe sentence embedding
+    //   plus the exact-text lookup and the LIMIT-bounded cosine scan, both
+    //   indexed. At one write per 30 s that is ≤0.1% of wall clock even on a
+    //   pessimistic 30 ms estimate. ⚠ The per-write cost at bio scale is NOT
+    //   measured on this box and I am not quoting one as if it were — the honest
+    //   claim is that the term that cost 2 s cannot execute, and the remainder
+    //   runs today on the chat path. **Watch `tier1.totalEpisodes` leaving 0 and
+    //   `[EventLoop] BLOCKED` NOT gaining a new ~30 s-periodic entry.**
+    // ⚠ `!_operatorSleepRequested` is KEPT: that flag is a deliberate operator
+    //   quiet request, not a cost proxy, and dream windows are when consolidation
+    //   RUNS rather than when it needs new input.
+    const _surpriseCouldRun = !!(this.cortexCluster
+      && typeof this.cortexCluster.computeTransitionSurprise === 'function'
+      && (this.cortexCluster.size | 0) <= 2000000);
+    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function'
+        && !(_surpriseCouldRun && this._curriculumInProgress) && !this._operatorSleepRequested) {
       this._lastTier1HbAt = now;
       try {
         let context = 'idle';
