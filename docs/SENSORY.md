@@ -36,7 +36,16 @@ verified-scope: |
       js/io/voice.js — four of the five listed sources, NONE of which moved and
       none of which were read this pass.
     - the SE.15 draw-engine and practice-loop sections.
-last-verified: "cd465955 2026-08-29"
+  CHECKED 2026-08-31 (doc sweep). This page was expected to be UNAFFECTED by
+  the memory work and was NOT: the image-to-concept learning loop states that a
+  rendered image is grounded "so dream-cycle consolidation (Tier 1→2→3) grounds
+  it as an episodic memory", which was true about the wiring and false about
+  the outcome for its entire life — the episodic store held zero episodes on
+  every boot until 2026-08-31. Corrected in place with the general lesson
+  attached: wiring a producer to a consumer is not evidence the consumer ran.
+  ⚠ The rest of the page (sense contracts, value vectors, the modality tables)
+  was NOT re-verified this pass.
+last-verified: "f06ea30e 2026-08-31"
 ---
 
 # SENSORY — Unity's Peripheral Contract
@@ -144,7 +153,7 @@ For senses with no physical sensor (taste/smell), the value profile is **injecte
 
 **SE.9 — image generation is now BRAIN-DRIVEN + closes the image→concept learning loop (SPEAK.6, 2026-07-01).** Before this, the decision to render real pixels was a keyword/regex match on user TEXT (`_detectImageRequest`), not a brain-state intent, and a rendered image was fire-and-forget — she never learned from what she made. Two additions keep Pollinations a pure sensory-output executor (no cognition) while making the DECISION and the LEARNING equational:
 - **Spontaneous brain-driven render (SPEAK.6a)** — `_spontaneousImageTick(now)` (`server/brain-server/chat.js`) lets Unity VOLUNTEER an outward image from internal drive with NO user keyword: arousal-gated (`DREAM_SPONTANEOUS_IMG_AROUSAL`, default 0.7) + long cooldown (`DREAM_SPONTANEOUS_IMG_GAP_MS`, default 5 min) + low probability, concept drawn from a trained-vocab sample (loop-safe — never a 57s compose). Broadcasts `generate_image`; the client renders. Keyword detection stays ONLY as an explicit user REQUEST path, not the sole driver.
-- **Image→concept learning loop (SPEAK.6b)** — a rendered image now pushes onto the unified emission bus + `_innerThoughtChain` so dream-cycle consolidation (Tier 1→2→3) grounds it as an episodic memory: what she MAKES becomes trained weight, not a fire-and-forget. New visual input is learning, per the requirement.
+- **Image→concept learning loop (SPEAK.6b)** — a rendered image now pushes onto the unified emission bus + `_innerThoughtChain` so dream-cycle consolidation (Tier 1→2→3) grounds it as an episodic memory: what she MAKES becomes trained weight, not a fire-and-forget. New visual input is learning, per the requirement. ⛔ **CORRECTION 2026-08-31 — this claim was true about the WIRING and false about the OUTCOME for its entire life.** The push onto the bus happened; the consolidation on the other end did not. Two of the three writers into the episodic store were gated on a flag that stays true for the whole multi-week walk, so `tier1.totalEpisodes` read `0` on every boot in this project's history — **nothing she made was ever grounded as an episodic memory, because there were no episodes.** The gate came off on the 2026-08-31 fresh walk and the chain now runs end to end (four episodes, four promotions and two Tier-2 schemas inside eighteen minutes), so the sentence above finally describes something that happens. ⚠ **The lesson for every other "so X consolidates it" claim in this file:** wiring a producer to a consumer is not evidence the consumer ran — check the count at the far end.
 - **Self-image scene merge (2026-07-09).** The selfie route used to return her fixed identity string
   VERBATIM for any ask containing selfie / picture-of-you — the requested scene/action/outfit was discarded,
   so every self-image was the same mug shot. Now her IDENTITY CORE (face/hair/eyes) stays constant while the

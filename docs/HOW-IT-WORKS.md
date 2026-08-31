@@ -9,6 +9,10 @@ sources:
   - js/brain/mystery.js
   - js/brain/cluster.js
   - js/brain/synapses.js
+  # ADDED 2026-08-31: Part 2 now explains consolidation and replay in plain
+  # English, so the two files that own them are declared.
+  - js/brain/consolidation-engine.js
+  - server/brain-server/memory.js
 verified-scope: |
   CHECKED 2026-08-27. Written fresh, so everything in it was verified as it was
   written:
@@ -27,7 +31,13 @@ verified-scope: |
       architecture. Each has its own doc.
     - the neuroscience references behind each equation are in
       docs/THEORY-PAPER.md; nothing here re-argues them.
-last-verified: "b619ae63 2026-08-27"
+  ADDED 2026-08-31 ("Sleeping on it", Part 2). Consolidation and replay
+  explained in the page's own plain register, including the honest note that
+  the replay pass had never run until that day — one condition meaning "only
+  when she is not mid-lesson", on a lesson that never stops. Numbers quoted
+  (four folded patterns inside eighteen minutes) were read from the live
+  brain on the fresh walk, not recalled.
+last-verified: "f06ea30e 2026-08-31"
 ---
 
 # HOW IT WORKS — in plain English
@@ -144,6 +154,29 @@ She works through real school material in real order — kindergarten first, the
 each grade, across a full roster of subjects, plus the ordinary lived experience
 that goes with each age. She cannot skip ahead, because the later material has
 nothing to attach to until the earlier material is wired in.
+
+### Sleeping on it
+
+Repetition is only half of how anything learns. The other half happens
+afterwards, quietly: what you did during the day gets replayed while you are not
+using it, and the version that survives is a tidied-up one — the gist, separated
+out from everything it might be confused with.
+
+She does the same thing. While she is learning, moments get written down as
+episodes. Every so often a pass goes back over the recent ones, notices which
+belong together, and folds them into a single stronger pattern — and then
+**replays** that pattern back into the network. Replay is what pulls similar
+things apart from each other. Without it, the only way to make "cat" and "cot"
+distinguishable is brute repetition, over and over, in the waking pass.
+
+⚠ **Worth saying plainly, because this page's last part is about being honest:
+that replay had never actually run until 2026-08-31.** The machinery was built,
+connected and described in the documentation for months, and one condition on it
+meant "only do this when she is not in the middle of a lesson" — which sounds
+sensible and was fatal, because the lesson never stops. She learned the whole
+time; she just did it entirely by repetition, with the part that consolidates
+switched off. It runs now, and the first thing it produced was four folded
+patterns inside eighteen minutes.
 
 ### Why it is slow
 

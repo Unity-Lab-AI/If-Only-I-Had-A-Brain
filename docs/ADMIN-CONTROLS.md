@@ -10,6 +10,10 @@ sources:
   - server/brain-ctl.js
   - js/brain/curriculum.js
   - server/brain-server/chat.js
+  # ADDED 2026-08-31: the new training-card / memory-lane section reads fields
+  # published by state.js and written by memory.js.
+  - server/brain-server/state.js
+  - server/brain-server/memory.js
 verified-scope: |
   CHECKED 2026-08-27, mechanically enumerated and diffed against source:
     - EVERY `DREAM_*` flag in server/ + js/ + scripts/ vs every flag named here:
@@ -43,7 +47,14 @@ verified-scope: |
   stamp could not name it at the time was only that a commit cannot contain its own
   hash. ⛔ The rule stands unchanged for anything else — never clear a drift row by
   bumping a hash on a source you have not read.
-last-verified: "0ee5ac68 2026-08-29"
+  ADDED 2026-08-31: a section for the training-card and memory-lane state
+  fields — `curriculum.subjects` now publishes the DECLARED roster (9) with a
+  new `rosterUpcoming` (11), and the four `memoryStats` fields carry the
+  warning that `tier1.totalEpisodes` is not a volume metric while
+  `freqMergedCount` is the lane's health signal. Values read from the live
+  brain on the fresh walk. ⚠ The env-flag table was NOT re-enumerated this
+  pass; the drift check reports it at 205/205.
+last-verified: "f06ea30e 2026-08-31"
 ---
 
 # ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
@@ -446,6 +457,22 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 ⚠ **`separability` and `lookups` ARE rendered** (`m.speechHealth` → `sh.separability`, and the look-up counters on the mind's-eye page) — they were in the same audit and came back clean. Listed so nobody re-checks them.
 
 ✅ **Fixed the same day, after the sweep closed** — the sweep's job was to state accurately which instruments were dark; building the rows was separate work and was done separately.
+
+---
+
+## 📚 Reading the training card and the memory lane (2026-08-31)
+
+Two state blocks changed meaning on the fresh walk, and both are easy to misread.
+
+| State field | What it carries | Reading it |
+|---|---|---|
+| **`state.curriculum.subjects`** | **9** at kindergarten — the courses the roster **declares** for the current grade | ⛔ **This used to publish only the courses that had already RUN**, because row membership came from `cluster.grades`, which seeds the core five and gains a key when a subject first teaches. A course was therefore invisible until after it had happened, which is precisely backwards for a card whose job is to say what is coming. It now reads the declared roster |
+| **`state.curriculum.rosterUpcoming`** | **11** — courses introduced at higher grades and not yet offered | ⭐ New field. It exists so the card can distinguish *"not offered at this grade yet"* from *"missing"*. An empty list at a mid-journey grade is the thing to be suspicious of |
+| **`memoryStats.tier1.totalEpisodes`** | Episodes written to the episodic store | ⚠ **Do NOT read this as a volume metric.** The exact-text merge folds repeated contexts by design, so a *small* number is correct and hundreds would be the surprise. ⛔ It read `0` on every boot for the life of the project and that was a real defect, not a quiet lane — see the memory row in `docs/KNOWN_ISSUES.md` |
+| **`memoryStats.tier1.freqMergedCount`** | How many writes folded into an existing episode | ⭐ **This is the health signal for the lane, not the episode count.** Climbing = the store is receiving and deduplicating |
+| **`memoryStats.tier2.schemaCount`** / `promotedToTier2` | Consolidated schemas, and promotions into them | The end of the chain: a write reached Tier 1, a consolidation pass ran, and a schema came out. Non-zero here means replay has real input. Labels are readable (`hebbian-ela-kindergarten`) — an unlabelled or empty schema is worth investigating |
+
+⚠ **`cluster.grades` is a record of the past, not a roster.** Anything reading it as *"the list of her courses"* will under-report; the roster is `subjectsForGrade()` and the authoritative position ledger is `passedCells`.
 
 ---
 
