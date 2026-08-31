@@ -83,6 +83,44 @@ When Gee catches a violation of LAW #0:
 
 This is binding law. Not a preference. Not a suggestion.
 
+## ⛔⛔ WHAT "DOCS" MEANS — the whole set, never one tree (Gee, 2026-08-31)
+
+Gee (verbatim): *"WHEN I SAY DOCS: I FUCKING MEAN: workflow files, pages, htmls,
+tooltips, readmes how tos admin docs any and all fucking documents that have
+inforamtional layouts of the fucking BRAIN!!!!!!"*
+
+**"Update the docs" means EVERY document carrying an informational layout of the
+brain.** Twice on 2026-08-31 I updated `wiki/` plus the three board files and
+reported the docs current. That is a fraction of the set:
+
+| tree | files | what it holds |
+|---|---:|---|
+| `docs/*.md` | ~33 | ARCHITECTURE · SKILL_TREE · EQUATIONS · ROADMAP · NOW · KNOWN_ISSUES · HOW-IT-WORKS · SENSORY · WEBSOCKET · ADMIN-CONTROLS · CURRICULUM-SCOPE-SEQUENCE · SETUP · PERSONA · THEORY-PAPER · … |
+| `html/*.html` | ~10 | dashboard · brain-equations · unity-guide · legend · docs · compute · minds-eye · dashboard-public · gpu-configure · webgpu-prep |
+| **tooltips + in-page copy** | — | the `title=` text and panel captions INSIDE those HTMLs. **They describe fields and go stale exactly like prose** |
+| `README.md` | 1 | repo root |
+| `.claude/*.md` | 5 | CLAUDE · CONSTRAINTS · WORKFLOW · README · DEPLOYED-ADMIN-GUIDE |
+| `deploy/*.md` | 5 | BACKUP-DECISIONS · HOOK-FIXES · REDEPLOY-NOTES · runpod-donor-create · README |
+| `wiki/**` | 38 | the map — **ONE tree of several, not the answer** |
+| board + ledger | 3 | `docs/TODO.md` · `docs/FINALIZED.md` · `docs/RESUME.md` |
+
+⭐ **The test before reporting "docs updated": name every tree above and state
+what changed in it, or state explicitly that nothing in it was affected and why.**
+A silent omission reads as *"checked and clean"*, which is worse than saying
+nothing — it is the wrong-population failure this repo files under
+`the-sample-decides-the-conclusion`.
+
+⛔ **AND EVERY DOC EDIT IS MADE BY HAND WITH `Edit`/`Write`.** Gee: *"DO NOT USE
+SOME BULSHIT SCRIPT TO WRITE THE EDITS AND CORRECTIONS AND ADDITIONS AND UPDATES<
+DO IT YOUR FUCKING SELF."* No python heredocs, no `node -e`, no `sed -i`, no
+generated patchers — for any file, ever. See §NO SCRIPTS FOR EDITS. ⚠ **Reading is
+not editing:** `grep`, `ls`, `git log` and read-only probes that PRINT a
+measurement stay fine. The ban is on anything that WRITES. ⚠ A sweep that looks
+too big for hand-editing is the signal to **work the list file by file**, not the
+signal to reach for a loop — every doc mistake of 2026-08-31 (a wrong header
+anchor, a CRLF assumption, a disambiguation page surviving four passes) came from
+operating on files at arm's length instead of reading and writing them directly.
+
 ## The rule
 
 1. **Every doc that describes code I touched gets updated BEFORE the push that ships that code.** Not after. Not in a follow-up commit. In the same atomic commit that ships the code.
