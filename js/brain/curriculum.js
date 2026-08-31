@@ -15914,11 +15914,44 @@ export class Curriculum {
     if (!w) return null;
     st.asks++;
 
+    // ⭐⭐ `RELTTL.1` (2026-08-30) — A FLAT READ MUST CACHE FOR MUCH LONGER THAN
+    //   A CONFIDENT ONE, AND MEASURING THE HIT RATE IS WHAT PROVED IT.
+    //
+    // One TTL of 30 s covered both outcomes, and the mind's-eye FAV picker
+    // (`chat.js`) samples **24 RANDOM keys per eye tick** out of a store that
+    // holds thousands. Random sampling over a large key space against a 30 s
+    // window is a cache that essentially never hits — measured live on the box:
+    //     asks 3,734 · cached 206  ->  HIT RATE 5.5%
+    //     3,528 misses, every one a FULL sem_to_fineType propagate
+    //     ~1.53 propagates/s sustained, ~51 ms each at the real shape
+    // ⛔ And `confident` was **0** for the whole 38-minute window, so all of that
+    //   bought exactly nothing: the feature is inert until the bands separate,
+    //   which is correct behaviour — but it was paying FULL PRICE every tick to
+    //   re-discover the same "not yet".
+    // ⛔ The comment at the call site states this "costs nothing today and
+    //   nothing later". That was written from the cache's existence rather than
+    //   its hit rate, and on a CPU-only coordinator measured at 2.3% idle it was
+    //   costing a real share of the walk.
+    //
+    // ⭐ THE ASYMMETRY IS PHYSICAL, not a tuning preference. Relation bands
+    //   separate over the timescale of a WALK — `marginProgress` moves across
+    //   hours of teaching. A word that reads flat now will read flat in thirty
+    //   seconds with certainty; re-deriving that costs a full propagate to learn
+    //   nothing. A CONFIDENT read is the one worth refreshing often, because it
+    //   is the one that can change what she reaches for.
+    // ⚠ Deliberately NOT a "skip while confident === 0" gate: that would make
+    //   the feature unable to ever notice the bands separating — a cost gate
+    //   that resolves to never, which is a deletion wearing a bound's clothes.
+    //   A long TTL still re-reads every word, just at a cadence matched to how
+    //   fast the thing it measures can actually move.
     const TTL = Number(process.env.DREAM_REL_USE_TTL_MS) || 30000;
+    const FLAT_TTL = Number(process.env.DREAM_REL_USE_FLAT_TTL_MS) || 1_800_000;   // 30 min
     const now = Date.now();
     if (!this._relUseCache) this._relUseCache = new Map();
     const hit = this._relUseCache.get(w);
-    if (hit && (now - hit.at) < TTL) { st.cached++; return hit.val; }
+    // `val` is null for a flat/unreadable band and an object for a confident
+    // one, so the outcome selects its own TTL with no extra bookkeeping.
+    if (hit && (now - hit.at) < (hit.val ? TTL : FLAT_TTL)) { st.cached++; return hit.val; }
 
     let r = null;
     try { r = this.readRelationBand(w); } catch { r = null; }
