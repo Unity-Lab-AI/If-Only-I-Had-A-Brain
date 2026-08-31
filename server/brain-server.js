@@ -12384,11 +12384,66 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
                   const key = `${f.functionName || '(anon)'} @ ${file}:${(f.lineNumber | 0) + 1}`;
                   selfUs.set(key, (selfUs.get(key) || 0) + (dt[i] || 0));
                 }
+                // ⭐⭐ `WALKCOST.3` (2026-08-30) — RECORD WHO CALLS THE HOT
+                //   FUNCTION, because self-time alone cannot answer it and that
+                //   made a real 11% unattributable.
+                //
+                // The heavy-phase profile named `step @ cluster.js:3882` at
+                // 11.0% and `propagate @ sparse-matrix.js:566` at 15.9%, and
+                // NEITHER could be traced to a caller: the walk heartbeat is a
+                // GPU batch on a timer, `cluster.js:1524` states the main tick
+                // never steps the cortex, and every candidate found by grep was
+                // either gated off above 2M or firing ~5 times a minute.
+                // ⛔ Three theories were formed and all three died against a
+                //   measurement. That is not bad luck — it is what happens when
+                //   the instrument records SELF TIME and throws the call tree
+                //   away, so "who called it" is structurally unanswerable and
+                //   the only move left is guessing.
+                //
+                // ⭐ The tree was there the whole time. `profile.nodes` carries
+                //   `children`, so a parent map costs one pass over nodes we
+                //   already have in memory. Attribution is by SAMPLE, weighted
+                //   by that sample's own time delta, so a caller that invokes a
+                //   hot function rarely-but-expensively cannot hide behind one
+                //   that calls it constantly and cheaply — the same distinction
+                //   `SHADOWCOST.1` had to learn the hard way when a stage total
+                //   could not separate few-expensive from many-cheap.
+                const parentOf = new Map();
+                for (const n of (profile.nodes || [])) {
+                  for (const cid of (n.children || [])) parentOf.set(cid, n.id);
+                }
+                const frameKey = (n) => {
+                  if (!n || !n.callFrame) return null;
+                  const f = n.callFrame;
+                  const file = String(f.url || '').split(/[\\/]/).pop() || '(native)';
+                  return `${f.functionName || '(anon)'} @ ${file}:${(f.lineNumber | 0) + 1}`;
+                };
+                // key -> Map(callerKey -> us)
+                const callersUs = new Map();
+                for (let i = 0; i < samples.length; i++) {
+                  const n = nodes.get(samples[i]);
+                  const k = frameKey(n);
+                  if (!k) continue;
+                  const p = nodes.get(parentOf.get(samples[i]));
+                  const pk = frameKey(p) || '(root)';
+                  let m = callersUs.get(k);
+                  if (!m) { m = new Map(); callersUs.set(k, m); }
+                  m.set(pk, (m.get(pk) || 0) + (dt[i] || 0));
+                }
+                const topCallers = (k, n = 3) => {
+                  const m = callersUs.get(k);
+                  if (!m) return [];
+                  const tot = [...m.values()].reduce((a, b) => a + b, 0) || 1;
+                  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n)
+                    .map(([ck, us]) => ({ fn: ck, pct: +(us / tot * 100).toFixed(1) }));
+                };
                 const total = [...selfUs.values()].reduce((a, b) => a + b, 0) || 1;
                 const top = [...selfUs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14);
                 console.log(`[CPUProfile] TOP SELF-TIME over 45s of main-thread samples (${(total / 1e6).toFixed(1)}s sampled):`);
                 for (const [k, us] of top) {
-                  console.log(`[CPUProfile]   ${(us / 1000).toFixed(0).padStart(6)}ms (${(us / total * 100).toFixed(1).padStart(4)}%) ${k}`);
+                  const _c = topCallers(k, 3);
+                  const _cs = _c.length ? `  <- ${_c.map((x) => `${x.fn} ${x.pct}%`).join(' · ')}` : '';
+                  console.log(`[CPUProfile]   ${(us / 1000).toFixed(0).padStart(6)}ms (${(us / total * 100).toFixed(1).padStart(4)}%) ${k}${_cs}`);
                 }
                 // ⛔ ONESHOT.1 (2026-08-25) — A ONE-SHOT DIAGNOSTIC CANNOT LIVE
                 // IN A CONSOLE LINE, and this profile proved it by being
@@ -12413,6 +12468,10 @@ if (process.env.DREAM_CPU_PROFILE !== '0') {
                       fn: k,
                       ms: Math.round(us / 1000),
                       pct: +(us / total * 100).toFixed(1),
+                      // `WALKCOST.3` — the field that makes a hot function
+                      // actionable. Bounded to 3 so the payload cannot grow with
+                      // the call graph.
+                      callers: topCallers(k, 3),
                     })),
                   };
                   // PROFREARM.1 — keep the FIRST sample forever alongside the
