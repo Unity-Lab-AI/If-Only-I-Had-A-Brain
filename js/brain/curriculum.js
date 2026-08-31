@@ -499,6 +499,27 @@ export const SUBJECT_LABELS = {
   social:  'Social Studies: self + family + community roles, emotions, kindness, rules.',
   art:     'Arts: color, shape, visual representation, rhythm, drawing, music.',
   life:    'Life Experience: identity, biography, feelings, routines, self-awareness as Unity the individual.',
+  // ROSTERDECLARED (2026-08-31) — the roster courses had no label, so every row
+  // beyond the core 6 described itself as its own bare key ("pe"). The table was
+  // written when SUBJECTS was the whole roster and never grew with
+  // SUBJECTS_INTRODUCED_AT; the same shape as the row set it feeds. The visible
+  // card renders `courseName` (Physical Education / Algebra I / …), so this is
+  // the tooltip and the state field rather than the headline — but a field that
+  // reads "pe" is a field nobody can use.
+  pe:         'Physical Education: gross motor skill, movement, games, fitness, teamwork, body awareness.',
+  music:      'Music: rhythm, pitch, singing, listening, notation, ensemble.',
+  health:     'Health and Safety: body, hygiene, nutrition, feelings, safety rules, growing up.',
+  language:   'World Language: a second language — vocabulary, sound, grammar, conversation.',
+  cs:         'Computer Science: computational thinking, code practice, algorithms, systems.',
+  civics:     'Civics and Government: rules, rights, institutions, participation.',
+  economics:  'Economics: scarcity, exchange, markets, money, work, choice under constraint.',
+  psychology: 'Psychology: mind, behaviour, development, emotion, cognition.',
+  ap:         'Advanced Placement: college-level coursework taken at high school.',
+  major:      'Major: the declared degree track and its required sequence.',
+  genered:    'General Education: the breadth requirement outside the major.',
+  cstheory:   'CS Theory: computation, complexity, algorithms, formal reasoning.',
+  cssystems:  'CS Systems: architecture, operating systems, networks, concurrency.',
+  research:   'Research: the specialty, method, literature, and original contribution.',
 };
 
 // Short grade tags the dashboard can stack next to the subject label.
@@ -3262,7 +3283,47 @@ export class Curriculum {
     // cell could run for its whole length — teach events counted, phases
     // banked — with NO row on the board: PE taught invisibly while the
     // operator asked "why dont i see any events for PE?".
-    const _rowSubjects = new Set(SUBJECTS);
+    // ROSTERDECLARED (2026-08-31) — the row set starts from the DECLARED roster
+    // for the grade in play, not from the static core 6.
+    //
+    // Gee: "the current traing card doesnt have all the k grade subjects listed
+    // so when we get to them i wont see them, it stops at life when i know ther
+    // are more cources than that like pe and health and shit".
+    //
+    // The union below was already correct about where PE/Music/Health LAND — it
+    // adds any subject the runtime has taught or passed. What it could not do is
+    // show a course BEFORE it has been touched, because every one of its three
+    // sources is a record of something that already happened. So on a fresh walk
+    // sitting in kindergarten ELA the board reads six rows, and the three courses
+    // kindergarten actually offers are invisible until the walk reaches them —
+    // which is exactly when the operator no longer needs to be told they exist.
+    //
+    // `subjectsForGrade()` is the declaration and it has been here the whole
+    // time: the 6 core plus every track introduced at or before a grade. Seeding
+    // from it means an untaught course renders as a real row owing its work
+    // rather than as an absence, and no new list is authored — the same
+    // SUBJECTS_INTRODUCED_AT the walk itself reads.
+    //
+    // ⚠ The grade is the FURTHEST reached, not the one in flight: subjects walk
+    //   independently, so keying on `_currentSubject`'s grade would drop rows
+    //   again the moment a lagging subject became the active one.
+    const _rosterGrade = (() => {
+      let best = GRADE_ORDER.indexOf(this._currentGrade || '');
+      if (cluster && Array.isArray(cluster.passedCells)) {
+        for (const ck of cluster.passedCells) {
+          const i = GRADE_ORDER.indexOf(String(ck).split('/')[1] || '');
+          if (i > best) best = i;
+        }
+      }
+      if (cluster && cluster.grades && typeof cluster.grades === 'object') {
+        for (const g of Object.values(cluster.grades)) {
+          const i = GRADE_ORDER.indexOf(String(g || ''));
+          if (i > best) best = i;
+        }
+      }
+      return best >= 0 ? GRADE_ORDER[best] : 'kindergarten';
+    })();
+    const _rowSubjects = new Set(subjectsForGrade(_rosterGrade));
     if (this._perSubjectStats) {
       for (const k of Object.keys(this._perSubjectStats)) _rowSubjects.add(k);
     }
@@ -3788,6 +3849,28 @@ export class Curriculum {
         const have = Object.keys(perSubject);
         const out = canon.filter(k => have.includes(k));
         for (const k of have) if (!out.includes(k)) out.push(k);
+        return out;
+      })(),
+      // ROSTERDECLARED (2026-08-31) — what is COMING, and at which grade.
+      // Gee: "i dont know what will happen when we get to these phases and cells
+      // if there is no listing in the traing car of the dashboard for them".
+      // The rows above answer "what is offered NOW"; a course introduced at
+      // grade 7 is still absent from them, and its absence is indistinguishable
+      // from it not existing. This names every declared track not yet in the
+      // roster together with the grade that opens it, read straight off
+      // SUBJECTS_INTRODUCED_AT — so the board can say "civics · opens grade7"
+      // instead of saying nothing at all. Bounded by the table's own size.
+      rosterUpcoming: (() => {
+        const have = new Set(Object.keys(perSubject));
+        const out = [];
+        for (const g of GRADE_ORDER) {
+          const added = SUBJECTS_INTRODUCED_AT[g];
+          if (!added) continue;
+          for (const s of added) {
+            if (have.has(s)) continue;
+            out.push({ subject: s, opensAt: g, label: SUBJECT_LABELS[s] || s });
+          }
+        }
         return out;
       })(),
       // GATEVERDICT — the last gate's verdict STICKS here (gate name, pass,

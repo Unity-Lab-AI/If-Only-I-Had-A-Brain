@@ -93902,7 +93902,28 @@ var SUBJECT_LABELS = {
   science: "Science: cause-effect, classification, motion, weather, life systems, logic pathing.",
   social: "Social Studies: self + family + community roles, emotions, kindness, rules.",
   art: "Arts: color, shape, visual representation, rhythm, drawing, music.",
-  life: "Life Experience: identity, biography, feelings, routines, self-awareness as Unity the individual."
+  life: "Life Experience: identity, biography, feelings, routines, self-awareness as Unity the individual.",
+  // ROSTERDECLARED (2026-08-31) — the roster courses had no label, so every row
+  // beyond the core 6 described itself as its own bare key ("pe"). The table was
+  // written when SUBJECTS was the whole roster and never grew with
+  // SUBJECTS_INTRODUCED_AT; the same shape as the row set it feeds. The visible
+  // card renders `courseName` (Physical Education / Algebra I / …), so this is
+  // the tooltip and the state field rather than the headline — but a field that
+  // reads "pe" is a field nobody can use.
+  pe: "Physical Education: gross motor skill, movement, games, fitness, teamwork, body awareness.",
+  music: "Music: rhythm, pitch, singing, listening, notation, ensemble.",
+  health: "Health and Safety: body, hygiene, nutrition, feelings, safety rules, growing up.",
+  language: "World Language: a second language \u2014 vocabulary, sound, grammar, conversation.",
+  cs: "Computer Science: computational thinking, code practice, algorithms, systems.",
+  civics: "Civics and Government: rules, rights, institutions, participation.",
+  economics: "Economics: scarcity, exchange, markets, money, work, choice under constraint.",
+  psychology: "Psychology: mind, behaviour, development, emotion, cognition.",
+  ap: "Advanced Placement: college-level coursework taken at high school.",
+  major: "Major: the declared degree track and its required sequence.",
+  genered: "General Education: the breadth requirement outside the major.",
+  cstheory: "CS Theory: computation, complexity, algorithms, formal reasoning.",
+  cssystems: "CS Systems: architecture, operating systems, networks, concurrency.",
+  research: "Research: the specialty, method, literature, and original contribution."
 };
 var GRADE_LABELS = {
   "pre-K": "Pre-K (birth-to-4 developmental substrate)",
@@ -97562,7 +97583,23 @@ var Curriculum = class _Curriculum {
   getCurriculumStatus() {
     const cluster = this.cluster;
     const perSubject = {};
-    const _rowSubjects = new Set(SUBJECTS2);
+    const _rosterGrade = (() => {
+      let best = GRADE_ORDER.indexOf(this._currentGrade || "");
+      if (cluster && Array.isArray(cluster.passedCells)) {
+        for (const ck of cluster.passedCells) {
+          const i = GRADE_ORDER.indexOf(String(ck).split("/")[1] || "");
+          if (i > best) best = i;
+        }
+      }
+      if (cluster && cluster.grades && typeof cluster.grades === "object") {
+        for (const g of Object.values(cluster.grades)) {
+          const i = GRADE_ORDER.indexOf(String(g || ""));
+          if (i > best) best = i;
+        }
+      }
+      return best >= 0 ? GRADE_ORDER[best] : "kindergarten";
+    })();
+    const _rowSubjects = new Set(subjectsForGrade(_rosterGrade));
     if (this._perSubjectStats) {
       for (const k of Object.keys(this._perSubjectStats)) _rowSubjects.add(k);
     }
@@ -97962,6 +97999,28 @@ var Curriculum = class _Curriculum {
         const have = Object.keys(perSubject);
         const out = canon.filter((k) => have.includes(k));
         for (const k of have) if (!out.includes(k)) out.push(k);
+        return out;
+      })(),
+      // ROSTERDECLARED (2026-08-31) — what is COMING, and at which grade.
+      // Gee: "i dont know what will happen when we get to these phases and cells
+      // if there is no listing in the traing car of the dashboard for them".
+      // The rows above answer "what is offered NOW"; a course introduced at
+      // grade 7 is still absent from them, and its absence is indistinguishable
+      // from it not existing. This names every declared track not yet in the
+      // roster together with the grade that opens it, read straight off
+      // SUBJECTS_INTRODUCED_AT — so the board can say "civics · opens grade7"
+      // instead of saying nothing at all. Bounded by the table's own size.
+      rosterUpcoming: (() => {
+        const have = new Set(Object.keys(perSubject));
+        const out = [];
+        for (const g of GRADE_ORDER) {
+          const added = SUBJECTS_INTRODUCED_AT[g];
+          if (!added) continue;
+          for (const s of added) {
+            if (have.has(s)) continue;
+            out.push({ subject: s, opensAt: g, label: SUBJECT_LABELS[s] || s });
+          }
+        }
         return out;
       })(),
       // GATEVERDICT — the last gate's verdict STICKS here (gate name, pass,
