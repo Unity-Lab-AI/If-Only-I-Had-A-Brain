@@ -5168,8 +5168,29 @@ const SERVER_GPU_MIXIN = {
    * law every other verb here follows.
    */
   async refreshCheckpointFromDonor(reason = 'hourly', opts = {}) {
+    // ⭐ `READBACKEYE.1` — EVERY EXIT IS RECORDED, because this method had eight
+    //   of them and published none. `_lastReadbackOk` was written on success and
+    //   read by nothing; the seven refusals returned a `reason` string that went
+    //   straight on the floor. With the console ring serving only the newest 500
+    //   of its 2,000 lines, an hourly event is already unreachable by the time
+    //   anyone asks — so "did the readback fire?" was unanswerable from outside
+    //   the box while the parity verdict sat at DRIFTING. Same argument as
+    //   ONESHOT.1: a number you had to be watching for is not something the
+    //   board can answer with later.
+    // ⚠ Counts for ALL reasons, but `_lastReadbackRefusal` deliberately EXCLUDES
+    //   the two routine ones. This runs on a 5-minute tick against a 1-hour gap,
+    //   so 11 of every 12 calls refuse normally — letting those occupy the
+    //   "last refusal" field would bury the one that means something under a
+    //   permanent, healthy, misleading value.
+    const ROUTINE = new Set(['inside the readback gap', 'first tick — clock seeded, first pull is one gap from now']);
+    const refuse = (why) => {
+      const st = this._readbackStats || (this._readbackStats = { refusals: {} });
+      st.refusals[why] = (st.refusals[why] || 0) + 1;
+      if (!ROUTINE.has(why)) this._lastReadbackRefusal = { reason: why, at: Date.now() };
+      return { ok: false, reason: why };
+    };
     const ws = this._gpuClient;
-    if (!ws || ws.readyState !== 1) return { ok: false, reason: 'no donor connected' };
+    if (!ws || ws.readyState !== 1) return refuse('no donor connected');
     let versionOk = false;
     try {
       const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
@@ -5182,7 +5203,7 @@ const SERVER_GPU_MIXIN = {
         this._readbackVersionWarned = true;
         console.warn('[Brain] SHADOWCOST.3 checkpoint readback UNAVAILABLE — the primary donor is older than 0.3.36, so checkpoints keep being written from the CPU shadow (which SHADOWCOST.8 measured as a DIFFERENT brain, not a lagging copy). Update the donor.');
       }
-      return { ok: false, reason: 'donor < 0.3.36' };
+      return refuse('donor < 0.3.36');
     }
     const GAP_MS = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
       ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
@@ -5198,16 +5219,16 @@ const SERVER_GPU_MIXIN = {
     //   for. `force` (the pre-stop pull) still bypasses it.
     if (!this._lastReadbackMs) {
       this._lastReadbackMs = Date.now();
-      if (!opts.force) return { ok: false, reason: 'first tick — clock seeded, first pull is one gap from now' };
+      if (!opts.force) return refuse('first tick — clock seeded, first pull is one gap from now');
     }
     if (!opts.force && (Date.now() - this._lastReadbackMs) < GAP_MS) {
-      return { ok: false, reason: 'inside the readback gap' };
+      return refuse('inside the readback gap');
     }
     // ⛔ Never two at once, and never during an upload — the values buffer is
     // being written from the other direction and a readback mid-upload would
     // capture a half-replaced matrix.
-    if (this._valuesReadbackInFlight) return { ok: false, reason: 'already in flight' };
-    if (this._cortexUploadInFlight) return { ok: false, reason: 'a cortex upload is in flight' };
+    if (this._valuesReadbackInFlight) return refuse('already in flight');
+    if (this._cortexUploadInFlight) return refuse('a cortex upload is in flight');
     this._lastReadbackMs = Date.now();
     // The intra matrix is the whole point — it is the biggest thing in the
     // cluster and the one `hebbian_bound` trains behind the CPU's back. The
@@ -5225,7 +5246,7 @@ const SERVER_GPU_MIXIN = {
       const r = await this.gpuReadbackMatrixValues(n);
       if (!r || !r.ok) {
         console.warn(`[Brain] SHADOWCOST.3 readback ABORTED on '${n}' (${reason}): ${(r && r.reason) || 'unknown'} — NOT saving, so the existing checkpoint slots stay coherent.`);
-        return { ok: false, reason: (r && r.reason) || 'readback failed', name: n };
+        return { ...refuse(`aborted on '${n}': ${(r && r.reason) || 'unknown'}`), name: n };
       }
       bytes += r.bytes || 0;
     }
@@ -5233,9 +5254,20 @@ const SERVER_GPU_MIXIN = {
     console.log(`[Brain] SHADOWCOST.3 checkpoint refresh (${reason}) — ${names.length} matrix(es), ${(bytes / 1048576).toFixed(1)} MB in ${secs.toFixed(1)}s. Saving the weights the GPU trained.`);
     try { this.saveWeights({ force: true, trigger: `gpu-readback:${reason}` }); } catch (e) {
       console.warn('[Brain] SHADOWCOST.3 save after readback failed:', (e && e.message) || e);
-      return { ok: false, reason: `save failed: ${(e && e.message) || e}` };
+      return refuse(`save failed: ${(e && e.message) || e}`);
     }
     this._lastReadbackOk = { at: Date.now(), reason, bytes, secs, matrices: names.length };
+    // ⭐ `READBACKEYE.1` — the cumulative side. One `lastOk` cannot answer "is the
+    //   hourly cadence actually running?" on a box that has been up for hours;
+    //   a count can, and `secs` banked here is what says whether `REBINDWAIT.4`'s
+    //   limb-FNV fix held (was 222 s, priced at ~60 s).
+    {
+      const st = this._readbackStats || (this._readbackStats = { refusals: {} });
+      st.ok = (st.ok || 0) + 1;
+      st.bytesTotal = (st.bytesTotal || 0) + bytes;
+      st.secsTotal = (st.secsTotal || 0) + secs;
+      if (secs > (st.secsMax || 0)) st.secsMax = secs;
+    }
     return { ok: true, bytes, secs, matrices: names.length };
   },
 
