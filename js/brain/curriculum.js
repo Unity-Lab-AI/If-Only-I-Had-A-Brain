@@ -16046,7 +16046,74 @@ export class Curriculum {
     // needs to be deep enough for human-level knowledge — atomic fix,
     // not a surgical bump.
     let reps = opts.reps ?? 24;
-    const lr = opts.lr ?? 0.03;
+    let lr = opts.lr ?? 0.03;
+
+    // ⭐⭐ `REPCOMP.1` (2026-08-30) — THE SAME LESSON IN FEWER, BIGGER STEPS.
+    //
+    // Gee: "do we really need to do 100s of reps for everything? shes a real
+    // brain simulation, real people dont need to do something 100s of times to
+    // learn it" -> "100 reps seems beyond what we really need and this can be
+    // applied to everything".
+    //
+    // ⭐ HE IS RIGHT, AND THE CODE ALREADY SAYS WHY: the STRUCTURE_DOSE note
+    //   records that "the authored 100/80/60 were tuned when the language cortex
+    //   was 349K-1.5M". It is 15,082,717 now. That rep count was fitted to a
+    //   brain 10-43x smaller and never re-derived.
+    //
+    // ⛔ BUT CUTTING REPS ALONE IS A REAL CUT, which is exactly why the earlier
+    //   STRUCTURE_DOSE=0.4 was reverted. Oja with binary spikes reduces to
+    //   `w = w(1-lr) + lr*x` (established in SHADOWCOST.8 by reading BOTH
+    //   kernels), so after n reps a weight reaches `x * (1 - (1-lr)^n)`:
+    //       100 reps @ lr 0.03 -> 95.2% of the target weight
+    //        20 reps @ lr 0.03 -> 45.6%      <- a real cut, half the training
+    //        20 reps @ lr 0.1413 -> 95.2%    <- IDENTICAL, 5x fewer steps
+    //
+    // ⭐ So this does NOT reduce training mass. It solves for the lr that lands
+    //   the SAME asymptote in fewer reps. `STRUCTURE_DOSE` scales reps and
+    //   leaves lr alone, which is the mass-cutting form; this is the
+    //   dose-neutral one, and they are different operations wearing similar
+    //   names. The rep count here was never a biological quantity — it is an
+    //   integration step count, and a real neuron does a few presentations at
+    //   high plasticity rather than a hundred at 3%.
+    //
+    // ⚠ THE RISK IS NOT CONVERGENCE, IT IS INTERFERENCE. Reps run rep-major
+    //   (every pair sees rep 1, then rep 2 ...), and that interleaving is what
+    //   stops pair 7,250 flattening pair 1. Bigger steps disturb shared weights
+    //   more per write. That is measurable on the separability / margin
+    //   instruments and it is NOT yet measured, which is why this ships
+    //   DEFAULT-OFF at 1.0 and needs an explicit operator number.
+    // ⚠ `LR_CEIL` is the stability guard: past it the step is large enough that
+    //   one write can dominate a row before the decay term answers. If the
+    //   required lr would exceed the ceiling the compression is REDUCED rather
+    //   than the lr clamped — clamping would silently deliver LESS training
+    //   than authored, i.e. the exact cut this is designed not to be.
+    const REP_COMPRESS = Math.max(1, Number(
+      (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS) || 1,
+    ) || 1);
+    const LR_CEIL = Math.min(0.9, Math.max(0.05, Number(
+      (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL) || 0.35,
+    ) || 0.35));
+    if (REP_COMPRESS > 1 && reps > 1 && lr > 0 && lr < 1) {
+      const _target = 1 - Math.pow(1 - lr, reps);      // what the authored dose reaches
+      let _n = Math.max(1, Math.round(reps / REP_COMPRESS));
+      let _lr = 1 - Math.pow(1 - _target, 1 / _n);
+      // Back off the compression until the required lr is inside the ceiling,
+      // so the asymptote is always preserved exactly and never traded away.
+      while (_lr > LR_CEIL && _n < reps) {
+        _n += 1;
+        _lr = 1 - Math.pow(1 - _target, 1 / _n);
+      }
+      if (_n < reps && _lr <= LR_CEIL) {
+        const _reached = 1 - Math.pow(1 - _lr, _n);
+        // ⚠ `opts.label` inline, NOT the `label` const — that is declared BELOW
+        //   this block and reading it here throws a TDZ ReferenceError that
+        //   `node --check` cannot see. Caught by the harness on the first run,
+        //   which is the whole argument for harnessing before shipping.
+        this._hb(`[Curriculum][${opts.label || 'ASSOC'}] REPCOMP.1 — ${reps} reps × lr ${lr.toFixed(4)} → ${_n} reps × lr ${_lr.toFixed(4)} (×${(reps / _n).toFixed(1)} fewer steps). Asymptote PRESERVED: ${(100 * _target).toFixed(2)}% → ${(100 * _reached).toFixed(2)}% of the target weight. This is not a dose cut — DREAM_REP_COMPRESS=1 restores the authored form.`);
+        reps = _n;
+        lr = _lr;
+      }
+    }
     const label = opts.label || 'ASSOC';
 
     // ── ASSOCBOUND.1 (2026-08-27) — PER-CALLER TALLY, the instrument that did
