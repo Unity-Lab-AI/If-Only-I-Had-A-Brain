@@ -107207,7 +107207,28 @@ var Curriculum = class _Curriculum {
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
     if (!Array.isArray(pairs) || pairs.length === 0) return { trained: 0, skipped: 0 };
     let reps = opts.reps ?? 24;
-    const lr = opts.lr ?? 0.03;
+    let lr = opts.lr ?? 0.03;
+    const REP_COMPRESS = Math.max(1, Number(
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS || 1
+    ) || 1);
+    const LR_CEIL = Math.min(0.9, Math.max(0.05, Number(
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL || 0.35
+    ) || 0.35));
+    if (REP_COMPRESS > 1 && reps > 1 && lr > 0 && lr < 1) {
+      const _target = 1 - Math.pow(1 - lr, reps);
+      let _n = Math.max(1, Math.round(reps / REP_COMPRESS));
+      let _lr = 1 - Math.pow(1 - _target, 1 / _n);
+      while (_lr > LR_CEIL && _n < reps) {
+        _n += 1;
+        _lr = 1 - Math.pow(1 - _target, 1 / _n);
+      }
+      if (_n < reps && _lr <= LR_CEIL) {
+        const _reached = 1 - Math.pow(1 - _lr, _n);
+        this._hb(`[Curriculum][${opts.label || "ASSOC"}] REPCOMP.1 \u2014 ${reps} reps \xD7 lr ${lr.toFixed(4)} \u2192 ${_n} reps \xD7 lr ${_lr.toFixed(4)} (\xD7${(reps / _n).toFixed(1)} fewer steps). Asymptote PRESERVED: ${(100 * _target).toFixed(2)}% \u2192 ${(100 * _reached).toFixed(2)}% of the target weight. This is not a dose cut \u2014 DREAM_REP_COMPRESS=1 restores the authored form.`);
+        reps = _n;
+        lr = _lr;
+      }
+    }
     const label = opts.label || "ASSOC";
     const _acTally = cluster._assocCallers || (cluster._assocCallers = {});
     const _acRow = _acTally[label] || (_acTally[label] = { calls: 0, pairs: 0, ms: 0 });
