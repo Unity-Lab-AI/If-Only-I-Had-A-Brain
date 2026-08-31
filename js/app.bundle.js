@@ -53426,7 +53426,7 @@ var CLUSTER_TELEMETRY_MIXIN = {
 };
 
 // ../js/brain/cluster/hebbian.js
-var RANGE_MAX_RUNS = Math.max(1, typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 65536);
+var RANGE_MAX_RUNS = Math.max(1, typeof process !== "undefined" && process.env && +process.env.DREAM_RANGE_MAX_RUNS || 16);
 var RANGE_MAX_TOTAL = 2e6;
 var rangeFail = { reason: null, runs: 0, total: 0 };
 function denseActiveRanges(arr) {
@@ -54080,14 +54080,17 @@ var CLUSTER_HEBBIAN_MIXIN = {
             _sPre[`rangesFail_${_r}`] = (_sPre[`rangesFail_${_r}`] || 0) + 1;
             if (rangeFail.runs > (_sPre.rangesRunsMax || 0)) _sPre.rangesRunsMax = rangeFail.runs;
             _sPre.rangesRunsSum = (_sPre.rangesRunsSum || 0) + rangeFail.runs;
-            const _b = rangeFail.runs <= RANGE_MAX_RUNS * 2 ? "le2x" : rangeFail.runs <= RANGE_MAX_RUNS * 4 ? "le4x" : rangeFail.runs <= RANGE_MAX_RUNS * 16 ? "le16x" : "gt16x";
+            const _b = rangeFail.runs <= 16 ? "le16" : rangeFail.runs <= 64 ? "le64" : rangeFail.runs <= 256 ? "le256" : rangeFail.runs <= 1024 ? "le1k" : rangeFail.runs <= 8192 ? "le8k" : rangeFail.runs <= 65536 ? "le64k" : "gt64k";
             _sPre[`rangesRunsBucket_${_b}`] = (_sPre[`rangesRunsBucket_${_b}`] || 0) + 1;
           } else if (!_preRanges) {
             _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
             const _r = rangeFail.reason || "unknown";
             _sPre[`rangesFailPre_${_r}`] = (_sPre[`rangesFailPre_${_r}`] || 0) + 1;
-          } else if (rangeFail.runs > (_sPre.rangesRunsOkMax || 0)) {
-            _sPre.rangesRunsOkMax = rangeFail.runs;
+          } else {
+            const _okRuns = Math.max(_preRanges.length, _postRanges.length);
+            if (_okRuns > (_sPre.rangesRunsOkMax || 0)) _sPre.rangesRunsOkMax = _okRuns;
+            _sPre.rangesOk = (_sPre.rangesOk || 0) + 1;
+            _sPre.rangesRunsOkSum = (_sPre.rangesRunsOkSum || 0) + _okRuns;
           }
           if (_preRanges && _postRanges) {
             _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;

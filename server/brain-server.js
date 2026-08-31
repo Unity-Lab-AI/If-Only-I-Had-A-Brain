@@ -8930,11 +8930,32 @@ const httpServer = http.createServer((req, res) => {
         // Each line ships a preformatted human clock (12-hour AM/PM, box TZ =
         // Mountain) beside the raw epoch, so every reader of this tunnel shows
         // the same time instead of re-deriving one and landing on UTC 24-hour.
-        const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring)
+        // ⭐ `READBACKEYE.1` — `before` makes the BURIED 1,500 reachable.
+        // `since` filters FORWARD and then `.slice(-n)` takes the newest, so
+        // every possible call returned some window of the newest 500 — the ring
+        // holds 2,000 (RING_CAP) and three quarters of it could not be reached
+        // through the only tunnel the public origin forwards. That is how an
+        // hourly event became unanswerable an hour later: the line was still in
+        // memory, just not addressable. Paging is now `before=<ts of the oldest
+        // line you have>`, repeated, walking backwards to the ring's floor.
+        const before = parseInt(qs.get('before') || '0', 10) || 0;
+        let sel = ring;
+        if (since > 0) sel = sel.filter((e) => e.ts > since);
+        if (before > 0) sel = sel.filter((e) => e.ts < before);
+        const lines = sel
           .slice(-n)
           .map((e) => ({ ...e, tsLabel: humanTime(e.ts) }));
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system', count: lines.length, lines }));
+        res.end(JSON.stringify({
+          now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system',
+          count: lines.length, lines,
+          // The paging cursor, so a caller never has to guess the next `before`
+          // — and `ringSize` says how much is actually retained, which is the
+          // number that would have prevented "the ring is only 500 lines".
+          ringSize: ring.length,
+          oldestTs: lines.length ? lines[0].ts : null,
+          more: sel.length > lines.length,
+        }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err && err.message }));
@@ -8982,6 +9003,56 @@ const httpServer = http.createServer((req, res) => {
         } catch (err) {
           try { if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }); } catch { /* raced */ }
           try { res.end(JSON.stringify({ ok: false, error: String((err && err.message) || err) })); } catch { try { res.end(); } catch { /* gone */ } }
+        }
+      })();
+      return;
+    }
+    // ⭐ `READBACKEYE.1` — THE READBACK TUNNEL. `state.readback` (state.js) answers
+    // "did it fire and what did it cost" on every poll for free; this route is
+    // the other half — ARMING one, so the cadence can be TESTED rather than
+    // inferred from a console line that has already rolled out of the ring.
+    // ⛔ Same guarding as `?parity=run`, and for a bigger reason: this moves
+    // ~6.8 GB off the card. A bare `?readback` is a FREE read of the recorded
+    // state; only `?readback=run` arms one, never more than one at a time, and
+    // the method's own hourly gap still applies unless `force=1` is passed.
+    if (qs && qs.get('readback') !== null) {
+      (async () => {
+        try {
+          const arm = String(qs.get('readback') || '') === 'run';
+          const force = String(qs.get('force') || '') === '1';
+          let started = false, refused = null, result = null;
+          if (arm) {
+            if (typeof brain.refreshCheckpointFromDonor !== 'function') refused = 'readback not available on this brain instance';
+            else if (brain._valuesReadbackInFlight) refused = 'a values readback is already in flight';
+            else {
+              started = true;
+              // ⚠ AWAITED, unlike ?parity=run. A readback ENDS IN A SAVE, so
+              // answering early would report "started" while the interesting
+              // half — whether it completed and what it cost — is still
+              // unknown, which is the exact shape of instrument this item
+              // exists to stop shipping. It is slow on purpose; the caller
+              // asked for the measurement.
+              result = await brain.refreshCheckpointFromDonor('operator', { force });
+            }
+          }
+          const ok = brain._lastReadbackOk || null;
+          const bad = brain._lastReadbackRefusal || null;
+          const st = brain._readbackStats || null;
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({
+            now: Date.now(), nowLabel: humanStamp(), armed: arm, forced: force, started, refused, result,
+            lastOk: ok ? { ...ok, ageMs: Date.now() - ok.at, tsLabel: humanTime(ok.at), mb: +(ok.bytes / 1048576).toFixed(1) } : null,
+            lastRefusal: bad ? { ...bad, ageMs: Date.now() - bad.at, tsLabel: humanTime(bad.at) } : null,
+            stats: st || null,
+            note: ok
+              ? 'lastOk.ageMs is the field that matters — over 2x the gap means the cadence has stopped'
+              : 'NO readback has completed on this boot. That is expected for the first hour and a finding after it',
+          }));
+        } catch (err) {
+          try {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err && err.message }));
+          } catch { /* head already sent */ }
         }
       })();
       return;
