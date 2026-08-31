@@ -21,6 +21,16 @@ sources:
   # An explicit DREAM_SPARSE_UPLOAD_TIMEOUT_MS still wins outright, so the
   # unit's 180000 from that entry remains live and correct.
   - server/brain-server/gpu.js
+  CHECKED 2026-08-31 (doc sweep) against that batch's changes and found
+  UNAFFECTED — deliberately NOT restamped. This file's consolidation
+  references are ops config (DREAM_CONSOLIDATION_DISABLE, the replay-nnz
+  guard, the drop-in unit override), and those flags are unchanged: the
+  2026-08-31 memory fix removed a curriculum-progress gate on the EPISODIC
+  WRITERS, not on the consolidation pass or any knob documented here.
+  ⛔ Saying so explicitly because a silent omission from a sweep reads as
+  "checked and clean" when it usually means "not opened". ⚠ The stamp stays
+  at the older commit because the redeploy procedure itself was not
+  re-verified this pass and its sources have moved for unrelated reasons.
 last-verified: "cd465955 2026-08-29"
 ---
 

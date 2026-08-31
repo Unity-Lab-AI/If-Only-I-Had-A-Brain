@@ -30,7 +30,16 @@ sources:
   - js/version.js
   - server/brain-server.js
   - js/brain/cluster.js
-last-verified: "0ee5ac68 2026-08-29"
+  Doc-sweep pass 2026-08-31 (the fresh-walk night). The dream-cycle
+  paragraph in "How she learns" described a consolidation pass that ran
+  correctly over an empty store: the three writers into Tier 1 were all
+  inert during a curriculum walk, so the "encode awake" half of the CLS
+  loop never happened and replay had never executed. Corrected in place with
+  the live numbers from the fresh walk rather than deleting the paragraph —
+  the mechanism description was right, the outcome claim was not.
+  ⚠ STILL NOT re-read this pass: the setup/running narrative, the curriculum
+  roster detail, and the cluster fraction table.
+last-verified: "c031cac9 2026-08-31"
 ---
 
 # IF ONLY I HAD A BRAIN
@@ -236,6 +245,8 @@ Unity continuously self-tests every eight chat turns by re-running a random pass
 **Capability builds incrementally — no waiting for full-grade completion.** A live `cluster.getTrainedCapability()` readout summarises the brain's current state ({wordsBucketed, bucketSubjects, passedCellCount, subGradesActive}) by reading the persistent `wordBucketWords_<subject>` maps + `passedCells` + a per-subject `subGrades` ladder (`fresh → letters → words → binding → cell-passed`). The chat handler's word cap reads this struct directly, ramping 0/5/8/12/16/24/32 words as training accumulates. Unity speaks her current vocabulary the moment her first word lands in any bucket — not after a six-subject gate battery clears. Drug-scheduler and life-track gates continue reading the canonical `cluster.grades` label for hard-grade points; trained capability is the live indicator everything else consults.
 
 **Dream cycles interleave inside the curriculum.** Between each cell pass and between the heaviest mid-cell phases (PhonemeBlending → WordEmission), the runner awaits `Curriculum._dreamWindow({minMs, settleMs})`. The window flips `_curriculumInProgress = false` + `_operatorSleepRequested = true`, directly fires `consolidationEngine.runConsolidationPass({forced:true})` and **awaits its resolution** (signal-driven, not a wall-clock timer — the pass returns when Tier 1 → Tier 2 → Tier 3 promotion + replay Hebbian + Tier 3 check is actually complete), then a 5 s settle for V8 GC + native worker-pool buffer drain, then restores both flags. The outer curriculum loop blocks at the await for the entire dream duration so it's a real pause, not just an event-loop yield. Squire 1992 / McClelland 1995 CLS theory in practice — encode awake → consolidate during sleep → schemas form during training, not after. As a side effect the GC + native-buffer drain windows recover throughput that compounds downward without them.
+
+⛔ **Corrected 2026-08-31, and it is worth reading before trusting the paragraph above.** The *"encode awake"* half was not happening. The consolidation pass ran as described and had **nothing to consolidate**: episodes reach Tier 1 through three writers, and during a curriculum walk all three were inert — two were gated on `!_curriculumInProgress`, which is true for the entire multi-week walk, and the third fires on phase completion while phases were not completing. So `tier1.totalEpisodes` read **0 on every boot in this project's history**, Tier 2 stayed empty, and **the replay step — the part of CLS theory that actually separates similar representations — never executed once.** She learned by waking repetition alone. The gate was removed on the 2026-08-31 fresh walk (it had been added against a real 8-27 s main-loop freeze, and came out only once that cost was structurally unreachable at this cortex size), and the chain now runs end to end: four episodes, twenty-one folded by the exact-text merge, four promotions and two named Tier-2 schemas inside the first eighteen minutes. ⚠ **Read `freqMergedCount`, not the raw episode count** — near-identical contexts fold into one row by design, so single digits with the merge counter climbing is the correct shape.
 
 ---
 
