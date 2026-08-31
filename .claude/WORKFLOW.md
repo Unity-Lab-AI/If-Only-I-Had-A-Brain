@@ -104,13 +104,42 @@ All files read in 800-line chunks. Full file must be read before any edit.
 │    - Make changes                                           │
 │    - Verify success                                         │
 ├─────────────────────────────────────────────────────────────┤
-│ 3. AFTER WORK: Move to FINALIZED.md                         │
-│    - Copy completed task to FINALIZED.md (with details)     │
-│    - Verify FINALIZED.md write succeeded                    │
+│ 3. AFTER WORK: write the WRITE-UP into the TODO ROW         │
+│    - The row IS the write-up: verdict prepended, the        │
+│      Original filing preserved, measurements INLINE         │
+│    - ⛔ NEVER a pointer row ("full entry in FINALIZED.md")  │
+├─────────────────────────────────────────────────────────────┤
+│ 4. THEN: Move to FINALIZED.md                               │
+│    - Copy THAT TEXT, unchanged, into FINALIZED.md           │
+│    - Verify by STRING MATCH, not by task tag                │
 │    - THEN remove from TODO.md                               │
 │    - NEVER delete from FINALIZED.md                         │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### ⛔ THE MIGRATION IS A COPY OF THE SAME WORDS — added 2026-08-31
+
+Gee: *"YOU hav NOT been properly moving completed todo items verbatium to
+finalized"* → *"its not my fucking quotes im talking about its the work write ups"*.
+
+**The failure it names, so it is recognisable next time:** three tasks were closed
+by writing a SHORT SUMMARY row in `docs/TODO.md` ending *"Full entry in
+`docs/FINALIZED.md`"*, plus a SEPARATE, FULLER entry in `docs/FINALIZED.md`.
+**Two different texts. Neither a copy of the other. Nothing was ever migrated** —
+and it looks compliant from either file alone, because TODO has a `[x]` row and
+FINALIZED has an entry.
+
+- ⛔ **The TODO row must BE the work write-up, not a cross-reference to it.** A row
+  whose body points elsewhere can never be migrated; there is nothing in it to move.
+- ⭐ **The board's older rows are the worked example** — `RELTTL.1`,
+  `SHADOWCOST.5`, `PHASELOOP.1` each carry the full verdict AND the full
+  `Original filing:` inline. Match that shape.
+- ⚠ **Audit by comparing TEXT.** A matching task tag proves nothing: matching
+  `ROSTERDECLARED.1/.2/.3` against a FINALIZED entry filed as `ROSTERDECLARED.1`
+  reported 15 rows missing when 6 were, and acting on it would have duplicated
+  nine entries.
+- ⚠ **`docs/TODO.md`'s own header documents the row shape** — *"`- [x]` done (with
+  its verdict prepended, original text preserved)"*. It was already written down.
 
 ### TODO.md rules
 
