@@ -40,6 +40,27 @@
 //     if len == 0 || len > 2_000_000 || v.len() + len > 2_000_000 { continue; }
 // That is a cap on TOTAL EXPANDED INDICES and on any single range. There is no
 // cap on the NUMBER of ranges — `pre_ranges: Vec<[u32; 2]>` is an unbounded Vec.
+// ⛔⛔ THE SENTENCE DIRECTLY ABOVE IS FALSE, AND IT COST NINE DAYS OF SILENT
+//   TRAINING LOSS. It is kept, struck, because the ERROR is the reusable part.
+//   `donor.rs` bounds this verb at TWO sites that bound DIFFERENT things:
+//     donor.rs:912  (the EXECUTOR)        — total expanded indices <= 2_000_000
+//     donor.rs:1249 (the MESSAGE HANDLER) — reps <= 1000
+//                                         && pre_ranges.len()  <= 16
+//                                         && post_ranges.len() <= 16
+//   Only the executor was read. The Vec TYPE is unbounded; the ACCEPTANCE PATH
+//   is not, and over 16 ranges the `if` simply does not push the work — no ack,
+//   because this verb is fire-and-forget, so nothing anywhere reports a failure.
+//   ⭐ And the contract was never in doubt: the build entry written the day this
+//   opcode shipped records it verbatim — "donor.rs decode with defensive caps
+//   (reps <=1000, <=16 ranges, <=2M expansion)". Re-deriving a peer contract
+//   from one code site instead of reading the ledger is what put "no cap at all"
+//   into five documents at once.
+//   ⛔ WHY IT WAS SILENT ON THIS SIDE TOO: `gpuSparseHebbianRanges` returns true
+//   when the frame LEAVES THE SOCKET, the caller stores that in `_gpuCarried`,
+//   and the shadow rule below then runs the CPU pass only every 5th call. So an
+//   oversized frame is dropped by the donor AND skipped by the CPU — four of
+//   every five of those Oja updates landed nowhere. The comment at the dispatch
+//   site said "nothing is ever dropped"; it was wrong for every pattern > 16.
 // So `RANGE_MAX_TOTAL` mirrors a real donor limit and must stay exactly where it
 // is (past it the donor SILENTLY SKIPS ranges and trains truncated math with no
 // loud failure — the reason refusing to dispatch is the only honest move). 512
@@ -82,7 +103,33 @@
 //   ⛔ `RANGE_MAX_TOTAL` is NOT touched and must not be: it mirrors the donor's
 //   real 2M expansion limit, and two refusals in that same window were already
 //   `rangesFail_total` — those are correct refusals and have to stay refused.
-const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 65536);
+// ⛔ `READBACKEYE.3` (2026-08-30) — 65,536 → 16. THIS IS NOT A TUNING CHOICE.
+//   16 is the donor's own acceptance limit (donor.rs:1249). Every value above it
+//   ships frames the donor discards in silence while this side records them as
+//   GPU-carried, which skips the CPU pass 4 times in 5. Matching the peer's
+//   contract is the only setting under which "nothing is ever dropped" is true.
+//   ⭐ `DREAM_RANGE_MAX_RUNS` still overrides, and that is the upgrade path: when
+//   a donor ships a raised handler cap, set this to match THAT donor's number.
+//   Do not raise it to buy speed — above 16 the speed is bought with her weights.
+//
+//   RE-PRICE, stated with its own uncertainty because the honest answer is a
+//   RANGE and the instrument that would narrow it does not exist yet:
+//     - live at 115.6 min, the ranges path is `gpu` 6,278 against `boundGpu`
+//       60,524, so it is 9.4% of intra dispatches; the bound path is untouched
+//       by this (different opcode, no range-count guard).
+//     - mean full CPU pass = cpuFullMs 1,576,315 / cpuFull 7,128 = 221.1 ms.
+//     - WORST case (no pattern compresses to <=16 runs): all 6,278 become full
+//       CPU passes, +1,388 s on a 6,936 s boot = +20% of wall clock, taking
+//       cpuMs from 23.9% to ~43.9%. In that world we were ALSO losing 4/5 of
+//       every one of those updates, so the 20% is a bill, not a regression.
+//     - BEST case (every accepted pattern already fits in 16 runs): zero change
+//       to cost and nothing was ever lost.
+//   ⚠ WHICH ONE IS TRUE IS UNKNOWN, and `rangesRunsOkMax` cannot say — it is a
+//   MAX, and a max cannot price a cap (the third time that has bitten in this
+//   file). The bucket counter added below is what answers it on the next press;
+//   until then no claim is made about how much was lost. Correctness first: we
+//   do not trade her training for wall clock while the number is unknown.
+const RANGE_MAX_RUNS = Math.max(1, (typeof process !== 'undefined' && process.env && +process.env.DREAM_RANGE_MAX_RUNS) || 16);
 const RANGE_MAX_TOTAL = 2_000_000;
 // Why the LAST range-compression refusal happened. Module-scoped because the
 // caller reads it on the very next line — the helpers return null either way and
@@ -1295,18 +1342,40 @@ export const CLUSTER_HEBBIAN_MIXIN = {
             //   is a different verb, not a bigger number. Sum + buckets, so the
             //   next choice is a read.
             _sPre.rangesRunsSum = (_sPre.rangesRunsSum || 0) + rangeFail.runs;
-            const _b = rangeFail.runs <= RANGE_MAX_RUNS * 2 ? 'le2x'
-              : rangeFail.runs <= RANGE_MAX_RUNS * 4 ? 'le4x'
-                : rangeFail.runs <= RANGE_MAX_RUNS * 16 ? 'le16x' : 'gt16x';
+            // ⛔ `READBACKEYE.3` — BUCKETS MUST BE ABSOLUTE, NOT CAP-RELATIVE.
+            //   These were `RANGE_MAX_RUNS * 2/4/16`, so every bucket silently
+            //   changed meaning whenever the cap moved — `le2x` meant "≤131,072"
+            //   at a 65,536 cap and "≤32" at 16, and two boots' numbers could
+            //   not be compared or added. A bucket whose boundary is a variable
+            //   is an instrument that lies by construction. Fixed edges now, so
+            //   the distribution is the same measurement across every cap change
+            //   and directly answers "what would a donor cap of N buy us?".
+            const _b = rangeFail.runs <= 16 ? 'le16'
+              : rangeFail.runs <= 64 ? 'le64'
+                : rangeFail.runs <= 256 ? 'le256'
+                  : rangeFail.runs <= 1024 ? 'le1k'
+                    : rangeFail.runs <= 8192 ? 'le8k'
+                      : rangeFail.runs <= 65536 ? 'le64k' : 'gt64k';
             _sPre[`rangesRunsBucket_${_b}`] = (_sPre[`rangesRunsBucket_${_b}`] || 0) + 1;
           } else if (!_preRanges) {
             _sPre.rangesNullPre = (_sPre.rangesNullPre || 0) + 1;
             const _r = rangeFail.reason || 'unknown';
             _sPre[`rangesFailPre_${_r}`] = (_sPre[`rangesFailPre_${_r}`] || 0) + 1;
-          } else if (rangeFail.runs > (_sPre.rangesRunsOkMax || 0)) {
-            // The winning side needs a distribution too: if successes are
-            // routinely near the cap, the cap is still the binding constraint.
-            _sPre.rangesRunsOkMax = rangeFail.runs;
+          } else {
+            // ⭐ `READBACKEYE.3` — THE ACCEPTED SIDE NEEDS A DISTRIBUTION TOO, and
+            //   its absence is why the blast radius of the 16-range drop could
+            //   not be stated. `rangesRunsOkMax` alone answers "how big did one
+            //   get?"; what decides whether a donor cap raise is worth a release
+            //   is how many, and how big, ACROSS the population.
+            //   ⚠ Measured on `.length` of the arrays actually shipped, not on
+            //   `rangeFail.runs` — that field holds whichever helper ran LAST
+            //   (the pre side here), while the donor checks BOTH sides
+            //   independently. The quantity that decides acceptance is the max
+            //   of the two, so that is the quantity recorded.
+            const _okRuns = Math.max(_preRanges.length, _postRanges.length);
+            if (_okRuns > (_sPre.rangesRunsOkMax || 0)) _sPre.rangesRunsOkMax = _okRuns;
+            _sPre.rangesOk = (_sPre.rangesOk || 0) + 1;
+            _sPre.rangesRunsOkSum = (_sPre.rangesRunsOkSum || 0) + _okRuns;
           }
           if (_preRanges && _postRanges) {
             _gpuCarried = this._gpuProxy.hebbianRanges(`${this.name}_intraSynapses`, lr, 1, _preRanges, _postRanges) === true;

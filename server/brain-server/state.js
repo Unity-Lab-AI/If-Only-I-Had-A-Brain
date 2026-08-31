@@ -1872,6 +1872,50 @@ const SERVER_STATE_MIXIN = {
         : { failed: false };
     } catch { out.cortexUpload = { failed: false }; }
 
+    // ⭐ `READBACKEYE.1` — THE CHECKPOINT READBACK, MADE READABLE.
+    // `SHADOWCOST.3` gave the donor a `readback_matrix_values` opcode so the
+    // checkpoint finally holds the weights the GPU trained, and then published
+    // NOTHING about whether it runs. On an hourly cadence the console line is
+    // gone long before anyone asks (the ring serves the newest 500 of 2,000),
+    // so with parity reading DRIFTING the one question that mattered — did the
+    // hourly pull fire? — could not be answered from outside the box at all.
+    // ⚠ `lastOkAgeMs` is the load-bearing field, not `lastOkAt`. MIRRORID.5's
+    // rule: a persistent field with no freshness beside it gets quoted long
+    // after it stopped being true, so the age travels WITH the value and a
+    // never-run readback reads `null`, never a reassuring zero.
+    try {
+      const ok = this._lastReadbackOk || null;
+      const bad = this._lastReadbackRefusal || null;
+      const st = this._readbackStats || null;
+      const gapMs = Number.isFinite(+process.env.DREAM_READBACK_MIN_GAP_MS)
+        ? Math.max(0, +process.env.DREAM_READBACK_MIN_GAP_MS) : 3_600_000;
+      out.readback = {
+        // null (not 0) until one has actually completed — "never run" and
+        // "ran just now" must not share a rendering.
+        lastOkAgeMs: ok && ok.at ? Math.max(0, now - ok.at) : null,
+        lastOkSecs: ok ? r2(ok.secs) : null,
+        lastOkMB: ok ? r1(ok.bytes / 1048576) : null,
+        lastOkMatrices: ok ? (ok.matrices | 0) : null,
+        lastOkTrigger: ok ? String(ok.reason || '').slice(0, 60) : null,
+        okCount: st ? (st.ok | 0) : 0,
+        secsMax: st && st.secsMax ? r2(st.secsMax) : null,
+        // The last NON-ROUTINE refusal, with its age — a stale reason with no
+        // age is exactly the field CANSPEAK.8 had to be rebuilt to stop
+        // reporting a months-old rejection as the current state.
+        lastRefusal: bad ? String(bad.reason || '').slice(0, 120) : null,
+        lastRefusalAgeMs: bad && bad.at ? Math.max(0, now - bad.at) : null,
+        // Every reason counted, routine ones included, so "11 gap refusals per
+        // hour" reads as the healthy cadence it is instead of looking like a
+        // fault beside a single scary lastRefusal string.
+        refusals: st && st.refusals ? { ...st.refusals } : {},
+        gapMs,
+        // ⛔ The verdict is DERIVED, never a stored flag: a flag set at boot
+        // survives the thing it described. `overdue` is the field that says the
+        // cadence has stopped without anyone having to do the subtraction.
+        overdue: ok && ok.at ? (now - ok.at) > (gapMs * 2) : null,
+      };
+    } catch (err) { out.readback = { error: err.message }; }
+
     return out;
   },
 
