@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-08-31 - FRESH-WALK WATCH: TWO PASSED WITHIN 18 MINUTES
+
+Gee (verbatim): *"okay final checks and sign offs and such and make sure the vault in all ways is current"*
+
+⭐⭐ **Replay ran for the first time in this project's history.** The fresh walk was pressed at 07:23Z on `b1a5eb01`; by 18 minutes in, two of the eight morning watch rows had already resolved on their own.
+
+- [x] **✅ PASSED 2026-08-31 at 18 min — `tier2.schemaCount` 0 → 4, and this is the payoff of `REPLAYGATE.1` confirmed END TO END.** `promotedToTier2` **4**, `tier1.freqMergedCount` **21**, and the schemas carry real labels — `hebbian-ela-kindergarten`, `association-pairs-ela`, `learningelakindergarten-transitioned-learningunknown`, `unknown-arousal-valence` — so these are genuine consolidations of the LEARNING-context episodes the gate used to forbid, not empty rows. ⭐ **The whole chain runs for the first time in this project's history: Tier-1 write → consolidation pass → Tier-2 schema.** ⚠ **It resolved EARLIER than I predicted and my reasoning for the prediction was wrong** — I wrote that tier2 "CANNOT move until WATCH.1 does" because dream windows open at phase/cell boundaries; they evidently also open during the definition bootstrap, so consolidation ran with `cellPhasesCompleted` still 0. **The gate I named was not the only opening.** Original filing: ⏳ **WATCH.2 — `tier2.schemaCount` leaving 0.** The real `REPLAYGATE.1` payoff. Tier 1 has input now, but consolidation only runs in dream windows, which open at phase/cell boundaries — so tier2 CANNOT move until WATCH.1 does. ⛔ **If phases start completing and tier2 stays 0, that is a genuine finding and the next thing to investigate.**
+- [x] **✅ PASSED 2026-08-31 at 18 min — `definitionQueue.depth` 2,247 → 2,223, so the vocabulary lane IS consuming the queue.** Twenty-four definitions bound in the first eighteen minutes. ⚠ The 152-second window I judged it on was simply too short to see a drain at this rate — **a flat counter over one short window is not a stalled lane**, which is the same sampling error this session hit three separate times. Original filing: ⏳ **WATCH.4 — `definitionQueue.depth` should FALL from 2,247.** It did not move in 152 s. Plausibly batch-drained in dream windows. ⛔ **If it still reads 2,247 in the morning while `cellSubPhases` has climbed into the millions, something is not consuming the queue** — and that would mean the vocabulary lane is dead, which is the whole bootstrap.
+
 ## 2026-08-31 - BOARD RESET: the full board archived verbatim before the sweep
 
 Gee (verbatim): *"why is ther 57 done items in the todo?"* -> *"said the word, do it"*
