@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-08-31 - THE TRAINING CARD LISTED ONLY THE COURSES THAT HAD ALREADY RUN - feature/roster-rows-declared
+
+Gee (verbatim): *"and something im seeing is the current traing card doesnt have
+all the k grade subjects listed so when we get to them i wont see them, it stops
+at life when i know ther are more cources than that like pe and health and shit
+and geometry and algebra and social studies and governmtent and all of those for
+every grade that they have... so the cources are not properly listed so i dont
+know what will happen when we get to these phases and cells if there is no
+listing in the traing car of the dashboard for them"*
+
+- [x] **✅ `ROSTERDECLARED.1` — the row set was a record of what had HAPPENED, so a course could not appear until it was too late to be told it existed.** Verified on the live box (`6b887dbe`, 2.1 h up): `curriculum.subjects` published **six** — `ela · math · science · social · art · life` — while the walk sits in **kindergarten**, the grade at which `SUBJECTS_INTRODUCED_AT` introduces **pe, music and health**. ⭐ **`#110 CLASS` was right about where those rows LAND and could not fix this**, because all three of its sources are records of the past: the static core-6 `SUBJECTS`, the subjects the runtime has already taught (`_perSubjectStats`), and the subjects with a persisted passed cell. A course that has never run matches none of them, so it renders as an ABSENCE — and an absence is indistinguishable from "this course does not exist", which is exactly what Gee read. **`subjectsForGrade()` has been in this module the whole time** and is the declaration rather than the history: the 6 core plus every track introduced at or before a grade. Seeding `_rowSubjects` from it makes the kindergarten roster **9**, and the untaught three render as real rows owing their work. ⚠ **The grade is the FURTHEST reached across `_currentGrade`, `passedCells` and `cluster.grades` — not the one in flight** — because subjects walk independently and keying on the active subject's grade would drop the rows again the moment a lagging subject became current. **No new list is authored:** the same `SUBJECTS_INTRODUCED_AT` the walk itself reads.
+- [x] **✅ `ROSTERDECLARED.2` — and what is COMING is now named, with the grade that opens it.** The rows above answer *"what is offered NOW"*; a track introduced at grade 7 is still absent from them, which leaves Gee's actual sentence — *"i dont know what will happen when we get to these phases and cells"* — unanswered. `curriculum.rosterUpcoming` publishes every declared track not yet rostered together with its opening grade, read straight off the same table: **language@grade3 · cs@grade5 · civics@grade7 · economics@grade9 · psychology@grade9 · ap@grade11 · major/genered/cstheory/cssystems@college1 · research@grad** (verified against the real exports). The card groups them by opening grade under a `not started yet` rule, so it is a few short lines rather than one row per course, per the bounded-panel discipline.
+- [x] **✅ `ROSTERDECLARED.3` — the same gap one level down: `SUBJECT_LABELS` also stopped at the core six.** Every roster course described itself as its own bare key, so `perSubject.pe.label` read `"pe"`. The table was written when `SUBJECTS` **was** the whole roster and never grew with `SUBJECTS_INTRODUCED_AT` — the identical shape as the row set it feeds. Labels added for all fourteen; verified **0 missing across the full 20-subject roster at `grad`**. ⚠ The visible card renders `courseName`, not `label`, so this is the tooltip and the state field rather than the headline — and `courseNameFor` was checked at the same time and is already correct for the courses Gee named: **pe → "Physical Education"**, **health@K → "Health and Safety"**, **math@grade7 → "Pre-Algebra"**, **math@grade9 → "Geometry"**, **civics@grade9 → "Government and Citizenship"**.
+
+⚠ **THIS IS SERVER-SIDE STATE AND NEEDS A PRESS.** `deploy.yml` rsyncs the
+frontend on every push, so `html/dashboard.html` lands on its own — but
+`curriculum.subjects` and `rosterUpcoming` are produced by the node process, and
+that only restarts on an **Update & Savestart**. Until then the card will render
+the new "not started yet" block against an old six-row payload and simply show
+nothing extra. **Gee's press, not mine.**
+
+⚠ **Instrument only — it changes nothing about what she is taught**, so it is
+clear of the fresh-walk-is-last law by that law's own carve-out.
+
 ## 2026-08-20 - TODO MIGRATION: every COMPLETE task moved out of the board into the archive, verbatim - feature/todo-finalize-migration-0820
 
 ### Gee ask (verbatim per LAW #0)

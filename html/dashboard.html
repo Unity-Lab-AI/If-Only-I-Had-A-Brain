@@ -3485,6 +3485,26 @@
           + `<div style="text-align:right;">${formatEvents(s.teachEvents | 0)}</div>`
           + `</div>`);
       }
+      // ROSTERDECLARED — the courses that exist but have not opened yet, with the
+      // grade that opens each. Without this the board says nothing at all about a
+      // track introduced later, and "absent" reads identically to "does not
+      // exist". Grouped by opening grade so it stays a few short lines rather
+      // than one row per course, per the bounded-panel discipline.
+      const upcoming = Array.isArray(c.rosterUpcoming) ? c.rosterUpcoming : [];
+      if (upcoming.length) {
+        const byGrade = new Map();
+        for (const u of upcoming) {
+          if (!byGrade.has(u.opensAt)) byGrade.set(u.opensAt, []);
+          byGrade.get(u.opensAt).push(u.subject);
+        }
+        const lines = [...byGrade.entries()]
+          .map(([g, subs]) => `<div style="display:grid;grid-template-columns:1fr 84px;gap:4px;font-size:10px;color:#555;padding:1px 0;">`
+            + `<div title="declared in SUBJECTS_INTRODUCED_AT — not started">${subs.join(' · ')}</div>`
+            + `<div style="color:#555;">opens ${g}</div></div>`)
+          .join('');
+        rows.push('<div style="font-size:9px;color:#555;border-top:1px solid #222;margin-top:5px;padding-top:4px;">not started yet</div>');
+        rows.push(lines);
+      }
       $('d-curr-subjects').innerHTML = rows.join('');
     }
 
