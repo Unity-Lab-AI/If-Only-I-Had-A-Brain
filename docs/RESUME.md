@@ -56,6 +56,44 @@
 >   listed only its README, `brain-server` omitted the same mixin. Closed.
 > - `.claude/scripts/` is untracked — the fetcher's `--only-missing` flag and the
 >   `Rule`→`Social norm` fix are LOCAL ONLY; the corpus output ships.
+>
+> ### ⛔⛔ THE LAST CORRECTION OF THE NIGHT — "DOCS" IS EIGHT TREES, NOT THE WIKI
+> Gee, after the docs were reported current **twice**: *"WHEN I SAY DOCS: I
+> FUCKING MEAN: workflow files, pages, htmls, tooltips, readmes how tos admin docs
+> any and all fucking documents that have inforamtional layouts of the fucking
+> BRAIN"* and *"DO NOT USE SOME BULSHIT SCRIPT TO WRITE THE EDITS"*.
+>
+> ⛔ **Both times only `wiki/` plus the three board files were touched — one tree
+> of eight — and the rule already covered it.** `CONSTRAINTS.md §DOCS BEFORE PUSH`
+> was widened on **2026-04-22** to *"internal workflow + public-facing `.md` +
+> public `.html`"* and carries a violation log for exactly this. ⛔ Second
+> violation in the same breath: **python heredocs were used to WRITE doc edits all
+> night**, which `feedback_no_scripts_for_edits` bans, while that rule was being
+> written INTO the workflow files.
+>
+> **The set:** `docs/*.md` (~33) · `html/*.html` (~10) · **the tooltips and
+> in-page copy inside them** · `README.md` · `.claude/*.md` (5) · `deploy/*.md`
+> (5) · `wiki/**` (38) · board + ledger + RESUME. ⭐ **Before reporting docs
+> updated: name every tree, or say why one is unaffected** — a silent omission
+> reads as "checked and clean".
+>
+> **Recorded by hand in five places:** memory `feedback_docs_means_every_document`
+> + its `MEMORY.md` line, the tree table and by-hand rule in
+> `CONSTRAINTS.md §DOCS BEFORE PUSH`, the `CLAUDE.md` LAW one-liner, and both
+> `wiki/claude-workflow` + `wiki/docs-tree` (which now say the wiki is one tree of
+> eight, not the answer).
+>
+> ⏳ **THE SWEEP ITSELF IS NOT DONE — it is `DOCSWEEP.1-.5` on the board**, on
+> Gee's *"lay it all out as a todo item , then stop"*. `.1` the 33 `docs/*.md`
+> named individually with what changed in each · `.2` the 10 HTMLs **including
+> tooltips** · `.3` `README.md` + `.claude/*.md` + `deploy/*.md` (⚠ `.claude/README.md`,
+> `DEPLOYED-ADMIN-GUIDE.md` and all five `deploy/` files **unchecked**) · `.4` the
+> **19** wiki pages still stale from earlier sessions, **none flagged
+> `status: stale`, so they all read `verified` while being behind** · `.5` ⛔ **the
+> missing mechanism: only `wiki/` has a staleness check** (`sources` +
+> `last-verified` diffed against git), which is the STRUCTURAL reason "the docs"
+> collapsed into "the wiki" twice — one tree is checkable and seven are not, so the
+> checkable one becomes the answer. Filed with its shape, **not built.**
 
 
 > ## ⭐⭐⭐ 2026-08-30 (LATEST — PICK UP HERE) — THE CHECKPOINT WAS SAVING A DIFFERENT BRAIN, AND NOW IT IS NOT
