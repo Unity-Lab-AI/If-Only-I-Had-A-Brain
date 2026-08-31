@@ -5,6 +5,58 @@
 
 ---
 
+## 2026-08-31 - THE ACADEMIC CORPUS HAD 24 UNDECLARED CELLS, AND THE VOCABULARY WAS THE SYMPTOM - feature/academic-corpus-gaps
+
+Gee (verbatim): *"and check the vault it looks to me all grades are not correctly
+all have vocab set up from what i see some grades are missing, am i wrong? that
+needs coded up possibly with actual grade vocab for all the ciriculum"*
+
+Gee (verbatim): *"well something is wrong this only says 18K on dashboard:📖
+VOCABULARY (K→PhD) prefetched: yes defs taught: 2180 / 18,017 (12.1%)"*
+
+⭐ **HE WAS RIGHT, AND THE THING THAT LOOKED WRONG WAS NOT THE THING THAT WAS.**
+Every grade K→PhD **does** have a vocabulary file (49,921 slots) and all three
+consumers call `gradeVocabularyFor(grade)` generically, so neither the data nor
+the wiring was missing. The `18,017` on the dashboard is the UNIQUE count and is
+the honest denominator — a word is taught once, not once per grade that lists it.
+
+- [x] **✅ `CORPUSGAP.1` — what he was actually looking at was a wiki table with 17 of 19 `export` cells EMPTY.** Only Kindergarten and Grade 1 were filled in, so grades 2→PhD read as blank rows. Filled in, and the page now carries real word counts and a NEW-at-this-grade column instead of line counts that mean nothing. ⚠ Same page claimed the corpora were *"generated from `corpora/glove.6B.300d.txt`, banded by realistic frequency"* — **the generator's own header says the opposite**, that a GloVe frequency fill polluted the files with proper-noun junk (`vidal`, `givenchy`, `kersee`) and was replaced by content-derivation. A page describing the thing it replaced.
+- [x] **✅ `CORPUSGAP.2` — measuring WHY 18,017 was so low found the real defect: the upper bands introduce almost nothing.** Per-grade NEW-word measurement: kindergarten alone **2,247**, against **1,531 for college1+college2+college3+college4+grad+phd COMBINED**. PhD added **131**, and reading them names them: `art-phd`, `ela-phd`, `answer-the-phone`, `almost-no-one`, `daylight-normal`, `asphalt`, `clerk`, `brunch` — generator artifacts and lived-life words, not a doctoral lexicon. Grade 12 carried `algoritmi` / `algorismus` / `alghoarismi`, three transliterations out of one history-of-algorithms sentence. ⭐ **The generator is not the bug**: it is content-derived BY DESIGN, so a thin PhD vocabulary is a faithful mirror of a thin PhD curriculum — `kindergarten.js` is 9,200 lines, `phd.js` is 310. **Patching the word lists would have re-created the hand-typed lists the generator exists to replace.**
+- [x] **✅ `CORPUSGAP.3` — the hole is upstream in `corpora/academic/`, and it is 24 of 79 offered cells (30%).** ⚠ **The raw count was 68 and that number is WRONG** — most of those are subjects correctly absent at grades they are not offered at. Intersected against `SUBJECTS_INTRODUCED_AT` + `SUBJECTS_RETIRED_AT` + the core-6 rule, the honest gap is **24**. ⛔ **`cs`: 0 of 8.** Computer science enters at grade5 and had **no corpus for any K-12 grade** — every cs file was college-level — and the scope-sequence calls it *"HER subject… accelerates far beyond grade level"*. **`ela`: 7** (grades 6/7/8, the whole Middle ELA band, plus college3/4/grad/phd). **`social`: 6** — every college-and-above cell, on a CORE subject the scope-sequence says runs to PhD. **`civics`: grade10, grade11. `science`: college2.** ⭐ **And the cause was boring: the fetcher's topic map never declared them.** Every one of the 65 declared cells had fetched fine — zero failures, nothing broken, 24 cells simply never listed.
+- [x] **✅ `CORPUSGAP.4` — 24 topic lists authored against `docs/CURRICULUM-SCOPE-SEQUENCE.md`'s real course names, 192 new topics, and ALL 192 VERIFIED TO RESOLVE BEFORE FETCHING.** A dead title costs a topic silently, so the titles were batch-checked against the Wikipedia API first: **0 missing**. Map now declares **79 of 79**. Fetched to **23 of 24 cells at full declared coverage, 205 topics, 2,850 sentences** (`ela/college4` sits at 5 of 8). ⚠ **Took three passes, and the first one was thin by the fetcher's own documented failure mode** — 24 back-to-back runs throttled the API and 8 cells came back with 2-4 topics. `flush()` merges keep-longer precisely so a re-run can only ADD, which is what fixed it. Sample-read across `cs/grade5`, `ela/grade6`, `social/college2`, `science/college2`, `civics/grade10`, `ela/grad`: all correct and reading-level appropriate — grade5 got Simple-English prose (*"a computer is a machine that uses electronics to input, process, store, and output data"*), college got full Wikipedia.
+- [x] **✅ `CORPUSGAP.5` — vocabulary regenerated: 18,017 → 19,340 unique (+1,323), slots 49,921 → 56,527.** The gain lands exactly where the corpus gaps were: grade6 **+677**, grade7 +468, grade8 +357, grade11 +175, college3 +127, college4 +108, grad +84, phd +71.
+
+⛔ **THE REGEN ALSO SHRANK GRADES I NEVER TOUCHED, AND I DID NOT SHIP THAT UNTIL I
+COULD EXPLAIN IT.** grade1 −126, grade2 −579, grade4 −391. **Isolation test:
+re-ran the generator with my corpus additions stashed OUT — grade1 1896, grade2
+1372, grade4 1454, identical.** So the drop is **pre-existing drift between the
+committed files and their own generator**, not my change. ⭐ **Then reading the
+lost words showed the drift is a FIX:** grade 2 was carrying `archaeplastida`,
+`apartheid`, `anglo-norman`, `antecedent`, `annealed`; grade 4 had `acoustician`,
+`abiotic`, `assimilation`, `alliterative`. Those came from full-Wikipedia prose
+that `FC.9` later replaced with Simple English for early grades — **the committed
+vocabulary predates that corpus fix and regenerating finally applies it.**
+`archaeplastida` was in a GRADE 2 word list.
+
+⚠ **RE-PRICE, written before the commit per the standing law.** Academic prose
+**7,191 → 10,041 sentences (+39.6%)**. Vocabulary **+1,323 unique definitions**;
+at the measured ~3.9 s/definition bootstrap rate that is **~1.4 h added across
+the ENTIRE K→PhD walk**. ⛔ **The prose-training cost per sentence is NOT measured
+and I am not inventing one** — stated as the 39.6% lane growth, not converted to
+hours. ⭐ **And none of it lands on the run she is on now:** the earliest added
+cell is `cs/grade5`. Kindergarten and grades 1-4 are untouched, so tonight's walk
+does not get one second longer.
+
+⚠ **Owned:** I used a `git stash push`/`pop` cycle to run the isolation test and
+the pop conflicted, leaving `.claude/statusline.sh` and `docs/NewTodo.md` in an
+unmerged INDEX state — neither was ever part of what I stashed. I then described
+it as "cleaning up", which is alarming wording about a file that is not mine to
+touch. **Nothing was deleted; both files verified byte-identical on disk and the
+index entries cleared with `git reset -- <path>`, which does not touch the
+working tree.** A stash cycle was the wrong tool: a second checkout or reading
+the file from `git show` would have isolated the same measurement with no index
+risk.
+
 ## 2026-08-31 - THE TRAINING CARD LISTED ONLY THE COURSES THAT HAD ALREADY RUN - feature/roster-rows-declared
 
 Gee (verbatim): *"and something im seeing is the current traing card doesnt have
