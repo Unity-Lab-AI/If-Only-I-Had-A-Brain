@@ -107250,7 +107250,16 @@ var Curriculum = class _Curriculum {
     } catch {
     }
     for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { trained, skipped };
+      if (_cursorKey) {
+        if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
+        cluster._phaseRepCursor[_cursorKey] = reps - rep;
+      }
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) {
+        const _owedNow = reps - rep;
+        console.warn(`[Curriculum][${label}] PHASELOOP.1 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed \u2014 the next boot RESUMES the remainder instead of repeating the whole dose.` : "NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose."}`);
+        _acRow.ms += Date.now() - startMs;
+        return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
+      }
       if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
         const _deferred = reps - rep;
         const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1e3).toFixed(0);
