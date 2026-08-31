@@ -107136,10 +107136,11 @@ var Curriculum = class _Curriculum {
     if (!w) return null;
     st.asks++;
     const TTL = Number(process.env.DREAM_REL_USE_TTL_MS) || 3e4;
+    const FLAT_TTL = Number(process.env.DREAM_REL_USE_FLAT_TTL_MS) || 18e5;
     const now = Date.now();
     if (!this._relUseCache) this._relUseCache = /* @__PURE__ */ new Map();
     const hit = this._relUseCache.get(w);
-    if (hit && now - hit.at < TTL) {
+    if (hit && now - hit.at < (hit.val ? TTL : FLAT_TTL)) {
       st.cached++;
       return hit.val;
     }
