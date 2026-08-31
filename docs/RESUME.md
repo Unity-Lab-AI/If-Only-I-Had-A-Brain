@@ -111,10 +111,44 @@
 > ⭐ Principle recorded: **a gotcha list that only grows stops being a warning and
 > becomes a museum.**
 >
+> ### ✅ SHIPPED — cascaded and pushed, all six refs converged
+> ```
+> main    943d62ca  =  origin/main    =  github/main
+> develop 151e4072  =  origin/develop =  github/develop
+> ```
+> 24 files, +505 / −56. Tree clean, HEAD returned to `develop`.
+> ⭐ **No press is owed for it and that is checked, not assumed:** the whole batch is
+> docs, workflow files and HTML — **zero server code** — and `deploy.yml` rsyncs the
+> frontend on every push, so the tooltip and page fixes are live now while the node
+> process is untouched. **The walk keeps running undisturbed.**
+>
+> ### ⛔⛔ TWO FOREIGN REMOTES WERE CONFIGURED IN THIS REPO, AND ARE NOW GONE
+> A pre-push `git remote -v` — run to make sure the cascade hit only the right two —
+> printed **four** remotes. Two of them were other repositories: `ual-workflow`
+> (`UnityAILab/UAL-ClaudeWorkflow.git`, the `.claude` TEMPLATE's home) and
+> `origin-unity-bot` (`UnityAILab/unity.git`). Gee: *"remove them them from what ever
+> is telling you to refrence them DO NOT TOUCH THEIR REPOS"*.
+>
+> **Removed from this repo's local `.git/config`.** ⚠ **`git remote remove` rewrites
+> local config only — it opens no connection and cannot alter a remote repository.
+> Neither of those repos was contacted, fetched from, pushed to or modified.**
+> Verified after: config holds exactly `origin` + `github`, and both stale
+> `refs/remotes/` trees are gone.
+>
+> ⭐ **Why delete rather than keep avoiding them:** a rule against a *configured*
+> remote is enforced only by discipline, and **one `git push --all`, one autocompleted
+> remote name, or one `git push ual-workflow main` sends this project — including the
+> `.claude/` IP — into someone else's repository.** Deleting the entry makes the
+> mistake impossible instead of merely forbidden. ⚠ **If `git remote -v` ever shows a
+> third entry again, something re-added it — delete it, do not work around it.**
+> Recorded in the memory that previously only warned about it (with both URLs, so
+> nobody has to go hunting) and corrected in `deploy/HOOK-FIXES.md`, which had been
+> written as though the template remote were still configured here.
+>
 > ### ⚠ Carry these
 > - ⛔ **`wiki/` and `.claude/skills/` are GITIGNORED.** The 23 verified pages, the
->   gotcha prune, the vault update and the live workflow-gate fix are **LOCAL ONLY**.
-> - **Nothing is cascaded.** 7 commits sit on `feature/workflow-gate-readable`.
+>   gotcha prune, the vault update and the live workflow-gate fix are **LOCAL ONLY** —
+>   they did NOT ship in the cascade above and exist on this machine alone.
 > - **Numbers moved:** `docs:drift` **25 → 16** · wiki stale **23 → 0** · wiki line
 >   counts wrong **37 → 24** · wiki pages **41 → 39** · gotchas **7 → 5** ·
 >   0 broken wikilinks, index in sync.
