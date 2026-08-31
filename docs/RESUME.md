@@ -1,5 +1,63 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-08-31 (LATEST — PICK UP HERE) — THE FRESH WALK IS RUNNING, AND REPLAY RAN FOR THE FIRST TIME
+>
+> ### Where it is
+> ```
+> pressed  2026-08-31 07:23Z · commit b1a5eb01 on main · both remotes synced
+> brain    ela/kindergarten · 411,216,550 neurons · langCortex 15,082,717 (PIN HELD)
+> donor    NVIDIA A40 · 10.18 Gn/s · 0 upload failures · loop lag 0 ms
+> board    docs/TODO.md RESET — 11 open + 7 in-progress, 0 completed rows
+> ```
+>
+> ### ⭐⭐ REPLAY RAN — the headline
+> `tier1.totalEpisodes` read **0 on every boot in this project's history**. One
+> condition at `server/brain-server/memory.js:1109` gated the Tier-1 episodic
+> heartbeat `&& !this._curriculumInProgress`, and the curriculum runs ~100% of the
+> time — so nothing reached Tier 1, nothing consolidated, replay had no input, and
+> the 100-rep dose was partly compensating for it. **18 minutes into the fresh
+> walk: `tier1` 4 · `freqMerged` 21 · `promotedToTier2` 4 · Tier 2 holding
+> `hebbian-ela-kindergarten`, `association-pairs-ela`.** Tier-1 write →
+> consolidation → Tier-2 schema, end to end, for the first time.
+> ⚠ The gate was DELIBERATE (`e27caa90`, a real 8-27 s freeze) and was removed only
+> because `SURPSYNC.1` had already made its 2 s cost unreachable above 2M cortex.
+> Its other justification had gone **circular**: 0 candidates *because* the writes
+> were suspended.
+>
+> ### What else landed before the press
+> - **`CORPUSGAP.7`** — academic corpus **89/89 cells, 874/874 topics, 12,075
+>   sentences** (from 729 / 10,083). `cs` had ZERO corpus for all 8 of its K-12
+>   grades; `ela/kindergarten` held 1 of 6 on the night of the walk.
+> - **`ROSTERDECLARED`** — board published 6 subjects where the roster is 9. Live
+>   now: **9 subjects, `rosterUpcoming` 11**.
+> - **`WALKCOST.2` CLOSED AS MOOT** — `REPCOMP` already banks the same 5×
+>   dose-neutrally (100→20 reps at a solved lr, asymptote 95.24% preserved); the
+>   row's version used the authored lr and reaches 45.6%.
+>
+> ### ⛔ Morning watch list in `docs/TODO.md` — 6 still open
+> **WATCH.2 and WATCH.4 already PASSED** (tier2 0→4, defQueue 2,247→2,223). Open:
+> **WATCH.1** `cellPhasesCompleted` leaving 0 — ⚠ **not before ~09:45Z**, the
+> definition bootstrap runs first (~2.4 h); WATCH.3 tier1 staying SMALL with
+> `freqMerged` climbing; WATCH.5 the academic corpus being read; WATCH.6 no new
+> ~30 s-periodic `[EventLoop] BLOCKED`; WATCH.7 `matrixHits` leaving 0.
+>
+> ### ⏱ First cell pass: ROUGH 8-14 h — a construction, not a measurement
+> bootstrap 2.4 h + 3 heavy phases 2-4 h + 24 light phases 1-2 h + K gate 1-3 h.
+> ⛔ **No cell has ever completed in this project.** **Falsifier: not passed by
+> ~24 h → suspect a heavy phase where REPCOMP is not applying; the `REPCOMP.1 — N
+> reps → M reps` line names it, and its ABSENCE on a heavy call IS the defect.**
+>
+> ### ⚠ Carry these
+> - **The console ring spans only ~45 s** under `PRECELL` load — boot banners roll
+>   off before they can be read. **Answer boot questions from STATE, not the ring.**
+> - **Three wiki pages had SOURCES GAPS** and could never go stale:
+>   `memory-and-consolidation` omitted `server/brain-server/memory.js` (the page
+>   documenting replay was blind to the file that disabled replay), `corpora`
+>   listed only its README, `brain-server` omitted the same mixin. Closed.
+> - `.claude/scripts/` is untracked — the fetcher's `--only-missing` flag and the
+>   `Rule`→`Social norm` fix are LOCAL ONLY; the corpus output ships.
+
+
 > ## ⭐⭐⭐ 2026-08-30 (LATEST — PICK UP HERE) — THE CHECKPOINT WAS SAVING A DIFFERENT BRAIN, AND NOW IT IS NOT
 >
 > ### Where it is
