@@ -107872,7 +107872,7 @@ var Curriculum = class _Curriculum {
       });
       _bucketTrained += _r.trained || 0;
       _bucketDeferred += _r.deferredReps || 0;
-      if (_r.budgetStopped) break;
+      if (_r.budgetStopped || _r.shutdownStopped) break;
     }
     this._hb(`[Curriculum] _teachConcreteSentences CELLBOUND.C - ${uniquePairs.size} unique of ${pairs.length} transitions (${(100 * (pairs.length - uniquePairs.size) / Math.max(1, pairs.length)).toFixed(1)}% were literal duplicates) trained in 3 frequency buckets (lo ${_bucket.lo.length} x${reps} / mid ${_bucket.mid.length} x${Math.round(reps * 1.5)} / hi ${_bucket.hi.length} x${reps * 2})${_bucketDeferred ? ` \xB7 ${_bucketDeferred} rep(s) DEFERRED by the phase budget` : ""}.`);
     const r = { trained: _bucketTrained, deferredReps: _bucketDeferred };

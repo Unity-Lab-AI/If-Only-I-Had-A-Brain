@@ -17253,7 +17253,18 @@ export class Curriculum {
       _bucketDeferred += (_r.deferredReps || 0);
       // The phase deadline propagates: once a bucket defers, the remaining
       // buckets defer with it rather than each burning a fresh budget check.
-      if (_r.budgetStopped) break;
+      // ⛔ `PHASELOOP.1b` — SHUTDOWN MUST BREAK THIS LOOP TOO, and missing it was
+      //   a defect I introduced in the same batch. `PHASELOOP.1` gave the rep
+      //   loop a second early exit (`shutdownStopped`) and this was the ONLY
+      //   consumer of the sibling flag — so after a shutdown the LO bucket would
+      //   return correctly banked and the loop would then START MID and HI, each
+      //   hitting the shutdown check at rep 0 and writing a cursor equal to the
+      //   FULL dose. Those entries are functionally inert (the resume guard needs
+      //   `_owed < reps`), but they are meaningless rows persisted into a cursor
+      //   map that is capped at 512 keys — noise banked as if it were progress.
+      //   ⭐ The general rule this earned: a new early-exit flag is not finished
+      //   until every reader of its SIBLING has been grepped and updated.
+      if (_r.budgetStopped || _r.shutdownStopped) break;
     }
     this._hb(`[Curriculum] _teachConcreteSentences CELLBOUND.C - ${uniquePairs.size} unique of ${pairs.length} transitions (${(100 * (pairs.length - uniquePairs.size) / Math.max(1, pairs.length)).toFixed(1)}% were literal duplicates) trained in 3 frequency buckets (lo ${_bucket.lo.length} x${reps} / mid ${_bucket.mid.length} x${Math.round(reps * 1.5)} / hi ${_bucket.hi.length} x${reps * 2})${_bucketDeferred ? ` · ${_bucketDeferred} rep(s) DEFERRED by the phase budget` : ''}.`);
     const r = { trained: _bucketTrained, deferredReps: _bucketDeferred };
