@@ -102,6 +102,7 @@ Before running `node scripts/stamp-version.mjs` and pushing:
 - [ ] Every method/field name in docs matches code verbatim (stubbed no-ops described as "stubbed" not "deleted")
 - [ ] Cross-referenced `docs/TODO.md` — new tasks logged, completed tasks moved to FINALIZED.md, in-progress tasks updated
 - [ ] Cross-referenced `docs/FINALIZED.md` — new session entry appended with verbatim task description
+- [ ] ⛔ **THE TODO ROW *IS* THE WRITE-UP — verified by comparing TEXT, not tags.** For every task closed this session, the `[x]` row in `docs/TODO.md` carries the FULL work write-up inline (verdict prepended, `Original filing:` preserved, measurements in the row), and `docs/FINALIZED.md` carries **that same text**. ⚠ A row whose body is a cross-reference (*"full entry in FINALIZED.md"*) is a **VIOLATION**, not a migration — see §FINALIZED BEFORE DELETE for the 2026-08-31 case where three rows were summaries in TODO and separate fuller entries in FINALIZED, so the two files never held the same words and nothing had actually moved. ⚠ Audit by string match; a matching task TAG proves nothing (`ROSTERDECLARED.1/.2/.3` vs a `ROSTERDECLARED.1` entry read as "missing" and would have duplicated nine entries)
 - [ ] Cross-referenced `docs/EQUATIONS.md` for any math/equation changes
 - [ ] Cross-referenced `docs/ARCHITECTURE.md` for any structural/code-map changes
 - [ ] Cross-referenced `docs/ROADMAP.md` for phase/milestone updates
