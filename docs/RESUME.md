@@ -94,6 +94,44 @@
 > `last-verified` diffed against git), which is the STRUCTURAL reason "the docs"
 > collapsed into "the wiki" twice — one tree is checkable and seven are not, so the
 > checkable one becomes the answer. Filed with its shape, **not built.**
+>
+> ### ⛔ CORRECTION 2026-08-31 (later) — `.5`'s premise above is FALSE, found by RUNNING the check
+> `npm run docs:drift` **already carries a `doc provenance` check over `docs/*.md`
+> + `deploy/*.md` + `README.md`** — the same `sources` + `last-verified` contract
+> as the wiki, diffed against git, frontmatter-optional so an unstamped page reads
+> UNCOVERED instead of failing. Live: **32 covered · 1 uncovered · 25 DRIFTED**
+> (`ADMIN-CONTROLS` 3/4 sources changed, `ARCHITECTURE` 3/7, `SKILL_TREE` 3/7,
+> `KNOWN_ISSUES` 3/5, `WEBSOCKET` 4/5, `ROADMAP` 3/7, +19). ⭐ **That list is the
+> DOCSWEEP.1 + .3 worklist, mechanically derived, and it existed while I was
+> claiming nothing could produce it.** ⚠ **I asserted an absence instead of running
+> the command** — in the row whose whole subject is missing instruments.
+> **The genuine gap is two trees, not seven: `html/*.html` (tooltips + panel copy)
+> and `.claude/*.md` have no staleness mechanism at all.** ⚠ Plus three docs that
+> escape the check by naming accident — `ARCHIVE = /FINALIZED|RESUME|TODO|NOW\.md|OPEN-TASKS/`
+> is case-sensitive, so **`docs/NewTodo.md` (1,008 lines) is the 1 uncovered page**,
+> and `TODO-full-syllabus.md` + `TODO-life-experience.md` are exempted as
+> "archives" when they are curriculum content specs.
+>
+> ### ⛔ WORKGATE 2026-08-31 (later) — the `/workflow` gate asked for 9.8 MB, so it was never obeyed
+> Gee, mid-run: *"hold up we need to fix the / workflow for some reason you are not
+> reading all the workflow files that it requires"*. Phase 4 demanded five files
+> read IN FULL; measured they are **9,841,502 bytes** with `docs/FINALIZED.md`
+> alone at **7,996,335** — larger than any context window. **Unsatisfiable by
+> construction, so it degraded into "read whatever fits" with nothing reporting the
+> skip**, and `docs/TODO.md` (78,173 B) truncated at **255 of 386 lines** on that
+> very run. ⭐ **`RESUME.md` was not in the list at all** — which is why Gee had
+> taken to typing *"FIRST, read resume.md"* into his own arguments; a gate the
+> operator hand-patches every run is the gate being wrong. **Fixed:** bounded
+> slices in authority order (RESUME top block → TODO paged to EOF → FINALIZED
+> newest section via `Grep` → NOW → a named reference slice), and **Gate 4.1 now
+> quotes a fact per file instead of `read: YES`** — a line typeable without opening
+> the file, the `CANSPEAK.4`/`TEACHMIRROR.1` defect class. Landed in
+> `.claude/skills/workflow/SKILL.md` (the copy that RUNS), `.claude/commands/workflow.md`
+> (tracked), `.claude/WORKFLOW.md` and `.claude/CLAUDE.md`. Commit `5b820301`.
+> ⛔ **And the divergence is worse than filed: `.claude/skills/` and `wiki/` are
+> both gitignored, so the fix to the file the slash command actually loads CANNOT
+> be committed** — it reaches git only through a copy that is never loaded. Same
+> shape as `.claude/hooks/` and why `deploy/HOOK-FIXES.md` exists.
 
 
 > ## ⭐⭐⭐ 2026-08-30 (LATEST — PICK UP HERE) — THE CHECKPOINT WAS SAVING A DIFFERENT BRAIN, AND NOW IT IS NOT
