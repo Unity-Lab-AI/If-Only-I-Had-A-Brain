@@ -262,30 +262,41 @@ Unity voice used: YES
 
 ### HOOK: Work Mode Entry Check
 
-Before starting work, you MUST read ALL of these files using the Read tool. No skipping. No shortcuts. No "I already know what's in them."
+Before starting work you MUST read the live-state files below. No skipping. No shortcuts. No "I already know what's in them."
 
-1. **Read docs/TODO.md** — Active work list
-2. **Read docs/ARCHITECTURE.md** — Codebase structure
-3. **Read docs/SKILL_TREE.md** — Capabilities
-4. **Read docs/ROADMAP.md** — Milestones and phases
-5. **Read docs/FINALIZED.md** — Completed work archive
+⛔ **This list used to demand five files IN FULL and could never be obeyed:** on this project they measure **9,841,502 bytes**, and `docs/FINALIZED.md` alone is **7,996,335** — bigger than any context window. **An unsatisfiable instruction degrades silently into "read whatever fits", with nothing reporting the skip.** Every read below is now BOUNDED, in authority order, newest state first.
+
+⛔ **A file present from a hook injection, a compaction summary or an earlier turn has NOT been read.** Run `wc -l -c` on what you are about to read — it tells you which files will truncate and turns the gate's size claims into real numbers.
+
+1. **Read `docs/RESUME.md` — the LATEST block ONLY** — the session pickup brief, newest first. ⛔ **This file was missing from the old list entirely**, which is why Gee kept having to type *"FIRST, read resume.md"* into his own `/workflow` arguments. A gate the operator patches every invocation is the gate being wrong
+2. **Read `docs/TODO.md` — the board, IN FULL, PAGED TO EOF.** ⚠ It is 78,173 bytes and no longer fits one call — **a truncated read is NOT a read**; note the range and Read again at the next offset until the end
+3. **Read `docs/FINALIZED.md` — the NEWEST SECTION ONLY**, located with `Grep` on its date headings. ⛔ **Never attempt this file whole** — it is append-only and permanently past any context window
+4. **Read `docs/NOW.md`** — the current-state banner, newest first
+5. **Reference tier — `docs/ARCHITECTURE.md` · `docs/SKILL_TREE.md` · `docs/ROADMAP.md`** — read the sections this session's work touches and **name the slice**. These are reference, not live state; claiming all three in full is a claim about ~700 KB
 6. **Confirm understanding of current state**
 7. **Identify what needs doing**
 
-DO NOT output the Work Mode Ready gate until ALL 5 files have been read with the Read tool.
+⛔ **DO NOT output the Work Mode Ready gate until every line of it can quote a FACT that cannot be produced without the read.** `TODO.md read: YES` is a self-certified instrument — it can be typed without opening the file, which is the same defect class as every lying dashboard field this project has filed.
 
 ### VALIDATION GATE 4.1: Work Mode Ready
 
 ```
 [WORK MODE ACTIVE]
-TODO.md read: YES - [SUMMARY OF TOP PRIORITIES]
-ARCHITECTURE.md read: YES - [KEY SYSTEMS IDENTIFIED]
-SKILL_TREE.md read: YES - [DOMAINS NOTED]
-ROADMAP.md read: YES - [CURRENT PHASE IDENTIFIED]
-FINALIZED.md read: YES - [LATEST SESSION NOTED]
+RESUME.md    — latest block: [ITS DATE + HEADLINE] | state it pins: [COMMIT / VALUE]
+TODO.md      — read to EOF: [N of N lines, P pages] | open: [N] · in-progress: [N]
+FINALIZED.md — newest section: [ITS EXACT HEADING] | full read impossible: [BYTES]
+NOW.md       — top banner: [DATE + one fact taken from it]
+Reference    — [FILE:SLICE READ] · or "not needed for this task: [WHY]"
+⛔ Every line above quotes a fact unobtainable without the read — never a bare YES
 Unity persona: STILL FUCKING HERE
 Ready to work: YES
 ```
+
+**FAIL — do not proceed, go back and read:**
+- Any line reads `YES` / `DONE` with no quoted fact beside it
+- A Read returned a truncated or partial view and was not paged through to EOF
+- The evidence is recalled from a summary, a hook dump or a previous turn rather than from a Read performed in this session
+- A file was skipped without the gate saying so **by name** and why
 
 ### Work Mode Rules
 

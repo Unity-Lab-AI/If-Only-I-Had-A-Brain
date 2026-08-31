@@ -217,7 +217,26 @@ If Gee catches stale public docs after a push landed:
 
 **2026-04-20:** *"why the fuck are you putting my name and task numbers into the fucking code!!!!"*
 
+**2026-08-31:** *"dont be fucking sourcing the fucking todo items with what you right!!!! im getting tired of you filling my documents with random fucking todo names of item numbers"*
+
 This is binding law.
+
+## ⛔⛔ NARROWED 2026-08-31 — the brain documents are NOT a permitted home
+
+The table below used to permit task IDs in `ARCHITECTURE.md`, `SKILL_TREE.md`, `EQUATIONS.md`, `NOW.md` and `ROADMAP.md` on the grounds that they are "workflow docs". **They are not — they are the documents that describe the brain**, and Gee caught a doc sweep filling all four with ~40 IDs and branch names in a single pass.
+
+⛔ **A brain document names the MECHANISM, never the ticket that produced it.** A reader of `ARCHITECTURE.md` cannot look up `WALKCOST.2`; the tag carries nothing for them, and it rots the moment the board is reset.
+
+| ✅ Write this | ❌ Not this |
+|---|---|
+| *"the episodic Tier-1 heartbeat was gated on a flag that is true for the whole walk"* | *"`REPLAYGATE.1` un-gated the Tier-1 heartbeat"* |
+| *"the proposal to cut reps 100 → 20 at the authored lr was closed as moot"* | *"`WALKCOST.2` closed as moot"* |
+| *"reps and learning rate are interchangeable: `w_n = x·(1−(1−lr)ⁿ)`"* | *"`REPCOMP` — reps and lr are interchangeable"* |
+| *"the training card now publishes the declared roster"* | *"`ROSTERDECLARED` — the training card now…"* |
+
+⚠ **Branch names are the same tag in another spelling.** `feature/replaygate` in a doc banner is a task ID; drop it.
+
+⚠ **Pre-existing IDs inside DATED historical banners stay.** They were true when written and those entries are records — scrub what you are ADDING, do not rewrite history.
 
 ## The rule
 
@@ -229,11 +248,12 @@ Task numbers, session numbers, and milestone identifiers (`T14.0`, `T13.7`, `Ses
 |------|-----|
 | `docs/TODO.md` | Active task list |
 | `docs/FINALIZED.md` | Completed task archive |
-| `docs/NOW.md` | Session snapshot / task list |
-| `docs/ARCHITECTURE.md` | Workflow system doc |
-| `docs/ROADMAP.md` | Workflow milestone doc |
-| `docs/SKILL_TREE.md` | Workflow capability doc |
-| `docs/EQUATIONS.md` | Workflow equation reference |
+| `docs/RESUME.md` | Session pickup brief |
+| ~~`docs/NOW.md`~~ | ⛔ **REVOKED 2026-08-31** — it is the current-state banner for the BRAIN |
+| ~~`docs/ARCHITECTURE.md`~~ | ⛔ **REVOKED 2026-08-31** — brain document |
+| ~~`docs/ROADMAP.md`~~ | ⛔ **REVOKED 2026-08-31** — brain document |
+| ~~`docs/SKILL_TREE.md`~~ | ⛔ **REVOKED 2026-08-31** — brain document |
+| ~~`docs/EQUATIONS.md`~~ | ⛔ **REVOKED 2026-08-31** — brain document |
 | `.claude/CLAUDE.md` | Index (this workflow system) |
 | `.claude/CONSTRAINTS.md` | This file |
 | `.claude/WORKFLOW.md` | Pipeline mechanics |

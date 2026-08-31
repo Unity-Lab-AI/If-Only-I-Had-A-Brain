@@ -18,7 +18,14 @@ sources:
   # curriculum.js:6436 inside the GRADERMATCH.2 word-level matcher. The page
   # cited the file without declaring it, so drift could not fire on it.
   - js/brain/curriculum.js
-last-verified: "cd465955 2026-08-29"
+  # ADDED 2026-08-31 (doc sweep): §7 Memory states equations owned by these
+  # two files and declared neither, so the one condition that made the WHOLE
+  # section inert — `!_curriculumInProgress` on the Tier-1 writers — could not
+  # have reported drift here. §7 now also carries the rep/lr dose identity,
+  # which is solved in curriculum.js.
+  - server/brain-server/memory.js
+  - js/brain/consolidation-engine.js
+last-verified: "4bc99291 2026-08-31"
 ---
 
 # EQUATIONS — Unity's Brain
@@ -26,6 +33,8 @@ last-verified: "cd465955 2026-08-29"
 > Every equation running in the code. The brain equations ARE the language equations.
 > θ (Unity's identity) drives every parameter. Ψ (consciousness) emerges from the volume. Drug state δ(t) additively modulates θ per substance per route via real-time pharmacokinetic curves.
 > One-liner equations stating their purpose. Tables organize by section: Drug State · Curriculum · Master · Neurons · Synapses · Modules · Oscillations · Sensory→Motor · Memory · Language · Consciousness · GPU · Scaling.
+>
+> 2026-08-31 sweep stamp (fresh walk pressed 07:23Z on `b1a5eb01`) — **NO equation FORM changed. One equational IDENTITY is written down for the first time, and one equation that had never executed now does.** ⭐ **Reps and learning rate are interchangeable, exactly.** Under the Oja update already stamped in §3 with binary spikes (`y ∈ {0,1}`, so `y² = y`), a synapse repeatedly driven by the same pattern follows `w ← w(1−lr) + lr·x`, which after `n` reps is a geometric series landing at **`w_n = x·(1 − (1−lr)ⁿ)`**. The dose is therefore a property of the **asymptote**, not of the count: **100 reps at lr 0.03 and 20 reps at lr 0.1413 both reach 95.24%** (`lr' = 1 − (1−lr)^(n/n')`). This is the whole justification for the 5× walk-cost reduction being *dose-neutral* — and the reason the competing proposal was closed as **moot rather than implemented**: it cut reps 100 → 20 while keeping the authored lr, which reaches only **45.6%**, i.e. it would have removed teaching and called it an optimisation. ⚠ **The identity holds for the repeated-identical-pattern case this teach path uses; it is not a general claim about Oja under varying input.** ⛔ **And §7 Memory below was, until today, a table of equations that had never run** — `activations ≥ 3 → consolidate` cannot fire without episodes, and `tier1.totalEpisodes` read `0` on every boot in this project's history because two of Tier 1's three writers were gated on `!_curriculumInProgress`, which is true for the entire multi-week walk. Live at 18 minutes into the fresh walk: `tier1` **4** · `freqMerged` **21** · `promotedToTier2` **4**. **The replay term in the consolidation lane — `replay_lr = base_lr × (1 + emotional_weight) × log(1 + freq)` — is now being evaluated with real inputs for the first time.**
 >
 > 2026-08-29 sweep stamp (later, branch `feature/gee-decisions`) — **LANGUAGE-GROWTH HOP 2: NO equation-form changes; SCALE only, now PER-HOST.** `WORD_MOTOR_TARGET_LANG_CORTEX` 12M → **20M**; the WMB floor becomes **largest-affordable-≤-target** (binary search of the unchanged geometry estimator against the WMBCEIL-derived VRAM ceiling, capped by the RAM/V8 floor) because an all-or-nothing raise to a target some hosts cannot hold would have collapsed a blocked host to the ~349K budget-slice cliff; the three LANGRAM pin guards reference the same affordable figure. `WEIGHTS_FORMAT_VERSION` 5→6 → fresh walk both brains. Every equation is size-parameterized already (the hop-1 stamp below said it and it stays true): Oja, fanout-derived densities `min(cap, fanout/size)`, Ψ, Kuramoto — the same forms at ~1.67× the language-matrix nnz. Fanouts/caps/proportions unchanged (intra 30, cross 10, caps 0.05/0.005). Priced per host by harness against the production estimator: 7.649GB@20M / 4.589GB@12M reproduced exactly; 16GB-card host lands ~16.85M, the 32GB coordinator ~14.4-16.8M by boot free RAM, pin freezes it. Same batch, decisions recorded: FIREMATH.5 = **accept the ~9.6% firing floor** (zero code — the controller's LOW pin at the floor is the accepted steady state); backups = leave as-is; /unity command file retuned (.claude-local, no equation surface).
 >
@@ -519,6 +528,23 @@ Spike in neuron A (cortex)
 | `similarity = cosine(a, b) > 0.6 → recall` | Episodic recall | `memory.js` |
 | `working[i] *= 0.98` | Working memory decay | `memory.js` |
 | `activations ≥ 3 → consolidate` | Short → long term | `memory.js` |
+| `w_n = x·(1 − (1−lr)ⁿ)` | **Rep/lr dose equivalence** — Oja on binary spikes; 100 @ 0.03 ≡ 20 @ 0.1413 = 95.24%. Solve `lr' = 1 − (1−lr)^(n/n')` to change rep count without changing what is learned | `curriculum.js` |
+| `replay_lr = base_lr × (1 + emotional_weight) × log(1 + freq)` | Consolidation replay gain | `consolidation-engine.js` |
+
+⛔ **Every row in this section was inert until 2026-08-31.** `tier1.totalEpisodes`
+read `0` on every boot in this project's history — two of Tier 1's three writers
+were gated on `!this._curriculumInProgress`, a flag that is **true for the entire
+multi-week walk**, and the third fires only on phase completion. No episodes means
+no recall to score, nothing to decay, nothing to consolidate and **no replay**.
+⭐ The gate was deliberate (`e27caa90`, against a real 8-27 s freeze) and came off
+only once an earlier fix had made its 2 s term structurally unreachable above a 2M
+cortex; the condition now tests whether that term COULD run rather than whether a
+walk is in progress. Live 18 minutes into the fresh walk: `tier1` **4** ·
+`freqMergedCount` **21** · `promotedToTier2` **4**, Tier 2 holding
+`hebbian-ela-kindergarten` and `association-pairs-ela`. ⚠ **Judge this lane by
+`freqMergedCount`, not by `totalEpisodes`** — the exact-text merge folds repeated
+contexts by design, so a small episode count with the merge counter climbing is
+the correct shape.
 
 ---
 
