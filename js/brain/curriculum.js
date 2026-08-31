@@ -16247,7 +16247,64 @@ export class Curriculum {
     this._hb(`[Curriculum][${label}] START — ${pairs.length} pairs × ${reps} reps · soft-writes=${!binarize} · row-norm=${normalizeAfter} · anti-pairs=${antiPairs} · motor-WTA=${motorWTA}/${motorTopK} · sem-WTA=${semWTA}/${semTopK}`);
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
     for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { trained, skipped };
+      // ⭐⭐ `PHASELOOP.1` (2026-08-30) — BANK THE CURSOR ON EVERY REP, NOT ONLY
+      //   AT A BUDGET STOP. THIS IS WHY THE WALK COULD NEVER PASS ITS FIRST CELL.
+      //
+      // Gee: "its been on phase 2 of elz for like close to 40 hours now including
+      // all the update savestarts... is this thing ever going to pass the first
+      // cell?" The answer was no, and it was not slowness.
+      //
+      // ⛔ TWO EXITS FROM THIS LOOP, AT THE SAME CLEAN REP BOUNDARY, AND ONLY ONE
+      //   OF THEM SAVED ITS PLACE. The budget stop below banks `reps - rep` into
+      //   `_phaseRepCursor`; the shutdown check returned `{ trained, skipped }`
+      //   and banked NOTHING. And the budget exit never runs, because
+      //   `PHASE_BUDGET_MS` is 0 by Gee's 2026-08-20 decision — the live log says
+      //   so itself: "NO PHASE BUDGET - this phase runs to completion however
+      //   long it takes".
+      //
+      // So every Update & Savestart: flag set -> this loop returns with no
+      // cursor -> weights save fine (the LEARNING is not lost) -> on reboot
+      // `passedPhases` has no entry and the cursor has no remainder -> the full
+      // authored dose re-arms -> `_teachSentenceStructure` starts again at
+      // "visit #1 - mode=FULL - effective dose x1.000". Measured live on
+      // `0139c186`: ONE `PHASE SKIPPED` line in the entire ring
+      // (`_teachCourseIdentity`, the trivial course-name phase) — that is the
+      // whole of `cellPhasesCompleted: 1 / 25` after ~40 hours.
+      // ⛔ The phase is LONGER than the gap between presses and nothing partial
+      //   banked, so it could not finish. Not slowly — by construction.
+      //
+      // ⚠ WHY EVERY REP RATHER THAN JUST FIXING THE SHUTDOWN EXIT: `/shutdown`
+      //   sets the flag, writes the resume marker, then calls `brain.stop()`
+      //   which FORCE-SAVES — and only then does this async loop reach its next
+      //   boundary. A bank on the way out can therefore land AFTER the save that
+      //   was supposed to carry it. Banking here has no ordering dependency on
+      //   the shutdown sequence at all, and it survives SIGKILL / OOM / power
+      //   loss too, which a cooperative exit never can.
+      //
+      // ⚠ THE ARITHMETIC COMPOSES ACROSS VISITS because `reps` is re-read from
+      //   the caller each visit and the resume above REPLACES it with the
+      //   remainder. Visit 1 of an authored 60 runs 20 and banks 40; visit 2
+      //   arrives with `reps = 40`, runs 15, banks 25; visit 3 trains 25. Total
+      //   landed 20+15+25 = 60 = the authored dose, taught once.
+      // ⚠ At `rep === 0` this writes `reps`, which the resume guard
+      //   (`_owed < reps`) correctly IGNORES — nothing has landed yet, so there
+      //   is no remainder to resume from. Dying mid-rep re-teaches only that one
+      //   incomplete rep, which is the conservative direction.
+      // ⛔ NOT A CUT AND NOT A BOUND: no dose changes, no gate weakens, nothing
+      //   is skipped. It stops DISCARDING work already paid for.
+      if (_cursorKey) {
+        if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+        cluster._phaseRepCursor[_cursorKey] = reps - rep;
+      }
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) {
+        // Banked above already; returning the same SHAPE as the budget stop so a
+        // caller cannot tell the two apart by accident and silently treat an
+        // interrupted phase as a finished one.
+        const _owedNow = reps - rep;
+        console.warn(`[Curriculum][${label}] PHASELOOP.1 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
+        _acRow.ms += Date.now() - startMs;
+        return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
+      }
       // CELLBOUND.A - THE PHASE DEADLINE, honoured on a CLEAN REP BOUNDARY.
       //
       // A rep is the atomic training unit: every pair has been presented the
