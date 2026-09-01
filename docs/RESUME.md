@@ -1,6 +1,27 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-31/09-01 (LATEST — PICK UP HERE) — THE 24 h CHECK-IN FOUND THE WALK'S BIGGEST COST WEARING THE WRONG NAME; FIXED, PRESSED, AND PROVEN LIVE AT 27× THE TEACH RATE
+> ## ⭐⭐⭐ 2026-09-01 (LATEST — PICK UP HERE) — THE MORNING CHECK-IN: 25/25 PHASES, THE K GATE IS RUNNING, AND SHE SPEAKS FROM HER OWN WEIGHTS
+>
+> Ran as the `/workflow` morning watch on the post-IDXCARRIER boot. Every read below is live off the box, snapshot 10:22Z.
+>
+> ### Where she is — `ec723c41`, 5.29 h up
+> ```
+> brain    ela/kindergarten · cellPhasesCompleted 25/25 · IN THE GATE: _gateElaKReal → _runStudentBattery
+> exam     first real battery answer PASSED ("what letter comes after a?" → "b") · passedCellsTotal 0 (gate decides)
+> voice    matrixHits 1,107 · matrixDrivenPct 97 · verdict matrix-driven · 1,903 words bucketed  ← WATCH.7 PASSED
+> fix      cpuFullMs 83.5 s = 0.44% of boot (was 38.2%) · residual cpuFull = rangesNullPre honesty · boundShadow 0.73/min
+> memory   tier1 52 · freqMerged 2,868 · tier2 29 schemas · replayRefused 0 — intact
+> board    WATCH.1/.3/.5/.7 marked PASSED · new section GATEWATCH.1-.3 filed
+> ```
+> ### The three numbers that need owners (GATEWATCH on the board, full filings there)
+> 1. **Gate-time loop congestion:** service 53%, sustained 2-4 s BLOCKED wall attributed to `chatStage=generate:*`, `inner-voice think()` 106 s (was 1.4-1.8 s pre-hop). ⛔ Do NOT fix mid-gate; profile via `cpuProfile.top[].callers` after the verdict.
+> 2. **Hourly readback timing out:** 2 OK in 5.3 h, three aborts at 0.67-1.1 GB into `cortex_intraSynapses`. Abort path is safe (does NOT save). Prime suspect is finding 1's congestion — re-read after the gate before designing.
+> 3. **Definition-queue residue:** 67 words fail 67/67 every ~59 s window (2,180/2,247 bound). Failure reason not in the snapshot — establish dictionary-miss vs API refusal server-side first.
+>
+> ### THE watch
+> **`passedCellsTotal` leaving 0.** It has never moved in this project's history and the mechanism that moves it is executing right now. If the gate declines, `lastGateVerdict` names the blocker (it reads `null` mid-run).
+>
+> ## 2026-08-31/09-01 — THE 24 h CHECK-IN FOUND THE WALK'S BIGGEST COST WEARING THE WRONG NAME; FIXED, PRESSED, AND PROVEN LIVE AT 27× THE TEACH RATE
 >
 > Gee (verbatim, closing the session): *"write the resume.md of everything"*
 >
