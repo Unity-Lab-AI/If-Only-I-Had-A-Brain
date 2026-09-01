@@ -6006,6 +6006,91 @@ export class Curriculum {
     return out;
   }
 
+  /**
+   * The 26×26 letter-transition mass, extracted STRAIGHT from the trained
+   * intra-synapse CSR (letter-region rows × letter-region cols) and cached
+   * with an hourly TTL. M[in][out] = total trained weight from bucket `in`'s
+   * neurons (pre) to bucket `out`'s neurons (post) — CSR rows are POST,
+   * colIdx entries are PRE. One pass over the letter region's rows; no
+   * propagate, no cortex ticks, no injection.
+   */
+  _letterTransitionMatrix() {
+    const cluster = this.cluster;
+    const syn = cluster && cluster.synapses;
+    const letterRegion = cluster && cluster.regions && cluster.regions.letter;
+    if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion) return null;
+    const now = Date.now();
+    const TTL = 3600000;   // the matrix moves at teach speed; an hour is fresh
+    if (this._letterTransCache && (now - this._letterTransCache.at) < TTL) return this._letterTransCache;
+    const invSize = (typeof inventorySize === 'function') ? inventorySize() : 26;
+    if (invSize <= 0) return null;
+    const start = letterRegion.start, end = letterRegion.end;
+    const span = end - start;
+    if (span <= 0) return null;
+    const bucket = Math.max(1, Math.floor(span / invSize));
+    const M = new Float64Array(invSize * invSize);
+    for (let post = start; post < end; post++) {
+      const bOut = Math.floor((post - start) / bucket);
+      if (bOut >= invSize) break;
+      const r0 = syn.rowPtr[post], r1 = syn.rowPtr[post + 1];
+      for (let k = r0; k < r1; k++) {
+        const pre = syn.colIdx[k];
+        if (pre < start || pre >= end) continue;
+        const bIn = Math.floor((pre - start) / bucket);
+        if (bIn >= invSize) continue;
+        M[bIn * invSize + bOut] += syn.values[k];
+      }
+    }
+    const inv = (typeof inventorySnapshot === 'function') ? inventorySnapshot() : null;
+    this._letterTransCache = { at: now, M, invSize, inv };
+    return this._letterTransCache;
+  }
+
+  /**
+   * Direction-aware, SHARE-NORMALIZED letter-sequence read. The raw-mass
+   * argmax was measured electing the global 'a' basin for every question
+   * ("after b" → "a" AND "before b" → "a" on the live box): 'a' is bound to
+   * everything, so its raw incoming mass wins regardless of the ask. The
+   * trained transition is the RELATIVE preference, so each candidate is
+   * scored as a SHARE of its own mass on the relevant axis — the same move
+   * WORDNORM made when common words won every word argmax:
+   *   after-X : score(c) = M[X][c] ÷ Σ M[*][c]   (X's share of c's incoming)
+   *   before-X: score(c) = M[c][X] ÷ Σ M[c][*]   (X's share of c's outgoing)
+   * No arbitrary constants — shares are proper conditional fractions; the
+   * only gate is > 0 (a candidate with no trained mass toward the target
+   * cannot answer). Candidates clamp to a-z; the input letter is excluded.
+   * Also the first read that answers "before" AT ALL — the old forward
+   * propagate had no reverse.
+   */
+  _letterSequenceRead(letter, dir) {
+    const cache = this._letterTransitionMatrix();
+    if (!cache || !cache.inv) return null;
+    const { M, invSize, inv } = cache;
+    const li = inv.indexOf(letter);
+    if (li < 0 || li >= invSize) return null;
+    const az = [];
+    for (let i = 0; i < Math.min(invSize, inv.length); i++) {
+      if (/^[a-z]$/.test(inv[i] || '')) az.push(i);
+    }
+    let best = -1, bestScore = 0;
+    for (const c of az) {
+      if (c === li) continue;
+      let raw = 0, denom = 0;
+      if (dir === 'before') {
+        raw = M[c * invSize + li];
+        for (const o of az) denom += Math.max(0, M[c * invSize + o]);
+      } else {
+        raw = M[li * invSize + c];
+        for (const o of az) denom += Math.max(0, M[o * invSize + c]);
+      }
+      if (raw <= 0 || denom <= 0) continue;
+      const s = raw / denom;
+      if (s > bestScore) { bestScore = s; best = c; }
+    }
+    if (best < 0) return null;
+    return { letter: inv[best], score: bestScore, dir: dir === 'before' ? 'before' : 'after' };
+  }
+
   async _studentTestProbe(opts = {}) {
     const cluster = this.cluster;
     const startMs = Date.now();
@@ -6151,96 +6236,17 @@ export class Curriculum {
         ? this._extractKeyWord(question) : null;
       if (keyTok && keyTok.length === 1 && /^[a-z]$/.test(keyTok)) {
         if (tplId === 0) {
-          // "what (letter) comes after X" — inject X into letter region,
-          // propagate intra-cluster synapses (learned next-letter
-          // transitions from alphabet sequence pairs teach), read motor
-          // bucket argmax. Uses cluster.synapses (intra-cluster recurrent
-          // matrix) which is the same path _emitDirectPropagate Step 2+
-          // uses for sequential emission — so this is the Template 0
-          // specialization of the same mechanism, with cleaner intent
-          // seeding (letter directly, not via sentence embedding).
-          if (typeof cluster.injectLetter === 'function' && typeof cluster.synapses?.propagate === 'function' && cluster.synapses.values?.length > 0) {
-            cluster.injectLetter(keyTok, 1.0);
-            for (let t = 0; t < 4; t++) { try { await cluster.stepAwait(0.001); } catch { break; } }
-            // Build cluster-sized input with letter region populated for
-            // the input letter, propagate, read motor argmax.
-            const letterRegion = cluster.regions?.letter;
-            const motorRegion = cluster.regions?.motor;
-            if (letterRegion && motorRegion) {
-              const invSize = (typeof inventorySize === 'function') ? inventorySize() : 26;
-              if (invSize > 0) {
-                const oneHot = (typeof encodeLetter === 'function') ? encodeLetter(keyTok) : null;
-                if (oneHot && oneHot.length > 0) {
-                  const clusterInput = new Float64Array(cluster.size);
-                  const letterSize = letterRegion.end - letterRegion.start;
-                  const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
-                  for (let d = 0; d < oneHot.length; d++) {
-                    if (oneHot[d] <= 0) continue;
-                    for (let n = 0; n < gSize; n++) {
-                      const idx = letterRegion.start + d * gSize + n;
-                      if (idx < letterRegion.end) clusterInput[idx] = 1;
-                    }
-                  }
-                  // GATEPIN.1 — sliced propagate; same fix as the probe pair above.
-                  const clusterOutput = (typeof cluster.synapses.propagateChunked === 'function')
-                    ? await cluster.synapses.propagateChunked(clusterInput, { chunkRows: 65536 })
-                    : cluster.synapses.propagate(clusterInput);
-                  if (clusterOutput && clusterOutput.length > 0) {
-                    // EQUATION FIX iter9 — read LETTER REGION argmax,
-                    // not motor. Operator caught it iter8 verbatim
-                    // 2026-04-27: "we need to fix it like how u think
-                    // but for Unity Duh!!! thats the fix so learn her
-                    // correctly and make her equations correct".
-                    // For "what letter comes after X?" the alphabet
-                    // sequence training (`_teachAlphabetSequencePairs`)
-                    // writes letter[X] → letter[X+1] into the intra-
-                    // cluster `cluster.synapses` matrix. The next
-                    // letter's basin fires in the LETTER REGION
-                    // post-propagate, not motor. Motor region is for
-                    // SPEECH OUTPUT (sem→motor speech-act path) —
-                    // completely different basin. Reading motor here
-                    // was the wrong equation; iter7 sep-probe sub-0.3
-                    // basins were measuring the WRONG region.
-                    const letterEnd = letterRegion.end;
-                    const letterStart = letterRegion.start;
-                    const letterSpan = letterEnd - letterStart;
-                    const bucketSize = Math.max(1, Math.floor(letterSpan / invSize));
-                    // Inventory clamp to a-z (auto-grown digits +
-                    // punctuation never eligible for letter-sequence
-                    // answers).
-                    const invAll = (typeof inventorySnapshot === 'function') ? inventorySnapshot() : null;
-                    const azIndices = [];
-                    if (invAll) {
-                      for (let i = 0; i < invAll.length; i++) {
-                        const ch = invAll[i];
-                        if (ch && /^[a-z]$/.test(ch)) azIndices.push(i);
-                      }
-                    }
-                    let bestIdx = -1, bestSum = -Infinity;
-                    for (const b of azIndices) {
-                      let sum = 0;
-                      for (let n = 0; n < bucketSize; n++) {
-                        const idx = letterStart + b * bucketSize + n;
-                        if (idx < letterEnd) sum += clusterOutput[idx];
-                      }
-                      if (sum > bestSum) { bestSum = sum; bestIdx = b; }
-                    }
-                    // Threshold lowered 0.05 → 0.001 in iter6 — let
-                    // sparser matrix's tiny bucket sums fire the
-                    // routing instead of being gated out.
-                    if (bestIdx >= 0 && bestSum > 0.001) {
-                      if (invAll && bestIdx < invAll.length) {
-                        const nextLetter = invAll[bestIdx];
-                        if (nextLetter && nextLetter !== keyTok) {
-                          templatedAnswer = nextLetter;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+          // "what letter comes after/before X" — a DIRECTION-AWARE read of
+          // the trained letter-transition mass, share-normalized. Replaces
+          // the old inject+propagate+argmax, which was measured electing the
+          // GLOBAL 'a' basin regardless of the question ("after b" → "a" AND
+          // "before b" → "a" on the live box — 'a' receives from everything,
+          // so raw mass always wins), and which had no reverse read at all
+          // for "before". Reads the same trained weights, honestly relative,
+          // with zero cortex ticks — see _letterSequenceRead.
+          const _dirBefore = /\b(?:before|precedes)\b/.test(this._normalizeQuestionText(question));
+          const _seqRead = this._letterSequenceRead(keyTok, _dirBefore ? 'before' : 'after');
+          if (_seqRead && _seqRead.letter) templatedAnswer = _seqRead.letter;
         } else if (tplId === 1) {
           // "what sound does the letter X make" — inject X into letter
           // region, propagate letter_to_phon cross-projection (trained
@@ -8149,6 +8155,25 @@ export class Curriculum {
       if (subject === 'ela') {
         try { await this._teachLanguageMechanics(grade, ctx); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _teachLanguageMechanics(${grade}) non-fatal: ${e?.message || e}`); }
+        // FUNDAMENTALS REFRESH — spaced repetition of foundational reading
+        // (alphabet sequence + letter naming) in every post-K ELA grade.
+        // Operator ask 2026-09-01. K taught both at reps:50; on saved
+        // weights a refresh tops the basin up per Oja convergence
+        // x·(1−(1−lr)ⁿ) rather than relearning, so reps:10 suffices.
+        // RE-PRICE: 2 bounded direct-Oja passes × ~12 post-K ELA cells ≈
+        // minutes per cell, well under an hour across the whole walk —
+        // teaching added, no gate touched. Runs at the chokepoint every
+        // ELA cell already flows through, so future grades inherit it.
+        if (grade !== 'pre-K' && grade !== 'kindergarten') {
+          try {
+            if (typeof this._teachLetterSequenceDirect === 'function') {
+              await this._phasedTeach('ELA-FUNDAMENTALS-ALPHABET-SEQ-REFRESH', () => this._teachLetterSequenceDirect({ reps: 10 }));
+            }
+            if (typeof this._teachLetterNamingDirect === 'function') {
+              await this._phasedTeach('ELA-FUNDAMENTALS-LETTER-NAMING-REFRESH', () => this._teachLetterNamingDirect({ reps: 10 }));
+            }
+          } catch (e) { if (this._hb) this._hb(`[Curriculum] fundamentals refresh (${grade}) non-fatal: ${e?.message || e}`); }
+        }
       }
       // HYBRID depth: prose-academic subjects train the downloaded real-
       // curriculum corpus (corpora/academic/<subject>/<grade>.json) before the
@@ -14381,9 +14406,26 @@ export class Curriculum {
    *   5 — "spell X" / "starts with X"
    *   6 — catch-all question
    */
+  /**
+   * Structural-filler normalization shared by the template classifier and
+   * the key-word extractor — the CHOKEPOINT for phrasing robustness. Live
+   * chat asks arrive with quoted letters ('"c"') and frame filler ("what
+   * letter IN THE ALPHABET comes after THE LETTER i") that break regex
+   * adjacency; normalizing once here means both consumers see the same
+   * canonical form and can never disagree. Grammar-frame phrases only —
+   * no content words, per the no-word-lists law.
+   */
+  _normalizeQuestionText(question) {
+    return String(question || '').toLowerCase()
+      .replace(/["'`‘’“”]/g, ' ')
+      .replace(/\b(?:in|of)\s+the\s+alphabet\b/g, ' ')
+      .replace(/\bthe\s+letter\b/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+  }
+
   _classifyQuestionTemplate(question) {
     if (!question || typeof question !== 'string') return -1;
-    const q = question.toLowerCase().trim();
+    const q = this._normalizeQuestionText(question);
     if (!q) return -1;
     if (/\b(?:what|which)\s+letter\s+(?:comes?|is|goes?)\s+(?:after|before|next(?:\s+to)?)/.test(q)) return 0;
     if (/\b(?:what|which)\s+(?:comes?|is|goes?)\s+(?:after|before|next(?:\s+to)?)/.test(q)) return 0;
@@ -14491,12 +14533,11 @@ export class Curriculum {
    */
   _extractKeyWord(question) {
     if (!question || typeof question !== 'string') return null;
-    // Quote/punctuation normalization — a live chat ask wrote the letter as
-    // "c" (quoted), and `([a-z0-9]+)` cannot match through a quote mark, so
-    // extraction fell to the last-word fallback and the Template-0 letter
-    // read never fired. Quotes become spaces; inert for gate questions (the
-    // exam banks carry none).
-    const q = question.toLowerCase().replace(/["'`‘’“”]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Shared structural normalization (quotes, "in/of the alphabet",
+    // "the letter") — see _normalizeQuestionText. A quoted '"c"' or filler
+    // between the frame words used to break regex adjacency, drop extraction
+    // to the last-word fallback, and hand the wrong subject downstream.
+    const q = this._normalizeQuestionText(question);
     // Order matters — more specific patterns first.
     const patterns = [
       // "what letter comes after/before X?" → X
