@@ -100244,7 +100244,29 @@ var SHORT_WORD_REPS_MAX = 2;
 var LONG_WORD_REPS_MAX = 1;
 var SHORT_WORD_MAX_LEN = 3;
 var SUBJECTS2 = ["ela", "math", "science", "social", "art", "life"];
-var PROSE_ACADEMIC_SUBJECTS = /* @__PURE__ */ new Set(["ela", "science", "social", "economics", "psychology", "civics", "cs"]);
+var PROSE_ACADEMIC_SUBJECTS = /* @__PURE__ */ new Set([
+  "ela",
+  "science",
+  "social",
+  "economics",
+  "psychology",
+  "civics",
+  "cs",
+  // The college-and-above roster — her CS major, gen-ed, the two CS tracks,
+  // and the grad/PhD research specialty.
+  "major",
+  "genered",
+  "cstheory",
+  "cssystems",
+  "research",
+  // The six real courses that ran with no prose lane at all.
+  "art",
+  "pe",
+  "music",
+  "health",
+  "language",
+  "ap"
+]);
 var SUBJECTS_INTRODUCED_AT = {
   // grade key → subjects that FIRST appear at this grade (beyond the 6 core)
   // Real K has gym (PE), general music, and health/safety lessons — so the
@@ -104806,6 +104828,115 @@ var Curriculum = class _Curriculum {
    * immediately, not buffered until the next V8 event-loop tick.
    * Safe in the browser bundle — stdout.write falls into catch.
    */
+  /**
+   * TEACHVIEW — THE TEACH BUS. Every teach lane reports the REAL payload here.
+   *
+   * ⛔⛔ THE FOUNDING FACT THIS EXISTS TO FIX: before this method, there was no
+   * channel anywhere carrying the exact text she is being taught.
+   * `_teachSentenceList` — the lane that trains every academic corpus sentence,
+   * called from 23 sites — contained no `_hb`, no console, no publish, no emit
+   * of ANY kind. It took the sentences and trained them silently. That is why a
+   * year of 14-sentences-per-topic went unnoticed: not because the evidence
+   * scrolled past too fast, but because it was never produced.
+   *
+   * ⭐ TWO SEPARATE THINGS, and conflating them is the trap:
+   *   • COUNTS are COMPLETE. Every item that passes through is counted, per
+   *     lane / subject / grade / source. Nothing is sampled away.
+   *   • The FEED is a bounded ring for READING. It holds the most recent N
+   *     items so a human can actually look at them.
+   * Dropping 99 of every 100 lines and calling that a view would reproduce the
+   * exact failure being fixed — a sampled view of a poisoned corpus can miss
+   * the poison. So the analytics never sample; only the reading pane is paced,
+   * and the UI states both facts so the pane can never be mistaken for the whole.
+   *
+   * ⚠ BACK-PRESSURE SAFE BY CONSTRUCTION. The teach lanes fire thousands of
+   * items per second at biological scale and this rides the same event loop as
+   * the donor socket and the WS pump, so this method does NO I/O, NO stringify,
+   * NO allocation beyond one small object, and never awaits. It is a counter
+   * bump plus a ring write. The state publish (10fps) reads the ring; nothing
+   * is pushed from here.
+   *
+   * @param {string} lane   — `_teachSentenceList` / `_teachAssociationPairs` / …
+   * @param {string} text   — the ACTUAL content: sentence, "a -> b", the word
+   * @param {object} [meta] — {subject, grade, cell, phase, source, reps, relationTagId}
+   */
+  teachBus(lane, text, meta) {
+    const tv = this._teachView || (this._teachView = {
+      total: 0,
+      byLane: /* @__PURE__ */ Object.create(null),
+      byCell: /* @__PURE__ */ Object.create(null),
+      bySource: /* @__PURE__ */ Object.create(null),
+      ring: [],
+      ringSeq: 0,
+      startedAt: Date.now(),
+      lastAt: 0,
+      flags: []
+    });
+    tv.total++;
+    tv.lastAt = Date.now();
+    const L = lane || "unknown";
+    tv.byLane[L] = (tv.byLane[L] || 0) + 1;
+    const m = meta || {};
+    if (!m.subject || !m.grade) {
+      const ck = this.cluster && this.cluster._currentCellKey;
+      if (ck && typeof ck === "string" && ck.indexOf("/") > 0) {
+        const parts = ck.split("/");
+        if (!m.subject) m.subject = parts[0];
+        if (!m.grade) m.grade = parts.slice(1).join("/");
+      }
+    }
+    if (m.subject && m.grade) {
+      const k = `${m.subject}/${m.grade}`;
+      const c = tv.byCell[k] || (tv.byCell[k] = { items: 0, words: 0, lanes: /* @__PURE__ */ Object.create(null) });
+      c.items++;
+      c.words += text ? String(text).split(/\s+/).length : 0;
+      c.lanes[L] = (c.lanes[L] || 0) + 1;
+    }
+    const src = m.source || "runner-literal";
+    tv.bySource[src] = (tv.bySource[src] || 0) + 1;
+    const CAP = 400;
+    tv.ring.push({
+      n: ++tv.ringSeq,
+      t: tv.lastAt,
+      lane: L,
+      text: text == null ? "" : String(text).slice(0, 400),
+      subject: m.subject || null,
+      grade: m.grade || null,
+      phase: m.phase || null,
+      source: src,
+      reps: m.reps == null ? null : m.reps,
+      rel: m.relationTagId == null ? null : m.relationTagId
+    });
+    if (tv.ring.length > CAP) tv.ring.splice(0, tv.ring.length - CAP);
+  }
+  /**
+   * TEACHVIEW — raise a flag. Rules that fire automatically and stay up until
+   * cleared, per the spec: "notes flags issues warnings all of it".
+   * ⛔ Every flag NAMES the cell, the lane and the number — never a bare colour.
+   */
+  teachFlag(level, code, message, meta) {
+    const tv = this._teachView || (this.teachBus("flag-init", ""), this._teachView);
+    if (!tv) return;
+    const key = `${code}:${meta && meta.subject || ""}/${meta && meta.grade || ""}`;
+    const existing = tv.flags.find((f) => f.key === key);
+    if (existing) {
+      existing.count++;
+      existing.lastAt = Date.now();
+      return;
+    }
+    tv.flags.push({
+      key,
+      level: level || "warn",
+      code: code || "UNKNOWN",
+      message: String(message || "").slice(0, 300),
+      subject: meta && meta.subject || null,
+      grade: meta && meta.grade || null,
+      count: 1,
+      firstAt: Date.now(),
+      lastAt: Date.now()
+    });
+    if (tv.flags.length > 60) tv.flags.splice(0, tv.flags.length - 60);
+  }
   _hb(msg) {
     try {
       const s = String(msg);
@@ -113016,7 +113147,20 @@ var Curriculum = class _Curriculum {
       }
     }
     if (!Array.isArray(definitions) || definitions.length === 0) {
+      try {
+        this.teachFlag("warn", "DEF-MISS", `no dictionary definition for "${w}" \u2014 bound nothing`, {});
+      } catch {
+      }
       return { passes: 0, totalTrained: 0, defsBound: 0, skipped: "no definition" };
+    }
+    try {
+      const first = definitions[0] && (definitions[0].definition || definitions[0]);
+      this.teachBus("_teachWordDefinition", `${w} \u2014 ${String(first || "").slice(0, 200)}`, {
+        phase: opts.label || null,
+        source: "dictionaryapi.dev",
+        reps: opts.reps ?? 6
+      });
+    } catch {
     }
     const STOP = /* @__PURE__ */ new Set(["a", "an", "the", "and", "or", "but", "of", "to", "for", "in", "on", "at", "by", "with", "as", "is", "are", "was", "were", "be", "been", "being", "it", "this", "that", "these", "those", "its", "it", "from", "into", "out", "up", "down", "off", "over", "under", "than", "then", "when", "where", "which", "who", "whose", "whom", "what", "why", "how"]);
     const reps = opts.reps ?? 6;
@@ -113878,7 +114022,12 @@ var Curriculum = class _Curriculum {
     const ticksPerWord = opts.ticksPerWord ?? 2;
     await this._phasedTeach(
       `ACADEMIC-${subject}-${grade}-STORIES`,
-      () => this._teachSentenceList(sentences, ctx, { reps, ticksPerWord })
+      () => this._teachSentenceList(sentences, ctx, {
+        reps,
+        ticksPerWord,
+        label: `ACADEMIC-${subject}-${grade}-STORIES`,
+        source: `corpora/academic/${subject}/${grade}.json`
+      })
     );
     this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE \u2014 trained on ${sentences.length} real-curriculum sentences from corpora/academic/${subject}/${grade}.json (hybrid depth source).`);
     return { trained: sentences.length };
@@ -119996,6 +120145,18 @@ var Curriculum = class _Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+        if (rep === 0) {
+          try {
+            this.teachBus("_teachSentenceList", sentence, {
+              subject: ctx && ctx.subject,
+              grade: ctx && ctx.grade,
+              phase: opts && opts.label || null,
+              source: opts && opts.source || null,
+              reps
+            });
+          } catch {
+          }
+        }
         if (sharedEmbeddings && typeof sharedEmbeddings.refineFromContext === "function" && rep === 0 && !(typeof process !== "undefined" && process.env && process.env.DREAM_LEARN_GEOMETRY === "0")) {
           try {
             const _ctxWords = words.map((w) => w.toLowerCase().replace(/[^a-z'-]/g, "")).filter((w) => w.length >= 2);

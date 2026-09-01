@@ -884,6 +884,41 @@ const SERVER_STATE_MIXIN = {
       // 10fps and a per-push filesystem walk would ride the loop the donor and
       // WS pump share.
       curriculumCoverage: _lap('curriculumCoverage', () => this._curriculumCoverage || null),
+      // TEACHVIEW — exactly what she is being taught, right now.
+      // ⛔ Before this existed there was NO channel anywhere carrying the text
+      // she learns: `_teachSentenceList` (23 call sites) had no log, no publish
+      // and no emit, which is why a 931-page curriculum went a year unnoticed.
+      // ⭐ COUNTS ARE COMPLETE — never sampled — while the FEED is a bounded
+      // ring for human reading. Both facts are shipped so the pane can never be
+      // mistaken for the whole.
+      // ⚠ The ring is sliced HERE rather than sent whole: the payload is built
+      // at 10fps and shipping 400 rows per push would put the feed's weight on
+      // the loop the donor socket and WS pump share. The client keeps its own
+      // history from the sequence numbers.
+      teachView: _lap('teachView', () => {
+        const cur = this.curriculum;
+        const tv = cur && cur._teachView;
+        if (!tv) return null;
+        const since = Number(this._teachViewSince) || 0;
+        const fresh = tv.ring.filter((r) => r.n > since);
+        const SEND = 24;
+        const slice = fresh.slice(-SEND);
+        return {
+          total: tv.total,
+          seq: tv.ringSeq,
+          startedAt: tv.startedAt,
+          lastAt: tv.lastAt,
+          ageMs: tv.lastAt ? (Date.now() - tv.lastAt) : null,
+          byLane: tv.byLane,
+          bySource: tv.bySource,
+          cells: Object.keys(tv.byCell).length,
+          byCell: tv.byCell,
+          flags: tv.flags,
+          feed: slice,
+          feedDropped: Math.max(0, fresh.length - slice.length),
+          ringCap: 400,
+        };
+      }),
       letterRead: _lap('letterRead', () => {
         try {
           const cur = this.curriculum;
