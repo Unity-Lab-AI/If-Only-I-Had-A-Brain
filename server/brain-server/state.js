@@ -806,10 +806,26 @@ const SERVER_STATE_MIXIN = {
         const _gNow = Date.now();
         if (!this._growthCache || (_gNow - (this._growthCacheAt || 0)) >= 5000) {
           this._growthCacheAt = _gNow;
+          // ⛔ `lastInteractionAt` ADDED 2026-09-01 — the dashboard's conversation
+          // panel read `state.lastMessageAt`, which NOTHING has ever published,
+          // so it rendered "—" permanently. That is indistinguishable from "she
+          // has never been spoken to", which is a lie an instrument tells
+          // silently — the `meanVoltage` shape (computed every tick, read under
+          // a different name, null forever).
+          // ⭐ The data existed all along: every conversation entry carries a
+          // `time` (chat.js:658 and :913 both push `{ role, text, time }`), so
+          // the newest one across all users IS the answer and needed only to be
+          // surfaced under a name someone reads.
+          let _lastAt = 0;
+          for (const c of Object.values(this._conversations || {})) {
+            const last = c && c.length ? c[c.length - 1] : null;
+            if (last && typeof last.time === 'number' && last.time > _lastAt) _lastAt = last.time;
+          }
           this._growthCache = {
             totalWords: Object.keys(this._wordFreq || {}).length,
             totalInteractions: Object.values(this._conversations || {}).reduce((s, c) => s + c.length, 0),
             totalEpisodes: this._db ? this.getEpisodeCount() : 0,
+            lastInteractionAt: _lastAt || null,
           };
         }
         return {
