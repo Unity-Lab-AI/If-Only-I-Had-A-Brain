@@ -105212,7 +105212,7 @@ var Curriculum = class _Curriculum {
                 if (ep && ep.pattern) dreamSeed = ep.pattern;
               } else if (!this._dreamSeedGapLogged) {
                 this._dreamSeedGapLogged = true;
-                this._hb("[Curriculum] \u26A0 dream recombination has NO episode seed \u2014 no Tier 1 store exposes getRandomEpisode (MemorySystem has no .tier1, brain.tier1Store is never assigned). Dreams run from the fallback seed only. Filed as DORMANT.2.");
+                this._hb("[Curriculum] \u26A0 dream recombination has NO episode seed, so NO dream is generated on this pass \u2014 the block is skipped entirely, nothing degraded runs. No Tier 1 store exposes a random-episode fetch (MemorySystem has no .tier1; the server store has recallByMood/recallByUser but no random sampler). Filed as DORMANT.2.");
               }
             } catch {
             }
