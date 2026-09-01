@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-09-01 - LETTERCOLD: the instrument I shipped this morning was BLIND, and it was poisoning the answer lane too - feature/letterread-coldcache
+
+Gee (verbatim): *"updated and she is training, what now? what should i ask her to test, did she flunk math, why so? any thing else we can do that needs done after full effiency and correctness of code checks and dashboard info that looks off or suspishous like:loop service 77% serviced · 13,732ms/min late"*
+
+⛔⛔ **THE INSTRUMENT REPORTED A CATASTROPHE AND THE CATASTROPHE WAS THE INSTRUMENT.** The `LETTERBLOCK` health read landed on the box and immediately reported `wired: 0, trained: 0, synapses: 0`, all 26 letters unwired — which, taken at face value, meant the succession lane had been teaching into nothing since the project began. **It was retracted before it was reported to Gee**, because the same console showed that same matrix mid-upload to the donor at **3,509.7 MB** with `nnz=452,481,510`. A matrix cannot be simultaneously empty and 3.5 GB.
+
+**THE MECHANISM, from the timeline arithmetic.** `brain-weights.bin` is **6.8 GB** (the save log measures its own write at 1,639,596 ms). The first state broadcast fires **~3 s after boot** and calls `_letterMatrixHealth()`. So the read ran against an **allocated-but-empty CSR**, found zero letter→letter entries — and `_letterTransitionMatrix`'s **1-hour TTL then FROZE that empty answer for an hour.** Confirmed by field: `ageMs` 201,491 at 3.4 min uptime, i.e. the cache was built ~3 s into boot, while the intra upload did not dispatch until 11:17.
+
+⛔⛔ **AND IT WAS NEVER ONLY AN INSTRUMENT BUG — IT POISONED THE ANSWER.** `_letterSequenceRead` reads the SAME cache. So for a full hour after every boot, **every letter question in chat has been reading an empty matrix and declining**, no matter how well-trained the weights are. That hourly TTL shipped in the CHATASK.4 batch, which means it has been silently degrading the letter lane since the day the share-normalized read landed. **This is very likely the real reason `what letter comes after "D"` failed** — not missing training.
+
+**FIXED, three parts:**
+- **Cold-CSR guard.** `csrEntries = syn.values.length`; if it is 0 the weights are not loaded and the read returns `null` **without caching**, so it re-reads and self-heals the moment they land. An empty read is not a measurement.
+- **Tiered freshness.** A cache that FOUND structure keeps the full hour. A cache that found nothing keeps **30 s** — so a partial load cannot sit for an hour, and the re-walk is paid only in the window where it would otherwise be wrong.
+- **`csrEntries` published in the health object.** ⛔ **This is the field whose absence made the instrument blind:** without the whole-matrix count there is no way to tell *"the letter region has no connections"* from *"I read before 6.8 GB finished loading"* — and the second one reported the first, confidently, for an hour. **An instrument that cannot say whether it can SEE is not an instrument.** Same guard + tiered TTL applied to `_letterOrdinalMatrix`, where an empty result is ALSO the legitimate `not-taught-yet` state — which is precisely why the two must be separated by `csrEntries` and not by the emptiness of the walk.
+
+**VERIFIED:** `node --check` x2 · ESM link · bundle rebuilt and logic-grep confirmed (`csrEntries` 5, cold-guard 1, tiered TTL 2 — comment text is stripped by esbuild, so the LOGIC was grepped, not the prose) · **16/16 harness on the real class**, written with the Write tool and deleted after: a cold CSR saying nothing rather than zero, health reporting `available: false` instead of `wired: 0`, the matrix **self-healing on the same instance** once weights arrive, the ANSWER lane self-healing with it (`no-matrix` while cold → answers `b` once warm), a productive cache still earning the full hour, and a loaded-but-empty letter block correctly cached as a real reading.
+
+⚠ **MY HARNESS CAUGHT MY OWN INCONSISTENCY MID-BATCH:** I left an `if (found > 0)` cache condition in place that contradicted the tiered TTL I had just added, so a genuinely-empty-but-loaded matrix would have been re-walked over 754,136 rows on every state broadcast. Test 5 failed, the condition was removed, 16/16.
+
+**ALSO ANSWERED THIS SESSION, from live reads rather than inference:**
+- **Math did NOT flunk.** `passedCellsTotal` 1 → 2 and `perSubject.math` advanced to `grade1`. Its PROD section did fail its 80% bar (13/13 samples missed, emitting "zee", "insurance", "balloon" for arithmetic), but the cell passed on the same content-completion path ELA-K used. ⚠ The verdict STRING was lost — `_lastGateVerdict` is in-memory and the press cleared it before it could be read.
+- **Science's 20 phases in 3 minutes is real, not a skip.** Only ONE phase was skipped (`_teachCourseIdentity`); the other 19 ran. They are simply tiny — `42 Hebbian updates in 1.2s`, `5 updates in 0.1s`, `47 writes` — against ELA-K's 1,029-word vocabulary walked six times through phoneme blending AND word emission.
+- ⛔ **`PRE-CELL VOCAB` reported success while teaching ZERO of 67 needed words.** `science/kindergarten: 67 of 2247 grade words unlearned` → `0 words taught (0 multi-def Hebbian fires across 0 words)`, because `prefetch — 0/67 new definitions cached`. **Exactly the 67 words `GATEWATCH.3` already has on the board as failing from the error cache.** The lane reports DONE either way. Filed as `PRECELL.1`.
+- **Loop service 77% / 13,732 ms/min late is the CANONICAL UPLOAD window**, not a fault — the console names it: `blocked ... during the CANONICAL UPLOAD window (tick paused by design; chunk pumping + GC)`. Re-read it after the upload settles; if it stays there with no upload running, that is a different finding.
+
+**Docs, every tree named:** `docs/FINALIZED.md` (this) · `docs/TODO.md` (`LETTERCOLD.1` closed, `CURVEDEPTH.1` + `PRECELL.1` filed) · `docs/NOW.md` · `docs/RESUME.md` · `wiki/gotchas/instruments-that-lie.md` + `wiki/modules/curriculum.md` + `wiki/log.md`. **Unaffected:** `docs/ADMIN-CONTROLS.md` (no new flag) · `docs/EQUATIONS.md` (probe reads undocumented there by precedent) · `ARCHITECTURE`/`SKILL_TREE`/`ROADMAP`/`README`/`html/**` (no page describes this lane) · `deploy/**`.
+
+**⛔ SERVER-SIDE — next press.** Post-press read: `state.letterRead.matrix.csrEntries` must be a large number. **If it is, every other field on that object is finally trustworthy** and `wired` vs `trained` answers the structural question for real this time.
+
 ## 2026-09-01 - LETTERBLOCK: the letter read declines OUT LOUD now, and the matrix reports whether it is WIRED or merely UNTRAINED - feature/letterread-blocker
 
 Gee (verbatim), pasting the live chat: *"what letter comes after "D" in the alphabet? / Unity — motor unstable (lowest grade: pre-K) / Motor region didn't commit a stable letter sequence for this input. Live trained capability: 1944 words bucketed across 1 subjects, 1 cells passed, 0 subGrades active. The intent signal may have been too weak for this specific input — try rephrasing."* -> *"okay lets do what needs to be done"*
