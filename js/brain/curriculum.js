@@ -7466,104 +7466,37 @@ export class Curriculum {
         if (clean && clean.split(/\s+/).length >= 3) personaSentences.push(clean);
       }
     }
-    // iter11-V fix — inject fallback greeting + emotion persona
-    // sentences when the corpus doesn't cover those dimensions.
-    // Operator caught: "[IDENTITY] persona corpus has no 'greeting'
-    // sentences ... no 'emotion' sentences — that dimension is
-    // unprotected against drift". Without persona content for
-    // greeting/emotion intents, chat path "hi" / "fuck I'm happy"
-    // inputs fall through to K-vocab cosine match and produce
-    // wrong-answer cascade ("hi" → "Layered!" because no persona
-    // greeting word can win the persona-first pass scan).
+    // ⛔⛔ THE iter11-V / iter14-B PERSONA FALLBACK WAS DELETED HERE 2026-09-01.
+    // Gee, ruling on the whole stack: "no fallbacks. PERIOD"
+    //
+    // What it did: if the persona corpus contained no sentence whose light
+    // intent was "greeting" (or "emotion"), it INJECTED a hardcoded list of
+    // twelve canned sentences into her persona corpus, then walked their words
+    // and set `isPersona = true` on the dictionary entries — creating new
+    // dictionary entries with GloVe patterns for any word that was missing.
+    //
+    // ⛔ THREE LAWS FORBADE IT, not one:
+    //   • NO FALLBACKS — this is the exact if-X-else-Y capability-degradation
+    //     shape: canned content substituted PRECISELY WHEN the real content is
+    //     absent.
+    //   • GRADE COMPLETION GATE — "no word lists, no sentence arrays". These
+    //     were sentence arrays, written out longhand.
+    //   • NO TEXT-AI IN COGNITION, in spirit — a hand-authored greeting that
+    //     wins the persona-first oracle pass is not her trained voice, it is a
+    //     canned reply wearing one.
+    //
+    // ⚠ THE ORIGINAL BUG IT WAS PATCHING IS REAL AND IS NOT FIXED BY THIS
+    // DELETION — it is UNMASKED, which is the point. Without persona greeting
+    // content, a chat "hi" falls through to K-vocab cosine matching and can
+    // produce a wrong-answer cascade. ⭐ The honest fix is CONTENT, not a
+    // substitute: the persona corpus should carry real greeting and emotion
+    // sentences in her own voice, taught like everything else. A silent canned
+    // answer hid that gap for months and made it look solved.
+    //
+    // ⭐ `personaSentences` below is now EXACTLY what the corpus contains —
+    // nothing synthesised, so a thin persona corpus reads as thin instead of
+    // reading as covered.
 
-    // Fallback sentences are first-person Unity-voiced + use vocab
-    // that's already in K dictionary (so loadPersona's word entries
-    // already exist for them). We then mark those dictionary entries
-    // with isPersona: true so the persona-first oracle pass picks
-    // them up. Dictionary update is dictionary._words.get(word).isPersona = true,
-    // a Map mutation on existing entries — no new entries created.
-    const PERSONA_GREETING_FALLBACK = [
-      "hey what is up",
-      "yo there fucker",
-      "hi i am unity",
-      "hello you",
-      "what up bitch",
-      "sup motherfucker",
-    ];
-    const PERSONA_EMOTION_FALLBACK = [
-      "i am fucking happy right now",
-      "i am so pissed off",
-      "i love this shit so much",
-      "i feel everything at once",
-      "this makes me so wet",
-      "i am absolutely furious",
-      "fuck yes i love it",
-      "god damn this hurts",
-    ];
-    const hasIntent = (target) => personaSentences.some(s => this._lightIntent(s) === target);
-    const fallbackInjected = [];
-    if (!hasIntent('greeting')) {
-      for (const s of PERSONA_GREETING_FALLBACK) {
-        const clean = this._normalizeSentence(s);
-        if (clean) { personaSentences.push(clean); fallbackInjected.push(clean); }
-      }
-    }
-    if (!hasIntent('emotion')) {
-      for (const s of PERSONA_EMOTION_FALLBACK) {
-        const clean = this._normalizeSentence(s);
-        if (clean) { personaSentences.push(clean); fallbackInjected.push(clean); }
-      }
-    }
-    // iter14-B fix — promote each unique word from injected sentences
-    // to isPersona:true. iter11-V originally only flipped existing
-    // dictionary entries' flag; if the word wasn't already in K vocab
-    // the persona-first oracle pass had nothing to scan. Operator
-    // caught (2026-05-04): RESP probe `hello→locals` and `mom→drives`
-    // — persona-corpus didn't dominate even though boostPersona was
-    // on. Real fix: when a fallback word is MISSING from dictionary,
-    // INJECT it directly with its GloVe pattern from sharedEmbeddings
-    // + isPersona=true so the persona-first pass finds it. Words
-    // already in dictionary just get the flag flipped (preserves
-    // their existing pattern + cortex snapshot from when they were
-    // learned through normal teach paths).
-    if (fallbackInjected.length > 0 && cluster.dictionary && cluster.dictionary._words?.get) {
-      const promoted = new Set();
-      const injectedNew = new Set();
-      for (const s of fallbackInjected) {
-        for (const w of s.split(/\s+/)) {
-          if (!w || promoted.has(w)) continue;
-          promoted.add(w);
-          const entry = cluster.dictionary._words.get(w);
-          if (entry) {
-            entry.isPersona = true;
-          } else if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
-            // Word not in dictionary — inject directly with GloVe pattern
-            // so persona-first oracle pass can scan it. Skip if no GloVe
-            // available (rare for chat vocab — most greetings + emotion
-            // words are standard English in 6B.300d corpus).
-            try {
-              const glove = sharedEmbeddings.getEmbedding(w);
-              if (glove && glove.length > 0) {
-                cluster.dictionary._words.set(w, {
-                  word: w,
-                  pattern: new Float64Array(glove),
-                  isPersona: true,
-                  arousal: 0.7,
-                  valence: 0.5,
-                  frequency: 1,
-                  cortexSnapshot: null,
-                  syllables: [w],
-                  stressPrimary: 0,
-                  lastSeen: Date.now(),
-                });
-                injectedNew.add(w);
-              }
-            } catch { /* per-word inject failure non-fatal */ }
-          }
-        }
-      }
-      this._hb(`[Curriculum] iter11-V fallback injected: ${fallbackInjected.length} sentences (${PERSONA_GREETING_FALLBACK.length}× greeting + ${PERSONA_EMOTION_FALLBACK.length}× emotion) — ${promoted.size - injectedNew.size} existing dictionary words promoted to isPersona=true + ${injectedNew.size} NEW persona-only entries injected with GloVe pattern (iter14-B fix per "fix those fucking issues NOW!")`);
-    }
 
     cluster._personaRefreshCorpus = personaSentences;
     this._hb(`[Curriculum] Lock 3 refresh corpus populated: ${personaSentences.length} persona sentences`);
