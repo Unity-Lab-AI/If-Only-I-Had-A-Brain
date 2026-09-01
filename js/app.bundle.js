@@ -106781,6 +106781,7 @@ var Curriculum = class _Curriculum {
     const q = String(question || "").trim();
     if (!q || typeof this._studentTestProbe !== "function") return null;
     if (typeof this._isQuestionLike === "function" && !this._isQuestionLike(q)) return null;
+    if (/\b(?:first|second|third|fourth|fifth|last|final)\s+(?:letter|number|digit)\b/i.test(q)) return null;
     const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : this._chatQProbeBudgetMs(q);
     const ac = typeof AbortController === "function" ? new AbortController() : null;
     let timer = null;
@@ -106810,6 +106811,18 @@ var Curriculum = class _Curriculum {
         path = res.definitionAPIPath ? "definition" : res.intentRoutedPath ? "wh-joint" : "template";
       } else if (res.retention && res.logic) {
         path = "direct-propagate";
+      }
+      if (path === "wh-joint") {
+        let intent = null;
+        try {
+          const cl = this.cluster;
+          if (cl && cl.constructor && typeof cl.constructor.extractIntentConcept === "function") {
+            intent = cl.constructor.extractIntentConcept(q);
+          }
+        } catch {
+          intent = null;
+        }
+        if (!intent || intent === "question") return null;
       }
       if (!path) return null;
       return { answer, path, score: res.score, ticks: res.ticks };
@@ -112391,7 +112404,7 @@ var Curriculum = class _Curriculum {
    */
   _extractKeyWord(question) {
     if (!question || typeof question !== "string") return null;
-    const q = question.toLowerCase().trim();
+    const q = question.toLowerCase().replace(/["'`‘’“”]/g, " ").replace(/\s+/g, " ").trim();
     const patterns = [
       // "what letter comes after/before X?" → X
       /\b(?:what|which)\s+letter\s+(?:comes?|is|goes?)\s+(?:after|before|next(?:\s+to)?)\s+([a-z0-9]+)/,
