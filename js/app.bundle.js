@@ -111796,9 +111796,18 @@ var Curriculum = class _Curriculum {
       this._hb(`[Curriculum][${opts.label || "QA-TRAIN"}] SKIPPED \u2014 TRAIN_BANKS entry is empty for this cell`);
       return { trained: 0, skipped: 0 };
     }
-    const reps = opts.reps ?? 12;
+    let reps = opts.reps ?? 12;
     const lr = opts.lr ?? 0.05;
     const label = opts.label || "K-QA-TRAIN";
+    const _cursorKey = cluster._phaseDeadlineName && label ? `${cluster._phaseDeadlineName}::${label}` : null;
+    if (_cursorKey) {
+      if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
+      const _owed = cluster._phaseRepCursor[_cursorKey];
+      if (Number.isFinite(_owed) && _owed > 0 && _owed < reps) {
+        console.warn(`[Curriculum][${label}] PHASELOOP.2 - RESUMING a deferred Q\u2192A phase: ${_owed} of ${reps} authored rep(s) still owed from a previous stop, so THIS visit trains the remainder (${_owed}) instead of repeating the whole dose. Cursor clears when the debt is paid.`);
+        reps = Math.max(1, _owed);
+      }
+    }
     const semRegion = cluster.regions && cluster.regions.sem;
     const motorRegion = cluster.regions && cluster.regions.motor;
     const directPromptAlt = opts.directPromptAlt !== false;
@@ -111817,7 +111826,25 @@ var Curriculum = class _Curriculum {
     } catch {
     }
     for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { trained, skipped };
+      if (_cursorKey) {
+        if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
+        cluster._phaseRepCursor[_cursorKey] = reps - rep;
+      }
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) {
+        const _owedNow = reps - rep;
+        console.warn(`[Curriculum][${label}] PHASELOOP.2 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed \u2014 the next boot RESUMES the remainder instead of repeating the whole dose.` : "NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose."}`);
+        return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
+      }
+      if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
+        const _deferred = reps - rep;
+        const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1e3).toFixed(0);
+        if (_cursorKey) {
+          if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
+          cluster._phaseRepCursor[_cursorKey] = _deferred;
+        }
+        console.warn(`[Curriculum][${label}] PHASELOOP.2 - phase '${cluster._phaseDeadlineName || "?"}' spent its ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit - training is spread, NOT discarded${_cursorKey ? ` \xB7 cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ""}.`);
+        return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
+      }
       for (let qIdx = 0; qIdx < qaList.length; qIdx++) {
         const entry = qaList[qIdx];
         if (!entry || !entry.question || !entry.expectedAnswer) {
@@ -111955,6 +111982,9 @@ var Curriculum = class _Curriculum {
       }
     }
     this._qaConvergenceStreak = 0;
+    if (_cursorKey && cluster._phaseRepCursor && _cursorKey in cluster._phaseRepCursor) {
+      delete cluster._phaseRepCursor[_cursorKey];
+    }
     const qaDiagProjKeys = Array.isArray(opts.projectionsWhitelist) && opts.projectionsWhitelist.length > 0 ? opts.projectionsWhitelist.filter((k) => cluster.crossProjections && cluster.crossProjections[k]) : ["sem_to_motor", "motor_to_sem"].filter((k) => cluster.crossProjections && cluster.crossProjections[k]);
     const qaPrimaryProj = qaDiagProjKeys[0] || "sem_to_motor";
     const qaPruneTopK = opts.pruneTopK ?? 10;
