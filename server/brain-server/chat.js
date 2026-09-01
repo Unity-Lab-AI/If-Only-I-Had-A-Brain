@@ -738,10 +738,52 @@ const SERVER_CHAT_MIXIN = {
       && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1';
 
     let response = '';
+    // CHAT ASKS THROUGH THE EXAM'S LANE. The battery answered "what letter
+    // comes after a?" with "b" while the same question in chat produced
+    // off-target vocabulary, because the probe reconstructs the teach
+    // geometry (dual-tile sem injection + template tag) and reads the
+    // trained pathway for the question class, while compose samples a sem
+    // state the walk is writing into concurrently. Question-like input now
+    // runs the probe FIRST — the same `_studentTestProbe` the gate battery
+    // uses, read-only on weights, hard-bounded — and only falls to the
+    // compose lane when the probe has nothing confident. Gated on the same
+    // CPU-safety condition as generation: the probe ticks the cortex, so a
+    // huge cortex with the GPU proxy down must skip it for the same reason
+    // compose is skipped.
+    let qaPath = null;
+    if (!_cpuTickUnsafe && text && this.curriculum
+        && typeof this.curriculum.answerChatQuestion === 'function') {
+      try {
+        this._chatStamp('qa-probe');
+        const qa = await this.curriculum.answerChatQuestion(text, {
+          timeoutMs: Number(process.env.DREAM_CHAT_QPROBE_TIMEOUT_MS) || 20000,
+        });
+        if (qa && qa.answer) {
+          qaPath = qa.path;
+          // Render-boundary only (capitalization + terminal punctuation via
+          // the same renderer every emission uses) — the WORDS are hers,
+          // read from her trained pathways by the probe.
+          try {
+            const _mod = this.drugScheduler ? this.drugScheduler.speechModulation() : null;
+            response = (this.languageCortex && typeof this.languageCortex._renderSentence === 'function')
+              ? (this.languageCortex._renderSentence(qa.answer.split(/\s+/), 'statement', _mod) || qa.answer)
+              : qa.answer;
+          } catch { response = qa.answer; }
+          try {
+            const _c = this.cortexCluster;
+            if (_c && typeof _c.pushEmission === 'function') {
+              _c.pushEmission({ source: 'chat', text: qa.answer, ts: Date.now() });
+            }
+            if (_c) _c._emissionLockedUntil = Date.now() + 6000;
+          } catch { /* bus push best-effort — the reply itself stands */ }
+          try { console.log(`[Chat] ❓ question answered via the ${qaPath} lane: "${qa.answer}" (score ${typeof qa.score === 'number' ? qa.score.toFixed(2) : '?'}, ${qa.ticks ?? '?'} ticks)`); } catch { /* nf */ }
+        }
+      } catch { /* the question lane is best-effort — compose runs exactly as before */ }
+    }
     if (_cpuTickUnsafe) {
       try { process.stdout.write(`[Brain] chat generation SKIPPED — cortex ${_cortexNeurons.toLocaleString()} > ${_ivMaxNeurons.toLocaleString()} AND GPU proxy not ready (donor mid-reconnect); a CPU cortex tick would freeze the loop ~57s/word and trip the donor's 150s idle watchdog. Honest silence until the donor re-syncs.\n`); } catch { /* non-fatal */ }
       // response stays '' → the honest-silence handler below fires (motor_unstable).
-    } else {
+    } else if (!response) {
       try {
         // CHAT.3 (2026-07-16) — open the chat-priority window: while the reply
         // is composing, the teach firehose (pattern lane + hebbian batch flush)
@@ -812,7 +854,10 @@ const SERVER_CHAT_MIXIN = {
     }
 
     this._chatStamp('respond');
-    if (!response || response.length < 2) {
+    // A one-letter probe answer ("b" to a letter-sequence question) is a real
+    // reply, not silence — the qa-probe lane already applied its own
+    // acceptance rule, so its answers bypass the length floor.
+    if (!response || (response.length < 2 && !qaPath)) {
       // TRAINED-STATE silence reason, not grade-label.
       // Operator (2026-05-06): "at any point in her training she
       // should be able to use what she has learned to that point

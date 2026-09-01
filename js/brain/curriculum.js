@@ -6645,6 +6645,72 @@ export class Curriculum {
   }
 
   /**
+   * Chat asks through the exam's own lane. The live-chat compose path and
+   * the battery probe answered the same question differently because they
+   * ask DIFFERENTLY: the probe reconstructs the exact teach geometry
+   * (dual-tile sem injection + question-template tag) and routes template
+   * questions through the trained pathway for that question class, while
+   * chat pushed raw text onto a cortex mid-teach and temperature-sampled
+   * the result. This wrapper gives chat the probe's ask — same injections,
+   * same trained-pathway reads, zero new emission machinery — so a question
+   * she can answer on an exam is answerable in conversation.
+   *
+   * Read-only on weights (the probe teaches nothing). Bounded: a hard
+   * timeout races the probe and aborts it via the same AbortSignal the
+   * battery uses, so a slow emission can never pin the reply lane.
+   *
+   * ⚠ `_currentGateSubject` is nulled for the duration and restored in
+   * finally — it is set at gate start and NEVER cleared, so outside a gate
+   * it is stale (the last gated subject) and would wrongly scope the
+   * word_motor band of a chat answer.
+   *
+   * Acceptance is measured, not hopeful: a templated-path answer (letter
+   * transition / letter→phon / WH-joint / definition) is trusted outright —
+   * those read the trained pathway for the question class. A generic
+   * direct-propagate answer must also carry the probe's own quality bits
+   * (`retention` = a word her dictionary knows, `logic` = structurally
+   * sane) or it is discarded — the caller's compose lane runs as before.
+   * Returns { answer, path, score, ticks } or null.
+   */
+  async answerChatQuestion(question, opts = {}) {
+    const q = String(question || '').trim();
+    if (!q || typeof this._studentTestProbe !== 'function') return null;
+    if (typeof this._isQuestionLike === 'function' && !this._isQuestionLike(q)) return null;
+    const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 20000;
+    const ac = (typeof AbortController === 'function') ? new AbortController() : null;
+    let timer = null;
+    const savedGateSubject = this._currentGateSubject;
+    this._currentGateSubject = null;
+    try {
+      const timeout = new Promise((resolve) => {
+        timer = setTimeout(() => {
+          if (ac) { try { ac.abort(); } catch { /* no-op */ } }
+          resolve(null);
+        }, timeoutMs);
+      });
+      const res = await Promise.race([
+        this._studentTestProbe({ question: q, expectedAnswer: '', maxTicks: 24, signal: ac ? ac.signal : null }),
+        timeout,
+      ]);
+      if (!res || res.__timedOut || res.timedOut) return null;
+      const answer = String(res.answer || '').trim();
+      if (!answer) return null;
+      let path = null;
+      if (res.templatedPath) {
+        path = res.definitionAPIPath ? 'definition' : (res.intentRoutedPath ? 'wh-joint' : 'template');
+      } else if (res.retention && res.logic) {
+        path = 'direct-propagate';
+      }
+      if (!path) return null;
+      return { answer, path, score: res.score, ticks: res.ticks };
+    } catch { return null; }
+    finally {
+      if (timer) clearTimeout(timer);
+      this._currentGateSubject = savedGateSubject;
+    }
+  }
+
+  /**
    * Start a fresh session ID — called when a new curriculum run starts
    * so session-level retention can be tracked across boot/retrain cycles.
    */

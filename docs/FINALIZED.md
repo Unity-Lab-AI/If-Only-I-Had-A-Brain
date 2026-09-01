@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-09-01 - CHATASK: chat asks through the exam's own lane - feature/chatask-probe
+
+Gee (verbatim): *"so in the gater battery she answered this question right? but when i ask her the same question, its word salad? can you explain this: You / what letter comes after a? / Unity / Train Finger!"* → *"yes if u are sure this will fix it with out fucking anything else up, and trufully isnt this what we want?"*
+
+```
+  the gap        the battery reconstructs the TEACH GEOMETRY (dual-tile sem: sentence 0.6
+                 + key word at 0.5 offset + template tag) and reads the trained pathway
+                 FOR the question class; chat pushed raw text onto a mid-teach cortex and
+                 temperature-sampled compose — "Train Finger!" = real vocabulary winning
+                 argmax on a blended sem state
+  the fix        Curriculum.answerChatQuestion(q) — a bounded wrapper around the battery's
+                 OWN _studentTestProbe; chat.js runs it as a `qa-probe` stage before compose
+  probe changes  ZERO — the gate machinery that just passed the first cell is untouched
+  new machinery  ZERO — no new emission code, no answer tables, all trained-weight reads
+  verification   node --check ×2 · ESM import (method on prototype) · bundle rebuilt ·
+                 17/17 control-flow harness on the real class (deleted after)
+```
+
+**`CHATFAULT.3` — BUILT.** The wrapper: hard timeout (default 20 s, `DREAM_CHAT_QPROBE_TIMEOUT_MS`) racing the probe with the SAME AbortSignal the battery's per-question budget uses, so a slow emission can never pin the reply lane; `_currentGateSubject` nulled for the duration and restored in `finally` — measured stale ('ela', set at gate start at curriculum.js:21591 and never cleared), and a stale band would wrongly scope the word_motor read of a chat answer. **Acceptance is measured, not hopeful:** a templated-path answer (letter-transition / letter→phon / WH-joint / definition — each the trained pathway for its question class) is trusted outright; a generic direct-propagate answer must also carry the probe's own `retention` (a dictionary word) AND `logic` (structurally sane) bits or the wrapper returns null and today's compose lane runs untouched. Chat-side: the `qa-probe` stage is gated on the SAME `_cpuTickUnsafe` guard as generation (the probe ticks the cortex — a huge cortex with the GPU proxy down must skip it for the same ~57 s/word reason), stamps its own chatStage so a slow probe names itself, pushes accepted answers onto the emission bus + the 6 s emission lock, renders through the normal `_renderSentence` boundary (capitalization + punctuation — the WORDS are hers), and logs `[Chat] ❓ answered via the <path> lane` so the post-press read is one grep. The honest-silence gate learned that a one-letter answer ("b") from the accepted lane is a reply, not silence.
+
+**Answering Gee's "truthfully isn't this what we want?" — yes, with the deeper ideal named:** this is the honest bridge (chat asking through the geometry the weights were trained on, exactly as the exam does); the long game is the natural reading path itself learning to reach those basins, which is more training, not more plumbing. And the probe is READ-ONLY on weights — it teaches nothing, so the walk is untouched. **Server-side + bundle — lands on the next press.** Post-press read: ask her a template question in chat and grep the console for the `❓ answered via` line; the K-vocab restriction + excludePersona ride along from the probe (exam-honest answers, persona words never win a factual ask).
+
+**Docs (every tree named):** `docs/TODO.md` (CHATFAULT.3 filed + verdict), `docs/FINALIZED.md` (this), `docs/RESUME.md` (latest block), `docs/NOW.md` (banner), `docs/ADMIN-CONTROLS.md` (+`DREAM_CHAT_QPROBE_TIMEOUT_MS` row — the flag table is mechanically checked). Brain docs (`ARCHITECTURE`/`SKILL_TREE`/`EQUATIONS`) unaffected — no mechanism added or removed, an existing instrument (the probe) gained a second caller. `html/*`, `README`, `deploy/*` unaffected — no UI or ops change. `wiki/`: `brain-server.md` + `curriculum.md` cover the two edited files — re-verified + re-stamped (local-only tree).
+
+---
+
 ## 2026-09-01 - CHATFAULT: the reply lane broke the day she earned honest silence - feature/chatfault-tdz
 
 Gee (verbatim), pasting the live chat: *"You / HI / Unity — silent / Her reply pass threw before composing: Cannot access 'type' before initialization. This is a FAULT, not her choosing not to speak — the message reached her and the lane broke. Server log has the stack. --- shouldnt she be talking? shes through the first gate and on to math... is something broken? She is normally talking at this point. can you investigate"*
