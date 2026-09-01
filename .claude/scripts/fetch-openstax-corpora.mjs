@@ -1,0 +1,236 @@
+// fetch-openstax-corpora.mjs — REAL TEXTBOOK ingest for the academic corpus.
+//
+// This is the fetcher that was marked "✅ DONE 2026-07-15" in the ledger and
+// never written. The source decision it implements is not new and is not mine:
+// the hybrid OpenStax + Wikibooks + Project Gutenberg spread, CC-BY / CC-BY-SA
+// only, commercial-safe, CC-BY-NC excluded (which is why LibreTexts and MIT OCW
+// are not here). Output format, path and merge semantics are IDENTICAL to
+// fetch-academic-corpora.mjs — same corpora/academic/<subject>/<grade>.json,
+// same {theme, story} entries, same keep-longer union — so the two sources
+// compose into one corpus instead of competing for the same files.
+//
+// SOURCE: the philschatz/*-book mirrors of OpenStax textbooks. Each repo holds
+// contents/*.md — the real chapter prose, one file per section. Licence is
+// CC-BY (verified per book from the repo's own LICENSE.txt at fetch time and
+// recorded PER ENTRY, never assumed at the file level).
+//
+// ⭐ WHY A TEXTBOOK AND NOT MORE ENCYCLOPEDIA: an encyclopedia article states
+// what a thing is. A textbook chapter EXPLAINS it, in the order a student meets
+// it, with the worked reasoning between the facts. That difference is the whole
+// point of the hybrid decision — and a grade-9 biology year is a book, not
+// twenty summaries about biology.
+//
+// RUN:  node .claude/scripts/fetch-openstax-corpora.mjs               (all mapped cells)
+//       node .claude/scripts/fetch-openstax-corpora.mjs science       (one subject)
+//       node .claude/scripts/fetch-openstax-corpora.mjs science grade9
+// Network required. Re-runnable / idempotent (keep-longer merge). Node 18+.
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..', '..');
+const OUT = path.join(ROOT, 'corpora', 'academic');
+const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
+// The mirror owner. Kept as a named constant because every URL below needs it
+// and omitting it 404s silently — which is exactly what happened on the first
+// run: the licence probe fetched a bad URL, got nothing, and the licence guard
+// correctly refused the book rather than assuming a licence it had not read.
+const OWNER = 'philschatz';
+
+const SENT_MIN = 30, SENT_MAX = 240;
+
+// Same grade-banded ceiling as the wiki ingest — a real year is a different
+// size at every grade, and one flat number applied to twenty different years is
+// exactly the defect that kept the whole corpus at 14 sentences per topic.
+const SENT_CAP_BY_BAND = {
+  early: 60, middle: 120, upper: 240, high: 400, college: 600, grad: 800,
+};
+const BAND_OF_GRADE = new Map([
+  ['pre-k', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
+  ['grade3', 'middle'], ['grade4', 'middle'], ['grade5', 'middle'],
+  ['grade6', 'upper'], ['grade7', 'upper'], ['grade8', 'upper'],
+  ['grade9', 'high'], ['grade10', 'high'], ['grade11', 'high'], ['grade12', 'high'],
+  ['college1', 'college'], ['college2', 'college'], ['college3', 'college'], ['college4', 'college'],
+  ['grad', 'grad'], ['phd', 'grad'],
+]);
+const sentCapFor = (g) => SENT_CAP_BY_BAND[BAND_OF_GRADE.get(String(g || '').toLowerCase())] || SENT_CAP_BY_BAND.early;
+
+// BOOK -> (subject, grade). The mapping is not invented here: it follows the
+// course each grade actually runs per docs/CURRICULUM-SCOPE-SEQUENCE.md and the
+// existing topic table — science G9 Biology, G10 Chemistry, G11 Physics, G12
+// Anatomy/Physiology. The textbook simply replaces the encyclopedia summaries
+// that were standing in for those courses.
+//
+// ⚠ MATH IS ABSENT ON PURPOSE. Math is equational by design and trains through
+// its own bespoke runners; the algebra/calculus/precalculus mirrors exist and
+// are deliberately NOT mapped. Adding prose there would be a change to how math
+// is taught, which is a curriculum decision, not an ingest decision.
+const BOOK_MAP = [
+  { repo: 'biology-concepts-book', subject: 'science', grade: 'grade9',    label: 'Biology' },
+  { repo: 'chemistry-book',        subject: 'science', grade: 'grade10',   label: 'Chemistry' },
+  { repo: 'physics-book',          subject: 'science', grade: 'grade11',   label: 'Physics' },
+  { repo: 'anatomy-book',          subject: 'science', grade: 'grade12',   label: 'Anatomy and Physiology' },
+  { repo: 'astronomy-book',        subject: 'science', grade: 'grade6',    label: 'Earth and Space Science' },
+  { repo: 'biology-book',          subject: 'science', grade: 'college1',  label: 'General Biology' },
+  { repo: 'microbiology-book',     subject: 'science', grade: 'college2',  label: 'Microbiology' },
+  { repo: 'economics-book',        subject: 'economics', grade: 'grade11', label: 'Macroeconomics' },
+  { repo: 'economics-book',        subject: 'economics', grade: 'college1', label: 'Principles of Economics' },
+];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// OpenStax markdown carries YAML frontmatter, HTML blocks (tables, figures,
+// exercise divs), CNX link syntax and inline term-attribute spans. Every one of
+// those yields text that looks like a sentence and is not prose, so they are
+// removed BEFORE segmentation rather than filtered after.
+function cleanOpenStax(md, cap) {
+  if (!md) return [];
+  let t = String(md);
+  t = t.replace(/^---[\s\S]*?---/m, ' ');                 // YAML frontmatter
+  t = t.replace(/<table[\s\S]*?<\/table>/gi, ' ');        // tables — data, not prose
+  t = t.replace(/<div[^>]*>|<\/div>/gi, ' ');             // block wrappers
+  t = t.replace(/<[^>]+>/g, ' ');                         // any remaining html
+  t = t.replace(/\{:[^}]*\}/g, ' ');                      // {: data-type="term"} spans
+  t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');            // images
+  t = t.replace(/\[\\?\[?link\\?\]?\]\([^)]*\)/gi, ' ');  // [\[link\]](#id)
+  t = t.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');          // [text](url) -> text
+  t = t.replace(/^\s*[*+-]\s+/gm, ' ');                   // bullet markers
+  t = t.replace(/^#{1,6}\s+.*$/gm, ' ');                  // headings
+  t = t.replace(/[*_`]+/g, '');                           // emphasis marks
+  // Same normalisation the wiki cleaner uses, and for the same reason: the
+  // ASCII test below is correct in intent and catastrophic without this, since
+  // typographic punctuation appears in nearly every textbook sentence.
+  t = t.replace(/[‘’‚‛′]/g, "'")
+       .replace(/[“”„‟″]/g, '"')
+       .replace(/[‐-―−]/g, '-')
+       .replace(/[…]/g, '...')
+       .replace(/[     ]/g, ' ')
+       .normalize('NFD').replace(/[̀-ͯ]/g, '')
+       .replace(/\s+/g, ' ');
+  const out = [];
+  for (let s of t.split(/(?<=[.!?])\s+/)) {
+    s = s.trim();
+    if (s.length < SENT_MIN || s.length > SENT_MAX) continue;
+    if (/[^\x20-\x7e]/.test(s)) continue;
+    if (!/[a-z]/.test(s) || !/[.!?]$/.test(s)) continue;
+    // Textbook scaffolding that is not subject prose.
+    if (/^by the end of this section|^learning objectives|^figure |^table |^visit this|^watch this|^click here/i.test(s)) continue;
+    // Figure-caption debris. A caption enumerating panels — "(a) ... , (b) ...,
+    // and (c) ..." — survives the leading-"figure" test when the word "figure"
+    // sits earlier in the block, and it teaches her nothing but list glue.
+    // Caught by reading the extracted prose, not by reasoning about the format.
+    if ((s.match(/\(\s*[a-e]\s*\)/g) || []).length >= 2) continue;
+    out.push(s.toLowerCase());
+    if (out.length >= cap) break;
+  }
+  return out;
+}
+
+async function ghJson(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/vnd.github+json' } });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`${r.status} ${text.slice(0, 120)}`);
+  return JSON.parse(text);
+}
+
+async function raw(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': UA } });
+  if (!r.ok) return '';
+  return r.text();
+}
+
+// Licence is READ from the book, not assumed. A per-entry licence string that
+// was guessed is worse than none — it would pass the TEACHVIEW "licence
+// recorded" check while being unverified.
+async function licenceOf(repo) {
+  const txt = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/LICENSE.txt`);
+  const m = /Creative Commons Attribution([^.\n]*)/i.exec(txt || '');
+  if (!m) return null;
+  const tail = m[1].replace(/\s+/g, ' ').trim();
+  if (/NonCommercial|NC\b/i.test(tail)) return { id: `CC-BY-NC${tail}`, ok: false };
+  return { id: `CC-BY${tail ? ' ' + tail : ''}`.trim(), ok: true };
+}
+
+async function buildBook({ repo, subject, grade, label }) {
+  const cap = sentCapFor(grade);
+  console.log(`[openstax] ${repo} -> ${subject}/${grade} (cap ${cap})`);
+
+  const lic = await licenceOf(repo);
+  if (!lic) { console.log(`  SKIPPED — no readable licence in ${repo}/LICENSE.txt`); return 0; }
+  if (!lic.ok) { console.log(`  SKIPPED — ${lic.id} violates the CC-BY/CC-BY-SA-only posture`); return 0; }
+  console.log(`  licence verified: ${lic.id}`);
+
+  let files;
+  try { files = await ghJson(`https://api.github.com/repos/${OWNER}/${repo}/contents/contents`); }
+  catch (e) { console.log(`  SKIPPED — listing failed: ${e.message}`); return 0; }
+  const mds = files.filter((f) => f.type === 'file' && f.name.endsWith('.md'));
+  if (!mds.length) { console.log('  SKIPPED — no chapter files'); return 0; }
+
+  // ⛔ SPREAD THE BUDGET ACROSS THE WHOLE BOOK, never front-load it. Taking the
+  // cap from the first chapters would teach her chapter 1 in depth and leave
+  // the other 250 sections untaught — the same "one number, wrong shape" error
+  // as the flat sentence cap, one level up.
+  const perChapter = Math.max(3, Math.ceil(cap / Math.min(mds.length, 60)));
+  const stride = Math.max(1, Math.floor(mds.length / Math.min(mds.length, 60)));
+  const picked = [];
+  for (let i = 0; i < mds.length && picked.length < 60; i += stride) picked.push(mds[i]);
+
+  const experiences = [];
+  let taken = 0;
+  for (const f of picked) {
+    if (taken >= cap) break;
+    const md = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/contents/${f.name}`);
+    const title = (/^title:\s*"?([^"\n]+)"?/m.exec(md || '') || [, f.name.replace(/\.md$/, '')])[1].trim();
+    const room = Math.min(perChapter, cap - taken);
+    const sents = cleanOpenStax(md, room);
+    if (sents.length >= 3) {
+      experiences.push({
+        theme: `${label}: ${title}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+        story: sents.join(' '),
+        source: `openstax/${repo}`,
+        licence: lic.id,
+      });
+      taken += sents.length;
+    }
+    await sleep(120);   // polite to raw.githubusercontent
+  }
+  if (!experiences.length) { console.log('  SKIPPED — no usable prose extracted'); return 0; }
+
+  const dir = path.join(OUT, subject);
+  fs.mkdirSync(dir, { recursive: true });
+  const outPath = path.join(dir, `${grade}.json`);
+  // Same keep-longer union as the wiki ingest — a re-run can only ADD coverage,
+  // and the two sources merge by theme instead of overwriting each other.
+  const byTheme = new Map();
+  let prevDoc = null;
+  try {
+    prevDoc = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+    for (const e of (prevDoc.experiences || [])) byTheme.set(e.theme, e);
+  } catch { /* fresh cell */ }
+  for (const e of experiences) {
+    const old = byTheme.get(e.theme);
+    if (!old || e.story.length > old.story.length) byTheme.set(e.theme, e);
+  }
+  const merged = [...byTheme.values()];
+  const doc = {
+    version: 1, grade, subject,
+    source: 'hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented',
+    note: `Hybrid academic-depth corpus for ${subject}/${grade}. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.`,
+    experiences: merged,
+  };
+  fs.writeFileSync(outPath, JSON.stringify(doc, null, 2), 'utf8');
+  console.log(`  ${experiences.length} chapters, ${taken} sentences -> ${subject}/${grade}.json (cell now ${merged.length} entries)`);
+  return taken;
+}
+
+const positional = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const [argSubject, argGrade] = positional;
+let total = 0;
+for (const b of BOOK_MAP) {
+  if (argSubject && b.subject !== argSubject) continue;
+  if (argGrade && b.grade !== argGrade) continue;
+  try { total += await buildBook(b); }
+  catch (e) { console.log(`[openstax] ${b.repo} FAILED — ${e.message}`); }
+}
+console.log(`[openstax] DONE — ~${total} real textbook sentences written under corpora/academic/.`);

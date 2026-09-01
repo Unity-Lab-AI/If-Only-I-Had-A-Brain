@@ -365,6 +365,11 @@ function clean(extract, maxSent) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Run-level tally of WHY topics were skipped. Printed at the end so a run
+// reports "23 throttled, 4 no-such-page" instead of a silent shortfall that
+// reads as "the source has nothing" — the misreading that survived four passes.
+const SKIP_REASONS = new Map();
+
 // FC.9 — grade-appropriate reading level. Early grades MUST prefer Simple
 // English Wikipedia (accessible prose) over full en.wikipedia.org (college-
 // level density). The prior order tried full Wikipedia first, so a K cell got
@@ -376,29 +381,80 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // and Simple often lacks depth.
 const EARLY_GRADES = new Set(['kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5']);
 
+// ⛔⛔ THE THROTTLE WAS INVISIBLE, AND THAT IS WHY 147 TOPICS CAME BACK EMPTY.
+//
+// `CORPUSGAP.7` established that the wiki API answers a burst with the plain
+// text `"You are making too many requests"` — NOT JSON. The old body of this
+// function called `await r.json()` on that, which THROWS, and the bare `catch`
+// below it swallowed the throw. A throttled topic and a genuinely contentless
+// topic produced the identical outcome: `[]`, logged as "no usable content".
+//
+// That is the same defect class this project keeps paying for — a decline with
+// five possible causes reported as one indistinguishable result. The fix is the
+// same one used everywhere else here: MAKE IT NAME ITS OWN BLOCKER.
+//
+// ⚠ And a fixed inter-request sleep can never solve it, which was measured:
+// widening the between-cell gap 4s -> 8s -> 20s produced no gain at any value,
+// because the burst that trips the limit happens INSIDE a cell. A run at 3s
+// in-cell spacing still lost 147 topics. Backoff has to react to the throttle
+// RESPONSE, which first requires being able to SEE it.
+function classifyBody(status, text) {
+  if (status === 429) return 'throttled';
+  if (/too many requests|rate ?limit|retry.after/i.test(text || '')) return 'throttled';
+  if (status >= 500) return 'server';
+  if (!status || status >= 400) return `http-${status}`;
+  return 'ok';
+}
+
 async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_BAND.early) {
-  // Retry with backoff — the wiki API throttles rapid sequential requests and
-  // returns empty when throttled; a few patient retries populate reliably.
   const hosts = preferSimple
     ? ['simple.wikipedia.org', 'en.wikipedia.org']
     : ['en.wikipedia.org', 'simple.wikipedia.org'];
-  for (let attempt = 0; attempt < 4; attempt++) {
+  let lastReason = 'no-content';
+  // Exponential backoff with a real ceiling. Throttle recovery is measured in
+  // tens of seconds, not the 700ms the old ladder allowed, so the ladder now
+  // reaches ~48s before giving up rather than ~2.8s.
+  const BACKOFF = [1500, 6000, 18000, 48000];
+  for (let attempt = 0; attempt < BACKOFF.length + 1; attempt++) {
+    let throttledThisPass = false;
     for (const host of hosts) {
       const url = `https://${host}/w/api.php?format=json&action=query&prop=extracts&explaintext=1&redirects=1&titles=${encodeURIComponent(title)}`;
+      let status = 0, text = '';
       try {
         const r = await fetch(url, { headers: { 'User-Agent': UA } });
-        if (!r.ok) continue;
-        const j = await r.json();
-        const pages = j?.query?.pages || {};
-        for (const k of Object.keys(pages)) {
-          const sents = clean(pages[k].extract, maxSent);
-          if (sents.length >= 3) return { sents, host };
-        }
-      } catch { /* try next host / retry */ }
+        status = r.status;
+        // Read as TEXT first — the throttle reply is not JSON, and parsing it
+        // as JSON is what made the throttle invisible for four ingest passes.
+        text = await r.text();
+      } catch (e) {
+        lastReason = 'network';
+        continue;
+      }
+      const kind = classifyBody(status, text);
+      if (kind === 'throttled' || kind === 'server') {
+        throttledThisPass = true;
+        lastReason = kind;
+        continue;
+      }
+      if (kind !== 'ok') { lastReason = kind; continue; }
+      let j = null;
+      try { j = JSON.parse(text); }
+      catch { throttledThisPass = true; lastReason = 'non-json'; continue; }
+      const pages = j?.query?.pages || {};
+      for (const k of Object.keys(pages)) {
+        if (pages[k].missing !== undefined) { lastReason = 'no-such-page'; continue; }
+        const sents = clean(pages[k].extract, maxSent);
+        if (sents.length >= 3) return { sents, host, reason: 'ok' };
+        lastReason = sents.length ? 'too-few-sentences' : 'no-content';
+      }
     }
-    await sleep(700 * (attempt + 1));   // backoff before retrying
+    // Only spend backoff on conditions backoff can actually fix. A page that
+    // does not exist will not start existing, and re-requesting it is the
+    // burst that throttles the NEXT topic.
+    if (!throttledThisPass) break;
+    if (attempt < BACKOFF.length) await sleep(BACKOFF[attempt]);
   }
-  return [];
+  return { sents: [], host: null, reason: lastReason };
 }
 
 // FC.9 — `--replace` (or FETCH_REPLACE=1) makes a re-ingest SWAP content
@@ -473,7 +529,11 @@ async function buildCell(subject, grade, titles) {
       });
       process.stdout.write(`  ${subject}/${grade}: ${title} (${sents.length}/${CAP})\n`);
     } else {
-      process.stdout.write(`  ${subject}/${grade}: ${title} — no usable content, skipped\n`);
+      // Name the blocker. "no usable content" was one label over five distinct
+      // causes, and it hid a throttle that cost 147 topics in a single run.
+      const why = (got && got.reason) || 'unknown';
+      SKIP_REASONS.set(why, (SKIP_REASONS.get(why) || 0) + 1);
+      process.stdout.write(`  ${subject}/${grade}: ${title} — SKIPPED (${why})\n`);
     }
     await sleep(IN_CELL_MS);   // polite to the API — see CORPUSGAP.7 above
   }
@@ -529,3 +589,13 @@ for (const subject of Object.keys(TOPICS)) {
   }
 }
 console.log(`[academic] DONE — ~${total} cleaned real-curriculum sentences written under corpora/academic/.`);
+if (SKIP_REASONS.size) {
+  const rows = [...SKIP_REASONS.entries()].sort((a, b) => b[1] - a[1]);
+  console.log(`[academic] SKIPPED BY REASON — ${rows.map(([k, v]) => `${k}:${v}`).join('  ')}`);
+  const throttled = (SKIP_REASONS.get('throttled') || 0) + (SKIP_REASONS.get('non-json') || 0) + (SKIP_REASONS.get('server') || 0);
+  if (throttled > 0) {
+    console.log(`[academic] ⚠ ${throttled} topic(s) lost to THROTTLE/transient, not to absent content — re-run to top them up (the merge keeps the longer story per theme, so a re-run can only add).`);
+  }
+} else {
+  console.log('[academic] SKIPPED BY REASON — none');
+}
