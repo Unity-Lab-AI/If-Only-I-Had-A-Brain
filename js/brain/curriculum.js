@@ -6072,7 +6072,29 @@ export class Curriculum {
     for (let i = 0; i < Math.min(invSize, inv.length); i++) {
       if (/^[a-z]$/.test(inv[i] || '')) az.push(i);
     }
-    let best = -1, bestScore = 0;
+    // ⛔ RARITY BIAS — MY OWN DEFECT FROM THE SHARE-NORMALIZATION ABOVE,
+    // caught by reading the live answer rather than the code. Dividing by a
+    // candidate's TOTAL mass fixes the frequency bias (the global 'a' basin
+    // stops winning every ask) and introduces the exact mirror image of it:
+    // a RARE candidate has a tiny denominator, so a trickle of mass toward it
+    // scores higher than a strong, genuinely-trained transition toward a
+    // common letter. Measured on the live box on `e81deaf1`, which carries
+    // this read: "what letter comes after a" answered "P." — 'p' is rare
+    // enough that noise-level a→p mass beat the real a→b transition.
+    //
+    // ⚠ Row-normalising instead is a NO-OP: for a fixed X, Σ over candidates
+    // is a constant, so dividing by it cannot change the argmax. Lift
+    // (observed/expected) reduces to this same column division. So the fix is
+    // not a different normaliser — it is SHRINKAGE toward raw mass:
+    //
+    //     score(c) = raw(c) / (denom(c) + κ),   κ = mean positive denom
+    //
+    // κ is DERIVED FROM THIS MATRIX, never a picked constant (the threshold-
+    // derivation law). A common candidate has denom ≫ κ, so it keeps the
+    // frequency correction unchanged; a rare candidate has denom ≪ κ, so its
+    // score approaches raw mass and it must bring REAL trained weight to win
+    // rather than winning on scarcity.
+    const cands = [];
     for (const c of az) {
       if (c === li) continue;
       let raw = 0, denom = 0;
@@ -6084,11 +6106,148 @@ export class Curriculum {
         for (const o of az) denom += Math.max(0, M[o * invSize + c]);
       }
       if (raw <= 0 || denom <= 0) continue;
-      const s = raw / denom;
-      if (s > bestScore) { bestScore = s; best = c; }
+      cands.push({ c, raw, denom });
+    }
+    if (cands.length === 0) return null;
+    let denomSum = 0;
+    for (const k of cands) denomSum += k.denom;
+    const kappa = denomSum / cands.length;
+    let best = -1, bestScore = 0;
+    for (const k of cands) {
+      const s = k.raw / (k.denom + kappa);
+      if (s > bestScore) { bestScore = s; best = k.c; }
     }
     if (best < 0) return null;
     return { letter: inv[best], score: bestScore, dir: dir === 'before' ? 'before' : 'after' };
+  }
+
+  /**
+   * The letter × magnitude-dimension profile, extracted STRAIGHT from the
+   * trained intra-synapse CSR — the read half of `_teachLetterOrdinalDirect`.
+   * P[letterBucket][dim] = total trained weight arriving at that letter's
+   * neurons FROM the free-region neurons carrying magnitude dimension `dim`.
+   * CSR rows are POST (letter), colIdx entries are PRE (free), which is the
+   * exact direction the ordinal pass writes. One walk of the letter region's
+   * rows: no propagate, no injection, no cortex ticks — the same discipline
+   * `_letterTransitionMatrix` uses, and the reason an ordinal answer costs
+   * nothing at chat time.
+   */
+  _letterOrdinalMatrix() {
+    const cluster = this.cluster;
+    const syn = cluster && cluster.synapses;
+    const letterRegion = cluster && cluster.regions && cluster.regions.letter;
+    const freeRegion = cluster && cluster.regions && cluster.regions.free;
+    if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion || !freeRegion) return null;
+    const now = Date.now();
+    const TTL = 3600000;   // same hourly freshness as the transition matrix
+    if (this._letterOrdCache && (now - this._letterOrdCache.at) < TTL) return this._letterOrdCache;
+    const invSize = (typeof inventorySize === 'function') ? inventorySize() : 26;
+    const dim = MAGNITUDE_FEATURE_DIM;
+    if (invSize <= 0 || !(dim > 0)) return null;
+    const lStart = letterRegion.start, lEnd = letterRegion.end;
+    const fStart = freeRegion.start, fEnd = freeRegion.end;
+    const lSpan = lEnd - lStart, fSpan = fEnd - fStart;
+    if (lSpan <= 0 || fSpan <= 0) return null;
+    // Bucket sizes MUST match what the teach wrote, and both come from the
+    // same tiling law `_fillRegionPatternInto` applies (floor(size/featLen)).
+    const lBucket = Math.max(1, Math.floor(lSpan / invSize));
+    const fGroup = Math.max(1, Math.floor(fSpan / dim));
+    const P = new Float64Array(invSize * dim);
+    for (let post = lStart; post < lEnd; post++) {
+      const bOut = Math.floor((post - lStart) / lBucket);
+      if (bOut >= invSize) break;
+      const r0 = syn.rowPtr[post], r1 = syn.rowPtr[post + 1];
+      for (let k = r0; k < r1; k++) {
+        const pre = syn.colIdx[k];
+        if (pre < fStart || pre >= fEnd) continue;
+        const d = Math.floor((pre - fStart) / fGroup);
+        if (d >= dim) continue;
+        P[bOut * dim + d] += syn.values[k];
+      }
+    }
+    const inv = (typeof inventorySnapshot === 'function') ? inventorySnapshot() : null;
+    this._letterOrdCache = { at: now, P, invSize, dim, inv };
+    return this._letterOrdCache;
+  }
+
+  /**
+   * "What is the Nth letter of the alphabet?" — read from the trained
+   * ordinal weights, zero cortex ticks. Scores each letter by the COSINE
+   * between its incoming magnitude profile and the magnitude feature for
+   * position N, which is the same comparison the Math-K gate uses to grade
+   * every magnitude transform it teaches. Cosine, not raw dot product,
+   * because a letter with more total incoming weight would otherwise win
+   * every position — the frequency bias `_letterSequenceRead` already paid
+   * for once.
+   *
+   * Returns null when the ordinal pass has never run (an untrained brain
+   * says nothing rather than guessing), so the caller falls through to its
+   * existing lane exactly as before.
+   */
+  _letterOrdinalRead(position) {
+    const n = Number(position);
+    if (!Number.isFinite(n) || n < 1) return null;
+    const cache = this._letterOrdinalMatrix();
+    if (!cache || !cache.inv) return null;
+    const { P, invSize, dim, inv } = cache;
+    if (typeof _magnitudeFeatureForNumber !== 'function') return null;
+    const target = _magnitudeFeatureForNumber(n);
+    if (!target || target.length === 0) return null;
+    let tNorm = 0;
+    for (let d = 0; d < dim && d < target.length; d++) tNorm += target[d] * target[d];
+    tNorm = Math.sqrt(tNorm);
+    if (!(tNorm > 0)) return null;
+    let best = -1, bestScore = 0;
+    for (let i = 0; i < Math.min(invSize, inv.length); i++) {
+      if (!/^[a-z]$/.test(inv[i] || '')) continue;
+      let dot = 0, pNorm = 0;
+      for (let d = 0; d < dim && d < target.length; d++) {
+        const w = P[i * dim + d];
+        dot += w * target[d];
+        pNorm += w * w;
+      }
+      pNorm = Math.sqrt(pNorm);
+      if (!(pNorm > 0) || !(dot > 0)) continue;
+      const s = dot / (pNorm * tNorm);
+      if (s > bestScore) { bestScore = s; best = i; }
+    }
+    if (best < 0) return null;
+    return { letter: inv[best], score: bestScore, position: n };
+  }
+
+  /**
+   * Parse an ordinal alphabet-position ask into its 1-based position, or
+   * null when the question is not one. Runs on the SAME normalized text the
+   * classifier and the key-word extractor consume, so the three can never
+   * disagree about what the question said — the chokepoint lesson from the
+   * phrasing sweep.
+   */
+  _ordinalPositionAsked(question) {
+    const raw = String(question || '').toLowerCase();
+    // ⛔ THE ALPHABET MUST BE NAMED. "what is the first letter of cat" is a
+    // SPELLING question and its answer is 'c', not 'a' — the ordinal frame
+    // only applies when the alphabet itself is the subject. Checked on the
+    // RAW text because normalization deliberately strips "of the alphabet".
+    if (!/\balphabet\b/.test(raw)) return null;
+    const q = typeof this._normalizeQuestionText === 'function'
+      ? this._normalizeQuestionText(question) : raw;
+    if (!/\bletter\b/.test(q)) return null;
+    if (/\b(?:last|final)\b/.test(q)) return 26;
+    const WORDS = {
+      first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7,
+      eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12, thirteenth: 13,
+      fourteenth: 14, fifteenth: 15, sixteenth: 16, seventeenth: 17,
+      eighteenth: 18, nineteenth: 19, twentieth: 20,
+    };
+    for (const w of Object.keys(WORDS)) {
+      if (new RegExp(`\\b${w}\\b`).test(q)) return WORDS[w];
+    }
+    const numeric = q.match(/\b(\d{1,2})(?:st|nd|rd|th)\b/);
+    if (numeric) {
+      const v = parseInt(numeric[1], 10);
+      if (v >= 1 && v <= 26) return v;
+    }
+    return null;
   }
 
   async _studentTestProbe(opts = {}) {
@@ -6232,7 +6391,22 @@ export class Curriculum {
     try {
       const tplId = typeof this._classifyQuestionTemplate === 'function'
         ? this._classifyQuestionTemplate(question) : -1;
-      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === 'function'
+      // ORDINAL POSITION — "what is the first / third / last letter of the
+      // alphabet". Read from the ordinal weights `_teachLetterOrdinalDirect`
+      // carves, zero cortex ticks. Checked BEFORE the transition templates
+      // because an ordinal ask is a different question about the same
+      // subject, and it used to fall through to the definition lane and
+      // define *alphabet* instead of answering. Gated on the alphabet being
+      // named, so "the first letter of cat" stays a spelling question.
+      // Existing exam banks carry no ordinal frame, so gate scoring is
+      // untouched until one is written.
+      const _ordPos = typeof this._ordinalPositionAsked === 'function'
+        ? this._ordinalPositionAsked(question) : null;
+      if (_ordPos !== null && typeof this._letterOrdinalRead === 'function') {
+        const _ordRead = this._letterOrdinalRead(_ordPos);
+        if (_ordRead && _ordRead.letter) templatedAnswer = _ordRead.letter;
+      }
+      const keyTok = (templatedAnswer === null && (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === 'function')
         ? this._extractKeyWord(question) : null;
       if (keyTok && keyTok.length === 1 && /^[a-z]$/.test(keyTok)) {
         if (tplId === 0) {
@@ -6682,14 +6856,21 @@ export class Curriculum {
     const q = String(question || '').trim();
     if (!q || typeof this._studentTestProbe !== 'function') return null;
     if (typeof this._isQuestionLike === 'function' && !this._isQuestionLike(q)) return null;
-    // Ordinal alphabet-position asks ("what is the first/last letter of the
-    // alphabet") have NO trained pathway yet — the binding was never taught.
-    // Worse, their "what is" opener routes them to the DEFINITION lane, which
-    // then defines the word "alphabet" and ships that as her answer (measured
-    // live: → "hen"). Until the ordinal Q→A bindings are taught, the honest
-    // move is declining here so the caller's compose lane runs — a grammar
-    // frame like the template regexes, not a content list.
-    if (/\b(?:first|second|third|fourth|fifth|last|final)\s+(?:letter|number|digit)\b/i.test(q)) return null;
+    // ⭐ ORDINAL ALPHABET-POSITION ASKS NOW HAVE A TRAINED PATHWAY. This used
+    // to be a flat decline, because the binding had never been taught and the
+    // "what is" opener routed the ask to the DEFINITION lane, which defined
+    // the word "alphabet" and shipped that as her answer (measured live:
+    // → "hen"). `_teachLetterOrdinalDirect` carves the positions and
+    // `_letterOrdinalRead` reads them, so the probe answers it directly.
+    // ⚠ The decline is KEPT as the fallback: on a brain that has not yet run
+    // the ordinal pass the read returns null, and an honest fall-through to
+    // compose still beats a confidently-wrong definition.
+    if (/\b(?:first|second|third|fourth|fifth|last|final)\s+(?:letter|number|digit)\b/i.test(q)) {
+      const _ordPos = typeof this._ordinalPositionAsked === 'function' ? this._ordinalPositionAsked(q) : null;
+      const _ordRead = (_ordPos !== null && typeof this._letterOrdinalRead === 'function')
+        ? this._letterOrdinalRead(_ordPos) : null;
+      if (!_ordRead || !_ordRead.letter) return null;
+    }
     const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : this._chatQProbeBudgetMs(q);
     const ac = (typeof AbortController === 'function') ? new AbortController() : null;
     let timer = null;
@@ -8156,18 +8337,40 @@ export class Curriculum {
         try { await this._teachLanguageMechanics(grade, ctx); }
         catch (e) { if (this._hb) this._hb(`[Curriculum] _teachLanguageMechanics(${grade}) non-fatal: ${e?.message || e}`); }
         // FUNDAMENTALS REFRESH — spaced repetition of foundational reading
-        // (alphabet sequence + letter naming) in every post-K ELA grade.
-        // Operator ask 2026-09-01. K taught both at reps:50; on saved
-        // weights a refresh tops the basin up per Oja convergence
-        // x·(1−(1−lr)ⁿ) rather than relearning, so reps:10 suffices.
-        // RE-PRICE: 2 bounded direct-Oja passes × ~12 post-K ELA cells ≈
-        // minutes per cell, well under an hour across the whole walk —
-        // teaching added, no gate touched. Runs at the chokepoint every
-        // ELA cell already flows through, so future grades inherit it.
+        // in every post-K ELA grade. Operator ask 2026-09-01. K taught the
+        // originals at reps:50; on saved weights a refresh tops the basin up
+        // per Oja convergence x·(1−(1−lr)ⁿ) rather than relearning.
+        //
+        // ⭐ SUCCESSION IS DEEPER THAN ITS PEERS ON PURPOSE. Counted across
+        // js/brain: succession is taught at TWO sites (ELA-K once, plus this
+        // refresh) while letter-NAMING identity is taught at EIGHT (50 reps in
+        // each of the six K cells, plus the gate teach and this refresh). She
+        // heard "a is a" roughly seven times for every once she heard "a comes
+        // before b", and the succession deposit sits in a 452M-nonzero intra
+        // matrix that also absorbs every letter co-activation from every word
+        // she has ever spelled. Raising succession here is the cheapest lever
+        // that changes that ratio — the two passes write to DIFFERENT matrices
+        // (succession → cluster.synapses, naming → letter_to_motor), so a
+        // deeper succession dose cannot blur letter naming.
+        //
+        // ⭐ ORDINAL POSITION IS NEW. Everything above teaches LOCAL LINKS;
+        // nothing anywhere told her the alphabet is an ordered list with
+        // numbered slots. See `_teachLetterOrdinalDirect`.
+        //
+        // RE-PRICE, written before the change: the donor carries a whole rep
+        // dose in one ~60-byte frame, so deepening succession adds ZERO GPU
+        // frames. The real cost is the sampled CPU shadow — ~102 → ~254
+        // bounded one-hot ojaUpdate calls per ELA cell, i.e. seconds, against
+        // cells measured at 51-60 minutes for a single teach lane. Under 1%
+        // of an ELA cell; a few minutes across the whole walk. Teaching
+        // ADDED — no gate removed, no bound weakened.
         if (grade !== 'pre-K' && grade !== 'kindergarten') {
           try {
             if (typeof this._teachLetterSequenceDirect === 'function') {
-              await this._phasedTeach('ELA-FUNDAMENTALS-ALPHABET-SEQ-REFRESH', () => this._teachLetterSequenceDirect({ reps: 10 }));
+              await this._phasedTeach('ELA-FUNDAMENTALS-ALPHABET-SEQ-REFRESH', () => this._teachLetterSequenceDirect({ reps: 30 }));
+            }
+            if (typeof this._teachLetterOrdinalDirect === 'function') {
+              await this._phasedTeach('ELA-FUNDAMENTALS-ALPHABET-ORDINAL-REFRESH', () => this._teachLetterOrdinalDirect({ reps: 10 }));
             }
             if (typeof this._teachLetterNamingDirect === 'function') {
               await this._phasedTeach('ELA-FUNDAMENTALS-LETTER-NAMING-REFRESH', () => this._teachLetterNamingDirect({ reps: 10 }));

@@ -8319,6 +8319,132 @@ export const K_MIXIN = {
     this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s — ${updates} CPU Oja updates · ${gpuFires} GPU rep-doses (×${reps}) · ${skipped} skipped (${pairs} pairs × ${reps} reps target)`);
   },
 
+  /**
+   * ALPHABET ORDINAL POSITION — the absolute frame the alphabet never had.
+   *
+   * Every alphabet relation Unity carried before this was a LOCAL LINK:
+   * `_teachLetterSequenceDirect` writes a→b, b→c … y→z, and that is the
+   * whole of it. A chain of local links has no anchor and no error
+   * recovery — one weak link and the read has nothing to fall back on,
+   * and an ordinal ask ("what is the first letter") has no trained
+   * pathway AT ALL, which is why it used to route to the definition lane
+   * and define *alphabet* instead of answering.
+   *
+   * This binds each letter to its POSITION, two complementary ways —
+   * deliberately mirroring how succession is taught, because the split
+   * exists for a measured reason (see `_teachLetterSequenceDirect`: the
+   * GloVe path alone could not discriminate adjacent letters, and the
+   * one-hot path alone has no natural-language handle):
+   *
+   *   (1) MAGNITUDE ANCHOR, all 26. free[magnitude(n)] → letter[one-hot]
+   *       written straight into `cluster.synapses` via ojaUpdate. Reuses
+   *       the exact magnitude encoder Math-K counts with, so position is
+   *       represented the same way quantity already is. Read back with
+   *       zero cortex ticks by `_letterOrdinalRead`.
+   *
+   *   (2) ORDINAL WORDS, the ones she can actually hold. 'first' … 'tenth'
+   *       plus 'last' bound to their letters through the standard pair
+   *       binder (relationTagId=6 — the first free tag), giving the
+   *       natural-language ask a sem→motor path. ⛔ Deliberately NOT
+   *       extended past 'tenth': 'twenty-sixth' is not a single word and
+   *       has no embedding, and inventing a phantom token to fill a table
+   *       is how a binding lands on noise.
+   *
+   * ⛔ Written DIRECTLY into the intra matrix, never through
+   * `_teachCombination`. That helper derives its projection whitelist
+   * from STRING region names, and every K caller passes region OBJECTS —
+   * so the whitelist comes back null and it fires cross-region Hebbian on
+   * ALL projections. That fan-out is precisely what back-corrupted
+   * letter_to_motor twice before (iter11-A, then iter14-A). The direct
+   * path touches one matrix and cannot blur another.
+   */
+  async _teachLetterOrdinalDirect(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.synapses) return;
+    const letterRegion = cluster.regions?.letter;
+    const freeRegion = cluster.regions?.free;
+    if (!letterRegion || !freeRegion) return;
+    if (typeof cluster.synapses.ojaUpdate !== 'function') {
+      this._hb('[Curriculum] _teachLetterOrdinalDirect SKIPPED — cluster.synapses.ojaUpdate not available');
+      return;
+    }
+    const reps = opts.reps ?? 10;
+    const lr = opts.lr ?? (cluster.learningRate ?? 0.01) * 3;   // same 3x one-hot boost as the sequence pass
+    const letters = ALPHABET_ORDER;
+    ensureLetters(Array.from(letters));
+
+    this._hb(`[Curriculum] _teachLetterOrdinalDirect START: ${letters.length} letters × ${reps} reps · lr=${lr.toFixed(4)} — free[magnitude(position)] → letter[one-hot] into cluster.synapses. Gives the alphabet an ABSOLUTE frame instead of only a chain of local links.`);
+    const t0 = Date.now();
+    let updates = 0, skipped = 0, gpuFires = 0;
+    const _gpuCarried = new Array(letters.length).fill(false);
+    let _visit = 0;
+
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
+      for (let i = 0; i < letters.length; i++) {
+        const oneHot = encodeLetter(letters[i]);
+        // Position is 1-based — "a is the FIRST letter", not the zeroth.
+        const magFeat = _magnitudeFeatureForNumber(i + 1);
+        if (!oneHot || oneHot.length === 0 || !magFeat || magFeat.length === 0) { skipped++; continue; }
+        // GPU rep-dose: the whole dose rides ONE frame per letter (donor
+        // hebbian_ranges), so deepening reps costs no extra frames. Absolute
+        // ranges — the intra matrix is cluster-local.
+        if (rep === 0 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === 'function') {
+          try {
+            const preR = this._featRegionRanges(freeRegion, magFeat, false);
+            const postR = this._featRegionRanges(letterRegion, oneHot, false);
+            if (preR && postR) {
+              _gpuCarried[i] = cluster._gpuProxy.hebbianRanges(`${cluster.name}_intraSynapses`, lr, reps, preR, postR) === true;
+              if (_gpuCarried[i]) gpuFires++;
+            }
+          } catch { _gpuCarried[i] = false; }
+        }
+        _visit++;
+        if (_gpuCarried[i] && (_visit % 5 !== 0)) continue;   // GPU carries the dose; CPU shadow sampled
+        const scratch = this._ensureScratchBuffers();
+        if (!scratch) { skipped++; continue; }
+        // Pre keeps the magnitude MAGNITUDES (binarize false) — the graded
+        // feature is what makes position 4 and position 5 distinguishable;
+        // binarizing it would collapse the ordinal frame to a flat mask.
+        const preFull = this._fillRegionPatternInto(scratch.pre, freeRegion, magFeat, false);
+        const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, oneHot, true);
+        try {
+          const kScales = typeof cluster.buildKScalesForProjection === 'function'
+            ? cluster.buildKScalesForProjection(null, null) : null;
+          if (kScales) { kScales.srcStart = 0; kScales.dstStart = 0; }
+          cluster.synapses.ojaUpdate(preFull, postFull, lr, kScales ? { kScales } : undefined);
+          updates++;
+        } catch { skipped++; }
+      }
+      if ((rep & 7) === 7) await _microtask();
+    }
+
+    // Ordinal WORDS — only the ones that are real single words with real
+    // embeddings. Both directions so "the first letter" and "what position
+    // is a" both have a path.
+    const ORDINAL_WORDS = [
+      'first', 'second', 'third', 'fourth', 'fifth',
+      'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
+    ];
+    const ordinalPairs = [];
+    for (let i = 0; i < ORDINAL_WORDS.length && i < letters.length; i++) {
+      ordinalPairs.push([ORDINAL_WORDS[i], letters[i]]);
+      ordinalPairs.push([letters[i], ORDINAL_WORDS[i]]);
+    }
+    ordinalPairs.push(['last', letters[letters.length - 1]]);
+    ordinalPairs.push([letters[letters.length - 1], 'last']);
+    if (typeof this._teachAssociationPairs === 'function') {
+      await this._teachAssociationPairs(ordinalPairs, {
+        reps: opts.wordReps ?? reps,
+        label: 'ALPHABET-ORDINAL-WORDS',
+        relationTagId: 6,   // ordinal-position channel (first free tag)
+      });
+    }
+
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    this._hb(`[Curriculum] _teachLetterOrdinalDirect DONE in ${dt}s — ${updates} CPU Oja updates · ${gpuFires} GPU rep-doses (×${reps}) · ${skipped} skipped · ${ordinalPairs.length} ordinal-word pairs (relationTagId=6). The alphabet now has positions, not just neighbours.`);
+  },
+
   // iter11-J — Discriminative one-hot word→first-letter binding for
   // sem_to_motor. For every K-vocab word in the dictionary, write a
   // pair (sem region tiled with word's GloVe embedding) → (motor

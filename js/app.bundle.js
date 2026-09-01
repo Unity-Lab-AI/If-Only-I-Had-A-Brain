@@ -86494,6 +86494,138 @@ var K_MIXIN = {
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s \u2014 ${updates} CPU Oja updates \xB7 ${gpuFires} GPU rep-doses (\xD7${reps}) \xB7 ${skipped} skipped (${pairs} pairs \xD7 ${reps} reps target)`);
   },
+  /**
+   * ALPHABET ORDINAL POSITION — the absolute frame the alphabet never had.
+   *
+   * Every alphabet relation Unity carried before this was a LOCAL LINK:
+   * `_teachLetterSequenceDirect` writes a→b, b→c … y→z, and that is the
+   * whole of it. A chain of local links has no anchor and no error
+   * recovery — one weak link and the read has nothing to fall back on,
+   * and an ordinal ask ("what is the first letter") has no trained
+   * pathway AT ALL, which is why it used to route to the definition lane
+   * and define *alphabet* instead of answering.
+   *
+   * This binds each letter to its POSITION, two complementary ways —
+   * deliberately mirroring how succession is taught, because the split
+   * exists for a measured reason (see `_teachLetterSequenceDirect`: the
+   * GloVe path alone could not discriminate adjacent letters, and the
+   * one-hot path alone has no natural-language handle):
+   *
+   *   (1) MAGNITUDE ANCHOR, all 26. free[magnitude(n)] → letter[one-hot]
+   *       written straight into `cluster.synapses` via ojaUpdate. Reuses
+   *       the exact magnitude encoder Math-K counts with, so position is
+   *       represented the same way quantity already is. Read back with
+   *       zero cortex ticks by `_letterOrdinalRead`.
+   *
+   *   (2) ORDINAL WORDS, the ones she can actually hold. 'first' … 'tenth'
+   *       plus 'last' bound to their letters through the standard pair
+   *       binder (relationTagId=6 — the first free tag), giving the
+   *       natural-language ask a sem→motor path. ⛔ Deliberately NOT
+   *       extended past 'tenth': 'twenty-sixth' is not a single word and
+   *       has no embedding, and inventing a phantom token to fill a table
+   *       is how a binding lands on noise.
+   *
+   * ⛔ Written DIRECTLY into the intra matrix, never through
+   * `_teachCombination`. That helper derives its projection whitelist
+   * from STRING region names, and every K caller passes region OBJECTS —
+   * so the whitelist comes back null and it fires cross-region Hebbian on
+   * ALL projections. That fan-out is precisely what back-corrupted
+   * letter_to_motor twice before (iter11-A, then iter14-A). The direct
+   * path touches one matrix and cannot blur another.
+   */
+  async _teachLetterOrdinalDirect(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.synapses) return;
+    const letterRegion = cluster.regions?.letter;
+    const freeRegion = cluster.regions?.free;
+    if (!letterRegion || !freeRegion) return;
+    if (typeof cluster.synapses.ojaUpdate !== "function") {
+      this._hb("[Curriculum] _teachLetterOrdinalDirect SKIPPED \u2014 cluster.synapses.ojaUpdate not available");
+      return;
+    }
+    const reps = opts.reps ?? 10;
+    const lr = opts.lr ?? (cluster.learningRate ?? 0.01) * 3;
+    const letters = ALPHABET_ORDER;
+    ensureLetters(Array.from(letters));
+    this._hb(`[Curriculum] _teachLetterOrdinalDirect START: ${letters.length} letters \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} \u2014 free[magnitude(position)] \u2192 letter[one-hot] into cluster.synapses. Gives the alphabet an ABSOLUTE frame instead of only a chain of local links.`);
+    const t0 = Date.now();
+    let updates = 0, skipped = 0, gpuFires = 0;
+    const _gpuCarried = new Array(letters.length).fill(false);
+    let _visit = 0;
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      for (let i = 0; i < letters.length; i++) {
+        const oneHot = encodeLetter(letters[i]);
+        const magFeat = _magnitudeFeatureForNumber(i + 1);
+        if (!oneHot || oneHot.length === 0 || !magFeat || magFeat.length === 0) {
+          skipped++;
+          continue;
+        }
+        if (rep === 0 && cluster._gpuProxyReady && cluster._gpuProxy && typeof cluster._gpuProxy.hebbianRanges === "function") {
+          try {
+            const preR = this._featRegionRanges(freeRegion, magFeat, false);
+            const postR = this._featRegionRanges(letterRegion, oneHot, false);
+            if (preR && postR) {
+              _gpuCarried[i] = cluster._gpuProxy.hebbianRanges(`${cluster.name}_intraSynapses`, lr, reps, preR, postR) === true;
+              if (_gpuCarried[i]) gpuFires++;
+            }
+          } catch {
+            _gpuCarried[i] = false;
+          }
+        }
+        _visit++;
+        if (_gpuCarried[i] && _visit % 5 !== 0) continue;
+        const scratch = this._ensureScratchBuffers();
+        if (!scratch) {
+          skipped++;
+          continue;
+        }
+        const preFull = this._fillRegionPatternInto(scratch.pre, freeRegion, magFeat, false);
+        const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, oneHot, true);
+        try {
+          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection(null, null) : null;
+          if (kScales) {
+            kScales.srcStart = 0;
+            kScales.dstStart = 0;
+          }
+          cluster.synapses.ojaUpdate(preFull, postFull, lr, kScales ? { kScales } : void 0);
+          updates++;
+        } catch {
+          skipped++;
+        }
+      }
+      if ((rep & 7) === 7) await _microtask();
+    }
+    const ORDINAL_WORDS = [
+      "first",
+      "second",
+      "third",
+      "fourth",
+      "fifth",
+      "sixth",
+      "seventh",
+      "eighth",
+      "ninth",
+      "tenth"
+    ];
+    const ordinalPairs = [];
+    for (let i = 0; i < ORDINAL_WORDS.length && i < letters.length; i++) {
+      ordinalPairs.push([ORDINAL_WORDS[i], letters[i]]);
+      ordinalPairs.push([letters[i], ORDINAL_WORDS[i]]);
+    }
+    ordinalPairs.push(["last", letters[letters.length - 1]]);
+    ordinalPairs.push([letters[letters.length - 1], "last"]);
+    if (typeof this._teachAssociationPairs === "function") {
+      await this._teachAssociationPairs(ordinalPairs, {
+        reps: opts.wordReps ?? reps,
+        label: "ALPHABET-ORDINAL-WORDS",
+        relationTagId: 6
+        // ordinal-position channel (first free tag)
+      });
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachLetterOrdinalDirect DONE in ${dt}s \u2014 ${updates} CPU Oja updates \xB7 ${gpuFires} GPU rep-doses (\xD7${reps}) \xB7 ${skipped} skipped \xB7 ${ordinalPairs.length} ordinal-word pairs (relationTagId=6). The alphabet now has positions, not just neighbours.`);
+  },
   // iter11-J — Discriminative one-hot word→first-letter binding for
   // sem_to_motor. For every K-vocab word in the dictionary, write a
   // pair (sem region tiled with word's GloVe embedding) → (motor
@@ -106360,7 +106492,7 @@ var Curriculum = class _Curriculum {
     for (let i = 0; i < Math.min(invSize, inv.length); i++) {
       if (/^[a-z]$/.test(inv[i] || "")) az.push(i);
     }
-    let best = -1, bestScore = 0;
+    const cands = [];
     for (const c of az) {
       if (c === li) continue;
       let raw = 0, denom = 0;
@@ -106372,14 +106504,160 @@ var Curriculum = class _Curriculum {
         for (const o of az) denom += Math.max(0, M[o * invSize + c]);
       }
       if (raw <= 0 || denom <= 0) continue;
-      const s = raw / denom;
+      cands.push({ c, raw, denom });
+    }
+    if (cands.length === 0) return null;
+    let denomSum = 0;
+    for (const k of cands) denomSum += k.denom;
+    const kappa = denomSum / cands.length;
+    let best = -1, bestScore = 0;
+    for (const k of cands) {
+      const s = k.raw / (k.denom + kappa);
       if (s > bestScore) {
         bestScore = s;
-        best = c;
+        best = k.c;
       }
     }
     if (best < 0) return null;
     return { letter: inv[best], score: bestScore, dir: dir === "before" ? "before" : "after" };
+  }
+  /**
+   * The letter × magnitude-dimension profile, extracted STRAIGHT from the
+   * trained intra-synapse CSR — the read half of `_teachLetterOrdinalDirect`.
+   * P[letterBucket][dim] = total trained weight arriving at that letter's
+   * neurons FROM the free-region neurons carrying magnitude dimension `dim`.
+   * CSR rows are POST (letter), colIdx entries are PRE (free), which is the
+   * exact direction the ordinal pass writes. One walk of the letter region's
+   * rows: no propagate, no injection, no cortex ticks — the same discipline
+   * `_letterTransitionMatrix` uses, and the reason an ordinal answer costs
+   * nothing at chat time.
+   */
+  _letterOrdinalMatrix() {
+    const cluster = this.cluster;
+    const syn = cluster && cluster.synapses;
+    const letterRegion = cluster && cluster.regions && cluster.regions.letter;
+    const freeRegion = cluster && cluster.regions && cluster.regions.free;
+    if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion || !freeRegion) return null;
+    const now = Date.now();
+    const TTL = 36e5;
+    if (this._letterOrdCache && now - this._letterOrdCache.at < TTL) return this._letterOrdCache;
+    const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
+    const dim = MAGNITUDE_FEATURE_DIM;
+    if (invSize <= 0 || !(dim > 0)) return null;
+    const lStart = letterRegion.start, lEnd = letterRegion.end;
+    const fStart = freeRegion.start, fEnd = freeRegion.end;
+    const lSpan = lEnd - lStart, fSpan = fEnd - fStart;
+    if (lSpan <= 0 || fSpan <= 0) return null;
+    const lBucket = Math.max(1, Math.floor(lSpan / invSize));
+    const fGroup = Math.max(1, Math.floor(fSpan / dim));
+    const P = new Float64Array(invSize * dim);
+    for (let post = lStart; post < lEnd; post++) {
+      const bOut = Math.floor((post - lStart) / lBucket);
+      if (bOut >= invSize) break;
+      const r0 = syn.rowPtr[post], r1 = syn.rowPtr[post + 1];
+      for (let k = r0; k < r1; k++) {
+        const pre = syn.colIdx[k];
+        if (pre < fStart || pre >= fEnd) continue;
+        const d = Math.floor((pre - fStart) / fGroup);
+        if (d >= dim) continue;
+        P[bOut * dim + d] += syn.values[k];
+      }
+    }
+    const inv = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
+    this._letterOrdCache = { at: now, P, invSize, dim, inv };
+    return this._letterOrdCache;
+  }
+  /**
+   * "What is the Nth letter of the alphabet?" — read from the trained
+   * ordinal weights, zero cortex ticks. Scores each letter by the COSINE
+   * between its incoming magnitude profile and the magnitude feature for
+   * position N, which is the same comparison the Math-K gate uses to grade
+   * every magnitude transform it teaches. Cosine, not raw dot product,
+   * because a letter with more total incoming weight would otherwise win
+   * every position — the frequency bias `_letterSequenceRead` already paid
+   * for once.
+   *
+   * Returns null when the ordinal pass has never run (an untrained brain
+   * says nothing rather than guessing), so the caller falls through to its
+   * existing lane exactly as before.
+   */
+  _letterOrdinalRead(position) {
+    const n = Number(position);
+    if (!Number.isFinite(n) || n < 1) return null;
+    const cache = this._letterOrdinalMatrix();
+    if (!cache || !cache.inv) return null;
+    const { P, invSize, dim, inv } = cache;
+    if (typeof _magnitudeFeatureForNumber !== "function") return null;
+    const target = _magnitudeFeatureForNumber(n);
+    if (!target || target.length === 0) return null;
+    let tNorm = 0;
+    for (let d = 0; d < dim && d < target.length; d++) tNorm += target[d] * target[d];
+    tNorm = Math.sqrt(tNorm);
+    if (!(tNorm > 0)) return null;
+    let best = -1, bestScore = 0;
+    for (let i = 0; i < Math.min(invSize, inv.length); i++) {
+      if (!/^[a-z]$/.test(inv[i] || "")) continue;
+      let dot = 0, pNorm = 0;
+      for (let d = 0; d < dim && d < target.length; d++) {
+        const w = P[i * dim + d];
+        dot += w * target[d];
+        pNorm += w * w;
+      }
+      pNorm = Math.sqrt(pNorm);
+      if (!(pNorm > 0) || !(dot > 0)) continue;
+      const s = dot / (pNorm * tNorm);
+      if (s > bestScore) {
+        bestScore = s;
+        best = i;
+      }
+    }
+    if (best < 0) return null;
+    return { letter: inv[best], score: bestScore, position: n };
+  }
+  /**
+   * Parse an ordinal alphabet-position ask into its 1-based position, or
+   * null when the question is not one. Runs on the SAME normalized text the
+   * classifier and the key-word extractor consume, so the three can never
+   * disagree about what the question said — the chokepoint lesson from the
+   * phrasing sweep.
+   */
+  _ordinalPositionAsked(question) {
+    const raw = String(question || "").toLowerCase();
+    if (!/\balphabet\b/.test(raw)) return null;
+    const q = typeof this._normalizeQuestionText === "function" ? this._normalizeQuestionText(question) : raw;
+    if (!/\bletter\b/.test(q)) return null;
+    if (/\b(?:last|final)\b/.test(q)) return 26;
+    const WORDS = {
+      first: 1,
+      second: 2,
+      third: 3,
+      fourth: 4,
+      fifth: 5,
+      sixth: 6,
+      seventh: 7,
+      eighth: 8,
+      ninth: 9,
+      tenth: 10,
+      eleventh: 11,
+      twelfth: 12,
+      thirteenth: 13,
+      fourteenth: 14,
+      fifteenth: 15,
+      sixteenth: 16,
+      seventeenth: 17,
+      eighteenth: 18,
+      nineteenth: 19,
+      twentieth: 20
+    };
+    for (const w of Object.keys(WORDS)) {
+      if (new RegExp(`\\b${w}\\b`).test(q)) return WORDS[w];
+    }
+    const numeric = q.match(/\b(\d{1,2})(?:st|nd|rd|th)\b/);
+    if (numeric) {
+      const v = parseInt(numeric[1], 10);
+      if (v >= 1 && v <= 26) return v;
+    }
+    return null;
   }
   async _studentTestProbe(opts = {}) {
     const cluster = this.cluster;
@@ -106460,7 +106738,12 @@ var Curriculum = class _Curriculum {
     let templatedAnswer = null;
     try {
       const tplId = typeof this._classifyQuestionTemplate === "function" ? this._classifyQuestionTemplate(question) : -1;
-      const keyTok = (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === "function" ? this._extractKeyWord(question) : null;
+      const _ordPos = typeof this._ordinalPositionAsked === "function" ? this._ordinalPositionAsked(question) : null;
+      if (_ordPos !== null && typeof this._letterOrdinalRead === "function") {
+        const _ordRead = this._letterOrdinalRead(_ordPos);
+        if (_ordRead && _ordRead.letter) templatedAnswer = _ordRead.letter;
+      }
+      const keyTok = templatedAnswer === null && (tplId === 0 || tplId === 1) && typeof this._extractKeyWord === "function" ? this._extractKeyWord(question) : null;
       if (keyTok && keyTok.length === 1 && /^[a-z]$/.test(keyTok)) {
         if (tplId === 0) {
           const _dirBefore = /\b(?:before|precedes)\b/.test(this._normalizeQuestionText(question));
@@ -106805,7 +107088,11 @@ var Curriculum = class _Curriculum {
     const q = String(question || "").trim();
     if (!q || typeof this._studentTestProbe !== "function") return null;
     if (typeof this._isQuestionLike === "function" && !this._isQuestionLike(q)) return null;
-    if (/\b(?:first|second|third|fourth|fifth|last|final)\s+(?:letter|number|digit)\b/i.test(q)) return null;
+    if (/\b(?:first|second|third|fourth|fifth|last|final)\s+(?:letter|number|digit)\b/i.test(q)) {
+      const _ordPos = typeof this._ordinalPositionAsked === "function" ? this._ordinalPositionAsked(q) : null;
+      const _ordRead = _ordPos !== null && typeof this._letterOrdinalRead === "function" ? this._letterOrdinalRead(_ordPos) : null;
+      if (!_ordRead || !_ordRead.letter) return null;
+    }
     const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : this._chatQProbeBudgetMs(q);
     const ac = typeof AbortController === "function" ? new AbortController() : null;
     let timer = null;
@@ -107992,7 +108279,10 @@ var Curriculum = class _Curriculum {
         if (grade !== "pre-K" && grade !== "kindergarten") {
           try {
             if (typeof this._teachLetterSequenceDirect === "function") {
-              await this._phasedTeach("ELA-FUNDAMENTALS-ALPHABET-SEQ-REFRESH", () => this._teachLetterSequenceDirect({ reps: 10 }));
+              await this._phasedTeach("ELA-FUNDAMENTALS-ALPHABET-SEQ-REFRESH", () => this._teachLetterSequenceDirect({ reps: 30 }));
+            }
+            if (typeof this._teachLetterOrdinalDirect === "function") {
+              await this._phasedTeach("ELA-FUNDAMENTALS-ALPHABET-ORDINAL-REFRESH", () => this._teachLetterOrdinalDirect({ reps: 10 }));
             }
             if (typeof this._teachLetterNamingDirect === "function") {
               await this._phasedTeach("ELA-FUNDAMENTALS-LETTER-NAMING-REFRESH", () => this._teachLetterNamingDirect({ reps: 10 }));
