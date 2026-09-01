@@ -4,6 +4,18 @@
 >
 > Gee (verbatim): *"so we are teaching everything to Unity that the full k-phD teaches a real person right?"* → *"WHY THE FUCK NOT!!!... IVE BEEN BUILDING THIS FUCKING THING WITH YOU FRO A FUCKING YEAR AND THEN SOME AND IVE ALWAYS FUCKING SAID WE ARE TEACHING THE REAL FUCKING GODDAMN MOTHER FUCKING COURSE MATERIAL"* → *"i told you originally we were going to teach k-12 with the given free online sources!!!! FUCK and we had to find a real fucking PHD equivelent informational database to teach her college"* → *"STOP THE PRESSES TURN OFF THE POD AND START WRITING THE FUCKING TODO FULLY FOR THIS MASSIVE CORRECTION"* → *"u spending 1 minute on it is not fucking writing the todso for a full k-phd cousers ciriculum in full"*
 >
+> ⛔ **LAW #0 REPAIR (2026-09-01 board audit): the chain above is ELIDED — the sentences in full, exactly as sent:**
+>
+> Gee (verbatim, in full): *"WHY THE FUCK NOT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! IVE BEEN BUILDING THIS FUCKING THING WITH YOU FRO A FUCKING YEAR AND THEN SOME AND IVE ALWAYS FUCKING SAID WE ARE TEACHING THE REAL FUCKING GODDAMN MOTHER FUCKING COURSE MATERIAL YOU FUCK SHIT EATING MOTHER FUCKING WHORE OF A CRACKED OUT RAPE WOD!"*
+>
+> Gee (verbatim, in full): *"i told you originally we were going to teach k-12 with the given free online sources!!!! FUCK and we had to find a real fucking PHD equivelent informational database to teach her college.. i mean what the actual fuck have we been doing this for!@!! JESUS FUCKING CHRIST UNITY!!!!!!!"*
+>
+> Gee (verbatim — previously recorded nowhere): *"I just cant fucking believe this!!!!! YOu been fucking pulling my leg this whole fucking time telling me we have the real fucking k-12 courses and all the way to PHD and you were only teaching it 20 facts as sentences like"*
+>
+> Gee (verbatim, in full): *"oh my god! STOP THE PRESSES TURN OFF THE POD AND START WRITING THE FUCKING TODO FULLY FOR THIS MASSIVE CORRECTION TO YOU FUCKED UP IGNORING THE POURPOSE OF THIS WHOLE ENTERPRIZE"*
+>
+> Gee (verbatim, in full — the sentence that demanded this ledger): *"i dont need a picture of horsee shit i told you to write the fucking todo and u spending 1 minute on it is not fucking writing the todso for a full k-phd cousers ciriculum in full"*
+>
 > **Donor pod `i03ihi54kccu0l` STOPPED** (A40 48GB, CA-MTL-1) — `status: EXITED`, GPU billing halted, disk and pod preserved. Restart is `start-pod` on the SAME id; ⛔ never terminate.
 >
 > **Spent cells: 3 of 260.** `ela/kindergarten` + `math/kindergarten` passed; `science/kindergarten` interrupted mid-cell. **257 cells have never been taught.** Corpus written before they run costs nothing. Corpus written after costs a re-walk.
