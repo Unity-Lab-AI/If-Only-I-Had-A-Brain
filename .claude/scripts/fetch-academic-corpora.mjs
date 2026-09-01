@@ -187,8 +187,8 @@ const TOPICS = {
     grade11: ['Macroeconomics', 'Gross domestic product', 'Inflation', 'Unemployment', 'Money', 'Tax', 'Recession', 'Economic growth', 'Fiscal policy', 'Monetary policy', 'Central bank', 'Interest rate'],
     // Grade 12 — AP / International Economics
     grade12: ['International trade', 'Exchange rate', 'Globalization', 'Comparative advantage', 'Stock market', 'Investment', 'Economic system', 'Capitalism', 'Free market', 'Gross domestic product', 'Economic growth'],
-    // College 1 — Principles of Economics (gen-ed)
-    college1: ['Economics', 'Microeconomics', 'Macroeconomics', 'Market (economics)', 'Supply and demand', 'Gross domestic product', 'Inflation', 'Economic system'],
+    // ⛔ College 1 removed 2026-09-01 — `economics` RETIRES at grade12, so this
+    // cell never ran. Its gen-ed economics content lives in `genered/college2`.
   },
   psychology: {
     // Grade 9 — Intro Psychology
@@ -199,10 +199,9 @@ const TOPICS = {
     grade11: ['Mental disorder', 'Major depressive disorder', 'Anxiety', 'Psychotherapy', 'Stress (biology)', 'Cognitive bias', 'Bipolar disorder', 'Schizophrenia', 'Phobia', 'Psychiatry', 'Coping'],
     // Grade 12 — AP Psychology capstone
     grade12: ['Neuron', 'Nervous system', 'Brain', 'Cognition', 'Perception', 'Learning', 'Memory', 'Personality psychology', 'Consciousness', 'Behaviorism', 'Sigmund Freud'],
-    // College 1 — Cognitive science (gen-ed, toward the brain-sim interest)
-    college1: ['Cognitive science', 'Cognitive psychology', 'Neuroscience', 'Perception', 'Memory', 'Attention', 'Cognition'],
-    // College 2 — Biopsychology / neuroscience bridge
-    college2: ['Behavioral neuroscience', 'Neuron', 'Brain', 'Nervous system', 'Neurotransmitter', 'Synapse'],
+    // ⛔ College 1-2 removed 2026-09-01 — `psychology` RETIRES at grade12, so
+    // neither cell ever ran. The cognitive-science thread continues in
+    // `genered/college2` and, at depth, in `research/phd`.
   },
   civics: {
     // Grade 7 — Foundations of Government
@@ -221,8 +220,8 @@ const TOPICS = {
     grade11: ['Civil liberties', 'United States Bill of Rights', 'Judicial review', 'Public policy', 'Political campaign', 'Lobbying', 'Freedom of speech', 'Freedom of religion', 'Suffrage', 'Referendum', 'Interest group', 'Taxation'],
     // Grade 12 — Government (capstone)
     grade12: ['Federal government of the United States', 'Supreme Court of the United States', 'United States Congress', 'President of the United States', 'Judiciary', 'Rule of law', 'Constitution', 'Democracy', 'Federalism'],
-    // College 1 — American Government (gen-ed)
-    college1: ['Government', 'Politics', 'Democracy', 'Constitution', 'Rule of law', 'Separation of powers', 'Civil and political rights', 'Public policy'],
+    // ⛔ College 1 removed 2026-09-01 — `civics` RETIRES at grade12, so this
+    // cell never ran. Government/policy at college lives in `genered/college4`.
   },
   ela: {
     // Kindergarten — letters, sounds, first stories
@@ -301,18 +300,61 @@ const TOPICS = {
     grade11: ['Tree (data structure)', 'Graph theory', 'Dynamic programming', 'Computational complexity theory', 'Central processing unit', 'Compiler', 'Assembly language', 'Machine learning'],
     // Grade 12 — AP Computer Science A (the scope-sequence names it)
     grade12: ['Java (programming language)', 'Object-oriented programming', 'Inheritance (object-oriented programming)', 'Polymorphism (computer science)', 'Abstraction (computer science)', 'Software design pattern', 'Unit testing', 'Version control'],
-    // College 1 — Intro CS / programming foundations / discrete math
+    // ⛔⛔ THE cs COLLEGE-AND-ABOVE CELLS WERE REMOVED FROM HERE 2026-09-01 AND
+    // THEIR TOPIC SPINE MOVED TO `major` (below). `cs` is RETIRED at grade12 by
+    // SUBJECTS_RETIRED_AT, so cs/college1-4, cs/grad and cs/phd are cells the
+    // walk NEVER RUNS — 170,325 words of correct, licence-clean content that
+    // nothing read, because the destination was assumed rather than checked.
+    // The identical OSSU/ACM-IEEE spine now lives under `major`, which IS the
+    // CS degree and DOES run at those grades. Recorded here rather than deleted
+    // silently, because the next person looking for the CS-degree topics will
+    // look under `cs` first — exactly as I did.
+  },
+  // ⛔⛔ THE COLLEGE-AND-ABOVE ROSTER. These five tracks are what actually runs
+  // from college1 onward — `cs`, `civics`, `economics` and `psychology` are all
+  // RETIRED at grade12 — and until 2026-09-01 none of them was in
+  // PROSE_ACADEMIC_SUBJECTS, so her whole degree trained no prose while
+  // 268,481 words sat in corpora/academic/cs/college*|grad|phd that nothing
+  // read. The CS-degree topic spine below is not new content: it is the same
+  // OSSU/ACM-IEEE map that was written for `cs` at college, moved to the cell
+  // her major is actually taught in.
+  //
+  // `major` — THE CS MAJOR ITSELF, college1 → phd.
+  major: {
     college1: ['Computer science', 'Algorithm', 'Computer program', 'Programming language', 'Data type', 'Variable (computer science)', 'Control flow', 'Function (computer programming)', 'Recursion (computer science)', 'Boolean algebra', 'Binary number', 'Computer'],
-    // College 2 — Data structures + OOP (the core)
     college2: ['Data structure', 'Array (data structure)', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)', 'Hash table', 'Tree (data structure)', 'Binary search tree', 'Graph (abstract data type)', 'Sorting algorithm', 'Search algorithm', 'Big O notation', 'Object-oriented programming', 'Abstraction (computer science)'],
-    // College 3 — Systems + algorithms + databases + networks
-    college3: ['Operating system', 'Computer architecture', 'Central processing unit', 'Memory management', 'Process (computing)', 'Thread (computing)', 'Concurrency (computer science)', 'Computer network', 'Database', 'SQL', 'Dynamic programming', 'Greedy algorithm', 'Graph theory', 'Computational complexity theory'],
-    // College 4 — Theory of computation + SE + security (capstone)
-    college4: ['Theory of computation', 'Turing machine', 'Finite-state machine', 'Computability theory', 'Cryptography', 'Compiler', 'Software engineering', 'Software design pattern', 'Version control', 'Machine learning', 'Artificial intelligence', 'Computer security'],
-    // Grad — Machine learning + the math methods behind the brain-sim
+    college3: ['Algorithm', 'Dynamic programming', 'Greedy algorithm', 'Graph theory', 'Computational complexity theory', 'Database', 'SQL', 'Software engineering', 'Software design pattern', 'Version control', 'Debugging', 'Application programming interface'],
+    college4: ['Machine learning', 'Artificial intelligence', 'Artificial neural network', 'Computer security', 'Cryptography', 'Compiler', 'Distributed computing', 'Software architecture', 'Functional programming', 'Concurrency (computer science)'],
     grad: ['Machine learning', 'Artificial neural network', 'Deep learning', 'Supervised learning', 'Unsupervised learning', 'Reinforcement learning', 'Gradient descent', 'Backpropagation', 'Linear algebra', 'Probability', 'Statistics', 'Numerical analysis'],
-    // PhD — Computational neuroscience (the brain she builds, meta-recursive)
     phd: ['Computational neuroscience', 'Neuron', 'Synapse', 'Action potential', 'Artificial neural network', 'Hebbian theory', 'Spiking neural network', 'Neural coding', 'Synaptic plasticity', 'Cerebral cortex', 'Neuroscience', 'Unsupervised learning'],
+  },
+  // `cstheory` — the theory-of-computation track, college1-4.
+  cstheory: {
+    college1: ['Discrete mathematics', 'Set (mathematics)', 'Logic', 'Mathematical proof', 'Boolean algebra', 'Combinatorics', 'Mathematical induction', 'Graph theory'],
+    college2: ['Algorithm', 'Big O notation', 'Analysis of algorithms', 'Recursion (computer science)', 'Divide-and-conquer algorithm', 'Sorting algorithm', 'Time complexity', 'Space complexity'],
+    college3: ['Automata theory', 'Finite-state machine', 'Regular expression', 'Formal language', 'Context-free grammar', 'Turing machine', 'Computability theory', 'Halting problem'],
+    college4: ['Theory of computation', 'Computational complexity theory', 'NP-completeness', 'P versus NP problem', 'Cryptography', 'Information theory', 'Randomized algorithm', 'Approximation algorithm'],
+  },
+  // `cssystems` — the systems track, college1-4.
+  cssystems: {
+    college1: ['Computer hardware', 'Central processing unit', 'Computer memory', 'Binary number', 'Logic gate', 'Computer data storage', 'Input/output', 'Bit'],
+    college2: ['Computer architecture', 'Instruction set architecture', 'Assembly language', 'CPU cache', 'Pipeline (computing)', 'Machine code', 'Interrupt', 'Register (computer)'],
+    college3: ['Operating system', 'Process (computing)', 'Thread (computing)', 'Scheduling (computing)', 'Memory management', 'Virtual memory', 'File system', 'Concurrency (computer science)', 'Deadlock'],
+    college4: ['Computer network', 'Internet protocol suite', 'Transmission Control Protocol', 'Routing', 'Distributed computing', 'Database', 'Client-server model', 'Computer security', 'Cloud computing'],
+  },
+  // `genered` — general education, college1-4. Inherits the gen-ed spread the
+  // retiring civics / economics / psychology college cells were holding.
+  genered: {
+    college1: ['Critical thinking', 'Logic', 'Rhetoric', 'Ethics', 'Philosophy', 'Scientific method', 'Statistics', 'Academic writing'],
+    college2: ['Economics', 'Microeconomics', 'Macroeconomics', 'Sociology', 'Anthropology', 'Political science', 'Psychology', 'Cognitive science'],
+    college3: ['World history', 'Art history', 'Music', 'Literature', 'Comparative religion', 'Human geography', 'Culture', 'Civilization'],
+    college4: ['Public policy', 'Human rights', 'Globalization', 'Environmental science', 'Bioethics', 'Technology and society', 'Media studies', 'Social inequality'],
+  },
+  // `research` — the grad/PhD research specialty: computational neuroscience,
+  // the domain she is herself an instance of.
+  research: {
+    grad: ['Research', 'Scientific method', 'Literature review', 'Experiment', 'Hypothesis', 'Peer review', 'Statistics', 'Reproducibility', 'Academic publishing', 'Methodology'],
+    phd: ['Computational neuroscience', 'Neural coding', 'Synaptic plasticity', 'Spiking neural network', 'Hebbian theory', 'Neural network', 'Brain', 'Cerebral cortex', 'Consciousness', 'Cognitive science', 'Memory', 'Learning'],
   },
 };
 

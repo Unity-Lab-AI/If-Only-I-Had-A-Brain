@@ -47,6 +47,17 @@ const sentCapFor = (g) => SENT_CAP_BY_BAND[BAND_OF_GRADE.get(String(g || '').toL
 // CHAPTER -> (grade). Follows the OSSU core sequence the existing cs topic
 // table already declares: College 2 is the data-structures core, College 3
 // adds the algorithmic/graph material, College 4 the theory-facing chapters.
+// ⛔⛔ THE DESTINATION IS `major`, NOT `cs`, AND THE FIRST VERSION OF THIS
+// SCRIPT GOT IT WRONG. `cs` is RETIRED at grade12 by SUBJECTS_RETIRED_AT, so
+// corpora/academic/cs/college2.json is never read by the walk — the first run
+// of this ingest banked 1,182 verified CC-BY sentences into a cell that does
+// not exist at that grade. The college roster is major / genered / cstheory /
+// cssystems (then research at grad), and `major` IS the CS degree.
+// ⚠ The lesson is the one this whole batch is about: the licence was checked,
+// the crawl depth was checked, the prose was read — and whether the destination
+// cell RUNS was assumed. Content verified, consumption assumed.
+const SUBJECT = 'major';
+
 const CHAPTER_MAP = {
   college2: [
     ['1_Introduction.html', 'Introduction to Data Structures'],
@@ -133,7 +144,7 @@ async function verifyLicence() {
 
 async function buildGrade(grade, chapters, lic) {
   const cap = sentCapFor(grade);
-  console.log(`[csmajor] cs/${grade} (cap ${cap}) — ${chapters.length} chapter(s)`);
+  console.log(`[csmajor] ${SUBJECT}/${grade} (cap ${cap}) — ${chapters.length} chapter(s)`);
   const per = Math.max(20, Math.floor(cap / chapters.length));
   const experiences = [];
   for (const [file, title] of chapters) {
@@ -167,7 +178,7 @@ async function buildGrade(grade, chapters, lic) {
   }
   if (!experiences.length) return 0;
 
-  const dir = path.join(OUT, 'cs');
+  const dir = path.join(OUT, SUBJECT);
   fs.mkdirSync(dir, { recursive: true });
   const outPath = path.join(dir, `${grade}.json`);
   const byTheme = new Map();
@@ -181,13 +192,13 @@ async function buildGrade(grade, chapters, lic) {
   }
   const merged = [...byTheme.values()];
   fs.writeFileSync(outPath, JSON.stringify({
-    version: 1, grade, subject: 'cs',
+    version: 1, grade, subject: SUBJECT,
     source: 'hybrid: Open Data Structures (CC-BY) + Wikipedia (CC-BY-SA), cleaned + sentence-segmented',
-    note: `Hybrid academic-depth corpus for cs/${grade} — the CS major. Trained via curriculum._trainAcademicStories.`,
+    note: `Hybrid academic-depth corpus for ${SUBJECT}/${grade} — the CS major. Trained via curriculum._trainAcademicStories.`,
     experiences: merged,
   }, null, 2), 'utf8');
   const n = experiences.reduce((a, e) => a + e.story.split(/(?<=[.!?])\s+/).length, 0);
-  console.log(`  -> cs/${grade}.json (cell now ${merged.length} entries)`);
+  console.log(`  -> ${SUBJECT}/${grade}.json (cell now ${merged.length} entries)`);
   return n;
 }
 
@@ -205,5 +216,5 @@ if (!lic) {
     try { total += await buildGrade(grade, chapters, lic); }
     catch (e) { console.log(`[csmajor] ${grade} FAILED — ${e.message}`); }
   }
-  console.log(`[csmajor] DONE — ~${total} CS-degree sentences written under corpora/academic/cs/.`);
+  console.log(`[csmajor] DONE — ~${total} CS-degree sentences written under corpora/academic/${SUBJECT}/.`);
 }
