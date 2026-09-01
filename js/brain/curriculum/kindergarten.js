@@ -5111,7 +5111,17 @@ export const K_MIXIN = {
     // sem('W') or letter(W[0]) as the probe input produces the same
     // expected motor argmax.
     const semPathAvailable = !!(dynSemToMotor && dynSemToMotor.values && dynSemToMotor.colIdx && dynSemToMotor.rowPtr);
-    const letterFallback = !!(dynLetterToMotor && dynLetterToMotor.values && dynLetterToMotor.colIdx && dynLetterToMotor.rowPtr);
+    // ⭐ RENAMED from `letterFallback` 2026-09-01. This is NOT a fallback and the
+    // old name raised a false alarm against the NO-FALLBACKS law on every read.
+    // It is a PROBE choosing which matrix to measure her trained state through —
+    // the comment above says it outright: sem('W') and letter(W[0]) "produce the
+    // same expected motor argmax", so the two paths measure the SAME thing and
+    // neither is a degraded version of the other. Nothing about her capability
+    // changes with the choice; only which CSR the instrument reads.
+    // ⚠ Renaming matters as much as removing here: with ~450 occurrences of the
+    // word "fallback" across the tree, a reader cannot tell a genuine violation
+    // from a badly-named variable, which is exactly how a real one survives.
+    const letterPathAvailable = !!(dynLetterToMotor && dynLetterToMotor.values && dynLetterToMotor.colIdx && dynLetterToMotor.rowPtr);
     // Pre-loop path-decision heartbeat — operator needs to know which
     // matrix the probe loop is about to hit + whether CPU CSR is live
     // before a single probe runs. If all paths fail this log catches
@@ -5119,11 +5129,11 @@ export const K_MIXIN = {
     // flushes the line without waiting for console.log's stream buffer.
     const _pathMeta = semPathAvailable
       ? `sem_to_motor ${dynSemToMotor.rows}x${dynSemToMotor.cols} nnz=${dynSemToMotor.nnz}`
-      : (letterFallback
+      : (letterPathAvailable
         ? `letter_to_motor ${dynLetterToMotor.rows}x${dynLetterToMotor.cols} nnz=${dynLetterToMotor.nnz}`
         : 'NONE_AVAILABLE');
-    try { process.stdout.write(`[Curriculum][K-DIAG] DYN-PROD pre-loop: semPath=${semPathAvailable} letterFallback=${letterFallback} matrix=${_pathMeta}\n`); } catch {}
-    if (!semPathAvailable && !letterFallback) {
+    try { process.stdout.write(`[Curriculum][K-DIAG] DYN-PROD pre-loop: semPath=${semPathAvailable} letterPathAvailable=${letterPathAvailable} matrix=${_pathMeta}\n`); } catch {}
+    if (!semPathAvailable && !letterPathAvailable) {
       try { process.stdout.write('[Curriculum][K-DIAG] DYN-PROD skipped — neither sem_to_motor nor letter_to_motor has CPU CSR available.\n'); } catch {}
       for (const p of wordStartProbes) prodFails.push(`${p.word}→NO_PROJ`);
     } else {
