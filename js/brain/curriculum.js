@@ -6029,6 +6029,17 @@ export class Curriculum {
     if (span <= 0) return null;
     const bucket = Math.max(1, Math.floor(span / invSize));
     const M = new Float64Array(invSize * invSize);
+    // ⭐ ENTRY COUNTS, alongside the weights, because they answer a DIFFERENT
+    // question and the two were indistinguishable before. `ojaUpdate` only
+    // adjusts CSR entries that ALREADY EXIST — so a letter bucket that was
+    // never wired to another at init can be taught forever and stay at zero
+    // mass, and a summed weight of 0 cannot tell that apart from "wired and
+    // trained to nothing". This is the same failure `cluster.js:1204-1222`
+    // documents for word_motor, where lamination masking left ~75% of bucket
+    // rows with no incoming entry and three quarters of all words were
+    // physically incapable of matrix emission. N[in][out] = how many synapses
+    // EXIST; M[in][out] = what they currently weigh. Structure vs training.
+    const N = new Int32Array(invSize * invSize);
     for (let post = start; post < end; post++) {
       const bOut = Math.floor((post - start) / bucket);
       if (bOut >= invSize) break;
@@ -6039,10 +6050,11 @@ export class Curriculum {
         const bIn = Math.floor((pre - start) / bucket);
         if (bIn >= invSize) continue;
         M[bIn * invSize + bOut] += syn.values[k];
+        N[bIn * invSize + bOut]++;
       }
     }
     const inv = (typeof inventorySnapshot === 'function') ? inventorySnapshot() : null;
-    this._letterTransCache = { at: now, M, invSize, inv };
+    this._letterTransCache = { at: now, M, N, invSize, inv };
     return this._letterTransCache;
   }
 
@@ -6063,14 +6075,43 @@ export class Curriculum {
    * propagate had no reverse.
    */
   _letterSequenceRead(letter, dir) {
+    // ⛔ THE DECLINE NAMES ITS BLOCKER. This used to return a bare `null` for
+    // five structurally different reasons, so a live wrong answer could only
+    // be diagnosed by INFERENCE — which is how this project has shipped a
+    // confidently-wrong mechanism before. Same defect class as the Life gate
+    // that had five decline conditions and printed "no reason recorded".
+    // `_letterReadLast` carries the verdict WITH ITS AGE so a state read
+    // answers "why did she not know that letter" without a console hunt.
+    const _why = (reason, extra) => {
+      this._letterReadLast = Object.assign(
+        { at: Date.now(), letter: String(letter || ''), dir: dir === 'before' ? 'before' : 'after', reason },
+        extra || {},
+      );
+      return null;
+    };
     const cache = this._letterTransitionMatrix();
-    if (!cache || !cache.inv) return null;
-    const { M, invSize, inv } = cache;
+    if (!cache) return _why('no-matrix');
+    if (!cache.inv) return _why('no-inventory');
+    const { M, N, invSize, inv } = cache;
     const li = inv.indexOf(letter);
-    if (li < 0 || li >= invSize) return null;
+    if (li < 0 || li >= invSize) return _why('letter-not-in-inventory');
     const az = [];
     for (let i = 0; i < Math.min(invSize, inv.length); i++) {
       if (/^[a-z]$/.test(inv[i] || '')) az.push(i);
+    }
+    // STRUCTURE BEFORE TRAINING. If this letter's bucket has no synapses at
+    // all on the relevant axis, no amount of teaching can ever move it —
+    // `ojaUpdate` cannot create entries. Reporting that as "no trained mass"
+    // would send the next session to raise reps on a lane that is physically
+    // incapable of learning, which is the exact wrong turn the word_motor
+    // lamination bug cost before it was found.
+    if (N) {
+      let structure = 0;
+      for (const c of az) {
+        if (c === li) continue;
+        structure += (dir === 'before') ? N[c * invSize + li] : N[li * invSize + c];
+      }
+      if (structure === 0) return _why('no-structure', { synapses: 0 });
     }
     // ⛔ RARITY BIAS — MY OWN DEFECT FROM THE SHARE-NORMALIZATION ABOVE,
     // caught by reading the live answer rather than the code. Dividing by a
@@ -6095,6 +6136,7 @@ export class Curriculum {
     // score approaches raw mass and it must bring REAL trained weight to win
     // rather than winning on scarcity.
     const cands = [];
+    let positiveRaw = 0, deadDenom = 0;
     for (const c of az) {
       if (c === li) continue;
       let raw = 0, denom = 0;
@@ -6105,10 +6147,20 @@ export class Curriculum {
         raw = M[li * invSize + c];
         for (const o of az) denom += Math.max(0, M[o * invSize + c]);
       }
+      if (raw > 0) positiveRaw++;
+      if (raw > 0 && denom <= 0) deadDenom++;
       if (raw <= 0 || denom <= 0) continue;
       cands.push({ c, raw, denom });
     }
-    if (cands.length === 0) return null;
+    // Two more distinguishable declines: the synapses EXIST (structure passed
+    // above) but training left no positive weight on this axis, versus the
+    // weights are positive and every normalising denominator is zero. The
+    // first is a curriculum problem, the second is an arithmetic one.
+    if (cands.length === 0) {
+      return positiveRaw === 0
+        ? _why('no-positive-mass', { candidates: az.length })
+        : _why('no-denominator', { positiveRaw, deadDenom });
+    }
     let denomSum = 0;
     for (const k of cands) denomSum += k.denom;
     const kappa = denomSum / cands.length;
@@ -6117,8 +6169,67 @@ export class Curriculum {
       const s = k.raw / (k.denom + kappa);
       if (s > bestScore) { bestScore = s; best = k.c; }
     }
-    if (best < 0) return null;
-    return { letter: inv[best], score: bestScore, dir: dir === 'before' ? 'before' : 'after' };
+    if (best < 0) return _why('no-winner', { candidates: cands.length });
+    const _out = { letter: inv[best], score: bestScore, dir: dir === 'before' ? 'before' : 'after' };
+    // The SUCCESS is recorded too, with the same shape. An instrument that
+    // only speaks on failure cannot tell "never asked" from "asked and fine".
+    this._letterReadLast = {
+      at: Date.now(), letter: String(letter || ''), dir: _out.dir,
+      reason: 'ok', answer: _out.letter, score: bestScore, candidates: cands.length,
+    };
+    return _out;
+  }
+
+  /**
+   * ⭐ LETTER-MATRIX HEALTH — the read that answers, in ONE field, whether a
+   * letter she cannot answer for is UNWIRED or merely UNTRAINED.
+   *
+   * The distinction is not academic and this codebase has already paid for
+   * missing it once: `ojaUpdate` adjusts existing CSR entries and CANNOT
+   * create them, so a letter bucket with no synapses into its neighbours is
+   * physically incapable of learning a transition no matter how many reps it
+   * is given (`cluster.js:1204-1222` — the same shape left three quarters of
+   * all words unable to emit from the matrix). `wired` counts SYNAPSES;
+   * `trained` counts letters with positive outgoing WEIGHT. If `wired` is 26
+   * and `trained` is small, the curriculum is the lever. If `wired` itself is
+   * short, no curriculum change can ever help and the fix is at init.
+   *
+   * Zero propagates, zero ticks — it reads the cached transition matrix that
+   * the answer lane already builds. `worst` names specific letters rather
+   * than a bare count, because "some letters are dead" is not actionable and
+   * "d, q, x are dead" is.
+   */
+  _letterMatrixHealth() {
+    const cache = this._letterTransitionMatrix();
+    if (!cache || !cache.inv || !cache.N) return { available: false, reason: cache ? 'no-counts' : 'no-matrix' };
+    const { M, N, invSize, inv } = cache;
+    const az = [];
+    for (let i = 0; i < Math.min(invSize, inv.length); i++) {
+      if (/^[a-z]$/.test(inv[i] || '')) az.push(i);
+    }
+    let wired = 0, trained = 0, synapses = 0;
+    const unwired = [], untrained = [];
+    for (const i of az) {
+      let n = 0, pos = 0;
+      for (const c of az) {
+        if (c === i) continue;
+        n += N[i * invSize + c];
+        if (M[i * invSize + c] > 0) pos++;
+      }
+      synapses += n;
+      if (n > 0) wired++; else unwired.push(inv[i]);
+      if (pos > 0) trained++; else if (n > 0) untrained.push(inv[i]);
+    }
+    return {
+      available: true,
+      letters: az.length,
+      wired,                       // letters with ANY outgoing synapse (structure)
+      trained,                     // letters with ANY positive outgoing weight (learning)
+      synapses,                    // total letter->letter entries in the block
+      unwired: unwired.slice(0, 8),      // ⛔ these can NEVER learn a successor
+      untrained: untrained.slice(0, 8),  // wired but taught nothing yet
+      ageMs: Date.now() - cache.at,
+    };
   }
 
   /**
@@ -6185,18 +6296,31 @@ export class Curriculum {
    * existing lane exactly as before.
    */
   _letterOrdinalRead(position) {
+    // Same blocker-naming discipline as `_letterSequenceRead`, and here it
+    // carries an extra load: while the walk has not yet reached an ELA cell,
+    // `not-taught-yet` is the CORRECT state, not a fault. Without the reason
+    // recorded, an operator watching an ordinal question return nothing has
+    // no way to tell "the teach has not run" from "the read is broken" — and
+    // those call for opposite responses (wait vs investigate).
+    const _why = (reason, extra) => {
+      this._letterOrdinalLast = Object.assign(
+        { at: Date.now(), position: Number(position), reason }, extra || {},
+      );
+      return null;
+    };
     const n = Number(position);
-    if (!Number.isFinite(n) || n < 1) return null;
+    if (!Number.isFinite(n) || n < 1) return _why('bad-position');
     const cache = this._letterOrdinalMatrix();
-    if (!cache || !cache.inv) return null;
+    if (!cache) return _why('no-matrix');
+    if (!cache.inv) return _why('no-inventory');
     const { P, invSize, dim, inv } = cache;
-    if (typeof _magnitudeFeatureForNumber !== 'function') return null;
+    if (typeof _magnitudeFeatureForNumber !== 'function') return _why('no-encoder');
     const target = _magnitudeFeatureForNumber(n);
-    if (!target || target.length === 0) return null;
+    if (!target || target.length === 0) return _why('no-target-feature');
     let tNorm = 0;
     for (let d = 0; d < dim && d < target.length; d++) tNorm += target[d] * target[d];
     tNorm = Math.sqrt(tNorm);
-    if (!(tNorm > 0)) return null;
+    if (!(tNorm > 0)) return _why('zero-target-norm');
     let best = -1, bestScore = 0;
     for (let i = 0; i < Math.min(invSize, inv.length); i++) {
       if (!/^[a-z]$/.test(inv[i] || '')) continue;
@@ -6211,7 +6335,14 @@ export class Curriculum {
       const s = dot / (pNorm * tNorm);
       if (s > bestScore) { bestScore = s; best = i; }
     }
-    if (best < 0) return null;
+    // ⛔ `not-taught-yet` is the honest name for the state the walk is in
+    // today: the ordinal pass writes free→letter mass, and it first runs when
+    // the walk reaches an ELA cell. No mass means the teach has not happened,
+    // which is NOT the same as a broken read.
+    if (best < 0) return _why('not-taught-yet', { letters: Math.min(invSize, inv.length) });
+    this._letterOrdinalLast = {
+      at: Date.now(), position: n, reason: 'ok', answer: inv[best], score: bestScore,
+    };
     return { letter: inv[best], score: bestScore, position: n };
   }
 

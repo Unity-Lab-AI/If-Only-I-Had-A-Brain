@@ -1,6 +1,46 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 late (LATEST — PICK UP HERE) — ALPHAORDER: THE ALPHABET GETS POSITIONS, AND I OWN THE BIAS THAT ANSWERED "P."
+> ## ⭐⭐⭐ 2026-09-01 latest (PICK UP HERE) — LETTERBLOCK: STOP INFERRING WHY SHE CANNOT ANSWER, AND MAKE THE MATRIX SAY IT
+>
+> Gee (verbatim): *"what letter comes after "D" in the alphabet? / Unity — motor unstable (lowest grade: pre-K) / …"* → *"okay lets do what needs to be done"*
+>
+> ### ⛔ ONE CURL AFTER THE NEXT PRESS DECIDES THE WHOLE NEXT MOVE
+> ```
+> curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json \
+>   | node -e "const s=JSON.parse(require('fs').readFileSync(0,'utf8')).state; console.log(JSON.stringify(s.letterRead,null,2))"
+>
+>   matrix.wired  == 26  -> every letter IS connected. The succession lane can learn.
+>                           The ALPHAORDER rep bump (10->30) + ordinal anchors are the
+>                           right fix and are ALREADY SHIPPED - they just need the walk
+>                           to reach ela/grade1. Nothing more to build; wait for the walk.
+>   matrix.wired  <  26  -> ⛔ STRUCTURAL. ojaUpdate cannot create CSR entries, so those
+>                           letters have been taught into NOTHING since the beginning and
+>                           no rep count will ever fix them. matrix.unwired names exactly
+>                           which. The fix is at init (cross-projection / intra wiring),
+>                           NOT in the curriculum. This is the word_motor failure
+>                           (cluster.js:1204-1222) repeating in the letter region.
+> ```
+>
+> ### What was PROVEN before anything was built (two suspects eliminated by measurement)
+> - ⭐ **The box was already on `46158e21`** — my newest main, pressed, ~18 min uptime. That ask ran through the ordinal work, not the old build.
+> - **The parse is clean.** The real `_normalizeQuestionText` / `_classifyQuestionTemplate` / `_extractKeyWord` were RUN on the exact string: uppercase `D`, the quotes, `in the alphabet`, trailing `?` → `what letter comes after d ?` → **template 0, key word `d`**. That whole crack class is closed.
+> - **The clock is clean.** ChatPin: **`qa-probe=4593ms`** against a 45 s budget — completed, not timed out — and **no `answered via` line in the ring**. So `_letterSequenceRead('d','after')` fired and returned null.
+> - ⛔ **And there the evidence stopped.** A bare `null` covered five different causes. I was inferring. That is the defect this batch fixes.
+>
+> ### What shipped
+> - **`LETTERBLOCK.1`** — `_letterReadLast` on EVERY path including success, eight distinguishable reasons, published with its age at `state.letterRead.last`. An instrument that only speaks on failure cannot tell *never asked* from *asked and fine*.
+> - **`LETTERBLOCK.2`** — entry-COUNT matrix `N` beside the weight matrix `M` in the same pass; `_letterMatrixHealth()` → `{letters, wired, trained, synapses, unwired[], untrained[]}` at `state.letterRead.matrix`. **`wired` = synapses that EXIST, `trained` = what they weigh.** `unwired` names specific letters, because "some letters are dead" is not actionable.
+> - **The ordinal read got the same treatment** rather than being left as a known hole — it now names **`not-taught-yet`**, which is the CORRECT state today.
+>
+> ### ⚠ Expectation, so nothing here reads as failure
+> `perSubject.ela` = `grade1`, **`phasesCompleted: 0`**; the walk is still inside the math/kindergarten gate. The ALPHAORDER succession bump and the ordinal anchors both live in `_cellRunner`'s ELA block and **first execute when the walk reaches `ela/grade1`**. Until then no new letter mass exists, the ordinal read correctly returns `not-taught-yet`, and she falls through honestly instead of inventing an answer.
+>
+> ### Open, filed not fixed
+> **`CHATPIN.1`** — the same ChatPin line shows `generate:continuation-1(1cand)=42913ms` in a pass where `questionInput` was true and should have forced `maxExtra = 0`. The `(1cand)` tag proves the opts object was live and the wiring reads right end to end. Every `BLOCKED` line in that window carries `innerVoiceInFlight=true` beside `chatStage=generate:continuation-N`, so the inner-voice lane probably shares the `_lcStamp` ring and its 42.9 s is billed to the chat reply — instrument misattribution, not the skip failing. **Suspicion with evidence, no proof. Establish which before coding either fix.**
+>
+> Verified: node --check ×2 · ESM link · bundle rebuilt and grep-confirmed · **23/23 harness on the real class** (written with the Write tool this time — last batch's heredoc foul corrected, not repeated), deleted after. Ledger: FINALIZED §LETTERBLOCK.
+
+> ## ⭐⭐⭐ 2026-09-01 late — ALPHAORDER: THE ALPHABET GETS POSITIONS, AND I OWN THE BIAS THAT ANSWERED "P."
 >
 > Gee (verbatim): *"do we need like a order of operations signias in the traing too? ass its like it has not understanding of order to the alphabet as it was trained probably in order but it had no refrences to it and just sees the next training with out signia that they are asnd have a proper order: You / what letter comes after the letter "a" in the alphabet? / Unity / P."* → *"go"*
 >
