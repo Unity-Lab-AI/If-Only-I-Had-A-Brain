@@ -654,6 +654,52 @@ Gee (verbatim): *"and obviously we have to do a fresh walk after all of this and
 
 ⛔ **AND THE COST OF FIXING IT IS THE REAL CONSTRAINT, SO IT IS WRITTEN DOWN BEFORE ONE BYTE IS FETCHED.** A real course-year of prose is ~100-200k words per cell against the current ~2.6k. At 260 cells that is a **~100× content increase**, and the same arithmetic gives **~130 h at the fast rate to ~1,400 h at the slow rate at reps=3** — i.e. **5 days to 58 days of walk**, against a walk already priced at ~24 days of structure-refresh. ⭐ **His own standing principle is the lever that makes it affordable:** *"we dont have to do 100s of reps of everything like llm training does because we have the fucking brain!"* — **volume replaces repetition**, so prose reps drop 3 → 1 as the corpus grows, giving **~43 h to ~470 h (2 to 20 days)**. ⚠ **A grade-banded word target is mandatory, not optional** — a real kindergarten year is not 150k words and pricing it as one is how this becomes a 58-day walk for no pedagogical gain.
 
+### ⛔⛔ THE CONTENT WAS ALREADY BEING DOWNLOADED AND THROWN AWAY — 84-98% OF IT
+
+Gee (verbatim): *"the whole fucking corpus is only 12000 sentences????? i heard a shit ton more than that in my time in kindergarden alone"*
+
+Gee (verbatim): *"besides we are teaching her via the online sources"*
+
+Gee (verbatim): *"and we dont save the taught info its used then tossed"*
+
+Gee (verbatim): *"sdo no storring terrabytes of data"*
+
+⛔⛔ **HIS KINDERGARTEN COMPARISON IS NOT RHETORIC, IT IS THE CORRECT ORDER OF MAGNITUDE.** Her **entire** input across all three corpora — academic **230,566** + coding **43,890** + life **70,566** = **345,022 words / 18,629 sentences**. A real child hears on the order of **millions of words in a single year**. **One kindergarten year of ordinary listening is tens of times everything Unity has ever been given, across her whole K→PhD education.** The academic slice alone — 12,075 sentences — is roughly what a child hears in a *day*.
+
+⛔⛔ **AND THE CAUSE WAS NOT THE SOURCE, THE LICENCE, THE NETWORK OR THE TOPIC LISTS — IT WAS ONE CONSTANT DELETING PAID-FOR CONTENT.** His *"besides we are teaching her via the online sources"* is exactly the point: nothing here is hand-authored, so there was never a reason for it to be small. The fetcher requests `prop=extracts&explaintext=1` with **no `exintro`**, so the **FULL plaintext article arrives every time** — and `MAX_SENT_PER_TOPIC = 14` threw the rest away *after* downloading it. **Measured live against the API on three real topic-list entries:**
+
+```
+  Photosynthesis   49,740 chars -> 270 usable sentences -> 14 kept -> 256 DISCARDED (94.8%)
+  Cell (biology)   39,944 chars ->  86 usable sentences -> 14 kept ->  72 DISCARDED (83.7%)
+  Ancient Rome     97,221 chars -> 682 usable sentences -> 14 kept -> 668 DISCARDED (97.9%)
+```
+
+⭐ **A whole education fit in 12,075 sentences because ~95% of every download was dropped on the floor at the moment it arrived.** The pipe was always wide; a single number applied identically to a kindergarten cell and a PhD cell kept it shut.
+
+⭐ **"NO TERABYTES" ANSWERED WITH A MEASUREMENT, NOT A PROMISE.** Today's corpus is **1.7 MB for 230,566 words ≈ 7.4 bytes/word**. The grade-banded ladder now shipped projects to **~4-9M words ≈ 40-70 MB**, and even a maximal 200k-words-per-cell reading of "a real year" across all 260 cells lands **under 400 MB**. **Terabytes are two orders of magnitude out of range** — the 991 MB already in `corpora/` is the GloVe embedding file, not content. ⚠ **His *"we dont save the taught info its used then tossed"* is true of the TRAINING — the sentences are trained into weights and released — and the corpus JSON is a bounded staging area, not an archive.** ⛔ **One consequence must be stated rather than discovered later: the fresh walk re-teaches from these files, so they are what makes a fresh walk REPRODUCIBLE.** Fetch-and-discard-entirely would make two fresh walks teach different content as the sources change under us. **Bounded staging on disk is the position: small enough to never approach terabytes, persistent enough that a fresh walk is repeatable.**
+
+> ✅ **SHIPPED IN THIS BATCH — the flat cap is dead.** `MAX_SENT_PER_TOPIC = 14` replaced by `SENT_CAP_BY_BAND` + `sentCapFor(grade)`: **early 60 · middle 120 · upper 240 · high 400 · college 600 · grad/phd 800**, with an unknown grade label falling to the SMALLEST band (an unrecognised cell must never silently pull PhD-density prose). Cap threaded per-cell through `clean()` / `fetchExtract()` / `buildCell()`; **source host and licence now recorded PER ENTRY** (a file-level licence claim becomes a guess the moment a second source lands — and `TEACHVIEW.5` reads this field). **Verified on a real cell:** `science/grade8` **5,630 → 63,193 words / 3,122 sentences (11.2×)** — one cell now larger than the entire science subject held across all twenty grades. Full re-ingest running at the polite rate.
+
+- [ ] `CURVEBUILD.7` — ⛔⛔ **THE KNOB HE NAMED IS REAL, IT IS DERIVABLE, AND WITHOUT IT THE REP CUT DELETES THE TEACHING OUTRIGHT.** Gee (verbatim): *"and we might need to adjust some nobs to make the small very small # of reps actually sinc in"*.
+
+  ⭐ **He is right, and the arithmetic says "might" is too soft.** Oja is `w <- w(1-lr) + lr*x`, so after `n` reps the residual gap to target is `(1-lr)^n`. Her live rate is **`learningRate = 0.001`** (`cluster.js:399`). **What actually sinks in at that rate:**
+```
+      1 rep  -> 0.10% deposited        24 reps -> 2.37%
+      3 reps -> 0.30%                  60 reps -> 5.83%
+      8 reps -> 0.80%                 100 reps -> 9.52%
+```
+  ⛔ **This independently confirms the ledger's own `CELLBOUND.C` finding — *"the Oja dose does NOT converge inside 100 reps at her live lr"* — and now with the number: 100 reps moves the weight less than a tenth of the way.** **At 1-3 reps and the current rate she would learn essentially NOTHING (0.1-0.3%).** So the rep cut and the rate raise are ONE change, not two; shipping the cut alone would silently empty the curriculum, and it would look exactly like a corpus problem.
+
+  **THE DERIVATION (per the standing law that every named threshold carries one) — equal deposit, fewer passes:** `lr_new = 1 - (1 - lr_old)^(n_old / n_new)`
+```
+     24 -> 3 reps : lr 0.00797   ( 8.0x)      60 -> 3 reps : lr 0.01981  (19.8x)
+     24 -> 1 rep  : lr 0.02373   (23.7x)      80 -> 2 reps : lr 0.03923  (39.2x)
+     50 -> 2 reps : lr 0.02470   (24.7x)     100 -> 1 rep  : lr 0.09521  (95.2x)
+```
+  ⚠ **TWO BOUNDS ON THIS, BOTH REAL, NEITHER A REASON NOT TO DO IT.** ⛔ **(1) A high rate makes late input overwrite early input** — that is catastrophic forgetting, and this codebase already respects it: the `GLOVEOWN` geometry refinement deliberately runs at **0.002 with a delta cap**, its comment stating *"a large step would let late reading overwrite early meaning"*. **The rate raise needs the same treatment — a bound, and a measured check that early grades survive late ones — not a bare multiplier.** ⭐ **(2) The equivalence above assumes the SAME pattern repeated, which is the pessimistic case.** With a 100× corpus each word arrives in many DIFFERENT contexts, so the deposit accumulates across *distinct* exposures — **and that is precisely the mechanism behind his *"we are wirting the brains of Unity to not need repition to learn"*: variety, not repetition, is what separates representations.** The honest order is therefore **volume first, rate second, reps last** — grow the corpus (in flight), then set the rate from this equivalence, then cut the 44 heavy rep sites against the measured margin rather than against a hoped-for one.
+
+- [ ] `CURVEBUILD.6` — ⛔ **THE TOPIC LISTS ARE NOW THE BINDING CONSTRAINT, AND THEY ARE STILL 6-20 ENTRIES.** The cap raise multiplies what each topic yields; it does not add topics, and it cannot reach the **51 subject×grade cells with no corpus file at all** because those cells are absent from `TOPICS` entirely. ⚠ **Do not read the post-ingest numbers as "fixed"** — they are "the existing plan, finally not truncated". The remaining volume comes from `CURVEDEPTH.3/.4/.5/.7` (real sources) and `CURVEBUILD.2` (the grade-banded word target that says when a cell is actually done).
+
 - [ ] `CURVEBUILD.1` — ⛔ **THE BINARY QUESTION, AND IT IS A MEASUREMENT, NOT A GUESS.** Gee: *"possible build a new binary to process the REAL FUCKING CIRICULUM"*. **He is right that it is on the table and the honest answer needs a read first.** The prose lane is `_teachSentenceList` → per-word `_crossRegionHebbian` + word-to-word `cluster.synapses.hebbianUpdate`, and **whether those dispatch to the donor or fall to CPU is what decides 2 days versus 20.** ⛔ **There is direct precedent for the bad case:** `intraSynapsesAntiHebbian` is **GPU-ineligible BY CONSTRUCTION** — the contrastive teach deliberately passes a sampled WRONG post-pattern, so the donor's `pre === post === lastSpikes` identity check can never pass — 23.1% of CPU that no cap raise or new opcode on the existing ops can touch. **If the sentence lane has the same shape, a 100× corpus is a hard wall and a new donor opcode IS the answer.** Work: read the dispatch path of every op `_teachSentenceList` fires, classify each as donor-eligible / ineligible-by-construction / eligible-but-refused, and price a corpus-scale walk against the answer. **Then and only then decide the binary.** ⚠ Do not fetch at target volume before this read — the answer sets the per-cell word target.
 - [ ] `CURVEBUILD.5` — ⛔⛔ **NO 150 REPS ON EVERYTHING — THE REP RE-PRICE, AND HIS CALL IS THE THING THE BOARD WAS HOLDING IT FOR.** Gee (verbatim): *"yea it grows substantually but we are wirting the brains of Unity to not need repition to learn"* → *"so no 150 reps"* → *"on everything"*.
 
