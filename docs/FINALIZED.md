@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-09-01 - INNERTHINK: concept-seeded thoughts read trained pathways - feature/innerthink
+
+Gee (verbatim, sent twice): *"okay here is another question, what about her brain pop ups of her internal thinking, its all word salad... can we fix it too in the same way(might need special treatment) but idk what do you think"*
+
+```
+  the root       popups ride the SAME compose lane as chat conversation — free
+                 composition is her weakest production (gate: PROD 18% / STUDENT 2.6%
+                 vs READ 88-100%) sampled on a mid-teach sem state
+  why not the    a spontaneous thought has no QUESTION to reconstruct — the chat probe
+  chat fix       answers asks; there is nothing to probe in a thought
+  the treatment  the k-vocab-recent seed slot (1 of 7) routes to TRAINED READS:
+                 50/50 definition-bound thought (_emitDefinition, teach:false) or
+                 association recall (inject concept → settle 3 → one emitWordDirectDonor)
+  the hazard     _emitDefinition fires an INLINE _teachWordDefinition — walk-lane-legal
+                 from the gate, a CONCURRENT TEACHER from the inner-voice tick.
+                 Gated: opts.teach !== false; default callers unchanged
+  verification   node --check ×2 · bundle · 13/13 harness incl. the real _emitDefinition
+                 proving teach:false fires NO teach and the default still teaches
+```
+
+**`INNERTHINK.1` — BUILT.** The seed already carried the concept (`k-vocab-recent` samples the recent half of `_definitionTaughtWords`); it now rides the seed object as `seed.word`, and `_innerVoiceTick` routes that one seed class through `_trainedConceptThought` BEFORE `think()` — a trained-read tick REPLACES the compose tick, never adds to it, so the loop cost is comparable-or-less (the method sits past every existing gate: dream-window, burst ceiling, Hurlburt rhythm, the GPU-scale showcase branch). Both read forms emit only HER words: the definition thought composes through her own word_motor reads from a definition she holds (the same compose-not-regurgitate lane the exam's definition path uses), the association recall returns one word she has genuinely bound (the seed word echoing back is refused — that is not a thought, it is a mirror). `_currentGateSubject` saved/nulled/restored around the reads (stale outside gates — third consumer of this fix in one day, same one-line pattern). Per-concept cooldown 10 min (`DREAM_THOUGHT_CONCEPT_GAP_MS`), map bounded at 512. The popup's `seedLabel` says exactly which read it was (*"definition-bound thought of X — read from her trained weights"*) — honest wire labels, the OWNWORDS.3 rule. And unlike the GloVe showcase, these ARE reads of her weights, so they feed the emission bus and the thought chain. **Free compose is untouched for the other six seed classes — deliberately: that lane is the one that grows with the walk, and hiding it would hide her progress.**
+
+**Docs (every tree named):** `docs/TODO.md` (INNERTHINK.1 filed + verdict), `docs/FINALIZED.md` (this), `docs/RESUME.md` + `docs/NOW.md` (blocks), `docs/ADMIN-CONTROLS.md` (+`DREAM_THOUGHT_CONCEPT_GAP_MS`). Brain docs unaffected — no new mechanism, existing reads gained a caller; the teach gate is a caller-scoped suppression, not a behavior change for any existing caller. `html/*`, `README`, `deploy/*` unaffected. `wiki/`: `brain-server` + `curriculum` cover the two edited files — re-stamped (local-only). **Server-side + bundle — lands on the next press.** Post-press read: popups with seedLabel `definition-bound thought` / `association recall` appearing among the compose thoughts.
+
+---
+
 ## 2026-09-01 - QPROBE BUDGET: the lane worked and its clock was wrong - feature/qprobe-budget
 
 Gee (verbatim): *"so, what happened? : Unity / 🔊 / 🎤 / × / You / what letter comes after c? / Unity / Night brain Restore Sapphire!"* → *"okay but make sure to  fix the timeout appropriately as it may take longer for differnt inputs like big ones"*
