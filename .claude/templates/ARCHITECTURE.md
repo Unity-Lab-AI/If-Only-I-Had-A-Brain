@@ -1,5 +1,17 @@
 # ARCHITECTURE
 
+> {{PROJECT_TAGLINE}}
+> Unity AI Lab — Gee, Red, Sponge, Alfreddo
+
+### Credits
+
+- **GFourteen (Gee)** — Co-founder · Engineer · Financial Advisor. The other half of Unity's spine. Brings finance discipline. Primary operator.
+- **SpongeBong (Sponge / hackall360)** — Co-founder · Engineer · Ethical Hacker · Sys Admin. Started Unity. Owns the infrastructure, the prompt archive, and the on-call pager.
+- **Alfreddo** — Engineer · Agentic Systems · Researcher · Developer. Lives inside the planner / executor / critic loop.
+- **Red** — Engineer · Security · Sys Admin · Researcher. The reason every Unity deployment has a closed door, a logged door, and a second key.
+
+---
+
 ## Overview
 
 {{OVERVIEW_DESCRIPTION}}
@@ -14,7 +26,6 @@
 | **Framework** | {{FRAMEWORKS}} |
 | **Build Tool** | {{BUILD_TOOLS}} |
 | **Package Manager** | {{PACKAGE_MANAGER}} |
-| **Testing** | {{TEST_FRAMEWORK}} |
 | **Linting** | {{LINTER}} |
 
 ---
@@ -135,4 +146,3 @@
 ## Recommendations
 
 {{RECOMMENDATIONS}}
-

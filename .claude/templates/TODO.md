@@ -1,10 +1,13 @@
-# TODO - Active Tasks Only
+# TODO — Active Tasks Only
 >
 > **CRITICAL WORKFLOW RULES:**
 > - Only UNFINISHED tasks live in this file
 > - Completed tasks MOVE to FINALIZED.md (never deleted)
 > - Add tasks here BEFORE starting work (PRE-WORK GATE)
 > - Move tasks to FINALIZED.md AFTER completion (POST-WORK GATE)
+> - User's verbatim words go in every task description (LAW #0)
+> - Never delete task descriptions — change status only
+> - Never rewrite this file from scratch — edit in place
 
 ---
 
@@ -29,7 +32,7 @@
 
 ---
 
-## P1 - Critical (Must Do)
+## P1 — Critical (Must Do)
 
 ### Epic: {{EPIC_1_TITLE}} `({{EPIC_1_SIZE}})`
 > {{EPIC_1_DESCRIPTION}}
@@ -59,7 +62,7 @@
 
 ---
 
-## P2 - Important (Should Do)
+## P2 — Important (Should Do)
 
 ### Epic: {{EPIC_TITLE}} `({{SIZE}})`
 > {{DESCRIPTION}}
@@ -71,7 +74,7 @@
 
 ---
 
-## P3 - Nice-to-Have (Could Do)
+## P3 — Nice-to-Have (Could Do)
 
 ### Epic: {{EPIC_TITLE}} `({{SIZE}})`
 > {{DESCRIPTION}}
@@ -92,12 +95,20 @@
 
 ## Recently Completed (MOVE TO FINALIZED.md)
 
-> **NOTE:** Tasks here should be MOVED to FINALIZED.md
-> This section is temporary - completed tasks get archived permanently
+> **NOTE:** Tasks here should be MOVED to FINALIZED.md per the FINALIZED-BEFORE-DELETE LAW.
+> This section is temporary — completed tasks get archived permanently in FINALIZED.md.
+> Process: write the verbatim entry to FINALIZED.md FIRST, verify the write, THEN remove from this section.
 
 | Task | Completed | Epic/Story |
 |------|-----------|------------|
 {{COMPLETED_ITEMS}}
+
+---
+
+## TOMBSTONES
+
+> Tasks here are obsolete — the underlying code was deleted, the feature was scrapped, the requirement disappeared.
+> Per the NEVER-DELETE-TODO-INFO LAW, the descriptions stay intact with a one-line note explaining why they're tombstoned.
 
 ---
 
@@ -112,6 +123,3 @@
 | File | Task Count |
 |------|------------|
 {{FILES_TOUCHED}}
-
----
-
