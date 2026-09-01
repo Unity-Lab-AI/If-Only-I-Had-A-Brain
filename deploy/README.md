@@ -166,6 +166,35 @@ follow-on needed.
   milestone-gated (PA.4.8). Milestone VRAM thresholds are placeholders to tune
   against real donor hardware.
 
+## Control-plane environment flags (`server/brain-ctl.js`)
+
+⛔ **These eleven were the ONLY undocumented environment flags in the tree** — found
+by `.claude/scripts/audit-dead-wiring.mjs`, which cross-checks every
+`process.env.X` in the code against every word in `docs/`, `deploy/` and
+`.claude/`. **194 flags are used in code; 183 were already documented; these 11
+were not.** They are recorded here because the control plane is the one service
+that must be operable when the brain is down, and an operator reaching for it in
+that moment cannot go source-diving.
+
+⚠ **Read the DEFAULT as the contract.** This project has been bitten by a flag
+whose documentation described the opposite of its behaviour — `DREAM_PHASE_BUDGET_MS=0`
+was documented as *disabling* the bound and in fact produced the harshest cut
+possible. Every default below was read out of `brain-ctl.js`, not recalled.
+
+| flag | default | what it does |
+|---|---|---|
+| `UAL_CTL_PORT` | `7526` | Port the control plane listens on. Distinct from the brain's own port so it survives the brain being down. |
+| `UAL_CTL_BIND` | `127.0.0.1` | Bind address. ⚠ Loopback by default **on purpose** — this service can start and stop the brain, so exposing it publicly hands over the power controls. nginx fronts it. |
+| `UAL_BRAIN_UNIT` | `unity-brain` | The systemd unit brain-ctl drives. This is the name in `systemctl start <unit>`. |
+| `UAL_BRAIN_DIR` | `__dirname` | Working directory for brain operations; defaults to wherever `brain-ctl.js` itself lives. |
+| `UAL_BRAIN_HOST` | `127.0.0.1` | Host brain-ctl reaches the brain on for its OUTBOUND calls (e.g. the graceful `/shutdown` it sends before a hard stop). |
+| `UAL_CTL_HELPER` | *(unset)* | Path to `brain-ctl-helper.sh`. The helper is what holds the narrow sudoers grant, so brain-ctl itself needs no root. |
+| `UAL_CTL_BIND_WAIT_MS` | `300000` (5 min) | How long to wait for the brain's port to come up after a start before declaring failure. **Deliberately long** — a cold boot restores multi-GB weights. |
+| `UAL_CTL_GRACEFUL_WAIT_MS` | `20000` (20 s) | How long a graceful shutdown is given before escalating. |
+| `UAL_RESUME_MARKER` | *(unset)* | Marker file path used to signal that a start should RESUME from saved weights rather than walk fresh. ⛔ Getting this wrong costs the whole run — see the `DREAM_KEEP_STATE` note in the current-state facts. |
+| `UAL_SELF_UPDATE_SH` | *(unset)* | Path to the self-update script brain-ctl invokes for an Update-and-Savestart press. |
+| `UNITY_URL` | `https://if-only-i-had-a-brain.git.unityailab.com/` | ⚠ **Not control-plane** — used only by `scripts/unity-chat-hold.mjs`, the Playwright holder that keeps one chat window open. Documented here because it was in the same undocumented set. |
+
 ## Sanity checklist
 
 - [ ] Node 18+ on the HOST; `better-sqlite3` installed (prebuilt or built)
