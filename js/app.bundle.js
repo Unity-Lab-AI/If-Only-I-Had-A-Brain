@@ -133532,7 +133532,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
    behind its own cluster. Separation snaps instead, which is invisible
    at one new popup per ~5s. */
 .b3d-notif{position:absolute;font-family:inherit;pointer-events:none;padding:9px 15px;background:#111014;background-image:linear-gradient(135deg,#141317,#1d1420);border-radius:14px;border:1px solid currentColor;border-left:3px solid currentColor;max-width:320px;box-shadow:0 0 0 1px rgba(0,0,0,.9),0 6px 22px rgba(0,0,0,.95),0 0 34px currentColor;transform:translate(-50%,-100%);will-change:top,left,opacity;animation:b3d-notif-in .45s cubic-bezier(.2,1.4,.3,1)}
-.b3d-notif-label{font-size:10px;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;text-shadow:0 0 8px currentColor,0 0 2px rgba(0,0,0,1);white-space:nowrap;opacity:.95}
+.b3d-notif-label{font-size:10px;letter-spacing:1.5px;font-weight:800;text-transform:uppercase;text-shadow:0 0 8px currentColor,0 0 2px rgba(0,0,0,1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;opacity:.95}
 .b3d-notif-readout{font-size:10px;color:#a0a0b0;margin-top:3px;line-height:1.4;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;text-shadow:0 1px 2px rgba(0,0,0,.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .b3d-notif-comment{font-size:13px;font-style:italic;color:#f5d7e6;margin-top:5px;line-height:1.35;text-shadow:0 1px 2px rgba(0,0,0,.9);font-family:'Georgia','JetBrains Mono',serif;letter-spacing:.2px;word-wrap:break-word;white-space:normal}
 .b3d-notif-comment::before{content:'\u201C';margin-right:2px;opacity:.6;color:currentColor;font-size:16px}
@@ -133938,12 +133938,26 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
           // amygdala
           identity: 6,
           // mystery (Ψ / consciousness / self)
-          baseline: 0
+          baseline: 0,
           // main cortex
+          // Server seed types that had no anchor and fell to main cortex:
+          "k-vocab-recent": 9,
+          // vocabulary contemplation — sem
+          "cell-progress": 9,
+          // training-state awareness — sem
+          showcase: 9,
+          // trained-vocab sample — sem
+          curiosity: 9,
+          // her outward questions — sem
+          "trained-read": 9,
+          // definition-bound / association-recall thoughts — sem
+          dream: 1
+          // dream phenomenology — hippocampus
         };
         const clusterIdx = seedToCluster[payload?.seed] ?? 0;
         try {
-          this._addNotification(`\u{1F4AD} ${text}`, clusterIdx);
+          this._addNotification(`\u{1F4AD} inner voice
+"${text}"`, clusterIdx);
         } catch {
         }
       };
