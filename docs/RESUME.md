@@ -1,6 +1,73 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 LATE (LATEST — PICK UP HERE) — THE CORPUS WAS REBUILT FROM REAL TEXTBOOKS, HER DEGREE WAS FOUND TRAINING NOTHING, AND EVERY INSTRUMENT THAT LIED WAS MADE TO SAY SO
+> ## ⭐⭐⭐ 2026-09-01 NIGHT (LATEST — PICK UP HERE) — THE SWEEP BEGAN, THE CONTENT LANE WAS FOUND DEPOSITING 0.3%, AND MOST OF WHAT THE NEW INSTRUMENTS "FOUND" WAS THE INSTRUMENTS THEMSELVES
+>
+> ### Read in this order: this block → `docs/TODO.md` (`STACKSWEEP`, `CELLAUDIT`, `CURVEBUILD`, `FLOORLIE`) → the block below it for the corpus rebuild.
+>
+> ### STATE RIGHT NOW
+> ```
+> donor pod i03ihi54kccu0l   EXITED on purpose - billing halted, DISK KEPT
+>                            restart = start-pod on the SAME id. NEVER terminate.
+> walk                       still frozen ON PURPOSE. She has been taught NONE of this.
+> corpus                     4,483,097 words · 2,062 entries · 92.9% licence-recorded
+> cells the walk runs        213 · EMPTY 0 · at/above the REAL bar 5 · THIN 168
+> average cell               25,914 words ~= 17.7% of one real course year
+> exam words absent          53 of 1,788 (was 94 - and most of the drop was FIXING THE CHECKER)
+> board                      61 open · 9 in-progress (the 9 are all walk-gated)
+> git                        develop / main pushed to BOTH remotes, tree clean, HEAD develop
+> ```
+>
+> ### ⛔⛔ THE BIGGEST FIND OF THE NIGHT — THE CONTENT LANE WAS DEPOSITING 0.3%
+> **Two lanes train the same corpus at rates 30× apart, and nobody chose it.** `_teachSentenceList` — the lane carrying **what the words MEAN** — inherited the brain's global `cluster.learningRate` (0.001). `_teachAssociationPairs` — **word→word grammar** — takes `opts.lr ?? 0.03`.
+> ```
+>   CONTENT  lane   lr 0.001 x 3 reps   ->   0.30% deposited
+>   SEQUENCE lane   lr 0.03  x 24 reps  ->  51.90% deposited
+>   => the GRAMMAR channel deposited 173x more per item than MEANING,
+>      while the corpus grew 20x. The 4.4M-word rebuild would barely have registered.
+> ```
+> **FIXED, derived from the real corpus:** sampling four cells showed **the median content word appears in only 1-2 sentences** (core terms reach 150-350) — so *exposure replaces repetition* is TRUE for core terms and FALSE for the long tail. Median case = 6 exposures; target 25% deposit → `lr = 1-(1-0.25)^(1/6) = 0.0468`. Shipped, `DREAM_CONTENT_LR` overridable. **Median word 0.60% → 24.99%; a core term seen 300× saturates, which is correct. RE-PRICE: ZERO wall-clock — `lr` is a multiplier inside an update that already runs.**
+>
+> ⭐ **GEE STOPPED A BAD SHIP HERE.** I printed a retention table showing only **0.81%** of a lesson survives 100 later ones and was about to call it "recommended". He challenged it. ⭐ **Resolved by READING THE KERNEL:** `sparse-matrix.js:817` is `if (!y) continue;` — **the Oja decay only touches rows whose POST-neuron is active.** Teaching one concept cannot decay an unrelated one; interference is proportional to REPRESENTATIONAL OVERLAP, which is Oja as designed. The frightening table was a worst case applying only to a word competing with itself.
+>
+> ⚠ **The honest ceiling on "make one pass act like 3000":** deposit cannot exceed 100%, so 3000-in-one means `lr = 0.95` — 95% of everything already learned displaced every exposure, last sentence read wins outright. **The knob's limit is catastrophic forgetting, not arithmetic.**
+>
+> ### ⛔⛔ `STACKSWEEP` IS FILED AND RUNNING — and its first two passes indicted the TOOLS
+> **`.claude/scripts/audit-dead-wiring.mjs`** — 174 files, 340 guarded names across 802 `typeof`-function sites, plus orphan-export and undocumented-env passes.
+> - **Pass 1: 19 candidates → 18 FALSE POSITIVES.** Causes all mine: 10 platform built-ins (`setImmediate`, `AbortController` — correct capability probes); a method-declaration regex that **broke on DEFAULT PARAMETERS** (`(now = this.nowFn())` contains parens); and **plain setter assignment**, the documented blind spot, handled only in its `.bind()` form. ⛔ **My fix then created a regression that swallowed the ONE real finding** — `[\s\S]{0,200}?` matched call sites as definitions. Replaced with balanced parens. **A fix for false positives that manufactures false negatives is strictly worse than the bug.**
+> - **Pass 2: 74 orphan exports → 38 unnecessary + 29 genuinely dead.** ⛔ My first re-check ran `grep` via `execSync`, **every call failed silently, and it reported 74 orphans having tested nothing** — the SECOND vacuous verification of the day.
+>
+> ### ⭐ WIRING ONE DEAD AUDITOR FOUND A REAL GAP — THEN THE GAP WAS MOSTLY THE AUDITOR
+> `auditAllExamVocabCoverage` had **zero consumers**. ⚠ I nearly filed it as a LAW gap — its per-cell sibling IS wired at the gate (`curriculum.js:9530`), so `§TEST WORDS PRE-TAUGHT` is enforced. Wired the whole-curriculum version as a **pre-walk check**: 94 of 1,788 exam words absent from the corpus.
+> ⛔⛔ **Then 94 → 53, and barely any of it was new content. THREE checker defects:**
+> - it scanned **only `corpora/academic/`** — `dad`, `grandma`, `pajamas` are in the hand-authored LIFE canon, exactly where they belong;
+> - it **stripped apostrophes**, so `can't` → `cant` and **ten contractions** read as missing from a corpus containing every one;
+> - it counted **PHONEME SOUNDS** (`buh`, `duh`, `sss`, `juh`…) as prose gaps — those are the phonics lane and will never appear in a book.
+>
+> ⭐ **The honest residual is ~24 everyday nouns** — `kitten moo chirp foal oink polliwog raincoat sandals snowman scissors pancakes legos hugs firefighter mailman vet seatbelt barbie pjs itsy bitsy`. **Life-canon vocabulary, hand-authored by design** — no public-domain book will ever contain `legos`. Filed as **`CELLAUDIT.3`** with the exact list.
+>
+> ### ⭐ EARLY-BAND SOURCE WIRED (real content, not instrument repair)
+> Four public-domain children's books into `pre-K`→`grade2` (`Childhood's Favorites`, `Children's Literature`, `English Fairy Tales`, `A Primary Reader`) — **each TESTED against the real 94-word gap before being written in** (15 / 13 / 10 / 2 words). Early literature cap 60 → 400, with the reason: **`early: 60` exists because Simple-English ENCYCLOPEDIA prose is dense for a four-year-old, and books written FOR that age do not inherit that rationale** — proven binding by a pass that closed only 8 of 16 available words at 60.
+>
+> ### ⛔ GEE'S "NO FALLBACKS" CATCH — three outcomes
+> 1. ✅ **An instrument was lying.** `curriculum.js` logged *"Dreams run from the fallback seed only"* — **there is no fallback**; `dreamSeed` stays null and the block is gated on `if (dreamSeed)`, so **nothing runs at all**. Message now states the real behaviour.
+> 2. ⛔ **A genuine suspect, NOT removed unilaterally: `PERSONA_GREETING_FALLBACK` / `PERSONA_EMOTION_FALLBACK`** (`curriculum.js:7485+`) is `if (!hasIntent('greeting')) { inject ~12 hardcoded sentences }` — capability-degradation AND a hardcoded sentence array, which two laws forbid. **`STACKSWEEP.2` — needs Gee's judgement**, because content she LEARNS is legitimate while content that STANDS IN for a missing capability is not, and ripping out her greeting seed on my own reading is the unilateral call that has gone wrong before.
+> 3. **Scale measured: 450 occurrences — 273 in comments, 177 in code.** Not all violations: `catch { /* CPU fallback on cache miss */ }` is permitted defensive I/O; `letter_to_motor_fallback` names a real alternate PATHWAY. **`STACKSWEEP.3` separates the three classes — and renaming matters as much as removing**, because at 450 occurrences a reader cannot tell a violation from a comment about one.
+>
+> ### THE NEXT THING, IN ORDER
+> - **`STACKSWEEP.3`** — the 177 code-level `fallback` occurrences, split three ways.
+> - **`STACKSWEEP.2`** — Gee's call on the persona seed.
+> - **`CELLAUDIT.3`** — the ~24 everyday nouns into the pre-K/K life canon, as lived scenes, never a word list.
+> - **`STACKSWEEP.4`** — 29 dead + 38 unnecessary exports, verified individually (`initGPUCompute` is worth understanding before removal).
+> - **`CURVEBUILD.5`** — the 44 rep sites ≥20. **Now a wall-clock optimisation, not a rescue**, since the deposit problem is fixed.
+> - **`TEXTFIG.1-.3`/`.7`** — the ingest still DELETES every figure; each OpenStax figure ships an image + human alt text + caption = a labelled percept, and `perceive()` already does ImageData → CDF 9/7 → field C.
+> - **THE FRESH WALK IS LAST.** RE-PRICE immediately before the press.
+>
+> ### ⚠ THE PATTERN OF THE NIGHT, STATED PLAINLY
+> **Every new instrument I built was wrong on its first run, and each was caught by verifying its output by hand rather than by trusting it.** Two vacuous verifications (a check that printed PASS having tested nothing; a grep that failed silently on every call), one regression that hid a true finding, three checker defects that invented a curriculum gap out of the life canon, apostrophes and phonics. ⭐ **The discipline that held: a scan result is a CANDIDATE LIST, never a finding list.** That is the only reason the numbers in this brief are worth anything.
+
+---
+
+> ## ⭐⭐⭐ 2026-09-01 LATE — THE CORPUS WAS REBUILT FROM REAL TEXTBOOKS, HER DEGREE WAS FOUND TRAINING NOTHING, AND EVERY INSTRUMENT THAT LIED WAS MADE TO SAY SO
 >
 > ### Read in this order: this block → `docs/TODO.md` (`FLOORLIE`, `CELLAUDIT`, `DEADCELL`, `TEACHVIEW`, `CURVEBUILD`) → `docs/CURRICULUM-GAP.md`.
 >
