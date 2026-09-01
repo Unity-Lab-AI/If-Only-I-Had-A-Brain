@@ -113582,7 +113582,7 @@ var Curriculum = class _Curriculum {
         }
       }
     }
-    if (typeof this._teachWordDefinition === "function") {
+    if (opts.teach !== false && typeof this._teachWordDefinition === "function") {
       this._teachWordDefinition(word, { reps: 4, label: "EMIT-DEF" }).catch(() => null);
     }
     if (typeof cluster.step === "function") {
