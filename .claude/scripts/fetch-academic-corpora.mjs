@@ -548,14 +548,45 @@ function clean(extract, maxSent) {
   const out = [];
   for (let s of t.split(/(?<=[.!?])\s+/)) {
     s = s.trim();
-    if (s.length < SENT_MIN || s.length > SENT_MAX) continue;
-    if (/[^\x20-\x7e]/.test(s)) continue;          // ASCII only (brain is a-z)
-    if (/may refer to|disambiguation|listen|born|\bb\.\b/i.test(s)) continue;
-    if (!/[a-z]/.test(s) || !/[.!?]$/.test(s)) continue;
+    if (!acceptSentence(s)) continue;
     out.push(s.toLowerCase());
     if (out.length >= CAP) break;
   }
   return out;
+}
+
+// ⭐ THE SINGLE SOURCE OF TRUTH FOR "IS THIS A SENTENCE SHE SHOULD LEARN".
+// Split out of clean() so it can be applied to ALREADY-BANKED prose as well as
+// to a fresh download (see --reclean below). Before this split the rules lived
+// only inside the fetch path, which meant every cleaner improvement applied to
+// future downloads and left the existing corpus carrying whatever the old rules
+// had let through — and the keep-longer merge guaranteed the old, dirtier entry
+// would WIN a re-run, because it was longer.
+function acceptSentence(s) {
+  if (!s) return false;
+  {
+    if (s.length < SENT_MIN || s.length > SENT_MAX) return false;
+    if (/[^\x20-\x7e]/.test(s)) return false;      // ASCII only (brain is a-z)
+    if (/may refer to|disambiguation|listen|born|\bb\.\b/i.test(s)) return false;
+    // ⛔ MATH MARKUP IS NOT PROSE, AND IT WAS GETTING THROUGH. Wikipedia's
+    // plaintext extract still carries LaTeX for rendered formulae, so a maths
+    // or CS article yields sentences like
+    //   "u - 1 } {\displaystyle u=\{0,...,u-1\}} , where the bit length of u"
+    // Measured across the corpus before this filter: 138 sentences carrying
+    // brace debris, 8 with `over{`, 4 with stray backslash commands. She would
+    // have learned `\displaystyle` as an English word.
+    // ⭐ DROP, do not repair. A sentence that is half formula is not prose with
+    // a blemish — the surviving half has no grammatical subject and teaching it
+    // is worse than losing it, and the article's real prose sentences survive
+    // on their own.
+    if (/\\displaystyle|\\[a-z]{2,}\s*\{|size\s+\d+\s*\{/i.test(s)) return false;
+    if ((s.match(/[{}]/g) || []).length >= 2) return false;   // braces are not English punctuation
+    // A reference whose target was stripped, leaving "as shown in ." — the
+    // sentence now points at nothing and teaches a dangling gesture.
+    if (/\b(as shown in|as illustrated in|shown in|illustrated in|see)\s*[.,]/i.test(s)) return false;
+    if (!/[a-z]/.test(s) || !/[.!?]$/.test(s)) return false;
+  }
+  return true;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -789,6 +820,66 @@ async function buildCell(subject, grade, titles) {
   fs.writeFileSync(outPath, JSON.stringify(doc, null, 2), 'utf8');
   const n = merged.reduce((a, e) => a + e.story.split(/(?<=[.!?])\s+/).length, 0);
   return n;
+}
+
+// ⭐ `--reclean` — RE-APPLY THE CURRENT SENTENCE RULES TO THE EXISTING CORPUS,
+// with NO network. This exists because of a real asymmetry that bit:
+//
+//   Cleaner improvements only ever reached FUTURE downloads. Everything already
+//   banked kept whatever the old rules let through — and the keep-longer merge
+//   made it permanent, because a re-fetch produces a SHORTER (cleaner) story
+//   which the merge then discards in favour of the older, dirtier one.
+//
+// Measured when the maths-markup filter was added: 1,216 sentences across 70
+// cells carried LaTeX debris (`{\displaystyle ...}` from Wikipedia's plaintext
+// extract, `size 12{...}` from OpenStax), dangling `as shown in .` references,
+// and brace fragments. Re-fetching all 70 cells would have cost ~5 hours of API
+// time to fix 0.75% of the corpus; re-cleaning costs seconds and is exact.
+//
+// ⚠ It only ever REMOVES sentences — it cannot invent or alter prose — so it is
+// safe to run at any time, and an entry left with nothing is dropped whole
+// rather than banked empty.
+if (process.argv.includes('--reclean')) {
+  // Declared HERE, not borrowed from the positional parsing further down — that
+  // sits below this block and a const in the temporal dead zone throws at the
+  // reference rather than reading as undefined.
+  const onlySubject = process.argv.slice(2).filter((a) => !a.startsWith('--'))[0] || null;
+  let cells = 0, entriesBefore = 0, entriesAfter = 0, sentBefore = 0, sentAfter = 0;
+  const touched = [];
+  for (const subject of fs.readdirSync(OUT)) {
+    const dir = path.join(OUT, subject);
+    if (!fs.statSync(dir).isDirectory()) continue;
+    if (onlySubject && subject !== onlySubject) continue;
+    for (const file of fs.readdirSync(dir)) {
+      if (!file.endsWith('.json')) continue;
+      const fp = path.join(dir, file);
+      let doc;
+      try { doc = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch { continue; }
+      const kept = [];
+      let dropped = 0, before = 0;
+      for (const e of (doc.experiences || [])) {
+        entriesBefore++;
+        const sents = String(e.story).split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
+        before += sents.length;
+        const good = sents.filter((x) => acceptSentence(x));
+        dropped += sents.length - good.length;
+        if (good.length >= 3) { kept.push({ ...e, story: good.join(' ') }); entriesAfter++; }
+      }
+      sentBefore += before;
+      sentAfter += kept.reduce((a, e) => a + e.story.split(/(?<=[.!?])\s+/).length, 0);
+      cells++;
+      if (dropped > 0) {
+        doc.experiences = kept;
+        fs.writeFileSync(fp, JSON.stringify(doc, null, 2), 'utf8');
+        touched.push(`${subject}/${file.replace(/\.json$/, '')}:${dropped}`);
+      }
+    }
+  }
+  console.log(`[reclean] ${cells} cells scanned · ${touched.length} rewritten`);
+  console.log(`[reclean] sentences ${sentBefore.toLocaleString()} -> ${sentAfter.toLocaleString()} (${(sentBefore - sentAfter).toLocaleString()} dropped)`);
+  console.log(`[reclean] entries   ${entriesBefore.toLocaleString()} -> ${entriesAfter.toLocaleString()}`);
+  if (touched.length) console.log(`[reclean] touched: ${touched.join('  ')}`);
+  process.exit(0);
 }
 
 // Positional args only (ignore --flags like --replace / --early).
