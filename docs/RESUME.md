@@ -1,6 +1,65 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 latest (PICK UP HERE) — CHATASK: CHAT ASKS THROUGH THE EXAM'S OWN LANE
+> ## ⭐⭐⭐ 2026-09-01 evening (LATEST — PICK UP HERE) — THE DAY CHAT GOT HONEST: SEVEN BATCHES, ONE PRESS OWED
+>
+> Gee drove this whole arc live from the chat window, one paste at a time: *"shouldnt she be talking?"* → *"can you explain this: what letter comes after a? / Train Finger!"* → *"yes if u are sure this will fix it with out fucking anything else up, and trufully isnt this what we want?"* → *"okay but make sure to  fix the timeout appropriately as it may take longer for differnt inputs like big ones"* → *"are we sure its all correct and its just the weights?"* → *"yeah we need to go ahead and fix this and maybe enven do some reinforcememnts of fundamental reading in later grades"* → the popup-overflow report. Every quote's full text is in its own block below and in the ledger.
+>
+> ### What shipped, in order (all on main, BOTH remotes; box currently on `d41927a6`, booted 12:48Z)
+> ```
+> ✅ LIVE  CHATFAULT.1  TDZ crash in the honest-silence branch — armed by the FIRST CELL PASS ever;
+>                       reply lane died on "HI". Fixed; pressed in d41927a6.
+> ✅ LIVE  CHATASK.1    chat questions run the gate battery's OWN probe (same teach geometry,
+>                       trained-pathway reads, measured acceptance). Pressed in d41927a6.
+>                       ⭐ FIRST TRAINED CHAT ANSWER EVER: "what letter comes after b?" →
+>                       template lane → "A." in 39 s (was 94) — wrong letter, right mechanism.
+> ✅ LIVE  CLAUDEPARITY the whole .claude/ tree published (419f28b8) — 149 tracked files.
+> ✅ LIVE  POPUPWRAP.1  inner-monologue popups: the thought rode the nowrap LABEL line and
+>                       escaped the card rightward; now rides the WRAPPING commentary line,
+>                       label clipped, 6 seed→cluster anchors added. FRONTEND = live on push;
+>                       reload the brain page.
+> ⏳ PRESS QPROBE       the 20 s probe clock died at 22.2 s on a 40%-service loop (ChatPin
+>                       convicted it) → budget now input-scaled (battery's 45 s floor
+>                       + 1 s/word past 8, cap 90 s, env flat override) + question-shaped
+>                       input skips compose continuations (50 of the measured 94 s).
+> ⏳ PRESS INNERTHINK.1 concept-seeded popups read TRAINED pathways (definition-bound thought
+>                       via _emitDefinition teach:false — the inline teach is a CONCURRENT
+>                       TEACHER off the walk lane, gated — or association recall, one bound
+>                       word, seed-echo refused). Replaces the compose tick, 10-min cooldown.
+> ⏳ PRESS CHATASK.2    phrasing cracks: quoted letters broke extraction ("Ball."), ordinal
+>                       asks mis-routed to the definition lane and defined *alphabet* ("hen"),
+>                       "definition of a cat"→"Air." was the RIGHT lane + weak weights.
+>                       Quote normalization; WH-joint refused on catch-all intent; ordinal
+>                       asks decline honestly (CHATASK.3 filed: teach the ordinal bindings —
+>                       curriculum, NOT slipped mid-walk).
+> ⏳ PRESS CHATASK.4    "A." for BOTH after-b AND before-b convicted the raw letter argmax
+>                       (global-'a' basin wins ANY ask; "before" had NO reverse read).
+>                       Template-0 read REPLACED: share-normalized 26×26 transition matrix
+>                       straight from the trained CSR (both directions, zero cortex ticks,
+>                       hourly TTL, old inject+propagate DELETED). 8/8 harness incl. a 10×
+>                       global-'a' contamination the raw argmax loses. _normalizeQuestionText
+>                       chokepoint = classifier + extractor can never disagree (also fixed the
+>                       exam's own "sound does the letter X make" adjacency bug).
+> ⏳ PRESS ELAREINF.1   Gee's reinforcement ask: post-K ELA cells refresh alphabet sequence +
+>                       letter naming (reps:10 on saved weights, Oja top-up math) at the
+>                       _cellRunner chokepoint. RE-PRICEd BEFORE building: minutes/cell,
+>                       <1 h across the walk. LEGAL: later grades are unwalked.
+> ```
+>
+> ### ⛔ ONE PRESS (Update & Savestart) picks up everything marked ⏳. Safe mid-math — both teach loops bank rep cursors, memory chain survives.
+>
+> ### After the press, the reads in order
+> 1. Ask `what letter comes after b?` AND `what letter comes before b?` — expect direction-correct letters via the share-normalized read; console shows `❓ answered via the template lane`.
+> 2. Ask the quoted/filler phrasings that failed (`what letter is after "c" in the alphabet?`) — extraction survives them now.
+> 3. Watch the popups: wrapped cards (already live), plus `definition-bound thought` / `association recall` seed labels mixing in among compose thoughts within ~30 min.
+> 4. `_honestSilenceCount` + `state.voice` — feeds the still-open `CHATFAULT.2` fork (the retrieval-bootstrap threshold: strict / DREAM_DICT_FALLBACK=1 / taper — GEE'S CALL).
+> 5. ⚠ The NEXT ELA GATE is the live verification that the new letter read scores ≥ the old one (the gate consumes it — deliberate, WORDNORM precedent).
+>
+> ### Standing watches unchanged from earlier today
+> math/kindergarten walking (GATEDOSE/RELDEPTH numbers print on its gate) · GATEWATCH.1 (the 43% per-tick CPU stepping — profile during a stall, RE-PRICE before touching) · GATEWATCH.2 (readback re-read on a quiet loop) · GATEWATCH.3 (def-queue server-side reason) · PHASELOOP.2 production verify (a `RESUMING` line post-press) · REPLAYOFF.4 rep re-price (held for margin evidence + Gee's call).
+>
+> Cascade state: develop `5d755f62` · main `e81deaf1` · both remotes synced · tree clean. Full per-batch detail in the blocks below (same date) and the ledger sections: CHATFAULT · CHATASK · QPROBE BUDGET · INNERTHINK · CHATASK CRACKS · LETTERREAD + ELAREINF · POPUPWRAP.
+
+> ## ⭐⭐ 2026-09-01 midday — CHATASK: CHAT ASKS THROUGH THE EXAM'S OWN LANE
 >
 > Gee (verbatim): *"so in the gater battery she answered this question right? but when i ask her the same question, its word salad? can you explain this: You / what letter comes after a? / Unity / Train Finger!"* → *"yes if u are sure this will fix it with out fucking anything else up, and trufully isnt this what we want?"*
 >
