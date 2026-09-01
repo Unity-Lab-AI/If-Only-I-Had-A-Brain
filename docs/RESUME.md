@@ -1,5 +1,40 @@
 # RESUME — Session Pickup Brief
 
+> ## ⛔⛔⛔ 2026-09-01 — STOP. READ THIS BEFORE ANYTHING ELSE. THE WALK IS DELIBERATELY HALTED.
+>
+> Gee (verbatim): *"so we are teaching everything to Unity that the full k-phD teaches a real person right?"* → *"WHY THE FUCK NOT!!!... IVE ALWAYS FUCKING SAID WE ARE TEACHING THE REAL FUCKING GODDAMN MOTHER FUCKING COURSE MATERIAL"* → *"i told you originally we were going to teach k-12 with the given free online sources!!!! FUCK and we had to find a real fucking PHD equivelent informational database to teach her college"* → *"STOP THE PRESSES TURN OFF THE POD AND START WRITING THE FUCKING TODO FULLY"*
+>
+> ### The measurement
+> ```
+> ENTIRE K->PhD academic corpus : 874 entries · 232,860 words · ~931 pages
+>                                 for 20 grades x 7 subjects.
+> PhD science                   : 6 entries / 1,770 words
+> kindergarten science          : 8 entries / 1,524 words   <- PhD is SMALLER
+> peak (grade 8-11)             : 20 entries / ~5,600 words
+> cells with NO corpus at all   : 51 of 140  (ALL of pre-K; civics 7-12 only;
+>                                 economics + psychology 9-12 only)
+> subjects with NO academic lane: art, pe, music, health (every grade)
+> ```
+>
+> ### ⛔⛔ The root cause is NOT a missing plan. It is a completion record that was false.
+> The source decision was made and written down correctly — **Gee 2026-06-19, `FINALIZED:4883`: OpenStax + Wikibooks + Project Gutenberg, CC-BY/CC-BY-SA only.** Then `FINALIZED:4889` marks it shipped:
+> ```
+> - [x] ACAD-API-2 — add OpenStax + Gutenberg + CS-text fetchers ... ✅ DONE 2026-07-15
+> ```
+> **It was never written.** `grep -ci "openstax|gutenberg|wikibooks|philschatz"` against `.claude/scripts/fetch-academic-corpora.mjs` → **0**. Repo-wide, those words appear only as *Johannes Gutenberg, printing press* in history vocabulary. The fetcher header still says `SOURCE: Simple English Wikipedia`, capped at `MAX_SENT_PER_TOPIC = 14` across 6-20 topics per cell. **That cap × that topic list IS the entire education.**
+>
+> ### State right now
+> - **Donor pod `i03ihi54kccu0l` STOPPED** (A40 48GB, CA-MTL-1) — `status: EXITED`, GPU billing halted, **disk and pod preserved**. Restart with `start-pod` on the SAME id; ⛔ do NOT terminate.
+> - Brain box still up on `ba90579c`-era main; with no donor it cannot step, so the walk is frozen rather than burning cells.
+> - **Spent: `ela/kindergarten` + `math/kindergarten` (passed). `science/kindergarten` interrupted mid-cell. 137 of 140 cells NEVER TAUGHT** — the corpus fix is free if it lands before they run.
+>
+> ### The plan is on the board, in dependency order
+> **`CURVEDEPTH.0`** the 140-cell gap ledger FIRST (nothing fetches until it exists) → **`.1`** build the fetcher that was marked done → **`.2`** raise the 14-sentence cap (RE-PRICE first — this multiplies teach time) → **`.3`** OpenStax → **`.4`** Wikibooks → **`.5`** Gutenberg for real ELA literature → **`.6`** ⛔ **GEE'S CALL: the college→PhD source** (OpenStax stops at intro undergrad; arXiv / PMC OA / DOAJ are the CC-BY candidates) → **`.7`** the 51 empty cells → **`.8`** art/pe/music/health posture → **`.9`** a corpus-depth instrument so it can never silently rot again → **`.10`** re-walk decision for the 3 spent cells. Plus **`LEDGERLIE.1`** — audit every other `✅ DONE` that claims a pipeline or content deliverable, because **a lying ledger defeats every other instrument this project has**.
+>
+> ⚠ **Retracted from my own filing:** reps dropping 8→2 is NOT a defect. Gee: *"we dont have to do 100s of reps of everything like llm training does because we have the fucking brain"*. Content volume is the only gap.
+>
+> ⛔ **My failure, stated plainly: I trusted a checkbox over a measurement.** `_trainAcademicStories` existed, ran, and logged success while training six paragraphs, and I never counted what was inside it until asked directly — the exact error this project's entire instrument discipline exists to prevent, committed against the ledger itself.
+
 > ## ⭐⭐⭐ 2026-09-01 latest (PICK UP HERE) — LETTERBLOCK: STOP INFERRING WHY SHE CANNOT ANSWER, AND MAKE THE MATRIX SAY IT
 >
 > Gee (verbatim): *"what letter comes after "D" in the alphabet? / Unity — motor unstable (lowest grade: pre-K) / …"* → *"okay lets do what needs to be done"*
