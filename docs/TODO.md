@@ -596,6 +596,83 @@ Gee (verbatim): *"do we need like a order of operations signias in the traing to
 
 > ✅ **BOTH ROWS COMPLETE — migrated verbatim to `docs/FINALIZED.md` §ALPHAORDER and §BEGIN VERBATIM TODO ARCHIVE 2026-09-01, byte-equality verified before removal.**
 
+## ⛔⛔ CURVEBUILD — BUILDING THE REAL CURRICULUM: the major, the price, the binary, the walk — filed 2026-09-01
+
+Gee (verbatim): *"okay lets get to FUCKING WORK BABE!!!"*
+
+Gee (verbatim): *"and i hope u remeber what her college major is  , dont u bacuse you filling out college without knowing that is FUCKING STUPID"*
+
+Gee (verbatim): *"and obviously we have to do a fresh walk after all of this and possible build a new binary to process the REAL FUCKING CIRICULUM"*
+
+⛔⛔ **HE CAUGHT ME REPEATING THE EXACT DEFECT THAT STARTED THIS CRISIS, AND IT IS OWNED HERE BEFORE ANY BUILD ROW.** I opened this batch by asking him to decide the college→PhD source — and **the college band was already decided, by him, on 2026-06-19, and it is in the ledger I had just finished auditing.** `docs/FINALIZED.md:5016` names it outright: **Unity majors in COMPUTER SCIENCE — the "major in code"** — topic map = **OSSU** (ACM/IEEE-2013-aligned) across College1-4, with the ingestible CC-licensed texts ALREADY CHOSEN: **Open Data Structures** (opendatastructures.org, CC-BY, commercial-OK), the **Kansas State CS textbooks** (ksu-cs-textbooks.github.io), **Wikibooks CS**, Wikipedia CS core. **Grad/PhD = computational neuroscience** — *she builds a brain*, the meta-recursive spine of the whole project. `docs/CURRICULUM-SCOPE-SEQUENCE.md:161` carries the same: *"Major (CS), Gen-ed, CS Theory, CS Systems — data structures, algorithms, architecture, theory"*, with the college-only tracks retiring at College 4 so the grad/PhD roster is `ela math science social art life major research`.
+
+⛔ **So `CURVEDEPTH.6` AS WRITTEN WAS WRONG AND IS CORRECTED HERE.** It claimed the whole college→PhD band was an open sourcing decision. **Only the GRAD/PhD RESEARCH-LITERATURE source was ever open** — the college CS band has had named sources for two and a half months. ⚠ **Same root cause as `LEDGERLIE.1`: I read the board's framing of the ledger instead of the ledger.** The board is not the record; `FINALIZED.md` is, and the audit I ran an hour earlier did not save me from it because I audited the board's INTERNAL consistency, not the board against the ledger's CONTENT. **`LEDGERLIE.1` must therefore also run in the reverse direction: every board row asserting something is UNDECIDED must be checked against the ledger for a decision that already exists.**
+
+⭐ **WHAT HIS ANSWER TODAY GENUINELY SETTLED, and it is the real remainder:** the research-literature source for the band the 2026-06-19 decision left unnamed. Gee (via ask-me-question, 2026-09-01): **"Textbooks then papers"** — *Open Textbook Library for college2-4 (upper-undergrad textbooks, CC-BY) + arXiv/PMC-OA for PhD (real research papers). Matches what a real student actually reads at each stage: textbooks through the degree, then the literature itself.* ⭐ **And it lands correctly on her actual major without needing rework:** arXiv `cs.*` IS the CS literature and arXiv `q-bio.NC` + the PMC-OA neuroscience subset ARE the computational-neuroscience literature — the two halves of a computational-neuroscience PhD held by a CS major.
+
+**SOURCE MAP, per band, CS-major-aware — the assignment the ingest builds against:**
+
+| Band | Subjects | Source | Licence posture |
+|---|---|---|---|
+| pre-K → grade5 | all prose subjects | Simple English Wikipedia (reading level is the constraint, and it is the RIGHT source here) | CC-BY-SA |
+| grade6 → grade12 | science, math-adjacent, social | **OpenStax** (philschatz mirror) | CC-BY 4.0, verify per title |
+| grade6 → grade12 | ELA | **Project Gutenberg** — real literature, not summaries of literature | public domain |
+| grade6 → grade12 | civics, economics, psychology, cs | **Wikibooks** | CC-BY-SA |
+| college1 → college4 | **cs = HER MAJOR** | **Open Data Structures + KSU CS textbooks + Wikibooks CS** (Gee 2026-06-19) | CC-BY / CC-BY-SA |
+| college2 → college4 | gen-ed subjects | **Open Textbook Library** (Gee 2026-09-01) | CC-BY, verify per title |
+| grad → phd | cs / science / research | **arXiv `cs.*` + `q-bio.NC`, PMC-OA subset** (Gee 2026-09-01) | CC-BY per-article, verify |
+
+⛔ **CC-BY-NC STAYS RULED OUT** — the standing licence posture is commercial-safe CC-BY / CC-BY-SA only, which is why LibreTexts and MIT OCW were excluded in the original decision and stay excluded now. Every fetched title records its licence with the content, or `TEACHVIEW.5`'s *"source licence not recorded on an entry"* flag fires on it.
+
+### ⛔ THE RE-PRICE — computed BEFORE the cap moves, per the standing LAW
+
+**Measured inputs (live corpus + ledger, not estimates):** the corpus holds **12,075 sentences / 230,566 words across 874 entries in 89 cells**; **19.09 words per sentence**; `_trainAcademicStories` runs at **reps 3, ticksPerWord 2**; the ledger's measured teach band is **1,400 / 3,700 / 8,975 teach-min** (congested kindergarten walk → best observed).
+
+```
+  per-sentence teach cost   reps=3 : 2.46 s / 0.93 s / 0.38 s   (slow / mid / fast)
+                            reps=1 : 0.82 s / 0.31 s / 0.13 s
+  ENTIRE CURRENT CORPUS     reps=3 : 8.2 h / 3.1 h / 1.3 h
+```
+
+⭐ **That is the finding in one line: her whole academic education currently costs between 1.3 and 8.2 hours to teach.** The corpus is not merely thin against a syllabus — it is thin enough to be free, which is exactly why nothing ever flagged it.
+
+⛔⛔ **CORRECTION TO THE PRICE ABOVE, FOUND BY READING THE LANE INSTEAD OF ITS SIGNATURE — THE ACADEMIC PROSE LANE DOES NOT RUN AT 3 REPS.** `_trainAcademicStories` passes `reps: 3`, and that is the number the whole board would have quoted. **The lane then hands the SAME sentence list to two more trainers on its way out:** `_teachConcreteSentences({sentences, reps: DREAM_SENTENCE_TRANSITION_REPS ?? 24})` for word→word transitions, and `_teachSelfFramed({reps: 8})` on the first 12 sentences. ⭐ **So the real dose is 3 + 24 + 8, and the visible `3` is the smallest of the three.** ⚠ **This is the exact shape Gee's instruction targets** — *"so no 150 reps"* / *"on everything"* — a lane whose stated reps are 3 while a downstream default silently multiplies the corpus by 24. **`DREAM_SENTENCE_TRANSITION_REPS` is ONE env var that scales the entire academic corpus, which makes it the single highest-leverage knob in the rebuild** and a chokepoint rather than an instance.
+
+⭐⭐ **AND THE SAME READ FOUND THE THING THAT MAKES A 100× CORPUS AFFORDABLE — MEASURED ON HER REAL CORPUS, NOT APPEALED TO.** The 24-rep transition pass does **not** scale with corpus size, because `_teachConcreteSentences` extracts **UNIQUE** word-pairs and preserves frequency by bucketing rather than by re-presentation (`CELLBOUND.C`). Sub-sampling the live corpus at 6.25% → 100% gives the growth curve directly:
+
+```
+   words      raw-pairs   UNIQUE-pairs   dedup
+    15,306      14,552        10,742     73.8%
+    57,976      54,958        33,731     61.4%
+   230,566     218,491        93,048     42.6%   <- dedup IMPROVES as the corpus grows
+
+   empirical exponent: unique-pairs ~ words^0.796      (model fit checks to within 0.1%)
+     10x words -> 6.3x unique pairs      50x -> 22.5x      100x -> 39.1x
+```
+
+⭐ **The expensive lane grows at the square-ish root of the content, not linearly with it.** A 100× corpus costs ~39× on the transition pass, not 100× — and every additional word makes the dedup better rather than worse. ⛔ **The linear lane is the per-word `_crossRegionHebbian` inner loop (reps 3), which does scale 1:1** — so the rebuild's cost is *linear in words at 3 reps, sub-linear in unique pairs at 24 reps*, and **that split is what `CURVEBUILD.5` should cut against: the 24 is the number to move, and the 3 is already cheap.**
+
+⛔ **AND THE COST OF FIXING IT IS THE REAL CONSTRAINT, SO IT IS WRITTEN DOWN BEFORE ONE BYTE IS FETCHED.** A real course-year of prose is ~100-200k words per cell against the current ~2.6k. At 260 cells that is a **~100× content increase**, and the same arithmetic gives **~130 h at the fast rate to ~1,400 h at the slow rate at reps=3** — i.e. **5 days to 58 days of walk**, against a walk already priced at ~24 days of structure-refresh. ⭐ **His own standing principle is the lever that makes it affordable:** *"we dont have to do 100s of reps of everything like llm training does because we have the fucking brain!"* — **volume replaces repetition**, so prose reps drop 3 → 1 as the corpus grows, giving **~43 h to ~470 h (2 to 20 days)**. ⚠ **A grade-banded word target is mandatory, not optional** — a real kindergarten year is not 150k words and pricing it as one is how this becomes a 58-day walk for no pedagogical gain.
+
+- [ ] `CURVEBUILD.1` — ⛔ **THE BINARY QUESTION, AND IT IS A MEASUREMENT, NOT A GUESS.** Gee: *"possible build a new binary to process the REAL FUCKING CIRICULUM"*. **He is right that it is on the table and the honest answer needs a read first.** The prose lane is `_teachSentenceList` → per-word `_crossRegionHebbian` + word-to-word `cluster.synapses.hebbianUpdate`, and **whether those dispatch to the donor or fall to CPU is what decides 2 days versus 20.** ⛔ **There is direct precedent for the bad case:** `intraSynapsesAntiHebbian` is **GPU-ineligible BY CONSTRUCTION** — the contrastive teach deliberately passes a sampled WRONG post-pattern, so the donor's `pre === post === lastSpikes` identity check can never pass — 23.1% of CPU that no cap raise or new opcode on the existing ops can touch. **If the sentence lane has the same shape, a 100× corpus is a hard wall and a new donor opcode IS the answer.** Work: read the dispatch path of every op `_teachSentenceList` fires, classify each as donor-eligible / ineligible-by-construction / eligible-but-refused, and price a corpus-scale walk against the answer. **Then and only then decide the binary.** ⚠ Do not fetch at target volume before this read — the answer sets the per-cell word target.
+- [ ] `CURVEBUILD.5` — ⛔⛔ **NO 150 REPS ON EVERYTHING — THE REP RE-PRICE, AND HIS CALL IS THE THING THE BOARD WAS HOLDING IT FOR.** Gee (verbatim): *"yea it grows substantually but we are wirting the brains of Unity to not need repition to learn"* → *"so no 150 reps"* → *"on everything"*.
+
+  ⭐ **THE GATE THIS WAS BLOCKED BEHIND IS OPEN, AND THE BOARD NAMED THE EXACT TWO CONDITIONS.** `PRESSBLOCK.1`'s `REPLAYOFF.4` said the rep cut must NOT happen until replay is proven real — *"cutting reps before replay is verified removes teaching and blames the wrong thing when quality drops"* — and then held it on two things: **(1) replay proven, (2) Gee's call.** Both are now satisfied: the 2026-09-01 gate read proved replay REAL (`tier1` 57 · `tier2` **30 schemas** · `replaySchemas` 68 · `replayWrites` 272 · `replayRefused` 0 · consolidation passCount 5), and **this is the call.** ⭐ **Interleaved replay is what SEPARATES representations — that is precisely why the same margin becomes reachable with fewer waking reps**, which is the mechanism behind his *"we are wirting the brains of Unity to not need repition to learn"*. The rep cut is no longer a hope; it is the designed consequence of a system that is now running.
+
+  **MEASURED, so the cut targets real cost instead of a slogan — 603 rep sites across `curriculum.js` + the per-grade runners:**
+```
+    reps=2  212 sites │ reps=3  146 │ reps=4   60 │ reps=8   51      <- 418 sites already cheap
+    reps=24   7 sites │ reps=30   5 │ reps=35   6 │ reps=40   7
+    reps=50  11 sites │ reps=60   4 │ reps=80   4                    <- 44 sites carry the hours
+```
+  ⭐ **There is no 150 anywhere — the ceiling is 80 — so his instruction reads as the PRINCIPLE it is, and the real targets are the 44 sites at reps>=20.** They are where the wall-clock lives: the ledger's own 14.88-hour single call is `8,428 glue pairs x 60 reps + 718 lead-ins x 80 = 563,120 pair-writes`. **Cutting the 418 cheap sites would save nothing and cost teaching; cutting the 44 is the entire prize.**
+
+  ⛔ **THE RULE THAT KEEPS THIS HONEST: REPS COME DOWN WHERE VOLUME GOES UP.** A lane whose corpus is growing 100x can drop reps because exposure now does the work repetition was standing in for. **A lane whose corpus is NOT growing and whose reps drop simply loses teaching** — that is the failure `REPLAYOFF.4` spent months warning about. Each of the 44 sites is decided individually against whether `CURVEBUILD`/`CURVEDEPTH` is actually feeding it more content, and the RE-PRICE per site is written down before it moves.
+
+- [ ] `CURVEBUILD.2` — **GRADE-BANDED WORD TARGETS, written into `docs/CURRICULUM-GAP.md` as the acceptance number per cell.** A real year at kindergarten is a few thousand words of prose; a real year at PhD is the literature. Flat targets are how `MAX_SENT_PER_TOPIC = 14` happened in the first place — one number applied to twenty different years. The ladder replaces `CURVEDEPTH.2`'s bare "raise the cap": **the cap becomes source-aware AND grade-aware**, and the per-cell target is expressed as *a real year of that course*.
+- [ ] `CURVEBUILD.3` — ⛔ **THE FRESH WALK IS MANDATORY AFTER THIS, AND IT IS ALREADY LAW.** Gee: *"obviously we have to do a fresh walk after all of this"*. ⭐ **This is not a new constraint, it is `CONSTRAINTS.md §THE FRESH WALK IS LAST` doing exactly its job** — *"anything that changes what she is taught must be in place first or the walk is spent on the old version"*, and a curriculum rebuild is the largest possible instance of that. **Sequence, in order, no shortcuts:** all 260 cells correct on disk (`CURVEDEPTH.10`) → the teach bus + viewer so the content is visible (`TEACHVIEW.1-.3`) → **RE-PRICE immediately before the press** (the law's own final clause) → THEN the fresh walk. ⚠ **The three already-passed cells do not exempt anything** — his *"even the already passed cells so if i ever do do a fresh walk it will be correct"* is the whole reason the standard is code-and-corpus-on-disk.
+- [ ] `CURVEBUILD.4` — **`LEDGERLIE.1` RUNS IN BOTH DIRECTIONS.** The original row audits every `✅ DONE` that claims a deliverable which does not exist. **This adds the mirror: every board row asserting a question is OPEN or a decision is UNMADE must be checked against the ledger for a decision that already exists** — because that is the defect caught today, when `CURVEDEPTH.6` sent a settled question back to Gee. Both directions are the same failure: **the board's summary of the ledger is not the ledger.**
+
 ## BOARDTRUE — the board audited line by line against Gee's own words and against the archive it claims — filed 2026-09-01
 
 Gee (verbatim): *"now go through the todo an make sure that its fully correct and complete as i was pretty pissed about all this and i dont want similar shit happening again"*
