@@ -45,29 +45,64 @@ const BAND = {
   college1: 'college', college2: 'college', college3: 'college', college4: 'college',
   grad: 'grad', phd: 'grad',
 };
-// ⛔⛔ THESE FLOORS ARE UNDERIVED AND THAT FACT IS PUBLISHED, NOT HIDDEN.
+// ⭐⭐ THE FLOORS ARE NOW DERIVED FROM MEASURED TEXTBOOKS, and the derivation
+// is here so it can be checked rather than trusted.
 //
-// They are a judgement, not a measurement: nobody derived them from a real
-// course, a syllabus, or a counted textbook. A `high` cell therefore reports
-// OK at 20,000 words while ONE real high-school textbook is 150,000-250,000 —
-// so "OK" currently means roughly 13% of a real course year.
+// ⛔ THE PREVIOUS VALUES (early 2,000 · middle 5,000 · upper 15,000 · high
+// 20,000 · college 20,000 · grad 20,000) WERE INVENTED. Not derived from a
+// course, a syllabus or a counted book — they were what looked reasonable when
+// typed. A `high` cell therefore reported OK at 20,000 words, roughly 13% of a
+// real course year, and the tool printed `104 OK` as though that were finished.
+// That is the SAME defect this module exists to catch, committed by the module
+// itself — the twin of `ACAD-API-3`'s "remains OPTIONAL, all 666 topics covered"
+// and the wiki's "89/89 cells, 0 thin". Recorded, not quietly replaced.
 //
-// ⛔ THAT IS THE EXACT DEFECT THIS WHOLE MODULE EXISTS TO CATCH, committed by
-// the module itself. `ACAD-API-3` declared the depth upgrade OPTIONAL because
-// "all 666 topics" were covered; the wiki reported "89/89 cells, 0 thin"; both
-// measured against a declaration rather than against the real course. An
-// instrument that grades against its author's own guess is a checkbox with
-// extra steps.
+// ── THE MEASUREMENT (2026-09-01, against the OpenStax mirrors already in use) ──
+// Ratio first: 8 chapters sampled across `chemistry-book`, run through the
+// PRODUCTION cleaner's shape so the number reflects what actually survives
+// ingest rather than raw markdown — 417,371 raw bytes -> 31,038 clean prose
+// words = ONE CLEAN WORD PER 13.4 BYTES. Applied to each book's true size:
 //
-// ⭐ Until a derived target lands, `floorsDerived: false` rides in the report
-// and every consumer is expected to say so. The standing law is that a named
-// threshold carries a derivation before commit; this one does not, and hiding
-// that would make this file a liar rather than merely incomplete.
-const FLOOR = { early: 2000, middle: 5000, upper: 15000, high: 20000, college: 20000, grad: 20000 };
-const FLOORS_DERIVED = false;
-// A real course year, for the comparison the floors cannot make on their own.
-// Rough and labelled rough — it is an ANCHOR for honesty, not a target.
-const REAL_COURSE_YEAR_WORDS = 150000;
+//     biology-concepts-book   107 chapters   1.88 MB  ->   146,598 words
+//     anatomy-book            198 chapters   4.29 MB  ->   334,525 words
+//     chemistry-book          149 chapters   6.73 MB  ->   524,791 words
+//     physics-book            283 chapters  11.27 MB  ->   878,811 words
+//
+// ⭐ MEASURED ANCHORS, used directly:
+//   high    = 146,000 — `biology-concepts` is the lightest COMPLETE course book
+//                       in the set and is pitched at exactly this band, so it is
+//                       the honest floor for a high-school year, not an average.
+//   college = 330,000 — `anatomy` is a real college course book. Chemistry and
+//                       physics are larger; taking the SMALLEST keeps this a
+//                       floor rather than an aspiration.
+//   grad    = 330,000 — the research literature is at minimum a book's worth per
+//                       year. ⚠ This one is the weakest of the three: it reuses
+//                       the college anchor because no grad reading list was
+//                       counted. Labelled rather than dressed up.
+//
+// ⚠ EXTRAPOLATED, NOT MEASURED — no elementary textbook exists in these mirrors,
+// so the lower three bands are scaled from the measured high-school anchor by a
+// stated pedagogical ratio. They are a judgement about how reading volume grows,
+// and they are marked as such so nobody later mistakes them for counted numbers:
+//   upper  (G6-8)   = 0.50 x high ≈ 73,000
+//   middle (G3-5)   = 0.20 x high ≈ 29,000
+//   early  (pre-K-G2) = 0.05 x high ≈ 7,300
+//
+// ⛔ CONSEQUENCE, STATED BEFORE IT LANDS: raising the bar from 20,000 to 146,000
+// at `high` means most cells that read OK yesterday now read THIN. That is the
+// point. The corpus did not get worse; the ruler stopped lying.
+const FLOOR = { early: 7300, middle: 29000, upper: 73000, high: 146000, college: 330000, grad: 330000 };
+const FLOORS_DERIVED = true;
+// Which bands rest on a counted book and which on a ratio — published, because
+// "derived" is not one thing and a reader deserves to know which half they have.
+const FLOOR_BASIS = {
+  early: 'extrapolated 0.05x high', middle: 'extrapolated 0.20x high', upper: 'extrapolated 0.50x high',
+  high: 'MEASURED biology-concepts-book 146,598w', college: 'MEASURED anatomy-book 334,525w',
+  grad: 'college anchor reused — no grad reading list counted',
+};
+// A real course year, for the comparison the floors cannot make alone. Now the
+// measured high-school anchor rather than a remembered rule of thumb.
+const REAL_COURSE_YEAR_WORDS = 146598;
 
 function readCell(corpusRoot, subject, grade) {
   const f = path.join(corpusRoot, subject, `${grade}.json`);
@@ -159,6 +194,7 @@ function computeCoverage(curriculumModule, corpusRoot) {
     // year. Without these, `ok: 104` reads as 104 finished cells.
     floors: { ...FLOOR },
     floorsDerived: FLOORS_DERIVED,
+    floorBasis: { ...FLOOR_BASIS },
     realCourseYearWords: REAL_COURSE_YEAR_WORDS,
     avgWordsPerProseCell: (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length)
       ? Math.round(reachableWords / (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length))

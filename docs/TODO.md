@@ -779,6 +779,27 @@ Gee (verbatim): *"okay are all todo items completed and accuratly codded perfect
 ```
 ⭐ **So the real gain today is roughly 15× — from ~1% of a course year to ~13%.** That is a large, real improvement and it is **not** "done", and the difference between those two statements is the entire lesson of this session.
 
+> ⭐⭐ **`FLOORLIE.1` DONE 2026-09-01 — THE BAR IS MEASURED NOW, AND `OK` COLLAPSED FROM 104 TO 2.**
+>
+> **The measurement, against the OpenStax mirrors already in use.** Ratio first: 8 chapters sampled across `chemistry-book` and run through the PRODUCTION cleaner's shape — so the number reflects what actually survives ingest, not raw markdown — **417,371 raw bytes → 31,038 clean words = one clean word per 13.4 bytes.** Applied to each book's true size:
+> ```
+>   biology-concepts-book   107 ch    1.88 MB  ->   146,598 words
+>   anatomy-book            198 ch    4.29 MB  ->   334,525 words
+>   chemistry-book          149 ch    6.73 MB  ->   524,791 words
+>   physics-book            283 ch   11.27 MB  ->   878,811 words
+> ```
+> **New floors — `high` and `college` are MEASURED, the lower three are EXTRAPOLATED and say so in the output:**
+> ```
+>   early    7,300   extrapolated 0.05x high        high     146,000   MEASURED biology-concepts
+>   middle  29,000   extrapolated 0.20x high        college  330,000   MEASURED anatomy
+>   upper   73,000   extrapolated 0.50x high        grad     330,000   college anchor reused (weakest)
+> ```
+> ⭐ **`biology-concepts` was chosen deliberately as the lightest COMPLETE course book in the set** — a floor, not an average, and not the 878,811-word physics book which would have made the bar theatre.
+>
+> ⛔⛔ **THE RESULT IS THE POINT: `OK` 104 → 2, `THIN` 20 → 171.** The corpus did not get worse — **the ruler stopped lying.** `FLOORLIE.2` is satisfied in the same change: every run now prints each band's floor AND its basis, so "derived" is never one undifferentiated word.
+>
+> ⭐ **AND THE 71-CELL INGEST COMPLETED WITH ZERO SKIPS.** `EMPTY: 0` for the first time — every cell the walk runs now has content. **Corpus: 4,457,654 words / 2,054 entries / 92.8% licence-recorded, averaging 25,767 words per cell = ~17.6% of one real course year** (against ~0.9% at the start of the day). ⚠ **17.6% is the honest headline, not "done".**
+
 - [ ] `FLOORLIE.1` — ⛔ **DERIVE THE PER-CELL WORD TARGET FROM A REAL COURSE, NOT FROM MY JUDGEMENT.** The standing law already demands this (`feedback_thresholds_need_math_derivation` — every named threshold carries a derivation before commit) and I violated it writing `FLOOR`. Work: take the actual reading load of a real year at each band — a measured OpenStax textbook's total word count is the obvious anchor for grade6-12 and college, since those books are already downloaded — and set the target from that. **Then re-run the auditor and expect most "OK" cells to fail**, because they should.
 - [ ] `FLOORLIE.2` — **THE AUDITOR MUST STATE WHAT IT IS GRADING AGAINST, IN ITS OWN OUTPUT.** It currently prints `OK: 104` with no indication that the bar is a number I chose. **Every line it prints should carry its denominator** — the same discipline the board demands of the dashboard (`SYNCPARTIAL` shipped *"1/17 mx"* precisely because a bare numerator lies). Until `.1` lands it must print the floors it used and label them UNDERIVED.
 
