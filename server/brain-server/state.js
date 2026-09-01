@@ -858,6 +858,44 @@ const SERVER_STATE_MIXIN = {
       //
       // The verdict is derived from evidence that is PRESENT. It never reports
       // health from the absence of a recorded failure (the SYNCEMPTY lesson).
+      // ⭐ LETTERREAD — why she could not answer a letter question, and whether
+      // the letter matrix is WIRED or merely UNTRAINED.
+      //
+      // Filed after "what letter comes after D" answered motor-unstable: the
+      // parse was proven clean and the probe proven to complete in 4.6 s, and
+      // then the trail went cold, because `_letterSequenceRead` returned a bare
+      // null for five structurally different reasons. Diagnosing that by
+      // INFERENCE is exactly how this project has shipped a confidently-wrong
+      // mechanism before, so the decline now names its blocker and the matrix
+      // publishes its own structure.
+      //
+      // ⛔ `wired` vs `trained` is the load-bearing pair: `ojaUpdate` adjusts
+      // existing CSR entries and cannot create them, so an UNWIRED letter can
+      // never learn a successor at any rep count, while an UNTRAINED one is a
+      // curriculum question. Reporting them as one number is what let three
+      // quarters of all words sit unable to emit (cluster.js:1204-1222).
+      letterRead: _lap('letterRead', () => {
+        try {
+          const cur = this.curriculum;
+          if (!cur) return null;
+          const last = cur._letterReadLast || null;
+          const ord = cur._letterOrdinalLast || null;
+          const health = (typeof cur._letterMatrixHealth === 'function')
+            ? cur._letterMatrixHealth() : null;
+          if (!last && !ord && !health) return null;
+          return {
+            last: last ? {
+              letter: last.letter, dir: last.dir, reason: last.reason,
+              answer: last.answer ?? null, ageMs: Date.now() - last.at,
+            } : null,
+            ordinal: ord ? {
+              position: ord.position, reason: ord.reason,
+              answer: ord.answer ?? null, ageMs: Date.now() - ord.at,
+            } : null,
+            matrix: health,
+          };
+        } catch { return null; }
+      }),
       voice: _lap('voice', () => {
         try {
           const cc = this.cortexCluster;
