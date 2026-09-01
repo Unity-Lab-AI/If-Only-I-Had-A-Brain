@@ -3515,8 +3515,23 @@
     }
 
     function updateConversationStats(s) {
-      const count = s.totalMessages ?? 0;
-      const lastMs = s.lastMessageAt ?? 0;
+      // ⛔ THIS PANEL WAS READING TWO FIELDS NOTHING PUBLISHES, so it showed
+      // "0 messages · —" forever, which reads as "nobody has ever talked to
+      // her" rather than "this instrument has no source". Found by the
+      // STACKSWEEP producer/consumer pass; it is the `meanVoltage` shape, where
+      // the value was computed all along and read under a different name.
+      //   `totalMessages`  -> never published; the real count is
+      //                       state.growth.totalInteractions
+      //   `lastMessageAt`  -> never published; now derived server-side as
+      //                       growth.lastInteractionAt from the `time` every
+      //                       conversation entry already carried.
+      // ⚠ The old names are kept FIRST in each chain so that if a future build
+      // does publish them they win, and so this reads as a widening rather than
+      // a swap. `activeUsers` was already correct: it falls through to
+      // `connectedUsers`, which IS published (state.js:791).
+      const g = s.growth || {};
+      const count = s.totalMessages ?? g.totalInteractions ?? 0;
+      const lastMs = s.lastMessageAt ?? g.lastInteractionAt ?? 0;
       const active = s.activeUsers ?? s.connectedUsers ?? 0;
       const countEl = document.getElementById('d-conv-count');
       const lastEl = document.getElementById('d-conv-last');
