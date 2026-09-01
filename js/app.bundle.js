@@ -120115,7 +120115,12 @@ var Curriculum = class _Curriculum {
     const reps = opts.reps ?? 8;
     const arousal = ctx?.arousal ?? 0.8;
     const valence = ctx?.valence ?? 0.2;
-    const lr = cluster.learningRate;
+    let lr = 0.0468;
+    try {
+      const _v = parseFloat(process?.env?.DREAM_CONTENT_LR);
+      if (Number.isFinite(_v) && _v > 0 && _v <= 0.5) lr = _v;
+    } catch {
+    }
     const letterRegion = cluster.regions?.letter;
     const phonRegion = cluster.regions?.phon;
     const semRegion = cluster.regions?.sem;

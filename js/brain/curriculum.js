@@ -23792,7 +23792,59 @@ export class Curriculum {
     const reps = opts.reps ?? 8;
     const arousal = ctx?.arousal ?? 0.8;
     const valence = ctx?.valence ?? 0.2;
-    const lr = cluster.learningRate;
+
+    // ⛔⛔ THIS LANE WAS TRAINING THE ENTIRE ACADEMIC CORPUS AT A RATE THAT
+    // DEPOSITED ALMOST NOTHING, AND IT WAS INHERITED, NOT CHOSEN.
+    //
+    // It used `cluster.learningRate` — the brain's GLOBAL plasticity rate,
+    // 0.001 — while the sibling lane that trains word->word sequencing
+    // (`_teachAssociationPairs`) uses a curriculum-chosen 0.03. Measured with
+    // Oja's own arithmetic (`w = w(1-lr) + lr*x`, so after n exposures the
+    // weight has moved `1-(1-lr)^n` of the way):
+    //
+    //     CONTENT lane   lr 0.001 x 3 reps  ->   0.30% deposited
+    //     SEQUENCE lane  lr 0.03  x 24 reps ->  51.90% deposited
+    //     => the grammar channel deposited 173x MORE PER ITEM than the
+    //        channel carrying what the words actually MEAN.
+    //
+    // ⭐ THE DERIVATION FOR THE NEW RATE, from a measurement of the real corpus
+    // rather than a judgement. Sampling `science/grade8`, `ela/grade9`,
+    // `major/college2` and `social/grade6`: the MEDIAN content word appears in
+    // only 1-2 sentences per cell (top quartile 3-4; a subject's core terms
+    // reach 150-350). So "exposure replaces repetition" is TRUE for core terms
+    // and FALSE for the long tail — most of the vocabulary is seen twice.
+    // Taking the median case, 2 sentences x 3 reps = 6 exposures, and a target
+    // of ~25% deposited for a word seen that rarely:
+    //
+    //     lr = 1 - (1 - 0.25)^(1/6) = 0.0468
+    //
+    // ⚠ WHY NOT HIGHER, given the brain has knobs and one pass should count for
+    // many: the ceiling is set by catastrophic forgetting, not by arithmetic.
+    // Deposit cannot exceed 100%, so "one pass worth 3000" means lr = 0.95 and
+    // 95% of everything already learned is displaced on every exposure — the
+    // last sentence read wins outright. That is overwriting, not learning.
+    //
+    // ⭐ AND THE DECAY IS ACTIVATION-GATED, WHICH IS WHY 0.047 IS SAFE HERE.
+    // `sparse-matrix.js` ojaUpdate skips every row whose post-neuron is silent
+    // (`if (!y) continue;`), so teaching one concept does NOT decay an
+    // unrelated one — interference is proportional to REPRESENTATIONAL OVERLAP.
+    // Similar words share structure and partially overwrite each other, which
+    // is Oja behaving as designed; distant words never touch. The naive
+    // "survives 100 later exposures" figure is therefore a worst case that
+    // applies only to a word competing with itself.
+    //
+    // ⚠ REPLAY IS THE COUNTERWEIGHT AND IT IS NOW PROVEN RUNNING (tier1 57,
+    // tier2 30 schemas, 2026-09-01). Interleaved replay is what SEPARATES
+    // overlapping representations, which is exactly the pressure a higher rate
+    // creates. Raising this before replay was verified would have been the
+    // wrong order.
+    //
+    // Env-overridable so the press can move it without a rebuild.
+    let lr = 0.0468;
+    try {
+      const _v = parseFloat(process?.env?.DREAM_CONTENT_LR);
+      if (Number.isFinite(_v) && _v > 0 && _v <= 0.5) lr = _v;
+    } catch { /* default stands */ }
 
     const letterRegion = cluster.regions?.letter;
     const phonRegion = cluster.regions?.phon;
