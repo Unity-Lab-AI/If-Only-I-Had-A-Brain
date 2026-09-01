@@ -1723,7 +1723,14 @@ export class LanguageCortex {
         this._honestSilenceWarned = true;
         console.warn('[LanguageCortex] her trained emission produced NOTHING and the dictionary fallback is OFF for a trained brain (OWNWORDS.2) — this is real silence, not a bug. Set DREAM_DICT_FALLBACK=1 to restore retrieval, but then her words are not hers.');
       }
-      return this._renderSentence([], type, speechMod) || '';
+      // Honest silence is the empty string, same as the two silent
+      // returns below. `_renderSentence` on an empty word list returns
+      // '' unconditionally, and `type`/`speechMod` are not declared
+      // until after the fallback block — referencing them here threw a
+      // TDZ ReferenceError the first time this branch ever ran (it is
+      // gated on passedCells, so it was unreachable until the first
+      // cell pass landed) and killed the whole chat reply lane.
+      return '';
     }
     if (words.length === 0) {
       this._dictRetrievalCount = (this._dictRetrievalCount || 0) + 1;
