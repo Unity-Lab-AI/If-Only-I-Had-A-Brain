@@ -106442,7 +106442,12 @@ var Curriculum = class _Curriculum {
     if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion) return null;
     const now = Date.now();
     const TTL = 36e5;
-    if (this._letterTransCache && now - this._letterTransCache.at < TTL) return this._letterTransCache;
+    if (this._letterTransCache) {
+      const _age = now - this._letterTransCache.at;
+      if (_age < (this._letterTransCache.found > 0 ? TTL : 3e4)) return this._letterTransCache;
+    }
+    const csrEntries = (syn.values && syn.values.length) | 0;
+    if (csrEntries === 0) return null;
     const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
     if (invSize <= 0) return null;
     const start = letterRegion.start, end = letterRegion.end;
@@ -106451,6 +106456,7 @@ var Curriculum = class _Curriculum {
     const bucket = Math.max(1, Math.floor(span / invSize));
     const M = new Float64Array(invSize * invSize);
     const N = new Int32Array(invSize * invSize);
+    let found = 0;
     for (let post = start; post < end; post++) {
       const bOut = Math.floor((post - start) / bucket);
       if (bOut >= invSize) break;
@@ -106462,11 +106468,13 @@ var Curriculum = class _Curriculum {
         if (bIn >= invSize) continue;
         M[bIn * invSize + bOut] += syn.values[k];
         N[bIn * invSize + bOut]++;
+        found++;
       }
     }
     const inv = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
-    this._letterTransCache = { at: now, M, N, invSize, inv };
-    return this._letterTransCache;
+    const out = { at: now, M, N, invSize, inv, csrEntries, found };
+    this._letterTransCache = out;
+    return out;
   }
   /**
    * Direction-aware, SHARE-NORMALIZED letter-sequence read. The raw-mass
@@ -106605,6 +106613,14 @@ var Curriculum = class _Curriculum {
       // letters with ANY positive outgoing weight (learning)
       synapses,
       // total letter->letter entries in the block
+      // ⛔ THE FIELD WHOSE ABSENCE MADE THIS INSTRUMENT BLIND. Without the
+      // whole-matrix entry count there is no way to tell "the letter region
+      // has no connections" from "I read before 6.8 GB of weights finished
+      // loading" — and the second one reported the first, confidently, for an
+      // hour. An instrument that cannot say whether it can SEE is not an
+      // instrument. If csrEntries is 0 the matrix is not loaded and every
+      // other number here is meaningless.
+      csrEntries: cache.csrEntries ?? null,
       unwired: unwired.slice(0, 8),
       // ⛔ these can NEVER learn a successor
       untrained: untrained.slice(0, 8),
@@ -106631,7 +106647,11 @@ var Curriculum = class _Curriculum {
     if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion || !freeRegion) return null;
     const now = Date.now();
     const TTL = 36e5;
-    if (this._letterOrdCache && now - this._letterOrdCache.at < TTL) return this._letterOrdCache;
+    if (this._letterOrdCache) {
+      const _age = now - this._letterOrdCache.at;
+      if (_age < (this._letterOrdCache.found > 0 ? TTL : 3e4)) return this._letterOrdCache;
+    }
+    if (!(syn.values && syn.values.length)) return null;
     const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
     const dim = MAGNITUDE_FEATURE_DIM;
     if (invSize <= 0 || !(dim > 0)) return null;
@@ -106642,6 +106662,7 @@ var Curriculum = class _Curriculum {
     const lBucket = Math.max(1, Math.floor(lSpan / invSize));
     const fGroup = Math.max(1, Math.floor(fSpan / dim));
     const P = new Float64Array(invSize * dim);
+    let found = 0;
     for (let post = lStart; post < lEnd; post++) {
       const bOut = Math.floor((post - lStart) / lBucket);
       if (bOut >= invSize) break;
@@ -106652,10 +106673,11 @@ var Curriculum = class _Curriculum {
         const d = Math.floor((pre - fStart) / fGroup);
         if (d >= dim) continue;
         P[bOut * dim + d] += syn.values[k];
+        found++;
       }
     }
     const inv = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
-    this._letterOrdCache = { at: now, P, invSize, dim, inv };
+    this._letterOrdCache = { at: now, P, invSize, dim, inv, found };
     return this._letterOrdCache;
   }
   /**

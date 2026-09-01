@@ -6021,7 +6021,31 @@ export class Curriculum {
     if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion) return null;
     const now = Date.now();
     const TTL = 3600000;   // the matrix moves at teach speed; an hour is fresh
-    if (this._letterTransCache && (now - this._letterTransCache.at) < TTL) return this._letterTransCache;
+    // ⚠ TIERED FRESHNESS. A cache that FOUND structure is a real measurement
+    // and keeps the full hour. A cache that found nothing keeps 30 s, because
+    // "nothing" during a partial weights load must never sit for an hour —
+    // and re-walking is only paid in the window where it is actually wrong.
+    if (this._letterTransCache) {
+      const _age = now - this._letterTransCache.at;
+      if (_age < (this._letterTransCache.found > 0 ? TTL : 30000)) return this._letterTransCache;
+    }
+    // ⛔⛔ COLD-CACHE POISONING — MY OWN DEFECT, CAUGHT ON THE LIVE BOX.
+    //
+    // `brain-weights.bin` is 6.8 GB and takes MINUTES to load, but the first
+    // state broadcast fires ~3 s after boot. This read therefore ran against
+    // an allocated-but-EMPTY CSR, found zero letter->letter entries, and the
+    // hourly TTL then FROZE that empty answer for a full hour — poisoning not
+    // just the health instrument but `_letterSequenceRead` itself, which
+    // shares this cache. Measured: `wired: 0, synapses: 0` at 3.4 min uptime
+    // while the same matrix was mid-upload to the donor at 3,509.7 MB.
+    //
+    // ⚠ An empty read is NOT a measurement, so it is never cached. Caching is
+    // earned by finding something; until then every call re-reads and the
+    // instrument self-heals the moment the weights land. The walk is cheap
+    // while the CSR is empty (rowPtr is empty too), so re-reading costs
+    // nothing in exactly the window where it happens.
+    const csrEntries = (syn.values && syn.values.length) | 0;
+    if (csrEntries === 0) return null;   // weights not loaded yet — say nothing rather than say zero
     const invSize = (typeof inventorySize === 'function') ? inventorySize() : 26;
     if (invSize <= 0) return null;
     const start = letterRegion.start, end = letterRegion.end;
@@ -6040,6 +6064,7 @@ export class Curriculum {
     // physically incapable of matrix emission. N[in][out] = how many synapses
     // EXIST; M[in][out] = what they currently weigh. Structure vs training.
     const N = new Int32Array(invSize * invSize);
+    let found = 0;
     for (let post = start; post < end; post++) {
       const bOut = Math.floor((post - start) / bucket);
       if (bOut >= invSize) break;
@@ -6051,11 +6076,19 @@ export class Curriculum {
         if (bIn >= invSize) continue;
         M[bIn * invSize + bOut] += syn.values[k];
         N[bIn * invSize + bOut]++;
+        found++;
       }
     }
     const inv = (typeof inventorySnapshot === 'function') ? inventorySnapshot() : null;
-    this._letterTransCache = { at: now, M, N, invSize, inv };
-    return this._letterTransCache;
+    // ⚠ ALWAYS CACHED, because by here the CSR is PROVEN LOADED (the
+    // `csrEntries === 0` early return above is what catches the cold case).
+    // A loaded matrix with an empty letter block is a REAL measurement and
+    // must not be re-walked on every state broadcast — the tiered TTL above
+    // is what keeps it honest, giving that reading 30 s instead of an hour so
+    // a partial load still self-heals.
+    const out = { at: now, M, N, invSize, inv, csrEntries, found };
+    this._letterTransCache = out;
+    return out;
   }
 
   /**
@@ -6226,6 +6259,14 @@ export class Curriculum {
       wired,                       // letters with ANY outgoing synapse (structure)
       trained,                     // letters with ANY positive outgoing weight (learning)
       synapses,                    // total letter->letter entries in the block
+      // ⛔ THE FIELD WHOSE ABSENCE MADE THIS INSTRUMENT BLIND. Without the
+      // whole-matrix entry count there is no way to tell "the letter region
+      // has no connections" from "I read before 6.8 GB of weights finished
+      // loading" — and the second one reported the first, confidently, for an
+      // hour. An instrument that cannot say whether it can SEE is not an
+      // instrument. If csrEntries is 0 the matrix is not loaded and every
+      // other number here is meaningless.
+      csrEntries: cache.csrEntries ?? null,
       unwired: unwired.slice(0, 8),      // ⛔ these can NEVER learn a successor
       untrained: untrained.slice(0, 8),  // wired but taught nothing yet
       ageMs: Date.now() - cache.at,
@@ -6251,7 +6292,16 @@ export class Curriculum {
     if (!syn || !syn.rowPtr || !syn.colIdx || !syn.values || !letterRegion || !freeRegion) return null;
     const now = Date.now();
     const TTL = 3600000;   // same hourly freshness as the transition matrix
-    if (this._letterOrdCache && (now - this._letterOrdCache.at) < TTL) return this._letterOrdCache;
+    // Same tiered freshness + cold-CSR guard as `_letterTransitionMatrix` —
+    // this read shares the 6.8 GB load window and would freeze the same empty
+    // answer for an hour. ⚠ Here an empty result is ALSO the legitimate
+    // `not-taught-yet` state, which is exactly why the two must be told apart
+    // by `csrEntries` rather than by the emptiness of the walk.
+    if (this._letterOrdCache) {
+      const _age = now - this._letterOrdCache.at;
+      if (_age < (this._letterOrdCache.found > 0 ? TTL : 30000)) return this._letterOrdCache;
+    }
+    if (!(syn.values && syn.values.length)) return null;   // weights not loaded — say nothing
     const invSize = (typeof inventorySize === 'function') ? inventorySize() : 26;
     const dim = MAGNITUDE_FEATURE_DIM;
     if (invSize <= 0 || !(dim > 0)) return null;
@@ -6264,6 +6314,7 @@ export class Curriculum {
     const lBucket = Math.max(1, Math.floor(lSpan / invSize));
     const fGroup = Math.max(1, Math.floor(fSpan / dim));
     const P = new Float64Array(invSize * dim);
+    let found = 0;
     for (let post = lStart; post < lEnd; post++) {
       const bOut = Math.floor((post - lStart) / lBucket);
       if (bOut >= invSize) break;
@@ -6274,10 +6325,11 @@ export class Curriculum {
         const d = Math.floor((pre - fStart) / fGroup);
         if (d >= dim) continue;
         P[bOut * dim + d] += syn.values[k];
+        found++;
       }
     }
     const inv = (typeof inventorySnapshot === 'function') ? inventorySnapshot() : null;
-    this._letterOrdCache = { at: now, P, invSize, dim, inv };
+    this._letterOrdCache = { at: now, P, invSize, dim, inv, found };
     return this._letterOrdCache;
   }
 
