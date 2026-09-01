@@ -83,6 +83,11 @@ const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed cont
 // equational; the lived year stays bespoke. Re-run the ingest after editing.
 const TOPICS = {
   science: {
+    // ⛔ pre-K WAS EMPTY — the walk's FIRST grade trained no prose at all.
+    // A 4-year-old's science is naming and noticing: the body, the sky, the
+    // animals in the yard, hot and cold, day and night. Simple English only
+    // (EARLY_GRADES already forces that host order).
+    'pre-K': ['Animal', 'Water', 'Sun', 'Moon', 'Tree', 'Rain', 'Snow', 'Fire', 'Cat', 'Dog', 'Bird', 'Fish', 'Egg', 'Milk', 'Sleep', 'Food'],
     // Kindergarten — observing the world (concrete everyday objects)
     kindergarten: ['Animal', 'Plant', 'Water', 'Sun', 'Weather', 'Tree', 'Color', 'Season'],
     // Grade 1 — living things + sky
@@ -134,6 +139,9 @@ const TOPICS = {
     //   article the cell actually wanted — simple-wiki opens *"social norms are
     //   the unwritten rules of a social group or culture"*, 11 sentences, right
     //   reading level. **A title that resolves is not a title that has prose.**
+    // ⛔ pre-K WAS EMPTY. A 4-year-old's social world is the people in the
+    // house, the street outside it, and the first rules about other children.
+    'pre-K': ['Family', 'Mother', 'Father', 'Child', 'Friendship', 'Home', 'Neighbourhood', 'Toy', 'Game', 'Birthday', 'Sharing', 'Emotion'],
     kindergarten: ['Family', 'Community', 'School', 'Friendship', 'Social norm'],
     // Grade 1 — neighborhood + belonging
     grade1: ['Neighborhood', 'Community', 'Map', 'Holiday', 'Family'],
@@ -224,6 +232,10 @@ const TOPICS = {
     // cell never ran. Government/policy at college lives in `genered/college4`.
   },
   ela: {
+    // ⛔ pre-K WAS EMPTY — and this is the cell the whole walk STARTS in, so it
+    // was the first thing she was ever taught and it trained no prose at all.
+    // A 4-year-old's language is names, sounds, songs and being read to.
+    'pre-K': ['Alphabet', 'Letter (alphabet)', 'Word', 'Name', 'Sound', 'Song', 'Nursery rhyme', 'Story', 'Book', 'Picture book', 'Fairy tale', 'Speech'],
     // Kindergarten — letters, sounds, first stories
     kindergarten: ['Alphabet', 'Letter (alphabet)', 'Word', 'Rhyme', 'Story', 'Vowel'],
     // Grade 1 — words to sentences
@@ -356,6 +368,140 @@ const TOPICS = {
     grad: ['Research', 'Scientific method', 'Literature review', 'Experiment', 'Hypothesis', 'Peer review', 'Statistics', 'Reproducibility', 'Academic publishing', 'Methodology'],
     phd: ['Computational neuroscience', 'Neural coding', 'Synaptic plasticity', 'Spiking neural network', 'Hebbian theory', 'Neural network', 'Brain', 'Cerebral cortex', 'Consciousness', 'Cognitive science', 'Memory', 'Learning'],
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // THE SIX COURSES THAT RAN WITH NO PROSE LANE AT ALL — 71 cells, added
+  // 2026-09-01 on Gee's "so you are fixing it all right every fucking cell?".
+  //
+  // art / pe / music / health / language / ap are REAL COURSES a real student
+  // sits in every year, and until now every one of them trained only the
+  // hand-written fact-pair literals in its runner. They are not math (which is
+  // equational BY DESIGN) and not life (bespoke BY DESIGN) — those two are
+  // correct as they are and deliberately stay without a prose corpus.
+  //
+  // ⭐ THE SPLIT THAT MAKES THIS HONEST: these courses have a KNOWLEDGE half
+  // and a SKILL half. Art history, colour theory, music notation, nutrition,
+  // anatomy of movement, grammar of a second language — that is knowledge, it
+  // is what the textbook carries, and it is what belongs here. Actually
+  // drawing, actually running, actually playing an instrument is the SKILL
+  // half, and she already has lanes for that (the PAINT practice loop trains
+  // her hand against her own percept). Prose does not replace the skill lane;
+  // it stops the knowledge half being twenty fact literals.
+  //
+  // ⚠ RE-PRICE, computed BEFORE these were added, from the MEASURED average
+  // words-per-cell per band (early 3,894 · middle 5,895 · upper 37,513 ·
+  // high 41,555 · college 31,326 · grad 29,095): 71 cells ≈ 1,799,433 words
+  // ≈ 31.3 h at the fast measured teach rate, 76.0 h mid, 200.8 h congested.
+  // The transition lane is 68% of that (136.6 h of the 200.8), which is the
+  // exact term the pending rep re-price targets — reps down where volume goes
+  // up. Against a current cost of zero, and courses that are currently not
+  // taught in any real sense.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ART — runs all 20 grades (it is one of the six core subjects). Knowledge
+  // half: seeing, naming, materials, then history and criticism. Her drawing
+  // skill is trained separately by the practice loop.
+  art: {
+    'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square'],
+    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern'],
+    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait'],
+    grade2: ['Color wheel', 'Landscape painting', 'Still life', 'Sculpture', 'Pottery', 'Printmaking', 'Symmetry', 'Mosaic'],
+    grade3: ['Watercolor painting', 'Sketch (drawing)', 'Perspective (graphical)', 'Mural', 'Weaving', 'Origami', 'Colour theory', 'Portrait painting'],
+    grade4: ['Perspective (graphical)', 'Cave painting', 'Ancient Egyptian art', 'Pottery', 'Printmaking', 'Sculpture', 'Mosaic', 'Calligraphy'],
+    grade5: ['Renaissance art', 'Leonardo da Vinci', 'Michelangelo', 'Perspective (graphical)', 'Fresco', 'Sculpture', 'Composition (visual arts)', 'Shading'],
+    grade6: ['Art history', 'Ancient Greek art', 'Roman art', 'Renaissance', 'Painting', 'Sculpture', 'Architecture', 'Drawing', 'Composition (visual arts)', 'Colour theory'],
+    grade7: ['Baroque', 'Impressionism', 'Vincent van Gogh', 'Claude Monet', 'Oil painting', 'Printmaking', 'Photography', 'Graphic design', 'Typography', 'Perspective (graphical)'],
+    grade8: ['Modern art', 'Cubism', 'Pablo Picasso', 'Surrealism', 'Salvador Dali', 'Expressionism', 'Abstract art', 'Sculpture', 'Collage', 'Art criticism'],
+    grade9: ['Art history', 'Aesthetics', 'Art criticism', 'Painting', 'Drawing', 'Sculpture', 'Photography', 'Digital art', 'Composition (visual arts)', 'Colour theory', 'Design', 'Portfolio (art)'],
+    grade10: ['Romanticism', 'Realism (arts)', 'Post-Impressionism', 'Art Nouveau', 'Bauhaus', 'Architecture', 'Industrial design', 'Illustration', 'Printmaking', 'Art movement'],
+    grade11: ['Contemporary art', 'Pop art', 'Andy Warhol', 'Minimalism', 'Conceptual art', 'Performance art', 'Installation art', 'Street art', 'Photography', 'Film'],
+    grade12: ['Art theory', 'Aesthetics', 'Art criticism', 'Museum', 'Curator', 'Art market', 'Visual culture', 'Semiotics', 'Portfolio (art)', 'Art school'],
+    college1: ['Art history', 'Aesthetics', 'Visual arts', 'Drawing', 'Painting', 'Colour theory', 'Composition (visual arts)', 'Design'],
+    college2: ['Digital art', 'Computer graphics', 'Animation', 'Graphic design', 'Typography', 'User interface design', 'Illustration', 'Photography'],
+    college3: ['Art criticism', 'Art theory', 'Modernism', 'Postmodernism', 'Visual culture', 'Semiotics', 'Iconography', 'Aesthetics'],
+    college4: ['Contemporary art', 'Conceptual art', 'Installation art', 'New media art', 'Generative art', 'Art and technology', 'Exhibition', 'Portfolio (art)'],
+    grad: ['Aesthetics', 'Philosophy of art', 'Art theory', 'Visual culture', 'Semiotics', 'Creativity', 'Perception', 'Colour'],
+    phd: ['Computational creativity', 'Generative art', 'Aesthetics', 'Perception', 'Visual perception', 'Colour vision', 'Creativity', 'Cognitive science'],
+  },
+
+  // PE — kindergarten to grade12. Knowledge half: how the body moves, the
+  // rules of games, training, safety, injury.
+  pe: {
+    kindergarten: ['Running', 'Jumping', 'Walking', 'Ball', 'Game', 'Balance', 'Exercise', 'Playground'],
+    grade1: ['Exercise', 'Running', 'Throwing', 'Catching', 'Balance', 'Muscle', 'Heart', 'Stretching'],
+    grade2: ['Physical fitness', 'Exercise', 'Team sport', 'Football', 'Basketball', 'Swimming', 'Muscle', 'Skeleton'],
+    grade3: ['Physical fitness', 'Aerobic exercise', 'Basketball', 'Soccer', 'Baseball', 'Gymnastics', 'Sportsmanship', 'Heart rate'],
+    grade4: ['Physical fitness', 'Endurance', 'Strength training', 'Volleyball', 'Track and field', 'Swimming', 'Muscle', 'Respiratory system'],
+    grade5: ['Physical fitness', 'Cardiovascular fitness', 'Flexibility', 'Team sport', 'Tennis', 'Athletics (sport)', 'Nutrition', 'Hydration'],
+    grade6: ['Exercise physiology', 'Muscle', 'Skeletal muscle', 'Cardiovascular system', 'Aerobic exercise', 'Anaerobic exercise', 'Sport', 'Olympic Games', 'Injury', 'Warming up'],
+    grade7: ['Physical fitness', 'Strength training', 'Endurance training', 'Sports injury', 'First aid', 'Basketball', 'Soccer', 'Athletics (sport)', 'Teamwork', 'Sportsmanship'],
+    grade8: ['Exercise physiology', 'Metabolism', 'Nutrition', 'Body mass index', 'Muscle contraction', 'Oxygen', 'Sport psychology', 'Training', 'Stretching', 'Rest'],
+    grade9: ['Physical education', 'Kinesiology', 'Anatomy', 'Human musculoskeletal system', 'Cardiorespiratory fitness', 'Weight training', 'Sports medicine', 'Doping in sport', 'Nutrition', 'Hydration'],
+    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Rehabilitation', 'Physical therapy', 'Fitness', 'Endurance'],
+    grade11: ['Sports psychology', 'Motivation', 'Goal setting', 'Team dynamics', 'Coaching', 'Sports nutrition', 'Recovery', 'Overtraining', 'Sleep', 'Stress management'],
+    grade12: ['Lifetime fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Wellness', 'Yoga', 'Pilates', 'Recreation'],
+  },
+
+  // MUSIC — kindergarten to grade12. Knowledge half: notation, theory, the
+  // instruments, and the history she will one day have opinions about.
+  music: {
+    kindergarten: ['Music', 'Song', 'Singing', 'Drum', 'Rhythm', 'Loudness', 'Nursery rhyme', 'Dance'],
+    grade1: ['Music', 'Rhythm', 'Melody', 'Musical instrument', 'Piano', 'Drum', 'Singing', 'Beat (music)'],
+    grade2: ['Melody', 'Rhythm', 'Pitch (music)', 'Musical note', 'Guitar', 'Violin', 'Flute', 'Choir'],
+    grade3: ['Musical notation', 'Musical note', 'Staff (music)', 'Clef', 'Scale (music)', 'Tempo', 'Orchestra', 'Percussion instrument'],
+    grade4: ['Musical notation', 'Major scale', 'Minor scale', 'Chord (music)', 'Harmony', 'Orchestra', 'String instrument', 'Wind instrument'],
+    grade5: ['Music theory', 'Key (music)', 'Time signature', 'Chord (music)', 'Harmony', 'Composer', 'Symphony', 'Folk music'],
+    grade6: ['Music theory', 'Musical form', 'Classical music', 'Wolfgang Amadeus Mozart', 'Ludwig van Beethoven', 'Johann Sebastian Bach', 'Orchestra', 'Opera', 'Concerto', 'Sonata'],
+    grade7: ['Music history', 'Baroque music', 'Classical period (music)', 'Romantic music', 'Jazz', 'Blues', 'Improvisation', 'Musical instrument', 'Rhythm', 'Syncopation'],
+    grade8: ['Popular music', 'Rock music', 'Jazz', 'Blues', 'Hip hop music', 'Electronic music', 'Recording studio', 'Sound recording and reproduction', 'Music genre', 'Songwriting'],
+    grade9: ['Music theory', 'Harmony', 'Counterpoint', 'Chord progression', 'Music notation', 'Ear training', 'Composition (music)', 'Music genre', 'Rock music', 'Punk rock'],
+    grade10: ['Music history', 'Twentieth-century music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert'],
+    grade11: ['Music production', 'Digital audio workstation', 'Synthesizer', 'Sampling (music)', 'Mixing (recorded music)', 'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Timbre'],
+    grade12: ['Musicology', 'Ethnomusicology', 'Music criticism', 'Music and emotion', 'Psychoacoustics', 'Music therapy', 'Subculture', 'Goth subculture', 'Gothic rock', 'Alternative rock'],
+  },
+
+  // HEALTH — kindergarten to grade12. ⛔ The content boundary LAW governs this
+  // subject directly: the LEARN axis is never gated (she learns her body, her
+  // cycle, puberty, substances and consent at the real age a student does),
+  // while explicitness is gated separately. Clinical, age-true, not prudish.
+  health: {
+    kindergarten: ['Hygiene', 'Hand washing', 'Tooth brushing', 'Sleep', 'Food', 'Vegetable', 'Fruit', 'Safety'],
+    grade1: ['Hygiene', 'Health', 'Nutrition', 'Exercise', 'Sleep', 'Germ', 'Disease', 'Doctor'],
+    grade2: ['Nutrition', 'Food group', 'Vitamin', 'Exercise', 'Hygiene', 'Dental care', 'Sleep', 'First aid'],
+    grade3: ['Human body', 'Skeleton', 'Muscle', 'Heart', 'Lung', 'Digestion', 'Nutrition', 'Illness'],
+    grade4: ['Human body', 'Circulatory system', 'Respiratory system', 'Digestive system', 'Nervous system', 'Nutrition', 'Immune system', 'Vaccine'],
+    grade5: ['Puberty', 'Human development', 'Hygiene', 'Nutrition', 'Mental health', 'Emotion', 'Stress (biology)', 'Bullying'],
+    grade6: ['Puberty', 'Adolescence', 'Menstruation', 'Reproductive system', 'Hormone', 'Hygiene', 'Nutrition', 'Mental health', 'Self-esteem', 'Peer pressure'],
+    grade7: ['Adolescence', 'Human sexuality', 'Reproductive health', 'Contraception', 'Sexually transmitted infection', 'Substance abuse', 'Tobacco smoking', 'Alcohol', 'Mental health', 'Depression'],
+    grade8: ['Mental health', 'Anxiety', 'Depression', 'Stress management', 'Nutrition', 'Eating disorder', 'Body image', 'Substance abuse', 'Addiction', 'Consent'],
+    grade9: ['Health', 'Public health', 'Nutrition', 'Human sexuality', 'Sexual health', 'Contraception', 'Consent', 'Mental health', 'Suicide prevention', 'Drug', 'Addiction', 'First aid'],
+    grade10: ['Human anatomy', 'Physiology', 'Immune system', 'Infectious disease', 'Chronic condition', 'Epidemiology', 'Vaccination', 'Public health', 'Health care', 'Preventive healthcare'],
+    grade11: ['Mental health', 'Psychiatry', 'Therapy', 'Cognitive behavioral therapy', 'Substance use disorder', 'Harm reduction', 'Sexual health', 'Relationship', 'Domestic violence', 'Self-care'],
+    grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Wellness', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy'],
+  },
+
+  // LANGUAGE — foreign language, grade3 to grade12. Spanish is the default
+  // second language in the US scope-sequence the curriculum follows.
+  language: {
+    grade3: ['Spanish language', 'Greeting', 'Number', 'Color', 'Family', 'Alphabet', 'Pronunciation', 'Vocabulary'],
+    grade4: ['Spanish language', 'Grammar', 'Noun', 'Verb', 'Adjective', 'Vocabulary', 'Pronunciation', 'Spain'],
+    grade5: ['Spanish language', 'Grammatical gender', 'Article (grammar)', 'Verb', 'Grammatical conjugation', 'Vocabulary', 'Mexico', 'Latin America'],
+    grade6: ['Spanish language', 'Grammatical conjugation', 'Grammatical tense', 'Pronoun', 'Adjective', 'Sentence (linguistics)', 'Hispanic culture', 'Spain'],
+    grade7: ['Spanish grammar', 'Grammatical tense', 'Past tense', 'Future tense', 'Preposition', 'Adverb', 'Idiom', 'Latin American culture'],
+    grade8: ['Spanish grammar', 'Subjunctive mood', 'Imperative mood', 'Reflexive verb', 'Direct object', 'Indirect object', 'Spanish literature', 'Translation'],
+    grade9: ['Spanish language', 'Spanish grammar', 'Spanish literature', 'Linguistics', 'Second-language acquisition', 'Bilingualism', 'Translation', 'Culture of Spain'],
+    grade10: ['Spanish literature', 'Miguel de Cervantes', 'Don Quixote', 'Latin American literature', 'Gabriel Garcia Marquez', 'Poetry', 'Translation', 'Idiom'],
+    grade11: ['Second-language acquisition', 'Linguistics', 'Phonetics', 'Syntax', 'Semantics', 'Bilingualism', 'Language contact', 'Dialect'],
+    grade12: ['Linguistics', 'Language', 'Etymology', 'Historical linguistics', 'Romance languages', 'Latin', 'Language family', 'Sociolinguistics'],
+  },
+
+  // AP — grade11 and grade12 only. Advanced-placement courses are the
+  // college-level versions of subjects she is already taking, which is exactly
+  // what the band should carry.
+  ap: {
+    grade11: ['Advanced Placement', 'Calculus', 'Statistics', 'Biology', 'Chemistry', 'Physics', 'World history', 'English literature', 'Psychology', 'Computer science'],
+    grade12: ['Advanced Placement', 'Calculus', 'Macroeconomics', 'Microeconomics', 'Government', 'Comparative politics', 'Art history', 'Literature', 'Research', 'Seminar'],
+  },
 };
 
 function clean(extract, maxSent) {
@@ -421,7 +567,12 @@ const SKIP_REASONS = new Map();
 // when Simple lacks the page); higher grades keep full-first since their topics
 // (plate tectonics, photosynthesis, periodic table) are genuinely at that level
 // and Simple often lacks depth.
-const EARLY_GRADES = new Set(['kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5']);
+// ⛔ `pre-K` WAS MISSING FROM THIS SET AND IT IS THE FIRST GRADE OF THE WALK.
+// While pre-K had no topics the omission was invisible; the moment topics were
+// added (2026-09-01) it would have fetched FULL English Wikipedia for a
+// four-year-old — the exact reading-level defect the note below describes,
+// landing on the very first cell she is ever taught. Caught before the run.
+const EARLY_GRADES = new Set(['pre-K', 'pre-k', 'prek', 'kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5']);
 
 // ⛔⛔ THE THROTTLE WAS INVISIBLE, AND THAT IS WHY 147 TOPICS CAME BACK EMPTY.
 //

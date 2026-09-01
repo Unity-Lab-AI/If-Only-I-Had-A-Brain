@@ -737,6 +737,34 @@ Gee (verbatim): *"okay so whats next? get to it"*
 - [ ] `DEADCELL.4` — **DELETE THE ORPHANED FILES ONLY AFTER THEIR CONTENT LIVES IN A CELL THAT RUNS.** ⛔ Order is load-bearing: the content is real and licence-verified, and deleting before migrating loses it.
 - [ ] `DEADCELL.5` — ⛔ **A REACHABILITY CHECK IN THE CORPUS INSTRUMENT (`CURVEDEPTH.9`), because counting words per cell would NOT have caught this.** The instrument as filed reports depth per cell against a target; every one of these ten files would have passed it while training nothing. **The instrument must answer "is this cell REACHED by the walk?" — `subjectsOwedAt(grade)` contains the subject — before it reports how deep the cell is.** A corpus that cannot be reached is worse than an empty one: it reads as done.
 
+## ⛔⛔ CELLAUDIT — "every fucking cell?" ANSWERED WITH A MEASUREMENT, AND THE ANSWER WAS NO — filed 2026-09-01
+
+Gee (verbatim): *"so you are fixing it all right every fucking cell?"*
+
+⛔ **THE HONEST ANSWER WAS NO, AND IT TOOK AN AUDIT TO SAY SO PRECISELY.** ⭐ **First correction: the walk runs 213 cells, not 260.** The 260 figure was a rectangular assumption (13 subjects × 20 grades); the real roster VARIES BY GRADE — 6 subjects at pre-K, 15 at grade11, 10 at college, 8 at grad/phd — read from `subjectsOwedAt()` rather than multiplied. **Every count in the gap ledger that used 260 was counting cells that do not exist.**
+
+**THE AUDIT AT THE MOMENT HE ASKED:**
+```
+  cells the walk runs      213
+    prose cells WITH corpus   99
+    prose cells EMPTY          3   <- ela/pre-K, science/pre-K, social/pre-K
+    prose cells THIN          13   <- all early grades
+    NO PROSE LANE AT ALL      71   <- art 20, pe 13, music 13, health 13, language 10, ap 2
+    correct by design         40   <- math 20 (equational), life 20 (bespoke)
+```
+
+⛔⛔ **THE 71 WERE THE REAL ANSWER, AND THEY WERE NEVER A DELIBERATE EXCLUSION.** `art`, `pe`, `music`, `health`, `language` and `ap` are **real courses a real student sits in every single year** — and every one of their cells trained nothing but the hand-written fact-pair literals in its runner. ⭐ **`art` is one of the SIX CORE SUBJECTS and runs all 20 grades**; it had no corpus at any of them. **Only `math` (equational) and `life` (bespoke) are correct-by-design absences.**
+
+⭐ **THE SPLIT THAT MAKES THE FIX HONEST: these courses have a KNOWLEDGE half and a SKILL half.** Art history, colour theory, music notation, nutrition, the anatomy of movement, the grammar of a second language — knowledge, what a textbook carries, what a corpus is for. Actually drawing, actually running, actually playing — skill, already served by her own lanes (the PAINT practice loop trains her hand against her own percept). **Prose does not replace the skill lane; it stops the knowledge half being twenty fact literals.**
+
+> ✅ **SHIPPED: `PROSE_ACADEMIC_SUBJECTS` 12 → 18**, adding all six, verified by real ESM import. **Post-change audit: 173 cells need prose, 40 have no lane, and those 40 are EXACTLY math + life. Zero no-lane defects remain.** ⚠ **RE-PRICE written BEFORE the change**, from measured per-band averages: 71 cells ≈ **1,799,433 words ≈ 31.3 h fast / 76.0 h mid / 200.8 h congested**, transition lane 68% of it. Topic lists authored for all 71 cells and the ingest is running.
+>
+> ✅ **`ela/pre-K`, `science/pre-K`, `social/pre-K` FILLED — the walk's FIRST grade trained no prose at all**, which means the very first thing she was ever taught was nothing. 1,528 sentences, zero skips. ⛔ **And a live bug was caught before that run: `EARLY_GRADES` did not contain `pre-K`**, so those cells would have fetched FULL English Wikipedia — college-density prose for a four-year-old — landing on the first cell of her life. Invisible while pre-K had no topics; lethal the moment it did.
+
+- [~] `CELLAUDIT.1` — ⭐ **THE INSTRUMENT `CURVEDEPTH.9` AND `DEADCELL.5` BOTH ASKED FOR, BUILT: `.claude/scripts/audit-curriculum-coverage.mjs`.** ⛔ **It starts from the WALK, not the filesystem** — it asks the curriculum module which cells are owed, THEN asks whether each has content. **Reachability first, depth second, because a depth-only check is structurally blind to both failures this project actually hit:** the 268,481 words in retired-subject cells would have PASSED a depth check while training nothing, and 71 laneless cells cannot be seen at all by a check that only looks at files it expects. **It also runs the reverse direction** — corpus files for cells the walk does NOT run — which is where those 268,481 words were found. Band-aware floors (a real year is a different size at every grade), a `BY_DESIGN_NO_PROSE` allowlist naming math and life as the ONLY legitimate absences, and `--json` for wiring into state later. ⚠ **First run crashed on Windows** (`ERR_UNSUPPORTED_ESM_URL_SCHEME` — an absolute path starting with a drive letter is read as a URL scheme); fixed with `pathToFileURL`. ⏳ Remaining: wire it into the boot/state publish so it is a field read rather than a command someone remembers to run.
+
+- [ ] `CELLAUDIT.2` — **18 THIN CELLS, and the early ones are thin for a REAL reason that needs a different source, not a bigger cap.** `social/kindergarten` holds **845** words against a 2,000 floor; `ela/grade1` 1,472; `social/grade1` 1,467. **Simple English Wikipedia articles on kindergarten topics are genuinely short** — the cap is not binding, the source is exhausted. ⭐ **The fix is a source suited to early childhood** (the Gutenberg ladder already reaches grade3; children's public-domain texts, rhymes and primers would reach below it), NOT raising a ceiling that is not being hit. The upper-grade thin cells (`ela/college4` 8,009, `social/phd` 7,039, `science/grad` 9,811) are a different problem: those topic lists are too short, and OpenStax/arXiv should carry them.
+
 ## ⭐⭐ TEXTFIG — SHE IS BEING TAUGHT TEXTBOOKS WITH EVERY FIGURE DELETED — filed 2026-09-01
 
 Gee (verbatim): *"how are we handling all the images in the text books and coprpus materials, she gets them converted so she can see them in c/9 sparce wavelets, riight?"* → *"this might be need to add to todo"* → *"if its possible"*
