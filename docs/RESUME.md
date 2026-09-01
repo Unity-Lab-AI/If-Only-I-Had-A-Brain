@@ -1,24 +1,33 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-31 (LATEST — PICK UP HERE) — THE ~21 h CHECK-IN: THE WATCH PASSED, AND THE WALK'S BIGGEST COST WAS A SHADOW MISFILED AS A REFUSAL
+> ## ⭐⭐⭐ 2026-08-31/09-01 (LATEST — PICK UP HERE) — THE 24 h CHECK-IN FOUND THE WALK'S BIGGEST COST WEARING THE WRONG NAME; FIXED, PRESSED, AND PROVEN LIVE AT 27× THE TEACH RATE
 >
-> ### Where it is — read live at 20.97 h uptime on `b1a5eb01` (same boot, no restart)
+> Gee (verbatim, closing the session): *"write the resume.md of everything"*
+>
+> ### Where she is — read live at 12.6 min on the NEW boot (`ec723c41`, pressed ~05:05Z 2026-09-01)
 > ```
-> brain    ela/kindergarten · cellPhasesCompleted 4 / 25 · phase 5 _teachRhymeFamilies in flight
-> memory   tier1 12 · freqMerged 2,328 · tier2 12 schemas (incl. academic-stories) · replayWrites 444
-> voice    emitAttempts 6,029 / rejects 6,029 all no-best-word · matrixHits 0 (expected pre-vocab)
-> defs     queue 2,126 of 2,247 — drain collapsed 80/h → ~4.7/h after boot ← WATCH
-> repo     feature/index-carrier-refusals — IDXCARRIER.1 built, NOT cascaded yet
+> brain    ela/kindergarten · cellPhasesCompleted 4/25 SURVIVED THE PRESS · _teachAssociationPairs in flight
+> fix      intraOja.cpuFull 0 · boundGpu 11,070 · boundShadow 17 = 1.35/min · cpuShadowMs 1,376 ms TOTAL
+> speed    teach 2,894 calls/min (was 106 pre-press) · event-loop lag 97 ms (was 1,237)
+> memory   tier1 13 · freqMerged 2,433 · tier2 12 schemas — intact across the press
+> repo     main ec723c41 = origin = github · develop 74866d7e synced · HEAD on develop, tree clean
 > ```
-> **WATCH.1 PASSED** (phases 0→4) · **WATCH.3 passing by design** (small tier1, merge counter climbing) ·
-> **WATCH.5 PASSED** (academic schema exists) · **WATCH.6** no new ~30 s-periodic BLOCKED · **WATCH.7** still 0, expected.
-> The 8-14 h first-cell estimate blows past 24 h — but NOT for the falsifier's named reason (the REPCOMP-suspect heavy phases COMPLETED).
+> ⭐ **The proof line is `cpuFull: 0`.** At the same age the previous boot had already burned ~28 minutes of full CPU passes; this boot spent **1.4 seconds** on shadows, on their 30 s leash, at ~81 ms each. The speedup came out BIGGER than the ~37% priced because the blocked-loop tax was compounding on everything.
 >
-> ### ⛔ THE FIND, AND THE CORRECTION I OWED WITHIN THE HOUR
-> `cpuFullMs` 28.8M ms = **8.0 h = 38.2% of the boot**. First filed as "CPU passes the GPU refused" (98.1% refusal rate, donor 16-run cap, 89% of refusals >64k runs — all real numbers). **Wrong story:** `boundGpu` 427,056 vs 427,057 teach calls — **the bound op was GPU-carrying every call.** The "refusals" were the CPU shadow running per-final-rep at 377 ms because its 30 s cadence sat behind `if (_sampleN > 1)`, set by only the six heavy pair loops. 77,936 − 1,484 compressed = 76,452, and 77,636 were bound-carried fall-throughs. **The counter lied by classification** — new instruments-that-lie shape, written into the wiki gotcha.
+> ### THE SESSION, IN ORDER
+> **1. `/workflow` ran through the repaired Phase-4 gate** (bounded reads, evidence lines — the WORKGATE fix exercised for the first time; FINALIZED's newest-section read needed the reminder that the file is newest-FIRST, sections at line 8 not the tail).
+> **2. The ~21 h walk check-in (old boot `b1a5eb01`, 20.97 h):** **WATCH.1 PASSED** (`cellPhasesCompleted` 0→4, phase 5 in flight — she was NOT wedged; the heavy trio returned) · **WATCH.3 passing by design** (tier1 small at 12, `freqMergedCount` 2,328 climbing) · **WATCH.5 PASSED** (Tier-2 schema `academicelakindergartenstories-learned-ela` — the corpus lane genuinely ran; 17 consolidation passes, 111 replay schemas, 444 replay writes) · **WATCH.6** no new ~30 s-periodic BLOCKED · **WATCH.7** still 0 accepted (6,029/6,029 `no-best-word`, expected pre-vocab). ⛔ The 8-14 h first-cell estimate blew past 24 h — **NOT for the falsifier's named reason** (REPCOMP's suspect phases completed).
+> **3. Gee: *"can we fix this: The measured thief: 8.0 of her 21 hours went to CPU passes the GPU refused?? or whats up? is that normal?"*** First answer WRONG and corrected within the hour: the counters were real (`cpuFull` 76,452, 38.2% of the boot, 98.1% "refusal" rate) but the STORY was not — `boundGpu` **427,056 against 427,057 teach calls** means the bound op was GPU-carrying ALL of the training. The "refusals" were the CPU checkpoint/probe **shadow** running on every final rep at 377 ms because its 30 s wall-clock cadence sat behind `if (_sampleN > 1)`, a flag only the SIX heavy pair loops set. Exact arithmetic: 77,936 ranges-branch entries − 1,484 compressed = 76,452; 77,636 were bound-carried fall-throughs. ⭐ **New instruments-that-lie shape, written into the wiki gotcha: lying by CLASSIFICATION — every count correct, the category wrong — and it was `_intraOjaStats` itself, the discriminator SHADOWCOST.1 built.**
+> **4. The fix (`IDXCARRIER.1`, `js/brain/cluster/hebbian.js`, server-side only — NO donor release):** cadence unconditional in the Oja + anti twins; bound-carried calls skip the ranges attempt (a hit double-trained the GPU, a miss paid compression + the refusal walk for nothing); shadows file under `cpuShadow` + new `boundShadow` discriminator so `cpuFull` means what it says again. RE-PRICE written before the change: ~61 → ~2 shadows/min, staleness ≤30 s unchanged in kind, checkpoints anchored by the hourly GPU readback (verified live on the OLD boot: 17 pulls, 2,418 MB at ~120 s). **Verified before ship:** 7/7 harness on the real mixin (custom-vector callers byte-identical, honest `cpuFull` on scattered patterns preserved), `node --check` + ESM + bundle. ⚠ Two harness assertion bugs were MINE — the code was right both times, proven by reading the stats it produced.
+> **5. Cascaded** (feature → develop → main, both remotes, HEAD back on develop), **Gee pressed Update & Savestart**, and **the press verified everything at once:** the 4 banked phases held (PHASELOOP earning its keep), memory tiers intact, and every fix watch-number landed at its priced value on the first read.
+> **6. The original IDXCARRIER idea (index-carrier donor opcode) stays UNBUILT on a read:** after the fix its audience is ~300 custom-vector calls per 21 h plus the contrastive anti lane that is GPU-ineligible by construction. Not worth a release until a number says otherwise.
 >
-> ### ✅ THE FIX — server-side, ten lines, NO donor release (`js/brain/cluster/hebbian.js`)
-> Cadence unconditional in Oja + anti twins · bound-carried calls skip the ranges attempt (was double-training compressible patterns) · shadows file as `cpuShadow` + new `boundShadow` discriminator. RE-PRICE: ~61 → ~2 shadows/min, **~37% of wall clock freed**; staleness ≤30 s unchanged in kind; checkpoints anchored by the hourly GPU readback (verified live: 17 pulls this boot). 7/7 harness on the real mixin; `node --check` + ESM + bundle clean. **Lands on a normal Update & Savestart — phase progress banks. Watch: `cpuFull` static, `boundShadow` ~2/min, light phases back to sub-minute.** The index-carrier donor release stays unbuilt (~300 genuine custom-vector calls per 21 h — not worth it on a read).
+> ### ⚠ OPEN WATCHES FOR THE MORNING
+> - **`passedCellsTotal` leaving 0** — the number that has never moved in this project's history. At 27× the teach rate the remaining ~20 light phases + the K gate are finally priced in hours, not days.
+> - **`cellPhasesCompleted` climbing past 4-5 at real pace**, and `intraOja.cpuFull` staying 0 / `boundShadow` ~2/min on any later read.
+> - **The definition-queue drain** — collapsed 80/h → ~4.7/h on the old boot after the walk left the bootstrap (2,126 of 2,247 still queued at the press). Re-read on the new boot before filing it as a defect: the blocked loop may have been the throttle all along.
+> - **WATCH.7 emission** — `matrixHits` leaving 0 becomes meaningful only once vocabulary lands; `emitRejectsByReason` names the blocker if it persists after.
+> ⚠ One foul owned this session: the wiki log entry went in via heredoc — the banned write pattern, flagged in the ledger, not hidden.
 >
 > ## 2026-08-31 — THE DOC SWEEP RAN ACROSS ALL EIGHT TREES, AND THE WALK PASSED ITS FIRST PHASE
 >
