@@ -115,6 +115,188 @@ Gee (verbatim): *"you alsoo should of been finalizing,, there better not be a fu
 
 ---
 
+## 2026-09-01 NIGHT - THE SWEEP BATCH: the corpus rebuilt from real sources, her degree found training nothing, the content lane found depositing 0.3%, and every new instrument caught lying on its first run
+
+Gee (verbatim): *"so wtf are you even doing the todos and finalizing them correctly?"*
+
+⛔ **HE CAUGHT A LIVE VIOLATION AND HE WAS RIGHT.** I completed sixteen items across this batch, wrote a ✅ completion banner onto `docs/TODO.md` for each, and migrated **NONE** of them here. The newest section in this ledger was still `FIRSTCELL + PHASELOOP.2` from the MORNING. **That is the same defect he caught earlier the same day** (*"there better not be a fucking single complete item in the todo, put them where they belong"*), repeated within hours of being corrected.
+
+⭐ **FINALIZED-before-DELETE, done the way the law specifies:** every completed block below is reproduced **verbatim, byte-for-byte** from the board, the write is verified by string match, and only THEN are the blocks removed from `docs/TODO.md`. **A paraphrase is not a migration** — that was established on 2026-08-31 and it is why these are pasted rather than summarised.
+
+⚠ **AND THE WRITE ITSELF HIT A BANNED-PATTERN HAZARD, RECORDED RATHER THAN HIDDEN.** The section was generated through `node -e` and **the shell substituted every backtick-quoted phrase in my header prose to empty** — the `feedback_shell_chain_hazards` trap, which names backticks explicitly. ⭐ **The sixteen migrated blocks were UNAFFECTED** because they were read from the file as JSON rather than passed through a shell string, so the verbatim content is byte-correct; only this preamble lost three phrases, repaired by hand with `Edit`. **The lesson is the standing one: Edit/Write for documents, never a shell pipeline.**
+
+---
+### [1] verbatim from docs/TODO.md lines 705-705
+
+> ✅ **SHIPPED IN THIS BATCH — the flat cap is dead.** `MAX_SENT_PER_TOPIC = 14` replaced by `SENT_CAP_BY_BAND` + `sentCapFor(grade)`: **early 60 · middle 120 · upper 240 · high 400 · college 600 · grad/phd 800**, with an unknown grade label falling to the SMALLEST band (an unrecognised cell must never silently pull PhD-density prose). Cap threaded per-cell through `clean()` / `fetchExtract()` / `buildCell()`; **source host and licence now recorded PER ENTRY** (a file-level licence claim becomes a guess the moment a second source lands — and `TEACHVIEW.5` reads this field). **Verified on a real cell:** `science/grade8` **5,630 → 63,193 words / 3,122 sentences (11.2×)** — one cell now larger than the entire science subject held across all twenty grades.
+
+### [2] verbatim from docs/TODO.md lines 740-756
+
+> ✅ **`DEADCELL.1` · `.2` · `.3` · `.4` ALL SHIPPED 2026-09-01 — HER DEGREE IS TAUGHT FOR THE FIRST TIME.**
+>
+> ```
+>   track       cells  sentences     words        (all previously ZERO)
+>   major           6     14,825    276,619       <- the CS degree, college1 -> phd
+>   cstheory        4      5,318     99,542
+>   cssystems       4      5,284    103,028
+>   genered         4      8,375    158,660
+>   research        2      4,301     83,660       <- computational neuroscience, grad + phd
+>   TOTAL          20     38,103    721,509
+> ```
+>
+> **`PROSE_ACADEMIC_SUBJECTS` 7 → 12** entries, verified by a real ESM import rather than a syntax check. **RE-PRICE was computed and written BEFORE the constant moved**, from the six measured college-band cells (avg 28,388 words/cell): 20 cells ≈ 567,750 words ≈ **11.7 h at the fast measured teach rate, 28.3 h mid, 74.8 h congested** — against a current cost of zero and a degree that was not taught at all. **The transition lane is ~73% of that, which is exactly the term the pending rep re-price targets.**
+>
+> **The Open Data Structures textbook was re-pointed from `cs` to `major`** and re-ingested, and the retired subjects' unreachable college entries were removed from the topic table so they cannot regenerate — **verified by parsing all 12 subject blocks and confirming zero college+ cells remain under `cs` / `civics` / `economics` / `psychology`.** ⚠ **My first version of that check was VACUOUS** — the regex never matched, printed "block not found", and still reported PASS. **A check that cannot fail is not a check**; it was rewritten to parse the real blocks and re-run.
+>
+> **The 10 orphaned files were deleted only after confirming their replacements exist and are LARGER** (e.g. `cs/college1` 42,885 words → `major/college1` **48,768**). Corpus now **99 cells · 152,923 sentences · 2,940,943 words · 19 MB · 89.5% licence-recorded — 12.7× the sentences this session started with.**
+
+### [3] verbatim from docs/TODO.md lines 778-786
+
+> ✅ **WIRED IT INTO `audit-curriculum-coverage.mjs` AS A PRE-WALK CHECK, and it paid immediately.** Offline it is fed the CORPUS vocabulary (87,675 distinct words) instead of the trained set — a strict upper bound, so **a word missing here can NEVER be taught by the current corpus**, which makes a hit a hard finding rather than a maybe. **Result: of 1,788 exam words across all banks, 94 appear NOWHERE in the 4.4M-word corpus, across 9 cells.**
+> ```
+>   ela/kindergarten     24   barks buh cvc duh fff fuh guh huh
+>   social/kindergarten  21   aunt's can't dad dad's doesn't don't father's grandma
+>   life/kindergarten    14   barbie bitsy can't dad don't grandma hugs itsy
+>   science/kindergarten 12   chirp duckling foal hoot moo oink polliwog quack
+>   ela/pre-K             7   duh goldilocks kitten kuh muh sss yeah
+> ```
+> ⭐⭐ **THIS IS HARD EVIDENCE FOR `CELLAUDIT.2`, WHICH WAS UNTIL NOW AN INFERENCE.** Every missing word is early-childhood vocabulary — `dad`, `grandma`, `moo`, `quack`, `kitten`, `pajamas`, `scissors`, `goldilocks`, contractions — and **encyclopedia prose says "father", never "moo" or "itsy bitsy".** The early grades do not need a bigger cap; **they need a children's-text source**, and now there is a 94-word target list to verify any candidate source against. ⚠ **One honest caveat: a subset (`buh`, `duh`, `sss`, `kuh`, `muh`, `fff`) are PHONEME SOUNDS taught by the phonics lane, not by reading** — "absent from prose" is correct for them and is not a defect. The offline auditor cannot see non-prose lanes, and says so rather than counting them as failures.
+
+### [4] verbatim from docs/TODO.md lines 792-806
+
+> ⭐⭐ **`STACKSWEEP.3` TRIAGED 2026-09-01 — 94 code occurrences classified, two acted on, and the residual is smaller and more specific than the raw count suggested.**
+> ```
+>   defensive I/O (catch blocks)  9   PERMITTED by the law explicitly
+>   identifier / naming          18   the word inside a variable or log string
+>   pathway (|| ??)              13   default-value coalescing
+>   suspect (needed eyes)        54
+> ```
+> **Triage of the 54, by reading each:**
+> - ⭐ **DEFAULT PARAMETER VALUES ARE NOT FALLBACKS AT ALL** — `readFileOr(p, fallback)`, `pick(state, path, fallback = 0)`, `qaWMaxRef = 0.4 // fallback if proj.wMax not readable`, `: 1024 // fallback`. These are ordinary defaults wearing an alarming word. **The single largest class, and entirely benign.**
+> - ⭐ **GPU→CPU COMPUTE PATHS ARE NOT CAPABILITY DEGRADATION** — the CPU path runs the **same maths** on different hardware and the mind-space lane even ships a `selfCheck` parity test proving it. Same answer, slower. Legitimate.
+> - ⛔ **ONE GENUINE DEGRADATION CHAIN, and it needs a call rather than my unilateral edit: `js/io/voice.js`** runs **live piper → vox bank → executor**, three tiers of decreasing quality, each entered on the previous one throwing. That IS `if-X-else-Y` capability degradation. ⚠ **The mitigating argument is real and is why I did not touch it:** TTS is a **sensory-OUTPUT executor**, not cognition (`project_future_no_text_models` — *"image-gen + TTS are sensory-OUTPUT executors only"*), so a degraded VOICE is not a degraded MIND. **Decide: is the no-fallbacks law scoped to cognition, or to the whole stack?** That answer also settles several smaller cases.
+>
+> ✅ **ACTED ON — TWO, both verified before touching:**
+> - ⛔⛔ **`_deterministicFallback` DELETED (`curriculum.js`).** It took a question, found a vocabulary word inside it, and returned **that word's FIRST CHARACTER** as her answer — its own comment said *"Better an honest first-letter attempt than silent ''."* **Two laws forbid it:** `§GRADE COMPLETION GATE` requires *"no first-letter production"* by name, and `NO FALLBACKS` forbids a canned deterministic answer standing in for trained emission. ⭐ **And its premise was wrong** — a first letter is not more honest than silence, it is a plausible-looking answer with no trained basis, which is *worse*, because a probe scoring it would credit her with production she does not have. ⚠ **Zero-risk removal, verified: `grep` returned ONLY the definition — no callers anywhere.** It was dead code waiting for someone who trusted its comment to wire it.
+> - ✅ **`letterFallback` → `letterPathAvailable` (`kindergarten.js`).** NOT a fallback: it is a PROBE choosing which matrix to measure her trained state through, and the code's own comment says sem('W') and letter(W[0]) *"produce the same expected motor argmax"* — the two paths measure the SAME thing, neither degraded. ⭐ **The rename is the point:** with ~450 occurrences of the word across the tree, a reader cannot tell a genuine violation from a badly-named variable, **which is exactly how a real one survives.**
+
+### [5] verbatim from docs/TODO.md lines 812-812
+
+> ✅ **FIXED IN PASS 1 — an instrument that lied about a fallback that does not exist.** `curriculum.js:4554` logged *"Dreams run from the fallback seed only"*. ⛔ **False twice over:** there IS no fallback seed — `dreamSeed` stays `null` and the entire dream block is gated on `if (dreamSeed)`, so **nothing runs at all** — and the word itself is banned vocabulary here. **A reader of that line would believe dreams were running degraded; they were not running.** Message now states the actual behaviour. ⚠ **The underlying `DORMANT.2` gap is REAL and confirmed by reading both stores:** the browser `MemorySystem` holds `_episodes` with `.pattern` but exposes no `tier1`; the server sqlite store has `recallByMood` / `recallByUser` / `findPromotionCandidates` but **no random-episode fetch**. The original comment's claim — *"wiring an episode sampler is a FEATURE, not a repair"* — **is accurate and was verified, not assumed.** ⭐ It is now more tractable than when filed: tier1 holds real episodes (57 at the last gate read), and `recallByMood` may be the better seed than a random draw, since dreaming from emotionally-adjacent memory is closer to the real thing.
+
+### [6] verbatim from docs/TODO.md lines 854-873
+
+> ⭐⭐ **`FLOORLIE.1` DONE 2026-09-01 — THE BAR IS MEASURED NOW, AND `OK` COLLAPSED FROM 104 TO 2.**
+>
+> **The measurement, against the OpenStax mirrors already in use.** Ratio first: 8 chapters sampled across `chemistry-book` and run through the PRODUCTION cleaner's shape — so the number reflects what actually survives ingest, not raw markdown — **417,371 raw bytes → 31,038 clean words = one clean word per 13.4 bytes.** Applied to each book's true size:
+> ```
+>   biology-concepts-book   107 ch    1.88 MB  ->   146,598 words
+>   anatomy-book            198 ch    4.29 MB  ->   334,525 words
+>   chemistry-book          149 ch    6.73 MB  ->   524,791 words
+>   physics-book            283 ch   11.27 MB  ->   878,811 words
+> ```
+> **New floors — `high` and `college` are MEASURED, the lower three are EXTRAPOLATED and say so in the output:**
+> ```
+>   early    7,300   extrapolated 0.05x high        high     146,000   MEASURED biology-concepts
+>   middle  29,000   extrapolated 0.20x high        college  330,000   MEASURED anatomy
+>   upper   73,000   extrapolated 0.50x high        grad     330,000   college anchor reused (weakest)
+> ```
+> ⭐ **`biology-concepts` was chosen deliberately as the lightest COMPLETE course book in the set** — a floor, not an average, and not the 878,811-word physics book which would have made the bar theatre.
+>
+> ⛔⛔ **THE RESULT IS THE POINT: `OK` 104 → 2, `THIN` 20 → 171.** The corpus did not get worse — **the ruler stopped lying.** `FLOORLIE.2` is satisfied in the same change: every run now prints each band's floor AND its basis, so "derived" is never one undifferentiated word.
+>
+> ⭐ **AND THE 71-CELL INGEST COMPLETED WITH ZERO SKIPS.** `EMPTY: 0` for the first time — every cell the walk runs now has content. **Corpus: 4,457,654 words / 2,054 entries / 92.8% licence-recorded, averaging 25,767 words per cell = ~17.6% of one real course year** (against ~0.9% at the start of the day). ⚠ **17.6% is the honest headline, not "done".**
+
+### [7] verbatim from docs/TODO.md lines 898-900
+
+> ✅ **SHIPPED: `PROSE_ACADEMIC_SUBJECTS` 12 → 18**, adding all six, verified by real ESM import. **Post-change audit: 173 cells need prose, 40 have no lane, and those 40 are EXACTLY math + life. Zero no-lane defects remain.** ⚠ **RE-PRICE written BEFORE the change**, from measured per-band averages: 71 cells ≈ **1,799,433 words ≈ 31.3 h fast / 76.0 h mid / 200.8 h congested**, transition lane 68% of it. Topic lists authored for all 71 cells and the ingest is running.
+>
+> ✅ **`ela/pre-K`, `science/pre-K`, `social/pre-K` FILLED — the walk's FIRST grade trained no prose at all**, which means the very first thing she was ever taught was nothing. 1,528 sentences, zero skips. ⛔ **And a live bug was caught before that run: `EARLY_GRADES` did not contain `pre-K`**, so those cells would have fetched FULL English Wikipedia — college-density prose for a four-year-old — landing on the first cell of her life. Invisible while pre-K had no topics; lethal the moment it did.
+
+### [8] verbatim from docs/TODO.md lines 904-911
+
+> ⭐⭐ **`CELLAUDIT.2` EARLY-BAND HALF DONE 2026-09-01 — a children's-text source wired, and THREE MORE CHECKER DEFECTS found on the way.** Four public-domain children's books added to `pre-K` → `grade2` (`Childhood's Favorites`, `Children's Literature`, `English Fairy Tales`, `A Primary Reader`) — ⭐ **each TESTED against the real 94-word gap before being written into the ladder**, not assumed to help (they cover 15 / 13 / 10 / 2 of it individually, 16 of 32 as a union). The early literature cap was raised 60 → 400 with the reason stated: **`early: 60` exists because Simple-English ENCYCLOPEDIA prose is dense for a four-year-old, and that rationale does not transfer to books written FOR that age** — and it was the binding constraint, proven by a pass that closed only 8 of 16 available words at 60.
+>
+> ⛔⛔ **BUT MOST OF THE "GAP" WAS MY OWN AUDITOR LYING, THREE TIMES OVER — 94 → 53 with barely any of it from new content:**
+> - **It scanned only `corpora/academic/`.** `dad`, `grandma`, `pajamas`, `moms`, `yeah` are all in the hand-authored LIFE canon, which is exactly where that vocabulary belongs. She is taught from academic + life + coding; **an exam check reading one of three manufactures a gap out of the other two.** Five false findings, and they were the most plausible-looking on the list.
+> - **It stripped apostrophes**, so `can't` became `cant` and the exam bank's `can't` matched nothing — **ten contractions reported absent from a corpus containing every one.**
+> - **It counted PHONEME SOUNDS as prose gaps.** `buh`, `duh`, `sss`, `juh`, `luh`, `nuh`, `puh`, `ruh`, `suh`, `tuh`, `yuh`, `zuh` are taught by the phonics lane and will never appear in any book. **Their absence from prose is correct.**
+>
+> ⭐ **THE HONEST RESIDUAL, after the instrument stopped lying: ~24 concrete everyday nouns** — `kitten barks moo chirp foal hoot oink polliwog raincoat sandals snowman scissors pancakes legos hugs firefighter fireman mailman vet seatbelt barbie pjs itsy bitsy`. ⛔ **These are LIFE-canon vocabulary, not academic**: animal sounds, clothing, household objects, the jobs a small child names. They belong in the hand-authored life corpus (`feedback_k_grade_life_experiences` — *"first words/family/sensory firsts"*), **not** in a fetched encyclopedia or a Victorian fairy tale, and no public-domain book will ever carry `legos` or `pjs`.
+
+### [9] verbatim from docs/TODO.md lines 913-923
+
+> ⭐⭐ **`CELLAUDIT.3` DONE 2026-09-01 — THE EXAM-VOCAB GAP IS CLOSED. 94 → 25, and all 25 remaining are phoneme sounds taught by the phonics lane, which is correct.**
+>
+> Four lived scenes written into `corpora/life/kindergarten.json` in her real canon voice — **not a word list**, per the `NO WORD LISTS` law and the life-canon rule that this is the one lane that must be *written* rather than downloaded, because it is her life:
+> - **`the-day-we-went-to-the-farm`** — the cow going moo louder than she expected, pigs that oink, a foal standing by its mother, ducks that quack, birds that chirp, the farm dog that barks, and an owl she never got to hear hoot.
+> - **`the-rainy-day-and-the-puddle`** — the yellow raincoat, the polliwogs in the fence puddle she refused to believe would grow legs, summer sandals, the snowman that fell over in three days.
+> - **`the-people-who-help`** — the firefighter and the red truck, mom saying fireman and the teacher saying both are okay, the mailman who knows her name, the vet who is a doctor only for animals, the seatbelt that has to click before the car moves.
+> - **`what-i-play-with`** — legos that fall over, the barbie from grandma she likes less than the legos, round school scissors, the itsy bitsy spider hand-part, saturday pancakes with too much syrup and hugs.
+>
+> ⭐ **Written as scenes with no invented names** (mom, dad, grandma, teacher, the farm lady — the canon's own cast), present-tense-lived, no motivational framing. ⚠ **Two words needed a second pass and the measurement caught them**: I wrote "polliwogs" and the bank asks for "polliwog", and `meows`/`pjs` were absent entirely — added naturally to the kitten's scene rather than bolted on. **Verified by re-running the auditor, not by eye.**
+>
+> ⭐ **The residual 25 are ALL phoneme sounds** (`buh` `duh` `sss` `juh` `luh` `nuh` `puh` `ruh` `suh` `tuh` `yuh` `zuh` …). **They are taught by the phonics lane and will never appear in any book — their absence from prose is correct, not a defect**, and the auditor says so rather than counting them as failures.
+
+### [10] verbatim from docs/TODO.md lines 946-950
+
+> ✅ **`TEXTFIG.4` DONE 2026-09-01 — and the measurement CORRECTED MY OWN FILING BEFORE IT FOUND SOMETHING WORSE.** The row claimed dangling *"as shown in the figure"* references were poisoning the prose. **Measured: 94 of 161,800 sentences matched, and every example was a FALSE POSITIVE** — in art, *"the figure"* means the human figure, the subject of a drawing. ⚠ **A filter written from that filing would have deleted legitimate art vocabulary.** Narrowing to OpenStax-sourced sentences found the real defect instead: **maths markup was being trained as English.** Wikipedia's plaintext extract still carries LaTeX (`u - 1 } {\displaystyle u=\{0,...,u-1\}}`) and OpenStax embeds its own (`size 12{p= { {f} over {a} } } {}`).
+>
+> **Measured across the whole corpus: 1,216 polluted sentences in 70 cells.** Filter added to BOTH cleaners — ⭐ **DROP, do not repair**, because a sentence that is half formula has no grammatical subject and teaching the surviving half is worse than losing it. Verified 4/4 debris dropped and 4/4 real prose kept, *including* the art "figure" sentences the naive filter would have killed.
+>
+> ⛔⛔ **AND FIXING THE CLEANER WOULD NOT HAVE FIXED THE CORPUS — that asymmetry is the finding worth keeping.** Cleaner improvements only ever reach FUTURE downloads, and **the keep-longer merge makes the old dirt permanent**: a re-fetch produces a SHORTER, cleaner story, which the merge then discards in favour of the longer, dirtier one. Re-fetching all 70 cells would have cost ~5 h of API time to fix 0.75% of the corpus. ⭐ **So the sentence rules were split out of `clean()` into `acceptSentence()` — one source of truth — and a `--reclean` mode applies them to already-banked prose with NO network.** It only ever REMOVES sentences, so it is safe to run any time, and any future cleaner improvement can now be applied retroactively instead of only forward. **Run: 113 cells scanned, 72 rewritten, 1,256 sentences dropped, all 1,542 entries preserved, remaining debris 0.** ⚠ A live `ReferenceError` was caught before the run — the new block referenced a `const` declared below it, and a TDZ const throws rather than reading undefined.
+
+### [11] verbatim from docs/TODO.md lines 962-962
+
+> ✅ **THE THROTTLE IS NOW VISIBLE, AND IT WAS NEVER "no usable content".** `fetchExtract` called `r.json()` on a reply that is **plain text** when the API throttles — the parse threw, the bare `catch` swallowed it, and a throttled topic became indistinguishable from an empty one. **Rewritten to read the body as TEXT first, classify it (`throttled` / `server` / `non-json` / `no-such-page` / `too-few-sentences` / `no-content` / `network`), back off exponentially to ~48s only on conditions backoff can fix, and NAME the reason on every skip** — plus a run-level `SKIPPED BY REASON` tally. **Proved on a cell that had failed:** `science/college4` previously logged `Neural network — no usable content` and `Synapse (20/600)`; it now returns **31** and **124** sentences with **zero skips**. Those topics were never contentless.
+
+### [12] verbatim from docs/TODO.md lines 964-964
+
+> ✅ **`fetch-openstax-corpora.mjs` — REAL TEXTBOOKS, COMPLETE: 3,984 sentences across 9 book→cell mappings, every licence verified CC-BY 3.0 by reading each book's own `LICENSE.txt` at fetch time.** Books map onto the courses the grades already run — biology→G9, chemistry→G10, physics→G11, anatomy→G12, astronomy→G6, general-biology→C1, microbiology→C2, economics→G11+C1. ⛔ **Math is deliberately NOT mapped** even though the algebra/calculus mirrors exist: math is equational by design, and adding prose there is a curriculum decision, not an ingest one. ⭐ **The budget is spread ACROSS each book (≤60 chapters, stride-sampled), never front-loaded** — taking the cap from chapter 1 would teach one chapter deeply and leave 250 sections untaught, the same "one number, wrong shape" error as the flat cap one level up. ⚠ **Two of my own defects, both caught by RUNNING it, not by reading it:** the owner prefix was missing from all three GitHub URLs (every request 404'd — and the licence guard correctly REFUSED the book rather than assuming a licence it had not read, which is the guard working), and figure-caption debris survived the leading-`figure` filter, fixed by dropping sentences carrying two or more `(a)`/`(b)` panel markers.
+
+### [13] verbatim from docs/TODO.md lines 966-968
+
+> ✅ **`fetch-gutenberg-corpora.mjs` — ACTUAL LITERATURE, closing the corpus's most indefensible gap: ELA held Wikipedia articles ABOUT books instead of books.** A verified 24-title age-banded ladder (Alice → Wizard of Oz → Tom Sawyer → Treasure Island → Huck Finn → Romeo and Juliet/Odyssey → Julius Caesar/Frankenstein → Gatsby/Moby Dick → Hamlet/Macbeth/Beowulf/Canterbury Tales → Pride and Prejudice/Dracula/Iliad); **every id was checked to resolve to its expected title before being written into the ladder.** ⭐ **The licence guarantee is the source itself** — Gutenberg's US catalogue is public-domain by collection policy, stronger than per-title parsing. ⛔ **`The Crucible` and `Nineteen Eighty-Four` are ABSENT ON PURPOSE** — both are still in copyright, so they stay as encyclopedia entries rather than being silently swapped for a different text.
+>
+> ⛔⛔ **TWO DEFECTS FOUND BY READING THE OUTPUT, AND THE FIRST IS THE WHOLE POINT OF THIS BATCH IN MINIATURE:** ① **the actual play was displaced by the article about the play.** Both ingests produced the theme `romeo-and-juliet`, and the keep-LONGER merge kept the longer one — the encyclopedia entry. **Inside the very ingest built to stop summaries standing in for texts, a summary silently replaced a text.** Fixed by namespacing primary works as `text-<title>`, which keeps BOTH — she reads the play *and* what is written about it, like a real English class. ② **the Odyssey extract was the TRANSLATOR'S PREFACE, not the poem** — Gutenberg's START marker sits before the title page and preface, so "the start of the file" is not "the start of the work". Fixed by collecting the whole work, dropping a leading slice, and stride-sampling across the body, which also means a grade reads a whole book instead of its opening pages. **Verified after: `text-romeo-and-juliet` returns Shakespeare's dialogue and `text-the-odyssey` returns Homer.**
+
+### [14] verbatim from docs/TODO.md lines 970-972
+
+> ✅ **`fetch-csmajor-corpora.mjs` — HER MAJOR GETS ITS OWN TEXTBOOK: 1,182 CS-degree sentences into `cs/college2` + `cs/college3` from Open Data Structures**, the source Gee named on 2026-06-19. **Licence READ from the site and verified CC-BY 2.5/ca** before a byte was ingested (the script ABORTS rather than assuming). ⛔ **A CHAPTER PAGE IS A TABLE OF CONTENTS, NOT THE CHAPTER** — the first run banked **105** sentences and looked like a success; the chapter files are ~13 KB of navigation and the prose lives one level down in section pages (`2_1_ArrayStack_*.html`). Following the section links took it **105 → 1,182 (11×)**. ⚠ **Then the LaTeX2HTML breadcrumb still leaked in as sentence one of a chapter** — it is not anchored at line start (it begins with the chapter title), so the anchored nav filter could not see it; caught by READING the banked prose. ⛔ **And fixing the filter was not enough: the keep-longer merge preferred the older, POLLUTED entry because it was longer** — the same displacement shape as the play-versus-article collision, one layer down — so both cells were deleted and regenerated rather than re-merged. **Verified after: 0 nav-debris entries, real prose on backing arrays and amortised growth.**
+>
+> ⛔ **WIKIBOOKS IS DELIBERATELY NOT A SEPARATE SCRIPT, AND THE REASON WAS MEASURED LIVE:** it is the same MediaWiki API family as the Wikipedia ingest and shares Wikimedia's **per-IP** rate limit — a probe during this build returned **HTTP 429 "You are making too many requests"** while the Wikipedia pass was running. **A second concurrent MediaWiki fetcher competes for one budget instead of adding throughput**, so the Wikibooks CS shelf belongs INSIDE the existing paced fetcher as additional topics, not beside it as a rival process. `opendatastructures.org` is a different host with its own budget, which is why that one runs concurrently and does.
+
+### [15] verbatim from docs/TODO.md lines 982-1003
+
+> ⭐⭐ **`CURVEBUILD.7` SHIPPED 2026-09-01 — AND THE MEASUREMENT CORRECTED MY OWN DERIVATION BEFORE IT COULD SHIP WRONG.**
+>
+> Gee: *"obviously do what Unity needs in reguards to that question remembering the brain has thousands of nobs(variables and constants) that can all be adjusted as needed to make single passes act like 3000 oasses"* → then, catching the danger in my own framing: *"not not last writer wins?!?!?! that sounds like itll only weight the last thing it taught"*.
+>
+> ⛔⛔ **MY EARLIER DERIVATION QUOTED THE WRONG RATE FOR THE DOMINANT LANE, and reading the code fixed it.** I had priced everything at `lr = 0.001`. **`_teachAssociationPairs` does not use it** — it takes `opts.lr ?? 0.03`. So the two lanes training the SAME corpus run at rates differing by 30×, and nobody chose that: the content lane simply inherited `cluster.learningRate` while the sequence lane was given a curriculum value.
+> ```
+>   CONTENT  lane  _teachSentenceList     lr 0.001 x 3 reps  ->   0.30% deposited
+>   SEQUENCE lane  _teachAssociationPairs lr 0.03  x 24 reps ->  51.90% deposited
+>   => the GRAMMAR channel deposited 173x more per item than the channel
+>      carrying what the words MEAN — while the corpus grew 20x.
+> ```
+> ⛔ **The 4.4M-word rebuild would have barely registered.**
+>
+> **THE DERIVATION, from the real corpus rather than judgement.** Sampled `science/grade8`, `ela/grade9`, `major/college2`, `social/grade6`: **the MEDIAN content word appears in only 1-2 sentences per cell** (top quartile 3-4; core terms reach 150-350). ⭐ **So "exposure replaces repetition" is TRUE for core terms and FALSE for the long tail** — most vocabulary is seen twice. Median case = 2 sentences × 3 reps = **6 exposures**; target ~25% deposited: `lr = 1 - (1-0.25)^(1/6) = 0.0468`. Shipped as the default, `DREAM_CONTENT_LR` overridable.
+>
+> ⛔⛔ **GEE'S INTERRUPTION CAUGHT A REAL FLAW IN MY OWN RECOMMENDATION.** I printed a retention table showing that at 0.047 only **0.81%** of a lesson survives 100 later ones, and was about to ship it labelled "recommended". **He was right to stop it** — that reads as forgetting. ⭐ **Resolved by READING THE KERNEL, not by argument:** `sparse-matrix.js:817` is `if (!y) continue;` — **the Oja decay only touches rows whose POST-neuron is active.** Teaching one concept does not decay an unrelated one; **interference is proportional to REPRESENTATIONAL OVERLAP**, which is Oja behaving as designed (similar words share structure, distant words never touch). **The scary table was a worst case that applies only to a word competing with itself.**
+>
+> ⚠ **WHY NOT the "single pass worth 3000 passes" ceiling:** deposit cannot exceed 100%, so 3000-in-one means `lr = 0.95` — **95% of everything already learned displaced on every exposure, last sentence read wins outright.** That is overwriting, not learning. **The knob's ceiling is set by catastrophic forgetting, not by arithmetic**, and that is the honest limit of "make one pass act like many".
+>
+> ⭐ **RE-PRICE: ZERO wall-clock cost.** `lr` is a multiplier inside an update that already runs — no extra passes, no extra ops, reps unchanged. **Median word 0.60% → 24.99% deposited; a core term seen 300× saturates, which is correct.** ⚠ **Order was load-bearing and is now satisfied:** raising this before replay was proven would have been wrong, because interleaved replay is what SEPARATES the overlapping representations a higher rate creates — and replay is confirmed running (tier1 57, tier2 30 schemas).
+>
+> ⏳ **Remaining under `CURVEBUILD.5`: the 44 rep sites ≥20.** With the content lane's deposit fixed, the rep cut is now a wall-clock optimisation rather than a rescue, and each site is still decided individually against whether its corpus actually grew.
+
+### [16] verbatim from docs/TODO.md lines 1060-1060
+
+> ✅ **`BOARDTRUE.1` COMPLETE — the audit ran, five defects found and fixed (LAW #0 quote recovery, archive count correction, 140-vs-260 frame note, `CHATFAULT.2` relocation, banner branch-line qualification), all counts re-verified after the fixes. Row migrated verbatim to `docs/FINALIZED.md` §2026-09-01 BOARDTRUE, byte-equality verified before removal.**
+
+---
+
 ## 2026-09-01 - BOARDTRUE: the board audited line by line against Gee's own words and against the archive it claims
 
 Gee (verbatim): *"now go through the todo an make sure that its fully correct and complete as i was pretty pissed about all this and i dont want similar shit happening again"*
