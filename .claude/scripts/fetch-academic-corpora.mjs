@@ -125,9 +125,12 @@ const TOPICS = {
     // College 4 — Neuroscience deepens
     college4: ['Neuroscience', 'Cerebral cortex', 'Synapse', 'Neural network', 'Memory', 'Action potential'],
     // Grad — Computational neuroscience (the brain-simulation domain)
-    grad: ['Computational neuroscience', 'Neural network', 'Neuron', 'Synaptic plasticity', 'Hebbian theory'],
+    // ⚠ WIDENED 2026-09-01: 5 topics produced 9,811 words against a 20,000
+    // band floor. The cap was never the limit here — the TOPIC LIST was.
+    grad: ['Computational neuroscience', 'Neural network', 'Neuron', 'Synaptic plasticity', 'Hebbian theory', 'Neuroscience', 'Brain', 'Nervous system', 'Neurotransmitter', 'Action potential', 'Neural circuit', 'Neuroplasticity', 'Cognitive neuroscience', 'Systems neuroscience', 'Membrane potential', 'Dendrite'],
     // PhD — Computational neuroscience research (she builds a brain)
-    phd: ['Computational neuroscience', 'Hebbian theory', 'Spiking neural network', 'Neural coding', 'Synaptic plasticity', 'Cerebral cortex'],
+    // ⚠ WIDENED 2026-09-01: 6 topics -> 17,371 words, under the 20,000 floor.
+    phd: ['Computational neuroscience', 'Hebbian theory', 'Spiking neural network', 'Neural coding', 'Synaptic plasticity', 'Cerebral cortex', 'Long-term potentiation', 'Neural oscillation', 'Connectome', 'Brain simulation', 'Artificial neural network', 'Unsupervised learning', 'Attractor network', 'Predictive coding', 'Consciousness', 'Integrated information theory'],
   },
   social: {
     // Kindergarten — self, family, community
@@ -180,11 +183,13 @@ const TOPICS = {
     // College 3 — the large-scale forces
     college3: ['Globalization', 'Urbanization', 'Human migration', 'Social inequality', 'Public health', 'Natural environment', 'Human rights', 'Poverty'],
     // College 4 — how social claims are actually made and checked
-    college4: ['Social research', 'Statistics', 'Survey methodology', 'Ethnography', 'Case study', 'Qualitative research', 'Quantitative research', 'Bias'],
+    // ⚠ WIDENED 2026-09-01: 8 topics -> 16,404 words, under the 20,000 floor.
+    college4: ['Social research', 'Statistics', 'Survey methodology', 'Ethnography', 'Case study', 'Qualitative research', 'Quantitative research', 'Bias', 'Sampling (statistics)', 'Correlation', 'Causality', 'Experiment', 'Observational study', 'Content analysis', 'Reliability (statistics)', 'Validity (statistics)'],
     // Grad — theory and the philosophy under the method
     grad: ['Social theory', 'Critical theory', 'Structuralism', 'Philosophy of science', 'Epistemology', 'Ethics', 'Sociology', 'Anthropology'],
     // PhD — the discipline looking at itself
-    phd: ['Philosophy of social science', 'Research ethics', 'Interdisciplinarity', 'Science and technology studies', 'Knowledge', 'Academic discipline', 'Scholarly method', 'Objectivity (philosophy)'],
+    // ⚠ WIDENED 2026-09-01: 8 topics -> 7,039 words against a 20,000 floor.
+    phd: ['Philosophy of social science', 'Research ethics', 'Interdisciplinarity', 'Science and technology studies', 'Knowledge', 'Academic discipline', 'Scholarly method', 'Objectivity (philosophy)', 'Epistemology', 'Positivism', 'Social constructionism', 'Critical theory', 'Hermeneutics', 'Reflexivity (social theory)', 'Paradigm', 'Philosophy of science', 'Sociology of knowledge', 'Ethics'],
   },
   economics: {
     // Grade 9 — Personal & Intro Economics
@@ -276,9 +281,11 @@ const TOPICS = {
     // College 3 — the research paper as a form
     college3: ['Academic writing', 'Thesis', 'Citation', 'Bibliography', 'Peer review', 'Rhetoric', 'Argumentation theory', 'Plagiarism'],
     // College 4 — reading theory, not just texts
-    college4: ['Literary theory', 'Postmodernism', 'Semiotics', 'Narratology', 'Comparative literature', 'Genre', 'Discourse', 'Structuralism'],
+    // ⚠ WIDENED 2026-09-01: 8 topics produced only 8,009 words against a
+    // 20,000 band floor — the thinnest reachable cell in the whole corpus.
+    college4: ['Literary theory', 'Postmodernism', 'Semiotics', 'Narratology', 'Comparative literature', 'Genre', 'Discourse', 'Structuralism', 'Deconstruction', 'Formalism (literature)', 'Marxist literary criticism', 'Feminist literary criticism', 'Psychoanalytic literary criticism', 'Reader-response criticism', 'Intertextuality', 'Hermeneutics', 'Poetics', 'Literary modernism'],
     // Grad — the literature review and the method section
-    grad: ['Literature review', 'Academic publishing', 'Scientific literature', 'Methodology', 'Abstract (summary)', 'Research', 'Scholarly method', 'Academic journal'],
+    grad: ['Literature review', 'Academic publishing', 'Scientific literature', 'Methodology', 'Abstract (summary)', 'Research', 'Scholarly method', 'Academic journal', 'Citation', 'Bibliography', 'Peer review', 'Systematic review', 'Meta-analysis', 'Research design', 'Qualitative research', 'Thesis'],
     // PhD — the dissertation and the discourse it enters
     phd: ['Doctor of Philosophy', 'Thesis', 'Peer review', 'Scholarly method', 'Epistemology', 'Hermeneutics', 'Critical theory', 'Academic publishing'],
   },
