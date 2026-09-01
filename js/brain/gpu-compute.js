@@ -2443,8 +2443,14 @@ export class GPUCompute {
  * Auto-detect WebGPU and initialize compute.
  * @returns {Promise<GPUCompute|null>}
  */
-export async function initGPUCompute() {
-  const gpu = new GPUCompute();
-  const ok = await gpu.init();
-  return ok ? gpu : null;
-}
+// ⛔ `initGPUCompute` REMOVED 2026-09-01 — a dead four-line convenience wrapper.
+//
+// It did `new GPUCompute()` + `await gpu.init()` and returned the instance or
+// null. Nothing ever called it: the ONE real consumer of this module is the
+// donor page `html/compute.html`, which imports `GPUCompute` directly and does
+// both steps itself (`gpu = new GPUCompute()` at :225 and :268).
+//
+// ⚠ THE CLASS IS VERY MUCH ALIVE — this module is the browser-donor WebGPU path
+// and the dead-wiring sweep confirmed `GPUCompute` has a real consumer. Only the
+// wrapper was unused, and it is recorded here rather than deleted silently so
+// nobody re-adds it believing the module had no entry point.
