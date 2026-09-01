@@ -191,6 +191,16 @@ Format: `entries / words` as measured 2026-09-01. `—` means **no corpus file e
 
 ---
 
+## ⛔ NO EXCEPTIONS — ALL 260 CELLS, INCLUDING THE THREE ALREADY PASSED
+
+Gee (verbatim): *"we are fixing it all completely and fully even the already passed cells so if i ever do do a fresh walk it will be correct!!!"*
+
+**The acceptance standard is the CODE AND CORPUS ON DISK, not the current walk state.** `ela/kindergarten` and `math/kindergarten` passed on the thin corpus and `science/kindergarten` was interrupted — none of that makes them done. If they are left as they are, the next fresh walk rebuilds the same broken education from source.
+
+⚠ **This explicitly overrides the earlier framing of `CURVEDEPTH.10`**, which asked whether re-walking the spent cells was "worth it". That optimised for the live brain and would have baked the defect into the repository permanently. **Passed ≠ done. A cell is done when its content is right on disk.** Re-teaching the *running* brain is a separate and optional decision; correcting all 260 cells is not.
+
+---
+
 ## ACCEPTANCE — what "done" means for a cell
 
 A cell is closed when **all** hold:
@@ -199,6 +209,7 @@ A cell is closed when **all** hold:
 2. `MAX_SENT_PER_TOPIC` no longer truncates it (`CURVEDEPTH.2`) — a 14-sentence cap applied to an OpenStax chapter throws away the chapter.
 3. Source and licence are recorded **per entry** so a licence audit never requires re-derivation.
 4. The corpus-depth instrument (`CURVEDEPTH.9`) reports the cell at or above its target, and the teach lane reports what it taught **against what the cell needed**.
+5. ⭐ **It has been READ, live, in the `TEACHVIEW` feed.** ⛔ **The founding fact behind that feature belongs here too: `_teachSentenceList` — the lane that trains every academic corpus sentence, called from 23 sites — has no `_hb`, no `console`, no publish, no emit of any kind.** The exact content she receives has never been visible anywhere. That is the real reason a year of thin corpus went unnoticed: the evidence was not scrolling past too fast, **it was never produced**. A cell is not verified by counting its file; it is verified by watching what the lane actually sends her.
 5. ⛔ A RE-PRICE is written **before** the enlarged corpus trains — corpus size multiplies teach time per cell, and this is a far larger change to walk cost than anything the RE-PRICE law has governed so far.
 
 ---
@@ -218,9 +229,21 @@ CURVEDEPTH.4  Wikibooks ingest     (civics/econ/psych bands)
 CURVEDEPTH.7  fill the 171 empty cells
 CURVEDEPTH.8  art/music/pe/health posture decision
 CURVEDEPTH.9  the corpus-depth instrument
-CURVEDEPTH.10 re-walk decision for the 3 spent cells
+CURVEDEPTH.10 ALL 260 cells correct on disk, spent cells included
 LEDGERLIE.1   audit every other ✅ DONE claiming a pipeline
+
+TEACHVIEW.1   ⛔ the teach bus - publish what is ACTUALLY taught
+              (nothing exists today; every other TEACHVIEW row needs it)
+TEACHVIEW.2   human reading speed - paced feed, COMPLETE counts
+TEACHVIEW.3   the feed: the exact sentence, as she receives it
+TEACHVIEW.4   analytics: graphs, bars, registers
+TEACHVIEW.5   notes, flags, issues, warnings
+TEACHVIEW.6   the appearance - beautiful, high-tech, worst-case tested
+TEACHVIEW.7   ⛔ RE-PRICE: a monitor that slows the walk is a bug
+TEACHVIEW.8   retention + export across restarts
 ```
+
+⭐ **`TEACHVIEW` and `CURVEDEPTH` are one job, not two.** The gap ledger says what each cell should hold; the teach view is how a rebuilt cell gets **verified by eye, live**, in Gee's own reading. That is the only acceptance test that has ever actually caught this class of failure — a checkbox did not, a passing gate did not, and a completion record actively lied about it.
 
 ⚠ **`.6` is listed second because it blocks the most cells and only Gee can answer it.** Everything else can proceed in parallel once the cap is raised.
 
