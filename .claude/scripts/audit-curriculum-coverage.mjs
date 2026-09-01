@@ -24,6 +24,7 @@
 // RUN:  node .claude/scripts/audit-curriculum-coverage.mjs
 //       node .claude/scripts/audit-curriculum-coverage.mjs --json
 // No network. Reads the live curriculum module and corpora/academic/.
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
@@ -39,6 +40,47 @@ const mod = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'curriculu
 // named exports — verified by running this, not assumed. If it is ever changed
 // to a computed export shape, this line silently yields undefined.
 const { computeCoverage } = await import(pathToFileURL(path.join(ROOT, 'server', 'curriculum-coverage.js')).href);
+
+// ⭐ EXAM-VOCAB PRE-WALK CHECK — wiring an auditor that existed and had never
+// been called. `auditAllExamVocabCoverage` (student-question-banks.js) was found
+// by the dead-wiring sweep with ZERO consumers. ⚠ Its per-cell sibling
+// `examVocabCoverage` IS wired at the gate (curriculum.js:9530), so the
+// TEST-WORDS-PRE-TAUGHT law is enforced — this is the whole-curriculum version,
+// which answers a different and press-relevant question: BEFORE a fresh walk,
+// which exam words does the corpus never contain anywhere?
+//
+// ⚠ It normally takes the TRAINED vocabulary, which only exists on a running
+// brain. Offline we pass the CORPUS vocabulary instead — a strict upper bound on
+// what she could possibly learn, so a word missing here can NEVER be taught by
+// the current corpus. That makes a hit here a hard finding and a miss merely
+// "not provable offline", which is stated rather than blurred.
+async function examVocabPreWalk() {
+  let banks;
+  try { banks = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'student-question-banks.js')).href); }
+  catch { return null; }
+  if (typeof banks.auditAllExamVocabCoverage !== 'function') return null;
+  const words = new Set();
+  const walkCorpus = (dir) => {
+    let subs = [];
+    try { subs = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of subs) {
+      const fp = path.join(dir, e.name);
+      if (e.isDirectory()) { walkCorpus(fp); continue; }
+      if (!e.name.endsWith('.json')) continue;
+      try {
+        for (const x of (JSON.parse(fs.readFileSync(fp, 'utf8')).experiences || [])) {
+          for (const w of String(x.story || '').toLowerCase().split(/\s+/)) {
+            const c = w.replace(/[^a-z]/g, '');
+            if (c) words.add(c);
+          }
+        }
+      } catch { /* skip unreadable cell */ }
+    }
+  };
+  walkCorpus(CORPUS);
+  try { return { report: banks.auditAllExamVocabCoverage(words), corpusWords: words.size }; }
+  catch { return null; }
+}
 
 const r = computeCoverage(mod, CORPUS);
 if (!r) {
@@ -76,5 +118,14 @@ if (process.argv.includes('--json')) {
   }
   console.log(`     Average prose cell holds ${r.avgWordsPerProseCell.toLocaleString()} words = ~${pct}% of one real course year`);
   console.log(`     (${r.realCourseYearWords.toLocaleString()} words, measured: biology-concepts-book).`);
+  const ev = await examVocabPreWalk();
+  if (ev && ev.report) {
+    const p = ev.report;
+    console.log(`\n  EXAM-VOCAB vs CORPUS (pre-walk, upper bound — corpus holds ${ev.corpusWords.toLocaleString()} distinct words):`);
+    console.log(`     exam words required across all banks : ${(p.totalRequired || 0).toLocaleString()}`);
+    console.log(`     NOT PRESENT anywhere in the corpus   : ${(p.totalMissing || 0).toLocaleString()}`);
+    console.log(`     ⛔ a word missing here can never be taught by the current corpus,`);
+    console.log(`        so the gate that requires it pre-taught cannot pass honestly.`);
+  }
   console.log(`\n  ${r.clean ? 'PASS — every cell the walk runs has a lane and content' : 'FAIL — see the flagged cells above'}`);
 }
