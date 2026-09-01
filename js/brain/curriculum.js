@@ -3967,6 +3967,124 @@ export class Curriculum {
    * immediately, not buffered until the next V8 event-loop tick.
    * Safe in the browser bundle — stdout.write falls into catch.
    */
+  /**
+   * TEACHVIEW — THE TEACH BUS. Every teach lane reports the REAL payload here.
+   *
+   * ⛔⛔ THE FOUNDING FACT THIS EXISTS TO FIX: before this method, there was no
+   * channel anywhere carrying the exact text she is being taught.
+   * `_teachSentenceList` — the lane that trains every academic corpus sentence,
+   * called from 23 sites — contained no `_hb`, no console, no publish, no emit
+   * of ANY kind. It took the sentences and trained them silently. That is why a
+   * year of 14-sentences-per-topic went unnoticed: not because the evidence
+   * scrolled past too fast, but because it was never produced.
+   *
+   * ⭐ TWO SEPARATE THINGS, and conflating them is the trap:
+   *   • COUNTS are COMPLETE. Every item that passes through is counted, per
+   *     lane / subject / grade / source. Nothing is sampled away.
+   *   • The FEED is a bounded ring for READING. It holds the most recent N
+   *     items so a human can actually look at them.
+   * Dropping 99 of every 100 lines and calling that a view would reproduce the
+   * exact failure being fixed — a sampled view of a poisoned corpus can miss
+   * the poison. So the analytics never sample; only the reading pane is paced,
+   * and the UI states both facts so the pane can never be mistaken for the whole.
+   *
+   * ⚠ BACK-PRESSURE SAFE BY CONSTRUCTION. The teach lanes fire thousands of
+   * items per second at biological scale and this rides the same event loop as
+   * the donor socket and the WS pump, so this method does NO I/O, NO stringify,
+   * NO allocation beyond one small object, and never awaits. It is a counter
+   * bump plus a ring write. The state publish (10fps) reads the ring; nothing
+   * is pushed from here.
+   *
+   * @param {string} lane   — `_teachSentenceList` / `_teachAssociationPairs` / …
+   * @param {string} text   — the ACTUAL content: sentence, "a -> b", the word
+   * @param {object} [meta] — {subject, grade, cell, phase, source, reps, relationTagId}
+   */
+  teachBus(lane, text, meta) {
+    const tv = this._teachView || (this._teachView = {
+      total: 0,
+      byLane: Object.create(null),
+      byCell: Object.create(null),
+      bySource: Object.create(null),
+      ring: [],
+      ringSeq: 0,
+      startedAt: Date.now(),
+      lastAt: 0,
+      flags: [],
+    });
+    tv.total++;
+    tv.lastAt = Date.now();
+    const L = lane || 'unknown';
+    tv.byLane[L] = (tv.byLane[L] || 0) + 1;
+    const m = meta || {};
+    // ⭐ DERIVE THE CELL HERE, AT THE CHOKEPOINT, rather than trusting every
+    // caller to pass it. `cluster._currentCellKey` is "subject/grade" and is
+    // set authoritatively by runSubjectGrade, whereas `ctx` is threaded by hand
+    // through dozens of lanes and is frequently missing one or both. Fixing it
+    // once here is the difference between a feed where every row names its cell
+    // and a feed of rows that all say null — and it is the standing lesson
+    // about fixing the chokepoint instead of the instances.
+    if (!m.subject || !m.grade) {
+      const ck = this.cluster && this.cluster._currentCellKey;
+      if (ck && typeof ck === 'string' && ck.indexOf('/') > 0) {
+        const parts = ck.split('/');
+        if (!m.subject) m.subject = parts[0];
+        if (!m.grade) m.grade = parts.slice(1).join('/');
+      }
+    }
+    if (m.subject && m.grade) {
+      const k = `${m.subject}/${m.grade}`;
+      const c = tv.byCell[k] || (tv.byCell[k] = { items: 0, words: 0, lanes: Object.create(null) });
+      c.items++;
+      // Word count is the number the corpus audit speaks in, so the live view
+      // and the on-disk audit can be compared directly rather than by eye.
+      c.words += text ? (String(text).split(/\s+/).length) : 0;
+      c.lanes[L] = (c.lanes[L] || 0) + 1;
+    }
+    const src = m.source || 'runner-literal';
+    tv.bySource[src] = (tv.bySource[src] || 0) + 1;
+
+    // The bounded reading ring. CAP is deliberately small: this is what a human
+    // reads, not what the analytics count, and an unbounded ring at teach rates
+    // is a memory leak with a nice name.
+    const CAP = 400;
+    tv.ring.push({
+      n: ++tv.ringSeq,
+      t: tv.lastAt,
+      lane: L,
+      text: text == null ? '' : String(text).slice(0, 400),
+      subject: m.subject || null,
+      grade: m.grade || null,
+      phase: m.phase || null,
+      source: src,
+      reps: m.reps == null ? null : m.reps,
+      rel: m.relationTagId == null ? null : m.relationTagId,
+    });
+    if (tv.ring.length > CAP) tv.ring.splice(0, tv.ring.length - CAP);
+  }
+
+  /**
+   * TEACHVIEW — raise a flag. Rules that fire automatically and stay up until
+   * cleared, per the spec: "notes flags issues warnings all of it".
+   * ⛔ Every flag NAMES the cell, the lane and the number — never a bare colour.
+   */
+  teachFlag(level, code, message, meta) {
+    const tv = this._teachView || (this.teachBus('flag-init', ''), this._teachView);
+    if (!tv) return;
+    const key = `${code}:${(meta && meta.subject) || ''}/${(meta && meta.grade) || ''}`;
+    const existing = tv.flags.find((f) => f.key === key);
+    if (existing) { existing.count++; existing.lastAt = Date.now(); return; }
+    tv.flags.push({
+      key, level: level || 'warn', code: code || 'UNKNOWN',
+      message: String(message || '').slice(0, 300),
+      subject: (meta && meta.subject) || null,
+      grade: (meta && meta.grade) || null,
+      count: 1, firstAt: Date.now(), lastAt: Date.now(),
+    });
+    // Bounded — a flag list that grows without limit is a hang, and the dashboard
+    // law requires a cap with an honest "N more" rather than silent truncation.
+    if (tv.flags.length > 60) tv.flags.splice(0, tv.flags.length - 60);
+  }
+
   _hb(msg) {
     // 114.19er.4 — watchdog timestamp. Every `[Curriculum]` line
     // refreshes _lastCurriculumLogTs so the runner-level watchdog can
@@ -15145,8 +15263,22 @@ export class Curriculum {
     }
 
     if (!Array.isArray(definitions) || definitions.length === 0) {
+      // TEACHVIEW — a word she was MEANT to learn and could not. This is the
+      // `PRECELL.1` shape (67 words needed, 0 taught, lane reports DONE) made
+      // visible: the shortfall is now a flag naming the word, not a silence.
+      try { this.teachFlag('warn', 'DEF-MISS', `no dictionary definition for "${w}" — bound nothing`, {}); } catch { /* nf */ }
       return { passes: 0, totalTrained: 0, defsBound: 0, skipped: 'no definition' };
     }
+
+    // TEACHVIEW — the actual definition text she is about to bind. Reported
+    // once per word, not per definition or per rep, so the count is "words
+    // defined" rather than a number inflated by the dose.
+    try {
+      const first = definitions[0] && (definitions[0].definition || definitions[0]);
+      this.teachBus('_teachWordDefinition', `${w} — ${String(first || '').slice(0, 200)}`, {
+        phase: opts.label || null, source: 'dictionaryapi.dev', reps: opts.reps ?? 6,
+      });
+    } catch { /* the view must never break a teach */ }
 
     const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its','it','from','into','out','up','down','off','over','under','than','then','when','where','which','who','whose','whom','what','why','how']);
     const reps = opts.reps ?? 6;
@@ -16063,8 +16195,15 @@ export class Curriculum {
 
     const reps = opts.reps ?? 3;
     const ticksPerWord = opts.ticksPerWord ?? 2;
+    // TEACHVIEW — carry the CELL and the SOURCE FILE down into the bus so the
+    // feed can say not just what she is being taught but where it came from,
+    // which is the question that could not be answered at all before today.
     await this._phasedTeach(`ACADEMIC-${subject}-${grade}-STORIES`, () =>
-      this._teachSentenceList(sentences, ctx, { reps, ticksPerWord })
+      this._teachSentenceList(sentences, ctx, {
+        reps, ticksPerWord,
+        label: `ACADEMIC-${subject}-${grade}-STORIES`,
+        source: `corpora/academic/${subject}/${grade}.json`,
+      })
     );
     this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — trained on ${sentences.length} real-curriculum sentences from corpora/academic/${subject}/${grade}.json (hybrid depth source).`);
     return { trained: sentences.length };
@@ -23688,6 +23827,22 @@ export class Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+
+        // TEACHVIEW — report the ACTUAL sentence. This is the lane that trained
+        // every academic corpus sentence in silence; it is the reason a
+        // 931-page curriculum went a year unnoticed.
+        // ⚠ Reported on rep 0 ONLY. The same sentence at 3 reps is ONE item of
+        // content taught, not three — counting per rep would inflate the
+        // analytics by the dose and make the corpus look bigger than it is,
+        // which is exactly the class of lie this view exists to end.
+        if (rep === 0) {
+          try {
+            this.teachBus('_teachSentenceList', sentence, {
+              subject: ctx && ctx.subject, grade: ctx && ctx.grade,
+              phase: (opts && opts.label) || null, source: (opts && opts.source) || null, reps,
+            });
+          } catch { /* the view must never break a teach */ }
+        }
 
         // ─────────────────────────────────────────────────────────────────
         // GLOVEOWN — SHE RESHAPES HER OWN SEMANTIC GEOMETRY AS SHE READS.

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Teach View — exactly what Unity is being taught</title>
+<meta name="description" content="A live window on the training itself: the exact text going into Unity, at human reading speed, beside the images entering her mind's eye — with the complete counts the paced feed cannot show." />
+<style>
+  /* Scoped teachview-* per the naming law. Dark instrument panel, matching the
+     rest of the console pages: this is a reading surface, so the type is sized
+     to be read rather than to fit more rows on screen. */
+  :root{
+    --tv-bg:#07090d; --tv-panel:#0d1117; --tv-line:#1c2430; --tv-ink:#c9d6e4;
+    --tv-dim:#6b7c90; --tv-accent:#4fd6ff; --tv-good:#49d67f; --tv-warn:#ffc861;
+    --tv-bad:#ff6b6b; --tv-pink:#ff79c6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--tv-bg);color:var(--tv-ink);
+    font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  header{padding:14px 18px;border-bottom:1px solid var(--tv-line);
+    display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;background:var(--tv-panel)}
+  h1{margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--tv-accent)}
+  .tv-sub{color:var(--tv-dim);font-size:12px}
+  .tv-wrap{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;padding:14px}
+  @media(max-width:1000px){.tv-wrap{grid-template-columns:1fr}}
+  .tv-card{background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:8px;overflow:hidden}
+  .tv-card>h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--tv-dim);border-bottom:1px solid var(--tv-line);
+    display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .tv-body{padding:11px 12px}
+  /* Bounded height + scroll, per the standing dashboard law. */
+  #tvFeed{height:430px;overflow-y:auto;padding:8px 10px}
+  .tv-row{padding:7px 9px;border-left:2px solid var(--tv-line);margin-bottom:6px;
+    background:#0a0e14;border-radius:0 5px 5px 0;animation:tvIn .18s ease-out}
+  @keyframes tvIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .tv-row .tv-meta{color:var(--tv-dim);font-size:11px;margin-bottom:3px;
+    display:flex;gap:9px;flex-wrap:wrap}
+  .tv-row .tv-text{color:#e6eef7;font-size:14px;word-break:break-word}
+  .tv-row.lane-def{border-left-color:var(--tv-pink)}
+  .tv-row.lane-sent{border-left-color:var(--tv-accent)}
+  .tv-tag{padding:0 5px;border:1px solid var(--tv-line);border-radius:3px;color:var(--tv-dim)}
+  .tv-src{color:#7a8ea3}
+  .tv-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  button{background:#131b25;color:var(--tv-ink);border:1px solid var(--tv-line);
+    border-radius:5px;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px}
+  button:hover{border-color:var(--tv-accent);color:var(--tv-accent)}
+  button[aria-pressed="true"]{border-color:var(--tv-accent);color:var(--tv-accent)}
+  input[type=range]{width:104px;vertical-align:middle}
+  .tv-reg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+  .tv-reg div{background:#0a0e14;border:1px solid var(--tv-line);border-radius:6px;padding:7px 9px}
+  .tv-reg b{display:block;font-size:19px;color:#e6eef7;font-weight:600;line-height:1.2}
+  .tv-reg span{color:var(--tv-dim);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+  .tv-bars{display:flex;flex-direction:column;gap:5px;max-height:186px;overflow-y:auto}
+  .tv-bar{display:grid;grid-template-columns:132px 1fr 60px;gap:8px;align-items:center;font-size:12px}
+  .tv-bar i{height:8px;background:linear-gradient(90deg,var(--tv-accent),#2b7fa8);
+    border-radius:4px;display:block;min-width:2px}
+  .tv-bar em{color:var(--tv-dim);font-style:normal;text-align:right}
+  .tv-flag{padding:6px 9px;border-radius:5px;margin-bottom:5px;font-size:12px;
+    border:1px solid var(--tv-line);background:#0a0e14}
+  .tv-flag.err{border-color:#5a2430;color:#ffb3b3}
+  .tv-flag.warn{border-color:#5a4a24;color:var(--tv-warn)}
+  #tvEye{width:100%;image-rendering:pixelated;background:#05070a;border-radius:6px;display:block}
+  .tv-note{color:var(--tv-dim);font-size:11.5px;margin-top:8px;line-height:1.55}
+  .tv-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+  .ok{background:var(--tv-good)} .warn{background:var(--tv-warn)} .bad{background:var(--tv-bad)}
+  code{color:var(--tv-accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Teach View</h1>
+  <span class="tv-sub" id="tvStatus"><span class="tv-dot warn"></span>connecting…</span>
+  <span class="tv-sub" id="tvCell">—</span>
+</header>
+
+<div class="tv-wrap">
+  <div>
+    <div class="tv-card">
+      <h2>
+        <span>The exact text going into Unity</span>
+        <span class="tv-controls">
+          <button id="tvPause" aria-pressed="false">pause</button>
+          <button id="tvStep">step</button>
+          <button id="tvClear">clear</button>
+          <label class="tv-sub">rate <input id="tvRate" type="range" min="1" max="20" value="4" /></label>
+          <span class="tv-sub" id="tvRateLbl">4/s</span>
+        </span>
+      </h2>
+      <div id="tvFeed"></div>
+      <div class="tv-body" style="border-top:1px solid var(--tv-line)">
+        <div class="tv-note" id="tvPaceNote"></div>
+      </div>
+    </div>
+
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span>Training analytics</span><span class="tv-sub" id="tvCells">—</span></h2>
+      <div class="tv-body">
+        <div class="tv-reg" id="tvRegisters"></div>
+        <div style="margin-top:13px">
+          <div class="tv-sub" style="margin-bottom:6px">Items taught by lane</div>
+          <div class="tv-bars" id="tvLanes"></div>
+        </div>
+        <div style="margin-top:13px">
+          <div class="tv-sub" style="margin-bottom:6px">Where the content came from</div>
+          <div class="tv-bars" id="tvSources"></div>
+        </div>
+        <div style="margin-top:13px">
+          <div class="tv-sub" style="margin-bottom:6px">Words taught per cell (this boot)</div>
+          <div class="tv-bars" id="tvCellBars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="tv-card">
+      <h2><span>Her mind's eye</span><span class="tv-sub" id="tvEyeLbl">—</span></h2>
+      <div class="tv-body">
+        <canvas id="tvEye" width="256" height="256"></canvas>
+        <div class="tv-note" id="tvEyeNote">
+          The image she is holding right now, reconstructed from her own field C.
+        </div>
+      </div>
+    </div>
+
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span>Flags, issues &amp; warnings</span><span class="tv-sub" id="tvFlagCount">0</span></h2>
+      <div class="tv-body" id="tvFlags"><div class="tv-note">No flags raised.</div></div>
+    </div>
+
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span>Corpus coverage</span></h2>
+      <div class="tv-body" id="tvCoverage"><div class="tv-note">—</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ────────────────────────────────────────────────────────────────────────────
+   TEACHVIEW — the page that answers "what is she actually being taught?".
+
+   ⛔ THE RULE THIS PAGE IS BUILT AROUND: the COUNTS are complete and the FEED
+   is paced. Dropping 99 of every 100 lines and calling it a view would
+   reproduce the exact failure this exists to fix — a sampled view of a
+   poisoned corpus can miss the poison. So the analytics below are never
+   sampled, the reading pane is deliberately slow, and BOTH facts are printed
+   on screen so the pane can never be mistaken for the whole.
+   ──────────────────────────────────────────────────────────────────────────── */
+const STATE_URLS = ['/public-state.json'];
+const EYE_URLS = ['/minds-eye.json'];
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:') {
+  STATE_URLS.push('http://localhost:7525/public-state.json');
+  EYE_URLS.push('http://localhost:7525/minds-eye.json');
+}
+
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString());
+
+/* The paced reader. Items arrive in bursts at teach speed; they queue here and
+   drain at a rate a person can actually read. The queue depth is shown, so a
+   long backlog is visible rather than silently discarded. */
+let queue = [], paused = false, rate = 4, seen = 0, drained = 0;
+
+$('tvPause').onclick = () => {
+  paused = !paused;
+  $('tvPause').textContent = paused ? 'resume' : 'pause';
+  $('tvPause').setAttribute('aria-pressed', String(paused));
+};
+$('tvStep').onclick = () => { if (paused) drainOne(); };
+$('tvClear').onclick = () => { $('tvFeed').innerHTML = ''; };
+$('tvRate').oninput = (e) => { rate = +e.target.value; $('tvRateLbl').textContent = rate + '/s'; };
+
+function laneClass(lane) {
+  if (/Definition/i.test(lane)) return 'lane-def';
+  if (/SentenceList/i.test(lane)) return 'lane-sent';
+  return '';
+}
+
+function drainOne() {
+  const item = queue.shift();
+  if (!item) return;
+  drained++;
+  const feed = $('tvFeed');
+  const row = document.createElement('div');
+  row.className = 'tv-row ' + laneClass(item.lane);
+  const cell = item.subject && item.grade ? `${item.subject}/${item.grade}` : 'cell unknown';
+  const bits = [
+    `<span class="tv-tag">${cell}</span>`,
+    `<span class="tv-tag">${item.lane.replace(/^_/, '')}</span>`,
+  ];
+  if (item.source) bits.push(`<span class="tv-src">${item.source}</span>`);
+  if (item.reps != null) bits.push(`<span class="tv-src">${item.reps} reps</span>`);
+  row.innerHTML = `<div class="tv-meta">${bits.join('')}</div><div class="tv-text"></div>`;
+  // textContent, never innerHTML, for the taught text — it is fetched prose and
+  // must never be able to render as markup on this page.
+  row.querySelector('.tv-text').textContent = item.text;
+  feed.appendChild(row);
+  /* Bounded pane per the dashboard law. An unbounded feed at teach rates is a
+     hang, not a long list. */
+  while (feed.childElementCount > 120) feed.removeChild(feed.firstChild);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+setInterval(() => { if (!paused) for (let i = 0; i < rate; i++) drainOne(); }, 1000);
+
+function bars(el, obj, cap) {
+  const entries = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]);
+  /* ⛔ `|| 1` GUARDS A DIVIDE-BY-ZERO THAT RENDERS AS NOTHING. When every count
+     is 0 (a boot where a lane has fired but taught nothing yet), max is 0,
+     v/max is NaN, and `Math.max(2, NaN)` is NaN — so the bar gets width:NaN%
+     and simply does not draw. The row would show its label and its "0" with an
+     invisible bar, which reads as a rendering glitch rather than as the real
+     and interesting fact that the lane is at zero. Caught by a worst-case
+     pre-render, which is the only reason it was found before shipping. */
+  const max = (entries.length && entries[0][1] > 0) ? entries[0][1] : 1;
+  const show = entries.slice(0, cap);
+  el.innerHTML = show.map(([k, v]) =>
+    `<div class="tv-bar"><span title="${k}">${k.replace(/^corpora\/academic\//, '').replace(/^_/, '')}</span>`
+    + `<i style="width:${Math.max(2, ((v || 0) / max) * 100)}%"></i><em>${fmt(v)}</em></div>`).join('')
+    + (entries.length > cap ? `<div class="tv-note">+${entries.length - cap} more (counts above are complete)</div>` : '');
+}
+
+async function grab(urls) {
+  for (const u of urls) {
+    try { const r = await fetch(u, { cache: 'no-store' }); if (r.ok) return await r.json(); }
+    catch (e) { /* next lane */ }
+  }
+  return null;
+}
+
+async function poll() {
+  const j = await grab(STATE_URLS);
+  if (!j) {
+    $('tvStatus').innerHTML = '<span class="tv-dot bad"></span>brain unreachable';
+    return;
+  }
+  const st = (j.state || j) || {};
+  const tv = st.teachView;
+
+  if (!tv) {
+    /* ⛔ HONEST EMPTY STATE. "No data" here does NOT mean she is learning
+       nothing — it means the teach bus has not reported, which on a stopped
+       walk is the correct and expected reading. Saying so is the difference
+       between an instrument and a reassuring blank. */
+    $('tvStatus').innerHTML = '<span class="tv-dot warn"></span>brain up · teach bus silent';
+    $('tvPaceNote').textContent =
+      'The teach bus has published nothing this boot. If the walk is stopped, that is correct — she is not being taught anything right now.';
+    return;
+  }
+
+  const stale = tv.ageMs != null && tv.ageMs > 60000;
+  $('tvStatus').innerHTML = stale
+    ? `<span class="tv-dot warn"></span>last taught ${Math.round(tv.ageMs / 1000)}s ago`
+    : '<span class="tv-dot ok"></span>teaching';
+
+  /* Only items newer than what we have already queued — the server ships a
+     window, and the sequence number is what makes the client's own history
+     coherent across polls. */
+  for (const it of (tv.feed || [])) {
+    if (it.n > seen) { seen = it.n; queue.push(it); }
+  }
+
+  const cells = Object.entries(tv.byCell || {});
+  const activeCell = cells.length ? cells[cells.length - 1][0] : null;
+  $('tvCell').textContent = activeCell ? `current cell: ${activeCell}` : '';
+  $('tvCells').textContent = `${cells.length} cells touched this boot`;
+
+  const words = cells.reduce((a, [, c]) => a + (c.words || 0), 0);
+  $('tvRegisters').innerHTML = [
+    ['items taught', fmt(tv.total)],
+    ['words taught', fmt(words)],
+    ['cells touched', fmt(cells.length)],
+    ['shown here', fmt(drained)],
+    ['queued to read', fmt(queue.length)],
+    ['flags', fmt((tv.flags || []).length)],
+  ].map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join('');
+
+  /* ⭐ THE SENTENCE THAT KEEPS THIS PANE HONEST. */
+  $('tvPaceNote').innerHTML =
+    `Counts are <b>complete</b> — every item is counted. This reading pane is <b>paced</b> at ${rate}/s and holds the last 120 rows`
+    + ` (server ring caps at ${tv.ringCap}). <b>${fmt(tv.total - drained)}</b> taught items have not been displayed here.`
+    + (tv.feedDropped ? ` ${fmt(tv.feedDropped)} rolled past between polls.` : '')
+    + ` The feed is for reading; the analytics are the whole picture.`;
+
+  bars($('tvLanes'), tv.byLane, 8);
+  bars($('tvSources'), tv.bySource, 8);
+  bars($('tvCellBars'), Object.fromEntries(cells.map(([k, c]) => [k, c.words || 0])), 10);
+
+  const flags = tv.flags || [];
+  $('tvFlagCount').textContent = String(flags.length);
+  $('tvFlags').innerHTML = flags.length
+    ? flags.slice(-20).reverse().map((f) =>
+        `<div class="tv-flag ${f.level === 'err' ? 'err' : 'warn'}"><b>${f.code}</b>`
+        + (f.subject ? ` <span class="tv-src">${f.subject}/${f.grade || ''}</span>` : '')
+        + (f.count > 1 ? ` <span class="tv-src">×${f.count}</span>` : '')
+        + `<div>${f.message}</div></div>`).join('')
+    : '<div class="tv-note">No flags raised.</div>';
+
+  const cov = st.curriculumCoverage;
+  if (cov) {
+    const pct = cov.realCourseYearWords
+      ? ((cov.avgWordsPerProseCell / cov.realCourseYearWords) * 100).toFixed(1) : null;
+    $('tvCoverage').innerHTML =
+      `<div class="tv-reg">
+         <div><b>${fmt(cov.cellsWalkRuns)}</b><span>cells the walk runs</span></div>
+         <div><b>${fmt(cov.ok)}</b><span>fed</span></div>
+         <div><b>${fmt(cov.empty)}</b><span>empty</span></div>
+         <div><b>${fmt(cov.missingLane)}</b><span>no lane</span></div>
+       </div>`
+      /* ⛔ The bar is published with the number, because "OK" here counts cells
+         clearing floors nobody derived. A bare numerator is how an instrument
+         starts lying. */
+      + (cov.floorsDerived === false
+        ? `<div class="tv-note">⛔ <b>The bar is undreived.</b> "Fed" counts cells clearing floors that were chosen, not measured.`
+          + (pct ? ` The average cell holds ${fmt(cov.avgWordsPerProseCell)} words ≈ <b>${pct}%</b> of one real course year.` : '')
+          + ` Fed means <b>not starved</b>, not finished.</div>`
+        : '');
+  }
+}
+
+/* Her mind's eye, beside the text — the images she is trained on, in the same
+   view as the words, because they are one education and not two. */
+function reconstruct(rec, canvas) {
+  try {
+    const ctx = canvas.getContext('2d');
+    if (!rec || !rec.width || !rec.height) return false;
+    canvas.width = rec.width; canvas.height = rec.height;
+    const img = ctx.createImageData(rec.width, rec.height);
+    const px = rec.rgba || rec.pixels;
+    if (!px) return false;
+    for (let i = 0; i < img.data.length && i < px.length; i++) img.data[i] = px[i];
+    ctx.putImageData(img, 0, 0);
+    return true;
+  } catch (e) { return false; }
+}
+
+async function pollEye() {
+  const d = await grab(EYE_URLS);
+  if (!d) { $('tvEyeLbl').textContent = 'unreachable'; return; }
+  if (d.brainOffline === true || d.brainOnline === false) { $('tvEyeLbl').textContent = 'brain offline'; return; }
+  const rec = d.rec || d.record || d.snapshot;
+  $('tvEyeLbl').textContent = d.label || d.concept || (rec ? 'imagining' : 'nothing held');
+  if (rec) reconstruct(rec, $('tvEye'));
+}
+
+poll(); pollEye();
+setInterval(poll, 2000);
+setInterval(pollEye, 5000);
+</script>
+</body>
+</html>
