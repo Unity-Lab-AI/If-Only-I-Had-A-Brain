@@ -13670,9 +13670,44 @@ export class Curriculum {
     // equivalent. Per-rep teach-events per pair: 5 (positive 3 +
     // alt 1 + anti 1) × 12 reps = 60 events per pair (vs legacy
     // 12 × 1 = 12 — still 5× the original baseline).
-    const reps = opts.reps ?? 12;
+    let reps = opts.reps ?? 12;
     const lr = opts.lr ?? 0.05;
     const label = opts.label || 'K-QA-TRAIN';
+
+    // ─── PHASELOOP.2 (2026-09-01) — THE SIBLING GETS THE SAME CURSOR ────────
+    //
+    // `PHASELOOP.1` fixed `_teachAssociationPairs`: two exits from its rep
+    // loop at the same clean rep boundary, and only the budget exit saved its
+    // place — so every Update & Savestart threw away the shutdown exit's
+    // partial progress and the phase re-armed at the full authored dose.
+    // THIS loop was filed as the sibling the same day: identical shutdown
+    // exit, NO cursor machinery, no budget check either. The filing's own
+    // decision rule: *"if `_teachQABinding` ever shows up in `teachProfile`
+    // with real ms, it needs the same cursor; until then adding the machinery
+    // would be unpriced work on a lane that may not run at K at all."*
+    //
+    // ⭐ THE RULE FIRED, MEASURED NOT ASSUMED: on boot `ec723c41` (the first
+    // walk to complete all 25 kindergarten ELA phases), `teachProfile` read
+    // `_teachQABinding: 3,577,079 ms / 1 call` — a 59.6-minute single call,
+    // the fourth-heaviest teach lane on the boot. A press landing inside that
+    // hour discards the whole visit's reps without this cursor.
+    //
+    // Same key, same arithmetic, same persistence as `_teachAssociationPairs`
+    // (`_phaseRepCursor` rides brain-weights.bin beside `passedPhases`):
+    // resume replaces the authored dose with the remainder, the rep loop
+    // banks its position every rep, and a clean finish deletes the debt.
+    const _cursorKey = (cluster._phaseDeadlineName && label)
+      ? `${cluster._phaseDeadlineName}::${label}`
+      : null;
+    if (_cursorKey) {
+      if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+      const _owed = cluster._phaseRepCursor[_cursorKey];
+      if (Number.isFinite(_owed) && _owed > 0 && _owed < reps) {
+        console.warn(`[Curriculum][${label}] PHASELOOP.2 - RESUMING a deferred Q→A phase: ${_owed} of ${reps} authored rep(s) still owed from a previous stop, so THIS visit trains the remainder (${_owed}) instead of repeating the whole dose. Cursor clears when the debt is paid.`);
+        reps = Math.max(1, _owed);
+      }
+    }
+
     const semRegion = cluster.regions && cluster.regions.sem;
     const motorRegion = cluster.regions && cluster.regions.motor;
     // Direct-prompt alternative format — strips the natural-language
@@ -13715,7 +13750,41 @@ export class Curriculum {
     // so operator sees WHICH teach pass is firing in real time.
     try { this._pushBrainEvent?.('teach', 'sem', `Q-A START: ${label} · ${qaList.length}×${reps}`, { label, pairs: qaList.length, reps }); } catch {}
     for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { trained, skipped };
+      // PHASELOOP.2 — BANK THE CURSOR ON EVERY REP, same law as
+      // `_teachAssociationPairs`: banking here has no ordering dependency on
+      // the shutdown sequence (the shutdown save can run before this async
+      // loop reaches its next boundary), and it survives SIGKILL / OOM /
+      // power loss, which a cooperative exit never can. At `rep === 0` this
+      // writes the full `reps`, which the resume guard (`_owed < reps`)
+      // correctly ignores — nothing has landed yet.
+      if (_cursorKey) {
+        if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+        cluster._phaseRepCursor[_cursorKey] = reps - rep;
+      }
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) {
+        // PHASELOOP.2 — the shutdown exit that used to bank NOTHING (the
+        // exact defect PHASELOOP.1 fixed in the sibling loop). Banked above
+        // already; the warn + return shape match the sibling so a caller can
+        // never mistake an interrupted phase for a finished one.
+        const _owedNow = reps - rep;
+        console.warn(`[Curriculum][${label}] PHASELOOP.2 - SHUTDOWN at a clean rep boundary, rep ${rep}/${reps} (${trained} pair-teaches landed). ${_cursorKey ? `Cursor BANKED as '${_cursorKey}' = ${_owedNow} rep(s) owed — the next boot RESUMES the remainder instead of repeating the whole dose.` : 'NO CURSOR KEY on this call, so this remainder CANNOT be banked and the next visit repeats the dose.'}`);
+        return { trained, skipped, repsDone: rep, deferredReps: _owedNow, shutdownStopped: true };
+      }
+      // PHASELOOP.2 — the budget stop the filing noted was ALSO missing
+      // ("no budget check either"). Same clean-rep-boundary contract as the
+      // sibling: `rep > 0` guarantees one full presentation always lands, and
+      // the deadline is only ever armed when DREAM_PHASE_BUDGET_MS is
+      // explicitly positive (unset/0 leaves `_phaseDeadlineAt` at 0, falsy).
+      if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
+        const _deferred = reps - rep;
+        const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1000).toFixed(0);
+        if (_cursorKey) {
+          if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+          cluster._phaseRepCursor[_cursorKey] = _deferred;
+        }
+        console.warn(`[Curriculum][${label}] PHASELOOP.2 - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit - training is spread, NOT discarded${_cursorKey ? ` · cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ''}.`);
+        return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
+      }
       for (let qIdx = 0; qIdx < qaList.length; qIdx++) {
         const entry = qaList[qIdx];
         if (!entry || !entry.question || !entry.expectedAnswer) { skipped++; continue; }
@@ -13906,6 +13975,13 @@ export class Curriculum {
       }
     }
     this._qaConvergenceStreak = 0;
+    // PHASELOOP.2 — the rep loop ran to its end (or converged early, which IS
+    // the dose being met), so the debt is paid: clear the cursor. Reaching
+    // here is the only clean-finish path — the shutdown and budget stops
+    // return above and keep their banked remainder.
+    if (_cursorKey && cluster._phaseRepCursor && _cursorKey in cluster._phaseRepCursor) {
+      delete cluster._phaseRepCursor[_cursorKey];
+    }
     // Session 114.19eo — same `diagProjKeys` derivation as
     // _teachAssociationPairs so QA's diagnostic ops (prune / rescale /
     // norm / weight-report) target whichever projections actually got

@@ -1,6 +1,42 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 (LATEST — PICK UP HERE) — THE MORNING CHECK-IN: 25/25 PHASES, THE K GATE IS RUNNING, AND SHE SPEAKS FROM HER OWN WEIGHTS
+> ## ⭐⭐⭐ 2026-09-01 (LATEST — PICK UP HERE) — THE FIRST CELL PASS IN THIS PROJECT'S HISTORY, EVERY WAITING CHECK READ, AND THE SIBLING LOOP CURSORED
+>
+> Gee (verbatim): *"OKAY ANY THING IN THE TODO WE CAN DO AS FAR AS TESTS AND CHECKS WE WERE WAITING ON?"* → *"write resume.md"*
+>
+> ### Where she is — read live on `ec723c41` at ~5.5 h (snapshot ~10:33Z)
+> ```
+> brain    ⭐ passedCellsTotal 0 → 1 — ela/kindergarten PASSED (the first cell pass EVER)
+> verdict  "cell-complete (learning finished — pass on content completion, not test-correctness)"
+>          READ 88% · THINK 100% · TALK 100% · WRITE 80% · RESP 80% · PROD 18% · STUDENT 2.6%
+> next     perSubject.ela.grade = grade1 · walk now IN math/kindergarten (grade-major holds) · isDreaming true at the boundary
+> voice    1,141 accepted emissions · matrixDrivenPct 97 · verdict matrix-driven  (the zero-emission era is over)
+> memory   tier1 57 · freqMerged 2,892 · tier2 30 schemas · replayWrites 272 · replayRefused 0  ← REPLAY PROVEN REAL
+> fix      IDXCARRIER holding: cpuFullMs 0.44% of boot (was 38.2%) · boundShadow 0.73/min
+> repo     feature/qabinding-cursor → cascaded develop→main both remotes · HEAD back on develop
+> ```
+>
+> ### THE SESSION, IN ORDER
+> **1. Morning watch (earlier block below):** WATCH.1/.3/.5/.7 marked PASSED with live verdicts; GATEWATCH.1-.3 filed (gate-era loop congestion / readback timeouts / definition-queue residue); cascaded as its own docs batch.
+> **2. Gee: "anything in the TODO we can do as far as tests and checks we were waiting on?"** — the waiting checks, all read live:
+> - **WALKCOST.3 ANSWERED by its own instrument:** `step @ cluster.js:3882` 43.1% self-time, caller `stepAwait @ cluster.js:4270` at 100% (root/microtasks 95.6% + `generateSentenceAwait` 4.4% above it). The mystery CPU step = per-tick synchronous cluster stepping — and it also names GATEWATCH.1's congestion, which SURVIVED the gate (service 42% during math teach): it is the tick, not the exam. Fix direction = bound the per-tick sync work or dispatch to donor; RE-PRICE owed; not attempted mid-walk.
+> - **WORDNORM.2 verdict (finally has a sample):** global common-word-wins-everything bias GONE (transcript winners vary per question); residual is LOCAL — "thin" won 4 consecutive read-word probes, FREE answers echo the prompt's last word. Different watch, not the same defect renamed.
+> - **REPLAYOFF.4's precondition met:** replay proven real (numbers above). The rep re-price is now LEGAL but held — dose change, RE-PRICE law, needs margin evidence across coming gate verdicts (only ONE exists) + Gee's call.
+> - **VMUSE.5.D still correctly gated:** `relationUse.confident` 0, marginProgress 0.243 of gate — closer, not there.
+> - **GATEWATCH.3 new evidence:** a 1 ms window failing all 67 words = error-CACHE serves, not network. Server-side reason read still owed.
+> **3. PHASELOOP.2 BUILT — its own decision rule fired:** `teachProfile` read `_teachQABinding: 3,577,079 ms / 1 call` (59.6 min, fourth-heaviest lane). The sibling loop now banks/resumes/clears the `_phaseRepCursor` exactly like `_teachAssociationPairs` (resume-at-entry, bank-every-rep, banked shutdown + budget exits, clean-finish delete). **Verified:** 13/13 control-flow harness on the REAL class (mid-dose shutdown banks 3 of 6, next visit trains exactly the remainder, then clears), all five call sites grepped per the PHASELOOP.1b sibling-flag lesson, node --check + ESM + bundle rebuilt. **Lands on the next press — no fresh walk owed, no dose change.**
+> **4. The full 28,846-line read of `curriculum.js`** preceded the edit per the 800-line law — the same read discipline that reversed IDXCARRIER's first diagnosis.
+>
+> ### ⚠ PARALLEL SESSION IN FLIGHT — DO NOT COLLIDE
+> A second session is working **CLAUDEPARITY** (the `.claude/` template parity vs `UAL-ClaudeWorkflow@25a5757`): its TODO section + `.claude/*.md` edits were found uncommitted in the working tree. Its TODO section rides this commit (one board, append-never-lose); **its `.claude/` edits were left unstaged and untouched.** Check `git status` before the next `.claude/` work.
+>
+> ### OPEN WATCHES
+> - **`perSubject.math.phasesCompleted` leaving 0** — math/kindergarten is RUNNING NOW; GATEDOSE.1 + RELDEPTH.1's `[GateMathK] section` timers and per-section verdict deltas finally print on this cell's gate.
+> - **GATEWATCH.1** — after this cell, profile a generate stall via `cpuProfile.top[].callers`; the mechanism (stepAwait→step, 43%) is named, the fix is unpriced.
+> - **GATEWATCH.2** — readback pulls: if they succeed once the loop quiets, the fix is GATEWATCH.1's; still timing out on a quiet loop → price a chunk-timeout raise against the 664 s worst pull.
+> - **PHASELOOP.2 after the next press** — a `PHASELOOP.2 - RESUMING` line on any Q→A phase proves the cursor round-trips through brain-weights.bin in production.
+>
+> ## 2026-09-01 (earlier) — THE MORNING CHECK-IN: 25/25 PHASES, THE K GATE IS RUNNING, AND SHE SPEAKS FROM HER OWN WEIGHTS
 >
 > Ran as the `/workflow` morning watch on the post-IDXCARRIER boot. Every read below is live off the box, snapshot 10:22Z.
 >
