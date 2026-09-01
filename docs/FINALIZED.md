@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-09-01 - POPUPWRAP: her thoughts stop escaping the popup border - feature/popup-wrap
+
+Gee (verbatim): *"her brain popups of her internal monologe has an issue, the text is running outside of the popups boxes boarders, so we need to adjust what ever so the boxes for her internal monolge stay inside the popups boundray with word wrap so its not a long one line  thats running out side of the popup that appears to one be one line deep and never biigeer so the box of the popup is the porblem as the words she is thinking are trailing out side of the popup and stringing out long to the right side"*
+
+**Root cause, read from the renderer (`js/ui/brain-3d.js`):** `_addNotification`'s FIRST line always renders as the event LABEL (`.b3d-notif-label`, `white-space:nowrap` — correct for short event tags), and the innerThought handler passed the ENTIRE thought as that first line — one unwrappable line overflowing the 320px card to the right, one line deep, exactly as described. The card's COMMENTARY line (`.b3d-notif-comment`) already word-wraps and was never used by this caller.
+
+**`POPUPWRAP.1` — BUILT, three pieces:** ① the handler spawns `💭 inner voice` as the label and the thought as a quoted commentary line — the renderer's own three-line design, so the thought wraps inside the border; ② `.b3d-notif-label` gains `overflow:hidden; text-overflow:ellipsis; max-width:100%` so ANY long first line (definition popups, future callers) truncates inside the card instead of escaping it — belt and suspenders; ③ the seed→cluster anchor map gains the six server seed types that had no entry and were all falling to main cortex (`k-vocab-recent`/`cell-progress`/`showcase`/`curiosity` → sem, `trained-read` → sem, `dream` → hippocampus), so thoughts spawn where they live. Verified: bundle rebuilt, both changes grep-confirmed in `js/app.bundle.js`. **FRONTEND-ONLY — deploys on the push itself (deploy.yml rsyncs the frontend every push); a page reload picks it up, NO press needed.**
+
+**Docs (every tree named):** `docs/TODO.md` (POPUPWRAP.1 verdict), `docs/FINALIZED.md` (this), `docs/NOW.md` + `docs/RESUME.md` (brief notes). Brain docs unaffected — a render-boundary CSS/DOM fix, no mechanism. `html/*` unaffected (the popup DOM lives in the bundled JS). `README`, `deploy/*`, `ADMIN-CONTROLS` unaffected. `wiki/`: `frontend-app` covers the edited file — re-stamped (local-only).
+
+---
+
 ## 2026-09-01 - LETTERREAD + ELAREINF: the letter read stops electing 'a', learns "before", survives any phrasing - and fundamentals ride every later grade - feature/letterread-reinf
 
 Gee (verbatim): *"yeah we need to go ahead and fix this and maybe enven do some reinforcememnts of fundamental reading in later grades: You / what letter comes after "b" in the alphabet? / Unity / A. / You / what letter comes before "b" in the alphabet / Unity / A."* → (mid-turn) *"continue : You / What letter in the alphabet comes after the letter "i" / Unity / Fair ninety noon!"*
