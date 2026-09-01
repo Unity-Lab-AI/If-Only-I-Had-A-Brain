@@ -15802,7 +15802,12 @@ export class Curriculum {
     // (b) Hebbian-bind sem(word) → sem(def_words) so co-activations
     // carve into trained weights. Fire-and-forget — composition uses
     // the sem injection (a) which is already active.
-    if (typeof this._teachWordDefinition === 'function') {
+    // ⚠ Gated on opts.teach — the inner-voice trained-read caller runs
+    // OFF the walk lane, and an inline teach from there is a concurrent
+    // teacher on the same cluster and scratch buffers the walk is using
+    // (the exact class the chat-pair queue exists to prevent). Gate and
+    // probe callers ride the walk lane, serialized, and keep the default.
+    if (opts.teach !== false && typeof this._teachWordDefinition === 'function') {
       this._teachWordDefinition(word, { reps: 4, label: 'EMIT-DEF' })
         .catch(() => null);
     }

@@ -5044,6 +5044,50 @@ const SERVER_CHAT_MIXIN = {
       // browser doesn't have.
       const seed = this._pickInnerThoughtSeed();
 
+      // ── INNERTHINK — a CONCEPT-SEEDED thought reads TRAINED pathways
+      // instead of free compose. Free composition is her weakest production
+      // (gate: PROD 18% / STUDENT 2.6% vs READ 88-100%), which is why the
+      // popups read as word salad; but a definition she holds and an
+      // association she has bound are things she genuinely KNOWS today —
+      // the same class of trained-weight read that fixed the chat question
+      // lane. Only the k-vocab-recent seed slot routes here (1 of 7 in the
+      // rotation), per-concept cooldown inside, and a trained-read tick
+      // REPLACES the compose tick — never runs in addition to it. Every
+      // other seed class falls through to think() untouched: free compose
+      // keeps being exercised and grows with the walk.
+      if (seed && seed.source === 'k-vocab-recent' && seed.word) {
+        try {
+          const tt = await this._trainedConceptThought(seed.word);
+          if (tt && tt.text) {
+            this._lastInnerThoughtEmittedAt = now;
+            try { process.stdout.write(`[Brain] 🧠 inner-thought (${tt.kind}: "${seed.word}") "${tt.text}"\n`); } catch { /* non-fatal */ }
+            // These are reads of her own weights — unlike the GloVe showcase
+            // (OWNWORDS.3), they ARE hers, so they feed the bus and the chain.
+            const _c = this.cortexCluster;
+            if (_c && typeof _c.pushEmission === 'function') {
+              try { _c.pushEmission({ source: 'inner-voice', text: tt.text, ts: now, intent: seed.word }); } catch { /* push non-fatal */ }
+            }
+            if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
+            this._innerThoughtChain.push({ sentence: tt.text, seedSource: tt.kind, ts: now });
+            while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
+            if (this.clients && this.clients.size > 0) {
+              const payload = JSON.stringify({
+                type: 'innerThought',
+                word: tt.text.split(/\s+/)[0] || '',
+                sentence: tt.text,
+                seed: 'trained-read',
+                seedLabel: `${tt.kind} of "${seed.word}" — read from her trained weights`,
+                ts: now,
+              });
+              for (const [ws] of this.clients) {
+                if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
+              }
+            }
+            return;
+          }
+        } catch { /* trained read is best-effort — free compose below runs as before */ }
+      }
+
       // Stream-of-consciousness chain. saveWeights serializes
       // _innerThoughtChain so the narrative thread survives restart.
       if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
@@ -5628,6 +5672,66 @@ const SERVER_CHAT_MIXIN = {
     return null;
   },
 
+  /**
+   * INNERTHINK — one trained-pathway read about a concept she was taught.
+   * Two forms, 50/50, both emitting only HER words:
+   *   • definition-bound thought — `_emitDefinition` composes from the
+   *     definition she holds via her own word_motor reads. ⚠ Called with
+   *     `teach: false`: its inline Hebbian bind is walk-lane-legal from the
+   *     gate but would be a CONCURRENT TEACHER from this tick.
+   *   • association recall — inject the concept into sem, settle, one
+   *     `emitWordDirectDonor` read: one word she has genuinely bound to it.
+   * Returns { text, kind } or null (nothing confident → the caller's free
+   * compose runs as before). Per-concept cooldown so their rotation stays
+   * varied; `_currentGateSubject` saved/nulled/restored — it is set at gate
+   * start and never cleared, so outside a gate it is stale and would
+   * mis-scope the word_motor band of the read.
+   */
+  async _trainedConceptThought(word) {
+    const c = this.cortexCluster;
+    const w = String(word || '').toLowerCase().trim();
+    if (!c || !w) return null;
+    if (!this._conceptThoughtAt) this._conceptThoughtAt = new Map();
+    const GAP = Number(process.env.DREAM_THOUGHT_CONCEPT_GAP_MS) >= 0
+      ? Number(process.env.DREAM_THOUGHT_CONCEPT_GAP_MS) : 600000;
+    if ((Date.now() - (this._conceptThoughtAt.get(w) || 0)) < GAP) return null;
+    if (this._conceptThoughtAt.size > 512) this._conceptThoughtAt.clear();   // bounded, cheap reset
+    const curric = this.curriculum;
+    const savedGateSubject = curric ? curric._currentGateSubject : null;
+    if (curric) curric._currentGateSubject = null;
+    try {
+      if (Math.random() < 0.5 && curric && typeof curric._emitDefinition === 'function') {
+        try {
+          const t = await curric._emitDefinition(w, { teach: false, timeoutMs: 3000 });
+          const text = t ? String(t).trim() : '';
+          if (text) {
+            this._conceptThoughtAt.set(w, Date.now());
+            return { text, kind: 'definition-bound thought' };
+          }
+        } catch { /* fall through to the recall read */ }
+      }
+      if (typeof c.emitWordDirectDonor === 'function'
+          && this.sharedEmbeddings && typeof this.sharedEmbeddings.getEmbedding === 'function') {
+        try {
+          const emb = this.sharedEmbeddings.getEmbedding(w);
+          if (emb && emb.length && typeof c.injectEmbeddingToRegion === 'function') {
+            c.injectEmbeddingToRegion('sem', emb, 0.5);
+            for (let t = 0; t < 3; t++) { try { await c.stepAwait(0.001); } catch { break; } }
+          }
+          const r = (await c.emitWordDirectDonor({})) || '';
+          const lw = String(r).toLowerCase().trim();
+          if (lw && lw !== w) {
+            this._conceptThoughtAt.set(w, Date.now());
+            return { text: lw, kind: 'association recall' };
+          }
+        } catch { /* nothing confident this tick */ }
+      }
+      return null;
+    } finally {
+      if (curric) curric._currentGateSubject = savedGateSubject;
+    }
+  },
+
   _pickInnerThoughtSeed() {
     if (!Array.isArray(this._innerThoughtSeedRotation)) {
       // Seven sources rotate. The original five (learning / mood /
@@ -5661,6 +5765,7 @@ const SERVER_CHAT_MIXIN = {
       this._innerThoughtSeedIdx = (this._innerThoughtSeedIdx + 1) % this._innerThoughtSeedRotation.length;
       let pattern = null;
       let label = '';
+      let seedWord = null;   // INNERTHINK — the concept word rides the seed so the trained-read lane can use it
       try {
         if (source === 'learning') {
           const phase = this.cortexCluster?._activePhase?.name || null;
@@ -5772,6 +5877,7 @@ const SERVER_CHAT_MIXIN = {
             if (typeof word === 'string' && word.length > 0) {
               label = `thinking about ${word}`;
               pattern = this._computeServerCortexPattern(label);
+              seedWord = word;   // INNERTHINK — carried on the seed
             }
           }
         } else if (source === 'cell-progress') {
@@ -5806,7 +5912,7 @@ const SERVER_CHAT_MIXIN = {
           }
         }
       } catch { /* source failure → try next */ }
-      if (pattern) return { pattern, source, label };
+      if (pattern) return { pattern, source, label, word: seedWord };
     }
     // All four sources empty (truly fresh brain, no episodes, no anchors,
     // no learning context). Return null pattern so generateAsync falls

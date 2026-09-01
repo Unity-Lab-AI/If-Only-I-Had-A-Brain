@@ -20,6 +20,10 @@
 > ⚠ Also this session, same press: the CHATFAULT.1 TDZ fix (below) and the CLAUDEPARITY publish batch (the whole `.claude/` tree now on both remotes, `419f28b8`). `CHATFAULT.2` (the retrieval-bootstrap threshold fork) stays Gee's call — read `_honestSilenceCount` after the press.
 >
 > ⛔→✅ **FIRST LIVE ASK POST-PRESS FAILED ON ITS CLOCK, FIXED SAME SESSION (`CHATFAULT.4`):** "what letter comes after c?" → `qa-probe=22157ms` vs the 20 s budget on a ~40%-service loop → honest null → 70 s of compose → salad (94 s total). Budget now `_chatQProbeBudgetMs` (battery's 45 s floor + 1 s/word past 8, cap 90 s, env flat override) and question-shaped input skips compose continuations (50 of the 94 s). **Needs ANOTHER press** — the box is on `d41927a6`, which carries the lane but the old 20 s clock.
+>
+> ⭐ **SECOND LIVE ASK (after the second press) SCORED THE FIRST TRAINED CHAT ANSWER EVER:** "what letter comes after b?" → `❓ answered via the template lane: "a"` in 39 s. Wrong letter, right mechanism — the global 'a' basin (most-reinforced letter in her whole brain) out-shouted the b→c transition mid-math-teach; the same read passed b→c at the quiet gate. Training/consolidation fixes this; the WORDNORM-class letter-bucket normalization is the priced lever if it persists.
+>
+> ⭐ **INNERTHINK shipped same session (`INNERTHINK.1`):** the popups' salad = free compose (PROD 18%) on mid-teach sem. Concept-seeded thoughts (k-vocab-recent slot) now read TRAINED pathways — definition-bound thoughts (`_emitDefinition` `teach:false`, the inline-teach hazard gated: concurrent-teacher from the inner-voice tick) + association recalls (one bound word, seed-echo refused). Replaces the compose tick, 10-min per-concept cooldown, honest wire labels; free compose untouched on the other 6 seed slots. 13/13 harness. **Rides the same next press.**
 
 > ## ⭐⭐ 2026-09-01 earlier — CHATFAULT: HER FIRST HONEST SILENCE CRASHED THE REPLY LANE, FIXED, AWAITING THE PRESS
 >
