@@ -59,6 +59,13 @@ async function examVocabPreWalk() {
   try { banks = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'student-question-banks.js')).href); }
   catch { return null; }
   if (typeof banks.auditAllExamVocabCoverage !== 'function') return null;
+  // ⛔ ALL THREE CORPORA, NOT JUST ACADEMIC. The first version scanned only
+  // corpora/academic and therefore reported `dad`, `grandma`, `pajamas`, `moms`
+  // and `yeah` as absent — while every one of them is in the hand-authored LIFE
+  // canon, which is exactly where that vocabulary BELONGS. She is taught from
+  // academic + life + coding, so an exam-coverage check that reads one of the
+  // three manufactures a gap out of the other two. Five false findings in the
+  // first run, and they were the most plausible-looking ones on the list.
   const words = new Set();
   const walkCorpus = (dir) => {
     let subs = [];
@@ -70,14 +77,23 @@ async function examVocabPreWalk() {
       try {
         for (const x of (JSON.parse(fs.readFileSync(fp, 'utf8')).experiences || [])) {
           for (const w of String(x.story || '').toLowerCase().split(/\s+/)) {
-            const c = w.replace(/[^a-z]/g, '');
-            if (c) words.add(c);
+            // ⛔ KEEP THE APOSTROPHE. Stripping to [a-z] turned "can't" into
+            // "cant", so the exam bank's "can't" matched nothing and TEN
+            // contractions (`can't`, `don't`, `doesn't`, `mom's`, `dad's`,
+            // `aunt's`, `father's`, `mother's`, `valentine's`, `year's`) were
+            // reported as absent from a corpus that contains every one of them.
+            // A normalisation mismatch in the CHECKER, invented as a curriculum
+            // gap — the same shape as every other false finding today.
+            const c = w.replace(/[^a-z']/g, '').replace(/^'+|'+$/g, '');
+            if (c) { words.add(c); if (c.includes("'")) words.add(c.replace(/'/g, '')); }
           }
         }
       } catch { /* skip unreadable cell */ }
     }
   };
   walkCorpus(CORPUS);
+  walkCorpus(path.join(ROOT, 'corpora', 'life'));
+  walkCorpus(path.join(ROOT, 'corpora', 'coding'));
   try { return { report: banks.auditAllExamVocabCoverage(words), corpusWords: words.size }; }
   catch { return null; }
 }
