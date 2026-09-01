@@ -121,6 +121,15 @@ function cleanOpenStax(md, cap) {
     // sits earlier in the block, and it teaches her nothing but list glue.
     // Caught by reading the extracted prose, not by reasoning about the format.
     if ((s.match(/\(\s*[a-e]\s*\)/g) || []).length >= 2) continue;
+    // ⛔ OPENSTAX EMBEDS ITS MATH AS LaTeX IN THE MARKDOWN, and it survived the
+    // tag strip: `size 12{p= { {f} over {a} } } {}` was banked as a sentence.
+    // Same rule as the wiki cleaner — DROP, do not repair; half a formula is
+    // not prose with a blemish.
+    if (/\\displaystyle|\\[a-z]{2,}\s*\{|size\s+\d+\s*\{|\bover\s*\{/i.test(s)) continue;
+    if ((s.match(/[{}]/g) || []).length >= 2) continue;
+    // A cross-reference whose `[link](...)` target was stripped, leaving
+    // "as shown in ." — it now points at nothing.
+    if (/\b(as shown in|as illustrated in|shown in|illustrated in|see)\s*[.,]/i.test(s)) continue;
     out.push(s.toLowerCase());
     if (out.length >= cap) break;
   }

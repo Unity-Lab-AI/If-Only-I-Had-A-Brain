@@ -874,6 +874,16 @@ const SERVER_STATE_MIXIN = {
       // never learn a successor at any rep count, while an UNTRAINED one is a
       // curriculum question. Reporting them as one number is what let three
       // quarters of all words sit unable to emit (cluster.js:1204-1222).
+      // CURRICULUM COVERAGE — the boot-computed reachability report. Answers
+      // "is every cell the walk runs actually fed?", which is a different and
+      // strictly harder question than "how deep is each corpus file" — the
+      // latter passed for a year while 268,481 words sat in cells the walk
+      // never reaches and 71 cells ran with no lane at all.
+      // ⚠ A cached object read, NOT a recomputation: the sweep runs once at
+      // boot (see brain-server.js) because the state payload is assembled at
+      // 10fps and a per-push filesystem walk would ride the loop the donor and
+      // WS pump share.
+      curriculumCoverage: _lap('curriculumCoverage', () => this._curriculumCoverage || null),
       letterRead: _lap('letterRead', () => {
         try {
           const cur = this.curriculum;
