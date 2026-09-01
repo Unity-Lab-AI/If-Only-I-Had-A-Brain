@@ -751,13 +751,23 @@ const SERVER_CHAT_MIXIN = {
     // huge cortex with the GPU proxy down must skip it for the same reason
     // compose is skipped.
     let qaPath = null;
-    if (!_cpuTickUnsafe && text && this.curriculum
+    // Question-shaped input, computed once — gates the qa-probe AND tells the
+    // compose lane to skip its continuation clauses (a factual ask does not
+    // want two extra composed sentences appended; that was 50 of a measured
+    // 94 s reply pass).
+    const _questionShaped = !!(text && this.curriculum
+      && typeof this.curriculum._isQuestionLike === 'function'
+      && this.curriculum._isQuestionLike(text));
+    if (!_cpuTickUnsafe && _questionShaped && this.curriculum
         && typeof this.curriculum.answerChatQuestion === 'function') {
       try {
         this._chatStamp('qa-probe');
-        const qa = await this.curriculum.answerChatQuestion(text, {
-          timeoutMs: Number(process.env.DREAM_CHAT_QPROBE_TIMEOUT_MS) || 20000,
-        });
+        // The budget defaults to the wrapper's input-scaled figure (45 s floor
+        // — the battery's own per-question budget — +1 s/word past eight,
+        // capped 90 s). The env flag, when set, overrides flat.
+        const _envQProbeMs = Number(process.env.DREAM_CHAT_QPROBE_TIMEOUT_MS);
+        const qa = await this.curriculum.answerChatQuestion(text,
+          _envQProbeMs > 0 ? { timeoutMs: _envQProbeMs } : {});
         if (qa && qa.answer) {
           qaPath = qa.path;
           // Render-boundary only (capitalization + terminal punctuation via
@@ -811,6 +821,9 @@ const SERVER_CHAT_MIXIN = {
             // 3 full emissions per reply (~39s) stacked on teach + a weights save
             // starved the event loop 47s → donor socket EPIPE → donor dead.
             curriculumBusy: !!this._curriculumInProgress,
+            // Question-shaped input: compose answers in ONE sentence — the
+            // continuation clauses are for conversation, not factual asks.
+            questionInput: _questionShaped,
             predictionError: 0,
             motorConfidence: this.motorConfidence ?? 0,
             psi: this.psi,

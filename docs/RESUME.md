@@ -18,6 +18,8 @@
 > ```
 >
 > ⚠ Also this session, same press: the CHATFAULT.1 TDZ fix (below) and the CLAUDEPARITY publish batch (the whole `.claude/` tree now on both remotes, `419f28b8`). `CHATFAULT.2` (the retrieval-bootstrap threshold fork) stays Gee's call — read `_honestSilenceCount` after the press.
+>
+> ⛔→✅ **FIRST LIVE ASK POST-PRESS FAILED ON ITS CLOCK, FIXED SAME SESSION (`CHATFAULT.4`):** "what letter comes after c?" → `qa-probe=22157ms` vs the 20 s budget on a ~40%-service loop → honest null → 70 s of compose → salad (94 s total). Budget now `_chatQProbeBudgetMs` (battery's 45 s floor + 1 s/word past 8, cap 90 s, env flat override) and question-shaped input skips compose continuations (50 of the 94 s). **Needs ANOTHER press** — the box is on `d41927a6`, which carries the lane but the old 20 s clock.
 
 > ## ⭐⭐ 2026-09-01 earlier — CHATFAULT: HER FIRST HONEST SILENCE CRASHED THE REPLY LANE, FIXED, AWAITING THE PRESS
 >
