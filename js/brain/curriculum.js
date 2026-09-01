@@ -147,11 +147,32 @@ export const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
 // transition lane is ~73% of that, which is precisely the term the pending rep
 // re-price targets. Against a current cost of ZERO — and a degree that is
 // currently not taught at all.
+// ⛔⛔ THE SECOND HALF OF THE SAME DEFECT, found by auditing every cell the walk
+// actually runs (213, not the rectangular 260 — the roster varies by grade):
+// art, pe, music, health, language and ap are REAL COURSES sat every year, and
+// all 71 of their cells trained only the hand-written fact-pair literals in
+// their runners. They were never a deliberate exclusion — math (equational) and
+// life (bespoke) are, and those two correctly stay out of this set.
+//
+// ⭐ These courses have a KNOWLEDGE half and a SKILL half. Art history, colour
+// theory, music notation, nutrition, the anatomy of movement, the grammar of a
+// second language — that is knowledge, it is what a textbook carries, and it is
+// what this set governs. Actually drawing, actually running, actually playing is
+// the SKILL half and already has its own lanes (the PAINT practice loop trains
+// her hand against her own percept). Prose does not replace the skill lane.
+//
+// ⚠ RE-PRICE, computed BEFORE this changed, from the MEASURED average words per
+// cell per band (early 3,894 · middle 5,895 · upper 37,513 · high 41,555 ·
+// college 31,326 · grad 29,095): 71 cells ≈ 1,799,433 words ≈ 31.3 h at the
+// fast measured teach rate, 76.0 h mid, 200.8 h congested. The transition lane
+// is 68% of that, which is the term the pending rep re-price targets.
 export const PROSE_ACADEMIC_SUBJECTS = new Set([
   'ela', 'science', 'social', 'economics', 'psychology', 'civics', 'cs',
   // The college-and-above roster — her CS major, gen-ed, the two CS tracks,
   // and the grad/PhD research specialty.
   'major', 'genered', 'cstheory', 'cssystems', 'research',
+  // The six real courses that ran with no prose lane at all.
+  'art', 'pe', 'music', 'health', 'language', 'ap',
 ]);
 
 // Add #10 / #14 — subject-introduction matrix. The 6 core tracks above run
