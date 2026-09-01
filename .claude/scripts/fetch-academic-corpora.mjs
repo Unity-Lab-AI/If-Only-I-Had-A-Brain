@@ -406,10 +406,29 @@ function classifyBody(status, text) {
   return 'ok';
 }
 
-async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_BAND.early) {
-  const hosts = preferSimple
+// A topic is either a plain string (Wikipedia) or {t, host} naming another
+// MediaWiki wiki — Wikibooks, for the bands OpenStax does not reach.
+//
+// ⛔ WIKIBOOKS LIVES HERE RATHER THAN IN ITS OWN SCRIPT, AND THE REASON WAS
+// MEASURED: it is the same MediaWiki API family as Wikipedia and shares
+// Wikimedia's PER-IP rate limit. A probe run during this build returned HTTP
+// 429 "You are making too many requests" while the Wikipedia pass was going.
+// A second concurrent MediaWiki fetcher would compete for one budget instead
+// of adding throughput — so the shelf becomes extra TOPICS on the existing
+// paced, throttle-aware fetcher, and inherits its backoff, banded caps,
+// per-entry licence and keep-longer merge for free.
+const topicTitle = (t) => (typeof t === 'string' ? t : t.t);
+const topicHosts = (t, preferSimple) => {
+  if (typeof t !== 'string' && t.host) return [t.host];
+  return preferSimple
     ? ['simple.wikipedia.org', 'en.wikipedia.org']
     : ['en.wikipedia.org', 'simple.wikipedia.org'];
+};
+
+async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_BAND.early, hostsOverride = null) {
+  const hosts = hostsOverride || (preferSimple
+    ? ['simple.wikipedia.org', 'en.wikipedia.org']
+    : ['en.wikipedia.org', 'simple.wikipedia.org']);
   let lastReason = 'no-content';
   // Exponential backoff with a real ceiling. Throttle recovery is measured in
   // tens of seconds, not the 700ms the old ladder allowed, so the ladder now
@@ -507,13 +526,14 @@ async function buildCell(subject, grade, titles) {
       already = new Set((prev.experiences || []).map((e) => e.theme));
     } catch { /* no prior cell — fetch everything */ }
   }
-  const wanted = titles.filter((t) => !already.has(t.toLowerCase().replace(/[^a-z0-9]+/g, '-')));
+  const wanted = titles.filter((t) => !already.has(topicTitle(t).toLowerCase().replace(/[^a-z0-9]+/g, '-')));
   if (ONLY_MISSING && wanted.length !== titles.length) {
     process.stdout.write(`  ${subject}/${grade}: ${already.size} already banked, requesting ${wanted.length} missing\n`);
   }
   const CAP = sentCapFor(grade);
-  for (const title of wanted) {
-    const got = await fetchExtract(title, preferSimple, CAP);
+  for (const topic of wanted) {
+    const title = topicTitle(topic);
+    const got = await fetchExtract(title, preferSimple, CAP, (typeof topic !== 'string' && topic.host) ? [topic.host] : null);
     const sents = (got && got.sents) || [];
     if (sents.length) {
       // Licence is recorded PER ENTRY, not claimed once at the file level. The
