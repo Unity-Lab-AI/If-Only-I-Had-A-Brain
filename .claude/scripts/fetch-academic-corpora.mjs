@@ -22,7 +22,58 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const OUT = path.join(ROOT, 'corpora', 'academic');
 
-const MAX_SENT_PER_TOPIC = 14;
+// ⛔⛔ THE 14-SENTENCE CAP WAS DELETING CONTENT THAT HAD ALREADY BEEN DOWNLOADED.
+//
+// The API call below asks for `prop=extracts&explaintext=1` with NO `exintro`,
+// so the FULL plaintext article arrives every time. The old flat cap of 14 then
+// threw almost all of it away. Measured against the live API on three real
+// topic-list entries:
+//
+//     Photosynthesis   49,740 chars -> 270 usable sentences -> 14 kept (94.8% discarded)
+//     Cell (biology)   39,944 chars ->  86 usable sentences -> 14 kept (83.7% discarded)
+//     Ancient Rome     97,221 chars -> 682 usable sentences -> 14 kept (97.9% discarded)
+//
+// The corpus was never limited by the source, the licence, the network or the
+// topic lists. It was limited by this constant, applied identically to a
+// kindergarten cell and a PhD cell. A whole education fit in 12,075 sentences
+// because ~95% of every download was dropped on the floor after being fetched.
+//
+// ⭐ THE CAP IS NOW GRADE-BANDED, because a real year is a different size at
+// every grade — which is the actual pedagogical fact the flat number ignored.
+// A kindergarten year is not 680 sentences of encyclopedia prose, and a PhD
+// year is not 14. Early grades stay deliberately small AND read from Simple
+// English (see EARLY_GRADES below); the ceiling opens as the real course does.
+//
+// ⚠ RE-PRICE (standing LAW — computed before this constant moved, recorded on
+// the board under CURVEBUILD): the teach cost splits across two lanes with
+// DIFFERENT growth. The per-word inner loop scales linearly with words. The
+// expensive lane — word->word transitions at 24 reps — consumes UNIQUE pairs,
+// deduped and frequency-bucketed, and unique pairs were measured on this very
+// corpus to grow as words^0.796 (model fit within 0.1% across a 15x subsample
+// sweep). So 100x the content costs ~39x on the expensive lane, not 100x, and
+// the dedup ratio IMPROVES as the corpus grows (73.8% -> 42.6% measured).
+const SENT_CAP_BY_BAND = {
+  early:   60,    // pre-K .. grade2  — short, concrete, Simple-English prose
+  middle: 120,    // grade3 .. grade5
+  upper:  240,    // grade6 .. grade8
+  high:   400,    // grade9 .. grade12
+  college: 600,   // college1 .. college4 — including her CS major
+  grad:    800,   // grad, phd — the research literature
+};
+const BAND_OF_GRADE = new Map([
+  ['pre-k', 'early'], ['prek', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
+  ['grade3', 'middle'], ['grade4', 'middle'], ['grade5', 'middle'],
+  ['grade6', 'upper'], ['grade7', 'upper'], ['grade8', 'upper'],
+  ['grade9', 'high'], ['grade10', 'high'], ['grade11', 'high'], ['grade12', 'high'],
+  ['college1', 'college'], ['college2', 'college'], ['college3', 'college'], ['college4', 'college'],
+  ['grad', 'grad'], ['phd', 'grad'],
+]);
+// An unknown grade label gets the SMALLEST band, never the largest — an
+// unrecognised cell must not silently pull 800 sentences of PhD-density prose.
+function sentCapFor(grade) {
+  const band = BAND_OF_GRADE.get(String(grade || '').toLowerCase());
+  return SENT_CAP_BY_BAND[band] || SENT_CAP_BY_BAND.early;
+}
 const SENT_MIN = 30, SENT_MAX = 240;
 const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
 
@@ -265,8 +316,11 @@ const TOPICS = {
   },
 };
 
-function clean(extract) {
+function clean(extract, maxSent) {
   if (!extract) return [];
+  // Cap is passed per CELL (grade-banded) — never a module constant. An absent
+  // cap means the caller forgot, and the smallest band is the safe answer.
+  const CAP = Number.isFinite(maxSent) && maxSent > 0 ? maxSent : SENT_CAP_BY_BAND.early;
   // ⛔⛔ `CORPUSGAP.6` (2026-08-31) — NORMALISE BEFORE THE ASCII TEST, OR THE
   //   ASCII TEST SILENTLY EATS WHOLE ARTICLES.
   //
@@ -304,7 +358,7 @@ function clean(extract) {
     if (/may refer to|disambiguation|listen|born|\bb\.\b/i.test(s)) continue;
     if (!/[a-z]/.test(s) || !/[.!?]$/.test(s)) continue;
     out.push(s.toLowerCase());
-    if (out.length >= MAX_SENT_PER_TOPIC) break;
+    if (out.length >= CAP) break;
   }
   return out;
 }
@@ -322,7 +376,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // and Simple often lacks depth.
 const EARLY_GRADES = new Set(['kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5']);
 
-async function fetchExtract(title, preferSimple = false) {
+async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_BAND.early) {
   // Retry with backoff — the wiki API throttles rapid sequential requests and
   // returns empty when throttled; a few patient retries populate reliably.
   const hosts = preferSimple
@@ -337,8 +391,8 @@ async function fetchExtract(title, preferSimple = false) {
         const j = await r.json();
         const pages = j?.query?.pages || {};
         for (const k of Object.keys(pages)) {
-          const sents = clean(pages[k].extract);
-          if (sents.length >= 3) return sents;
+          const sents = clean(pages[k].extract, maxSent);
+          if (sents.length >= 3) return { sents, host };
         }
       } catch { /* try next host / retry */ }
     }
@@ -401,11 +455,23 @@ async function buildCell(subject, grade, titles) {
   if (ONLY_MISSING && wanted.length !== titles.length) {
     process.stdout.write(`  ${subject}/${grade}: ${already.size} already banked, requesting ${wanted.length} missing\n`);
   }
+  const CAP = sentCapFor(grade);
   for (const title of wanted) {
-    const sents = await fetchExtract(title, preferSimple);
+    const got = await fetchExtract(title, preferSimple, CAP);
+    const sents = (got && got.sents) || [];
     if (sents.length) {
-      experiences.push({ theme: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), story: sents.join(' ') });
-      process.stdout.write(`  ${subject}/${grade}: ${title} (${sents.length})\n`);
+      // Licence is recorded PER ENTRY, not claimed once at the file level. The
+      // ingest spans sources with different licences (and per-article licences
+      // at arXiv/PMC), so a blanket file-level claim would be a guess the
+      // moment a second source lands. TEACHVIEW's "source licence not recorded
+      // on an entry" flag reads this field.
+      experiences.push({
+        theme: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        story: sents.join(' '),
+        source: got.host,
+        licence: 'CC-BY-SA-3.0',
+      });
+      process.stdout.write(`  ${subject}/${grade}: ${title} (${sents.length}/${CAP})\n`);
     } else {
       process.stdout.write(`  ${subject}/${grade}: ${title} — no usable content, skipped\n`);
     }

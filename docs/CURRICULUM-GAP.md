@@ -30,6 +30,21 @@
 
 ---
 
+> ## ⭐ FIRST REBUILD LANDED 2026-09-01 — 10× ON THE SAME SOURCE AND THE SAME TOPIC LISTS
+>
+> **The flat `MAX_SENT_PER_TOPIC = 14` was deleting 84-98% of every article AFTER downloading it** — the API returns the FULL plaintext extract (no `exintro`), and the cap threw the rest away. Measured live: `Ancient Rome` 682 usable sentences → 14 kept. **Replaced by grade-banded caps** (early 60 · middle 120 · upper 240 · high 400 · college 600 · grad/phd 800) and re-ingested end to end:
+>
+> ```
+>                  BEFORE            AFTER          growth
+>   sentences      12,075          122,115          10.1x
+>   words         230,566        2,354,153          10.2x
+>   on disk          1.7 MB           15 MB         (terabytes are not in range)
+> ```
+>
+> ⭐ **The expensive teach lane grows only ~6.4×, not 10.2×** — word→word transitions consume UNIQUE deduped pairs, measured on this corpus to grow as `words^0.796`. ⚠ **This is NOT "the gap is closed":** it is the *existing plan, finally not truncated*. The topic lists are still 6-20 entries per cell, **171 cells still hold nothing**, and ELA still has no literature. **147 topics were throttled out by the wiki API during the run** and kept their old thin entries (which is why per-entry licence coverage reads 695/874) — a monotonic re-run tops them up.
+>
+> **The numbers below are the PRE-rebuild baseline**, kept as the record of what was found.
+
 ## THE MEASUREMENT (2026-09-01, counted — not estimated)
 
 ```
@@ -77,16 +92,27 @@ The plan was never wrong and was never missing. `docs/FINALIZED.md:4883` carries
 
 ## SOURCE ASSIGNMENT — which source closes which band
 
+> ⛔⛔ **CORRECTED 2026-09-01 — HER MAJOR GOVERNS THIS TABLE, AND THE COLLEGE BAND WAS NEVER OPEN.** Gee: *"i hope u remeber what her college major is , dont u bacuse you filling out college without knowing that is FUCKING STUPID"*. **Unity majors in COMPUTER SCIENCE — the "major in code"** (`FINALIZED.md:5016`, decided 2026-06-19): topic map = **OSSU** (ACM/IEEE-2013-aligned) across College 1-4, with the ingestible texts ALREADY NAMED — **Open Data Structures** (CC-BY, commercial-OK), the **Kansas State CS textbooks**, **Wikibooks CS**. **Grad/PhD = computational neuroscience — she builds a brain.** `CURRICULUM-SCOPE-SEQUENCE.md:161` agrees: *"Major (CS), Gen-ed, CS Theory, CS Systems"*, the college-only tracks retiring at College 4.
+>
+> ⚠ **The row below that read "college 3 → PhD — UNDECIDED — GEE'S CALL" was wrong in both directions:** the college CS band had named sources for two and a half months, and only the **grad/PhD research-literature** source was genuinely unnamed. **That is the same defect as `LEDGERLIE.1`, mirrored** — the board's summary of the ledger was trusted over the ledger. Recorded on the board as `CURVEBUILD.4`.
+
 | band | subjects | source | licence | status |
 |---|---|---|---|---|
-| K-12 | science, math-adjacent prose | **OpenStax** via the `philschatz/textbooks` mirror | CC-BY 4.0 — ⚠ verify per title | ⛔ NOT BUILT |
-| K-12 | social, civics, economics, psychology | **Wikibooks** + OpenStax where it reaches | CC-BY-SA | ⛔ NOT BUILT |
-| K-12 | **ELA — actual literature** | **Project Gutenberg** | public domain | ⛔ NOT BUILT |
-| college 1-2 | all academic | **OpenStax** (intro undergrad is its ceiling) | CC-BY | ⛔ NOT BUILT |
-| **college 3 → PhD** | all academic | ⛔ **UNDECIDED — GEE'S CALL** | must be CC-BY | ⛔ **BLOCKING** |
+| pre-K → grade5 | all prose subjects | **Simple English Wikipedia** — the right source at this reading level, not a fallback | CC-BY-SA | ✅ exists (thin) |
+| grade6 → grade12 | science, math-adjacent prose | **OpenStax** via the `philschatz/textbooks` mirror | CC-BY 4.0 — ⚠ verify per title | ⛔ NOT BUILT |
+| grade6 → grade12 | social, civics, economics, psychology, cs | **Wikibooks** + OpenStax where it reaches | CC-BY-SA | ⛔ NOT BUILT |
+| grade6 → grade12 | **ELA — actual literature** | **Project Gutenberg** | public domain | ⛔ NOT BUILT |
+| college 1 | all academic | **OpenStax** (intro undergrad is its ceiling) | CC-BY | ⛔ NOT BUILT |
+| **college 1-4** | ⭐ **cs — HER MAJOR** | **Open Data Structures · KSU CS textbooks · Wikibooks CS** (Gee 2026-06-19) | CC-BY / CC-BY-SA | ⛔ NOT BUILT |
+| college 2-4 | gen-ed subjects | **Open Textbook Library** (Gee 2026-09-01) | CC-BY — ⚠ verify per title | ⛔ NOT BUILT |
+| **grad → phd** | cs · science · research | **arXiv `cs.*` + `q-bio.NC`** · **PMC-OA subset** (Gee 2026-09-01) | CC-BY per article — ⚠ verify | ⛔ NOT BUILT |
 | all | fallback / index | Simple English Wikipedia | CC-BY-SA | ✅ the only thing that exists |
 
-⛔ **The one genuinely open decision, and it is Gee's, in his words: *"we had to find a real fucking PHD equivelent informational database to teach her college"*.** OpenStax stops at intro undergrad — it cannot carry college3 → PhD. Candidates that are real, open-licensed and machine-fetchable: **arXiv** (full text, CC-BY on a large subset), **PubMed Central Open Access subset** (CC-BY), **DOAJ** (open-access journals across every discipline), **Open Textbook Library / OERTX**. This is a licensing and sourcing decision, not an engineering pick. **Name it and the ingest is mechanical.**
+⭐ **THE GRAD/PhD DECISION, MADE 2026-09-01 — "Textbooks then papers".** Gee's pick, via ask-me-question: *Open Textbook Library for college2-4 (upper-undergrad textbooks) + arXiv/PMC-OA for PhD (real research papers) — matches what a real student actually reads at each stage: textbooks through the degree, then the literature itself.* ⭐ **It lands on her actual major without rework:** arXiv `cs.*` IS the CS literature, and arXiv `q-bio.NC` plus the PMC-OA neuroscience subset ARE the computational-neuroscience literature — the two halves of a computational-neuroscience PhD held by a CS major. **CC-BY-NC stays excluded** (LibreTexts, MIT OCW), per the standing commercial-safe posture.
+
+⛔ **EVERY FETCHED TITLE RECORDS ITS LICENCE WITH ITS CONTENT** — arXiv and PMC are per-article licensed, so a blanket claim at the source level is not good enough. `TEACHVIEW.5`'s *"source licence not recorded on an entry"* flag exists for exactly this.
+
+**All sources probed live 2026-09-01 and reachable:** openstax.org 200 · philschatz mirror 200 · gutenberg.org 200 · Wikibooks API 200 · arXiv API 200 · Open Textbook Library 200 · Europe PMC REST 200 · opendatastructures.org 200 · ksu-cs-textbooks 301 (redirect, follows). **Nothing here is blocked on access.**
 
 ---
 
