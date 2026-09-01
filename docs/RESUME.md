@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-31 (LATEST — PICK UP HERE) — THE DOC SWEEP RAN ACROSS ALL EIGHT TREES, AND THE WALK PASSED ITS FIRST PHASE
+> ## ⭐⭐⭐ 2026-08-31 (LATEST — PICK UP HERE) — THE ~21 h CHECK-IN: THE WATCH PASSED, AND THE WALK'S BIGGEST COST WAS A SHADOW MISFILED AS A REFUSAL
+>
+> ### Where it is — read live at 20.97 h uptime on `b1a5eb01` (same boot, no restart)
+> ```
+> brain    ela/kindergarten · cellPhasesCompleted 4 / 25 · phase 5 _teachRhymeFamilies in flight
+> memory   tier1 12 · freqMerged 2,328 · tier2 12 schemas (incl. academic-stories) · replayWrites 444
+> voice    emitAttempts 6,029 / rejects 6,029 all no-best-word · matrixHits 0 (expected pre-vocab)
+> defs     queue 2,126 of 2,247 — drain collapsed 80/h → ~4.7/h after boot ← WATCH
+> repo     feature/index-carrier-refusals — IDXCARRIER.1 built, NOT cascaded yet
+> ```
+> **WATCH.1 PASSED** (phases 0→4) · **WATCH.3 passing by design** (small tier1, merge counter climbing) ·
+> **WATCH.5 PASSED** (academic schema exists) · **WATCH.6** no new ~30 s-periodic BLOCKED · **WATCH.7** still 0, expected.
+> The 8-14 h first-cell estimate blows past 24 h — but NOT for the falsifier's named reason (the REPCOMP-suspect heavy phases COMPLETED).
+>
+> ### ⛔ THE FIND, AND THE CORRECTION I OWED WITHIN THE HOUR
+> `cpuFullMs` 28.8M ms = **8.0 h = 38.2% of the boot**. First filed as "CPU passes the GPU refused" (98.1% refusal rate, donor 16-run cap, 89% of refusals >64k runs — all real numbers). **Wrong story:** `boundGpu` 427,056 vs 427,057 teach calls — **the bound op was GPU-carrying every call.** The "refusals" were the CPU shadow running per-final-rep at 377 ms because its 30 s cadence sat behind `if (_sampleN > 1)`, set by only the six heavy pair loops. 77,936 − 1,484 compressed = 76,452, and 77,636 were bound-carried fall-throughs. **The counter lied by classification** — new instruments-that-lie shape, written into the wiki gotcha.
+>
+> ### ✅ THE FIX — server-side, ten lines, NO donor release (`js/brain/cluster/hebbian.js`)
+> Cadence unconditional in Oja + anti twins · bound-carried calls skip the ranges attempt (was double-training compressible patterns) · shadows file as `cpuShadow` + new `boundShadow` discriminator. RE-PRICE: ~61 → ~2 shadows/min, **~37% of wall clock freed**; staleness ≤30 s unchanged in kind; checkpoints anchored by the hourly GPU readback (verified live: 17 pulls this boot). 7/7 harness on the real mixin; `node --check` + ESM + bundle clean. **Lands on a normal Update & Savestart — phase progress banks. Watch: `cpuFull` static, `boundShadow` ~2/min, light phases back to sub-minute.** The index-carrier donor release stays unbuilt (~300 genuine custom-vector calls per 21 h — not worth it on a read).
+>
+> ## 2026-08-31 — THE DOC SWEEP RAN ACROSS ALL EIGHT TREES, AND THE WALK PASSED ITS FIRST PHASE
 >
 > ### Where it is — read live at 1.69 h uptime, not recalled
 > ```
