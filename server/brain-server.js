@@ -3594,6 +3594,29 @@ class ServerBrain {
       // the module from the HTTP handler scope.
       this._curriculumSubjects = Array.isArray(curriculumMod.SUBJECTS) ? curriculumMod.SUBJECTS.slice() : null;
       this._curriculumGradeOrder = Array.isArray(curriculumMod.GRADE_ORDER) ? curriculumMod.GRADE_ORDER.slice() : null;
+      // CURRICULUM COVERAGE — computed ONCE at boot, never on the broadcast
+      // path. It walks corpora/academic (a few hundred small JSON reads), and
+      // the state payload is assembled at 10fps, so recomputing it per push
+      // would put a filesystem sweep on the loop the donor and WS pump share.
+      // ⭐ Cached here as a plain object the state publish reads for free.
+      // ⚠ Corpus files are on disk before the process starts, so unlike the
+      // weights there is no cold-start window where this reads empty and
+      // caches the emptiness — the LETTERCOLD failure shape does not apply.
+      // Recompute deliberately with the CLI auditor, which imports the SAME
+      // module, so the command and this field can never disagree.
+      try {
+        const covMod = await import('./curriculum-coverage.js');
+        this._curriculumCoverage = covMod.computeCoverage(
+          curriculumMod, path.join(__dirname, '..', 'corpora', 'academic'),
+        );
+        if (this._curriculumCoverage) {
+          const c = this._curriculumCoverage;
+          console.log(`[Coverage] ${c.cellsWalkRuns} cells run · ${c.ok} fed · ${c.thin} thin · ${c.empty} EMPTY · ${c.missingLane} no-lane · ${c.unreachableFiles} unreachable (${c.reachableWords.toLocaleString()} words)`);
+        }
+      } catch (e) {
+        this._curriculumCoverage = null;
+        console.warn(`[Coverage] unavailable — ${e?.message || e}`);
+      }
       // wire live dictionary API onto cluster + curriculum.
       // Server-side cluster gets cluster.lookupDefinition(word) async,
       // cluster.lookupDefinitionSync(word) for instant cache reads, and
