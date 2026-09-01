@@ -20714,29 +20714,28 @@ export class Curriculum {
     return null;
   }
 
-  // iter16 — deterministic fallback when both templated AND chaotic
-  // emission return empty. Last-ditch attempt: if the question contains
-  // a known K-vocab word, return that word's first character (matches
-  // the K-PROD pattern "what is the first letter of cat?" → "c").
-  // Better an honest first-letter attempt than silent "".
-  _deterministicFallback(question, opts = {}) {
-    if (!question) return null;
-    const q = question.toLowerCase();
-    // Try to find a K-vocab word inside the question. Return its first letter.
-    if (this.dictionary?._words) {
-      const words = q.match(/[a-z]+/g) || [];
-      for (let i = words.length - 1; i >= 0; i--) {
-        const w = words[i];
-        if (w.length < 2) continue;
-        const entry = this.dictionary._words.get(w);
-        if (!entry || entry.isPersona) continue;
-        // Skip stop-words
-        if (/^(what|which|who|where|when|why|how|the|a|an|is|are|was|were|do|does|did|can|will|would|could|should|of|in|on|at|to|for|with|and|or|but|that|this|it|its|i|you|he|she|we|they|my|your|his|her)$/.test(w)) continue;
-        return w[0];
-      }
-    }
-    return null;
-  }
+  // ⛔⛔ `_deterministicFallback` WAS DELETED HERE 2026-09-01 — dead code that
+  // implemented an explicitly forbidden mechanism.
+  //
+  // It took a question, found a known vocabulary word inside it, and returned
+  // THAT WORD'S FIRST CHARACTER as her answer — its own comment said so:
+  // "Better an honest first-letter attempt than silent ''."
+  //
+  // ⛔ TWO LAWS FORBID IT. `§GRADE COMPLETION GATE` requires equational teach
+  // with "no word lists, no sentence arrays, NO FIRST-LETTER PRODUCTION" — this
+  // was first-letter production by name. And `NO FALLBACKS` forbids exactly this
+  // shape: a canned deterministic answer standing in for trained emission when
+  // the real path returns nothing.
+  //
+  // ⭐ Its premise was also wrong. A first letter is not "more honest" than
+  // silence — it is a plausible-looking answer with no trained basis, which is
+  // strictly worse than an honest null, because a probe scoring it would credit
+  // her with production she does not have. Honest silence is already the
+  // designed behaviour everywhere else in this lane.
+  //
+  // ⚠ ZERO-RISK REMOVAL, VERIFIED: `grep _deterministicFallback` returned ONLY
+  // the definition — it had no callers anywhere in the tree, so it was dead code
+  // waiting to be wired by someone who trusted its comment.
 
   async _probeProductionEmission(question, expectedAnswers, opts = {}) {
     const cluster = this.cluster;
