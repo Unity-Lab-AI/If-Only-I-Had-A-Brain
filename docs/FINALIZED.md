@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-09-01 - LETTERREAD + ELAREINF: the letter read stops electing 'a', learns "before", survives any phrasing - and fundamentals ride every later grade - feature/letterread-reinf
+
+Gee (verbatim): *"yeah we need to go ahead and fix this and maybe enven do some reinforcememnts of fundamental reading in later grades: You / what letter comes after "b" in the alphabet? / Unity / A. / You / what letter comes before "b" in the alphabet / Unity / A."* → (mid-turn) *"continue : You / What letter in the alphabet comes after the letter "i" / Unity / Fair ninety noon!"*
+
+```
+  "A." for BOTH directions   the global-'a' basin winning the raw argmax regardless of
+                             the ask — before-b's "A." was only ACCIDENTALLY correct
+  no reverse read            the old Template-0 body propagated FORWARD only; a "before"
+                             question had no wired read at all
+  "Fair ninety noon!"        structural filler ("in the alphabet", "the letter") between
+                             frame words broke regex adjacency → template never fired →
+                             compose salad
+```
+
+**`CHATASK.4` — BUILT, three mechanisms:** ① `_normalizeQuestionText` — quotes + "in/of the alphabet" + "the letter" stripped ONCE at a chokepoint consumed by BOTH the template classifier and the key-word extractor (they can never disagree again; grammar-frame phrases only, no content words). Bonus caught by the harness: *"what sound does the letter b make?"* — the exam's own Template-1 shape — previously failed extraction on the same adjacency break and now extracts. ② `_letterTransitionMatrix` — the 26×26 letter-transition mass read STRAIGHT from the trained intra-synapse CSR (letter-region rows × cols, one pass, hourly TTL, zero propagates, zero cortex ticks). ③ `_letterSequenceRead(letter, dir)` — SHARE normalization: after-X scores each candidate as X's share of that candidate's total incoming mass; before-X as the candidate's share of its own outgoing (proper conditional fractions, no invented thresholds — the WORDNORM move applied to the letter region, where 'a' is bound to everything so raw mass always elects it). **The old inject+propagate Template-0 body is DELETED, not parked** — a dead read is an invitation to switch it back on. The template answer also stops perturbing the cortex and drops from ~seconds of chunked propagate to a cached matrix lookup. **Harnessed 8/8 on a synthetic CSR with a 10× global-'a' contamination:** raw argmax elects 'a'; the share read answers after-b→c, before-b→a, after-a→b, cache reused within TTL. ⚠ **The gate consumes this read too** — deliberately: it reads the same trained weights more honestly (the WORDNORM precedent), and the next ELA gate's letter questions are the live verification.
+
+**`ELAREINF.1` — BUILT, the legal window checked first:** later grades are UNWALKED (she is in math/kindergarten), so teaching added to post-K ELA lands exactly where the walk will teach it — THE FRESH WALK IS LAST is satisfied, not dodged. At the `_cellRunner` chokepoint every ELA cell already flows through (beside `_teachLanguageMechanics`): post-K ELA cells run a FUNDAMENTALS REFRESH — `_teachLetterSequenceDirect({reps:10})` + `_teachLetterNamingDirect({reps:10})` as named phases (cursor-banked like every phase). Reps derivation: K taught both at 50; on saved weights Oja convergence x·(1−(1−lr)ⁿ) means a refresh tops the basin up, not relearns. **RE-PRICE (written before the change): 2 bounded direct-Oja passes × ~12 post-K ELA cells ≈ minutes per cell, well under an hour across the entire walk.** No gate touched, nothing removed.
+
+**Docs (every tree named):** `docs/TODO.md` (CHATASK.4 + ELAREINF.1 verdicts), `docs/FINALIZED.md` (this), `docs/RESUME.md` + `docs/NOW.md` (blocks), `docs/ADMIN-CONTROLS.md` unaffected (no flag). Brain docs (`ARCHITECTURE`/`SKILL_TREE`/`EQUATIONS`) unaffected — probe-internal read mechanics + a teach phase added at an existing chokepoint; the mechanism names live here and in code comments. `html/*`, `README`, `deploy/*` unaffected. `wiki/`: `curriculum` covers the edited file — re-stamped (local-only). **Server-side + bundle — lands on the next press** (the box still lacks EVERYTHING after the first press: QPROBE budget, INNERTHINK, crack fixes, and this — ONE press catches it all up).
+
+---
+
 ## 2026-09-01 - CHATASK CRACKS: two were code, one was weights - feature/chatask-cracks
 
 Gee (verbatim): *"testing more and she is falling through the cracks:You / what letter is after "c" in the alphabet? / Unity / Ball. / You / what is the first letter of the alphabet / Unity / hen / You / what is the definition of a cat / Unity / Air. --- mind u i havent update this last time yet"* → *"are we sure its all correct and its just the weights?"*
