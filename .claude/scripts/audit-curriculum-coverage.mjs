@@ -53,7 +53,7 @@ if (process.argv.includes('--json')) {
   console.log('CURRICULUM COVERAGE — reachability first, depth second\n');
   console.log(`  cells the walk runs        : ${r.cellsWalkRuns}`);
   console.log(`    needing a prose corpus   : ${r.needProse}`);
-  console.log(`      OK                     : ${r.ok}`);
+  console.log(`      OK (vs an UNDERIVED bar) : ${r.ok}`);
   console.log(`      THIN (below band floor): ${r.thin}`);
   console.log(`      EMPTY                  : ${r.empty}`);
   console.log(`    no prose lane BY DESIGN  : ${r.byDesignNoProse}  (math, life)`);
@@ -64,5 +64,18 @@ if (process.argv.includes('--json')) {
   if (r.empty) console.log(`\n  ⛔ EMPTY: ${r.emptyList.join('  ')}${more(r.emptyMore)}`);
   if (r.unreachableFiles) console.log(`\n  ⛔ UNREACHABLE: ${r.unreachableList.join('  ')}${more(r.unreachableMore)}`);
   if (r.thin) console.log(`\n  ⚠ THIN: ${r.thinList.join('  ')}${more(r.thinMore)}`);
+  // ⛔ THE BAR, PRINTED. `ok` counts cells clearing floors nobody derived, so
+  // the output says what clearing them is actually worth. A bare numerator is
+  // how an instrument starts lying — the same reason the dashboard ships
+  // "1/17 mx" instead of "1".
+  if (!r.floorsDerived) {
+    const pct = ((r.avgWordsPerProseCell / r.realCourseYearWords) * 100).toFixed(1);
+    console.log(`\n  ⛔ THE BAR IS UNDERIVED — floors were chosen, not measured:`);
+    console.log(`     ${Object.entries(r.floors).map(([k, v]) => `${k} ${v.toLocaleString()}`).join(' · ')}`);
+    console.log(`     A "high" cell reports OK at ${r.floors.high.toLocaleString()} words; one real high-school`);
+    console.log(`     textbook is ~${r.realCourseYearWords.toLocaleString()}-250,000. Average prose cell holds`);
+    console.log(`     ${r.avgWordsPerProseCell.toLocaleString()} words = ~${pct}% of ONE real course year.`);
+    console.log(`     "OK" therefore means NOT-STARVED, not FINISHED.  (see FLOORLIE.1)`);
+  }
   console.log(`\n  ${r.clean ? 'PASS — every cell the walk runs has a lane and content' : 'FAIL — see the flagged cells above'}`);
 }
