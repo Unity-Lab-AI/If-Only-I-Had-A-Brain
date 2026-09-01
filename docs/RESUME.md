@@ -23,6 +23,8 @@
 >
 > ⭐ **SECOND LIVE ASK (after the second press) SCORED THE FIRST TRAINED CHAT ANSWER EVER:** "what letter comes after b?" → `❓ answered via the template lane: "a"` in 39 s. Wrong letter, right mechanism — the global 'a' basin (most-reinforced letter in her whole brain) out-shouted the b→c transition mid-math-teach; the same read passed b→c at the quiet gate. Training/consolidation fixes this; the WORDNORM-class letter-bucket normalization is the priced lever if it persists.
 >
+> ⛔→✅ **PHRASING SWEEP (`CHATASK.2`):** quoted letters broke extraction (→ "Ball."), ordinal asks mis-routed to the definition lane (→ "hen"), "definition of a cat" → "Air." was the right lane + weak weights. Fixed: quote normalization, WH-joint refused on catch-all intent, ordinal asks decline honestly. `CHATASK.3` filed (teach ordinal bindings — curriculum, NOT slipped mid-walk). 9/9 harness. **Rides the same next press.**
+>
 > ⭐ **INNERTHINK shipped same session (`INNERTHINK.1`):** the popups' salad = free compose (PROD 18%) on mid-teach sem. Concept-seeded thoughts (k-vocab-recent slot) now read TRAINED pathways — definition-bound thoughts (`_emitDefinition` `teach:false`, the inline-teach hazard gated: concurrent-teacher from the inner-voice tick) + association recalls (one bound word, seed-echo refused). Replaces the compose tick, 10-min per-concept cooldown, honest wire labels; free compose untouched on the other 6 seed slots. 13/13 harness. **Rides the same next press.**
 
 > ## ⭐⭐ 2026-09-01 earlier — CHATFAULT: HER FIRST HONEST SILENCE CRASHED THE REPLY LANE, FIXED, AWAITING THE PRESS

@@ -6676,6 +6676,14 @@ export class Curriculum {
     const q = String(question || '').trim();
     if (!q || typeof this._studentTestProbe !== 'function') return null;
     if (typeof this._isQuestionLike === 'function' && !this._isQuestionLike(q)) return null;
+    // Ordinal alphabet-position asks ("what is the first/last letter of the
+    // alphabet") have NO trained pathway yet — the binding was never taught.
+    // Worse, their "what is" opener routes them to the DEFINITION lane, which
+    // then defines the word "alphabet" and ships that as her answer (measured
+    // live: → "hen"). Until the ordinal Q→A bindings are taught, the honest
+    // move is declining here so the caller's compose lane runs — a grammar
+    // frame like the template regexes, not a content list.
+    if (/\b(?:first|second|third|fourth|fifth|last|final)\s+(?:letter|number|digit)\b/i.test(q)) return null;
     const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : this._chatQProbeBudgetMs(q);
     const ac = (typeof AbortController === 'function') ? new AbortController() : null;
     let timer = null;
@@ -6700,6 +6708,22 @@ export class Curriculum {
         path = res.definitionAPIPath ? 'definition' : (res.intentRoutedPath ? 'wh-joint' : 'template');
       } else if (res.retention && res.logic) {
         path = 'direct-propagate';
+      }
+      // The WH-joint read is only as good as its intent. When the extracted
+      // intent is the catch-all 'question' (or nothing), the joint injection
+      // was (junk-intent + possibly-wrong subject) and its confident single
+      // word is exactly the mis-subjected wrong-answer class measured live
+      // ('what letter is after "c"…' → subject "alphabet" → "Ball"). Specific
+      // intents (definition / cause / count / …) pass through untouched.
+      if (path === 'wh-joint') {
+        let intent = null;
+        try {
+          const cl = this.cluster;
+          if (cl && cl.constructor && typeof cl.constructor.extractIntentConcept === 'function') {
+            intent = cl.constructor.extractIntentConcept(q);
+          }
+        } catch { intent = null; }
+        if (!intent || intent === 'question') return null;
       }
       if (!path) return null;
       return { answer, path, score: res.score, ticks: res.ticks };
@@ -14467,7 +14491,12 @@ export class Curriculum {
    */
   _extractKeyWord(question) {
     if (!question || typeof question !== 'string') return null;
-    const q = question.toLowerCase().trim();
+    // Quote/punctuation normalization — a live chat ask wrote the letter as
+    // "c" (quoted), and `([a-z0-9]+)` cannot match through a quote mark, so
+    // extraction fell to the last-word fallback and the Template-0 letter
+    // read never fired. Quotes become spaces; inert for gate questions (the
+    // exam banks carry none).
+    const q = question.toLowerCase().replace(/["'`‘’“”]/g, ' ').replace(/\s+/g, ' ').trim();
     // Order matters — more specific patterns first.
     const patterns = [
       // "what letter comes after/before X?" → X

@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-09-01 - CHATASK CRACKS: two were code, one was weights - feature/chatask-cracks
+
+Gee (verbatim): *"testing more and she is falling through the cracks:You / what letter is after "c" in the alphabet? / Unity / Ball. / You / what is the first letter of the alphabet / Unity / hen / You / what is the definition of a cat / Unity / Air. --- mind u i havent update this last time yet"* → *"are we sure its all correct and its just the weights?"*
+
+```
+  ask                                        verdict      mechanism
+  what letter is after "c" in the alphabet?  CODE CRACK   quotes broke _extractKeyWord →
+                                                          fallback grabbed "alphabet" →
+                                                          catch-all WH-joint answered the
+                                                          wrong subject confidently
+  what is the first letter of the alphabet   CODE + GAP   'what is' → DEFINITION lane
+                                                          defined *alphabet* → "hen";
+                                                          ordinal-position asks were never
+                                                          TAUGHT (curriculum gap, CHATASK.3)
+  what is the definition of a cat            WEIGHTS      right lane end to end; her compose
+                                                          from the injected definition
+                                                          emitted "air" — the same global-
+                                                          basin problem as 'a' beating 'c'
+```
+
+**`CHATASK.2` — BUILT, three fixes, probe untouched, gates unaffected:** ① `_extractKeyWord` normalizes quote characters to spaces before matching (inert for exam banks — they carry no quotes; verified `"c"` → `c` and the unquoted forms unchanged). ② `answerChatQuestion` refuses WH-joint answers whose extracted intent is the catch-all `'question'` or null — a joint read with junk intent + possibly-wrong subject is precisely the measured confident-wrong class; specific intents (definition/cause/count/…) and the letter/phon/definition template paths pass through untouched (harnessed). ③ Ordinal alphabet-position asks decline at the wrapper (grammar frame, same class as the template regexes) so the definition lane can't define "alphabet" at them — honest fall-through to compose until `CHATASK.3` teaches the real binding. **9/9 harness on the real class** — including the exact live phrasings and the paths that must not change. **`CHATASK.3` filed, deliberately NOT built:** ordinal Q→A bindings belong in the ELA alphabet-sequence teach, and the walk is already past ela/kindergarten — per THE FRESH WALK IS LAST, curriculum lands where a walk will actually teach it, never slipped mid-walk expecting retroactive effect.
+
+**Docs (every tree named):** `docs/TODO.md` (CHATASK.2 verdict + CHATASK.3 filed), `docs/FINALIZED.md` (this), `docs/RESUME.md` + `docs/NOW.md` (amended), `docs/ADMIN-CONTROLS.md` unaffected (no flag change). Brain docs unaffected — extraction normalization + wrapper acceptance rules, no mechanism change. `html/*`, `README`, `deploy/*` unaffected. `wiki/`: `curriculum` covers the edited file — re-stamped (local-only). **Server-side + bundle — lands on the next press** (⚠ the box is still on `d41927a6`: it lacks the QPROBE 45 s budget, INNERTHINK, and these fixes — ONE press picks up all three).
+
+---
+
 ## 2026-09-01 - INNERTHINK: concept-seeded thoughts read trained pathways - feature/innerthink
 
 Gee (verbatim, sent twice): *"okay here is another question, what about her brain pop ups of her internal thinking, its all word salad... can we fix it too in the same way(might need special treatment) but idk what do you think"*
