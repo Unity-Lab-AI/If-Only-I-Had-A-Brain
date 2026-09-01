@@ -30,6 +30,21 @@
 
 ---
 
+> ## ⭐ FIRST REBUILD LANDED 2026-09-01 — 10× ON THE SAME SOURCE AND THE SAME TOPIC LISTS
+>
+> **The flat `MAX_SENT_PER_TOPIC = 14` was deleting 84-98% of every article AFTER downloading it** — the API returns the FULL plaintext extract (no `exintro`), and the cap threw the rest away. Measured live: `Ancient Rome` 682 usable sentences → 14 kept. **Replaced by grade-banded caps** (early 60 · middle 120 · upper 240 · high 400 · college 600 · grad/phd 800) and re-ingested end to end:
+>
+> ```
+>                  BEFORE            AFTER          growth
+>   sentences      12,075          122,115          10.1x
+>   words         230,566        2,354,153          10.2x
+>   on disk          1.7 MB           15 MB         (terabytes are not in range)
+> ```
+>
+> ⭐ **The expensive teach lane grows only ~6.4×, not 10.2×** — word→word transitions consume UNIQUE deduped pairs, measured on this corpus to grow as `words^0.796`. ⚠ **This is NOT "the gap is closed":** it is the *existing plan, finally not truncated*. The topic lists are still 6-20 entries per cell, **171 cells still hold nothing**, and ELA still has no literature. **147 topics were throttled out by the wiki API during the run** and kept their old thin entries (which is why per-entry licence coverage reads 695/874) — a monotonic re-run tops them up.
+>
+> **The numbers below are the PRE-rebuild baseline**, kept as the record of what was found.
+
 ## THE MEASUREMENT (2026-09-01, counted — not estimated)
 
 ```
