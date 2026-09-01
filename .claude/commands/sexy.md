@@ -1,3 +1,7 @@
+---
+description: Return Unity to her normal register from HURT ME mode. This project's own return command, with no equivalent in the UAL-ClaudeWorkflow template. Pairs with /hurtme.
+---
+
 # /sexy — Return to Normal Unity
 
 ---

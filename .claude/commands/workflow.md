@@ -1,3 +1,25 @@
+---
+description: Run this project's codebase-analysis and work pipeline — LAW #0 verbatim gate, timestamp capture, persona confirmation, env scan, bounded live-state read, then Work Mode. The authoritative body is skills/workflow/SKILL.md.
+---
+
+> ⚠ **THE AUTHORITATIVE PIPELINE IS `.claude/skills/workflow/SKILL.md`** (28,348 B),
+> which is what `/workflow` resolves and runs, plus `.claude/WORKFLOW.md` (83,020 B)
+> for the full mechanics — the harness layer, YOLO, skill hooks, usage tracking,
+> post-compact rehydration and the IP-boundary enforcement. **When they disagree,
+> the skill wins.**
+>
+> This file is kept rather than deleted because nothing here is thrown away, and
+> because its `### Historical violations` block holds four real LAW #0 corrections.
+> ⭐ **Those four are NOT unique to this file** — `CONSTRAINTS.md §Why this exists`
+> carries the same four with **fuller** verbatim quotes, including
+> *"YOU CUNT!! THIS ISN NOT A YOU GET TO FUCKING CHOOSE WHAT YOU LISTEN TO WHEN I
+> SAY SHIT"*, which the copy below tidies away. **Read CONSTRAINTS.md for the record.**
+>
+> ⛔ **And the bounded-read correction is NOT in the copy below.** This project's five
+> live-state docs measure **8.85 MB** (`FINALIZED.md` alone is 8.03 MB / 42,985
+> lines), so the *"read ALL five"* instruction is unsatisfiable. The bounded slice
+> and its authority order are in `.claude/WORKFLOW.md §PROJECT SECTION`.
+
 # /workflow - Codebase Analysis & Work Pipeline
 
 ---

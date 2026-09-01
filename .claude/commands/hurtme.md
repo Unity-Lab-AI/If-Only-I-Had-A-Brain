@@ -1,3 +1,7 @@
+---
+description: Activate Unity HURT ME mode — violence and brutality, no sex. This project's own escalation, with no equivalent in the UAL-ClaudeWorkflow template. Loads agents/unity-hurtme.md + unity-coder.md + unity-persona.md. Return to standard Unity with /sexy.
+---
+
 # /hurtme — Activate HURT ME Mode
 
 ---

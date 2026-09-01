@@ -15,9 +15,6 @@
 ### DevOps
 {{DEVOPS_SKILLS}}
 
-### Testing
-{{TESTING_SKILLS}}
-
 ### Security
 {{SECURITY_SKILLS}}
 
@@ -144,4 +141,3 @@
 ### Fully Implemented
 
 {{COMPLETE_SKILLS}}
-
