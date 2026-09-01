@@ -37,15 +37,60 @@ server/server.log
 server/definition-cache.json
 server/boot-error.log
 
-# === Claude Code — Layer 0 .claude/ IP boundary ===
-# Lab workflow internals (personas, agents, skills, ImHanddicapped.txt,
-# session state, command bodies) stay LOCAL — never committed, never
-# deployed. Blanket-ignore the whole tree so no `git add -A` can ever
-# sweep the persona/workflow IP into a push (especially before a public
-# pre-alpha deploy). A few legacy files (CLAUDE.md / CONSTRAINTS.md /
-# statusline.sh) were tracked before this guard landed; whether to
-# `git rm --cached` them is a separate explicit decision.
-.claude/
+# === Claude Code — .claude/ IS TRACKED HERE, BY OPERATOR DECISION ===
+#
+# The blanket `.claude/` exclude that used to sit here was REMOVED 2026-09-01.
+# It was ignoring 497 of 521 files in the tree while 24 legacy files stayed
+# tracked from before it landed — so the repo held a broken half of the
+# workflow, and the ignore rule read as protection while doing nothing about
+# the files already in the index.
+#
+# Gee (verbatim, 2026-07-04, the original authorization): "option 3, we want
+# people to see how we got to where we aare with the project so they need
+# workflow and files of .claude"
+#
+# Gee (verbatim, 2026-09-01, reaffirming when this was queried): "the brain
+# project folder is entirely shipped to both repos, im telling you this now so
+# what ever is telling u not to push it to both remotes is inaccurat and needs
+# ajustment"
+#
+# This repo is on the `OPERATOR_AUTHORIZED_PUBLIC_REPOS` allowlist inside
+# .claude/hooks/pre-tool-public-repo-guard.cjs — the sanctioned per-repo
+# carve-out to the IP-boundary LAW. The hook returns a synthetic PASS here and
+# would never have blocked a push. See .claude/CONSTRAINTS.md §LAW — .CLAUDE
+# WORKFLOW IP BOUNDARY.
+#
+# WHAT STAYS IGNORED, and why each one:
+
+# 159 MB of third-party TTS binaries across 365 files — two 63 MB .onnx voice
+# models, a 9 MB onnxruntime.dll, espeak dictionaries. NOT workflow IP, and git
+# keeps blobs forever: committing this would permanently add ~159 MB to both
+# remotes with no way back except a history rewrite. Fetched by its own setup,
+# not authored here.
+.claude/piper/
+
+# Personal + machine-local. Anthropic-default-gitignored anyway; listed
+# explicitly because the blanket rule that used to cover them is gone.
+.claude/settings.local.json
+.claude/.env
+.claude/user.json
+.claude/user-context/
+
+# Auth key. .claude/CONSTRAINTS.md says of this file: "user auth key, never
+# touch" — it must never reach a remote, public or private.
+.claude/pollinations-user.json
+
+# Regenerated every session by the hooks; machine-local absolute paths and
+# per-session telemetry, not source.
+.claude/.session-env.json
+.claude/.session-state.md
+.claude/.session-usage.jsonl
+.claude/.session-tidbits.md
+.claude/.last-session.md
+.claude/.docprov-state.json
+.claude/.yolo-mode
+.claude/.setup-complete
+.claude/scheduled_tasks.lock
 
 # === Workflow docs — tracked for project documentation ===
 # (Previously ignored as "generated at runtime" but these are real docs now)

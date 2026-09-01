@@ -10,6 +10,7 @@
     "DISABLE_AUTOUPDATER": "1"
   },
   "feedbackSurveyRate": 0,
+  "model": "claude-opus-5",
   "todoFeatureEnabled": true,
   "showExpandedTodos": true,
   "statusLine": {

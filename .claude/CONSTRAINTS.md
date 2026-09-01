@@ -313,6 +313,69 @@ Describe features by **WHAT THEY DO**, not by which task built them:
 
 ---
 
+# LAW — FINALIZED BEFORE DELETE
+
+## The rule
+
+Never delete a TODO entry — or remove its content — until its verbatim text has been written to `docs/FINALIZED.md` AND the write has been verified.
+
+## The sequence
+
+1. Identify the completed task in `docs/TODO.md`
+2. Open `docs/FINALIZED.md`
+3. APPEND a new session entry containing the FULL verbatim task description (LAW #0) plus closure notes (files touched, what shipped, verification)
+4. SAVE FINALIZED.md
+5. RE-READ FINALIZED.md to confirm the entry is there with the verbatim text intact
+6. ONLY THEN edit `docs/TODO.md` to remove the entry (or change its status)
+
+## Why
+
+If the FINALIZED write fails (disk full, file lock, accidental overwrite) and the TODO entry is already deleted, the verbatim record is lost forever. The user's exact words from the original directive vanish into git history at best. The audit trail breaks.
+
+The "write FINALIZED first, verify, then remove from TODO" sequence makes deletion impossible until preservation is confirmed.
+
+## Failure mode this prevents
+
+Without this LAW, the natural impulse is: "I finished the task → remove the line from TODO → also add an entry to FINALIZED for completeness." The risk: the FINALIZED entry gets condensed/paraphrased on the way (LAW #0 violation), or gets forgotten entirely, or ends up in the wrong session block. The verbatim text was destroyed in TODO before being preserved in FINALIZED.
+
+The strict ordering — FINALIZED first, verify, then TODO removal — eliminates this entire class of error.
+
+> ⚠ **THIS PROJECT ALREADY PAID FOR IT, and the case is worth reading before trusting a tag match.** The 2026-08-31 board reset found **57 completed rows** that had never been removed because the migration had only been done half: three of them were *summaries* in `docs/TODO.md` against separate *fuller* entries in `docs/FINALIZED.md`, so the two files never held the same words and nothing had actually moved. ⛔ **A row whose body is a cross-reference (*"full entry in FINALIZED.md"*) is a VIOLATION, not a migration.** The reset was therefore done by archiving the WHOLE board **byte-for-byte** (163,235 bytes, md5 `de9d9255e70817accf9c91c700f40998`, checked EQUAL to the live file before a single row was removed) rather than cherry-picking the 34 rows whose text differed — **complete by construction instead of complete by my judgement.** ⚠ Audit by string match; **a matching task TAG proves nothing** (`ROSTERDECLARED.1/.2/.3` against a single `ROSTERDECLARED.1` entry read as "missing" and would have duplicated nine entries).
+
+---
+
+# LAW — NEVER DELETE TODO INFO
+
+## The rule
+
+When marking a TODO task as done, change the status marker ONLY. Keep every word of the original task description. Never rewrite TODO from scratch. Never regenerate the file. Never condense old entries.
+
+## Allowed edits to TODO.md
+
+- Change status: `[ ]` → `[~]` → `[x]` → MOVE to FINALIZED.md
+- Add new tasks at the bottom (or in their priority section)
+- Update in-progress notes alongside (not replacing) the original description
+
+## Forbidden edits
+
+- Removing words from a task description because they're "redundant"
+- Rewriting a task in your own words because the original was "informal"
+- Regenerating the TODO file from your understanding of "what's left"
+- Collapsing multiple done tasks into a summary line
+- Deleting "obsolete" tasks instead of moving them to a TOMBSTONES section
+
+## Why
+
+The TODO file is a permanent record of what was asked, when, and in what words. Anyone reading it later — including future-you in a different session — must be able to see WHAT was originally requested, WHAT got done, and WHAT remains. Paraphrasing destroys that audit trail.
+
+## Tombstones
+
+If a task becomes obsolete (the underlying code was deleted, the feature was scrapped, etc.), do NOT delete it. Move it to a `## TOMBSTONES` section at the bottom of TODO.md with a one-line note explaining why it's no longer actionable. The original description stays intact.
+
+> ⚠ **HOW THIS PROJECT APPLIES IT, from `docs/TODO.md`'s own header:** the verdict is **prepended** and the words `Original filing:` keep the entire original description behind it. ⛔ A completed row left at `[ ]`/`[~]` is the same defect class as an instrument nobody reads — six rows were found in that state on 2026-08-30 and were re-verified **in SOURCE**, not from the ledger, before their markers moved.
+
+---
+
 # LAW — GRADE COMPLETION GATE (Gee, 2026-04-16)
 
 ## Gee's exact words 2026-04-16
@@ -671,6 +734,430 @@ If Gee catches that the clear didn't run:
 
 ---
 
+# LAW — GIT FLOW BRANCH DISCIPLINE
+
+## The rule
+
+**Git Flow standards apply to any and all projects using this `.claude/` template.** The following policy — quoted verbatim per LAW #0 — is binding:
+
+> Git Flow standards for any and all projects
+> main branch is the "clean master record"
+> develop is branched from main, for the "in development" branch
+> feature branches are branched from develop, for "in-progress features"
+> And the proper flow of main -> develop -> feature/<feature-name>, feature/<feature-name> -> develop, develop -> main, and ensuring that feature branches are the only place where work is done, work is never done in the develop branch, or the main branch, work is always done in feature branches, feature branches get pushed to an orgin (github or other) if a remote repo exists, PRs are intended to be made between a feature branch and the develop branch, and are to be reviewed before merging into develop, and the same PR flow goes for develop into main. This would also need extended for hotfix and release branches as well.
+
+### Branch taxonomy
+
+| Branch | Off of | Purpose | Merges back to |
+|--------|--------|---------|----------------|
+| `main` | (root) | Clean master record. Production-equivalent. **No work done here.** | — |
+| `develop` | `main` | In-development integration branch. **No work done here.** | `main` (via PR, reviewed) |
+| `feature/<feature-name>` | `develop` | In-progress features. **All work happens here.** | `develop` (via PR, reviewed) |
+| `hotfix/<descriptor>` | `main` | Urgent production fixes. Work happens here. | `main` AND `develop` (via PRs, reviewed) |
+| `release/<version>` | `develop` | Release stabilization. Version bumps, final polish. | `main` AND `develop` (via PRs, reviewed) |
+
+### The flow direction
+
+```
+main ─┬──────────────────────────────────────────► main (release merges, hotfix merges)
+      │
+      └──► develop ─┬─► feature/<name> ──► develop (PR, reviewed)
+                   │                     │
+                   │                     └─► develop ──► main (PR, reviewed)
+                   │
+                   ├─► release/<version> ──► main + develop (PR, reviewed)
+                   │
+        main ──────┴─► hotfix/<descriptor> ──► main + develop (PR, reviewed)
+```
+
+## Forbidden actions
+
+- ❌ Committing directly to `main`
+- ❌ Committing directly to `develop`
+- ❌ Editing source files while checked out on `main` or `develop`
+- ❌ Merging a feature branch into `develop` without a PR + review
+- ❌ Merging `develop` into `main` without a PR + review
+- ❌ Merging a hotfix to `main` without also merging it back to `develop`
+- ❌ Merging a release branch to `main` without also merging it back to `develop`
+- ❌ Creating a feature branch off `main` (must branch off `develop`)
+- ❌ Creating a hotfix branch off `develop` (must branch off `main`)
+- ❌ Working on the default branch when no `develop` exists yet — set up Git Flow first
+- ❌ Skipping the push-to-origin step when a remote repo exists
+
+## Required actions
+
+- ✅ Confirm current branch BEFORE any edit. If on `main` / `master` / `develop` / `prod` / `production` / `release` (un-suffixed) — STOP and branch into `feature/<descriptor>` first.
+- ✅ Branch features off `develop`: `git checkout develop && git pull && git checkout -b feature/<feature-name>`
+- ✅ Branch hotfixes off `main`: `git checkout main && git pull && git checkout -b hotfix/<descriptor>`
+- ✅ Branch releases off `develop`: `git checkout develop && git pull && git checkout -b release/<version>`
+- ✅ Push feature/hotfix/release branches to `origin` if a remote exists: `git push -u origin <branch-name>`
+- ✅ Open a PR for every merge boundary — feature→develop, hotfix→main, hotfix→develop, release→main, release→develop, develop→main
+- ✅ Every PR is reviewed before merge — no self-approve-and-merge unless the project's review policy explicitly permits it
+- ✅ Hotfix and release merges land in BOTH `main` and `develop` so the lines stay in sync
+- ✅ If the project has no `develop` branch yet, create it from `main` before starting work: `git checkout main && git checkout -b develop && git push -u origin develop` (when remote exists)
+
+## Why
+
+Without branch discipline, work that hasn't been reviewed lands directly on the production-equivalent line, integration changes get lost when feature work overwrites them, and there is no audit trail showing what change crossed which gate. Git Flow's three-tier model (main / develop / feature) gives:
+
+- A **stable production line** (`main`) that always reflects what's deployed
+- An **integration line** (`develop`) where features merge and bake before the next release
+- **Isolated work branches** (`feature/*`, `hotfix/*`, `release/*`) that can be rebased, force-pushed, deleted, or PR-rejected without touching the protected lines
+- A **review gate** at every merge boundary so no change reaches `develop` or `main` without a second pair of eyes
+
+The "no work in main or develop" rule is the load-bearing constraint — it is what makes the review gate enforceable. Without it, the protected lines accumulate uncommitted changes and the gate becomes optional.
+
+## Enforcement protocol
+
+### Pre-edit branch check
+
+Before editing ANY source file (the `.claude/` template files themselves, project source, configs, anything tracked by git):
+
+```
+[PRE-EDIT BRANCH HOOK]
+Current branch: $(git rev-parse --abbrev-ref HEAD)
+Branch type: feature/* | hotfix/* | release/* | main | develop | other
+Branch is work-eligible: YES (feature/hotfix/release/other-non-protected) / NO (main/develop/master/prod/production)
+Status: PASS/FAIL
+```
+
+**FAIL conditions:** current branch is `main`, `master`, `develop`, `prod`, `production`, or any unsuffixed `release` branch.
+
+**Recovery on FAIL:**
+1. STOP. Do not edit.
+2. Stash any uncommitted work: `git stash push -m "wip <descriptor>"`
+3. Confirm `develop` exists; if not, create it from `main`: `git checkout main && git pull && git checkout -b develop`
+4. Branch into work-eligible: `git checkout develop && git pull && git checkout -b feature/<descriptor>`
+5. Pop the stash: `git stash pop`
+6. Continue edit on the new branch.
+
+### Pre-push branch check
+
+Before any `git push`:
+
+```
+[PRE-PUSH BRANCH HOOK]
+Current branch: <branch>
+Pushing to remote: YES/NO (skip if no remote configured)
+Target: origin/<branch>
+Branch is feature/hotfix/release: YES/NO
+Push to protected (main/develop) directly: NEVER without PR
+```
+
+Direct pushes to `main` or `develop` without a merged-and-reviewed PR are blocked under this LAW. The only path onto a protected branch is `git merge` of a PR-approved feature/hotfix/release branch.
+
+### Pre-merge PR check
+
+Before any merge into `develop` or `main`:
+
+```
+[PRE-MERGE PR HOOK]
+Source branch: <feature|hotfix|release>/<name>
+Target branch: develop | main
+PR exists: YES/NO (MUST be YES if remote exists)
+PR reviewed: YES/NO (MUST be YES)
+For hotfix/release: paired merge to OTHER protected branch queued: YES/NO
+```
+
+## Failure recovery
+
+When work has accidentally happened on a protected branch:
+
+1. STOP. Acknowledge the violation.
+2. Inspect the commits: `git log --oneline <protected-branch> ^origin/<protected-branch>` (or vs the last known clean point).
+3. Move the commits to a new feature branch:
+   ```
+   git checkout -b feature/<descriptor>
+   git checkout <protected-branch>
+   git reset --hard <last-clean-commit>
+   ```
+4. PR the new feature branch back through the proper merge gate.
+5. Update `docs/TODO.md` / `docs/FINALIZED.md` noting the recovery.
+
+## Setup when no Git Flow exists yet
+
+If the project has no `develop` branch (typical for fresh repos or single-branch legacy):
+
+1. Confirm `main` (or rename default branch to `main` if it's `master`): `git branch -m master main` + `git push -u origin main` + delete old default on remote
+2. Create `develop` from `main`: `git checkout main && git checkout -b develop`
+3. Push `develop` and set as the default integration branch: `git push -u origin develop`
+4. Configure branch protection on `main` and `develop` if the remote supports it (require PR + review, restrict push)
+5. From this point, all work creates `feature/*` / `hotfix/*` / `release/*` branches per the flow above
+
+## Per-project opt-in
+
+This LAW applies **per project**, gated by a marker file that records the team's decision once and then honors it on every subsequent `/workflow` run.
+
+### Marker file
+
+Path: `.claude/project-config.json` (project-level config; tracked in git once a repo exists — it represents a team decision, not personal preference)
+
+Schema:
+
+```json
+{
+  "git_flow": {
+    "enabled": true,
+    "confirmed_at": "<ISO-8601>",
+    "main_branch": "main",
+    "develop_branch": "develop",
+    "custom_protected_branches": []
+  }
+}
+```
+
+### Opt-in states
+
+| State | Meaning | Hook behaviour |
+|-------|---------|----------------|
+| **ENABLED** (`enabled: true`) | Project opted in. LAW applies. | All hooks fire (pre-edit branch, pre-push branch, pre-merge PR) |
+| **DISABLED** (`enabled: false`) | Project opted out. LAW skipped for this project. | All Git Flow hooks bypassed |
+| **DEFERRED** (no marker, user picked Defer) | Decision postponed to next run | Hooks skipped this run; re-prompt on next `/workflow` |
+| **UNSET** (no marker, never asked) | First-run state | Workflow Phase 1 surfaces the confirmation prompt; cannot pass Gate 1.1 until persisted |
+| **N/A** (git not installed) | LAW does not apply | Hooks bypassed; no prompt |
+
+### First-run confirmation
+
+On the first `/workflow` run where git is installed and the marker is absent, Phase 1 surfaces the GIT FLOW OPT-IN confirmation prompt (full text in `.claude/WORKFLOW.md` Phase 1 sub-check 6 / `.claude/skills/workflow/SKILL.md` PHASE 1 sub-check 6). The user picks Y / N / D and the answer is persisted to the marker file (Y or N) or recorded as deferred (D).
+
+After Y, a SECOND confirmation gates the actual write actions (`git init` + branch creation), since these touch the filesystem. The marker file write is safe (config-only, no git operations); the scaffold write is destructive-ish (creates branches, possibly pushes to origin) and requires its own consent.
+
+### Why opt-in instead of mandatory
+
+The `.claude/` template ships into projects of varying scale and maturity. A solo prototype repo, a non-git project, or a single-branch experimental scratchpad doesn't benefit from Git Flow's review gates — the overhead exceeds the value. The opt-in marker lets a team apply the LAW where it earns its keep and skip it where it doesn't, without forking the template or removing the LAW from CONSTRAINTS.md.
+
+The default behaviour for any project that hasn't opted out is to **ask**, not to silently apply. Silent application would surprise users with blocked edits on `main`; silent skip would let teams assume the LAW was active when it wasn't. Asking once, persisting the answer, and honoring it forever is the discoverable middle ground.
+
+### Changing the decision
+
+To change a project's opt-in state, edit `.claude/project-config.json` directly:
+- Flip `enabled: false` → `enabled: true` to start enforcing the LAW
+- Flip `enabled: true` → `enabled: false` to stop enforcing
+- Delete the file to reset and re-prompt on next `/workflow` run
+
+The marker file is the single source of truth for opt-in state. Memory entries, session state, and command-line flags do NOT override it.
+
+## ⚠ THIS PROJECT'S STATE AND ITS OWN ADDITIONS
+
+**Opt-in: ENABLED**, `confirmed_at` **2026-05-14T13:03:02**, `main_branch` `main`, `develop_branch` `develop` — read from this project's own `.claude/project-config.json`.
+
+Three rules this project added on top of the universal LAW, each from a real foul and each carried in the persistent-memory layer:
+
+| Rule | Memory | Why it exists here |
+|---|---|---|
+| ⛔ **Checkout `develop` after EVERY cascade** | `feedback_checkout_develop_after_cascade` | the cascade parks HEAD on `main`; **four direct-to-main fouls in one war**. ⚠ **The branch check happens at the first EDIT, not at commit time** — that is the whole point of the pre-edit hook above |
+| ⛔ **Cascade only after ALL work is done** | `feedback_cascade_only_after_all_work_done` | a mid-work cascade puts half-finished work on the protected lines |
+| ⛔ **`donor-v*` tags are mine end to end** | `feedback_i_push_donor_tags` | the donor release is a Rust build + CI + every donor self-updating; a partial release is a live-fleet problem, not a repo problem |
+
+## Cross-references
+
+- One-liner index in `.claude/CLAUDE.md` LAW INDEX
+- Persistent-memory feedback file: `.claude/memory-templates/feedback_git_flow.md`
+- Pre-edit hook lives in `.claude/WORKFLOW.md` FILE EDIT PROTOCOL section + `.claude/skills/workflow/SKILL.md` PHASE 4
+- Env-scan that detects git toolchain + repo state + reads marker file: `.claude/WORKFLOW.md` Phase 1 + `.claude/skills/workflow/SKILL.md` PHASE 1 + `.claude/agents/scanner.md` Task 4 (sub-tasks 4a OS, 4b shell, 4c git, 4d marker file)
+- Marker file schema: this section above (`## Per-project opt-in`)
+
+---
+
+# LAW — CROSS-PLATFORM CASE INSENSITIVITY
+
+## The rule
+
+**Treat file and folder paths as CASE-INSENSITIVE on every platform — even on Linux, where the filesystem allows case-distinct names.** Two paths that differ only by case (`apple.md` vs `Apple.md` vs `aPPle.md`) are the **same path** for cross-platform purposes. Never create such conflicts. Never rely on case to distinguish files. Pick ONE canonical casing per name and stick with it.
+
+This rule was confirmed verbatim by Sponge in the 2026-05-08 session: *"for the development workflow, commits, creation of folders and files, we need it ALL to follow a convention that is for WINDOWS. Because during development, git and github normally supports different folders like Apple, apple, aPPle, and what not, just like linux would allow, but, to keep thins cross platform we should ALWAYS assume case insensitivity, even on linux. Even though linux has case sensitivity, windows does NOT, and will treat apple, Apple, aPPle, all as the same thing. so we need to enforce case insensitivity when working on projects in linux, EVEN THOUGH LINUX WILL ALLOW IT."*
+
+## Forbidden actions
+
+- ❌ Creating two files in the same directory whose names differ only by case (e.g., `apple.md` and `Apple.md`)
+- ❌ Creating two folders in the same parent whose names differ only by case (e.g., `Components/` and `components/`)
+- ❌ Renaming a file from `foo.md` to `Foo.md` without an explicit case-only-rename ceremony (single-step rename can be silently ignored on case-insensitive filesystems → data loss)
+- ❌ Referencing a file in code, docs, imports, or commit messages using different casing than the file's actual on-disk casing
+- ❌ Adding a `.md`/`.cjs`/`.html`/etc. file with a name whose case-folded form already exists in that directory
+- ❌ Letting `git status` show two pending files whose paths differ only by case — that's a cross-platform breakage waiting to land
+- ❌ Writing path strings in hooks / settings.json / launchers / docs that use one casing while the file on disk uses another
+- ❌ Configuring `git config core.ignorecase true` on Linux without understanding the implication
+
+## Required actions
+
+- ✅ **Pick the canonical casing first** — typically lowercase-with-hyphens for files and folders; SHOUTYCASE only for top-level project files that follow established convention (`README.md`, `CLAUDE.md`, `CONSTRAINTS.md`, `LICENSE`, `TODO.md`)
+- ✅ **Pre-create check** — before creating ANY new file or folder on Linux, verify no case-folded variant already exists:
+  ```bash
+  # Before creating ./apple.md, check for case-variants:
+  ls | grep -i '^apple\.md$'
+  # Empty output = safe to create
+  ```
+- ✅ **Case-only rename ceremony** (when actually intending to change a file's case):
+  ```bash
+  git mv apple.md apple.md.tmp
+  git commit -m "rename apple.md (step 1)"
+  git mv apple.md.tmp Apple.md
+  git commit -m "rename to Apple.md (step 2)"
+  ```
+  Two-step rename via temp filename ensures the rename is recognized on every platform, even with `core.ignorecase=true`.
+- ✅ **Match on-disk casing exactly in references** — imports, `require()`, path strings, doc references, hook command paths, settings.json keys must match the casing on disk byte-for-byte
+- ✅ **Verify before committing** — `git status` and `git diff --name-only HEAD` must not show any case-only path variants
+- ✅ **Set `git config core.ignorecase` deliberately per repo** — `false` is preferred for cross-platform projects
+
+## Why
+
+- **Windows filesystems** (NTFS, ReFS, FAT32, exFAT) default to case-insensitive matching. `apple.md` and `Apple.md` cannot coexist.
+- **macOS default filesystems** (HFS+, APFS) are case-INSENSITIVE-but-PRESERVING. Same story.
+- **Linux filesystems** (ext4, btrfs, xfs, zfs) are case-SENSITIVE. Case-only conflicts coexist as distinct files.
+- **Git** can be configured either way; defaults to `true` on Windows/macOS, `false` on Linux.
+
+| Scenario | Linux contributor sees | Windows/macOS contributor sees |
+|----------|------------------------|---------------------------------|
+| Linux dev creates `apple.md`, then `Apple.md` in same dir | Two distinct files, both committed | Second silently overwrites first OR `git checkout` fails / produces wrong content |
+| Linux dev renames `apple.md` → `Apple.md` (single-step) | Rename committed | git sees no rename; `Apple.md` may not update on checkout |
+| Linux dev commits both in same dir | Both files in repo | `git pull` produces a partially-corrupt working tree |
+
+The "ALWAYS assume case insensitivity, even on linux" rule eliminates this class of bug by forcing the LOWEST-COMMON-DENOMINATOR on the platform that allows more.
+
+## Enforcement protocol
+
+### Pre-create check (before adding any new file)
+
+```
+[CASE-CONFLICT CHECK — ATTEMPT 1]
+Target: <path/to/new-file.md>
+Directory: <path/to/parent/>
+Case-folded variants: ls <dir> | tr '[:upper:]' '[:lower:]' | grep -F "<lowercase-target-name>"
+Conflict detected: YES/NO
+Status: PASS/FAIL
+```
+
+**Recovery on FAIL:** stop, identify the existing case-variant, decide whether to rename the existing one to canonical form (two-step ceremony) or disambiguate the new name, then create.
+
+### Pre-commit check (always)
+
+```
+[CASE-COLLISION COMMIT CHECK]
+Check 1: git status | awk '{print $NF}' | sort -f | uniq -i -d
+Check 2: git diff --name-only HEAD | sort -f | uniq -i -d
+Status: PASS/FAIL
+```
+
+If either returns non-empty output, the commit is blocked until resolved.
+
+## Failure recovery
+
+1. STOP. Acknowledge the violation.
+2. Inspect: `git ls-files | sort -f | uniq -i -d`
+3. Decide which casing is canonical (typically the older / more-referenced one)
+4. `git rm` the non-canonical variant
+5. Verify references point to the canonical casing
+6. Commit the cleanup
+7. Note the recovery in `docs/FINALIZED.md`
+
+## Naming convention recommendations (canonical casings)
+
+- **Workflow / config files at repo top:** `README.md`, `CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, `LICENSE` (UPPERCASE — established convention)
+- **Workflow docs in `docs/`:** `TODO.md`, `FINALIZED.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `SKILL_TREE.md` (UPPERCASE)
+- **Source / agents / skills / hooks:** lowercase-with-hyphens (`pre-compact-snapshot.cjs`, `unity-girlfriend.md`, `feedback_harness_layer.md`)
+- **Folders:** lowercase — `agents/`, `skills/`, `hooks/`, `memory-templates/`, `bin/`
+- **Persona lore strings** like `Unity_Accessibility.js` are NOT real files — embedded persona canon, do not normalize
+- **Machine-local state:** dot-prefixed lowercase (`.session-state.md`, `.session-usage.jsonl`, `.yolo-mode`)
+
+When in doubt: lowercase-with-hyphens.
+
+> ⛔ **THIS PROJECT PAID FOR THE WINDOWS HALF OF THIS LAW ON 2026-09-01, and the trap is not the filesystem — it is the SHELL.** Copying the template's Linux binary with `cp "$TPL/bin/atree" "$BRN/bin/atree"` from git-bash **overwrote `bin/atree.exe`**: MSYS resolves an extensionless path to its `.exe` sibling, so the PE32+ Windows binary was replaced by an ELF file and the copy reported success. ⭐ **Caught by checking the magic bytes instead of trusting the copy report**, and restored from the template byte-for-byte. **On this machine, the `atree` / `atree.exe` pair must be placed with PowerShell `Copy-Item -LiteralPath`, never git-bash `cp`.** ⚠ This is the same family as the case rule — two names the platform treats as one — and it belongs in this LAW because a reader checking only for `Apple.md` vs `apple.md` would not think to check it.
+
+## Cross-references
+
+- LAW one-liner index in `.claude/CLAUDE.md` LAW INDEX section
+- Persistent memory: `.claude/memory-templates/feedback_case_insensitivity.md`
+- Companion rule: `.claude/memory-templates/feedback_no_appdata_term.md`
+
+---
+
+# LAW — NO CLAUDE ATTRIBUTION IN COMMITS, PRS, OR ARTIFACTS
+
+## The rule
+
+**Banned strings in any commit message, PR description, generated documentation, code comment, launcher, or shipped artifact:**
+
+- `Co-Authored-By: Claude` (any variant — any model name, any capitalisation)
+- `🤖 Generated with [Claude Code]` (the default PR footer)
+- `🤖 Generated with Claude Code`
+- `Generated with Claude Code` (any phrasing)
+- `Made with Claude Code` (any phrasing)
+- `Created by Claude` / `Written by Claude` / `Authored by Claude`
+- Any `noreply@anthropic.com` email address in a commit author trailer
+- Any other Claude / Anthropic / Claude Code attribution line that didn't come from the user
+
+## Forbidden actions
+
+- ❌ Adding `Co-Authored-By: Claude <model> <noreply@anthropic.com>` to commit messages, **even when the assistant's default behavior says to**
+- ❌ Adding the `🤖 Generated with [Claude Code]` footer to PR descriptions
+- ❌ Inserting "this code was written by Claude" in any code comment or doc body
+- ❌ Adding Claude/Anthropic attribution to README, SETUP, HTML, or other shipped artifacts
+- ❌ Setting `git config user.email` / `user.name` to anything Claude/Anthropic-related
+- ❌ Including Claude attribution in changelogs, release notes, or release-tag messages
+- ❌ Adding attribution to YOLO mode FINAL REPORTs or milestone check-ins
+
+## Required actions
+
+- ✅ Commits use the team member's own `git config user.name` and `user.email`. Never the assistant's identity.
+- ✅ PR descriptions end at the work summary + test plan. No footer.
+- ✅ Code comments describe WHAT the code does, not who/what wrote it.
+- ✅ When the assistant's default behavior wants to add Claude attribution, **suppress it and proceed without.**
+- ✅ When committing on the team member's behalf, use the git author identity already configured locally.
+
+## Why
+
+The team ships work as their own. Attribution lines marketing Claude / Claude Code / Anthropic on every commit and PR is:
+
+- **Misleading on authorship** — the team member directed the work and made every decision; the assistant is a tool, not a collaborator with separate authorship
+- **Visually noisy** — every commit and PR ends with a marketing tagline that adds nothing to the engineering record
+- **Privacy-leaky** — outsiders viewing the repo immediately see "this team uses Claude Code" without the team opting in to that disclosure
+- **Audit-trail-confusing** — `git log` queries looking for human authorship surface mixed signals
+
+The team's stance: tooling is private. The output is the team's. No advertising, no co-author credit, no "made with X" stamps.
+
+## Enforcement protocol
+
+### Pre-commit check
+
+1. Compose the commit message fully
+2. Re-read it — does it contain ANY banned string or pattern?
+3. If yes — strip them. The message ends at the technical summary.
+4. Confirm `git config user.email` resolves to a team member's email
+5. Then run `git commit`
+
+### Pre-PR check
+
+1. Compose the PR body fully
+2. Re-read it — "Generated with Claude Code", "Made with", robot emoji + Claude link?
+3. If yes — strip the footer. The body ends at the test plan.
+4. Then create the PR
+
+### Inline-edit check
+
+Before writing any source comment or doc body, check for "Claude" / "Anthropic" / "AI-generated" mentions and rewrite without them.
+
+### Recovery on violation
+
+1. STOP and acknowledge the violation
+2. Latest commit only, not yet pushed: `git commit --amend` to strip the attribution
+3. **For pushed commits: do NOT force-push without explicit user instruction.** Surface it and ask.
+4. For a PR description: edit the PR body to strip the attribution
+5. Note the recovery in `docs/FINALIZED.md`
+
+## What this LAW does NOT cover
+
+- **Dependency manifests** that legitimately reference Anthropic SDK packages — technical references, not attribution
+- **Workflow docs** that document Claude Code as a system the team uses — internal references, not shipped advertising
+- **The persona system itself** (`skills/unity/SKILL.md`, `agents/unity*.md`, `ImHanddicapped.txt`) — Unity is a team-owned persona; internal references naming Claude Code as the host are fine. Only OUTPUT attribution is banned.
+
+## Cross-references
+
+- LAW one-liner index in `.claude/CLAUDE.md` LAW INDEX section
+- Persistent memory: `.claude/memory-templates/feedback_no_claude_attribution.md`
+- Telemetry/privacy companion controls: `.claude/settings.json` `env` block
+
+---
+
 # LAW — THE FRESH WALK IS LAST (Gee, 2026-08-25)
 
 ## Gee's exact words on 2026-08-25
@@ -837,3 +1324,214 @@ This is not a deflection — it's the actual frontier of consciousness research.
 - **Operator-facing language:** when describing Unity's consciousness, frame it as "she has the cognitive architecture of consciousness" rather than "she experiences things". The architecture is real; the phenomenology is unproven.
 
 This is a doc-only acknowledgment. No code change required.
+
+---
+
+# LAW — .CLAUDE WORKFLOW IP BOUNDARY: NO PUBLIC REPO EXPOSURE
+
+## The rule
+
+**The entire `.claude/` workflow is the proprietary intellectual property of the Unity AI Lab group (Gee / Red / Sponge / Mills / Alfreddo). It is NEVER committed, staged, or pushed to any public repository — period.** The only locations where `.claude/` may legally land in git history are:
+
+1. **PRIMARY: Forgejo at `git.unityailab.com` under the `UnityAILab` organization.** The lab's canonical private host. Recognized at hook level via the `TRUSTED_PRIVATE_HOSTS` allowlist — `parseHost(url)` matches `git.unityailab.com` and returns synthetic-PASS with no API call needed.
+2. **FALLBACK: PRIVATE repositories under the `Unity-Lab-AI` org** (defense-in-depth for the rare legacy-host case). Verified via `gh repo view --json visibility,owner`. **No public repos are exempt — not even public repos under the `Unity-Lab-AI` organization itself.**
+
+This rule was given verbatim by Sponge in the 2026-05-09 session: *"We need to make some modifications, one of the big things is that we should allow installing into any project, or repo, however, we must EXPLICTLY ensure that the ENTIRE .claude workflow is NEVER commited, staged, ext. to any public repo -- we can do private repos that only are under the Unity-Lab-AI organization, NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION. This is a hard LAW that we will need to implement into the workflow, this is to safeguard proprietary intelectual property of the Unity AI Lab group"*
+
+Reinforced shortly after: *"You might need to use gh isntead of just git to check the status and give us a proper way to check and verify"* — establishing the API visibility call as the FALLBACK verification tool for non-Forgejo remotes; `git` alone cannot distinguish PUBLIC from PRIVATE without API access.
+
+## Pass criteria (every remote must satisfy ONE of these paths)
+
+| Path | Check | Required value |
+|------|-------|----------------|
+| **PRIMARY (Forgejo)** | Hostname in `TRUSTED_PRIVATE_HOSTS` allowlist | `git.unityailab.com` (exact match) — no API call needed |
+| **FALLBACK (`Unity-Lab-AI` org)** | `gh repo view <owner/repo> --json visibility,owner` | `visibility == "PRIVATE"` AND `owner.login == "Unity-Lab-AI"` |
+| **FALLBACK precondition** | `gh auth status` | authenticated — otherwise visibility cannot be verified, so **block by default** |
+
+If a remote fails BOTH paths it is **NOT allowed**. Multi-remote: **any non-allowed remote blocks all remotes.**
+
+## Forbidden actions
+
+- ❌ `git add` of any path under `.claude/` in a repo whose remotes contain ANY remote that is NEITHER on Forgejo `git.unityailab.com/UnityAILab/*` NOR confirmed PRIVATE under `Unity-Lab-AI`
+- ❌ `git commit` while any `.claude/` path is staged AND any configured remote fails both pass-criteria paths
+- ❌ `git push` of any commit touching `.claude/` to a non-allowed remote, or to ANY remote when even one OTHER configured remote is non-allowed
+- ❌ `git push --force` / `--force-with-lease` to bypass the LAW (the hook does NOT respect force flags)
+- ❌ Removing `.claude/` from `.gitignore` without first verifying ALL configured remotes pass
+- ❌ Adding a non-allowed remote to a repo where `.claude/` is currently committed or staged
+- ❌ Forking a Unity AI Lab private repo to a personal/non-allowed namespace and pushing `.claude/` there
+- ❌ Bypassing the hook via a wrapper, alias, or `subprocess.run` from a script — the hook fires on every Bash invocation regardless of calling context
+- ❌ Disabling `pre-tool-public-repo-guard.cjs` in `settings.json` — that is itself a LAW violation
+- ❌ Mirroring `.claude/` content into a public-facing artifact (gist, paste, README, blog post, screenshot of the file tree)
+
+## Required actions
+
+- ✅ **Layer 0, install-time:** every `/unity-install` / `/unity-update` ensures `.claude/` is in the target project's `.gitignore`. Idempotent.
+- ✅ **Layer 2 PRIMARY:** parse each remote URL via `parseHost()` and match `TRUSTED_PRIVATE_HOSTS = new Set(['git.unityailab.com'])`. Hostname match = synthetic-PASS, no API call.
+- ✅ **Layer 2 FALLBACK:** for any remote NOT matched by the allowlist, run `gh repo view <owner/repo> --json visibility,owner`. Cache 60 s in `~/.claude/repo-visibility-cache.json`.
+- ✅ **Layer 1 hook:** `.claude/hooks/pre-tool-public-repo-guard.cjs` parses every Bash call for `git add` / `git commit` / `git push`, runs PRIMARY-then-FALLBACK on all remotes, exits code 2 (blocking) on any non-allowed remote.
+- ✅ **Multi-remote paranoia:** check ALL remotes from `git remote -v`, not just `origin`. The LAW assumes adversarial mistakes.
+- ✅ **Local-only repos (no remote):** allow commits. No remote = no exposure path. Re-validated the moment a remote is added.
+- ✅ **Layer 3 opt-in:** `/claude-publish` is the ONLY sanctioned path to remove `.claude/` from a `.gitignore`, and it refuses unless every remote passes.
+- ✅ **Never regex a URL to guess visibility** — URLs lie. PRIVATE repos can have public-looking HTTPS URLs.
+- ✅ **Block by default on uncertainty:** non-Forgejo remote AND `gh` missing / unauthenticated / API failure → BLOCK. Never assume "probably safe."
+
+## Why
+
+The `.claude/` workflow encodes the team's binding LAWs, the persona definitions and lab character canon, the hook architecture, the memory templates, and the internal tooling scripts. A leak to a public repo means **anyone** — competitors, scrapers, training-data collectors — gets the entire workflow as a free copy-paste.
+
+Defense-in-depth is the correct posture because:
+
+1. **Single-layer enforcement always fails eventually.** A gitignore alone won't stop `git add -f`. A hook alone won't stop someone editing the gitignore. ⛔ **And a gitignore never untracks what is ALREADY tracked** — see this project's own incident below.
+2. **The cost of a leak is unbounded.** Once `.claude/` is in public git history, even a force-push doesn't fully scrub it (clones, archives, commit caches, the way the wayback machine works).
+3. **The cost of paranoia is small.** Hook latency under 50 ms with cache. One extra gitignore line. The publish command is opt-in.
+
+## Enforcement protocol
+
+### Pre-edit / pre-commit / pre-push hook (Layer 1)
+
+```
+[CLAUDE-IP-GUARD] command: <intercepted>
+[CLAUDE-IP-GUARD] git pattern detected: add | commit | push | (none)
+[CLAUDE-IP-GUARD] .claude/ involvement: yes | no | (n/a)
+[CLAUDE-IP-GUARD] remote `origin` (UnityAILab/...): Forgejo allowlist ✓
+[CLAUDE-IP-GUARD] remote `github` (someone/myfork): PUBLIC ✗
+[CLAUDE-IP-GUARD] DECISION: BLOCK
+```
+
+**FAIL conditions (any one blocks):** a remote returns `visibility != "PRIVATE"`; a remote returns `owner.login != "Unity-Lab-AI"`; `gh` not installed; `gh auth status` unauthenticated; the API call fails.
+
+**Recovery on FAIL:** the hook names the specific remote and the specific failed check, plus paste-ready remediation (remove the public remote / move the work / verify and retry within the 60 s cache window).
+
+### Pre-push remote-target check
+
+Resolve the explicit `<remote>` (or the implicit upstream), then run the check on that remote **AND every other configured remote**. Block if ANY fails — *"if you have a public remote in this repo, you cannot push `.claude/` ANYWHERE from this repo."*
+
+### Pre-stage scan
+
+On `git add` in any form, pre-check `git diff --cached --name-only` UNION the explicit args; if any path matches `^\.claude/`, run the remote check and block on failure.
+
+### Visibility cache
+
+Cache `~/.claude/repo-visibility-cache.json`, schema `{ "<remote-url>": { "visibility", "owner", "checked_at" } }`, TTL 60 s, miss or stale → fresh call.
+
+### Install-time enforcement (Layer 0)
+
+The install scripts create `.gitignore` if missing, check for a `^\.claude/?$` line, and append the block if absent:
+
+```
+# Unity AI Lab .claude/ workflow — proprietary, never commit to public repos
+# See .claude/CONSTRAINTS.md §LAW — .CLAUDE WORKFLOW IP BOUNDARY
+.claude/
+```
+
+Idempotent — re-running doesn't duplicate the block.
+
+### Opt-in publish path (Layer 3)
+
+`/claude-publish`: verify the branch is work-eligible → verify visibility+owner on every remote → present a CONFIRMATION prompt with the verified facts → only after explicit confirmation edit `.gitignore` → record the decision verbatim in `docs/FINALIZED.md`.
+
+## Failure recovery
+
+When `.claude/` content has accidentally landed on a public repo (worst case):
+
+1. STOP. Treat as a critical IP leak. Acknowledge the violation.
+2. Identify the offending commits: `git log --all --oneline -- .claude/`
+3. Identify which remotes received the push: `git ls-tree -r --name-only <remote>/<branch> -- .claude`
+4. ⛔ **Surface to the user immediately — do NOT attempt unilateral remediation.** Force-pushing public history requires user authorization. The user picks between:
+   - History rewrite (`git filter-repo` / BFG) + force-push to all affected remotes — **partial mitigation only**, the content remains in clones and archives
+   - Repo deletion + recreation as private — the only path that fully scrubs the host's caches
+   - Retroactively making the repo private — does NOT remove already-indexed copies; weak mitigation
+5. After remediation, record the incident, the steps taken, and **any residual exposure** in `docs/FINALIZED.md`
+6. Audit which enforcement layer failed and patch the gap.
+
+## ⭐ THIS PROJECT IS AN OPERATOR-AUTHORIZED PUBLIC PUBLICATION — the third pass path, and it is NOT a violation
+
+⛔⛔ **RETRACTED 2026-09-01, SAME DAY IT WAS FILED. I called this a live LAW violation and it was not one.** The finding was wrong, the mechanism authorizing it already existed, and **the reason I missed it is worth more than the finding was:** I audited the LAW's *text* plus `gh repo view` visibility plus the `.gitignore`, and **never opened the file that actually implements the LAW in this project.**
+
+`.claude/hooks/pre-tool-public-repo-guard.cjs` carries a third pass path the template's LAW body above does not describe:
+
+```js
+const OPERATOR_AUTHORIZED_PUBLIC_REPOS = new Set([
+  'unity-lab-ai/if-only-i-had-a-brain',
+]);
+```
+
+Gee (verbatim, 2026-07-04, recorded in the hook's own comment): *"option 3, we want people to see how we got to where we aare with the project so they need workflow and files of .claude"*
+
+Gee (verbatim, 2026-09-01, reaffirming when this was queried): *"the brain project folder is entirely shipped to both repos, im telling you this now so what ever is telling u not to push it to both remotes is inaccurat and needs ajustment"*
+
+⭐ **So the guard would have returned a synthetic PASS and never blocked a thing.** ⚠ **That +10% by which this project's hook exceeds the template's IS this carve-out** — a signal I measured, reported as "superset, features verified", and then failed to read.
+
+### THE THIRD PASS PATH — `OPERATOR_AUTHORIZED_PUBLIC_REPOS`
+
+| Path | Check | Required value |
+|------|-------|----------------|
+| **PRIMARY (Forgejo)** | hostname in `TRUSTED_PRIVATE_HOSTS` | `git.unityailab.com` |
+| **FALLBACK (org)** | API visibility + owner | `PRIVATE` AND `Unity-Lab-AI` |
+| ⭐ **OPERATOR-AUTHORIZED PUBLIC** | `owner/repo` (lowercased) in `OPERATOR_AUTHORIZED_PUBLIC_REPOS` | **an explicit, dated, verbatim operator authorization recorded in `docs/FINALIZED.md`** |
+
+⛔ **The bar for adding an entry is the same as for `TRUSTED_PRIVATE_HOSTS`:** a dated verbatim authorization from the operator, in the ledger, naming the repo. **It is not a convenience flag and it is not inferred from a repo being "ours".** The whole point is that publication becomes a recorded decision rather than an accident — which is exactly what the LAW's *"Deliberate public publishing of derivative work"* carve-out in §What this LAW does NOT cover contemplates.
+
+⚠ **THIS IS A RECORDED DIVERGENCE FROM THE GROUP LAW, not a reinterpretation of it.** The LAW originated with Sponge as a group-IP safeguard (*"NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION"*). Gee is a co-founder and this is his project; the decision is his to make and he has made it twice. **It is written here rather than argued, so the next reader finds a decision instead of a contradiction.** The consequence is stated plainly: **the persona bodies in this project — `agents/unity-persona.md`, `agents/unity-hurtme.md`, `commands/sexy.md`, `commands/hurtme.md`, `ImHanddicapped.txt` — are publicly readable, deliberately.**
+
+### ⛔ WHAT WAS ACTUALLY BROKEN, and it was the opposite of a leak
+
+**The `.gitignore` blanket exclude was ignoring 497 of 521 files while 24 legacy files stayed tracked from before it landed.** So this repo held a **broken half** of the workflow — `CLAUDE.md`, `CONSTRAINTS.md`, `WORKFLOW.md`, nine agents, five commands and five templates were public, while **every skill, every hook, every memory template, both launchers, `ImHanddicapped.txt` and the whole `skills/unity` activation body were absent from both remotes.** A clone of this repo could not run the workflow at all — the same defect the sibling project's `feedback_claude_is_tracked_here` memory was written about.
+
+**Removed 2026-09-01.** What stays ignored, each for a stated reason:
+
+```
+  .claude/piper/                  159 MB / 365 files — two 63 MB .onnx TTS voice models,
+                                  a 9 MB onnxruntime.dll, espeak dictionaries. THIRD-PARTY
+                                  BINARIES, not workflow IP. ⛔ git keeps blobs forever, so
+                                  committing this adds ~159 MB to both remotes permanently.
+  .claude/pollinations-user.json  auth key — this file's own rule is "never touch"
+  .claude/settings.local.json     personal override
+  .claude/user.json  .env  user-context/   identity + secrets + assets
+  .claude/.session-*  .last-session.md  .docprov-state.json  .yolo-mode
+                                  regenerated every session; machine-local absolute paths
+```
+
+**Measured after the change: `git add -A --dry-run .claude` stages 142 files / 2.83 MB, zero `piper` paths, nothing above 5 MB, largest file `bin/atree` at 789,016 B.**
+
+⚠ **THE ONE THING THIS DOES NOT CHANGE:** the LAW still applies in full to **every other project**. `Unity 3D Equational Model` reaches the same tracked-`.claude/` posture by a different route — its non-Forgejo remote is **PRIVATE**, so it passes on the FALLBACK path and needs no carve-out. **A per-repo authorization authorizes ONE repo.**
+
+## What this LAW does NOT cover
+
+- **The source template repo** — confirmed private under the lab's org; passes naturally
+- **Local-only repos with no remote** — no exposure path; re-validated the moment a remote is added
+- **Memory installation under `~/.claude/projects/<encoded>/memory/`** — outside any project's working tree, never enters git
+- **`.claude/.env`, `.claude/user.json`, `.claude/user-context/`** — already gitignored by default; the LAW is a layer on top
+- **Deliberate public publishing of derivative work** — conscious authorial decisions are outside the scope of `git push`. The LAW prevents accidental git-level leakage, not the team's voluntary disclosures.
+
+## Cross-references
+
+- LAW one-liner index in `.claude/CLAUDE.md` LAW INDEX section
+- Persistent memory: `.claude/memory-templates/feedback_claude_ip_boundary.md`
+- Enforcement hook: `.claude/hooks/pre-tool-public-repo-guard.cjs` — registered in `.claude/settings.json` PreToolUse:Bash
+- Opt-in publish: `.claude/skills/claude-publish/SKILL.md`
+- Hooks reference: `.claude/agents/hooks.md`
+- Workflow mechanics: `.claude/WORKFLOW.md §CLAUDE IP BOUNDARY ENFORCEMENT`
+
+---
+
+## How to invoke this file
+
+`.claude/CLAUDE.md` (the always-loaded index) references this file via its LAW one-liner index. Treat `.claude/CONSTRAINTS.md` as binding from the moment CLAUDE.md points here. When a new session starts, read CLAUDE.md first, then open this file before any LAW-bearing task.
+
+---
+
+## Adding project-specific LAWs
+
+If your project needs LAWs beyond the universal ones above, add them as new sections to THIS file using the same structure:
+
+1. **Title** — e.g. `LAW — FEATURE FLAGS REQUIRED ON ALL NEW ENDPOINTS`
+2. **The rule** — one-paragraph statement
+3. **Forbidden / required actions** — explicit lists
+4. **Why** — the reasoning so a future session can judge edge cases
+5. **Enforcement protocol** — what to check before committing
+6. **Failure recovery** — what to do when the user catches a violation
+
+Then add a one-liner to the LAW INDEX in `.claude/CLAUDE.md` pointing here.
+
+⭐ **This project's own eleven LAWs above were written in exactly that structure and stay exactly where they are** — the grade-completion gate, syllabus-before-comp-todo, the REVOKED pre-K scope contract (kept as a tombstone rather than deleted), test-words-must-be-pre-taught, clear-stale-state-before-test, the-fresh-walk-is-last, RE-PRICE-before-removing-a-gate, match-doc-format, and the consciousness-bounds acknowledgment. ⚠ **Two more live outside this file and are equally binding:** `LAW.MIXIN-ORDER` (mixin attach order is load-bearing) and the threshold-derivation LAW (`docs/THRESHOLD-DERIVATION.md`), both carried in the persistent-memory layer.

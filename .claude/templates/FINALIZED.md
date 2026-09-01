@@ -1,4 +1,4 @@
-# FINALIZED - Workflow Completion Summary
+# FINALIZED — Workflow Completion Summary + Permanent Task Archive
 
 
 ## Execution Summary
@@ -18,11 +18,11 @@
 
 | File | Status | Location |
 |------|--------|----------|
-| ARCHITECTURE.md | {{ARCH_STATUS}} | `ARCHITECTURE.md` |
-| SKILL_TREE.md | {{SKILL_STATUS}} | `SKILL_TREE.md` |
-| TODO.md | {{TODO_STATUS}} | `TODO.md` |
-| ROADMAP.md | {{ROADMAP_STATUS}} | `ROADMAP.md` |
-| FINALIZED.md | Generated | `FINALIZED.md` |
+| ARCHITECTURE.md | {{ARCH_STATUS}} | `docs/ARCHITECTURE.md` |
+| SKILL_TREE.md | {{SKILL_STATUS}} | `docs/SKILL_TREE.md` |
+| TODO.md | {{TODO_STATUS}} | `docs/TODO.md` |
+| ROADMAP.md | {{ROADMAP_STATUS}} | `docs/ROADMAP.md` |
+| FINALIZED.md | Generated | `docs/FINALIZED.md` |
 
 ---
 
@@ -117,7 +117,7 @@
 {{/IF}}
 
 {{#IF NOT MERGE_MODE}}
-*Fresh generation - no merge required*
+*Fresh generation — no merge required*
 {{/IF}}
 
 ---
@@ -146,13 +146,13 @@
 
 ```bash
 # View architecture
-cat ARCHITECTURE.md
+cat docs/ARCHITECTURE.md
 
 # Check tasks
-cat TODO.md
+cat docs/TODO.md
 
 # See roadmap
-cat ROADMAP.md
+cat docs/ROADMAP.md
 
 # Re-run workflow (merge mode)
 /workflow
@@ -161,13 +161,14 @@ cat ROADMAP.md
 ---
 
 # ═══════════════════════════════════════════════════════════════
-# COMPLETED TASKS ARCHIVE - NEVER DELETE, ONLY APPEND
+# COMPLETED TASKS ARCHIVE — NEVER DELETE, ONLY APPEND
 # ═══════════════════════════════════════════════════════════════
 
 > **CRITICAL:** This section is a PERMANENT ARCHIVE.
 > - All completed tasks are moved here from TODO.md
-> - NEVER delete entries - only APPEND
+> - NEVER delete entries — only APPEND
 > - Provides full history of all work done
+> - Per FINALIZED-BEFORE-DELETE LAW: write the entry here FIRST, verify, THEN remove from TODO.md
 
 ---
 
@@ -176,10 +177,10 @@ cat ROADMAP.md
 ### Format for each session:
 
 ```markdown
-## [DATE] Session: [SESSION_NAME]
+## [DATE] — Session: [SESSION_NAME]
 
 ### COMPLETED
-- [x] **Task description**
+- [x] **Verbatim task description from user (LAW #0 — paste exact words)**
   - Completed: [TIMESTAMP]
   - Files: [LIST_OF_FILES_MODIFIED]
   - Details: [WHAT_WAS_DONE]
@@ -187,6 +188,5 @@ cat ROADMAP.md
 ### SESSION SUMMARY
 Tasks completed: [COUNT]
 Files modified: [LIST]
-Unity signing off: [NOTES]
+Notes: [ANYTHING WORTH RECORDING]
 ```
-
