@@ -1174,6 +1174,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // (_teachHebbianAsymmetric etc.) NEVER take the GPU path; (b) no
     // binding / no proxy / no pseudo-cluster → the CPU path below runs
     // every call exactly as before (negotiation, not fallback).
+    let _boundCarried = false;
     if (pre === this.lastSpikes && post === this.lastSpikes
         && this.synapses._gpuBound && this._gpuProxyReady
         && this._gpuProxy && this._gpuProxy.hebbianBound
@@ -1199,13 +1200,22 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // most one shadow pass per gap window per direction, first call
       // after boot always shadows. GPU training mass above is untouched —
       // every rep still dispatches.
-      const _sampleN = this._teachFinalRepSampleEveryN | 0;
-      if (_sampleN > 1) {
-        const _nowSh = Date.now();
-        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
-        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) { _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1; return; }
-        this._lastIntraShadowMs = _nowSh;
-      }
+      // ⛔ `IDXCARRIER.1` — the cadence is UNCONDITIONAL now. It used to sit
+      //   behind `if (_sampleN > 1)`, and `_teachFinalRepSampleEveryN` is set
+      //   by exactly six teach loops (the heavy pair phases) — every OTHER
+      //   phase left it 0, fell through here on EVERY final rep, failed range
+      //   compression on its scattered pattern, and ran a full-price CPU pass
+      //   misfiled as `cpuFull`. Measured live at 20.97 h: 76,452 such passes
+      //   × 377 ms mean = 8.0 h = 38.2% of the boot — while `boundGpu` matched
+      //   the teach-call count exactly, i.e. the GPU was carrying ALL of the
+      //   training the whole time. The wall-clock gap is the whole gate; the
+      //   sampleN flag now only means what it says (probe-read sampling), not
+      //   "opt into having a shadow budget at all".
+      const _nowSh = Date.now();
+      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
+      if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) { _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1; return; }
+      this._lastIntraShadowMs = _nowSh;
+      _boundCarried = true;
     }
     // T17.2 — parallelize CPU Hebbian across worker pool when available.
     // Same row-range partitioning pattern as sparse matmul (disjoint
@@ -1316,7 +1326,15 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const _sPre = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
       _sPre.activeSum = (_sPre.activeSum || 0) + _act.length;
       _sPre.calls = (_sPre.calls || 0) + 1;
-      if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === 'function') {
+      // ⛔ `IDXCARRIER.1` — a bound-carried call must NOT also try the ranges
+      //   verb. The bound dispatch above already trained these exact spikes on
+      //   the GPU (~30 bytes, resident state — the identity check is what
+      //   guarantees they are the same pattern), so a successful ranges frame
+      //   here was a SECOND application of the same update, and a failed one
+      //   paid the compression scan + the true-run-count refusal walk for
+      //   nothing — then had its CPU shadow misfiled as `cpuFull`, which is
+      //   how 8 hours of shadow wore a refusal's name on the board.
+      if (!_boundCarried && this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === 'function') {
         try {
           const _postRanges = indexRanges(_act);
           const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
@@ -1385,8 +1403,15 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
       const _s = _sPre;
       if (_gpuCarried) _s.gpu = (_s.gpu || 0) + 1;
-      if (!_gpuCarried || (this._intraOjaShadowCounter % 5 === 0)) {
-        if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1; else _s.cpuFull = (_s.cpuFull || 0) + 1;
+      // `IDXCARRIER.1` — a bound-carried fall-through ALWAYS runs its pass
+      //   (the 30 s wall-clock gate upstream already priced it), and it is a
+      //   SHADOW: the GPU has the training, this keeps the CPU copy that the
+      //   probes and the between-readback checkpoints read ≤30 s stale.
+      //   `boundShadow` counts them by name so the next live read can prove
+      //   the fix: `cpuFull` near zero, `boundShadow` climbing at ~2/min.
+      if (_boundCarried || !_gpuCarried || (this._intraOjaShadowCounter % 5 === 0)) {
+        if (_boundCarried) { _s.boundShadow = (_s.boundShadow || 0) + 1; _s.cpuShadow = (_s.cpuShadow || 0) + 1; }
+        else if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1; else _s.cpuFull = (_s.cpuFull || 0) + 1;
         // ⚠ Named because this is the PRIME SUSPECT for the slow-Oja line, and
         //   it was indistinguishable from a cross-projection in the log. The
         //   intra matrix is the biggest thing in the cluster — `stageProfile`
@@ -1406,7 +1431,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         //   choice, and a trade to widen) or a full pass the GPU refused to
         //   carry (pure waste, and free to remove). Aiming a fix at the wrong
         //   half is exactly what the aggregate invited once already.
-        if (_gpuCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
+        if (_gpuCarried || _boundCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
         else _s.cpuFullMs = (_s.cpuFullMs || 0) + _cpuDt;
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
@@ -1586,13 +1611,14 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // pass above; per-direction timestamp so a busy positive lane can't
       // starve the anti shadow (they write opposite signs into the same
       // matrix and probes read both effects).
-      const _sampleN = this._teachFinalRepSampleEveryN | 0;
-      if (_sampleN > 1) {
-        const _nowSh = Date.now();
-        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
-        if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
-        this._lastIntraAntiShadowMs = _nowSh;
-      }
+      // `IDXCARRIER.1` — unconditional here too, same defect as the positive
+      // pass: behind `_sampleN > 1` the cadence only existed for the six
+      // loops that set the flag, and every other phase ran a full CPU anti
+      // pass per final rep. The GPU anti dispatch above is untouched.
+      const _nowSh = Date.now();
+      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
+      if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
+      this._lastIntraAntiShadowMs = _nowSh;
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;

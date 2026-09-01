@@ -60643,6 +60643,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady("intraSynapsesHebbian")) return;
+    let _boundCarried = false;
     if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
       try {
         this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr);
@@ -60654,16 +60655,14 @@ var CLUSTER_HEBBIAN_MIXIN = {
         _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
         return;
       }
-      const _sampleN = this._teachFinalRepSampleEveryN | 0;
-      if (_sampleN > 1) {
-        const _nowSh = Date.now();
-        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
-        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) {
-          _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
-          return;
-        }
-        this._lastIntraShadowMs = _nowSh;
+      const _nowSh = Date.now();
+      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
+      if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) {
+        _sB.boundNoShadow = (_sB.boundNoShadow || 0) + 1;
+        return;
       }
+      this._lastIntraShadowMs = _nowSh;
+      _boundCarried = true;
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
@@ -60676,7 +60675,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const _sPre = this._intraOjaStats || (this._intraOjaStats = { gpu: 0, cpuFull: 0, cpuShadow: 0, boundGpu: 0, boundNoShadow: 0 });
       _sPre.activeSum = (_sPre.activeSum || 0) + _act.length;
       _sPre.calls = (_sPre.calls || 0) + 1;
-      if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === "function") {
+      if (!_boundCarried && this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === "function") {
         try {
           const _postRanges = indexRanges(_act);
           const _preRanges = _postRanges ? denseActiveRanges(pre) : null;
@@ -60709,14 +60708,17 @@ var CLUSTER_HEBBIAN_MIXIN = {
       this._intraOjaShadowCounter = (this._intraOjaShadowCounter | 0) + 1;
       const _s = _sPre;
       if (_gpuCarried) _s.gpu = (_s.gpu || 0) + 1;
-      if (!_gpuCarried || this._intraOjaShadowCounter % 5 === 0) {
-        if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1;
+      if (_boundCarried || !_gpuCarried || this._intraOjaShadowCounter % 5 === 0) {
+        if (_boundCarried) {
+          _s.boundShadow = (_s.boundShadow || 0) + 1;
+          _s.cpuShadow = (_s.cpuShadow || 0) + 1;
+        } else if (_gpuCarried) _s.cpuShadow = (_s.cpuShadow || 0) + 1;
         else _s.cpuFull = (_s.cpuFull || 0) + 1;
         const _shadow0 = Date.now();
         await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act, projName: "intraSynapses" });
         const _cpuDt = Date.now() - _shadow0;
         _s.cpuMs = (_s.cpuMs || 0) + _cpuDt;
-        if (_gpuCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
+        if (_gpuCarried || _boundCarried) _s.cpuShadowMs = (_s.cpuShadowMs || 0) + _cpuDt;
         else _s.cpuFullMs = (_s.cpuFullMs || 0) + _cpuDt;
       }
     } else if (this._sparsePool && this._sparsePool.ready) {
@@ -60821,13 +60823,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
       } catch {
       }
       if (this._teachIntermediateRep === true) return;
-      const _sampleN = this._teachFinalRepSampleEveryN | 0;
-      if (_sampleN > 1) {
-        const _nowSh = Date.now();
-        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
-        if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
-        this._lastIntraAntiShadowMs = _nowSh;
-      }
+      const _nowSh = Date.now();
+      const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
+      if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
+      this._lastIntraAntiShadowMs = _nowSh;
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
