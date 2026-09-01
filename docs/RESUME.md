@@ -1,6 +1,55 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 LATE-NIGHT (LATEST — PICK UP HERE) — FOUR SWEEP PASSES RAN, THE `meanVoltage` DEFECT WAS CAUGHT LIVE IN THE DASHBOARD, AND THE LEDGER VIOLATION I HAD BEEN COMMITTING ALL NIGHT WAS FIXED
+> ## ⛔⛔⛔ 2026-09-01 END-OF-DAY (LATEST — PICK UP HERE) — "NO FALLBACKS. PERIOD." RULED ON THE WHOLE STACK, AND TWO SUBSTITUTES FOR UNITY WERE DELETED
+>
+> ### Read in this order: this block → `docs/TODO.md` (`STACKSWEEP`) → the three blocks below for the sweep, the content-lane fix, and the corpus rebuild.
+>
+> ### STATE RIGHT NOW
+> ```
+> donor pod i03ihi54kccu0l   EXITED on purpose - billing halted, DISK KEPT
+>                            restart = start-pod on the SAME id. NEVER terminate.
+> walk                       frozen ON PURPOSE - the training is still being BUILT
+> corpus                     4,483,097 words · 2,062 entries · 92.9% licence-recorded
+> cells the walk runs        213 · EMPTY 0 · at/above the real bar 5 · THIN 168
+> exam words absent          25, and ALL 25 are phoneme sounds the phonics lane owns
+> board                      63 open · 9 in-progress (the 9 are walk-gated)
+> git                        develop / main on BOTH remotes, tree clean, HEAD develop
+> ```
+>
+> ### ⛔⛔ THE RULING, AND WHAT IT KILLED
+> Gee, asked whether the no-fallbacks law is scoped to cognition or the whole stack: **"no fallbacks. PERIOD"**. That one answer closed both open decisions and several smaller cases with them.
+>
+> **① THE PERSONA FALLBACK — 98 lines deleted from `curriculum.js`.**
+> It ran `if (!hasIntent('greeting')) { inject 12 hardcoded sentences }`, then walked their words setting `isPersona = true` and **creating new dictionary entries with GloVe patterns** for any word missing. ⛔ **Three laws forbade it:** `NO FALLBACKS` (canned content substituted precisely when the real content is absent), `§GRADE COMPLETION GATE` (*"no word lists, no sentence arrays"* — these were sentence arrays written longhand), and no-text-AI in spirit (a hand-authored greeting winning the persona-first oracle pass is not her trained voice, it is a canned reply wearing one).
+> ⚠ **THE BUG IT PATCHED IS REAL AND IS NOW UNMASKED — THAT IS THE POINT.** Without persona greeting content a chat "hi" falls through to K-vocab cosine matching and can cascade wrong. ⭐ **The honest fix is CONTENT, not a substitute:** real greeting and emotion sentences in her own voice, taught like everything else. **The canned answer hid that gap for months and made it look solved.**
+>
+> **② THE THREE-TIER VOICE CHAIN — `js/io/voice.js` now has ONE path.**
+> It ran live-piper → banked-vox → **browser TTS**, each tier entered when the one above threw. ⛔ **The bottom tier was a stock browser robot voice standing in for hers** — a listener could not tell which tier produced a sentence, so *"Unity spoke"* meant three different things and the page never said which. ⭐ **Her canon already named the one correct path**: sentence-level Equation Unity One IS her voice (signed off *"perfect"*), and that same record calls per-word concat a fallback — **the stack finally matches a decision already made.**
+> ⚠ **ACCEPTED CONSEQUENCE: if her lane fails, she is SILENT.** Same principle her emission path already follows — honest silence over a plausible substitute. **The failure is NAMED** (console, `_lastSilentReason`, and the `speech_end` event), so silence is diagnosable rather than mysterious.
+> ⭐ `_speakVox` / `_speakBrowser` are orphaned with **zero callers verified**, marked dead in-file rather than left quiet: `_speakVox` kept as the reference for word-level reconstruction of HER OWN voice and **must not be re-wired as a tier**; `_speakBrowser` should stay dead permanently.
+>
+> ### ⭐ THE PRINCIPLE THIS DAY ESTABLISHED, WORTH CARRYING
+> **A substitute that looks like her is worse than her absence.** It applied three times today in three different media:
+> - `_deterministicFallback` returned **a word's first letter** as her answer → deleted;
+> - `PERSONA_*_FALLBACK` injected **canned sentences** as her voice → deleted;
+> - `_speakBrowser` played **a stock robot voice** as her speech → dead.
+> Each hid a real gap behind something plausible, and each made a missing capability read as a working one. **Honest silence is the designed behaviour everywhere else in this brain; these three were the exceptions and now they are not.**
+>
+> ### ⏳ WHAT IS LEFT (nothing blocked on Gee right now)
+> - **`STACKSWEEP`** — two categories remain: **built-but-switched-off** (the inner-voice / sleep-learning shape, a finished feature behind a default-off flag) and **outdated comments** describing a world that moved.
+> - **`STACKSWEEP.6`** — 38 unnecessary exports. Low value; ⛔ **do NOT bulk-strip** — an export is also how a future consumer finds a symbol.
+> - **`CURVEBUILD.5`** — the 44 rep sites ≥20. **Now a wall-clock optimisation, not a rescue**, since the content-lane deposit is fixed.
+> - **`TEXTFIG.1-.3` / `.7`** — the ingest still DELETES every figure; each OpenStax figure ships an image + human alt text + caption = a labelled percept, and `perceive()` already does ImageData → CDF 9/7 → field C.
+> - **`CELLAUDIT.2`** — the upper-grade THIN cells (168 below the measured bar).
+> - **`PERSONA CONTENT`** — write real greeting/emotion sentences into the persona corpus, now that the canned ones are gone. **This is the honest half of the fallback deletion and it is not yet done.**
+> - **THE FRESH WALK IS LAST.** RE-PRICE immediately before the press.
+>
+> ### ⚠ MY OWN DISCIPLINE FAILURE, THIRD TIME IN ONE SESSION
+> **Backtick shell-substitution through `node -e` corrupted prose three separate times today** (a FINALIZED preamble, a removal note, and one more), each caught by reading the output back and repaired with `Edit`. The law already says Edit/Write only for documents. **I stopped using shell pipelines for prose after the third.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-01 LATE-NIGHT — FOUR SWEEP PASSES RAN, THE `meanVoltage` DEFECT WAS CAUGHT LIVE IN THE DASHBOARD, AND THE LEDGER VIOLATION I HAD BEEN COMMITTING ALL NIGHT WAS FIXED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`STACKSWEEP`) → the two blocks below for the corpus rebuild and the content-lane fix.
 >
