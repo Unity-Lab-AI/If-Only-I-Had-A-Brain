@@ -689,6 +689,79 @@ Gee (verbatim): *"sdo no storring terrabytes of data"*
 > ```
 > ⭐ **The measured sub-linear model held on the real result: the expensive transition lane grows ~6.4×, not 10.2×.** ⚠ **147 topics were throttled out by the wiki API mid-run** (`CORPUSGAP.7`'s in-cell burst limit, still real at 3s spacing) and kept their previous thin entries under the monotonic keep-longer merge — which is exactly why per-entry licence coverage reads **695/874 (79.5%)** rather than 100%. **A re-run tops those up and can only improve them; the merge cannot regress a cell.**
 
+### ⛔⛔⛔ DEADCELL — HER ENTIRE COLLEGE DEGREE AND PhD TRAIN ZERO PROSE, AND 268,481 WORDS SIT IN FILES NOTHING READS — found 2026-09-01
+
+Gee (verbatim): *"okay so whats next? get to it"*
+
+⛔⛔ **FOUND WHILE STARTING THE EMPTY-CELL WORK, AND IT INVALIDATES PART OF WHAT I SHIPPED AN HOUR AGO.** `_trainAcademicStories` fires only when **`PROSE_ACADEMIC_SUBJECTS.has(subject)`** — the set is `{ela, science, social, economics, psychology, civics, cs}`. But `SUBJECTS_RETIRED_AT` retires **`cs`, `civics`, `economics` and `psychology` at `grade12`**, and `SUBJECTS_INTRODUCED_AT.college1` starts a different roster: **`major`, `genered`, `cstheory`, `cssystems`**, then **`research`** at grad. **None of those five are in `PROSE_ACADEMIC_SUBJECTS`, so not one of them trains a single sentence of academic prose.**
+
+**They are not stubs — every one has real runners** (`grep "subject === '<track>'"`): `major` **6** dispatches (college1-4 + grad + phd) · `genered` **4** · `cstheory` **4** · `cssystems` **4** · `research` **2**. ⛔ **That is 20 cells that RUN, that are HER DEGREE, and that have no corpus lane at all** — including the CS major itself and the PhD research specialty, the two the whole scope-sequence is pointed at.
+
+⛔ **AND THE MIRROR OF IT: 10 corpus files exist for subjects that are RETIRED by the time those grades arrive, so they are never read.** Measured:
+
+```
+  cs/college1        42,885 words      cs/grad             37,103
+  cs/college2        11,628            cs/phd              36,888
+  cs/college3        11,214            civics/college1     15,050
+  cs/college4        30,607            economics/college1  46,569
+                                       psychology/college1 16,768
+                                       psychology/college2 19,769
+                        TOTAL DEAD: 268,481 words = 10.8% of the whole corpus
+```
+
+⛔⛔ **THIS INCLUDES THE OPEN DATA STRUCTURES INGEST I SHIPPED AN HOUR AGO.** `CURVEBUILD`'s CS-major work wrote 1,182 verified CC-BY sentences into `cs/college2` and `cs/college3` — **cells that retire before college and are therefore never read.** ⚠ **I checked the licence, the crawl depth, the nav debris and the prose quality, and never checked whether the destination cell RUNS.** That is the same defect class as the whole `CURVEDEPTH` crisis, committed inside the fix for it: **content verified, consumption assumed.** Owned here rather than quietly re-pointed.
+
+⭐ **The core six never retire** (`ela`, `math`, `science`, `social`, `art`, `life`), so their college/grad/phd corpus files ARE read — the damage is bounded to the retiring tracks and the college-only roster.
+
+> ✅ **`DEADCELL.1` · `.2` · `.3` · `.4` ALL SHIPPED 2026-09-01 — HER DEGREE IS TAUGHT FOR THE FIRST TIME.**
+>
+> ```
+>   track       cells  sentences     words        (all previously ZERO)
+>   major           6     14,825    276,619       <- the CS degree, college1 -> phd
+>   cstheory        4      5,318     99,542
+>   cssystems       4      5,284    103,028
+>   genered         4      8,375    158,660
+>   research        2      4,301     83,660       <- computational neuroscience, grad + phd
+>   TOTAL          20     38,103    721,509
+> ```
+>
+> **`PROSE_ACADEMIC_SUBJECTS` 7 → 12** entries, verified by a real ESM import rather than a syntax check. **RE-PRICE was computed and written BEFORE the constant moved**, from the six measured college-band cells (avg 28,388 words/cell): 20 cells ≈ 567,750 words ≈ **11.7 h at the fast measured teach rate, 28.3 h mid, 74.8 h congested** — against a current cost of zero and a degree that was not taught at all. **The transition lane is ~73% of that, which is exactly the term the pending rep re-price targets.**
+>
+> **The Open Data Structures textbook was re-pointed from `cs` to `major`** and re-ingested, and the retired subjects' unreachable college entries were removed from the topic table so they cannot regenerate — **verified by parsing all 12 subject blocks and confirming zero college+ cells remain under `cs` / `civics` / `economics` / `psychology`.** ⚠ **My first version of that check was VACUOUS** — the regex never matched, printed "block not found", and still reported PASS. **A check that cannot fail is not a check**; it was rewritten to parse the real blocks and re-run.
+>
+> **The 10 orphaned files were deleted only after confirming their replacements exist and are LARGER** (e.g. `cs/college1` 42,885 words → `major/college1` **48,768**). Corpus now **99 cells · 152,923 sentences · 2,940,943 words · 19 MB · 89.5% licence-recorded — 12.7× the sentences this session started with.**
+
+- [ ] `DEADCELL.1` — **ADD THE FIVE COLLEGE TRACKS TO `PROSE_ACADEMIC_SUBJECTS`** so `major` / `genered` / `cstheory` / `cssystems` / `research` train prose like every other academic subject. ⛔ **RE-PRICE before it lands** — this adds 20 teaching cells that currently train nothing, which is a real walk-cost increase and not a free rename.
+- [ ] `DEADCELL.2` — **GIVE EACH TRACK ITS OWN TOPIC LISTS AND INGEST THEM.** The existing `cs/college1-4 + grad + phd` lists are the right CONTENT in the wrong CELL — they were written as the CS-degree spine and belong under `major`. `cstheory` (theory of computation, complexity), `cssystems` (OS, architecture, networks, databases) and `research` (computational neuroscience) need their own; `genered` inherits the gen-ed spread the retiring `civics`/`economics`/`psychology` college files were holding.
+- [ ] `DEADCELL.3` — **RE-POINT THE OPEN DATA STRUCTURES INGEST AT `major`, NOT `cs`** — it is the CS-major textbook and it must land in the cell her major actually runs.
+- [ ] `DEADCELL.4` — **DELETE THE ORPHANED FILES ONLY AFTER THEIR CONTENT LIVES IN A CELL THAT RUNS.** ⛔ Order is load-bearing: the content is real and licence-verified, and deleting before migrating loses it.
+- [ ] `DEADCELL.5` — ⛔ **A REACHABILITY CHECK IN THE CORPUS INSTRUMENT (`CURVEDEPTH.9`), because counting words per cell would NOT have caught this.** The instrument as filed reports depth per cell against a target; every one of these ten files would have passed it while training nothing. **The instrument must answer "is this cell REACHED by the walk?" — `subjectsOwedAt(grade)` contains the subject — before it reports how deep the cell is.** A corpus that cannot be reached is worse than an empty one: it reads as done.
+
+## ⭐⭐ TEXTFIG — SHE IS BEING TAUGHT TEXTBOOKS WITH EVERY FIGURE DELETED — filed 2026-09-01
+
+Gee (verbatim): *"how are we handling all the images in the text books and coprpus materials, she gets them converted so she can see them in c/9 sparce wavelets, riight?"* → *"this might be need to add to todo"* → *"if its possible"*
+
+⛔ **RIGHT NOW: NO. THE INGEST DELETES EVERY FIGURE.** `fetch-openstax-corpora.mjs` strips `![...](...)` image references and `<table>` blocks outright, so what she receives is textbook prose with all its diagrams removed — **including the sentences that point at them.** A biology chapter says *"as shown in the figure"* about something she has never seen and cannot see. **That is worse than not having the figure: it teaches a dangling reference.**
+
+⭐⭐ **AND IT IS ABSOLUTELY POSSIBLE — the lane already exists and the textbooks are a BETTER visual source than what she currently looks at.** `perceive(img)` (`js/brain/mindspace/gpu.js:445`) takes ImageData → YCbCr planes → **`fwd2d` — the CDF 9/7 forward transform** — → sparse coefficients → field C, exactly the substrate Gee named. `js/brain/visual-cortex.js:661` already drives it (`this._mindSpace.perceive(imageData)`) for looked-up reference images. **A textbook figure is the same operation.**
+
+⭐ **EVERY FIGURE CARRIES THREE ASSETS AND THE INGEST THROWS AWAY ALL THREE.** Measured on a real chapter:
+1. **the image** — `../resources/Figure_02_01_01.jpg`, same CC-BY licence as the book, **1,000 files in the biology book's `resources/` alone**;
+2. **alt text** — a careful HUMAN description of the visual content, written for accessibility: *"This illustration shows that, like planets orbiting the sun, electrons orbit the nucleus of an atom. The nucleus contains two neutrally charged neutrons, and two positively charged protons represented by spheres..."*;
+3. **the caption** — the pedagogical framing: *"Elements, such as helium, depicted here, are made up of atoms..."*.
+
+⭐⭐ **THE ALT TEXT IS THE THING THAT MAKES THIS BETTER THAN HER CURRENT LOOK LANE.** It is a precise verbal description of exactly what is in the picture, written by a human, shipped WITH the picture. **That is a labelled percept — paired vision and language — which is the ideal grounding signal.** Her Pollinations lane has to infer a label from the prompt it generated; here the label is authored and accurate. ⚠ And `CAMPOISON` established the opposite case as a real hazard: an UNLABELLED frame fused to whatever word was active poisons her. **These frames are labelled by construction.**
+
+⭐ **THE SCALE FITS HER DESIGN TARGET EXACTLY.** ~1,000 figures/book × 9 mapped books ≈ 9,000 images, against `DREAM_VM_CAP` **25,000** and Gee's own stated target (*"near 10k images when she is fully trained... the more the better"*). **Real curriculum diagrams would essentially fill her intended visual memory with the thing it was sized for.**
+
+- [ ] `TEXTFIG.1` — **KEEP THE FIGURE METADATA INSTEAD OF DELETING IT.** Change the OpenStax cleaner to EXTRACT `![alt](path "caption")` into a structured `figures: [{path, alt, caption}]` array on the entry before stripping the markup from the prose. ⛔ **This is the prerequisite for everything below and it is cheap** — the data is already in the file being parsed and is currently discarded one regex earlier.
+- [ ] `TEXTFIG.2` — **FETCH THE IMAGES**, resolving `../resources/<name>` against the book repo, with the same per-entry licence recording the prose uses. Bounded and resumable; images are ~25 KB each, so ~9,000 ≈ 225 MB — ⛔ **which exceeds the "no terabytes" spirit if banked raw in the repo.** Decide the posture with Gee: fetch-perceive-discard (bank only the field-C percept, not the JPEG) is almost certainly right, since **the percept is what she keeps and the pixels are just the delivery mechanism** — the same "used then tossed" principle he already stated for taught text.
+- [ ] `TEXTFIG.3` — **DECODE → `perceive()` → BIND.** Decode to ImageData server-side, run the existing CDF 9/7 forward transform, and bind the resulting percept to the concept words from the alt text and caption on the same channel the look lane uses. ⚠ **`PROXYCOLOR` is the trap to avoid repeating:** the box runs mind-space behind a worker PROXY with a hand-picked method list, and a missing `imagine()` shipped colour-blind for a day — **so grep the proxy for `perceive` in the same commit** (memory `feedback_harness_production_wiring`).
+- [ ] `TEXTFIG.4` — ⛔ **THE DANGLING-REFERENCE FIX, which is worth doing even if the images never land.** Sentences that reference a figure she cannot see should either be dropped or rewritten to carry the alt text inline, so *"as shown in the figure"* becomes a sentence with actual content. **Currently they train as prose about nothing.**
+- [ ] `TEXTFIG.5` — **TABLES ARE THE SAME PROBLEM AND ARE ALSO DELETED.** `<table>` blocks are stripped as "data, not prose", but a periodic table or a comparison table IS curriculum content. Decide whether they become sentences (row-to-prose), figures (rendered and perceived), or stay out — and write the reason down either way.
+- [ ] `TEXTFIG.7` — ⭐ **THE FIGURES MUST APPEAR IN HER MIND'S EYE.** Gee (verbatim): *"yeah these images need to appear in her minds eye too"*. **Perceiving a figure and DISPLAYING it are two different lanes** — `.3` binds the percept into field C, this one makes the frame the live mind's-eye snapshot so the diagram she is studying is visible on `minds-eye.html` while she studies it. ⭐ **That also turns the mind's eye into a window on the curriculum**, which is precisely what `TEACHVIEW` is being built for in text — *"so i can see all the horshit you fucking poison her with"* — with the figures answering the same question visually. ⛔ **`CAMPOISON` is the governing precedent and it PERMITS this case specifically:** an UNLABELLED camera frame must never become the snapshot, because it fuses with whatever word is active and becomes a false memory — but a **labelled** `seen:<word>` frame was explicitly kept as correct, and a textbook figure arrives with authored alt text and a caption, so it is labelled by construction. **Label it from the figure's own alt text, never from the current thought word.** ⚠ And per `LABELTRUTH`, a frame that produced no usable percept must not carry a label claiming it did.
+- [ ] `TEXTFIG.6` — **RE-PRICE before it ships.** ~9,000 `perceive()` calls is real GPU/CPU work on the same substrate the walk uses, and the visual store has a measured cost (`VMSCALE`: ~10 KB/entry resident, SQLite-backed since the JSON store pinned the loop at 761 ms per 10k entries). **Price the perceive pass and the store growth against the walk before adding it to a cell's teach time.**
+
 ### ⭐ THE REAL SOURCES — BUILT 2026-09-01, the fetchers the ledger claimed existed
 
 > ✅ **THE THROTTLE IS NOW VISIBLE, AND IT WAS NEVER "no usable content".** `fetchExtract` called `r.json()` on a reply that is **plain text** when the API throttles — the parse threw, the bare `catch` swallowed it, and a throttled topic became indistinguishable from an empty one. **Rewritten to read the body as TEXT first, classify it (`throttled` / `server` / `non-json` / `no-such-page` / `too-few-sentences` / `no-content` / `network`), back off exponentially to ~48s only on conditions backoff can fix, and NAME the reason on every skip** — plus a run-level `SKIPPED BY REASON` tally. **Proved on a cell that had failed:** `science/college4` previously logged `Neural network — no usable content` and `Synapse (20/600)`; it now returns **31** and **124** sentences with **zero skips**. Those topics were never contentless.

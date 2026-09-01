@@ -122,12 +122,37 @@ export const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
 // corpus (corpora/academic/<subject>/<grade>.json) for depth. Math is EXCLUDED
 // (taught equationally, not as prose). pe/music/art/health/language are skill/
 // bespoke; life is the hand-authored lived year. the operator 2026-06-18 hybrid decision.
-// 'cs' carries BOTH the self-taught coding practice (corpora/coding/<grade>.json
-// via _trainCodingStories) AND — at college+ — the academic CS-degree prose
-// (corpora/academic/cs/<grade>.json: algorithms, data structures, OS, theory of
-// computation, ML, computational neuroscience) per the "major in code" decision
-// (#109). Earlier cs grades have no academic-cs corpus → that train is a no-op.
-export const PROSE_ACADEMIC_SUBJECTS = new Set(['ela', 'science', 'social', 'economics', 'psychology', 'civics', 'cs']);
+// 'cs' carries the self-taught coding practice (corpora/coding/<grade>.json via
+// _trainCodingStories) plus its own academic prose across the school grades.
+//
+// ⛔⛔ THE COLLEGE TRACKS WERE MISSING FROM THIS SET, AND THE COMMENT THAT USED
+// TO SIT HERE DESCRIBED SOMETHING THE CODE MADE IMPOSSIBLE. It claimed 'cs'
+// carried the CS-degree prose "at college+" — but SUBJECTS_RETIRED_AT retires
+// cs (and civics, economics, psychology) at grade12, and SUBJECTS_INTRODUCED_AT
+// starts a DIFFERENT college roster: major / genered / cstheory / cssystems,
+// then research at grad. Because none of those five were in this set,
+// _trainAcademicStories never fired for any of them, so the entire degree and
+// the PhD research specialty — 20 cells with real runners — trained ZERO
+// academic prose, while 268,481 words sat in corpora/academic/cs/college*,
+// /grad, /phd (and civics|economics|psychology /college*) that nothing reads.
+//
+// The intent in that old comment was right; the roster had moved underneath it.
+// The five tracks are named here so the intent and the mechanism agree.
+//
+// ⚠ RE-PRICE, computed BEFORE this line changed (standing LAW), from the six
+// measured college-band cells (avg 28,388 words/cell): 20 cells ≈ 567,750 words
+// ≈ 29,741 sentences. Per-word lane (reps 3, linear) + transition lane (reps 24
+// over unique pairs, growing as words^0.796) = 11.7 h at the fast measured
+// teach rate, 28.3 h at the mid rate, 74.8 h at the congested rate. The
+// transition lane is ~73% of that, which is precisely the term the pending rep
+// re-price targets. Against a current cost of ZERO — and a degree that is
+// currently not taught at all.
+export const PROSE_ACADEMIC_SUBJECTS = new Set([
+  'ela', 'science', 'social', 'economics', 'psychology', 'civics', 'cs',
+  // The college-and-above roster — her CS major, gen-ed, the two CS tracks,
+  // and the grad/PhD research specialty.
+  'major', 'genered', 'cstheory', 'cssystems', 'research',
+]);
 
 // Add #10 / #14 — subject-introduction matrix. The 6 core tracks above run
 // every grade K→PhD; ADDITIONAL subjects switch on at the grade they're
