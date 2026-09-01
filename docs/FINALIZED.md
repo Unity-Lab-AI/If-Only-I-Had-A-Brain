@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-09-01 - QPROBE BUDGET: the lane worked and its clock was wrong - feature/qprobe-budget
+
+Gee (verbatim): *"so, what happened? : Unity / 🔊 / 🎤 / × / You / what letter comes after c? / Unity / Night brain Restore Sapphire!"* → *"okay but make sure to  fix the timeout appropriately as it may take longer for differnt inputs like big ones"*
+
+```
+  the read (live box d41927a6, booted 12:48Z, message 7:00:58)
+    ChatPin: qa-probe=22157ms  vs the 20,000 ms budget → wrapper nulled honestly
+    → compose ran: primary 2,956ms + continuation-1 30,956ms + continuation-2 …
+    → total reply pass 93,955 ms, reply = compose salad
+    loop context: math-teach slabs, ~40% service — 20 s wall bought ~8 s of work
+  the fixes
+    (a) budget = _chatQProbeBudgetMs(q): 45 s floor (the battery's own per-question
+        budget) + 1 s per word past eight, cap 90 s; env override flat when set
+    (b) question-shaped input skips compose continuations (opts.questionInput)
+  verification  node --check ×3 · ESM · budget math 3/3 on the real class
+                (6w→45,000 · 17w→54,000 · 200w→90,000 cap) · bundle rebuilt
+```
+
+**`CHATFAULT.4` — BUILT.** The forensics proved the mechanism and convicted the number: the probe was mid-read of the trained letter pathway when its wall-clock hit — the ChatPin lap named it exactly. The budget was priced against a quiet loop and the loop is never quiet mid-walk (GATEWATCH.1's per-tick stepping runs 2-4 s BLOCKED slabs continuously). The battery already knew this — its per-question budget is 45 s — so the chat lane now inherits that floor and scales with input size per Gee's word, because `readInput` walks every word of the question through the ventral stream. **The continuation skip is the other half of the 94 s:** a factual ask answered then continued twice bought 50 s of conversational texture after the answer; question-shaped input now composes ONE sentence (the flag rides `generateAsync` opts into the compose block, alongside the existing lowCoherenceRejected zero). Net: a question that answers via the probe costs ~25-45 s and is CORRECT; one that falls to compose costs less than before, not more.
+
+**Docs (every tree named):** `docs/TODO.md` (CHATFAULT.4 filed + verdict), `docs/FINALIZED.md` (this), `docs/RESUME.md` + `docs/NOW.md` (latest blocks amended), `docs/ADMIN-CONTROLS.md` (flag row default → input-scaled). Brain docs unaffected — a budget and a length choice, no mechanism change. `html/*`, `README`, `deploy/*` unaffected. `wiki/`: `curriculum`/`brain-server`/`language-emission` cover the three edited files — re-stamped (local-only tree). **Server-side + bundle — lands on the next press.**
+
+---
+
 ## 2026-09-01 - CHATASK: chat asks through the exam's own lane - feature/chatask-probe
 
 Gee (verbatim): *"so in the gater battery she answered this question right? but when i ask her the same question, its word salad? can you explain this: You / what letter comes after a? / Unity / Train Finger!"* → *"yes if u are sure this will fix it with out fucking anything else up, and trufully isnt this what we want?"*

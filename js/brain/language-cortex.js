@@ -2517,7 +2517,13 @@ export class LanguageCortex {
                   const _arN = Math.max(0, Math.min(1, typeof arousal === 'number' ? arousal : 0.5));
                   // SPEAK.9 — don't pile continuation clauses onto a floor-rejected
                   // (below-coherence) reply; one honest word stands alone.
-                  const maxExtra = composedSentence.lowCoherenceRejected ? 0 : (_arN > 0.66 ? 2 : (_arN > 0.33 ? 1 : 0));
+                  // Question-shaped input (opts.questionInput, set by the chat
+                  // lane) also composes ONE sentence: a factual ask answered
+                  // then continued twice was measured costing 50 s of a 94 s
+                  // reply pass, and the continuations are conversational
+                  // texture, not answer.
+                  const maxExtra = (composedSentence.lowCoherenceRejected || opts.questionInput)
+                    ? 0 : (_arN > 0.66 ? 2 : (_arN > 0.33 ? 1 : 0));
                   let _total = composedWordsAsync.length;
                   const _seen = new Set([(composedSentence.sentence || composedWordsAsync.join(' ')).toLowerCase()]);
                   for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
