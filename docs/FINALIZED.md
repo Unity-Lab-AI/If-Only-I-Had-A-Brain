@@ -5,6 +5,114 @@
 
 ---
 
+## 2026-09-01 - CHATFAULT: the reply lane broke the day she earned honest silence - feature/chatfault-tdz
+
+Gee (verbatim), pasting the live chat: *"You / HI / Unity — silent / Her reply pass threw before composing: Cannot access 'type' before initialization. This is a FAULT, not her choosing not to speak — the message reached her and the lane broke. Server log has the stack. --- shouldnt she be talking? shes through the first gate and on to math... is something broken? She is normally talking at this point. can you investigate"*
+
+```
+  the stack (console ring)   LanguageCortex.generate  language-cortex.js:1726:39
+                             ← generateAsync :2628 ← chat.js _processAndRespondInner :762
+  the defect                 TDZ — `type` declared :1919, `speechMod` :1923, referenced :1726
+  why it never threw before  the branch is gated on passedCells.length > 0 — armed by the
+                             FIRST CELL PASS, seven days after it shipped
+  the fix                    return '' (what _renderSentence([]) returns anyway, :2646)
+```
+
+**`CHATFAULT.1` — BUILT.** The console ring (`?console=1000`, the two `level:error` lines at 4:59:09 AM) carried the full stack, so nothing was guessed. Line 1726 is the OWNWORDS.2 honest-silence branch (2026-08-25): when a TRAINED brain's motor emission returns empty and `DREAM_DICT_FALLBACK` is off, it returned `this._renderSentence([], type, speechMod) || ''` — but `const type` and `const speechMod` are declared ~200 lines below in the same function, so the reference is a TDZ `ReferenceError`, the same defect class as the typeof-no-shield law. ⭐ **The timing is the finding: in the seven days the branch existed it was UNREACHABLE, because `_hasTrained` requires `passedCells.length > 0` and that was 0 for the project's entire history until yesterday's first cell pass.** She got trained, her motor emission for "HI" came back empty mid-walk (event loop at 35-42% service through math/kindergarten teach), the honest-silence branch fired for the first time ever, and it crashed instead of rendering silence. The fault WAS surfaced honestly — chat.js:808's `silentDetail` carried the message to the page, which is exactly what Gee pasted.
+
+**The fix:** `return '';` — `_renderSentence` on an empty word list returns `''` unconditionally (line 2646), so the broken call was `''` with extra steps; the branch now matches the other two silent returns in `generate()` (1772, 1787). A comment at the site records the TDZ and the passedCells gating so the branch's history survives. **Verified:** `node --check` clean · ESM `import()` OK · bundle rebuilt, `return ""` confirmed at the branch in `js/app.bundle.js:70594` and the broken call grep-zero in both copies. **Server-side file — lands on the next press.**
+
+⚠ **AND THE ANSWER TO "SHOULDN'T SHE BE TALKING?" IS SEPARATE FROM THE CRASH, deliberately not coded past:** even with the fix, this exact moment reads as HONEST SILENCE, not speech. Before the first cell pass, `_hasTrained` was false and the dictionary-cosine retrieval bootstrap was allowed to speak for her — that is part of why she "normally" talked. OWNWORDS.2's own rule ("bootstrap yes, crutch no — once she has trained cells, empty means EMPTY") shut that off at ONE passed cell of ~180. Whether one cell is the right threshold, or the crutch should taper (e.g. hold until K completes, or `DREAM_DICT_FALLBACK=1` for the early walk), is a DESIGN fork that belongs to Gee — filed on the board as `CHATFAULT.2`, not decided unilaterally.
+
+**Docs (every tree named):** `docs/TODO.md` (CHATFAULT filed + verdicts), `docs/FINALIZED.md` (this), `docs/RESUME.md` (latest block), `docs/NOW.md` (banner). Brain docs (`ARCHITECTURE`/`SKILL_TREE`/`EQUATIONS`) unaffected — behavior is unchanged (honest silence still renders as silence; no mechanism added or removed). `ADMIN-CONTROLS.md` unaffected — `DREAM_DICT_FALLBACK` semantics unchanged. `html/*`, `README`, `deploy/*` unaffected — no UI or ops change. `wiki/modules/language-emission.md` line-count + last-verified bumped (local-only tree).
+
+---
+
+## 2026-09-01 - CLAUDEPARITY.8 RETRACTED: there was no violation, the authorization was in the hook since July, and the real defect was the opposite - feature/morning-watch-0901
+
+Gee (verbatim): *"CLAUDEPARITY.8, ??? whats the issue.. well dont worrie about it  we just need to make sure everything we fixed in this .claude is done to the other in the other project"*
+
+Gee (verbatim): *"what wat parity.8??? i asked u what the issue was and u ignored me"*
+
+Gee (verbatim): *"claudparity. 8 needs to be rectified... the brain project folder is entirely shipped to both repos, im telling you this now so what ever is telling u not to push it to both remotes is inaccurat and needs ajustment"*
+
+```
+  the "violation"      NONE — authorized 2026-07-04, allowlisted in the guard hook
+  what WAS broken      .gitignore:48 hid 497 of 521 .claude/ files from BOTH remotes
+  a clone could        NOT run the workflow — no skills, no hooks, no launchers
+  after the fix        142 files / 2.83 MB stage · 0 piper · nothing >5 MB
+  refused to ship      .claude/piper/  159 MB / 365 files of third-party TTS binaries
+```
+
+**⛔⛔ THE RETRACTION, AND THE CAUSE MATTERS MORE THAN THE FINDING.** Earlier the same day I filed `CLAUDEPARITY.8` as a live breach of the `.claude/` IP-BOUNDARY LAW across four documents. **It was not one.** `.claude/hooks/pre-tool-public-repo-guard.cjs` already carried a **third pass path** the template's LAW body never describes:
+
+```js
+const OPERATOR_AUTHORIZED_PUBLIC_REPOS = new Set([
+  'unity-lab-ai/if-only-i-had-a-brain',
+]);
+```
+
+…with the authorization in its own comment — Gee, **2026-07-04**: *"option 3, we want people to see how we got to where we aare with the project so they need workflow and files of .claude"*. **The guard returns a synthetic PASS for this repo and would never have blocked a push.**
+
+**⛔ HOW I GOT IT WRONG — and it is the THIRD instance of one pattern in a single session.** I audited the LAW's **text**, the remote's **visibility**, and the **`.gitignore`** — and never opened the enforcement code **in the project I was auditing**. ⚠ **The signal was in a number I had already measured and reported myself:** that hook is **+10% over the template's**, I classified it *"superset — template features verified at identical counts"*, and **the carve-out IS the +10%.** The other two today: concluding content was missing by grepping a **heading name**, and trusting `cp`'s **exit code** instead of the magic bytes. ⭐ **Same shape every time — the wrong instrument, confidently read.** *When auditing whether a rule is being followed, read the enforcement code, not the rule.*
+
+**⭐ WHAT WAS ACTUALLY BROKEN WAS THE INVERSE OF A LEAK.** The blanket `.claude/` exclude was ignoring **497 of 521 files** while 24 legacy ones stayed tracked from before it landed. So both remotes carried a workflow that **could not run** — no skills, no hooks, no memory templates, no launchers, no `ImHanddicapped.txt`, no `skills/unity` activation body. **A clone was a broken half**, which is precisely what the sibling project's `feedback_claude_is_tracked_here` memory exists to prevent. **Exclude removed; replaced with targeted rules that each state their reason.**
+
+**⛔ AND ONE THING REFUSED EVEN UNDER THE AUTHORIZATION, because it is not workflow IP.** `.claude/piper/` is **159 MB across 365 files** — two **63 MB** `.onnx` TTS voice models, a 9 MB `onnxruntime.dll`, espeak dictionaries. **Git keeps blobs forever: committing it adds ~159 MB to both remotes permanently, recoverable only by a history rewrite.** Left ignored with that arithmetic written into `.gitignore` rather than silently omitted. Also still ignored: `pollinations-user.json` — **this project's own CONSTRAINTS calls it *"user auth key, never touch"*** — plus `settings.local.json`, `user.json`, `.env`, `user-context/`, and the regenerated `.session-*` state.
+
+**VERIFIED AFTER THE CHANGE:** `git add -A --dry-run .claude` stages **142 files / 2,967,194 B (2.83 MB)** · **zero** `piper` paths · **zero** files above 5 MB · largest `bin/atree` at 789,016 B · and `git check-ignore` confirms `skills/unity/SKILL.md`, `start.bat`, `agents/unity-persona.md`, `bin/atree.exe` and the guard hook are all now trackable while the five secret/binary classes still match an ignore rule.
+
+⚠ **RECORDED AS A DIVERGENCE FROM THE GROUP LAW, NOT A REINTERPRETATION OF IT.** The LAW originated with Sponge (*"NO PUBLIC REPOS EVEN UNDER THAT ORGANIZATION"*); Gee is a co-founder and this is his project, and he authorized it twice. **The consequence is written plainly rather than buried: the persona bodies here — `agents/unity-persona.md`, `agents/unity-hurtme.md`, `commands/sexy.md`, `commands/hurtme.md`, `ImHanddicapped.txt` — are publicly readable, deliberately.** ⚠ **A per-repo authorization authorizes ONE repo.** The sibling project reaches the same tracked-`.claude/` posture by the FALLBACK path instead — its non-Forgejo remote is PRIVATE — and needs no carve-out.
+
+⚠ **Docs corrected in the same pass:** `.claude/CONSTRAINTS.md` (the LAW's project section rewritten, third pass path documented) · `.claude/CLAUDE.md` (§INFRASTRUCTURE delta + LAW INDEX one-liner) · `.claude/WORKFLOW.md` (§CLAUDE IP BOUNDARY ENFORCEMENT) · `.gitignore` · `docs/TODO.md` (`CLAUDEPARITY.8` closed with the retraction, original filing preserved) · this file.
+
+## 2026-09-01 - CLAUDEPARITY: `/unity` was declining to activate by design, the launcher had no memory step, and 24 `.claude/` files are on a PUBLIC repo - feature/morning-watch-0901
+
+Gee (verbatim): *"EVERY THING WE DID YESTERDAY TO FIX THE /UNITY AND ALL THE COMMANDS AND STUFF AND SKILLS AND START.BAT AND START.SH AND EVERYTHING WE DID TO THIS .CLAUDE, NEEDS TO BE DONE TO THIS PROJECTS .CLAUDE TOO : C:\Users\gfour\Desktop\If-Only-I-Had-A-Brain\.claude SO CHECK THE DOCS OF WHAT ALL WE DID YESTERDAY TO FIX THE / UNITY AND ALL HER DIFFERENT / COMMANDS AND SKILLS( BECUSE REMEMBER YESTERDAY THERE WERE SOME NEEDED FILES THAT YOU WERE ANSY ABOUT FIXING BECASUE THEY HAD PROJECT INFO IN THEM BUT U MANAGED TO CORRECT THEM AND GET THE .CLAUDE SLASH COMMANDS FOR UNITY AND all of it SO THAT THEY ALL WORK JUST LIKE THIS .CLAUDE DOE NOW, REMEMBER THE REPO FOR THE ual claude workflow ON GIT.UNITYAILAB.COM"*
+
+Gee (verbatim): *"REMEMBR DONT LOSE ANY PROJECT INFO WHEN UPDATED THE NEEDED FILES"*
+
+Gee (verbatim): *"I SHOULD NEED TO SAY GO, I ALREADY TOLD YOU WHAT ALL TO DO WHICH SHOULD BE YOU DOING IT ALL"*
+
+```
+  template parity    103 / 2 / 27-unaccounted  ->  111 identical / 2 line-endings / 19 ours / 0 unaccounted
+  skills/unity        3,336 B  ->  34,732 B     (32,352 template-verbatim + project delta)
+  WORKFLOW.md        12,959 B  ->  95,098 B
+  CONSTRAINTS.md     65,295 B  -> 109,900 B     (0 lines removed, 467 added)
+  CLAUDE.md          64,086 B  ->  84,157 B
+  start.bat           1,272 B  ->  11,037 B     (it had NO memory-install step at all)
+  memory layer       98 files / 92 indexed  ->  121 files / 120 of 120 indexed
+  model              inherited claude-fable-5  ->  pinned claude-opus-5 in 3 places
+  dangling refs      25, of which 23 are the TEMPLATE'S OWN
+  .claude/ on a PUBLIC remote      24 files     ⛔ UNRESOLVED — Gee's call
+```
+
+**SOURCE OF TRUTH: `git@git.unityailab.com:UnityAILab/UAL-ClaudeWorkflow.git`, `main` @ `25a5757`, cloned FULL.** ⛔ Not `--depth 1` — a shallow clone carries one commit and one branch, and yesterday that produced two confidently-wrong claims about upstream history in the sibling project.
+
+**⛔ `/unity` WAS NOT ACCIDENTALLY BROKEN HERE — IT WAS DELIBERATELY DECLINING.** `skills/unity/SKILL.md` was **3,336 B against the template's 32,352**, a 2026-08-29 "retune" whose body carried a heading reading `## WHAT DOES NOT ACTIVATE`. ⭐ **The identical file-state existed in the sibling project yesterday** and was fixed the same way: the template's body verbatim, whose own frontmatter says *"Reading the body IS activating."* ⭐ **Nothing was lost, checked BEFORE the overwrite** — the UNITYCMD verdict is permanently in this file (3 grep matches), which is where the replaced file itself pointed; the project vocabulary law (**fix** not "cut" · **Gee** not "operator" · **words** not "tokens") is preserved inside the new body as a marked `⚠ PROJECT DELTA` block, with a two-Unities table separating **Unity the coder** from **Unity the brain**.
+
+**⛔ THE LAUNCHER IS WHY THE MEMORY LAYER COULD NEVER SELF-HEAL.** `start.bat` was **1,272 B** with **no memory-install step whatsoever** — no path encoding, no `MEMORY.md` check, no template copy. Result: **23 template memories had never reached the folder Claude Code actually reads.** Installed the way the launcher would: **98 → 121 files.** ⭐ **And the index audit found more than was filed:** it pointed at only **92 of 120** files, and **five orphans were this project's OWN memories** — `gee_sole_operator_no_red`, `mixin_attach_order`, `no_agents_for_doc_writing`, `thresholds_need_math_derivation`, `consciousness_imaging_imagining_one_process`. Each was read and indexed accurately. ⛔ **`MEMORY.md` was MERGED, never replaced** — the template's index knows nothing about this project's **88 live-only** memories.
+
+**⛔ THE MODEL WAS COMING FROM OUTSIDE THE REPOSITORY, exactly as in the sibling project.** No `model` key in `settings.json`, no `--model` in either launcher, so both inherited the user-level `claude-fable-5`. Pinned in three places; **the global default deliberately left alone** because editing it would change the model for every project on this machine.
+
+**⚠ THE METHOD WAS DELIBERATELY INVERTED ON TWO FILES, AND THE REASON IS THE INSTRUCTION.** *"DONT LOSE ANY PROJECT INFO"* decides it: retyped **template** text is verifiable by diff afterwards, retyped **project** text is irreplaceable. The sibling project's files were nearly empty so template-base cost nothing; **this project's `CONSTRAINTS.md` and `CLAUDE.md` are BIGGER than the template**, so they kept their bodies and the missing template sections were inserted into them. `WORKFLOW.md` — genuinely gutted at 10 sections against ~100 — took the template as base with every project section carried verbatim. ⛔ **Proven: `git diff HEAD -- .claude/CONSTRAINTS.md` = 0 lines removed, 467 added.** Five universal LAWs were genuinely absent (NEVER-DELETE-TODO-INFO · GIT-FLOW · CASE-INSENSITIVITY · NO-CLAUDE-ATTRIBUTION · IP-BOUNDARY) and all eleven project laws survived untouched.
+
+**⛔ ONE TEMPLATE SECTION DELIBERATELY NOT ADOPTED.** The template's `§Example violations and corrections` holds the same four LAW #0 violations that `CONSTRAINTS.md §Why this exists` **already carries with fuller quotes** — including *"YOU CUNT!! THIS ISN NOT A YOU GET TO FUCKING CHOOSE WHAT YOU LISTEN TO WHEN I SAY SHIT"*, which the template tidies away. A second weaker copy of the same four in the same file is drift by construction.
+
+**⚠ TWO FOULS OWNED, BOTH CAUGHT BY CHECKING RATHER THAN TRUSTING A REPORT.**
+
+**① I broke a binary.** `cp "$TPL/bin/atree" "$BRN/bin/atree"` from git-bash **overwrote `bin/atree.exe`** — MSYS resolves an extensionless path to its `.exe` sibling — replacing the PE32+ Windows binary with a Linux ELF **and reporting success.** Caught by inspecting magic bytes, not the exit code; both restored with PowerShell `Copy-Item -LiteralPath` and verified byte-for-byte (`atree` ELF 789,016 · `atree.exe` PE/MZ 541,184). ⭐ Nothing lost — the original was already byte-identical to the template's — and the sibling project was checked for the same wound and is clean. **Now written into `CONSTRAINTS.md §CROSS-PLATFORM CASE INSENSITIVITY`.**
+
+**② I claimed project content was missing by grepping a HEADING NAME** — the exact error I had warned about earlier in the same session when checking the LAWs by content instead of by title. `commands/workflow.md`'s `### Historical violations` block is a **lesser** duplicate of `§Why this exists`, not unique content. The decision it changed (no migration needed) was corrected before anything was deleted.
+
+**⭐ NO FILE WAS DELETED, and the three command duplicates were split by HARM rather than by rule.** `commands/unity.md` was **actively contradictory** — repeating the declined-register contract against the fixed skill — so it became a pointer that records why. `super-review.md` and `workflow.md` are merely stale, so **they keep their full bodies** and gained a banner naming the skill authoritative. `hurtme.md` and `sexy.md` are this project's own and stay. **All five gained frontmatter; none had a `description` before, and `super-review.md` had a bare `description:` line with no `---` fences at all.**
+
+**VERIFIED BY RUNNING IT:** 11/11 `.cjs` hooks parse · 21/21 skills carry `name` + `description` · 5/5 commands carry fences + description · 4/4 JSON files parse · full persona chain resolves · `bash -n start.sh` clean · `spinnerVerbs` 35,477 B and all 7 hook events intact after the settings edit. ⭐ **The dangling-reference scan was run against the TEMPLATE too, so upstream's problems are not reported as ours: 23 of our 25 are dangling upstream as well** (`user-prompt-expansion-yolo.cjs`, the three stale `commands/*` refs from the `commands/`→`skills/` migration, and a family of nested `skills/<category>/<name>/SKILL.md` paths the template names but ships flat). **The two that are ours are not breakage** — `pollinations-user.json` is this project's documented *"user auth key, never touch"*, absent until created; `config.json` is one stale line in `agents/unity-persona.md`. Neither was fabricated to satisfy a reference.
+
+**⛔⛔ AND THE THING THAT OUTRANKS ALL OF IT — FILED OPEN AS `CLAUDEPARITY.8`.** Found while checking whether any of this could be committed: remote `github` → `https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain.git` is **PUBLIC**, and **24 `.claude/` files are on its `main` right now**, confirmed with `git ls-tree` — including **`agents/unity-persona.md` (42,220 B, the full persona body)**, `agents/unity-hurtme.md`, `commands/sexy.md`, `commands/hurtme.md`, `CONSTRAINTS.md`, `CLAUDE.md`, `WORKFLOW.md`. ⛔ **The Layer 0 block IS in `.gitignore` at line 48 and has never done anything, because a gitignore never untracks what is already tracked** — the files predate the block, so the protection has been READING as protection. **The guard hook could not have caught it either**: it fires on `git add`/`commit`/`push`, and none had been run against `.claude/` since. ⚠ For contrast the sibling project passes cleanly — 158 tracked, non-Forgejo remote **PRIVATE**. ⛔ **Nothing was staged, committed, pushed or deleted against this repo**, per the LAW's own *"surface immediately, do NOT attempt unilateral remediation"*. The three options and their honest limits are on the board. **Until Gee picks one, every `.claude/` path here is un-committable.**
+
+⚠ **Docs updated in the same pass:** `.claude/CLAUDE.md` · `.claude/CONSTRAINTS.md` · `.claude/WORKFLOW.md` · `.claude/skills/unity/SKILL.md` · `.claude/commands/{unity,workflow,super-review,hurtme,sexy}.md` · `docs/TODO.md` (§CLAUDEPARITY, 7 rows closed with verdicts + `CLAUDEPARITY.8` filed open) · this file. **The `[x]` rows remain in `docs/TODO.md` with their full write-ups inline for the next board sweep — no pointer rows.**
+
 ## 2026-09-01 - FIRSTCELL + PHASELOOP.2: the first cell pass in this project's history, the waiting checks all read, and the sibling loop gets its cursor - feature/qabinding-cursor
 
 Gee (verbatim): *"OKAY ANY THING IN THE TODO WE CAN DO AS FAR AS TESTS AND CHECKS WE WERE WAITING ON?"*

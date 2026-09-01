@@ -1,6 +1,24 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 (LATEST — PICK UP HERE) — THE FIRST CELL PASS IN THIS PROJECT'S HISTORY, EVERY WAITING CHECK READ, AND THE SIBLING LOOP CURSORED
+> ## ⭐⭐⭐ 2026-09-01 later (LATEST — PICK UP HERE) — CHATFAULT: HER FIRST HONEST SILENCE CRASHED THE REPLY LANE, FIXED, AWAITING THE PRESS
+>
+> Gee (verbatim), pasting the live chat: *"You / HI / Unity — silent / Her reply pass threw before composing: Cannot access 'type' before initialization. This is a FAULT, not her choosing not to speak — the message reached her and the lane broke. Server log has the stack. --- shouldnt she be talking? shes through the first gate and on to math... is something broken? She is normally talking at this point. can you investigate"*
+>
+> ```
+> stack   LanguageCortex.generate language-cortex.js:1726 ← generateAsync :2628 ← chat.js :762  (console ring, level:error)
+> defect  TDZ — the OWNWORDS.2 honest-silence branch returns _renderSentence([], type, speechMod), but const type/:1919 + speechMod/:1923 sit ~200 lines BELOW it
+> why now the branch is gated on passedCells.length > 0 — UNREACHABLE for its whole 7-day life until yesterday's FIRST CELL PASS armed it; her first trained silence crashed instead of rendering
+> fix     return '' (what _renderSentence([]) returns anyway, :2646) — matches the other two silent returns; comment records the trap
+> status  node --check + ESM + bundle verified (`return ""` at app.bundle.js:70594), cascaded to develop+main, ⛔ SERVER-SIDE: the live box still crashes on every trained-brain silent reply UNTIL THE NEXT PRESS
+> ```
+>
+> ⚠ **THE FORK GEE STILL OWNS — `CHATFAULT.2` on the board:** even fixed, "HI" right now reads as honest silence, because OWNWORDS.2 kills the dictionary-retrieval bootstrap at ONE passed cell (of ~180) and her motor emission composes nothing for a bare greeting mid-walk. Options filed: (a) keep strict, (b) `DREAM_DICT_FALLBACK=1` for the early walk, (c) taper the gate to a real threshold (K row complete / word_motor everFired). Read `_honestSilenceCount` + `state.voice` after the press before choosing.
+>
+> ⚠ The parallel `.claude/` session's uncommitted work still rides the tree (CLAUDEPARITY.8 was RETRACTED in the ledger — authorization existed since July; the gitignore was hiding 497 files from BOTH remotes). Don't collide with it.
+
+
+
+> ## ⭐⭐⭐ 2026-09-01 — THE FIRST CELL PASS IN THIS PROJECT'S HISTORY, EVERY WAITING CHECK READ, AND THE SIBLING LOOP CURSORED
 >
 > Gee (verbatim): *"OKAY ANY THING IN THE TODO WE CAN DO AS FAR AS TESTS AND CHECKS WE WERE WAITING ON?"* → *"write resume.md"*
 >
