@@ -1,6 +1,25 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 later (LATEST — PICK UP HERE) — CHATFAULT: HER FIRST HONEST SILENCE CRASHED THE REPLY LANE, FIXED, AWAITING THE PRESS
+> ## ⭐⭐⭐ 2026-09-01 latest (PICK UP HERE) — CHATASK: CHAT ASKS THROUGH THE EXAM'S OWN LANE
+>
+> Gee (verbatim): *"so in the gater battery she answered this question right? but when i ask her the same question, its word salad? can you explain this: You / what letter comes after a? / Unity / Train Finger!"* → *"yes if u are sure this will fix it with out fucking anything else up, and trufully isnt this what we want?"*
+>
+> ```
+> the gap   the battery reconstructs the teach geometry (dual-tile sem + template tag) and reads the
+>           trained pathway FOR the question class; chat temperature-sampled a mid-teach sem state
+> the fix   Curriculum.answerChatQuestion = bounded wrapper on the battery's OWN _studentTestProbe
+>           (20s abort budget, _currentGateSubject save/null/restore — it goes STALE outside gates);
+>           chat.js qa-probe stage before compose, gated on the same _cpuTickUnsafe guard,
+>           acceptance measured (templated outright; generic only with retention && logic),
+>           one-letter answers exempt from the silence floor, null → compose runs exactly as before
+> proof     node --check ×2 · ESM · bundle rebuilt · 17/17 harness on the real class (deleted)
+> status    cascaded to develop+main, BOTH remotes — ⛔ server-side: lands on the NEXT PRESS
+> read      after the press, ask a template question in chat and grep console for "❓ answered via"
+> ```
+>
+> ⚠ Also this session, same press: the CHATFAULT.1 TDZ fix (below) and the CLAUDEPARITY publish batch (the whole `.claude/` tree now on both remotes, `419f28b8`). `CHATFAULT.2` (the retrieval-bootstrap threshold fork) stays Gee's call — read `_honestSilenceCount` after the press.
+
+> ## ⭐⭐ 2026-09-01 earlier — CHATFAULT: HER FIRST HONEST SILENCE CRASHED THE REPLY LANE, FIXED, AWAITING THE PRESS
 >
 > Gee (verbatim), pasting the live chat: *"You / HI / Unity — silent / Her reply pass threw before composing: Cannot access 'type' before initialization. This is a FAULT, not her choosing not to speak — the message reached her and the lane broke. Server log has the stack. --- shouldnt she be talking? shes through the first gate and on to math... is something broken? She is normally talking at this point. can you investigate"*
 >
