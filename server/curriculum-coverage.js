@@ -45,11 +45,29 @@ const BAND = {
   college1: 'college', college2: 'college', college3: 'college', college4: 'college',
   grad: 'grad', phd: 'grad',
 };
-// FLOORS for flagging, not targets. A cell above its floor is not thereby
-// finished — it is merely not obviously starved. Band-aware because a real
-// year is a different size at every grade, which is the same reason the
-// sentence cap is banded.
+// ⛔⛔ THESE FLOORS ARE UNDERIVED AND THAT FACT IS PUBLISHED, NOT HIDDEN.
+//
+// They are a judgement, not a measurement: nobody derived them from a real
+// course, a syllabus, or a counted textbook. A `high` cell therefore reports
+// OK at 20,000 words while ONE real high-school textbook is 150,000-250,000 —
+// so "OK" currently means roughly 13% of a real course year.
+//
+// ⛔ THAT IS THE EXACT DEFECT THIS WHOLE MODULE EXISTS TO CATCH, committed by
+// the module itself. `ACAD-API-3` declared the depth upgrade OPTIONAL because
+// "all 666 topics" were covered; the wiki reported "89/89 cells, 0 thin"; both
+// measured against a declaration rather than against the real course. An
+// instrument that grades against its author's own guess is a checkbox with
+// extra steps.
+//
+// ⭐ Until a derived target lands, `floorsDerived: false` rides in the report
+// and every consumer is expected to say so. The standing law is that a named
+// threshold carries a derivation before commit; this one does not, and hiding
+// that would make this file a liar rather than merely incomplete.
 const FLOOR = { early: 2000, middle: 5000, upper: 15000, high: 20000, college: 20000, grad: 20000 };
+const FLOORS_DERIVED = false;
+// A real course year, for the comparison the floors cannot make on their own.
+// Rough and labelled rough — it is an ANCHOR for honesty, not a target.
+const REAL_COURSE_YEAR_WORDS = 150000;
 
 function readCell(corpusRoot, subject, grade) {
   const f = path.join(corpusRoot, subject, `${grade}.json`);
@@ -136,6 +154,15 @@ function computeCoverage(curriculumModule, corpusRoot) {
     reachableWords,
     entries,
     licencePct: entries ? Math.round((licensed / entries) * 1000) / 10 : 0,
+    // ⛔ THE HONESTY FIELDS. `ok` above counts cells clearing an UNDERIVED bar,
+    // so it is published alongside what that bar is worth against a real course
+    // year. Without these, `ok: 104` reads as 104 finished cells.
+    floors: { ...FLOOR },
+    floorsDerived: FLOORS_DERIVED,
+    realCourseYearWords: REAL_COURSE_YEAR_WORDS,
+    avgWordsPerProseCell: (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length)
+      ? Math.round(reachableWords / (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length))
+      : 0,
     // ⚠ Lists are TRUNCATED for display and say so; the counts above are not.
     // A truncated list that looks complete is how a dashboard starts lying.
     emptyList: empty.slice(0, CAP),
