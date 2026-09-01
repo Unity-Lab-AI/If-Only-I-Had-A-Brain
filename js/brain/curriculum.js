@@ -4551,7 +4551,16 @@ export class Curriculum {
                 if (ep && ep.pattern) dreamSeed = ep.pattern;
               } else if (!this._dreamSeedGapLogged) {
                 this._dreamSeedGapLogged = true;
-                this._hb('[Curriculum] ⚠ dream recombination has NO episode seed — no Tier 1 store exposes getRandomEpisode (MemorySystem has no .tier1, brain.tier1Store is never assigned). Dreams run from the fallback seed only. Filed as DORMANT.2.');
+                // ⛔ THIS MESSAGE USED TO SAY "Dreams run from the fallback seed
+                // only" AND THAT WAS FALSE IN TWO WAYS. There is no fallback
+                // seed — `dreamSeed` stays null and the entire dream block below
+                // is gated on `if (dreamSeed)`, so nothing runs at all. And
+                // "fallback" is banned vocabulary here: this codebase has no
+                // capability-degradation paths, and a log inventing one both
+                // misdescribes the behaviour and teaches a reader the wrong
+                // architecture. A reader of the old line would believe dreams
+                // were running degraded; they were not running.
+                this._hb('[Curriculum] ⚠ dream recombination has NO episode seed, so NO dream is generated on this pass — the block is skipped entirely, nothing degraded runs. No Tier 1 store exposes a random-episode fetch (MemorySystem has no .tier1; the server store has recallByMood/recallByUser but no random sampler). Filed as DORMANT.2.');
               }
             } catch { /* non-fatal */ }
             if (dreamSeed) {
