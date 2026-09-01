@@ -41,7 +41,25 @@
 >   on disk          1.7 MB           15 MB         (terabytes are not in range)
 > ```
 >
-> ⭐ **The expensive teach lane grows only ~6.4×, not 10.2×** — word→word transitions consume UNIQUE deduped pairs, measured on this corpus to grow as `words^0.796`. ⚠ **This is NOT "the gap is closed":** it is the *existing plan, finally not truncated*. The topic lists are still 6-20 entries per cell, **171 cells still hold nothing**, and ELA still has no literature. **147 topics were throttled out by the wiki API during the run** and kept their old thin entries (which is why per-entry licence coverage reads 695/874) — a monotonic re-run tops them up.
+> ⭐ **The expensive teach lane grows only ~6.4×, not 10.2×** — word→word transitions consume UNIQUE deduped pairs, measured on this corpus to grow as `words^0.796`.
+>
+> ### ⭐⭐ THEN THE REAL SOURCES LANDED — the fetchers the ledger claimed existed
+>
+> ```
+>                   START          NOW        source breakdown (words)
+>   sentences      12,075      128,913        en.wikipedia      2,170,321
+>   words         230,566    2,487,915        simple.wikipedia    108,595
+>   entries           874        1,351        gutenberg            77,234
+>   on disk          1.7 MB       16 MB       openstax             69,155
+>   licence         0/874    1,190/1,351      opendatastructures   22,842
+> ```
+>
+> - **OpenStax textbooks** — 3,984 sentences, 9 book→cell mappings, every licence read from the book's own `LICENSE.txt` and verified CC-BY 3.0. Biology→G9, chemistry→G10, physics→G11, anatomy→G12, astronomy→G6, general-biology→C1, microbiology→C2, economics→G11+C1. Math deliberately unmapped (equational by design).
+> - **Project Gutenberg** — 3,879 sentences of ACTUAL literature across ELA G3→C2, closing the corpus's most indefensible gap: ELA held Wikipedia articles *about* books instead of books. Licence guarantee is the source itself (Gutenberg's US catalogue is public-domain by collection policy). *The Crucible* and *Nineteen Eighty-Four* are absent on purpose — still in copyright, so they stay as encyclopedia entries rather than being silently swapped for a different text.
+> - **Open Data Structures** — 1,182 sentences into `cs/college2` + `cs/college3`, **her actual major**, licence verified CC-BY 2.5/ca before ingest.
+> - **Throttle detection** — the wiki API answers a burst with plain text, `r.json()` threw, and a bare `catch` made a throttled topic indistinguishable from an empty one. Now classified and named per skip, with real backoff. Proved on a cell that had failed: `Neural network` went from "no usable content" to 31 sentences, zero skips.
+>
+> ⚠ **STILL NOT "the gap is closed".** The topic lists are still 6-20 entries per cell, **171 cells still hold nothing**, the Wikibooks shelf has plumbing but no topic list yet, and the full Wikipedia deepening pass is a measured ~6 h overnight job. **What changed is that the sources are real and the pipe is open.**
 >
 > **The numbers below are the PRE-rebuild baseline**, kept as the record of what was found.
 

@@ -2,7 +2,7 @@
   "version": 1,
   "grade": "grade9",
   "subject": "science",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for science/grade9. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
@@ -124,6 +124,294 @@
       "story": "a biome is a distinct geographical region with specific climate, vegetation, animal life, and an ecosystem. it consists of a biological community that has formed in response to its physical environment and regional climate. in 1935, arthur tansley added the climatic and soil aspects to the idea, calling it ecosystem. the international biological program projects popularized the concept of biome. however, in some contexts, the term biome is used in a different manner. both include many biomes in fact. to divide the world into a few ecological zones is difficult, notably because of the small-scale variations that exist everywhere on earth and because of the gradual changeover from one biome to the other. their boundaries must therefore be drawn arbitrarily and their characterization made according to the average conditions that predominate in them. a 1978 study on north american grasslands found a positive logistic correlation between evapotranspiration in mm/yr and above-ground net primary production in g/m2/yr. these findings help explain the categories used in holdridge's bioclassification scheme , which were then later simplified by whittaker. the number of classification schemes and the variety of determinants used in those schemes, however, should be taken as strong indicators that biomes do not fit perfectly into the classification schemes created. holdridge uses the four axes to define 30 so-called \"humidity provinces\", which are clearly visible in his diagram. while this scheme largely ignores soil and sun exposure, holdridge acknowledged that these were important. his scheme can be seen as a simplification of holdridge's; more readily accessible, but missing holdridge's greater specificity. whittaker based his approach on theoretical assertions and empirical sampling. he had previously compiled a review of biome classifications. = = physiognomy: sometimes referring to the plants' appearance; or the biome's apparent characteristics, outward features, or appearance of ecological communities or species - including plants. biome: a grouping of terrestrial ecosystems on a given continent that is similar in vegetation structure, physiognomy, features of the environment and characteristics of their animal communities. formation: a major kind of community of plants on a given continent. biome-type: grouping of convergent biomes or formations of different continents, defined by physiognomy. formation-type: a grouping of convergent formations. whittaker's distinction between biome and formation can be simplified: formation is used when applied to plant communities only, while biome is used when concerned with both plants and animals. whittaker's convention of biome-type or formation-type is a broader method to categorize similar communities. = = whittaker used what he called \"gradient analysis\" of ecocline patterns to relate communities to climate on a worldwide scale. whittaker considered four main ecoclines in the terrestrial realm. changes in physiognomic complexity vary with how favorable of an environment exists . trends in the diversity of structure follow trends in species diversity; alpha and beta species diversities decrease from favorable to extreme environments. each growth-form has its characteristic place of maximum importance along the ecoclines. the same growth forms may be dominant in similar environments in widely different parts of the world. whittaker summed the effects of gradients and to get an overall temperature gradient and combined this with a gradient , the moisture gradient, to express the above conclusions in what is known as the whittaker classification scheme. the scheme graphs average annual precipitation versus average annual temperature to classify biome-types. = = the multi-authored series ecosystems of the world, edited by david w. goodall, provides a comprehensive coverage of the major \"ecosystem types or biomes\" on earth: the eponymously named heinrich walter classification scheme considers the seasonality of temperature and precipitation. the system, also assessing precipitation and temperature, finds nine major biome types, with the important climate traits and vegetation types. the boundaries of each biome correlate to the conditions of moisture and cold stress that are strong determinants of plant form, and therefore the vegetation that defines the region. extreme conditions, such as flooding in a swamp, can create different kinds of communities within the same biome. schultz defined nine ecozones : robert g. bailey nearly developed a biogeographical classification system of ecoregions for the united states in a map published in 1976. he subsequently expanded the system to include the rest of north america in 1981, and the world in 1989. the bailey system, based on climate, is divided into four domains , with further divisions based on other climate characteristics . each ecoregion is characterized by a main biome . this classification is used to define the global 200 list of ecoregions identified by the wwf as priorities for conservation. for the terrestrial ecoregions, there is a specific ecoid, format xxnnnn . = = the applicability of the realms scheme above - based on udvardy -to most freshwater taxa is unresolved. as a result, vegetation forms predicted by conventional biome systems can no longer be observed across much of earth's land surface as they have been replaced by crops and rangelands or cities. anthropogenic biomes offer a way to recognize the irreversible coupling of human and ecological systems at global scales and manage earth's biosphere and anthropogenic biomes. anthropogenic climate change has the potential to greatly alter the distribution of earth's biomes. meaning, biomes around the world could change so much that they would be at risk of becoming new biomes entirely. more specifically, between 54% and 22% of global land area will experience climates that correspond to other biomes. 3.6% of land area will experience climates that are completely new or unusual. an example of a biome shift is woody plant encroachment, which can change grass savanna into shrub savanna. average temperatures have risen more than twice the usual amount in both arctic and mountainous biomes, which leads to the conclusion that arctic and mountainous biomes are currently the most vulnerable to climate change. south american terrestrial biomes have been predicted to go through the same temperature trends as arctic and mountainous biomes. with its annual average temperature continuing to increase, the moisture currently located in forest biomes will dry up. the physical environment: an introduction to physical geography. university of wisconsin-stevens point. university of california museum of paleontology berkeley's the world's biomes gale/cengage biome overview \"biomes\". archived from the original on 2013-07-02.",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "biology-the-building-blocks-of-molecules",
+      "story": "matter occupies space and has mass. all matter is composed of elements , substances that cannot be broken down or transformed chemically into other substances. each element is made of atoms, each with a constant number of protons and unique properties. a total of 118 elements have been defined; however, only 92 occur naturally, and fewer than 30 are found in living cells. the remaining 26 elements are unstable and, therefore, do not exist for very long or are theoretical and have yet to be detected. each element is designated by its chemical symbol (such as h, n, o, c, and na), and possesses unique properties. these unique properties allow elements to combine and to bond with each other in specific ways.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-introduction",
+      "story": "class=\"introduction\" class=\"summary\" title=\"sections summary\" class=\"art-exercise\" title=\"art connections\" class=\"multiple-choice\" title=\"multiple choice\" class=\"free-response\" title=\"free response\" \") genetics is the study of heredity. johann gregor mendel set the framework for genetics long before chromosomes or genes had been identified, at a time when meiosis was not well understood. mendel selected a simple biological system and conducted methodical, quantitative analyses using large sample sizes. because of mendel's work, the fundamental principles of heredity were revealed. we now know that genes, carried on chromosomes, are the basic functional units of heredity with the ability to be replicated, expressed, or mutated. today, the postulates put forth by mendel form the basis of classical, or mendelian, genetics. not all genes are transmitted from parents to offspring according to mendelian genetics, but mendel's experiments serve as an excellent starting point for thinking about inheritance.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-themes-and-concepts-of-biology",
+      "story": "this may sound like a silly question with an obvious answer, but it is not easy to define life. for example, a branch of biology called virology studies viruses, which exhibit some of the characteristics of living entities but lack others. it turns out that although viruses can attack living organisms, cause diseases, and even reproduce, they do not meet the criteria that biologists use to define life. from its earliest beginnings, biology has wrestled with four questions: what are the shared properties that make something \"alive\"? how do those various living things function? when faced with the remarkable diversity of life, how do we organize the different kinds of organisms so that we can better understand them? and, finally-what biologists ultimately seek to understand-how did this diversity arise and how is it continuing?",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-process-of-science",
+      "story": "these (b) stromatolites along the shores of lake thetis in western australia are ancient structures formed by the layering of cyanobacteria in shallow waters. (credit a: modification of work by nasa; scale-bar data from matt russell; credit b: modification of work by ruth ellison)\") like geology, physics, and chemistry, biology is a science that gathers knowledge about the natural world. specifically, biology is the study of life. the discoveries of biology are made by a community of researchers who work individually and together using agreed-on methods. in this sense, biology, like all sciences is a social enterprise like politics or the arts. the methods of science include careful observation, record keeping, logical and mathematical reasoning, experimentation, and submitting conclusions to the scrutiny of others. science also requires considerable imagination and creativity; a well-designed experiment is commonly described as elegant, or beautiful.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-water",
+      "story": "it is because water is essential to life; even minute traces of it on another planet can indicate that life could or did exist on that planet. water is one of the more abundant molecules in living cells and the one most critical to life as we know it. approximately 60-70 percent of your body is made up of water. without it, life simply would not exist. the hydrogen and oxygen atoms within water molecules form polar covalent bonds. the shared electrons spend more time associated with the oxygen atom than they do with hydrogen atoms. there is no overall charge to a water molecule, but there is a slight positive charge on each hydrogen atom and a slight negative charge on the oxygen atom.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-biological-molecules",
+      "story": "there are four major classes of biological macromolecules (carbohydrates, lipids, proteins, and nucleic acids), and each is an important component of the cell and performs a wide array of functions. combined, these molecules make up the majority of a cell's mass. biological macromolecules are organic, meaning that they contain carbon (with some exceptions, like carbon dioxide). in addition, they may contain hydrogen, oxygen, nitrogen, phosphorus, sulfur, and additional minor elements. it is often said that life is \"carbon-based.\" this means that carbon atoms, bonded to other carbon atoms or other elements, form the fundamental components of many, if not most, of the molecules found uniquely in living things. other elements play important roles in biological molecules, but carbon certainly qualifies as the \"foundation\" element for molecules in living things. it is the bonding properties of carbon atoms that are responsible for its important role.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-how-cells-are-studied",
+      "story": "a living thing, like you, is called an organism. thus, cells are the basic building blocks of all organisms. several systems functioning together form an organism (such as an elephant, for example). there are many types of cells, and all are grouped into one of two broad categories: prokaryotic and eukaryotic. animal cells, plant cells, fungal cells, and protist cells are classified as eukaryotic, whereas bacteria and archaea cells are classified as prokaryotic. before discussing the criteria for determining whether a cell is prokaryotic or eukaryotic, let us first examine how biologists study cells. with few exceptions, individual cells are too small to be seen with the naked eye, so scientists use microscopes to study them.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-comparing-prokaryotic-and-eukaryotic-cells",
+      "story": "the predominantly single-celled organisms of the domains bacteria and archaea are classified as prokaryotes (pro- = before; -karyon- = nucleus). animal cells, plant cells, fungi, and protists are eukaryotes (eu- = true). however, prokaryotes differ from eukaryotic cells in several ways. a prokaryotic cell is a simple, single-celled (unicellular) organism that lacks a nucleus, or any other membrane-bound organelle. we will shortly come to see that this is significantly different in eukaryotes. prokaryotic dna is found in the central part of the cell: a darkened region called the nucleoid ( ). unlike archaea and eukaryotes, bacteria have a cell wall made of peptidoglycan, comprised of sugars and amino acids, and many have a polysaccharide capsule ( ).",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-eukaryotic-cells",
+      "story": "organelles allow for various functions to occur in the cell at the same time. before discussing the functions of organelles within a eukaryotic cell, let us first examine two important components of the cell: the plasma membrane and the cytoplasm. what structures does a plant cell have that an animal cell does not have? what structures does an animal cell have that a plant cell does not have? plant cells have plasmodesmata, a cell wall, a large central vacuole, chloroplasts, and plastids. animal cells have lysosomes and centrosomes. --> like prokaryotes, eukaryotic cells have a plasma membrane ( ) made up of a phospholipid bilayer with embedded proteins that separates the internal contents of the cell from its surrounding environment.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-cell-membrane",
+      "story": "cells exclude some substances, take in others, and excrete still others, all in controlled quantities. plasma membranes enclose the borders of cells, but rather than being a static bag, they are dynamic and constantly in flux. the plasma membrane must be sufficiently flexible to allow certain cells, such as red blood cells and white blood cells, to change shape as they pass through narrow capillaries. these are the more obvious functions of a plasma membrane. the plasma membrane also carries receptors, which are attachment sites for specific substances that interact with the cell. each receptor is structured to bind with a specific substance. for example, surface receptors of the membrane create changes in the interior, such as changes in enzymes of metabolic pathways.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-passive-transport",
+      "story": "in other words, plasma membranes are selectively permeable -they allow some substances through but not others. if they were to lose this selectivity, the cell would no longer be able to sustain itself, and it would be destroyed. some cells require larger amounts of specific substances than do other cells; they must have a way of obtaining these materials from the extracellular fluids. this may happen passively, as certain materials move back and forth, or the cell may have special mechanisms that ensure transport. most cells expend most of their energy, in the form of adenosine triphosphate (atp), to create and maintain an uneven distribution of ions on the opposite sides of their membranes. the structure of the plasma membrane contributes to these functions, but it also presents some problems. the most direct forms of membrane transport are passive.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-active-transport",
+      "story": "some active transport mechanisms move small-molecular weight material, such as ions, through the membrane. in addition to moving small ions and molecules through the membrane, cells also need to remove and take in larger molecules and particles. some cells are even capable of engulfing entire unicellular microorganisms. you might have correctly hypothesized that the uptake and release of large particles by the cell requires energy. a large particle, however, cannot pass through the membrane, even with energy supplied by the cell. we have discussed simple concentration gradients-differential concentrations of a substance across a space or a membrane-but in living systems, gradients are more complex. because cells contain proteins, most of which are negatively charged, and because ions move into and out of cells, there is an electrical gradient, a difference of charge, across the plasma membrane.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-energy-and-metabolism",
+      "story": "cellular processes such as the building and breaking down of complex molecules occur through stepwise chemical reactions. some of these chemical reactions are spontaneous and release energy, whereas others require energy to proceed. just as living things must continually consume food to replenish their energy supplies, cells must continually produce more energy to replenish that used by the many energy-requiring chemical reactions that constantly take place. together, all of the chemical reactions that take place inside cells, including those that consume or generate energy, are referred to as the cell's metabolism . consider the metabolism of sugar. this is a classic example of one of the many cellular processes that use and produce energy. living things consume sugars as a major energy source, because sugar molecules have a great deal of energy stored within their bonds.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-glycolysis",
+      "story": "however, consider endergonic reactions, which require much more energy input because their products have more free energy than their reactants. within the cell, where does energy to power such reactions come from? the answer lies with an energy-supplying molecule called adenosine triphosphate, or atp . atp is a small, relatively simple molecule, but within its bonds contains the potential for a quick burst of energy that can be harnessed to perform cellular work. this molecule can be thought of as the primary energy currency of cells in the same way that money is the currency that people exchange for things they need. atp is used to power the majority of energy-requiring cellular reactions. a living cell cannot store significant amounts of free energy.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-citric-acid-cycle-and-oxidative-phosphorylation",
+      "story": "in eukaryotic cells, the pyruvate molecules produced at the end of glycolysis are transported into mitochondria, which are sites of cellular respiration. if oxygen is available, aerobic respiration will go forward. in mitochondria, pyruvate will be transformed into a two-carbon acetyl group (by removing a molecule of carbon dioxide) that will be picked up by a carrier compound called coenzyme a (coa), which is made from vitamin b 5 . the resulting compound is called acetyl coa . acetyl coa can be used in a variety of ways by the cell, but its major function is to deliver the acetyl group derived from pyruvate to the next pathway in glucose catabolism. like the conversion of pyruvate to acetyl coa, the citric acid cycle in eukaryotic cells takes place in the matrix of the mitochondria. unlike glycolysis, the citric acid cycle is a closed loop: the last part of the pathway regenerates the compound used in the first step.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-fermentation",
+      "story": "if aerobic respiration occurs, then atp will be produced using the energy of the high-energy electrons carried by nadh or fadh 2 to the electron transport chain. if aerobic respiration does not occur, nadh must be reoxidized to nad + for reuse as an electron carrier for glycolysis to continue. some living systems use an organic molecule as the final electron acceptor. processes that use an organic molecule to regenerate nad + from nadh are collectively referred to as fermentation . the fermentation method used by animals and some bacteria like those in yogurt is lactic acid fermentation ( ). this occurs routinely in mammalian red blood cells and in skeletal muscle that has insufficient oxygen supply to allow aerobic respiration to continue (that is, in muscles used to the point of fatigue). in muscles, lactic acid produced by fermentation must be removed by the blood circulation and brought to the liver for further metabolism.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-connections-to-other-metabolic-pathways",
+      "story": "but living things consume more than just glucose for food. how does a turkey sandwich, which contains protein, provide energy to your cells? this happens because all of the catabolic pathways for carbohydrates, proteins, and lipids eventually connect into glycolysis and the citric acid cycle pathways ( ). metabolic pathways should be thought of as porous-that is, substances enter from other pathways, and other substances leave for other pathways. these pathways are not closed systems. many of the products in a particular pathway are reactants in other pathways. glycogen, a polymer of glucose, is a short-term energy storage molecule in animals.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-overview-of-photosynthesis",
+      "story": "each cell runs on the chemical energy found mainly in carbohydrate molecules (food), and the majority of these molecules are produced by one process: photosynthesis. through photosynthesis, certain organisms convert solar energy (sunlight) into chemical energy, which is then used to build carbohydrate molecules. the energy used to hold these molecules together is released when an organism breaks down food. cells then use this energy to perform work, such as cellular respiration. the energy that is harnessed from photosynthesis enters the ecosystems of our planet continuously and is transferred from one organism to another. therefore, directly or indirectly, the process of photosynthesis provides most of the energy required by living things on earth. photosynthesis also results in the release of oxygen into the atmosphere.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-light-dependent-reactions-of-photosynthesis",
+      "story": "it is easy to think of light as something that exists and allows living organisms, such as humans, to see, but light is a form of energy. like all energy, light can travel, change form, and be harnessed to do work. in the case of photosynthesis, light energy is transformed into chemical energy, which autotrophs use to build carbohydrate molecules. however, autotrophs only use a specific component of sunlight ( ). \") concept in action watch the [process of photosynthesis][1] within a leaf in this video. the sun emits an enormous amount of electromagnetic radiation (solar energy). humans can see only a fraction of this energy, which is referred to as \"visible light.\" the manner in which solar energy travels can be described and measured as waves.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-calvin-cycle",
+      "story": "the carbohydrate molecules made will have a backbone of carbon atoms. where does the carbon come from? the carbon atoms used to build carbohydrate molecules comes from carbon dioxide, the gas that animals exhale with each breath. the calvin cycle is the term used for the reactions of photosynthesis that use the energy stored by the light-dependent reactions to form glucose and other carbohydrate molecules. in plants, carbon dioxide (co 2 ) enters the chloroplast through the stomata and diffuses into the stroma of the chloroplast-the site of the calvin cycle reactions where sugar is synthesized. the reactions are named after the scientist who discovered them, and reference the fact that the reactions function as a cycle. others call it the calvin-benson cycle to include the name of another scientist involved in its discovery ( ).",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-genome",
+      "story": "the cell cycle is an orderly sequence of events in the life of a cell from the division of a single parent cell to produce two new daughter cells, to the subsequent division of those daughter cells. the mechanisms involved in the cell cycle are highly conserved across eukaryotes. organisms as diverse as protists, plants, and animals employ similar steps. before discussing the steps a cell undertakes to replicate, a deeper understanding of the structure and function of a cell's genetic information is necessary. a cell's complete complement of dna is called its genome . in prokaryotes, the genome is composed of a single, double-stranded dna molecule in the form of a loop or circle. the region in the cell containing this genetic material is called a nucleoid.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-cell-cycle",
+      "story": "cells on the path to cell division proceed through a series of precisely timed and carefully regulated stages of growth, dna replication, and division that produce two genetically identical cells. the cell cycle has two major phases: interphase and the mitotic phase ( ). during interphase , the cell grows and dna is replicated. during the mitotic phase , the replicated dna and cytoplasmic contents are separated and the cell divides. for a cell to move from interphase to the mitotic phase, many internal and external conditions must be met. the three stages of interphase are called g 1 , s, and g 2 . the first stage of interphase is called the g 1 phase , or first gap, because little change is visible.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-cancer-and-the-cell-cycle",
+      "story": "despite the redundancy and overlapping levels of cell-cycle control, errors occur. one of the critical processes monitored by the cell-cycle checkpoint surveillance mechanism is the proper replication of dna during the s phase. even when all of the cell-cycle controls are fully functional, a small percentage of replication errors (mutations) will be passed on to the daughter cells. if one of these changes to the dna nucleotide sequence occurs within a gene, a gene mutation results. all cancers begin when a gene mutation gives rise to a faulty protein that participates in the process of cell reproduction. the change in the cell that results from the malformed protein may be minor. even minor mistakes, however, may allow subsequent mistakes to occur more readily.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-prokaryotic-cell-division",
+      "story": "for unicellular organisms, cell division is the only method to produce new individuals. in both prokaryotic and eukaryotic cells, the outcome of cell reproduction is a pair of daughter cells that are genetically identical to the parent cell. in unicellular organisms, daughter cells are individuals. to achieve the outcome of identical daughter cells, some steps are essential. the genomic dna must be replicated and then allocated into the daughter cells; the cytoplasmic contents must also be divided to give both new cells the machinery to sustain life. in bacterial cells, the genome consists of a single, circular dna chromosome; therefore, the process of cell division is simplified. mitosis is unnecessary because there is no nucleus or multiple chromosomes.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-sexual-reproduction",
+      "story": "the fact that most eukaryotes reproduce sexually is evidence of its evolutionary success. in many animals, it is the only mode of reproduction. and yet, scientists recognize some real disadvantages to sexual reproduction. on the surface, offspring that are genetically identical to the parent may appear to be more advantageous. if the parent organism is successfully occupying a habitat, offspring with the same traits would be similarly successful. there is also the obvious benefit to an organism that can produce offspring by asexual budding, fragmentation, or asexual eggs. these methods of reproduction do not require another organism of the opposite sex.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-meiosis",
+      "story": "if those two cells each contain one set of chromosomes, then the resulting cell contains two sets of chromosomes. the number of sets of chromosomes in a cell is called its ploidy level. haploid cells contain one set of chromosomes. cells containing two sets of chromosomes are called diploid. if the reproductive cycle is to continue, the diploid cell must somehow reduce its number of chromosome sets before fertilization can occur again, or there will be a continual doubling in the number of chromosome sets in every generation. so, in addition to fertilization, sexual reproduction includes a nuclear division, known as meiosis, that reduces the number of chromosome sets. somatic cells are sometimes referred to as \"body\" cells.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-errors-in-meiosis",
+      "story": "chromosome disorders can be divided into two categories: abnormalities in chromosome number and chromosome structural rearrangements. because even small segments of chromosomes can span many genes, chromosomal disorders are characteristically dramatic and often fatal. the isolation and microscopic observation of chromosomes forms the basis of cytogenetics and is the primary method by which clinicians detect chromosomal abnormalities in humans. a karyotype is the number and appearance of chromosomes, including their length, banding pattern, and centromere position. to obtain a view of an individual's karyotype, cytologists photograph the chromosomes and then cut and paste each chromosome into a chart, or karyogram ( ). \") careers in action geneticists use karyograms to identify chromosomal aberrations the karyotype is a method by which traits characterized by chromosomal abnormalities can be identified from a single cell. to observe an individual's karyotype, a person's cells (like white blood cells) are first collected from a blood sample or other tissue.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-mendel-s-experiments",
+      "story": "as a young adult, he joined the augustinian abbey of st. thomas in brno in what is now the czech republic. supported by the monastery, he taught physics, botany, and natural science courses at the secondary and university levels. in 1865, mendel presented the results of his experiments with nearly 30,000 pea plants to the local natural history society. he demonstrated that traits are transmitted faithfully from parents to offspring in specific patterns. in 1866, he published his work, experiments in plant hybridization, 1 in the proceedings of the natural history society of brunn. mendel's work went virtually unnoticed by the scientific community, which incorrectly believed that the process of inheritance involved a blending of parental traits that produced an intermediate physical appearance in offspring.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-laws-of-inheritance",
+      "story": "mendel deduced from his results that each individual had two discrete copies of the characteristic that are passed individually to offspring. we now call those two copies genes, which are carried on chromosomes. the reason we have two copies of each gene is that we inherit one from each parent. in fact, it is the chromosomes we inherit and the two copies of each gene are located on paired chromosomes. recall that in meiosis these chromosomes are separated out into haploid gametes. this separation, or segregation, of the homologous chromosomes means also that only one of the copies of the gene gets moved into a gamete. the offspring are formed when that gamete unites with one from another parent and the two copies of each gene (and chromosome) are restored.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-extensions-of-the-laws-of-inheritance",
+      "story": "the inheritance of the traits he studied all followed the relatively simple pattern of dominant and recessive alleles for a single characteristic. there are several important modes of inheritance, discovered after mendel's work, that do not follow the dominant and recessive, single-gene model. therefore, recessive alleles can be \"carried\" and not expressed by individuals. such heterozygous individuals are sometimes referred to as \"carriers.\" since then, genetic studies in other organisms have shown that much more complexity exists, but that the fundamental principles of mendelian genetics still hold true. in the sections to follow, we consider some of the extensions of mendelism. mendel's results, demonstrating that traits are inherited as dominant and recessive pairs, contradicted the view at that time that offspring exhibited a blend of their parents' traits. however, the heterozygote phenotype occasionally does appear to be intermediate between the two parents.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-the-structure-of-dna",
+      "story": "other scientists, such as linus pauling and maurice wilkins, were also actively exploring this field. pauling had discovered the secondary structure of proteins using x-ray crystallography. x-ray crystallography is a method for investigating molecular structure by observing the patterns formed by x-rays shot through a crystal of the substance. the patterns give important information about the structure of the molecule of interest. in wilkins' lab, researcher rosalind franklin was using x-ray crystallography to understand the structure of dna. watson and crick were able to piece together the puzzle of the dna molecule using franklin\\'s data ( ). watson and crick also had key pieces of information available from other researchers such as chargaff's rules.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-dna-replication",
+      "story": "this is accomplished by the process of dna replication. the replication of dna occurs during the synthesis phase, or s phase, of the cell cycle, before the cell enters mitosis or meiosis. the elucidation of the structure of the double helix provided a hint as to how dna is copied. recall that adenine nucleotides pair with thymine nucleotides, and cytosine with guanine. this means that the two strands are complementary to each other. for example, a strand of dna with a nucleotide sequence of agtcatga will have a complementary strand with the sequence tcagtact ( ). because of the complementarity of the two strands, having one strand means that it is possible to recreate the other strand.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-transcription",
+      "story": "to do this, the dna is \"read\" or transcribed into an mrna molecule. the mrna then provides the code to form a protein by a process called translation. through the processes of transcription and translation, a protein is built with a specific sequence of amino acids that was originally encoded in the dna. this module discusses the details of transcription. the flow of genetic information in cells from dna to mrna to protein is described by the central dogma ( ), which states that genes specify the sequences of mrnas, which in turn specify the sequences of proteins. the copying of dna to mrna is relatively straightforward, with one nucleotide being added to the mrna strand for every complementary nucleotide read in the dna strand. the translation to protein is more complex because groups of three mrna nucleotides correspond to one amino acid of the protein sequence.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-translation",
+      "story": "in turn, proteins account for more mass than any other component of living organisms (with the exception of water), and proteins perform a wide variety of the functions of a cell. the process of translation, or protein synthesis, involves decoding an mrna message into a polypeptide product. amino acids are covalently strung together in lengths ranging from approximately 50 amino acids to more than 1,000. in addition to the mrna template, many other molecules contribute to the process of translation. the composition of each component may vary across species; for instance, ribosomes may consist of different numbers of ribosomal rnas (rrna ) and polypeptides depending on the organism. however, the general structures and functions of the protein synthesis machinery are comparable from bacteria to human cells. translation requires the input of an mrna template, ribosomes, trnas, and various enzymatic factors ( ).",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-how-genes-are-regulated",
+      "story": "all organisms and cells control or regulate the transcription and translation of their dna into protein. the process of turning on a gene to produce rna and protein is called gene expression . whether in a simple unicellular organism or in a complex multicellular organism, each cell controls when and how its genes are expressed. for this to occur, there must be a mechanism to control when a gene is expressed to make rna and protein, how much of the protein is made, and when it is time to stop making that protein because it is no longer needed. cells in multicellular organisms are specialized; cells in different tissues look very different and perform different functions. for example, a muscle cell is very different from a liver cell, which is very different from a skin cell. these differences are a consequence of the expression of different sets of genes in each of these cells.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-cloning-and-genetic-engineering",
+      "story": "biotechnology has been used for improving livestock and crops since the beginning of agriculture through selective breeding. the primary applications of this technology are in medicine (for the production of vaccines and antibiotics) and in agriculture (for the genetic modification of crops). biotechnology also has many industrial applications, such as fermentation, the treatment of oil spills, and the production of biofuels, as well as many household applications such as the use of enzymes in laundry detergent. to accomplish the applications described above, biotechnologists must be able to extract, manipulate, and analyze nucleic acids. to understand the basic techniques used to work with nucleic acids, remember that nucleic acids are macromolecules made of nucleotides (a sugar, a phosphate, and a nitrogenous base). the phosphate groups on these molecules each have a net negative charge. an entire set of dna molecules in the nucleus of eukaryotic organisms is called the genome.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-biotechnology-in-medicine-and-agriculture",
+      "story": "knowledge of the genetic makeup of our species, the genetic basis of heritable diseases, and the invention of technology to manipulate and fix mutant genes provides methods to treat diseases. biotechnology in agriculture can enhance resistance to disease, pests, and environmental stress to improve both crop yield and quality. the process of testing for suspected genetic defects before administering treatment is called genetic diagnosis by genetic testing. in some cases in which a genetic disease is present in an individual's family, family members may be advised to undergo genetic testing. for example, mutations in the brca genes may increase the likelihood of developing breast and ovarian cancers in women and some other cancers in women and men. a woman with breast cancer can be screened for these mutations. if one of the high-risk mutations is found, her female relatives may also wish to be screened for that particular mutation, or simply be more vigilant for the occurrence of cancers.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-genomics-and-proteomics",
+      "story": "genomics is the study of entire genomes, including the complete set of genes, their nucleotide sequence and organization, and their interactions within a species and with other species. the advances in genomics have been made possible by dna sequencing technology. just as information technology has led to google maps that enable us to get detailed information about locations around the globe, genomic information is used to create similar maps of the dna of different organisms. genome mapping is the process of finding the location of genes on each chromosome. the maps that are created are comparable to the maps that we use to navigate streets. a genetic map is an illustration that lists genes and their location on a chromosome. genetic maps provide the big picture (similar to a map of interstate highways) and use genetic markers (similar to landmarks).",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-discovering-how-populations-change",
+      "story": "that species change had been suggested and debated well before darwin. the view that species were static and unchanging was grounded in the writings of plato, yet there were also ancient greeks that expressed evolutionary ideas. in the eighteenth century, ideas about the evolution of animals were reintroduced by the naturalist georges-louis leclerc, comte de buffon and even by charles darwin's grandfather, erasmus darwin. during this time, it was also accepted that there were extinct species. at the same time, james hutton, the scottish naturalist, proposed that geological change occurred gradually by the accumulation of small changes from processes (over long periods of time) just like those happening today. this contrasted with the predominant view that the geology of the planet was a consequence of catastrophic events occurring during a relatively brief past. hutton's view was later popularized by the geologist charles lyell in the nineteenth century.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-mechanisms-of-evolution",
+      "story": "those factors are natural selection, mutation, genetic drift, and migration (gene flow). in fact, we know they are probably always affecting populations. natural selection has already been discussed. alleles are expressed in a phenotype. depending on the environmental conditions, the phenotype confers an advantage or disadvantage to the individual with the phenotype relative to the other phenotypes in the population. if it is an advantage, then that individual will likely have more offspring than individuals with the other phenotypes, and this will mean that the allele behind the phenotype will have greater representation in the next generation. if conditions remain the same, those offspring, which are carrying the same allele, will also benefit.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-evidence-of-evolution",
+      "story": "looking at every level of organization in living systems, biologists see the signature of past and present evolution. darwin dedicated a large portion of his book, on the origin of species, identifying patterns in nature that were consistent with evolution and since darwin our understanding has become clearer and broader. fossils provide solid evidence that organisms from the past are not the same as those found today; fossils show a progression of evolution. scientists determine the age of fossils and categorize them all over the world to determine when the organisms lived relative to each other. the resulting fossil record tells the story of the past, and shows the evolution of form over millions of years ( ). for example, highly detailed fossil records have been recovered for sequences of species in the evolution of whales and modern horses. the fossil record of horses in north america is especially rich and many contain transition fossils: those showing intermediate anatomy between earlier and later forms.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-speciation",
+      "story": "according to this definition, one species is distinguished from another by the possibility of matings between individuals from each species to produce fertile offspring. there are exceptions to this rule. many species are similar enough that hybrid offspring are possible and may often occur in nature, but for the majority of species this rule generally holds. in fact, the presence of hybrids between similar species suggests that they may have descended from a single interbreeding species and that the speciation process may not yet be completed. given the extraordinary diversity of life on the planet there must be mechanisms for speciation \\: the formation of two species from one original species. darwin envisioned this process as a branching event and diagrammed the process in the only illustration found in on the origin of species ( a). for speciation to occur, two new populations must be formed from one original population, and they must evolve in such a way that it becomes impossible for individuals from the two new populations to interbreed.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-common-misconceptions-about-evolution",
+      "story": "nevertheless, the theory of evolution is a difficult concept and misconceptions about how it works abound. in addition, there are those that reject it as an explanation for the diversity of life. concept in action this [website][1] addresses some of the main misconceptions associated with the theory of evolution. critics of the theory of evolution dismiss its importance by purposefully confounding the everyday usage of the word \"theory\" with the way scientists use the word. in science, a \"theory\" is understood to be a concept that has been extensively tested and supported over time. we have a theory of the atom, a theory of gravity, and the theory of relativity, each of which describes what scientists understand to be facts about the world. in the same way, the theory of evolution describes facts about the living world.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-organizing-life-on-earth",
+      "story": "biologists map how organisms are related by constructing phylogenetic trees. in other words, a \"tree of life\" can be constructed to illustrate when different organisms evolved and to show the relationships among different organisms, as shown in . notice that from a single point, the three domains of archaea, bacteria, and eukarya diverge and then branch repeatedly. the small branch that plants and animals (including humans) occupy in this diagram shows how recently these groups had their origin compared with other groups. \") the phylogenetic tree in illustrates the pathway of evolutionary history. the pathway can be traced from the origin of life to any individual species by navigating through the evolutionary branches between the two points. also, by starting with a single species and tracing backward to any branch point, the organisms related to it by various degrees of closeness can be identified.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-determining-evolutionary-relationships",
+      "story": "similar to detective work, scientists must use evidence to uncover the facts. in the case of phylogeny, evolutionary investigations focus on two types of evidence: morphologic (form and function) and genetic. organisms that share similar physical features and genetic sequences tend to be more closely related than those that do not. features that overlap both morphologically and genetically are referred to as homologous structures; the similarities stem from common evolutionary paths. for example, as shown in , the bones in the wings of bats and birds, the arms of humans, and the foreleg of a horse are homologous structures. notice the structure is not simply a single bone, but rather a grouping of several bones arranged in a similar way in each organism even though the elements of the structure may have changed shape and size. \") some organisms may be very closely related, even though a minor genetic change caused a major morphological difference to make them look quite different.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-prokaryotic-diversity",
+      "story": "they cover every imaginable surface where there is sufficient moisture, and they live on and inside of other living things. there are more prokaryotes inside and on the exterior of the human body than there are human cells in the body. some prokaryotes thrive in environments that are inhospitable for most other living things. prokaryotes recycle nutrients-essential substances (such as carbon and nitrogen)-and they drive the evolution of new ecosystems, some of which are natural while others are man-made. prokaryotes have been on earth since long before multicellular life appeared. the advent of dna sequencing provided immense insight into the relationships and origins of prokaryotes that were not possible using traditional methods of classification. a major insight identified two groups of prokaryotes that were found to be as different from each other as they were from eukaryotes.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-eukaryotic-origins",
+      "story": "these cells originated approximately 3.5 billion years ago, which was about 1 billion years after earth's formation, and were the only life forms on the planet until eukaryotic cells emerged approximately 2.1 billion years ago. photosynthesis using water as an electron donor consumes carbon dioxide and releases molecular oxygen (o 2 ) as a byproduct. older anaerobic prokaryotes of the era could not function in their new, aerobic environment. some species perished, while others survived in the remaining anaerobic environments left on earth. still other early prokaryotes evolved mechanisms, such as aerobic respiration, to exploit the oxygenated atmosphere by using oxygen to store energy contained within organic molecules. aerobic respiration is a more efficient way of obtaining energy from organic molecules, which contributed to the success of these species (as evidenced by the number and diversity of aerobic organisms living on earth today). the evolution of aerobic prokaryotes was an important step toward the evolution of the first eukaryote, but several other distinguishing features had to evolve as well.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "biology-protists",
+      "story": "protists include the single-celled eukaryotes living in pond water ( ), although protist species live in a variety of other aquatic and terrestrial environments, and occupy many different niches. not all protists are microscopic and single-celled; there exist some very large multicellular species, such as the kelps. during the past two decades, the field of molecular genetics has demonstrated that some protists are more related to animals, plants, or fungi than they are to other protists. for this reason, protist lineages originally classified into the kingdom protista have been reassigned into new kingdoms or other existing kingdoms. the evolutionary lineages of the protists continue to be examined and debated. in the meantime, the term \"protist\" still is used informally to describe this tremendously diverse group of eukaryotes. as a collective group, protists display an astounding diversity of morphologies, physiologies, and ecologies.",
+      "source": "openstax/biology-concepts-book",
+      "licence": "CC-BY 3"
     }
   ]
 }

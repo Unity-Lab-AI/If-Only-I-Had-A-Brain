@@ -2,7 +2,7 @@
   "version": 1,
   "grade": "grade12",
   "subject": "science",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for science/grade12. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
@@ -96,6 +96,294 @@
       "story": "the immune system is the set of tissues which work together to resist infections. the immune mechanisms help an organism identify a pathogen, and neutralize its threat. the immune system can detect and identify many different kinds of disease agents. examples are viruses, bacteria and parasites. the immune system can detect a difference between the body's own healthy cells or tissues, and 'foreign' cells. detecting an unhealthy intruder is complicated, because intruders can evolve and adapt so that the immune system will no longer detect them. once a foreign cell or protein is detected, the immune system creates antibodies to fight the intruders, and sends special cells to eat them up. even simple unicellular organisms such as bacteria possess enzyme systems that protect against viral infections. basic immune mechanisms appeared in ancient life forms and remain in their modern descendants, such as plants and insects. these mechanisms include antimicrobial peptides , phagocytosis, and the complement system. these make up the innate immune system, which defends the host from infections in a non-specific way. the simplest innate system is the cell wall or barrier on the outside to stop intruders getting in. for example, skin stops most outside bacteria getting in. the innate immune system responds very quickly to anything foreign that enters the body. when something gets past the skin, as through a cut, the immune cells work to find the intruder and to alert each other of the foreign object. small immune cells bring other cells from all over the body to the site where the foreign object was found. other immune cells can send out messengers to cells nearby to have them help attack the foreign object. this process can make the skin look red and feel hot . phagocyte cells eat anything foreign that enters the body. this response is called non-specific because it responds the same way to anything foreign that enters the body from germs to a piece of dust. vertebrates, including humans, have much more sophisticated defense mechanisms. the innate immune system is found in all metazoa, but the adaptive immune system is only found in vertebrates. the adaptive immune response gives the vertebrate immune system the ability to recognize and remember specific pathogens. the system mounts stronger attacks each time the pathogen is encountered. it is adaptive, because the body's immune system prepares itself for future challenges. the typical vertebrate immune system consists of many types of proteins, cells, organs, and tissues that interact in a complex and ever-changing network. this acquired immunity creates a kind of \"immunological memory\". the process of acquired immunity is the basis of vaccination. primary response can take 2 days to 2 weeks to develop. after the body gains immunity towards a certain pathogen, if infection by that pathogen occurs again, the immune response is called the secondary response. in some organisms, the immune system has its own problems within itself, called disorders. these result in other diseases, including autoimmune diseases, inflammatory diseases and possibly even cancer. immunodeficiency diseases occur when the immune system is less active than normal. immunodeficiency can either be the result of a genetic disease, or an infection, such as the acquired immune deficiency syndrome , that is caused by the retrovirus hiv, or other causes. in contrast, autoimmune diseases result from an immune system that attacks normal tissues as if they were foreign organisms. common autoimmune diseases include hashimoto's thyroiditis, rheumatoid arthritis, type 1 diabetes, and lupus erythematosus. immunology is the study of all aspects of the immune system. it is very important to health and diseases. immunology is scientific part of medicine that studies the causes of immunity to disease. for many centuries people have noticed that those who recover from some infectious diseases do not get that illness a second time. in the 18th century, pierre louis maupertuis made experiments with scorpion venom and saw that certain dogs and mice were immune to this venom. this and other observations of acquired immunity led to louis pasteur developing vaccination and the germ theory of disease. pasteur's theory was in direct opposition to contemporary theories of disease, such as the miasma theory. it was not until the proofs robert koch published in 1891 that microorganisms were confirmed as the cause of infectious disease. viruses were confirmed as human pathogens in 1901, when the yellow fever virus was discovered by walter reed . immunology made a great advance towards the end of the 19th century, through rapid developments, in the study of humoral immunity and cellular immunity. particularly important was the work of paul ehrlich , who proposed the side-chain theory to explain the specificity of the antigen-antibody reaction. the nobel prize for 1908 was jointly awarded to ehrlich and the founder of cellular immunology, ilya mechnikov . the immune system is extremely ancient. it may go back to single-celled eukaryotes which needed to distinguish between what was food and what was part of themselves. \"genomic analysis of plants and animals provides evidence that a sophisticated mechanism of host defense was in existence by the time the ancestors of plants and animals diverged. the necessary dna sequences are found in invertebrates, vertebrates, and plants\".",
       "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "anatomy-and-physiology-introduction",
+      "story": "the most likely explanation is that he has suffered a stroke, which has caused a loss of oxygen to a particular part of the central nervous system (cns). the problem is finding where in the entire nervous system the stroke has occurred. by checking reflexes, sensory responses, and motor control, a health care provider can focus on what abilities the patient may have lost as a result of the stroke and can use this information to determine where the injury occurred. in the emergency department of the hospital, this kind of rapid assessment of neurological function is key to treating trauma to the nervous system. in the classroom, the neurological exam is a valuable tool for learning the anatomy and physiology of the nervous system because it allows you to relate the functions of the system to particular locations in the nervous system. as a student of anatomy and physiology, you may be planning to go into an allied health field, perhaps nursing or physical therapy. you could be in the emergency department treating a patient such as the one just described.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-functions-of-human-life",
+      "story": "these many functions can be summarized in terms of a few that we might consider definitive of human life: organization, metabolism, responsiveness, movement, development, and reproduction. a human body consists of trillions of cells organized in a way that maintains distinct internal compartments. these compartments keep body cells separated from external environmental threats and keep the cells moist and nourished. they also separate internal body fluids from the countless microorganisms that grow on body surfaces, including the lining of certain tracts, or passageways. the intestinal tract, for example, is home to even more bacteria cells than the total of all human cells in the body, yet these bacteria are outside the body and cannot be allowed to circulate freely inside the body. cells, for example, have a cell membrane (also referred to as the plasma membrane) that keeps the intracellular environment-the fluids and organelles-separate from the extracellular environment. blood vessels keep blood inside a closed circulatory system, and nerves and muscles are wrapped in connective tissue sheaths that separate them from surrounding structures.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-anatomical-terminology",
+      "story": "however, the purpose of this language is not to confuse, but rather to increase precision and reduce medical errors. for example, is a scar \"above the wrist\" located on the forearm two or three inches away from the hand? or is it at the base of the hand? is it on the palm-side or back-side? by using precise anatomical terminology, we eliminate ambiguity. anatomical terms derive from ancient greek and latin words. because these languages are no longer used in everyday conversation, the meaning of their words does not change.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-elements-and-atoms-the-building-blocks-of-matter",
+      "story": "scientists define matter as anything that occupies space and has mass. an object's mass and its weight are related concepts, but not quite the same. an object's mass is the amount of matter contained in the object, and the object's mass is the same whether that object is on earth or in the zero-gravity environment of outer space. an object's weight, on the other hand, is its mass as affected by the pull of gravity. where gravity strongly pulls on an object's mass its weight is greater than it is where gravity is less strong. an object of a certain mass weighs less on the moon, for example, than it does on earth because the gravity of the moon is less than that of earth. in other words, weight is variable, and is influenced by gravity.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-inorganic-compounds-essential-to-human-functioning",
+      "story": "this section of the chapter narrows the focus to the chemistry of human life; that is, the compounds important for the body's structure and function. in general, these compounds are either inorganic or organic. an inorganic compound is a substance that does not contain both carbon and hydrogen. a great many inorganic compounds do contain hydrogen atoms, such as water (h 2 o) and the hydrochloric acid (hcl) produced by your stomach. in contrast, only a handful of inorganic compounds contain carbon atoms. carbon dioxide (co 2 ) is one of the few examples. an organic compound , then, is a substance that contains both carbon and hydrogen.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-cell-membrane",
+      "story": "as the outer layer of your skin separates your body from its environment, the cell membrane (also known as the plasma membrane) separates the inner contents of a cell from its exterior environment. this cell membrane provides a protective barrier around the cell and regulates which materials can pass in or out. the cell membrane is an extremely pliable structure composed primarily of back-to-back phospholipids (a \"bilayer\"). cholesterol is also present, which contributes to the fluidity of the membrane, and there are various proteins embedded within the membrane that have a variety of functions. a single phospholipid molecule has a phosphate group on one end, called the \"head,\" and two side-by-side chains of fatty acids that make up the lipid tails ( ). the phosphate group is negatively charged, making the head polar and hydrophilic-or \"water loving.\" a hydrophilic molecule (or region of a molecule) is one that is attracted to water. the phosphate heads are thus attracted to the water molecules of both the extracellular and intracellular environments.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-cell-growth-and-division",
+      "story": "while there are a few cells in the body that do not undergo cell division (such as gametes, red blood cells, most neurons, and some muscle cells), most somatic cells divide regularly. a somatic cell is a general term for a body cell, and all human cells, except for the cells that produce eggs and sperm (which are referred to as germ cells), are somatic cells. somatic cells contain two copies of each of their chromosomes (one copy received from each parent). a homologous pair of chromosomes is the two copies of a single chromosome found in each somatic cell. the human is a diploid organism, having 23 homologous pairs of chromosomes in each of the somatic cells. the condition of having pairs of chromosomes is known as diploidy. cells in the body replace themselves over the lifetime of a person.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-types-of-tissues",
+      "story": "the cells within a tissue share a common embryonic origin. microscopic observation reveals that the cells in a tissue share morphological features and are arranged in an orderly pattern that achieves the tissue's functions. from the evolutionary perspective, tissues appear in more complex organisms. for example, multicellular protists, ancient eukaryotes, do not have cells organized into tissues. although there are many types of cells in the human body, they are organized into four broad categories of tissues: epithelial, connective, muscle, and nervous. each of these categories is characterized by specific functions that contribute to the overall health and maintenance of the body. a disruption of the structure is a sign of injury or disease.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-muscle-tissue-and-motion",
+      "story": "muscle cells are excitable; they respond to a stimulus. they are contractile, meaning they can shorten and generate a pulling force. when attached between two movable objects, in other words, bones, contractions of the muscles cause the bones to move. some muscle movement is voluntary, which means it is under conscious control. for example, a person decides to open a book and read a chapter on anatomy. other movements are involuntary, meaning they are not under conscious control, such as the contraction of your pupil in bright light. muscle tissue is classified into three types according to structure and function: skeletal, cardiac, and smooth ( ).",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-functions-of-the-integumentary-system",
+      "story": "the underlying hypodermis has important roles in storing fats, forming a \"cushion\" over underlying structures, and providing insulation from cold temperatures. the skin protects the rest of the body from the basic elements of nature such as wind, water, and uv sunlight. it acts as a protective barrier against water loss, due to the presence of layers of keratin and glycolipids in the stratum corneum. it also is the first line of defense against abrasive activity due to contact with grit, microbes, or harmful chemicals. sweat excreted from sweat glands deters microbes from over-colonizing the skin surface by generating dermicidin, which has antibiotic properties. everyday connection tattoos and piercings the word \"armor\" evokes several images. you might think of a roman centurion or a medieval knight in a suit of armor.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-bone-structure",
+      "story": "bone is hard and many of its functions depend on that characteristic hardness. later discussions in this chapter will show that bone is also dynamic in that its shape adjusts to accommodate stresses. this section will examine the gross anatomy of bone first and then move on to its histology. the structure of a long bone allows for the best visualization of all of the parts of a bone ( ). a long bone has two parts: the diaphysis and the epiphysis . the diaphysis is the tubular shaft that runs between the proximal and distal ends of the bone. the hollow region in the diaphysis is called the medullary cavity , which is filled with yellow marrow.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-calcium-homeostasis-interactions-of-the-skeletal-system-and-other-organ-systems",
+      "story": "the normal level of calcium in the blood is about 10 mg/dl. when the body cannot maintain this level, a person will experience hypo- or hypercalcemia. hypocalcemia , a condition characterized by abnormally low levels of calcium, can have an adverse effect on a number of different body systems including circulation, muscles, nerves, and bone. without adequate calcium, blood has difficulty coagulating, the heart may skip beats or stop beating altogether, muscles may have difficulty contracting, nerves may have difficulty functioning, and bones may become brittle. the causes of hypocalcemia can range from hormonal imbalances to an improper diet. treatments vary according to the cause, but prognoses are generally good. obviously, calcium homeostasis is critical.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-fertilization",
+      "story": "because each of these reproductive cells is a haploid cell containing half of the genetic material needed to form a human being, their combination forms a diploid cell. this new single cell, called a zygote , contains all of the genetic material needed to form a human-half from the mother and half from the father. fertilization is a numbers game. during ejaculation, hundreds of millions of sperm (spermatozoa) are released into the vagina. almost immediately, millions of these sperm are overcome by the acidity of the vagina (approximately ph 3.8), and millions more may be blocked from entering the uterus by thick cervical mucus. of those that do enter, thousands are destroyed by phagocytic uterine leukocytes. thus, the race into the uterine tubes, which is the most typical site for sperm to encounter the oocyte, is reduced to a few thousand contenders.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-embryonic-development",
+      "story": "the period of time required for full development of a fetus in utero is referred to as gestation (gestare = \"to carry\" or \"to bear\"). it can be subdivided into distinct gestational periods. the first 2 weeks of prenatal development are referred to as the pre-embryonic stage. a developing human is referred to as an embryo during weeks 3-8, and a fetus from the ninth week of gestation until birth. in this section, we'll cover the pre-embryonic and embryonic stages of development, which are characterized by cell division, migration, and differentiation. by the end of the embryonic period, all of the organ systems are structured in rudimentary form, although the organs themselves are either nonfunctional or only semi-functional. following fertilization, the zygote and its associated membranes, together referred to as the conceptus , continue to be projected toward the uterus by peristalsis and beating cilia.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-divisions-of-the-skeletal-system",
+      "story": "the skeleton consists of the bones of the body. for adults, there are 206 bones in the skeleton. younger individuals have higher numbers of bones because some bones fuse together during childhood and adolescence to form an adult bone. the primary functions of the skeleton are to provide a rigid, internal structure that can support the weight of the body against the force of gravity, and to provide a structure upon which muscles can act to produce movements of the body. the lower portion of the skeleton is specialized for stability during walking or running. in contrast, the upper skeleton has greater mobility and ranges of motion, features that allow you to lift and carry objects or turn your head and trunk. in addition to providing for support and movements of the body, the skeleton has protective and storage functions.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-thoracic-cage",
+      "story": "it consists of the 12 pairs of ribs with their costal cartilages and the sternum ( ). the ribs are anchored posteriorly to the 12 thoracic vertebrae (t1-t12). the thoracic cage protects the heart and lungs. sternum and (b) 12 pairs of ribs with their costal cartilages. the ribs are anchored posteriorly to the 12 thoracic vertebrae. the sternum consists of the manubrium, body, and xiphoid process. the ribs are classified as true ribs (1&#x2013;7) and false ribs (8&#x2013;12).",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-skull",
+      "story": "it is subdivided into the facial bones and the brain case , or cranial vault ( ). the facial bones underlie the facial structures, form the nasal cavity, enclose the eyeballs, and support the teeth of the upper and lower jaws. the rounded brain case surrounds and protects the brain and houses the middle and inner ear structures. in the adult, the skull consists of 22 individual bones, 21 of which are immobile and united into a single unit. the 22nd bone is the mandible (lower jaw), which is the only moveable bone of the skull. which bone (yellow) is centrally located and joins with most of the other bones of the skull? the anterior skull consists of the facial bones and provides the bony support for the eyes and structures of the face.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-development-of-the-appendicular-skeleton",
+      "story": "mesenchyme gives rise to the bones of the upper and lower limbs, as well as to the pectoral and pelvic girdles. development of the limbs begins near the end of the fourth embryonic week, with the upper limbs appearing first. thereafter, the development of the upper and lower limbs follows similar patterns, with the lower limbs lagging behind the upper limbs by a few days. each upper and lower limb initially develops as a small bulge called a limb bud , which appears on the lateral side of the early embryo. the upper limb bud appears near the end of the fourth week of development, with the lower limb bud appearing shortly after ( ). (credit: ed uthman/flickr)\") initially, the limb buds consist of a core of mesenchyme covered by a layer of ectoderm. the ectoderm at the end of the limb bud thickens to form a narrow crest called the apical ectodermal ridge .",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-classification-of-joints",
+      "story": "joints are classified both structurally and functionally. functional classifications describe the degree of movement available between the bones, ranging from immobile, to slightly mobile, to freely moveable joints. the amount of movement available at a particular joint of the body is related to the functional requirements for that joint. thus immobile or slightly moveable joints serve to protect internal organs, give stability to the body, and allow for limited body movement. in contrast, freely moveable joints allow for much more extensive movements of the body and limbs. these differences serve to divide the joints of the body into three structural classifications. a fibrous joint is where the adjacent bones are united by fibrous connective tissue.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-anatomy-and-physiology-of-the-female-reproductive-system",
+      "story": "unlike its male counterpart, the female reproductive system is located primarily inside the pelvic cavity ( ). recall that the ovaries are the female gonads. the gamete they produce is called an oocyte . we'll discuss the production of oocytes in detail shortly. first, let's look at some of the structures of the female reproductive system. the external female reproductive structures are referred to collectively as the vulva ( ). the mons pubis is a pad of fat that is located at the anterior, over the pubic bone.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-anatomy-and-physiology-of-the-male-reproductive-system",
+      "story": "at fertilization, the chromosomes in one male gamete, called a sperm (or spermatozoon), combine with the chromosomes in one female gamete, called an oocyte. the function of the male reproductive system ( ) is to produce sperm and transfer them to the female reproductive tract. the paired testes are a crucial component in this process, as they produce both sperm and androgens, the hormones that support male reproductive physiology. in humans, the most important male androgen is testosterone. several accessory organs and ducts aid the process of sperm maturation and transport the sperm and other seminal components to the penis, which delivers sperm to the female reproductive tract. in this section, we examine each of these different structures, and discuss the process of sperm production and transport. the testes are located in a skin-covered, highly pigmented, muscular sack called the scrotum that extends from the body behind the penis (see ).",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-cardiac-muscle-tissue",
+      "story": "highly coordinated contractions of cardiac muscle pump blood into the vessels of the circulatory system. similar to skeletal muscle, cardiac muscle is striated and organized into sarcomeres, possessing the same banding organization as skeletal muscle ( ). however, cardiac muscle fibers are shorter than skeletal muscle fibers and usually contain only one nucleus, which is located in the central region of the cell. cardiac muscle fibers also possess many mitochondria and myoglobin, as atp is produced primarily through aerobic metabolism. cardiac muscle fibers cells also are extensively branched and are connected to one another at their ends by intercalated discs. an intercalated disc allows the cardiac muscle cells to contract in a wave-like pattern so that the heart can work as a pump. \") view the [ university of michigan webscope][1] to explore the tissue sample in greater detail.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-acid-base-balance",
+      "story": "acid-balance balance is measured using the ph scale, as shown in . a variety of buffering systems permits blood and other bodily fluids to maintain a narrow ph range, even in the face of perturbations. a buffer is a chemical system that prevents a radical change in fluid ph by dampening the change in hydrogen ion concentrations in the case of excess acid or base. most commonly, the substance that absorbs the ions is either a weak acid, which takes up hydroxyl ions, or a weak base, which takes up hydrogen ions. the buffer systems in the human body are extremely efficient, and different systems work at different rates. it takes only seconds for the chemical buffers in the blood to make adjustments to ph. the respiratory tract can adjust the blood ph upward in minutes by exhaling co 2 from the body.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-electrolyte-balance",
+      "story": "some ions assist in the transmission of electrical impulses along cell membranes in neurons and muscles. other ions help to stabilize protein structures in enzymes. still others aid in releasing hormones from endocrine glands. all of the ions in plasma contribute to the osmotic balance that controls the movement of water between cells and their environment. electrolytes in living systems include sodium, potassium, chloride, bicarbonate, calcium, phosphate, magnesium, copper, zinc, iron, manganese, molybdenum, copper, and chromium. in terms of body functioning, six electrolytes are most important: sodium, potassium, chloride, bicarbonate, calcium, and phosphate. these six ions aid in nerve excitability, endocrine secretion, membrane permeability, buffering body fluids, and controlling the movement of fluids between compartments.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-endocrine-regulation-of-kidney-function",
+      "story": "they act to stimulate or inhibit blood flow. some of these are endocrine, acting from a distance, whereas others are paracrine, acting locally. renin is an enzyme that is produced by the granular cells of the afferent arteriole at the jga. it enzymatically converts angiotensinogen (made by the liver, freely circulating) into angiotensin i. its release is stimulated by prostaglandins and no from the jga in response to decreased extracellular fluid volume. ace is not a hormone but it is functionally important in regulating systemic blood pressure and kidney function. it is produced in the lungs but binds to the surfaces of endothelial cells in the afferent arterioles and glomerulus.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-physiology-of-urine-formation",
+      "story": "you will discover that different parts of the nephron utilize specific processes to produce urine: filtration, reabsorption, and secretion. you will learn how each of these processes works and where they occur along the nephron and collecting ducts. the physiologic goal is to modify the composition of the plasma and, in doing so, produce the waste product urine. failure of the renal anatomy and/or physiology can lead suddenly or gradually to renal failure. in this event, a number of symptoms, signs, or laboratory findings point to the diagnosis ( ). the heart pumps about 5 l blood per min under resting conditions. approximately 20 percent or one liter enters the kidneys to be filtered.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-exercise-and-muscle-performance",
+      "story": "conversely, a lack of use can result in decreased performance and muscle appearance. although muscle cells can change in size, new cells are not formed when muscles grow. instead, structural proteins are added to muscle fibers in a process called hypertrophy , so cell diameter increases. the reverse, when structural proteins are lost and muscle mass decreases, is called atrophy . age-related muscle atrophy is called sarcopenia . cellular components of muscles can also undergo changes in response to changes in muscle use. slow fibers are predominantly used in endurance exercises that require little force but involve numerous repetitions.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-muscle-fiber-contraction-and-relaxation",
+      "story": "the local membrane of the fiber will depolarize as positively charged sodium ions (na + ) enter, triggering an action potential that spreads to the rest of the membrane will depolarize, including the t-tubules. this triggers the release of calcium ions (ca ++ ) from storage in the sarcoplasmic reticulum (sr). the ca ++ then initiates contraction, which is sustained by atp ( ). muscle contraction usually stops when signaling from the motor neuron ends, which repolarizes the sarcolemma and t-tubules, and closes the voltage-gated calcium channels in the sr. ca ++ ions are then pumped back into the sr, which causes the tropomyosin to reshield (or re-cover) the binding sites on the actin strands. a muscle also can stop contracting when it runs out of atp and becomes fatigued ( ). the release of calcium ions initiates muscle contractions.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-energy-and-heat-balance",
+      "story": "in the process of atp production by cells throughout the body, approximately 60 percent of the energy produced is in the form of heat used to maintain body temperature. thermoregulation is an example of negative feedback. the hypothalamus in the brain is the master switch that works as a thermostat to regulate the body's core temperature ( ). if the temperature is too high, the hypothalamus can initiate several processes to lower it. these include increasing the circulation of the blood to the surface of the body to allow for the dissipation of heat through the skin and initiation of sweating to allow evaporation of water on the skin to cool its surface. conversely, if the temperature falls below the set core temperature, the hypothalamus can initiate shivering to generate heat. the body uses more energy and generates more heat.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-metabolic-states-of-the-body",
+      "story": "how does the body meet this constant demand for energy? your body processes the food you eat both to use immediately and, importantly, to store as energy for later demands. if there were no method in place to store excess energy, you would need to eat constantly in order to meet energy demands. distinct mechanisms are in place to facilitate energy storage, and to make stored energy available during times of fasting and starvation. the absorptive state , or the fed state, occurs after a meal when your body is digesting the food and absorbing the nutrients (anabolism exceeds catabolism). digestion begins the moment you put food into your mouth, as the food is broken down into its constituent parts to be absorbed through the intestine. the digestion of carbohydrates begins in the mouth, whereas the digestion of proteins and fats begins in the stomach and small intestine.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-overview-of-muscle-tissues",
+      "story": "while the nervous system can influence the excitability of cardiac and smooth muscle to some degree, skeletal muscle completely depends on signaling from the nervous system to work properly. on the other hand, both cardiac muscle and smooth muscle can respond to other stimuli, such as hormones and local stimuli. from top, lm &#xd7; 1600, lm &#xd7; 1600, lm &#xd7; 1600. (micrographs provided by the regents of university of michigan medical school &#xa9; 2012)\") the muscles all begin the actual process of contracting (shortening) when a protein called actin is pulled by a protein called myosin. ca ++ also is required for the contraction of smooth muscle, although its role is different: here ca ++ activates enzymes, which in turn activate myosin heads. all muscles require adenosine triphosphate (atp) to continue the process of contracting, and they all relax when the ca ++ is removed and the actin-binding sites are re-shielded. a muscle can return to its original length when relaxed due to a quality of muscle tissue called elasticity .",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-types-of-muscle-fibers",
+      "story": "using these criteria, there are three main types of skeletal muscle fibers. slow oxidative (so) fibers contract relatively slowly and use aerobic respiration (oxygen and glucose) to produce atp. fast oxidative (fo) fibers have fast contractions and primarily use aerobic respiration, but because they may switch to anaerobic respiration (glycolysis), can fatigue more quickly than so fibers. lastly, fast glycolytic (fg) fibers have fast contractions and primarily use anaerobic glycolysis. the fg fibers fatigue more quickly than the others. most skeletal muscles in a human contain(s) all three types, although in varying proportions. the speed of contraction is dependent on how quickly myosin's atpase hydrolyzes atp to produce cross-bridge action.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-axial-muscles-of-the-abdominal-wall-and-thorax",
+      "story": "the muscles of the vertebral column, thorax, and abdominal wall extend, flex, and stabilize different parts of the body's trunk. the deep muscles of the core of the body help maintain posture as well as carry out other functions. the brain sends out electrical impulses to these various muscle groups to control posture by alternate contraction and relaxation. this is necessary so that no single muscle group becomes fatigued too quickly. if any one group fails to function, body posture will be compromised. there are four pairs of abdominal muscles that cover the anterior and lateral abdominal region and meet at the anterior midline. these muscles of the anterolateral abdominal wall can be divided into four groups: the external obliques, the internal obliques, the transversus abdominis, and the rectus abdominis ( and ).",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-accessory-organs-in-digestion-the-liver-pancreas-and-gallbladder",
+      "story": "the digestive role of the liver is to produce bile and export it to the duodenum. the gallbladder primarily stores, concentrates, and releases bile. the pancreas produces pancreatic juice, which contains digestive enzymes and bicarbonate ions, and delivers it to the duodenum. the liver is the largest gland in the body, weighing about three pounds in an adult. it is also one of the most important organs. in addition to being an accessory digestive organ, it plays a number of roles in metabolism and regulation. the liver lies inferior to the diaphragm in the right upper quadrant of the abdominal cavity and receives protection from the surrounding ribs.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-chemical-digestion-and-absorption-a-closer-look",
+      "story": "it involves the physical breakdown of food but does not alter its chemical makeup. chemical digestion, on the other hand, is a complex process that reduces food into its chemical building blocks, which are then absorbed to nourish the cells of the body ( ). in this section, you will look more closely at the processes of chemical digestion and absorption. large food molecules (for example, proteins, lipids, nucleic acids, and starches) must be broken down into subunits that are small enough to be absorbed by the lining of the alimentary canal. this is accomplished by enzymes through hydrolysis. the many enzymes involved in chemical digestion are summarized in . the average american diet is about 50 percent carbohydrates, which may be classified according to the number of monomers they contain of simple sugars (monosaccharides and disaccharides) and/or complex sugars (polysaccharides).",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-nervous-tissue",
+      "story": "neurons are the primary type of cell that most anyone associates with the nervous system. they are responsible for the computation and communication that the nervous system provides. they are electrically active and release chemical signals to target cells. glial cells, or glia, are known to play a supporting role for nervous tissue. ongoing research pursues an expanded role that glial cells might play in signaling, but neurons are still considered the basis of this function. neurons are important, but without glial support they would not be able to perform their function. neurons are the cells considered to be the basis of nervous tissue.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-stomach",
+      "story": "in between, however, it can be a highly active structure, contracting and continually changing position and size. these contractions provide mechanical assistance to digestion. the empty stomach is only about the size of your fist, but can stretch to hold as much as 4 liters of food and fluid, or more than 75 times its empty volume, and then return to its resting size when empty. although you might think that the size of a person's stomach is related to how much food that individual consumes, body weight does not correlate with stomach size. rather, when you eat greater quantities of food-such as at holiday dinner-you stretch the stomach more than when you eat less. popular culture tends to refer to the stomach as the location where all digestion takes place. an important function of the stomach is to serve as a temporary holding chamber.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-embryologic-perspective",
+      "story": "starting from an embryologic perspective allows you to understand more easily how the parts relate to each other. the embryonic nervous system begins as a very simple structure-essentially just a straight line, which then gets increasingly complex. looking at the development of the nervous system with a couple of early snapshots makes it easier to understand the whole complex system. many structures that appear to be adjacent in the adult brain are not connected, and the connections that exist may seem arbitrary. but there is an underlying order to the system that comes from how different parts develop. by following the developmental pattern, it is possible to learn what the major regions of the nervous system are. to begin, a sperm cell and an egg cell fuse to become a fertilized egg.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-process-of-breathing",
+      "story": "the intra-alveolar and intrapleural pressures are dependent on certain physical features of the lung. however, the ability to breathe-to have air enter the lungs during inspiration and air leave the lungs during expiration-is dependent on the air pressure of the atmosphere and the air pressure within the lungs. inspiration (or inhalation) and expiration (or exhalation) are dependent on the differences in pressure between the atmosphere and the lungs. in a gas, pressure is a force created by the movement of gas molecules that are confined. for example, a certain number of gas molecules in a two-liter container has more room than the same number of gas molecules in a one-liter container ( ). in this case, the force exerted by the movement of the gas molecules against the walls of the two-liter container is lower than the force exerted by the gas molecules in the one-liter container. therefore, the pressure is lower in the two-liter container and higher in the one-liter container.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-central-processing",
+      "story": "a simple case is a reflex caused by a synapse between a dorsal sensory neuron axon and a motor neuron in the ventral horn. more complex arrangements are possible to integrate peripheral sensory information with higher processes. the important regions of the cns that play a role in somatic processes can be separated into the spinal cord brain stem, diencephalon, cerebral cortex, and subcortical structures. a sensory pathway that carries peripheral sensations to the brain is referred to as an ascending pathway , or ascending tract. the various sensory modalities each follow specific pathways through the cns. tactile and other somatosensory stimuli activate receptors in the skin, muscles, tendons, and joints throughout the entire body. however, the somatosensory pathways are divided into two separate systems on the basis of the location of the receptor neurons.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-immune-response-against-pathogens",
+      "story": "ideally, the immune response will rid the body of a pathogen entirely. the adaptive immune response, with its rapid clonal expansion, is well suited to this purpose. think of a primary infection as a race between the pathogen and the immune system. the pathogen bypasses barrier defenses and starts multiplying in the host's body. during the first 4 to 5 days, the innate immune response will partially control, but not stop, pathogen growth. as the adaptive immune response gears up, however, it will begin to clear the pathogen from the body, while at the same time becoming stronger and stronger. when following antibody responses in patients with a particular disease such as a virus, this clearance is referred to as seroconversion (sero- = \"serum\").",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-motor-responses",
+      "story": "somatic senses inform the nervous system about the external environment, but the response to that is through voluntary muscle movement. the term \"voluntary\" suggests that there is a conscious decision to make a movement. however, some aspects of the somatic system use voluntary muscles without conscious control. one example is the ability of our breathing to switch to unconscious control while we are focused on another task. however, the muscles that are responsible for the basic process of breathing are also utilized for speech, which is entirely voluntary. let's start with sensory stimuli that have been registered through receptor cells and the information relayed to the cns along ascending pathways. in the cerebral cortex, the initial processing of sensory perception progresses to associative processing and then integration in multimodal areas of cortex.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-central-control",
+      "story": "this is visual sensation, because the afferent branch of this reflex is simply sharing the special sense pathway. when light hits the retina in one eye, both pupils contract. when that light is removed, both pupils dilate again back to the resting position. when the stimulus is unilateral (presented to only one eye), the response is bilateral (both eyes). the same is not true for somatic reflexes. if you touch a hot radiator, you only pull that arm back, not both. central control of autonomic reflexes is different than for somatic reflexes.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-capillary-exchange",
+      "story": "small molecules, such as gases, lipids, and lipid-soluble molecules, can diffuse directly through the membranes of the endothelial cells of the capillary wall. glucose, amino acids, and ions-including sodium, potassium, calcium, and chloride-use transporters to move through specific channels in the membrane by facilitated diffusion. glucose, ions, and larger molecules may also leave the blood through intercellular clefts. larger molecules can pass through the pores of fenestrated capillaries, and even large plasma proteins can pass through the great gaps in the sinusoids. some large proteins in blood plasma can move into and out of the endothelial cells packaged within vesicles by endocytosis and exocytosis. the mass movement of fluids into and out of capillary beds requires a transport mechanism far more efficient than mere diffusion. this movement, often referred to as bulk flow, involves two pressure-driven mechanisms: volumes of fluid move from an area of higher pressure in a capillary bed to an area of lower pressure in the tissues via filtration .",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-cranial-nerve-exam",
+      "story": "but knowing the names of the nerves in order often leaves much to be desired in understanding what the nerves do. the nerves can be categorized by functions, and subtests of the cranial nerve exam can clarify these functional groupings. three of the nerves are strictly responsible for special senses whereas four others contain fibers for special and general senses. three nerves are connected to the extraocular muscles resulting in the control of gaze. four nerves connect to muscles of the face, oral cavity, and pharynx, controlling facial expressions, mastication, swallowing, and speech. four nerves make up the cranial component of the parasympathetic nervous system responsible for pupillary constriction, salivation, and the regulation of the organs of the thoracic and upper abdominal cavities. finally, one nerve controls the muscles of the neck, assisting with spinal control of the movement of the head and neck.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-the-sensory-and-motor-exams",
+      "story": "the cranial nerves connect the head and neck directly to the brain, but the spinal cord receives sensory input and sends motor commands out to the body through the spinal nerves. whereas the brain develops into a complex series of nuclei and fiber tracts, the spinal cord remains relatively simple in its configuration ( ). from the initial neural tube early in embryonic development, the spinal cord retains a tube-like structure with gray matter surrounding the small central canal and white matter on the surface in three columns. the dorsal, or posterior, horns of the gray matter are mainly devoted to sensory functions whereas the ventral, or anterior, and lateral horns are associated with motor functions. in the white matter, the dorsal column relays sensory information to the brain, and the anterior column is almost exclusively relaying motor commands to the ventral horn motor neurons. the lateral column, however, conveys both sensory and motor information between the spinal cord and brain. the general senses are distributed throughout the body, relying on nervous tissue incorporated into various organs.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-an-overview-of-the-endocrine-system",
+      "story": "in the human body, two major organ systems participate in relatively \"long distance\" communication: the nervous system and the endocrine system. together, these two systems are primarily responsible for maintaining homeostasis in the body. neurotransmitters act locally and rapidly. when an electrical signal in the form of an action potential arrives at the synaptic terminal, they diffuse across the synaptic cleft (the gap between a sending neuron and a receiving neuron or muscle cell). once the neurotransmitters interact (bind) with receptors on the receiving (post-synaptic) cell, the receptor stimulation is transduced into a response such as continued electrical signaling or modification of cellular response. the target cell responds within milliseconds of receiving the chemical \"message\"; this response then ceases very quickly once the neural signaling ends. in this way, neural communication enables body functions that involve quick, brief actions, such as movement, sensation, and cognition.in contrast, the endocrine system uses just one method of communication: chemical signaling.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "anatomy-and-physiology-cardiac-muscle-and-electrical-activity",
+      "story": "not the least of these exceptional properties is its ability to initiate an electrical potential at a fixed rate that spreads rapidly from cell to cell to trigger the contractile mechanism. this property is known as autorhythmicity . neither smooth nor skeletal muscle can do this. even though cardiac muscle has autorhythmicity, heart rate is modulated by the endocrine and nervous systems. there are two major types of cardiac muscle cells: myocardial contractile cells and myocardial conducting cells.",
+      "source": "openstax/anatomy-book",
+      "licence": "CC-BY 3"
     }
   ]
 }

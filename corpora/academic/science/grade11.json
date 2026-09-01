@@ -2,7 +2,7 @@
   "version": 1,
   "grade": "grade11",
   "subject": "science",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for science/grade11. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
@@ -120,6 +120,348 @@
       "story": "acceleration is a measure of how fast velocity changes. acceleration is the change of velocity divided by the change of time. acceleration is a vector, and therefore includes both a size and a direction. acceleration is also a change in speed and direction. there is: speed distance is how far you traveled. time is how long it took you to travel. speed is how fast you are moving - speed = distance / time velocity displacement is how much your position has changed in what direction. velocity is how quickly your position is changing and in what direction. velocity = displacement / time the measurement of how fast acceleration changes is called jerk. an object was moving north at 10 meters per second. the object speeds up and is now moving north at 17 meters per second. it starts falling at 0 meters per second. at the end of the first second, the apple is moving at 9.8 meters per second. at the end of the second second, the apple is moving down at 19.6 meters per second. the apple has accelerated again. jane is walking east at 3 kilometers per hour. jane's velocity does not change. tom was walking east at 3 kilometers per hour. tom turns and walks south at 3 kilometers per hour. tom has had a nonzero acceleration. sally was walking east at 3 kilometers per hour. after, sally walks east at 1.5 kilometers per hour. sally has had a nonzero acceleration. acceleration due to gravity acceleration is the rate of change of the velocity of an object. in difficult situations, the acceleration can be calculated using mathematics: in calculus, acceleration is the derivative of the velocity , a = d v d t {\\displaystyle \\mathbf {a} ={\\frac {\\mathrm {d} \\mathbf {v} }{\\mathrm {d} t}}} . acceleration has its units of measurement. for example, if velocity is measured in meters per second, and if time is measured in seconds, then acceleration is measured in meters per second squared . acceleration can be positive or negative. when the acceleration is negative , it is sometimes called deceleration. for example, when a car brakes it decelerates. physicists usually only use the word \"acceleration\". newton's laws of motion are rules for how things move. these rules are called \"laws of motion\". isaac newton is the scientist who first wrote down the main laws of motion. according to newton's second law of motion, the force something needs to accelerate an object depends on the object's mass . the formula of newton's second law of motion is f = m a {\\displaystyle \\mathbf {f} =m\\mathbf {a} } , where a {\\displaystyle \\mathbf {a} } is the acceleration, f {\\displaystyle \\mathbf {f} } is the force, and m {\\displaystyle m} the mass. this formula is very well-known, and it is very important in physics. newton's second law of motion, in short \"newton's second law\", is often one of the first things that physics students learn. deceleration is negative or backwards acceleration. this means that something slows down instead of speeding up. for example, when a car brakes, it is decelerating.",
       "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "physics-displacement",
+      "story": "define position, displacement, distance, and distance traveled. explain the relationship between position and displacement. distinguish between displacement and distance traveled. calculate displacement and distance given initial position, final position, and the path between the two. \") in order to describe the motion of an object, you must first be able to describe its position -where it is at any particular time. more precisely, you need to specify its position relative to a convenient reference frame. earth is often used as a reference frame, and we often describe the position of an object as it relates to stationary objects in that reference frame.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-newton-s-second-law-of-motion-concept-of-a-system",
+      "story": "define net force, external force, and system. understand newton's second law of motion. apply newton's second law to determine the weight of an object. newton's second law of motion is closely related to newton's first law of motion. it mathematically states the cause and effect relationship between force and changes in motion. newton's second law of motion is more quantitative and is used extensively to calculate what happens in situations involving a force. before we can write down newton's second law as a simple equation giving the exact relationship of force, mass, and acceleration, we need to sharpen some ideas that have already been mentioned.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-drag-forces",
+      "story": "express mathematically the drag force. discuss the applications of drag force. determine the terminal velocity given mass. another interesting force in everyday life is the force of drag on an object when it is moving in a fluid (either a gas or a liquid). you feel the drag force when you move your hand through water. you might also feel it if you move your hand during a strong wind. the faster you move your hand, the harder it is to move.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-centripetal-force",
+      "story": "calculate coefficient of friction on a car tire. calculate ideal speed and angle of a car on a turn. any force or combination of forces can cause a centripetal or radial acceleration. just a few examples are the tension in the rope on a tether ball, the force of earth's gravity on the moon, friction between roller skates and a rink floor, a banked roadway's force on a car, and forces on the tube of a spinning centrifuge. any net force causing uniform circular motion is called a centripetal force . the direction of a centripetal force is toward the center of curvature, the same as the direction of centripetal acceleration. according to newton's second law of motion, net force is mass times acceleration: net f = ma size 12{f= ital \"ma\"} {} .",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-motion-equations-for-constant-acceleration-in-one-dimension",
+      "story": "calculate displacement of an object that is not accelerating, given initial position and velocity. calculate final velocity of an accelerating object, given initial velocity, acceleration, and time. calculate displacement and final position of an accelerating object, given initial position, initial velocity, time, and acceleration. \") we might know that the greater the acceleration of, say, a car moving away from a stop sign, the greater the displacement in a given time. but we have not developed a specific equation that relates acceleration and displacement. in this section, we develop some convenient equations for kinematic relationships, starting from the definitions of displacement, velocity, and acceleration already covered. first, let us make some simplifications in notation.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-kinematics-in-two-dimensions-an-introduction",
+      "story": "observe that motion in two dimensions consists of horizontal and vertical components. understand the independence of horizontal and vertical vectors in two-dimensional motion. \") suppose you want to walk from one point to another in a city with uniform square blocks, as pictured in . the straight-line path that a helicopter might fly is blocked to you as a pedestrian, and so you are forced to take a two-dimensional path, such as the one shown. you walk 14 blocks in all, 9 east followed by 5 north. what is the straight-line distance? an old adage states that the shortest distance between two points is a straight line.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-introduction-to-one-dimensional-kinematics",
+      "story": "class=\"introduction\" class=\"section-summary\" title=\"section summary\" class=\"conceptual-questions\" title=\"conceptual questions\" class=\"problems-exercises\" title=\"problems &amp; exercises\" \") objects are in motion everywhere we look. everything from a tennis game to a space-probe flyby of the planet neptune involves motion. when you are resting, your heart moves blood through your veins. and even in inanimate objects, there is continuous motion in the vibrations of atoms and molecules. questions about motion are interesting in and of themselves: how long will it take for a space probe to get to mars? where will a football land if it is thrown at a certain angle? but an understanding of motion is also key to understanding other concepts in physics.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-vector-addition-and-subtraction-graphical-methods",
+      "story": "understand the rules of vector addition, subtraction, and multiplication. apply graphical methods of vector addition and subtraction to determine the displacement of moving objects. \") a vector is a quantity that has magnitude and direction. displacement, velocity, acceleration, and force, for example, are all vectors. in one-dimensional, or straight-line, motion, the direction of a vector can be given simply by a plus or minus sign. shows such a graphical representation of a vector, using as an example the total displacement for the person walking in a city considered in kinematics in two dimensions: an introduction. we shall use the notation that a boldface symbol, such as d size 12{d} {} , stands for a vector.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-further-applications-of-newton-s-laws-of-motion",
+      "story": "apply problem-solving techniques to solve for quantities in more complex systems of forces. integrate concepts from kinematics to solve problems using newton\\'s laws of motion. there are many interesting applications of newton's laws of motion, a few more of which are presented in this section. these serve also to illustrate some further subtleties of physics and to help build problem-solving skills. drag force on a barge suppose two tugboats push on a barge at different angles, as shown in . a view from above of two tugboats pushing on a barge. (b) the free-body diagram for the ship contains only forces acting in the plane of the water.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-introduction-to-uniform-circular-motion-and-gravitation",
+      "story": "class=\"introduction\" class=\"section-summary\" title=\"section summary\" class=\"conceptual-questions\" title=\"conceptual questions\" class=\"problems-exercises\" title=\"problems &amp; exercises\" . the same physical principles are involved in each. (credit: richard munckton)\") many motions, such as the arc of a bird's flight or earth's path around the sun, are curved. recall that newton's first law tells us that motion is along a straight line at constant speed unless there is a net external force. we will therefore study not only motion along curves, but also the forces that cause it, including gravitational forces. in some ways, this chapter is a continuation of dynamics: newton\\'s laws of motion as we study more applications of newton's laws of motion. this chapter deals with the simplest form of curved motion, uniform circular motion , motion in a circular path at constant speed.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-introduction-to-work-energy-and-energy-resources",
+      "story": "you can no doubt name many forms of energy, from that provided by our foods, to the energy we use to run our cars, to the sunlight that warms us on the beach. you can also cite examples of what people call energy that may not be scientific, such as someone having an energetic personality. not only does energy have many interesting forms, it is involved in almost all phenomena, and is one of the most important concepts of physics. what makes it even more important is that the total amount of energy in the universe is constant. energy can change forms, but it cannot appear from nothing or disappear without a trace. energy is thus one of a handful of physical quantities that we say is conserved. conservation of energy (as physicists like to call the principle that energy can neither be created nor destroyed) is based on experiment.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-conservative-forces-and-potential-energy",
+      "story": "define conservative force, potential energy, and mechanical energy. explain the potential energy of a spring in terms of its compression when hooke's law applies. use the work-energy theorem to show how having only conservative forces implies conservation of mechanical energy. work is done by a force, and some forces, such as weight, have special characteristics. a conservative force is one, like the gravitational force, for which work done by or against it depends only on the starting and ending points of a motion and not on the path taken. we can define a potential energy ( pe ) size 12{ \\( \"pe\" \\) } {} for any conservative force, just as we did for the gravitational force. for example, when you wind up a toy, an egg timer, or an old-fashioned watch, you do work against its spring and store energy in it.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-work-energy-and-power-in-humans",
+      "story": "explain the human body's consumption of energy when at rest vs. when engaged in activities that do useful work. calculate the conversion of chemical energy in food into useful work. our own bodies, like all living organisms, are energy conversion machines. conservation of energy implies that the chemical energy stored in food is converted into work, thermal energy, and/or stored as chemical energy in fatty tissue. (see .) the fraction going into each form depends both on how much we eat and on our level of physical activity. if we eat more than is needed to do work and stay warm, the remainder goes into body fat.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-impulse",
+      "story": "describe effects of impulses in everyday life. determine the average effective force using graphical representation. calculate average force and impulse given mass, velocity, and time. the effect of a force on an object depends on how long it acts, as well as how great the force is. in , a very large force acting for a short time had a great effect on the momentum of the tennis ball. a small force could cause the same change in momentum , but it would have to act for a much longer time. for example, if the ball were thrown upward, the gravitational force (which is much smaller than the tennis racquet's force) would eventually reverse the momentum of the ball.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-collisions-of-point-masses-in-two-dimensions",
+      "story": "discuss two dimensional collisions as an extension of one dimensional analysis. derive an expression for conservation of momentum along x -axis and y -axis. describe elastic collisions of two objects with equal mass. determine the magnitude and direction of the final velocity given initial velocity, and scattering angle. in the previous two sections, we considered only one-dimensional collisions; during such collisions, the incoming and outgoing velocities are all along the same line. but what about collisions, such as those between billiard balls, in which objects scatter to the side? these are two-dimensional collisions, and we shall see that their study is an extension of the one-dimensional analysis already presented.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-the-second-condition-for-equilibrium",
+      "story": "state the second condition that is necessary to achieve equilibrium. explain torque and the factors on which it depends. describe the role of torque in rotational mechanics. torque the second condition necessary to achieve equilibrium involves avoiding accelerated rotation (maintaining a constant angular velocity). a rotating body or system can be in equilibrium if its rate of rotation is constant and remains unchanged by the forces acting on it. to understand what factors affect rotation, let us think about what happens when you open an ordinary door by rotating it on its hinges. several familiar factors determine how effective you are in opening the door.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-forces-and-torques-in-muscles-and-joints",
+      "story": "explain the forces exerted by muscles. state how a bad posture causes back strain. discuss the benefits of skeletal muscles attached close to joints. discuss various complexities in the real system of muscles, bones, and joints. muscles, bones, and joints are some of the most interesting applications of statics. muscles, for example, exert far greater forces than we might think. shows a forearm holding a book and a schematic diagram of an analogous lever system.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-dynamics-of-rotational-motion-rotational-inertia",
+      "story": "understand the relationship between force, mass and acceleration. study the turning effect of force. study the analogy between force and torque, mass and moment of inertia, and linear acceleration and angular acceleration. if you have ever spun a bike wheel or pushed a merry-go-round, you know that force is needed to change angular velocity as seen in . in fact, your intuition is reliable in predicting many of the factors that are involved. for example, we know that a door opens slowly if we push too close to its hinges. furthermore, we know that the more massive the door, the more slowly it opens.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-gyroscopic-effects-vector-aspects-of-angular-momentum",
+      "story": "describe the right-hand rule to find the direction of angular velocity, momentum, and torque. explain the gyroscopic effect. study how earth acts like a gigantic gyroscope. angular momentum is a vector and, therefore, has direction as well as magnitude. torque affects both the direction and the magnitude of angular momentum. what is the direction of the angular momentum of a rotating object like the disk in ? the figure shows the right-hand rule used to find the direction of both angular momentum and angular velocity.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-pressure",
+      "story": "explain the relationship between pressure and force. calculate force given pressure and area. you have no doubt heard the word pressure being used in relation to blood (high or low blood pressure) and in relation to the weather (high- and low-pressure weather systems). these are only two of many examples of pressures in fluids. pressure p size 12{p} {} is defined as p = f a size 12{p= { {f} over {a} } } {} where f size 12{p} {} is a force applied to an area a size 12{p} {} that is perpendicular to the force. pressure pressure is defined as the force divided by the area perpendicular to the force over which the force is applied, or p = f a . size 12{p= { {f} over {a} } } {} a given force can have a significantly different effect depending on the area over which the force is exerted, as shown in .",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-archimedes-principle",
+      "story": "understand why objects float or sink. understand the relationship between density and archimedes' principle. when you rise from lounging in a warm bath, your arms feel strangely heavy. this is because you no longer have the buoyant support of the water. where does this buoyant force come from? why is it that some things float and others do not? do objects that sink get any support at all from the fluid?",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-flow-rate-and-its-relation-to-velocity",
+      "story": "describe incompressible fluids. explain the consequences of the equation of continuity. flow rate q size 12{q} {} is defined to be the volume of fluid passing by some location through an area during a period of time, as seen in . in symbols, this can be written as q = v t , size 12{q= { {v} over {t} } } {} where v size 12{v} {} is the volume and t size 12{t} {} is the elapsed time. the si unit for flow rate is m 3 /s size 12{m rsup { size 8{3} } \"/s\"} {} , but a number of other units for q size 12{q} {} are in common use. for example, the heart of a resting adult pumps blood at a rate of 5.00 liters per minute (l/min). note that a liter (l) is 1/1000 of a cubic meter or 1000 cubic centimeters ( 10 - 3 m 3 size 12{\"10\" rsup { size 8{ - 3} } m rsup { size 8{3} } } {} or 10 3 cm 3 size 12{\"10\" rsup { size 8{3} } \"cm\" rsup { size 8{3} } } {} ).",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-the-onset-of-turbulence",
+      "story": "use the reynolds number for a system to determine whether it is laminar or turbulent. sometimes we can predict if flow will be laminar or turbulent. we know that flow in a very smooth tube or around a smooth, streamlined object will be laminar at low velocity. we also know that at high velocity, even flow in a smooth tube or around a smooth object will experience turbulence. in between, it is more difficult to predict. in fact, at intermediate velocities, flow may oscillate back and forth indefinitely between laminar and turbulent. an occlusion, or narrowing, of an artery, such as shown in , is likely to cause turbulence because of the irregularity of the blockage, as well as the complexity of blood as a fluid.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-temperature",
+      "story": "convert temperatures between the celsius, fahrenheit, and kelvin scales. state the zeroth law of thermodynamics. the concept of temperature has evolved from the common concepts of hot and cold. human perception of what feels hot or cold is a relative one. for example, if you place one hand in hot water and the other in cold water, and then place both hands in tepid water, the tepid water will feel cool to the hand that was in hot water, and warm to the one that was in cold water. the scientific definition of temperature is less ambiguous than your senses of hot and cold. temperature is operationally defined to be what we measure with a thermometer.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-phase-changes",
+      "story": "identify and describe the triple point of a gas from its phase diagram. describe the state of equilibrium between a liquid and a gas, a liquid and a solid, and a gas and a solid. up to now, we have considered the behavior of ideal gases. real gases are like ideal gases at high temperatures. at lower temperatures, however, the interactions between the molecules and their volumes cannot be ignored. the molecules are very close (condensation occurs) and there is a dramatic decrease in volume, as seen in . the substance changes from a gas to a liquid.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-temperature-change-and-heat-capacity",
+      "story": "observe heat transfer and change in temperature and mass. calculate final temperature after heat transfer between two objects. one of the major effects of heat transfer is temperature change: heating increases the temperature while cooling decreases it. we assume that there is no phase change and that no work is done on or by the system. experiments show that the transferred heat depends on three factors-the change in temperature, the mass of the system, and the substance and phase of the substance. the amount of heat transferred is directly proportional to the temperature change. to double the temperature change of a mass m size 12{m} {}, you need to add twice the heat.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-convection",
+      "story": "discuss the method of heat transfer by convection. convection is driven by large-scale flow of matter. in the case of earth, the atmospheric circulation is caused by the flow of hot air from the tropics to the poles, and the flow of cold air from the poles toward the tropics. (note that earth's rotation causes the observed easterly flow of air in the northern hemisphere). car engines are kept cool by the flow of water in the cooling system, with the water pump maintaining a flow of cool water to the pistons. the circulatory system is used the body: when the body overheats, the blood vessels in the skin expand (dilate), which increases the blood flow to the skin where it can be cooled by sweating. these vessels become smaller when it is cold outside and larger when it is hot (so more fluid flows, and more energy is transferred).",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-the-first-law-of-thermodynamics-and-some-simple-processes",
+      "story": "describe the processes of a simple heat engine. explain the differences among the simple thermodynamic processes-isobaric, isochoric, isothermal, and adiabatic. calculate total work done in a cyclical thermodynamic process. \") one of the most important things we can do with heat transfer is to use it to do work for us. such a device is called a heat engine . car engines and steam turbines that generate electricity are examples of heat engines. shows schematically how the first law of thermodynamics applies to the typical heat engine.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-entropy-and-the-second-law-of-thermodynamics-disorder-and-the-unavailability-of-energy",
+      "story": "define entropy and calculate the increase of entropy in a system with reversible and irreversible processes. explain the expected fate of the universe in entropic terms. calculate the increasing disorder of a system. \") there is yet another way of expressing the second law of thermodynamics. this version relates to a concept called entropy . the entropy of a system can in fact be shown to be a measure of its disorder and of the unavailability of energy to do work. making connections: entropy, energy, and work recall that the simple definition of energy is the ability to do work.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-period-and-frequency-in-oscillations",
+      "story": "observe the vibrations of a guitar string. determine the frequency of oscillations. \") when you pluck a guitar string, the resulting sound has a steady tone and lasts a long time. each successive vibration of the string takes the same time as the previous one. we define periodic motion to be a motion that repeats itself at regular time intervals, such as exhibited by the guitar string or by an object on a spring moving up and down. the time to complete one oscillation remains constant and is called the period t size 12{t} {} . its units are usually seconds, but may be any convenient unit of time.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-uniform-circular-motion-and-simple-harmonic-motion",
+      "story": "compare simple harmonic motion with uniform circular motion. \") there is an easy way to produce simple harmonic motion by using uniform circular motion. shows one way of using this method. a ball is attached to a uniformly rotating vertical turntable, and its shadow is projected on the floor as shown. the shadow undergoes simple harmonic motion. so observing the projection of uniform circular motion, as in , is often easier than observing a precise large-scale simple harmonic oscillator. if studied in sufficient depth, simple harmonic motion produced in this manner can give considerable insight into many aspects of oscillations and waves and is very useful mathematically.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-superposition-and-interference",
+      "story": "describe the mathematical representation of overtones and beat frequency. \") most waves do not look very simple. they look more like the waves in than like the simple water wave considered in waves. (simple waves may be created by a simple harmonic oscillation, and thus have a sinusoidal shape). complex waves are more interesting, even beautiful, but they look formidable. most waves appear complex because they result from several simple waves adding together. luckily, the rules for adding waves are quite simple.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-speed-of-sound-frequency-and-wavelength",
+      "story": "describe the relationship between the speed of sound, its frequency, and its wavelength. describe the effects on the speed of sound as it travels through various media. describe the effects of temperature on the speed of sound. \") sound, like all waves, travels at a certain speed and has the properties of frequency and wavelength. you can observe direct evidence of the speed of sound while watching a fireworks display. the flash of an explosion is seen well before its sound is heard, implying both that sound travels at a finite speed and that it is much slower than light. you can also directly sense the frequency of a sound.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-sound-interference-and-resonance-standing-waves-in-air-columns",
+      "story": "define antinode, node, fundamental, overtones, and harmonics. identify instances of sound interference in everyday situations. describe how sound interference occurring inside open and closed tubes changes the characteristics of the sound, and how this applies to sounds produced by musical instruments. calculate the length of a tube using sound wave measurements. \") interference is the hallmark of waves, all of which exhibit constructive and destructive interference exactly analogous to that seen for water waves. in fact, one way to prove something \"is a wave\" is to observe interference effects. so, sound being a wave, we expect it to exhibit interference; we have already mentioned a few such effects, such as the beats from two similar notes played simultaneously.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-static-electricity-and-charge-conservation-of-charge",
+      "story": "define electric charge, and describe how the two types of charge interact. describe three common situations that generate static electricity. state the law of conservation of charge. \") what makes plastic wrap cling? not only are applications of static electricity common these days, its existence has been known since ancient times. the first record of its effects dates to ancient greeks who noted more than 500 years b.c. that polishing amber temporarily enabled it to attract bits of straw (see ).",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-electric-field-lines-multiple-charges",
+      "story": "drawings using lines to represent electric fields around charged objects are very useful in visualizing field strength and direction. since the electric field has both magnitude and direction, it is a vector. like all vectors , the electric field can be represented by an arrow that has length proportional to its magnitude and that points in the correct direction. (we have used arrows extensively to represent force vectors, for example.) shows two pictorial representations of the same electric field created by a positive point charge q size 12{q} {} . (b) shows the standard representation using continuous lines. (a) shows numerous individual arrows with each arrow representing the force on a test charge q size 12{q} {} . field lines are essentially a map of infinitesimal force vectors.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-electric-potential-energy-potential-difference",
+      "story": "define electric potential and electric potential energy. describe the relationship between potential difference and electrical potential energy. explain electron volt and its usage in submicroscopic process. determine electric potential energy given potential difference and amount of charge. when a free positive charge q size 12{q} {} is accelerated by an electric field, such as shown in , it is given kinetic energy. the process is analogous to an object being accelerated by a gravitational field. it is as if the charge is going down an electrical hill where its electric potential energy is converted to kinetic energy.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-equipotential-lines",
+      "story": "explain equipotential lines and equipotential surfaces. describe the action of grounding an electrical appliance. compare electric field and equipotential lines. we can represent electric potentials (voltages) pictorially, just as we drew pictures to illustrate electric fields. of course, the two are related. consider , which shows an isolated positive point charge and its electric field lines. electric field lines radiate out from a positive charge and terminate on negative charges.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-current",
+      "story": "define electric current, ampere, and drift velocity describe the direction of charge flow in conventional current. use drift velocity to calculate current and vice versa. electric current is defined to be the rate at which charge flows. calculating currents: current in a truck battery and a handheld calculator (a) what is the current involved when a truck battery sets in motion 720 c of charge in 4.00 s while starting an engine? (b) how long does it take 1.00 c of charge to flow through a handheld calculator if a 0.300-ma current is flowing? in part (b), we rearrange the definition of current and use the given values of charge and current to find the time required. discussion for (a) this large value for current illustrates the fact that a large charge is moved in a small amount of time.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-electric-hazards-and-the-human-body",
+      "story": "define thermal hazard, shock hazard, and short circuit. explain what effects various levels of current have on the human body. there are two known hazards of electricity-thermal and shock. a thermal hazard is one where excessive electric power causes undesired thermal effects, such as starting a fire in the wall of a house. a shock hazard occurs when electric current passes through a person. shocks range in severity from painful, but otherwise harmless, to heart-stopping lethality. this section considers these hazards and the various factors affecting them in a quantitative manner.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-electromotive-force-terminal-voltage",
+      "story": "compare and contrast the voltage and the electromagnetic force of an electric power source. describe what happens to the terminal voltage, current, and power delivered to a load as internal resistance of the voltage source increases (due to aging of batteries, for example). explain why it is beneficial to use more than one voltage source connected in parallel. when you forget to turn off your car lights, they slowly dim as the battery runs down. why don't they simply blink off when the battery's energy is gone? their gradual dimming implies that battery output voltage decreases as the battery is depleted. furthermore, if you connect an excessive number of 12-v lights in parallel to a car battery, they will be dim even when the battery is fresh and even if the wires to the lights have very low resistance.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-dc-circuits-containing-resistors-and-capacitors",
+      "story": "explain why batteries in a flashlight gradually lose power and the light dims over time. describe what happens to a graph of the voltage across a capacitor over time as it charges. explain how a timing circuit works and list some applications. calculate the necessary speed of a strobe flash needed to \"stop\" the movement of an object over a particular length. when you use a flash camera, it takes a few seconds to charge the capacitor that powers the flash. the light flash discharges the capacitor in a tiny fraction of a second. why does charging take longer than discharging?",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-magnetic-fields-and-magnetic-field-lines",
+      "story": "define magnetic field and describe the magnetic field lines of various magnetic fields. einstein is said to have been fascinated by a compass as a child, perhaps musing on how the needle felt a force without direct physical contact. his ability to think deeply and clearly about action at a distance, particularly for gravitational, electric, and magnetic forces, later enabled him to create his revolutionary theory of relativity. since magnetic forces act at a distance, we define a magnetic field to represent magnetic forces. the pictorial representation of magnetic field lines is very useful in visualizing the strength and direction of the magnetic field. as shown in , the direction of magnetic field lines is defined to be the direction in which the north end of a compass needle points. the magnetic field is traditionally called the b-field .",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-torque-on-a-current-loop-motors-and-meters",
+      "story": "describe how motors and meters work in terms of torque on a current loop. calculate the torque on a current-carrying loop in a magnetic field. motors are the most common application of magnetic force on current-carrying wires. motors have loops of wire in a magnetic field. when current is passed through the loops, the magnetic field exerts torque on the loops, which rotates a shaft. electrical energy is converted to mechanical work in the process. (see .) let us examine the force on each segment of the loop in to find the torques produced about the axis of the vertical shaft.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-introduction-to-electromagnetic-induction-ac-circuits-and-electrical-technologies",
+      "story": "a butterfly's wings exhibit an appealing symmetry in a complex system. (see .) the laws of physics display symmetries at the most basic level-these symmetries are a source of wonder and imply deeper meaning. since we place a high value on symmetry, we look for it when we explore nature. the remarkable thing is that we find it. \") the hint of symmetry between electricity and magnetism found in the preceding chapter will be elaborated upon in this chapter. specifically, we know that a current creates a magnetic field. if nature is symmetric here, then perhaps a magnetic field can create a current.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-magnetic-force-on-a-current-carrying-conductor",
+      "story": "describe the effects of a magnetic force on a current-carrying conductor. calculate the magnetic force on a current-carrying conductor. because charges ordinarily cannot escape a conductor, the magnetic force on charges moving in a conductor is transmitted to the conductor itself. now, n = nv size 12{n= ital \"nv\"} {} , where n size 12{n} {} is the number of charge carriers per unit volume and v size 12{v} {} is the volume of wire in the field. the direction of this force is given by rhr-1, with the thumb in the direction of the current i size 12{i} {} . then, with the fingers in the direction of b size 12{b} {} , a perpendicular to the palm points in the direction of f size 12{f} {} , as in . calculating magnetic force on a current-carrying wire: a strong magnetic field calculate the force on the wire shown in , given b = 1 .",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-back-emf",
+      "story": "explain what back emf is and how it is induced. it has been noted that motors and generators are very similar. generators convert mechanical energy into electrical energy, whereas motors convert electrical energy into mechanical energy. furthermore, motors and generators have the same construction. when the coil of a motor is turned, magnetic flux changes, and an emf (consistent with faraday's law of induction) is induced. the motor thus acts as a generator whenever its coil rotates. this will happen whether the shaft is turned by an external input, like a belt drive, or by the action of the motor itself.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-rl-circuits",
+      "story": "calculate the current in an rl circuit after a specified number of characteristic time steps. calculate the characteristic time of an rl circuit. sketch the current in an rl circuit over time. we know that the current through an inductor l size 12{l} {} cannot be turned on or off instantaneously. the change in current changes flux, inducing an emf opposing the change (lenz's law). how long does the opposition last? current will flow and can be turned off, but how long does it take?",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-maxwell-s-equations-electromagnetic-waves-predicted-and-observed",
+      "story": "the scotsman james clerk maxwell (1831-1879) is regarded as the greatest theoretical physicist of the 19th century. \") maxwell brought together all the work that had been done by brilliant physicists such as oersted, coulomb, gauss, and faraday, and added his own insights to develop the overarching theory of electromagnetism. maxwell's equations are paraphrased here in words because their mathematical statement is beyond the level of this text. however, the equations illustrate how apparently simple mathematical statements can elegantly unite and express a multitude of concepts-why mathematics is the language of science. electric field lines originate on positive charges and terminate on negative charges. from maxwell's first equation we obtain a special form of coulomb's law known as gauss's law for electricity. magnetic field lines are continuous, having no beginning or end.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-introduction-to-geometric-optics",
+      "story": "mirrors, like lenses, can also form images that in turn are captured by your eye. \") our lives are filled with light. through vision, the most valued of our senses, light can evoke spiritual emotions, such as when we view a magnificent sunset or glimpse a rainbow breaking through the clouds. light can also simply amuse us in a theater, or warn us to stop at an intersection. it has innumerable uses beyond vision. light can carry telephone signals through glass fibers or cook a meal in a solar oven. life itself could not exist without light's energy.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-total-internal-reflection",
+      "story": "explain the phenomenon of total internal reflection. describe the workings and uses of fiber optics. analyze the reason for the sparkle of diamonds. a good-quality mirror may reflect more than 90% of the light that falls on it, absorbing the rest. but it would be useful to have a mirror that reflects all of the light that falls on it. interestingly, we can produce total reflection using an aspect of refraction. consider what happens when a ray of light strikes the surface between two materials, such as is shown in (a).",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-introduction-to-vision-and-optical-instruments",
+      "story": "how is the image formation on the computer screen different from the image formation in your eye as you look down the microscope? how can videos of living cell processes be taken for viewing later on, and by many different people? seeing faces and objects we love and cherish is a delight-one's favorite teddy bear, a picture on the wall, or the sun rising over the mountains. intricate images help us understand nature and are invaluable for developing techniques and technologies in order to improve the quality of life. the image of a red blood cell that almost fills the cross-sectional area of a tiny capillary makes us wonder how blood makes it through and not get stuck. we are able to see bacteria and viruses and understand their structure. it is the knowledge of physics that provides fundamental understanding and models required to develop new techniques and instruments.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-microscopes",
+      "story": "investigate different types of microscopes. learn how image is formed in a compound microscope. although the eye is marvelous in its ability to see objects large and small, it obviously has limitations to the smallest details it can detect. human desire to see beyond what is possible with the naked eye led to the use of optical instruments. in this section we will examine microscopes, instruments for enlarging the detail that we cannot see with the unaided eye. the microscope is a multiple-element system having more than a single lens or mirror. (see ) a microscope can be made from two convex lenses.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-huygens-s-principle-diffraction",
+      "story": "discuss the propagation of transverse waves. shows how a transverse wave looks as viewed from above and from the side. a light wave can be imagined to propagate like this, although we do not actually see it wiggling through space. from above, we view the wavefronts (or wave crests) as we would by looking down on the ocean waves. the side view would be a graph of the electric or magnetic field. the view from above is perhaps the most useful in developing concepts about wave optics. and is represented by an arrow like a ray.\") the dutch scientist christiaan huygens (1629-1695) developed a useful technique for determining in detail how and where waves propagate.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-limits-of-resolution-the-rayleigh-criterion",
+      "story": "discuss the rayleigh criterion. light diffracts as it moves through space, bending around obstacles, interfering constructively and destructively. while this can be used as a spectroscopic tool-a diffraction grating disperses light according to wavelength, for example, and is used to produce spectra-diffraction also limits the detail we can obtain in images. (a) shows the effect of passing light through a small circular aperture. instead of a bright spot with sharp edges, a spot with a fuzzy edge surrounded by circles of light is obtained. this pattern is caused by diffraction similar to that produced by a single slit. light from different parts of the circular aperture interferes constructively and destructively.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-einstein-s-postulates",
+      "story": "state and explain both of einstein's postulates. explain what an inertial frame of reference is. describe one way the speed of light can be changed. \") have you ever used the pythagorean theorem and gotten a wrong answer? probably not, unless you made a mistake in either your algebra or your arithmetic. each time you perform the same calculation, you know that the answer will be the same. trigonometry is reliable because of the certainty that one part always flows from another in a logical way.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
+    },
+    {
+      "theme": "physics-relativistic-momentum",
+      "story": "calculate relativistic momentum. explain why the only mass it makes sense to talk about is rest mass. \") in classical physics, momentum is a simple product of mass and velocity. however, we saw in the last section that when special relativity is taken into account, massive objects have a speed limit. what effect do you think mass and velocity have on the momentum of objects moving at relativistic speeds? momentum is one of the most important concepts in physics. the broadest form of newton's second law is stated in terms of momentum.",
+      "source": "openstax/physics-book",
+      "licence": "CC-BY 3"
     }
   ]
 }
