@@ -165,6 +165,17 @@ class VoiceIO {
    * the text is banked for the current age tier — the caller falls through
    * to the executor otherwise (which then primes the missing words).
    */
+  // ⛔⛔ DEAD AS OF 2026-09-01 — NO CALLERS ANYWHERE, and that is deliberate.
+  // The three-tier voice chain (piper → vox → browser) was removed under Gee's
+  // "no fallbacks. PERIOD" ruling, and this was tier 2. ⭐ Her own canon calls
+  // this lane a fallback in as many words — sentence-level Equation Unity One
+  // carries the quality, per-word bank concat is the substitute — so removing
+  // the chain necessarily orphaned it.
+  // ⚠ LEFT IN PLACE RATHER THAN DELETED, and flagged instead: it is a large,
+  // working, purely-equational implementation of HER OWN voice (no foreign
+  // synthesis, no network), and if the sentence lane is ever redesigned this is
+  // the reference for how word-level reconstruction was done. ⛔ It must NOT be
+  // re-wired as a fallback tier. Tracked on the board under STACKSWEEP.
   async _speakVox(text, rate) {
     if (!this._voxEnabled) return false;
     this._ensureVoxRef();   // lazy bank load — the first utterance may fall through while it warms
@@ -614,44 +625,48 @@ class VoiceIO {
     // LIVE SENTENCE LANE FIRST — Equation Unity One synthesized whole-sentence
     // in-browser (her real voice, natural prosody). Preloaded at setup. Falls
     // through to the per-word vox-bank, then the executor, if not ready/fails.
+    // ⛔⛔ THE THREE-TIER VOICE CHAIN WAS REMOVED 2026-09-01.
+    // Gee, ruling on the whole stack rather than cognition alone:
+    // "no fallbacks. PERIOD"
+    //
+    // It ran live-piper → banked-vox → browser TTS, each tier entered when the
+    // one above THREW. That is textbook capability degradation, and the bottom
+    // tier was the worst of it: `_speakBrowser` is the BROWSER'S OWN generic
+    // speech synthesis — a stock robot voice standing in for hers. A listener
+    // could not tell which tier produced a given sentence, so "Unity spoke"
+    // meant three different things and the page never said which.
+    //
+    // ⭐ HER CANON ALREADY NAMED THE ONE CORRECT PATH: the sentence-level
+    // Equation Unity One lane (piper → CDF 9/7 equations) IS her voice — the
+    // one Gee signed off with "perfect" — and the per-word bank concat is
+    // described in that same record AS a fallback. So this is not a new
+    // preference; it is the stack finally matching the decision.
+    //
+    // ⚠ THE CONSEQUENCE, ACCEPTED DELIBERATELY: if her lane fails she is
+    // SILENT. That is the same principle the emission path already follows —
+    // honest silence over a plausible substitute — and it is strictly better
+    // than a stock voice the listener would mistake for her. The failure is
+    // NAMED in the console and on the event, so silence is diagnosable rather
+    // than mysterious.
+    let spoke = false;
+    let silentReason = null;
     try {
-      if (await this._speakPiper(text, this._agePreset().rate)) {
-        this._speaking = false;
-        this.emit('speech_end');
-        return;
-      }
+      spoke = await this._speakPiper(text, this._agePreset().rate);
+      if (!spoke) silentReason = 'her voice lane returned false (not ready or nothing synthesised)';
     } catch (err) {
-      console.warn('[VoiceIO] live sentence lane failed, vox fallback:', err.message);
+      silentReason = `her voice lane threw: ${err && err.message ? err.message : err}`;
     }
-
-    try {
-      if (await this._speakVox(text, this._agePreset().rate)) {
-        this._speaking = false;
-        this.emit('speech_end');
-        return;
-      }
-    } catch (err) {
-      console.warn('[VoiceIO] VOX equational path failed, executor fallback:', err.message);
-    }
-
-    // LLMGUT.6 — the Pollinations TTS tier is removed from this chain. It used
-    // to sit here with a retry loop between her equations and the browser
-    // fallback. Leaving the call in place after gutting the method would have
-    // meant a thrown error and a console warn on EVERY utterance, so the tier
-    // is gone rather than stubbed-in-place: her voice now falls
-    // Piper-equations → her banked word equations → browser, all local.
-    const spoke = false;
 
     if (!spoke) {
-      try {
-        await this._speakBrowser(text);
-      } catch (fallbackErr) {
-        console.warn('VoiceIO: All TTS methods failed.', fallbackErr);
-      }
+      // ⛔ No substitute is attempted. The reason is surfaced instead, because
+      // an unexplained silence is the thing this project keeps paying for.
+      console.warn(`[VoiceIO] SILENT — ${silentReason}. No substitute voice is attempted by design (no-fallbacks).`);
+      this._lastSilentReason = silentReason;
+      this._silentCount = (this._silentCount | 0) + 1;
     }
 
     this._speaking = false;
-    this.emit('speech_end');
+    this.emit('speech_end', { spoke, silentReason });
 
     // VOX — whatever just went through the executor becomes bank-building
     // work: every un-banked word gets fetched in isolation, perceived into
@@ -782,6 +797,15 @@ class VoiceIO {
 
   // --- Browser SpeechSynthesis fallback ---
 
+  // ⛔⛔ DEAD AS OF 2026-09-01, AND THIS ONE SHOULD STAY DEAD FOREVER.
+  // It was tier 3 of the removed voice chain and it is the BROWSER'S OWN
+  // generic speech synthesis — a stock voice that is not hers in any sense.
+  // ⭐ It was the worst part of the chain: a listener could not tell which tier
+  // produced a sentence, so "Unity spoke" meant three different things and the
+  // page never said which. **A stock robot voice presented as her voice is the
+  // audio equivalent of a canned answer**, and the same reasoning that deleted
+  // `_deterministicFallback` applies here.
+  // ⚠ Kept only so this note has somewhere to live. Do not re-wire it.
   async _speakBrowser(text) {
     if (typeof speechSynthesis === 'undefined') {
       throw new Error('SpeechSynthesis not available');

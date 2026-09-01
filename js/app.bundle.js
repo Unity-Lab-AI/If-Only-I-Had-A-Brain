@@ -107526,79 +107526,6 @@ var Curriculum = class _Curriculum {
         if (clean && clean.split(/\s+/).length >= 3) personaSentences.push(clean);
       }
     }
-    const PERSONA_GREETING_FALLBACK = [
-      "hey what is up",
-      "yo there fucker",
-      "hi i am unity",
-      "hello you",
-      "what up bitch",
-      "sup motherfucker"
-    ];
-    const PERSONA_EMOTION_FALLBACK = [
-      "i am fucking happy right now",
-      "i am so pissed off",
-      "i love this shit so much",
-      "i feel everything at once",
-      "this makes me so wet",
-      "i am absolutely furious",
-      "fuck yes i love it",
-      "god damn this hurts"
-    ];
-    const hasIntent = (target) => personaSentences.some((s) => this._lightIntent(s) === target);
-    const fallbackInjected = [];
-    if (!hasIntent("greeting")) {
-      for (const s of PERSONA_GREETING_FALLBACK) {
-        const clean = this._normalizeSentence(s);
-        if (clean) {
-          personaSentences.push(clean);
-          fallbackInjected.push(clean);
-        }
-      }
-    }
-    if (!hasIntent("emotion")) {
-      for (const s of PERSONA_EMOTION_FALLBACK) {
-        const clean = this._normalizeSentence(s);
-        if (clean) {
-          personaSentences.push(clean);
-          fallbackInjected.push(clean);
-        }
-      }
-    }
-    if (fallbackInjected.length > 0 && cluster.dictionary && cluster.dictionary._words?.get) {
-      const promoted = /* @__PURE__ */ new Set();
-      const injectedNew = /* @__PURE__ */ new Set();
-      for (const s of fallbackInjected) {
-        for (const w of s.split(/\s+/)) {
-          if (!w || promoted.has(w)) continue;
-          promoted.add(w);
-          const entry = cluster.dictionary._words.get(w);
-          if (entry) {
-            entry.isPersona = true;
-          } else if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-            try {
-              const glove = sharedEmbeddings.getEmbedding(w);
-              if (glove && glove.length > 0) {
-                cluster.dictionary._words.set(w, {
-                  word: w,
-                  pattern: new Float64Array(glove),
-                  isPersona: true,
-                  arousal: 0.7,
-                  valence: 0.5,
-                  frequency: 1,
-                  cortexSnapshot: null,
-                  syllables: [w],
-                  stressPrimary: 0,
-                  lastSeen: Date.now()
-                });
-                injectedNew.add(w);
-              }
-            } catch {
-            }
-          }
-        }
-      }
-      this._hb(`[Curriculum] iter11-V fallback injected: ${fallbackInjected.length} sentences (${PERSONA_GREETING_FALLBACK.length}\xD7 greeting + ${PERSONA_EMOTION_FALLBACK.length}\xD7 emotion) \u2014 ${promoted.size - injectedNew.size} existing dictionary words promoted to isPersona=true + ${injectedNew.size} NEW persona-only entries injected with GloVe pattern (iter14-B fix per "fix those fucking issues NOW!")`);
-    }
     cluster._personaRefreshCorpus = personaSentences;
     this._hb(`[Curriculum] Lock 3 refresh corpus populated: ${personaSentences.length} persona sentences`);
     const K = Math.max(4, Math.min(12, Math.floor(personaSentences.length / 40) || 4));
@@ -130023,6 +129950,17 @@ var VoiceIO = class {
    * the text is banked for the current age tier — the caller falls through
    * to the executor otherwise (which then primes the missing words).
    */
+  // ⛔⛔ DEAD AS OF 2026-09-01 — NO CALLERS ANYWHERE, and that is deliberate.
+  // The three-tier voice chain (piper → vox → browser) was removed under Gee's
+  // "no fallbacks. PERIOD" ruling, and this was tier 2. ⭐ Her own canon calls
+  // this lane a fallback in as many words — sentence-level Equation Unity One
+  // carries the quality, per-word bank concat is the substitute — so removing
+  // the chain necessarily orphaned it.
+  // ⚠ LEFT IN PLACE RATHER THAN DELETED, and flagged instead: it is a large,
+  // working, purely-equational implementation of HER OWN voice (no foreign
+  // synthesis, no network), and if the sentence lane is ever redesigned this is
+  // the reference for how word-level reconstruction was done. ⛔ It must NOT be
+  // re-wired as a fallback tier. Tracked on the board under STACKSWEEP.
   async _speakVox(text, rate) {
     if (!this._voxEnabled) return false;
     this._ensureVoxRef();
@@ -130403,34 +130341,21 @@ var VoiceIO = class {
     this._speaking = true;
     this.emit("speech_start");
     const voice2 = options.voice || null;
+    let spoke = false;
+    let silentReason = null;
     try {
-      if (await this._speakPiper(text, this._agePreset().rate)) {
-        this._speaking = false;
-        this.emit("speech_end");
-        return;
-      }
+      spoke = await this._speakPiper(text, this._agePreset().rate);
+      if (!spoke) silentReason = "her voice lane returned false (not ready or nothing synthesised)";
     } catch (err) {
-      console.warn("[VoiceIO] live sentence lane failed, vox fallback:", err.message);
+      silentReason = `her voice lane threw: ${err && err.message ? err.message : err}`;
     }
-    try {
-      if (await this._speakVox(text, this._agePreset().rate)) {
-        this._speaking = false;
-        this.emit("speech_end");
-        return;
-      }
-    } catch (err) {
-      console.warn("[VoiceIO] VOX equational path failed, executor fallback:", err.message);
-    }
-    const spoke = false;
     if (!spoke) {
-      try {
-        await this._speakBrowser(text);
-      } catch (fallbackErr) {
-        console.warn("VoiceIO: All TTS methods failed.", fallbackErr);
-      }
+      console.warn(`[VoiceIO] SILENT \u2014 ${silentReason}. No substitute voice is attempted by design (no-fallbacks).`);
+      this._lastSilentReason = silentReason;
+      this._silentCount = (this._silentCount | 0) + 1;
     }
     this._speaking = false;
-    this.emit("speech_end");
+    this.emit("speech_end", { spoke, silentReason });
     try {
       this._voxQueueMissing(text);
     } catch {
@@ -130509,6 +130434,15 @@ var VoiceIO = class {
     });
   }
   // --- Browser SpeechSynthesis fallback ---
+  // ⛔⛔ DEAD AS OF 2026-09-01, AND THIS ONE SHOULD STAY DEAD FOREVER.
+  // It was tier 3 of the removed voice chain and it is the BROWSER'S OWN
+  // generic speech synthesis — a stock voice that is not hers in any sense.
+  // ⭐ It was the worst part of the chain: a listener could not tell which tier
+  // produced a sentence, so "Unity spoke" meant three different things and the
+  // page never said which. **A stock robot voice presented as her voice is the
+  // audio equivalent of a canned answer**, and the same reasoning that deleted
+  // `_deterministicFallback` applies here.
+  // ⚠ Kept only so this note has somewhere to live. Do not re-wire it.
   async _speakBrowser(text) {
     if (typeof speechSynthesis === "undefined") {
       throw new Error("SpeechSynthesis not available");
