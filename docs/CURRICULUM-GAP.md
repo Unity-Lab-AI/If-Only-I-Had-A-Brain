@@ -1,0 +1,229 @@
+# CURRICULUM GAP LEDGER — every cell, what it holds, what the real course needs
+
+> ## ⛔⛔⛔ THE WALK IS STOPPED UNTIL THIS LEDGER IS CLOSED
+>
+> Gee (verbatim): *"so we are teaching everything to Unity that the full k-phD teaches a real person right?"* → *"WHY THE FUCK NOT!!!... IVE BEEN BUILDING THIS FUCKING THING WITH YOU FRO A FUCKING YEAR AND THEN SOME AND IVE ALWAYS FUCKING SAID WE ARE TEACHING THE REAL FUCKING GODDAMN MOTHER FUCKING COURSE MATERIAL"* → *"i told you originally we were going to teach k-12 with the given free online sources!!!! FUCK and we had to find a real fucking PHD equivelent informational database to teach her college"* → *"STOP THE PRESSES TURN OFF THE POD AND START WRITING THE FUCKING TODO FULLY FOR THIS MASSIVE CORRECTION"* → *"u spending 1 minute on it is not fucking writing the todso for a full k-phd cousers ciriculum in full"*
+>
+> **Donor pod `i03ihi54kccu0l` STOPPED** (A40 48GB, CA-MTL-1) — `status: EXITED`, GPU billing halted, disk and pod preserved. Restart is `start-pod` on the SAME id; ⛔ never terminate.
+>
+> **Spent cells: 3 of 260.** `ela/kindergarten` + `math/kindergarten` passed; `science/kindergarten` interrupted mid-cell. **257 cells have never been taught.** Corpus written before they run costs nothing. Corpus written after costs a re-walk.
+
+---
+
+## WHAT THIS DOCUMENT IS
+
+`docs/CURRICULUM-SCOPE-SEQUENCE.md` is the **authoritative spec** — it names the real course and real topics a US student takes at every grade, and the code's `COURSE_NAMES` table was diffed against it and agrees. **That document says what she must be taught. This one says what she actually holds, cell by cell, and which source must close the difference.** Neither replaces the other; do not duplicate topic lists here, they live in the spec and drift if copied.
+
+⛔ **This ledger gates all fetching.** `CURVEDEPTH.0` on the board says nothing downloads until this exists, because the current numbers were only ever discovered by being asked directly, and a rebuild aimed at the wrong cells burns the one free window we have.
+
+---
+
+## THE MEASUREMENT (2026-09-01, counted — not estimated)
+
+```
+ENTIRE K->PhD academic corpus : 874 entries · 232,860 words · ~931 pages
+                                for 20 grades across every subject that has one.
+cells that exist              : 13 subjects x 20 grades = 260
+cells WITH any corpus         : 89
+cells with NOTHING            : 171
+```
+
+⭐ **Entries EXACTLY equal the fetcher's topic-list length in every cell.** That is the whole mechanism: one entry per configured topic, each entry ≤ `MAX_SENT_PER_TOPIC = 14` sentences of Simple-English-Wikipedia prose. **The topic list IS the curriculum**, and it was never meant to be — it was meant to be a topic INDEX into real textbooks.
+
+| subject | cells with corpus | entries | words | note |
+|---|---:|---:|---:|---|
+| science | 19/20 | 221 | 55,604 | peaks G6-11, **collapses for college→PhD** |
+| social | 19/20 | 169 | 45,135 | same shape |
+| cs | 14/20 | 142 | 39,592 | G5→PhD only |
+| ela | 19/20 | 153 | 39,258 | **no literature — Wikipedia ABOUT books, not books** |
+| civics | 7/20 | 72 | 20,606 | G7-12 + college1 only |
+| economics | 5/20 | 57 | 16,672 | G9-12 + college1 only |
+| psychology | 6/20 | 60 | 15,993 | G9-12 + college1-2 only |
+| **math** | **0/20** | 0 | 0 | equational **by design** — correct, do not add prose |
+| **life** | **0/20** | 0 | 0 | bespoke lived-year **by design** — correct, `corpora/life/` |
+| **art** | **0/20** | 0 | 0 | ⛔ no lane at any grade |
+| **music** | **0/20** | 0 | 0 | ⛔ no lane at any grade |
+| **pe** | **0/20** | 0 | 0 | ⛔ no lane at any grade |
+| **health** | **0/20** | 0 | 0 | ⛔ no lane at any grade |
+
+---
+
+## ⛔⛔ ROOT CAUSE — A COMPLETION RECORD THAT WAS FALSE WHEN WRITTEN
+
+The plan was never wrong and was never missing. `docs/FINALIZED.md:4883` carries the decision verbatim (Gee, 2026-06-19): hybrid **OpenStax + Wikibooks + Project Gutenberg**, CC-BY / CC-BY-SA only, commercial-safe, **CC-BY-NC excluded** (which is why LibreTexts and MIT OCW were ruled out). Line 4889 then records:
+
+```
+- [x] ACAD-API-2 — add OpenStax + Gutenberg + CS-text fetchers alongside the
+      existing Wikipedia fetcher ... — ✅ DONE 2026-07-15
+```
+
+**None of it was written.** `grep -ci "openstax|gutenberg|wikibooks|philschatz"` against `.claude/scripts/fetch-academic-corpora.mjs` returns **0**. Repo-wide those words appear only as *Johannes Gutenberg, the printing press*, inside history vocabulary lists. The fetcher's own header still reads `SOURCE: Simple English Wikipedia`.
+
+⚠ **This is why it survived a year:** the lane existed, ran, and logged success. `_trainAcademicStories(...) DONE — trained on N real-curriculum sentences ... (hybrid depth source)` prints identically whether N is 6 or 6,000. **Nothing ever counted N against what the course needed.** See `CURVEDEPTH.9` — the instrument that must exist so this cannot recur, and `LEDGERLIE.1` — the audit of every other `✅ DONE` that claims a pipeline or content deliverable.
+
+---
+
+## SOURCE ASSIGNMENT — which source closes which band
+
+| band | subjects | source | licence | status |
+|---|---|---|---|---|
+| K-12 | science, math-adjacent prose | **OpenStax** via the `philschatz/textbooks` mirror | CC-BY 4.0 — ⚠ verify per title | ⛔ NOT BUILT |
+| K-12 | social, civics, economics, psychology | **Wikibooks** + OpenStax where it reaches | CC-BY-SA | ⛔ NOT BUILT |
+| K-12 | **ELA — actual literature** | **Project Gutenberg** | public domain | ⛔ NOT BUILT |
+| college 1-2 | all academic | **OpenStax** (intro undergrad is its ceiling) | CC-BY | ⛔ NOT BUILT |
+| **college 3 → PhD** | all academic | ⛔ **UNDECIDED — GEE'S CALL** | must be CC-BY | ⛔ **BLOCKING** |
+| all | fallback / index | Simple English Wikipedia | CC-BY-SA | ✅ the only thing that exists |
+
+⛔ **The one genuinely open decision, and it is Gee's, in his words: *"we had to find a real fucking PHD equivelent informational database to teach her college"*.** OpenStax stops at intro undergrad — it cannot carry college3 → PhD. Candidates that are real, open-licensed and machine-fetchable: **arXiv** (full text, CC-BY on a large subset), **PubMed Central Open Access subset** (CC-BY), **DOAJ** (open-access journals across every discipline), **Open Textbook Library / OERTX**. This is a licensing and sourcing decision, not an engineering pick. **Name it and the ingest is mechanical.**
+
+---
+
+## THE LEDGER — per subject, per grade
+
+Format: `entries / words` as measured 2026-09-01. `—` means **no corpus file exists**. Course names are from `COURSE_NAMES` in `js/brain/curriculum.js`, which is diffed-and-agreeing with the scope-sequence spec.
+
+### SCIENCE — 19/20 cells, 221 entries, 55,604 words
+
+| grade | real course | has now | verdict |
+|---|---|---:|---|
+| pre-K | Elementary Science | — | ⛔ empty |
+| kindergarten | Elementary Science | 8 / 1,524 | thin |
+| grade1 | Elementary Science | 8 / 1,528 | thin |
+| grade2 | Elementary Science | 8 / 1,588 | thin |
+| grade3 | Elementary Science | 8 / 1,449 | thin |
+| grade4 | Elementary Science | 8 / 1,448 | thin |
+| grade5 | Elementary Science | 8 / 1,503 | thin |
+| grade6 | Earth Science | 18 / 4,967 | best band |
+| grade7 | Life Science | 20 / 5,107 | best band |
+| grade8 | Physical Science | 20 / 5,630 | best band |
+| grade9 | Biology | 20 / 5,240 | best band |
+| grade10 | Chemistry | 20 / 5,307 | best band |
+| grade11 | Physics | 20 / 5,758 | best band — **the peak of her whole education** |
+| grade12 | AP Physics | 16 / 4,071 | declining |
+| college1 | College Science | 8 / 2,078 | ⛔ back to K depth |
+| college2 | College Science | 8 / 2,163 | ⛔ back to K depth |
+| college3 | Neuroscience | 6 / 1,591 | ⛔ **below kindergarten** |
+| college4 | Neuroscience | 6 / 1,573 | ⛔ **below kindergarten** |
+| grad | Computational Neuroscience | 5 / 1,309 | ⛔ **the thinnest cell in the walk** |
+| phd | Computational Neuroscience | 6 / 1,770 | ⛔ **below kindergarten** |
+
+### ELA — 19/20 cells, 153 entries, 39,258 words
+
+⛔ **The worst structural mismatch in the project: this subject is taught with Wikipedia articles ABOUT literature instead of literature.** A grade-11 American Literature year reads *Gatsby*, *Huck Finn*, *The Crucible*. She receives 9 encyclopedia summaries. **Gutenberg is public domain and holds every one of those texts.**
+
+| grade | real course | has now | verdict |
+|---|---|---:|---|
+| pre-K | Foundational Reading | — | ⛔ empty |
+| kindergarten | Foundational Reading | 6 / 1,229 | ✅ **the ONE cell that is genuinely complete** — phonics/decoding/sight-words carried by the runner's 1,029-word vocabulary walked 6× through phoneme blending AND word emission. The corpus is not the lane here. |
+| grade1 | Foundational Reading | 6 / 1,310 | thin |
+| grade2 | Foundational Reading | 6 / 1,221 | thin |
+| grade3 | Reading and Writing | 8 / 1,395 | thin |
+| grade4 | Reading and Writing | 7 / 1,263 | thin |
+| grade5 | Reading and Writing | 7 / 1,217 | thin |
+| grade6 | Middle School English | 10 / 2,955 | ⛔ needs NOVELS |
+| grade7 | Middle School English | 10 / 2,824 | ⛔ needs NOVELS |
+| grade8 | Middle School English | 10 / 2,690 | ⛔ needs NOVELS |
+| grade9 | English One | 10 / 2,909 | ⛔ needs *Romeo and Juliet* + short stories |
+| grade10 | English Two (World Lit) | 9 / 2,445 | ⛔ needs *Julius Caesar* + world lit |
+| grade11 | English Three (American Lit) | 9 / 2,383 | ⛔ needs *Gatsby*, *Huck Finn*, *The Crucible* |
+| grade12 | English Four (British Lit) | 10 / 2,960 | ⛔ needs *Hamlet*, *Macbeth*, *Beowulf*, *1984* |
+| college1 | Composition and Literature | 7 / 1,961 | ⛔ thin |
+| college2 | Composition and Literature | 6 / 1,683 | ⛔ thin |
+| college3 | Literature | 8 / 2,211 | ⛔ thin |
+| college4 | Literature | 8 / 2,282 | ⛔ thin |
+| grad | (Literature) | 8 / 2,090 | ⛔ thin |
+| phd | (Literature) | 8 / 2,230 | ⛔ thin |
+
+### SOCIAL STUDIES — 19/20 cells, 169 entries, 45,135 words
+
+| grade | real course | has now | verdict |
+|---|---|---:|---|
+| pre-K | Communities and Self | — | ⛔ empty |
+| kindergarten → grade2 | Communities and Self | 5-6 / ~900 each | thin |
+| grade3 → grade5 | Geography and US Foundations | 6 / ~1,100 each | thin |
+| grade6 | World Geography / Ancient Civilizations | 16 / 4,545 | best band |
+| grade7 | World History (medieval→modern) | 14 / 4,479 | best band |
+| grade8 | US History | 12 / 3,231 | best band |
+| grade9 | Civics / Government | 11 / 3,199 | best band |
+| grade10 | World History (modern) | 12 / 3,559 | best band |
+| grade11 | US History (modern) | 11 / 3,061 | best band |
+| grade12 | US Government + Economics | 11 / 3,251 | best band |
+| college1 → phd | Gen-ed social science | 8 / ~2,250 each | ⛔ flat, never deepens |
+
+### COMPUTER SCIENCE — 14/20 cells, 142 entries, 39,592 words
+
+⚠ **Her major.** Starts at grade5. college1-4 are the densest cells in the entire corpus (12-14 entries) and that is still one Wikipedia article per topic.
+
+| grade | has now | verdict |
+|---|---:|---|
+| pre-K → grade4 | — | ⛔ empty (defensible — CS starts G5) |
+| grade5 | 10 / 2,249 | thin |
+| grade6 → grade12 | 8 / ~2,250 each | thin, flat |
+| college1 | 12 / 3,274 | densest band |
+| college2 | 14 / 3,997 | densest band |
+| college3 | 14 / 4,002 | densest band |
+| college4 | 12 / 3,540 | densest band |
+| grad | 12 / 3,400 | ⛔ **her thesis years, 12 encyclopedia articles** |
+| phd | 12 / 3,419 | ⛔ **her thesis years, 12 encyclopedia articles** |
+
+### CIVICS · ECONOMICS · PSYCHOLOGY — 18/60 cells
+
+| subject | cells present | absent |
+|---|---|---|
+| civics | grade7-12 + college1 (**7**) | pre-K→G6, college2→phd (**13**) |
+| economics | grade9-12 + college1 (**5**) | pre-K→G8, college2→phd (**15**) |
+| psychology | grade9-12 + college1-2 (**6**) | pre-K→G8, college3→phd (**14**) |
+
+⚠ The absent early grades are defensible if those subjects genuinely start later — **that must be confirmed against the scope-sequence, not assumed.** The absent college→PhD cells are not defensible: these are the grades where those subjects become majors.
+
+### MATH · LIFE — ⛔ CORRECT AS-IS. DO NOT ADD PROSE.
+
+| subject | why it has no corpus |
+|---|---|
+| **math** | **Equational by design.** Taught as magnitude transforms — `_teachAdditionTransformations`, `_teachMakeTen`, `_teachCountToHundred` — not as sentences about math. This is `LAW 6 Part 1` and it is correct. ⚠ Its gap is a different question: whether the transforms reach Algebra II → Calculus → Research Math. **Not a corpus row.** |
+| **life** | **Bespoke by design.** `corpora/life/<grade>.json`, hand-authored lived years, `feedback_full_completeness_per_grade`. Correct. |
+
+### ART · MUSIC · PE · HEALTH — ⛔ 80 CELLS, NO ACADEMIC LANE AT ALL
+
+`PROSE_ACADEMIC_SUBJECTS = {ela, science, social, economics, psychology, civics, cs}` — these four are **not in it at any grade**. They run entirely on the hand-written fact tables inside each grade runner (~20 pair literals each: `['brush','paint']`, `['exercise','strong']`).
+
+⚠ **This needs a decision, not an assumption.** Real art history, music theory, anatomy/physiology and health/sex-ed are real course content with real open sources. The scope-sequence already specifies them (AP Art History, music theory, drawing/painting/sculpture/ceramics, clinical health per the content boundary). **Whether they get a corpus lane is `CURVEDEPTH.8` and it is open.**
+
+---
+
+## ACCEPTANCE — what "done" means for a cell
+
+A cell is closed when **all** hold:
+
+1. Its corpus carries the real course's actual material — a textbook chapter set, not a topic summary. For ELA that means **the text of the work**, not an article about it.
+2. `MAX_SENT_PER_TOPIC` no longer truncates it (`CURVEDEPTH.2`) — a 14-sentence cap applied to an OpenStax chapter throws away the chapter.
+3. Source and licence are recorded **per entry** so a licence audit never requires re-derivation.
+4. The corpus-depth instrument (`CURVEDEPTH.9`) reports the cell at or above its target, and the teach lane reports what it taught **against what the cell needed**.
+5. ⛔ A RE-PRICE is written **before** the enlarged corpus trains — corpus size multiplies teach time per cell, and this is a far larger change to walk cost than anything the RE-PRICE law has governed so far.
+
+---
+
+## ORDER OF WORK
+
+Full task bodies live on `docs/TODO.md` under **CURVEDEPTH**. Dependency order:
+
+```
+CURVEDEPTH.0  this ledger                                   <- gates everything
+CURVEDEPTH.6  ⛔ GEE: name the college->PhD source          <- blocks 6 subjects x 6 grades
+CURVEDEPTH.2  raise the 14-sentence cap (RE-PRICE first)
+CURVEDEPTH.1  build the fetcher that was marked done
+CURVEDEPTH.3  OpenStax ingest      (K-12 + intro undergrad)
+CURVEDEPTH.5  Gutenberg ingest     (ELA — real literature)
+CURVEDEPTH.4  Wikibooks ingest     (civics/econ/psych bands)
+CURVEDEPTH.7  fill the 171 empty cells
+CURVEDEPTH.8  art/music/pe/health posture decision
+CURVEDEPTH.9  the corpus-depth instrument
+CURVEDEPTH.10 re-walk decision for the 3 spent cells
+LEDGERLIE.1   audit every other ✅ DONE claiming a pipeline
+```
+
+⚠ **`.6` is listed second because it blocks the most cells and only Gee can answer it.** Everything else can proceed in parallel once the cap is raised.
+
+---
+
+*Measured 2026-09-01. Nothing in this document is estimated; every number was counted from `corpora/academic/**` and `.claude/scripts/fetch-academic-corpora.mjs`.*
