@@ -71089,7 +71089,7 @@ var LanguageCortex = class {
                 }
                 try {
                   const _arN = Math.max(0, Math.min(1, typeof arousal === "number" ? arousal : 0.5));
-                  const maxExtra = composedSentence.lowCoherenceRejected ? 0 : _arN > 0.66 ? 2 : _arN > 0.33 ? 1 : 0;
+                  const maxExtra = composedSentence.lowCoherenceRejected || opts.questionInput ? 0 : _arN > 0.66 ? 2 : _arN > 0.33 ? 1 : 0;
                   let _total = composedWordsAsync.length;
                   const _seen = /* @__PURE__ */ new Set([(composedSentence.sentence || composedWordsAsync.join(" ")).toLowerCase()]);
                   for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
@@ -106781,7 +106781,7 @@ var Curriculum = class _Curriculum {
     const q = String(question || "").trim();
     if (!q || typeof this._studentTestProbe !== "function") return null;
     if (typeof this._isQuestionLike === "function" && !this._isQuestionLike(q)) return null;
-    const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 2e4;
+    const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : this._chatQProbeBudgetMs(q);
     const ac = typeof AbortController === "function" ? new AbortController() : null;
     let timer = null;
     const savedGateSubject = this._currentGateSubject;
@@ -106819,6 +106819,22 @@ var Curriculum = class _Curriculum {
       if (timer) clearTimeout(timer);
       this._currentGateSubject = savedGateSubject;
     }
+  }
+  /**
+   * The chat question lane's wall-clock budget. The first cut was a flat
+   * 20 s and it was measured dying: a live template question's probe ran
+   * 22.2 s on a loop at ~40% service under teach slabs, timed out one read
+   * short of its answer, and the reply fell to compose salad. The battery
+   * gives itself 45 s per question for exactly that congestion, so 45 s is
+   * the floor here too. Bigger inputs buy more: `readInput` walks every
+   * word of the question through the ventral stream, so the budget grows
+   * 1 s per word past the first eight — capped at 90 s so a pasted essay
+   * can never pin the reply lane for minutes. A caller-supplied timeout
+   * (the env override) bypasses this entirely.
+   */
+  _chatQProbeBudgetMs(question) {
+    const words = String(question || "").trim().split(/\s+/).filter(Boolean).length;
+    return Math.min(9e4, 45e3 + Math.max(0, words - 8) * 1e3);
   }
   /**
    * Start a fresh session ID — called when a new curriculum run starts

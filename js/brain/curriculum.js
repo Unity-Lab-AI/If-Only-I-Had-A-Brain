@@ -6676,7 +6676,7 @@ export class Curriculum {
     const q = String(question || '').trim();
     if (!q || typeof this._studentTestProbe !== 'function') return null;
     if (typeof this._isQuestionLike === 'function' && !this._isQuestionLike(q)) return null;
-    const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : 20000;
+    const timeoutMs = Number(opts.timeoutMs) > 0 ? Number(opts.timeoutMs) : this._chatQProbeBudgetMs(q);
     const ac = (typeof AbortController === 'function') ? new AbortController() : null;
     let timer = null;
     const savedGateSubject = this._currentGateSubject;
@@ -6708,6 +6708,23 @@ export class Curriculum {
       if (timer) clearTimeout(timer);
       this._currentGateSubject = savedGateSubject;
     }
+  }
+
+  /**
+   * The chat question lane's wall-clock budget. The first cut was a flat
+   * 20 s and it was measured dying: a live template question's probe ran
+   * 22.2 s on a loop at ~40% service under teach slabs, timed out one read
+   * short of its answer, and the reply fell to compose salad. The battery
+   * gives itself 45 s per question for exactly that congestion, so 45 s is
+   * the floor here too. Bigger inputs buy more: `readInput` walks every
+   * word of the question through the ventral stream, so the budget grows
+   * 1 s per word past the first eight — capped at 90 s so a pasted essay
+   * can never pin the reply lane for minutes. A caller-supplied timeout
+   * (the env override) bypasses this entirely.
+   */
+  _chatQProbeBudgetMs(question) {
+    const words = String(question || '').trim().split(/\s+/).filter(Boolean).length;
+    return Math.min(90000, 45000 + Math.max(0, words - 8) * 1000);
   }
 
   /**
