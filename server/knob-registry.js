@@ -52,6 +52,27 @@
  * ⭐ `???` IS A FIRST-CLASS ANSWER HERE AND IS MEANT TO STAY VISIBLE. A knob
  * whose effect is unproven renders read-only with the reason. It gets promoted
  * to `live` or `boot` by someone reading its site, one at a time.
+ *
+ * ⭐⭐ AND THE SECOND AXIS — `provenance` — IS THE ONE THE OPERATOR ACTUALLY
+ * ASKED FOR: *"tooltip theri values so i can see them what you set them too like
+ * alen turning taking numbers of the turning machine to crack the enigma"*.
+ *
+ * ⛔ THE PANEL COULD NOT ANSWER THAT QUESTION BEFORE. It reported `overridden`,
+ * which means *"the environment sets this"* — and on this box the environment
+ * sets **nothing**, so every one of 195 rows read identically whether the number
+ * had been derived from measurement that morning or inherited untouched from a
+ * year ago. **A readout where a reasoned value and an unexamined one look the
+ * same is not a readout.**
+ *
+ *   set        chosen deliberately, with the reasoning recorded on the row
+ *   derived    the value came from a measurement or a computation, not a guess
+ *   inherited  it works and nobody has re-derived it — honest, not an accusation
+ *   stale      ⛔ it WAS derived, and the thing it was derived against changed
+ *
+ * ⚠ `stale` is the class worth staring at. `DREAM_REP_COMPRESS = 40` was
+ * genuinely measured — against a corpus **11.2× smaller than today's**, and the
+ * live collision load measures **1,542–7,471** against a sweep whose table stops
+ * at **25**. **A measured number is not a current number.**
  */
 
 /**
@@ -63,6 +84,8 @@ const KNOBS = [
   // ── learning rate and dose ────────────────────────────────────────────────
   {
     key: 'DREAM_CONTENT_LR', group: 'Learning rate & dose', dflt: '0.0468',
+    provenance: 'derived', setOn: '2026-09-02',
+    why: 'Derived, not chosen, and derived against the REBUILT corpus rather than inherited. It used to be cluster.learningRate = 0.001, which at 3 reps deposits 0.30% of a pattern while the grammar lane beside it deposits 51.90% — the two lanes were 173x apart and the WEAK one was the one carrying her subject knowledge. Oja gives deposit = 1-(1-lr)^n, so matching a median word\'s exposure to a real target lands at 0.0468 ~= 24.99% per median word, at zero wall-clock cost.',
     effect: 'live', site: 'js/brain/curriculum.js:24428',
     proof: 'read into a method-local `let lr` on every call, not a module const',
     what: 'Oja rate for the CONTENT lane — the lane that teaches meaning from prose. Accepted only in (0, 0.5]. Derived, not chosen: it matches a median word\'s exposure to a real deposit target across the rebuilt corpus (~25% per median word at 3 reps).',
@@ -75,30 +98,40 @@ const KNOBS = [
   },
   {
     key: 'DREAM_STRUCTURE_DOSE', group: 'Learning rate & dose', dflt: '1',
+    provenance: 'derived', setOn: '2026-08-20',
+    why: 'Cut to 0.4 once and REVERTED to 1.0 with the reasoning written down: "we fix waste, training stays whole; a dose multiplier was never waste, it was less teaching." The 0.4 bought ~9.7 days of structure-refresh against ~24 at 1.0, and what it bought them with was less of her education. Lowering it again is a RE-PRICE event, not a tuning choice.',
     effect: 'boot', site: 'js/brain/curriculum.js:2738',
     proof: 'module-scope `const STRUCTURE_DOSE = …` — frozen at import',
     what: 'Multiplier on structure-pass reps, clamped to [0.05, 1]. ⛔ It was cut to 0.4 once and REVERTED: a dose multiplier was never waste, it was less teaching. Lowering it is a RE-PRICE event.',
   },
   {
     key: 'DREAM_ACAD_VOCAB_CAP', group: 'Teaching & schedule', dflt: 'unlimited',
+    provenance: 'set', setOn: '2026-09-02',
+    why: 'WAS 60, HARDCODED. Set to unlimited on the operator\'s ruling. The arithmetic for keeping it was mine and wrong twice: 1,996,943 words was distinct-PER-CELL summed, when _definitionTaughtWords is global and persisted so the real figure is 365,132 distinct across the whole corpus (5.5x overcount); and those were priced as cold SERIAL lookups when prefetchDefinitions already batches at concurrency 20 (another 20x). Real cost of no cap: 19.8h across a ~24-day walk, 3.4%, with only 6 of 189 cells over 30 min on first visit. A cap here was never a cost control, it was a ceiling on what she can ever know.',
     effect: 'live', site: 'js/brain/curriculum.js — _trainAcademicStories pre-vocab block',
     proof: 'read inside the method on every cell',
     what: '⚠ DIAGNOSTIC LEVER ONLY — for bisecting a slow cell, never an operating setting. Caps how many unlearned words a cell looks up definitions for before its prose is taught. ⛔ It was hardcoded at 60 and the cap came off 2026-09-02 on the operator\'s ruling ("she has to be able to look up all workds she needs to know no some bullshit limit"). The arithmetic that appeared to justify keeping it was wrong twice: distinct-per-cell words were summed (1,996,943) when the figure that matters is distinct across the whole corpus (365,132, because _definitionTaughtWords is global and persisted), and those were then priced as cold serial lookups while prefetchDefinitions already batches at concurrency 20. Real cost of no cap: 19.8h across a ~24-day walk, with only 6 of 189 cells exceeding 30 min on first visit. A cap here was never a cost control, it was a ceiling on what she can ever know.',
   },
   {
     key: 'DREAM_REHEARSAL_FRACTION', group: 'Learning rate & dose', dflt: '0.02',
+    provenance: 'set', setOn: '2026-09-02',
+    why: 'NEW LANE, and 0.02 was picked from a re-price computed BEFORE it shipped and then re-run through the real method rather than a model of it. 189 prose cells, 170 gaining a rehearsal: 17,125 rehearsal sentence-reps against 7,627,185 new = 0.225% of the prose lane, worst single cell 0.667%, +77.6 minutes across a ~24-day walk. Chosen as the largest share that stays under 1% of any single cell.',
     effect: 'live', site: 'js/brain/curriculum.js — _rehearseEarlierGrades',
     proof: 'read inside the method on every cell',
     what: 'Share of a cell\'s own sentence count spent re-presenting EARLIER grades of the same subject before new material. 0 disables the lane. Priced: 2% costs +0.225% of the whole prose lane.',
   },
   {
     key: 'DREAM_REHEARSAL_MAX', group: 'Learning rate & dose', dflt: '250',
+    provenance: 'set', setOn: '2026-09-02',
+    why: 'NEW. 250 is the ceiling that keeps the richest cells from spending the 2% fraction unbounded — 44 of 189 cells hit it. Split evenly across every earlier grade, so at 9 earlier grades that is ~27 sentences each rather than 250 from the nearest one.',
     effect: 'live', site: 'js/brain/curriculum.js — _rehearseEarlierGrades',
     proof: 'read inside the method on every cell',
     what: 'Absolute ceiling on rehearsal sentences per cell, so the richest cells cannot spend the fraction unbounded. The budget is split evenly across every earlier grade.',
   },
   {
     key: 'DREAM_REHEARSAL_REPS', group: 'Learning rate & dose', dflt: '1',
+    provenance: 'set', setOn: '2026-09-02',
+    why: 'NEW. 1 rep against the content lane\'s 3, chosen because Oja deposits 1-(1-lr)^n: at DREAM_CONTENT_LR 0.0468 one exposure re-deposits 4.68% onto a basin that ALREADY EXISTS. This is a top-up, not a relearn — relearning is what would cost real time. Raising it re-prices linearly against the 0.225% figure.',
     effect: 'live', site: 'js/brain/curriculum.js — _rehearseEarlierGrades',
     proof: 'read inside the method on every cell',
     what: 'Reps for rehearsed material, against the content lane\'s 3. One rep re-deposits ~4.7% onto a basin that already exists — a top-up, not a relearn. Raising it re-prices linearly.',
@@ -107,12 +140,16 @@ const KNOBS = [
   // ── rep compression ───────────────────────────────────────────────────────
   {
     key: 'DREAM_REP_AUTOPRICE', group: 'Rep compression (dose vs rate)', dflt: 'off ("1" arms it)',
+    provenance: 'set', setOn: '2026-09-02',
+    why: 'NEW, and deliberately OFF. It was built to replace the stale DREAM_REP_COMPRESS with a measured one — but the measurement since taken says the sweep table it indexes does not cover this brain at all (live load 1,542-7,471 against a table topping out at 25). Arming it would swap a stale constant for a confident reading off the wrong chart. It still MEASURES and PUBLISHES unarmed, so a press produces the number. Arm only after the load sweep at the fresh-walk press.',
     effect: 'live', site: 'js/brain/curriculum.js — _teachAssociationPairs pricing block',
     proof: 'read inside the method on every call',
     what: 'Lets the compression factor price ITSELF from the brain\'s own measured collision load instead of the hand-set DREAM_REP_COMPRESS. ⛔ The hand-set 40 was measured when the corpus held 4.48M words and the academic prose alone now holds 50.2M — 11.2x — and the sweep that produced it wrote its own expiry: "the compression that is free today is the first thing that breaks when the pair count climbs". ⚠ DEFAULT OFF ON PURPOSE: the sweep\'s "production" row is 8 active cells drawn from 1,885,340, while the live encoder is semWTA top-8 over a ~300-dim embedding tiled in atomic groups — those are not the same geometry, so the first LIVE reading is what settles whether 0.246 ever applied here. Unarmed it still measures and still publishes, so one press produces the evidence; armed, it steers.',
   },
   {
     key: 'DREAM_REP_COMPRESS', group: 'Rep compression (dose vs rate)', dflt: '40',
+    provenance: 'stale', setOn: '2026-09-01',
+    why: '⛔ THE ONE TO STARE AT. It WAS measured — a real sweep over a real SparseMatrix scoring retrieval, not a guess — but it was measured when the academic corpus held 4.48M words and it now holds 50.2M, 11.2x more. The sweep wrote its own expiry into the code: "collision load rises with PAIR COUNT ... the compression that is free today is the first thing that breaks when the pair count climbs. THIS IS THE FIRST KNOB TO WALK BACK." Measured 2026-09-02 from the real pattern builder: live collision load is 1,542 (science/grade5) to 7,471 (ela/grade3), against a sweep that called 0.246 "production" and whose table stops at 25. This brain runs 60-300x beyond anything anyone measured. A measured number is not a current number. Needs a fresh sweep at the real load — scheduled for the fresh-walk press.',
     effect: 'live', site: 'js/brain/curriculum.js:17573',
     proof: 'read inside the teach method on every call',
     what: 'Divisor turning authored reps into presentations. 40 rather than 20 so every tier\'s target lands at 4-5 and the rate ceiling is the only thing that raises it.',
@@ -139,6 +176,8 @@ const KNOBS = [
   // ── saturation detection ──────────────────────────────────────────────────
   {
     key: 'DREAM_SAT_MEANCOS', group: 'Saturation & coherence', dflt: '0.7',
+    provenance: 'inherited', setOn: null,
+    why: '⚠ NOT DERIVED, and its own comment admits it: "conservative defaults match prior hardcoded values; env vars only deviate when empirical 20hr-test data justifies a shift." So 0.7 is the number it always was, carried forward. That data has never been gathered. It is not wrong — it is unexamined, and this row exists so it is not mistaken for a measured value. The same is true of the other three SAT_ thresholds.',
     effect: 'boot', site: 'js/brain/cluster.js:241',
     proof: 'module-scope `const SATURATION_MEANCOS = (() => …)()` — frozen at import',
     what: 'Mean cosine between sem→motor rows above which the matrix reads as saturated — the "everything means everything" end state. Feeds the consolidation replay VETO.',
@@ -519,6 +558,14 @@ function knobState() {
       effect: k.effect,
       site: k.site,
       proof: k.proof,
+      // ⭐ WHICH KNOB IS WHICH. `provenance` says whether this number was chosen
+      // deliberately, computed, merely inherited, or derived-then-outdated;
+      // `why` carries the reasoning so the readout explains itself instead of
+      // being a wall of numbers. A discovered knob gets `unknown` — absence of a
+      // recorded reason is itself the answer, and is not dressed up as one.
+      provenance: k.provenance || 'unknown',
+      setOn: k.setOn || null,
+      why: k.why ? plain(k.why) : null,
       // ⛔ MARKDOWN IS STRIPPED AT THIS ONE EXIT, NOT AT EACH SOURCE. The three
       // description sources — hand-written entries, read-site comments and the
       // admin-controls table — are all written in the same emphatic markdown,
@@ -533,8 +580,14 @@ function knobState() {
   // name inside each so a key can be found by eye in a 190-row list.
   for (const list of groups.values()) list.sort((a, b) => a.key.localeCompare(b.key));
 
+  // Provenance tallies, so the page can lead with "how many of these numbers
+  // does anyone have a reason for" rather than only "how many exist".
+  const prov = { set: 0, derived: 0, inherited: 0, stale: 0, unknown: 0 };
+  for (const k of all) prov[k.provenance || 'unknown'] = (prov[k.provenance || 'unknown'] | 0) + 1;
+
   return {
     total: all.length,
+    provenance: prov,
     // ⭐ `described` vs `discovered` is the honest completeness measure of this
     // panel and is published so the page can print it. A hand-written entry has
     // an authored description and a verified effect class; a discovered one has

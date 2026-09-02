@@ -276,6 +276,9 @@
           <label class="tv-sub tv-tip"
             title="Show only knobs explicitly set in the environment."
             data-tip="Hide every knob running its default and show only the ones the environment sets.&#10;&#10;⭐ This is the fastest way to see how this deployment differs from the code's own defaults."><input type="checkbox" id="tvKnobOnlySet" /> only overridden</label>
+          <label class="tv-sub tv-tip"
+            title="Show only values somebody has actually reasoned about."
+            data-tip="Hide every value with no recorded reason and show only the ones that were SET deliberately, DERIVED from a measurement, marked STALE, or knowingly INHERITED.&#10;&#10;⭐ This is the readout view: 195 rows is a wall, and the handful anyone has actually reasoned about is what you want to read off."><input type="checkbox" id="tvKnobReasoned" /> only ones with a reason</label>
           <label class="tv-sub tv-tip tip-l"
             title="Show the description and the effect-class evidence for each knob."
             data-tip="Show what each knob does, plus the evidence behind its effect class — the read site and why it was classified live, boot-frozen or unproven.&#10;&#10;⚠ The evidence line matters as much as the value: it is what lets a claim about this panel be checked instead of believed."><input type="checkbox" id="tvKnobDetail" checked /> show what each one does</label>
@@ -735,12 +738,20 @@ function renderKnobs(k) {
     return;
   }
 
+  /* ⭐ "only ones with a reason" is the default-useful view: 195 rows is a wall,
+     and the handful anyone has actually reasoned about is the readout. */
   const onlySet = $('tvKnobOnlySet').checked;
   const detail = $('tvKnobDetail').checked;
+  const onlyReasoned = $('tvKnobReasoned') && $('tvKnobReasoned').checked;
+  const P = k.provenance || {};
 
   const undescribed = Math.max(0, (k.total | 0) - (k.described | 0));
+  /* ⭐ PROVENANCE LEADS. "195 knobs" says how many exist; "6 set, 2 derived,
+     1 STALE" says how many anyone has a reason for — which is the question. */
   $('tvKnobSummary').textContent =
-    `${k.total} knobs · ${k.overridden} overridden · ${k.boot} boot-frozen`
+    `${k.total} knobs · ${P.set | 0} set · ${P.derived | 0} derived`
+    + ((P.stale | 0) ? ` · ${P.stale} STALE` : '')
+    + ` · ${P.unknown | 0} no recorded reason`
     + (undescribed ? ` · ${undescribed} undocumented` : '');
 
   let html = '';
@@ -760,7 +771,8 @@ function renderKnobs(k) {
     + `</div>`;
 
   for (const g of k.groups) {
-    const rows = (g.knobs || []).filter((x) => !onlySet || x.overridden);
+    const rows = (g.knobs || []).filter((x) => (!onlySet || x.overridden)
+      && (!onlyReasoned || (x.provenance && x.provenance !== 'unknown')));
     if (!rows.length) continue;
     html += `<div style="margin-top:11px"><b>${knobEsc(g.name)}</b></div>`;
     for (const x of rows) {
@@ -783,7 +795,25 @@ function renderKnobs(k) {
           : x.effect === 'cached'
             ? 'CACHED ON FIRST USE — read once behind an "if undefined" guard, then never again. A write BEFORE first use takes effect; a write after it is accepted, reads back correctly, and is SILENTLY IGNORED. This class looks identical to live in the source and can only be found by reading the guard.'
             : 'EFFECT UNPROVEN — the read site is recorded but its scope has not been verified. Not guessed into a class it may not belong to.';
-      const tip = `${x.what}\n\nDefault: ${x.dflt}\nNow: ${x.effective}${x.overridden ? ' (set in the environment)' : ' (default — not set)'}\n\n${effectLine}\nRead site: ${x.site}\nEvidence: ${x.proof}`;
+      /* ⭐ THE PROVENANCE LINE IS THE ONE THE OPERATOR ASKED FOR — it says
+         whether a number was CHOSEN, computed, merely inherited, or
+         derived-and-since-outdated. Without it a reasoned value and an
+         unexamined one read identically, which is what the panel did before. */
+      const provLine = x.provenance === 'set'
+        ? `⭐ SET DELIBERATELY${x.setOn ? ' on ' + x.setOn : ''} — the reasoning is below.`
+        : x.provenance === 'derived'
+          ? `⭐ DERIVED${x.setOn ? ' ' + x.setOn : ''} from a measurement or computation, not chosen.`
+          : x.provenance === 'stale'
+            ? `⛔ STALE — it WAS derived, and what it was derived against has since changed. Do not trust this number.`
+            : x.provenance === 'inherited'
+              ? `⚠ INHERITED — it works and nobody has re-derived it. Not wrong; unexamined.`
+              : `⚠ NO RECORDED REASON — nobody has written down why this value.`;
+      const tip = `${x.what}\n\nDefault: ${x.dflt}\nNow: ${x.effective}${x.overridden ? ' (set in the environment)' : ' (code default — env does not set it)'}\n\n${provLine}${x.why ? '\n\nWHY: ' + x.why : ''}\n\n${effectLine}\nRead site: ${x.site}\nEvidence: ${x.proof}`;
+      const provBadge = x.provenance === 'set' ? '<span class="tv-dot ok"></span>set'
+        : x.provenance === 'derived' ? '<span class="tv-dot ok"></span>derived'
+        : x.provenance === 'stale' ? '<span class="tv-dot bad"></span>STALE'
+        : x.provenance === 'inherited' ? '<span class="tv-dot warn"></span>inherited'
+        : '';
       html += `<div class="tv-tip tip-l" data-tip="${knobEsc(tip)}" title="${knobEsc(x.what)}"`
         + ` style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);border-left:0">`
         + `<div><code>${knobEsc(x.key)}</code> = <b>${knobEsc(x.effective)}</b>`
@@ -791,9 +821,10 @@ function renderKnobs(k) {
           ? ` <span class="tv-sub">(set in the environment; default ${knobEsc(x.dflt)})</span>`
           : ` <span class="tv-sub">(default — not set)</span>`)
         + `</div>`
-        + `<div class="tv-sub">${badge} · <code>${knobEsc(x.site)}</code></div>`
+        + `<div class="tv-sub">${provBadge}${provBadge ? ' · ' : ''}${badge} · <code>${knobEsc(x.site)}</code></div>`
         + (detail
           ? `<div class="tv-note" style="margin-top:3px">${knobEsc(x.what)}`
+            + (x.why ? `<br><span style="color:var(--tv-accent)">WHY THIS VALUE:</span> ${knobEsc(x.why)}` : '')
             + `<br><span class="tv-sub">effect class evidence: ${knobEsc(x.proof)}</span></div>`
           : '')
         + `</div>`;
@@ -804,6 +835,7 @@ function renderKnobs(k) {
 
 $('tvKnobOnlySet').onchange = () => renderKnobs(null);
 $('tvKnobDetail').onchange = () => renderKnobs(null);
+$('tvKnobReasoned').onchange = () => renderKnobs(null);
 
 /* ────────────────────────────────────────────────────────────────────────────
    DOWNLOAD HER WEIGHTS
