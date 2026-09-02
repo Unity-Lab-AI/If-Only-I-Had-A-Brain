@@ -105,18 +105,24 @@ const LADDER = {
   // News* and a *Pony Rider Boys* novel.
   'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"]],
   kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"]],
-  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"]],
-  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"]],
-  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"]],
-  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"]],
-  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"]],
-  grade6:  [[120, 'Treasure Island'], [514, 'Little Women'], [16751, "McGuffey's Sixth Eclectic Reader"]],
-  grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild']],
-  grade8:  [[76, 'Adventures of Huckleberry Finn']],
-  grade9:  [[1513, 'Romeo and Juliet'], [1727, 'The Odyssey']],
-  grade10: [[1522, 'Julius Caesar'], [84, 'Frankenstein'], [1400, 'Great Expectations']],
-  grade11: [[64317, 'The Great Gatsby'], [2701, 'Moby Dick']],
-  grade12: [[1524, 'Hamlet'], [1533, 'Macbeth'], [16328, 'Beowulf'], [2383, 'The Canterbury Tales']],
+  // ⭐⭐ A YEAR'S READING, NOT A TOKEN TWO BOOKS — expanded 2026-09-02.
+  // Gee: *"what about all the books like wizard of oz and shit that all the
+  // lower grades and uper grades get to read"*. Removing the sentence cap made
+  // each book whole and left THE LIST as the cap: two titles is not a year.
+  // ⛔ All 23 additions verified against Gutenberg's own `Title:` header in one
+  // batch before being written here.
+  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"], [14838, 'The Tale of Peter Rabbit']],
+  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"], [2781, 'Just So Stories']],
+  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"], [500, 'The Adventures of Pinocchio'], [236, 'The Jungle Book']],
+  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"], [289, 'The Wind in the Willows'], [1448, 'Heidi']],
+  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"], [45, 'Anne of Green Gables'], [271, 'Black Beauty'], [113, 'The Secret Garden']],
+  grade6:  [[120, 'Treasure Island'], [514, 'Little Women'], [16751, "McGuffey's Sixth Eclectic Reader"], [521, 'Robinson Crusoe'], [103, 'Around the World in Eighty Days']],
+  grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild'], [910, 'White Fang'], [421, 'Kidnapped'], [35, 'The Time Machine']],
+  grade8:  [[76, 'Adventures of Huckleberry Finn'], [829, "Gulliver's Travels"], [164, 'Twenty Thousand Leagues under the Sea'], [1661, 'The Adventures of Sherlock Holmes']],
+  grade9:  [[1513, 'Romeo and Juliet'], [1727, 'The Odyssey'], [43, 'The Strange Case of Dr Jekyll and Mr Hyde']],
+  grade10: [[1522, 'Julius Caesar'], [84, 'Frankenstein'], [1400, 'Great Expectations'], [1260, 'Jane Eyre']],
+  grade11: [[64317, 'The Great Gatsby'], [2701, 'Moby Dick'], [768, 'Wuthering Heights'], [98, 'A Tale of Two Cities']],
+  grade12: [[1524, 'Hamlet'], [1533, 'Macbeth'], [16328, 'Beowulf'], [2383, 'The Canterbury Tales'], [33, 'The Scarlet Letter'], [2554, 'Crime and Punishment']],
   college1: [[1342, 'Pride and Prejudice'], [345, 'Dracula']],
   college2: [[6130, 'The Iliad']],
   // ⭐⭐ UPPER COLLEGE AND POSTGRADUATE ARE CRITICISM AND THEORY, NOT MORE NOVELS.
@@ -402,6 +408,57 @@ function cleanProse(txt, cap) {
   return out;
 }
 
+// ⭐⭐ THE ILLUSTRATIONS — because a children's book is half pictures.
+//
+// Gee: *"all the books like wizard of oz and shit that all the lower grades and
+// uper grades get to read and view images of"*. The plain-text edition this
+// ingest reads has none by construction; Gutenberg's `-images.html` edition
+// carries the original plates, and they go down the same road her own eyes use —
+// fetch, downsample, forward CDF 9/7, bank as a percept under the theme the
+// book's prose trained under.
+//
+// ⚠ AVAILABILITY IS PER EDITION AND PATCHY, MEASURED RATHER THAN ASSUMED:
+// Childhood's Favorites carries 33 plates, Dame Wonder's Picture Alphabet 9,
+// while the cached Alice and Peter Pan editions carry one and none. **A book
+// with no plates contributes none** — that is a fact about the edition, not a
+// failure, and it is reported as a count rather than silently.
+//
+// ⛔ Same refusal rule as the textbook figure lanes: an image with NO words
+// attached is skipped. A percept with nothing to bind to is the `CAMPOISON`
+// defect, where an unlabelled frame fused with whatever word was current and
+// became a false memory.
+async function fetchIllustrations(id) {
+  const base = `https://www.gutenberg.org/cache/epub/${id}/`;
+  let html = '';
+  try {
+    const r = await fetch(`${base}pg${id}-images.html`, { headers: { 'User-Agent': UA } });
+    if (!r.ok) return [];
+    html = await r.text();
+  } catch { return []; }
+  const figs = [];
+  const seen = new Set();
+  for (const m of html.matchAll(/<img\b([^>]*)>/gi)) {
+    const attrs = m[1];
+    const src = (/\bsrc="([^"]+)"/i.exec(attrs) || [])[1] || '';
+    if (!src || /^data:/i.test(src)) continue;
+    const alt = ((/\balt="([^"]*)"/i.exec(attrs) || [])[1] || '').replace(/\s+/g, ' ').trim();
+    const title = ((/\btitle="([^"]*)"/i.exec(attrs) || [])[1] || '').replace(/\s+/g, ' ').trim();
+    // The caption in these editions is usually the following <p class="caption">
+    // or a <figcaption>; take whichever appears first after the image.
+    const after = html.slice(m.index, m.index + 600);
+    const capM = /<(?:figcaption|p[^>]*class="[^"]*caption[^"]*")[^>]*>([\s\S]{0,240}?)<\//i.exec(after);
+    const caption = capM ? capM[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    const words = (alt || title || caption).replace(/[^a-z ]/gi, '').trim();
+    if (words.length < 3) continue;                       // no words to bind to
+    let abs;
+    try { abs = new URL(src, base).href; } catch { continue; }
+    if (seen.has(abs)) continue;
+    seen.add(abs);
+    figs.push({ src: abs, alt: alt || title, caption });
+  }
+  return figs;
+}
+
 async function fetchBook(id) {
   // Two known layouts; the cache path is canonical, files/ is the older one.
   const urls = [
@@ -443,13 +500,19 @@ async function buildGrade(grade, books) {
     // ⭐ Namespacing keeps BOTH: she reads the play AND what is written about
     // it, which is what a real English class does.
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    experiences.push({
+    const plates = await fetchIllustrations(id);
+    const entry = {
       theme: `text-${slug}`,
       story: sents.join(' '),
       source: `gutenberg/${id}`,
       licence: 'public-domain',
-    });
-    console.log(`  ${title} — ${sents.length} sentences`);
+    };
+    // Absent rather than empty when a book has no plates: an empty array reads
+    // as "looked and found nothing", which is a different claim from "this
+    // edition is text only".
+    if (plates.length) entry.figures = plates;
+    experiences.push(entry);
+    console.log(`  ${title} — ${sents.length} sentences, ${plates.length} illustrations`);
     // ⭐ THE SPEECH IN THE SAME BOOK, AS ITS OWN ENTRY. Kept separate from the
     // narration entry on purpose: the merge is per theme, so a book's dialogue
     // can grow or shrink without displacing its prose, and the corpus auditor
