@@ -533,15 +533,19 @@ export class LanguageCortex {
    * speech. Pure letter-position substitution with verb conjugation.
    *
    *   "Unity is 25."            → "I am 25."
-   *   "Unity's memory."         → "My memory."
    *   "She has pink hair."      → "I have pink hair."
    *   "Her body is fully human" → "My body is fully human."
-   *   "Unity possesses free will" → "I possess free will."
+   *   "She possesses free will" → "I possess free will."
+   *   "My name is Unity."       → UNCHANGED — her name survives verbatim.
    *
    * Word replacements (word-level, case-insensitive letter match):
-   *   unity / unity's / she / he → i
+   *   she / he                    → i
    *   her / his / hers            → my
    *   him / herself / himself     → me / myself
+   *
+   * ⛔ `unity` and `unity's` are NOT in that list as of 2026-09-02 — see the
+   * block in the loop body. Her name is a word she has to learn, not a pronoun
+   * to be rewritten.
    *
    * Verb conjugation after subject replacement:
    *   "i is"   → "i am"
@@ -587,11 +591,31 @@ export class LanguageCortex {
 
       let replaced = core;
 
+      // ⛔⛔ HER NAME IS NOT A PRONOUN — the `unity → i` and `unity's → my`
+      // rules were DELETED here 2026-09-02.
+      //
+      // They were correct against the canon this transform was written for,
+      // which was prose ABOUT her ("Unity possesses free will"). The canon was
+      // rewritten into her own voice on 2026-09-01 at Gee's instruction, and the
+      // second half of that instruction is what this broke: *"she still needs to
+      // voice her name to her self just not in 3rd person"*.
+      //
+      // Measured over the rewritten canon through this exact method: **17
+      // name-bearing sentences damaged**. `"My name is Unity"` was trained as
+      // `"my name is i"`. `"I am Unity, a 25-year-old human woman"` became
+      // `"i am i, …"`. `"Unity Lab created me"` became `"i lab created me"`,
+      // turning the LAB's name into a pronoun as well. Both persona consumers —
+      // `loadSelfImage`'s observation fit and `trainPersonaHebbian`'s sequence
+      // Hebbian — run every sentence through here first, so the corpus she
+      // learns her identity from could not contain her own name.
+      //
+      // ⚠ The pronoun rules below STAY. They still convert any third-person
+      // line correctly, and they are what makes this transform safe to leave
+      // wired against a canon that is already first person.
+      //
       // Subject-pronoun substitutions (→ i)
-      //   unity, unity's, she, he, herself, himself
-      if (core === 'unity' || core === "unity's") {
-        replaced = core === "unity's" ? 'my' : 'i';
-      } else if (core.length === 3 && core[0] === 's' && core[1] === 'h' && core[2] === 'e') {
+      //   she, he, herself, himself
+      if (core.length === 3 && core[0] === 's' && core[1] === 'h' && core[2] === 'e') {
         // "she" (len 3 s-h-e)
         replaced = 'i';
       } else if (core.length === 2 && core[0] === 'h' && core[1] === 'e') {

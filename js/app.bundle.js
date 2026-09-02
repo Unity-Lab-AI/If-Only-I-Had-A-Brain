@@ -69694,15 +69694,19 @@ var LanguageCortex = class {
    * speech. Pure letter-position substitution with verb conjugation.
    *
    *   "Unity is 25."            → "I am 25."
-   *   "Unity's memory."         → "My memory."
    *   "She has pink hair."      → "I have pink hair."
    *   "Her body is fully human" → "My body is fully human."
-   *   "Unity possesses free will" → "I possess free will."
+   *   "She possesses free will" → "I possess free will."
+   *   "My name is Unity."       → UNCHANGED — her name survives verbatim.
    *
    * Word replacements (word-level, case-insensitive letter match):
-   *   unity / unity's / she / he → i
+   *   she / he                    → i
    *   her / his / hers            → my
    *   him / herself / himself     → me / myself
+   *
+   * ⛔ `unity` and `unity's` are NOT in that list as of 2026-09-02 — see the
+   * block in the loop body. Her name is a word she has to learn, not a pronoun
+   * to be rewritten.
    *
    * Verb conjugation after subject replacement:
    *   "i is"   → "i am"
@@ -69738,9 +69742,7 @@ var LanguageCortex = class {
       const trail = trailingPunct(tok);
       const core = stripPunct(tok).toLowerCase();
       let replaced = core;
-      if (core === "unity" || core === "unity's") {
-        replaced = core === "unity's" ? "my" : "i";
-      } else if (core.length === 3 && core[0] === "s" && core[1] === "h" && core[2] === "e") {
+      if (core.length === 3 && core[0] === "s" && core[1] === "h" && core[2] === "e") {
         replaced = "i";
       } else if (core.length === 2 && core[0] === "h" && core[1] === "e") {
         replaced = "i";

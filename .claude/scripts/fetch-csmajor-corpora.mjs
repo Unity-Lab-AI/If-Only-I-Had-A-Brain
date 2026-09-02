@@ -85,6 +85,14 @@ function cleanOds(html, cap) {
   t = t.replace(/<!--[\s\S]*?-->/g, ' ');
   t = t.replace(/<[^>]+>/g, ' ');
   t = t.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#\d+;/g, ' ');
+  // ⛔ BIBLIOGRAPHY CITATION NUMBERS ONLY — deliberately narrower than the wiki
+  // and Gutenberg bracket rules (2026-09-02). In the shipped corpus this source's
+  // bracket sentences are all of the form `the two-level tiered-vector of goodrich
+  // and kloss [ 35 ].` — reference furniture pointing at a bibliography she will
+  // never have. ⚠ A general bracket rule is WRONG here and would do real damage:
+  // this is a data-structures text, so `a[i]`, `t[0]`, `array[n-1]` are the
+  // subject matter. Numeric-only spans are citations; everything else is code.
+  t = t.replace(/\[\s*\d+(?:\s*[,-]\s*\d+)*\s*\]/g, ' ');
   t = t.replace(/[‘’‚‛′]/g, "'")
        .replace(/[“”„‟″]/g, '"')
        .replace(/[‐-―−]/g, '-')

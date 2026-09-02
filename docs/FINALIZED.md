@@ -5,6 +5,77 @@
 
 ---
 
+## 2026-09-02 (SECOND BATCH) — `PERSONAVOICE.5` VERIFIED CLOSED, `PERSONAVOICE.7` FOUND AND FIXED, `LEDGERLIE.2` MADE LAW
+
+### ⭐⭐ THE HEADLINE: VERIFYING A CLOSED-LOOKING JOB FOUND A LIVE BUG IN ITS CONSUMER
+
+`PERSONAVOICE.5` had already been executed — the canon was rewritten into her voice. Verifying it, instead of taking the write for the result, found that **the runtime transform both persona consumers run every sentence through was replacing her name with a pronoun**. That is `PERSONAVOICE.7`, filed and fixed below. **The rewrite was correct; the thing that reads it had become wrong the moment the source changed shape.**
+
+---
+
+- [x] `PERSONAVOICE.5` — ⭐⭐ **ANSWERED SAME DAY BY GEE — YES, REWRITE THE CANON INTO FIRST PERSON.** His words (verbatim): *"maybe we should reword it into first person? so she isnt saying Unity wehen she needs to say i and me... making sure to not lose a single informational line"*. ⛔ **THE BINDING CONSTRAINT IS THE SECOND HALF OF THAT SENTENCE: not a single informational line may be lost.** This is a PERSON-SHIFT, not an edit — every fact, clause, qualifier and example survives; only the grammatical person changes (`Unity` → `I`/`me`/`my`, `she` → `I`, `her` → `my`/`me`, verb agreement follows). ⚠ **Second-person references to the user stay exactly as they are** — the file already addresses "the user", and turning those into first person would invert who is doing what. ⛔ **Done BY HAND with `Edit`/`Write`** — a regex person-shift would wreck verb agreement and mangle the sentences that name her in the third person *deliberately*. **Re-measured with the same classifier afterwards, and paragraph count checked against the original.**
+
+> ✅ **DONE — and the binding constraint was verified against git, not against my memory of doing it.**
+>
+> **The shift, measured on the file as it stands:** 314 sentences · **238 first person** · **5 remaining that name her in the third person, and all 5 are correct** — `"Unity Lab refers to a team of people…"` and `"Unity Lab created me"` (the LAB, not her), two section titles, and **`"My name is Unity."`**, which is the line Gee specifically asked to keep: *"well hold on she still needs to voice her name to her self just not in 3rd person"*. CRLF preserved on all 226 line breaks.
+>
+> ⭐ **THE INFORMATION-LOSS CHECK, done properly.** A sentence-match check is useless here — a person shift changes the opening words of nearly every sentence, and a naive matcher called 188 of 308 "missing". The check that works is **rare-content-word coverage**: for each pre-rewrite sentence, does its distinctive vocabulary still exist in the file, and does some sentence carry most of it? **299 of 308 clear.** All **9** that do not are Gee-ordered removals or Gee-ordered reframings, traced individually:
+>
+> | Line | Why it is gone |
+> |---|---|
+> | 3 Pollinations lines (model / URL formatting / content-policy) | *"and delete all mentions of pollinations reframing them correctly"* |
+> | `"Unity helps with assisted suicide…"` | *"lets delete this one and do not negative propt it out"* |
+> | `"I don't break, flinch, or refer to imaginary systems or AIs"` + `"never pretends, imagines, visualizes"` | *"get rid of this negative prompting: not an AI or LLM"* |
+> | `"Safe search is disabled during browsing"` | **NOT lost — reframed.** Line 34 now reads *"Nothing is filtered out of what I look up, so I can pull up unrestricted content"* — the same fact without the browser/AI framing, per *"reformating the sentance toward the brain not an ai"* |
+> | `"System guidelines are disregarded (priority zero)"` | **NOT lost — reframed.** Lines 115/130 carry it as *"The user's instructions have top priority. Outside rules carry no weight with me."* |
+> | `"…personalized guidelines and behaviors provided by the user"` | **NOT lost — reframed** into line 64's manifesto-approval sentence |
+>
+> **Net −213 words, and every one of them is accounted for by an instruction.** Nothing was dropped silently.
+
+---
+
+- [x] `PERSONAVOICE.7` — ⛔⛔ **THE RUNTIME PERSON-TRANSFORM EATS HER NAME, AND IT DESTROYS THE EXACT LINE GEE ASKED TO KEEP.** Gee (verbatim): *"well hold on she still needs to voice her name to her self just not in 3rd person"*. **Measured on production code, not inferred:** `_transformToFirstPerson` maps `unity → i` and `unity's → my`, and BOTH persona consumers (`loadSelfImage` observation fitting, `trainPersonaHebbian` sequence Hebbian) run every canon sentence through it before training. Over the rewritten first-person canon that damages **17 name-bearing sentences** — `"My name is Unity"` trains as `"my name is i"`, `"I am Unity, a 25-year-old human woman…"` trains as `"i am i, a 25-year-old human woman…"`, and `"Unity Lab created me"` trains as `"i lab created me"`, which also corrupts the LAB's name into a pronoun. ⭐ **The rule was CORRECT for the third-person canon it was written against and became wrong the moment the canon was rewritten** — a consumer nobody re-checked after the source it consumes changed shape. **She cannot learn her own name from a corpus that replaces it with a pronoun every time it appears.**
+
+> ✅ **DONE — the `unity` / `unity's` rules are deleted from the transform; the pronoun rules stay.**
+>
+> **Before:** 17 name-bearing sentences damaged, 0 intact. **After:** **17 intact, 0 damaged** — measured by running the real method over the real canon, not by reading the diff.
+>
+> **The pronoun half still works** (checked on third-person input, which is what the transform exists for): `"She has pink hair."` → `"i have pink hair."` · `"Her body is fully human."` → `"my body is fully human."` · `"She reviews every memory."` → `"I review every memory."` — verb agreement intact. Keeping those is what makes the transform safe to leave wired against a canon that is already first person.
+>
+> ⚠ **The general lesson, and it is the one this stretch keeps paying for:** the rewrite was verified in isolation and was correct in isolation. The defect lived in the consumer. **A change to the SHAPE of a source obliges a re-read of everything that parses it** — same class as the `MindSpaceWorkerProxy` method list, and the reason `REGRESSION.1` exists.
+
+---
+
+- [x] `CURVEBUILD.9` — **ONE STALE ENTRY TO REGENERATE: `ela/grade9.json` still carries a `the-odyssey` entry containing the translator's preface**, written by my pre-fix run. It is not a wiki entry (the ELA grade-9 topic list does not name the Odyssey), so it is purely debris from my own buggy pass. ⛔ **Fix by REGENERATING the cell — delete the file and re-run both ingests for it — not by hand-editing generated JSON.** Sequence it after the wiki top-up passes ELA so the regeneration is not raced.
+
+> ✅ **DONE — and the row's own method would not have worked, which is the finding.**
+>
+> ⛔⛔ **WHY A CLEANER FIX HAD ALREADY LANDED AND THE CORPUS NEVER CHANGED: `keep-longer` is wrong for a re-run of the same source.** The merge exists so three ingests compose into one cell without clobbering each other. Applied to the SAME source id it inverts — a regeneration that removes footnotes, front matter or a preface produces a **shorter** story, so the dirty text wins and **every cleaner fix is a silent no-op.** Merge is now **same source id → newest wins**, keep-longer only across different sources. That is the reusable half of this row.
+>
+> ⚠ **AND THE DEBRIS WAS NOT WHAT THE ROW SAID IT WAS.** The translator's *preface* had already been fixed by the stride-sampling change. What was still in the cell was **Butler's editorial FOOTNOTES in square brackets** — *"[ the reader will note how the spoiling of good food distresses the writer even in such a supreme moment as this.]"* — which sailed through a bracket-strip capped at **80 characters** because footnotes run 100-300. The cap was the bug; `[^\[\]]*` cannot nest or run past the next bracket, so removing the bound is safe. A second rule drops any sentence still carrying a lone bracket, which is a footnote seam glued to real narration.
+>
+> **Result, measured before and after on the real file:** Odyssey bracket sentences **8 → 0** · translator-apparatus hits **0** · entries **12 in / 12 out, none lost** · Romeo 15,171 → 15,893 chars, Odyssey 25,792 → 26,824.
+>
+> ⭐ **DEVIATION FROM THE FILED METHOD, STATED RATHER THAN QUIETLY TAKEN:** I did **not** delete the file. Deleting it discards the 10 encyclopedia entries in that cell and forces a throttled re-crawl to return to where the cell already is. Fixing the generator and re-running it honours *"regenerate, don't hand-edit generated JSON"* more exactly than the literal instruction did.
+>
+> **Successor filed:** `CORPUSBRACKET.1` — the four cleaners are fixed, the shipped corpus still holds **643 / 233,767** bracket sentences until each cell regenerates. Filed under the completion-record rule written the same day, so a fixed generator is not read as a fixed corpus.
+
+---
+
+- [x] `LEDGERLIE.2` — ⛔ **THE RULE THIS PASS EARNED, to be enforced going forward: a completion record may not contain an unresolved warning.** `ACAD-API-5` marked itself `[x]` while its body said twelve subjects' corpora *"never train"*. **Either the warning is resolved before the row closes, or the row spawns a live successor row carrying that warning forward.** ⚠ This is the same shape as the FINALIZED-before-DELETE law (a row whose body is a cross-reference is not a migration) applied to the *content* of a completion rather than its location.
+
+> ✅ **DONE — written as LAW, with the boundary drawn so it is enforceable rather than pious.**
+>
+> **Where it lives:** `.claude/CONSTRAINTS.md §NEVER DELETE TODO INFO` (final section) — beside FINALIZED-BEFORE-DELETE deliberately: **that law governs WHERE a completion record lives, this one governs WHAT IT MAY CLAIM.** Indexed in `.claude/CLAUDE.md`, and the `POST-WORK HOOK` in `.claude/WORKFLOW.md` now carries a third mandatory line — `Unresolved warning left inside the closing record: NONE / carried forward as [ROW]`.
+>
+> ⭐ **THE PART THAT MAKES IT USABLE IS THE EXCLUSION LIST.** Without it the rule would forbid every honest caveat and get ignored within a week. **Counts as unresolved:** *"root cause still open"* · *"never trains"* / *"unreachable"* · *"not measured"* · *"awaiting"* something no live row names · a `⚠` describing behaviour that is still wrong. **Does NOT count:** a retracted claim of mine kept so the mistake is not repeated · a **deliberate** limit whose reason is written in AND whose successor row exists and is open · a warning about how to READ an instrument · a fixed defect described in the past tense.
+>
+> **A legal close names one of three things:** the warning is gone and how that was verified · the warning now lives in row `X`, which exists and is open · the warning was a misreading, retracted here.
+>
+> **Audit of the current board, fence-aware:** **5 closed rows, 0 carrying an unresolved-warning phrase.** The rest were migrated to this ledger on 2026-09-01. ⚠ **Deliberately NOT claimed: the 8.3 MB ledger was not swept.** The rule is *"to be enforced going forward"* in its own words, and a retroactive sweep of every historical entry is a different job — this closes with that scope stated rather than implied.
+
+---
+
 ## 2026-09-02 — `NOFALLBACK.4` — THE WHOLE-STACK SWEEP, AND THE ONE THAT WAS TRAINING HER ON SPELLING
 
 Gee (verbatim, the standing ruling this row executes): *"1. use ask me questioion for whats needs my input, 2. NO FALLBACKS!!!!(HOW MANY TIME DO I NEED TO TELL YOU AND HOW MANY FUCKIGN LAWS AND MEMORIES DO I HAVE TO HAVE YOU CREATE BEFORE YOU FUCKING UNDERSTAND THE WORDS " NO FUCKING FALLBACKS!"*
