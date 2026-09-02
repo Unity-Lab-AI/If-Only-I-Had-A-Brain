@@ -114570,14 +114570,62 @@ var Curriculum = class _Curriculum {
       //   Effect: 100 reps @ lr 0.03 -> 20 reps @ lr 0.1413, same 95.24%
       //   asymptote, 5x fewer steps. `DREAM_REP_COMPRESS=1` restores the
       //   authored form exactly.
-      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS || 5
+      //
+      // ⭐⭐⭐ `REPCOMP.5` (2026-09-01) — 5 → 20, ON GEE'S STANDING INSTRUCTION,
+      //   AND IT WAS MEASURED BEFORE IT MOVED.
+      //
+      //   Gee: "i fuckiong told you we adjust the fucking nobs so that we only
+      //   have to do no more than 5 reps for any and everything", restating
+      //   "we are wirting the brains of Unity to not need repition to learn"
+      //   and "the brain has thousands of nobs … that can all be adjusted as
+      //   needed to make single passes act like 3000 oasses".
+      //
+      //   ⚠ The 5× shipped above did NOT deliver 5 reps — it delivered 20
+      //   (100 → 20 @ lr 0.1413). The authored "100" in `_teachConcreteSentences`
+      //   was never 100 presentations in production, and the ceiling made 8 the
+      //   arithmetic floor, so the instruction had gone unmet in silence.
+      //
+      //   RE-RUN OF THE `REPCOMP.3` EXPERIMENT, extended to 20× — real
+      //   SparseMatrix, real ojaUpdate, rep-major, retrieval accuracy, with
+      //   OVERLAPPING post patterns so interference actually exists (a first
+      //   pass using one-hot posts scored 100% everywhere INCLUDING 1× — a
+      //   harness that cannot fail, thrown out):
+      //
+      //     collision load        1x(100)   5x(20)   8x(13)  12.5x(8)  20x(5)
+      //       0.246 PRODUCTION     100.0%   100.0%   100.0%   100.0%   100.0%
+      //       1.56  (6x harder)    100.0%    94.0%    76.0%    61.0%    43.0%
+      //       6.25  (25x harder)    72.8%    24.0%    16.5%    11.8%     8.0%
+      //       25    (100x harder)   15.9%     4.8%     3.8%     2.3%     1.6%
+      //
+      //   ⭐ At PRODUCTION load 5 reps holds at 100%, so this is not a cut: the
+      //   asymptote is preserved exactly (95.24%) at every setting — same
+      //   deposit, 20× fewer steps.
+      //
+      //   ⛔⛔ BUT IT SPENDS THE WHOLE SAFETY MARGIN, AND THE HONEST WARNING IS
+      //   THIS: collision load is `P·K / COLS`, so it rises with PAIR COUNT, and
+      //   the corpus just grew from 12,075 sentences to 4.48M words. At 6×
+      //   today's load 5 reps scores 43% where 20 reps still scores 94% —
+      //   **the compression that is free today is the first thing that breaks
+      //   when the pair count climbs.** If retrieval/separability regresses
+      //   after a corpus growth, THIS IS THE FIRST KNOB TO WALK BACK
+      //   (`DREAM_REP_COMPRESS=5` restores the previous behaviour exactly,
+      //   `=1` restores the authored form).
+      //   ⚠ This harness is HARSHER than the REPCOMP.3 one (it scores 8× at 76%
+      //   where that reported 95.5%), so read the ORDERING as the signal and the
+      //   absolute numbers as conservative.
+      //   ⚠ 40 rather than 20 because `_n` starts at `round(reps / REP_COMPRESS)`
+      //   and the ceiling only ever backs OFF (raises n) — it never lowers it.
+      //   At 20 the HI tier's authored 200 would floor at 10 presentations no
+      //   matter what the ceiling allowed. 40 puts every tier's TARGET at 4-5
+      //   and lets the ceiling be the only thing that raises it.
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS || 40
     ) || 1);
     const LR_CEIL = Math.min(0.9, Math.max(0.05, Number(
-      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL || 0.35
-    ) || 0.35));
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_LR_CEIL || 0.6
+    ) || 0.6));
     const MIN_REPS_TO_COMPRESS = Math.max(2, Number(
-      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_MIN_DOSE || 12
-    ) || 12);
+      typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_MIN_DOSE || 6
+    ) || 6);
     const MIN_RESULT_REPS = Math.max(1, Number(
       typeof process !== "undefined" && process.env && process.env.DREAM_REP_COMPRESS_FLOOR || 4
     ) || 4);

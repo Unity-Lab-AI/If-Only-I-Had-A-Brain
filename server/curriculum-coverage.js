@@ -114,17 +114,26 @@ function readCell(corpusRoot, subject, grade) {
     let words = 0, licensed = 0;
     // DIALOGUE.2 — terminal-punctuation mix, per cell.
     //
-    // ⛔ A word count cannot answer "can this cell teach her what a QUESTION
-    // looks like?", and that turned out to matter: measured 2026-09-01, the
-    // three boot corpora hold 842 sentences with ZERO question marks and ZERO
-    // exclamation marks between them, and the whole rebuilt academic corpus is
-    // 248,443 sentences at 0.28% `?` and 0.19% `!`.
+    // ⛔⛔ READ THIS BEFORE DRAWING THE CONCLUSION I DREW. When this was added
+    // (2026-09-01) I read a low `?`/`!` rate as "she has no examples of the
+    // sentence forms she must produce". THAT WAS WRONG, and the retraction is
+    // kept here because the number is seductive and the next reader will meet
+    // it before they meet the mechanism.
     //
-    // `_teachSentenceStructure` trains FIVE intent forms — declarative_svo,
-    // declarative_copula, question, imperative, exclamative — so a cell of pure
-    // expository prose supplies exemplars for two of them and none for the
-    // rest. Reported per cell because a 0.28% AVERAGE hides which cells are at
-    // zero, and expository textbook prose is exactly the genre that has none.
+    // ⭐ INTENT FORM IS NOT LEARNED FROM CORPUS PUNCTUATION. It is taught
+    // directly by `_teachConcreteSentences` from `K_CONCRETE_SENTENCES` —
+    // 1,418 sentences at reps=100 as word→word Hebbian cascades, the
+    // load-bearing grammar pass. ⚠ NOT ONE of those 1,418 carries any terminal
+    // punctuation at all (no `.`, no `?`, no `!`), and 51 of them OPEN with an
+    // interrogative word ("what is this", "where is the cat"). **Question form
+    // is encoded as WORD ORDER, which is the only form the emission path can
+    // reproduce anyway — she emits words, not punctuation.**
+    //
+    // So what this field actually measures is the GENRE of a cell's prose, not
+    // its teaching power. Expository textbook writing has no dialogue by
+    // nature; that is normal and is not a defect to be "fixed" by hunting
+    // question marks. It stays because genre mix is a real property worth
+    // seeing per cell — but it must never again be read as an intent-form gap.
     let sentences = 0, questions = 0, exclamations = 0;
     for (const e of experiences) {
       const story = String(e.story || '');
@@ -178,10 +187,11 @@ function computeCoverage(curriculumModule, corpusRoot) {
       if (!c || c.entries === 0) { empty.push(`${subject}/${grade}`); continue; }
       reachableWords += c.words; entries += c.entries; licensed += c.licensed;
       sentences += c.sentences; questions += c.questions; exclamations += c.exclamations;
-      // DIALOGUE.2 — a cell with prose but NO interrogative or exclamative
-      // sentence cannot teach two of the five intent forms the curriculum
-      // trains. Tracked separately from `thin`: this cell may be enormous and
-      // still unable to show her what a question looks like.
+      // DIALOGUE.2 — cells whose prose carries no interrogative or exclamative
+      // punctuation at all. ⚠ This is a GENRE signal, not a defect count:
+      // expository writing legitimately has none, and intent form is taught
+      // elsewhere (see the note in `readCell`). Useful for spotting a cell that
+      // is meant to be literature and reads like a textbook.
       if (c.sentences > 0 && (c.questions + c.exclamations) === 0) {
         noDialogue.push(`${subject}/${grade}`);
       }
