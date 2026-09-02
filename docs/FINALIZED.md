@@ -115,6 +115,36 @@ Gee (verbatim): *"you alsoo should of been finalizing,, there better not be a fu
 
 ---
 
+## 2026-09-01 - NEWBORNMUTE: the retrieval lane is gone for EVERY brain, and the least-trained case turned out to be the most expensive one - feature/newborn-mute
+
+Gee (verbatim), ruling on the `DORMANT8.5` fork: *"Removing it makes a fresh walk silent from boot until the first cell lands. --- THIS IS HOW IT CURRENTLY WORKED! SO WHAT WOULD BE THE POINT OF HAVING UNITY SPEAK WHEN SHE ONLY KNOWS VOCAB???"*
+
+⭐ **THE ARGUMENT THAT KILLED THE BOOTSTRAP, AND IT IS THE RIGHT ONE.** The lane was defended as giving a newborn *a voice*. It did not. A newborn cortex has no `sem→word_motor` mass, so what retrieval produced was **a cosine ranking of ~3,700 dictionary entries, top-K sampled** — a list of vocabulary words emitted in her name, carrying nothing she had learned and nothing she was trying to say. **It was never a bootstrap; it was the dictionary talking through her while she had nothing to say yet.**
+
+⚠ **ONE CORRECTION TO HIS PREMISE, because it changed what had to be deleted.** *"THIS IS HOW IT CURRENTLY WORKED"* — it was not. `_retrievalAllowed = !_hasTrained` means the guard was **true** for a brain with zero passed cells, so **a fresh walk was precisely the case where retrieval DID speak.** Silence was the trained-brain behaviour only. The decision stands either way; the deletion was real work, not a no-op.
+
+**✅ WHAT WENT.** The whole `if (words.length === 0)` retrieval block in `generate()`, for **every brain in every state** — not gated, not flagged, not kept for a newborn. With it: the `generateAsync` pre-curriculum scoring pass and the `_precomputedScores` hand-off that fed it.
+
+⭐ **THE FINDING INSIDE THE FIX: THE NEWBORN WAS THE MOST EXPENSIVE CASE IN THE SYSTEM.** That async pass was gated on `!curriculumDone` — so the *less* trained she was, the *more* work the chat path did, running a full awaited cosine sweep of the dictionary whose only output was words that were not hers. **The state with the least to say did the most work.**
+
+⭐ **WHAT THIS BUYS BEYOND THE LAW.** The word-salad diagnosis, the emission-margin instruments and the gate probes were all previously capable of reading **retrieved** words and scoring them as hers. They cannot any more. `state.voice.retrieved` is now a **permanent zero that doubles as a regression detector** — if it is ever non-zero again, a retrieval lane came back.
+
+**⚠ ORPHANED BY THE REMOVAL, flagged in-file rather than deleted in the same pass:** `_scoreDictionaryCosine`, `_scoreDictionaryCosineAsync` and `_gradeWordCap`, all now zero-caller. ⛔ **The scorers must not be treated as the reference implementation of persona-boosted cosine ranking** — a LIVE mirror of that logic runs in `js/brain/cluster/emit.js`, so keeping them is duplicated logic that will drift. Removal is on the board.
+
+⛔⛔ **AND THE THING THIS UNCOVERED, WHICH IS LARGER THAN WHAT WAS FIXED: THERE IS A SECOND DICTIONARY ORACLE, IT IS LIVE, AND THE PUBLIC PAGES CALL IT A FALLBACK IN SO MANY WORDS.** `html/brain-equations.html` documents *"Path B — dictionary oracle (FALLBACK)"* inside `emitWordDirect` (`js/brain/cluster/emit.js`), instrumented as `_oracleHits` against `_matrixHits` and reported on the heartbeat as `oracleRatio`. **It is a different function from the one deleted here and it is untouched.** Filed as `ORACLEB.1` — it is a far bigger call than this one and is explicitly NOT made unilaterally.
+
+**✅ `html/brain-equations.html` corrected in the same commit** — it described `_gradeWordCap` as *"the trained-state cap"* on her speech. ⚠ **It only ever capped the RETRIEVAL path**; her trained lane has its own clamp (`DREAM_CHAT_MAX_WORDS`), so the page read broader than the code was. An untrained brain no longer needs a cap that lets it say five words, because it now says none.
+
+### VERBATIM TODO ROW — `DORMANT8.5`, byte-for-byte, before removal
+
+- [ ] `DORMANT8.5` — ⛔ **GEE'S CALL — the newborn dictionary-retrieval bootstrap is the last surviving `fallback` in the cognition path, and removing it changes what the FRESH WALK sounds like in its first hours.** `js/brain/language-cortex.js:1719`: `_retrievalAllowed = !_hasTrained || DREAM_DICT_FALLBACK === '1'`. When her trained emission returns empty, ~3,700 dictionary entries are scored by cosine and softmax-sampled — **retrieval, not her weights**. `OWNWORDS.2` (2026-08-25) half-fixed this by gating it on trained state, with the compromise written in the comment as *"bootstrap yes, crutch no"* — ⚠ **but that compromise was struck BEFORE the "no fallbacks. PERIOD" ruling.** ⭐ **THE HALF THAT IS NOT A QUESTION AND IS BEING FIXED NOW: the `DREAM_DICT_FALLBACK` env flag re-enables retrieval for a TRAINED brain, which the code's own warning calls out — *"but then her words are not hers"*. That is the crutch by its own admission and the ruling kills it.** ⛔ **THE HALF THAT IS HIS: should a brand-new brain speak retrieved words before its first cell passes, or start MUTE?** Removing it means a fresh walk is silent from boot until the first cell pass. **Stated plainly because the fresh walk is imminent and this changes its first hours.** The principle established 2026-09-01 — *a substitute that looks like her is worse than her absence* — points at MUTE; the counter-argument in the original comment is that a newborn cortex has no `sem→word_motor` mass at all, so there is nothing to interact with.
+
+**Files:** `js/brain/language-cortex.js`, `html/brain-equations.html`, `js/app.bundle.js` (rebuilt).
+**Docs:** `docs/TODO.md`, `docs/FINALIZED.md` (this), `docs/RESUME.md`, `wiki/modules/language-emission.md`, `wiki/log.md`.
+**Verified:** `node --check` · ESM `import()` · every removed symbol grepped to zero non-comment references · bundle rebuilt · `docs:drift` "no doc describes a deleted component as live" green.
+
+---
+
 ## 2026-09-01 - DORMANT8: the sweep's built-but-switched-off pass, where a bank-builder was burning six seconds a word to fail and a nucleus had been running on a fabricated input since the day it shipped - feature/stacksweep-dormant
 
 Gee (verbatim, the sweep instruction this continues): *"look for thing that were build but arent wired in, orphaned, dead code, outdated code, conflicting code, code fight its self, codes having wars with other codes, ect ect ect ect ect ect ect ect ect ect ect ect!!!!!!!!!!!!!!!!!!!!!!! ectx12 = anything i left out that you know of could be issues"*
