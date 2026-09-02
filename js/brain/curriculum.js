@@ -16442,15 +16442,97 @@ export class Curriculum {
       if (typeof this._teachWordDefinition === 'function') {
         const taught = cluster._definitionTaughtWords || new Set();
         const STOP = new Set(['the','and','that','this','with','from','have','has','had','are','was','were','for','not','they','them','their','which','also','into','than','then','such','these','those','some','can','may','will','would','could','should','more','most','one','two','its','our','your','who','how','why','when','where','what','been','being']);
-        const seen = new Set();
-        const newWords = [];
+        // ⭐⭐ ORDERED BY HOW OFTEN THE CELL ACTUALLY USES THE WORD, NOT BY WHERE
+        // IT HAPPENS TO FIRST APPEAR.
+        //
+        // ⛔ THE POINT OF THIS WHOLE STEP is that the prose afterwards binds on
+        // ANCHORED basins instead of phantom ones. So the sixty lookups it can
+        // afford should be spent on the words the prose LEANS ON — and in corpus
+        // order they were being spent on whichever rare one-off words happened
+        // to appear early, while the words the chapter repeats constantly went
+        // unanchored.
+        //
+        // ⭐ MEASURED, on the share of a cell's total content-word OCCURRENCES
+        // the sixty anchored words cover:
+        //
+        //     cell              corpus order   top-60 by frequency
+        //     science/grade5        9.14%           27.18%   (3.0x)
+        //     math/grade10         10.39%           32.96%   (3.2x)
+        //     ela/grade3            5.49%           19.21%   (3.5x)
+        //     art/grade4            6.86%           24.49%   (3.6x)
+        //     science/phd           1.73%            9.84%   (5.7x)
+        //     MEAN                  6.85%           20.71%   = 3.0x
+        //
+        // ⭐ **NO RE-PRICE IS OWED AND THAT IS THE ARGUMENT FOR DOING IT.** The
+        // lookup count, the cap, the rotation and the wall-clock are all
+        // unchanged — only WHICH sixty words get picked changes. Three times the
+        // coverage for free.
+        //
+        // ⚠ THE ROTATION IS UNTOUCHED AND MUST STAY. It exists because
+        // `slice(0, CAP)` stranded every word past the first sixty as soon as
+        // sixty undefinable ones collected at the head. Frequency changes the
+        // ORDER the rotation walks; it does not reintroduce a fixed head.
+        //
+        // ⚠ Ties broken by first appearance so the order is fully deterministic
+        // — a cursor walking a list that reshuffles between visits would revisit
+        // and skip unpredictably.
+        const freq = new Map();
+        const firstAt = new Map();
+        let position = 0;
         for (const s of sentences) {
           for (const tok of String(s).toLowerCase().split(/\s+/)) {
             const c = tok.replace(/[^a-z]/g, '');
-            if (c.length > 3 && !STOP.has(c) && !taught.has(c) && !seen.has(c)) { seen.add(c); newWords.push(c); }
+            if (c.length <= 3 || STOP.has(c) || taught.has(c)) continue;
+            if (!freq.has(c)) { freq.set(c, 0); firstAt.set(c, position++); }
+            freq.set(c, freq.get(c) + 1);
           }
         }
-        const VOCAB_CAP = opts.vocabCap ?? 60;
+        const newWords = [...freq.keys()].sort((a, b) => {
+          const d = freq.get(b) - freq.get(a);
+          return d !== 0 ? d : firstAt.get(a) - firstAt.get(b);
+        });
+        // ⛔⛔⛔ THE 60-WORD CAP IS GONE. Operator: *"why did you put a cap on
+        // her?"* / *"she has to be able to look up all workds she needs to know
+        // no some bullshit limit"*.
+        //
+        // ⛔ AND THE ARITHMETIC THAT APPEARED TO JUSTIFY IT WAS MINE AND IT WAS
+        // WRONG TWICE OVER. I priced removal at ~25 days and it is ~20 HOURS:
+        //
+        //   ① I summed DISTINCT-PER-CELL words — 1,996,943 — when the figure
+        //      that matters is DISTINCT ACROSS THE WHOLE CORPUS: **365,132**.
+        //      `_definitionTaughtWords` is global and persisted, so a word
+        //      anchored in any cell is never looked up again in any other.
+        //      **A 5.5× overcount.**
+        //   ② I then priced it as cold SERIAL lookups at ~3.9 s each, ignoring
+        //      `prefetchDefinitions`, which already batches at concurrency 20.
+        //      **Another 20×.**
+        //
+        // Re-measured by walking the cells in real grade-major order and
+        // counting only words not already anchored by an earlier cell:
+        //
+        //     total NEW lookups across the whole walk   365,132
+        //     total time at concurrency 20              19.8 h   (3.4% of a ~24d walk)
+        //     cells whose first visit exceeds 30 min    6 of 189
+        //     worst cell  science/grad  68,942 new      224 min, ONCE, ever
+        //
+        // ⭐ **A CAP HERE WAS NEVER A COST CONTROL, IT WAS A CEILING ON WHAT SHE
+        // CAN EVER KNOW** — the same shape as the figure lane's per-visit cap,
+        // which turned out to make everything past a cell's 24th picture
+        // unreachable for the lane's entire life. **Unlimited by default.**
+        //
+        // ⚠ `DREAM_ACAD_VOCAB_CAP` exists as a DIAGNOSTIC lever only — for
+        // bisecting a slow cell, never as an operating setting. Unset means no
+        // limit, and that is the intended state.
+        //
+        // ⭐ FREQUENCY ORDERING STILL MATTERS WITH NO CAP, which is why it stays.
+        // It no longer decides WHICH words she learns — it decides the ORDER,
+        // so if a long cell is ever deferred part-way the words the prose leans
+        // on are already anchored rather than whichever ones sorted first.
+        const _capEnv = (typeof process !== 'undefined' && process.env
+          && process.env.DREAM_ACAD_VOCAB_CAP);
+        const VOCAB_CAP = opts.vocabCap
+          ?? ((_capEnv !== undefined && _capEnv !== '' && Number(_capEnv) > 0)
+            ? Number(_capEnv) : Infinity);
         // ⛔⛔ ROTATE THE WINDOW — `slice(0, CAP)` STRANDS EVERY WORD PAST THE
         // FIRST 60 AS SOON AS 60 UNDEFINABLE ONES COLLECT AT THE HEAD
         // (found 2026-09-02 sweeping the teach path for this shape).
@@ -16486,7 +16568,16 @@ export class Curriculum {
           try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
           catch { /* per-word best-effort */ }
         }
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, window ${VOCAB_CAP} from offset ${vStart}). Prose now binds on anchored basins, not phantom word basins.`);
+        // ⭐ REPORT THE COVERAGE THE WINDOW ACTUALLY BOUGHT, not just its size.
+        // "60/60 anchored" says nothing about whether those sixty words are the
+        // ones the chapter leans on — and that difference is the entire point of
+        // ordering by frequency. `covers` is the share of this cell's content-word
+        // OCCURRENCES that the batch accounts for, which is the number that says
+        // how much of the coming prose will land on an anchored basin.
+        let _occTotal = 0; for (const n of freq.values()) _occTotal += n;
+        let _occBatch = 0; for (const w of batch) _occBatch += (freq.get(w) | 0);
+        const _cov = _occTotal > 0 ? (100 * _occBatch / _occTotal) : 0;
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found; ${Number.isFinite(VOCAB_CAP) ? `window ${VOCAB_CAP} from offset ${vStart} — A CAP IS SET, which is a diagnostic state, not the intended one` : 'NO CAP — every unlearned word in this cell is looked up'}, ordered by how often this cell uses them). This batch covers ${_cov.toFixed(1)}% of the cell's content-word occurrences. Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch { /* pre-vocab is best-effort; never blocks the story train */ }
 

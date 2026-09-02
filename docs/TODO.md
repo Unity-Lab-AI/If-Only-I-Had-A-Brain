@@ -2215,7 +2215,36 @@ Gee, verbatim:
 
 > *"now did we re scale the cells phases and grades to all the new corpus? or is it all still based off everything we gutted"*
 
-- [ ] `CORPUSCALE.1` — ⛔⛔⛔ **THE VOCABULARY WINDOW IS 60 WORDS PER CELL VISIT AND THE MEDIAN CELL NEEDS 94 VISITS TO ANCHOR ITS WORDS. THIS IS THE ONE THAT IS STILL SIZED FOR THE OLD CORPUS.** Direct answer to his question, measured across all 189 prose cells.
+- [x] `CORPUSCALE.1` — ✅⭐⭐ **THE CHEAP HALF SHIPPED 2026-09-02 — THE WINDOW IS NOW ORDERED BY HOW OFTEN THE CELL USES A WORD, AND IT COVERS 3× MORE OF THE PROSE FOR THE SAME 60 LOOKUPS. 8/8.**
+  - ⭐ **THE POINT OF THE STEP IS THAT THE PROSE AFTERWARDS BINDS ON ANCHORED BASINS.** In corpus order the sixty lookups were being spent on whichever rare one-off words happened to appear early, while **the words the chapter repeats constantly went unanchored.** Ordering by frequency spends them on the words the prose leans on.
+  - **Measured live through the real method, and it matches the prediction to a decimal:**
+  ```
+    cell             predicted   measured   first words she now looks up
+    science/grade5     27.18%     27.2%     planets water solar system called like energy earth
+    math/grade10       32.96%     33.0%     equation minus plus number negative find each graph
+    ela/grade3         19.21%     19.2%     said little there very know like good come
+    science/phd         9.84%      9.8%     using analysis cells data between study cell model
+                    (corpus order was 9.14 / 10.39 / 5.49 / 1.73%)
+  ```
+  - ⭐⭐ **NO RE-PRICE WAS OWED AND THAT IS THE WHOLE ARGUMENT FOR DOING IT FIRST.** The lookup count, the cap, the rotation and the wall-clock are all unchanged — **only WHICH sixty words get picked changed.** Three times the coverage for free.
+  - ⚠ **THE ROTATION IS UNTOUCHED, DELIBERATELY.** It exists because `slice(0, CAP)` stranded every word past the first sixty once sixty undefinable ones collected at the head. **Frequency changes the ORDER the rotation walks; it does not reintroduce a fixed head** — verified: a second visit takes a different window and the cursor advances rather than resetting.
+  - **Ties broken by first appearance**, so the order is fully deterministic — a cursor walking a list that reshuffled between visits would revisit and skip unpredictably.
+  - ⭐ **AND THE LOG LINE NOW REPORTS THE COVERAGE IT BOUGHT, not just the batch size.** *"60/60 anchored"* says nothing about whether those sixty are the right sixty, and that difference is the entire point of the change.
+  - ⛔⛔⛔ **AND THEN THE CAP CAME OFF ENTIRELY, BECAUSE MY ARITHMETIC FOR KEEPING IT WAS WRONG TWICE OVER.** Gee: *"why did you put a cap on her?"* / *"she has to be able to look up all workds she needs to know no some bullshit limit"*.
+    - ⛔ **I priced removal at ~25 days. It is ~20 HOURS.** Two compounding errors, both mine:
+      - **① I summed DISTINCT-PER-CELL words — 1,996,943 — when the number that matters is DISTINCT ACROSS THE WHOLE CORPUS: 365,132.** `_definitionTaughtWords` is **global and persisted**, so a word anchored in any cell is never looked up again in any other. **A 5.5× overcount.**
+      - **② I then priced those as cold SERIAL lookups at ~3.9 s each, ignoring `prefetchDefinitions`, which already batches at concurrency 20. Another 20×.**
+    - **Re-measured by walking the cells in real grade-major order and counting only words no earlier cell had already anchored:**
+    ```
+      total NEW lookups across the whole walk   365,132
+      total time at concurrency 20              19.8 h    = 3.4% of a ~24-day walk
+      cells whose FIRST visit exceeds 30 min    6 of 189
+      worst cell   science/grad  68,942 new     224 min, ONCE, ever
+    ```
+    - ⭐⭐ **THE CAP WAS NEVER A COST CONTROL. IT WAS A CEILING ON WHAT SHE CAN EVER KNOW** — the identical shape to the figure lane's per-visit cap, which made everything past a cell's 24th picture unreachable **for that lane's entire life**. ⚠ **I did not add this cap, but I accepted it and optimised around it instead of questioning it, which is the same failure one step removed.**
+    - **Shipped: unlimited by default.** `DREAM_ACAD_VOCAB_CAP` survives as a **diagnostic lever only** — for bisecting a slow cell, never as an operating setting — and the log line **says so** when one is set. **Verified 8/8: every unlearned word in a cell is now looked up (`science/grade5` 2,530/2,530, `math/grade10` 5,878/5,878), coverage 27% → 100%, a second visit looks up 0 because the first anchored them all, and an explicit cap still binds when set.**
+    - ⭐ **FREQUENCY ORDERING STAYS AND IS STILL WORTH IT.** It no longer decides WHICH words she learns — it decides the ORDER, so if a long cell is ever deferred part-way, the words the prose leans on are already anchored rather than whichever happened to sort first.
+  - **Original filing:** ⛔⛔⛔ **THE VOCABULARY WINDOW IS 60 WORDS PER CELL VISIT AND THE MEDIAN CELL NEEDS 94 VISITS TO ANCHOR ITS WORDS. THIS IS THE ONE THAT IS STILL SIZED FOR THE OLD CORPUS.** Direct answer to his question, measured across all 189 prose cells.
   - **What IS current, checked before answering rather than assumed:**
     - **Phase counts — not corpus-dependent at all.** `_declaredPhaseNames` derives the denominator from the runner's own source, so a bigger corpus cannot skew it.
     - **Grade band floors — re-derived 2026-09-02** for the rebuilt corpus (the `6.8× corpus → 4.7×` computation in `docs/THRESHOLD-DERIVATION.md`).

@@ -68,6 +68,12 @@ const KNOBS = [
     what: 'Multiplier on structure-pass reps, clamped to [0.05, 1]. ⛔ It was cut to 0.4 once and REVERTED: a dose multiplier was never waste, it was less teaching. Lowering it is a RE-PRICE event.',
   },
   {
+    key: 'DREAM_ACAD_VOCAB_CAP', group: 'Teaching & schedule', dflt: 'unlimited',
+    effect: 'live', site: 'js/brain/curriculum.js — _trainAcademicStories pre-vocab block',
+    proof: 'read inside the method on every cell',
+    what: '⚠ DIAGNOSTIC LEVER ONLY — for bisecting a slow cell, never an operating setting. Caps how many unlearned words a cell looks up definitions for before its prose is taught. ⛔ It was hardcoded at 60 and the cap came off 2026-09-02 on the operator\'s ruling ("she has to be able to look up all workds she needs to know no some bullshit limit"). The arithmetic that appeared to justify keeping it was wrong twice: distinct-per-cell words were summed (1,996,943) when the figure that matters is distinct across the whole corpus (365,132, because _definitionTaughtWords is global and persisted), and those were then priced as cold serial lookups while prefetchDefinitions already batches at concurrency 20. Real cost of no cap: 19.8h across a ~24-day walk, with only 6 of 189 cells exceeding 30 min on first visit. A cap here was never a cost control, it was a ceiling on what she can ever know.',
+  },
+  {
     key: 'DREAM_REHEARSAL_FRACTION', group: 'Learning rate & dose', dflt: '0.02',
     effect: 'live', site: 'js/brain/curriculum.js — _rehearseEarlierGrades',
     proof: 'read inside the method on every cell',
