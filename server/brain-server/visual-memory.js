@@ -1395,6 +1395,14 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // pipe. Different events, and only the second one explains a 429 that
         // stopped happening.
         chatPreempts: 0, lastChatPreemptKey: null,
+        // TEXTFIG — the textbook-figure lane. Separate counters from the
+        // generator lane on purpose: a figure is an AUTHORED diagram with
+        // human-written alt text, not a noisy render, so mixing its successes
+        // into `grounded` would flatter the generator's hit rate with work it
+        // did not do.
+        figAttempts: 0, figGrounded: 0, figHttpFails: 0, figDecodeFails: 0,
+        figPerceiveFails: 0, figBlank: 0, figAlreadyHeld: 0,
+        lastFigKey: null, lastFigAt: 0,
       };
     }
     return this._vmLookStats;
@@ -1450,6 +1458,142 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     try { attr = this._defDrawAttributes(word); } catch { return false; }
     if (!attr) return false;
     return !!(attr.shape || (Array.isArray(attr.colors) && attr.colors.length > 0));
+  },
+
+  /**
+   * TEXTFIG.2 / .3 / .7 — perceive ONE textbook figure and put it in her eye.
+   *
+   * ⭐ WHY THIS IS NOT `_fetchReferenceAndGround` WITH A DIFFERENT URL. That
+   * lane exists to interrogate a NOISY ORACLE: it builds a prompt, renders,
+   * and then makes a second independent render prove the first (LOOKTWICE),
+   * because a generator that does not know a word produces confident noise.
+   *
+   * ⛔ A textbook figure is the opposite kind of thing. It is an AUTHORED
+   * diagram that a human captioned, shipped under a licence this corpus has
+   * already read, and tied to prose she is being taught in the same breath.
+   * There is no second seed to disagree with, and demanding one would reject
+   * every figure. So LOOKTWICE is deliberately NOT applied here — and that is
+   * a REASON, not an omission, which is why it is written down.
+   *
+   * ⚠ What IS kept from that lane, because it guards against a real failure
+   * rather than an oracle: the decode-null check, the near-uniform detail
+   * floor (a blank plate is not a percept), and named per-stage counters.
+   *
+   * @param {{url:string, alt?:string, caption?:string}} fig
+   * @param {{key?:string, theme?:string, show?:boolean}} opts
+   */
+  async _perceiveTextbookFigure(fig, opts = {}) {
+    if (!fig || !fig.url) return null;
+    if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return null;
+    if (typeof fetch !== 'function') return null;
+    const st = this._vmLook();
+    const now = Date.now();
+
+    // The key is namespaced `fig:` so a diagram NEVER overwrites what she has
+    // learned a word looks like. A physics figure of a car on a banked curve is
+    // evidence about that chapter, not a replacement for her memory of "car".
+    const label = String(opts.key || opts.theme || fig.alt || 'figure')
+      .toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 80);
+    const key = `fig:${label}`;
+    st.figAttempts = (st.figAttempts | 0) + 1;
+
+    // Already held — a figure is a fixed image, so re-perceiving it can only
+    // reproduce the same record. Unlike a generated reference there is no
+    // "look again and see if it agrees" value.
+    try {
+      const held = this._vmStore() && this._vmStore().get(key);
+      if (held && held.rec) { st.figAlreadyHeld = (st.figAlreadyHeld | 0) + 1; return null; }
+    } catch { /* store unreadable — fall through and perceive */ }
+
+    let buf;
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => { try { ctrl.abort(); } catch { /* nf */ } }, 30000);
+      let r;
+      try { r = await fetch(fig.url, { signal: ctrl.signal }); } finally { clearTimeout(t); }
+      if (!r || !r.ok) {
+        st.figHttpFails = (st.figHttpFails | 0) + 1;
+        st.lastErr = `figure HTTP ${r ? r.status : '?'}`; st.lastErrAt = now;
+        return null;
+      }
+      buf = Buffer.from(await r.arrayBuffer());
+    } catch (e) {
+      st.figHttpFails = (st.figHttpFails | 0) + 1;
+      st.lastErr = `figure fetch: ${e && e.message}`; st.lastErrAt = now;
+      return null;
+    }
+
+    const img = this._decodeImageToRGBA(buf);
+    if (!img) {
+      st.figDecodeFails = (st.figDecodeFails | 0) + 1;
+      st.lastErr = `figure undecodable (${buf ? buf.length : 0} bytes)`; st.lastErrAt = now;
+      return null;
+    }
+    const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+    let rec;
+    try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); }
+    catch (e) {
+      st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
+      st.lastErr = `figure perceive: ${e && e.message}`; st.lastErrAt = now;
+      return null;
+    }
+    if (!rec || !rec.channels) {
+      st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
+      st.lastErr = 'figure perceive returned empty rec'; st.lastErrAt = now;
+      return null;
+    }
+    // A diagram that came back near-uniform is a blank plate or a failed
+    // decode wearing a valid shape — same floor the reference lane uses.
+    if (typeof this._recDetail === 'function'
+        && this._recDetail(rec) < (Number(process.env.DREAM_REF_MIN_DETAIL) || 200)) {
+      st.figBlank = (st.figBlank | 0) + 1;
+      return null;
+    }
+    rec.fidelity = { psnr_db: null, source: 'textbook-figure' };
+
+    // The words that came WITH the picture. This is the whole reason a textbook
+    // figure is worth more than a generated one: the description is authored by
+    // the same people who drew the diagram, so the label is trustworthy in a
+    // way a prompt echo never is.
+    const phrase = [fig.alt, fig.caption].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().slice(0, 400) || null;
+
+    try {
+      const store = this._vmStore();
+      let percept = null;
+      try { const d = await this.mindSpace.describe(rec); if (d) percept = Array.from(d); } catch { percept = null; }
+      store.delete(key);
+      // `conf: true` — confirmed on arrival, because the confirmation standard
+      // here is PROVENANCE (an authored, licensed, human-captioned diagram)
+      // rather than agreement between two guesses.
+      store.set(key, { rec, at: now, seen: 1, conf: true, p: percept, phrase, figure: { url: fig.url, theme: opts.theme || null } });
+      while (store.size > VM_CAP) store.delete(store.keys().next().value);
+      this._vmSaveSoon();
+      st.figGrounded = (st.figGrounded | 0) + 1;
+      st.lastFigKey = key; st.lastFigAt = now;
+
+      // ⭐ TEXTFIG.7 — SHE SEES IT. Gee: "yeah these images need to appear in
+      // her minds eye too". Same publish the look lane uses, so a figure is a
+      // grounded frame exactly like a looked-up reference.
+      if (opts.show !== false) {
+        try {
+          this._lastGroundedEyeAt = now;
+          this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec, terms: rec.equation_count || 0, source: 'figure:' + label, at: now });
+          if (this.clients && this.clients.size > 0) {
+            const p = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0, source: 'figure:' + label, ts: now });
+            for (const [ws] of this.clients) { if (ws.readyState === 1) { try { ws.send(p); } catch { /* nf */ } } }
+          }
+        } catch { /* viewer publish best-effort */ }
+      }
+      // console.log, not process.stdout.write — the console ring only captures
+      // console.*, and a success that the ring cannot see is a success nobody
+      // can diagnose remotely (the LOOKEYES blind spot, third occurrence).
+      console.log(`[VisualMemory] FIGURE perceived "${label}" — ${rec.equation_count || 0} terms, ${small.w}x${small.h}${phrase ? ` — "${phrase.slice(0, 60)}"` : ''}`);
+      return rec;
+    } catch (e) {
+      st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
+      st.lastErr = `figure store: ${e && e.message}`; st.lastErrAt = now;
+      return null;
+    }
   },
 
   async _fetchReferenceAndGround(concept, opts = {}) {
