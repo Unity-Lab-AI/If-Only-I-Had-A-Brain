@@ -1661,38 +1661,74 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       if (held && held.rec) { st.figAlreadyHeld = (st.figAlreadyHeld | 0) + 1; return null; }
     } catch { /* store unreadable — fall through and perceive */ }
 
-    let buf;
+    // ⭐⭐ WAVESEE.1 — THE PRECOMPUTED FIELD IS TRIED FIRST, AND IT IS A PERCEPT
+    // SOURCE RATHER THAN A CACHE. Every corpus figure was already transformed
+    // once into `UnityAILab/BrainWaves`; reading that field yields the SAME
+    // `rec` this lane would spend a fetch, a decode and a full CDF 9/7 transform
+    // to rebuild — measured at ~64 CPU-hours and 32,296 third-party requests
+    // across the set. Everything below this block is untouched, which is the
+    // whole point: she sees a field exactly the way she sees a camera frame or
+    // her own drawing, through `describe` → `store.set` → `_queuePhraseTeach`.
+    //
+    // ⚠ A MISS IS ORDINARY. About a fifth of figures never produced a field
+    // (dead URLs, non-Wikimedia SVGs, GIFs) and the network path below is
+    // correct for all of them, so a miss is counted and never logged as an
+    // error. `figFieldStub` is the one that matters — see the module.
+    let rec = null;
+    let fieldPhrase = null;
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => { try { ctrl.abort(); } catch { /* nf */ } }, 30000);
-      let r;
-      try { r = await fetch(fig.url, { signal: ctrl.signal }); } finally { clearTimeout(t); }
-      if (!r || !r.ok) {
-        st.figHttpFails = (st.figHttpFails | 0) + 1;
-        st.lastErr = `figure HTTP ${r ? r.status : '?'}`; st.lastErrAt = now;
-        return null;
+      const ff = require('../figure-field-store.js').loadField(fig.url);
+      if (ff && ff.rec) {
+        rec = ff.rec;
+        fieldPhrase = ff.phrase || null;
+        st.figFromField = (st.figFromField | 0) + 1;
       }
-      buf = Buffer.from(await r.arrayBuffer());
     } catch (e) {
-      st.figHttpFails = (st.figHttpFails | 0) + 1;
-      st.lastErr = `figure fetch: ${e && e.message}`; st.lastErrAt = now;
-      return null;
+      // The field store must never be able to stop her seeing. A broken read
+      // here falls through to the network exactly as a miss would.
+      st.figFieldErrs = (st.figFieldErrs | 0) + 1;
+      st.lastErr = `field store: ${e && e.message}`; st.lastErrAt = now;
     }
 
-    const img = this._decodeImageToRGBA(buf);
-    if (!img) {
-      st.figDecodeFails = (st.figDecodeFails | 0) + 1;
-      st.lastErr = `figure undecodable (${buf ? buf.length : 0} bytes)`; st.lastErrAt = now;
-      return null;
+    if (!rec) {
+      let buf;
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => { try { ctrl.abort(); } catch { /* nf */ } }, 30000);
+        let r;
+        try { r = await fetch(fig.url, { signal: ctrl.signal }); } finally { clearTimeout(t); }
+        if (!r || !r.ok) {
+          st.figHttpFails = (st.figHttpFails | 0) + 1;
+          st.lastErr = `figure HTTP ${r ? r.status : '?'}`; st.lastErrAt = now;
+          return null;
+        }
+        buf = Buffer.from(await r.arrayBuffer());
+      } catch (e) {
+        st.figHttpFails = (st.figHttpFails | 0) + 1;
+        st.lastErr = `figure fetch: ${e && e.message}`; st.lastErrAt = now;
+        return null;
+      }
+
+      const img = this._decodeImageToRGBA(buf);
+      if (!img) {
+        st.figDecodeFails = (st.figDecodeFails | 0) + 1;
+        st.lastErr = `figure undecodable (${buf ? buf.length : 0} bytes)`; st.lastErrAt = now;
+        return null;
+      }
+      const small = this._perceptSource(img, 'corpus figure');
+      st.figTransformed = (st.figTransformed | 0) + 1;
+      try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); }
+      catch (e) {
+        st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
+        st.lastErr = `figure perceive: ${e && e.message}`; st.lastErrAt = now;
+        return null;
+      }
     }
-    const small = this._perceptSource(img, 'corpus figure');
-    let rec;
-    try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); }
-    catch (e) {
-      st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
-      st.lastErr = `figure perceive: ${e && e.message}`; st.lastErrAt = now;
-      return null;
-    }
+
+    // Applies to BOTH sources on purpose. A field that arrived truncated and a
+    // transform that returned nothing are the same defect from here on, and the
+    // floor below (`_recDetail`) is likewise shared — a precomputed percept gets
+    // no more trust than one she just made.
     if (!rec || !rec.channels) {
       st.figPerceiveFails = (st.figPerceiveFails | 0) + 1;
       st.lastErr = 'figure perceive returned empty rec'; st.lastErrAt = now;
@@ -1725,8 +1761,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // specific evidence about what is IN the frame, and the length bound cuts
     // from the tail — so a bound that bites keeps the picture's own words and
     // loses the outer edge of its context, never the reverse.
-    const phrase = [fig.alt, fig.caption, fig.context].filter(Boolean)
-      .join(' ').replace(/\s+/g, ' ').trim().slice(0, 900) || null;
+    // ⚠ THE ROW'S OWN WORDS WIN, AND THE FIELD'S ARE ONLY A FALLBACK. The queued
+    // figure carries its `alt`/`caption`/`context` with it (the CAMPOISON rule —
+    // a binding resolved at perception time reads ambient state and is how an
+    // unlabelled frame once became her memory of a word). The field file happens
+    // to carry the same prose, but preferring it would move the source of truth
+    // off the row and quietly re-open that. Used ONLY when the row has none.
+    const phrase = ([fig.alt, fig.caption, fig.context].filter(Boolean)
+      .join(' ').replace(/\s+/g, ' ').trim().slice(0, 900) || null)
+      || (fieldPhrase ? String(fieldPhrase).replace(/\s+/g, ' ').trim().slice(0, 900) : null);
 
     try {
       const store = this._vmStore();
