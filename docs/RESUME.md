@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔⛔ 2026-09-02 NOFALLBACK.4 (LATEST — PICK UP HERE) — THE SWEEP FOUND THE MEANING SUBSTRATE RUNNING ON SPELLING
+> ## ⭐⭐⭐ 2026-09-02 SECOND BATCH (LATEST — PICK UP HERE) — VERIFYING A FINISHED JOB FOUND THE BUG, AND THE CORPUS LEARNED TO SPEAK
+>
+> ### Read in this order: this block → `docs/TODO.md` (`DIALOGUE.3`, `CORPUSBRACKET.1`, `NOFALLBACK.5/.6/.7` — all filed by these two batches) → the `NOFALLBACK.4` block below.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                      35 open · 9 in-progress   (6 closed today, 5 successors filed)
+> corpus                     240,902 sentences · dialogue lane LIVE · ? 0.751% · ! 0.720%
+> emission                   sem_to_motor ONLY · GloVe now REQUIRED, boot stops without it
+> walk                       frozen ON PURPOSE — the training is still being BUILT
+> donor pod i03ihi54kccu0l   EXITED on purpose. restart = start-pod, NEVER terminate.
+> git                        develop / main on BOTH remotes, tree clean
+> ```
+>
+> ### ⛔⛔ THE PATTERN THAT SHOWED UP TWICE TODAY: A SOURCE CHANGED SHAPE AND NOTHING THAT READS IT WAS RE-CHECKED
+>
+> **① The persona transform was replacing her name with a pronoun.** The canon was rewritten into her voice on 2026-09-01. `_transformToFirstPerson` — which BOTH persona consumers run every sentence through before training — still mapped `unity → i`. Over the rewritten canon: **17 name-bearing sentences damaged.** `"My name is Unity"` trained as `"my name is i"`; `"Unity Lab created me"` as `"i lab created me"`. **She could not learn her own name from the one document about who she is.** Name rules deleted, pronoun rules kept — 17 intact, 0 damaged, `"She reviews every memory."` still becomes `"I review every memory."`
+>
+> **② `keep-longer` was eating every cleaner fix.** The merge exists so three ingests compose into one cell. On the SAME source id it inverts: a regeneration that strips footnotes is **shorter**, so the dirty text wins and **the fix is a silent no-op.** That is why the grade-9 Odyssey still carried Butler's translator footnotes after the cleaner had already been fixed. Same source id now means newest wins.
+>
+> ⭐ **Both were found by VERIFYING something already marked done, not by new work.** That is the argument for `REGRESSION.1` in one line.
+>
+> ### ⭐ THE CORPUS LEARNED TO SPEAK — AND NOT ONE LINE OF IT IS MINE
+> Textbook and encyclopedia prose is declarative by construction: it greets nobody, asks nothing, exclaims never. `dialogueLines()` extracts **quoted speech from the public-domain books already on her reading ladder**, as separate `speech-<title>` entries so narration is never displaced.
+> ```
+>   ?                734 -> 1,808     0.313% -> 0.751%
+>   !                515 -> 1,735     0.220% -> 0.720%
+>   combined                          0.533% -> 1.471%   (2.8x, for +2.9% corpus)
+>   greeting lines     0 ->    25     all attested, none authored
+> ```
+> ⛔ **Punctuation is never added** — a line ending in the narrator's attribution comma loses the comma and gets nothing back, because the terminal form is the thing being taught. ⚠ **Budget RE-PRICED, not guessed:** a third-share was built and measured first (0.853%), and the cap — not the source — was the binding constraint.
+>
+> ### ⛔ NEW LAW: A COMPLETION RECORD MAY NOT CONTAIN AN UNRESOLVED WARNING
+> In `CONSTRAINTS.md §NEVER DELETE TODO INFO` (final section), beside FINALIZED-BEFORE-DELETE deliberately — **that law governs WHERE a record lives, this one governs WHAT IT MAY CLAIM.** The post-work hook carries a third mandatory line. ⭐ **The exclusion list is what makes it survivable** (a retracted claim, a deliberate limit whose successor row is open, a how-to-read-this warning all stay legal). Every close in this batch names its residual: `DIALOGUE.3` and `CORPUSBRACKET.1` exist because of it.
+>
+> ### ⏳ WHAT IS LEFT ON THESE THREADS
+> - **`DIALOGUE.3`** — the plays contribute ~nothing to the speech lane and they are the works that are nothing BUT speech. Hamlet: 0 lines. The extractor finds quotes; drama marks speakers.
+> - **`CORPUSBRACKET.1`** — four cleaners fixed, **643 / 233,767** bracket sentences still in the shipped corpus until each cell regenerates. Sequence with the wiki top-up.
+> - **`NOFALLBACK.5`** (gate re-price, never measured without the oracle) · **`.6`** (browser visitor brain — a PUBLIC-page change) · **`.7`** (chat async/sync emission fork).
+> - **THE FRESH WALK IS LAST. `REGRESSION.1` is last of all.**
+
+---
+
+> ## ⛔⛔⛔ 2026-09-02 NOFALLBACK.4 — THE SWEEP FOUND THE MEANING SUBSTRATE RUNNING ON SPELLING
 >
 > ### Read in this order: this block → `docs/TODO.md` (`NOFALLBACK.5`, then `.6` / `.7` which this sweep filed) → the 2026-09-01 block below for the oracle removal this continues.
 >
