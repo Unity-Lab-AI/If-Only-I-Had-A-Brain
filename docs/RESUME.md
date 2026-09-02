@@ -1,6 +1,53 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 MATHS GETS ITS TEXTBOOK (LATEST — PICK UP HERE) — AND THE "71 UNUSED EXPORTS" WERE SEVEN
+> ## ⭐⭐⭐ 2026-09-02 THE CANON PICKS THE BOOKS (LATEST — PICK UP HERE) — AND FOUR RULINGS SET THE ORDER
+>
+> ### Read in this order: this block → `docs/TODO.md` → `docs/TEACHVIEW-INVENTORY.md` → the blocks below.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                 48 open
+> corpus                187 cells · 46,177,474 words · 23,057 figures · 299 MB
+> cells walked          213 · 56 full · 130 thin · 7 empty
+> maths                 0 prose cells this morning -> 13 · 1,453,196 words · 8,683 figures
+> reading ladder        73 -> 90 placements / 84 books · early band 31 -> 48
+> git                   4 commits on feature/board-triage-0902, NOT cascaded
+>                       main 35d1eda5 · develop 24e4fa7f on both remotes
+> ⚠ NOT pushed          the corpus files the two ingests are still writing
+> ingests RUNNING       the encyclopedia pass + the open-textbook pass — many hours in
+> walk                  frozen ON PURPOSE — training still being BUILT
+> donor pod i03ihi54kccu0l  EXITED on purpose. restart = start-pod, NEVER terminate.
+> ```
+>
+> ### ⛔⛔ GEE'S RULINGS — THESE GOVERN, AND TWO OF THEM CORRECTED ME MID-WORK
+> - *"dont get random books get all the american classics for early grades"* → ⭐ **THE CANON DECIDES THE BOOKS.** I was probing illustrated children's-book HOSTS; her canon is an American school year — McGuffey, US social studies, the Revolution. **The host with the most pictures does not get to pick.** One source he rejected outright: not pursued, do not re-propose it.
+> - *"remember the teach view is not a verbatim copy of the dashboard it is the verbatim shit i told you to all put in it"* → **the training monitor is about THE TRAINING.** Her vital signs — consciousness, mood, hormones, donor throughput, loop lag — are the DASHBOARD's job. My first inventory was a regrouping of those and was wrong.
+> - *"and we dont use item numbers or code names and shit we use plain english for it all"* → **brain documents name the thing, never the ticket.** A reader cannot look up a ticket number.
+> - **Ordering ruled earlier the same session:** find a bigger source before writing fetchers · early band first · panel inventory then one full vertical slice · run the maths ingest scoped now and the full pass after the ingests stop.
+>
+> ### ⭐ WHAT LANDED
+> **Maths went from nothing to a full shelf.** Illustrative Mathematics (K-10) plus three OpenStax books (grade10-12): **13 cells · 1,453,196 words · 8,683 figures**, and **2,369 of those figures carry the prose they sit inside — the first corpus content anywhere that does.**
+>
+> **The American classics — early band 31 → 48 books, all with illustrated editions.** Chosen that way deliberately: the early band held **348 pictures against college's 8,852**, so these feed the thinnest prose and the emptiest eyes at once.
+>
+> **The training-monitor inventory** (`docs/TEACHVIEW-INVENTORY.md`) — organised by each clause of what he asked for. **The real gaps: what is actually being SENT (bytes, frame shapes, and the pictures she is shown that the page never mentions), having ALL of it rather than a 400-item window, and controls — the page is read-only today apart from the art verdicts.**
+>
+> ### ⛔⛔ THE RULE THAT KEPT PAYING: VERIFY THE ID, NOT THE TITLE YOU MEANT
+> Candidate book ids proposed for the classics batch resolved to **The Three Musketeers · Siddhartha · Dr Jekyll and Mr Hyde · The Eskdale Herd-boy · Whistler's *The Gentle Art of Making Enemies***. **A wrong id does not fail — it teaches the wrong book.** ⚠ The first verification attempt **timed out** because the catalogue API was returning 503; **the method that works is reading each book's own header straight from Gutenberg, in parallel** — seconds instead of minutes.
+>
+> ### ⚠ TWO DEFECTS I INTRODUCED THE SAME DAY AND FOUND BY RUNNING THINGS
+> - **A mapping is not an ingest.** Three maths books were added to the book map in the morning and the fetcher was never executed — two cells sat EMPTY until the auditor was pointed at them.
+> - **The coverage auditor still called maths a by-design absence** after maths became a prose subject, so it reported the same nine cells as *both* "no prose lane by design" **and** "EMPTY". A set that encodes a policy has to move when the policy moves.
+>
+> ### ⏳ NEXT — three are queued behind the running ingests
+> **Fetch the classics** (writes the English cells; the encyclopedia pass is writing them too) · **the full textbook pass** (writes the general-education cells; also retires the dead economics cell holding 342,056 unread words) · **audit the two concurrent ingests for entries they lost** · **then one full vertical slice of the monitor — he needs to pick the area** · **the purge still does not exist** · **the full regression review is last by construction.**
+>
+> ### ⚠ OWNED FOULS THIS SESSION
+> A Python heredoc and a `sed -i` on files that should have gone through the editor. Three separate measurement tools that reported confident wrong answers — a `%VAR%`-eaten git format string, a regex assuming the wrong data shape, and an occurrence count posing as a file count. **Each was caught by a number being implausible, not by anything erroring.** On Windows the shell is cmd.exe, so `%` in any argument is a variable reference.
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 MATHS GETS ITS TEXTBOOK (EARLIER) — AND THE "71 UNUSED EXPORTS" WERE SEVEN
 >
 > ### Read in this order: this block → `docs/TODO.md` (`MATHBOOK.2`, `TEACHVIEW.9`, `FIGTEXT.4` are the live successors) → the blocks below.
 >
