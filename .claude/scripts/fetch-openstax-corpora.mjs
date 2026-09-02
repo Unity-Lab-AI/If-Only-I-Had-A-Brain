@@ -105,6 +105,36 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ⚠ Alt text and caption are kept SEPARATE from `story` on purpose. They are
 // not body prose — folding them in would inflate the word count with material
 // that reads like a caption, and the corpus bar is measured in prose words.
+//
+// ⭐⭐ AND THE PICTURE COMES WITH THE PROSE IT SITS INSIDE. A caption is the
+// picture's OWN words, written to be read while looking at the picture — for
+// thousands of figures the whole textual anchor is a line like "Figure 1.1 World
+// Exports, 1948-2008", which binds a percept to a number and a date rather than
+// to the subject it illustrates. `context` is the surrounding BODY prose, run
+// through the very cleaner that produced this cell's sentences, so the figure's
+// context and the cell's story are the SAME STRINGS and the tie between them is
+// a match rather than an inference.
+const CONTEXT_CHARS = 1400;   // raw source taken either side of the image
+const CONTEXT_SENTS = 2;      // whole sentences kept on each side
+
+// ⚠ The window is cut from RAW source, so both ends can land mid-sentence. The
+// TRAILING cut is already handled: the cleaner drops any segment that does not
+// end in terminal punctuation, so a cut tail is discarded rather than fused onto
+// its neighbour — the fabrication defect that made the speech lane invent
+// sentences nobody said.
+//
+// ⛔ THE LEADING CUT IS NOT, AND A HARNESS ON A REAL PAGE CAUGHT IT: a window
+// beginning mid-sentence can still end that fragment at a full stop, producing
+// half a sentence that wears a terminator and passes every filter. The head
+// segment of `before` is therefore always discarded — it is the ONE segment the
+// cut can have truncated invisibly.
+function figureContext(raw, index, clean) {
+  const before = clean(String(raw).slice(Math.max(0, index - CONTEXT_CHARS), index), Infinity).slice(1);
+  const after = clean(String(raw).slice(index, index + CONTEXT_CHARS), Infinity);
+  return [...before.slice(-CONTEXT_SENTS), ...after.slice(0, CONTEXT_SENTS)]
+    .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
 function harvestFigures(md) {
   const figs = [];
   if (!md) return figs;
@@ -120,7 +150,7 @@ function harvestFigures(md) {
     // it would be an image with no label, which is the camera-frame defect
     // (`CAMPOISON`) all over again. Skip rather than bank an unlabelled image.
     if (!alt && !caption) continue;
-    figs.push({ src, alt, caption });
+    figs.push({ src, alt, caption, context: figureContext(md, m.index, cleanOpenStax) });
   }
   return figs;
 }
@@ -363,7 +393,13 @@ async function buildBook({ repo, subject, grade, label }) {
     note: `Hybrid academic-depth corpus for ${subject}/${grade}. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.`,
     experiences: merged,
   };
-  fs.writeFileSync(outPath, JSON.stringify(doc, null, 2), 'utf8');
+  // ⛔ ATOMIC — these cell files are shared by every ingest, and two of them have
+  // already been caught running at the same time over the same twelve subjects.
+  // A rename cannot leave a half-written file behind; it degrades a lost update
+  // into last-writer-wins, which a deterministic re-run repairs.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(doc, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   console.log(`  ${experiences.length} chapters, ${taken} sentences -> ${subject}/${grade}.json (cell now ${merged.length} entries)`);
   return taken;
 }

@@ -195,6 +195,38 @@ async function catalogueBooks() {
 // no alt text and no caption — is refused too: a percept with nothing to bind to
 // is the camera-frame defect (`CAMPOISON`), where an unlabelled frame fused with
 // whatever word happened to be current and became a false memory.
+//
+// ⭐⭐ AND EVERY FIGURE CARRIES THE BODY PROSE IT SITS INSIDE (`context`). A
+// Saylor caption is very often nothing but a numbered title — "Figure 1.1 World
+// Exports, 1948-2008 (in Billions of U.S. Dollars)" — with no alt text at all,
+// so alt+caption alone would bind a diagram to a figure number and a date rather
+// than to the trade economics it illustrates. The context is cut from the page
+// around the image and run through `cleanSentences`, the SAME cleaner that
+// produced this section's corpus sentences, so the two are the same strings and
+// the reference between text and picture is a match, not a guess.
+const CONTEXT_CHARS = 1400;   // raw HTML taken either side of the <img>
+const CONTEXT_SENTS = 2;      // whole sentences kept on each side
+
+// ⚠ The window is cut from RAW HTML, so both ends can land mid-sentence and mid-
+// tag. The TRAILING cut is already handled — `cleanSentences` refuses any segment
+// that does not end in terminal punctuation, so the last piece of `after` is
+// dropped rather than fused onto its neighbour.
+//
+// ⛔ THE LEADING CUT IS NOT, AND A HARNESS ON A REAL PAGE CAUGHT IT. A window
+// beginning mid-sentence can still end that fragment at a full stop — the first
+// context this produced read `dollars)" shows the overall annual exports…`,
+// which is half a sentence wearing a terminator and passes every filter. The
+// head segment of `before` is therefore always discarded: it is the ONE segment
+// the cut can have truncated invisibly, and one certainly-whole sentence beats
+// two where either might be a fragment.
+function figureContext(html, index) {
+  const s = String(html);
+  const before = cleanSentences(s.slice(Math.max(0, index - CONTEXT_CHARS), index)).slice(1);
+  const after = cleanSentences(s.slice(index, index + CONTEXT_CHARS));
+  return [...before.slice(-CONTEXT_SENTS), ...after.slice(0, CONTEXT_SENTS)]
+    .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
 function harvestFigures(html, pageUrl) {
   const figs = [];
   if (!html) return figs;
@@ -210,7 +242,12 @@ function harvestFigures(html, pageUrl) {
     const capM = [...before.matchAll(/<p class="title"[^>]*>([\s\S]{0,300}?)<\/p>/gi)].pop();
     const caption = capM ? capM[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
     if (!alt && !caption && !title) continue;
-    figs.push({ src: new URL(src, pageUrl).href, alt: alt || title, caption });
+    figs.push({
+      src: new URL(src, pageUrl).href,
+      alt: alt || title,
+      caption,
+      context: figureContext(html, m.index),
+    });
   }
   return figs;
 }
@@ -262,12 +299,18 @@ function writeCell(subject, grade, entry) {
   const sameSource = old && old.source === entry.source;
   if (!old || sameSource || entry.story.length > old.story.length) byTheme.set(entry.theme, entry);
   const merged = [...byTheme.values()];
-  fs.writeFileSync(outPath, JSON.stringify({
+  // ⛔ ATOMIC — these cell files are shared by every ingest, and two of them have
+  // already been caught running at the same time over the same twelve subjects.
+  // A rename cannot leave a half-written file behind; it degrades a lost update
+  // into last-writer-wins, which a deterministic re-run repairs.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify({
     version: 1, grade, subject,
     source: 'hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented',
     note: `Upper-undergraduate textbook corpus for ${subject}/${grade}. Trained via curriculum._trainAcademicStories. A college year is a course with a book.`,
     experiences: merged,
   }, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   return merged.length;
 }
 

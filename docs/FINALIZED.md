@@ -5,6 +5,74 @@
 
 ---
 
+## 2026-09-02 (SEVENTH BATCH) — `FIGTEXT.1` / `FIGTEXT.2` / `CELLRACE.1` — THE PICTURES ARRIVE WITH THEIR TEXT, AND HALF OF THEM HAD NEVER BEEN REACHABLE AT ALL
+
+Gee (verbatim): *"wtf u have to be getting the images with the text information of the corpus to be able to correctly reference the text to all the corpus images"*
+
+- [x] `FIGTEXT.1` — ⛔ **A FIGURE IS HARVESTED WITH ITS OWN CAPTION AND NOTHING ELSE, SO NOTHING TIES IT TO THE CORPUS PROSE IT ILLUSTRATES.** Measured across all 174 cells: **14,374 figures, every one carrying exactly four fields — `src`, `alt`, `caption`, sometimes `url`. Zero carry a single word of the surrounding corpus text.** A figure rides the ENTRY that owns its chapter, and an entry's `story` can be hundreds of thousands of words, so "which prose does this diagram illustrate?" has no answer anywhere in the data. ⭐ **Why the caption is not enough:** `alt` + `caption` are the picture's own words, authored to be read while looking at the picture. **8,185 have alt, 12,028 have a caption, and only 5,839 have both** — so for thousands of figures the entire textual anchor is one line like *"Figure 1.1 World Exports, 1948–2008"*, which binds a percept to a number and a date rather than to the economics she was just taught. ⛔ **This is the `CAMPOISON` failure one step upstream** — that defect was an image fusing with whatever word happened to be current; this is an image with a label so thin that the word it fuses with is nearly arbitrary. **The fix is at the HARVEST, not at the consumer**: each `<img>` is taken together with the prose it sits inside, cleaned by the same cleaner that produced the cell's sentences, so the figure's context text and the cell's story text are **the same strings** and the reference between them is a match, not a guess.
+
+- [x] `FIGTEXT.2` — **6,899 OF THE 14,374 FIGURES HAVE NEVER BEEN REACHABLE BY THE WALK, AND THE CAUSE IS A PRODUCER/CONSUMER NAME MISMATCH.** Found while measuring `FIGTEXT.1`. `academicStoryFigures()` skips any figure without `url` (`if (!f || !f.url) continue;`) — but the Saylor and Gutenberg harvesters write their fully-resolved absolute address to **`src`**, and only the OpenStax harvester writes `url`. **Every Saylor figure (5,650) and every Gutenberg illustration (1,249) is therefore invisible**, while holding a perfectly good `https://…` address the whole time. ⛔ **The data was never wrong; the reader was** — so this needs no re-fetch, only the accessor fixed at its one chokepoint. ⚠ **And it means the "14,374 figures" number reported to Gee at the end of the corpus war overstated what the walk can actually see by 92% — the reachable count was 7,475.** Same defect class as `meanVoltage` reading null for seven clusters while being computed every tick.
+
+- [x] `CELLRACE.1` — ⛔⛔ **TWO INGESTS ARE WRITING THE SAME CELL FILES RIGHT NOW WITH NO LOCKING, AND THE MERGE IS READ-MODIFY-WRITE.** Found by listing the live processes rather than by reasoning: `fetch-academic-corpora.mjs` and `fetch-wikibooks-corpora.mjs` are both running, and both `writeCell` implementations read the existing `corpora/academic/<subject>/<grade>.json`, merge one entry by theme, and write the whole file back. **Their subject sets overlap on twelve subjects** — art, social, health, music, pe, language, science, cs, civics, research, economics, psychology — so any interleaving where both read the same cell before either writes **silently discards the other's entry.** ⚠ **The RESUME block warned about exactly this pairing** (*"wait for Wikibooks, they write the same cells"*) and the Wikipedia pass was started anyway. ⭐ **The damage is repairable and that is worth stating plainly: themes are deterministic per ingest, so re-running the loser restores whatever it lost** — which is the argument for letting both finish rather than killing hours of throttled crawl on a hazard that has a known repair. **The fix for future runs is an atomic write** (write to a temp sibling, then rename) **plus a per-cell lock**; a rename is atomic on both platforms and turns a lost update into a last-writer-wins, which the merge is already designed for.
+
+> ### ✅ VERDICT — `FIGTEXT.2` IS THE ONE THAT CHANGED A NUMBER, AND IT CHANGED IT BY 92%
+>
+> ⛔⛔ **THE ADDRESS LIVED UNDER TWO FIELD NAMES AND THE READER KNEW ONE.** Three harvesters write figures. OpenStax resolves the image path against its book repo and stores it as **`url`**; Saylor and Gutenberg resolve theirs with `new URL(src, pageUrl).href` — an equally absolute, equally correct `https://` address — and store it as **`src`**. `academicStoryFigures()` required `url`. **So 6,899 figures were harvested, committed, counted and reported, and the walk could not see one of them.**
+>
+> **Fixed at the chokepoint, one place, no re-fetch:** the accessor reads either spelling and gates on the address being absolute, which is the requirement that actually matters — a relative `src` is a page-local path meaning nothing to a fetch from this process. **Measured before and after over all 174 cells: `7,475 → 14,374` reachable.**
+>
+> ⚠ **AND THE HONEST CORRECTION THAT COMES WITH IT:** the "14,374 figures" figure quoted at the close of the corpus war was a count of rows on disk, not of pictures she could ever be shown. **For the whole of that session the true reachable number was 7,475.** Reading both spellings is not a fallback — it is one field under two names, and neither name means anything weaker than the other.
+>
+> ### ⭐⭐ `FIGTEXT.1` — WHAT "THE IMAGES WITH THE TEXT INFORMATION OF THE CORPUS" ACTUALLY REQUIRED
+>
+> **Every figure now carries `context`: the corpus prose it sits inside, cut positionally from the source around the image and run through THE SAME CLEANER that produced that cell's sentences.** That last clause is the whole design — it means the figure's context and the cell's story are literally the same strings, so the reference between the words and the picture is a match rather than an inference.
+>
+> Built on all three lanes that harvest figures, each with its own cleaner because the sources are markdown, HTML and a Gutenberg text edition and one shared function could not clean all three. **The Gutenberg lane needed a refactor to get there** — its `cleanProse` drops the first 8% of a work as residual front matter and then stride-samples, which is right for a whole book and destroys a 1,600-character window, so the per-sentence acceptance rules were lifted out into `proseSentences()` and both callers now share exactly one filter. **Two copies would drift, and the entire value of `context` depends on them not drifting.**
+>
+> **Verified live against real pages, through the shipped functions sliced verbatim out of the scripts rather than retyped:**
+> ```
+> SAYLOR   international-trade s04    3 figures   3/3 with context
+> OPENSTAX biology m44425.md          7 figures   7/7 with context
+> WIKIPEDIA Photosynthesis           11 figures  11/11 with context, 11/11 licensed
+> WIKIPEDIA Volcano (simple)          6 figures   5/6 with context,  6/6 licensed
+> ```
+> The Saylor case is the one that shows why the row existed: **every one of those three figures has EMPTY alt text and a caption that is a numbered title** — *"Figure 1.2 World Exports, 1970–2008 (Percentage of World GDP)"*. Alone, that binds a diagram to a figure number and a date. With context it now also carries *"world exports grew from just over 10 percent of the gdp in 1970 to over 30 percent by 2008. thus trade is not only rising rapidly in absolute terms; it is becoming relatively more important too."*
+>
+> ⛔ **THE HARNESS EARNED ITS KEEP TWICE, AND BOTH FINDINGS WERE MINE.**
+>
+> **① THE WINDOW CUT A SENTENCE IN HALF AND THE HALF PASSED EVERY FILTER.** The first Saylor context read `dollars)" shows the overall annual exports measured in billions of u.s.` — a fragment. Every cleaner in this project refuses a segment that does not end in terminal punctuation, which handles the window's TRAILING cut; the LEADING cut is different, because a window that starts mid-sentence can still end that fragment at a full stop. **The head segment of the before-window is now always discarded** — it is the one segment the cut can have truncated invisibly, and one certainly-whole sentence beats two where either might be half of one.
+>
+> **② A PLACEHOLDER IS NOT A LABEL, AND IT PASSED THE WORD-COUNT TEST FOR AS LONG AS THAT LANE HAS EXISTED.** Measured in the shipped corpus: **376 figures, 2.62%, whose entire textual anchor is one placeholder word** — overwhelmingly `alt="[Illustration]"` with no caption, which is what a transcriber types where a picture goes. Binding a plate to the word *"illustration"* is precisely the `CAMPOISON` defect. **The plate is not discarded for it**, because it now arrives with the passage it illustrates: the requirement was always *words to bind to*, and the test now asks for a real label OR real surrounding prose, refusing only a plate carrying neither.
+>
+> ### ⛔⛔ THE CONSUMER HALF: THE WORDS WERE STORED AND NEVER TAUGHT
+>
+> `_perceiveTextbookFigure` banked the percept and wrote the phrase onto the record — **and nothing bound one to the other.** A diagram's caption sat in the store as a string nobody learned. The look lane has called `_queuePhraseTeach` since it shipped; the figure lane simply never did, which made *"the picture arrives with its text"* true of the data and false of the brain. It now teaches, with `context` folded into the phrase behind the label.
+>
+> ⚠ **NO TRUST GATE HERE, and the difference is deliberate.** The look lane gates on `_anyTrustedBind` because a generated render is one unconfirmed guess whose wording she may yet reject. A textbook figure is authored, captioned by the people who drew it, and licensed — the same provenance that lets this lane skip `LOOKTWICE` — so its words are evidence on arrival. Queued, never awaited, bounded by the queue's own caps.
+>
+> ### ⛔⛔⛔ AND I SHIPPED THE SESSION'S OWN DEFECT SPECIES INTO THE NEW CODE, THEN CAUGHT IT WITH A HARNESS
+>
+> The first cut of the Wikipedia figure lane swallowed every non-ok body and returned an empty array — so a **429 throttle read as *"this article has no pictures"***. Indistinguishable from the truth, permanent once merged, invisible in the log. **That is the same defect that already cost this lane 147 topics in one run, that had Wikibooks calling rate-limiting "not a book", and that this very file carries a four-step backoff ladder to avoid.** Writing it a fourth time in the function that harvests the pictures is why the ladder is now duplicated into it rather than assumed, why the reason is RETURNED rather than logged and dropped, and why `no-labelled-images` and `all-refused` are separate outcomes — an article whose pictures all failed the licence test is not an article without pictures.
+>
+> ### ⚠ THE KEEP-LONGER MERGE WOULD HAVE THROWN AWAY EVERY PICTURE
+>
+> Both wiki lanes merge by keeping the longer story, and the old entry wins whenever its story is at least as long — the normal case on a re-fetch of the same article. **The winner is the entry from before the figure lane existed, so the figures would have been discarded on exactly the runs that exist to add them.** Same trap `--reclean` was written for: an improvement that only reaches future downloads never arrives. The story still loses; only the figures are adopted, and only onto an entry holding none.
+>
+> ### ⛔ LICENCE IS PER FILE, NOT PER ARTICLE
+>
+> A CC-BY-SA article can legitimately carry a non-free image under fair use — a doctrine about a specific use, which does not travel into a corpus this project publishes. Every file's own `LicenseShortName` is read in one batched request per article, and the gate was exercised on real values: `CC BY-SA 4.0` ✅ · `Public domain` ✅ · `CC0` ✅ · `CC BY-NC-ND 3.0` ❌ · `Fair use` ❌ · `GFDL` ❌ · empty ❌. **GFDL is refused as a documented cost, not an oversight** — it is a free licence that permits derivatives, and refusing it loses some Commons images; the posture is refuse-rather-than-guess, because a guessed licence passes the *"licence recorded"* check while being unverified.
+>
+> ### ✅ `CELLRACE.1` — ATOMIC WRITE ON ALL FIVE CELL WRITERS
+>
+> Every ingest that writes a corpus cell now writes to a pid-suffixed temp sibling and renames: `fetch-academic`, `fetch-wikibooks`, `fetch-saylor`, `fetch-openstax`, `fetch-gutenberg`. A rename is atomic on both platforms, so a torn or lost write degrades into last-writer-wins — the shape the merge already assumes, since every ingest's themes are deterministic and a re-run restores what it lost. `*.tmp-[0-9]*` is gitignored with the reason written in, because `*.tmp` does not match the pid suffix (and the pid is what stops two runs colliding on the temp name).
+>
+> ⚠ **THIS IS NOT A TRANSACTION AND THE ROW SHOULD NOT BE READ AS ONE.** The read-modify-write is still not locked; the remaining race costs one whole entry, not a corrupt file — which is the difference between a shortfall a re-run repairs and a cell nobody can parse. ⛔ **And it does not reach the two processes already running**, which loaded their code before this change existed. **Live successor `CELLRACE.2` audits those two runs for entries they lost.**
+>
+> ### ⏳ LIVE SUCCESSORS — the corpus does not carry any of this until it is regenerated
+> **`FIGTEXT.4`** (re-ingest so the shipped 14,374 figures gain their context; the merge cannot add it retroactively) and **`FIGTEXT.3`** (the Wikibooks network path is built and offline-verified but **unverified live** — its API returned 429 to every probe because the production ingest was using the quota).
+
+---
+
 ## 2026-09-02 (FIFTH BATCH) — `CURVEBUILD.2` — THE TARGET LADDER WAS ALREADY IN CODE, AND I DERIVED A WORSE ONE BEFORE READING IT
 
 - [x] `CURVEBUILD.2` — **GRADE-BANDED WORD TARGETS, written into `docs/CURRICULUM-GAP.md` as the acceptance number per cell.** A real year at kindergarten is a few thousand words of prose; a real year at PhD is the literature. Flat targets are how `MAX_SENT_PER_TOPIC = 14` happened in the first place — one number applied to twenty different years. The ladder replaces `CURVEDEPTH.2`'s bare "raise the cap": **the cap becomes source-aware AND grade-aware**, and the per-cell target is expressed as *a real year of that course*.

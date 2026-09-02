@@ -369,17 +369,19 @@ function speechFrom(txt, cap) {
   return { ...dialogueLines(txt, cap), mode: 'quoted', density };
 }
 
-function cleanProse(txt, cap) {
-  if (!txt) return [];
-  const t = normalizeBody(txt);
-  // ⛔ COLLECT THE WHOLE WORK FIRST, THEN SAMPLE ACROSS IT — never take the
-  // first N. Taking the first N gave the TRANSLATOR'S PREFACE of the Odyssey
-  // instead of the poem: Gutenberg's START marker sits before the title page,
-  // preface and contents, so "the beginning of the file" is not "the beginning
-  // of the work". Sampling across the body also means a grade reads a whole
-  // book rather than its opening pages. Caught by reading the output.
+// The per-sentence acceptance rules, lifted out of `cleanProse` so the
+// illustration lane can apply the SAME bar to the prose it captures around a
+// plate. Two copies of these tests would drift, and the whole point of a
+// figure's context is that it is the same strings as the cell's story — which
+// only holds while one filter produces both.
+//
+// ⚠ Takes ALREADY-NORMALISED text. `cleanProse` normalises a whole Gutenberg
+// file through `normalizeBody` (which hunts the START/END boilerplate markers);
+// a 1,400-character window has no markers, so the illustration lane does its own
+// tag strip and hands the result straight here.
+function proseSentences(t) {
   const all = [];
-  for (let s of t.split(/(?<=[.!?])\s+/)) {
+  for (let s of String(t).split(/(?<=[.!?])\s+/)) {
     s = s.trim();
     if (s.length < SENT_MIN || s.length > SENT_MAX) continue;
     if (/[^\x20-\x7e]/.test(s)) continue;
@@ -398,6 +400,18 @@ function cleanProse(txt, cap) {
     if (/[\[\]]/.test(s)) continue;
     all.push(s.toLowerCase());
   }
+  return all;
+}
+
+function cleanProse(txt, cap) {
+  if (!txt) return [];
+  // ⛔ COLLECT THE WHOLE WORK FIRST, THEN SAMPLE ACROSS IT — never take the
+  // first N. Taking the first N gave the TRANSLATOR'S PREFACE of the Odyssey
+  // instead of the poem: Gutenberg's START marker sits before the title page,
+  // preface and contents, so "the beginning of the file" is not "the beginning
+  // of the work". Sampling across the body also means a grade reads a whole
+  // book rather than its opening pages. Caught by reading the output.
+  const all = proseSentences(normalizeBody(txt));
   // Drop a leading slice as residual front matter, then stride-sample the rest.
   const head = Math.floor(all.length * 0.08);
   const body = all.slice(head);
@@ -427,6 +441,43 @@ function cleanProse(txt, cap) {
 // attached is skipped. A percept with nothing to bind to is the `CAMPOISON`
 // defect, where an unlabelled frame fused with whatever word was current and
 // became a false memory.
+//
+// ⭐⭐ AND EVERY PLATE CARRIES THE PASSAGE IT ILLUSTRATES (`context`). A plate's
+// own caption is typically a line of dialogue or a chapter reference — "Reading
+// Jane's Letters. Chap 34." — which names where the picture sits and says
+// nothing about what is in it. The narrative around the plate is what makes the
+// picture mean something, and in an illustrated edition the artist put the plate
+// exactly where that passage is. Captured through `proseSentences`, the same
+// filter the book's own corpus sentences pass, so the two are the same strings.
+const CONTEXT_CHARS = 1600;   // raw HTML taken either side of the plate
+const CONTEXT_SENTS = 2;      // whole sentences kept on each side
+
+// ⚠ Cut from raw HTML, so both ends can land mid-sentence. The TRAILING cut is
+// handled by `proseSentences`, which drops any segment not ending in terminal
+// punctuation. ⛔ The LEADING cut is not — a window beginning mid-sentence can
+// still end that fragment at a full stop, giving half a sentence that wears a
+// terminator and passes every filter (caught by a harness on a real page). The
+// head segment of `before` is therefore always discarded.
+function plateContext(html, index) {
+  const strip = (x) => String(x)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\[[^\[\]]*\]/g, ' ')
+    .replace(/_+/g, ' ')
+    .replace(/[‘’‚‛′]/g, "'")
+    .replace(/[“”„‟″]/g, '"')
+    .replace(/[‐-―−]/g, '-')
+    .replace(/[…]/g, '...')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ');
+  const before = proseSentences(strip(html.slice(Math.max(0, index - CONTEXT_CHARS), index))).slice(1);
+  const after = proseSentences(strip(html.slice(index, index + CONTEXT_CHARS)));
+  return [...before.slice(-CONTEXT_SENTS), ...after.slice(0, CONTEXT_SENTS)]
+    .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
 async function fetchIllustrations(id) {
   const base = `https://www.gutenberg.org/cache/epub/${id}/`;
   let html = '';
@@ -449,12 +500,28 @@ async function fetchIllustrations(id) {
     const capM = /<(?:figcaption|p[^>]*class="[^"]*caption[^"]*")[^>]*>([\s\S]{0,240}?)<\//i.exec(after);
     const caption = capM ? capM[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
     const words = (alt || title || caption).replace(/[^a-z ]/gi, '').trim();
+    const context = plateContext(html, m.index);
+    // ⛔⛔ A PLACEHOLDER IS NOT A LABEL, AND IT PASSED THE WORD-COUNT TEST FOR
+    // AS LONG AS THIS LANE HAS EXISTED. Measured in the shipped corpus: **376
+    // figures, 2.6%, whose entire textual anchor is one placeholder word** —
+    // overwhelmingly `alt="[Illustration]"` with no caption, which is what a
+    // transcriber types where a picture goes. Binding a plate to the word
+    // "illustration" is precisely the `CAMPOISON` defect: a percept fused to a
+    // word that says nothing about what is in it.
+    //
+    // ⭐ The plate is not discarded for it, because it now arrives with the
+    // PASSAGE it illustrates. The requirement was always "words to bind to" and
+    // the placeholder test simply makes that requirement honest — a real label
+    // OR real surrounding prose, and a plate carrying neither is refused.
+    const placeholder = /^(illustration|image|figure|photo|picture|graphic|logo|decoration)(\s+\d+)?$/i
+      .test(words.replace(/\s+/g, ' ').trim());
     if (words.length < 3) continue;                       // no words to bind to
+    if (placeholder && context.length < 40) continue;     // nor any in the prose
     let abs;
     try { abs = new URL(src, base).href; } catch { continue; }
     if (seen.has(abs)) continue;
     seen.add(abs);
-    figs.push({ src: abs, alt: alt || title, caption });
+    figs.push({ src: abs, alt: alt || title, caption, context });
   }
   return figs;
 }
@@ -586,12 +653,18 @@ async function buildGrade(grade, books) {
     if (!old || sameSource || e.story.length > old.story.length) byTheme.set(e.theme, e);
   }
   const merged = [...byTheme.values()];
-  fs.writeFileSync(outPath, JSON.stringify({
+  // ⛔ ATOMIC — these cell files are shared by every ingest, and two of them have
+  // already been caught running at the same time over the same twelve subjects.
+  // A rename cannot leave a half-written file behind; it degrades a lost update
+  // into last-writer-wins, which a deterministic re-run repairs.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify({
     version: 1, grade, subject: 'ela',
     source: 'hybrid: Project Gutenberg public-domain literature + OpenStax (CC-BY) + Wikipedia (CC-BY-SA), cleaned + sentence-segmented',
     note: `Hybrid academic-depth corpus for ela/${grade}. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.`,
     experiences: merged,
   }, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   const n = experiences.reduce((a, e) => a + e.story.split(/(?<=[.!?])\s+/).length, 0);
   console.log(`  -> ela/${grade}.json (cell now ${merged.length} entries)`);
   return n;

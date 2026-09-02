@@ -171,6 +171,115 @@ async function extractsFor(titles) {
   return all.filter((s) => !seen.has(s) && seen.add(s));
 }
 
+// ⭐⭐ THE DIAGRAMS, AND THE CHAPTER PROSE THEY SIT INSIDE.
+//
+// An open textbook is a textbook: it teaches with pictures. This lane reached
+// the cells that have no commercial textbook at all and harvested none of them,
+// so the thinnest cells also had the fewest pictures.
+//
+// ⛔ BOUNDED PER BOOK, AND THE BOUND IS THE FEATURE. `extractsFor` already pays
+// one request PER CHAPTER — the batching trap above made that unavoidable — so a
+// 33-chapter book costs 33 requests before a single image is asked for. Walking
+// every chapter for figures would double that on an API this project has been
+// throttled off repeatedly. `WB_FIG_CHAPTERS` chapters are walked, in the book's
+// own order, and the log says how many were skipped so the bound is never
+// mistaken for an absence.
+const WB_FIG_CHAPTERS = Number(process.env.WB_FIG_CHAPTERS) || 8;
+const WB_FIG_PER_CHAPTER = 6;
+
+function wbFileName(src) {
+  const m = /\/wikipedia\/[a-z]+\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/i.exec(String(src || ''));
+  if (!m) return '';
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+
+// Public domain and CC marks pass; ND is refused because this corpus publishes
+// an adaptation; anything unrecognised — every fair-use tag included — is
+// refused rather than guessed, since a guessed licence passes the "licence
+// recorded" check while being unverified.
+function wbLicenceOk(short) {
+  const s = String(short || '').trim();
+  if (!s) return null;
+  if (/\bND\b|NoDeriv/i.test(s)) return null;
+  if (/^(public domain|pd(-|$)|cc0)/i.test(s)) return s;
+  if (/^cc[ -]?by/i.test(s)) return s;
+  return null;
+}
+
+function wbStrip(x) {
+  return String(x)
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+    .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+// ⚠ The head segment of `before` is discarded: the window is cut from raw HTML
+// and can have truncated a sentence mid-way while still ending it at a full
+// stop, which passes every filter as a whole sentence. A harness on a real page
+// caught exactly that in the book lanes.
+function wbFigContext(html, index) {
+  const W = 1600;
+  const before = cleanSentences(wbStrip(html.slice(Math.max(0, index - W), index))).slice(1);
+  const after = cleanSentences(wbStrip(html.slice(index, index + W)));
+  return [...before.slice(-2), ...after.slice(0, 2)].join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
+async function figuresForChapters(titles) {
+  const walk = titles.slice(0, WB_FIG_CHAPTERS);
+  const out = [];
+  const seen = new Set();
+  let lookupFailed = 0;
+  for (const t of walk) {
+    const j = await api(`action=parse&prop=text&page=${encodeURIComponent(t)}`);
+    // `undefined` is LOOKUP FAILED and `null` is genuinely absent — the very
+    // distinction this file was rewritten to preserve. Counting the first as a
+    // shortfall keeps a throttle from ever reading as "this chapter has no
+    // pictures".
+    if (j === undefined) { lookupFailed++; continue; }
+    const html = j?.parse?.text;
+    if (!html) continue;
+    const found = [];
+    for (const m of String(html).matchAll(/<img\b([^>]*)>/gi)) {
+      if (found.length >= WB_FIG_PER_CHAPTER) break;
+      const src = (/\bsrc="([^"]+)"/i.exec(m[1]) || [])[1] || '';
+      const file = wbFileName(src);
+      if (!file || seen.has(file)) continue;
+      if (/\.svg$/i.test(file) && /icon|logo|symbol|arrow|edit|ambox|stub/i.test(file)) continue;
+      seen.add(file);
+      const alt = ((/\balt="([^"]*)"/i.exec(m[1]) || [])[1] || '').replace(/\s+/g, ' ').trim();
+      const capM = /<figcaption[^>]*>([\s\S]{0,400}?)<\/figcaption>/i.exec(String(html).slice(m.index, m.index + 900));
+      const caption = capM ? wbStrip(capM[1]).trim() : '';
+      const context = wbFigContext(String(html), m.index);
+      // An image with no words to bind to is the `CAMPOISON` defect — an
+      // unlabelled frame fusing with whatever word happens to be current.
+      if (!alt && !caption && context.length < 40) continue;
+      found.push({ file, alt, caption, context });
+    }
+    if (!found.length) { await sleep(350); continue; }
+    const info = await api(`action=query&prop=imageinfo&iiprop=url|extmetadata&titles=${encodeURIComponent(found.map((f) => `File:${f.file}`).join('|'))}`);
+    if (info === undefined) { lookupFailed++; await sleep(350); continue; }
+    const byName = new Map();
+    for (const p of (info?.query?.pages || [])) {
+      const ii = (p.imageinfo || [])[0];
+      if (ii) byName.set(String(p.title || '').replace(/^File:/i, '').replace(/_/g, ' '), ii);
+    }
+    for (const f of found) {
+      const ii = byName.get(f.file.replace(/_/g, ' '));
+      if (!ii || !ii.url) continue;
+      const lic = wbLicenceOk(ii.extmetadata?.LicenseShortName?.value);
+      if (!lic) continue;
+      out.push({ src: ii.url, alt: f.alt, caption: f.caption, context: f.context, licence: lic });
+    }
+    await sleep(350);
+  }
+  return { figures: out, walked: walk.length, skipped: Math.max(0, titles.length - walk.length), lookupFailed };
+}
+
 function writeCell(subject, grade, entry) {
   const dir = path.join(OUT, subject);
   fs.mkdirSync(dir, { recursive: true });
@@ -183,18 +292,35 @@ function writeCell(subject, grade, entry) {
   const old = byTheme.get(entry.theme);
   const sameSource = old && old.source === entry.source;
   if (!old || sameSource || entry.story.length > old.story.length) byTheme.set(entry.theme, entry);
+  // ⛔ Otherwise the keep-longer rule discards the pictures along with the story
+  // it rejected — and on a re-run against an entry banked before the figure lane
+  // existed, that is every picture this book just paid to harvest. The story
+  // still loses; only the figures are adopted, and only onto an entry holding
+  // none, so a cell that already has pictures is never disturbed.
+  else if (entry.figures && entry.figures.length && !(old.figures && old.figures.length)) {
+    byTheme.set(entry.theme, { ...old, figures: entry.figures });
+  }
   const merged = [...byTheme.values()];
-  fs.writeFileSync(outPath, JSON.stringify({
+  // ⛔⛔ ATOMIC, BECAUSE TWO INGESTS SHARE THESE FILES. This lane and the
+  // Wikipedia lane overlap on twelve subjects and both do read → merge → write
+  // with no lock. A rename is atomic on both platforms, which turns a torn or
+  // lost write into a clean last-writer-wins — the shape the merge already
+  // assumes, since every ingest's themes are deterministic and a re-run restores
+  // what it lost. ⚠ It does not make the read-modify-write a transaction; the
+  // remaining race costs one entry, not a file nobody can parse.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify({
     version: 1, grade, subject,
     source: 'hybrid: Wikibooks open textbooks + prior sources, cleaned + sentence-segmented',
     note: `Textbook corpus for ${subject}/${grade}. Trained via curriculum._trainAcademicStories. A course is a book, not an article about the subject.`,
     experiences: merged,
   }, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   return merged.length;
 }
 
 const only = process.argv.slice(2).filter((a) => !a.startsWith('--'))[0];
-let grandWords = 0, grandBooks = 0;
+let grandWords = 0, grandBooks = 0, grandFigures = 0;
 for (const [subject, plan] of Object.entries(PLAN)) {
   if (only && subject !== only) continue;
   console.log(`[wikibooks] ${subject} — searching…`);
@@ -210,15 +336,27 @@ for (const [subject, plan] of Object.entries(PLAN)) {
     const grade = plan.grades[i % plan.grades.length];
     i++;
     const slug = root.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-    const n = writeCell(subject, grade, {
+    const fig = await figuresForChapters(chapters);
+    const cellEntry = {
       theme: `book-${slug}`,
       story: sents.join(' '),
       source: `wikibooks/${slug}`,
       licence: 'CC-BY-SA 3.0',
-    });
+    };
+    // Attached only when non-empty — an empty array on every entry would read as
+    // "images were looked for and none exist", which is a different claim from
+    // "this book was ingested before the figure lane existed".
+    if (fig.figures.length) cellEntry.figures = fig.figures;
+    const n = writeCell(subject, grade, cellEntry);
     const w = sents.join(' ').split(/\s+/).length;
-    grandWords += w; grandBooks++;
-    console.log(`  ${subject}/${grade} <- ${root.slice(0, 44)} — ${chapters.length} chapters, ${sents.length} sentences, ${w.toLocaleString()} words (cell now ${n} entries)`);
+    grandWords += w; grandBooks++; grandFigures += fig.figures.length;
+    // ⛔ The bound and the failures are both PRINTED. A count of pictures with no
+    // note of how many chapters were never opened, or of how many lookups the API
+    // refused, is a number that reads as completeness.
+    const figNote = `${fig.figures.length} fig from ${fig.walked} ch`
+      + (fig.skipped ? ` (${fig.skipped} ch not walked for figures — bound ${WB_FIG_CHAPTERS})` : '')
+      + (fig.lookupFailed ? ` ⛔ ${fig.lookupFailed} LOOKUP FAILED — a shortfall, not a verdict` : '');
+    console.log(`  ${subject}/${grade} <- ${root.slice(0, 44)} — ${chapters.length} chapters, ${sents.length} sentences, ${w.toLocaleString()} words, ${figNote} (cell now ${n} entries)`);
   }
 }
-console.log(`[wikibooks] DONE — ${grandBooks} books, ${grandWords.toLocaleString()} words of open textbook prose written under corpora/academic/.`);
+console.log(`[wikibooks] DONE — ${grandBooks} books, ${grandWords.toLocaleString()} words of open textbook prose and ${grandFigures.toLocaleString()} licensed figures written under corpora/academic/.`);
