@@ -83,7 +83,7 @@ const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
 // few MB of state, and it is wiped on every fresh walk (FRESHEYES) so it can never
 // become stale identity.
 // VMSCALE (2026-08-21, operator: ~10k concepts at full training, "the more the
-// better", sized against the 500GB box) — 4096 → 25,000 default, 2.5× the
+// better") — 4096 → 25,000 default, 2.5× the
 // stated target. With sqlite as the medium the DISK does not care; this cap is
 // the RAM bound on the hot in-memory Map (~10KB/entry ⟹ 25k ≈ 250MB beside the
 // brain on a shared box). DREAM_VM_CAP raises it whenever more RAM is available.
@@ -141,8 +141,17 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // she learned more. So the store now lives in better-sqlite3 — the SAME
   // engine her episodic memory already trusts on this box: per-entry upserts
   // in microseconds batched behind a 5s dirty-key flush, no giant string ever
-  // exists at any store size, WAL journal, and disk (500GB minus Forgejo) is
-  // the only real ceiling. The in-RAM Map stays — recall paths need hot reads —
+  // exists at any store size, WAL journal, and disk is the only real ceiling.
+  //
+  // ⛔ THIS COMMENT SAID "500GB minus Forgejo" UNTIL 2026-09-02 AND THAT NUMBER
+  // WAS NEVER VERIFIED — it was an assertion here that two board rows and one
+  // operator decision then inherited as fact. **The box is 1 TB.** The figures
+  // that matter, measured rather than assumed: a full-resolution figure field
+  // averages 4.22 MB, the full set is ~133 GB, and it exists in THREE places on
+  // this machine (Forgejo's LFS store, the pulled `fields/` staging copy, and
+  // this store) — ~400 GB of 1,000, which is affordable. **At the 500 GB this
+  // comment claimed, it would not have been.** `state.disk` publishes the live
+  // figures now; read those, never this sentence. The in-RAM Map stays — recall paths need hot reads —
   // so DREAM_VM_CAP remains as the RAM bound (~10KB/entry ⟹ 25k ≈ 250MB), not
   // a disk bound. The v4 JSON never shipped a boot, so there is nothing to
   // migrate: this IS v4, on a medium that can hold what was asked of it.
@@ -187,7 +196,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // At ~10 KB an entry the lie never showed. At full-fidelity figure fields
       // (~560 KB resident) holding RAM at 250 MB means a cap near 450, which
       // would have silently deleted tens of thousands of her visual memories off
-      // a 500 GB disk while the comment insisted disk was the only ceiling.
+      // a disk with room to spare, while the comment insisted disk was the only
+      // ceiling. (That disk is 1 TB, measured 2026-09-02 — the "500 GB" this
+      // file repeated three times was never a measurement.)
       //
       // Three axes, separated:
       //   • DELETE   — she is meant to forget it (a rejected drawing). Disk too.
