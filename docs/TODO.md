@@ -1845,6 +1845,10 @@ Asked via `AskUserQuestion` with each option priced against measured numbers. Al
   - ⚠ **CACHED 30 s** — this object is rebuilt on every broadcast and a syscall per broadcast is a cost nothing needs. ⛔ **The visual store is measured by STATTING ITS OWN FILES, never by walking a directory** — `fields/` holds tens of thousands of entries and a recursive walk on the state path would be a new performance bug shipped to fix a reporting one.
   - ⛔ **AND I CAUGHT MY OWN SILENT-FAILURE MID-BUILD:** the first draft read `window.__lastState`, **which does not exist**. It would have rendered *"not reported"* forever — indistinguishable from a box where `statfsSync` is genuinely absent. **A silent wrong answer, which is the exact class this panel was added to end.** `disk` is now passed explicitly into `renderProfiling(p, disk)`, which is also the fix shape `NUMSCOPE` needed.
   - ⚠ **THE NUMBERS IN THE HARNESS ARE THIS MACHINE'S, NOT THE BOX'S** — `931 GB total / 76.7% used` proved only that `statfsSync` works and the arithmetic is right. Gee flagged that himself: *"okay but im not running it on my machine"*. **The box's real figures are unknown until a press**, and that is precisely why the reading is being shipped rather than assumed.
+  - ✅⭐ **CLOSED 2026-09-02 — THE BOX IS 1 TB.** Gee: *"we have 1T on the box i found out"*. ⛔ **The 500 GB this row worried against was never a measurement** — it was a sentence in `visual-memory.js:144` that this row, `WAVESEE.7` and one operator acceptance all inherited as fact. **Corrected at the source so it stops propagating.**
+  - **The corrected arithmetic, counting ALL THREE copies this row originally missed:** `~400 GB fields (×3) + ~16 GB weights/slots + ~1 GB corpus ≈ 420 GB of 1,000 — 42%`, against an 8 GB save floor. **Affordable.**
+  - ⚠ **THE ACCEPTANCE WAS GIVEN TWICE AGAINST WRONG NUMBERS AND HAPPENS TO SURVIVE BOTH.** First against 133 GB when the real figure was ~400; then against 500 GB of disk when the real figure is 1,000. **Two errors in opposite directions is luck, not verification** — the reason it is safe to close is the 1 TB measurement, not the earlier reasoning.
+  - **The disk panel is the standing mitigation:** `usedPct` on the dashboard, `saveDeferrals` as the tripwire. **Nothing further is owed unless those move.**
 
 ## WAVESEE — she sees the wavelets the same way she sees the camera, her mind's eye and her own drawings — filed 2026-09-02
 
@@ -1958,6 +1962,18 @@ Gee, verbatim, in the order he said it:
     1. **Delete `fields/` once the drain has consumed it** → **2 copies steady-state**, 3 only transiently during the walk. ⭐ **The re-pull is already part of every press (~4.4 min at his measured 500 MB/s)**, and a fresh walk wipes the store anyway — so the staging copy is rebuilt exactly when it is needed and absent the rest of the time. A few lines in the drain, no store-format change.
     2. Have the store row **reference** the field path instead of duplicating the blob — collapses 2 and 3 permanently and the lazy `get()` already has the shape for it. ⚠ But the store then DEPENDS on `fields/` persisting, which trades a disk saving for a new failure mode: a missing file becomes a missing memory.
   - ⚠ **THIS IS THE MISSING HALF OF `REGFIND.8`.** That row priced the visual store at 133 GB and Gee accepted it on the understanding that the box is big enough. **It did not count the other two copies.** The acceptance was given against a third of the real number, and he should see the corrected figure before it stands.
+
+  ✅⭐ **RESOLVED 2026-09-02 — THE BOX IS 1 TB, NOT 500 GB. Gee: *"we have 1T on the box i found out"*.** That is the number the whole disk argument rested on, and **it was never verified — it was an assertion in a code comment** (`visual-memory.js:144`, *"disk (500GB minus Forgejo)"*) that this row and `REGFIND.8` both inherited without checking.
+  ```
+    three copies of the fields   ~400 GB
+    weights + 3 checkpoint slots  ~16 GB
+    corpus + episodic              ~1 GB
+                                 --------
+                                 ~420 GB of 1,000   (42%)
+  ```
+  - **So the three copies are AFFORDABLE and this drops from "must fix" to "watch it".** The save floor is 8 GB against ~580 GB of headroom. ⭐ **The disk panel shipped in `REGFIND.8` is now the entire mitigation** — `usedPct` on the dashboard and `saveDeferrals` as the tripwire.
+  - ⏳ **Option 1 (delete `fields/` after the drain) stays filed as a cheap tidy, NOT as a fix.** ⚠ **Do not do it for disk reasons any more** — the reason would now be hygiene, and hygiene does not justify touching a lane that is working. ⛔ **The staging copy has a real second use once the numbers stop being scary: it is the ONLY local copy that survives a visual-store wipe without a network pull**, so deleting it makes every fresh walk depend on Forgejo being up.
+  - ⚠ **AND THE COMMENT THAT STARTED IT MUST BE CORRECTED** — `visual-memory.js:144` still tells the next reader the disk is 500 GB. **A wrong constant in a comment propagated into two board rows and one operator decision.**
 
 ## TEACHKNOB — the training knobs exist and the operator cannot reach one of them — filed 2026-09-02
 
