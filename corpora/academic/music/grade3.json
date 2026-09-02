@@ -9,43 +9,169 @@
       "theme": "musical-notation",
       "story": "musical notation, also known as simply music notation, is a way of writing down music so that anyone can play it. many systems have been used in the past to write music. today most musicians in the western world write musical notes on a stave: five parallel lines with four spaces in between them. however, there are many others, some of which are in use today in different cultures. writing music down makes it possible for a composer who makes up a piece of music to let other people know how the music is supposed to sound. that music can then be played or sung by anybody who can \"read music\". this is how folk music was traditionally learned. the earliest kind of notation was written on tablets using a way of writing called cuneiform. has been found which seems to give an approximate idea of how the music should be played. has musical notation which shows the names of the strings of a lyre. they are the earliest records we have of written music. musical notation from ancient greece showed the notes in more detail than the earlier cuneiform. it shows the pitch and how long it lasts. it sometimes give an idea of the harmony. it was used from at least the 6th century bc until about the 4th century ad. when music started to be written down in europe it was music for the roman catholic church. the monks who wrote it down used a system of dots and strokes called neumes. they gave an idea of how high or low the notes were, but did not show the length of the notes. they may have been used by people who knew the music already and just needed a reminder of when to go up and down. people gradually realized that it was necessary to find a system which showed the exact pitch of the note. the first stave was just one single horizontal line. gradually this increased to four lines. guido d'arezzo, an italian benedictine monk who lived in the 11th century developed this system which soon led to the way of writing music that we know. by the 16th century everybody was using the 5 line stave. a system of bars was used everywhere by the end of the 17th century. at first the bar lines where there to show which notes should be played or sung together. gradually the system we know today was developed in which each bar lasted the same length of time, and has a particular number of beats for each bar. by the end of the 17th century this was used by most musicians in european classical music. today we use a five-line staff. the pitch is shown by where the note is put on the staff. there may also be sharps or flats in front of some of the notes. the note value in shown by how the note looks. the music is read from left to right. a staff of written music usually has a clef in front. this shows exactly which notes are to be played. notes which are very high or low can be put on extra lines called ledger lines above or below the stave. after the clef there is usually a key signature which shows the key of the piece: it shows which sharps or flats are to be used regularly. after the key signature is the time signature. bars divide the piece into regular groupings of beats, and the time signatures show these groupings. above the music there is usually a word, or words, to show the tempo at various places in the music there will be dynamic marks to show how loud or soft to play. for vocal music, words are written underneath the notes. when music is played by a large group of instruments such as an orchestra the music is written in a \"score\". this shows the music played by all the instruments, so there are many staves written underneath one another. the conductor will need to have a score, but the players will play from a \"part\" which has just the notes that they play. all the parts needed for a piece of music is called a \"set of parts\". some modern composers such as john cage have written music by making drawings called graphic notation. instruments such as guitars often play from a chord chart or just the names of the chords written underneath the music or under the words of a song. lute music in the renaissance and baroque periods used to be written in a system called tablature. some 20th century composers have also used tablature. a system called solfege has been used by musicians ever since the renaissance. this shows the names of the notes of a scale . music can also be written in braille for blind musicians. today computers are often used for making music. this has led to other forms of music notation which are used in different systems of software. the midi file format, stores information about the pitch, duration, speed, volume etc. of notes and can be used to control a midi instrument. many non-western music traditions have systems of musical notation, some of which are in use today. these include carnatic, andalusi, persian, arabic, ottoman, and hindustani classical music.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/20/Delphichymn.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Photograph of the original stone at Delphi containing the second of the two hymns to Apollo . The music notation is the line of occasional symbols above the main, uninterrupted line of Greek lettering.",
+          "context": "has musical notation which shows the names of the strings of a lyre . they are the earliest records we have of written music. photograph of the original stone at delphi containing the second of the two hymns to apollo . the music notation is the line of occasional symbols above the main, uninterrupted line of greek lettering.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/EarlyMusicNotation.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Early European Musical Notation",
+          "context": "it sometimes give an idea of the harmony . it was used from at least the 6th century bc until about the 4th century ad. early european musical notation when music started to be written down in europe it was music for the roman catholic church. the monks who wrote it down used a system of dots and strokes called neumes .",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Bachlut1.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Hand-written musical notation by J. S. Bach : beginning of the Prelude from the Suite for Lute in G minor BWV 995",
+          "context": "gradually the system we know today was developed in which each bar lasted the same length of time, and has a particular number of beats for each bar. by the end of the 17th century this was used by most musicians in european classical music . hand-written musical notation by j. bach : beginning of the prelude from the suite for lute in g minor bwv 995 today we use a five-line staff .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "musical-note",
       "story": "for example, in the first two lines of the song \"twinkle, twinkle, little star, how i wonder what you are\" there are 14 notes: one for each syllable. confusingly, the word \"note\" can also mean the pitch of a note . for example: the whole of the song \"twinkle, twinkle, little star\" can be played using six different notes: c, d, e, f, g and a. the word \"note\" can also mean the written symbol of the note, which shows the note value. nearly all music is made up of notes. music without notes might be sound effects. in some western countries, like the united kingdom, germany and the us, seven of the notes are given a letter of the alphabet according to their pitch. from lowest sounding to highest sounding: rest, c, d, e, f, g, a, b. this pattern repeats, so that after g will come a. this a is an octave higher than the first a. because there are 12 notes needed in western music, these 7 notes can have modifiers . the two main modifiers are sharps, which raise the pitch a half-step, and flats, which lower the pitch a half-step. however, when writing in music notation, the flat, sharp or natural signs are written before the note. a way to remember this is to say: if the sign came after the note, it would be too late, and you would have already played it, so it must go before so that you know what is coming. sharps and flats can also be written in key signatures. a key signature is written at the beginning of the piece, and repeated at the beginning of each line. it gives the sharps or flats which are going to be regular in the piece. two other modifiers are double sharps, which raise the note a whole step, and double flats, which lower the note a whole step. these are much less common that the simple sharp or flat, but can still be seen in some types of music. this is called an enharmonic equivalent. in some languages, such as the romance languages , seven of the notes are named \"do\", \"re\", \"mi\", \"fa\", \"sol\", \"la\" and \"tsi\") instead of \"c\", \"d\", \"e\", \"f\", \"g\", \"a\" and \"b\". nearly all of these names are the focus for a song in the sound of music.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Mergefrom.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "it has been suggested that the text on a be merged into this article. in some languages, such as the romance languages , seven of the notes are named \"do\", \"re\", \"mi\", \"fa\", \"sol\", \"la\" and \"tsi\") instead of \"c\", \"d\", \"e\", \"f\", \"g\", \"a\" and \"b\".",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "staff-music-",
       "story": "a staff is the name given to the five horizontal lines on which we can write music. musical notes can be placed either on a line or in a space. there are four inside spaces as well as the two outer spaces at the top or bottom. the higher the pitch of the note the higher it will be on the staff. taking the white notes of a keyboard: each note is placed higher on the stave . a clef is needed to show which notes they are. there are different clefs to suit high, medium or low instruments. this musical example shows the opening of symphony no 5 by beethoven. the first three notes are on the second line . they are gs, because there is a treble clef at the beginning of the staff. the fourth note is a little lower: on the bottom line, the e line . the next note is between the other two in pitch . after the three fs comes a d in the outside bottom space. sometimes composers have used staves with fewer or more than 5 lines, but the five-line staff started to become the usual one in western music in the 13th century. when notes are a little too high or low to put on the stave, extension lines are used. these are called ledger lines. if two or more staves are being played at the same time the staves are joined on the left by a bracket which is called a brace. piano music, for example, is written on two staves: one for the right hand and one for the left. instruments that only play a rhythm , do not need a stave. the notes can be written just on one line. it's modern notation started from the catholic church.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Beethoven_symphony_5_opening.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a clef is needed to show which notes they are. there are different clefs to suit high, medium or low instruments. this musical example shows the opening of symphony no 5 by beethoven . the first three notes are on the second line .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "clef",
       "story": "a clef is a sign at the beginning of a staff of music which makes it possible for the player to work out what the notes are. the word \"clef\" is a french word meaning \"key\". the original latin word is \"clavis\". it is the \"key\" to understanding which notes should be played. the staff consists of five lines across the page. the notes are placed on these lines and in these spaces. the staff is only large enough to cover one and a half octaves of music . therefore, different clefs are used for high music and for low music. the treble clef is drawn by starting with a circle in the middle, then going up, round and straight down with a hook at the end. the second line of the staff goes through the middle of the treble clef's circle. this is why the treble clef is called a \"g clef\". the treble clef is used for high notes. the notes higher than middle c can be written in the treble clef. in piano music the right hand is usually written in the treble clef. music for instruments such as the violin, flute, oboe, recorder, trumpet and high singing voice are always written in the treble clef. the alto clef is an example of a \"c clef\". the middle of a c clef points to middle c. in the alto clef middle c is on the third line of the staff. viola music is written in this clef, which is why it is also called the \"viola clef\". alto trombone players also need to be able to read the alto clef. the tenor clef is another c clef. middle c is on the fourth line up. tenor trombone players need to be able to read the tenor clef. cellists, double bass players and bassoonists also need to read tenor clef when their music goes high. the bass clef is normally used for the left hand in piano music. low instruments like the cello, double bass, and bassoon mostly read from the bass clef. it is an f clef because the two dots are on either side of the fourth line up which is an f below middle c. the choice of clef used depends on the music. the music for a pianist's left hand may be written in the bass clef, and the right hand notes may be in the treble clef. in choral music the sopranos and altos sing from the treble clef, the tenors usually sing from the treble clef but sounding an octave lower than written , and the basses sing from the bass clef. at the center of the image shown is middle c, at a frequency of 261.63 hz. other names for it are c4 or c'. it is located at the center line of the alto clef. but on the bass or alto clefs it resides one ledger below or above the staff, respectively. the two c notes that are above c' are shown to the left and right, on the bass and treble staffs. the three clefs are staggered so that all three middle cs are aligned on a single horizontal line. to facilitate the teaching of these clefs, the lines of the bass and treble clef are marked. a mnemonic for remembering gbdfa on the bass clef is \"good bikes don't fall apart\". for the treble clef, one can learn \"every good bird does fly\" for the lines marked egbdf.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Clefs_chord.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "This example shows an A minor chord written with five different clefs. Each chord is sounding at exactly the same pitch",
+          "context": "the staff is only large enough to cover one and a half octaves of music . therefore, different clefs are used for high music and for low music. this example shows an a minor chord written with five different clefs.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5a/Alto_clef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in piano music the right hand is usually written in the treble clef. music for instruments such as the violin , flute , oboe , recorder , trumpet and high singing voice are always written in the treble clef. the alto clef is an example of a \"c clef\". the middle of a c clef points to middle c.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/Tenor_clef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "viola music is written in this clef, which is why it is also called the \"viola clef\". alto trombone players also need to be able to read the alto clef. the tenor clef is another c clef. middle c is on the fourth line up.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/61/Bass_clef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "tenor trombone players need to be able to read the tenor clef. cellists , double bass players and bassoonists also need to read tenor clef when their music goes high. the bass clef is normally used for the left hand in piano music. low instruments like the cello, double bass, and bassoon mostly read from the bass clef.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e2/Mnemonic_bass_alto_treble_clefs.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The note in the center is middle C on the alto clef.",
+          "context": "the music for a pianist's left hand may be written in the bass clef, and the right hand notes may be in the treble clef. in choral music the sopranos and altos sing from the treble clef, the tenors usually sing from the treble clef but sounding an octave lower than written , and the basses sing from the bass clef. the note in the center is middle c on the alto clef. at the center of the image shown is middle c , at a frequency of 261.63 hz .",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "scale-music-",
       "story": "in music, a scale is a set of notes in order of their pitch . if the scale starts with the note which has the lowest pitch and goes up to the note with the highest pitch, the scale is called ascending. if the scale starts with the note which has the highest pitch and goes down to the note with the lowest pitch, the scale is called descending. scales are often the same both ascending and descending, but this is not always true. very often, a scale is defined over an interval . the most common scales use intervals of five, six or seven different notes. on a piano, there are white keys and black keys. if we start on the note c and play each white key going up until we come to the next c, we have played the c major scale. it has eight notes because there are eight notes from each c to the next one: c, d, e, f, g, a, b, c. the note played by each black key has two names: it can be named by the note after it, or the note before it. there are half steps between two keys next to each other on the piano. the key to the right plays a note half a step higher and the key to the left plays a note half a step lower . so between the third and the fourth note, and between the seventh and eighth note, there is only half a step. the pattern for an ascending major scale is up a whole step, up another whole step and then a half step, then a whole step, a whole step and another whole step, then half a step to complete the octave. this is often shown as: wwhwwwh or ttsttts . scales use either just sharps or just flats when choosing between the two names for the same note, when this is possible. in a scale of seven different notes, each letter is used only once. this means that some scales have one or two notes named with a sharp or a flat even though they are played by white keys. sometimes the major scale is sung to the words \"do, re, mi, fa, so, la, ti, do\" . in the musical the sound of music, maria teaches the children to sing by teaching them a song called \"doe, a deer, a female deer\". each line starts on the next note of the scale and uses a different english word for each note . these work the same way as major scales, but use different patterns of intervals: natural minor uses half a step between the second and the third note, and between the fifth and the sixth note. starting at a, and using only white keys gives a minor : a, b, c, d, e, f, g, a. harmonic minor is the same as natural minor, except that there is only half a step between the seventh and eighth note. traditional western music generally uses seven notes, and repeats the first note to complete the octave. during the middle ages, and the renaissance, the diatonic scale was used most often. the classical period generally used major and minor scales, as outlined above. from about 1900, there are other scales, for example the chromatic scale .",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/C_major_scale.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "C major scale. The eighth note is an octave higher than the first one. The interval (difference in pitch) between the third and fourth notes is smaller. So is the interval between the seventh and eighth notes.",
+          "context": "the eighth note is an octave higher than the first one. the interval between the third and fourth notes is smaller.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a6/C_Dur_Klaviatur.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the interval between the third and fourth notes is smaller. so is the interval between the seventh and eighth notes. the same scale on a piano keyboard. there is half a step between two keys next to each other.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "tempo",
       "story": "tempo is the speed of a song or piece of music. it is measured in beats per minute, or bpm. for example, if a song has 4 beats per bar at 100 bpm, there will be 25 bars per minute. allegro non troppo means \"fast, but not too much\" non tanto - not so much piu - more, as in piu allegro ; poco - little, as in poco adagio poco a poco - little by little, bit by bit quasi - like a ...",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/MozartExcerptK331.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The first two measures of Mozart 's Sonata XI, which indicates the tempo as \"Andante grazioso\" and a modern editor's metronome marking: \" ♪ = 120\".",
+          "context": "for the rate of heart beats, see heart rate . tempo is the speed of a song or piece of music. it is measured in beats per minute, or bpm.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/GClef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article about music can be made longer. you can help wikipedia by adding to it .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "orchestra",
       "story": "an orchestra is a group of musicians playing instruments together. a large orchestra is sometimes called a \"symphony orchestra\" and a small orchestra is called a \"chamber orchestra\". a symphony orchestra may have about 100 players, while a chamber orchestra may have 30 or 40 players. the number of players will depend on what music they are playing and the size of the place where they are playing. the word \"orchestra\" originally meant the semi-circular space in front of a stage in a greek theatre which is where the singers and instruments used to play. gradually the word came to mean the musicians themselves. the orchestra is directed by a conductor. he/she helps the players to play together, to get the right balance so that everything can be heard clearly, and to encourage the orchestra to play with the same kind of feeling. some small chamber orchestras may play without a conductor. this was usual until the 19th century when the orchestras got very big and needed a conductor who made decisions and stood in front so that all the players could see him. the instruments of the orchestra are divided into sections: the strings, woodwind, brass and percussion. each section will have a player who is the \"boss\". the principals will make decisions about seating arrangements, and about technical ways of playing the music: for example the principal of the string sections will make sure all the players move their bows up and down in the same direction. the violins are divided into first and second violins. the first violins usually have the tune while the seconds, most of the time, are part of the accompaniment. the principal of the first violin is the leader of the orchestra. in a professional orchestra they will be the most highly paid member of the orchestra. the strings are the biggest section, although there are only five kinds of instruments: violin, viola, cello, double bass, and harp. this is because they are playing most of the time and usually form the basis of the music. if they are not playing the tune they will probably be accompanying. the first and second violins play different notes: the firsts usually have the tune. the strings sit at the front of the stage in a fan-shape in front of the conductor. the first violins are on the conductor's left, then come the second violins, then the violas and then the cellos. the double basses are behind the cellos. some conductors prefer to have the second violins on their right and the cellos between the first violins and violas . the woodwind sit in one or two rows behind the strings. there are five main woodwind instruments: flute, oboe, clarinet, saxophone, and bassoon. each of these instruments also come in different versions: the flute has a small version called the piccolo which plays an octave higher. it is the highest instrument in the orchestra. occasionally there is an alto flute which is longer and plays a fifth lower than the flute. most woodwind instruments need a reed, but the flute does not have a reed. the bassoon has a larger version: the contrabassoon or double bassoon which sounds an octave lower. it is one of the lowest instruments in the orchestra. the clarinet has a larger version as well; the bass clarinet. it reaches the same depth as a bassoon. usually only one is found in a modern orchestra. there is also an alto clarinet but because it plays the same part an alto saxophone plays, it is typically regarded as an unnecessary instrument. a formal orchestra will always consist of two of the four main instruments. the variations of the instruments are used where the piece asks for it. usually, the newer pieces written after 1850 will have more instruments. sometimes a player will double on these extra instruments, for example: one of the flute players may also play the piccolo in the same piece. it depends on the piece of music. obviously a player cannot play the flute and piccolo at the same time. if the two instruments do play at the same time an extra player will be needed for the piccolo. the brass section has four sections: trumpet, trombone, french horn, and tuba. some of these come in several sizes. the article on transposing instruments explains more about it. the trumpet may have several slightly different sizes. the lowest kind is a bass trumpet. the trombone may be an alto, tenor, bass or contrabass trombone. the french horn, like the other brass instruments, has changed over the years. modern horns have at least three valves and are usually in f. they often sit in a different place to the other brass. the tuba comes in different sizes and the player or conductor must decide which to use for the piece they are playing. there are large ones called contrabass tubas. a small tuba is commonly also seen and is called a euphonium or a baritone horn. the percussion section has the largest variety of instruments. such as: the tambourine, the triangle, the fabulous loud gong, the crashing cymbals and the ringing bell. the timpani can be tuned to particular notes. they are the most common percussion instrument. composers such as haydn and mozart nearly always used them, even with their small orchestras. this is the most commonly used percussion instruments and is used in almost all pieces. the rest of the percussion section can include tuned percussion instruments like the xylophone. non-tuned percussion can be other kinds of drum like bass drum, snare drum, and a variety of others: simple to name the most common ones. the principal percussion player will have to decide which player will play which instrument . the percussionists have to work well together as a team so all parts can be covered. it is difficult to say when the orchestra was invented because instruments have played together for many centuries. if we say that an orchestra is a group of string instruments with several players playing the same part, and that there may be wind instruments or percussion playing as well, then the 17th century is the time that orchestras started. in paris in 1626 king louis xiii had an orchestra of 24 violins . later in the century the english king charles ii wanted to be like the french king and so he, too, had a string orchestra. gradually the other instruments were added. at this time there was usually someone playing the harpsichord . it was often the composer himself, who would have conducted from the keyboard at important moments like the beginning and end of the piece. clarinets came into the orchestra at the end of the 18th century, and trombones at the beginning of the 19th century. orchestras were still quite small, though. the saxophone was invented in the middle of the 19th century, but although they started to use it in orchestras, it soon became an instrument that was used in wind bands and later jazz bands. the opera composer richard wagner made the orchestra much bigger because he kept asking for extra instruments. not all pieces written after that need quite such a large orchestra, but concert halls had become bigger and composers had got used to a bigger variety of sounds. later composers sometimes added all sorts of unusual instruments: wind machine, sandpaper block, bottles, typewriter, anvils, iron chains, cuckoo, swannee whistle etc. none of these are normal orchestral instruments. sometimes a piano is used in the percussion section, e.g. igor stravinsky used one in petrouchka. sometimes voices are also used. today orchestras can usually be heard in concert halls. they also play in opera houses for opera and ballet, or in a large stadium for huge open-air concerts. orchestras may record in studios for making cds or recording music for movies. many of them can be heard easily and cheaply every summer in london at the bbc proms. opera houses usually have their own orchestra, e.g. the orchestras of the metropolitan opera house, la scala, or the royal opera house. in many countries there are opportunities for school-age children who play instruments well to play in youth orchestras in their areas. in britain some of the very best are selected to play in the national youth orchestra of great britain. other world-famous youth orchestras include the orquesta sinfonica simon bolivar, gustav mahler youth orchestra, the european union youth orchestra and the west-eastern divan orchestra. the new grove dictionary of music and musicians, 1980; ed. stanley sadie; isbn 1-56159-174-2 orchestration by walter piston, london 1965.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Dohnanyi_Orchestra_Budafok.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Dohnanyi Orchestra performing. The conductor of this orchestra has the second violins on his right. The double basses are at the back, according to the German layout",
+          "context": "the dohnanyi orchestra performing. the conductor of this orchestra has the second violins on his right.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/03/Vienna_Mozart_Orchestra.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Vienna Mozart Orchestra is a chamber orchestra (small orchestra)",
+          "context": "igor stravinsky used one in petrouchka . sometimes voices are also used. the vienna mozart orchestra is a chamber orchestra today orchestras can usually be heard in concert halls . they also play in opera houses for opera and ballet , or in a large stadium for huge open-air concerts.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "percussion-instrument",

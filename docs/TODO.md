@@ -1427,6 +1427,43 @@ Gee (verbatim): *"we need a fucking text book like everything else you fool"*
   - ⛔⛔ **THE FILE'S OWN COMMENT ALREADY CARRIED THE LESSON AND I STILL MISSED IT TWICE.** It records tuning the between-cell sleep `4s → 8s → 20s`, measuring **no gain at any value**, and concluding the burst must be *inside* the cell — a second pacing parameter. **A parameter that produces no change across three values is not the cause**, and the file says so in as many words. The second guess was wrong too. ⭐ **Every topic recorded as "lost to throttle", every cell silently short of its own declaration, and every "unverified because the check was throttled" note belongs to the agent string** — including `CURVEBUILD.12`'s blocked title check and `MATHBOOK.2`'s *"Wikibooks returned 429 all day"*.
   - ⚠ **THIS IS NOT THE BANNED UA FORGERY, and the distinction is the whole point.** Forgery is claiming to be a browser to defeat an access control that refuses robots — still banned, and the UMN/CK-12/OER-Commons 403s stay unworked-around. **This does the opposite: the agent states exactly what it is and who runs it, and adds the contact details the host explicitly asks every robot to send.**
 
+- [~] `PHONBANK.2` — ⭐⭐ **BUILT 2026-09-02: `corpora/phonics/gpc.json` — 411 rules over 163 graphemes, 129 of them carrying more than one sound.** Against the exam bank's **zero**.
+  - **Gee chose grapheme-first** over statistical alignment and word-level-only, via ask-me-question. `.claude/scripts/fetch-phonics-corpora.mjs`.
+  ```
+    rules            411        graphemes  163      multi-sound  129
+    CONFIRMED against attested pronunciation      285
+    REFUTED                                         4
+    UNVERIFIABLE                                  122
+    licences         CC-BY-SA (inventory) + BSD-2-Clause (verification)
+  ```
+  - ⭐ **THE GAPS `PHONBANK.1` NAMED ARE NOW DATA, NOT A TYPED LIST:** `c` → /s/ /ʃ/ /k/ + silent · `g` → /dʒ/ /ɡ/ + silent · `ch` → /tʃ/ /k/ /ʃ/ (chip / school / chef) · `th` → /θ/ /ð/ · every vowel with short, long and schwa values · **and all five previously-absent letters (`b n q r t`) have entries.**
+  - ⭐ **WHY TWO SOURCES, each doing only what it can:** Wikipedia's *English orthography* (CC-BY-SA) supplies the grapheme inventory **with context rules** — `c` is /s/ before e,i,y and /k/ elsewhere; `ch` is /k/ in Greek-origin words and /ʃ/ in French-origin ones. **A pronunciation dictionary can never supply that**, because it says what a WORD sounds like and never which letters made which sound. The CMU dictionary (BSD 2-clause, 125,938 pronounceable words) then **checks** every claim against attested pronunciation rather than trusting an encyclopedia.
+  - ⛔ **THREE OF MY OWN BUGS, EACH FOUND BY A NUMBER BEING WRONG RATHER THAN BY AN ERROR:**
+    - **Rowspan.** The grapheme cell spans its context rows, so `c`'s four rules arrived with **no grapheme at all** and the next letter would have inherited them. Seen in the first extraction; the parser is now rowspan-aware.
+    - **`/ɡ/` is U+0261 SCRIPT G, not the keyboard `g`.** Visually identical, different code point, so five `g` rules sat "unverifiable" while the data was present. **A lookalike character is a silent mismatch — nothing errors, the count just comes out wrong.**
+    - **Clusters.** `x` is /ks/, `u` can be /juː/ — two phonemes from one grapheme, ordinary English. Ten `/ks/` rules were unverifiable for want of sequence matching. Fixing these took confirmed **212 → 285** and unverifiable **195 → 122**.
+  - ⛔⛔ **AND THE WORST ONE, WHICH I ALMOST PUBLISHED: adding cluster checking took refutations 4 → 28, AND EVERY NEW ONE WAS MY ERROR.** They were r-coloured diphthongs — `ear → /ɪər/ (fear)`, `air → /ɛər/ (cairn)`. ARPAbet writes *fear* as `F IH1 R`; rhotic American English has no separate schwa, while a greedy split of /ɪər/ demands `IH + AH + R`. **The encyclopedia was right and the checker was wrong, and the report was about to say the opposite.** ⭐ **The verdicts are now deliberately asymmetric: a single-phoneme mismatch may be called REFUTED, a multi-phoneme sequence can only ever fail UNPROVEN** — because a sequence check carries my own segmentation assumption. **An instrument must not accuse a source of an error that lives in the instrument.**
+  - ⏳ **KNOWN RESIDUAL, STATED RATHER THAN SHIPPED QUIET: the extraction tail is contaminated.** `a → w k ɡ` and `sh → ʃ s h z h s` are wrong — on some row shapes the parser pulls values from a neighbouring column. **The core single- and digraph cases are right and were checked by eye; the long tail is not trustworthy yet.** Must be cleaned before questions are generated from it, or a bad rule becomes a bad exam question.
+  - ⏳ **STILL OWED:** the generator itself (questions per grapheme covering all its attested sounds, examples filtered to words she actually has, and strings that differ from the drill so `PHONBANK.1`'s de-duplication guard stays intact), and the 12-cell → 213-cell scope problem.
+
+- [x] `PHONBANK.2` (original filing) — ⭐⭐ **DO NOT HAND-AUTHOR THE PHONICS BANK. DERIVE IT FROM A PRONUNCIATION DICTIONARY.** Answers `PHONBANK.1`'s "how".
+  - Gee (verbatim): *"is that going to work building it by hand shouldnt we using something similar to hooked on phonics?"*
+  - ⭐ **HE IS RIGHT AND MY OFFER WAS WRONG.** I offered to write the missing letter-sound questions by hand — which would rebuild exactly the ad-hoc bank that already lost five letters and never gave any letter a second sound. **A list I type is as arbitrary as the list that is already broken**, and this project has a standing rule against hand word-lists precisely because of that (`feedback_no_word_lists_use_taxonomy`: derive from a real source, the way `drawable-taxonomy.js` uses WordNet instead of a blacklist).
+  - ⚠ **Hooked on Phonics itself is proprietary and cannot be ingested.** But the brand is not the method: what makes it work is a **systematic scope-and-sequence** — an ordered table of grapheme→phoneme correspondences covering all ~44 English phonemes and ~250 graphemes. That is openly published.
+  - ⭐⭐ **THE SOURCE, PROBED AND VERIFIED: the CMU Pronouncing Dictionary — BSD 2-clause, 135,166 entries, 117,493 clean alphabetic words with ARPAbet transcriptions.** ⛔ **The cleanest licence in this entire corpus** — modification and redistribution explicitly permitted, no NC, no ND, no SA. Also found: **UK Letters and Sounds under the Open Government Licence** (a complete systematic synthetic-phonics sequence) and **Wikipedia's English-orthography GPC tables, CC-BY-SA**.
+  - ⭐ **PROOF IT CAPTURES THE EXACT GAPS `PHONBANK.1` NAMED**, derived rather than typed:
+  ```
+    c: K (80% cat) / CH (12%) / S (7% city)      hard and soft c
+    g: G (87% go)  / JH (12% gem)                hard and soft g
+    a: AE / AH / AA / EY                         short and long a
+    16 of 26 letters carry more than one attested initial sound
+  ```
+  - ⛔⛔ **AND THE NAIVE VERSION IS NOT GOOD ENOUGH TO TEACH FROM. THREE FAULTS, FOUND BY READING THE OUTPUT:**
+    - **`k → N (5%, "knab")` and `p → F (5%, "phi")` are MISATTRIBUTIONS.** That `N` belongs to the *n* of a silent-k word; that `F` is the digraph *ph*. **A letter→first-phoneme alignment does not know digraphs**, so it credits sounds to the wrong letter.
+    - **Real phonics teaches GRAPHEMES, not letters** — `ph`, `sh`, `ch`, `th`, `igh`, `ea` are single units. Treating a letter as the unit is the same category error one level down.
+    - **The example words are dictionary junk** — `ab`, `ca`, `og`, `xu` are abbreviations and proper names. My "shortest word" heuristic picked garbage; examples must come from words she actually has.
+  - ⏳ **WHAT THE REAL BUILD NEEDS:** grapheme-aware alignment (digraphs as units, from the OGL/CC-BY-SA sequence) · example words filtered to her own vocabulary or the corpus · and questions **generated per grapheme with all its attested sounds**, so no letter can be silently missing and no sound can be silently singular. ⛔ **The de-duplication guard from `PHONBANK.1` stays untouched** — generated questions must differ from the drill strings, and a generator makes that easy rather than harder.
+
 - [ ] `PHONBANK.1` — ⛔⛔ **THE PHONICS EXAM IS MISSING FIVE LETTERS, TEACHES NO LETTER MORE THAN ONE SOUND, AND THE WHOLE BANK STILL COVERS ONLY PRE-K + KINDERGARTEN.**
   - Gee (verbatim): *"wher is the rest of the alphabet and the other phonics of letters every letter has more than one,, and isnt this old corpus shit still?"*
   - **All three parts of that were right.** Measured off the live exported banks:

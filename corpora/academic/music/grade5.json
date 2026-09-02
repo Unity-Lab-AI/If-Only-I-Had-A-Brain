@@ -15,19 +15,46 @@
       "theme": "key-music-",
       "story": "most music is in a particular key. this means that one of the 12 notes sounds like the \"home note\". when the piece finishes it normally comes to rest on this home note . the piece will be built on the notes of the scale that starts on that note. there are two kinds of key : major and minor. sometimes the key of a piece is in its title: \"minuet in c\", \"sonata in f sharp major\". if the title does not say \"major\" or \"minor\" it is normally taken to be major. major keys are normally said to sound happy or positive, and minor keys are said to sound sad, or sometimes creepy or angry. some songs are exceptions to this general rule; for example \"happy\" by pharrell williams is in a minor key, and \"tears in heaven\" by eric clapton is in a major key.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/ff/GClef.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article about music can be made longer. you can help wikipedia by adding to it .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "time-signature",
       "story": "a time signature is a set of two numbers, one on top of the other one, written right after the key signature in a piece of music. the two numbers in a time signature tell you how many of one kind of note there are in each measure in the song. the number in the top of the time signature tells a player how many of a certain kind of note there are in each measure. the number in the bottom of the time signature tells what kind of note is used a certain number of times in each measure. the number on the bottom of the time signature can be any power of 2 that is greater than or equal to 2. so, 64 could be a number that is put in the bottom of the time signature, but 65 could not be one. this table shows different numbers that could be the bottom of a time signature, and what they mean. note that each note down lasts for one-half of the amount the note above it lasted. for example, one quarter note lasts one beat, and one-half note lasts one half of a beat, because one divided by two is one-half. so, in \"cut time\", a quarter note, which usually gets one beat, gets one-half of a beat.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Mensural_proportion1.gif?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "so, in \"cut time\", a quarter note, which usually gets one beat, gets one-half of a beat.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "chord-music-",
       "story": "a chord in music is when two or more notes are played together . a chord which is built up of the 1st, 3rd and 5th notes of a scale is called a \"tonic triad\". if it is made from a major scale, it is a major chord. if it is made from a minor scale it is a minor chord. however, any combination of notes played simultaneously is considered a chord. when only two notes are played together, it's more often called \"double stops\" . chords can be played on instruments such as piano, keyboard, organ, harp, guitar, harmonica, ukulele and xylophone. chords with two notes can be played on string instruments by bowing on two strings together. by bowing on two strings and then quickly on the other two strings, a violinist can make it sound as if a four-part chord is being played. some players of wind instruments are able to make chords by playing two or more harmonics together.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1b/PianoChord_C.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "C major chord on a piano",
+          "context": "c major chord on a piano a chord in music is when two or more notes are played together . a chord which is built up of the 1st, 3rd and 5th notes of a scale is called a \"tonic triad\".",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "harmony",
@@ -45,13 +72,38 @@
       "theme": "symphony",
       "story": "a symphony is a piece of music written for an orchestra to play. usually it is divided into parts, usually 3 or 4 parts, which are called movements. the first movement of a symphony can be a fast movement, often in sonata form. the second movement can be a slow movement. the third movement can be a minuet or scherzo and a trio. the fourth movement may be called \"finale\"; it can be in rondo form or sonata form or a combination of these. the word \"symphony\" comes from the greek words \"sym\" and \"phone\" . \"symphonic\" means \"like a symphony\". it is often used to describe music which is quite long and develops tunes over a long period. a large orchestra is often called a \"symphony orchestra\". this is to distinguish it from a small orchestra called a \"chamber orchestra\".",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Singapore_Symphony_Orchestra_-_Concert_in_Park.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Singapore Symphony Orchestra - Classics in the Park at Singapore Botanic Garden",
+          "context": "singapore symphony orchestra - classics in the park at singapore botanic garden a symphony is a piece of music written for an orchestra to play. usually it is divided into parts, usually 3 or 4 parts, which are called movements .",
+          "licence": "CC BY 2.0"
+        }
+      ]
     },
     {
       "theme": "folk-music",
       "story": "folk music is music that represents the tradition or culture of the area, place or state. we say that the tradition is \"orally transmitted\" or \"handed down orally\", meaning that the music is not written down but taught by speaking . every country has its own traditional music. folk song is part of folk music. a folksinger is a person who sings folk songs. there are three categories of folk music: folk singing folk dance folk instruments in the 1960s a new type of music was started by bob dylan who mixed traditional folk song with rock and roll. this music is sometimes called \"folk rock\". in this way it is different from classical music which is mainly developed by professional musicians for a smaller group of people. folk music is part of a popular culture, although the term \"popular music\" or \"pop music\" today refers to a kind of music which people can hear through television, radio and other means of recording. in many parts of the world nearly all music is folk music. the term \"folk music\" is usually used for european and american music which is part of an oral tradition. folk music as an oral tradition, is much less important than before, in part because of new technology . in older times folk music was part of \"communal recreation\". this means that small communities such as villages or families would relax by playing and singing music together. people would often make up a new song or new piece of music, or make changes to music that they already knew. in this way music was always changing. people would get musical ideas from other groups nearby. this is why folk music from neighbouring countries often sound similar. ballads were a popular kind of folk music. these were folk songs which told a story . sometimes they had a refrain after each verse so that everybody could join in. ballads told stories of love, myths or folklore. this is how stories were handed down from one generation to another. instrumental folk music was used for dancing. some of the instruments may have been very simple, such as a pair of sticks, rattle or a simple drum. other instruments may include fiddle , bagpipes, harp, zither, or various wind instruments, depending on the time of history and the country. some singing was polyphonic, i.e. there were two or more parts . very often two voices would sing in parallel . in countries such as russia persons sings in three or four parts, e.g. in the tradition of \"podgolosnaya\" . in countries, such as britain, this polyphonic tradition did not exist. folk songs there were sung by one singer, unaccompanied. folk music used different scales. the ionian mode was the most common in western europe. in some parts of eastern europe modes with several semitones were used, but for the most part, half steps were avoided. this results is the tunes being described as tetratonic or pentatonic . folk music also includes simple children's songs and lullabies. folk music was sung by people as they worked. in the early days of european immigration in america the pioneers sang as they travelled, cowboys sang as they worked, slaves sang in the cottonfields. in the 18th century folk music started to have an influence on classical music . people from the higher classes started to be interested in folk music because they were conscious of being part of a tradition. composers such as mozart and schubert wrote folk dances for orchestras or small groups of instruments. folk music was used by many composers in the romantic period. gustav mahler used folk song in a lot of his music. in the early twentieth century some composers travelled around collecting folk music which was being played or sung by people in the country. they often used some of these ideas in their music. bartok did this in hungary as well as in bulgaria and in the united states, and people such as cecil sharp and the composer ralph vaughan williams collected folk music in england. in the united states the influence of jazz on classical music is all part of the story of folk music.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/12/Lithuanian_folklore_performance.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A folklore group from Lithuania singing and dancing",
+          "context": "the term \"folk music\" is usually used for european and american music which is part of an oral tradition. folk music as an oral tradition, is much less important than before, in part because of new technology . a folklore group from lithuania singing and dancing in older times folk music was part of \"communal recreation\". this means that small communities such as villages or families would relax by playing and singing music together.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     }
   ]
 }

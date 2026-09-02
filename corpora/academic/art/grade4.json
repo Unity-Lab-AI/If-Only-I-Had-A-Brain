@@ -9,49 +9,478 @@
       "theme": "perspective-graphical-",
       "story": "in graphic arts, perspective is the representation of how an image is seen by the eye. it was first invented by filippo brunelleschi. it is about how the angle and distance of a three-dimensional object is represented on a flat surface. to create a real scene, objects are drawn smaller to show that they are farther away from the person looking at the artwork. the dimensions of an object are also drawn differently depending where the line of sight is. the size of an object's dimensions along the line of sight are usually drawn shorter than dimensions across the line of sight. this is called foreshortening, and is used to create the appearance of three dimensions on a flat surface. landscape paintings have a horizon line. this line represents objects that are infinitely far away. they have shrunk, in the distance, like objects on the earth's horizon. changing the height of the horizon level changes the view point for the picture. a person lying on the ground and looking up would have a different view to a person on a ladder looking down. perspective works by representing the light that passes from a scene through an imaginary rectangle , to the viewer's eye. it is similar to a viewer looking through a window and painting what is seen directly onto the windowpane. if viewed from the same spot as the windowpane was painted, the painted image would be identical to what was seen through the unpainted window. each painted object in the scene is a flat, scaled down version of the object on the other side of the window. the science of art: optical themes in western art from brunelleschi to seurat. the origin of perspective, translated by john goodman. archived from the original on 2005-11-30. the geometry of an art: the history of the mathematical theory of perspective from alberti to monge.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Lamentaci%C3%B3n_sobre_Cristo_muerto%2C_por_Andrea_Mantegna.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the lamentation over the dead christ by andrea mantegna . the perspective in this painting is from an angle over the subject, towards his head as he is laying horizontally.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/99/The_importance_of_knowing_perspective_-_Satire_on_False_Perspective%2C_by_William_Hogarth_%281753%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "changing the height of the horizon level changes the view point for the picture. a person lying on the ground and looking up would have a different view to a person on a ladder looking down. satire on false perspective by hogarth . perspective works by representing the light that passes from a scene through an imaginary rectangle , to the viewer's eye.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "cave-painting",
       "story": "cave paintings are paintings on cave walls and ceilings. usually these paintings were made in prehistoric times. it is not known why these paintings were made. they may have been used in rituals. some may have provided information. many paintings in caves are difficult to get to. today, there are about 350 caves known to have paintings in them. the best known are probably the caves of altamira , lascaux , or creswell crags . sometimes, paintings were also done on cliff faces. fewer of those have survived, though, because of erosion. one such example is the rock paintings of astuvansalmi . most cave paintings showed animals or hunting scenes. sometimes hands are there too. rarely, there are also more abstract patterns. the paintings were drawn with red and yellow ochre, hematite, manganese oxide and charcoal. sometimes the silhouette of the animal was put into the rock first. andre leroi-gourhan classified the paintings into different styles: there are different theories about why people created cave paintings. these are the most common explanations: painting in caves could be a form of hunting magic, meant to make a hunt more successful. perhaps shamans made cave paintings. the shaman would retreat into the darkness of the cave, enter into a trance state, and then paint images of their visions, perhaps with some notion of drawing power out of the cave walls themselves. this theory is based on studies of modern hunter-gatherer societies. cave paintings could be some form of graffiti, mostly done by teenage boys of the time. figurines have been found that show venus at roughly the same age. according to this theory, there were many adolescents in the society at the time. most of the adolescents who painted were male, but some were female. the paintings may have been made for practical reasons: there is some hidden symbolism which may show the techniques of hunting, or the routes the animals took. people may have painted what they wished for or what they had dreamt of. the paintings could have been seen as \"art\" at the time. there are several societies today who do not have a word for art, but who practice the same type of painting. in general, the dates of these artifacts are not known with any accuracy. our own dating system was invented long after the artifacts. a painting on the wall of an indonesian cave is about 44,000 years old. it shows a buffalo being hunted.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Ambox_important.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article needs more sources for verifiability . please help improve this article by adding reliable sources .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f4/SantaCruz-CuevaManos-P2210651b.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cave painting from Santa Cruz",
+          "context": "unsourced material may be challenged or removed. cave painting from santa cruz cave paintings are paintings on cave walls and ceilings. usually these paintings were made in prehistoric times.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f3/La_Pasiega-Galeria_A-Ciervas_%28panel_22%29.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "from La Pasiega, Spain",
+          "caption": "",
+          "context": "a painting on the wall of an indonesian cave is about 44,000 years old. it shows a buffalo being hunted.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/68/Bisonte_de_Altamira.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "from Altamira, Spain",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2d/Lions_painting%2C_Chauvet_Cave_%28museum_replica%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "from Chauvet, France",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/54/Chauvethorses.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "from Chauvet",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/42/Lascaux%2C_horse.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "from Lascaux, France",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Niaux%2C_bisons.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "from Niaux cave, France",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/44/Gravure_rupestre_%28mammouth%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A mammuth etching, from Pair-Non-Pair, France",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Manos_de_Gargas_%28Francia%29.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Hands in Gargas cave, France",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "ancient-egyptian-art",
       "story": "ancient egyptian art refers to art produced in ancient egypt between the 6th millennium bc and the 4th century ad, spanning from prehistoric egypt until the christianization of roman egypt. it includes paintings, sculptures, drawings on papyrus, faience, jewelry, ivories, architecture, and other art media. it was a conservative tradition whose style changed very little over time. much of the surviving examples comes from tombs and monuments, giving insight into the ancient egyptian afterlife beliefs like the egyptian mummies. the ancient egyptian language had no word for \"art\". artworks served an essentially functional purpose that was bound with religion and ideology. to render a subject in art was to grant it permanence; thus, ancient egyptian art portrayed an idealized and unrealistic version of the world. there was no significant tradition of individual artistic expression since art served a wider and cosmic purpose of maintaining order . pre-dynastic egypt, corresponding to the neolithic period of the prehistory of egypt, spanned from c. 6000 bc to the beginning of the early dynastic period, around 3100 bc. continued expansion of the desert forced the early ancestors of the egyptians to settle around the nile and adopt a more sedentary lifestyle during the neolithic. the period from 9000 to 6000 bc has left very little archaeological evidence, but around 6000 bc, neolithic settlements began to appear all over egypt. studies based on morphological, genetic, and archaeological data have attributed these settlements to migrants from the fertile crescent returning during the neolithic revolution, bringing agriculture to the region. from about 5000 to 4200 bc, the merimde culture, known only from a large settlement site at the edge of the western nile delta, flourished in lower egypt. the culture has strong connections to the faiyum a culture as well as the levant. people lived in small huts, produced simple undecorated pottery, and had stone tools. cattle, sheep, goats, and pigs were raised, and wheat, sorghum and barley were planted. the merimde people buried their dead within the settlement and produced clay figurines. the first egyptian life-size head made of clay comes from merimde. the badarian culture, from about 4400 to 4000 bc, is named for the badari site near der tasa. it followed the tasian culture but was so similar that many consider them one continuous period. the badarian culture continued to produce blacktop-ware pottery and was assigned sequence dating numbers 21-29. the primary difference that prevents scholars from merging the two periods is that badarian sites use copper in addition to stone and are thus chalcolithic settlements, while the neolithic tasian sites are still considered stone age. the naqada culture is an archaeological culture of chalcolithic predynastic egypt , named for the town of naqada, qena governorate. it is divided into three sub-periods: naqada i, ii and iii. = = the naqada i culture lasted from about 4000 to 3500 bc. black-topped ware continues to appear, but white cross-line ware - a type of pottery which has been decorated with crossing sets of close parallel white lines - is also found at this time. the amratian period falls between 30 and 39 sd. = = the naqada ii culture from about 3500 to 3200 bc, is named after the site of gerzeh. it was the next stage in egyptian cultural development, and it was during this time that the foundation of dynastic egypt was laid. naqada ii culture is largely an unbroken development of naqada i, expanding from the upper nile region towards the nile delta and towards nubia. naqada ii pottery has been assigned sd values of 40 through 62, and is distinctly different from naqada i white cross-lined wares or black-topped ware. it was painted mostly in dark red with pictures of animals, people, and ships, as well as geometric symbols that appear to have been derived from animals. wavy handles, which were rare before this period , became more common and more elaborate until they were almost completely ornamental. during this period, distinctly foreign objects and art forms entered egypt, indicating contact with several parts of asia, particularly with mesopotamia. objects such as the gebel el-arak knife handle, which has patently mesopotamian relief carvings on it, have been found in egypt, and the silver which appears in this period can only have been obtained from asia minor. in addition, egyptian objects were created which clearly mimic mesopotamian forms. cylinder seals appeared in egypt, as well as recessed paneling architecture. the route of this trade is difficult to determine, but contact with canaan does not predate the early dynastic, so it is usually assumed to have been by water. the fact that so many naqada ii sites are at the mouths of wadis which lead to the red sea may indicate some amount of trade via the red sea . also, it is considered unlikely that something as complicated as recessed panel architecture could have worked its way into egypt by proxy, and at least a small contingent of migrants is often suspected. despite this evidence of foreign influence, egyptologists generally agree that the naqada ii culture is predominantly indigenous to egypt. = = the naqada iii period, from about 3200 to 3000 bc, is generally taken to be identical with the protodynastic period, during which egypt was unified. naqada iii is notable for being the first era with hieroglyphs , the first regular use of serekhs, the first irrigation, and the first appearance of royal cemeteries. the art of the naqada iii period was quite sophisticated, exemplified by cosmetic palettes. these were used in predynastic egypt to grind and apply ingredients for facial or body cosmetics. by the protodynastic period, the decorative palettes appear to have lost this function and were instead commemorative, ornamental, and possibly ceremonial. they were made almost exclusively from siltstone, which originated from quarries in the wadi hammamat. many of the palettes were found at hierakonpolis, a center of power in predynastic upper egypt. after the unification of the country, the palettes ceased to be included in tomb assemblages. the early dynastic period of egypt immediately follows the unification of upper and lower egypt, c. 3100 bc is generally taken to include the first and second dynasties, lasting from the end of the naqada iii archaeological period until about 2686 bc, or the beginning of the old kingdom. cosmetic palettes reached a new level of sophistication during this period, in which the egyptian writing system also experienced further development. initially, egyptian writing was composed primarily of a few symbols denoting amounts of various substances also known as hieroglyphic writing . in the cosmetic palettes, symbols were used together with pictorial descriptions. by the end of the third dynasty, this had been expanded to include more than 200 symbols, both phonograms and ideograms. the old kingdom of egypt is the period spanning c. it is also known as the \"age of the pyramids\" or the \"age of the pyramid builders\", as it encompasses the reigns of the great pyramid builders of the fourth dynasty. king sneferu perfected the art of pyramid-building and the pyramids of giza were constructed under the kings khufu, khafre and menkaure. egypt attained its first sustained peak of civilization, the first of three so-called \"kingdom\" periods which mark the high points of civilization in the lower nile valley. the middle kingdom of egypt is marked by political division known as the first intermediate period. the middle kingdom lasted from around 2050 bc to around 1710 bc, from the reunification of egypt under the reign of mentuhotep ii of the eleventh dynasty to the end of the twelfth dynasty. the eleventh dynasty ruled from thebes and the twelfth dynasty ruled from el-lisht. during the middle kingdom period, osiris became the most important deity in popular religion. the middle kingdom was followed by the second intermediate period of egypt, another period of division that involved foreign invasions of the country by the hyksos of west asia. after the reunification of egypt in the middle kingdom, the kings of the eleventh and twelfth dynasties were able to return their focus to art. in the eleventh dynasty, the king's monuments were made in a style influenced by the memphite models of the fifth and early sixth dynasties and the pre-unification theban relief style all but disappeared. these changes had an ideological purpose, as the eleventh dynasty kings were establishing a centralized state, and returning to the political ideals of the old kingdom. in the early twelfth dynasty, the artwork had a uniformity of style due to the influence of the royal workshops. it was at this point that the quality of artistic production for the elite members of society reached a high point that was never surpassed, although it was equaled during other periods. egypt's prosperity in the late twelfth dynasty was reflected in the quality of the materials used for royal and private monuments. the hyksos, a dynasty of rulers originating from the levant, do not appear to have produced any court art, instead appropriating monuments from earlier dynasties by writing their names on them. many of these are inscribed with the name of king khyan. a large palace at avaris has been uncovered, built in the levantine rather than the egyptian style, most likely by khyan. king apepi is known to have patronized egyptian scribal culture, commissioning the copying of the rhind mathematical papyrus. the stories preserved in the westcar papyrus may also date from his reign. the name \"hyksos sphinxes\" was given due to the fact that these were later reinscribed by several of the hyksos kings, and were initially thought to represent the hyksos kings themselves. these sphinxes were seized by the hyksos from cities of the middle kingdom and then transported to their capital avaris where they were reinscribed with the names of their new owners and adorned their palace. seven of those sphinxes are known, all from tanis, and now mostly located in the cairo museum. other statues of amenehat iii were found in tanis and are associated with the hyksos in the same manner. the new kingdom, also referred to as the \"egyptian empire\", is the period between the 16th and 11th centuries bc, covering the 18th, 19th, and 20th dynasties of egypt. the new kingdom followed the second intermediate period and was succeeded by the third intermediate period. it was egypt's most prosperous time and marked the peak of its power. this tremendous wealth can be attributed to the centralization of bureaucratic power and many successful military campaigns which opened trade routes. with the expansion of the egyptian empire, kings gained access to important commodities such as cedar from lebanon and luxury materials such as lapis lazuli and turquoise. the artwork produced during the new kingdom falls into three broad periods: pre-amarna, amarna, and ramesside. = = the pre-amarna period, the beginning of the eighteenth dynasty of the new kingdom, was marked by the growing power of egypt as an expansive empire. the artwork reflects a combination of middle kingdom techniques and subjects with the newly accessed materials and styles of foreign lands. a large portion of the art and architecture of the pre-amarna period was produced by the female king hatshepshut, who led a widespread building campaign to all gods during her reign from 1473 to 1458 bc. she made significant additions to the temple at karnak, undertook the construction of an extensive mortuary temple at deir el-bahri, and produced a prolific amount of statuary and relief work in hard stone. the extent of these building projects was made possible by the centralization of power in thebes and reopening of trade routes by previous new kingdom ruler ahmose i. hatshepsut's elaborate mortuary temple at deir el-bahri provides many well-preserved examples of the artwork produced during the pre-amarna period. the massive three-level, colonnaded temple was built into the cliffs of thebes and adorned with extensive painted relief. subjects of these reliefs ranged from traditional funerary images and legitimization of hatshepsut as the divine ruler of egypt to battle and expedition scenes in foreign lands. the temple also housed numerous statues of the female king and gods, particularly amun-ra, some of which were colossal in scale. the artwork from hatshepshut's reign is trademarked by the re-integration of northern culture and style as a result of the reunification of egypt. thutmoses iii, the predecessor to hatshepsut, also commissioned vast amounts of large-scale artwork and by his death egypt was the most powerful empire in the world.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f1/Great_Pyramid_of_Giza_and_Egyptian_sky.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the great pyramid of giza , constructed between c.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Predynastic_collage_%28new_version%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "1 to render a subject in art was to grant it permanence; thus, ancient egyptian art portrayed an idealized and unrealistic version of the world. there was no significant tradition of individual artistic expression since art served a wider and cosmic purpose of maintaining order . artifacts of egypt from the prehistoric period, 4400-3100 bc: clockwise from top left: a badarian ivory figurine, a naqada jar, a bat figurine, a cosmetic palette , a flint knife , and a diorite vase. pre-dynastic egypt, corresponding to the neolithic period of the prehistory of egypt , spanned from c.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Badarian_Burial.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A Badarian burial. 4500–3850 BC",
+          "caption": "",
+          "context": "the badarian culture continued to produce blacktop-ware pottery and was assigned sequence dating numbers 21-29. 11 the primary difference that prevents scholars from merging the two periods is that badarian sites use copper in addition to stone and are thus chalcolithic settlements, while the neolithic tasian sites are still considered stone age .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/Woman-E_11887-IMG_9547-cropped.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Mortuary figurine of a woman; 4400–4000&#160;BC; crocodile bone; height: 8.7&#160;cm; Louvre",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0 fr"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ee/String_of_beads_MET_32.2.42_EGDP012905.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "String of beads; 4400–3800&#160;BC; the beads are made of bone, serpentinite and shell; length: 15&#160;cm; Metropolitan Museum of Art",
+          "caption": "",
+          "context": "string of beads; 4400-3800 bc; the beads are made of bone, serpentinite and shell; length: 15 cm; metropolitan museum of art <img alt=\"vase in the shape of a hippopotamus.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Vase_in_the_shape_of_a_hippopotamus._Early_Predynastic%2C_Badarian._Fifth_millennium_BC._From_Mostagedda.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Vase in the shape of a hippopotamus. Early Predynastic, Badarian. 5th millennium BC",
+          "caption": "",
+          "context": "vase in the shape of a hippopotamus.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/31/Vase_with_human_figures_%28front%29._Naqada._Royal_Museums_of_Art_and_History%2C_Brussels.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "it is divided into three sub-periods: naqada i, ii and iii.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/28/E3002_vessel%2C_Naqada_period_%28compacted%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "vase with victorious human figure, and smaller individuals attached with a rope at the neck. royal museums of art and history, e3002.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9f/Naqada_black_top.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Ovoid Naqada I (Amratian) black-topped terracotta vase, (c. 3800–3500 BC)",
+          "caption": "",
+          "context": "10 black-topped ware continues to appear, but white cross-line ware - a type of pottery which has been decorated with crossing sets of close parallel white lines - is also found at this time. the amratian period falls between 30 and 39 sd.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Predynastic_bearded_man-MGR_Lyon-IMG_9928.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Figurine of a bearded man; 3800–3500&#160;BC; breccia; from Upper Egypt; Musée des Confluences (Lyon, France)",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 2.0 fr"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/White_cross-lined_bowl_with_four_legs_MET_DP244613_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "White cross-lined bowl with four legs; 3700–3500&#160;BC; painted pottery; height: 15.6&#160;cm, diameter: 19.7&#160;cm; Metropolitan Museum of Art",
+          "caption": "",
+          "context": "",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/04/Gebel_el-Arak_Knife_ivory_handle_%28front%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "egyptian prehistoric gebel el-arak knife ivory handle , abydos , egypt .",
+          "licence": "CC BY-SA 2.0"
+        }
+      ]
     },
     {
       "theme": "pottery",
       "story": "pottery is the ceramic material which makes up potteryware. major types include earthenware, stoneware and porcelain. the place where such wares are made is also called a pottery . pottery also refers to the art or craft of a potter or the making of pottery. a dictionary definition is simply clay fired in a kiln. pottery objects are made from damp clay mixed with other materials. they are then fired in a special oven called a kiln at high temperatures. the potter may then apply a glaze to the surface before firing the object again. the fired glaze makes the surface of the pottery shiny, decorative and water-tight. some potters make objects which are not useful and are really artistic objects or sculpture. bare pottery objects without a glaze are called bisque or just earthenware. the finest pottery objects, made of porcelain or bone china are quite strong, yet are translucent. pottery originated before the neolithic period. the earliest example we have is from eastern europe, dating to 25,000 years ago or earlier. it is a female figurine known as the venus of dolni vestonice, from a palaeolithic site in moravia, czech republic. it may have been made as part of a fertility ritual. there are some similar figures from other nearby sites. since the invention of agriculture, and the building of cities, containers for food and drink have been found at almost all archaeological sites. this means the area of stoke-on-trent in england, sometimes called the staffordshire potteries. there were six towns, tunstall, burslem, hanley, stoke-upon-trent, fenton and longton, which now make up stoke-on-trent. the area was the centre of the english pottery industry. the area had local supplies of clay, salt, lead and coal. canals were used to transport the product inland. it was a large exporter of pottery for about 200 years: roughly from 1760 to about 1960. plastic crockery after world war ii and cheap ceramic production in china largely destroyed the stoke pottery industry.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Ancient_Egypt_Painted_Pottery_%2827733542034%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ancient Egypt Painted Pottery at a museum in Paris, France",
+          "context": "",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Museum_of_Anatolian_Civilizations018.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Relatively plain earthenware for everyday use: pottery found at Çatal Höyük - sixth millennium BC",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/16/Altamura_Painter_-_Red-Figure_Calyx_Krater_-_Walters_48262_-_Side_A.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "obviously an artistic work as well as practical: greek red-figure vase in the krater shape, between 470 and 460 bc, by the altamura painter pottery is the ceramic material which makes up potteryware.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Makingpottery.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A man making pottery.",
+          "caption": "",
+          "context": "it was a large exporter of pottery for about 200 years: roughly from 1760 to about 1960. 7 plastic crockery after world war ii and cheap ceramic production in china largely destroyed the stoke pottery industry.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/93/T%C3%B6pferscheibe.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An old potter&#39;s wheel in Erfurt, Germany.",
+          "caption": "",
+          "context": "an old potter's wheel in erfurt , germany .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bf/T%C3%B6pfernpeng1.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A woman making pottery.",
+          "caption": "",
+          "context": "an old potter's wheel in erfurt , germany .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/78/Conner-prairie-pottery-rack.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Drying pottery.",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Traditional_pottery_of_Bengal.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Traditional pottery, Bangladesh",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "printmaking",
       "story": "printmaking is making art by printing pictures, normally on paper. the advantage of printmaking is that lots of the same picture can be printed. each print is not a copy, but an original, since it came from the same source . you can also use different types of techniques to start the print. pictures for prints can be cut into plates of metal, usually copper or zinc for engraving or etching; stone, used for lithography; blocks of wood for woodcuts, linoleum for linocuts and fabric plates for screen-printing. prints may also be published in books by the artist. a glossary for modern prints large list of links to museum etc.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/Katsushika_Hokusai_-_Fine_Wind%2C_Clear_Morning_%28Gaif%C5%AB_kaisei%29_-_Google_Art_Project.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "mount fuji , from the thirty-six views of mount fuji by katsushika hokusai printmaking is making art by printing pictures, normally on paper . the advantage of printmaking is that lots of the same picture can be printed.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "sculpture",
       "story": "sculpture is the branch of the visual arts that operates in three dimensions. sculpture is the three-dimensional artwork which is physically presented in the dimensions of height, width and depth. it is one of the plastic arts. durable sculptural processes originally used carving and modelling , in stone, metal, ceramics, wood and other materials but, since modernism, there has been almost complete freedom of materials and process. a wide variety of materials may be worked by removal such as carving, assembled by welding or modelling, or moulded or cast. in addition, most ancient sculpture was painted, of which most has either been lost or is unable to be seen with the naked eye. sculpture has been central in religious devotion in many cultures, and until recent centuries, large sculptures, too expensive for private individuals to create, were usually an expression of religion or politics. those cultures whose sculptures have survived in quantities include the cultures of the ancient mediterranean, india and china, as well as many in central and south america and africa. the western tradition of sculpture began in ancient greece, and greece is widely regarded as producing great masterpieces in the classical period. during the middle ages, gothic sculpture represented the agonies and passions of the christian faith. the revival of classical models in the renaissance produced famous sculptures such as michelangelo's statue of david. modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture, and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief, high relief, and sometimes an intermediate mid-relief. sunk-relief is a technique restricted to ancient egypt. relief sculpture may also decorate steles-upright slabs, usually of stone, often also containing inscriptions. another basic distinction is between subtractive carving techniques, which remove material from an existing block or lump-such as stone or wood-and modelling techniques that shape or build up the work from the material. techniques such as casting, stamping, and moulding use an intermediate matrix containing the design to produce the work; many of these allow the production of several copies. the term \"sculpture\" is often used mainly to describe large works, which are sometimes called monumental sculpture, meaning either or both sculpture that is large or that is attached to a building. however, the term properly covers many types of small works in three dimensions using the same techniques, including coins and medals, and hardstone carvings, a term for small carvings in stone that can take detailed work. the very large or \"colossal\" statue has had an enduring appeal since antiquity. the largest on record, at 182 m , is the 2018 indian statue of unity. another grand form of portrait sculpture is the equestrian statue of a rider on horse, which has become rare in recent decades. the smallest forms of life-size portrait sculpture are the \"head\", showing just that, or the bust, a representation of a person from the chest up. small forms of sculpture include the figurine, normally a statue that is no more than 18 inches tall, and for reliefs the plaquette, medal, or coin. sculpture is an important form of public art. a collection of sculpture in a garden setting can be called a sculpture garden. there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\". one of the most common purposes of sculpture is in some form of association with religion. cult images are common in many cultures, though they are often not the colossal statues of deities which characterized ancient greek art, like the statue of zeus at olympia. the actual cult images in the innermost sanctuaries of egyptian temples, of which none have survived, were evidently rather small, even in the largest temples. the same is often true in hinduism, where the very simple and ancient form of the lingam is the most common. buddhism brought the sculpture of religious figures to east asia, where there seems to have been no earlier equivalent tradition, though again simple shapes like the bi and cong probably had religious significance. recent unexpected discoveries of ancient chinese bronze age figures at sanxingdui, some more than twice human size, have disturbed many ideas held about early chinese civilization, since only much smaller bronzes were previously known. some undoubtedly advanced cultures, such as the indus valley civilization, appear to have had no monumental sculpture at all, though producing very sophisticated figurines and seals. the mississippian culture seems to have been progressing towards its use, with small stone figures, when it collapsed. other cultures, such as ancient egypt and the easter island culture, seem to have devoted enormous resources to very large-scale monumental sculpture from a very early stage. the collecting of sculpture, including that of earlier periods, goes back some 2,000 years in greece, china and mesoamerica, and many collections were available on semi-public display long before the modern museum was invented. from the 20th century the relatively restricted range of subjects found in large sculpture expanded greatly, with abstract subjects and the use or representation of any type of subject now common. today much sculpture is made for intermittent display in galleries and museums, and the ability to transport and store the increasingly large works is a factor in their construction. small decorative figurines, most often in ceramics, are as popular today as they were in the rococo, or in ancient greece when tanagra figurines were a major industry, or in east asian and pre-columbian art. small sculpted fittings for furniture and other objects go well back into antiquity, as in the nimrud ivories, begram ivories and finds from the tomb of tutankhamun. portrait sculpture began in egypt, where the narmer palette shows a ruler of the 32nd century bce, and mesopotamia, where we have 27 surviving statues of gudea, who ruled lagash c. in ancient greece and rome, the erection of a portrait statue in a public place was almost the highest mark of honour, and the ambition of the elite, who might also be depicted on a coin. in other cultures such as egypt and the near east public statues were almost exclusively the preserve of the ruler, with other wealthy people only being portrayed in their tombs. rulers are typically the only people given portraits in pre-columbian cultures, beginning with the olmec colossal heads of about 3,000 years ago. east asian portrait sculpture was entirely religious, with leading clergy being commemorated with statues, especially the founders of monasteries, but not rulers, or ancestors. the mediterranean tradition revived, initially only for tomb effigies and coins, in the middle ages, but expanded greatly in the renaissance, which invented new forms such as the personal portrait medal. jade or other types of greenstone were used in china, olmec mexico, and neolithic europe, and in early mesopotamia large pottery shapes were produced in stone. bronze was used in europe and china for large axes and blades, like the oxborough dirk. the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze, stone and pottery, with wood, bone and antler as less durable but cheaper options. precious materials such as gold, silver, jade, and ivory are often used for small luxury works, and sometimes in larger ones, as in chryselephantine statues. more common and less expensive materials were used for sculpture for wider consumption, including hardwoods ; terracotta and other ceramics, wax , and cast metals such as pewter and zinc . but a vast number of other materials have been used as part of sculptures, in ethnographic and ancient works as much as modern ones. sculptures are often painted, but commonly lose their paint to time, or restorers. many different painting techniques have been used in making sculpture, including tempera, oil painting, gilding, house paint, aerosol, enamel and sandblasting. many sculptors seek new ways and materials to make art. one of pablo picasso's most famous sculptures included bicycle parts. alexander calder and other modernists made spectacular use of painted steel. since the 1960s, acrylics and other plastics have been used as well. andy goldsworthy makes his unusually ephemeral sculptures from almost entirely natural materials in natural settings. some sculpture, such as ice sculpture, sand sculpture, and gas sculpture, is deliberately short-lived. recent sculptors have used stained glass, tools, machine parts, hardware and consumer packaging to fashion their works. sculptors sometimes use found objects, and chinese scholar's rocks have been appreciated for many centuries. stone sculpture is an ancient activity where pieces of rough natural stone are shaped by the controlled removal of stone. petroglyphs are perhaps the earliest form: images created by removing part of a rock surface which remains in situ, by incising, pecking, carving, and abrading. monumental sculpture covers large works, and architectural sculpture, which is attached to buildings. hardstone carving is the carving for artistic purposes of semi-precious stones such as jade, agate, onyx, rock crystal, sard or carnelian, and a general term for an object made in this way. alabaster or mineral gypsum is a soft mineral that is easy to carve for smaller works and still relatively durable. engraved gems are small carved gems, including cameos, originally used as seal rings. the copying of an original statue in stone, which was very important for ancient greek statues, which are nearly all known from copies, was traditionally achieved by \"pointing\", along with more freehand methods. a variation of stone sculpture in the landscape is the hill figure, where the natural bedrock is used as the primary medium. the litlington white horse in east sussex is an example of a 20th-century figure created by the controlled removal of turf to reveal the underlying chalk of the south downs. managed by the national trust, this process-known as 'scouring', is a subtractive technique that uses the geology of a site to produce a monumental graphic work. bronze and related copper alloys are the oldest and still the most popular metals for cast metal sculptures; a cast bronze sculpture is often called simply a \"bronze\". common bronze alloys have the unusual and desirable property of expanding slightly just before they set, thus filling the finest details of a mould. their strength and lack of brittleness is an advantage when figures in action are to be created, especially when compared to various ceramic or stone materials . casting is a group of manufacturing processes by which a liquid material is poured into a mould, which contains a hollow cavity of the desired shape, and then allowed to solidify. the solid casting is then ejected or broken out to complete the process, although a final stage of \"cold work\" may follow on the finished cast. casting may be used to form hot liquid metals or various materials that cold set after mixing of components . casting is most often used for making complex shapes that would be otherwise difficult or uneconomical to make by other methods. the oldest surviving casting is a copper mesopotamian frog from 3200 bce. specific techniques include lost-wax casting, plaster mould casting, and sand casting. welding is a process where different pieces of metal are fused together to create different shapes and designs. there are many different forms of welding, such as oxy-fuel welding, stick welding, mig welding, and tig welding. oxy-fuel is probably the most common method of welding when it comes to creating steel sculptures because it is the easiest to use for shaping the steel as well as making clean and less noticeable joins of the steel. the key to oxy-fuel welding is heating each piece of metal to be joined evenly until all are red and have a shine to them. once that shine is on each piece, that shine will soon become a 'pool' where the metal is liquified and the welder must get the pools to join, fusing the metal. once cooled off, the location where the pools joined are now one continuous piece of metal. also used heavily in oxy-fuel sculpture creation is forging. forging is the process of heating metal to a certain point to soften it enough to be shaped into different forms. one very common example is heating the end of a steel rod and hitting the red heated tip with a hammer while on an anvil to form a point. in between hammer swings, the forger rotates the rod and gradually forms a sharpened point from the blunt end of a steel rod. glass may be used for sculpture through a wide range of working techniques, though the use of it for large works is a recent development. it can be carved, though with considerable difficulty; the roman lycurgus cup is all but unique. there are various ways of moulding glass: hot casting can be done by ladling molten glass into moulds that have been created by pressing shapes into sand, carved graphite or detailed plaster/silica moulds. kiln casting glass involves heating chunks of glass in a kiln until they are liquid and flow into a waiting mould below it in the kiln. hot glass can also be blown and/or hot sculpted with hand tools either as a solid mass or as part of a blown object. more recent techniques involve chiseling and bonding plate glass with polymer silicates and uv light. pottery is one of the oldest materials for sculpture, as well as clay being the medium in which many sculptures cast in metal are originally modelled for casting. sculptors often build small preliminary works called maquettes of ephemeral materials such as plaster of paris, wax, unfired clay, or plasticine. many cultures have produced pottery which combines a function as a vessel with a sculptural form, and small figurines have often been as popular as they are in modern western culture. stamps and moulds were used by most ancient civilizations, from ancient rome and mesopotamia to china. wood carving has been extremely widely practiced, but survives much less well than the other main materials, being vulnerable to decay, insect damage, and fire. it therefore forms an important hidden element in the art history of many cultures. outdoor wood sculpture does not last long in most parts of the world, so that we have little idea how the totem pole tradition developed. many of the most important sculptures of china and japan in particular are in wood, and the great majority of african sculpture and that of oceania and other regions. wood is light, so suitable for masks and other sculpture intended to be carried, and can take very fine detail. it is also much easier to work than stone. it has been very often painted after carving, but the paint wears less well than the wood, and is often missing in surviving pieces. painted wood is often technically described as \"wood and polychrome\". typically a layer of gesso or plaster is applied to the wood, and then the paint is applied to that. three dimensional work incorporating unconventional materials such as cloth, fur, plastics, rubber and nylon, that can thus be stuffed, sewn, hung, draped or woven, are known as soft sculptures. well known creators of soft sculptures include claes oldenburg, yayoi kusama, eva hesse, sarah lucas and magdalena abakanowicz. worldwide, sculptors have usually been tradespeople whose work is unsigned; in some traditions, for example china, where sculpture did not share the prestige of literati painting, this has affected the status of sculpture itself. even in ancient greece, where sculptors such as phidias became famous, they appear to have retained much the same social status as other artisans, and perhaps not much greater financial rewards, although some signed their works. goldsmiths and jewellers, dealing with precious materials and often doubling as bankers, belonged to powerful guilds and had considerable status, often holding civic office. many sculptors also practised in other arts; andrea del verrocchio also painted, and giovanni pisano, michelangelo, and jacopo sansovino were architects. some sculptors maintained large workshops. even in the renaissance the physical nature of the work was perceived by leonardo da vinci and others as pulling down the status of sculpture in the arts, though the reputation of michelangelo perhaps put this long-held idea to rest. from the high renaissance artists such as michelangelo, leone leoni and giambologna could become wealthy, and ennobled, and enter the circle of princes, after a period of sharp argument over the relative status of sculpture and painting. much decorative sculpture on buildings remained a trade, but sculptors producing individual pieces were recognised on a level with painters. from the 18th century or earlier sculpture also attracted middle-class students, although it was slower to do so than painting. women sculptors took longer to appear than women painters, and were less prominent until the 20th century. aniconism originated with judaism, which did not accept figurative sculpture until the 19th century, before expanding to christianity, which initially accepted large sculptures. in christianity and buddhism, sculpture became very significant. many forms of protestantism also do not approve of religious sculpture. there has been much iconoclasm of sculpture for religious motives, from the early christians and the beeldenstorm of the protestant reformation to the 2001 destruction of the buddhas of bamyan by the taliban. = = the earliest undisputed examples of sculpture belong to the aurignacian culture, which was located in europe and southwest asia and active at the beginning of the upper paleolithic. as well as producing some of the earliest known cave art, the people of this culture developed finely crafted stone tools, manufacturing pendants, bracelets, ivory beads, and bone-flutes, as well as three-dimensional figurines. the 30 cm tall lowenmensch found in the hohlenstein stadel area of germany is an anthropomorphic lion-human figure carved from woolly mammoth ivory. it has been dated to about 35-40,000 bp, making it, along with the venus of hohle fels, the oldest known uncontested examples of sculpture. much surviving prehistoric art is small portable sculptures, with a small group of female venus figurines such as the venus of willendorf found across central europe. = = from the ancient near east, the over-life sized stone urfa man from modern turkey comes from about 9,000 bce, and the 'ain ghazal statues from around 7200 and 6500 bce. these are from modern jordan, made of lime plaster and reeds, and about half life-size; there are 15 statues, some with two heads side by side, and 15 busts. small clay figures of people and animals are found at many sites across the near east from the pre-pottery neolithic, and represent the start of a more-or-less continuous tradition in the region. the protoliterate period in mesopotamia, dominated by uruk, saw the production of sophisticated works like the warka vase and cylinder seals. the guennol lioness is an outstanding small limestone figure from elam of about 3000-2800 bce, part human and part lioness. a little later there are a number of figures of large-eyed priests and worshippers, mostly in alabaster and up to a foot high, who attended temple cult images of the deity, but very few of these have survived. sculptures from the sumerian and akkadian period generally had large, staring eyes, and long beards on the men. many masterpieces have also been found at the royal cemetery at ur , including the two figures of a ram in a thicket, the copper bull and a bull's head on one of the lyres of ur. the burney relief is an unusually elaborate and relatively large terracotta plaque of a naked winged goddess with the feet of a bird of prey, and attendant owls and lions. it comes from the 18th or 19th century bce, and may also be moulded. unlike earlier states, the assyrians could use easily carved stone from northern iraq, and did so in great quantity. they produced very little sculpture in the round, except for colossal guardian figures of the human-headed lamassu, which are sculpted in high relief on two sides of a rectangular block, with the heads effectively in the round . even before dominating the region they had continued the cylinder seal tradition with designs which are often exceptionally energetic and refined. the monumental sculpture of ancient egypt is world-famous, but refined and delicate small works exist in much greater numbers. the egyptians used the distinctive technique of sunk relief, which is well suited to very bright sunlight. this appears as early as the narmer palette from dynasty i. however, there as elsewhere the convention is not used for minor figures shown engaged in some activity, such as the captives and corpses. other conventions make statues of males darker than females ones. egyptian pharaohs were always regarded as deities, but other deities are much less common in large statues, except when they represent the pharaoh as another deity; however the other deities are frequently shown in paintings and reliefs. the famous row of four colossal statues outside the main temple at abu simbel each show rameses ii, a typical scheme, though here exceptionally large. small figures of deities, or their animal personifications, are very common, and found in popular materials such as pottery. most larger sculpture survives from egyptian temples or tombs; by dynasty iv at the latest the idea of the ka statue was firmly established. the so-called reserve heads, plain hairless heads, are especially naturalistic. early tombs also contained small models of the slaves, animals, buildings and objects such as boats necessary for the deceased to continue his lifestyle in the afterworld, and later ushabti figures. = = the first distinctive style of ancient greek sculpture developed in the early bronze age cycladic period , where marble figures, usually female and small, are represented in an elegantly simplified geometrical style. most typical is a standing pose with arms crossed in front, but other figures are shown in different poses, including a complicated figure of a harpist seated on a chair. the subsequent minoan and mycenaean cultures developed sculpture further, under influence from syria and elsewhere, but it is in the later archaic period from around 650 bce that the kouros developed. these are large standing statues of naked youths, found in temples and tombs, with the kore as the clothed female equivalent, with elaborately dressed hair; both have the \"archaic smile\". they seem to have served a number of functions, perhaps sometimes representing deities and sometimes the person buried in a grave, as with the kroisos kouros. they are clearly influenced by egyptian and syrian styles, but the greek artists were much more ready to experiment within the style. during the 6th century greek sculpture developed rapidly, becoming more naturalistic, and with much more active and varied figure poses in narrative scenes, though still within idealized conventions. other significant remains of architectural sculpture come from paestum in italy, corfu, delphi and the temple of aphaea in aegina . most greek sculpture originally included at least some colour; the ny carlsberg glyptotek museum in copenhagen, denmark, has done extensive research and recreation of the original colours.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Dying_gaul.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "for sculpting in computer graphics, see digital sculpting . for other uses, see sculptor and sculpture .",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Lammasu.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Assyrian lamassu gate guardian from Khorsabad , c. 800 -721 BCE",
+          "context": "for other uses, see sculptor and sculpture . assyrian lamassu gate guardian from khorsabad , c.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Miyasaka_Hakuryu_II_-_Tigress_with_Two_Cubs_-_Walters_71909.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Netsuke of tigress with two cubs, mid-19th-century Japan, ivory with shell inlay",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/Angel_of_the_North_2016_006.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Angel of the North by Antony Gormley , 1998",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/af/Litlington_White_Horse_2025.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Litlington White Horse , a monumental work of stone sculpture created by exposing the underlying chalk bedrock.",
+          "context": "the litlington white horse , a monumental work of stone sculpture created by exposing the underlying chalk bedrock. sculpture is the branch of the visual arts that operates in three dimensions .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/85/%E9%BE%99%E9%97%A8-Buddha.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Open-air Buddhist rock reliefs at the Longmen Grottoes , China",
+          "context": "the revival of classical models in the renaissance produced famous sculptures such as michelangelo 's statue of david . modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture , and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief , high relief , and sometimes an intermediate mid-relief .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Mo%C3%A1is.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Moai from Easter Island , where the concentration of resources on large sculpture may have had serious political effects",
+          "context": "a collection of sculpture in a garden setting can be called a sculpture garden . there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\".",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/44/Cappella_Sansevero_%2815041603867%29_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Veiled Christ , c. 1753 by Giuseppe Sanmartino , was widely believed to be created by alchemy.",
+          "context": "1753 by giuseppe sanmartino , was widely believed to be created by alchemy. one of the most common purposes of sculpture is in some form of association with religion.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/Mesopotamia_male_worshiper_2750-2600_B.C.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sumerian male worshipper, alabaster with shell eyes, 2750-2600 BCE",
+          "context": "bronze was used in europe and china for large axes and blades, like the oxborough dirk . sumerian male worshipper, alabaster with shell eyes, 2750-2600 bce the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze , stone and pottery, with wood, bone and antler as less durable but cheaper options.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/Refugees_medal_DSCF9937.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ludwig Gies , cast iron plaquette , 8 x 9.8 cm, Refugees , 1915",
+          "context": "the litlington white horse in east sussex is an example of a 20th-century figure created by the controlled removal of turf to reveal the underlying chalk of the south downs. managed by the national trust , this process-known as 'scouring', is a subtractive technique that uses the geology of a site to produce a monumental graphic work. ludwig gies , cast iron plaquette , 8 x 9.8 cm, refugees , 1915 bronze and related copper alloys are the oldest and still the most popular metals for cast metal sculptures; a cast bronze sculpture is often called simply a \"bronze\". common bronze alloys have the unusual and desirable property of expanding slightly just before they set, thus filling the finest de",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Chihuly_at_Kew_Gardens_031.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Dale Chihuly , 2006, ( Blown glass )",
+          "context": "one very common example is heating the end of a steel rod and hitting the red heated tip with a hammer while on an anvil to form a point. in between hammer swings, the forger rotates the rod and gradually forms a sharpened point from the blunt end of a steel rod.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "mosaic",
       "story": "mosaic is the art of decorating a surface with pictures and patterns made of little pieces of stone, glass or tiles of different colours. mosaics can be used indoors on walls, floors and ceilings. mosaics are sometimes used outdoors on pavements. mosaics are made by setting coloured pieces, called tesserae, into \"mortar\" which sets hard and holds the pieces in place. some mosaics are made of round pebbles, and have only two or three colours. other mosaics are made of marble. many mosaics, particularly in italy, are made of terracotta tiles. terracotta tiles come in many colours and can be used for colourful pictures as well as patterns. some tiles look as if they are made of pure gold. these tiles are actually made of glass and have a very thin \"leaf\" of gold stuck to one side. the side with the gold gets put into the mortar. then the gold can be seen through the glass, but cannot be scratched off. mosaics often last for a very long time. there are still plenty of mosaics which were made by the ancient romans. they can be seen in italy, england, france, as well as other countries that were once part of the roman empire. many beautiful mosaics date from the early christian and byzantine eras, from about 300 ad to 1400, in italy, greece, and other countries. the mosaics in churches usually have pictures which tell bible stories. mosaics were a popular way to decorate churches in italy in the medieval period. they were not popular in england, france, germany and countries of northern europe because they preferred to use stained glass windows as decoration. in italy, the most famous church with its interior decorated with mosaics is st. at westminster cathedral in london, the mosaic decoration which was started more than 100 years ago is still continuing, bit by bit. mark's and westminster cathedral have gold backgrounds. nowadays mosaics are still used in all sorts of ways. mosaics are most often used to brighten up public places in cities. modern mosaics are made of all sorts of materials: mosaic tiles, bathroom tiles, broken roof tiles, broken dishes, broken mirrors, bits of metal and old bricks.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Santa_costanza_mosaic.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An early Christian mosaic in Rome",
+          "context": "an early christian mosaic in rome mosaic is the art of decorating a surface with pictures and patterns made of little pieces of stone, glass or tiles of different colours. mosaics can be used indoors on walls, floors and ceilings.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Phrygian_Mosaic_3.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An ancient mosaic of pebbles",
+          "caption": "",
+          "context": "mosaics are most often used to brighten up public places in cities. modern mosaics are made of all sorts of materials: mosaic tiles, bathroom tiles, broken roof tiles, broken dishes, broken mirrors, bits of metal and old bricks.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/39/Li_Jiang_Guesthouse.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "This old guest house in China has a mosaic with a Chinese symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Madaba_mosaic.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A mosaic map from Jordan",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Christus_Ravenna_Mosaic.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A Byzantine mosaic from Ravenna, Italy showing gold tiles",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Mosaic_Dionysos_Massimo.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A pavement from Ancient Rome",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Westminster.cathedral.mosaic.london.arp.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A mosaic from c.1900, Westminster Cathedral, London",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Primavesi_mosaic.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A 20th century mosaic decorating a house in the Czech Republic",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Mosaic_Borth_01.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A modern mosaic made of bathroom tiles on a pavement in Wales",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "calligraphy",
       "story": "calligraphy is the art of writing. the word is from the greek language and means \"beautiful writing\". in the west, this was an interest in decorating words on the page. calligraphy in the western world was always considered a minor art. east asian calligraphy was a \"high art\" form before the tang dynasty. it continues to have a high status among the arts. it is practiced today by many people including school children.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0c/The_Calligraphy_Lesson_LACMA_M.80.219.43.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The calligraphy lesson: 18th century Japan",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f5/Aristotle_latin_manuscript.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Aristotle in Latin & Greek",
+          "context": "aristotle in latin & greek calligraphy is the art of writing . the word is from the greek language and means \"beautiful writing\".",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Dip_pen.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Pen used for Western calligraphy. It is dipped into ink to be able to write.",
+          "context": "in the west, this was an interest in decorating words on the page. calligraphy in the western world was always considered a minor art. pen used for western calligraphy. it is dipped into ink to be able to write.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7e/YaMawlana-calligraphy.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Calligraphy above entry to Mevlâna Museum, Turkey",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Manuscript_ns989.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Buddhist manuscript, Nepal , 1869",
+          "context": "",
+          "licence": "CC0"
+        }
+      ]
     }
   ]
 }
