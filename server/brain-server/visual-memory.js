@@ -112,6 +112,16 @@ const VM_CAP = Number(process.env.DREAM_VM_CAP) > 0 ? Number(process.env.DREAM_V
 // once per minute. A percept quietly degraded is exactly the class of silent
 // loss this file already carries scars from.
 const REF_MAXSIDE = Number(process.env.DREAM_REF_MAXSIDE) > 0 ? Number(process.env.DREAM_REF_MAXSIDE) : 0;
+
+// ⭐ THE RESIDENCY BOUND IS BYTES, because that is the resource. `VM_CAP` remains
+// as a secondary count guard, but a count is only a RAM bound when every entry
+// is the same size — and this file's own estimate of ~10 KB an entry is off by
+// roughly 50x for a full-resolution figure field. 512 MB of hot entries beside a
+// brain that wants the rest of the box; disk holds everything and is not bounded
+// here at all.
+const VM_BYTES = Number(process.env.DREAM_VM_MAX_MB) > 0
+  ? Number(process.env.DREAM_VM_MAX_MB) * 1048576
+  : 512 * 1048576;
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'of', 'in', 'on', 'at', 'to', 'is',
@@ -166,9 +176,64 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   _vmStore() {
     if (!this._visualMemory) {
       const self = this;
+      // ⛔⛔ EVICT AND DELETE ARE DIFFERENT OPERATIONS AND WERE THE SAME ONE.
+      //
+      // `delete()` marks the key dirty-for-removal and the flush runs
+      // `DELETE FROM concepts`, so the LRU trim — `while (size > VM_CAP)
+      // store.delete(...)` — was DESTROYING THE ROW ON DISK. That is forgetting,
+      // not residency, and the file's own comment claimed the opposite: "this cap
+      // is the RAM bound ... not a disk bound" and "the DISK does not care".
+      //
+      // At ~10 KB an entry the lie never showed. At full-fidelity figure fields
+      // (~560 KB resident) holding RAM at 250 MB means a cap near 450, which
+      // would have silently deleted tens of thousands of her visual memories off
+      // a 500 GB disk while the comment insisted disk was the only ceiling.
+      //
+      // Three axes, separated:
+      //   • DELETE   — she is meant to forget it (a rejected drawing). Disk too.
+      //   • EVICT    — RAM pressure only. The row STAYS on disk.
+      //   • GET miss — lazily re-read from disk, so eviction costs a read and
+      //                never a memory.
       class VMMap extends Map {
-        set(k, v) { const r = super.set(k, v); try { self._vmMarkDirty(k, false); } catch { /* nf */ } return r; }
-        delete(k) { const had = super.delete(k); if (had) { try { self._vmMarkDirty(k, true); } catch { /* nf */ } } return had; }
+        set(k, v) {
+          const prev = super.get(k);
+          if (prev !== undefined) self._vmResidentBytes -= self._recResidentBytes(prev);
+          const r = super.set(k, v);
+          self._vmResidentBytes += self._recResidentBytes(v);
+          try { self._vmMarkDirty(k, false); } catch { /* nf */ }
+          return r;
+        }
+        delete(k) {
+          const prev = super.get(k);
+          const had = super.delete(k);
+          if (had) {
+            self._vmResidentBytes -= self._recResidentBytes(prev);
+            try { self._vmMarkDirty(k, true); } catch { /* nf */ }
+          }
+          return had;
+        }
+        // Drop from RAM ONLY — no dirty mark, so the flush never issues a DELETE.
+        evict(k) {
+          const prev = super.get(k);
+          const had = super.delete(k);
+          if (had) self._vmResidentBytes -= self._recResidentBytes(prev);
+          return had;
+        }
+        // A miss is not an absence. Read it back from sqlite, and re-insert
+        // through the RAW Map so a lazy load is not mistaken for a write.
+        get(k) {
+          const hit = super.get(k);
+          if (hit !== undefined) return hit;
+          const loaded = self._vmLoadOne(k);
+          if (loaded === null) return undefined;
+          Map.prototype.set.call(this, k, loaded);
+          self._vmResidentBytes += self._recResidentBytes(loaded);
+          self._vmLazyLoads = (self._vmLazyLoads | 0) + 1;
+          return loaded;
+        }
+        // `has` must agree with `get`, or a caller that checks before reading
+        // concludes a paged-out memory does not exist.
+        has(k) { return super.has(k) || this.get(k) !== undefined; }
       }
       this._visualMemory = new VMMap();
       this._vmRestoring = true;   // restore must not mark its own inserts dirty-for-write
@@ -177,15 +242,33 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (db) {
           const t0 = Date.now();
           const rows = db.prepare('SELECT key, entry, bin FROM concepts ORDER BY at ASC').all();
-          for (const r of rows.slice(-VM_CAP)) {
+          // ⛔ RESTORE STOPS AT THE BYTE BUDGET, NOT AT A ROW COUNT. Loading the
+          // newest VM_CAP rows was safe at ~10 KB an entry and is 14 GB at
+          // full-resolution figure fields. Newest-first so the most recent
+          // memories are the resident ones; everything else stays on disk and
+          // loads on demand.
+          this._vmResidentBytes = 0;
+          let loaded = 0;
+          for (let i = rows.length - 1; i >= 0 && loaded < VM_CAP && this._vmResidentBytes < VM_BYTES; i--) {
+            const r = rows[i];
             try {
               const e = JSON.parse(r.entry);
               if (r.bin) this._recAttachBin(e, r.bin);   // BLOBSTORE — reattach binary payload as Buffers
-              if (e && e.rec && e.rec.channels) Map.prototype.set.call(this._visualMemory, r.key, e);
+              if (e && e.rec && e.rec.channels) {
+                Map.prototype.set.call(this._visualMemory, r.key, e);
+                this._vmResidentBytes += this._recResidentBytes(e);
+                loaded++;
+              }
             } catch { /* one bad row never blocks the rest */ }
           }
+          this._vmDiskRows = rows.length;
           if (this._visualMemory.size > 0) {
-            console.log(`[VisualMemory] restored ${this._visualMemory.size} seen-concept field(s) from sqlite in ${Date.now() - t0}ms (${rows.length} rows on disk, cap ${VM_CAP}).`);
+            // Says RESIDENT and ON DISK separately, because they are now
+            // different numbers and the difference is the whole point: a row
+            // that is not resident is paged out, not forgotten.
+            console.log(`[VisualMemory] ${this._visualMemory.size} field(s) resident `
+              + `(${(this._vmResidentBytes / 1048576).toFixed(0)} MB of ${(VM_BYTES / 1048576).toFixed(0)} MB budget), `
+              + `${rows.length} on disk — the rest load on demand. ${Date.now() - t0}ms.`);
           }
         }
       } catch (e) { console.warn('[VisualMemory] load failed:', e?.message || e); }
@@ -193,6 +276,55 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     return this._visualMemory;
   },
+  // Resident cost of one entry. The coefficient payload dominates by orders of
+  // magnitude, so it is measured and the skeleton is estimated — an exact
+  // JSON.stringify per entry would cost more than the accounting is worth.
+  _recResidentBytes(e) {
+    if (!e || !e.rec || !e.rec.channels) return 512;
+    let n = 512;
+    for (const c of Object.keys(e.rec.channels)) {
+      const ch = e.rec.channels[c];
+      if (!ch) continue;
+      if (ch.val && ch.val.length) n += ch.val.length;
+      if (ch.pos && ch.pos.length) n += ch.pos.length;
+      if (ch.val_b64) n += ch.val_b64.length;
+      if (ch.pos_b64) n += ch.pos_b64.length;
+    }
+    if (e.p && e.p.length) n += e.p.length * 8;
+    return n;
+  },
+
+  // Read ONE entry back from sqlite. This is what makes eviction safe: a key
+  // that is not resident is on disk, not gone.
+  _vmLoadOne(key) {
+    try {
+      const db = this._vmDb();
+      if (!db) return null;
+      const r = db.prepare('SELECT entry, bin FROM concepts WHERE key = ?').get(key);
+      if (!r) return null;
+      const e = JSON.parse(r.entry);
+      if (r.bin) this._recAttachBin(e, r.bin);
+      if (!(e && e.rec && e.rec.channels)) return null;
+      return e;
+    } catch { return null; }
+  },
+
+  // ⛔ TRIM BY BYTES, NOT BY A COUNT STANDING IN FOR BYTES. An entry-count cap
+  // is only a RAM bound if every entry is the same size, and the assumption
+  // written into this file (~10 KB each) is off by 50x for a full-resolution
+  // figure field. Evicts oldest-first — Map iteration order is insertion order
+  // and a touch re-inserts, so that is genuine LRU — and evicting NEVER deletes
+  // from disk.
+  _vmTrimResident(store) {
+    let guard = 0;
+    while ((store.size > VM_CAP || this._vmResidentBytes > VM_BYTES) && store.size > 1 && guard++ < 100000) {
+      const oldest = store.keys().next().value;
+      if (oldest === undefined) break;
+      store.evict(oldest);
+      this._vmEvictions = (this._vmEvictions | 0) + 1;
+    }
+  },
+
   // Dirty-key tracking: a set() queues an upsert, a delete() queues a removal,
   // a set() after a delete cancels the removal (LRU touch = delete+set of the
   // same key nets to one upsert). Flush is debounced 5s and batched in ONE
@@ -648,7 +780,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept, phrase: _phrase });   // newer provisional replaces provisional
       }
     }
-    while (store.size > VM_CAP) store.delete(store.keys().next().value);
+    this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
 
     // ── OWNART.8 (2026-08-20) — SHE LEARNS THE *CONSTRUCTION* OF WHAT SHE SEES,
     // ── at perception time, not only when something asks her to draw.
@@ -1605,7 +1737,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // here is PROVENANCE (an authored, licensed, human-captioned diagram)
       // rather than agreement between two guesses.
       store.set(key, { rec, at: now, seen: 1, conf: true, p: percept, phrase, figure: { url: fig.url, theme: opts.theme || null } });
-      while (store.size > VM_CAP) store.delete(store.keys().next().value);
+      this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
       this._vmSaveSoon();
       st.figGrounded = (st.figGrounded | 0) + 1;
       st.lastFigKey = key; st.lastFigAt = now;
@@ -1978,7 +2110,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // VMPHRASE.3 — the concept she asked to look at, whole. `key` is the
         // head noun; this keeps the phrase that produced it.
         store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt, phrase: (String(concept || '').trim().slice(0, 160) || (prev && prev.phrase) || null) });
-        while (store.size > VM_CAP) store.delete(store.keys().next().value);
+        this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
         this._vmSaveSoon();
         // VMRELATE — the look taught. `concept` is what she asked to see, whole:
         // its modifiers, its glue and its relation, not the head noun `key` was

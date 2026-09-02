@@ -263,17 +263,44 @@ if (isMainThread) {
   const LEDGER = path.join(OUT, 'uploaded.jsonl');
 
   const all = collectFigures();
+  // ⛔⛔ THE LEDGER IS ALWAYS THE RECORD, NOT THE DISK — because the delivery
+  // pipeline DELETES each field locally once it has been pushed to LFS, to keep
+  // the working tree bounded. A resume that asked the disk "is this field here?"
+  // would answer no for everything already delivered and regenerate all 31,572
+  // every run. Disk is still consulted as well, so a field that exists but was
+  // never ledgered is not needlessly redone.
   const have = new Set();
-  if (UPLOAD) {
+  // ⛔⛔ `delivered.txt` IS THE AUTHORITY WHEN IT EXISTS, AND THE LEDGER IS NOT.
+  //
+  // The ledger records a field the moment it is WRITTEN. The delivery pipeline
+  // does not push until a whole batch is built, so between those two points a
+  // field is "done" on paper and absent from the remote — and a kill in that
+  // window makes a resume SKIP it, permanently. Measured live: 954 ledgered
+  // against 37 actually committed, so 917 fields were one interruption away
+  // from being silently lost.
+  //
+  // The pipeline writes `delivered.txt` from `git ls-files` before each batch,
+  // so it lists exactly what the repository really holds. Written-but-not-pushed
+  // is then correctly treated as NOT done and simply regenerated.
+  const DELIVERED = path.join(OUT, 'delivered.txt');
+  let authoritative = false;
+  try {
+    const txt = fs.readFileSync(DELIVERED, 'utf8');
+    for (const line of txt.split('\n')) { const k = line.trim(); if (k) have.add(`fig:${k}`); }
+    authoritative = true;
+    console.log(`[figures] resume source: delivered.txt — ${have.size.toLocaleString()} fields confirmed IN the repository`);
+  } catch { /* no pipeline yet */ }
+  if (!authoritative) {
     try {
       for (const line of fs.readFileSync(LEDGER, 'utf8').split('\n')) {
         if (!line.trim()) continue;
-        try { const r = JSON.parse(line); if (r.key) have.add(r.key); } catch { /* skip a torn line */ }
+        try { const r = JSON.parse(line); if (r.key) have.add(r.key); } catch { /* a torn last line on a kill */ }
       }
     } catch { /* first run */ }
-  } else {
-    // Local mode: what is on disk IS the record, and it cannot disagree with itself.
-    for (const f of all) { try { if (fs.statSync(fileFor(f.key)).size > 0) have.add(f.key); } catch { /* absent */ } }
+  }
+  for (const f of all) {
+    if (have.has(f.key)) continue;
+    try { if (fs.statSync(fileFor(f.key)).size > 0) have.add(f.key); } catch { /* absent */ }
   }
   let todo = all.filter((f) => !have.has(f.key));
   // ⛔ `--limit` TAKES AN EVEN SPREAD, NOT THE FIRST N — because the first N is a
@@ -298,7 +325,7 @@ if (isMainThread) {
   // Append-only, flushed per batch. This ledger is the ONLY record of what has
   // been delivered once the local field is deleted, so it is written before the
   // counters are believed and never rewritten in place.
-  const ledgerFd = UPLOAD ? fs.openSync(LEDGER, 'a') : null;
+  const ledgerFd = fs.openSync(LEDGER, 'a');
   const t0 = Date.now();
   let next = 0, done = 0, live = CONC;
   const indexRows = [];
@@ -350,7 +377,11 @@ if (isMainThread) {
         stats.ok++; stats.bytes += msg.bytes;
         stats.coeffs += msg.coeffs; stats.px += msg.px;
         const row = { key: msg.key, file: `fields/${shardOf(msg.key)}/${bare(msg.key)}.field.json`, url: msg.url, w: msg.w, h: msg.h, coeffs: msg.coeffs, citations: msg.citations };
-        if (UPLOAD) { row.pkg = pkgUrlFor(msg.key); row.bytes = msg.bytes; fs.writeSync(ledgerFd, `${JSON.stringify(row)}\n`); }
+        row.bytes = msg.bytes;
+        if (UPLOAD) row.pkg = pkgUrlFor(msg.key);
+        // Written before the counters are trusted: this line is the ONLY proof
+        // the field was produced once the local copy is gone.
+        fs.writeSync(ledgerFd, `${JSON.stringify(row)}\n`);
         indexRows.push(row);
       }
       if (done % 100 === 0) report();
