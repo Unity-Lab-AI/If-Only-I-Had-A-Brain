@@ -39,6 +39,28 @@
 
 ---
 
+## 2026-09-02 (THIRTEENTH BATCH) — `CURVEDEPTH.4` + `CURVEDEPTH.12` — BOTH SOURCE LANES BUILT AND RUN
+
+- [x] `CURVEDEPTH.4` — **Wikibooks ingest** for the subjects OpenStax does not cover at grade band (civics, economics, psychology below college).
+
+> ✅ **DONE — `.claude/scripts/fetch-wikibooks-corpora.mjs`.** Wikibooks is a library of open textbooks whose API exposes both the chapter TREE (`list=allpages&apprefix=Book/`) and the full text of every chapter (`prop=extracts&explaintext`) — which is the shape a book ingest needs and the shape a search index does not give you. Covers the three subjects the row names at grade9-12, plus social, science, cs, health, music, art and language at the same band. ⛔ **Assigned only to secondary bands, deliberately:** Wikibooks sits at secondary/undergraduate level, and dropping it into a grade-3 cell would be the corpus-bleed defect the grade gate exists to stop.
+>
+> ⭐ **Two bugs found by reading its own output BEFORE it ran wide, both of the session's recurring species — a lane that cannot tell failure from absence:**
+> - It printed **`0 chapters, skipped (not a book)`** for *US History*, *Constitution of India* and six others. All real books; the API had been rate-limiting, and the same requests by hand returned five pages each. **It retries with backoff now and says LOOKUP FAILED when it gives up** — a statement about the fetch, not a verdict on the source.
+> - **`prop=extracts` with `exlimit>1` silently returns intro-only.** Measured: a 3-title batch came back `365, 0, 0` characters while the same first title alone returned the same 365. A 33-chapter book was yielding one intro and reading like a bad source. **One chapter per request now** — 33 requests instead of 2 is the price of the whole book.
+
+---
+
+- [x] `CURVEDEPTH.12` — **BUILD THE COLLEGE2-4 TEXTBOOK LANE, now that the licence posture makes it real.**
+
+> ✅ **DONE — `.claude/scripts/fetch-saylor-corpora.mjs`, run to completion: 40 books · 7,965,431 words · 6,176 figures.** The other half of the "textbooks then papers" split, and the half the old commercial-safe posture had made impossible: Saylor's books are CC-BY-NC-SA, so **that one clause was the entire reason this library was unreachable**.
+>
+> ⛔ **The row named the real engineering problem and it was the right one: OTL is a CATALOGUE, not a text host.** Saylor was taken first because it is static HTML with a flat section index; **UMN Open Publishing was probed and refused as a starting point** — its Pressbooks REST `chapters` route returns `[]`, `/pressbooks/v2/toc` 404s, and the part pages carry no chapter links in raw HTML because the nav is client-rendered. **A fetcher that half-works on six hosts is worse than one that fully works on one.**
+>
+> ⚠ **And the routing lesson repeated itself here.** The first run wrote 29 books / 715,311 words into `economics/college2-4` — a subject that **retires at grade12** — so the coverage auditor reported them UNREACHABLE. `cs → major`, `economics`/`psychology` → `genered` at this band; files deleted before they were ever committed. **The same defect the research lane had committed hours earlier, with the fix already written down.** Documenting a trap is not the same as applying it.
+
+---
+
 ## 2026-09-02 (TWELFTH BATCH) — `READLIST.1` — THE BOOK LIST WAS THE CAP, AND THE PICTURES WERE NEVER FETCHED
 
 Gee (verbatim): *"okaye what about all the books like wizard of oz and shit that all the lower grades and uper grades get to read and view images of"*
