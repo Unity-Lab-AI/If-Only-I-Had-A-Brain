@@ -115,6 +115,32 @@ Gee (verbatim): *"you alsoo should of been finalizing,, there better not be a fu
 
 ---
 
+## 2026-09-01 - TEXTFIG.2/.3/.6/.7: the textbook figures reach her mind's eye - feature/textfig-percept
+
+Gee (verbatim): *"yeah these images need to appear in her minds eye too"*
+
+**THE CHAIN, end to end, every link with both a definition and a caller:** corpus JSON → `academicStoryFigures()` (`life-curriculum.js`) → attached on the cluster (`brain-server.js`) → read by `_perceiveCellFigures()` (`curriculum.js`, called from the cell runner right after the prose) → `cluster.perceiveTextbookFigure()` → attached on the cluster → `_perceiveTextbookFigure()` (`visual-memory.js`) → fetch → decode → downsample → `perceive()` → store → **mind's-eye publish**.
+
+⛔⛔ **I ALMOST SHIPPED IT DEAD, AND CAUGHT IT BY CHECKING RATHER THAN ASSUMING.** My first cut reached for `cluster._visualHost || cluster._brainServer` — **neither identifier exists anywhere in the tree**, so the call site would have been permanently unreachable. **That is precisely the defect class this whole sweep exists to remove**, authored by me, in the fix for it. Corrected to the codebase's real idiom: the capability is ATTACHED ONTO THE CLUSTER by the server at boot, exactly like `academicStorySentences` beside it, and the curriculum guards on `typeof` so the browser build — which has no mind-space worker — fails closed instead of throwing into the teach path.
+
+⭐ **LOOKTWICE IS DELIBERATELY NOT APPLIED, AND THAT IS A REASON, NOT AN OMISSION.** The reference lane demands two independent renders agree (cosine ≥ 0.45) because a *generator* that does not know a word produces confident noise. A textbook figure is the opposite kind of object: an **authored diagram, captioned by the people who drew it, under a licence this corpus has already read**, tied to prose she is being taught in the same breath. There is no second seed to disagree with, and demanding one would reject every figure. ⚠ **What IS kept from that lane guards against real failures rather than an oracle:** the decode-null check (a server handing back HTML died invisibly before), the near-uniform detail floor (a blank plate is not a percept), and named per-stage counters.
+
+⭐ **THE COUNTERS ARE SEPARATE FROM THE GENERATOR'S ON PURPOSE** — `figAttempts` / `figGrounded` / `figHttpFails` / `figDecodeFails` / `figPerceiveFails` / `figBlank` / `figAlreadyHeld`. Folding figure successes into `grounded` would **flatter the generator's hit rate with work it did not do**, which is the instrument-that-lies shape.
+
+⚠ **FIGURES BIND UNDER A `fig:` NAMESPACED KEY** so a diagram never overwrites what she has learned a WORD looks like — a physics figure of a car on a banked curve is evidence about that chapter, not a replacement for her memory of "car". They are stored `conf: true` on arrival because the confirmation standard here is **provenance**, not agreement between two guesses. An already-held figure returns early: a fixed image re-perceived can only reproduce the same record, so unlike a generated reference there is no "look again" value.
+
+**RE-PRICE (`TEXTFIG.6`) — MEASURED, NOT ESTIMATED.** 5 real figure fetches: **134 ms average, 200 KB average**. At the default cap that is **6 × 134 ms ≈ 0.8 s of network per cell visit = 0.05% of a ~26-min cell pass**; all 194 figures currently on disk would total **~0.4 min** of network spread across many visits. ⛔ **The cap is part of the feature:** a figure costs a fetch, a decode and a `perceive()` **on the same substrate the walk teaches with**, so an unbounded loop over the 94-figure `grade11` cell would put 94 sequential image decodes inside a cell pass. `DREAM_TEXTFIG_PER_CELL` (default 6, `0` disables) bounds **successes AND attempts** (`cap × 4`) — so an all-held cell does not re-walk 94 store lookups every visit, and an all-404 cell does not retry forever.
+
+⭐ **PROXY CHECKED BEFORE SHIPPING, because this project lost a day to exactly that:** both mind-space methods the lane calls — `perceive` and `describe` — are present on `MindSpaceWorkerProxy`, so the production wiring carries them and this is not a repeat of the color-blind `imagine()` incident.
+
+**STILL OPEN:** `TEXTFIG.4` (dangling cross-references — the cleaner currently DROPS "as shown in ." sentences, which is one valid fix but not the one the row asked for) and `TEXTFIG.5` (tables, deleted by the same class of regex as the figures were).
+
+**Files:** `server/brain-server/visual-memory.js` (the lane + counters), `server/life-curriculum.js` (`academicStoryFigures`), `server/brain-server.js` (two cluster attachments), `js/brain/curriculum.js` (`_perceiveCellFigures` + the cell-runner call).
+**Docs:** `docs/ADMIN-CONTROLS.md` (new flag, 209 → 210 documented), `docs/TODO.md`, `docs/FINALIZED.md` (this), `docs/RESUME.md`, `wiki/log.md`.
+**Verified:** `node --check` ×4 · ESM `import()` on curriculum · the full bridge grepped link-by-link for definition AND caller · `academicStoryFigures` run against the real corpus (194 figures, correct shape, theme carried) · 5 figure URLs fetched live for the re-price · proxy method list checked · `docs:drift` 210/210 env flags green.
+
+---
+
 ## 2026-09-01 - TEXTFIG.1: the textbook figures stop being deleted, and 194 land on disk - feature/textfig-ingest
 
 Gee (verbatim, the original filing): *"yeah these images need to appear in her minds eye too"*

@@ -3673,6 +3673,17 @@ class ServerBrain {
       // train on this for real depth; lived-year + math stay bespoke.
       this.cortexCluster.academicStorySentences = (subject, grade) =>
         lifeCurriculum.academicStorySentences(subject, grade);
+      // TEXTFIG.3 — the figures that ride the same cell as the prose above.
+      // Attached beside its sentence sibling so the curriculum can ask for a
+      // cell's pictures the same way it asks for its text.
+      this.cortexCluster.academicStoryFigures = (subject, grade) =>
+        lifeCurriculum.academicStoryFigures(subject, grade);
+      // TEXTFIG.3 — the percept bridge. The curriculum runs in both the browser
+      // and this process; only this one has a mind-space worker, so the
+      // capability is ATTACHED here and the curriculum guards on its presence.
+      // Same pattern as the accessors above, for the same reason.
+      this.cortexCluster.perceiveTextbookFigure = (fig, opts) =>
+        this._perceiveTextbookFigure(fig, opts);
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
       // a successful definition lookup so sem(word) → sem(def_words)
