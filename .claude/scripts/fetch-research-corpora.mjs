@@ -43,8 +43,22 @@ const SENT_MIN = 40, SENT_MAX = 320;
 // The grad band's floor is 330,000 words per cell (docs/CURRICULUM-GAP.md
 // §THE TARGET LADDER). Nothing here reaches that in one pass, and the cap below
 // is a per-run bound rather than a target — the merge is additive across runs.
-const PMC_ARTICLES = 40;      // full-text papers per subject per band
-const ARXIV_ABSTRACTS = 300;  // abstracts per subject per band
+// ⛔⛔ THESE TWO ARE A DIFFERENT KIND OF NUMBER FROM A SENTENCE CAP, AND THE
+// DISTINCTION IS WORTH KEEPING (2026-09-02, under *"all the corpus needs to be
+// complete"*).
+//
+// A sentence cap truncates a work that has already been downloaded — that is the
+// defect, and every one of them is gone from every ingest. These are not that:
+// the research literature has no end. PubMed Central holds millions of open
+// papers and arXiv takes thousands a week, so "complete" is not a state this
+// source can reach — there is only how much of an endless stream to take.
+//
+// Raised hard rather than removed, because a number here is a REQUEST SIZE and
+// removing it means "every paper ever written". Each paper is read WHOLE; what
+// these bound is how many papers, and the band floor decides when the cell is
+// full. ⚠ NCBI asks for politeness, hence the batching and sleeps below.
+const PMC_ARTICLES = 400;      // full-text papers per subject per band — each taken whole
+const ARXIV_ABSTRACTS = 3000;  // abstracts per subject per band
 
 // Subject → where its literature actually lives. ⛔ Empty means NO LANE, said
 // out loud: civics has no open-access research archive of its own, and pointing
@@ -194,7 +208,9 @@ for (const grade of GRADES) {
       const ids = await pmcIds(src.pmc, PMC_ARTICLES);
       await sleep(1200);
       const xml = ids.length ? await pmcFullText(ids) : '';
-      const sents = cleanSentences(xml, 4000);
+      // Every paper whole — the 4,000-sentence cap that stood here truncated the
+      // batch after downloading all of it.
+      const sents = cleanSentences(xml, Infinity);
       if (sents.length >= 20) {
         entries.push({
           theme: `papers-${subject}`,
@@ -209,7 +225,7 @@ for (const grade of GRADES) {
     }
     if (src.arxiv.length) {
       const raw = await arxivAbstracts(src.arxiv, ARXIV_ABSTRACTS);
-      const sents = cleanSentences(raw, 4000);
+      const sents = cleanSentences(raw, Infinity);
       if (sents.length >= 20) {
         entries.push({
           theme: `abstracts-${subject}`,

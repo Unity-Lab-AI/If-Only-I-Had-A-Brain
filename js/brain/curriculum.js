@@ -3581,6 +3581,14 @@ export class Curriculum {
         ? (GRADE_LABELS[this._currentGrade] || formatGradeShort(this._currentGrade))
         : (macroActive ? 'kindergarten' : null),
       macroPhaseProgress,
+      // ⛔ THE WORDS SHE WAS OWED AND DID NOT GET. The pre-cell vocabulary lane
+      // used to report the same DONE line whether it taught 67 words or none;
+      // this is the number that makes that impossible to miss from outside.
+      // ⚠ It counts words whose DEFINITION never landed, so a cell's bindings
+      // trained on them with nothing behind them. Non-zero is not fatal and is
+      // not noise — it is the size of what the dictionary could not answer.
+      vocabPermanentMiss: (this.cluster && this.cluster._vocabPermanentMiss instanceof Set)
+        ? this.cluster._vocabPermanentMiss.size : 0,
       // Compact label for dashboard panel headers — "Pre-K" / "K" /
       // "Grade 1" / "PhD" — substituted into hardcoded "K-VOCABULARY"
       // / "K-WIRING ASSERTION" / "Dictionary API + K-Vocabulary"
@@ -4980,7 +4988,51 @@ export class Curriculum {
     const stall = (totalTimeouts > 0 || totalSlowWords > 0)
       ? ` · ⚠ ${totalTimeouts} per-word timeouts, ${totalSlowWords} slow words`
       : '';
-    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB DONE — ${subject}/${grade}: ${totalTrained} Hebbian fires across ${totalWordsBound} words (${totalDefsBound} definition senses) in ${((Date.now() - t0) / 1000).toFixed(0)}s${stall}. Cell teach phases begin.`);
+    // ⛔⛔ THE SHORTFALL IS NAMED, AND A TOTAL MISS IS NOT CALLED "DONE".
+    //
+    // This line used to read identically whether the lane taught 67 words or
+    // zero: `DONE — 0 Hebbian fires across 0 words … Cell teach phases begin.`
+    // is what a complete failure printed, in the same shape and the same tone as
+    // a success. It was measured live on `science/kindergarten`: *67 of 2247
+    // grade words unlearned* followed by *0 words taught*, because the
+    // definition service answered those 67 from its ERROR CACHE rather than the
+    // network — so nothing was retried and nothing was reported.
+    //
+    // ⭐ The words that were owed and are still not learned are computed against
+    // the live taught-set AFTER the pass, not inferred from the counters, and
+    // they are kept as an inspectable list. ⚠ A list, not a substitute teach:
+    // under NO FALLBACKS a word the dictionary cannot answer for is a word she
+    // has not learned, and the honest response is to say which ones and stop —
+    // not to teach something else in their place and count it.
+    const taughtNow = cluster._definitionTaughtWords instanceof Set
+      ? cluster._definitionTaughtWords : new Set();
+    const stillMissing = todo.filter((w) => !taughtNow.has(w));
+    if (stillMissing.length) {
+      if (!(cluster._vocabPermanentMiss instanceof Set)) cluster._vocabPermanentMiss = new Set();
+      for (const w of stillMissing) cluster._vocabPermanentMiss.add(w);
+      // Bounded like every other resident set here — the newest misses matter,
+      // and an unbounded set on a 49.9K-word walk is a leak wearing a diagnosis.
+      if (cluster._vocabPermanentMiss.size > 5000) {
+        const keep = [...cluster._vocabPermanentMiss].slice(-5000);
+        cluster._vocabPermanentMiss = new Set(keep);
+      }
+    }
+    const verdict = stillMissing.length === 0
+      ? '📚 PRE-CELL VOCAB DONE'
+      : (totalWordsBound === 0
+        ? '⛔ PRE-CELL VOCAB TAUGHT NOTHING'
+        : '⚠ PRE-CELL VOCAB INCOMPLETE');
+    const shortfall = stillMissing.length
+      ? ` · ⛔ ${stillMissing.length} of ${todo.length} owed words STILL UNLEARNED (${stillMissing.slice(0, 12).join(', ')}${stillMissing.length > 12 ? `, +${stillMissing.length - 12} more` : ''}) · lifetime miss list ${cluster._vocabPermanentMiss.size}`
+      : '';
+    this._hb(`[Curriculum] ${verdict} — ${subject}/${grade}: ${totalTrained} Hebbian fires across ${totalWordsBound}/${todo.length} words (${totalDefsBound} definition senses) in ${((Date.now() - t0) / 1000).toFixed(0)}s${stall}${shortfall}. Cell teach phases begin.`);
+    if (stillMissing.length) {
+      try {
+        this.teachFlag('warn', 'PRECELL-MISS',
+          `${subject}/${grade}: ${stillMissing.length} of ${todo.length} owed vocabulary words were not learned — the cell's bindings will train on words with no definition behind them`,
+          { subject, grade, missing: stillMissing.length, owed: todo.length });
+      } catch { /* flagging is best-effort; the log line above already carries it */ }
+    }
     this._currentMacroPhase = null;
     this._macroPhaseProgress = null;
   }

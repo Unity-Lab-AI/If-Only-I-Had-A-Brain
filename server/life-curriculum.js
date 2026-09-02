@@ -135,17 +135,49 @@ const academicStorySentences = (subject, grade) => storySentences(`academic/${su
 //
 // ⚠ Reads through the SAME `loadStories` cache, so asking for figures costs no
 // extra disk read on a cell whose prose has already been loaded.
+//
+// ⛔⛔ THE ADDRESS LIVES UNDER TWO FIELD NAMES AND THIS READER ONLY KNEW ONE.
+// Three harvesters write figures; one names the resolved absolute address `url`
+// and two name it `src`. This accessor required `url`, so 6,899 of 14,374
+// figures — every Saylor diagram and every Gutenberg plate — were skipped here
+// while holding a perfectly good `https://` address the whole time, and the
+// figure count reported anywhere upstream overstated what the walk could see by
+// 92%. Reading both names is NOT a capability fallback: it is one field under
+// two spellings, and neither spelling means anything weaker than the other.
+//
+// ⚠ The absoluteness check is the real gate. A relative `src` is a page-local
+// path that means nothing to a fetch from this process, so it is refused rather
+// than passed on to fail later at the network.
+// ⭐ THE REACHABILITY RULE, IN ONE PLACE, BECAUSE IT HAS ALREADY DRIFTED ONCE.
+// Returns the fetchable address of a figure, or `''` if it has none. Exported so
+// the coverage auditor asks THIS function rather than re-deriving the rule — a
+// second copy is exactly how 6,899 figures came to be invisible to the walk
+// while every count said they were present.
+function figureAddress(f) {
+  if (!f) return '';
+  const href = typeof f.url === 'string' && f.url ? f.url : (typeof f.src === 'string' ? f.src : '');
+  return /^https?:\/\//i.test(href) ? href : '';
+}
+
 function academicStoryFigures(subject, grade) {
   const data = loadStories(`academic/${subject}`, grade);
   const out = [];
   for (const exp of ((data && data.experiences) || [])) {
     if (!exp || !Array.isArray(exp.figures)) continue;
     for (const f of exp.figures) {
-      if (!f || !f.url) continue;
+      const href = figureAddress(f);
+      if (!href) continue;
       out.push({
-        url: f.url,
+        url: href,
         alt: typeof f.alt === 'string' ? f.alt : '',
         caption: typeof f.caption === 'string' ? f.caption : '',
+        // The corpus prose this picture sits inside, cleaned by the same cleaner
+        // that produced the cell's sentences — so the figure's context and the
+        // cell's story are the SAME STRINGS and the tie between them is a match
+        // rather than an inference. Absent on figures harvested before this
+        // field existed; the percept lane treats that as less anchoring, never
+        // as a reason to bind the picture to whatever word is current.
+        context: typeof f.context === 'string' ? f.context : '',
         theme: typeof exp.theme === 'string' ? exp.theme : '',
       });
     }
@@ -157,5 +189,5 @@ module.exports = {
   loadStories, storySentences, storyExperiences, clearCache, CORPORA,
   loadLifeStories, lifeStorySentences, lifeStoryExperiences,
   loadCodingStories, codingStorySentences,
-  loadAcademicStories, academicStorySentences, academicStoryFigures,
+  loadAcademicStories, academicStorySentences, academicStoryFigures, figureAddress,
 };

@@ -1783,15 +1783,23 @@ export class Brain3D {
   /**
    * Wire a brain reference so the event system can call
    * `brain.innerVoice.languageCortex.generate()` to produce Unity's
-   * equational commentary on detected events. Called from app.js
-   * bootUnity() after `brain = new UnityBrain()`. Safe to call
-   * multiple times — just replaces the reference.
+   * equational commentary on detected events. Safe to call multiple
+   * times — just replaces the reference.
    *
-   * When the brain reference is null (pre-boot / disconnected /
-   * landing-page view with no brain yet), the event system falls
-   * back to the plain numeric-label notifications without
-   * commentary. So the 3D brain viz keeps working fine during
-   * the landing page → boot transition.
+   * ⛔ THE CALLER NAMED HERE NO LONGER EXISTS. This used to say it was
+   * called from `bootUnity()` after `brain = new UnityBrain()` — a
+   * browser-local brain that was DELETED, because when the backend was
+   * unreachable the page silently dropped to a ~6,700-neuron simulation
+   * and rendered its invented numbers identically to the real ones. The
+   * reference now arrives from the remote brain, or not at all.
+   *
+   * ⚠ Kept as a warning rather than trimmed to a line: a comment
+   * describing a deleted mechanism is how the mechanism comes back.
+   *
+   * When the reference is null (pre-boot / disconnected / landing-page
+   * view), the event system emits plain numeric-label notifications with
+   * no commentary — an honest absence, not a substitute brain — so the
+   * 3D visualisation keeps working through the boot transition.
    */
   setBrain(brain) {
     //(post-fix) — unwire any prior innerThought listener so
