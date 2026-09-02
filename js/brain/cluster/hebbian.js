@@ -1504,12 +1504,16 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    *        Δw[i,j] = lr × y[i] × (y[i] − θ[i]) × x[j]
    *
    * `α` defaults to 0.01 (slow drift — matches biological sliding-
-   * threshold timescales of ~100-1000 teach events). Opt-in via
-   * `cluster._bcmEnabled = true`. Silent no-op when disabled so the
-   * teach path stays Oja-only by default. Ship-and-monitor: operator
-   * can flip the flag in a session to test whether BCM improves Oja's
-   * sep-probe numbers, without risking a default-on change to every
-   * localhost run.
+   * threshold timescales of ~100-1000 teach events). Silent no-op when
+   * disabled so the teach path stays Oja-only by default.
+   *
+   * ⭐ THE SWITCH IS `DREAM_BCM=1`, resolved once in the Cluster constructor;
+   * a runtime `cluster._bcmEnabled = true` still overrides it. ⛔ Until
+   * 2026-09-01 this comment promised that "the operator can flip the flag in
+   * a session" while `_bcmEnabled` was assigned NOWHERE in the tree — the
+   * feature was complete from gate to kernel and simply unreachable on the
+   * box. Default stays OFF deliberately: turning BCM on changes the
+   * plasticity rule on every teach path and is a RE-PRICE-bearing change.
    */
   intraSynapsesBcm(pre, post, lr, alpha = 0.01) {
     if (!this._bcmEnabled) return;

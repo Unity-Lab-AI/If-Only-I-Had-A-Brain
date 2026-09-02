@@ -4909,7 +4909,30 @@ class ServerBrain {
         ? Math.max(0, 1 - sinceMs / (5 * 60 * 1000))
         : 0;
     }
-    if (this.hypothalamusModule && this._drives) brainState.drives = this._drives;
+    // ⛔⛔ THE DRIVES PUBLISHER IS DELETED — it could never fire, and it hid
+    // that fact for the whole life of this server. It read:
+    //
+    //     if (this.hypothalamusModule && this._drives) brainState.drives = this._drives;
+    //
+    // ⚠ `hypothalamusModule` and `_drives` each appeared at exactly that one
+    // line and NOWHERE else in the tree. Neither was ever assigned, so the
+    // guard was permanently false and `brainState.drives` has never once been
+    // published — while `brainstem.js`'s raphe nucleus read
+    // `brainState?.drives?.energy` every tick to set her tonic serotonin floor.
+    //
+    // ⭐ WHY NOT JUST WIRE IT UP: the drive vector lives in the `Hypothalamus`
+    // class (js/brain/modules.js), which is a BROWSER-ENGINE module. This
+    // process has a hypothalamus *neural cluster* — spiking neurons — which is
+    // a different object entirely and carries no homeostatic drive readout.
+    // ⛔ And instantiating `Hypothalamus` here would be actively wrong: its
+    // UNITY_SETPOINTS are the 25-year-old's (arousal 0.9, intoxication 0.7),
+    // and seeding those into a brain currently walking kindergarten is exactly
+    // the defect the age-ladder work already paid to fix once.
+    //
+    // So there is no honest server-side energy readout today. Per this
+    // method's own rule two screens up — absent readouts are OMITTED, never
+    // defaulted — the field stays absent, and the raphe now REPORTS that it is
+    // running on one input instead of quietly substituting a plausible 0.5.
 
     // ── ENDO.12 / ENDO.10 — her real age, and her position in the walk.
     //
