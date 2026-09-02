@@ -89,14 +89,28 @@ const LADDER = {
   // life-canon lane, not to a fetched corpus. And `buh`/`duh`/`sss`/`kuh` are
   // PHONEME SOUNDS taught by the phonics lane; their absence from prose is
   // correct, not a defect.
-  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader']],
-  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales']],
-  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"]],
-  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"]],
-  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"]],
-  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan']],
-  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild']],
-  grade6:  [[120, 'Treasure Island'], [514, 'Little Women']],
+  // ⭐⭐ THE READING TEXTBOOK, NOT JUST READING MATERIAL — added 2026-09-02.
+  //
+  // Gee: *"we need to replace it with the real equivents that are full and
+  // complete ie textbooks and reading teachings for all of the learning the
+  // alphabet phones letters alphabet numbers all of it"*.
+  //
+  // Story anthologies are what a child READS; they are not what teaches a child
+  // to read. The McGuffey Eclectic series IS the instructional sequence —
+  // letters, letter sounds, blends, first words, first sentences, then graded
+  // reading — and it is the canonical American one, public domain and whole.
+  // ⛔ Every id below was verified against Gutenberg's own `Title:` header
+  // before it was written here, per the rule `LITGRADE.1` earned: of eight ids
+  // guessed from memory in the first pass, two resolved to *The Illustrated War
+  // News* and a *Pony Rider Boys* novel.
+  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"]],
+  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"]],
+  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"]],
+  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"]],
+  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"]],
+  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"]],
+  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"]],
+  grade6:  [[120, 'Treasure Island'], [514, 'Little Women'], [16751, "McGuffey's Sixth Eclectic Reader"]],
   grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild']],
   grade8:  [[76, 'Adventures of Huckleberry Finn']],
   grade9:  [[1513, 'Romeo and Juliet'], [1727, 'The Odyssey']],

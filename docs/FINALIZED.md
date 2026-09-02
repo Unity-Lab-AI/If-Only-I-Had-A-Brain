@@ -39,6 +39,67 @@
 
 ---
 
+## 2026-09-02 (NINTH BATCH, part 2) — `CURVEDEPTH.8` — THE THIRD ROW THIS SESSION ASKING FOR SOMETHING THE REPO ALREADY HAD
+
+- [x] `CURVEDEPTH.8` — **Decide the corpus posture for the four courses that have no academic lane at all.** `PROSE_ACADEMIC_SUBJECTS` is `ela, science, social, economics, psychology, civics, cs` — so **art, pe, music and health run purely on hand-written fact tables at every grade, K→PhD**, and `math` is equational + `life` is bespoke **by design** (correct, do not change those two). ⚠ Art/PE/music/health are the ones needing a call: real courses with real content, currently carried by ~20 pair literals each.
+
+> ✅ **CLOSED — the decision was made and SHIPPED, and the row's own premise is out of date.** `PROSE_ACADEMIC_SUBJECTS` now contains all four. Measured on disk:
+> ```
+>   art     20 cells · 171 entries · 499,956 words
+>   music   13 cells · 116 entries · 246,622 words
+>   pe      13 cells · 110 entries · 213,128 words
+>   health  13 cells · 111 entries · 286,933 words
+> ```
+> **1.25M words across 59 cells**, against the "~20 pair literals each" the row describes. The posture that was chosen is the one the row implies: these are **real courses with a KNOWLEDGE half** — art history and colour theory, music notation, nutrition, the anatomy of movement — and that half is what a textbook carries, so it gets a prose lane like any other subject. ⭐ **The SKILL half was deliberately left alone** and still has its own lanes; prose does not replace practice, which is why the PAINT loop still trains her hand against her own percept.
+>
+> ⚠ **`math` and `life` remain correctly excluded** — equational and bespoke respectively, exactly as the row says, and nothing here touched them.
+>
+> ⛔ **Found by checking the code before doing the work, which is now three for three this session** — `CURVEBUILD.2` (the target ladder existed), `CURVEBUILD.5` (its answer was quoted in its own body), and this. **The board's summary of the repository is not the repository**, which is precisely what `CURVEBUILD.4` was filed to catch.
+
+---
+
+## 2026-09-02 (NINTH BATCH) — `TEACHVIEW.7` — THE COST BOUND, MEASURED ON PRODUCTION CODE
+
+- [x] `TEACHVIEW.7` — ⛔ **COST BOUND, PRICED BEFORE IT SHIPS.** This feature adds a publish on the hottest path in the system. RE-PRICE the per-item bus cost against the measured teach rates (`_teachAssociationPairs` at 874 calls / 14,031,365 ms; `_teachQABinding` at 3,577,079 ms for ONE call) and prove the bus cannot starve the donor lane or the WS pump. **A monitoring feature that slows the walk is a bug**, and this one sits directly in the path the `[EventLoop] BLOCKED` wall already reports on.
+
+> ✅ **DONE — benched on the real methods through `Curriculum.prototype`, not on a copy of the logic.**
+>
+> ```
+>   teachBus, short item (a -> b pair)        2,252 ns/call
+>   teachBus, long item (full sentence)       2,520 ns/call
+>   teachFlag, deduped repeat                   133 ns/call
+>   reading ring after 3,000,000+ calls          400 entries   (bounded, as designed)
+>   flags array after 1,000,000 repeats            1 entry     (deduped by key, count-only)
+> ```
+>
+> ### THE BOUND, AGAINST THE ROW'S OWN NUMBERS
+> `_teachAssociationPairs` measures **16,054 ms per call** (14,031,365 ms / 874). At the worst-case bus cost of 0.00252 ms, **a single call would have to publish 63,703 items before the bus cost 1% of it.** A whole cell's sentence lane — call it 20,000 publishes — costs **~50 ms total**, against teach phases measured in thousands of seconds.
+>
+> ⭐ **AND THE STRUCTURAL REASON IT IS CHEAP, verified statically rather than assumed:** the bus body contains **no `JSON`, no `stringify`, no `await`, no `send`, no `write`, no `console`** — grepped, zero hits. It is a counter bump plus a ring write into memory. **Nothing is pushed from it**: the state publish reads the ring at 10 fps on its own schedule, so the donor socket and the WS pump are never touched by a teach-time publish, which is exactly the starvation the row was written to rule out.
+>
+> ⚠ **The honest limit of this proof:** it bounds the bus, not the whole feature. `TEACHVIEW.8`'s retention and export are not covered here and must be priced on their own — persistence writes to disk, which is a different class of cost from a memory ring, and the `[EventLoop] BLOCKED` wall is the instrument that would show it.
+
+---
+
+## 2026-09-02 (EIGHTH BATCH) — `PRECELL.1` — A LANE THAT REPORTED "DONE" FOR TEACHING NOTHING
+
+- [x] `PRECELL.1` — ⚠ **`PRE-CELL VOCAB` reports DONE while teaching ZERO of the words it just said were missing.** Live: `science/kindergarten: 67 of 2247 grade words unlearned` → `0 words taught (0 multi-def Hebbian fires across 0 words, 0 total association-pair updates)` because `prefetch — 0/67 new definitions cached (rest already cached or failed)`. **Exactly the 67 words `GATEWATCH.3` already carries as failing from the error CACHE, not the network.** The lane's completion line reads identically whether it taught 67 words or none. Same defect class as the silent declines — it must report the shortfall, and the 67 permanently-failing words need either a fallback-corpus teach or an honest permanent-miss list.
+
+> ✅ **DONE — and the row offered two ways to close it, one of which is now illegal.**
+>
+> ⛔ **"A fallback-corpus teach" is not available and should not be.** Teaching something else in place of a word the dictionary could not answer for, and counting it, is capability-substitution — the shape the whole-stack no-fallbacks ruling forbids. **The honest permanent-miss list is the whole fix.**
+>
+> ### WHAT THE LANE SAYS NOW
+> - **The shortfall is computed against the live taught-set AFTER the pass**, not inferred from the counters — so it reports what she actually did not learn rather than what a counter failed to increment.
+> - **A total miss is no longer called DONE.** Three verdicts where there was one: `📚 PRE-CELL VOCAB DONE` (nothing owed remains) · `⚠ PRE-CELL VOCAB INCOMPLETE` (some learned, some not) · ⛔ `PRE-CELL VOCAB TAUGHT NOTHING` (owed words, zero bound). The old line printed `DONE — 0 Hebbian fires across 0 words … Cell teach phases begin.` in the same shape and the same tone as a success.
+> - **The words are named**, first twelve inline plus a remainder count, so the failure is diagnosable from the console without a second tool.
+> - **A `PRECELL-MISS` teach flag fires** with the subject, grade, owed and missing counts, and says the consequence in words: *"the cell's bindings will train on words with no definition behind them"*.
+> - **`cluster._vocabPermanentMiss`** accumulates the lifetime miss list, bounded at 5,000 — an unbounded set on a 49.9K-word walk is a leak wearing a diagnosis — and its size is published as `vocabPermanentMiss` on the curriculum status so it is visible from outside the log.
+>
+> ⚠ **What this does NOT fix, stated rather than implied:** the 67 words fail from the definition service's **error cache**, not the network, so nothing is retried and the miss will reproduce on every run until that cache is addressed. **That is `GATEWATCH.3`'s territory and it stays open.** This row makes the failure impossible to miss; it does not make the words learnable.
+
+---
+
 ## 2026-09-02 (SEVENTH BATCH) — `LICENCE.1` — THE POSTURE CHANGED AND THE AXIS MOVED WITH IT
 
 Gee (verbatim): *"we will use what ever has educational rights this is not a cvommercial use its a non profit educational experiment"*
