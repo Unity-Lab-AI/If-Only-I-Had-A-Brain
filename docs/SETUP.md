@@ -195,7 +195,7 @@ For headless or remote deployments, set `DREAM_NO_AUTO_GPU=1` to skip the auto-l
 
 These convenience batch files drive the **local-dev path only** — they boot the brain on your own machine and GPU. The deployed server does not use them; it runs as a systemd service (see [Deployed server brain](#deployed-server-brain-primary-path)). Windows users get three convenience batch files at the repo root.
 
-**`start.bat`** handles first-run `npm install`, runs the `esbuild` bundle build, downloads the GloVe corpus if it's missing, redirects stdout/stderr to `server/server.log`, opens the landing page and the dashboard in separate browser tabs, and spawns a separate "Unity Brain Log Tail" PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible. It does not open `compute.html` itself — the server auto-launches that tab once the HTTP listener is up. Since 2026-08-28 (CTLWINDOW) it also spawns the control-plane process (`node brain-ctl.js`) in its **own titled minimized window — "unity-brain-ctl (leave running)"** — instead of parenting it to the launcher console (closing an old launcher window used to silently kill the control plane and dark port 7526), with `brain-ctl.log` opened in APPEND mode so a did-not-bind relaunch can't truncate the live instance's log; `start.sh` mirrors this with `nohup` + `>>`.
+**`start.bat`** handles first-run `npm install`, runs the `esbuild` bundle build, downloads the GloVe corpus if it's missing (**required** — the brain exits at boot without `corpora/glove.6B.300d.txt`), redirects stdout/stderr to `server/server.log`, opens the landing page and the dashboard in separate browser tabs, and spawns a separate "Unity Brain Log Tail" PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible. It does not open `compute.html` itself — the server auto-launches that tab once the HTTP listener is up. Since 2026-08-28 (CTLWINDOW) it also spawns the control-plane process (`node brain-ctl.js`) in its **own titled minimized window — "unity-brain-ctl (leave running)"** — instead of parenting it to the launcher console (closing an old launcher window used to silently kill the control plane and dark port 7526), with `brain-ctl.log` opened in APPEND mode so a did-not-bind relaunch can't truncate the live instance's log; `start.sh` mirrors this with `nohup` + `>>`.
 
 **`Savestart.bat`** is identical to `start.bat` except it sets `DREAM_KEEP_STATE=1` so the server's `autoClearStaleState()` skips its wipe block regardless of whether the curriculum code hash changed. Use this when you want to resume from a prior session's saved weights, passed cells, and grades instead of starting fresh.
 
@@ -314,7 +314,7 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │   │   ├── remote-brain.js          WebSocket client for server brain
 │   │   ├── sparse-matrix.js         CSR sparse connectivity (in-place pair-insertion sort init, no per-row alloc)
 │   │   ├── gpu-compute.js           WebGPU compute shaders (Rulkov 2D chaotic map + synapses)
-│   │   ├── embeddings.js            Semantic word embeddings (GloVe 300d + fastText subword fallback)
+│   │   ├── embeddings.js            Semantic word embeddings (GloVe 300d REQUIRED + fastText subword for OOV)
 │   │   ├── language-cortex.js       Language readout wrapper
 │   │   └── peripherals/
 │   │       └── ai-providers.js      AI provider manager + dead backend detection

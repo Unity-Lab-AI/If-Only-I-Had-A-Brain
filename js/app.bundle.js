@@ -59104,11 +59104,23 @@ var SemanticEmbeddings = class {
     this._refinements = /* @__PURE__ */ new Map();
   }
   /**
-   * T14.0 — Load full GloVe 300d vocabulary (~400K words). Server reads
-   * from local disk (`corpora/glove.6B.300d.txt`); browser falls through
-   * to the server's static file mount or remote CDN as fallback. Hash
-   * embeddings remain as a last-resort floor when no GloVe is reachable,
-   * but the foundation lift assumes GloVe is present in production.
+   * Load full GloVe 300d vocabulary (~400K words) from local disk
+   * (`corpora/glove.6B.300d.txt`, 1.04 GB, streamed line-by-line).
+   *
+   * ⛔ REQUIRED, NOT PREFERRED (2026-09-02). This doc block used to say hash
+   * embeddings "remain as a last-resort floor when no GloVe is reachable, but
+   * the foundation lift assumes GloVe is present in production" — a requirement
+   * and its own exception in one sentence, and the catch below took the
+   * exception. On the brain the table is now mandatory and its absence stops
+   * boot. Subword n-gram vectors serve exactly one purpose: encoding a word the
+   * table does not contain (`getEmbedding` OOV). They are not a substitute for
+   * the table, because they carry spelling similarity, not meaning.
+   *
+   * ⚠ GloVe was NOT removed by the text-AI purge and is not a language model.
+   * It is a static word→vector table — sensory encoding of the same class as a
+   * dictionary definition. What the purge removed was every path that could
+   * PRODUCE TEXT: the transformer backend, the chat fetches, the vision
+   * describer, and later the dictionary retrieval lane and the emission oracle.
    *
    * No vocabulary cap. The full 400k-word file loads if reachable.
    * Memory at 400k × 300d × 4 bytes = ~480 MB on the server, which is
@@ -59228,9 +59240,15 @@ var SemanticEmbeddings = class {
       console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors (${EMBED_DIM}d)`);
       return count;
     } catch (err) {
-      console.log(`[Embeddings] GloVe ${EMBED_DIM}d not found \u2014 using built-in fastText-style subword embeddings (no download needed).`);
-      console.log("[Embeddings] For real GloVe 6B.300d upgrade, place glove.6B.300d.txt at corpora/glove.6B.300d.txt. Optional.");
+      const isNodeRuntime = typeof process !== "undefined" && process.versions && process.versions.node && typeof window === "undefined";
       this._loaded = false;
+      if (isNodeRuntime) {
+        console.error(`[Embeddings] \u26D4 FATAL \u2014 GloVe ${EMBED_DIM}d could not be loaded: ${err?.message || err}`);
+        console.error("[Embeddings] \u26D4 The brain does not boot without it (NO FALLBACKS). Subword n-gram vectors encode spelling, not meaning, and a walk trained on them deposits real weight against arbitrary positions.");
+        console.error("[Embeddings] \u26D4 Place glove.6B.300d.txt at corpora/glove.6B.300d.txt \u2014 https://nlp.stanford.edu/data/glove.6B.zip");
+        throw err;
+      }
+      console.warn(`[Embeddings] GloVe ${EMBED_DIM}d unreachable in the browser lane \u2014 the local visitor brain continues on subword n-gram vectors, which encode spelling and not meaning. This lane is filed for removal.`);
       return 0;
     }
   }
@@ -59269,7 +59287,12 @@ var SemanticEmbeddings = class {
   /**
    * Get embedding for a word.
    * Returns pre-trained + learned refinement if available.
-   * Falls back to hash-based embedding for unknown words.
+   *
+   * A word the table does not contain is encoded by subword n-gram sum
+   * (`_subwordEmbedding`). That is the DEFINED ENCODING for an out-of-vocabulary
+   * word — the only thing available about a word nobody has a vector for is its
+   * shape — not a fallback for a missing table. The table itself is mandatory;
+   * see `loadPreTrained`.
    *
    * @param {string} word
    * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d after T14.0)
@@ -61245,7 +61268,7 @@ var CLUSTER_EMIT_MIXIN = {
       if (subjSize <= 0) continue;
       const wordsList = this.wordBucketWords;
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      const bucketSize = typeof this.wordBucketCellSizeFor === "function" ? this.wordBucketCellSizeFor() : Math.max(1, Math.floor(subjSize / wordsList.length));
+      const bucketSize = this.wordBucketCellSizeFor();
       if (_wnOn) {
         const _c = this._wnMassCache;
         if (_c && _c.n === wordsList.length && Date.now() - _c.at < 6e5) {
@@ -67015,26 +67038,12 @@ var SensoryProcessor = class {
           this._embeddings.refineFromContext(words[i], contextEmbed, 5e-3);
         }
       }
-    } else {
-      for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i);
-        const neuronIdx = LANGUAGE_START + (code * 31 + i * 7) % languageSize;
-        this.cortexCurrent[neuronIdx] += 8;
-        if (neuronIdx > LANGUAGE_START) this.cortexCurrent[neuronIdx - 1] += 3;
-        if (neuronIdx < LANGUAGE_END - 1) this.cortexCurrent[neuronIdx + 1] += 3;
-      }
     }
     if (this._embeddings._loaded) {
       const sentenceEmbed = this._embeddings.getSentenceEmbedding(text);
       for (let i = 0; i < 200; i++) {
         const embedIdx = i % 50;
         this.hippoCurrent[i] += sentenceEmbed[embedIdx] * 5;
-      }
-    } else {
-      for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i);
-        const hippoIdx = (code * 13 + i * 11) % 200;
-        this.hippoCurrent[hippoIdx] += 5;
       }
     }
     for (let i = 0; i < 30; i++) {
@@ -70737,7 +70746,7 @@ var LanguageCortex = class {
     }
     if (cluster && typeof cluster.generateSentence === "function") {
       const curriculumDone = cluster.intentCentroids && cluster.intentCentroids.size > 0 || Array.isArray(cluster.passedPhases) && cluster.passedPhases.length > 0 || Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0 || cluster.grades && typeof cluster.grades === "object" && Object.values(cluster.grades).some((g) => g && g !== "pre-K");
-      if (curriculumDone && cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function") {
+      if (curriculumDone && cluster._gpuProxyReady) {
         let intentSeed = null;
         if (cluster._lastUserInputEmbedding && cluster._lastUserInputEmbedding.length > 0) {
           intentSeed = cluster._lastUserInputEmbedding;
@@ -83632,7 +83641,7 @@ var K_MIXIN = {
           continue;
         }
         _probeReset();
-        const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 30 }) : cluster.generateSentence(emb, { injectStrength: 1, maxTicks: 30 })) || "";
+        const emitted = await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 30 }) || "";
         writeEmitted.push(`${word}\u2192${emitted || "\u2205"}`);
         if (emitted === word) writePass++;
         if (emitted.length > 0 && emitted[0] === word[0]) writeFirstLetterPass++;
@@ -83686,7 +83695,7 @@ var K_MIXIN = {
           String(ctx.meaning || "").toLowerCase().split(/\s+/).filter((w) => w && !_respHintSet.has(w))
         );
         const _respEmitOpts = { injectStrength: 1, maxTicks: 50, excludeWords: _respExclude };
-        const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, _respEmitOpts) : cluster.generateSentence(emb, _respEmitOpts)) || "";
+        const emitted = await cluster.generateSentenceAwait(emb, _respEmitOpts) || "";
         respEmitted.push(`${ctx.prompt}\u2192${emitted || "\u2205"}`);
         const emittedLower = emitted.toLowerCase();
         const _respHit = ctx.expectHints.some((h) => emittedLower.includes(h));
@@ -83736,7 +83745,7 @@ var K_MIXIN = {
           continue;
         }
         _probeReset();
-        const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 80 }) : cluster.generateSentence(emb, { injectStrength: 1, maxTicks: 80 })) || "";
+        const emitted = await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 80 }) || "";
         twoWordEmitted.push(`${p.phrase}\u2192${emitted || "\u2205"}`);
         const emittedLower = emitted.toLowerCase();
         const emittedWords = emittedLower.split(/\s+/).filter(Boolean);
@@ -83790,7 +83799,7 @@ var K_MIXIN = {
           continue;
         }
         _probeReset();
-        const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === "function" ? await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 200 }) : cluster.generateSentence(emb, { injectStrength: 1, maxTicks: 200 })) || "";
+        const emitted = await cluster.generateSentenceAwait(emb, { injectStrength: 1, maxTicks: 200 }) || "";
         const words = emitted.toLowerCase().split(/\s+/).filter(Boolean);
         freeWritingEmitted.push(`${prompt}\u2192${emitted || "\u2205"} (${words.length}w)`);
         if (words.length > 0) freeWritingNonEmpty++;
@@ -86618,7 +86627,7 @@ var K_MIXIN = {
     const bandStart = 0;
     const bandEnd = wmSize;
     const bandSize = bandEnd - bandStart;
-    const bucketSize = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor() : Math.max(1, Math.floor(bandSize / words.length));
+    const bucketSize = cluster.wordBucketCellSizeFor();
     const preSem = new Float64Array(semSize);
     const postWM = new Float64Array(wmSize);
     const fillSem = (pattern) => {
@@ -104988,16 +104997,15 @@ var Curriculum = class _Curriculum {
             const DREAM_RECOMB_MIN_WORDS = 4;
             const DREAM_RECOMB_MIN_UNIQUE_RATIO = 0.6;
             const DREAM_RECOMB_REPS = 5;
-            let dreamSeeds;
-            try {
-              dreamSeeds = K_CONCRETE_SENTENCES.slice().sort(() => Math.random() - 0.5).slice(0, DREAM_RECOMB_ROUNDS);
-            } catch {
-              dreamSeeds = ["i see a thing", "the cat is big", "what is this"];
+            const dreamSeeds = K_CONCRETE_SENTENCES.slice().sort(() => Math.random() - 0.5).slice(0, DREAM_RECOMB_ROUNDS);
+            if (dreamSeeds.length === 0) {
+              this._hb("[Curriculum] \u26A0 dream recombination has NO SEEDS \u2014 the trained corpus is empty, so nothing is dreamed this window");
+              _dwSkipped.push("recombination (empty corpus)");
             }
             let novelConsolidated = 0;
             let totalDreamed = 0;
             const dreamRoundSamples = [];
-            for (let round = 0; round < DREAM_RECOMB_ROUNDS; round++) {
+            for (let round = 0; round < DREAM_RECOMB_ROUNDS && dreamSeeds.length > 0; round++) {
               if (_dwOverBudget("recombination (remaining rounds)")) break;
               const seed = dreamSeeds[round % dreamSeeds.length];
               let composed = null;
@@ -105108,8 +105116,9 @@ var Curriculum = class _Curriculum {
         _dwT = Date.now();
         await new Promise((r) => setTimeout(r, settleMs));
       } else {
-        this._hb(`[Curriculum] \u26A0 dream window \u2014 consolidationEngine unavailable, falling back to ${(minMs / 1e3).toFixed(0)}s wall-clock settle`);
-        await new Promise((r) => setTimeout(r, minMs));
+        this._dreamWindowsSkippedNoEngine = (this._dreamWindowsSkippedNoEngine || 0) + 1;
+        _dwSkipped.push("ENTIRE WINDOW (no consolidationEngine wired)");
+        this._hb(`[Curriculum] \u26D4 dream window NOT RUN \u2014 no consolidationEngine is wired, so nothing consolidated, promoted or dreamed (skipped windows: ${this._dreamWindowsSkippedNoEngine}). This is a wiring fault, not a pause.`);
       }
     } finally {
       const totalMs = Date.now() - startedAt;
@@ -106102,13 +106111,6 @@ var Curriculum = class _Curriculum {
       } catch {
         intentSeed = null;
       }
-      if ((!intentSeed || intentSeed.length === 0) && keywords2[0] && sharedEmbeddings?.getEmbedding) {
-        try {
-          intentSeed = sharedEmbeddings.getEmbedding(String(keywords2[0]));
-        } catch {
-          intentSeed = null;
-        }
-      }
       const probeStart = Date.now();
       let emission = "";
       try {
@@ -106167,8 +106169,6 @@ var Curriculum = class _Curriculum {
     const _readinessStart = Date.now();
     this._hb("[Curriculum][READINESS] emission-capability probe START \u2014 5 single-letter cues (each capped at 20 emission ticks + 10 s wall-clock) to see if Unity can emit recognizable letters yet");
     const PROBES = ["a", "b", "c", "d", "e"];
-    const LETTERS = new Set("abcdefghijklmnopqrstuvwxyz".split(""));
-    const PER_CUE_TIMEOUT_MS = 1e4;
     let _cueIdx = 0;
     for (const cue of PROBES) {
       _cueIdx += 1;
@@ -106177,21 +106177,10 @@ var Curriculum = class _Curriculum {
       let emitted = "";
       let timedOut = false;
       try {
-        if (typeof cluster.injectLetter === "function") {
-          cluster.injectLetter(cue, 1);
-          if (typeof cluster.step === "function") {
-            for (let t = 0; t < 4; t++) {
-              try {
-                await cluster.stepAwait(1e-3);
-              } catch {
-                break;
-              }
-            }
-          }
-        } else if (typeof cluster.readInput === "function") {
-          await cluster.readInput(cue, { ticks: 6 });
+        cluster.injectLetter(cue, 1);
+        for (let t = 0; t < 4; t++) {
+          await cluster.stepAwait(1e-3);
         }
-        const emitOpts = { maxTicks: 20 };
         const letterToMotor = cluster.crossProjections?.letter_to_motor;
         const letterRegion = cluster.regions?.letter;
         const motorRegion = cluster.regions?.motor;
@@ -106234,25 +106223,7 @@ var Curriculum = class _Curriculum {
             }
           }
         } else {
-          emitOpts.directPropagate = true;
-          emitOpts.minScore = 1.5;
-          emitOpts.boostPersona = true;
-          emitOpts.maxLetters = 32;
-          const letterSeed = cue ? function buildLetterSeed(letter) {
-            const oh = new Float32Array(26);
-            const i = letter.charCodeAt(0) - 97;
-            if (i >= 0 && i < 26) oh[i] = 1;
-            return oh;
-          }(cue) : null;
-          const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
-          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
-          const raw = await Promise.race([emissionPromise, timeoutPromise]);
-          if (raw && raw._timeout) {
-            timedOut = true;
-            emitted = "";
-          } else {
-            emitted = (raw && typeof raw === "string" ? raw : raw?.text || "") || "";
-          }
+          this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} NO PROJECTION letter='${cue}' \u2014 crossProjections.letter_to_motor is absent or has no CSR, so there is nothing to probe. Emission stays empty; this cue counts as not ready.`);
         }
       } catch (err) {
         this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} ERROR letter='${cue}' \u2014 ${err?.message || err}`);
@@ -109320,23 +109291,6 @@ var Curriculum = class _Curriculum {
       cluster._probeGateActive = false;
       cluster._currentCellKey = wasCellKey;
     }
-    try {
-      const subjectStats = this._perSubjectStats?.[subject];
-      const teachCount = subjectStats?.teachEvents | 0;
-      if (teachCount > 0 && Array.isArray(cluster.passedPhases)) {
-        const hasAny = cluster.passedPhases.some((k) => typeof k === "string" && k.startsWith(`${cellKey}:`));
-        if (!hasAny) {
-          const fallbackKey = `${cellKey}:cell-teach-block`;
-          if (!cluster.passedPhases.includes(fallbackKey)) {
-            cluster.passedPhases.push(fallbackKey);
-          }
-          subjectStats.phasesCompleted = Math.max(1, subjectStats.phasesCompleted | 0);
-          this._currentCellPhasesCompleted = Math.max(1, this._currentCellPhasesCompleted | 0);
-        }
-      }
-    } catch (err) {
-      console.warn(`[Curriculum] phase-count fallback for ${subject}/${grade} failed:`, err?.message || err);
-    }
     const _batteryWasCellKey = cluster._currentCellKey;
     if (cluster) cluster._currentCellKey = cellKey;
     if (result) {
@@ -112116,12 +112070,13 @@ var Curriculum = class _Curriculum {
     const answerWords = answerText.toLowerCase().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t));
     if (answerWords.length === 0) return;
     this._ensureWordBucketMap(subject);
-    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
+    const writeBucketIntoBand = (bucketIdx, regionName, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
-      const regionSize = region.end - region.start;
-      const buckets = totalBuckets || regionSize;
-      const perBucket = typeof perBucketOverride === "number" && perBucketOverride >= 1 ? perBucketOverride : Math.max(1, Math.floor(regionSize / buckets));
+      if (!(typeof perBucketOverride === "number" && perBucketOverride >= 1)) {
+        throw new Error(`[Curriculum] writeBucketIntoBand called without frozen cellsPerWord for region '${regionName}' \u2014 the write and emitWordDirect's read must share wordBucketCellSizeFor() geometry; there is no live-computed substitute.`);
+      }
+      const perBucket = perBucketOverride;
       const start = region.start + bucketIdx * perBucket;
       if (start >= region.end) return;
       const end = Math.min(region.end, start + perBucket);
@@ -112130,11 +112085,11 @@ var Curriculum = class _Curriculum {
     const fullMap = cluster.wordBucketMap;
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === "function" && Array.isArray(fullWords)) {
-      const cell = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor() : null;
+      const cell = cluster.wordBucketCellSizeFor();
       for (const aw of answerWords) {
         const idx = fullMap.get(aw);
         if (typeof idx === "number" && idx >= 0) {
-          writeBucketIntoBand(idx, "word_motor", fullWords.length, 1, cell);
+          writeBucketIntoBand(idx, "word_motor", 1, cell);
         }
       }
     }
@@ -112847,21 +112802,12 @@ var Curriculum = class _Curriculum {
     const w = String(word).toLowerCase().trim();
     if (!w) return { passes: 0, totalTrained: 0, skipped: "empty word" };
     let definitions = [];
-    if (typeof cluster.lookupDefinitionFull === "function") {
-      try {
-        definitions = await cluster.lookupDefinitionFull(w, { timeoutMs: opts.timeoutMs ?? 3e3 });
-      } catch {
-        definitions = [];
-      }
+    try {
+      definitions = await cluster.lookupDefinitionFull(w, { timeoutMs: opts.timeoutMs ?? 3e3 });
+    } catch {
+      definitions = [];
     }
-    if ((!Array.isArray(definitions) || definitions.length === 0) && typeof cluster.lookupDefinition === "function") {
-      try {
-        const def = await cluster.lookupDefinition(w, { timeoutMs: opts.timeoutMs ?? 3e3 });
-        if (def && typeof def === "string") definitions = [{ definition: def, partOfSpeech: "", example: "", synonyms: [] }];
-      } catch {
-      }
-    }
-    if ((!Array.isArray(definitions) || definitions.length === 0) && typeof cluster.lookupDefinitionFull === "function" && w.length >= 7 && !w.includes("-") && !w.includes(" ")) {
+    if ((!Array.isArray(definitions) || definitions.length === 0) && w.length >= 7 && !w.includes("-") && !w.includes(" ")) {
       const COMPOUND_PREFIXES = ["ice", "milky", "new", "fourth", "rain", "sun", "moon", "fire", "water", "play", "home", "class", "book", "foot", "hand", "sea", "mid", "over", "under"];
       for (const prefix of COMPOUND_PREFIXES) {
         if (w.startsWith(prefix) && w.length > prefix.length + 1) {

@@ -594,9 +594,14 @@ export const CLUSTER_EMIT_MIXIN = {
       // sem->word_motor weights stay addressable as new words append, instead
       // of every word remapping to a new band each time the dictionary grows
       // (the grade-9 word-salad root cause). Single authority: wordBucketCellSizeFor.
-      const bucketSize = (typeof this.wordBucketCellSizeFor === 'function')
-        ? this.wordBucketCellSizeFor()
-        : Math.max(1, Math.floor(subjSize / wordsList.length));
+      // ⛔ NO FALLBACKS (2026-09-02). The `: Math.max(1, floor(subjSize /
+      // wordsList.length))` arm that used to close this expression was a SECOND
+      // geometry — the vocab-growth-dependent one whose remapping the line above
+      // names as the grade-9 word-salad root cause. A "single authority" with an
+      // alternative is not an authority. The method is defined on this same
+      // prototype and is called unguarded from the schema path, so the guard
+      // could only ever swap the frozen band for the drifting one.
+      const bucketSize = this.wordBucketCellSizeFor();
       // WORDNORM — per-bucket incoming-mass profile (row-band |weight| sums
       // over the post-major CSR), cached on the cluster, refreshed on vocab
       // growth or 10-minute expiry.

@@ -113,7 +113,8 @@ messages from registered pool donors.
    own command line contains that string and would kill itself.
 
 1. **Backend service** — `deploy/bootstrap-backend.sh` does steps 1–6 (service
-   user, code sync, `npm ci`, optional GloVe, unattended auto-advance seed,
+   user, code sync, `npm ci`, **required GloVe** (the brain exits at boot
+   without `corpora/glove.6B.300d.txt` — no-fallbacks), auto-advance seed,
    systemd unit, sudoers). It **prints** the nginx steps by default (does NOT
    auto-touch nginx — safe on the SNI-split box):
    ```bash

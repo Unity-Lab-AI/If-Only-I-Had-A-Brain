@@ -62,10 +62,18 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$BACKEND_DIR"
 echo "== [2/6] npm ci (server deps) =="
 ( cd "$BACKEND_DIR/server" && sudo -u "$SERVICE_USER" npm ci --omit=dev )
 
-# 3) GloVe embeddings (~990MB) — optional; hash/fastText fallback works without it.
-echo "== [3/6] GloVe embeddings (optional) =="
+# 3) GloVe embeddings (~1.04 GB) — REQUIRED. The brain refuses to boot without
+#    the table (no-fallbacks): subword n-gram vectors encode spelling, not
+#    meaning, and a walk trained on them deposits real weight against arbitrary
+#    positions. This step used to call GloVe "optional" and print "continuing
+#    (fallback works)" — it did not work, it trained the wrong thing quietly.
+echo "== [3/6] GloVe embeddings (REQUIRED) =="
 if [ ! -f "$BACKEND_DIR/corpora/glove.6B.300d.txt" ]; then
-  echo "  GloVe missing — drop glove.6B.300d.txt into $BACKEND_DIR/corpora/ for full semantics. Continuing (fallback works)."
+  echo "  ERROR: GloVe missing at $BACKEND_DIR/corpora/glove.6B.300d.txt"
+  echo "  The service will start and then EXIT on the embedding load. Fetch it:"
+  echo "    curl -L https://nlp.stanford.edu/data/glove.6B.zip -o /tmp/glove.6B.zip"
+  echo "    unzip -p /tmp/glove.6B.zip glove.6B.300d.txt > $BACKEND_DIR/corpora/glove.6B.300d.txt"
+  echo "    chown $SERVICE_USER:$SERVICE_USER $BACKEND_DIR/corpora/glove.6B.300d.txt"
 fi
 
 # 3.5) Seed unattended auto-advance so the K→PhD walk advances through grades on

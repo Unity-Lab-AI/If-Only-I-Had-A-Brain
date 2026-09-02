@@ -4377,12 +4377,38 @@ const SERVER_CHAT_MIXIN = {
     if (this._lastSpontaneousImgAt && (now - this._lastSpontaneousImgAt) < GAP) return;
     if (Math.random() > 0.15) return;   // rare even when eligible
     this._lastSpontaneousImgAt = now;
+    // ⛔⛔ NO FALLBACKS (2026-09-02) — THE SUBJECT NOW COMES FROM WHAT SHE WAS
+    // ACTUALLY THINKING, not from a random draw.
+    //
+    // This used to read `_sampleCurrentVocab()`: a uniform random pick out of
+    // her whole trained vocabulary. The comment directly below it — kept, and
+    // still right — says a spontaneous image is HER URGE about HER OWN THOUGHT
+    // and that a canned subject is "a script wearing her name". A random word
+    // from a word list is exactly that; the guard was being fed the very thing
+    // it was written to refuse, so the tick manufactured an urge whenever she
+    // had none.
+    //
+    // The emission bus is the single source of truth for what she has been
+    // saying and thinking, and it carries timestamps. A spontaneous image now
+    // rides a RECENT emission of her own — image-generation entries excluded so
+    // she cannot loop on her own prompts — and if she has not said or thought
+    // anything inside the window, there is no urge and no image.
     let concept = '';
-    try { concept = (typeof this._sampleCurrentVocab === 'function' ? this._sampleCurrentVocab() : '') || ''; } catch { /* nf */ }
+    try {
+      const _c = this.cortexCluster;
+      const _recent = (_c && typeof _c.getRecentEmissions === 'function') ? _c.getRecentEmissions(8) : [];
+      for (const e of _recent) {
+        if (!e || typeof e.text !== 'string') continue;
+        if (typeof e.source === 'string' && e.source.startsWith('image-gen')) continue;
+        if (typeof e.ts === 'number' && (now - e.ts) > GAP) continue;   // stale thought is not an urge
+        const _w = e.text.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
+        if (_w.length > 0) { concept = _w[_w.length - 1]; break; }
+      }
+    } catch { /* nf */ }
     // TU.29.7 — she composes this prompt too (concept + her associations + her
     // mood), instead of the retired canned template.
     // NO FALLBACK SUBJECT (operator law) — a spontaneous image is HER urge
-    // about HER OWN thought. No trained vocab word sampled = she has nothing
+    // about HER OWN thought. Nothing recent in her own voice = she has nothing
     // to say = no image this tick. A canned subject — goth aesthetic, shapes,
     // anything — is a script wearing her name, not her thought.
     if (!concept) return;
