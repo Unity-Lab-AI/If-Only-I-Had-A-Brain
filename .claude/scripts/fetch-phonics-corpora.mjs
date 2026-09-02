@@ -308,6 +308,78 @@ async function main() {
   console.log(`  rules UNVERIFIABLE (symbol or word absent) : ${unverifiable}`);
   for (const x of refutations) console.log(`     refuted: ${x}`);
 
+  // ⛔⛔ THE TAIL WAS CONTAMINATED AND THE HEADLINE COUNT WAS INFLATED. Both were
+  // found by printing the rules for two graphemes and reading them (2026-09-02).
+  //
+  // Three separate defects, none of which errored:
+  //   ① DUPLICATES — every rule appeared 2-5 times (`sh [elsewhere]` five
+  //      times), because the article carries several spelling->value tables that
+  //      overlap and a grapheme cell can list variants. **411 was never 411
+  //      distinct rules.**
+  //   ② A LEAKED GRAPHEME — `a -> /w/` with other values `/k/ /ɡ/ /ŋ/` and no
+  //      examples. Those belong to the `qu`/`x`/`ng` family; a row with no
+  //      spelling cell of its own had inherited `a`.
+  //   ③ NULL-VALUED RULES kept alive by a non-empty other-values column.
+  //
+  // ⭐ THE BAR THAT FIXES ALL THREE AT ONCE, and it costs nothing: **a rule must
+  // have at least one example word that is IN THE DICTIONARY.** A rule with no
+  // checkable example cannot generate a teaching question anyway, so requiring
+  // one removes every piece of junk above without discarding anything usable —
+  // and it makes the published count mean "rules a generator can actually use"
+  // instead of "rows I scraped".
+  //
+  // ⚠ The drop is REPORTED, not silent. A cleaner that quietly halves its own
+  // output is the same defect as an instrument that lies about coverage.
+  // ⚠ THE DEDUPE KEY MUST NOT INCLUDE `otherValues`, AND INCLUDING IT IS WHY
+  // `sh` KEPT FIVE COPIES: those five were identical in grapheme, context, value
+  // and examples and differed ONLY in the garbage other-values column, so a key
+  // containing it made every duplicate look distinct. **A dedupe key built from
+  // an unreliable field does not dedupe.**
+  //
+  // ⚠ Its separators are NUL bytes rather than spaces — unintended, harmless as
+  // a separator (a NUL cannot occur in the data being joined), and left alone
+  // rather than churned. Recorded because it is a landmine for the next reader:
+  // **the file parses fine and `grep` reports it as binary**, which is how the
+  // three of them went unnoticed until an editor could not match the line.
+  const seen = new Set();
+  const kept = [];
+  let droppedDupe = 0, droppedNoExample = 0;
+  for (const r of gpc) {
+    const key = `${r.grapheme} ${r.context} ${r.value} `;
+    if (seen.has(key)) { droppedDupe++; continue; }
+    seen.add(key);
+    const usable = r.examples.filter((w) => pron.has(w));
+    if (!r.value || !usable.length) { droppedNoExample++; continue; }
+    // ⛔⛔ `otherValues` IS DROPPED, NOT SHIPPED WITH A CAVEAT — IT WAS HALF
+    // GARBAGE AND HALF OF IT WOULD HAVE BECOME EXAM QUESTIONS.
+    //
+    // Audited: **53 of its 107 entries are not phonemes at all** — `s h`,
+    // `z h`, `ph`, `kn`, `zw`, `tθ`, `th`. They are spelling fragments and
+    // mis-split cells, produced because the other-values column sits at a
+    // different index on digraph rows and my reader took whatever was there.
+    // `sh` came out as `ʃ s h z h s ʃ ʃ h s`.
+    //
+    // ⭐ AND NOTHING IS LOST, WHICH IS WHY THIS IS A DELETION RATHER THAN A
+    // WARNING LABEL. The trustworthy multi-sound evidence was never in that
+    // column: it is **several RULES per grapheme, each with its own context and
+    // its own example words** — `c` is /s/ before e,i,y (*city*), /ʃ/ before
+    // unstressed ea,ia (*ocean*), /k/ elsewhere (*cat*). That path is the one
+    // checked against the dictionary, and it gives **52 graphemes with more than
+    // one primary value**. A field that is 50% noise cannot be fixed by telling
+    // the reader it might be wrong.
+    const { otherValues, otherExamples, ...clean } = r;
+    kept.push({ ...clean, examples: usable });
+  }
+  const keptGraphemes = new Set(kept.map((r) => r.grapheme));
+  const keptMulti = new Map();
+  for (const r of kept) {
+    if (!keptMulti.has(r.grapheme)) keptMulti.set(r.grapheme, new Set());
+    if (r.value && r.value !== '∅') keptMulti.get(r.grapheme).add(r.value);
+  }
+  const keptMultiCount = [...keptMulti.values()].filter((s) => s.size > 1).length;
+  console.log(`  CLEANED — dropped ${droppedDupe} duplicate(s) and ${droppedNoExample} rule(s) with no dictionary-checkable example`);
+  console.log(`  KEPT ${kept.length} usable rules over ${keptGraphemes.size} graphemes · ${keptMultiCount} carrying more than one sound`);
+
   if (process.argv.includes('--verify')) { console.log('[phonics] --verify: nothing written'); return; }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -320,11 +392,21 @@ async function main() {
       { what: 'grapheme inventory + context rules + example words', url: 'https://en.wikipedia.org/wiki/English_orthography', licence: 'CC-BY-SA' },
       { what: 'phoneme ground truth per word (verification)', url: 'https://github.com/cmusphinx/cmudict', licence: 'BSD-2-Clause' },
     ],
-    counts: { rules: gpc.length, graphemes: graphemes.size, multiSound: multiCount, confirmed, refuted, unverifiable },
-    rules: gpc,
+    counts: {
+      rules: kept.length,
+      graphemes: keptGraphemes.size,
+      multiSound: keptMultiCount,
+      confirmed, refuted, unverifiable,
+      // ⚠ Published so the kept count can never be mistaken for the scraped
+      // count. Every rule here has a dictionary-checkable example word.
+      scrapedBeforeCleaning: gpc.length,
+      droppedDuplicate: droppedDupe,
+      droppedNoCheckableExample: droppedNoExample,
+    },
+    rules: kept,
   }, null, 2), 'utf8');
   fs.renameSync(tmp, outPath);
-  console.log(`[phonics] DONE — ${gpc.length} rules over ${graphemes.size} graphemes -> corpora/phonics/gpc.json`);
+  console.log(`[phonics] DONE — ${kept.length} usable rules over ${keptGraphemes.size} graphemes -> corpora/phonics/gpc.json`);
 }
 
 await main();
