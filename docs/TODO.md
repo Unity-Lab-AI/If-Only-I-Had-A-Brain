@@ -1326,6 +1326,24 @@ Gee (verbatim): *"we need a fucking text book like everything else you fool"*
 
 Gee was asked which of the blocked decisions to settle. He settled all four.
 
+> ⭐⭐ **`MATHBOOK.3` — THE SOURCE IS FOUND AND VERIFIED TO REAL LESSON TEXT, 2026-09-02. Gee was right; the search had been ONE HOST wide.**
+>
+> ⭐ **ILLUSTRATIVE MATHEMATICS — `curriculum.illustrativemathematics.org`, CC-BY 4.0 (no NC, no ND), K-12, static HTML, and the URL structure is fully predictable.** Verified by walking down to actual student lesson prose rather than stopping at the front page:
+> ```
+>   /MS/students/{1,2,3}/{unit}/{lesson}/index.html      grades 6·7·8, STUDENT text
+>       measured leaf: "Lesson 1 Tiling the Plane. Let's look at tiling
+>       patterns and think about area." — 668 words, 11 units linked at grade 6
+>   /k5/families/{grade}/unit-N/family-materials.html    K-5, unit-level prose
+>       measured leaf: "In this unit, students recognize numbers and quantities
+>       in their world." — 533 words
+> ```
+> ⚠ **THE TWO HALVES ARE NOT EQUAL AND THE ROW MUST NOT PRETEND THEY ARE.** The middle-school path is **real student-facing lesson text** and is substantial (~668 words × ~15 lessons × 8 units × 3 grades ≈ **240K words**). The K-5 path is **unit SUMMARIES written for families**, not lessons — roughly **25K words across six grades**, which is thin against a 7,300-word early-band floor per cell but is still genuine numeracy prose naming counting, quantity and number. **K-5 student pages are served through Kendall Hunt, not this host.**
+>
+> **THE REST OF THE HUNT, so it is not repeated:** `ck12.org` **403** (refuses this client) · `engageny.org` **retired** · `utahmiddleschoolmath.org` **unreachable** · `openupresources.org` **200** (CC-BY, IM-derived 6-8 — same content as above) · `mathematicsvisionproject.org` **200** (CC-BY-NC-SA, secondary I-III; NC is accepted now) · **no OpenStax K-8 markdown mirror exists** — `philschatz` has 11 `*-book` repos and exactly three are maths, all already mapped by `MATHBOOK.1`.
+>
+> ⏳ **WHAT REMAINS IS THE FETCHER, not the search.** It is the Saylor shape — enumerate `.html` links one level down, clean, cap-free — and it must route to `math/<grade>` cells, which are reachable now that `MATHBOOK.1` put `math` in `PROSE_ACADEMIC_SUBJECTS`. ⛔ **RE-PRICE before it runs**, and ⛔ **do not start it while the two wiki ingests are writing** — different host, but the same cell files.
+>
+> **Original filing:**
 - [ ] `MATHBOOK.3` — Gee (verbatim): *"there has to be a fucking k-12 math books and shit out ther wtf libraries have them by the hundreds"* — **KEEP HUNTING. He is right, and the hunt so far was too narrow.** `MATHBOOK.1` mapped the only three maths mirrors under `philschatz`; that is one host, not the world. ⛔ **The searched-and-exhausted claim in `EARLYTEACH.1` is true of GUTENBERG ONLY** and must not be read as "no open K-12 maths textbook exists" — it does not follow, and stating it that way would be the same over-reach as *"all 666 topics covered"*. ⭐ **The licence posture makes most of this reachable now: NC is IN** (`LICENCE.1`), so CC-BY-NC and CC-BY-NC-SA collections are usable and only **ND** is still refused. **Named candidates to probe, none yet checked:** OpenStax's own site (Prealgebra / Elementary & Intermediate Algebra exist there beyond the `philschatz` mirrors), **CK-12 FlexBooks**, **Illustrative Mathematics**, **Open Up Resources**, **EngageNY / Eureka**, **Utah Middle School Math Project**, **Mathematics Vision Project**. ⚠ **Probe availability and licence per host BEFORE writing a fetcher** — the UMN lesson is that a host can simply refuse the client, and that is cheaper to find out first.
 
 - [ ] `CURVEDEPTH.13` — Gee (verbatim): *"Yes or find bigger hosts with relevant course materials"* — **BUILD THE SMALL HOSTS *OR* FIND BIGGER ONES; both are authorised, and the second is the better first move.** Answers the `CURVEDEPTH.12` fork. Milne and Green Tea Press answer and are walkable but will not approach a **330,000 words/cell** college floor between them. ⛔ **UMN and `pressbooks.pub` 403 this client outright and are NOT to be worked around by forging a browser User-Agent.** ⭐ **Look for a bigger host first** — the same probe-before-building rule as `MATHBOOK.3`, since a fetcher for a small host is a day's work for a fraction of one cell.
