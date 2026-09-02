@@ -123,19 +123,22 @@ if (process.argv.includes('--json')) {
   if (r.unreachableFiles) console.log(`\n  ⛔ UNREACHABLE: ${r.unreachableList.join('  ')}${more(r.unreachableMore)}`);
   if (r.thin) console.log(`\n  ⚠ THIN: ${r.thinList.join('  ')}${more(r.thinMore)}`);
 
-  // DIALOGUE.2 — the sentence-FORM mix. A word count cannot say whether a cell
-  // can show her what a question looks like, and expository textbook prose is
-  // exactly the genre that never does.
-  console.log(`\n  SENTENCE FORMS (can these cells teach her a question at all?):`);
+  // DIALOGUE.2 — terminal-punctuation mix. ⚠ A GENRE signal, not a teaching
+  // gap: see the retraction note in server/curriculum-coverage.js readCell().
+  console.log(`\n  PROSE GENRE (terminal-punctuation mix — NOT an intent-form gap):`);
   console.log(`     sentences in reachable cells : ${(r.sentences || 0).toLocaleString()}`);
   console.log(`     ending in '?'                : ${(r.questions || 0).toLocaleString()}`);
   console.log(`     ending in '!'                : ${(r.exclamations || 0).toLocaleString()}`);
   console.log(`     interrogative + exclamative  : ${r.dialoguePct || 0}%`);
   console.log(`     cells with prose but ZERO of either : ${r.noDialogue || 0}`);
-  if (r.noDialogue) console.log(`     ⛔ NO DIALOGUE: ${r.noDialogueList.join('  ')}${more(r.noDialogueMore)}`);
-  console.log(`     ⚠ _teachSentenceStructure trains FIVE intent forms; a cell of pure`);
-  console.log(`        expository prose supplies exemplars for two and none for question`);
-  console.log(`        or exclamative. Every gate probe asks her a QUESTION.`);
+  if (r.noDialogue) console.log(`     · ${r.noDialogueList.join('  ')}${more(r.noDialogueMore)}`);
+  console.log(`     ⚠ DO NOT read a low number as "she cannot learn questions".`);
+  console.log(`        Intent form is taught by _teachConcreteSentences from`);
+  console.log(`        K_CONCRETE_SENTENCES — 1,418 sentences at reps=100, of which`);
+  console.log(`        NONE carry terminal punctuation and 51 open with an`);
+  console.log(`        interrogative word. Question form is encoded as WORD ORDER,`);
+  console.log(`        which is the only form the emission path can reproduce.`);
+  console.log(`        Expository prose having no dialogue is genre-normal.`);
   // ⛔ THE BAR, PRINTED. `ok` counts cells clearing floors nobody derived, so
   // the output says what clearing them is actually worth. A bare numerator is
   // how an instrument starts lying — the same reason the dashboard ships
