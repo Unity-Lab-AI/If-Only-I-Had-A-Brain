@@ -142,9 +142,29 @@ if (process.argv.includes('--json')) {
     const p = ev.report;
     console.log(`\n  EXAM-VOCAB vs CORPUS (pre-walk, upper bound — corpus holds ${ev.corpusWords.toLocaleString()} distinct words):`);
     console.log(`     exam words required across all banks : ${(p.totalRequired || 0).toLocaleString()}`);
-    console.log(`     NOT PRESENT anywhere in the corpus   : ${(p.totalMissing || 0).toLocaleString()}`);
-    console.log(`     ⛔ a word missing here can never be taught by the current corpus,`);
-    console.log(`        so the gate that requires it pre-taught cannot pass honestly.`);
+    console.log(`     NOT FOUND IN PROSE anywhere in corpus: ${(p.totalMissing || 0).toLocaleString()}`);
+    // ⛔⛔ THIS VERDICT USED TO READ "a word missing here can never be taught by
+    // the current corpus, so the gate that requires it pre-taught cannot pass
+    // honestly." **It was wrong for 100% of the findings the first time it ran
+    // against the grown corpus** (2026-09-02): all ten were `buh, fff, fuh, guh,
+    // juh, nuh, puh, ruh, vib, yuh` — PHONEME DRILLS from `ela/kindergarten`,
+    // taught by the phonics lane and CORRECTLY absent from every book.
+    //
+    // ⚠ The measurement is right; only the conclusion was too wide. She is
+    // taught by more than prose, so "absent from prose" and "cannot be taught"
+    // are different claims and this line now makes only the narrow one. The
+    // Gutenberg lane already carried this exact caveat in a comment; the auditor
+    // did not, which is how a correct number acquired a false headline.
+    const words = [...new Set((p.cells || []).flatMap((c) => c.missing || []))];
+    if (words.length) {
+      const cellsWithGaps = (p.cells || []).filter((c) => (c.missing || []).length).map((c) => c.cellKey);
+      console.log(`        ${words.slice(0, 30).join(', ')}${words.length > 30 ? `  … +${words.length - 30} more` : ''}`);
+      console.log(`        in: ${cellsWithGaps.join(', ')}`);
+    }
+    console.log(`     ⚠ NOT-IN-PROSE is not the same as CANNOT-BE-TAUGHT. Phoneme`);
+    console.log(`        drills, letters and digits come from the phonics lane and are`);
+    console.log(`        correctly absent from every book. Check the lane before`);
+    console.log(`        calling one of these a curriculum gap.`);
   }
   console.log(`\n  ${r.clean ? 'PASS — every cell the walk runs has a lane and content' : 'FAIL — see the flagged cells above'}`);
 }

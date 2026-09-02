@@ -352,17 +352,35 @@ async function poll() {
       host.innerHTML += `<div class="tv-note">⛔ <b>The exam-word sweep did not run</b> — ${ev.reason || 'no reason recorded'}.`
         + ` This is <b>not</b> a finding of zero missing words.</div>`;
     } else if (ev.report) {
-      const missing = ev.report.missing || ev.report.absent || [];
-      const req = ev.report.required || ev.report.totalRequired || null;
+      /* ⛔⛔ THE REPORT HAS NO TOP-LEVEL `missing` ARRAY, AND READING IT AS IF IT
+         DID PRINTED A CONFIDENT GREEN TICK OVER TEN REAL FINDINGS.
+         Its shape is `{cells, totalRequired, totalMissing, totalTrained,
+         overallCoverage}` — the words live per cell. The first version of this
+         block read `report.missing || report.absent || []`, got `undefined`,
+         and rendered "✅ Every exam word appears somewhere she is taught from"
+         while `totalMissing` was 10. **A producer/consumer field-name mismatch,
+         in the panel built to catch instruments that lie** — the same shape as
+         the accessor that required `url` while two harvesters wrote `src` and
+         hid 6,899 figures. Caught by reading the real output, not the guess. */
+      const cells = ev.report.cells || [];
+      const missing = [...new Set(cells.flatMap((c) => c.missing || []))];
+      const req = ev.report.totalRequired || null;
+      const gapCells = cells.filter((c) => (c.missing || []).length > 0).map((c) => c.cellKey);
       host.innerHTML += `<div class="tv-note">`
         + `<b>Exam words vs the whole corpus</b> — ${fmt(req)} required across all banks, `
-        + `<b>${fmt(missing.length)}</b> present <b>nowhere</b> in academic + life + coding`
-        + ` (corpus holds ${fmt(ev.corpusWords)} distinct words).`
+        + `<b>${fmt(ev.report.totalMissing)}</b> not found in academic + life + coding prose`
+        + ` (corpus holds ${fmt(ev.corpusWords)} distinct words; coverage ${((ev.report.overallCoverage || 0) * 100).toFixed(1)}%).`
         + (missing.length
           ? ` <span class="tv-src">${missing.slice(0, 24).map((w) => String(w).replace(/[<>&]/g, '')).join(', ')}`
             + (missing.length > 24 ? ` … +${fmt(missing.length - 24)} more` : '') + `</span>`
-            + ` ⛔ A word missing here <b>can never be taught by the current corpus</b>, so a gate requiring it pre-taught cannot pass honestly.`
-          : ` ✅ Every exam word appears somewhere she is taught from.`)
+            + ` <span class="tv-src">in ${gapCells.join(', ')}</span>`
+            /* ⚠ NOT "can never be taught" — that verdict was wrong for 100% of
+               the findings the first time it ran. She is taught by more than
+               prose: phonemes, letters and digits come from the phonics lane and
+               are CORRECTLY absent from every book. The honest claim is the
+               narrow one. */
+            + ` ⚠ <b>Not in PROSE</b> — check the lane before calling it a gap. Phoneme drills, letters and digits are taught by the phonics lane and are correctly absent from every book.`
+          : ` ✅ Every exam word appears somewhere in the prose she is taught from.`)
         + ` ⚠ Upper bound: measured against the CORPUS, not her trained vocabulary.`
         + `</div>`;
     }

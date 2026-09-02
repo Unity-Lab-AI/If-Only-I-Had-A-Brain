@@ -9,31 +9,209 @@
       "theme": "primary-color",
       "story": "primary colors are sets of colors that can be mixed to make a useful range of colors. the primary colors are those which cannot be made by mixing other colors in a given color space. for an additive color model, as in overlapping projected lights or in television and computer screens, the primary colors are red, green, and blue. for a subtractive color model, as in mixing of pigments or dyes for printing, the cmy set of primaries is often used. in this system the primary colors are cyan, magenta, and yellow. other sets include the ryb system of red, yellow, blue, especially used by artists. this color system is very common, and has been taught for a long time. primary colors are not a part of light itself. instead, they come from the eye's physiological response to light . for humans, three primary colors are usually used. in other words, human color vision is trichromatic. light is a spectrum of the wavelengths that can be seen by the human eye. it is an infinite-dimensional stimulus space. however, the human eye normally has only three types of color receptors, called cone cells. each color receptor respond to different ranges of the color spectrum. humans and other species with three types of color receptors are known as trichromats. the additive primary colors are red, green, and blue. because of the response curves of the three different color receptors the human eye, these colors are optimal in the sense that the largest range of colors - a gamut - seen by humans can be made by mixing light of these colors. additive mixing of red and green light, makes shades of yellow. mixing green and blue makes shades of cyan. mixing red and blue makes shades of magenta, such as purple. mixing equal proportions of the additive primaries results in shades of grey; when all three colors are fully saturated, the result is white. this color space is called the rgb color space. media that use reflected light and colorants to make colors are using the subtractive color method of color mixing. in the printing industry, to produce varying colors, the subtractive primary colors yellow, cyan, and magenta are applied together in varying amounts. subtractive color works best when the surface or paper is white, or close to it. mixing yellow and cyan produces shades of green; mixing yellow with magenta produces shades of red, and mixing magenta with cyan produces shades of blue. in theory, mixing equal amounts of all three pigments should make shades of grey, resulting in black when all three are fully saturated. in practice, they tend to make muddy brown colors. for this reason, a fourth \"primary\" pigment, black, is often used along with the cyan, magenta, and yellow colors. the color space with the fourth pigment is the cmyk color space. the abbreviation stands for \"cyan, magenta, yellow, and black\" - k stands for \"kohle\" and is used to represent black as 'b' could be confused with 'blue'. mixtures of real materials like paint tend to be less precise. brighter, or more specific colors can be made using natural pigments instead of mixing, and natural properties of pigments can interfere with the mixing. for example, mixing magenta and green in acrylic makes a dark cyan - which would not happen if the mixing process were perfectly subtractive.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4e/RYB.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Primary colors",
+          "context": "primary colors primary colors are sets of colors that can be mixed to make a useful range of colors. the primary colors are those which cannot be made by mixing other colors in a given color space.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/SubtractiveColorMixing.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Subtractive color mixing",
+          "context": "mixing equal proportions of the additive primaries results in shades of grey ; when all three colors are fully saturated , the result is white. this color space is called the rgb color space. subtractive color mixing media that use reflected light and colorants to make colors are using the subtractive color method of color mixing. in the printing industry, to produce varying colors, the subtractive primary colors yellow , cyan , and magenta are applied together in varying amounts.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "secondary-color",
       "story": "secondary colors are colors made from two primary colors. secondary colors can be made by mixing dyes, such as ink or paint, together. they can also be made when two lights shine into each other. when mixed with a primary color, a secondary color makes a tertiary color. rgb is the color model of light. in it, the secondary colors are yellow, mixed from red and green, magenta, mixed from red and blue, and cyan, mixed from green and blue. computer screens use the primary colors of the rgb color model to show secondary colors. each screen has tiny pixels that light up in different primary colors, which blur together to look like a secondary color is being shown. cmy is the color model of dyes. the colors in it are like the ones in rgb, but their places are switched; cyan, magenta, and yellow are the primary colors, while red, green, and blue are the secondary colors instead. printers use inks based on the cmy primary colors to make the secondary colors that are on the pictures they print. however, the inks are usually not perfect, so a fourth ink is used with most printers. ryb, or red yellow blue, is an older idea of what the primary and secondary colors are. it was once thought that the secondary colors are orange, mixed from red and yellow, green, mixed from yellow and blue, and purple, mixed from red and blue. this way of mixing colors was used for dyes before cmy became widely used. the blue in ryb is usually more of an azure color, which makes their likeness more clear.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/05/AdditiveColorMixing.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "After mixing two colors, a secondary color is made.",
+          "context": "after mixing two colors, a secondary color is made. secondary colors are colors made from two primary colors .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c9/CMYK_subtractive_color_mixing.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "When CMY colors are mixed together, the secondary colors are red, green, and blue, which are the primary colors of the RGB model.",
+          "context": "printers use inks based on the cmy primary colors to make the secondary colors that are on the pictures they print. however, the inks are usually not perfect, so a fourth ink is used with most printers. when cmy colors are mixed together, the secondary colors are red, green, and blue, which are the primary colors of the rgb model. other models change | change source ryb, or red yellow blue, is an older idea of what the primary and secondary colors are.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Primary-Secondary_color_wheel.tif?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "This color wheel shows a set of colors that were once thought to be primary and secondary colors.",
+          "context": "this way of mixing colors was used for dyes before cmy became widely used. the blue in ryb is usually more of an azure color, which makes their likeness more clear. this color wheel shows a set of colors that were once thought to be primary and secondary colors. this short article can be made longer.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the blue in ryb is usually more of an azure color, which makes their likeness more clear. this color wheel shows a set of colors that were once thought to be primary and secondary colors. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "drawing",
       "story": "drawing is a way of making a picture. drawings are created by making lines on a surface. long lines make up the shapes and small lines make the textures. drawings can be images of real-life or abstract images. drawing has been done for thousands of years, dating back to cave paintings. it focuses on objects made by humans for any number of spiritual, narrative, philosophical, symbolic, conceptual, documentary, decorative, and even functional and other purposes. drawing paper is a special material sometimes used for drawing, however many just use paper. pencils or pens are most commonly used for drawing. however, chalk, charcoal, and many others writing utensils are used. shading is the darkening or coloring of a drawing with lines or blocks of color. it can be used to make your drawings more three dimensional. shading is the process of adding value to create an illusion of form, most importantly the light in a drawing. it should have a highlight , mid tone , core shadow which is the darkest color on your drawing, then there is the reflected light. reflecting light is where light shines on the object you are trying to draw. hatching is a artistic technique used to create tonal or shading effects by drawing closely spaced parallel lines. there are different types of hatching. there is parallel hatching, contour, crosshatching, tick hatching, and more. there are many different ways you can do this.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Aofhfeworewour2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Pencil Drawing",
+          "context": "pencil drawing cave art drawing is a way of making a picture . drawings are created by making lines on a surface.",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/80/Dogon_circumcision_cave_painting_%28brightened%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cave Art",
+          "context": "cave art drawing is a way of making a picture . drawings are created by making lines on a surface.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/24/Parametric_surface_illustration_%28sphere%29.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sphere Shading",
+          "context": "pencils or pens are most commonly used for drawing. however, chalk , charcoal , and many others writing utensils are used. sphere shading shading change | change source shading is the darkening or coloring of a drawing with lines or blocks of color. it can be used to make your drawings more three dimensional .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "there is parallel hatching, contour , crosshatching, tick hatching, and more. there are many different ways you can do this. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "painting",
       "story": "painting is using colors to make visual art. it is also the word for a painted work of art. many kinds of paints are used to create art. they include watercolors, acrylics and oils. other artists like working with pencil or chalk. sometimes charcoal can be used. famous paintings are often kept in art galleries, like the national gallery in london and the louvre where one of the most famous paintings in the world hangs, the mona lisa, painted by leonardo da vinci. people do not have to go to a famous gallery to view art. there are private art galleries in many cities around the world. painting is an important type of art that you look at. it uses things like drawing, arranging the picture, brush strokes, telling stories, and simple shapes. there is a basic difference between drawing and painting. in drawing, a single layer is the entire image. in painting, one layer is painted over another to get the final image. as a result, most of the time the image will not be clear until it gets to the final stage. there are four basic stages in painting: preparation, divide, layer, and touch up. preparation: most artists prepare a canvas or other surface. a thin and uniform cover or \"wash\" of white or other color is laid on the whole surface. this may help the later layers to get the same fix all over the surface. also, the unseen wash may help the reflection of light from the surface, thus improving the effect for the viewer. for really uneven or colored surfaces, such as wood or rough canvas, a more substantial covering is needed. that is called gesso, traditionally a mixture of chalk and gelatin, but nowadays available as a thick white acrylic. painting on some surfaces requires a special technique. painting on plaster uses the fresco method. in the divide stage, the canvas is divided into a few major areas , and background for those areas are plotted. in the layer stage, a layer is plotted over another layer, to get the desired shape in each area. by the end of this stage, all objects in the image will be easily and clearly identifiable. the touch-up stage needs extra effort. this stage is to provide an extra look to the image, like precise bordering, merging layers and other visual effects.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/07/Lascaux2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Image from the Lascaux caves. This cave painting is about 17.000 years old.",
+          "context": "this cave painting is about 17.000 years old. painting materials painting is using colors to make visual art .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Pittura-Painting4.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Painting materials",
+          "context": "painting materials painting is using colors to make visual art . it is also the word for a painted work of art.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "sculpture",
       "story": "sculpture is the branch of the visual arts that operates in three dimensions. sculpture is the three-dimensional artwork which is physically presented in the dimensions of height, width and depth. it is one of the plastic arts. durable sculptural processes originally used carving and modelling , in stone, metal, ceramics, wood and other materials but, since modernism, there has been almost complete freedom of materials and process. a wide variety of materials may be worked by removal such as carving, assembled by welding or modelling, or moulded or cast. in addition, most ancient sculpture was painted, of which most has either been lost or is unable to be seen with the naked eye. sculpture has been central in religious devotion in many cultures, and until recent centuries, large sculptures, too expensive for private individuals to create, were usually an expression of religion or politics. those cultures whose sculptures have survived in quantities include the cultures of the ancient mediterranean, india and china, as well as many in central and south america and africa. the western tradition of sculpture began in ancient greece, and greece is widely regarded as producing great masterpieces in the classical period. during the middle ages, gothic sculpture represented the agonies and passions of the christian faith. the revival of classical models in the renaissance produced famous sculptures such as michelangelo's statue of david. modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture, and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief, high relief, and sometimes an intermediate mid-relief. sunk-relief is a technique restricted to ancient egypt. relief sculpture may also decorate steles-upright slabs, usually of stone, often also containing inscriptions. another basic distinction is between subtractive carving techniques, which remove material from an existing block or lump-such as stone or wood-and modelling techniques that shape or build up the work from the material. techniques such as casting, stamping, and moulding use an intermediate matrix containing the design to produce the work; many of these allow the production of several copies. the term \"sculpture\" is often used mainly to describe large works, which are sometimes called monumental sculpture, meaning either or both sculpture that is large or that is attached to a building. however, the term properly covers many types of small works in three dimensions using the same techniques, including coins and medals, and hardstone carvings, a term for small carvings in stone that can take detailed work. the very large or \"colossal\" statue has had an enduring appeal since antiquity. the largest on record, at 182 m , is the 2018 indian statue of unity. another grand form of portrait sculpture is the equestrian statue of a rider on horse, which has become rare in recent decades. the smallest forms of life-size portrait sculpture are the \"head\", showing just that, or the bust, a representation of a person from the chest up. small forms of sculpture include the figurine, normally a statue that is no more than 18 inches tall, and for reliefs the plaquette, medal, or coin. sculpture is an important form of public art. a collection of sculpture in a garden setting can be called a sculpture garden. there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\". one of the most common purposes of sculpture is in some form of association with religion. cult images are common in many cultures, though they are often not the colossal statues of deities which characterized ancient greek art, like the statue of zeus at olympia. the actual cult images in the innermost sanctuaries of egyptian temples, of which none have survived, were evidently rather small, even in the largest temples. the same is often true in hinduism, where the very simple and ancient form of the lingam is the most common. buddhism brought the sculpture of religious figures to east asia, where there seems to have been no earlier equivalent tradition, though again simple shapes like the bi and cong probably had religious significance. recent unexpected discoveries of ancient chinese bronze age figures at sanxingdui, some more than twice human size, have disturbed many ideas held about early chinese civilization, since only much smaller bronzes were previously known. some undoubtedly advanced cultures, such as the indus valley civilization, appear to have had no monumental sculpture at all, though producing very sophisticated figurines and seals. the mississippian culture seems to have been progressing towards its use, with small stone figures, when it collapsed. other cultures, such as ancient egypt and the easter island culture, seem to have devoted enormous resources to very large-scale monumental sculpture from a very early stage. the collecting of sculpture, including that of earlier periods, goes back some 2,000 years in greece, china and mesoamerica, and many collections were available on semi-public display long before the modern museum was invented. from the 20th century the relatively restricted range of subjects found in large sculpture expanded greatly, with abstract subjects and the use or representation of any type of subject now common. today much sculpture is made for intermittent display in galleries and museums, and the ability to transport and store the increasingly large works is a factor in their construction. small decorative figurines, most often in ceramics, are as popular today as they were in the rococo, or in ancient greece when tanagra figurines were a major industry, or in east asian and pre-columbian art. small sculpted fittings for furniture and other objects go well back into antiquity, as in the nimrud ivories, begram ivories and finds from the tomb of tutankhamun. portrait sculpture began in egypt, where the narmer palette shows a ruler of the 32nd century bce, and mesopotamia, where we have 27 surviving statues of gudea, who ruled lagash c. in ancient greece and rome, the erection of a portrait statue in a public place was almost the highest mark of honour, and the ambition of the elite, who might also be depicted on a coin. in other cultures such as egypt and the near east public statues were almost exclusively the preserve of the ruler, with other wealthy people only being portrayed in their tombs. rulers are typically the only people given portraits in pre-columbian cultures, beginning with the olmec colossal heads of about 3,000 years ago. east asian portrait sculpture was entirely religious, with leading clergy being commemorated with statues, especially the founders of monasteries, but not rulers, or ancestors. the mediterranean tradition revived, initially only for tomb effigies and coins, in the middle ages, but expanded greatly in the renaissance, which invented new forms such as the personal portrait medal. jade or other types of greenstone were used in china, olmec mexico, and neolithic europe, and in early mesopotamia large pottery shapes were produced in stone. bronze was used in europe and china for large axes and blades, like the oxborough dirk. the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze, stone and pottery, with wood, bone and antler as less durable but cheaper options. precious materials such as gold, silver, jade, and ivory are often used for small luxury works, and sometimes in larger ones, as in chryselephantine statues. more common and less expensive materials were used for sculpture for wider consumption, including hardwoods ; terracotta and other ceramics, wax , and cast metals such as pewter and zinc . but a vast number of other materials have been used as part of sculptures, in ethnographic and ancient works as much as modern ones. sculptures are often painted, but commonly lose their paint to time, or restorers. many different painting techniques have been used in making sculpture, including tempera, oil painting, gilding, house paint, aerosol, enamel and sandblasting. many sculptors seek new ways and materials to make art. one of pablo picasso's most famous sculptures included bicycle parts. alexander calder and other modernists made spectacular use of painted steel. since the 1960s, acrylics and other plastics have been used as well. andy goldsworthy makes his unusually ephemeral sculptures from almost entirely natural materials in natural settings. some sculpture, such as ice sculpture, sand sculpture, and gas sculpture, is deliberately short-lived. recent sculptors have used stained glass, tools, machine parts, hardware and consumer packaging to fashion their works. sculptors sometimes use found objects, and chinese scholar's rocks have been appreciated for many centuries. stone sculpture is an ancient activity where pieces of rough natural stone are shaped by the controlled removal of stone. petroglyphs are perhaps the earliest form: images created by removing part of a rock surface which remains in situ, by incising, pecking, carving, and abrading. monumental sculpture covers large works, and architectural sculpture, which is attached to buildings. hardstone carving is the carving for artistic purposes of semi-precious stones such as jade, agate, onyx, rock crystal, sard or carnelian, and a general term for an object made in this way. alabaster or mineral gypsum is a soft mineral that is easy to carve for smaller works and still relatively durable. engraved gems are small carved gems, including cameos, originally used as seal rings. the copying of an original statue in stone, which was very important for ancient greek statues, which are nearly all known from copies, was traditionally achieved by \"pointing\", along with more freehand methods. a variation of stone sculpture in the landscape is the hill figure, where the natural bedrock is used as the primary medium. the litlington white horse in east sussex is an example of a 20th-century figure created by the controlled removal of turf to reveal the underlying chalk of the south downs. managed by the national trust, this process-known as 'scouring', is a subtractive technique that uses the geology of a site to produce a monumental graphic work. bronze and related copper alloys are the oldest and still the most popular metals for cast metal sculptures; a cast bronze sculpture is often called simply a \"bronze\". common bronze alloys have the unusual and desirable property of expanding slightly just before they set, thus filling the finest details of a mould. their strength and lack of brittleness is an advantage when figures in action are to be created, especially when compared to various ceramic or stone materials . casting is a group of manufacturing processes by which a liquid material is poured into a mould, which contains a hollow cavity of the desired shape, and then allowed to solidify. the solid casting is then ejected or broken out to complete the process, although a final stage of \"cold work\" may follow on the finished cast. casting may be used to form hot liquid metals or various materials that cold set after mixing of components . casting is most often used for making complex shapes that would be otherwise difficult or uneconomical to make by other methods. the oldest surviving casting is a copper mesopotamian frog from 3200 bce. specific techniques include lost-wax casting, plaster mould casting, and sand casting. welding is a process where different pieces of metal are fused together to create different shapes and designs. there are many different forms of welding, such as oxy-fuel welding, stick welding, mig welding, and tig welding. oxy-fuel is probably the most common method of welding when it comes to creating steel sculptures because it is the easiest to use for shaping the steel as well as making clean and less noticeable joins of the steel. the key to oxy-fuel welding is heating each piece of metal to be joined evenly until all are red and have a shine to them. once that shine is on each piece, that shine will soon become a 'pool' where the metal is liquified and the welder must get the pools to join, fusing the metal. once cooled off, the location where the pools joined are now one continuous piece of metal. also used heavily in oxy-fuel sculpture creation is forging. forging is the process of heating metal to a certain point to soften it enough to be shaped into different forms. one very common example is heating the end of a steel rod and hitting the red heated tip with a hammer while on an anvil to form a point. in between hammer swings, the forger rotates the rod and gradually forms a sharpened point from the blunt end of a steel rod. glass may be used for sculpture through a wide range of working techniques, though the use of it for large works is a recent development. it can be carved, though with considerable difficulty; the roman lycurgus cup is all but unique. there are various ways of moulding glass: hot casting can be done by ladling molten glass into moulds that have been created by pressing shapes into sand, carved graphite or detailed plaster/silica moulds. kiln casting glass involves heating chunks of glass in a kiln until they are liquid and flow into a waiting mould below it in the kiln. hot glass can also be blown and/or hot sculpted with hand tools either as a solid mass or as part of a blown object. more recent techniques involve chiseling and bonding plate glass with polymer silicates and uv light. pottery is one of the oldest materials for sculpture, as well as clay being the medium in which many sculptures cast in metal are originally modelled for casting. sculptors often build small preliminary works called maquettes of ephemeral materials such as plaster of paris, wax, unfired clay, or plasticine. many cultures have produced pottery which combines a function as a vessel with a sculptural form, and small figurines have often been as popular as they are in modern western culture. stamps and moulds were used by most ancient civilizations, from ancient rome and mesopotamia to china. wood carving has been extremely widely practiced, but survives much less well than the other main materials, being vulnerable to decay, insect damage, and fire. it therefore forms an important hidden element in the art history of many cultures. outdoor wood sculpture does not last long in most parts of the world, so that we have little idea how the totem pole tradition developed. many of the most important sculptures of china and japan in particular are in wood, and the great majority of african sculpture and that of oceania and other regions. wood is light, so suitable for masks and other sculpture intended to be carried, and can take very fine detail. it is also much easier to work than stone. it has been very often painted after carving, but the paint wears less well than the wood, and is often missing in surviving pieces. painted wood is often technically described as \"wood and polychrome\". typically a layer of gesso or plaster is applied to the wood, and then the paint is applied to that. three dimensional work incorporating unconventional materials such as cloth, fur, plastics, rubber and nylon, that can thus be stuffed, sewn, hung, draped or woven, are known as soft sculptures. well known creators of soft sculptures include claes oldenburg, yayoi kusama, eva hesse, sarah lucas and magdalena abakanowicz. worldwide, sculptors have usually been tradespeople whose work is unsigned; in some traditions, for example china, where sculpture did not share the prestige of literati painting, this has affected the status of sculpture itself. even in ancient greece, where sculptors such as phidias became famous, they appear to have retained much the same social status as other artisans, and perhaps not much greater financial rewards, although some signed their works. goldsmiths and jewellers, dealing with precious materials and often doubling as bankers, belonged to powerful guilds and had considerable status, often holding civic office. many sculptors also practised in other arts; andrea del verrocchio also painted, and giovanni pisano, michelangelo, and jacopo sansovino were architects. some sculptors maintained large workshops. even in the renaissance the physical nature of the work was perceived by leonardo da vinci and others as pulling down the status of sculpture in the arts, though the reputation of michelangelo perhaps put this long-held idea to rest. from the high renaissance artists such as michelangelo, leone leoni and giambologna could become wealthy, and ennobled, and enter the circle of princes, after a period of sharp argument over the relative status of sculpture and painting. much decorative sculpture on buildings remained a trade, but sculptors producing individual pieces were recognised on a level with painters. from the 18th century or earlier sculpture also attracted middle-class students, although it was slower to do so than painting. women sculptors took longer to appear than women painters, and were less prominent until the 20th century. aniconism originated with judaism, which did not accept figurative sculpture until the 19th century, before expanding to christianity, which initially accepted large sculptures. in christianity and buddhism, sculpture became very significant. many forms of protestantism also do not approve of religious sculpture. there has been much iconoclasm of sculpture for religious motives, from the early christians and the beeldenstorm of the protestant reformation to the 2001 destruction of the buddhas of bamyan by the taliban. = = the earliest undisputed examples of sculpture belong to the aurignacian culture, which was located in europe and southwest asia and active at the beginning of the upper paleolithic. as well as producing some of the earliest known cave art, the people of this culture developed finely crafted stone tools, manufacturing pendants, bracelets, ivory beads, and bone-flutes, as well as three-dimensional figurines. the 30 cm tall lowenmensch found in the hohlenstein stadel area of germany is an anthropomorphic lion-human figure carved from woolly mammoth ivory. it has been dated to about 35-40,000 bp, making it, along with the venus of hohle fels, the oldest known uncontested examples of sculpture. much surviving prehistoric art is small portable sculptures, with a small group of female venus figurines such as the venus of willendorf found across central europe. = = from the ancient near east, the over-life sized stone urfa man from modern turkey comes from about 9,000 bce, and the 'ain ghazal statues from around 7200 and 6500 bce. these are from modern jordan, made of lime plaster and reeds, and about half life-size; there are 15 statues, some with two heads side by side, and 15 busts. small clay figures of people and animals are found at many sites across the near east from the pre-pottery neolithic, and represent the start of a more-or-less continuous tradition in the region. the protoliterate period in mesopotamia, dominated by uruk, saw the production of sophisticated works like the warka vase and cylinder seals. the guennol lioness is an outstanding small limestone figure from elam of about 3000-2800 bce, part human and part lioness. a little later there are a number of figures of large-eyed priests and worshippers, mostly in alabaster and up to a foot high, who attended temple cult images of the deity, but very few of these have survived. sculptures from the sumerian and akkadian period generally had large, staring eyes, and long beards on the men. many masterpieces have also been found at the royal cemetery at ur , including the two figures of a ram in a thicket, the copper bull and a bull's head on one of the lyres of ur. the burney relief is an unusually elaborate and relatively large terracotta plaque of a naked winged goddess with the feet of a bird of prey, and attendant owls and lions. it comes from the 18th or 19th century bce, and may also be moulded. unlike earlier states, the assyrians could use easily carved stone from northern iraq, and did so in great quantity. they produced very little sculpture in the round, except for colossal guardian figures of the human-headed lamassu, which are sculpted in high relief on two sides of a rectangular block, with the heads effectively in the round . even before dominating the region they had continued the cylinder seal tradition with designs which are often exceptionally energetic and refined. the monumental sculpture of ancient egypt is world-famous, but refined and delicate small works exist in much greater numbers. the egyptians used the distinctive technique of sunk relief, which is well suited to very bright sunlight. this appears as early as the narmer palette from dynasty i. however, there as elsewhere the convention is not used for minor figures shown engaged in some activity, such as the captives and corpses. other conventions make statues of males darker than females ones. egyptian pharaohs were always regarded as deities, but other deities are much less common in large statues, except when they represent the pharaoh as another deity; however the other deities are frequently shown in paintings and reliefs. the famous row of four colossal statues outside the main temple at abu simbel each show rameses ii, a typical scheme, though here exceptionally large. small figures of deities, or their animal personifications, are very common, and found in popular materials such as pottery. most larger sculpture survives from egyptian temples or tombs; by dynasty iv at the latest the idea of the ka statue was firmly established. the so-called reserve heads, plain hairless heads, are especially naturalistic. early tombs also contained small models of the slaves, animals, buildings and objects such as boats necessary for the deceased to continue his lifestyle in the afterworld, and later ushabti figures. = = the first distinctive style of ancient greek sculpture developed in the early bronze age cycladic period , where marble figures, usually female and small, are represented in an elegantly simplified geometrical style. most typical is a standing pose with arms crossed in front, but other figures are shown in different poses, including a complicated figure of a harpist seated on a chair. the subsequent minoan and mycenaean cultures developed sculpture further, under influence from syria and elsewhere, but it is in the later archaic period from around 650 bce that the kouros developed. these are large standing statues of naked youths, found in temples and tombs, with the kore as the clothed female equivalent, with elaborately dressed hair; both have the \"archaic smile\". they seem to have served a number of functions, perhaps sometimes representing deities and sometimes the person buried in a grave, as with the kroisos kouros. they are clearly influenced by egyptian and syrian styles, but the greek artists were much more ready to experiment within the style. during the 6th century greek sculpture developed rapidly, becoming more naturalistic, and with much more active and varied figure poses in narrative scenes, though still within idealized conventions. other significant remains of architectural sculpture come from paestum in italy, corfu, delphi and the temple of aphaea in aegina . most greek sculpture originally included at least some colour; the ny carlsberg glyptotek museum in copenhagen, denmark, has done extensive research and recreation of the original colours.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Dying_gaul.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "for sculpting in computer graphics, see digital sculpting . for other uses, see sculptor and sculpture .",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Lammasu.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Assyrian lamassu gate guardian from Khorsabad , c. 800 -721 BCE",
+          "context": "for other uses, see sculptor and sculpture . assyrian lamassu gate guardian from khorsabad , c.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Miyasaka_Hakuryu_II_-_Tigress_with_Two_Cubs_-_Walters_71909.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Netsuke of tigress with two cubs, mid-19th-century Japan, ivory with shell inlay",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/Angel_of_the_North_2016_006.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Angel of the North by Antony Gormley , 1998",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/af/Litlington_White_Horse_2025.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Litlington White Horse , a monumental work of stone sculpture created by exposing the underlying chalk bedrock.",
+          "context": "the litlington white horse , a monumental work of stone sculpture created by exposing the underlying chalk bedrock. sculpture is the branch of the visual arts that operates in three dimensions .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/85/%E9%BE%99%E9%97%A8-Buddha.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Open-air Buddhist rock reliefs at the Longmen Grottoes , China",
+          "context": "the revival of classical models in the renaissance produced famous sculptures such as michelangelo 's statue of david . modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture , and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief , high relief , and sometimes an intermediate mid-relief .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Mo%C3%A1is.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Moai from Easter Island , where the concentration of resources on large sculpture may have had serious political effects",
+          "context": "a collection of sculpture in a garden setting can be called a sculpture garden . there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\".",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/44/Cappella_Sansevero_%2815041603867%29_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Veiled Christ , c. 1753 by Giuseppe Sanmartino , was widely believed to be created by alchemy.",
+          "context": "1753 by giuseppe sanmartino , was widely believed to be created by alchemy. one of the most common purposes of sculpture is in some form of association with religion.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/Mesopotamia_male_worshiper_2750-2600_B.C.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sumerian male worshipper, alabaster with shell eyes, 2750-2600 BCE",
+          "context": "bronze was used in europe and china for large axes and blades, like the oxborough dirk . sumerian male worshipper, alabaster with shell eyes, 2750-2600 bce the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze , stone and pottery, with wood, bone and antler as less durable but cheaper options.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/Refugees_medal_DSCF9937.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ludwig Gies , cast iron plaquette , 8 x 9.8 cm, Refugees , 1915",
+          "context": "the litlington white horse in east sussex is an example of a 20th-century figure created by the controlled removal of turf to reveal the underlying chalk of the south downs. managed by the national trust , this process-known as 'scouring', is a subtractive technique that uses the geology of a site to produce a monumental graphic work. ludwig gies , cast iron plaquette , 8 x 9.8 cm, refugees , 1915 bronze and related copper alloys are the oldest and still the most popular metals for cast metal sculptures; a cast bronze sculpture is often called simply a \"bronze\". common bronze alloys have the unusual and desirable property of expanding slightly just before they set, thus filling the finest de",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Chihuly_at_Kew_Gardens_031.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Dale Chihuly , 2006, ( Blown glass )",
+          "context": "one very common example is heating the end of a steel rod and hitting the red heated tip with a hammer while on an anvil to form a point. in between hammer swings, the forger rotates the rod and gradually forms a sharpened point from the blunt end of a steel rod.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "texture",
@@ -51,7 +229,362 @@
       "theme": "portrait",
       "story": "a portrait is a painting or a photograph of a person's face and its expression. the purpose of a portrait is to show the likeness, personality, and even the mood of the person. for this reason, in photography, a portrait is actually not a snapshot, but a calm image of a person in a still position. a portrait normally shows a person looking directly at the painter or photographer. portrait detectives - fun interactive introduction to the analysis of portraiture. reportret - a gallery of reconstructions of missing portraits from world history.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/38/VanGogh_1887_Selbstbildnis.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An example of a portrait showing the painter Vincent van Gogh . It is a self-portrait because van Gogh is also the person who made the portrait.",
+          "context": "an example of a portrait showing the painter vincent van gogh . it is a self-portrait because van gogh is also the person who made the portrait.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Sir_Anthony_Van_Dyck_-_Charles_I_%281600-49%29_-_Google_Art_Project.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "it is a self-portrait because van gogh is also the person who made the portrait. anthony van dyck , charles i in three positions , 1635-1636, shows profile, full face and three-quarter views, to send to bernini in rome, who was to sculpt a bust from this model. a portrait is a painting or a photograph of a person 's face and its expression.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/1665_Girl_with_a_Pearl_Earring.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Girl with a Pearl Earring, Vermeer&#39;s most famous painting.",
+          "caption": "",
+          "context": "for this reason, in photography, a portrait is actually not a snapshot, but a calm image of a person in a still position. a portrait normally shows a person looking directly at the painter or photographer. girl with a pearl earring , vermeer 's most famous painting.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Sir_William_Orpen_%281878-1931%29_-_Portrait_of_Gertrude_Sanford.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "William Orpen: Portrait of Gertrude Sanford, 1922",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Fayum-02.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Roman-Egyptian funeral portrait of a woman",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/Sharaku2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Sharaku: Actor Ichikawa Ebozo as Takemura Sadanoshin, 1794.",
+          "caption": "",
+          "context": "sharaku : actor ichikawa ebozo as takemura sadanoshin, 1794.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/76/Butch_Cassidy_mugshot_detail.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Butch Cassidy mug shot from the Wyoming Territorial Prison in 1894.",
+          "caption": "",
+          "context": "butch cassidy mug shot from the wyoming territorial prison in 1894. <img alt=\"photographic self-portrait by edward s.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Self_portrait_of_Edward_Sheriff_Curtis.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Photographic self-portrait by Edward S. Curtis, 1899",
+          "caption": "",
+          "context": "butch cassidy mug shot from the wyoming territorial prison in 1894. photographic self-portrait by edward s.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "portrait detectives - fun interactive introduction to the analysis of portraiture. reportret - a gallery of reconstructions of missing portraits from world history. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "color",
+      "story": "the following are the most common color names: primary colors can be mixed to make other colors. red, yellow, and blue are the three traditional primary colors. the primary colors for television screens and computer monitors are red, green and blue. printers and paints use magenta, yellow, and cyan as their primary colors; they may also use black. sometimes this set of colors is simply called red, yellow, and blue. people who can not see colors or have a distorted sense of color are called color-blind. most color-blind people are male. colors are sometimes added to food. food coloring is used to color food, but some foods have natural colorings, like beta carotene. when something has no color, it is called transparent. the science of color is sometimes called chromatics, colorimetry, or simply color science. a translucent material is not the same as a colorless material because it can still have a color, such as stained glass.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Pigment_Colours_-_Classification.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Pigment Colors - Classification (Used in fine arts and drawings and mainly used for physical works)",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/05/AdditiveColorMixing.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Additive color mixing {Used in computer screening and graphics and mostly used for digital purposes}",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/CMY_ideal_version.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Subtractive color mixing {Used in computer screening and graphics and mostly used for digital purposes}",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "watercolor-painting",
+      "story": "watercolour , also called watercolor or aquarelle , are paintings whose colours are water-based pigments. watercolours were first created in china, appearing shortly after paper was invented. watercolours soon became popular in japan as well. pigment is mixed first with a binder which is most of the time, gum arabic, then add water and then using a brush add the pigment to material like paper. when the water dries, the pigment is stuck to the material from the binder.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Thomas_Girtin_006.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Jedburgh Abbey from the River, by Thomas Girtin 1798-99 (watercolor on paper).",
+          "context": "jedburgh abbey from the river, by thomas girtin 1798-99 . watercolour , also called watercolor or aquarelle , are paintings whose colours are water-based pigments .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "paintbrush",
+      "story": "a paintbrush is a tool that is used to apply paint or ink. on the one end, it has bristles, and on the other, it has a handle. a paint brush is a simple tool made of a handle and a group of soft or firm bristles that hold and spread paint. the handle is usually wood or plastic, and the bristles can be natural hair or synthetic fibers. when you dip the bristles into paint, they absorb a small amount and let you apply it smoothly onto a surface like a wall, canvas, or wood. you use a paint brush to create lines, fill areas, and control how the paint looks. different brushes have different shapes and sizes, which give you different effects. a small brush is good for details, and a big one covers large areas faster. the brush basically acts like an extension of your hand so you can place the paint exactly where you want it.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/55/2000s_Wistoba_Chinex_Plus_professional_trade_paintbrush_model_1508_50_mm_width_stainless_steel_ferrule.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Paintbrush for craft use.",
+          "context": "a paintbrush is a tool that is used to apply paint or ink . on the one end, it has bristles , and on the other, it has a handle.",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a small brush is good for details, and a big one covers large areas faster. the brush basically acts like an extension of your hand so you can place the paint exactly where you want it. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "canvas",
+      "story": "canvas is a thick material usually made of woven cotton. it is used for tents and sails on boats and other places where a sturdy material would be good. it is similar to the material in blue jeans. it is often a white or pale tan color. it can also be used for painting or even making shoes.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Strainer_bar_corner_051907.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Backside of a strainer showing the Canvas",
+          "context": "backside of a strainer showing the canvas canvas is a thick material usually made of woven cotton . it is used for tents and sails on boats and other places where a sturdy material would be good.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "pattern",
+      "story": "a pattern is an idea, a concept or a model. the model is usually abstract, and can then be applied to the domain where it is used. pattern matching is checking if a certain pattern is present. many patterns can directly be recognised by the senses. some patterns are based on the fact that there are repetitions, that a certain thing occurs over and over again. an example of a simple pattern might be the tiling of a floor. for example, lots of bathrooms have a paisley or floral tiling pattern on the floor. in computer science, design patterns are model solutions for problems that occur often. sometimes people see patterns when there are none. in mathematics, there are many different patterns. for example, the fibonacci sequence is a complex type of pattern. there are some simple ones like: 1, 2, 4, 8, 16, ... in this pattern, the next number is the product of the previous number multiplied by 2. basically a mathematical pattern is a sequence of numbers which follows one rule.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ef/Hexagonal_tessellation.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Hexagonal tiling of a floor in Rome . The tiling follows a simple pattern",
+          "context": "hexagonal tiling of a floor in rome . the tiling follows a simple pattern a pattern is an idea , a concept or a model .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "clay",
+      "story": "clay is a fine-grained silicate mineral made when rocks break down. wet clay is soft and can be shaped to make pottery, bricks and other things. when it is shaped and then fired in a kiln to make it hard, it becomes pottery. clay often contains some water because the water molecules stick to the tiny grains. there may also be some organic materials in the clay. there are 35 recognized clay mineral species on earth, they make muds stick together , or able to flow . the thixotropy of clay sometimes causes landslides. quartz, feldspars, iron oxides, and carbonates can weather to sizes of a typical clay mineral. the formation of clay is well understood. it can come from soil, volcanic ash, and glaciation. ancient mudrocks are another source, because they weather and disintegrate easily. clay is by far the smallest particles recognized in mudrocks. a clay particle is about 1/1000th the width of a sand grain. this means a clay particle will travel 1000 times further at constant water velocity, thus requiring quieter conditions for settlement. where the grains are more than a few millimeters wide, the material is called silt, not clay.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Clay-ss-2005.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "What clay looks like: Estonian clay from the Quaternary epoch",
+          "context": "what clay looks like: estonian clay from the quaternary epoch clay is a fine-grained silicate mineral made when rocks break down. wet clay is soft and can be shaped to make pottery , bricks and other things.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "origami",
+      "story": "origami is the art and technique of folding paper. it also refers to the two- and three-dimensional forms created in the process. although the word origami has japanese roots, the practice itself is universal and its origin remains unknown. the use of the term has been extended in modern times to include other materials such as metal, textiles, and it is also used in the biological sciences to describe folded structures like dna. the term has been adopted in many countries, while in others, local vocabulary is preferred for recreational paper folding, such as zhe zhi in china, jongi jeobgi in korea, and papiroflexia in spain. the object is made of origami paper, which is specially made for folding and staying in shape. many dictionaries and television shows suggest that origami is only paper cranes, waterbombs, and paper planes, but many new models and creatures have been made because of new folding techniques. modern origami promotes the use of a single piece of paper, no cuts, no glue. a different kind of origami called modular origami uses many small pieces that are similar to each other, and then interlocked to form one large model. also, many mathematical shapes can be made with origami. the beginnings of origami are not clear. paperfolding started in china in the 1st or 2nd century. it arrived in japan in the 6th century. instead of making models that looked exactly like things, the first origami models only looked similar to things. people often folded models and gave them to other people for good luck. for example, shinto nobles celebrated weddings with sake in glasses decorated with origami butterflies, which gave good luck to the bride and groom. there were also independent paperfolding traditions in other countries, like germany and spain. the earliest evidence of paperfolding in europe is a picture of a boat in 1490. there was also a paper box from 1440. finally, in 1845, kan no mado was written, and it was the first book of origami models. recently, people have become more interested in origami. in 1954, japanese paperfolder akira yoshizawa created rules to explain how to fold origami models. his instructions on paperfolding are now used in all countries. peter engel, who is a well-known paperfolder, says \"the best paper for origami is thin and crisp and absolutely square.\" pre-cut origami paper is sold in many colors, sizes, and patterns. duo paper, or paper with different colors on each side, is used by paperfolders because it makes areas of different color on the finished model. there are also special papers, like textured, metallic, and patterned. many people like to make their own paper. engel describes a process shown to him by robert j. lang that is \"a sandwich of aluminum foil and two pieces of tissue paper.\" in this method, two pieces of paper are pasted to each side of the aluminum foil. many people like origami because there is almost always paper. copy paper, napkins, wallpaper, index cards, and even paper money can be used to make interesting and unique models. many paperfolders prefer to use a flat surface to fold models on, but others, like japanese people, fold in the air. traditional paperfolders believe that only the hands should be used when folding, but many modern folders use other tools when folding. tweezers and paper clips can be used to make very small folds. some folders use rulers or other flat tools to make sharper creases in the models. new types of origami have been made because more people are making origami models. pureland origami is origami with one rule: only one fold can be made at a time. british paper folder john smith started pureland origami for inexperienced paperfolders or for people with poor motor skills. hard folds, like the inside-reverse fold, are not allowed in pureland origami.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/68/2014_Origami_modu%C5%82owe.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An origami swan",
+          "context": "an origami swan origami is the art and technique of folding paper. it also refers to the two- and three-dimensional forms created in the process.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fd/Origami-crane.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Many different types of paper can be used for origami.",
+          "context": "in 1954, japanese paperfolder akira yoshizawa created rules to explain how to fold origami models. 10 his instructions on paperfolding are now used in all countries. many different types of paper can be used for origami. peter engel , who is a well-known paperfolder, says \"the best paper for origami is thin and crisp and absolutely square .\" 11 pre-cut origami paper is sold in many colors, sizes, and patterns .",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Oragami_star.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A modular star.",
+          "context": "some folders use rulers or other flat tools to make sharper creases in the models. types change | change source new types of origami have been made because more people are making origami models.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/85/Origami_%28made_from_an_American_1-dollar_bill%29_of_an_elephant.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Elephant",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/43/Origami_ball.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Ball",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/be/PaperCranes.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Paper cranes",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Modular_origami.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Modular origami",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 2.0"
+        }
+      ]
+    },
+    {
+      "theme": "mask",
+      "story": "a mask is a type of clothing which covers the face. it is similar to a veil, but more close-fitting. there are different reasons why people use masks. a person can use a mask so others do not know who they are . or, a mask may keep someones face safe from harm . there are many practical uses for masks in everyday life. mostly, the masks used are semi-masks which cover only the bottom half of the face, the mouth and nose. an example is the use of masks in operating theatres, and by wood-workers. in surgery, the purpose is to keep bacteria off the patient; in wood-working the purpose is to keep wood fibres out of the lungs. in venetian masks only the top half of the face is covered, to prevent recognition. ice hockey masks, used in the hannibal lecter movies, cover the whole face to protect it from the hockey puck moving at high speed. the word 'mask' might have come from other languages. the french masque, the italian maschera, the spanish mascara, the latin mascus/masca or the arabic maskharah all use the same word. one of the oldest masks found is the death mask. this stone mask is 9000 years old and is probably the oldest mask in the world. it is kept in musee de la bible et terre sainte, paris. there are also three masks from the same period, kept in the israel museum, jerusalem. masks are used in many magical or shamanistic rituals in non-western societies. the celebration or appeasement of animistic spirits takes place with dance and song in ancient performances in many parts of the world. in these events performers use costumes and masks to mimic the supposed spirits. from this kind of beginning, the use of masks in ancient greek theatre may have started. the actors and chorus in this early theatre all used masks. they were worn during the plague in the middle ages; during the influenza epidemic of 1918, and the covid-19 epidemic. gas masks were issued in world war ii even though phosgene gas was never used in that war . there are some other uses of the word 'mask', which arise by extension. that means using 'mask' as a metaphor. in film a mask is a screen which cuts out part of the image. in social theory, a mask is the behaviour a person takes on in his role or job. thus policemen, head teachers, army commanders, prime ministers act as they are expected to act . the inference is that behind the mask is the 'real' person. as a verb, 'to mask' means to cover or hide.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Mosaic_depicting_theatrical_masks_of_Tragedy_and_Comedy_%28Thermae_Decianae%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Roman masks",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/82/Three_pictures_of_the_same_noh_%27hawk_mask%27_showing_how_the_expression_changes_with_a_tilting_of_the_head.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "three pictures of the same female mask showing how the expression changes with a tilting of the head. in these pictures, the mask was fixed to a wall with constant lighting, and only the camera moved.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Mask_Acrylic_on_Canvass.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Mask (acrylic on canvas)",
+          "context": "in these pictures, the mask was fixed to a wall with constant lighting, and only the camera moved.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Musee_de_la_bible_et_Terre_Sainte_001.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "World's oldest surviving mask",
+          "context": "world's oldest surviving mask african ritual mask, idoma people, nigeria . <img src=\"//upload.wikimedia.org/wikipedia/commons/thumb/1/12/sp-flu-alberta-field.jpg/250px-sp-flu-alberta-field.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/31/IdomaMask1.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "African ritual mask, Idoma people, Nigeria .",
+          "context": "african ritual mask, idoma people, nigeria . farmers protect themselves from influenza in alberta , canada 1918.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/12/Sp-flu-alberta-field.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Farmers protect themselves from influenza in Alberta , Canada 1918.",
+          "context": "farmers protect themselves from influenza in alberta , canada 1918. behind the mask the individual disappears: street protest, london 2009.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e7/G20_V_mask.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Behind the mask the individual disappears: Street protest, London 2009.",
+          "context": "farmers protect themselves from influenza in alberta , canada 1918. behind the mask the individual disappears: street protest, london 2009. a mask is a type of clothing which covers the face .",
+          "licence": "CC BY 2.0"
+        }
+      ]
+    },
+    {
+      "theme": "puppet",
+      "story": "puppets are objects used in theatrical performances. they often use strings or other means to make the puppet move and look alive. some puppets are very simple, but others are more complicated and need skill to use. the person who works the puppet and makes it move is called a puppeteer. the audience cannot usually see this person but some, like a ventriloquist and dummy, are in full view of the audience. there are many different types of puppets to be found around the world. puppetry is a special art form that is very important in some cultures. finger puppet: a very simple type of puppet where the puppet is placed on a finger and worked by moving the finger. sock puppet: a sock or similar garment worn as a glove, with the thumb acting as a jaw. hand puppet: similar to a finger puppet, but larger. the puppeteer uses his or her fingers and hand to work the puppet. punch and judy are famous glove puppets. pop-up puppets: a cone with a rod through and a puppet inside. when the rod is pushed up, the puppet appears. paddle puppet: the puppet is on the end of a paddle. when the puppeteer steps on the paddles back end the other end lifts up, making it seem that the puppet moves by itself. jumping jack: a puppet where the arms and legs of the puppet are joined to a string. when the string is pulled down, the arms and legs go up. rod puppet and bunraku: the puppet is worked with rods joined to the puppets arms and legs, while another puppeteer moves the head and sometimes the mouth. bunraku is a special type of japanese rod puppetry. shadow puppet: another very simple puppet. a cut out figure on a rod is held in front of a light. its shadow is projected onto a screen. the puppeteer moves the puppet around, giving it some life. sometimes coloured paper is used to give a certain amount of colour to the puppet. marionette or string puppet: this puppet is moved around with strings that hang from above the theatre. this is one of the more complex types of puppetry and is hard to master as some marionettes can have up to thirty strings. ventriloquist figure or dummy: this puppet is one of the few where the audience sees the puppeteer. the puppeteer moves the puppets head arms and mouth with his hands as well as with levers. the performance usually takes the shape of a conversation between the dummy and the puppeteer. the puppeteer speaks normally, then puts on a different voice when the puppet is supposed to be talking. his voice seems to be coming from his stomach . his lips are not moving, but the puppet's lips may move, so it seems as if the puppet is talking. ticklebug: a type of hand puppet; a person uses their fingers as body parts to look like their hand is an animal. the center finger becomes the animal's head, the first and third fingers become the front legs, and the thumb and last finger are used as back legs.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/47/Marla_%26_Puppets_1.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Glove puppets",
+          "context": "glove puppets marionette or string puppets puppets are objects used in theatrical performances.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/Marionette_Show_NJ.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Marionette or string puppets",
+          "context": "marionette or string puppets puppets are objects used in theatrical performances. they often use strings or other means to make the puppet move and look alive.",
+          "licence": "CC BY 2.0"
+        }
+      ]
+    },
+    {
+      "theme": "statue",
+      "story": "a statue is a model of somebody or something, usually of a person or sometimes an animal. several kinds of material can be used to make a statue, e.g. statues are often at least life-size , but often they are much bigger, especially statues in the open air. statues are often made to remember an important person , or to remember an event or an idea . usually there is some writing on a statue to say who the person is. this writing is called an epigraph. the statue may be standing on a base. this base is called a \"plinth\". a bust is a statue of the head, shoulders and upper body of a person. a colossus is an enormous statue. a statue of someone on horseback is called an equestrian statue.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/J26_238_Thessaloniki%2C_Alexander_der_Gro%C3%9Fe.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Statue of Alexander the Great in Thessalonki",
+          "context": "statue of alexander the great in thessalonki a statue is a model of somebody or something, usually of a person or sometimes an animal . several kinds of material can be used to make a statue, e.g.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Statue_d%27Alfred_le_Grand_%C3%A0_Winchester.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Statue of Alfred the Great in the town square in Winchester",
+          "context": "statues are often at least life-size , but often they are much bigger, especially statues in the open air. statues are often made to remember an important person , or to remember an event or an idea . statue of alfred the great in the town square in winchester usually there is some writing on a statue to say who the person is. this writing is called an epigraph .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a colossus is an enormous statue. a statue of someone on horseback is called an equestrian statue . this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     }
   ]
 }
