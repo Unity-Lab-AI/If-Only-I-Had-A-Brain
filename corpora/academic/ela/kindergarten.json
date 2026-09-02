@@ -2,30 +2,101 @@
   "version": 1,
   "grade": "kindergarten",
   "subject": "ela",
-  "source": "hybrid: Project Gutenberg public-domain literature + OpenStax (CC-BY) + Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for ela/kindergarten. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "vowel",
       "story": "a vowel is a particular kind of speech sound made by changing the shape of the upper vocal tract, or the area in the mouth above the tongue. a vowel letter is a letter of an alphabet that represents a vowel sound. in english, five letters in the alphabet are usually called the vowel letters. the sounds of english are written with letters in the english alphabet, as either vowels or consonants. all english words are written with vowel letters in them. these letters are vowels in english: a, e, i, o and u it is said that y is \"sometimes\" a vowel because it can either be spoken with a vowel or consonant sound, depending on the word. in words like only, quickly, and folly, it represents the vowel sound /i/. the letter y can also be a consonant sound called a glide as in the beginning of these words: yellow, yacht, yam, yesterday. y is a consonant about 2.5% of the time, and a vowel about 97.5% of the time. the letter w can sometimes be the second part of a vowel sound, as in words such as cow, bow, or how. the letter w can be used as a consonant sound at the beginning of in the words when, where, wet. a few of these words may be borrowed in english, with the w representing its vowel sound. in written english, the vowel letters are used to represent the 13-15 vowel sounds in english. this means there are many more vowel sounds than letters in the english alphabet, and the english spelling system does not always show readers which sound a vowel letter represents in a word. this can cause confusion for people learning the english language. the rest of the letters of the alphabet are consonants: b, c, d, f, g, h, j, k, l, m, n, p, q, r, s, t, v, w, x, y and z simple vowels are called monophthongs. in the ipa, each symbol represents a different sound, so using the ipa is helpful in pronouncing words. if you pronounce the words below slowly, you can hear the two vowel sounds of the diphthongs. but the ipa symbols can tell us which vowel sound a dialects uses. for example, some american english speakers differentiate between the vowels in the words cot and caught, while in other dialects these words are homophones. people who study the differences between the dialects of english often study the different way vowel sounds are pronounced. the difference between the way english is spelled and the way the words are pronounced came about because all languages change, so spoken english changes, but the spelling system does not. the study of speech sounds is called phonetics.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Disc_Plain_black.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "•",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Loudspeaker.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a vowel letter is a letter of an alphabet that represents a vowel sound. in english, five letters in the alphabet are usually called the vowel letters.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/ca/IPA_English_Vowels_and_Diphthongs_with_Sound_Examples.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "in the ipa, each symbol represents a different sound, so using the ipa is helpful in pronouncing words.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "alphabet",
       "story": "an alphabet is a writing system, a list of symbols for writing. the basic symbols in an alphabet are called letters. in an alphabet, each letter is a symbol for a sound or related sounds. to make the alphabet work better, more signs assist the reader: punctuation marks, spaces, standard reading direction, and so on. the symbols are in a strict ordered list, called alphabetical order. the name alphabet comes from aleph and beth, the first two letters in the phoenician alphabet. this article is written with the roman alphabet . it was first used in ancient rome to write latin. many languages use the latin alphabet: it is the most used alphabet today. it seems that the idea of an alphabet - a script based entirely upon sound - has been copied and adapted to suit many different languages. although no alphabet fits its language perfectly, they are flexible enough to fit any language approximately. the phoenicians spoke a semitic language, usually called canaanite. the semitic group of languages includes arabic, maltese, hebrew and also aramaic, the language spoken by jesus. we do not know much about how the alphabetic idea arose, but the phoenicians, a trading people, came up with letters which were adapted by the early greeks to produce their alphabet. the one big difference is that the phoenician script had no pure vowels. arabic script has vowels which may, or may not, be shown by diacritics . the oldest qu'ran manuscripts had no diacritics. israeli children to about the third grade use hebrew texts with vowel 'dots' added.p89 no ancient script, alphabetic or not, had pure vowels before the greeks. the greek alphabet even has two vowels and epsilon) for 'e' and two for 'o', to distinguish between the long and short sounds. it appears that careful thought went into both the phoenician invention and the greek adaptation, but no details survive of either process. semitic scripts apparently derive from proto-sinaitic, a script of which only 31 inscriptions are known. it is thought by some researchers that the original source of this script was the egyptian hieratic script, which by the late middle kingdom had added some alphabetic signs for representing the consonants of foreign names. egyptian activity in sinai was at its height at that time. a similar idea had been suggested many years previously. for example, many systems represent syllables. in the past such writing systems were used by many cultures, but today they are almost only used by languages people speak in asia. a syllabary is a system of writing that is similar to an alphabet. a syllabary uses one symbol to indicate each syllable of a word, instead of one symbol for each letter of the word. for example, a syllabary would use one symbol to mean the syllable \"ga\", instead of two letters of the alphabet \"g\" and \"a\". japanese uses a mix of the chinese writing and two syllabaries called hiragana and katakana. modern japanese often also uses romaji, which is the japanese syllabary written in the roman alphabet. the koreans used the chinese writing in the past, but they created their own alphabet called hangul. originally, 1200 bc in the shang dynasty, chinese characters were mainly \"pictographic\", using pictures to show words or ideas. now only 1% of chinese characters are pictographic.p97 97% of modern characters are sp characters. these are a pair of symbols, one for meaning and the other for pronunciation.p99 in many cases the p and s parts are put together into one joint character. chinese is not one spoken language, but many, but the same writing system is used for all. this writing system has been reformed a number of times.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/Alphabet_world_distribution.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "for alphabets in computing, see alphabet . for the company, see alphabet inc.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Venn_diagram_gr_la_ru.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "venn diagram which shows that 11 characters are common to the greek , latin and russian alphabets an alphabet is a writing system , a list of symbols for writing. the basic symbols in an alphabet are called letters .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Causa_10.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "13th century calligraphy & illustration",
+          "context": "although no alphabet fits its language perfectly, they are flexible enough to fit any language approximately. the alphabet was a unique invention. 13th century calligraphy & illustration the roman alphabet , the cyrillic , and a few others come from the ancient greek alphabet , which dates back to about 1100 to 800 bc . 3 p167 the greek alphabet was probably developed from the phoenician script, which appeared somewhat earlier, and had some similar letter-shapes.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "letter-alphabet-",
-      "story": "in languages that use an alphabet, for example english, each symbol in the alphabet is a letter. letters represent sounds when the language is spoken. some languages do not use letters for writing: chinese, for example, uses \"ideograms\". in english and many other languages, the smallest part of writing is the letter. in some languages, for example in the spanish language , there is usually one letter for one sound . in other languages, for example english, we can use several different letters for the same sound in different words, or one letter for different sounds in different words. this is difficult for learners to read. here are some examples: spanish: feliz has 5 letters and 5 sounds. english: happy has 5 letters and 4 sounds. in this alphabet there are often two different letters for a sound. in other alphabets, for example the cyrillic alphabet, there is only one letter for a sound . the following alphabets, abjads, and individual letters are discussed in related articles. latin alphabet: a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z. international phonetic alphabet - used to represent exact pronunciation for other writing systems and their letters, see list of writing systems."
+      "story": "in languages that use an alphabet, for example english, each symbol in the alphabet is a letter. letters represent sounds when the language is spoken. some languages do not use letters for writing: chinese, for example, uses \"ideograms\". in english and many other languages, the smallest part of writing is the letter. in some languages, for example in the spanish language , there is usually one letter for one sound . in other languages, for example english, we can use several different letters for the same sound in different words, or one letter for different sounds in different words. this is difficult for learners to read. here are some examples: spanish: feliz has 5 letters and 5 sounds. english: happy has 5 letters and 4 sounds. in this alphabet there are often two different letters for a sound. in other alphabets, for example the cyrillic alphabet, there is only one letter for a sound . the following alphabets, abjads, and individual letters are discussed in related articles. latin alphabet: a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z. international phonetic alphabet - used to represent exact pronunciation for other writing systems and their letters, see list of writing systems.",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/A_Specimen_by_William_Caslon.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A printed page showing different alphabets, fonts and sizes. This one is from 1728",
+          "context": "a printed page showing different alphabets, fonts and sizes. this one is from 1728 in languages that use an alphabet , for example english , each symbol in the alphabet is a letter.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/84/Venn_diagram_showing_Greek%2C_Latin_and_Cyrillic_letters.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "circles with greek , cyrillic and latin alphabets , who are sharing many of the same letters, although having different use for pronunciations.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "word",
       "story": "a word is something spoken by the mouth that is meaningful. it is usually part of a sentence which makes the meaning clear. words are also used in writing, which is a relatively modern invention. in alphabetic writing, a word is a collection of letters. the word then communicates a meaning that can also usually be pronounced. some words have more than one meaning; for example, 'spring' can refer to the season, the device, or a conjugation of the verb. some words have different pronunciation; for example, 'wind' and 'wind' are pronounced differently. some words have different spelling; for example, 'color' and 'colour' are both correct. 'color' is used in american english, and 'colour' is used in british english. some words can be only one letter such as \"a\" and \"i\" in english. besides english, all other languages have their own words. when written with an alphabet, words are usually separated by a space. when written with ideograms, each word is usually a separate symbol. words can be invented, which are then called neologisms. for example, radar was originally an acronym but became an actual word. two words may be joined to make a compound word. a word is the smallest thing that can be said with meaning. that contrasts with a morpheme, which is the smallest unit of meaning but may not stand on its own. a word may consist of a single morpheme , or several , and a morpheme may not be able to stand on its own as a word . the meaning of words can be found in a dictionary. lexeme parts of speech heteronym - when two different words have the same spelling iggulden, hal; iggulden, conn .",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "rhyme",
@@ -35,7 +106,16 @@
     },
     {
       "theme": "story",
-      "story": "a story can be different things: when we tell others about a thing that happened, or a thing we thought of: bob read the children a story; mary told john the story of her life. a report in a newspaper or on the television news: did you see the story about george bush on page 12? a thing we tell others that is not real: little johnny said he was a millionaire, but he's not, it was only a story. see fiction in us english, a level of a building: the house has eight stories."
+      "story": "a story can be different things: when we tell others about a thing that happened, or a thing we thought of: bob read the children a story; mary told john the story of her life. a report in a newspaper or on the television news: did you see the story about george bush on page 12? a thing we tell others that is not real: little johnny said he was a millionaire, but he's not, it was only a story. see fiction in us english, a level of a building: the house has eight stories.",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5f/Disambig_gray.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Disambiguation icon",
+          "caption": "",
+          "context": "a thing we tell others that is not real: little johnny said he was a millionaire, but he's not, it was only a story . see fiction in us english , a level of a building: the house has eight stories . if an internal link led you here, you may wish to change the link to point directly to the article meant.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "text-children-s-literature",
@@ -1700,6 +1780,250 @@
           "context": "2 now that you have spelt your lesson, lay it down and go and play, seeking shells and seaweed on the sands of monterey, watching all the mighty whalebones, lying buried by the breeze, tiny sandpipers, and the huge pacific seas. and remember in your playing, as the sea-fog rolls to you, long ere you could read it, how i told you what to do; and that while you thought of no one, nearly half the world away some one thought of louis on the beach of monterey! to any reader as from the house your mother sees you playing round the garden trees, so you may see, if you will look through the windows of this book, another child, far, far away, and in another garden, play. but do not think you can at a"
         }
       ]
+    },
+    {
+      "theme": "consonant",
+      "story": "a consonant is a speech sound in which the air is at least partly blocked or any letter which represents this. consonants may come singly or in clusters , but must be connected to a vowel to form a syllable. all the letters of the english alphabet are both consonants and vowels. notice that the consonant and vowel notation does not match the letters of english spelling in a one-to-one relationship , but rather individual sounds. b and p are plosives, using the lips to produce a tiny sharp sound. phonetics texts give more details, with diagrams. consonants may be voiced or unvoiced. the th in the is voiced, but in breath is not. there are 21 consonant letters in english, for 24 consonant sounds in most english accents.p242 because of the history of the english language, there is no neat one-to-one relationship between letter and sound. th and ch each stand for a single sound, and x in fox stands for two sounds . all these letters are consonants: b, c, d, f, g, h, j, k, l, m, n, p, q, r, s, t, v, w, x, y and z . w and y are often used as consonants, but they are sometimes used as vowels. for example, in the word yellow, y is a consonant, but in the word happy, it is a vowel. the rest of the letters of the alphabet are called vowels.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Disc_Plain_black.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "•",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "syllable",
+      "story": "a syllable is a unit of pronunciation uttered without interruption, loosely, a single sound. all words are made from at least one syllable. monosyllables are words that have only one vowel sound; polysyllables have more than one. if a syllable ends with a consonant, it is called a closed syllable. if a syllable ends with a vowel, it is called an open syllable. patterns of syllables can be shown with c and v . closed syllables are often shown as cvc , and open syllables as cv . some languages like english have many kinds of closed syllables. other languages, like japanese, have few kinds of closed syllables. other languages still, like hawaiian and swahili, have no closed syllables. notice that the consonant and vowel notation does not match the letters of english spelling in a one-to-one relationship , but rather individual sounds. there are many words in english that have only one syllable. ipa has been added in slashes. instead, each sign may stand for a syllable. for example: japanese can be written using kana. a writing system based on syllables is called a syllabary. however, since words in japanese can be made with just a few simple syllables , writing such languages are well suited for the type of language.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "book",
+      "story": "a book is a set of printed sheets of paper held together between two covers. the sheets of paper in a book are called pages. the pages have words written in them and maybe illustrations drawn. the first books were not printed, but written by hand in ink. the book is a more flexible format than the earlier idea of the scroll. the change from scrolls to books began in the roman empire and took many centuries to become complete. a writer of a book is often called an author. someone who draws the pictures in a book is called an illustrator. books can have more than one writer or illustrator. a book can be a text that is a part of a larger collection of texts. a section of a text may be published as a book so that it only has one writer or only focuses on one subject area. books written in this way can be understood without reading whole collection of writings. examples are the iliad, odyssey, bible, quran and torah. encyclopedias often have separate articles written by different people, and are published as separate volumes. hardcover books have hard covers made of cardboard that is covered in cloth or leather and sewn together. paperback books have covers made of stiff paper that is glued together. a small book is a \"booklet\" and may be stapled together. the words in books can be read aloud and recorded. these are called \"audiobooks\". books may be borrowed from a library or bought from a bookstore. people can make their own books and write in them, and add family photos and drawings. some books are empty inside, like a diary, an address book, or photo album. these books are meant to be written in. usually, the word \"book\" means that the pages inside have words, and often pictures. some books are written just for children, some are for entertainment, and some are textbooks for studying something in school, such as math or history. it is thought that the earliest indo-european writings may have been carved on beech wood. the latin word codex, means a book in the modern sense . it originally meant 'block of wood'. there are two main kinds of book text: fiction and non-fiction. these books are novels and short stories. they are stories that have not happened. they are often imagined by the writer. many books are based on real events from history,but the writer creates imaginary characters or dialogue for the events. non-fiction fiction are about true facts or things that have really happened. some examples are dictionaries, cookbooks, textbooks for learning in school, or a biography . between the written manuscript and the book are several inventions. while manuscripts are hand-made, books are now industrial products. a common type of manuscript was the scroll. it is a long sheet that is rolled up. the sheet could have been made of papyrus , or parchment or vellum , or paper . manuscripts of this kind lasted to the 16th century and beyond. turning the manuscript into a book required several developments. in roman britain we have examples of a message system which was widespread. it was wax on boards, reusable. waxed boards could be scratched with messages such as \"dear, please come to my birthday party, it won't be the same without you\". many examples have been found near roman encampments on the border with scotland. the romans were the first people to put separate pieces of manuscript between covers, to form a codex. this was more convenient to handle and store than scrolls, but was not yet a book as we understand it. scrolls and codices were written and copied by hand. the chinese invented woodblock printing, where shapes are carved out of a block of wood, then ink is applied to the carved side, and the block is pressed onto paper. this woodcut method was slow because the symbols and pictures were made by cutting away the surrounding wood. johannes gutenberg was the first person to invent a machine for printing, called the printing press. he made it in the 15th century. this involved more than just a press because it involved the production of a movable metal type that was suitable for the machine process. initially, the machines were slow, and needed a muscle power to work. the industrial revolution brought steam power, and later electrification. paper had been invented in china in the 8th century, but it was kept secret for a long time. in europe hand-made paper was available from about 1450. it was cheaper than parchment but still expensive, and the early printing was a slow process. therefore, books remained rare. in 1800 the first machines for making paper from wood pulp were invented. new kinds of inks were also invented for various purposes, and machines were driven by steam engines and later by electricity. the common cheap supply of paper fed the faster printing machines, and books became cheaper. at the same time, in america, britain and continental europe, more people learnt to read. so, in the 19th century, many ordinary people could afford to buy books and could actually read them. also in the 19th century came public libraries, so poorer people could get access to the best books. printing was done on large sheets of paper, which were then folded, guillotined and sewn into the covers. bookbinding and all the other processes have been done by machines since the 19th century. today, some of the technologies have been changed, especially those involving illustration and typography. however, books look much the same as they did, with more illustration in color, but basically the same. that is because experience has shown that readers need certain things for pleasurable reading. graphic design and typography are the practical arts used to make books attractive and useful to readers.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Latin_dictionary.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A dictionary is a book.",
+          "context": "a book is a set of printed sheets of paper held together between two covers. the sheets of paper in a book are called pages.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/83/Torah_and_jad.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A Torah is a kind of scroll still used today.",
+          "context": "some examples are dictionaries , cookbooks , textbooks for learning in school, or a biography . a torah is a kind of scroll still used today. between the written manuscript and the book are several inventions.",
+          "licence": "CC BY 2.5"
+        }
+      ]
+    },
+    {
+      "theme": "reading",
+      "story": "reading is understanding writing in a language. fundamentally, reading is the way people look at certain marks and know what they mean. once it was possible to go through life without reading. writing goes back in human history only a few thousand years, and 200 years ago most men could not read or write. we know this is true because they could not write their own names on marriage records in churches. most men worked in farming, and you can do most of that job without being able to read. the wives could read: they lived at home before marriage and their mothers taught them. the boys went to work at, say, nine or ten, and never learnt to read. reading is understanding what is printed or written. it is how you get information about something that is written. it can only be done if one knows the language. otherwise, you can only learn from other people telling you verbally, or from practical demonstration. make predictions or hypotheses about the writing and ideas from the title of the reading material. read and group parts of the material. review all its words, understand the main idea, the details, facts, and sequences of the story,. make a logical judgment about a character's attitudes, behaviors, and conditions in the story. make reasonable predictions about what the next section will be about in the reading material. one of the things writing does is create imaginary worlds. on the other hand, writing can be about practical life. that is a huge range of possibilities. writing had to be invented: it sometimes comes as a shock to realise this. much later, printing was invented. that took writing out of churches into the wider world, the world we all live in.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/26/Fritz_von_Uhde_-_Das_Bilderbuch_I_%281889%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A girl reading a book",
+          "context": "a girl reading a book reading is understanding writing in a language . fundamentally, reading is the way people look at certain marks and know what they mean.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "writing",
+      "story": "writing is the art/act of recording language on a visual medium using a set of symbols. the symbols must be known to others, so that the text may be read. a text may also use other visual systems, such as illustrations and decorations. these are not called writing, but may help the message work. usually, all educated people in a country use the same writing system to record the same language. to be able to read and write is to be literate. writing differs from speech because the readers need not be present at the time. we can read writing from long ago, and from different parts of the world. text stores and communicates knowledge. writing is one of the greatest inventions of the human species. it was invented after people settled in towns, and after agriculture started. writing dates from about 3,300bc, which is over 5000 years ago, in the middle east. writing today is usually on paper, though there are ways to print on almost any surface. television and movie screens can also display writing, and so can computer screens. many writing materials were invented, long before paper. clay, papyrus, wood, slate and parchment have all been used. the romans wrote on waxed tablets with a pointed stylus; this was popular for temporary notes and messages. the later invention of paper by the chinese was a big step forward. writing is traditionally done using a hand tool such as a pencil, a pen, or a brush. more and more, however, text is created by input on a computer keyboard. there are two schools of thought: partial writing: writing is any system of graphic symbols which conveys some thought. full writing: writing is any graphic system which can convey any and all thought.p5 therefore, depending on an author's definition of writing, the term may be used in different ways. with many early systems we do not know what they do convey. the central idea is that a full writing system must be able to represent anything that might be said in spoken language.p7, 217 from this point of view the invention of the rebus is an essential step. we can only be sure a sign system is full writing if we can translate the symbols into a modern language. in the case of some ancient scripts we cannot do this. writing was invented independently a number of times. the sumerian, the ancient egyptian, the chinese and the mayan writings are separate in their invention.p85 all these writing systems started with pictographs, symbols that stood for things. then they developed a mixture of methods. our own alphabetic system is different. it is based on the sounds of spoken language. all alphabets are modified versions of the first one, which originated with the phoenicians and the ancient greeks. the sumerians lived in mesopotamia, between the tigris and euphrates rivers. 5000 years ago this was a fertile region and is now mostly in iraq. the sumerians developed a form of writing called cuneiform. triangular marks were pressed into soft clay tablets. after the clay had dried in the sun the tablets were baked. then they were carried somewhere else for others to read. we know that its first uses were for trade, accounting and administration. the earliest signs were mostly pictorial, but soon they stood as symbols for objects, ideas and sounds. this writing system was extremely successful, and outlasted the sumerian empire. it was then used by other civilisations in the middle east, such as the old akkadian, babylonian, assyrian, elamite, hittite, old persian and ugaritic empires. the last cuneiform inscription was dated as ad75. thus the system had lasted for more than 3000 years.p71 each version of cuneiform had to be deciphered separately, because all the languages were different. documents written in more than one language provided the clues. this is the most famous of the old forms of writing, or scripts. it was invented at roughly the same time as cuneiform, yet was quite different in style, and used different materials. egyptians ended up with three writing systems for the same language. hieroglyphic: the famous pictorial language on stone monuments. hieratic: a cursive script used by the priests. demotic: a cursive script used by the people. the writing tools used varied according to the material which was written on. the two cursive scripts were written with reed pens and carbon inks onto papyrus. if the material was cloth, then the writing was done by a brush. the hieroglyphs were inscribed into stone or painted onto stone surfaces. many survive, some with the original colours intact. the key event in the decipherment of hieroglyphic writing was the discovery of the rosetta stone. this is a granite slab with the same message written in hieroglyphic, demotic and in greek. ancient greek is well understood, and made possible the interpretation of the other two scripts. chinese is the language with the largest number of native speakers. its history dates back to about 1400bc.p183 the chinese writing system is idio-syllabic, a mixed method using characters which may have one or more of these elements: 1. pictographic: representing objects. visual logic: the number '3' is three horizontal strokes. complex logic: the sun is a box with a horizontal mid-stroke. rebus: \"sounds like...\" the character for wheat is also used for 'come' because the words are homophonous . semantic-phonetic: combination of a character for meaning with another for sound . chinese has a huge number of characters: in the region of 50,000.p186 because of this, printing methods were never really successful in china, despite their early invention. in the 14th century wang tzhen had sixty thousand wood block characters cut, a huge investment in time and money. he printed 100 copies of a local gazette, and was author of a treatise on agriculture and other technical works. even with printing machines from europe in the 19th century, the process was hampered by the huge number of characters, which slowed the composition to a snail's pace. china has eight regional languages that are mutually unintelligible, and many true dialects. the system appears to work mainly because as many as 70% speak mandarin. fluency in chinese reading and writing is undoubtedly difficult to achieve, and this must act as a brake on the drive for literacy. there have been a number of attempts to reform or simplify the system. the most radical in pinyin, which is a program to replace chinese characters with an alphabetic system. this was supported by mao, but faltered after his death. it seems that the idea of an alphabet-a script based entirely upon sound-arose only once, and has been copied and adapted to suit many different languages. although no alphabet fits its language perfectly, it is flexible enough to fit any language approximately. it was a unique invention.p12 our alphabet is called the roman alphabet, as compared with the cyrillic and other alphabets. all of these come from the ancient greek alphabet, which dates back to about 1100 to 800bc.p167 the greek alphabet was probably developed from the phoenician script, which appeared somewhat earlier, and had some similar letter-shapes. the phoenician language was a semitic language, often called canaanite. the semitic group of languages includes arabic, maltese, hebrew and also aramaic, the language spoken by jesus. we do not know much about how the alphabetic idea arose, but the phoenicians, a trading people, came up with letters which were adapted by the early greeks to produce their alphabet. the one big difference is that the phoenician script had no pure vowels. arabic script has vowels which may be shown by diacritics . the oldest qu'ran manuscripts had no diacritics. israeli children today use texts with vowel 'dots' added, to about the third grade.p89 no ancient script, alphabetic or not, had pure vowels before the greeks. the greek alphabet even has two vowels for 'e' and two for 'o', to distinguish between the long and short sounds. it is fairly clear from this that careful thought went into both the phoenician invention and the greek adaptation. however, no details survive of either process. semitic scripts apparently derive from proto-sinaitic, a script of which only 31 inscriptions are known. it is thought by some researchers that the original source of this script was the egyptian hieratic script. by the late middle kingdom hieratic had added some alphabetic signs for representing the consonants of foreign names. egyptian activity in sinai was at its height at that time. a similar idea had been suggested many years before. there are a number of scripts which have never been deciphered, despite much effort.p145 perhaps the most famous are the script of the indus valley civilization, and etruscan. the indus river civilisation predates other literate civilisations on the indian subcontinent, going back to about 2500bc. their cities of mohenjo-daru and harappa were well-planned, with good drainage. the script is found on seal stones, terracotta, bronze, bone and ivory. all are brief, and the language is unknown. the etruscan language used greek letter-forms, and is found mainly on etruscan tombs, from tuscany through to venice. they were an empire before the romans, who defeated them, and absorbed their ideas. all knowledge of their language was lost, except that some of the names on tomb memorials can be read from the greek letters. the tartaria tablets are three tablets discovered in 1961 in the village of tartaria . this is about 30 km from alba iulia in romania. the tablets, dated to around 5300 bc, have symbols in clay: the \"vinca symbols\". some claim they are a yet undeciphered language. if this is so, they would be the earliest known form of writing. in 1908 similar symbols were found during excavations, by miloje vasic in vinca. this is a suburb of belgrade , some 300 km from turdas. later, more were found in another part of belgrade. since 1875 over one hundred and fifty vinca sites have been found in serbia alone. many, including vinca itself, have not been fully excavated. the culture of the whole area is called the vinca culture. although some of these symbols look exactly the same as some letters in etruscan, greek, and aramaic, they are generally regarded as an original, independent development. the indus script is another group of early symbols. it was used by the indus valley civilization in what is now pakistan and north-west india, from about 2600 bc to 1900 bc. the symbols are mostly known from small stone seals and clay tags, which may have been used in trade. most texts are very short, with only a few signs, and the script has not been deciphered. no bilingual text is known for it. some experts think the indus script is a full writing system for a spoken language. others think it is a simpler system of signs. a 2025 study by max freedom pollard suggests that many of these symbols were merchant marks used in trade and record-keeping, to show the owner, the type of goods, or a weight or number. in this view, the script may not be a full writing system that can say everything in a language, but a more narrow system of labels and marks. the same study also suggests that a famous long signboard from the city of dholavira shows parts of an animal-drawn cart in order, like a large shop sign, instead of a normal sentence. it is only in the last 150 years that most people have been able to read and write in europe and north america. in many other parts of the world this did not happen until the 20th century. until then, literacy was mainly for clerics, that is, people who had training as priests. even wealthy people were often illiterate, and used scribes to write for them. the invention of printing came before mass literacy. before 1500, each book had to be created by hand, so there were few books available compared to the billions in the world today. mass literacy needed cheap books. even now, there is still widespread illiteracy. there is often a political dimension to this. people who cannot write are easier to control. the ordinary use of writing by means of a pen and paper. can refer to writing for oneself, as in a diary, but mostly it refers to sending letters. once it was almost the only means of communication between people who were separated. now, the telephone and e-mail are the most common means of distance communication.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Edwin_Smith_Papyrus_v2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Edwin Smith papyrus is the world's oldest surviving surgical document. It was written in hieratic script in ancient Egypt around 1600 BC. The text describes 48 types of medical problems in exquisite detail. These pages discuss facial injury",
+          "context": "the edwin smith papyrus is the world's oldest surviving surgical document. it was written in hieratic script in ancient egypt around 1600 bc.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Letter_Luenna_Louvre_AO4238.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Letter on a clay tablet sent by the high-priest Lu'enna to the king of Lagash It tells the king of his son's death in combat. The script is cuneiform , the date ~2400 BC",
+          "context": "it was written in hieratic script in ancient egypt around 1600 bc. the text describes 48 types of medical problems in exquisite detail. letter on a clay tablet sent by the high-priest lu'enna to the king of lagash it tells the king of his son's death in combat.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bb/Trilingual_inscription_of_Xerxes%2C_Van%2C_1973.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Trilingual inscription of Xerxes at Van Fortress in Turkey",
+          "context": "the text describes 48 types of medical problems in exquisite detail. these pages discuss facial injury letter on a clay tablet sent by the high-priest lu'enna to the king of lagash it tells the king of his son's death in combat.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Scriptorium-monk-at-work.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Scribe at work",
+          "context": "scribe at work writing is the art/act of recording language on a visual medium using a set of symbols . the symbols must be known to others, so that the text may be read .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/AmarnaLetterOfMarriageNegotiation-BritishMuseum-August19-08.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Letter negotiating a marriage ~1350 BC. It is from Tushratta, King of the Mitanni, to the pharaoh Amenhotep III",
+          "context": "it is based on the sounds of spoken language. all alphabets are modified versions of the first one, which originated with the phoenicians and the ancient greeks . letter negotiating a marriage ~1350 bc. it is from tushratta, king of the mitanni, to the pharaoh amenhotep iii the sumerians lived in mesopotamia , 10 between the tigris and euphrates rivers.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Egypt-Hieroglyphs.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Hieroglyphs on stone; Ramses II statue behind",
+          "context": "3 p71 each version of cuneiform had to be deciphered separately, because all the languages were different. documents written in more than one language provided the clues. hieroglyphs on stone; ramses ii statue behind this is the most famous of the old forms of writing, or scripts . it was invented at roughly the same time as cuneiform, yet was quite different in style, and used different materials.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Causa_10.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "13th century calligraphy & illustration",
+          "context": "the most radical in pinyin , which is a program to replace chinese characters with an alphabetic system. this was supported by mao , but faltered after his death. 13th century calligraphy & illustration it seems that the idea of an alphabet-a script based entirely upon sound-arose only once, and has been copied and adapted to suit many different languages. although no alphabet fits its language perfectly, it is flexible enough to fit any language approximately.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Tartaria_amulet_retouched.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "they were an empire before the romans , who defeated them, and absorbed their ideas. all knowledge of their language was lost, except that some of the names on tomb memorials can be read from the greek letters. the tartaria tablets are three tablets discovered in 1961 in the village of tartaria . this is about 30 km from alba iulia in romania .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "nursery-rhyme",
+      "story": "a nursery rhyme is a traditional poem for young children. the term has been used since the 18th century or early 19th century. in north america, the term \"mother goose rhymes\", first used in the mid-18th century, is often used. they are created to make young children learn how to speak in easier ways, i.e., the way of connecting a funny incident with rhyming words, which enable them to speak quicker and have an easier understanding of the english language. nursery rhymes always use basic words that are easy to grasp and understand. some informative nursery rhymes are: a, b, c, d..... 1, 2 buckle my shoe these specific rhymes help children learn the alphabet and count numbers, aided by some useful words. both rhymes with a similar tune can also vary in speed.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "1, 2 buckle my shoe these specific rhymes help children learn the alphabet and count numbers, aided by some useful words. both rhymes with a similar tune can also vary in speed . this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "fairy-tale",
+      "story": "a fairy tale is an english language expression for a kind of short story. these stories are not all directly about fairies, but they are different from legends and traditions and directly moral stories. fairy tales are usually set during the middle ages and typically include royalty, knights and fantasy elements such as fairies, goblins, elves, trolls, giants or gnomes and usually magic. fairy tales can also mean unusual happiness . also, \"fairy tale\" can simply mean any unbelievable story. where demons and witches are seen as real, fairy tales can sometimes be similar to legends, where the story is claimed to be historically true. however, differently from legends and epics, they usually do not specifically mention religion and actual places, people, and events. they also do not say exactly when it happened. instead, they say that the story happened \"once upon a time\". fairy tales are found in oral form and in literary form . fairy tales' histories are hard to find. this is because only written fairy tales can be passed on for a long time. still, literary works show that there have been fairy tales for thousands of years. many fairy tales today have are based on very old stories that have appeared, though in different ways, in many different cultures around the world. fairy tales, and works based on from fairy tales, are still written today. at first, fairy tales were for both adults and children, but now children are mostly connected with fairy tales. examples of traditional old fairy tales are sleeping beauty, little red riding hood and \"the three little pigs\". there can also be new fairy tales written by an author, like the little mermaid or pinocchio. new fairy tales were for example written by hans christian andersen, james thurber and oscar wilde. people do not agree what a fairy tale exactly is. some argue that a story with fairies or other magical beings in the story would make it a fairy tale. however, others have suggested that the expression began when the french expression conte de fees was being translated . vladimir propp criticized the difference between \"fairy tales\" and \"animal tales\" in his book morphology of the folktale. he said that many stories had both fantastic qualities and animals. he suggested that fairy tales could be recognized by their story, but this has been criticized, because the same stories can be found in stories that are not fairy tales. in fact, people such as stith thompson point out that there are often more talking animals and magic in fairy tales than fairies. however, just because there is a talking animal in a story does not mean that the story is a fairy tale. steven swann jones said that fairy tales were different from other sorts of folktales because of magic. davidson and chaudri say that \"transformation \" is the most important part of a fairy tale. some like to use the german expression marchen or \"wonder tale\" instead of fairy tale. for example, in his 1977 edition of the folktale, thompson said that fairy tales were \"a tale of some length involving a succession of motifs or episodes. it moves in an unreal world without definite locality or definite creatures and is filled with the marvelous. fairy tales were passed down by speaking of it from person to person before writing was developed. stories were told or acted out dramatically. because of this, the history of fairy tales is not very clear. the oldest written fairy tales we know are from ancient egypt, around 1300 bc. there are sometimes fairy tales in written literature in different cultures, such as the golden ass, which includes cupid and psyche . they show that fairy tales were told from very long ago. antti aarne and stith thompson: the types of the folktale: a classification and bibliography thompson, stith, the folktale. archived from the original on 10 july 2019. \"cabinet des fees - an online journal of fairy tale fiction\". archived from the original on 25 february 2010. \"children's resource for andersen\". archived from the original on 18 july 2010. archived from the original on 14 july 2010. \"endicott studio - journal of mythic arts, fairy tale history and modern fairy tales\". \"fables - collection and guide to fables for children\". archived from the original on 31 december 2010. \"once upon a time - how fairy tales shape our lives, by jonathan young, ph.d.\" folkstory.com. \"vladimir propp's theories, and the fairy tale outline generator\". archived from the original on 19 june 2002.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/13/D%C3%A4umling.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "1865 picture of Tom Thumb and the Giant",
+          "context": "1865 picture of tom thumb and the giant a fairy tale is an english language expression for a kind of short story.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Redsun.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ivan Bilibin 's picture of the Russian fairy tale about Vasilisa the Beautiful",
+          "context": "8 he said that many stories had both fantastic qualities and animals. 8 he suggested that fairy tales could be recognized by their story, but this has been criticized, because the same stories can be found in stories that are not fairy tales. ivan bilibin 's picture of the russian fairy tale about vasilisa the beautiful in fact, people such as stith thompson point out that there are often more talking animals and magic in fairy tales than fairies. 10 however, just because there is a talking animal in a story does not mean that the story is a fairy tale.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "poem",
+      "story": "poetry is written, spoken or sung language that is used in stronger or more original ways than prose is used. poetry uses the meanings of words as prose does; but it also uses the sounds of words as if they were music, especially rhymes, other repeating sounds, and rhythms . poetry arranges words and groups of words to make repetitions and parallelisms. poetry uses figures of speech, ellipses and delayed identification to suggest that there is more meaning in the language. some people believe that poetry began when language began. they think it is probably \"as old as history and older, present wherever religion is present.\" the english words \"poetry,\" \"poet,\" and \"poem\" first appeared in english in the 14th century. they come from the latin word poeta, which itself probably comes from poiein, a greek word that means \"to make.\" there are three major kinds of poetry: lyric, narrative, and dramatic. lyric poetry tends to be brief and is often about emotions. narrative poetry tells a story with a plot. dramatic poetry can be performed as a play. a poem can be as short as a few words or as long as a book. a one-line poem is called a monostich. a poem that is as long as a book is an epic. poems are often printed on the page as lines and groups of lines called stanzas. there are many different \"poetic forms\" or ways to shape a poem on the printed page or in the ear of the person who hears it. some forms are: the sonnet, haiku, the ballad, the stev, the prose poem, the ode, free verse, blank verse, limerick, and nursery rhymes.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article about literature can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "song",
+      "story": "a song is a piece of music which contains lyrics and words. songs may be made by songwriters. other songs are folk songs, which are songs created by people long ago that have been sung as tradition. some people form bands which write and record songs to make money from it. when two or three singers sing the song it is called a duet or trio. some people also make parodies of songs, which is usually changing the words of the song but keeping the tune. parodies are usually made to make fun of a song or its writer/singer . the word \"song\" is often used to describe any piece of music, even one without words or lyrics. the proper word for a piece of music without words is \"instrumental\".",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "name",
+      "story": "a name is a word given to things and people. for example, cat is the name of a kind of animal. \"aarav\" , \"adhrit\" are names of a person, usually a male. \"ananya\" is a common female name. the word 'name' can also be used as a verb. to name something is to give it a name. in many cultures, there are rules and customs about how to give a person a name. some of the rules are defined by laws, and others are defined by traditions . there are rules about different of the names and naming, including the following: 1. number of parts of a name in some cultures, a person has a one-part name, such as \"muhammad.\" in other cultures, a person has a two-part name, such as \"john smith.\" in some cultures, a person can have any number of name parts. in the united states, for example, some people have three: first name, middle name, and last name. other people have only two: a first and last name. in chinese cultures, it is typical for a person to have three-part name, such as \"cheah ching san,\" where \"cheah\" is the surname. written in english format a comma is introduced making it \"ching san, cheah.\" in muslim and arabic culture, a name can have one to six parts. such as \"abdullah ibn muhammad al ash-sheikh\". relations with names of parents and other relatives in some cultures, people have the same \"family name\" as their parents. for example, the father of john smith may be mike smith. and mike smith's father may be james smith. the \"smith\" part is the same for all the family. in other cultures, a person has the same name as his or her father, but the name is in a different place. for example, shafiq hanif's son may be hanif kamal. hanif is in both the father's and son's name. name changes in some cultures, a name changes when people marry, divorce, go through some religious ceremony, etc. for example, in some spanish-speaking countries, people use two last names: their mother's father's name and their father's name. if elena rodriguez gomez and jose sanchez soria marry, she may change her name to elena rodriguez de sanchez, and their child could be named pilar sanchez rodriguez, taking the names of both of her grandfathers. name origins in some cultures, personal names come from history. in most european countries, some first names are taken from the quran or bible. in some cultures, names are taken from a relative. in other cultures, a name shows what the parents hope their child will be like. a baby may be given a name wisdom because parents hope the baby will be a wise girl or boy. some cultures avoid giving people a name of an animal. for example, there is no name like dog, cat, snake, owl, or fish in japanese people's first names. but in some cultures animal names may be good. lengths, pronunciations, spelling, etc. there are some other linguistic patterns. for example, many chinese names are made up of three syllables. use of names, titles, nicknames, etc. in some cultures, people use names when they call each other. in other cultures, people use their nicknames. in some other cultures, people use their titles when they call each other. spelling of names, titles, nicknames, etc. name awareness taking note of names is taken a step farther by those who elect to celebrate a name whether their own name, someone else's name, or names in general, complete ownership of one's name might very well include celebrating it. middle names while some people might choose to \"hide\" a middle name for any number of reasons , others have taken to celebrating their middle name . in the english language, names exclusively are usually pronounced in correlation with the spelling, however can be pronounced as desired, e.g. however, not probable, is held true in the english rules of grammar. examples of names sarah, lucy, ellen, claire, ben. isabelle can become izzy or belle. here are some things that are often found in japanese names today. in the past, people went by different rules. number of parts of a name japanese names have two parts. one is the family name and the other is the given name. \"suzuki ichiro\" is a name of a japanese person. suzuki is the family name, and ichiro is the first name. in the japanese language, the family name comes first, and the given name comes second. only some members of the royal family do not have a family name. the parents have the same family name. so, a son of ono yoko and ono ken is ono something. the family name ono is mostly shared by the paternal part of the family. so ono ken's parents have the family name ono, but ono yoko's parents probably do not. name changes names of people change when they marry and divorce. it is a custom in many parts of the world that women change their family name to that of their new husband when they marry. however, in europe and north america especially, many women no longer do this even though their mothers and grandmothers may have. sometimes, the man will take the woman's family name. lengths, pronunciations, spelling, etc. use of names, titles, nicknames, etc.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "picture-book",
+      "story": "a picture book is a book that combines words and pictures to tell a story. they are usually for young children to read. the pictures are illustrations that show different parts of the story. the written part of the book is often short and basic, using words that a child can understand. the earliest illustrated book made for children was orbis pictus by john amos comenius. one of the earliest picture books in english was lewis carroll's alice's adventures in wonderland from 1866. the drawings in it were done by john tenniel. beatrix potter's the tale of peter rabbit was published in 1902. potter did all her own illustrations, which are watercolour paintings. some of the best-known picture books are make way for ducklings, the cat in the hat, and where the wild things are.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Ambox_important.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article needs more sources for verifiability . please help improve this article by adding reliable sources .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/Peter-rabbit.PNG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Peter Rabbit with his family, from The Tale of Peter Rabbit by Beatrix Potter , 1902",
+          "context": "unsourced material may be challenged or removed. peter rabbit with his family, from the tale of peter rabbit by beatrix potter , 1902 a picture book is a book that combines words and pictures to tell a story . they are usually for young children to read.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "potter did all her own illustrations, which are watercolour paintings . some of the best-known picture books are make way for ducklings , the cat in the hat , and where the wild things are . this short article about literature can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "speech",
+      "story": "for 'speech', meaning a talk, see public speaking speech is when spoken language is used to communicate. animals do not have speech, but some can communicate with each other by using sounds and gestures. speech is made by sounds vibrating the vocal folds. sounds through the voice box is shaped by the jaw, tongue, teeth, palate, lips, and nose. a speech and language therapist can help work out the stage of the sequence that has difficulties and give therapy. effective speech includes the following elements - fluency, flexibility, accuracy, and comprehensibility. compare with cross-cultural communication. accuracy is the use of proper grammar in spoken language. comprehensibility is the ability to be understood by others.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
     }
   ]
 }

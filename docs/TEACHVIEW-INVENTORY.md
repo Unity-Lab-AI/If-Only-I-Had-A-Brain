@@ -110,7 +110,7 @@ afterwards.**
 | Complete per-lane, per-cell, per-source counts | **yes** — never sampled |
 | Totals that survive a restart | **yes** — added today; they accumulate across reboots and reset only on a fresh walk |
 | **Everything a single cell ever taught** | ✅ **BUILT** — an append-only ledger keeps every item, paged to the true end, with the complete count printed beside every page. It is **not** a bigger reading window: the live ring stays bounded at 400 while the ledger holds all of it |
-| **Test words that appear nowhere in the whole corpus** | **partly** — the sweep exists and runs from the command line; its answer never reaches the page |
+| **Test words that appear nowhere in the whole corpus** | ✅ **ON THE PAGE** — the sweep moved out of the CLI script into `server/curriculum-coverage.js`, the module the state publish already shares, so the command line and the page cannot disagree. Latest: **1,788 exam words required, 10 present nowhere** across a 386,996-distinct-word corpus |
 
 ---
 

@@ -344,4 +344,76 @@ function computeCoverage(curriculumModule, corpusRoot) {
   };
 }
 
-module.exports = { computeCoverage, BY_DESIGN_NO_PROSE };
+// ⭐⭐ THE WHOLE-CURRICULUM EXAM-VOCAB SWEEP — MOVED HERE 2026-09-02 SO THE PAGE
+// AND THE COMMAND LINE SHARE ONE IMPLEMENTATION.
+//
+// It lived in `.claude/scripts/audit-curriculum-coverage.mjs` and ran only from
+// a terminal, so its answer never reached the training monitor. ⛔ **That is the
+// exact drift this module exists to prevent, and the CLI's own header says so:**
+// *"The computation is NOT here — it lives in server/curriculum-coverage.js…
+// Two copies of a reachability rule drift, and a drifting instrument is
+// precisely the bug class this tool exists to catch."* The reachability rule
+// obeyed that; this sweep quietly did not.
+//
+// The question it answers is different from the per-cell gate check and is the
+// press-relevant one: **before a walk, which exam words does the corpus never
+// contain ANYWHERE?**
+//
+// ⚠ Offline it is handed the CORPUS vocabulary rather than the TRAINED
+// vocabulary — a strict upper bound on what she could possibly learn. So a hit
+// is a hard finding (that word cannot be taught by this corpus) and a miss is
+// only "not provable offline". Stated, never blurred.
+//
+// ⛔ ALL THREE CORPORA, NOT JUST ACADEMIC. Reading one of the three manufactures
+// gaps out of the other two — an earlier version reported `dad`, `grandma`,
+// `pajamas`, `moms` and `yeah` as absent while every one lives in the
+// hand-authored LIFE canon, which is exactly where that vocabulary belongs.
+//
+// ⛔ KEEP THE APOSTROPHE. Stripping to `[a-z]` turned "can't" into "cant", so
+// ten contractions were reported missing from a corpus containing every one of
+// them — a normalisation mismatch in the CHECKER, published as a curriculum gap.
+//
+// ⚠ Async because the question banks are an ES module and this file is
+// CommonJS; there is no synchronous bridge, and pretending otherwise is how a
+// require() of an ESM module fails at runtime rather than at load.
+async function examVocabSweep(rootDir) {
+  const corpusRoot = path.join(rootDir, 'corpora');
+  let banks;
+  try {
+    const { pathToFileURL } = require('url');
+    banks = await import(pathToFileURL(path.join(rootDir, 'js', 'brain', 'student-question-banks.js')).href);
+  } catch (e) {
+    return { available: false, reason: `question banks unreadable: ${e?.message || e}` };
+  }
+  if (typeof banks.auditAllExamVocabCoverage !== 'function') {
+    return { available: false, reason: 'auditAllExamVocabCoverage is not exported' };
+  }
+  const words = new Set();
+  const walkCorpus = (dir) => {
+    let subs = [];
+    try { subs = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of subs) {
+      const fp = path.join(dir, e.name);
+      if (e.isDirectory()) { walkCorpus(fp); continue; }
+      if (!e.name.endsWith('.json')) continue;
+      try {
+        for (const x of (JSON.parse(fs.readFileSync(fp, 'utf8')).experiences || [])) {
+          for (const w of String(x.story || '').toLowerCase().split(/\s+/)) {
+            const c = w.replace(/[^a-z']/g, '').replace(/^'+|'+$/g, '');
+            if (c) { words.add(c); if (c.includes("'")) words.add(c.replace(/'/g, '')); }
+          }
+        }
+      } catch { /* skip unreadable cell */ }
+    }
+  };
+  walkCorpus(path.join(corpusRoot, 'academic'));
+  walkCorpus(path.join(corpusRoot, 'life'));
+  walkCorpus(path.join(corpusRoot, 'coding'));
+  try {
+    return { available: true, report: banks.auditAllExamVocabCoverage(words), corpusWords: words.size };
+  } catch (e) {
+    return { available: false, reason: `audit threw: ${e?.message || e}` };
+  }
+}
+
+module.exports = { computeCoverage, BY_DESIGN_NO_PROSE, examVocabSweep };

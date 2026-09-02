@@ -900,6 +900,13 @@ const SERVER_STATE_MIXIN = {
       // 10fps and a per-push filesystem walk would ride the loop the donor and
       // WS pump share.
       curriculumCoverage: _lap('curriculumCoverage', () => this._curriculumCoverage || null),
+      // ⭐ Which exam words the corpus does not contain ANYWHERE — computed once
+      // at boot from the SAME module the CLI auditor uses, so the page and the
+      // command line cannot disagree. Until 2026-09-02 this answer existed only
+      // in a terminal.
+      // ⚠ `available:false` carries its own reason and is published as-is: a
+      // sweep that could not run must not render as a sweep that found nothing.
+      examVocabSweep: _lap('examVocabSweep', () => this._examVocabSweep || null),
       // TEACHVIEW — exactly what she is being taught, right now.
       // ⛔ Before this existed there was NO channel anywhere carrying the text
       // she learns: `_teachSentenceList` (23 call sites) had no log, no publish

@@ -3669,6 +3669,26 @@ class ServerBrain {
           const c = this._curriculumCoverage;
           console.log(`[Coverage] ${c.cellsWalkRuns} cells run · ${c.ok} fed · ${c.thin} thin · ${c.empty} EMPTY · ${c.missingLane} no-lane · ${c.unreachableFiles} unreachable (${c.reachableWords.toLocaleString()} words)`);
         }
+        // ⭐ THE WHOLE-CURRICULUM EXAM-VOCAB SWEEP — which exam words the corpus
+        // does not contain ANYWHERE. It shared no code with the page until now:
+        // it lived in the CLI auditor, so its answer was reachable only from a
+        // terminal. Same module as the coverage above, so the command and this
+        // field can never disagree.
+        // ⚠ Computed ONCE at boot, like the coverage: it walks all three corpora
+        // and must never ride a request or the teach lane.
+        try {
+          this._examVocabSweep = await covMod.examVocabSweep(path.join(__dirname, '..'));
+          const ev = this._examVocabSweep;
+          if (ev && ev.available && ev.report) {
+            const miss = (ev.report.missing || ev.report.absent || []).length;
+            console.log(`[ExamVocab] ${ev.corpusWords.toLocaleString()} distinct corpus words · ${miss} exam word(s) appear NOWHERE in academic+life+coding`);
+          } else if (ev) {
+            console.warn(`[ExamVocab] unavailable — ${ev.reason}`);
+          }
+        } catch (e) {
+          this._examVocabSweep = { available: false, reason: e?.message || String(e) };
+          console.warn('[ExamVocab] sweep failed —', e?.message || e);
+        }
       } catch (e) {
         this._curriculumCoverage = null;
         console.warn(`[Coverage] unavailable — ${e?.message || e}`);

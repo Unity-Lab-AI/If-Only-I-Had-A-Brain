@@ -39,7 +39,7 @@ const mod = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'curriculu
 // because Node statically detects `module.exports = { ... }` and synthesises
 // named exports — verified by running this, not assumed. If it is ever changed
 // to a computed export shape, this line silently yields undefined.
-const { computeCoverage, BY_DESIGN_NO_PROSE } = await import(pathToFileURL(path.join(ROOT, 'server', 'curriculum-coverage.js')).href);
+const { computeCoverage, BY_DESIGN_NO_PROSE, examVocabSweep } = await import(pathToFileURL(path.join(ROOT, 'server', 'curriculum-coverage.js')).href);
 
 // ⭐ EXAM-VOCAB PRE-WALK CHECK — wiring an auditor that existed and had never
 // been called. `auditAllExamVocabCoverage` (student-question-banks.js) was found
@@ -49,53 +49,15 @@ const { computeCoverage, BY_DESIGN_NO_PROSE } = await import(pathToFileURL(path.
 // which answers a different and press-relevant question: BEFORE a fresh walk,
 // which exam words does the corpus never contain anywhere?
 //
-// ⚠ It normally takes the TRAINED vocabulary, which only exists on a running
-// brain. Offline we pass the CORPUS vocabulary instead — a strict upper bound on
-// what she could possibly learn, so a word missing here can NEVER be taught by
-// the current corpus. That makes a hit here a hard finding and a miss merely
-// "not provable offline", which is stated rather than blurred.
+// ⛔⛔ THE BODY MOVED TO `server/curriculum-coverage.js` ON 2026-09-02, AND THIS
+// FILE'S OWN HEADER IS WHY. It says the computation must not live here because
+// two copies drift — and the reachability rule obeyed that while this sweep did
+// not, so its answer was reachable only from a terminal and **never reached the
+// training monitor**. It is now one implementation with two consumers: this CLI
+// and the server's state publish.
 async function examVocabPreWalk() {
-  let banks;
-  try { banks = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'student-question-banks.js')).href); }
-  catch { return null; }
-  if (typeof banks.auditAllExamVocabCoverage !== 'function') return null;
-  // ⛔ ALL THREE CORPORA, NOT JUST ACADEMIC. The first version scanned only
-  // corpora/academic and therefore reported `dad`, `grandma`, `pajamas`, `moms`
-  // and `yeah` as absent — while every one of them is in the hand-authored LIFE
-  // canon, which is exactly where that vocabulary BELONGS. She is taught from
-  // academic + life + coding, so an exam-coverage check that reads one of the
-  // three manufactures a gap out of the other two. Five false findings in the
-  // first run, and they were the most plausible-looking ones on the list.
-  const words = new Set();
-  const walkCorpus = (dir) => {
-    let subs = [];
-    try { subs = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-    for (const e of subs) {
-      const fp = path.join(dir, e.name);
-      if (e.isDirectory()) { walkCorpus(fp); continue; }
-      if (!e.name.endsWith('.json')) continue;
-      try {
-        for (const x of (JSON.parse(fs.readFileSync(fp, 'utf8')).experiences || [])) {
-          for (const w of String(x.story || '').toLowerCase().split(/\s+/)) {
-            // ⛔ KEEP THE APOSTROPHE. Stripping to [a-z] turned "can't" into
-            // "cant", so the exam bank's "can't" matched nothing and TEN
-            // contractions (`can't`, `don't`, `doesn't`, `mom's`, `dad's`,
-            // `aunt's`, `father's`, `mother's`, `valentine's`, `year's`) were
-            // reported as absent from a corpus that contains every one of them.
-            // A normalisation mismatch in the CHECKER, invented as a curriculum
-            // gap — the same shape as every other false finding today.
-            const c = w.replace(/[^a-z']/g, '').replace(/^'+|'+$/g, '');
-            if (c) { words.add(c); if (c.includes("'")) words.add(c.replace(/'/g, '')); }
-          }
-        }
-      } catch { /* skip unreadable cell */ }
-    }
-  };
-  walkCorpus(CORPUS);
-  walkCorpus(path.join(ROOT, 'corpora', 'life'));
-  walkCorpus(path.join(ROOT, 'corpora', 'coding'));
-  try { return { report: banks.auditAllExamVocabCoverage(words), corpusWords: words.size }; }
-  catch { return null; }
+  const r = await examVocabSweep(ROOT);
+  return (r && r.available) ? r : null;
 }
 
 const r = computeCoverage(mod, CORPUS);
