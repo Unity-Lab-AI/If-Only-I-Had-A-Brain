@@ -1,5 +1,43 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-09-02 SHE READS THE WAVELETS, AND THE REVIEW CAUGHT MY OWN INSTRUMENTS (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch         feature/regression-review-0902  (off develop)
+> RUNNING        the figure-field job — 16,221 / 32,296 fields in BrainWaves
+>                ~14 min/batch, ~1,200 REAL fields each · ETA ~3 h
+> walk           frozen ON PURPOSE — training still being BUILT
+> board          REGFIND.1-.8 · WAVESEE.1-.6 · FOCUSDEAD.1-.3 all filed
+> ```
+>
+> ### ⛔⛔ THE ONE THAT REWRITES EVERY PROGRESS NUMBER I GAVE TODAY
+> **The batch counter double-counts.** `NEW=$(find fields …)` counts every file on disk and is measured BEFORE the previous batch is wiped, so each line reports **this batch plus the last one**. Verified per-commit against git: `batch 8 logged +2371, real +1176`. ⭐ **The DATA is fine** — `git add` of an unchanged tracked file is a no-op — **only the instrument lied.** The same variable is the loop's stop condition, so `ALL FIGURES DONE` fires one pass late.
+>
+> ### ⭐ WHAT SHIPPED — she sees a wavelet field the way she sees a camera frame
+> `server/figure-field-store.js` → the fast path in `_perceiveTextbookFigure` → a whole-tree pull in `deploy/self-update.sh` on every press → `state.ownArt.fields`.
+> - ⭐ **The job was smaller than it looked:** a figure ALREADY runs `perceive → describe → store.set → _queuePhraseTeach` (ORDER 13 + ATTACH 35). **Seeing already trains her.** Only the SOURCE of the `rec` was invented, so nothing downstream changed — that is what makes it a percept SOURCE and not a new lane.
+> - ⛔ **`stub` ≠ `miss`.** `git clone --depth 1` is NOT LFS-aware; a ~130-byte pointer is a REAL file, so an existence check reports a healthy store while she perceives nothing. Counted separately, refused explicitly.
+> - ⚠ **`--exclude 'fields'` went in FIRST**, or the next press deletes what the press just downloaded.
+> - ⭐ **Two traps were already closed** — `chanVal`/`chanHasVal` read `val_bin` OR `val_b64`; `_recDetail` handles both. **No second decoder was written.**
+>
+> ### ⚠ MY OWN INSTRUMENTS WERE WRONG FOUR TIMES — CHECK BEFORE RE-CHASING
+> The drain read as never started (**it is started**, `brain-server.js:3799`) · `perceive` read as missing from the worker proxy (**it is there**, `mindspace-proxy.js:125`, `async` hid it) · five pre-K runners read as undefined (**they take `_ctx`**) · `curriculum-coverage.js` read as orphaned (**dynamic import**). **A pattern that confirms what you expect is the one to re-run.**
+>
+> ### ⛔ THE TWO THAT NEED A DECISION
+> - **133 GB visual store.** Measured **4.22 MB/field** against a comment reasoning it at 10 KB, then "≈50× off" — it is **422× off**. Disk is bounded by NOTHING; RAM is. If it fills, the weights save **DEFERS** rather than errors. `REGFIND.8`.
+> - **`_speakVox` is orphaned** with an 11-file bank loading on a 30 s timer for it — but its comments say it was KEPT ON PURPOSE. `REGFIND.4` is a decision, not a cleanup.
+>
+> ### ✅ VERIFIED GOOD (static reads, not live verdicts)
+> Her **Unity One voice** · **213/213 cell runners present on the live `Curriculum.prototype`**, 20 mixins attached · `UNREACHABLE 0` and the corpus lane **cannot error the walk** · the **no-text-AI boot guard** intact and all three deleted LLM files still gone.
+>
+> ### ⏳ NEXT
+> **`FOCUSDEAD.1`** (the RAF driver never re-arms — confirmed defect, cause NOT proven) · **`REGFIND.5`** (the voice log lies when the transform is skipped) · then, **only once the field job ends**: `WAVESEE.2` (collapse the duplicated key rule), `WAVESEE.6` (name the ~6,400 errored figures, classify permanent vs transient, retry only those), `REGFIND.1`, `MATHLEAK.1`'s re-ingest and the 4 empty maths cells — **all of those write `corpora/` or edit the running producer.**
+
+---
+
 > ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (LATEST — PICK UP HERE)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
