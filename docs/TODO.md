@@ -1827,3 +1827,70 @@ Asked via `AskUserQuestion` with each option priced against measured numbers. Al
     3. **Confirm the box's actual disk.** The 500 GB figure is an assertion in a comment; `reference_deploy_server_specs` records RAM and GPU for that host and **not** disk. ⛔ **Do not plan 290 GB against an unverified 500.**
   - ⚠ **STATIC + MEASURED, not live.** The 4.22 MB is measured off real generated fields; the 133 GB is arithmetic. No box has been observed filling.
 
+## WAVESEE — she sees the wavelets the same way she sees the camera, her mind's eye and her own drawings — filed 2026-09-02
+
+Gee, verbatim, in the order he said it:
+
+> *"this is a problem: \"But nothing reads the fields we're generating \" if she can see the fields.... wtf do we need to do this:build the consumer so training pulls the fields????????? and why the fuck are we dopwnloading them????"*
+
+> *"okay fuck it we are going to fix here so she can fucking see the wavefore just like she sees how to draw and watch the camera and then we will jsut put all the wavlets in the main brain repo wher they belong so when update freshwalk is read it will pull it all properly and run it and she can see the wavelts and train on them and learn"*
+
+> *"i dont care about github we will use forgjo... and we will fix it so that it over writes the old copies.. i it has 500MB/s dl speeds so itls only take 3 minutes to downalod all the wavlets ontop of the old each time. and we build the consumer... ive already told u i doint have access tio the server only the update buttons on the brain"*
+
+> *"wtf are you doing ? you dont start work until everything i said is put in the todo as work full discovering the invented code need to do all of this and design Unity to see the wavelets just like she sees and reads the camera of users and the mindes eye imaginations doodles and drawlings. INVINIT IT SO IT FUCKING WORKS"*
+
+**His constraints, each one binding:**
+1. **Forgejo only — GitHub does not matter here.** ⛔ It still matters to the *main repo*, which pushes to a PUBLIC GitHub remote; that is why the fields stay in the Forgejo-only `BrainWaves` repo rather than moving into this tree.
+2. **Overwrite the old copies every time.** He priced it himself: 500 MB/s ⟹ ~133 GB in **~4.4 minutes**, and he is right — I had implied hours and that was wrong.
+3. **He has NO server access — only the Update buttons on the dashboard.** ⛔ **Every step must ship as CODE ON `main` and execute on the press.** A "run this once on the box" instruction is not a deliverable; my first proposal contained one and was invalid.
+4. **She must see a wavelet field exactly the way she sees a camera frame, a mind's-eye imagining, or her own doodle** — a first-class percept source, not a special case.
+
+### ⭐ DISCOVERY — what already exists, read at the code, with line numbers
+
+**The good news is that almost all of it is built.** A textbook figure already travels the same road as every other percept:
+
+| step | where | status |
+|---|---|---|
+| fetch + decode | `visual-memory.js:1669`, `_decodeImageToRGBA` (jpeg/png/**webp**) | ✅ |
+| full-resolution guard | `_perceptSource` (`:2251`), `REF_MAXSIDE=0` ⟹ nothing scaled | ✅ |
+| transform → `rec` | `mindSpace.perceive()` on the **worker thread** (`mindspace-proxy.js:125`) | ✅ |
+| blank-plate floor | `_recDetail(rec) < DREAM_REF_MIN_DETAIL` (200) | ✅ |
+| percept vector | `mindSpace.describe(rec)` (`:1734`) | ✅ |
+| bank the row | `store.set(key, { rec, at, seen, conf:true, p, phrase, figure })` (`:1739`) | ✅ |
+| **TRAIN on it** | `_queuePhraseTeach(phrase)` (`:1760`) → **ORDER `relationTagId 13` + ATTACH `relationTagId 35`**, bounded 24 pairs / 4 reps | ✅ |
+| queue + drain | `figure-queue.js`, `_startFigureDrain()` (`brain-server.js:3799`), one per `DREAM_FIGDRAIN_MS` | ✅ |
+
+⭐ **So "she sees it and trains on it" is ALREADY TRUE of the pipeline** — and `:1745` carries the scar proving it was checked: *"THE WORDS WERE STORED AND NEVER TAUGHT … the figure lane simply never called it."* That was found and fixed; the teach call is live.
+
+⭐ **The peer lanes she must match, and they all converge on the same four calls** — `perceive → describe → store.set → _queuePhraseTeach`:
+- **camera / user image** — `:651` `fidelity.source = 'seen-camera' | 'seen-image'`, banked at `:758-780` with provisional-vs-confirmed `conf`.
+- **her own drawings** — `canvas:own:<word>:<style>`, banked from the drawing lane in `chat.js`.
+- **reference look-ups (mind's eye)** — `:2112`, gated by LOOKTWICE two-seed agreement.
+- **textbook figures** — `:1739`, no LOOKTWICE gate because **provenance replaces agreement** (authored, captioned, licensed).
+
+### ⛔ THE ONLY THING THAT MUST BE INVENTED
+
+**Where the `rec` comes from.** Today it is always `fetch(fig.url)` → decode → transform. That is the single step to be replaced, and **nothing downstream changes** — which is exactly what makes this a percept SOURCE and not a new lane.
+
+- [ ] `WAVESEE.1` — **THE CONSUMER: a local wavelet field becomes a percept source, ranked ahead of the network.**
+  - New CJS module `server/figure-field-store.js` owning **three things and nothing else**: `figKey(url)`, `bare(key)`, `shardName(key)`, plus `loadField(url)` returning the parsed field or `null`.
+  - `figKey` is **djb2 over the URL** — `h=5381; h=((h*33)^c)>>>0; 'fig:'+h.toString(36)` — and the file lives at `fields/<first-two-chars>/<bare>.field.json`.
+  - ⛔ **THE `fig:` PREFIX MUST NEVER REACH A FILENAME.** A colon is an NTFS alternate-data-stream separator; `fig:abc.field.json` silently creates a stream hanging off a file called `fig`. The producer already paid for this once.
+  - **Wire into `_perceiveTextbookFigure` between the already-held check and the fetch:** local field hit ⟹ take `rec` from it and skip fetch/decode/transform entirely; miss ⟹ the existing network path, unchanged. **A miss is not an error and must not be counted as one.**
+  - ⭐ **The field also carries its own text** (`phrase`, `links[]`, `citations`) — prefer the queue row's phrase (which travels with the row per the CAMPOISON rule) and use the field's only as a fallback, so the binding still never reads ambient state.
+
+- [ ] `WAVESEE.2` — ⛔ **THE KEY RULE MUST HAVE ONE OWNER, AND TODAY IT WILL HAVE TWO.** `perceive-corpus-figures.mjs` holds `figKey`/`bare`/`shardName` and **must not be edited while the field job is running** — the batch loop respawns `node` every batch, so an edit lands mid-run. **The new module is written first with a duplicate, clearly marked; the producer is pointed at it the moment the run ends.** Two copies of a hash rule is how two writers drift apart, and this board already carries three instances of exactly that.
+
+- [ ] `WAVESEE.3` — **DELIVERY: the press must fetch the fields. No human step exists.**
+  - `deploy/self-update.sh` gains a fields sync that runs on every Update / Fresh-walk press: clone-or-pull `BrainWaves` from **Forgejo** into a path on the box and overwrite in place, per Gee's *"it over writes the old copies"*.
+  - ⛔⛔ **`git clone --depth 1` IS NOT LFS-AWARE.** `*.field.json` is an LFS filter in `BrainWaves/.gitattributes`, so a plain clone yields **4 KB pointer stubs**, not fields — and `JSON.parse` on a stub does not throw usefully, it yields an object with no `rec`. **The sync must run `git lfs pull` (or fetch `/media/`, never `/raw/`), and the consumer must REFUSE a row with no `rec.channels` rather than bank it.** This is the `/raw/`-vs-`/media/` trap one layer down.
+  - ⚠ **The fields directory must be added to the `rsync --delete` EXCLUDE list** in `self-update.sh` beside `visual-memory*.db*` and `brain-weights*`, or **the very next press deletes every field it just downloaded.** That exclude list's own comment states the rule: *"anything the server writes under `__dirname` belongs in this list, or a deploy eats it."*
+  - **Config:** `DREAM_FIGURE_FIELDS_DIR` (path) and a documented off-switch that says so out loud when it is off.
+
+- [ ] `WAVESEE.4` — **PROVE IT, and say which proofs are static and which are live.**
+  - **Static, runnable now:** key parity — for N real corpus figure URLs, `figKey(url)` must resolve to a file that exists in `BrainWaves/fields/`; a loaded field must produce a `rec` whose `channels.Y.keep` matches the producer's ledger; `_recDetail` on a loaded rec must clear the 200 floor.
+  - ⛔ **THE BLOB-VS-BASE64 TRAP, which has bitten this exact pair before:** the live store is BLOB-from-birth (v8) while a field file carries `val_b64`/`pos_b64` **base64 inside JSON**. `_recDetail` once read only `val_b64` and restored memories scored 0 with recall silently refusing. **The loaded field must pass through the same `chanVal`/`chanHasVal` choke point in `transform.js` that every other rec uses — not a second decoder.**
+  - **Live, only after a press:** `state.ownArt.lookups` figure counters climbing, `figGrounded` rising, and the drain reporting hits-from-field vs fetched-live as **separate counters** — because one number cannot distinguish a working cache from a silently-dead one.
+
+- [ ] `WAVESEE.5` — ⚠ **THE 133 GB STORE IS NOT SOLVED BY ANY OF THIS, AND I CLAIMED OTHERWISE ONCE.** She banks a ~4.22 MB rec per figure whether it came from a field or from the network. `REGFIND.8` stands on its own and needs its own decision. **Recorded here so the two are never again treated as one fix.**
+
