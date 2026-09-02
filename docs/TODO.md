@@ -900,6 +900,21 @@ Gee (verbatim): *"thats alot of fucking issues!!!!! i hope u are fully handling 
 
 > ✅ **DORMANT.2 COMPLETE — migrated verbatim to docs/FINALIZED.md §2026-09-01 NIGHT THE SWEEP BATCH, byte-equality verified 16/16 before removal.**
 
+> ⭐ **`STACKSWEEP.1` — BATCH VERDICT 2026-09-02, three categories swept with `.claude/scripts/audit-dead-wiring.mjs` over 178 files. The row is a multi-batch programme by its own terms; these three are now written down so the next sweep does not re-derive them.**
+>
+> | # | category | detection | verdict |
+> |---|---|---|---|
+> | **7** | PROBED-FOR AND NEVER DEFINED | every `typeof x === 'function'` guard, target proven to exist | ✅ **CLEAN — 0** of **337 guard names across 783 sites** |
+> | **3** | DEAD CODE (guard-shaped) | same pass — a guard with no target is a permanently-false branch | ✅ **CLEAN** by the same run |
+> | **12c** | ENV FLAGS UNDOCUMENTED | 196 `process.env.*` in code vs `docs/` + `deploy/` + `.claude/` | ✅ **CLEAN — 0 undocumented** |
+>
+> ⛔ **THE ONE HIT WAS A FALSE POSITIVE, AND CHASING IT WAS STILL WORTH IT.** The sweep reported `percentile` as *guarded, no definition* at one site in `state.js` — the exact `_teachWordSpellingDirectFinal` shape (37 call sites, zero definitions). **Followed to the end: `percentile` is a method of Node's `RecordableHistogram`, returned by `perf_hooks.monitorEventLoopDelay()` — not a repo function, and no definition for it should exist here.** ⭐ **The lane is fully live**, verified by reading it: `brain-server.js` constructs the histogram at `resolution: 20`, calls **`.enable()`**, assigns it to `_eventLoopHistogram`, and `state.js` reads `p50`/`p99` off it. **An unenabled histogram would have been a real dormant instrument reading 0 forever, which is why it was checked rather than waved through.**
+>
+> ⭐ **THE DETECTOR WAS FIXED, NOT THE FINDING SUPPRESSED.** `percentile` is now in `PLATFORM_GLOBALS` **with its provenance written in**, because *"an allowlist entry with no reason becomes indistinguishable from a suppressed bug"*. Re-run confirms **`guarded, NO definition: 0`**.
+>
+> ⚠ **STILL OUTSTANDING and NOT swept by this batch: categories 1, 2, 4, 5, 6, 8, 9, 10, 11 and 12a/12b.** ⛔ **The 71 `exports referenced nowhere` this run reports are `STACKSWEEP.6`'s scope and stay deferred there** — an unnecessary export widens the API surface but breaks nothing, and this codebase has been bitten by deleting things that looked unused. **Naming them here so the count is not mistaken for a clean sweep of category 2**, which is about orphaned files, modules and corpora, not exports.
+>
+> **Original filing:**
 - [ ] `STACKSWEEP.1` — ⛔ **THE SWEEP ITSELF. Every category below gets its own pass, its own detection method, and a written verdict per finding — including the ones that turn out to be FINE, because "checked and correct" is a result the next sweep must not have to re-derive.**
 
   **THE CATEGORIES — his list, plus the `ectx12` he asked me to fill from what this codebase has actually done:**
