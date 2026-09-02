@@ -59,7 +59,14 @@
     border:1px solid var(--tv-line);background:#0a0e14}
   .tv-flag.err{border-color:#5a2430;color:#ffb3b3}
   .tv-flag.warn{border-color:#5a4a24;color:var(--tv-warn)}
-  #tvEye{width:100%;image-rendering:pixelated;background:#05070a;border-radius:6px;display:block}
+  /* CRYSTAL — `image-rendering:pixelated` was chosen when this panel only ever
+     showed tiny fields, where nearest-neighbour upscaling keeps edges crisp. Her
+     fields are 512-1024 now, so this panel DOWNSCALES them — and pixelated on a
+     downscale DROPS pixels instead of averaging them, which aliases fine detail
+     into speckle. `auto` averages. And the panel no longer forces 100%: it shows
+     the field at its own size when it fits, so the common case is 1:1 with no
+     resampling in either direction. */
+  #tvEye{width:auto;max-width:100%;height:auto;image-rendering:auto;background:#05070a;border-radius:6px;display:block}
   .tv-note{color:var(--tv-dim);font-size:11.5px;margin-top:8px;line-height:1.55}
   .tv-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
   .ok{background:var(--tv-good)} .warn{background:var(--tv-warn)} .bad{background:var(--tv-bad)}
@@ -131,6 +138,27 @@
     <div class="tv-card" style="margin-top:14px">
       <h2><span>Corpus coverage</span></h2>
       <div class="tv-body" id="tvCoverage"><div class="tv-note">—</div></div>
+    </div>
+
+    <!-- ⭐ ALL OF IT, NOT A SAMPLE. The pane above is a paced 400-row window;
+         this is the whole record for one cell, paged to the true end. The two
+         are deliberately different instruments and the copy says so. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2>
+        <span>Everything a cell ever taught</span>
+        <span class="tv-sub" id="tvLedgerTotal">—</span>
+      </h2>
+      <div class="tv-body">
+        <div class="tv-controls">
+          <select id="tvLedgerCell"><option value="">— pick a cell —</option></select>
+          <button id="tvLedgerFirst">start</button>
+          <button id="tvLedgerPrev">newer</button>
+          <button id="tvLedgerNext">older</button>
+          <label class="tv-sub">rows <input id="tvLedgerLimit" type="number" min="20" max="500" step="20" value="100" style="width:64px" /></label>
+        </div>
+        <div id="tvLedgerRows" style="max-height:340px;overflow-y:auto;margin-top:9px"></div>
+        <div class="tv-note" id="tvLedgerNote">Pick a cell to read back everything it taught.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -311,10 +339,58 @@ async function poll() {
          clearing floors nobody derived. A bare numerator is how an instrument
          starts lying. */
       + (cov.floorsDerived === false
-        ? `<div class="tv-note">⛔ <b>The bar is undreived.</b> "Fed" counts cells clearing floors that were chosen, not measured.`
+        ? `<div class="tv-note">⛔ <b>The bar is underived.</b> "Fed" counts cells clearing floors that were chosen, not measured.`
           + (pct ? ` The average cell holds ${fmt(cov.avgWordsPerProseCell)} words ≈ <b>${pct}%</b> of one real course year.` : '')
           + ` Fed means <b>not starved</b>, not finished.</div>`
         : '');
+  }
+
+  /* ⭐ WHICH EXAM WORDS THE CORPUS DOES NOT CONTAIN ANYWHERE.
+     Until 2026-09-02 this answer existed only in a terminal. It is an UPPER
+     BOUND check: it is run against the corpus vocabulary, not the trained
+     vocabulary, so a hit is a hard finding — that word cannot be taught by this
+     corpus at all — while a miss only means "not provable from the corpus".
+     ⛔ `available:false` renders as itself. A sweep that could not run must
+     never look like a sweep that found nothing. */
+  const ev = st.examVocabSweep;
+  if (ev) {
+    const host = $('tvCoverage');
+    if (ev.available === false) {
+      host.innerHTML += `<div class="tv-note">⛔ <b>The exam-word sweep did not run</b> — ${ev.reason || 'no reason recorded'}.`
+        + ` This is <b>not</b> a finding of zero missing words.</div>`;
+    } else if (ev.report) {
+      /* ⛔⛔ THE REPORT HAS NO TOP-LEVEL `missing` ARRAY, AND READING IT AS IF IT
+         DID PRINTED A CONFIDENT GREEN TICK OVER TEN REAL FINDINGS.
+         Its shape is `{cells, totalRequired, totalMissing, totalTrained,
+         overallCoverage}` — the words live per cell. The first version of this
+         block read `report.missing || report.absent || []`, got `undefined`,
+         and rendered "✅ Every exam word appears somewhere she is taught from"
+         while `totalMissing` was 10. **A producer/consumer field-name mismatch,
+         in the panel built to catch instruments that lie** — the same shape as
+         the accessor that required `url` while two harvesters wrote `src` and
+         hid 6,899 figures. Caught by reading the real output, not the guess. */
+      const cells = ev.report.cells || [];
+      const missing = [...new Set(cells.flatMap((c) => c.missing || []))];
+      const req = ev.report.totalRequired || null;
+      const gapCells = cells.filter((c) => (c.missing || []).length > 0).map((c) => c.cellKey);
+      host.innerHTML += `<div class="tv-note">`
+        + `<b>Exam words vs the whole corpus</b> — ${fmt(req)} required across all banks, `
+        + `<b>${fmt(ev.report.totalMissing)}</b> not found in academic + life + coding prose`
+        + ` (corpus holds ${fmt(ev.corpusWords)} distinct words; coverage ${((ev.report.overallCoverage || 0) * 100).toFixed(1)}%).`
+        + (missing.length
+          ? ` <span class="tv-src">${missing.slice(0, 24).map((w) => String(w).replace(/[<>&]/g, '')).join(', ')}`
+            + (missing.length > 24 ? ` … +${fmt(missing.length - 24)} more` : '') + `</span>`
+            + ` <span class="tv-src">in ${gapCells.join(', ')}</span>`
+            /* ⚠ NOT "can never be taught" — that verdict was wrong for 100% of
+               the findings the first time it ran. She is taught by more than
+               prose: phonemes, letters and digits come from the phonics lane and
+               are CORRECTLY absent from every book. The honest claim is the
+               narrow one. */
+            + ` ⚠ <b>Not in PROSE</b> — check the lane before calling it a gap. Phoneme drills, letters and digits are taught by the phonics lane and are correctly absent from every book.`
+          : ` ✅ Every exam word appears somewhere in the prose she is taught from.`)
+        + ` ⚠ Upper bound: measured against the CORPUS, not her trained vocabulary.`
+        + `</div>`;
+    }
   }
 }
 
@@ -343,9 +419,127 @@ async function pollEye() {
   if (rec) reconstruct(rec, $('tvEye'));
 }
 
-poll(); pollEye();
+/* ────────────────────────────────────────────────────────────────────────────
+   ⭐⭐ THE LEDGER PANE — "all of it, not a sample".
+
+   ⛔ THIS IS A DIFFERENT INSTRUMENT FROM THE FEED ABOVE, NOT A BIGGER ONE. The
+   feed is a paced 400-row window of what is being taught RIGHT NOW — about
+   forty-five seconds of wall clock once teaching floods it. This reads back the
+   COMPLETE record for one cell, and it pages to the true end.
+
+   ⛔ EVERY RENDER PRINTS `returned` BESIDE `total`, and paging stops on the
+   server's own `more` flag rather than on a short page. A view that shows part
+   of something while reading as the whole is the exact defect this monitor was
+   built to end.
+
+   ⚠ `available:false` IS DISPLAYED AS ITSELF. If the store is missing, this says
+   so — it does NOT fall through to an empty list, because an empty list here
+   reads as "this cell taught nothing", which is a different and much worse
+   claim.
+   ──────────────────────────────────────────────────────────────────────────── */
+const LEDGER_URLS = ['/teach-ledger.json'];
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:') {
+  LEDGER_URLS.push('http://localhost:7525/teach-ledger.json');
+}
+
+/* Cursor stack — `after` is the server's row id, so "newer" pops rather than
+   subtracting a page size. Row ids are not contiguous once a filter is applied,
+   so arithmetic on them would silently skip rows. */
+let ledCursors = [0], ledCell = '', ledLoading = false;
+
+async function grabLedger(qs) {
+  for (const base of LEDGER_URLS) {
+    try {
+      const r = await fetch(base + qs, { cache: 'no-store' });
+      if (r.ok) return await r.json();
+    } catch (e) { /* try the next base */ }
+  }
+  return null;
+}
+
+async function loadLedgerCells() {
+  const d = await grabLedger('?cells=1');
+  const sel = $('tvLedgerCell');
+  if (!d) { $('tvLedgerNote').textContent = 'Ledger route unreachable — the brain may be offline.'; return; }
+  if (d.available === false) {
+    $('tvLedgerNote').innerHTML = '⛔ <b>The ledger store is unavailable on this boot</b>, so nothing taught since restart can be read back. '
+      + 'This is not the same as "nothing was taught" — the counts above are unaffected.';
+    return;
+  }
+  const rows = d.rows || [];
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">— pick a cell —</option>'
+    + rows.map((r) => `<option value="${r.cell}">${r.cell} — ${fmt(r.items)} items</option>`).join('');
+  if (keep) sel.value = keep;
+  $('tvLedgerTotal').textContent = rows.length
+    ? `${fmt(rows.length)} cells on record`
+    : 'no cells recorded yet';
+}
+
+function ledRow(r) {
+  const when = r.at ? new Date(r.at).toLocaleTimeString() : '';
+  return `<div class="tv-row ${laneClass(r.lane)}">`
+    + `<div class="tv-meta"><span class="tv-tag">#${r.n}</span> <span class="tv-tag">${r.lane}</span>`
+    + (r.phase ? ` <span class="tv-tag">${r.phase}</span>` : '')
+    + (r.reps != null ? ` <span class="tv-tag">×${r.reps}</span>` : '')
+    + (r.source ? ` <span class="tv-src">${r.source}</span>` : '')
+    + ` <span class="tv-src">${when}</span></div>`
+    + `<div class="tv-text">${(r.text || '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))}</div>`
+    + `</div>`;
+}
+
+async function loadLedgerPage() {
+  if (ledLoading) return;
+  const cell = $('tvLedgerCell').value;
+  if (!cell) { $('tvLedgerRows').innerHTML = ''; $('tvLedgerNote').textContent = 'Pick a cell to read back everything it taught.'; return; }
+  if (cell !== ledCell) { ledCell = cell; ledCursors = [0]; }
+  ledLoading = true;
+  const limit = Math.max(20, Math.min(500, +$('tvLedgerLimit').value || 100));
+  const after = ledCursors[ledCursors.length - 1];
+  const d = await grabLedger(`?cell=${encodeURIComponent(cell)}&after=${after}&limit=${limit}`);
+  ledLoading = false;
+  if (!d) { $('tvLedgerNote').textContent = 'Ledger route unreachable.'; return; }
+  if (d.available === false) {
+    $('tvLedgerRows').innerHTML = '';
+    $('tvLedgerNote').innerHTML = '⛔ <b>The ledger store is unavailable on this boot.</b> This is not "this cell taught nothing".';
+    return;
+  }
+  const rows = d.rows || [];
+  $('tvLedgerRows').innerHTML = rows.length ? rows.map(ledRow).join('') : '<div class="tv-note">No rows in this page.</div>';
+  const from = rows.length ? rows[0].n : 0;
+  const to = rows.length ? rows[rows.length - 1].n : 0;
+  /* ⭐ The sentence that keeps THIS pane honest, mirroring the feed's own note. */
+  $('tvLedgerNote').innerHTML =
+    `Showing <b>${fmt(rows.length)}</b> of <b>${fmt(d.total)}</b> items this cell has taught`
+    + (rows.length ? ` (rows #${fmt(from)}–#${fmt(to)})` : '')
+    + `. ${d.more ? 'There are <b>older</b> rows — press “older” to page on.' : 'This is the <b>end</b> of the record for this cell.'}`
+    + ` Unlike the reading feed above, <b>nothing here is sampled or paced</b>.`;
+  $('tvLedgerTotal').textContent = `${fmt(d.total)} items in ${cell}`;
+}
+
+$('tvLedgerCell').onchange = () => { ledCursors = [0]; loadLedgerPage(); };
+$('tvLedgerLimit').onchange = () => { ledCursors = [0]; loadLedgerPage(); };
+$('tvLedgerFirst').onclick = () => { ledCursors = [0]; loadLedgerPage(); };
+$('tvLedgerNext').onclick = async () => {
+  /* Advance by the LAST ROW ID on screen, never by page arithmetic. */
+  const last = $('tvLedgerRows').lastElementChild;
+  if (!last) return;
+  const m = /#(\d+)/.exec(last.querySelector('.tv-meta').textContent || '');
+  if (!m) return;
+  ledCursors.push(+m[1]);
+  loadLedgerPage();
+};
+$('tvLedgerPrev').onclick = () => {
+  if (ledCursors.length > 1) ledCursors.pop();
+  loadLedgerPage();
+};
+
+poll(); pollEye(); loadLedgerCells();
 setInterval(poll, 2000);
 setInterval(pollEye, 5000);
+/* Slow on purpose: the cell list is a GROUP BY over the whole ledger, and this
+   pane is read on demand rather than watched. */
+setInterval(loadLedgerCells, 30000);
 </script>
 </body>
 </html>

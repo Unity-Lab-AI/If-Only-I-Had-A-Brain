@@ -29,6 +29,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { stripLeakedMarkup } from './clean-math.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -149,6 +150,10 @@ function cleanSentences(html) {
     // Site furniture, navigation and licence boilerplate — not the book.
     if (/previous chapter|next chapter|table of contents|creative commons|saylor|this content was accessible|licensed under|all rights reserved|for more information/i.test(s)) continue;
     if (/^(figure|table|exercise|key takeaway|end-of-chapter)\b/i.test(s)) continue;
+    // ⛔ 2,594 sentences from this source carried raw LaTeX — see clean-math.mjs.
+    const _m = stripLeakedMarkup(s);
+    if (_m.drop) continue;
+    s = _m.text;
     out.push(s.toLowerCase());
   }
   // No cap here either. A section page is one section of one chapter; a stride

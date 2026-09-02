@@ -7,37 +7,386 @@
   "experiences": [
     {
       "theme": "community",
-      "story": "a community is a collection of living creatures that share a common habitat. they are frequently interested in the same things. people in human groups share some of the same values and needs, which has an impact on the group's and individuals' identities. despite the fact that communities are established on personal interests, each individual is unique in their own manner, which is the primary source of social variety in a community. communal forces are the forces of a social group or community as opposed to individual forces. communal forces have common interests leading to common modes of action and speech. common interest is the interest of all or a controlling number of the community."
+      "story": "a community is a collection of living creatures that share a common habitat. they are frequently interested in the same things. people in human groups share some of the same values and needs, which has an impact on the group's and individuals' identities. despite the fact that communities are established on personal interests, each individual is unique in their own manner, which is the primary source of social variety in a community. communal forces are the forces of a social group or community as opposed to individual forces. communal forces have common interests leading to common modes of action and speech. common interest is the interest of all or a controlling number of the community.",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "geography",
       "story": "geography is the study of earth and its people. it is one of the social sciences. its features are things like continents, seas, rivers and mountains. the 'inhabitants' of earth are all the people and animals that live on it. its phenomena are the things that happen like tides, hurricanes, tornadoes, earthquakes and more. a person who is an expert in geography is called a geographer. a geographer tries to understand the world and the things that are in it, how they started and how they have changed. there are two main parts of geography. these types are physical geography and human geography. physical geography studies the natural environment and human geography studies the human environment. the human environmental studies includes things such as the population in a country, how a country's economy is doing, and more. there is also environmental geography. maps are used in geography to see what land looks like. geographers spend much time making maps and studying them. making maps is called cartography, and people who specialize in making maps are called cartographers. physical geography focuses on geography as an earth science. it tries to understand the physical problems and the issues of lithosphere, hydrosphere, atmosphere, pedosphere, and global flora and fauna patterns . physical geography can be divided into many broad categories, including: human geography is the social science that covers the study of people and their communities, cultures, economies, and their interaction with the environment. geographers studying the human environment may look at: population countries of the world land use agriculture city industry energy pollution the oldest known world map dates back to ancient babylon from the 9th century bc. the best known babylonian world map is the imago mundi of 600 bc. star charts are of a similar age. during the middle ages, people in europe made less maps. people in the eastern countries made more maps. abu zayd al-balkhi created the \"balkhi school\" of mapping in baghdad. western europe became known as the leader of geographic thought during the european renaissance and the age of exploration . the printing press made maps and information about the world available to everyone. in 1650, the first edition of geographia generalis was published. in the 1700s and 1800s, scientists started to study the relationship between the environment and its people. populationdata.net archived 2008-09-10 at the wayback machine populationmondiale.com archived 2011-02-10 at the wayback machine using literature to teach geography in high schools. archived 2015-03-08 at the wayback machine teaching geography at school and home. archived 2015-04-26 at the wayback machine the national geography content standards.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/59/Map_of_the_world_by_the_US_Gov_as_of_2016.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Map of Earth with country borders and big cities shown",
+          "context": "map of earth with country borders and big cities shown geography 1 is the study of earth and its people. it is one of the social sciences .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/89/Cyclone_Catarina_from_the_ISS_on_March_26_2004.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "it tries to understand the physical problems and the issues of lithosphere , hydrosphere , atmosphere , pedosphere, and global flora and fauna patterns .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/91/Menschentraube.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A crowd of people around a band.",
+          "context": "a crowd of people around a band. human geography is the social science that covers the study of people and their communities, cultures, economies, and their interaction with the environment .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "map",
       "story": "a map is an image of the earth or part of the earth. a map is different from an aerial photograph because it includes interpretation. many maps are called \"charts\" such as star charts and nautical charts. some maps are of distant worlds. before the late 20th century almost all maps were on paper. today, many maps are digital, and can be seen on smartphones and computers. however, physical items such as paper maps, charts, or drawings are still used. the word \"map\" can also be used to talk about or show relationships between ideas, people, events, data, and many other subjects. this is why web developers call a list of web pages on a web site a site map. many maps today are made using gis computer systems. these are database systems that are organized by location instead of named records. people who make maps are cartographers. if a map is on a piece of paper or a computer screen, it has to be projected. this is because the earth is round and paper and screens are flat. there are a lot of ways that use mathematics to make map projections. the only kind of map of the earth that is not projected is one drawn on a sphere.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b5/A_plat_of_all_the_world_-_Norman_B._Leventhal_Map_Center_at_the_BPL.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A map of the Earth made in 1656",
+          "context": "",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Marburg_Stadtteilkarte_Kernstadt.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the word \"map\" can also be used to talk about or show relationships between ideas, people, events, data , and many other subjects. this is why web developers call a list of web pages on a web site a site map. a modern topographic map of a town in a valley . map symbols : green colour is forest in this map, a blue line is a river .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "government",
       "story": "a government is a group of people that have the power to rule in a territory, according to the administrative law. this territory may be a country, a state or province within a country, or a region. there are many types of government, such as democratic, parliamentary, presidential, federal or unitary governments make laws, rules and regulations, collect taxes and print money. governments have monopolies on the legal use of force. governments have systems of judiciary that list the acts or activities that are against the law and describe the punishments for breaking the law. governments have law enforcement forces to make sure people within their jurisdiction follow the laws. governments have diplomats who communicate with the governments of other countries by having meetings. diplomats try to solve problems or disagreements between two countries, which can help countries to avoid war, make commercial agreements, and exchange cultural or social experiences and knowledge. governments have a military force such as an army that protects the country from enemy countries, terrorists and other major threats that attack or which can be used to attack and invade other countries. governments have security guards to protect the leader of a country. the head of state of a government may have advisors and ministers for various departments. together they are called the administration. plato listed five kinds of government in the republic: the most common type of government in the western world is called democracy. in democracies, people in a country can vote during elections for representatives or political parties that they prefer. the people in democracies can elect representatives who will sit on legislatures such as the parliament or congress. political parties are organizations of people with similar ideas about how a country or region should be governed. different political parties have different ideas about how the government should handle different problems. democracy is the government of the people, by the people and for the people. however, many countries have forms of democracy which limit freedom of choice by the voters. one of the most common ways is to limit which parties can stand for parliament, or limit the parties' access to mass media such as television. another way is to rig the voting system by removing votes from opposition voters and substituting votes for the party in power. few countries are textbook democracies, and the differences between them has been much studied. in an absolute monarchy, the ruler has no limits on their wishes or powers. in a constitutional monarchy a ruler's powers are limited by a document called a constitution. in modern times, monarchies still exist in great britain and the commonwealth of nations, the netherlands, spain, japan, saudi arabia, and thailand, along with several other countries. a monarch may have one of several titles: king or queen, empress or empress, or emir. an aristocracy is a government run by the people of a ruling class, usually people who come from wealthy families with a particular set of values, or people who come from a particular place. a person who rules in an aristocracy is an aristocrat. aristocracy is different from nobility, in that nobility means that one bloodline would rule, whereas an aristocracy would mean that a few or many bloodlines would rule, or that rulers be chosen in a different manner. under a dictatorship, the government is run by one person who has all the power over the people in a country. a dictatorship may also be called one-man rule or autocracy. originally, the roman republic made dictators to lead during time of war. the roman dictators were not always cruel or unkind, but they did hold power all by themselves, rather than sharing power with the people. roman dictators only held power for a short period of time. in modern times, a dictator's rule is not stopped by any laws, constitutions, or other social and political institutions, and can last many years or even decades. after leaving the spanish empire, many countries in latin america were dictatorships. world war ii was partly a war between dictators, and later new countries in asia and africa also were ruled by dictators. an oligarchy is a government ruled by a small group of powerful people. these people may spread power equally or not equally. more so a different version of a monarchy, where everyone makes decisions together instead of one person making them all or telling people what to do, such as in a dictatorship. an oligarchy is different from a true democracy because very few people are given the chance to change things. an oligarchy does not have to be hereditary or passed down from father to son. an oligarchy does not have one clear ruler, but several powerful people. some past examples of oligarchy are the former union of soviet socialist republics and apartheid south africa. a fictional example is the dystopian society of oceania in the book nineteen eighty-four. some critics of representative democracy think of the united states as an oligarchy. robert michel's iron law of oligarchy says all democratic organizations become oligarchies. this view is shared by anarchists and some libertarians. an oligarchy may have a leader in the ruling group. the simplest idea of government is those who rule over people and land. this may be as small as a community or village or as big as a continent . the people who rule can allow others to own land. it is a deed by government that gives this right in the way that laws describe. some think they have the right to hold land without government permission. this view is called libertarianism. others think they can do without government. this view is called anarchism. almost every place on earth is connected to one and only one government. places without government are where people follow traditions instead of government rules, small border disputed areas and the continent of antarctica, because almost no people live there. for every other place on earth there is a government that claims 'sovereign control' over it. the word \"sovereign\" is old and means \"control by a king\" . governments of villages, cities, counties and other communities are subordinate to the government of the state or province where they exist, and then to that of the country. it is from kings and feudalism that modern governments and nation states came. the capital of a country, for instance, is where the king kept his assets. from this we get the modern idea of capital in economics. a government may regulate trade as well as to rule over land. governments also control people and decide things about what morality to accept or punish. in many countries, there are strict rules about sexual intercourse and drugs which are part of law and offenders are punished for disobeying them. tax is how government is paid for in most countries. people who buy, sell, import, invest, own a house or land, or earn money are made to pay some of the money to a government. there are many theories of how to organize government better. these are called theories of civics. many people think leaders must be elected by some kind of democracy. that way, they can be replaced at election. many governments are not a democracy but other forms in which only a few people have power. there are many theories of how to run a government better, and keep people from hurting each other. these theories are part of politics.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/88/Flag_of_Australia_%28converted%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Australia",
+          "caption": "",
+          "context": "the head of state of a government may have advisors and ministers for various departments. together they are called the administration .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d9/Flag_of_Canada_%28Pantone%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Canada",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Flag_of_Europe.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "European Union",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "France",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/Flag_of_Ireland.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Republic of Ireland",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/da/Flag_of_Luxembourg.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Luxembourg",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Flag_of_Germany.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Germany",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/83/Flag_of_the_United_Kingdom_%283-5%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "United Kingdom",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Flag_of_Spain.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Spain",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Flag_of_Denmark.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Denmark",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Flag_of_Greece.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Greece",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Flag_of_Portugal_%28official%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Portugal",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "native-americans-in-the-united-states",
       "story": "native americans in the united states are the indigenous people from the areas of north america now part of the continental united states, including parts of alaska. the us government recognizes 574 nations or tribes. there are about 310 indian reservations in the us. most native americans do not live on a reservation anymore. there were and still are many diverse groups of natives in what is now the us. the diversity includes various and rich languages and cultures. the arrival of europeans in the americas drastically changed native americans in the us. the history of these native americans is a story of suppression and the forced removal from their lands. during american history, there were various native responses to european colonization and american expansion. in the 20th century, natives got more rights and were recognized as citizens. there are still problems today that impact native americans in the united states. natives americans face discrimination from other groups. there is also racism and cultural appropriation. there are also public health issues connected to historical trauma and generations of misstreatment. they most likely crossed over beringia. this was a geographical bridge that connected what is now russia and alaska. this migration may be over 30,000 years old. the clovis culture was one of the earliest cultures. the pre-columbian era was before columbus and europeans conquered the natives. scholars break this era into different stages. the lithic stage was important for the usage of new rock technologies. in the archaic period, there was mainly subsistence farming. after the archaic period, societies were more developed. there were more crafts, urban centers, military structures, and usages of metals. examples of tribes include eastern woodlands culture, the pacific northwest coast indigenous peoples, the mississippian culture, including the cahokia), pueblo peoples and iroquois league of nations. europeans started to arrive in the 16th century. this caused diseases to spread, and many natives died. the population of natives became much smaller. there were many conflicts between american indians and colonists even into the 19th century. natives fought to protect their lands. europeans also brought animals. natives began to hunt more and move around more with these new animals. european trade led to the columbian exchange. native americans often fought against each other and europeans. they also made many alliances. the beaver wars were in the 17th century. iroquis became powerful and destroyed other tribes like huron, neutral, erie, susquehannock, and shawnee. natives fought with the french and british during the seven year's war. king philip's war was between metacom and colonists in new england. it was the last major war between natives and colonists. during the american revolution, many natives fought with the british. at the treaty of paris , britain gave most native lands to america. george washington and americans wanted to civilize and educate natives. the civilization fund act of 1819 supported this process. americans thought that some natives were civilized. these were the five civilized tribes. they included the cherokee, chickasaw, choctaw, creek and seminole tribes. in the 19th century, most of the lands in the eastern united states were conquered. the lands in the west were still native american territory. soon diseases also came to the western territories. the european americans wanted to move west. there was native american resistance. conflicts included tecumseh's war, the creek war and seminole wars. however, native americans were in the union and confederate armies during the civil war. president andrew jackson forced natives to leave their lands. he passed the indian removal act of 1830. this led to the trail of tears. americans justified this removal. this was called manifest destiny. in 1851, the indian appropriations act set up preservations for natives. natives resisted in the indian wars. there was also the dakota war, great sioux war, snake war, colorado war, and texas-indian wars. in the wounded knee massacre, the us army killed many natives. the cherokee were the first natives to become us citizens. grant recognized more native tribes in the indian appropriations act. the us government also created many boarding schools for native americans. the schools only taught christianity and not native american religions. eventually, the schools included indian history and self-esteem. in the 20th century, there were more rights for natives. politicians were more open to natives. woodrow wilson allowed natives who fought in world war i to become citizens. calvin coolidge signed the indian citizenship act. this made all natives american citizens. republican charles curtis was a native and congressman. he became the senate minority whip and senate majority leader for several years. today americans have all the rights of the us constitution. the indian relocation act of 1956 supported vocational training. many natives fought and died in world war ii. soldiers respected the natives. the legacy of the native american warrior was still there. there was also more self-determination for natives. there was more activism with natives. notable events in the 1960s are the occupation of alcatraz island and the formation of the american indian movement . in 1968, the indian civil rights act gave natives protection to tribe members. the indian self-determination and education assistance act was passed in 1975. many universities have added study programs about natives americans. this is partly due to native activism. native americans are affected by some problems more than european americans. for example native americans are six times more likely to suffer from alcoholism than average. about 24% live in extreme poverty. native american and native alaskan women are more likely to be targets of sexual violence than other women. natives says that they often face prejudice and mistreatment. many native americans live in cities. they face poverty and bad working conditions. another problem is cultural appropriation. this is when a culture wrongly adopts and takes elements from another culture. this is a problem in sports with mascots. there are often native american stereotypes. the golden state warriors stopped using native american logos in the 1970s. in 2020, the washington redskins changed their name to washington commanders. there has been controversy with names of native americans in the us. native americans were historically called indians. this word has racist stereotypes. the term native americans is viewed to be more historically accurate. there is no agreement among native americans on what is the best term. some criticize the term native americans, because the government chose it. several native tribes prefer the term american indian. native americans prefer to be called by their tribal names.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/North_American_cultural_areas.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Cultural areas of pre-Columbian North America, according to American cultural anthropologist Alfred Kroeber.",
+          "context": "the cultural areas of pre-columbian north america, according to american cultural anthropologist alfred kroeber. native americans in the united states 3 are the indigenous people from the areas of north america now part of the continental united states , including parts of alaska .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "continent",
       "story": "a continent is a large area of the land on earth that is joined. the third most populous continent is europe. the fourth most populous is north america, and then south america. in sub-saharan africa, the largest age group are denarians . in north africa, the largest age group are vicenarian . in europe, most people are tricenarian or quadragenarian . geologists use the term continent to mean continental crust, a platform of metamorphic and igneous rock, largely of granitic composition. continental crust is less dense and much thicker than oceanic crust, which is why it \"floats\" higher than oceanic crust on the underlying mantle. this explains why the continents form high platforms surrounded by deep ocean basins. some sources say that australia is one of the seven continents. others say that australia is part of a larger continent, such as australasia, or oceania. oceania is a region which includes australia, new zealand and the pacific islands. australasia includes at least all countries on the australian continental plate. this includes the islands of new guinea, tasmania, new zealand and a number of smaller islands. it is on the south-eastern side of the wallace line, with distinct differences in its biology from the asian side of the line. \"it includes all the islands of the malay archipelago... as well as the various groups of islands in the pacific. the term has been used in very different senses\". zealandia is an almost entirely submerged land mass, and 93% of it still remains under water. zealandia may have broken off the australian plate between 85 and 130 million years ago. north america and south america together are often described as one continent, \"the americas\", or simply \"america\". this has the advantage of including central america and the caribbean islands. otherwise, central america is counted as part of north america. eurasia is not really an alternative, rather it is a recognition that the landmasses of europe and asia are continuous, and some of its largest countries are in both regions. russia extends from eastern europe to the far east of asia without a break. the ural mountains, which run roughly north-south, are the traditional dividing-line between europe and asia. for many purposes it is convenient to consider the great landmass as a single continent, eurasia. when british people talk about \"the continent\" they mean the european mainland. this meaning is not used as much as it used to be, but is still seen in phrases like \"continental breakfast\" . continents not only move but also sometimes move against each other. the indian subcontinent has been colliding with the eurasian continent for a while now. as these continents push against each other, they buckle and bend. because of this, the himalaya mountains, with mount everest, are still being built up today. antarctica is earth's fifth largest continent. antarctica, the coldest place on earth, covers earth's south pole. it has a surface area of ~13.6 -14 million km2: this is about 1.4 times the size of europe, the continent only has two seasons, a brief summer and a long winter. it does not rain or snow much there. ever since its discovery in 1812, antarctica was a great challenge for explorers. despite being nearly completely covered by a thick layer of ice, antarctica has a range of aquatic and terrestrial environments. a craton is an old and stable part of the continental lithosphere. it is the earth's two topmost layers, the crust and the uppermost mantle. there are various hypotheses of how cratons have been formed.. continents may have been formed by giant meteorite impacts in the first billion years of earth's existence. the question is not yet settled. what is clear is that the cratons are very old, and are the basis for the continents we see today.",
       "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/97/Continental_models-Australia.gif?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "animated map showing the continent codes. north america south america antarctica africa europe asia oceania a continent is a large area of the land on earth that is joined.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "climate",
+      "story": "climate means the usual condition of the temperature, humidity, atmospheric pressure, wind, rainfall, and other meteorological patterns in an area of the earth's surface for a long time. in simple terms, climate is the average condition for about thirty years. climate and weather are different: weather is the day to day conditions in the atmosphere. the types of climates are: tropical, desert/dry, temperate, polar, mediterranean. polar climate , has long, usually very cold winters, and short summers. for example, near the north and south poles. temperate climates have four seasons. some of the countries which have a temperate climate are: most of the european countries. they just have one or two seasons such as: saudi arabia and many african countries. tropical climates have warm temperature and only two seasons; wet and dry. an example of a place with a tropical climate is the amazon rainforest in brazil. the mediterranean climate is usually hot and dry in summer, and is cool and wet in winter. an example of a country with a mediterranean climate is spain. the latitude, ground, and height can change the climate of a location. it is also important to note if oceans or other large bodies of water are nearby. climates are most commonly classified by temperature and precipitation. the most commonly used classification was the koppen climate classification, first made by wladimir koppen. the thornthwaite system, which was used from 1948, not only uses temperature and precipitation information, but evapotranspiration too. this makes it useful for studying how many different kinds of animal species there are, and about the things that could happen when climates change. the bergeron and spatial synoptic classification systems focus more on where the air masses which help make climates come from. climates can change after a long time. nowadays people are making the world warmer in many places, but not in all: 12/2023 \"beijing shivers through coldest december on record\" . north korea and japan are also unusually cold, decenber 2023.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/df/ClimateMap_World.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Map of world dividing climate zones, largely influenced by latitude. The zones, going from the equator upward (and downward) are Tropical, Dry, Moderate, Continental and Polar. There are subzones within these zones.",
+          "caption": "Worldwide Climate Classifications",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ec/Koppen_classification_world_map_1991-2020_-3C_borderless.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "World Köppen-Geiger Climate Classification Map",
+          "context": "world koppen-geiger climate classification map climate means the usual condition of the temperature, humidity, atmospheric pressure, wind, rainfall, and other meteorological patterns in an area of the earth's surface for a long time. in simple terms, climate is the average condition for about thirty years.",
+          "licence": "CC BY 4.0"
+        }
+      ]
+    },
+    {
+      "theme": "natural-resource",
+      "story": "a natural resource is what people can use from the natural environment. examples of natural resources are air, water, wood, fossil fuels, wind energy, ores, and food. the dividing line between natural resources and man-made resources is not clear-cut. hydro-electric energy is not a natural resource because people use turbines and generators to convert the energy of moving water to electric current. petroleum and ores are natural, but need to be changed in some way to make them into usable refined oil and metals. atomic energy comes from metallic nuclear fuel, like fissile uranium and plutonium, but rocks need technical work to make them into these nuclear fuels. we often say there are two sorts of natural resources: renewable resources and non-renewable resources. a renewable resource is one that can be used again and again. for example, soil, sunlight and water are renewable resources. however, in some circumstances, even water is not renewable easily. wood is a renewable resource, but it takes time to renew, and in some places, people use the land for something else. soil, if it blows away, is not easy to renew. a non-renewable resource is a resource that does not grow and come back, or a resource that would take a very long time to come back. for example, coal is a non-renewable resource. when we use coal, there is less coal afterward. the non-renewable resource can be used directly , or we can find a renewable resource to use . most natural resources are limited. this means they will eventually run out. a perpetual resource has a never-ending supply. some examples of effectively perpetual resources include solar energy, tidal energy, and wind energy. they are perpetual in effect, although absolutely they do have a limit. there may be a practical limit to how much can be taken in a given day or year, but that amount can be taken again next day or next year . non-perpetual resources include fossil fuels such as petroleum, coal, etc. they have a limit of usage, and are running out. some things influencing the supply of resources include whether it is able to be recycled, and whether there are suitable substitutes for the material. non-renewable resources cannot be recycled. for example, fossil fuels cannot be recycled. the demand for resources can change with new technology, new needs, and new economics . some material can go completely out of use, if people do not want it anymore. demand of many natural resources is very high, but availability of some, such as precious metals, is very low. different places have different natural resources. when people do not have a certain resource they need, they can either replace it with another resource, or trade with another country to get the resource. people have sometimes fought to have them . when people do not have some resources, their quality of life can get lower. when they can not get clean water, people may become ill; if there is not enough wood, trees will be cut and the forest will disappear over time ; if there are not enough fish in a sea, people can die of starvation. renewable resources include crops, wind, hydroelectric power, fish, and sunlight many people carefully save their natural resources so that others can use them in the future.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Windmills_D1-D4_-_Thornton_Bank.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The natural resource of wind drives these 5MW wind turbines on a wind farm in Belgium",
+          "context": "the natural resource of wind drives these 5mw wind turbines on a wind farm in belgium a natural resource is what people can use from the natural environment . examples of natural resources are air , water , wood , fossil fuel s, wind energy , ores , and food.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/52/Flooded_cropland_in_southwest_Iowa.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Soil, a natural resource for farming .",
+          "context": "when we use coal, there is less coal afterward. the non-renewable resource can be used directly , or we can find a renewable resource to use . soil, a natural resource for farming . most natural resources are limited.",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "agriculture",
+      "story": "agriculture is made up of livestock production, aquaculture, fisheries, forestry, animal husbandry and farming . from agriculture one can get food and non-food products. the word agriculture comes from late middle english which formed it partly from middle french from the latin word agricultura. agricultura comes from the ager/agr meaning \"field\" and cultura meaning \"growing, cultivation\". classes of food there are views about what is different between farming and agriculture. agricultural economics agricultural science agronomy in at least one country, education is available to become an agricultural scientist; people with that job, do \"implementation of ... things like crop production, livestock management, and sustainable farming methods\".",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "trade",
+      "story": "to trade is to willingly give things or services and get other things or services in return. for example, a person giving a thing must find another person who wants to get that thing. the giver gets something back in return. a trade is sometimes also called an \"exchange\" or a \"swap\". an early type of trade is barter. barter was the exchange of goods and services for other goods and services. barter involves trading things without using of money. modern traders commonly buy and sell by the use of money. trade between two traders is called bilateral trade. trade between more than two traders is called multilateral trade. the things that are given from one person to the other are called goods. services can also be part of a trade. one person can do a job or work for another, and get something in return in a trade. money can be given in return for a service or for a thing. if money is part of the trade, then the person who gives the money is buying, and the person who gets the money is selling. a place where trading takes place is called a market. when there is no money involved in the trade, the trade is called barter. if there is money involved in the trade, the trade is called a purchase. in the past, people would barter to get what they wanted, instead of buying goods and services. economics includes the study of trade. trade occurs not just between people, but also between large companies and even countries. governments sometimes take some of the money or goods involved in a trade between countries. this is a type of tax called a tariff. smugglers try to trade without paying tariffs. free trade between two countries is when there are small or no tariffs, quotas, or other restrictions on trade. when one country stops all trade with another country, it is called an embargo. domestic trade is the exchange of goods within a country. domestic trade is very important because it allows different types of goods to reach to all parts of the country. it makes the standard of living of the people of the country better. it helps an industry to grow by making sure that there are raw materials. domestic trade may be divided into two. they are: = = wholesaling is the sale of goods to industrial, commercial, institutional or other professional businesses. they can also be sold to other wholesalers. it is the sale of goods to anyone that is not a consumer. wholesalers usually buy and sort goods in large numbers. = = retail is the process of selling goods or services to consumers through many means of distribution to earn a profit. the term \"retailer\" usually means where a person sells a small amount of good to many individuals, who are consumers. international trade is the exchange of goods and services between different countries. international trade has existed throughout history. some examples include uttarapatha, silk road, amber road, scramble for africa, atlantic slave trade, and salt roads. when there is trade between two or more countries, factors like currency, government policies, economy, judicial system, laws, and markets affect trade. international trade may be split up into three different types. = = an import is a good or service that was bought in one country but was produced in another country. = = an export is a good or service that was produced in one country but was sold to another country. = = an entrepot is a port, city, or trading post where goods may be imported, stored or sold. these cities grew because of the growth of long-distance trade.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f0/SceneAtClothingSwap.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Clothing trade",
+          "context": "clothing trade to trade is to willingly give things or services and get other things or services in return. for example, a person giving a thing must find another person who wants to get that thing.",
+          "licence": "CC BY-SA 2.0"
+        }
+      ]
+    },
+    {
+      "theme": "local-government",
+      "story": "local governments are administrative offices that are smaller than a state or province. the term is used to contrast with offices at nation-state level, which are referred to as the central government, national government, or federal government. what a local government does changes depending on what country it is in, and even when they are similar what it is called often varies. common names for local governments include state, province, region, department, county, prefecture, district, city, township, town, borough, parish, municipality, shire and village. however all these names are often used informally in countries where they do not describe a legal local government.",
+      "source": "simple.wikipedia.org",
       "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "election",
+      "story": "an election is a way people can choose their candidate or their preferences in a representative democracy or other form of government. most democratic countries hold elections for their national legislature every few years. the elections select representatives for the local areas. these are called members of parliament in the british parliamentary system. parliamentary systems may have a head of government and a head of state, but sometimes the two posts are held by the same person. they may be directly elected or elected by national legislature. the legislature chooses the government, usually by majority vote in the legislature. some democracies elect a president, who then selects the government. most democratic countries also have regional, provincial or state elections and local elections. there are different ways to organize an election. voters might vote for an individual, or they might vote for a political party. this is because different countries use different voting systems. as a foundation of democracy, voting in elections happens in most countries around the world. whilst the process of electing an individual as a representative in a government can be simple, many election candidates spend large amounts of money on their campaigns. higher household incomes, inflation and population growth have contributed to this trend of higher election spend. every country around the world has different rules and regulations for voting in elections. the biggest differences amongst most major countries is the age in which an individual may vote and whether voting in an election is compulsory or not. people who are not citizens may not be allowed to vote. argentina, brazil and austria are among the few countries where the legal voting age is 16. countries that are not democracies can also hold elections. this is usually done to let the people choose a local representative . also many countries call themselves democracies, but behind the scenes have a more autocratic form of government. vatican city is a theocracy: the pope run the state. when the pope dies, or steps down, the cardinals select a new pope, through an election. when they are done, they will announce the result in a speech, called habemus papam elections keep a democratic country functioning, as they give people the right to select their own government. however, there are ways a government can \"fix\" elections. opposition candidates are permitted in former ussr countries, but they may be prevented from using broadcasting, social media, or the newspapers. this means that the ruling president is not challenged. elections which are fixed are sometimes called sham elections or show elections. countries where the candidates are elected with a very high approval rating usually use elections to hide a more autocratic form of government. when saddam hussein was elected president of iraq in 1995, he got 99.96% approval. there were about 8.4 million valid votes, 3,052 people voted against him. 99.47% of all people allowed to vote did so . another example: kim jong-un was elected the leader of north korea, in 2014, with 100% of the vote. psephology is the study of elections.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0"
+    },
+    {
+      "theme": "immigration",
+      "story": "immigration means people moving from their native regions into another country to live. people who immigrate are called immigrants. some immigrants are refugees and some ask for political asylum. if someone wants to immigrate to the united states, that person has to apply to become a legal citizen. if the person is accepted, they will receive a green card. a green card is a piece of evidence stating that the person is trying to legally stay within the country's borders. the person must keep the green card for at least five years in order to become a citizen of the united states of america. immigrant and emigrant both describe human migration. the same people are emigrants when they leave their own country or region, and immigrants when they arrive somewhere else. the phrases \"many people emigrated from europe in the 19th century to america\" and \"many people immigrated to america from europe in the 19th century\" have the same meaning. as with other changes, people go to another place for several reasons: pull: people immigrate seeking a better life. for example, in the new country, work is easier to find, quality of life is better, etc. push: people leave a place where life has become bad. for example, there may be no work, a war, violence, high criminality rates or other problems. personal reasons: people go to join their family, or marry and live with their partner. religious reasons: people may choose to migrate because of religious problems. other people may not agree with their beliefs or morals and it could leave them feeling persecuted. resource reasons: the place the person is leaving in may be environmentally discomforting. there could be a lack of food and water sources. it could potentially be too cold/hot and the person may not have the correct resources to make them comfortable, such as a house, certain types of clothing, or stores to receive the items they need. immigration has always been difficult. when people immigrate, they leave behind their friends, families, and culture. they also have to sell what they have, like a house, farm, or anything else too big to bring. immigrating is also difficult because of the strict immigration laws and qualifications within each country. it is hard to become a legal citizen of a country. it takes time and a lot of patience to become legally apart of a country. learning different languages in order to feel comfortable in a country is also extremely difficult for some people they might not have the opportunity to go a to school and learn certain things. not knowing or beginning to learn the language of a country the person immigrates to can be very uncomfortable at first. this is because communication is needed within our everyday lives, such as at work, in grocery stores, restaurants, and just everyday life. travelling can also be very expensive. many immigrants have to use all their money to pay fees or plane tickets. once immigrants arrive in the new countries, they can face many difficulties. they may have to get a job, find a house, and learn a new language. immigrants can also be victims of racism. in recent years, communitarianism has become more prevalent in france. some suburbs, such as la courneuve, sarcelles, and toulouse-le mirail, are almost exclusively populated by people from sub-saharan africa and north africa. these housing projects, built by architects such as le corbusier, aillaud, and candilis, have become communal ghettos.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Inmigrantes_europeos_llegando_a_Argentina.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "European immigrants arriving in Argentina",
+          "context": "european immigrants arriving in argentina immigration means people moving from their native regions into another country to live. people who immigrate are called immigrants.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Net_Migration_Rate.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Immigration around the world. Countries in blue have more immigrants than emigrants; countries in green have about the same; and countries in orange have more emigrants than immigrants.",
+          "context": "the same people are emigrants when they leave their own country or region, and immigrants when they arrive somewhere else. the phrases \"many people emigrated from europe in the 19th century to america \" and \"many people immigrated to america from europe in the 19th century\" have the same meaning. countries in blue have more immigrants than emigrants; countries in green have about the same; and countries in orange have more emigrants than immigrants. reasons for immigration change | change source as with other changes, people go to another place for several reasons: pull : people immigrate seeking a better life.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
+    },
+    {
+      "theme": "landform",
+      "story": "a landform is a word that describes a form of land. each type of landform is defined by its size, shape, location, and what it is made of. the scientific study of landform is called geomorphology. some other erosion landforms that are not listed in those categories include: canyon cave lavaka limestone pavement rock formations tea table deposition landform -- landforms produced by deposition of load or sediment . eolian landform - landforms produced by wind weathering.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/23/Cono_de_Arita%2C_Salta._%28Argentina%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cono de Arita, a landform in Salta ( Argentina )",
+          "context": "",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/56/Yeager-Rock-Erractic-PB110039.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A glacial erratic , Waterville Plateau, Washington .",
+          "context": "a glacial erratic , waterville plateau, washington . a landform is a word that describes a form of land .",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "latitude",
+      "story": "the latitude of the earth gives the distance north or south of the equator. it is usually used along with a measurement of longitude in order to pinpoint a location on earth. the equator is numbered 0 degrees. everything north or south of the equator is designated either as north latitude or south latitude. the north pole is 90 degrees north, and the south pole is 90 degrees south. the antarctic circle, tropic of capricorn, tropic of cancer, and arctic circle are all circles of latitude.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ab/WorldMapLongLat-eq-circles-tropics-non.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Map of Earth showing some major latitudes",
+          "context": "map of earth showing some major latitudes the latitude of the earth gives the distance north or south of the equator .",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "longitude",
+      "story": "longitude is a way to say where a place is on the earth. it is measured starting from an imaginary north-south line called the prime meridian. longitude says how far east or west of the prime meridian any place is. longitude is measured using degrees, the same way an angle is. unlike latitude, which has the equator as a natural starting position, there is no natural starting position for longitude. other meridians have been used in the past, but most scientists now agree to use the prime meridian. for centuries, navigators at sea were seldom able to know their longitude. britain created a board of longitude to pay a prize to anyone who could solve the problem. the money went to john harrison and others who made better clocks in the late 18th and early 19th centuries. unlike latitude, longitude does not maintain a constant distance between degrees since meridians all come together at the poles and are far apart at the equator. this means people near the north or south pole can cross many degrees of longitude by travelling a short distance. the time difference between longitudes is 4 minutes per degree. the distance between degrees of longitude is maximum at the equator.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ab/WorldMapLongLat-eq-circles-tropics-non.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Map of Earth showing some major latitudes",
+          "context": "map of earth showing some major latitudes longitude is a way to say where a place is on the earth . it is measured starting from an imaginary north-south line called the prime meridian .",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "economy",
+      "story": "an economy is a system of making and trading things of value. it is usually divided into goods and services . an economy assumes that there is a medium of exchange, which, in the modern world, is called 'finance'. the alternative - systems of barter - exist only on a very small scale. to better understand how the economy works, it can be discussed in three sections: the primary sector which covers raw products from farming, fishing, and mining, and so on. the secondary sector which covers manufacturing of goods. the tertiary sector which covers a range of services, provided to people and companies. the term 'real economy' is sometimes used to mean the part of the economy concerned with goods and services. this is contrasted with the 'paper economy', the financial side of the economy, which buys and sells on the financial markets. this means 'person who manages the house'.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "culture",
+      "story": "culture is a word for the 'way of life' of groups of people, meaning the way they do things. different groups may have different cultures. a culture is passed on to the next generation by learning, whereas genetics are passed on by heredity. culture is seen in people's writing, religion, music, clothes, cooking, and in what they do. the concept of culture is very complicated, and the word has some meanings. the word 'culture' is most commonly used in three ways. excellence of taste in the fine arts and humanities, also known as high culture. an integrated pattern of human knowledge, belief, and behavior. the outlook, attitudes, values, morals, goals, and customs shared by a society. most broadly, 'culture' includes all human phenomena which are not purely results of human genetics. the discipline which investigates cultures is called anthropology, though many other disciplines play a part. cultures are what make a country unique and interesting. each country has different cultural activities and cultural rituals. culture includes material goods, the things the people use and produce. culture is also the beliefs and values of the people and the ways they think about and understand the world and their own lives. different countries have different cultures. for example, some older japanese people wear kimonos, arrange flowers in vases, and have tea ceremonies. some countries oppose some things in their culture, like discrimination or religion. some countries also have multiple cultures within them. culture can also vary within a region, society or sub group. a workplace may have a specific culture that sets it apart from similar workplaces. a region of a country may have a different culture than the rest of the country. for example, in a large country like china or canada a region may have a distinctive way of talking, different types of music, and different types of dances. a group who acts or speaks differently may be said to be, or have, a subculture. ethnic groups such as the romani people in europe have a distinct culture. companies or other organizations can have a separate culture. japanese manufacturing companies often have a different culture to western companies; the workday starts with exercise, and the workers are very loyal to the company. companies in the high-technology sector often have a different culture than other companies. software and computer companies sometimes allow employees to play games during the workday, or take time off work to relax, because these companies believe that this will help the workers to think better. anthropology is studying human beings and how they relate to each other. an anthropologist is a person who studies anthropology. anthropologists study how culture shapes people and their lives. cultures constantly change as people move and communicate with new groups of people. for example, immigrants may keep some of their customs and traditions from their old country. by keeping their culture in this way, they bring pieces of their culture to a new place where others begin to experience it.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/70/Georgian_folk_dance.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Georgian folk dancers",
+          "context": "",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7d/The_bride_holding_%22stomni%22_traditional_Macedonian_vessels_made_of_clay.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Traditional Macedonian clothing",
+          "context": "traditional macedonian clothing culture is a word for the 'way of life' of groups of people, meaning the way they do things. different groups may have different cultures.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     }
   ]
 }

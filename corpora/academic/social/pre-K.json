@@ -9,73 +9,426 @@
       "theme": "family",
       "story": "a family is a group of people who, in most cases, live together. they share their money and food and are supposed to take care of one another. its members are either genetically related or legally bound to each other, for example by marriage. in many cultures, the members of a family have the same or a similar surname. the family in accordance to the catholic doctrine is treated in many articles of the catechism of the catholic church starting from the article 2201. a family is said to be society's smallest unit, its nucleus. family life is more private and intimate than public life. but in most countries there are laws for it. for example, there are restrictions for marrying within the family and bans for having a sexual relationship with relatives, especially with children. three types of family on the basic of size are: nuclear family, single-parent family and extended family. a nuclear family is made up of parents and one or more children living together. a single-parent family is one where there is one parent and one or more children. an extended family or joint families means father, mother, daughters, sons, grandparents, uncles, aunts, cousins, nieces and nephews. in many countries including china, pakistan and india, extended or joint families traditionally live together. both the \"nuclear family\" and the \"single-parent family\" are also called the \"immediate family\". foster families are families where a child lives with and is cared for by people who are not his or her biological parents.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/95/T%C3%B6rneman_Familjen.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "relationship table in portuguese. a family is a group of people who, in most cases, live together.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Tabela_de_parentescos.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Relationship table in portuguese.",
+          "context": "relationship table in portuguese. a family is a group of people who, in most cases, live together.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/80/Graus_de_Parentesco.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Relationship other table in portuguese.",
+          "context": "both the \"nuclear family\" and the \"single-parent family\" are also called the \"immediate family\". foster families are families where a child lives with and is cared for by people who are not his or her biological parents. relationship other table in portuguese.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "mother",
       "story": "a mother gives birth to babies after pregnancy. pregnancy is usually nine months. if a woman raises an adopted or biological child, then she is a mother as well. adopted children are also part of that person's family. after the birth of a baby, breastfeeding is an important part of taking care of the baby. in american english, other words for mother are \"mom,\" \"mommy,\" momma,\" \"mama\" and \"ma.\" in british english, \"mum\" and \"mummy\" are usually used instead of \"mom\" and \"mommy\". another variant, often found in the north of england, particularly yorkshire and lancashire, is \"mam\". mamma or mor is mother in norwegian. mama is mother in swahili the word maternal is an adjective used to describe thing that are related to a mother. common uses include: maternal instinct: the instinct mothers are said to have when it comes to dealing with their children maternal grandparent: the grandparents of a person on their mothers side of the family. the maternal grandparents are the father and mother of that person's mother.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dd/Zenkoji-Nagano.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A mother with her child in Japan",
+          "context": "a mother with her child in japan a mother is a female parent. a mother gives birth to babies after pregnancy .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "wikimedia commons has media related to pregnancy and childbirth . this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "father",
       "story": "the father of a person's husband or wife is their father-in-law. fathers determine the sex of their child through a sperm cell which either contains an x chromosome , or a y chromosome . a father often helps to take care of and raise a child. this can include providing food, shelter, education, and emotional support. in many families, fathers share responsibilities with mothers in raising children. fathers can influence a child's behavior, confidence, and social skills. studies show that children with involved fathers often have better emotional and educational outcomes. a biological father is the male parent whose sperm helped create the child. a social father is a man who raises a child but may not be the biological parent, such as a stepfather or adoptive father. in many cultures, fathers are seen as protectors and providers for the family. however, roles of fathers can be different depending on society and time period.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1a/Father%27s_love.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A father with his son",
+          "context": "a father with his son a father is a male parent . the father of a person's husband or wife is their father-in-law.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "child",
       "story": "a child is a person below the age of puberty or, at least in english-speaking countries, below the age of majority or in other contexts below the age of consent. a person can be called his or her parent's child, regardless of the person's age. another word for \"child\" is \"kid\". in almost all countries, it is legally required that children be educated either at school or by homeschooling. small children may go to nursery school, preschool or kindergarten. playing and using imagination is a beneficial part of child development. but in poor areas, especially in third world countries, children may be forced to work long and hard and be used for child labor, such as in the poorest areas of india, south america, or africa. when people marry and one of them have children with someone else before this marriage, that child is known as a stepchild by the child's stepparent. if both people had children, the children of the other parent are stepbrothers or stepsisters of each other. children with no parents are referred to as orphans. children who are adopted and live with non-biological parents are referred to as adoptive children.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/73/Ano_Novo_Chines_-_3984_%288442123590%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A child by her mother's side",
+          "context": "",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Sculpture_of_Madonna_with_child_and_St_John_%28Kunsthistoriches_Museum%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A child and his mother in art",
+          "context": "you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/ba/Werner_Salomon_%281893-1916%29_as_a_child.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Pictures of a child from the late 19th century",
+          "context": "pictures of a child from the late 19th century a child is a person below the age of puberty or, at least in english-speaking countries, below the age of majority or in other contexts below the age of consent . a person can be called his or her parent's child, regardless of the person's age.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "friendship",
       "story": "friendship means familiarity with and liking of each other's mind. people who are friends talk to each other and spend time together. they trust one another and also help each other when they are in trouble or are hurt. friends are people that can be looked up to and trusted. friends usually have similar interests. a friend is one who admires another person. the strength of the bond of friendship between two people can vary. if the bond is very strong, they are called best friends. there are expectations, demands, and complaints in friendship too. if friends do not match your expectations, it does not mean you will break the friendship. it is all about understanding, realizing, and helping whenever possible. friendship is both good and bad. generally, it is only people of similar age, character, and background, mentality, etc., who can understand the problems of another person. friends are needed for support and for sharing. there are many different types of friendships. most people find friends at a young age. some do not have friends until much later in life, others will never make friends in their lifetime. friends leaving can be caused by differences in opinion or not talking to each other for a long time. many movies and tv shows are based on people making friends. an example of a friendship would be that of sierra, olivia, emma, langli, and mallory in the movie eight grade whittier. the word friendship is also the official motto of texas.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Beatrice_overhears_Hero_and_Ursula.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Friendship",
+          "context": "friendship friendship means familiarity with and liking of each other's mind . people who are friends talk to each other and spend time together .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "home",
       "story": "a house is a building that is made for people to live in. it is usually built for a family . it is a \"permanent\" building that is meant to stay standing. it is not easily packed up and carried away like a tent, or moved like a caravan. if people live in the same house for more than a short stay, then they call it their \"home\". being without a home is called homelessness. houses are usually occupied by a single family or housemates, like in the cases of group homes and boarding houses. houses come in many different shapes, sizes and architectural styles. they range from one room shacks and cabins to the largest of palaces, mansions and castles. houses also are made of many different materials from thatch and wood, to brick, stone and modern materials like metal. typically, a house contains only one to three floor levels/ storeys, but four or more stories are common in urban and waterfront areas. basements are common in certain climatic zones. houses can be standard shaped or can take unorthodox shapes such as of domes and pyramids. houses can be detached stand-alone buildings or joined to other houses at the sides to make a \"terrace\" or \"row house\" . a big building with many levels and apartments is called \"a block of flats\" or an apartment building. one of the differences between a house and an apartment is that a house has a front door to the outside world, whereas the main door of an apartment usually opens onto a passage or landing that can be used by other people in the building. houses have a roof to keep off the rain and sun, and walls to keep out the wind and cold. they have window openings to let in light, and a floor. houses of different places may look different from each other, because of different materials, climate, and styles. if a house is important and historic enough, it can be a museum showcasing how the house's residents lived. most houses have special areas or rooms for people to do the things that they need to live comfortably. a modern house has a place to cook food, a place to eat, places to sleep and a place to wash. these things are usually done in separate rooms, which are called the kitchen, the sitting room, the bedrooms, the bathroom, the toilet . many houses have a separate dining room for eating meals and a separate laundry. in some houses the toilet is in the bathroom, and in other houses it is separate. many houses may also have a \"study\" or computer room and a \"family room\" where the children can play games and watch television. in many other countries, including most of europe, owning a house like this is something that only the richer families can afford, and is just a dream for most people. in many very poor countries, a lot of people live crowded in houses with only one room. they often have to share a toilet with many other families, and have to do the cooking outside. the house might be made of materials that can be found nearby like mud bricks and grass or from second-hand materials like corrugated iron and cardboard boxes. in many cities there are thousands of small houses crowded together with narrow alleys between them. a small house is often called a cottage. in england, where this word comes from, it is used to mean a house that has one main storey, with a second, lower storey of bedrooms which fit under the roof upstairs. cottages are usually found in villages or in the countryside. they are nearly always built from material that can be found nearby. in many places the word cottage is used to mean a small old-fashioned house. in the united states the word cottage is often used to mean a small holiday home. a tiny house is one that's usually 500sqft / 48sqm in size and typically built on a trailer or barge and thus portable. tiny houses can also be built on smaller versions of conventional foundations. a semi-detached house is a building that has two houses side by side and covered over by just one big roof. each house has a pathway to one side, leading from the front to the backyard. semi-detached houses are very common in some cities, and can be single storey or several storeys high. a row or terraced house is a house that is part of a row of houses joined at the side walls. many cities and towns have thousands of row houses because they are a good way to build several houses close together. many row houses have two rooms downstairs and two rooms upstairs, with a kitchen or wash area at the back. houses like this were built for poor factory workers and coal miners in many cities and towns. \"terrace houses\" are a type of row house where each house looks like the others. row houses are not always small. some cities have large beautiful row houses, such as the royal crescent, which was built in the 1770s at bath in england and is a famous example of georgian architecture. in some places, the word \"bungalow\" is used for any house that is all on one level. the word came from india and for a long time was used for a house that is built all or mostly on one level and has a veranda where people can sit or work outdoors, but under a shady roof. a bungalow often has a hall down the middle of the house to let the breeze blow through. bungalows are often seen in countries with hot summers, in india, south east asia, south africa, parts of the united states, south america, australia and new zealand. in regions with flooding, a bungalow is often built up on wooden \"stilts\" or a high basement. in the 1800s, bungalows were nearly always built of wood, but from the 1920s it became fashionable to build them of brick as well. a farmhouse may look like a cottage, a bungalow or a mansion. in many countries a farmhouse can look different to a house in a town. as well as having a place for people to live, it also has a place for animals. three typical types of farmhouses are found. many farm houses are long and have two doors. one door leads to the rooms used by the family. the other door opens into a stable for the cows, sheep and chickens. the stable part often has a loft where hay can be kept to feed the animals in the winter. another type of farmhouse has two storeys with a big stable and storeroom underneath, with the rooms for the family on the upper floor. another type of farmhouse has buildings such as the family house, the barn and the stable all joined around a central courtyard. old farmhouses of these three types can be found in many parts of europe and great britain. a mansion is a big grand house, usually with two stories and sometimes more. a mansion often has beautiful architecture, and shows that the person for whom it was designed and built was rich. mansions often have beautiful gardens. sometimes a mansion does not belong to a private family, but to a town council, to a big business company, to a church or college and is an official residence for a person with an important job to live and to entertain guests. a mansion often has rooms which are not found in ordinary houses, such as a drawing room, a ballroom, a library and a music room. mansions often need servants to help keep them in order and have servants' quarters and special rooms where the servants do particular jobs such as cleaning. well-known mansions are the white house in washington, d.c. where the president of the united states lives and mansion house in london where the lord mayor of london lives. a castle is a fortified house constructed in the medieval period, or a house constructed to look like a medieval fortification. castles protected feudal lords from their attacking enemies. in later periods, castles were built as part of romanticist revival movements of the 19th and early 20th centuries. a palace is a house that is very grand for people like kings and queens, or other rich people. many palaces are homes of royal or aristocratic people. some old palaces been changed by people who lived there over many hundreds of years. one of the best-known palaces in the world is buckingham palace, a royal palace in london. the largest palace in the world is the louvre which was built in paris for the kings of france. it now holds a famous art gallery. houses are usually built from types of material that can easily be made or bought near the place where the house is built. because of this, old houses in different towns and different villages look quite different to each other, even in the same country. in modern times building materials can be transported easily and this means that a builder can choose materials from far away. in many parts of the world, mud or clay are the main building materials. clay is a type of soil that sticks together more strongly than most other types of soil. there are three main ways of building walls with mud and clay. one way to make a house of clay is simply to pile up the mud or wet clay with the hands, and flatten it into a wall shape. often animal hair, straw and dung is mixed with the mud so that the fibres help hold it together. some wooden beams and thin wooden slats are used to hold the roof, which is also made of mud or clay. the roof is flat and strong enough to walk on, but must slope a bit, in case of rain. the walls are often protected from rain with plaster and paint. in many countries the walls are usually white, but in other places all the houses are painted different bright clolours. these types of houses are only found in very dry countries. houses built in this way give good protection against the very hot sun and hot dry winds of the dessert. in the cold nights they stay quite warm. a second way to make the walls of a house out of mud of clay is \"wattle and daub\". \"wattle\" is weaving from sticks. first, long sticks are stuck into the ground and then very thin sticks are woven through them, like making a basket. the thin wattle wall is then \"daubed\" or stuck all over on the inside and the outside with damp clay, mud or plaster, usually with some chopped straw or animal hair to help it stick together. \"wattle and daub\" are often found in quite damp places where bendy willow trees or acacias grow. the walls need good protection from the rain, so houses like this often have roofs that have big \"eaves\"; the roof sticks out all around the house so that the water does not run down the walls. \"wattle and daub\" houses often have big roofs made of straw, reeds, banana leaves, palm leaves, wooden shingles or big sheets of bark. a third way to make a house of mud or clay is to shape the wet soil into bricks before building the walls. the bricks can be shaped by hand, but more often they are shaped in boxes or \"moulds\" so that all the bricks are just the same size and shape. they are left in the hot sun until they have dried hard. then walls can be made which are the same thickness all the way up. clay bricks that are dried in the sun were used in egypt and mesopotamia for thousands of years. it was discovered that if clay was used, rather than mud, very strong bricks could be made by \"firing\" them in a \"kiln\" . \"fired\" bricks were like pottery; they did not wash away easily in rain and would sometimes last for thousands of years. the bricks were joined to each other with a type of cement called \"mortar\". some houses built by the ancient romans are still standing 2000 years later. bricks became one of the most common building materials. in most cities, nearly all the houses are built of bricks because they are long lasting, they do not need repairing very often. brick houses are generally made strong by having all the main walls two bricks thick. two walls are built side by side which are \"bonded\" by having some bricks set so they make a bridge between the two layers. the pattern of the bonded bricks can be seen from the outside. the two main patterns are called \"flemish bond\" and \"british bond\". because brick walls are heavy, a brick house needs to have a very firm base or \"foundation\" to sit on. this often means digging deep into the ground to lay a foundation before a brick house can be built. houses with brick walls often have tiled roofs, because the tiles can often be made at the brick factory. modern bricks and tiles come in a big range of colours, because different materials can be transported from different areas. people who are employing a builder to build a home are nowadays often shown pictures of all the colours of bricks and tiles that are available. this means that although in old towns, every house is made of the same type of bricks, in a modern suburb every house may look quite different. the bricks range from white through shades of red, yellow and brown and are sometimes very patterned, while the roof tiles include blue, green and yellow as well as the traditional red, orange and brown. in some countries, the clay for bricks does not set very hard, and washes away more easily. if the bricks are not very hard, then it is usual to cover them with plaster or cement, which can then be painted. in other places, brick walls are not very fashionable so the walls are plastered and made more elegant with decoration. plastering or cementing over brickwork is called \"render\" or \"stucco\". in many countries such as austria, italy and spain, the brick houses are usually covered with stucco and are often painted cream, yellow, orange, pink, red or \"orchre\" . houses made of timber are found wherever there are, or there has once been big forests. timber houses are also often found in seaside towns where the sea air makes brick and stone houses feel cold and damp. one of the oldest ways to make a timber house is to cut tree-trunks into logs. the logs are then split in half so that there is a flat side for the inside of the wall and a round side for the outside. the logs then have big \"notches' or holes cut into the ends, so that when they are piled up, the logs lock together at the corners of the building without any nails. these log cabins can be seen in canada, in switzerland, in scandinavia, in eastern europe and in japan. many houses are made with a wooden \"frame\" or skeleton. on the outside of the frame, to keep out the weather, rows of flat boards are nailed, which overlap each other so that the rain cannot come in. walls like this are called \"clapboard\" or \"weatherboard\". clapboard houses are generally painted to preserve the timber. in england and some parts of the united states, they are nearly always painted white. in australia where \"weatherboard\" houses are very common, they are usually painted in bright colours. in england and australia, clapboard houses are usually quite small, but in the united states there are very many grand mansions that are built in this way. some houses with a wooden frame have a brick wall on the outside and a wall of plastered board on the inside. this is called \"brick veneer\". a well-known type of old-fashioned house is the \"half-timbered\" house. these are seen in the british isles, france, and across northern europe and the alps. these houses date mainly from about 1200 to about 1800. half-timbered houses have a wooden frame built up of lots of thick timber pieces that are generally quite short. the timbers are arranged in a pattern with lots of diagonal pieces to act as braces. the strong wooden frame is then filled in with all sorts of other material. in some houses the \"infil\" is mainly of brick. in other houses, \"wattle and daub\" is used between the timber. other houses have infill of \"rubble\" in clay or mud. the \"infil is generally plastered over and painted white while the timbers are often stained black. if they are not stained, they turn pale silvery grey. hundreds of these houses exist, including some that are quite grand. in the 1800s and early 1900s, there was a fashion to copy \"half-timbering\" on modern brick houses. in places where there is lots of stone, many houses are built of it. in many parts of the world, little cottages are built of stone. many mansions and palaces are also built of stone, as are nearly all castles. some of the oldest houses in the world are made of stone, because stone lasts a long time. they are circular houses with walls of flat stone slabs laid carefully on each other. the walls sloped gently inwards to meet in a stone roof. other prehistoric stone houses had roofs of thatch. in parts of the world where there is stone that can be broken into flat slabs, then walls can be built up without any \"mortar\" to join the stones together. but the wind blows through the gaps, so the walls need timber or render on the inside, to keep out the weather. stone houses of this type often have roofs made of flat stones as well. stone roofs are very heavy and are laid on very thick beams. many stone cottages are built of flint or \"rubble\" or \"cobble\". these are broken stones that are brought from nearby hills, or stones picked up from the farmer's fields, or gathered from a river bed. the walls are built up with stones and mortar. in some places where flint is used, the hard stones are split or \"knapped\" so that when they are placed on the outside of the wall, they show a shiny flat surface which is more attractive than the dull lumpy outside of a flintstone. some types of stone, particularly limestone and sandstone, can easily be cut into big blocks that can be built up like bricks. it can also be \"dressed\" or smoothed on its surfaces. in villages that are near a limestone or sandstone quarry where the stone is cut, many of the cottages are built of neatly cut stones. but in towns that are far away from the quarries, it is only the mansions and palaces that are built of stone, because it is very heavy and expensive to carry across the country. the good thing about the types of stone that are used for grand houses is that they can easily be carved into decoration. grand houses often have decorative carvings around the doors and windows. the building stones may also have special textures at the basement or the corners of the building. grand stone houses often have roofs of thin stone called slate. they also have roofs of expensive materials like copper and lead. modern houses are often made of \"pre-fabricated\" parts that are partly built in a factory, and are easy to put together at the site of the building. many different types of materials for making houses have been developed in the 20th century. many houses are now made with steel frames put together with rivets and bolts. walls and roofs can be made of boards that combine fibre with cement. these boards are thin, light in weight to transport, easy to put on the frame, and much cheaper than bricks or timber. a similar material can be made into roof tiles. metal roofing can be rolled into thin sheets, and made in many different colours, with matching gutters and downpipes. irving and p.reynolds, a pictorial guide to identifying australian architecture, angus and robertson's, isbn 0-207-16201-8 w.r.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/Mansi%C3%B3n_Masoudieh%2C_Teher%C3%A1n%2C_Ir%C3%A1n%2C_2016-09-17%2C_DD_58.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A mansion house in Tehran , Iran",
+          "context": "houses of different places may look different from each other, because of different materials, climate , and styles. if a house is important and historic enough, it can be a museum showcasing how the house's residents lived. a mansion house in tehran , iran most houses have special areas or rooms for people to do the things that they need to live comfortably. a modern house has a place to cook food, a place to eat, places to sleep and a place to wash.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Single-family_home2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A newly built detached house in the US.",
+          "context": "in some houses the toilet is in the bathroom, and in other houses it is separate. many houses may also have a \"study\" or computer room and a \"family room\" where the children can play games and watch television. a newly built detached house in the us.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/06/Jakarta_slumlife16.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A house in Jakarta",
+          "context": "a house in jakarta houses in very poor places change | change source in many very poor countries, a lot of people live crowded in houses with only one room. they often have to share a toilet with many other families, and have to do the cooking outside.",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/84/EastGarstonCottages%28AndrewSmith%29Aug2006.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cottages in the village of East Garston in England",
+          "context": "the house might be made of materials that can be found nearby like mud bricks and grass or from second-hand materials like corrugated iron and cardboard boxes. in many cities there are thousands of small houses crowded together with narrow alleys between them. cottages in the village of east garston in england cottage change | change source a small house is often called a cottage . in england, where this word comes from, it is used to mean a house that has one main storey, with a second, lower storey of bedrooms which fit under the roof upstairs.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/db/Numbers_550_to_556_Lordship_Lane_N22.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Semi-detached houses in England",
+          "context": "tiny houses can also be built on smaller versions of conventional foundations . semi-detached houses in england a semi-detached house is a building that has two houses side by side and covered over by just one big roof. each house has a pathway to one side, leading from the front to the backyard.",
+          "licence": "CC BY-SA 2.0 uk"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/36/Panorama_of_the_Royal_Crescent_-_panoramio.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Royal Crescent, Bath, England",
+          "context": "houses like this were built for poor factory workers and coal miners in many cities and towns. \"terrace houses\" are a type of row house where each house looks like the others. royal crescent, bath, england row houses are not always small. some cities have large beautiful row houses, such as the royal crescent , which was built in the 1770s at bath in england and is a famous example of georgian architecture .",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b6/SydneyBuilding0129.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A bungalow in Sydney",
+          "context": "a bungalow in sydney in some places, the word \"bungalow\" is used for any house that is all on one level. the word came from india and for a long time was used for a house that is built all or mostly on one level and has a veranda where people can sit or work outdoors, but under a shady roof.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/84/0_Nobressart_-_Ancienne_ferme.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A farmhouse in Belgium",
+          "context": "in regions with flooding, a bungalow is often built up on wooden \"stilts\" or a high basement. in the 1800s, bungalows were nearly always built of wood, but from the 1920s it became fashionable to build them of brick as well. a farmhouse in belgium farmhouse change | change source a farmhouse may look like a cottage, a bungalow or a mansion. in many countries a farmhouse can look different to a house in a town.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/Dalfsen_Havezathe_Den_Berg.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A mansion in Netherlands",
+          "context": "another type of farmhouse has buildings such as the family house, the barn and the stable all joined around a central courtyard. old farmhouses of these three types can be found in many parts of europe and great britain. a mansion in netherlands a mansion is a big grand house, usually with two stories and sometimes more. a mansion often has beautiful architecture , and shows that the person for whom it was designed and built was rich.",
+          "licence": "CC BY-SA 2.5 nl"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/13/Harewood_House%2C_seen_from_the_garden.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Harewood House is really a palace.",
+          "context": "well-known mansions are the white house in washington, d.c. where the president of the united states lives and mansion house in london where the lord mayor of london lives. harewood house is really a palace. castle change | change source a castle is a fortified house constructed in the medieval period, or a house constructed to look like a medieval fortification .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/ee/Bahareque_llanos_house_from_Venezuela.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A farmhouse in Venezuela made of wooden slats and clay daub.",
+          "context": "because of this, old houses in different towns and different villages look quite different to each other, even in the same country. in modern times building materials can be transported easily and this means that a builder can choose materials from far away. a farmhouse in venezuela made of wooden slats and clay daub. in many parts of the world, mud or clay are the main building materials.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Buccleuch_Cottages_Beaulieu_New_Forest.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Brick and tile houses in Beaulieu, England",
+          "context": "then walls can be made which are the same thickness all the way up. clay bricks that are dried in the sun were used in egypt and mesopotamia for thousands of years. brick and tile houses in beaulieu, england fired bricks change | change source it was discovered that if clay was used, rather than mud, very strong bricks could be made by \"firing\" them in a \" kiln \" .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "neighbourhood",
       "story": "a neighbourhood or neighborhood is a geographic community in a larger city, town or suburb. neighbourhoods are often social communities because the people that live in them commonly talk with each other. researchers have not agreed on an exact definition. according to urban scholar lewis mumford, neighbourhoods have always exist where humans live. many of the functions of the city are usually distributed into neighbourhoods. archaeologists have found evidence of neighbourhoods in the ruins of most of the earliest cities around the world. historical documents give information about neighbourhood life in many historical preindustrial or nonwestern cities. neighbourhoods are usually created by social interaction between people living near each another. they are local social groups larger than households that are not under the control of city or state officials. in some early urban traditions, basic municipal functions such as protection, marriages, cleaning and repairs are done by neighbourhoods. this is shown to have happened in historical islamic cities. most ancient and historical cities also had administrative districts. these were used by the government for taxation and social control. administrative districts are usually larger than neighbourhoods. they often cover areas that are larger than just one neighbourhood. sometimes, administrative districts are just one neighbourhood. this leads to a lot of control of social life by officials. for example, in the t'ang period chinese capital city chang'an, neighbourhoods were districts. there were state officials who controlled life and activity at the neighbourhood level. neighbourhoods in very old cities often grouped certain people together. ethnic neighbourhoods were important in many old cities. they are still common in cities today. economic specialists, including craft makers, merchants, and others, could be grouped together in neighbourhoods. there were also neighbourhoods based around certain religions. one important part to neighbourhood being different from each other and their people getting along well was how people moved from rural areas to the cities. this was always happening in old cities. the people moving to the cities often moved in with relatives and people they knew from before moving to the city. = = in the mainland of the people's republic of china, the term is usually used for the urban administrative division. these divisions are found below the district level. a subdistrict level may exists in some cities. the naming may be different from one city to another. neighbourhoods usually have 2,000 to 10,000 families. within neighbourhoods, families are grouped into smaller groups of 100 to 600 families. these smaller groups are supervised by a residents' committee. these groups are often broken down into even smaller groups of fifteen to forty families. in most urban areas of china, neighbourhood, community, residential community, residential unit, residential quarter have the same meaning. = = neighbourhood in turkey is an administrative unit within municipalities. it has an official status but no governmental powers. neighbourhoods are administered by the mukhtar and the \"neighbourhood seniors council\". the mukhtar is elected by the people living in the neighbourhood. he is an administrator of the district governor. mukhtar also has a seat at the city assembly. this is an organization for the coordination of the public institutions in the city. neighbourhood administrators get a salary from the central government. they also get money from the fees paid for dealing with certain documents. = = the term has no official use in the united kingdom. it is often used by local boroughs for sub-divisions of their area for the delivery of certain services and functions. it is also used as a term to refer to a small area within a town or city. the term is commonly used to refer to organisations which deal with such a very local issues, such as neighbourhood policing or neighbourhood watches. government statistics for local areas are often called neighbourhood statistics even though the data is usually broken down into districts and wards. in canada and the united states, neighborhoods often have official or semi-official status. this is commonly done using neighbourhood associations, neighbourhood watches, or block watches. these may deal with such things as lawn care and fence height. they may provide such things as block parties, neighbourhood parks, and community security. in some other places the organisation is the parish. a parish may have several neighbourhoods in it depending on the area.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Chelsea1217.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Chelsea neighborhood of Manhattan in New York City",
+          "context": "the chelsea neighborhood of manhattan in new york city a neighbourhood or neighborhood is a geographic community in a larger city , town or suburb . neighbourhoods are often social communities because the people that live in them commonly talk with each other.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/78/Typical_cypriot_Neighbourhood_in_Aglandjia_Nicosia_Republic_of_Cyprus.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "neighbourhood administrators get a salary from the central government. they also get money from the fees paid for dealing with certain documents .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "toy",
       "story": "a toy is something to play with. toys are for children, adults, and animals. before 1970, most toys were made of metal and wood. now, they are mostly made of plastic. sometimes they are made of electronic material. some people also consider video games toys. toys include balls, plastic cars, and dolls. they also can be sex related products. toys originated many years ago. dolls of infants, animals, and soldiers and toy tools are found in archaeological places. the origin of the word \"toy\" is not known. however, it is thought that it was first used in the 14th century. the earliest toys were made from rocks, sticks or clay. in ancient egypt, children played with dolls made of clay and sticks. in ancient greece and ancient rome, children played with dolls made of wax or terracotta, sticks, bows and arrows, and yo-yos. later these developmental games were used in creation of indoor playsets for homes. when greek children, especially girls became adults, it was required to sacrifice the toys to the gods. on the eve of their wedding, young girls around fourteen would offer their dolls in a temple as a rite of passage into adulthood.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b5/Marionette_Theatre.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A little theatre with marionettes, Italy , 1959",
+          "context": "toys include balls , plastic cars , and dolls . they also can be sex related products . a little theatre with marionettes, italy , 1959 toys originated many years ago. dolls of infants , animals , and soldiers and toy tools are found in archaeological places.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/07/Roman-toys.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Toys from Ancient Rome, including a few that are still played with today, including a doll, dice, rattles, and toy dishes",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Marbles_01.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Marbles",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/61/China_Doll_With_Cloth_Body_Wearing_Pink_and_White_Print_Dress.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An doll from 1845",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Teddy_bear_early_1900s_-_Smithsonian_Museum_of_Natural_History.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A teddy bear",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/05/Mexican_guitars_and_toys.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Mexican guitars and toys",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Darts_in_a_dartboard.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A dart board",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "game",
-      "story": "a game is something that people often do for fun. many sports are games, and there are many professional sports. in those cases, people can make money, because it is a type of entertainment. there are different kinds of games using many kinds of equipment. for example, in video games, people often use controllers or their keyboard to control what happens on a screen, such as television, mobile screens and computer ones too. in card games, players use playing cards. there are also games that use your body, such as the kinect. most games need equipment, but not always. children's street games often need no equipment. in board games, players may move pieces on a flat surface called a board. the object of the game varies. in race-type games like ludo, the object is to reach the end first. in go, the object is to surround more space. in soccer, also known as football, it is to score more goals. some games have complicated rules, some have simple rules. ludwig wittgenstein was most likely the first academic philosopher to talk about the meaning of the word game. in his philosophical investigations, wittgenstein showed that the elements of games, such as play, rules, and competition, all fail to really define what games are. he decided that people apply the term game to a range of different human things that are related, but not closely related . homo ludens is a book written in 1938 by dutch historian johan huizinga. it discusses the importance of the play element in culture and society. huizinga suggests that play is a condition for the generation of culture. something that is entertainment is a plaything if it is interactive. movies and books are entertainment, but not interactive. if a plaything does not have any goals to complete, it is a 'toy. if a plaything has goals, it is a challenge. if a challenge does not have an opponent, it is a puzzle. if it has an opponent, it is a conflict. if the player can do better at something than an opponent but cannot affect the opponent, the conflict is a competition. racing and figure skating are competitions. however, if attacks are allowed, then the conflict qualifies as a game. crawford's definition of a game is: an interactive, goal-oriented activity, with opponents to play against, and where players and opponents can interfere with each other. \"a game is a system in which players engage in an artificial conflict, defined by rules, that results in a quantifiable outcome\". \"a game is a form of art in which participants, termed players, make decisions in order to manage resources through game tokens in the pursuit of a goal\". \"a game is an activity among two or more independent decision-makers seeking to achieve their objectives in some limiting context\". \"at its most elementary level then we can define game as an exercise of voluntary control systems in which there is an opposition between forces, confined by a procedure and rules in order to produce a disequilibrial outcome\". \"a game is a form of play with goals and structure\". the first writer of history was herodotus, an ancient greek historian. he wrote a book called \"the histories\" around 440 bc, which is nearly 2500 years ago. some of the stories he wrote were not true, and it is unknown if this is one of those. herodotus wrote about king atys; he ruled about 5,500 [five thousand five hundred] years ago in a country called lydia. his country was in western asia minor, near modern greece. atys had a serious problem; his lands had very little food because the climate was not good for agriculture. the people of lydia demonstrated patience and hoped that the good times of plenty would return. but when things failed to get better, the people of lydia thought up a strange solution for their problem. the path they took to fight their natural need to eat - the hungry times caused by the unusually hard climate - was to play games for one entire day so that they would not think about food. on the next day they would eat, so eating occurred every second day. in this way they passed 18 years, and in that time they invented dice, balls, and other the games commonly played today. games appear in all cultures all over the world, an ancient custom that brings people together for social opportunities. games allow people to go beyond the limit of the immediate physical experience, to use their imagination. common features of games include a finish that cannot be predicted, agreed upon rules, competition, separate place and time, imaginary elements, elements of chance, established goals and personal enjoyment. games are used to teach, to build friendships, and to indicate status. in his 1938 history book the dutch writer, johan huizinga, says that games are older than human culture. he sees games as the beginning of complex human activities such as language, law, war, philosophy and art. ancient people used bones to make the first games. dice are very early game pieces. games began as part of ancient religions. the oldest gaming pieces ever found - 49 [forty nine] small painted stones with pictures cut into them from 5,000 [five thousand] years ago - come from turkey, so perhaps the history of herodotus is true. one of the first board games, senet, appears in ancient egypt around 3,500 [three thousand five hundred] years ago. the ancient greeks had a board game similar to checkers, and also many ball games. the first reference to the game of go occurs in chinese records from around 2,400 [two thousand four hundred] years ago.",
+      "story": "a game is something that people often do for fun. many sports are games, and there are many professional sports. in those cases, people can make money, because it is a type of entertainment. there are different kinds of games using many kinds of equipment. for example, in video games, people often use controllers or their keyboard to control what happens on a screen, such as television, mobile screens and computer ones too. in card games, players use playing cards. there are also games that use your body, such as the kinect. most games need equipment, but not always. children's street games often need no equipment. in board games, players may move pieces on a flat surface called a board. the object of the game varies. in race-type games like ludo, the object is to reach the end first. in go, the object is to surround more space. in soccer, also known as football, it is to score more goals. some games have complicated rules, some have simple rules. ludwig wittgenstein was most likely the first academic philosopher to talk about the meaning of the word game. in his philosophical investigations, wittgenstein showed that the elements of games, such as play, rules, and competition, all fail to really define what games are. he decided that people apply the term game to a range of different human things that are related, but not closely related . homo ludens is a book written in 1938 by dutch historian johan huizinga. it discusses the importance of the play element in culture and society. huizinga suggests that play is a condition for the generation of culture. something that is entertainment is a plaything if it is interactive. movies and books are entertainment, but not interactive. if a plaything does not have any goals to complete, it is a 'toy. if a plaything has goals, it is a challenge. if a challenge does not have an opponent, it is a puzzle. if it has an opponent, it is a conflict. if the player can do better at something than an opponent but cannot affect the opponent, the conflict is a competition. racing and figure skating are competitions. however, if attacks are allowed, then the conflict qualifies as a game. crawford's definition of a game is: an interactive, goal-oriented activity, with opponents to play against, and where players and opponents can interfere with each other. \"a game is a system in which players engage in an artificial conflict, defined by rules, that results in a quantifiable outcome\". \"a game is a form of art in which participants, termed players, make decisions in order to manage resources through game tokens in the pursuit of a goal\". \"a game is an activity among two or more independent decision-makers seeking to achieve their objectives in some limiting context\". \"at its most elementary level then we can define game as an exercise of voluntary control systems in which there is an opposition between forces, confined by a procedure and rules in order to produce a disequilibrial outcome\". \"a game is a form of play with goals and structure\". the first writer of history was herodotus, an ancient greek historian. he wrote a book called \"the histories\" around 440 bc, which is nearly 2500 years ago. some of the stories he wrote were not true, and it is unknown if this is one of those. herodotus wrote about king atys; he ruled about 5,500 five thousand five hundred years ago in a country called lydia. his country was in western asia minor, near modern greece. atys had a serious problem; his lands had very little food because the climate was not good for agriculture. the people of lydia demonstrated patience and hoped that the good times of plenty would return. but when things failed to get better, the people of lydia thought up a strange solution for their problem. the path they took to fight their natural need to eat - the hungry times caused by the unusually hard climate - was to play games for one entire day so that they would not think about food. on the next day they would eat, so eating occurred every second day. in this way they passed 18 years, and in that time they invented dice, balls, and other the games commonly played today. games appear in all cultures all over the world, an ancient custom that brings people together for social opportunities. games allow people to go beyond the limit of the immediate physical experience, to use their imagination. common features of games include a finish that cannot be predicted, agreed upon rules, competition, separate place and time, imaginary elements, elements of chance, established goals and personal enjoyment. games are used to teach, to build friendships, and to indicate status. in his 1938 history book the dutch writer, johan huizinga, says that games are older than human culture. he sees games as the beginning of complex human activities such as language, law, war, philosophy and art. ancient people used bones to make the first games. dice are very early game pieces. games began as part of ancient religions. the oldest gaming pieces ever found - 49 forty nine small painted stones with pictures cut into them from 5,000 five thousand years ago - come from turkey, so perhaps the history of herodotus is true. one of the first board games, senet, appears in ancient egypt around 3,500 three thousand five hundred years ago. the ancient greeks had a board game similar to checkers, and also many ball games. the first reference to the game of go occurs in chinese records from around 2,400 two thousand four hundred years ago. go is a two-player game of strategy. players compete to win more territory by placing black and white \"stones\" on a board made up of 19 nineteen lines by 19 nineteen lines. originally the game go was used by political leaders to develop skill in strategy and mental skill. knowing how to play go was required by a chinese gentleman, along with the skills of artistic writing or calligraphy, painting and the ability to play a musical instrument. these were regarded as the four most important skills. in ancient china, a gentleman had to pass a test in these four key skills in order to get a good paying job in the government. the chinese brought go to korea, and it entered japan around 1,500 one thousand five hundred years ago, and it has been popular ever since. in march 2016 a deepmind computer program beat the best go players in the world. go is believed to be the most complex board game ever created. the computer beat the south korean go master lee se-dol, and lee was surprised by the result. he acknowledged defeat after three and a half hours of play. demis hassabis, who made the deepmind program, called it an important moment in history, because a machine beat the best person in the world in an intelligent game. such computer programs rely on what is called artificial intelligence. the first computer game that was ever created was probably the game oxo by alexander douglas in 1952. it was a version of tic-tac-toe. most people consider the first true computer game where players actually participate to be tennis for two developed in 1958 by the physics scientist william higginbotham. he wanted to teach about gravity, the force of attraction between masses. these men who created the early computer games did not predict the potential for the popular use of games, because at that period in modern history it took a small room full of computers to make these games work. another early game was spacewar!, developed in 1961 by mit university student steve russell. in 1972 the company atari produced the pong game which was a huge commercial success; being a commercial success means that it made a lot of money. this was the true beginning of computer games that could be played at home.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Senet_game_pieces_%28Tutankhamun%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Senet, the first known board game, made in ancient Egypt.",
+          "context": "senet, the first known board game, made in ancient egypt.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2a/FloorGoban.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Go. Invented in China, it passed to Korea and Japan",
+          "context": "invented in china, it passed to korea and japan this simple pie chart illustrates the timeline for the history of games.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/29/Simple_Pie_Chart_Timeline_of_the_History_of_Games.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "This simple pie chart illustrates the timeline for the history of games.",
+          "context": "this simple pie chart illustrates the timeline for the history of games.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Tug-of-war.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Tug of war is an easily organized, impromptu game that requires little equipment",
+          "context": "tug of war is an easily organized, impromptu game that requires little equipment a game is something that people often do for fun. many sports are games, and there are many professional sports.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "birthday",
       "story": "in many places, on a person's birthday, he or she celebrates with friends and family at a party, where they eat cake or other foods, and get gifts. it is a common use to offer gifts in packages decorated for the occasion and accompanied by greeting cards. not everyone celebrates birthdays, including jehovah's witnesses. in much of the english-speaking world people sing the song \"happy birthday to you\" to the person celebrating her or his birthday. there are similar songs in other languages. a birthday cake is usually decorated and covered with candles. sometimes the number of candles is the same as the age of the birthday person. children usually reach their age of majority on a birthday. in the united states of america and also in many other countries a person can vote and become a legal adult at age 18. in judaism, boys have a bar mitzvah around the time they become 13. girls sometimes have a bat mitzvah around their 12th or 13th birthday. in latin america, a quinceanera party marks a girl's 15th birthday. a person's astrological sign is based on his or her birthday. a birthstone symbolizes the month of birth.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Birthday_cake_to_please_a_72_year_old.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A mixed fruit birthday cake",
+          "context": "sometimes the number of candles is the same as the age of the birthday person. coming of age change | change source children usually reach their age of majority on a birthday. a mixed fruit birthday cake in the united states of america and also in many other countries a person can vote and become a legal adult at age 18. in judaism , boys have a bar mitzvah around the time they become 13.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "sharing",
       "story": "sharing is the joint use of a resource or space. it is also the process of dividing and distributing. in its narrow sense, it refers to joint or alternating use of inherently finite goods, such as a common pasture or a shared residence. still more loosely, \"sharing\" can actually mean giving something as an outright gift: for example, to \"share\" one's food really means to give some of it as a gift. sharing is a basic component of human interaction, and is responsible for strengthening social ties and ensuring a person's well-being. apart from obvious instances, which can be observed in human activity, many examples can be found in nature. when an organism takes in nutrition or oxygen, for instance, its internal organs are designed to divide and distribute the energy taken in, to supply parts of its body that need it. flowers divide and distribute their seeds. in a broader sense, it can also include free granting of use rights to goods that can be treated as nonrival goods, such as information. file sharing is the practice of distributing or providing access to digitally stored information, such as computer programs, multi-media , documents, or electronic books. it may be implemented through a variety of ways. sharing is a key feature in the developing field of free software and open source software, with implications for economics. this is leading to a need to review licensing, patents and copyright, and to controversy in these areas, as well as new approaches like creative commons and the gnu general public license. furthermore, sharing is a key feature of internet culture in which images, videos, links, knowledge and other content are shared on web 2.0-platforms such as reddit. in computer science, the issue of handling shared resources figures prominently. for example, time-sharing is an approach to interactive computing in which a single computer is used to provide apparently simultaneous interactive general-purpose computing to multiple users by sharing processor time. sharing of resources between processes and threads is the source of most of the difficulties of concurrent programming. the word \"sharing\" is also used in some functional programming communities to refer specifically to sharing of memory between different data items to save space, otherwise known as hash consing. resource sharing-called kalaka in hungarian-is an old tradition in hungary. young couples had to build their house after marriage. marriage itself was called hazasodas in hungarian . when doing so, the whole community, relatives and acquaintances helped the young couple with work, knowledge and even money. at pigsticking, all members of the community got their shares too. superfluous plants were freely distributed to neighbours in the season. in most cultures, members of the same household tend to pool their resources. in the new testament, john the baptist commended sharing as the mark of a new way of life: \"if you have two shirts, share with the person who does not have one. if you have food, share that also.\" market sharing occurs when competitors agree to divide or allocate customers, suppliers or territories among themselves rather than allowing competitive market forces to work. market sharing mainly occur in the form of cartels like the guadalajara cartel, which was the first mexican drug cartel to consolidate the production and supply of illegal marijuana into a single organization. sharing in a market may also refer to the temporary or permanent transfer of information and other physical as well as intellectual property, but this is generally accompanied by the exchange of money. yochai benkler, sharing nicely: on shareable and the emergence of sharing as a modality of economic production, yale law journal, vol. \"the emerging economic paradigm of open source\".",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/90/Viola_and_Mina_share_food.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sharing food",
+          "context": "",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5f/215-365_-_This_Strawberrybananna_smoothie_is_better_than_the_Wildberry_%28-_%284760692715%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sharing a drink",
+          "context": "",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Pathologists_looking_into_microscopes_%281%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sharing a microscope",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/90/Pond_Sliders_at_Smithsonian_National_Zoological_Park_in_Washington.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Reptiles sharing space",
+          "context": "reptiles sharing space sharing is the joint use of a resource or space. it is also the process of dividing and distributing.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Wiki_letter_w_cropped.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "[icon]",
+          "caption": "",
+          "context": "this section needs expansion . you can help by adding missing information .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "this section needs more citations . please help improve this section by adding citations to reliable sources .",
+          "licence": "Cc-by-sa-3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Green_sharing_%281%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Plant sharing",
+          "context": "unsourced material may be challenged and removed .",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "emotion",
       "story": "emotions are what people feel. they are very ancient, and can be seen in all mammals. emotions are caused by a complex mixture of hormones and the unconscious mind. only with great difficulty can we control our emotions by conscious effort. they cause mammals to change behaviour according to changes in their situation. in our case, they sometimes run against our attempt to live our lives in a logical way. a scientific definition is not simple; over 90 definitions have been offered by experts. emotions involve physiological arousal, appraisal of the situation, expressive behaviours, and conscious experience. emotion is associated with feeling, mood, temperament, personality, disposition, and motivation\". in physical terms, emotions involve body systems which have operated for hundreds of millions of years. these are the hormone system, the autonomic nervous system and the 'lower' brain centers . the study of emotions became one of darwin's books after the descent of man. he published the expression of the emotions in man and animals in 1873. he had discovered, by sending letters and a list of questions worldwide, that in different societies emotions were expressed in almost the same way. if so, the mechanisms which made the expressions must be inherited. they must have been developed in the same way as all other features of man, evolution by natural selection. it was already known from anatomy that the muscles and nerves of the face were the same or similar in all humans. darwin illustrated the expression of the emotions with a series of photographs and woodcut illustrations. ekman did the same thing on a research visit to new guinea, where he asked villagers to identify the emotions shown in the photographs. this was part of a long-term effort to test and extend darwin's insights into emotions. some of ekman's conclusions are: micro expressions last only a fraction of a second. they occur when people conceal their feelings. emotions are autoappraisers, reactions to matters which seem to be very important to our welfare. emotions often begin so quickly that we are not aware of the processes in our mind which set them off. autoappraisers scan for events which are critical to our welfare and survival. our evolutionary heritage makes a major contribution to the shaping of our emotional responses. the desire to experience or not to experience an emotion motivates much of our behaviour. an efficient signal - clear, rapid and universal - informs others of how the emotional person is feeling. it is obvious that some animals, mostly mammals, but also some birds, have emotions which are somewhat similar to human emotions as far as one can tell. the most obvious cases are domestic pets which are clearly happy to see owners after a long separation. because two large groups of vertebrates have developed emotions , it must be that emotions are helpful in group behaviour. in a quite different group, social insects, the group behaviour is controlled by pheromones: inherited scent patterns. scent is also important to most mammals, but birds are more sight-oriented.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/Expression_of_the_Emotions_Figure_20.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Figure 20, \"Terror\", from a photograph by Guillaume Duchenne ( more images )",
+          "context": "these are the hormone system, the autonomic nervous system and the 'lower' brain centers . figure 20, \"terror\", from a photograph by guillaume duchenne the study of emotions became one of darwin's books after the descent of man . he published the expression of the emotions in man and animals in 1873.",
+          "licence": "Public domain"
+        }
+      ]
     }
   ]
 }

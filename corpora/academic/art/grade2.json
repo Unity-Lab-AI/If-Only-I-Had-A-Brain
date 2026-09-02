@@ -9,49 +9,831 @@
       "theme": "color-wheel",
       "story": "a color wheel is a circular chart that shows primary and secondary colors. the color wheel most commonly used today is called the hsv color wheel which means hue, saturation, value. the digital form of the hsv color wheel is called the rgb color wheel . the hsv/rgb color wheel is described below. there are two versions: one in which red, green and blue are regarded as the primary colors ; and one in which magenta, yellow, and cyan are regarded as the primary colors . the primary colors are on the top. in the electronic color wheel used for electronic devices such as televisions and computers, red, green, and blue are regarded as the primary colors and magenta, yellow, and cyan are regarded as the secondary colors. the primary colors always appear on the color wheel. there are the three primary colors of light. these are called the three additive colors. they are red , green , and blue . the three primary colors of light are the secondary colors on the printer's color wheel. the primary colors of light can be mixed together to make secondary colors. a long time ago, people used to think that the primary colors were red, yellow and blue. the secondary colors are on all color wheels. secondary colors are made by mixing the primary colors of light together. the secondary colors of light are the primary colors of pigment on the printer's color wheel--the color wheel used for color printing. these three colors are called the subtractive colors. they are magenta , yellow and cyan . the primary colors of light are the secondary colors on the \"printer's color wheel\". the three primary colors of pigment can be mixed to make red , green , and blue , but they do not appear as bright when they are made with pigment instead of light. the secondary colors can be mixed with the primary colors to make tertiary colors. the tertiary colors are made by mixing a secondary and primary color together. the tertiary colors are the same for both the printer's color wheel and the electronic color wheel. the 12 major colors of the color wheel, at 30 degree intervals on the hsv color wheel , are the following: red , orange , yellow , chartreuse green , green , spring green , cyan , azure , blue , violet , magenta , and rose . this constitutes the complete set of primary, secondary, and tertiary color names. note: red is shown twice so it can be compared to both orange and rose. on the traditional red-yellow-blue pigment color wheel , the tertiary colors on a red-yellow-blue color wheel were called red-violet, blue-violet, blue-green, yellow-green, yellow-orange, and red-orange.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Triangulo_HSV.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An HSV color wheel allows the user to quickly select a multitude of colors.",
+          "context": "an hsv color wheel allows the user to quickly select a multitude of colors.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/05/WiktionaryEn_-_DP_Derivative.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "English Wiktionary",
+          "caption": "English Wiktionary",
+          "context": "english wiktionary the english wiktionary has a dictionary definition for: color wheel a color wheel is a circular chart that shows primary and secondary colors . the color wheel most commonly used today is called the hsv color wheel which means hue, saturation, value .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/56/RGB_color_wheel.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The RGB color wheel, in which the colors are displayed discretely rather than continuously as in the HSV color wheel above",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "landscape-painting",
       "story": "lanndscape painting is a style of painting that deals with showing landscapes. the landscapes can be natural ones, or those modified by humans. other painting-styles include history painting, genre painting, portrait painting and still life. landscaping is the art and process of modifying the visible features of an area of land to make it more attractive and functional. this involves a mix of living elements like plants, trees, and lawns, and non-living elements such as paths, walls, patios, and water features.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6e/NAMA_Akrotiri_4.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Fresco from Akrotiri, on the Greek island Santorin. This fresco was done about 1600 BC.",
+          "caption": "",
+          "context": "landscaping is the art and process of modifying the visible features of an area of land to make it more attractive and functional. this involves a mix of living elements like plants, trees, and lawns, and non-living elements such as paths, walls, patios, and water features. fresco from akrotiri , on the greek island santorin. this fresco was done about 1600 bc.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Paul_Bril_001.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Paul Bril, Phantastic mountain scene, 16th century.",
+          "caption": "",
+          "context": "this fresco was done about 1600 bc. paul bril , phantastic mountain scene, 16th century. <img alt=\"claude lorrain, harbour with the villa medici.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/21/Caspar_David_Friedrich_-_Der_M%C3%B6nch_am_Meer_-_Google_Art_Project.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Caspar David Friedrich, Monk at the seaside, 19th century",
+          "caption": "",
+          "context": "claude lorrain , harbour with the villa medici. caspar david friedrich , monk at the seaside, 19th century <img alt=\"claude monet, impression soleil levant, 1872.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e9/Soleil_levant_Claude_Monet.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Claude Monet, Impression soleil levant, 1872. This painting started a movement called impressionism.",
+          "caption": "",
+          "context": "claude monet , impression soleil levant, 1872. this painting started a movement called impressionism .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Cezanne_-_Haus_in_der_Provence.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Paul Cézanne, House in Provence, 19th century",
+          "caption": "",
+          "context": "this painting started a movement called impressionism .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "still-life",
       "story": "a still life is a work of art, most often a painting. in a still life, objects like flowers, fruit, or glasses are arranged in a certain way, and then painted. most still lifes are of inanimate objects manmade or natural.still life painting has been popular since the 17th century, when dutch painters like adriaen coorte raised it to a fine art. however, the idea is old: examples can be found in antiquity. with a still life, the artist can focus more on composition and arrangement than with other forms of painting, such as landscape painting or portraiture.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/64/Question_book-4.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this article does not have any sources . you can help wikipedia by finding good sources, and adding them.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cd/Coorte%2C_Adriaen_-_Still_Life_with_Shells_-_1697.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Adriaen Coorte , Shells (1697)",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/54/Abraham_van_Beijeren_-_Banquet_Still-Life_with_a_Mouse_-_WGA2141.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "you can help wikipedia by finding good sources, and adding them. abraham van beyeren , banquet still life a still life is a work of art, most often a painting . in a still life, objects like flowers , fruit , or glasses are arranged in a certain way, and then painted.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Pompejanischer_Maler_um_70_001.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Transparent bowl of fruit and vases. Roman wall painting in Pompeii (around 70 AD)",
+          "caption": "",
+          "context": "however, the idea is old: examples can be found in antiquity . with a still life, the artist can focus more on composition and arrangement than with other forms of painting, such as landscape painting or portraiture. transparent bowl of fruit and vases.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/Oeillets_et_cl%C3%A9matite_dans_un_vase_de_cristal_%28ca.1882%29_-_Edouard_Manet_%28Mus%C3%A9e_d%27Orsay%2C_Paris%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Edouard Manet, Carnations and Clematis in a Crystal Vase (1883)",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "sculpture",
-      "story": "sculpture is the branch of the visual arts that operates in three dimensions. sculpture is the three-dimensional artwork which is physically presented in the dimensions of height, width and depth. it is one of the plastic arts. durable sculptural processes originally used carving and modelling , in stone, metal, ceramics, wood and other materials but, since modernism, there has been almost complete freedom of materials and process. a wide variety of materials may be worked by removal such as carving, assembled by welding or modelling, or moulded or cast. in addition, most ancient sculpture was painted, of which most has either been lost or is unable to be seen with the naked eye. sculpture has been central in religious devotion in many cultures, and until recent centuries, large sculptures, too expensive for private individuals to create, were usually an expression of religion or politics. those cultures whose sculptures have survived in quantities include the cultures of the ancient mediterranean, india and china, as well as many in central and south america and africa. the western tradition of sculpture began in ancient greece, and greece is widely regarded as producing great masterpieces in the classical period. during the middle ages, gothic sculpture represented the agonies and passions of the christian faith. the revival of classical models in the renaissance produced famous sculptures such as michelangelo's statue of david. modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture, and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief, high relief, and sometimes an intermediate mid-relief. sunk-relief is a technique restricted to ancient egypt. relief sculpture may also decorate steles-upright slabs, usually of stone, often also containing inscriptions. another basic distinction is between subtractive carving techniques, which remove material from an existing block or lump-such as stone or wood-and modelling techniques that shape or build up the work from the material. techniques such as casting, stamping, and moulding use an intermediate matrix containing the design to produce the work; many of these allow the production of several copies. the term \"sculpture\" is often used mainly to describe large works, which are sometimes called monumental sculpture, meaning either or both sculpture that is large or that is attached to a building. however, the term properly covers many types of small works in three dimensions using the same techniques, including coins and medals, and hardstone carvings, a term for small carvings in stone that can take detailed work. the very large or \"colossal\" statue has had an enduring appeal since antiquity. the largest on record, at 182 m , is the 2018 indian statue of unity. another grand form of portrait sculpture is the equestrian statue of a rider on horse, which has become rare in recent decades. the smallest forms of life-size portrait sculpture are the \"head\", showing just that, or the bust, a representation of a person from the chest up. small forms of sculpture include the figurine, normally a statue that is no more than 18 inches tall, and for reliefs the plaquette, medal, or coin. sculpture is an important form of public art. a collection of sculpture in a garden setting can be called a sculpture garden. there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\". one of the most common purposes of sculpture is in some form of association with religion. cult images are common in many cultures, though they are often not the colossal statues of deities which characterized ancient greek art, like the statue of zeus at olympia. the actual cult images in the innermost sanctuaries of egyptian temples, of which none have survived, were evidently rather small, even in the largest temples. the same is often true in hinduism, where the very simple and ancient form of the lingam is the most common. buddhism brought the sculpture of religious figures to east asia, where there seems to have been no earlier equivalent tradition, though again simple shapes like the bi and cong probably had religious significance. recent unexpected discoveries of ancient chinese bronze age figures at sanxingdui, some more than twice human size, have disturbed many ideas held about early chinese civilization, since only much smaller bronzes were previously known. some undoubtedly advanced cultures, such as the indus valley civilization, appear to have had no monumental sculpture at all, though producing very sophisticated figurines and seals. the mississippian culture seems to have been progressing towards its use, with small stone figures, when it collapsed. other cultures, such as ancient egypt and the easter island culture, seem to have devoted enormous resources to very large-scale monumental sculpture from a very early stage. the collecting of sculpture, including that of earlier periods, goes back some 2,000 years in greece, china and mesoamerica, and many collections were available on semi-public display long before the modern museum was invented. from the 20th century the relatively restricted range of subjects found in large sculpture expanded greatly, with abstract subjects and the use or representation of any type of subject now common. today much sculpture is made for intermittent display in galleries and museums, and the ability to transport and store the increasingly large works is a factor in their construction. small decorative figurines, most often in ceramics, are as popular today as they were in the rococo, or in ancient greece when tanagra figurines were a major industry, or in east asian and pre-columbian art. small sculpted fittings for furniture and other objects go well back into antiquity, as in the nimrud ivories, begram ivories and finds from the tomb of tutankhamun. portrait sculpture began in egypt, where the narmer palette shows a ruler of the 32nd century bce, and mesopotamia, where we have 27 surviving statues of gudea, who ruled lagash c. in ancient greece and rome, the erection of a portrait statue in a public place was almost the highest mark of honour, and the ambition of the elite, who might also be depicted on a coin. in other cultures such as egypt and the near east public statues were almost exclusively the preserve of the ruler, with other wealthy people only being portrayed in their tombs. rulers are typically the only people given portraits in pre-columbian cultures, beginning with the olmec colossal heads of about 3,000 years ago. east asian portrait sculpture was entirely religious, with leading clergy being commemorated with statues, especially the founders of monasteries, but not rulers, or ancestors. the mediterranean tradition revived, initially only for tomb effigies and coins, in the middle ages, but expanded greatly in the renaissance, which invented new forms such as the personal portrait medal. jade or other types of greenstone were used in china, olmec mexico, and neolithic europe, and in early mesopotamia large pottery shapes were produced in stone. bronze was used in europe and china for large axes and blades, like the oxborough dirk. the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze, stone and pottery, with wood, bone and antler as less durable but cheaper options. precious materials such as gold, silver, jade, and ivory are often used for small luxury works, and sometimes in larger ones, as in chryselephantine statues. more common and less expensive materials were used for sculpture for wider consumption, including hardwoods ; terracotta and other ceramics, wax , and cast metals such as pewter and zinc . but a vast number of other materials have been used as part of sculptures, in ethnographic and ancient works as much as modern ones. sculptures are often painted, but commonly lose their paint to time, or restorers. many different painting techniques have been used in making sculpture, including tempera, oil painting, gilding, house paint, aerosol, enamel and sandblasting. many sculptors seek new ways and materials to make art. one of pablo picasso's most famous sculptures included bicycle parts. alexander calder and other modernists made spectacular use of painted steel. since the 1960s, acrylics and other plastics have been used as well.",
+      "story": "sculpture is the branch of the visual arts that operates in three dimensions. sculpture is the three-dimensional artwork which is physically presented in the dimensions of height, width and depth. it is one of the plastic arts. durable sculptural processes originally used carving and modelling , in stone, metal, ceramics, wood and other materials but, since modernism, there has been almost complete freedom of materials and process. a wide variety of materials may be worked by removal such as carving, assembled by welding or modelling, or moulded or cast. in addition, most ancient sculpture was painted, of which most has either been lost or is unable to be seen with the naked eye. sculpture has been central in religious devotion in many cultures, and until recent centuries, large sculptures, too expensive for private individuals to create, were usually an expression of religion or politics. those cultures whose sculptures have survived in quantities include the cultures of the ancient mediterranean, india and china, as well as many in central and south america and africa. the western tradition of sculpture began in ancient greece, and greece is widely regarded as producing great masterpieces in the classical period. during the middle ages, gothic sculpture represented the agonies and passions of the christian faith. the revival of classical models in the renaissance produced famous sculptures such as michelangelo's statue of david. modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture, and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief, high relief, and sometimes an intermediate mid-relief. sunk-relief is a technique restricted to ancient egypt. relief sculpture may also decorate steles-upright slabs, usually of stone, often also containing inscriptions. another basic distinction is between subtractive carving techniques, which remove material from an existing block or lump-such as stone or wood-and modelling techniques that shape or build up the work from the material. techniques such as casting, stamping, and moulding use an intermediate matrix containing the design to produce the work; many of these allow the production of several copies. the term \"sculpture\" is often used mainly to describe large works, which are sometimes called monumental sculpture, meaning either or both sculpture that is large or that is attached to a building. however, the term properly covers many types of small works in three dimensions using the same techniques, including coins and medals, and hardstone carvings, a term for small carvings in stone that can take detailed work. the very large or \"colossal\" statue has had an enduring appeal since antiquity. the largest on record, at 182 m , is the 2018 indian statue of unity. another grand form of portrait sculpture is the equestrian statue of a rider on horse, which has become rare in recent decades. the smallest forms of life-size portrait sculpture are the \"head\", showing just that, or the bust, a representation of a person from the chest up. small forms of sculpture include the figurine, normally a statue that is no more than 18 inches tall, and for reliefs the plaquette, medal, or coin. sculpture is an important form of public art. a collection of sculpture in a garden setting can be called a sculpture garden. there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\". one of the most common purposes of sculpture is in some form of association with religion. cult images are common in many cultures, though they are often not the colossal statues of deities which characterized ancient greek art, like the statue of zeus at olympia. the actual cult images in the innermost sanctuaries of egyptian temples, of which none have survived, were evidently rather small, even in the largest temples. the same is often true in hinduism, where the very simple and ancient form of the lingam is the most common. buddhism brought the sculpture of religious figures to east asia, where there seems to have been no earlier equivalent tradition, though again simple shapes like the bi and cong probably had religious significance. recent unexpected discoveries of ancient chinese bronze age figures at sanxingdui, some more than twice human size, have disturbed many ideas held about early chinese civilization, since only much smaller bronzes were previously known. some undoubtedly advanced cultures, such as the indus valley civilization, appear to have had no monumental sculpture at all, though producing very sophisticated figurines and seals. the mississippian culture seems to have been progressing towards its use, with small stone figures, when it collapsed. other cultures, such as ancient egypt and the easter island culture, seem to have devoted enormous resources to very large-scale monumental sculpture from a very early stage. the collecting of sculpture, including that of earlier periods, goes back some 2,000 years in greece, china and mesoamerica, and many collections were available on semi-public display long before the modern museum was invented. from the 20th century the relatively restricted range of subjects found in large sculpture expanded greatly, with abstract subjects and the use or representation of any type of subject now common. today much sculpture is made for intermittent display in galleries and museums, and the ability to transport and store the increasingly large works is a factor in their construction. small decorative figurines, most often in ceramics, are as popular today as they were in the rococo, or in ancient greece when tanagra figurines were a major industry, or in east asian and pre-columbian art. small sculpted fittings for furniture and other objects go well back into antiquity, as in the nimrud ivories, begram ivories and finds from the tomb of tutankhamun. portrait sculpture began in egypt, where the narmer palette shows a ruler of the 32nd century bce, and mesopotamia, where we have 27 surviving statues of gudea, who ruled lagash c. in ancient greece and rome, the erection of a portrait statue in a public place was almost the highest mark of honour, and the ambition of the elite, who might also be depicted on a coin. in other cultures such as egypt and the near east public statues were almost exclusively the preserve of the ruler, with other wealthy people only being portrayed in their tombs. rulers are typically the only people given portraits in pre-columbian cultures, beginning with the olmec colossal heads of about 3,000 years ago. east asian portrait sculpture was entirely religious, with leading clergy being commemorated with statues, especially the founders of monasteries, but not rulers, or ancestors. the mediterranean tradition revived, initially only for tomb effigies and coins, in the middle ages, but expanded greatly in the renaissance, which invented new forms such as the personal portrait medal. jade or other types of greenstone were used in china, olmec mexico, and neolithic europe, and in early mesopotamia large pottery shapes were produced in stone. bronze was used in europe and china for large axes and blades, like the oxborough dirk. the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze, stone and pottery, with wood, bone and antler as less durable but cheaper options. precious materials such as gold, silver, jade, and ivory are often used for small luxury works, and sometimes in larger ones, as in chryselephantine statues. more common and less expensive materials were used for sculpture for wider consumption, including hardwoods ; terracotta and other ceramics, wax , and cast metals such as pewter and zinc . but a vast number of other materials have been used as part of sculptures, in ethnographic and ancient works as much as modern ones. sculptures are often painted, but commonly lose their paint to time, or restorers. many different painting techniques have been used in making sculpture, including tempera, oil painting, gilding, house paint, aerosol, enamel and sandblasting. many sculptors seek new ways and materials to make art. one of pablo picasso's most famous sculptures included bicycle parts. alexander calder and other modernists made spectacular use of painted steel. since the 1960s, acrylics and other plastics have been used as well. andy goldsworthy makes his unusually ephemeral sculptures from almost entirely natural materials in natural settings. some sculpture, such as ice sculpture, sand sculpture, and gas sculpture, is deliberately short-lived. recent sculptors have used stained glass, tools, machine parts, hardware and consumer packaging to fashion their works. sculptors sometimes use found objects, and chinese scholar's rocks have been appreciated for many centuries. stone sculpture is an ancient activity where pieces of rough natural stone are shaped by the controlled removal of stone. petroglyphs are perhaps the earliest form: images created by removing part of a rock surface which remains in situ, by incising, pecking, carving, and abrading. monumental sculpture covers large works, and architectural sculpture, which is attached to buildings. hardstone carving is the carving for artistic purposes of semi-precious stones such as jade, agate, onyx, rock crystal, sard or carnelian, and a general term for an object made in this way. alabaster or mineral gypsum is a soft mineral that is easy to carve for smaller works and still relatively durable. engraved gems are small carved gems, including cameos, originally used as seal rings. the copying of an original statue in stone, which was very important for ancient greek statues, which are nearly all known from copies, was traditionally achieved by \"pointing\", along with more freehand methods. a variation of stone sculpture in the landscape is the hill figure, where the natural bedrock is used as the primary medium. the litlington white horse in east sussex is an example of a 20th-century figure created by the controlled removal of turf to reveal the underlying chalk of the south downs. managed by the national trust, this process-known as 'scouring', is a subtractive technique that uses the geology of a site to produce a monumental graphic work. bronze and related copper alloys are the oldest and still the most popular metals for cast metal sculptures; a cast bronze sculpture is often called simply a \"bronze\". common bronze alloys have the unusual and desirable property of expanding slightly just before they set, thus filling the finest details of a mould. their strength and lack of brittleness is an advantage when figures in action are to be created, especially when compared to various ceramic or stone materials . casting is a group of manufacturing processes by which a liquid material is poured into a mould, which contains a hollow cavity of the desired shape, and then allowed to solidify. the solid casting is then ejected or broken out to complete the process, although a final stage of \"cold work\" may follow on the finished cast. casting may be used to form hot liquid metals or various materials that cold set after mixing of components . casting is most often used for making complex shapes that would be otherwise difficult or uneconomical to make by other methods. the oldest surviving casting is a copper mesopotamian frog from 3200 bce. specific techniques include lost-wax casting, plaster mould casting, and sand casting. welding is a process where different pieces of metal are fused together to create different shapes and designs. there are many different forms of welding, such as oxy-fuel welding, stick welding, mig welding, and tig welding. oxy-fuel is probably the most common method of welding when it comes to creating steel sculptures because it is the easiest to use for shaping the steel as well as making clean and less noticeable joins of the steel. the key to oxy-fuel welding is heating each piece of metal to be joined evenly until all are red and have a shine to them. once that shine is on each piece, that shine will soon become a 'pool' where the metal is liquified and the welder must get the pools to join, fusing the metal. once cooled off, the location where the pools joined are now one continuous piece of metal. also used heavily in oxy-fuel sculpture creation is forging. forging is the process of heating metal to a certain point to soften it enough to be shaped into different forms. one very common example is heating the end of a steel rod and hitting the red heated tip with a hammer while on an anvil to form a point. in between hammer swings, the forger rotates the rod and gradually forms a sharpened point from the blunt end of a steel rod. glass may be used for sculpture through a wide range of working techniques, though the use of it for large works is a recent development. it can be carved, though with considerable difficulty; the roman lycurgus cup is all but unique. there are various ways of moulding glass: hot casting can be done by ladling molten glass into moulds that have been created by pressing shapes into sand, carved graphite or detailed plaster/silica moulds. kiln casting glass involves heating chunks of glass in a kiln until they are liquid and flow into a waiting mould below it in the kiln. hot glass can also be blown and/or hot sculpted with hand tools either as a solid mass or as part of a blown object. more recent techniques involve chiseling and bonding plate glass with polymer silicates and uv light. pottery is one of the oldest materials for sculpture, as well as clay being the medium in which many sculptures cast in metal are originally modelled for casting. sculptors often build small preliminary works called maquettes of ephemeral materials such as plaster of paris, wax, unfired clay, or plasticine. many cultures have produced pottery which combines a function as a vessel with a sculptural form, and small figurines have often been as popular as they are in modern western culture. stamps and moulds were used by most ancient civilizations, from ancient rome and mesopotamia to china. wood carving has been extremely widely practiced, but survives much less well than the other main materials, being vulnerable to decay, insect damage, and fire. it therefore forms an important hidden element in the art history of many cultures. outdoor wood sculpture does not last long in most parts of the world, so that we have little idea how the totem pole tradition developed. many of the most important sculptures of china and japan in particular are in wood, and the great majority of african sculpture and that of oceania and other regions. wood is light, so suitable for masks and other sculpture intended to be carried, and can take very fine detail. it is also much easier to work than stone. it has been very often painted after carving, but the paint wears less well than the wood, and is often missing in surviving pieces. painted wood is often technically described as \"wood and polychrome\". typically a layer of gesso or plaster is applied to the wood, and then the paint is applied to that. three dimensional work incorporating unconventional materials such as cloth, fur, plastics, rubber and nylon, that can thus be stuffed, sewn, hung, draped or woven, are known as soft sculptures. well known creators of soft sculptures include claes oldenburg, yayoi kusama, eva hesse, sarah lucas and magdalena abakanowicz. worldwide, sculptors have usually been tradespeople whose work is unsigned; in some traditions, for example china, where sculpture did not share the prestige of literati painting, this has affected the status of sculpture itself. even in ancient greece, where sculptors such as phidias became famous, they appear to have retained much the same social status as other artisans, and perhaps not much greater financial rewards, although some signed their works. goldsmiths and jewellers, dealing with precious materials and often doubling as bankers, belonged to powerful guilds and had considerable status, often holding civic office. many sculptors also practised in other arts; andrea del verrocchio also painted, and giovanni pisano, michelangelo, and jacopo sansovino were architects. some sculptors maintained large workshops. even in the renaissance the physical nature of the work was perceived by leonardo da vinci and others as pulling down the status of sculpture in the arts, though the reputation of michelangelo perhaps put this long-held idea to rest. from the high renaissance artists such as michelangelo, leone leoni and giambologna could become wealthy, and ennobled, and enter the circle of princes, after a period of sharp argument over the relative status of sculpture and painting. much decorative sculpture on buildings remained a trade, but sculptors producing individual pieces were recognised on a level with painters. from the 18th century or earlier sculpture also attracted middle-class students, although it was slower to do so than painting. women sculptors took longer to appear than women painters, and were less prominent until the 20th century. aniconism originated with judaism, which did not accept figurative sculpture until the 19th century, before expanding to christianity, which initially accepted large sculptures. in christianity and buddhism, sculpture became very significant. many forms of protestantism also do not approve of religious sculpture. there has been much iconoclasm of sculpture for religious motives, from the early christians and the beeldenstorm of the protestant reformation to the 2001 destruction of the buddhas of bamyan by the taliban. = = the earliest undisputed examples of sculpture belong to the aurignacian culture, which was located in europe and southwest asia and active at the beginning of the upper paleolithic. as well as producing some of the earliest known cave art, the people of this culture developed finely crafted stone tools, manufacturing pendants, bracelets, ivory beads, and bone-flutes, as well as three-dimensional figurines. the 30 cm tall lowenmensch found in the hohlenstein stadel area of germany is an anthropomorphic lion-human figure carved from woolly mammoth ivory. it has been dated to about 35-40,000 bp, making it, along with the venus of hohle fels, the oldest known uncontested examples of sculpture. much surviving prehistoric art is small portable sculptures, with a small group of female venus figurines such as the venus of willendorf found across central europe. = = from the ancient near east, the over-life sized stone urfa man from modern turkey comes from about 9,000 bce, and the 'ain ghazal statues from around 7200 and 6500 bce. these are from modern jordan, made of lime plaster and reeds, and about half life-size; there are 15 statues, some with two heads side by side, and 15 busts. small clay figures of people and animals are found at many sites across the near east from the pre-pottery neolithic, and represent the start of a more-or-less continuous tradition in the region. the protoliterate period in mesopotamia, dominated by uruk, saw the production of sophisticated works like the warka vase and cylinder seals. the guennol lioness is an outstanding small limestone figure from elam of about 3000-2800 bce, part human and part lioness. a little later there are a number of figures of large-eyed priests and worshippers, mostly in alabaster and up to a foot high, who attended temple cult images of the deity, but very few of these have survived. sculptures from the sumerian and akkadian period generally had large, staring eyes, and long beards on the men. many masterpieces have also been found at the royal cemetery at ur , including the two figures of a ram in a thicket, the copper bull and a bull's head on one of the lyres of ur. the burney relief is an unusually elaborate and relatively large terracotta plaque of a naked winged goddess with the feet of a bird of prey, and attendant owls and lions. it comes from the 18th or 19th century bce, and may also be moulded. unlike earlier states, the assyrians could use easily carved stone from northern iraq, and did so in great quantity. they produced very little sculpture in the round, except for colossal guardian figures of the human-headed lamassu, which are sculpted in high relief on two sides of a rectangular block, with the heads effectively in the round . even before dominating the region they had continued the cylinder seal tradition with designs which are often exceptionally energetic and refined. the monumental sculpture of ancient egypt is world-famous, but refined and delicate small works exist in much greater numbers. the egyptians used the distinctive technique of sunk relief, which is well suited to very bright sunlight. this appears as early as the narmer palette from dynasty i. however, there as elsewhere the convention is not used for minor figures shown engaged in some activity, such as the captives and corpses. other conventions make statues of males darker than females ones. egyptian pharaohs were always regarded as deities, but other deities are much less common in large statues, except when they represent the pharaoh as another deity; however the other deities are frequently shown in paintings and reliefs. the famous row of four colossal statues outside the main temple at abu simbel each show rameses ii, a typical scheme, though here exceptionally large. small figures of deities, or their animal personifications, are very common, and found in popular materials such as pottery. most larger sculpture survives from egyptian temples or tombs; by dynasty iv at the latest the idea of the ka statue was firmly established. the so-called reserve heads, plain hairless heads, are especially naturalistic. early tombs also contained small models of the slaves, animals, buildings and objects such as boats necessary for the deceased to continue his lifestyle in the afterworld, and later ushabti figures. = = the first distinctive style of ancient greek sculpture developed in the early bronze age cycladic period , where marble figures, usually female and small, are represented in an elegantly simplified geometrical style. most typical is a standing pose with arms crossed in front, but other figures are shown in different poses, including a complicated figure of a harpist seated on a chair. the subsequent minoan and mycenaean cultures developed sculpture further, under influence from syria and elsewhere, but it is in the later archaic period from around 650 bce that the kouros developed. these are large standing statues of naked youths, found in temples and tombs, with the kore as the clothed female equivalent, with elaborately dressed hair; both have the \"archaic smile\". they seem to have served a number of functions, perhaps sometimes representing deities and sometimes the person buried in a grave, as with the kroisos kouros. they are clearly influenced by egyptian and syrian styles, but the greek artists were much more ready to experiment within the style. during the 6th century greek sculpture developed rapidly, becoming more naturalistic, and with much more active and varied figure poses in narrative scenes, though still within idealized conventions. other significant remains of architectural sculpture come from paestum in italy, corfu, delphi and the temple of aphaea in aegina . most greek sculpture originally included at least some colour; the ny carlsberg glyptotek museum in copenhagen, denmark, has done extensive research and recreation of the original colours.",
       "source": "en.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Dying_gaul.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "for sculpting in computer graphics, see digital sculpting . for other uses, see sculptor and sculpture .",
+          "licence": "CC BY 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d5/Lammasu.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Assyrian lamassu gate guardian from Khorsabad , c. 800 -721 BCE",
+          "context": "for other uses, see sculptor and sculpture . assyrian lamassu gate guardian from khorsabad , c.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Miyasaka_Hakuryu_II_-_Tigress_with_Two_Cubs_-_Walters_71909.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Netsuke of tigress with two cubs, mid-19th-century Japan, ivory with shell inlay",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/66/Angel_of_the_North_2016_006.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Angel of the North by Antony Gormley , 1998",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/af/Litlington_White_Horse_2025.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The Litlington White Horse , a monumental work of stone sculpture created by exposing the underlying chalk bedrock.",
+          "context": "the litlington white horse , a monumental work of stone sculpture created by exposing the underlying chalk bedrock. sculpture is the branch of the visual arts that operates in three dimensions .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/85/%E9%BE%99%E9%97%A8-Buddha.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Open-air Buddhist rock reliefs at the Longmen Grottoes , China",
+          "context": "the revival of classical models in the renaissance produced famous sculptures such as michelangelo 's statue of david . modernist sculpture moved away from traditional processes and the emphasis on the depiction of the human body, with the making of constructed sculpture , and the presentation of found objects as finished artworks. relief is often classified by the degree of projection from the wall into low or bas-relief , high relief , and sometimes an intermediate mid-relief .",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Mo%C3%A1is.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Moai from Easter Island , where the concentration of resources on large sculpture may have had serious political effects",
+          "context": "a collection of sculpture in a garden setting can be called a sculpture garden . there is also a view that buildings are a type of sculpture, to quote constantin brancusi: \"architecture is inhabited sculpture\".",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/44/Cappella_Sansevero_%2815041603867%29_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Veiled Christ , c. 1753 by Giuseppe Sanmartino , was widely believed to be created by alchemy.",
+          "context": "1753 by giuseppe sanmartino , was widely believed to be created by alchemy. one of the most common purposes of sculpture is in some form of association with religion.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/Mesopotamia_male_worshiper_2750-2600_B.C.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sumerian male worshipper, alabaster with shell eyes, 2750-2600 BCE",
+          "context": "bronze was used in europe and china for large axes and blades, like the oxborough dirk . sumerian male worshipper, alabaster with shell eyes, 2750-2600 bce the materials used in sculpture are diverse, changing throughout history. the classic materials, with outstanding durability, are metal, especially bronze , stone and pottery, with wood, bone and antler as less durable but cheaper options.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/67/Refugees_medal_DSCF9937.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ludwig Gies , cast iron plaquette , 8 x 9.8 cm, Refugees , 1915",
+          "context": "the litlington white horse in east sussex is an example of a 20th-century figure created by the controlled removal of turf to reveal the underlying chalk of the south downs. managed by the national trust , this process-known as 'scouring', is a subtractive technique that uses the geology of a site to produce a monumental graphic work. ludwig gies , cast iron plaquette , 8 x 9.8 cm, refugees , 1915 bronze and related copper alloys are the oldest and still the most popular metals for cast metal sculptures; a cast bronze sculpture is often called simply a \"bronze\". common bronze alloys have the unusual and desirable property of expanding slightly just before they set, thus filling the finest de",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Chihuly_at_Kew_Gardens_031.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Dale Chihuly , 2006, ( Blown glass )",
+          "context": "one very common example is heating the end of a steel rod and hitting the red heated tip with a hammer while on an anvil to form a point. in between hammer swings, the forger rotates the rod and gradually forms a sharpened point from the blunt end of a steel rod.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "pottery",
       "story": "pottery is the ceramic material which makes up potteryware. major types include earthenware, stoneware and porcelain. the place where such wares are made is also called a pottery . pottery also refers to the art or craft of a potter or the making of pottery. a dictionary definition is simply clay fired in a kiln. pottery objects are made from damp clay mixed with other materials. they are then fired in a special oven called a kiln at high temperatures. the potter may then apply a glaze to the surface before firing the object again. the fired glaze makes the surface of the pottery shiny, decorative and water-tight. some potters make objects which are not useful and are really artistic objects or sculpture. bare pottery objects without a glaze are called bisque or just earthenware. the finest pottery objects, made of porcelain or bone china are quite strong, yet are translucent. pottery originated before the neolithic period. the earliest example we have is from eastern europe, dating to 25,000 years ago or earlier. it is a female figurine known as the venus of dolni vestonice, from a palaeolithic site in moravia, czech republic. it may have been made as part of a fertility ritual. there are some similar figures from other nearby sites. since the invention of agriculture, and the building of cities, containers for food and drink have been found at almost all archaeological sites. this means the area of stoke-on-trent in england, sometimes called the staffordshire potteries. there were six towns, tunstall, burslem, hanley, stoke-upon-trent, fenton and longton, which now make up stoke-on-trent. the area was the centre of the english pottery industry. the area had local supplies of clay, salt, lead and coal. canals were used to transport the product inland. it was a large exporter of pottery for about 200 years: roughly from 1760 to about 1960. plastic crockery after world war ii and cheap ceramic production in china largely destroyed the stoke pottery industry.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Ancient_Egypt_Painted_Pottery_%2827733542034%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Ancient Egypt Painted Pottery at a museum in Paris, France",
+          "context": "",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Museum_of_Anatolian_Civilizations018.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Relatively plain earthenware for everyday use: pottery found at Çatal Höyük - sixth millennium BC",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/16/Altamura_Painter_-_Red-Figure_Calyx_Krater_-_Walters_48262_-_Side_A.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "obviously an artistic work as well as practical: greek red-figure vase in the krater shape, between 470 and 460 bc, by the altamura painter pottery is the ceramic material which makes up potteryware.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Makingpottery.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A man making pottery.",
+          "caption": "",
+          "context": "it was a large exporter of pottery for about 200 years: roughly from 1760 to about 1960. 7 plastic crockery after world war ii and cheap ceramic production in china largely destroyed the stoke pottery industry.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/93/T%C3%B6pferscheibe.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An old potter&#39;s wheel in Erfurt, Germany.",
+          "caption": "",
+          "context": "an old potter's wheel in erfurt , germany .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/bf/T%C3%B6pfernpeng1.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A woman making pottery.",
+          "caption": "",
+          "context": "an old potter's wheel in erfurt , germany .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/78/Conner-prairie-pottery-rack.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Drying pottery.",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1f/Traditional_pottery_of_Bengal.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Traditional pottery, Bangladesh",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     },
     {
       "theme": "printmaking",
       "story": "printmaking is making art by printing pictures, normally on paper. the advantage of printmaking is that lots of the same picture can be printed. each print is not a copy, but an original, since it came from the same source . you can also use different types of techniques to start the print. pictures for prints can be cut into plates of metal, usually copper or zinc for engraving or etching; stone, used for lithography; blocks of wood for woodcuts, linoleum for linocuts and fabric plates for screen-printing. prints may also be published in books by the artist. a glossary for modern prints large list of links to museum etc.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/25/Katsushika_Hokusai_-_Fine_Wind%2C_Clear_Morning_%28Gaif%C5%AB_kaisei%29_-_Google_Art_Project.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "mount fuji , from the thirty-six views of mount fuji by katsushika hokusai printmaking is making art by printing pictures, normally on paper . the advantage of printmaking is that lots of the same picture can be printed.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "symmetry",
       "story": "symmetry is a property of some geometrical objects. objects with symmetry appear the same when reflected along an axis or when rotated around a point. an object with symmetry is said to be symmetrical. the opposite of symmetry is asymmetry, which describes an object that does not have symmetry. in reflectional symmetry, the axis of symmetry must cross the shape through the middle, dividing it into equal halves. in rotational symmetry, the object is identical when it is rotated by a certain amount. there are many ways to see the idea of symmetry in different things. symmetrical objects can be material, such as a crystal, a quilt, a living being, floor tiles, or a molecule. transformations such as moving across a regularly patterned tile floor and rotating an eight-sided vase show those objects' symmetry. a set of objects sharing a spatial relationship could be symmetrical. abstract structures can also have symmetry, such as a mathematical equation or in the way music is played . symmetry may be found with respect to the passage of time; it can be seen as an aspect of scientific models, language, music and even knowledge itself. why beauty is truth: the history of symmetry.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Symmetry.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Examples of symmetry in shapes.",
+          "context": "examples of symmetry in shapes.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/22/Flag_of_Mitsushima%2C_Nagasaki_%281964%E2%80%932004%29.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "3-rotational symmetry",
+          "context": "3-rotational symmetry leonardo da vinci 's vitruvian man is often used as a representation of symmetry in the human body and, by extension, the natural universe.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/69/Studio_del_Corpo_Umano_-_Leonardo_da_Vinci.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Leonardo da Vinci 's Vitruvian Man (ca. 1487) is often used as a representation of symmetry in the human body and, by extension, the natural universe.",
+          "context": "leonardo da vinci 's vitruvian man is often used as a representation of symmetry in the human body and, by extension, the natural universe.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/42/Great_Mosque_of_Kairouan%2C_west_portico_of_the_courtyard.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Symmetric arcades of a portico in the Great Mosque of Kairouan also called the Mosque of Uqba, in Tunisia .",
+          "context": "symmetric arcades of a portico in the great mosque of kairouan also called the mosque of uqba, in tunisia . symmetry is a property of some geometrical objects.",
+          "licence": "CC BY-SA 2.0"
+        }
+      ]
     },
     {
       "theme": "mosaic",
       "story": "mosaic is the art of decorating a surface with pictures and patterns made of little pieces of stone, glass or tiles of different colours. mosaics can be used indoors on walls, floors and ceilings. mosaics are sometimes used outdoors on pavements. mosaics are made by setting coloured pieces, called tesserae, into \"mortar\" which sets hard and holds the pieces in place. some mosaics are made of round pebbles, and have only two or three colours. other mosaics are made of marble. many mosaics, particularly in italy, are made of terracotta tiles. terracotta tiles come in many colours and can be used for colourful pictures as well as patterns. some tiles look as if they are made of pure gold. these tiles are actually made of glass and have a very thin \"leaf\" of gold stuck to one side. the side with the gold gets put into the mortar. then the gold can be seen through the glass, but cannot be scratched off. mosaics often last for a very long time. there are still plenty of mosaics which were made by the ancient romans. they can be seen in italy, england, france, as well as other countries that were once part of the roman empire. many beautiful mosaics date from the early christian and byzantine eras, from about 300 ad to 1400, in italy, greece, and other countries. the mosaics in churches usually have pictures which tell bible stories. mosaics were a popular way to decorate churches in italy in the medieval period. they were not popular in england, france, germany and countries of northern europe because they preferred to use stained glass windows as decoration. in italy, the most famous church with its interior decorated with mosaics is st. at westminster cathedral in london, the mosaic decoration which was started more than 100 years ago is still continuing, bit by bit. mark's and westminster cathedral have gold backgrounds. nowadays mosaics are still used in all sorts of ways. mosaics are most often used to brighten up public places in cities. modern mosaics are made of all sorts of materials: mosaic tiles, bathroom tiles, broken roof tiles, broken dishes, broken mirrors, bits of metal and old bricks.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7a/Santa_costanza_mosaic.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An early Christian mosaic in Rome",
+          "context": "an early christian mosaic in rome mosaic is the art of decorating a surface with pictures and patterns made of little pieces of stone, glass or tiles of different colours. mosaics can be used indoors on walls, floors and ceilings.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Phrygian_Mosaic_3.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An ancient mosaic of pebbles",
+          "caption": "",
+          "context": "mosaics are most often used to brighten up public places in cities. modern mosaics are made of all sorts of materials: mosaic tiles, bathroom tiles, broken roof tiles, broken dishes, broken mirrors, bits of metal and old bricks.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/39/Li_Jiang_Guesthouse.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "This old guest house in China has a mosaic with a Chinese symbol",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Madaba_mosaic.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A mosaic map from Jordan",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Christus_Ravenna_Mosaic.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A Byzantine mosaic from Ravenna, Italy showing gold tiles",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Mosaic_Dionysos_Massimo.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A pavement from Ancient Rome",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Westminster.cathedral.mosaic.london.arp.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A mosaic from c.1900, Westminster Cathedral, London",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Primavesi_mosaic.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A 20th century mosaic decorating a house in the Czech Republic",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b6/Mosaic_Borth_01.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A modern mosaic made of bathroom tiles on a pavement in Wales",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "painting",
+      "story": "painting is using colors to make visual art. it is also the word for a painted work of art. many kinds of paints are used to create art. they include watercolors, acrylics and oils. other artists like working with pencil or chalk. sometimes charcoal can be used. famous paintings are often kept in art galleries, like the national gallery in london and the louvre where one of the most famous paintings in the world hangs, the mona lisa, painted by leonardo da vinci. people do not have to go to a famous gallery to view art. there are private art galleries in many cities around the world. painting is an important type of art that you look at. it uses things like drawing, arranging the picture, brush strokes, telling stories, and simple shapes. there is a basic difference between drawing and painting. in drawing, a single layer is the entire image. in painting, one layer is painted over another to get the final image. as a result, most of the time the image will not be clear until it gets to the final stage. there are four basic stages in painting: preparation, divide, layer, and touch up. preparation: most artists prepare a canvas or other surface. a thin and uniform cover or \"wash\" of white or other color is laid on the whole surface. this may help the later layers to get the same fix all over the surface. also, the unseen wash may help the reflection of light from the surface, thus improving the effect for the viewer. for really uneven or colored surfaces, such as wood or rough canvas, a more substantial covering is needed. that is called gesso, traditionally a mixture of chalk and gelatin, but nowadays available as a thick white acrylic. painting on some surfaces requires a special technique. painting on plaster uses the fresco method. in the divide stage, the canvas is divided into a few major areas , and background for those areas are plotted. in the layer stage, a layer is plotted over another layer, to get the desired shape in each area. by the end of this stage, all objects in the image will be easily and clearly identifiable. the touch-up stage needs extra effort. this stage is to provide an extra look to the image, like precise bordering, merging layers and other visual effects.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/07/Lascaux2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Image from the Lascaux caves. This cave painting is about 17.000 years old.",
+          "context": "this cave painting is about 17.000 years old. painting materials painting is using colors to make visual art .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/4f/Pittura-Painting4.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Painting materials",
+          "context": "painting materials painting is using colors to make visual art . it is also the word for a painted work of art.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "drawing",
+      "story": "drawing is a way of making a picture. drawings are created by making lines on a surface. long lines make up the shapes and small lines make the textures. drawings can be images of real-life or abstract images. drawing has been done for thousands of years, dating back to cave paintings. it focuses on objects made by humans for any number of spiritual, narrative, philosophical, symbolic, conceptual, documentary, decorative, and even functional and other purposes. drawing paper is a special material sometimes used for drawing, however many just use paper. pencils or pens are most commonly used for drawing. however, chalk, charcoal, and many others writing utensils are used. shading is the darkening or coloring of a drawing with lines or blocks of color. it can be used to make your drawings more three dimensional. shading is the process of adding value to create an illusion of form, most importantly the light in a drawing. it should have a highlight , mid tone , core shadow which is the darkest color on your drawing, then there is the reflected light. reflecting light is where light shines on the object you are trying to draw. hatching is a artistic technique used to create tonal or shading effects by drawing closely spaced parallel lines. there are different types of hatching. there is parallel hatching, contour, crosshatching, tick hatching, and more. there are many different ways you can do this.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Aofhfeworewour2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Pencil Drawing",
+          "context": "pencil drawing cave art drawing is a way of making a picture . drawings are created by making lines on a surface.",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/80/Dogon_circumcision_cave_painting_%28brightened%29.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Cave Art",
+          "context": "cave art drawing is a way of making a picture . drawings are created by making lines on a surface.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/24/Parametric_surface_illustration_%28sphere%29.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Sphere Shading",
+          "context": "pencils or pens are most commonly used for drawing. however, chalk , charcoal , and many others writing utensils are used. sphere shading shading change | change source shading is the darkening or coloring of a drawing with lines or blocks of color. it can be used to make your drawings more three dimensional .",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "there is parallel hatching, contour , crosshatching, tick hatching, and more. there are many different ways you can do this. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "weaving",
+      "story": "weaving is the interlacing of two sets of threads at right angles to each other to form cloth. weaving is usually done on a loom. one set of threads is called the warp. these threads are held taut and in parallel order on the loom by harnesses creating a space called the shed. the weft thread is wound onto bobbins. in old-fashioned hand weaving the bobbins are held in a shuttle, which carries the weft thread through the shed. the warp threads are moved over and under the weft threads. modern high speed weaving does not use a shuttle.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/28/Weaver_-_Traditional_making_of_linen.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Woman weaving on a loom. The warp threads are white.",
+          "context": "for the australian actor, see hugo weaving . weaving is the interlacing of two sets of threads at right angles to each other to form cloth . weaving is usually done on a loom .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the warp threads are moved over and under the weft threads. modern high speed weaving does not use a shuttle. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "quilt",
+      "story": "a quilt is a type of blanket made of three layers: a top piece of cloth, a layer of insulating material often called batting, and a bottom piece of cloth for backing. the layers are joined together either by quilting, which is sewing the pieces in the middle and not just at the edges, or by tying the layers together with pieces of yarn, thread, or ribbon. the top layer of the quilt can be made from many pieces of cloth sewn together in patterns, known as patchwork. other patterns can be made by running lines of stitching through the three layers. quilts were invented as bedding, but some are works of art made to be hung on a wall or used as decoration. quilting is done in many cultures, such as the amish, in hawaii, and in india.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3b/NIK1059.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A patchwork quilt hanging up on display",
+          "context": "a patchwork quilt hanging up on display a quilt is a type of blanket made of three layers: a top piece of cloth , a layer of insulating material often called batting , and a bottom piece of cloth for backing. the layers are joined together either by quilting, which is sewing the pieces in the middle and not just at the edges, or by tying the layers together with pieces of yarn , thread , or ribbon .",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "quilts were invented as bedding, but some are works of art made to be hung on a wall or used as decoration. quilting is done in many cultures, such as the amish , in hawaii , and in india . this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "basket",
+      "story": "it is usually light in weight. basket makers use a wide variety of materials to create a basket, such as bark, willow rods, leaves, wire, plastic, paper, and rope. there are three basic kinds of baskets-coiled, twined, or woven. a woven basket is made of spokes and weavers: the spokes run up and down and the weavers go over and under the spokes. a coiled basket is made by sewing rings of a fibrous material to the previous ring. twined baskets have flexible weavers that are twined around the spokes in a variety of patterns. basketmaking is a very old practice; it features in myths from various cultures. baskets were often used to carry fruits, berries, and other things to be gathered. nowadays, baskets are less practical but still common. ancient baskets can be found in many cultures. basket weaving is one of these activities, either for practical use or fun. in native american culture, basket weaving is a common activity. in basketball, the basket is an open net fixed to a metal ring in which players try to throw the ball.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Baskets_four_styles.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Four kinds of baskets.",
+          "context": "it is usually light in weight. basket makers use a wide variety of materials to create a basket, such as bark, willow rods, leaves, wire, plastic, paper, and rope.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "mural",
+      "story": "a mural is any piece of graphic artwork that is painted or applied directly to a wall, ceiling or other permanent substrate. mural techniques include fresco, mosaic, graffiti and marouflage. the word mural is a spanish adjective that is used to refer to what is attached to a wall. the term mural later became a noun. in art, the word began to be used at the beginning of the 20th century. atl issued a manifesto calling for the development of a monumental public art movement in mexico; he named it in spanish pintura mural . in ancient roman times, a mural crown was given to the fighter who was first to scale the wall of a besieged town. \"mural\" comes from the latin muralis, meaning \"wall painting\". this word is related to murus, meaning \"wall\". many ancient murals have been found within ancient egyptian tombs , the minoan palaces , the oxtotitlan cave and juxtlahuaca in mexico and in pompeii . during the middle ages murals were usually executed on dry plaster . the huge collection of kerala mural painting dating from the 14th century are examples of fresco secco. 1300, the technique of painting of frescos on wet plaster was reintroduced and led to a significant increase in the quality of mural painting. the term mural became better known with the mexican muralism art movement . the first mural painted in the 20th century, was \"el arbol de la vida\", by roberto montenegro. there are many different styles and techniques. the best-known is probably fresco, which uses pigments dispersed in water with a damp lime wash, rapid use of the resulting mixture over a large surface, and often in parts . the colors lighten as they dry. the marouflage method has also been used for millennia. murals today are painted in a variety of ways, using oil or water-based media. a special type of mural painting is luftlmalerei, still practised today in the villages of the alpine valleys. well-known examples of such facade designs from the 18th and 19th centuries can be found in mittenwald, garmisch, unter- and oberammergau. in the history of murals, several methods have been used: a fresco painting, from the italian word affresco which derives from the adjective fresco , describes a method in which the paint is applied on plaster on walls or ceilings. the buon fresco technique consists of painting in pigment mixed with water on a thin layer of wet, fresh, lime mortar or plaster. the pigment is then absorbed by the wet plaster; after a number of hours, the plaster dries and reacts with the air: it is this chemical reaction which fixes the pigment particles in the plaster. after this, the painting stays for a long time up to centuries in fresh and brilliant colors. fresco-secco painting is done on dry plaster . the pigments thus require a binding medium, such as egg , glue or oil to attach the pigment to the wall. mezzo-fresco is painted on nearly-dry plaster, and was defined by the sixteenth-century author ignazio pozzo as \"firm enough not to take a thumb-print\" so that the pigment only penetrates slightly into the plaster. by the end of the sixteenth century, this had largely displaced the buon fresco method, and was used by painters such as gianbattista tiepolo or michelangelo. this technique had, in reduced form, the advantages of a secco work. in greco-roman times, mostly encaustic colors applied in a cold state were used. tempera painting is one of the oldest known methods in mural painting. in tempera, the pigments are bound in an albuminous medium such as egg yolk or egg white diluted in water. in 16th-century europe, oil painting on canvas arose as an easier method for mural painting. the advantage was that the artwork could be completed in the artist's studio and later transported to its destination and there attached to the wall or ceiling. oil paint may be a less satisfactory medium for murals because of its lack of brilliance in colour. also, the pigments are yellowed by the binder or are more easily affected by atmospheric conditions. different muralists tend to become experts in their preferred medium and application, whether that be oil paints, emulsion or acrylic paints applied by brush, roller or airbrush/aerosols. clients will often ask for a particular style and the artist may adjust to the appropriate technique. a consultation usually leads to detailed design and layout of the proposed mural with a price quote that the client approves before the muralist starts on the work. the area to be painted can be gridded to match the design allowing the image to be scaled accurately step by step. in some cases, the design is projected straight onto the wall and traced with pencil before painting begins. some muralists will paint directly without any prior sketching, preferring the spontaneous technique. once completed the mural can be given coats of varnish or protective acrylic glaze to protect the work from uv rays and surface damage. in modern, quick form of muralling, young enthusiasts also use pop clay mixed with glue or bond to give desired models on canvas board. the canvas is later set aside to let the clay dry. once dried, the canvas and the shape can be painted with your choice of colors and later coated with varnish. as an alternative to a hand-painted or airbrushed mural, digitally printed murals can also be applied to surfaces. already existing murals can be photographed and then be reproduced in near-to-original quality. the disadvantages of pre-fabricated murals and decals are that they are often mass-produced and lack the allure and exclusivity of original artwork. they are often not fitted to the individual wall sizes of the client and their personal ideas or wishes cannot be added to the mural as it progresses. the frescography technique, a digital manufacturing method invented by rainer maria latzke addresses some of the personalisation and size restrictions. digital techniques are commonly used in advertisements. a \"wallscape\" is a large advertisement on or attached to the outside wall of a building. wallscapes can be painted directly on the wall as a mural, or printed on vinyl and securely attached to the wall in the manner of a billboard. although not strictly classed as murals, large scale printed media are often referred to as such. advertising murals were traditionally painted onto buildings and shops by sign-writers, later as large scale poster billboards. murals are important as they bring art into the public sphere. due to the size, cost, and work involved in creating a mural, muralists must often be commissioned by a sponsor. often it is the local government or a business, but many murals have been paid for with grants of patronage. for artists, their work gets a wide audience who otherwise might not set foot in an art gallery. a city benefits by the beauty of a work of art. murals can be a relatively effective tool of social emancipation or achieving a political goal. murals have sometimes been created against the law, or have been commissioned by local bars and coffee shops. often, the visual effects are an enticement to attract public attention to social issues. state-sponsored public art expressions, particularly murals, are often used by totalitarian regimes as a tool of propaganda. however, despite the propagandist character of that works, some of them still have an artistic value. murals can have a dramatic impact whether consciously or subconsciously on the attitudes of passers-by, when they are added to areas where people live and work. it can also be argued that the presence of large, public murals can add aesthetic improvement to the daily lives of residents or that of employees at a corporate venue. large-format hand-painted murals were the norm for advertisements in cities across america, before the introduction of vinyl and digital posters. it was an expensive form of advertising with strict signage laws but gained attention and improved local aesthetics. other world-famous murals can be found in mexico, new york city, philadelphia, belfast, derry, los angeles, nicaragua, cuba, the philippines, and in india. they have functioned as an important means of communication for members of socially, ethnically and racially divided communities in times of conflict. they also proved to be an effective tool in establishing a dialogue and hence solving the cleavage in the long run. the indian state kerala has exclusive murals. these kerala mural painting are on walls of hindu temples. they can be dated from 9th century ad. the san bartolo murals of the maya civilization in guatemala, are the oldest example of this art in mesoamerica and are dated at 300 bc. many rural towns have begun using murals to create tourist attractions in order to boost economic income. colquitt, georgia was chosen to host the 2010 global mural conference. the town had more than twelve murals completed, and hosted the conference along with dothan, alabama, and blakely, georgia. the mexican mural movement in the 1930s brought new prominence to murals as a social and political tool. diego rivera, jose orozco and david siqueiros were the most famous artists of the movement. between 1932 and 1940, rivera also painted murals in san francisco, detroit, and new york city. in 1933, he completed a famous series of twenty-seven fresco panels entitled detroit industry on the walls of an inner court at the detroit institute of arts. during the mccarthyism of the 1950s, a large sign was placed in the courtyard defending the artistic merit of the murals while attacking his politics as \"detestable\". in 1948, the colombian government hosted the ix pan-american conference to establish the marshall plan for the americas. the director of the oea and the colombian government commissioned master santiago martinez delgado to paint a mural in the colombian congress building to commemorate the event. in chile, the romana parra brigade painted political murals in support of workers' rights and communism. northern ireland contains some of the most famous political murals in the world. almost 2,000 murals have been documented in northern ireland since the 1970s. in recent times, many murals are non-sectarian, concerning political and social issues such as racism and environmentalism, and many are completely apolitical, depicting children at play and scenes from everyday life. a not political, but social related mural covers a wall in an old building, once a prison, at the top of a cliff in bardiyah, in libya. it was painted and signed by the artist in april 1942, weeks before his death on the first day of the first battle of el alamein. known as the bardia mural, it was created by english artist, private john frederick brill. in 1961 east germany began to erect a wall between east and west berlin, which became famous as the berlin wall. while on the east berlin side painting was not allowed, artists painted on the western side of the wall from the 80s until the fall of the wall in 1989. many unknown and known artists such as thierry noir and keith haring painted on the wall, the \"world's longest canvas\". the sometimes detailed artwork were often painted over within hours or days. on the western side the wall was not protected, so everybody could paint on the wall. after the fall of the berlin wall in 1989, the eastern side of the wall became also a popular \"canvas\" for many mural and graffiti artists. orgosolo, in sardinia, is a most important center of murals politics. it is also common for mural graffiti to be used as a memoir. in the 2001 book somebody told me, rick bragg writes about a series of communities, mainly located in new york, that have walls dedicated to the people who died. these memorials, both written word and mural style, provide the deceased to be present in the communities in which they lived. bragg states that the \"murals have woven themselves in the fabric of the neighborhoods, and the city\". these memorials remind people of the deaths caused by inner city violence. many people like to express their individuality by commissioning an artist to paint a mural in their home. this is not an activity exclusively for owners of large houses. a mural artist is only limited by the fee and therefore the time spent on the painting; dictating the level of detail; a simple mural can be added to the smallest of walls. private commissions can be for dining rooms, bathrooms, living rooms, or children's bedrooms. a child's room can be transformed into the 'fantasy world' of a forest or racing track, encouraging imaginative play and an awareness of art. the current trend for feature walls has increased commissions for muralists in the uk. a large hand-painted mural can be designed on a specific theme, incorporate personal images and elements and may be altered during the course of painting it. the personal interaction between client and muralist is often a unique experience for an individual not usually involved in the arts. in the 1980s, illusionary wall painting experienced a renaissance in private homes. the reason for this revival in interior design could, in some cases be attributed to the reduction in living space for the individual. faux architectural features, as well as natural scenery and views, can have the effect of 'opening out' the walls. densely built-up areas of housing may also contribute to people's feelings of being cut off from nature in its free form. a mural commission of this sort may be an attempt by some people to re-establish a balance with nature. the commissions of murals in schools, hospitals, and retirement homes seek to create a welcoming atmosphere. murals in other community buildings, such as public houses, are also common. recently, graffiti and street art have played a key role in contemporary wall painting. as graffiti/street art became more mainstream in the late 1990s, youth-oriented brands such as nike and red bull, with wieden kennedy, have turned to graffiti/street artists to decorate walls of their respective offices. this trend continued through 2000s with graffiti/street art gaining more recognition from art institutions worldwide. many homeowners choose to display the traditional art and culture of their society or events from their history in their homes. ethnic murals have become an important form of interior decoration. warli painting murals are becoming a preferred mode of wall decor in india. warli painting is an ancient indian art form in which the tribal people used to depict different phases of their life on the walls of their mud houses. tile murals are murals made out of stone, ceramic, porcelain, glass and or metal tiles that are installed within, or added onto the surface of an existing wall. they are also inlaid into floors. mural tiles are painted, glazed, sublimation printed or more traditionally cut out of stone, ceramic, mosaic glass and stained glass. some artists use pottery and plates broken into pieces. unlike the traditional painted murals described above, tile murals are always made by fitting pieces of the selected materials together to create the design or image. mosaic murals are made by combining small 1/4\" to 2\" size pieces of colorful stone, ceramic, or glass tiles which are then laid out to create a picture. modern day technology has allowed commercial mosaic mural makers to use computer programs to separate photographs into colors that are automatically cut and glued onto sheets of mesh creating precise murals fast and in large quantities. the azulejo refers to a typical form of portuguese or spanish painted, tin-glazed, ceramic tilework. they have become a typical aspect of portuguese culture, manifesting without interruption during five centuries, the consecutive trends in art. azulejos can be found inside and outside churches, palaces, ordinary houses and even railway stations or subway stations. they were not only used as an ornamental art form, but also had a specific functional capacity like temperature control in homes. many azulejos chronicle major historical and cultural aspects of portuguese history. custom-printed tile murals can be produced using digital images for kitchen splashbacks, wall displays, and flooring. digital photos and artwork can be resized and printed to accommodate the desired size for the area to be decorated. custom tile printing uses a variety of techniques including dye sublimation and ceramic-type laser toners. the latter technique can yield fade-resistant custom tiles which are suitable for long term exterior exposure. mexican murals in times of crisis. tucson: university of arizona press. mural painting and social revolution in mexico, 1920-1940: art of the new order. cambridge: cambridge university press. guildhall: shire publications. dreamworlds- the making of a room with illusionary painting. murales politici della sardegna : guida, storia, percorsi.",
+      "source": "en.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Capitole_Toulouse_-_Salle_des_Illustres_-_Toulouse_coop%C3%A9rant_%C3%A0_la_d%C3%A9fense_nationale_1897_-_Jean-Andr%C3%A9_Rixens.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "\"muralist\" and \"muralists\" redirect here. for the mexican art movement, see mexican muralism . ceiling painting, by jean-andre rixens .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d9/T%C3%BAmulo_100.JPG?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "prehistoric egyptian mural painted on a nekhen tomb wall c. with aspects in the gerzeh culture style a mural is any piece of graphic artwork that is painted or applied directly to a wall, ceiling or other permanent substrate.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Meister_des_Mah%C3%A2janaka_J%C3%A2taka_001.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "2 \"mural\" comes from the latin muralis , meaning \"wall painting\". this word is related to murus , meaning \"wall\". jataka tales from the ajanta caves , present-day maharashtra, india , 7th century ce.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/00/Lohja_Church_murals_1.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Murals from the 16th century at the St. Lawrence Church of Lohja",
+          "context": "the huge collection of kerala mural painting dating from the 14th century are examples of fresco secco . 1300 , the technique of painting of frescos on wet plaster was reintroduced and led to a significant increase in the quality of mural painting. murals from the 16th century at the st.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "icon",
+          "caption": "",
+          "context": "this section does not cite any sources . please help improve this section by adding citations to reliable sources .",
+          "licence": "Cc-by-sa-3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5e/Mari_fresco_Investiture_Zimri_Lim_0210.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "a special type of mural painting is luftlmalerei 7 , still practised today in the villages of the alpine valleys. well-known examples of such facade designs from the 18th and 19th centuries can be found in mittenwald , garmisch , unter- and oberammergau .",
+          "licence": "CC BY-SA 2.0 fr"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/fa/Comersee_Spalier_rgb.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "CAM designed Frescography by Rainer Maria Latzke, digitally printed on canvas",
+          "context": "the canvas is later set aside to let the clay dry. once dried, the canvas and the shape can be painted with your choice of colors and later coated with varnish. cam designed frescography by rainer maria latzke, digitally printed on canvas as an alternative to a hand-painted or airbrushed mural, digitally printed murals can also be applied to surfaces. already existing murals can be photographed and then be reproduced in near-to-original quality.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Turku_mural.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A mural in the stone fence in Turku , Finland in 2008",
+          "context": "they are often not fitted to the individual wall sizes of the client and their personal ideas or wishes cannot be added to the mural as it progresses. the frescography technique, a digital manufacturing method invented by rainer maria latzke addresses some of the personalisation and size restrictions. a mural in the stone fence in turku , finland in 2008 a 90 meter long mural on a wall at a parking lot in ystad sweden in 2024.",
+          "licence": "CC BY-SA 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/5/5d/Muralm%C3%A5lning_-_Mural_-_Ystad_-_2024.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A 90 meter long mural on a wall at a parking lot in Ystad Sweden in 2024.",
+          "context": "they are often not fitted to the individual wall sizes of the client and their personal ideas or wishes cannot be added to the mural as it progresses. the frescography technique, a digital manufacturing method invented by rainer maria latzke addresses some of the personalisation and size restrictions. a 90 meter long mural on a wall at a parking lot in ystad sweden in 2024. digital techniques are commonly used in advertisements.",
+          "licence": "CC BY 4.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/71/SBmural.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "The San Bartolo mural",
+          "context": "although not strictly classed as murals, large scale printed media are often referred to as such. advertising murals were traditionally painted onto buildings and shops by sign-writers, later as large scale poster billboards . the san bartolo mural murals are important as they bring art into the public sphere. due to the size, cost, and work involved in creating a mural, muralists must often be commissioned by a sponsor.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/da/RiveraMuralNationalPalace.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Diego Rivera&#39;s mural The History of Mexico at the National Palace in Mexico City (1929–1935).",
+          "caption": "",
+          "context": "colquitt, georgia was chosen to host the 2010 global mural conference. the town had more than twelve murals completed, and hosted the conference along with dothan, alabama , and blakely, georgia . diego rivera 's mural the history of mexico at the national palace in mexico city .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/2e/BardiaMural.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "The Bardia Mural, photographed in the 1960s, prior to its damage by defacement and the ravages of time.",
+          "caption": "",
+          "context": "the bardia mural , photographed in the 1960s, prior to its damage by defacement and the ravages of time.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "stained-glass",
+      "story": "stained glass is glass coloured by adding metallic salts when it is made. the coloured glass is made into stained glass windows. small pieces of glass are arranged to form patterns or pictures. the glass is held together by strips of lead and supported by a rigid frame. painted details and yellow stain are often used to improve the design. the term stained glass is also applied to windows in which the colours have been painted onto the glass and then fused to the glass in a kiln. stained glass is much used in christian art but other themes are not rare. it is still popular today, and often called art glass. it is often used in luxury homes and commercial buildings.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/31/Chartres_-_cath%C3%A9drale_-_rosace_nord.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "the north transept rose of chartres cathedral . it represents the virgin mary as queen of heaven, surrounded by biblical kings and prophets.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Theo_van_Doesburg_-_Composition_with_window_with_coloured_glass_III.JPG?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "De Stijl abstraction by Theo van Doesburg, Netherlands (1917): an example of modern art in glass",
+          "caption": "",
+          "context": "de stijl abstraction by theo van doesburg , netherlands : an example of modern art in glass <a href=\"/wiki/file:stained_glass_eagle.jpg\" class=\"mw-file-description\" title=\"the bald eagle, dryden high school, usa.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b7/Stained_glass_eagle.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "The Bald Eagle, Dryden High School, USA. Dynamic figures are unusual in stained glass",
+          "caption": "",
+          "context": "the bald eagle , dryden high school, usa.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "portrait",
+      "story": "a portrait is a painting or a photograph of a person's face and its expression. the purpose of a portrait is to show the likeness, personality, and even the mood of the person. for this reason, in photography, a portrait is actually not a snapshot, but a calm image of a person in a still position. a portrait normally shows a person looking directly at the painter or photographer. portrait detectives - fun interactive introduction to the analysis of portraiture. reportret - a gallery of reconstructions of missing portraits from world history.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/38/VanGogh_1887_Selbstbildnis.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An example of a portrait showing the painter Vincent van Gogh . It is a self-portrait because van Gogh is also the person who made the portrait.",
+          "context": "an example of a portrait showing the painter vincent van gogh . it is a self-portrait because van gogh is also the person who made the portrait.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Sir_Anthony_Van_Dyck_-_Charles_I_%281600-49%29_-_Google_Art_Project.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "it is a self-portrait because van gogh is also the person who made the portrait. anthony van dyck , charles i in three positions , 1635-1636, shows profile, full face and three-quarter views, to send to bernini in rome, who was to sculpt a bust from this model. a portrait is a painting or a photograph of a person 's face and its expression.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0f/1665_Girl_with_a_Pearl_Earring.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Girl with a Pearl Earring, Vermeer&#39;s most famous painting.",
+          "caption": "",
+          "context": "for this reason, in photography, a portrait is actually not a snapshot, but a calm image of a person in a still position. a portrait normally shows a person looking directly at the painter or photographer. girl with a pearl earring , vermeer 's most famous painting.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c2/Sir_William_Orpen_%281878-1931%29_-_Portrait_of_Gertrude_Sanford.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "William Orpen: Portrait of Gertrude Sanford, 1922",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Fayum-02.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Roman-Egyptian funeral portrait of a woman",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/45/Sharaku2.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Sharaku: Actor Ichikawa Ebozo as Takemura Sadanoshin, 1794.",
+          "caption": "",
+          "context": "sharaku : actor ichikawa ebozo as takemura sadanoshin, 1794.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/76/Butch_Cassidy_mugshot_detail.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Butch Cassidy mug shot from the Wyoming Territorial Prison in 1894.",
+          "caption": "",
+          "context": "butch cassidy mug shot from the wyoming territorial prison in 1894. <img alt=\"photographic self-portrait by edward s.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Self_portrait_of_Edward_Sheriff_Curtis.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Photographic self-portrait by Edward S. Curtis, 1899",
+          "caption": "",
+          "context": "butch cassidy mug shot from the wyoming territorial prison in 1894. photographic self-portrait by edward s.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "portrait detectives - fun interactive introduction to the analysis of portraiture. reportret - a gallery of reconstructions of missing portraits from world history. this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
+    },
+    {
+      "theme": "sketch-drawing-",
+      "story": "a sketch is a rapidly executed freehand drawing that is not usually intended as a finished work. a sketch may serve a number of purposes: it might record something that the artist sees, it might record or develop an idea for later use or it might be used as a quick way of graphically demonstrating an image, idea or principle. sketching is the most inexpensive art medium. sketches can be made in any drawing medium. the term is most often applied to graphic work executed in a dry medium such as silverpoint, graphite, pencil, charcoal or pastel. it may also apply to drawings executed in pen and ink, digital input such as a digital pen, ballpoint pen, marker pen, water colour and oil paint. the latter two are generally referred to as \"water colour sketches\" and \"oil sketches\". a sculptor might model three-dimensional sketches in clay, plasticine or wax. the two methods in sketching are line drawing and shading. a line drawing is the most direct means of expression. this type of drawing without shading or lightness, is usually the first to be attempted by an artist. it may be somewhat limited in effect, yet it conveys dimension, movement, structure and mood; it can also suggest texture to some extent. starting with a pencil drawing first, then washing over the pencil areas with a sable haired water color brush dipping it into the benzine is called wash and benzine. benzene does not itself add color, but merely modifies the shaded pencil areas. sketching is generally a prescribed part of the studies of art students. this generally includes making sketches from a live model whose pose changes every few minutes. underdrawing is drawing underneath the final work, which may sometimes still be visible, or can be viewed by modern scientific methods such as x-rays. most visual artists use, to a greater or lesser degree, the sketch as a method of recording or working out ideas. the sketchbooks of some individual artists have become very well known, including those of leonardo da vinci and edgar degas which have become art objects in their own right, with many pages showing finished studies as well as sketches. the term \"sketchbook\" refers to a book of blank paper on which an artist can draw sketches. the book might be purchased bound or might comprise loose leaves of sketches assembled or bound together. sketching is also used as a form of communication in areas of product design such as industrial design. it can be used to communicate design intent and is most widely used in ideation. it can be used to map out floor plans of homes. the ability to quickly record impressions through sketching has found varied purposes in today's culture. courtroom sketches record scenes and individuals in law courts. sketches drawn to help authorities find or identify wanted people are called composite sketches. street artists in popular tourist areas sketch portraits within minutes. doodle draft document, for the same concept, but in writing form etch a sketch, a toy list of sketches of notable people by marguerite martyn multi-sketch sketchnoting urban sketchers chisholm, hugh, ed. sketching basics by alois fabry.",
+      "source": "en.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/32/Jesus_und_Ehebrecherin.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Jesus and the Adulteress , a sketched figure composition by Rembrandt",
+          "context": "\"sketch artist\" redirects here. for the film, see sketch artist .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/30/Study_of_willows_by_Thomas_Gainsborough.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Charcoal sketch of willows by Thomas Gainsborough",
+          "context": "for the film, see sketch artist . charcoal sketch of willows by thomas gainsborough a sketch is a rapidly executed freehand drawing that is not usually intended as a finished work.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cc/Artist%27s_Gridded_Sketch_of_Senenmut_MET_36.3.252_EGDP013666.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An ostracon showing a gridded sketch thought to depict the royal official Senenmut, Thebes, c. 1479–1458 B.C.E",
+          "caption": "",
+          "context": "sketches drawn to help authorities find or identify wanted people are called composite sketches . street artists in popular tourist areas sketch portraits within minutes. an ostracon showing a gridded sketch thought to depict the royal official senenmut , thebes , c.",
+          "licence": "CC0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/90/Leonardo_da_vinci%2C_Study_for_the_trivulzio_monument_02.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Three draft sketches in sepia for an equestrian monument, Leonardo da Vinci 1508–10",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/37/Leonardo_da_Vinci_helicopter.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Sketch in pen and ink of an idea for a flying machine with a spiral rotor, Leonardo da Vinci",
+          "caption": "",
+          "context": "sketch in pen and ink of an idea for a flying machine with a spiral rotor , leonardo da vinci <img alt=\"sketch of a head in a parade helmet, michelangelo, c.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b0/Michelangelo_Buonarroti_-_Codex_Vallardi_2491_r.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Sketch of a head in a parade helmet, Michelangelo, c. 1500",
+          "caption": "",
+          "context": "sketch of a head in a parade helmet, michelangelo , c. 1500 <img alt=\"figure sketch in ink of two women teaching a baby to walk, carel fabritius, c.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Attributed_to_Carel_Fabritius_004.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Figure sketch in ink of two women teaching a baby to walk, Carel Fabritius, c. 1640",
+          "caption": "",
+          "context": "figure sketch in ink of two women teaching a baby to walk, carel fabritius , c. 1640 <img alt=\"sketch in pencil and ink of the piazetta, venice, canaletto, c.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Giovanni_Antonio_Canal%2C_il_Canaletto_-_The_Piazzetta_Looking_towards_the_Torre_dell%27Orologio_-_WGA03976.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Sketch in pencil and ink of the Piazetta, Venice, Canaletto, c. 1730",
+          "caption": "",
+          "context": "sketch in pencil and ink of the piazetta, venice , canaletto , c.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Fragonard%2C_Pasha.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "The Pasha, an ink sketch by Jean-Honoré Fragonard, late 1700s",
+          "caption": "",
+          "context": "1730\"> sketch in pencil and ink of the piazetta, venice , canaletto , c.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/e/e1/John_Constable_-_Zirruswolken_%28Federwolkenstudie%29.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "An oil sketch of clouds by John Constable, 1821–22",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/f/f4/Corot_-_Landschaft_mit_Heiligenfigur_auf_einer_S%C3%A4ule.jpeg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A sketch of a landscape in pencil by Camille Corot, 1870",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/24/James_McNeill_Whistler_-_Nocturne-_Battersea_Bridge_-_Google_Art_Project.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Nocturene-Battersea Bridge, a pastel sketch by Whistler, 1872",
+          "caption": "",
+          "context": "",
+          "licence": "Public domain"
+        }
+      ]
+    },
+    {
+      "theme": "craft",
+      "story": "craft or handicraft is about making things with one's own hands and skills. the different types of crafts can be put in groups according to the material being used. in the middle ages the most common materials were metal, wood or clay. a craftsman is a person who has the knowledge and skills of a craft. when they have a lot of experience they may be called a master craftsman. if they are young people learning a craft they are called an apprentice.",
+      "source": "simple.wikipedia.org",
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Swanson_Shoe_Repair_18.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Shoemakers are a type of craftsman",
+          "context": "shoemakers are a type of craftsman craft or handicraft is about making things with one's own hands and skills. the different types of crafts can be put in groups according to the material being used.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "when they have a lot of experience they may be called a master craftsman . if they are young people learning a craft they are called an apprentice . this short article can be made longer. you can help wikipedia by adding to it .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     }
   ]
 }

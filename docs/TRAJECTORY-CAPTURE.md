@@ -127,7 +127,7 @@ All paths are relative to `state` in `GET /public-state.json`.
 | last gate verdict | **`curriculum.lastGateVerdict`** | point — ⭐ **present and undocumented until now.** This is the field carrying an actual gate outcome |
 | exam transcript | **`curriculum.examTranscript`** | series — ⭐ also present and undocumented |
 | phase pass record | ⛔ **`curriculum.passedPhases` is UNDEFINED in the public payload** | — use `cellPhasesCompleted` / `.cellPhasesStarted` / `.cellPhasesTotal` |
-| exam-bank sizes | `[Curriculum] Held-out sanitize` boot line | log |
+| exam-bank sizes | `[Curriculum] Held-out eval check` boot line | log — ⛔ **the sanitize line alone no longer explains the total.** A bank can now GROW at boot as well as shrink: a derived set is merged before the check runs, so the size is `authored − removed + injected`. The eval line carries `removed at source load` **and** `injected from generated sets` for exactly that reason; a recorder reading only the sanitize line cannot tell a grown bank from a doubled one |
 
 ⛔ **The old capture rule was UNIMPLEMENTABLE AS WRITTEN.** It said: *"A trajectory row for a cell is only valid once that cell appears in `passedCells` or a fail is logged."* **`passedCells` is not in the payload the rest of this file tells the recorder to read** — so the spec's own correctness criterion referenced a field the recorder cannot see. ⭐ **A recorder built strictly to this page would have validated every row against `undefined`, and `undefined` is falsy — so either every row is rejected or, if the check was written the other way, every row passes unchecked. Both are silent.**
 

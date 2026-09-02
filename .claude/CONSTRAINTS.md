@@ -581,6 +581,17 @@ Only AFTER these four conditions are satisfied does the gate probe fire.
 - Adding a new question to `EXAM_BANKS[cellKey]` without adding the corresponding words/structure/definitions to the teach path is a LAW violation.
 - `trainExamOverlap(cellKey)` fires at curriculum startup and reports any question text that appears in BOTH `TRAIN_BANKS` and `EXAM_BANKS` for the same cell — held-out eval invalid when overlap > 0.
 
+## Corollary — a GENERATED bank satisfies the pairing by CONSTRUCTION, and must prove it (2026-09-02)
+
+The rule above was written when every question was hand-authored, so "ship a teach-path update in the same commit" was the only way a new word could be pre-taught. A bank **derived** from a data source can satisfy the same requirement a different way — by generating only from vocabulary she already has — but **it does not get to assume that; it has to be measured, in the commit that ships it.**
+
+- The generator filters its example words against the per-grade vocabulary files for the band it targets. **That is the pairing**: no new word enters the exam, so no teach-path change is owed.
+- ⛔ **The measurement is the evidence, not the filter's existence.** For the first generated set: **152 quoted strings across 110 questions, 9 absent from her K + grade-1 vocabulary, and all 9 attested GRAPHEMES from the rule file — zero unexplained.** A commit that cannot state that pair of numbers has not satisfied this corollary.
+- ⭐ **A grapheme is the SUBJECT of a phonics question, not vocabulary the question presumes.** `does "ea" in "head" sound like "ea" in "sea"?` asks about a spelling pattern; the words it asks WITH are the ones that must be known. This is the same class as the `buh / fff / vib` false alarm the exam-vocab sweep raised — strings correctly absent from prose.
+- ⛔ **Generated rows enter through `injectGeneratedExamQuestions()` ONLY.** The held-out guarantee is a property of the export in `student-question-banks.js`: a load-time pass strips any exam question the training side also shows. Code that pushes onto `EXAM_BANKS[cell]` runs AFTER that pass and walks past it, which re-opens the contamination the guarantee exists to end — and the runtime overlap check then reports the breach as a mystery instead of as the collision it is.
+- ⚠ **Injection must be idempotent and must count refusals BY REASON.** A boot that injected twice would double the bank and halve every per-standard rate while every log line still read healthy. `rejectedTrainOverlap` / `rejectedDuplicate` / `rejectedEmpty` are separate because *"refused N"* cannot distinguish a working held-out filter from a second injection landing on itself.
+- ⚠ **A bank that GROWS at boot breaks any reader that explains its size from the authored arrays alone.** The `[Curriculum] Held-out eval check` line therefore carries `removed at source load` **and** `injected from generated sets`; `docs/TRAJECTORY-CAPTURE.md` records that the sanitize line by itself is no longer sufficient.
+
 ## iter25-M.17 — User-driven vocab exemption
 
 User-introduced words via chat ("what is X" with X not in curriculum vocab) trigger lazy `_teachWordDefinition(X)` Hebbian binding (iter25-L.A2). This is USER-DRIVEN learning, not curriculum-driven, and is exempted from the test-words pre-taught LAW. If X later appears in a gate probe, the lazy chat-time binding is sufficient — the LAW only mandates pre-teach for CURRICULUM-introduced exam vocabulary.

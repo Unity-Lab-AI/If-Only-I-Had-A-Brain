@@ -40,7 +40,7 @@
 
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
-import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
 // sci/soc/art/life) are normalized via `subjects.js`. Keep them
@@ -292,6 +292,24 @@ export const SUBJECTS_RETIRED_AT = {
  * two copies of this rule drifting apart is how a walk silently restarts.
  * An empty ledger is genuinely fresh and correctly yields 0.
  */
+/**
+ * A stable identity for a textbook figure, derived from its own address.
+ *
+ * ⛔ EXISTS BECAUSE THE FIGURE KEY USED TO BE A LOOP COUNTER. Keyed on position,
+ * a re-ingest that inserted one figure shifted every subsequent key by one, so
+ * every banked percept in that cell silently re-bound to a DIFFERENT picture —
+ * and nothing could detect it, because the key still looked well-formed.
+ *
+ * A URL identifies the picture; an index identifies where it happened to sit
+ * that day. Short, filename-safe, and stable across re-ingests and reorderings.
+ */
+export function figKeyOf(fig) {
+  const src = String((fig && (fig.url || fig.src)) || '');
+  let h = 5381;
+  for (let i = 0; i < src.length; i++) h = (((h << 5) + h) ^ src.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 export function ledgerFloorIdx(passedCells) {
   const ledger = (passedCells instanceof Set)
     ? passedCells
@@ -4099,6 +4117,35 @@ export class Curriculum {
       rel: m.relationTagId == null ? null : m.relationTagId,
     });
     if (tv.ring.length > CAP) tv.ring.splice(0, tv.ring.length - CAP);
+
+    // ⭐⭐ THE LEDGER — the ring answers "what is she being taught right now",
+    // this answers "everything this cell has EVER taught", which the ring
+    // structurally cannot: it holds 400 items, about forty-five seconds once
+    // teaching floods it.
+    //
+    // ⛔ ATTACHED, NOT IMPORTED, and that is load-bearing. `teachBus` keeps a
+    // no-I/O contract because `curriculum.js` runs in the browser as well as on
+    // the server, and the browser has no filesystem. The bridge is hung on the
+    // cluster by the server at boot — the same pattern as
+    // `academicStorySentences` and `perceiveTextbookFigure` — so this fails
+    // closed in the browser instead of throwing into a teach.
+    //
+    // ⚠ The ledger batches its own writes; this call is a push onto an array.
+    const led = this.cluster && this.cluster.teachLedgerAppend;
+    if (typeof led === 'function') {
+      try {
+        led({
+          at: tv.lastAt,
+          cell: (m.subject && m.grade) ? `${m.subject}/${m.grade}` : null,
+          lane: L,
+          phase: m.phase || null,
+          source: src,
+          reps: m.reps == null ? null : m.reps,
+          rel: m.relationTagId == null ? null : m.relationTagId,
+          text: text == null ? '' : String(text),
+        });
+      } catch { /* the view must never break a teach */ }
+    }
   }
 
   /**
@@ -8868,26 +8915,76 @@ export class Curriculum {
     try { figs = cluster.academicStoryFigures(subject, grade) || []; } catch { figs = []; }
     if (!figs.length) return { perceived: 0 };
 
-    let perceived = 0, tried = 0;
-    for (const fig of figs) {
+    // ⭐⭐ ENQUEUE THE WHOLE CELL FIRST, so nothing depends on how many visits
+    // this cell gets. The inline loop below still perceives the first few
+    // immediately — those bind while the prose is freshest — and the background
+    // lane works through the remainder at its own pace.
+    //
+    // ⛔ THE CAP WAS A CEILING ON WHAT SHE CAN EVER SEE, NOT A COST CONTROL.
+    // Measured: 37,592 figures on disk, and at 6 per visit `math/grade10` needed
+    // **462 cell visits** to finish its 2,769. A cell is visited a handful of
+    // times, so the richest cells were showing a fraction of a percent. The
+    // resume cursor fixed "the same few forever" and could not fix this.
+    //
+    // ⚠ The enqueue is a metadata insert and is idempotent on the figure's own
+    // address, so re-teaching a cell costs nothing and cannot duplicate.
+    const enq = cluster.figureQueueEnqueue;
+    if (typeof enq === 'function') {
+      try { enq(subject, grade, figs); } catch { /* the view must never break a teach */ }
+    }
+
+    // ⛔⛔ A RESUME CURSOR, BECAUSE "TAKEN IN ORDER SO A RE-VISIT RESUMES" WAS
+    // WHAT THE COMMENT SAID AND NOT WHAT THE CODE DID (fixed 2026-09-02).
+    //
+    // The loop restarted at index 0 every visit and counted ALREADY-HELD figures
+    // against the attempt bound. With the default cap that bound is 24, so once
+    // the first 24 figures of a cell were banked, every later visit walked those
+    // 24, hit the bound, and returned `perceived: 0` — **and because the log line
+    // only prints when something was perceived, it did so in silence.**
+    //
+    // ⚠ THE COST WAS NOT MARGINAL. A cell holds far more than 24: the discrete
+    // maths cell holds 175 figures and one maths cell holds 2,769. **Everything
+    // past roughly the 24th picture in every cell was unreachable for the entire
+    // life of the lane**, which is the precise opposite of the requirement that
+    // she be shown all of a book's illustrations.
+    //
+    // The cursor advances past what was examined this visit and wraps, so
+    // successive visits sweep the whole cell. It is per-process and deliberately
+    // not persisted: losing it costs one re-walk of already-held keys, which the
+    // store answers without a fetch.
+    if (!this._cellFigCursor) this._cellFigCursor = new Map();
+    const cursorKey = `${subject}/${grade}`;
+    const start = (this._cellFigCursor.get(cursorKey) | 0) % figs.length;
+
+    let perceived = 0, examined = 0, held = 0;
+    let i = 0;
+    for (; i < figs.length; i++) {
       if (perceived >= cap) break;
-      tried++;
-      // Bound the ATTEMPTS too, not just the successes — a cell where every
-      // figure is already held would otherwise walk all 94 every visit doing
-      // store lookups, and a cell where every fetch 404s would retry forever.
-      if (tried > cap * 4) break;
+      // Bound the genuine ATTEMPTS — a cell where every fetch 404s must not
+      // retry forever. ⭐ An already-held figure is NOT an attempt: it costs a
+      // store lookup, not a fetch, and counting it here is the bug above.
+      if (examined - held > cap * 4) break;
+      const fig = figs[(start + i) % figs.length];
+      examined++;
       try {
+        // ⛔ KEYED ON THE FIGURE'S OWN ADDRESS, NOT ITS POSITION IN THE LIST.
+        // The key used to be the loop counter, so a re-ingest that inserted a
+        // single figure shifted every subsequent key by one and silently
+        // rebound every banked percept in the cell to a DIFFERENT picture.
+        // A URL identifies the picture; an index identifies where it happened
+        // to sit that day.
         const rec = await cluster.perceiveTextbookFigure(fig, {
-          key: `${fig.theme || subject}-${tried}`,
+          key: `${fig.theme || subject}-${figKeyOf(fig)}`,
           theme: fig.theme || `${subject}/${grade}`,
         });
-        if (rec) perceived++;
+        if (rec) perceived++; else held++;
       } catch { /* one bad figure never costs the cell */ }
     }
+    this._cellFigCursor.set(cursorKey, (start + i) % figs.length);
     if (perceived > 0) {
-      this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) — ${perceived} textbook figure(s) perceived and shown (${figs.length} in this cell, cap ${cap}/visit).`);
+      this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) — ${perceived} textbook figure(s) perceived and shown (${figs.length} in this cell, cap ${cap}/visit, resuming at ${start}).`);
     }
-    return { perceived, available: figs.length };
+    return { perceived, available: figs.length, examined, from: start };
   }
 
   /**
@@ -16331,7 +16428,33 @@ export class Curriculum {
           }
         }
         const VOCAB_CAP = opts.vocabCap ?? 60;
-        const batch = newWords.slice(0, VOCAB_CAP);
+        // ⛔⛔ ROTATE THE WINDOW — `slice(0, CAP)` STRANDS EVERY WORD PAST THE
+        // FIRST 60 AS SOON AS 60 UNDEFINABLE ONES COLLECT AT THE HEAD
+        // (found 2026-09-02 sweeping the teach path for this shape).
+        //
+        // `newWords` is rebuilt each visit by filtering out
+        // `_definitionTaughtWords` — which is only ever added to when
+        // `defsBound > 0`. **A word the dictionary has no entry for is never
+        // recorded**, so it stays unlearned, stays at the head of the list in
+        // corpus order, and is retried on every single visit forever. Academic
+        // prose is full of them: proper nouns, inflected forms, technical
+        // coinages. Once sixty accumulate, **the cell's remaining vocabulary can
+        // never be anchored again** — and the log line would still read
+        // "0/60 anchored", which looks like a bad batch rather than a wall.
+        //
+        // ⚠ A MISS-LIST IS THE WRONG FIX HERE AND WAS REJECTED. Marking a word
+        // permanently-missed on a failed lookup cannot tell "this word has no
+        // definition" from "the API refused me just now" — the exact conflation
+        // this corpus has been bitten by repeatedly. A rotating window needs no
+        // such judgement: a blocked head cannot hide the tail, and a word that
+        // becomes definable later is still picked up on a later pass.
+        if (!this._acadVocabCursor) this._acadVocabCursor = new Map();
+        const vcKey = `${subject}/${grade}`;
+        const vStart = newWords.length ? (this._acadVocabCursor.get(vcKey) | 0) % newWords.length : 0;
+        const batch = newWords.length <= VOCAB_CAP
+          ? newWords
+          : Array.from({ length: VOCAB_CAP }, (_, k) => newWords[(vStart + k) % newWords.length]);
+        if (newWords.length) this._acadVocabCursor.set(vcKey, (vStart + batch.length) % newWords.length);
         if (batch.length && typeof cluster.prefetchDefinitions === 'function') {
           try { await cluster.prefetchDefinitions(batch, { timeoutMs: 8000 }); } catch { /* prefetch best-effort */ }
         }
@@ -16340,7 +16463,7 @@ export class Curriculum {
           try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
           catch { /* per-word best-effort */ }
         }
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, capped ${VOCAB_CAP}). Prose now binds on anchored basins, not phantom word basins.`);
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, window ${VOCAB_CAP} from offset ${vStart}). Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch { /* pre-vocab is best-effort; never blocks the story train */ }
 
@@ -29228,6 +29351,41 @@ export class Curriculum {
       console.warn('[Brain] fractal-equation audit failed:', err?.message || err);
     }
 
+    // ⭐⭐ THE GENERATED PHONICS QUESTIONS JOIN THE BANK HERE, BEFORE THE CHECK
+    // BELOW RUNS — so the integrity check verifies the rows that were injected,
+    // not just the rows that were authored. Injecting after it would leave the
+    // newest questions as the only ones nothing ever validated.
+    //
+    // ⛔ WHY THIS EXISTS: measured off the live banks, `21/26` letters had a
+    // letter-sound question, **0/26** were taught a second sound, and the only
+    // long/short question in 307 was about a rectangle. A reader who learns one
+    // sound per letter cannot decode English and the gate would still pass her.
+    // The rules carry `c → /s/ /ʃ/ /k/`, `g → /dʒ/ /ɡ/`, `ch → /tʃ/ /k/ /ʃ/`,
+    // `th → /θ/ /ð/` as DATA, so the questions are generated from them rather
+    // than typed — no phoneme is ever spelled out as an approximation.
+    //
+    // ⚠ THE TARGET CELL IS DELIBERATE AND NARROW. Every generated row carries
+    // the K standard for letter-sound correspondence, and the generator filtered
+    // its example words to vocabulary she has at this band, so the K ELA cell is
+    // where they are answerable. The separate and much larger problem — that
+    // most cells the walk runs have no bank at all — is not solved by fanning
+    // these rows out to grades whose vocabulary they were never checked against.
+    try {
+      const _pqSrc = this.cluster && this.cluster.phonicsExamQuestions;
+      if (typeof _pqSrc === 'function') {
+        const rows = _pqSrc() || [];
+        if (rows.length) {
+          const r = injectGeneratedExamQuestions('ela/kindergarten', rows);
+          const _multi = new Set(rows.map((q) => String(q && q.standard || ''))).size;
+          this._hb(`[Curriculum] Generated phonics questions: ${r.added} of ${r.offered} added to ${r.cellKey} (${_multi} standard(s)) · refused ${r.rejectedTrainOverlap} as training duplicates, ${r.rejectedDuplicate} as already banked, ${r.rejectedEmpty} as empty · bank now ${(EXAM_BANKS[r.cellKey] || []).length}`);
+        }
+      }
+    } catch (err) {
+      // A bad generated file must not take the walk down with it — the authored
+      // bank is still a valid held-out set on its own.
+      console.warn('[Curriculum] generated-question injection failed:', err?.message || err);
+    }
+
     // Held-out eval integrity check — the exam banks must be disjoint
     // from anything the teaching side exposes the brain to. Non-empty
     // overlap means a gate pass could be memorization, not learning.
@@ -29258,7 +29416,11 @@ export class Curriculum {
           .map(([k, v]) => `${k} ${v.removed} (${v.before}→${v.after})`).join(', ');
         console.warn(`[Curriculum] Held-out sanitize removed ${_san.totalRemoved} duplicate question(s) from the EXAM banks at load: ${_detail}. These were authored into BOTH the training exposure and the held-out bank; EXAM loses the duplicate so teaching coverage is never reduced. Fix the authoring to reclaim the questions.`);
       }
-      this._hb(`[Curriculum] Held-out eval check: ${totalExam} exam questions across ${Object.keys(EXAM_BANKS).length} cells · runtime overlap=${totalOverlap} (0 = valid held-out) · removed at source load=${_san.totalRemoved}`);
+      // ⚠ `injected` is printed beside `removed` because the total above is no
+      // longer explainable by the authored arrays alone — a reader who cannot
+      // see both numbers cannot tell a grown bank from a doubled one.
+      const _inj = _examInjectReport || { totalAdded: 0, totalRejected: 0 };
+      this._hb(`[Curriculum] Held-out eval check: ${totalExam} exam questions across ${Object.keys(EXAM_BANKS).length} cells · runtime overlap=${totalOverlap} (0 = valid held-out) · removed at source load=${_san.totalRemoved} · injected from generated sets=${_inj.totalAdded} (refused ${_inj.totalRejected})`);
     } catch (err) {
       console.warn('[Curriculum] Held-out eval check failed:', err?.message || err);
     }

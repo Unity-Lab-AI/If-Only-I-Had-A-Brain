@@ -103,19 +103,45 @@ const LADDER = {
   // before it was written here, per the rule `LITGRADE.1` earned: of eight ids
   // guessed from memory in the first pass, two resolved to *The Illustrated War
   // News* and a *Pony Rider Boys* novel.
-  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"]],
-  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"]],
+  // ⭐⭐ THE AMERICAN CLASSICS, ADDED 2026-09-02 ON THE OPERATOR'S INSTRUCTION —
+  // *"dont get random books get all the american classics for early grades"*.
+  //
+  // ⛔ THAT INSTRUCTION REPLACED A WORSE PLAN. I had been probing illustrated
+  // children's-book HOSTS — collections of regionally-set stories that do not
+  // match her canon, which is an American school year: McGuffey readers, US
+  // social studies, the American Revolution. The canon she walks decides the
+  // books, not whichever host has the most pictures.
+  //
+  // ⛔⛔ EVERY ID BELOW WAS VERIFIED AGAINST GUTENBERG'S OWN `Title:` HEADER, and
+  // the check earned its keep immediately: candidate ids I proposed resolved to
+  // *The Three Musketeers*, *Siddhartha*, *Dr Jekyll and Mr Hyde*, *The Eskdale
+  // Herd-boy* and Whistler's *The Gentle Art of Making Enemies*. **A wrong id
+  // does not fail — it teaches the wrong book**, which is how a PhD English year
+  // nearly read French maritime fiction.
+  //
+  // ⭐ AND ALL 22 HAVE AN ILLUSTRATED EDITION, which is why they were chosen in
+  // this order: the early band holds 348 pictures against college's 8,852, so
+  // these titles feed the thinnest prose AND the emptiest eyes at once.
+  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"],
+    [11757, 'The Velveteen Rabbit'], [18190, 'Raggedy Ann Stories']],
+  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"],
+    [19994, 'The Aesop for Children'], [25609, "A Child's Garden of Verses"]],
   // ⭐⭐ A YEAR'S READING, NOT A TOKEN TWO BOOKS — expanded 2026-09-02.
   // Gee: *"what about all the books like wizard of oz and shit that all the
   // lower grades and uper grades get to read"*. Removing the sentence cap made
   // each book whole and left THE LIST as the cap: two titles is not a year.
   // ⛔ All 23 additions verified against Gutenberg's own `Title:` header in one
   // batch before being written here.
-  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"], [14838, 'The Tale of Peter Rabbit']],
-  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"], [2781, 'Just So Stories']],
-  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"], [500, 'The Adventures of Pinocchio'], [236, 'The Jungle Book']],
-  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"], [289, 'The Wind in the Willows'], [1448, 'Heidi']],
-  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"], [45, 'Anne of Green Gables'], [271, 'Black Beauty'], [113, 'The Secret Garden']],
+  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"], [14838, 'The Tale of Peter Rabbit'],
+    [4357, 'American Fairy Tales']],
+  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"], [2781, 'Just So Stories'],
+    [2591, "Grimms' Fairy Tales"], [503, 'The Blue Fairy Book']],
+  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"], [500, 'The Adventures of Pinocchio'], [236, 'The Jungle Book'],
+    [1597, "Andersen's Fairy Tales"], [54, 'The Marvelous Land of Oz']],
+  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"], [289, 'The Wind in the Willows'], [1448, 'Heidi'],
+    [33361, 'Ozma of Oz'], [420, 'Dorothy and the Wizard in Oz'], [501, 'The Story of Doctor Dolittle'], [1450, 'Pollyanna']],
+  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"], [45, 'Anne of Green Gables'], [271, 'Black Beauty'], [113, 'The Secret Garden'],
+    [146, 'A Little Princess'], [514, 'Little Women'], [964, 'The Merry Adventures of Robin Hood'], [41, 'The Legend of Sleepy Hollow']],
   grade6:  [[120, 'Treasure Island'], [514, 'Little Women'], [16751, "McGuffey's Sixth Eclectic Reader"], [521, 'Robinson Crusoe'], [103, 'Around the World in Eighty Days']],
   grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild'], [910, 'White Fang'], [421, 'Kidnapped'], [35, 'The Time Machine']],
   grade8:  [[76, 'Adventures of Huckleberry Finn'], [829, "Gulliver's Travels"], [164, 'Twenty Thousand Leagues under the Sea'], [1661, 'The Adventures of Sherlock Holmes']],
@@ -442,6 +468,11 @@ function cleanProse(txt, cap) {
 // defect, where an unlabelled frame fused with whatever word was current and
 // became a false memory.
 //
+// ⚠ "Words attached" means the LABEL OR THE PASSAGE, and reading it as label-only
+// is what silently discarded 35% of the ladder's plates until 2026-09-02 — see
+// the measurement at the refusal itself. An unlabelled plate inside the prose it
+// illustrates has plenty to bind to; it is a plate with neither that is refused.
+//
 // ⭐⭐ AND EVERY PLATE CARRIES THE PASSAGE IT ILLUSTRATES (`context`). A plate's
 // own caption is typically a line of dialogue or a chapter reference — "Reading
 // Jane's Letters. Chap 34." — which names where the picture sits and says
@@ -478,14 +509,41 @@ function plateContext(html, index) {
     .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
 }
 
+// ⛔⛔ RETURNS A REASON, BECAUSE "NO PICTURES" AND "I WAS REFUSED" ARE DIFFERENT
+// ANSWERS AND THIS FUNCTION USED TO GIVE THE SECOND ONE AS THE FIRST.
+//
+// Every failure path here returned a bare `[]`, which the caller printed as
+// `0 illustrations` — identical to the output for a text-only edition. A
+// throttled or 404'd fetch was therefore indistinguishable from a book that
+// genuinely has no plates, in a run that makes 90 requests to one host.
+//
+// ⚠ This is the SAME defect species already fixed once in the encyclopedia
+// figure lane during this stretch, in a different file, and it survived here
+// because nothing forced the two lanes to agree. **A lane that cannot tell "I
+// failed" from "there is nothing there" reports the second, and it reports it
+// with a confident number.**
+//
+// ⭐ Transient refusals are also RETRIED rather than merely reported: a 429 or a
+// 5xx during a long sequential run is the expected case, not an exceptional one,
+// and losing a whole book's plates to one is a silent corpus hole.
 async function fetchIllustrations(id) {
   const base = `https://www.gutenberg.org/cache/epub/${id}/`;
   let html = '';
-  try {
-    const r = await fetch(`${base}pg${id}-images.html`, { headers: { 'User-Agent': UA } });
-    if (!r.ok) return [];
-    html = await r.text();
-  } catch { return []; }
+  let lastReason = 'unknown';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`${base}pg${id}-images.html`, { headers: { 'User-Agent': UA } });
+      if (r.ok) { html = await r.text(); lastReason = ''; break; }
+      lastReason = `HTTP ${r.status}`;
+      // 404 is a fact about the edition and will not change on a retry; a
+      // throttle or a server fault will.
+      if (r.status === 404) break;
+    } catch (e) {
+      lastReason = `network: ${e?.message || e}`;
+    }
+    if (attempt < 2) await sleep(2000 * (attempt + 1));
+  }
+  if (lastReason) return { figs: [], reason: lastReason };
   const figs = [];
   const seen = new Set();
   for (const m of html.matchAll(/<img\b([^>]*)>/gi)) {
@@ -515,15 +573,45 @@ async function fetchIllustrations(id) {
     // OR real surrounding prose, and a plate carrying neither is refused.
     const placeholder = /^(illustration|image|figure|photo|picture|graphic|logo|decoration)(\s+\d+)?$/i
       .test(words.replace(/\s+/g, ' ').trim());
-    if (words.length < 3) continue;                       // no words to bind to
-    if (placeholder && context.length < 40) continue;     // nor any in the prose
+    // ⛔⛔ THE RULE STATED THREE LINES ABOVE WAS NOT THE RULE THE CODE RAN, AND IT
+    // COST 35% OF EVERY PLATE IN THE LADDER (measured 2026-09-02).
+    //
+    // The stated rule is "a real label OR real surrounding prose, and a plate
+    // carrying neither is refused". The code refused on a missing LABEL first and
+    // only consulted the prose afterwards, for placeholders — so an unlabelled
+    // plate sitting in 700 characters of the passage it illustrates was thrown
+    // away without the prose ever being looked at.
+    //
+    // ⚠ THE COST, counted over an 11-book sample of this ladder rather than
+    // estimated: 770 plates present, 497 kept, **273 refused that the stated rule
+    // keeps**. It is not spread evenly — it takes whole books at a time, because
+    // whether a transcriber typed alt text is a property of the EDITION:
+    //     The Jungle Book        56 plates, 0 kept   — the entire book
+    //     The Marvelous Land of Oz  274 plates, 137 kept
+    //     Ozma of Oz            111 plates,  35 kept
+    // while books whose transcriber captioned everything lost nothing at all.
+    // ⭐ That is also why the run log looked plausible: the failure is per-edition,
+    // so it reads as "some editions have no plates" — which is a true statement
+    // about a different set of books.
+    //
+    // ⭐ Binding an unlabelled plate to its passage is not a loosening of the
+    // no-words refusal, it is the whole point of capturing context: the percept
+    // gets the narrative the artist drew, instead of a transcriber's bracket. The
+    // refusal that matters — a plate with nothing whatsoever to bind to — is
+    // unchanged, and a placeholder label still counts as nothing.
+    const realLabel = words.length >= 3 && !placeholder;
+    const realContext = context.length >= 40;
+    if (!realLabel && !realContext) continue;             // nothing to bind to, in label or prose
     let abs;
     try { abs = new URL(src, base).href; } catch { continue; }
     if (seen.has(abs)) continue;
     seen.add(abs);
     figs.push({ src: abs, alt: alt || title, caption, context });
   }
-  return figs;
+  // Reached the edition and read it: a zero here is the edition's own answer.
+  // ⚠ The reason is empty when plates were found, so a caller that reads it
+  // unconditionally cannot be told "carries no plates" about a book that does.
+  return { figs, reason: figs.length ? '' : 'edition carries no plates' };
 }
 
 async function fetchBook(id) {
@@ -567,7 +655,7 @@ async function buildGrade(grade, books) {
     // ⭐ Namespacing keeps BOTH: she reads the play AND what is written about
     // it, which is what a real English class does.
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const plates = await fetchIllustrations(id);
+    const { figs: plates, reason: plateReason } = await fetchIllustrations(id);
     const entry = {
       theme: `text-${slug}`,
       story: sents.join(' '),
@@ -579,7 +667,7 @@ async function buildGrade(grade, books) {
     // edition is text only".
     if (plates.length) entry.figures = plates;
     experiences.push(entry);
-    console.log(`  ${title} — ${sents.length} sentences, ${plates.length} illustrations`);
+    console.log(`  ${title} — ${sents.length} sentences, ${plates.length} illustrations${plates.length ? '' : ` (${plateReason})`}`);
     // ⭐ THE SPEECH IN THE SAME BOOK, AS ITS OWN ENTRY. Kept separate from the
     // narration entry on purpose: the merge is per theme, so a book's dialogue
     // can grow or shrink without displacing its prose, and the corpus auditor

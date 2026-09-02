@@ -1,0 +1,2810 @@
+{
+  "version": 1,
+  "note": "Systematic grapheme->phoneme correspondences with context rules. The grapheme inventory and context rules come from Wikipedia \"English orthography\" (CC-BY-SA); every rule is checked against the CMU Pronouncing Dictionary (BSD 2-clause) and carries its own verdict. NOT hand-authored.",
+  "sources": [
+    {
+      "what": "grapheme inventory + context rules + example words",
+      "url": "https://en.wikipedia.org/wiki/English_orthography",
+      "licence": "CC-BY-SA"
+    },
+    {
+      "what": "phoneme ground truth per word (verification)",
+      "url": "https://github.com/cmusphinx/cmudict",
+      "licence": "BSD-2-Clause"
+    }
+  ],
+  "counts": {
+    "rules": 241,
+    "graphemes": 156,
+    "multiSound": 52,
+    "confirmed": 285,
+    "refuted": 4,
+    "unverifiable": 122,
+    "scrapedBeforeCleaning": 411,
+    "droppedDuplicate": 117,
+    "droppedNoCheckableExample": 53
+  },
+  "rules": [
+    {
+      "grapheme": "b",
+      "context": "elsewhere",
+      "value": "b",
+      "examples": [
+        "bit",
+        "ebb",
+        "limber",
+        "obtain",
+        "blood",
+        "bring"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "bb",
+      "context": "elsewhere",
+      "value": "b",
+      "examples": [
+        "bit",
+        "ebb",
+        "limber",
+        "obtain",
+        "blood",
+        "bring"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "c",
+      "context": "before ⟨e, i, y, ae⟩",
+      "value": "s",
+      "examples": [
+        "cellar",
+        "city",
+        "cyst",
+        "face",
+        "prince",
+        "nicer"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "c",
+      "context": "before unstressed ea, ia, ie, io",
+      "value": "ʃ",
+      "examples": [
+        "ocean",
+        "special",
+        "glacier"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "c",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "cat",
+        "cross",
+        "predict",
+        "picture"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "cc",
+      "context": "before e, i, y",
+      "value": "ks",
+      "examples": [
+        "accept",
+        "eccentric",
+        "occidental"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "cc",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "account",
+        "accrue",
+        "occur",
+        "yucca"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ch",
+      "context": "after n",
+      "value": "tʃ",
+      "examples": [
+        "branch",
+        "franchise",
+        "enchant",
+        "enchilada",
+        "chinchilla"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ch",
+      "context": "in words of Greek origin",
+      "value": "k",
+      "examples": [
+        "chasm",
+        "chimera",
+        "chord",
+        "lichen"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ch",
+      "context": "in words of Modern French origin",
+      "value": "ʃ",
+      "examples": [
+        "chaise",
+        "machine",
+        "cached",
+        "parachute"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ch",
+      "context": "elsewhere",
+      "value": "tʃ",
+      "examples": [
+        "chase",
+        "chin",
+        "attached",
+        "chore"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ck",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "tack",
+        "ticket"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "d",
+      "context": "-ed after a fortis sound",
+      "value": "t",
+      "examples": [
+        "ached",
+        "iced",
+        "puffed",
+        "raked"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "dd",
+      "context": "-ed after a fortis sound",
+      "value": "t",
+      "examples": [
+        "ached",
+        "iced",
+        "puffed",
+        "raked"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "dh",
+      "context": "-ed after a fortis sound",
+      "value": "t",
+      "examples": [
+        "ached",
+        "iced",
+        "puffed",
+        "raked"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "d",
+      "context": "elsewhere",
+      "value": "d",
+      "examples": [
+        "dive",
+        "ladder"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "dd",
+      "context": "elsewhere",
+      "value": "d",
+      "examples": [
+        "dive",
+        "ladder"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "dh",
+      "context": "elsewhere",
+      "value": "d",
+      "examples": [
+        "dive",
+        "ladder"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "dg",
+      "context": "before e, i, y or a suffix",
+      "value": "dʒ",
+      "examples": [
+        "edgy",
+        "acknowledgment",
+        "judgment",
+        "fledgling"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "dg",
+      "context": "resulting from a compound word",
+      "value": "dɡ",
+      "examples": [
+        "headgear"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "f",
+      "context": "elsewhere",
+      "value": "f",
+      "examples": [
+        "fine",
+        "off",
+        "affinity"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ff",
+      "context": "elsewhere",
+      "value": "f",
+      "examples": [
+        "fine",
+        "off",
+        "affinity"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "g",
+      "context": "before e, i, y, ae",
+      "value": "dʒ",
+      "examples": [
+        "gel",
+        "pager",
+        "algae",
+        "gin",
+        "gentle",
+        "rage",
+        "gigantic",
+        "regimen",
+        "geography"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "g",
+      "context": "before m",
+      "value": "∅",
+      "examples": [
+        "diaphragm"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "g",
+      "context": "elsewhere",
+      "value": "ɡ",
+      "examples": [
+        "go",
+        "great",
+        "leg"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "gg",
+      "context": "before e",
+      "value": "ɡ",
+      "examples": [
+        "dagger",
+        "staggering"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "gg",
+      "context": "before e",
+      "value": "dʒ",
+      "examples": [
+        "exaggerate",
+        "suggest"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "gg",
+      "context": "elsewhere",
+      "value": "ɡ",
+      "examples": [
+        "giggle",
+        "egg",
+        "ziggurat",
+        "beggar"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "gh",
+      "context": "word or syllable-initial",
+      "value": "ɡ",
+      "examples": [
+        "ghost",
+        "ghastly",
+        "ghetto",
+        "spaghetti",
+        "aghast"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "gh",
+      "context": "elsewhere",
+      "value": "∅",
+      "examples": [
+        "daughter",
+        "through",
+        "fraught",
+        "higher",
+        "straight",
+        "sighed"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "gn",
+      "context": "elsewhere",
+      "value": "n",
+      "examples": [
+        "gnome",
+        "signed",
+        "poignant",
+        "reign"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "h",
+      "context": "syllable-initial",
+      "value": "h",
+      "examples": [
+        "honey",
+        "heist",
+        "house",
+        "vehicular"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "h",
+      "context": "elsewhere",
+      "value": "∅",
+      "examples": [
+        "oh",
+        "cheetah"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "j",
+      "context": "elsewhere",
+      "value": "dʒ",
+      "examples": [
+        "jump"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "k",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "key",
+        "bake",
+        "trekking",
+        "sheikh"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "kk",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "key",
+        "bake",
+        "trekking",
+        "sheikh"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "kh",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "key",
+        "bake",
+        "trekking",
+        "sheikh"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "kn",
+      "context": "elsewhere",
+      "value": "n",
+      "examples": [
+        "knee",
+        "knife",
+        "knock"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "l",
+      "context": "elsewhere",
+      "value": "l",
+      "examples": [
+        "valve",
+        "balcony",
+        "almost",
+        "valley",
+        "flotilla",
+        "line",
+        "colony"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ll",
+      "context": "elsewhere",
+      "value": "l",
+      "examples": [
+        "valve",
+        "balcony",
+        "almost",
+        "valley",
+        "flotilla",
+        "line",
+        "colony"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "m",
+      "context": "word-initial before n",
+      "value": "∅",
+      "examples": [
+        "mnemonic"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "mm",
+      "context": "word-initial before n",
+      "value": "∅",
+      "examples": [
+        "mnemonic"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "m",
+      "context": "elsewhere",
+      "value": "m",
+      "examples": [
+        "mine",
+        "hammer"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "mm",
+      "context": "elsewhere",
+      "value": "m",
+      "examples": [
+        "mine",
+        "hammer"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "mb",
+      "context": "morpheme-final",
+      "value": "m",
+      "examples": [
+        "climber",
+        "numbing",
+        "bombed"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "mb",
+      "context": "elsewhere",
+      "value": "mb",
+      "examples": [
+        "number",
+        "tumble"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "n",
+      "context": "word-final after m",
+      "value": "∅",
+      "examples": [
+        "hymn",
+        "autumn"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "nn",
+      "context": "word-final after m",
+      "value": "∅",
+      "examples": [
+        "hymn",
+        "autumn"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "n",
+      "context": "elsewhere",
+      "value": "n",
+      "examples": [
+        "nice",
+        "funny",
+        "tin"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "nn",
+      "context": "elsewhere",
+      "value": "n",
+      "examples": [
+        "nice",
+        "funny",
+        "tin"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ng",
+      "context": "before th, s",
+      "value": "ŋk",
+      "examples": [
+        "strength",
+        "amongst"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ng",
+      "context": "morpheme-final",
+      "value": "ŋ",
+      "examples": [
+        "long",
+        "tongue",
+        "kingly",
+        "singer"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ng",
+      "context": "otherwise",
+      "value": "ŋɡ",
+      "examples": [
+        "congress",
+        "singly",
+        "finger",
+        "language"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ng",
+      "context": "otherwise",
+      "value": "ndʒ",
+      "examples": [
+        "binging",
+        "dingy",
+        "stingy"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "p",
+      "context": "word-initial before n, s, t",
+      "value": "∅",
+      "examples": [
+        "pneumonia",
+        "psyche",
+        "ptomaine"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "pp",
+      "context": "word-initial before n, s, t",
+      "value": "∅",
+      "examples": [
+        "pneumonia",
+        "psyche",
+        "ptomaine"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "p",
+      "context": "elsewhere",
+      "value": "p",
+      "examples": [
+        "pill",
+        "happy",
+        "soup",
+        "corpse",
+        "script"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "pp",
+      "context": "elsewhere",
+      "value": "p",
+      "examples": [
+        "pill",
+        "happy",
+        "soup",
+        "corpse",
+        "script"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ph",
+      "context": "elsewhere",
+      "value": "f",
+      "examples": [
+        "photograph",
+        "sapphire"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "pph",
+      "context": "elsewhere",
+      "value": "f",
+      "examples": [
+        "photograph",
+        "sapphire"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "q",
+      "context": "in words of Chinese origin",
+      "value": "tʃ",
+      "examples": [
+        "qi"
+      ],
+      "check": "refuted"
+    },
+    {
+      "grapheme": "q",
+      "context": "elsewhere",
+      "value": "k",
+      "examples": [
+        "iraq"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "r",
+      "context": "before a consonant finally before final e",
+      "value": "r",
+      "examples": [
+        "cart",
+        "walker",
+        "tear",
+        "burr"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "rr",
+      "context": "before a consonant finally before final e",
+      "value": "r",
+      "examples": [
+        "cart",
+        "walker",
+        "tear",
+        "burr"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "rh",
+      "context": "before a consonant finally before final e",
+      "value": "r",
+      "examples": [
+        "cart",
+        "walker",
+        "tear",
+        "burr"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "rrh",
+      "context": "before a consonant finally before final e",
+      "value": "r",
+      "examples": [
+        "cart",
+        "walker",
+        "tear",
+        "burr"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "r",
+      "context": "elsewhere",
+      "value": "r",
+      "examples": [
+        "ray",
+        "parrot",
+        "rhyme",
+        "diarrhoea"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "rr",
+      "context": "elsewhere",
+      "value": "r",
+      "examples": [
+        "ray",
+        "parrot",
+        "rhyme",
+        "diarrhoea"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "rh",
+      "context": "elsewhere",
+      "value": "r",
+      "examples": [
+        "ray",
+        "parrot",
+        "rhyme",
+        "diarrhoea"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "rrh",
+      "context": "elsewhere",
+      "value": "r",
+      "examples": [
+        "ray",
+        "parrot",
+        "rhyme",
+        "diarrhoea"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "s",
+      "context": "word-final - s morphemeafter a fortis sound",
+      "value": "s",
+      "examples": [
+        "pets",
+        "shops"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "s",
+      "context": "word-final - s morphemeafter a lenis sound",
+      "value": "z",
+      "examples": [
+        "ines"
+      ],
+      "check": "refuted"
+    },
+    {
+      "grapheme": "s",
+      "context": "between vowels",
+      "value": "z",
+      "examples": [
+        "phrases",
+        "prison",
+        "pleasing"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "s",
+      "context": "elsewhere",
+      "value": "s",
+      "examples": [
+        "song",
+        "ask",
+        "misled"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "sc",
+      "context": "before e, i, y",
+      "value": "s",
+      "examples": [
+        "scene",
+        "scissors",
+        "scythe"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "sch",
+      "context": "in words of Middle or modern French origin",
+      "value": "ʃ",
+      "examples": [
+        "schedule",
+        "schist"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "sch",
+      "context": "elsewhere",
+      "value": "sk",
+      "examples": [
+        "school",
+        "scheme",
+        "ischemia"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "sh",
+      "context": "elsewhere",
+      "value": "ʃ",
+      "examples": [
+        "shin",
+        "fashion",
+        "wish",
+        "kinship"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ss",
+      "context": "after a prefix ending -s",
+      "value": "s s",
+      "examples": [
+        "misspell"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "ss",
+      "context": "elsewhere",
+      "value": "s",
+      "examples": [
+        "boss",
+        "assign",
+        "posses",
+        "finesse",
+        "cesspool"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "sw",
+      "context": "elsewhere",
+      "value": "sw",
+      "examples": [
+        "swore",
+        "swan",
+        "swift"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "t",
+      "context": "in - sten, stle",
+      "value": "∅",
+      "examples": [
+        "hasten",
+        "listens",
+        "rustling",
+        "thistles"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "tt",
+      "context": "in - sten, stle",
+      "value": "∅",
+      "examples": [
+        "hasten",
+        "listens",
+        "rustling",
+        "thistles"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "t",
+      "context": "elsewhere",
+      "value": "t",
+      "examples": [
+        "ten",
+        "bitter",
+        "etiology",
+        "nastier",
+        "tune",
+        "cation",
+        "softer",
+        "wallet",
+        "haste"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "tt",
+      "context": "elsewhere",
+      "value": "t",
+      "examples": [
+        "ten",
+        "bitter",
+        "etiology",
+        "nastier",
+        "tune",
+        "cation",
+        "softer",
+        "wallet",
+        "haste"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "tch",
+      "context": "resulting from a compound word",
+      "value": "t tʃ",
+      "examples": [
+        "shortchange"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "tch",
+      "context": "elsewhere",
+      "value": "tʃ",
+      "examples": [
+        "batch",
+        "kitchen"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "th",
+      "context": "elsewhere",
+      "value": "θ",
+      "examples": [
+        "thing",
+        "absinthe"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "th",
+      "context": "elsewhere",
+      "value": "ð",
+      "examples": [
+        "this",
+        "bother",
+        "soothe"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "v",
+      "context": "elsewhere",
+      "value": "v",
+      "examples": [
+        "vine",
+        "heavy",
+        "savvy",
+        "reveled",
+        "revved"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "vv",
+      "context": "elsewhere",
+      "value": "v",
+      "examples": [
+        "vine",
+        "heavy",
+        "savvy",
+        "reveled",
+        "revved"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "w",
+      "context": "elsewhere",
+      "value": "w",
+      "examples": [
+        "sward",
+        "swerve",
+        "wale"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "wh-",
+      "context": "before o",
+      "value": "h",
+      "examples": [
+        "who",
+        "whole"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "wh-",
+      "context": "elsewhere",
+      "value": "w",
+      "examples": [
+        "wheel"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "x",
+      "context": "word- or morpheme-initial",
+      "value": "z",
+      "examples": [
+        "xylophone",
+        "xenon"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "x",
+      "context": "between word-initial e and a vowel",
+      "value": "ɡz",
+      "examples": [
+        "example",
+        "exist",
+        "exotic",
+        "exult",
+        "existential"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "x",
+      "context": "elsewhere",
+      "value": "ks",
+      "examples": [
+        "boxes",
+        "mixes",
+        "expect",
+        "taxation",
+        "tuxedo",
+        "proximity",
+        "next",
+        "six",
+        "taxi"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "xc",
+      "context": "before e, i",
+      "value": "ks",
+      "examples": [
+        "excellent",
+        "except",
+        "excited"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "xh",
+      "context": "elsewhere",
+      "value": "ksh",
+      "examples": [
+        "exhale",
+        "foxhole"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "y",
+      "context": "elsewhere",
+      "value": "j",
+      "examples": [
+        "yes",
+        "young"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "z",
+      "context": "after t",
+      "value": "s",
+      "examples": [
+        "waltz",
+        "pretzel"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "zz",
+      "context": "after t",
+      "value": "s",
+      "examples": [
+        "waltz",
+        "pretzel"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "z",
+      "context": "elsewhere",
+      "value": "z",
+      "examples": [
+        "seized",
+        "crazier",
+        "pizzazz",
+        "zoo",
+        "quiz"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "zz",
+      "context": "elsewhere",
+      "value": "z",
+      "examples": [
+        "seized",
+        "crazier",
+        "pizzazz",
+        "zoo",
+        "quiz"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "a",
+      "context": "in closed syllables before multiple consonants final vowel in word",
+      "value": "æ",
+      "examples": [
+        "hatchet",
+        "banner",
+        "cat"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "a",
+      "context": "in open syllables before single consonant before heterosyllabic vowel",
+      "value": "eɪ",
+      "examples": [
+        "ache",
+        "opaque",
+        "savor",
+        "hatred",
+        "aorta",
+        "mosaic"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "a",
+      "context": "before final - nge, ste",
+      "value": "eɪ",
+      "examples": [
+        "range",
+        "exchange",
+        "haste"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "a",
+      "context": "word-final",
+      "value": "ɑː",
+      "examples": [
+        "bra",
+        "schwa",
+        "spa"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ae",
+      "context": "elsewhere",
+      "value": "eɪ",
+      "examples": [
+        "gave",
+        "mate",
+        "flake"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "aa",
+      "context": "elsewhere",
+      "value": "ɑː",
+      "examples": [
+        "baa",
+        "naan",
+        "blah"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ah",
+      "context": "elsewhere",
+      "value": "ɑː",
+      "examples": [
+        "baa",
+        "naan",
+        "blah"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ae",
+      "context": "elsewhere",
+      "value": "iː",
+      "examples": [
+        "encyclopaedia",
+        "caesar"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ai",
+      "context": "stressed",
+      "value": "eɪ",
+      "examples": [
+        "daisy",
+        "laid",
+        "paisley",
+        "regain",
+        "waif"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ai",
+      "context": "unstressed",
+      "value": "ɪ",
+      "examples": [
+        "bargain",
+        "mountain",
+        "portrait"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ao",
+      "context": "elsewhere",
+      "value": "aʊ",
+      "examples": [
+        "cacao"
+      ],
+      "check": "refuted"
+    },
+    {
+      "grapheme": "au",
+      "context": "elsewhere",
+      "value": "ɔː",
+      "examples": [
+        "cause",
+        "fraud",
+        "haul",
+        "sauce",
+        "slaughter"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "aw",
+      "context": "elsewhere",
+      "value": "ɔː",
+      "examples": [
+        "awed",
+        "flaw",
+        "hawk",
+        "tawny"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ay",
+      "context": "elsewhere",
+      "value": "eɪ",
+      "examples": [
+        "bayonet",
+        "essays",
+        "grayer"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "e",
+      "context": "in closed syllables before multiple consonants final vowel in word",
+      "value": "ɛ",
+      "examples": [
+        "petty",
+        "lethargy",
+        "watershed"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "e",
+      "context": "in open syllables before single consonant before cons. + r + vowel final, only vowel in word before heterosyllabic vowel",
+      "value": "iː",
+      "examples": [
+        "even",
+        "demon",
+        "fetal",
+        "secret",
+        "egret",
+        "neon",
+        "theater"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ea",
+      "context": "in closed syllables before multiple consonants",
+      "value": "ɛ",
+      "examples": [
+        "dreamt",
+        "cleanse",
+        "wealth"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ea",
+      "context": "in open syllables before single consonant before cons. + r + vowel final, only vowel in word before heterosyllabic vowel",
+      "value": "iː",
+      "examples": [
+        "read",
+        "leaf",
+        "zeal",
+        "dreams",
+        "cleans"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "eau",
+      "context": "elsewhere",
+      "value": "oʊ",
+      "examples": [
+        "bureau",
+        "plateau",
+        "tableau"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ee",
+      "context": "elsewhere",
+      "value": "iː",
+      "examples": [
+        "bee",
+        "breech",
+        "feed",
+        "trainee"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "eh",
+      "context": "elsewhere",
+      "value": "eɪ",
+      "examples": [
+        "eh"
+      ],
+      "check": "refuted"
+    },
+    {
+      "grapheme": "ei",
+      "context": "usually",
+      "value": "eɪ",
+      "examples": [
+        "veil",
+        "weight",
+        "heinous",
+        "obey"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ey",
+      "context": "usually",
+      "value": "eɪ",
+      "examples": [
+        "veil",
+        "weight",
+        "heinous",
+        "obey"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ei",
+      "context": "after c",
+      "value": "iː",
+      "examples": [
+        "deceive",
+        "ceiling",
+        "conceit"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ey",
+      "context": "after c",
+      "value": "iː",
+      "examples": [
+        "deceive",
+        "ceiling",
+        "conceit"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "eo",
+      "context": "usually bisyllabic",
+      "value": "iː.ɒ",
+      "examples": [
+        "eon",
+        "geology",
+        "reoffer",
+        "leotard",
+        "peon",
+        "theory"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "eu",
+      "context": "usually",
+      "value": "juː",
+      "examples": [
+        "deuce",
+        "feudal",
+        "queue",
+        "dew",
+        "ewe",
+        "view"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ewieu",
+      "context": "usually",
+      "value": "juː",
+      "examples": [
+        "deuce",
+        "feudal",
+        "queue",
+        "dew",
+        "ewe",
+        "view"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "iew",
+      "context": "usually",
+      "value": "juː",
+      "examples": [
+        "deuce",
+        "feudal",
+        "queue",
+        "dew",
+        "ewe",
+        "view"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "i",
+      "context": "in closed syllables before multiple consonants final vowel in worded",
+      "value": "ɪ",
+      "examples": [
+        "dissent",
+        "mislaid",
+        "sic",
+        "bit",
+        "inflict",
+        "hint",
+        "plinth"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "i",
+      "context": "in open syllables before single consonant before cons. + - le or r + vowel before - gh, gn word final before heterosyllabic vowel",
+      "value": "aɪ",
+      "examples": [
+        "cited",
+        "dive",
+        "mica",
+        "rise",
+        "trifle",
+        "nitrous",
+        "alibi",
+        "quiet",
+        "prior",
+        "pious"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "i",
+      "context": "before - nd, l",
+      "value": "aɪ",
+      "examples": [
+        "wilder",
+        "remind"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ie",
+      "context": "elsewhere",
+      "value": "aɪ",
+      "examples": [
+        "polite",
+        "shine"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ie",
+      "context": "word-finally",
+      "value": "aɪ",
+      "examples": [
+        "belie",
+        "die",
+        "untie",
+        "vie"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ie",
+      "context": "elsewhere",
+      "value": "iː",
+      "examples": [
+        "field",
+        "siege",
+        "rabies",
+        "skied"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "o",
+      "context": "in closed syllables before multiple consonants final vowel in word",
+      "value": "ɒ",
+      "examples": [
+        "doctor",
+        "bother",
+        "bomb",
+        "wonk",
+        "font"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "o",
+      "context": "in open syllables before single consonant before cons. + - le or r + vowel word-final before heterosyllabic vowel(inc. unstressed)",
+      "value": "oʊ",
+      "examples": [
+        "omen",
+        "grove",
+        "poet",
+        "proactive"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "o",
+      "context": "unstressed",
+      "value": "ə",
+      "examples": [
+        "eloquent",
+        "wanton",
+        "purpose",
+        "europe"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oe",
+      "context": "elsewhere",
+      "value": "oʊ",
+      "examples": [
+        "nose",
+        "drove",
+        "hope"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oa",
+      "context": "elsewhere",
+      "value": "oʊ",
+      "examples": [
+        "boat",
+        "coal",
+        "load",
+        "coaxing"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oe",
+      "context": "usually",
+      "value": "iː",
+      "examples": [
+        "amoeba",
+        "coelacanth",
+        "phoenix"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oe",
+      "context": "last vowel in word",
+      "value": "oʊ",
+      "examples": [
+        "foe",
+        "goes",
+        "toed",
+        "woe"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oh",
+      "context": "final or before a consonant",
+      "value": "oʊ",
+      "examples": [
+        "oh",
+        "kohlrabi",
+        "ohm",
+        "pharaoh"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oi",
+      "context": "elsewhere",
+      "value": "ɔɪ",
+      "examples": [
+        "moist",
+        "coin"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oo",
+      "context": "usually",
+      "value": "uː",
+      "examples": [
+        "cool",
+        "boot"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oo",
+      "context": "before k, d",
+      "value": "ʊ",
+      "examples": [
+        "cook",
+        "shook",
+        "wood",
+        "stood"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ou",
+      "context": "before single consonant before cons. + - le or r + vowel before - nd, ld, gh, gn word final before heterosyllabic vowel",
+      "value": "aʊ",
+      "examples": [
+        "out",
+        "aloud",
+        "bough"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ou",
+      "context": "unstressed",
+      "value": "ə",
+      "examples": [
+        "camouflage",
+        "labour",
+        "nervous"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ow",
+      "context": "stressed",
+      "value": "aʊ",
+      "examples": [
+        "owl",
+        "bow",
+        "row",
+        "sow",
+        "allow"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ow",
+      "context": "unstressed",
+      "value": "oʊ",
+      "examples": [
+        "yellow",
+        "landowner"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oy",
+      "context": "elsewhere",
+      "value": "ɔɪ",
+      "examples": [
+        "boy",
+        "doyenne",
+        "foyer",
+        "voyage"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "u",
+      "context": "in closed syllables before multiple consonants final vowel in word",
+      "value": "ʌ",
+      "examples": [
+        "budding",
+        "gull",
+        "fuss"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "u",
+      "context": "in open syllables before single consonant before cons. + - le or r + vowel before heterosyllabic vowel word-final",
+      "value": "juː",
+      "examples": [
+        "mute",
+        "student",
+        "puny",
+        "union",
+        "hubris",
+        "nuance",
+        "pursuant",
+        "emu",
+        "impromptu"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "u",
+      "context": "after q",
+      "value": "w",
+      "examples": [
+        "quail",
+        "conquest",
+        "banquet",
+        "quite"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "u",
+      "context": "unstressed",
+      "value": "ə",
+      "examples": [
+        "support",
+        "industry",
+        "useful",
+        "medium"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ue",
+      "context": "after r , or cons. + l",
+      "value": "uː",
+      "examples": [
+        "true",
+        "clue",
+        "gruesome",
+        "blues"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ue",
+      "context": "elsewhere (except after q )",
+      "value": "juː",
+      "examples": [
+        "virtue",
+        "cue",
+        "valued",
+        "hue"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ui",
+      "context": "after g",
+      "value": "ɪ",
+      "examples": [
+        "guild",
+        "guitar",
+        "intriguing",
+        "guise",
+        "beguile"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ui",
+      "context": "after j, r or cons. + l",
+      "value": "uː",
+      "examples": [
+        "juice",
+        "cruise",
+        "sluice",
+        "fruiting"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ui",
+      "context": "elsewhere (except after q )",
+      "value": "juːɪ",
+      "examples": [
+        "conduit",
+        "cuing",
+        "genuine",
+        "buick",
+        "circuitous",
+        "circuit",
+        "biscuit"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "uu",
+      "context": "elsewhere",
+      "value": "ju.ə",
+      "examples": [
+        "continuum"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "uy",
+      "context": "elsewhere",
+      "value": "aɪ",
+      "examples": [
+        "buy",
+        "buyout"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "y",
+      "context": "before single consonant before cons. + - le or r + vowel word-final",
+      "value": "aɪ",
+      "examples": [
+        "typing",
+        "style",
+        "paralyze",
+        "cypress",
+        "hydrate",
+        "by",
+        "deny",
+        "sky",
+        "supply"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "aer",
+      "context": "elsewhere",
+      "value": "ɛər",
+      "examples": [
+        "aerial"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "air",
+      "context": "elsewhere",
+      "value": "ɛər",
+      "examples": [
+        "cairn",
+        "millionaire",
+        "dairy"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "aor",
+      "context": "elsewhere",
+      "value": "eɪɔːr",
+      "examples": [
+        "aorta"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "arr",
+      "context": "before a spoken vowel",
+      "value": "ær",
+      "examples": [
+        "marry",
+        "barrel",
+        "arrow",
+        "barren",
+        "carrot"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "arr",
+      "context": "elsewhere",
+      "value": "ɑːr",
+      "examples": [
+        "scarred",
+        "parr"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "aur",
+      "context": "elsewhere",
+      "value": "ɔːr",
+      "examples": [
+        "dinosaur",
+        "aural",
+        "aura",
+        "laura"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ayer",
+      "context": "elsewhere",
+      "value": "eɪ.ər",
+      "examples": [
+        "layer",
+        "mayor",
+        "soothsayer"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "ayor",
+      "context": "elsewhere",
+      "value": "eɪ.ər",
+      "examples": [
+        "layer",
+        "mayor",
+        "soothsayer"
+      ],
+      "check": "unverifiable"
+    },
+    {
+      "grapheme": "er",
+      "context": "before a vowel",
+      "value": "ɪər",
+      "examples": [
+        "here",
+        "series",
+        "query",
+        "merely"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "ear",
+      "context": "elsewhere",
+      "value": "ɪər",
+      "examples": [
+        "fear",
+        "year",
+        "appear",
+        "hearing"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "eer",
+      "context": "elsewhere",
+      "value": "ɪər",
+      "examples": [
+        "cheering",
+        "beer",
+        "eerie"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "eir",
+      "context": "elsewhere",
+      "value": "ɛər",
+      "examples": [
+        "heir",
+        "madeira",
+        "their"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "eor",
+      "context": "elsewhere",
+      "value": "iɔːr",
+      "examples": [
+        "deorbit"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "err",
+      "context": "before a spoken vowel",
+      "value": "ɛr",
+      "examples": [
+        "error",
+        "merry",
+        "terrible",
+        "herring",
+        "ferret"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "err",
+      "context": "elsewhere",
+      "value": "ɜːr",
+      "examples": [
+        "err",
+        "preferred"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "eur",
+      "context": "elsewhere",
+      "value": "jʊər",
+      "examples": [
+        "euro",
+        "liqueur",
+        "neural"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "ir",
+      "context": "before silent e",
+      "value": "aɪər",
+      "examples": [
+        "hire",
+        "fires",
+        "mired"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "ier",
+      "context": "elsewhere",
+      "value": "ɪər",
+      "examples": [
+        "cashier",
+        "fierce",
+        "frontier",
+        "pier"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "irr",
+      "context": "before a spoken vowel",
+      "value": "ɪr",
+      "examples": [
+        "mirror",
+        "squirrel",
+        "cirrus"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "or",
+      "context": "after w",
+      "value": "ɜːr",
+      "examples": [
+        "word",
+        "work",
+        "worst"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "oar",
+      "context": "elsewhere",
+      "value": "ɔːr",
+      "examples": [
+        "boar",
+        "coarse",
+        "keyboard",
+        "soaring"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oir",
+      "context": "elsewhere",
+      "value": "wɑːr",
+      "examples": [
+        "reservoir",
+        "memoir",
+        "soiree"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oor",
+      "context": "elsewhere",
+      "value": "ʊər",
+      "examples": [
+        "poor",
+        "moor",
+        "boorish"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "orr",
+      "context": "unstressed",
+      "value": "ər",
+      "examples": [
+        "correct",
+        "corrupt",
+        "horrific"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "our",
+      "context": "stressed",
+      "value": "ɔːr",
+      "examples": [
+        "four",
+        "discourse"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "our",
+      "context": "unstressed",
+      "value": "ər",
+      "examples": [
+        "labour"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "urr",
+      "context": "before a spoken vowel",
+      "value": "ʌr",
+      "examples": [
+        "current",
+        "hurry",
+        "flurry",
+        "burrow",
+        "turret"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "urr",
+      "context": "elsewhere",
+      "value": "ɜːr",
+      "examples": [
+        "burr",
+        "blurred"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "yr",
+      "context": "before silent e",
+      "value": "aɪər",
+      "examples": [
+        "lyre",
+        "pyre",
+        "tyres"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "al",
+      "context": "Excluding before f, k, l, m, t (see below)",
+      "value": "æl",
+      "examples": [
+        "pal",
+        "talcum",
+        "algae"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "alf",
+      "context": "before a vowel",
+      "value": "ælf",
+      "examples": [
+        "alfalfa",
+        "malfeasance"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "alf",
+      "context": "elsewhere",
+      "value": "ɑːf",
+      "examples": [
+        "calf",
+        "half"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "alk",
+      "context": "morpheme-final",
+      "value": "ɔːk",
+      "examples": [
+        "stalk",
+        "walking",
+        "talkative"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "alk",
+      "context": "elsewhere",
+      "value": "ælk",
+      "examples": [
+        "alkaline",
+        "valkyrie"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "all",
+      "context": "morpheme-final",
+      "value": "ɔːl",
+      "examples": [
+        "call",
+        "fallout",
+        "smaller"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "all",
+      "context": "elsewhere",
+      "value": "æl",
+      "examples": [
+        "alley",
+        "callus",
+        "shallow"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "alm",
+      "context": "morpheme-final",
+      "value": "ɑːlm",
+      "examples": [
+        "alms",
+        "palm",
+        "calmer",
+        "embalming"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "alm",
+      "context": "elsewhere",
+      "value": "ælm",
+      "examples": [
+        "salmonella",
+        "talmud"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "alt",
+      "context": "elsewhere",
+      "value": "ɔːlt",
+      "examples": [
+        "alter",
+        "malt",
+        "salty",
+        "basalt"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ange",
+      "context": "word final",
+      "value": "eɪndʒ",
+      "examples": [
+        "arrange",
+        "change",
+        "mange",
+        "strange"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "aste",
+      "context": "word final",
+      "value": "eɪst",
+      "examples": [
+        "chaste",
+        "lambaste",
+        "paste",
+        "taste"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-ci",
+      "context": "unstressed before vowel",
+      "value": "ʃ",
+      "examples": [
+        "special",
+        "gracious"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-cqu",
+      "context": "elsewhere",
+      "value": "kw",
+      "examples": [
+        "acquaint",
+        "acquire"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ed",
+      "context": "word final after a voiceless sound",
+      "value": "t",
+      "examples": [
+        "piped"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ed",
+      "context": "word final after a lenis sound",
+      "value": "d",
+      "examples": [
+        "limbed"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "es",
+      "context": "word final after a fricative",
+      "value": "ɪz",
+      "examples": [
+        "mazes",
+        "washes",
+        "axes",
+        "bases",
+        "pieces"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ex-",
+      "context": "unstressed before h or a vowel",
+      "value": "ɪɡz",
+      "examples": [
+        "exist",
+        "examine",
+        "exhaust"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "gu-",
+      "context": "before a",
+      "value": "ɡw",
+      "examples": [
+        "bilingual",
+        "guano",
+        "language"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "aisle",
+      "context": "word final",
+      "value": "aɪl",
+      "examples": [
+        "aisle",
+        "isle",
+        "lisle"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "le",
+      "context": "word final after non r cons.",
+      "value": "əl",
+      "examples": [
+        "little",
+        "table"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ngue",
+      "context": "word final",
+      "value": "ŋ",
+      "examples": [
+        "tongue",
+        "harangue"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "old",
+      "context": "elsewhere",
+      "value": "oʊld",
+      "examples": [
+        "blindfold",
+        "older",
+        "bold"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "olk",
+      "context": "elsewhere",
+      "value": "oʊk",
+      "examples": [
+        "yolk",
+        "folklore"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "oll",
+      "context": "elsewhere",
+      "value": "ɒl",
+      "examples": [
+        "dollhouse",
+        "pollen",
+        "trolley",
+        "holly"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ong",
+      "context": "morpheme-final",
+      "value": "ɒŋ",
+      "examples": [
+        "along",
+        "strong"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "ong",
+      "context": "elsewhere",
+      "value": "ɒŋɡ",
+      "examples": [
+        "congress",
+        "bongo",
+        "conger",
+        "ongoing"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "ought",
+      "context": "elsewhere",
+      "value": "ɔːt",
+      "examples": [
+        "bought",
+        "brought",
+        "fought",
+        "ought",
+        "sought",
+        "thought",
+        "wrought"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "qu-",
+      "context": "elsewhere",
+      "value": "kw",
+      "examples": [
+        "queen",
+        "quick"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "que",
+      "context": "word final",
+      "value": "k",
+      "examples": [
+        "mosque",
+        "bisque"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "re",
+      "context": "word final after non r cons.",
+      "value": "ər",
+      "examples": [
+        "timbre",
+        "acre",
+        "ogre",
+        "centre"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "ron",
+      "context": "word final after vowel",
+      "value": "rɒn",
+      "examples": [
+        "neuron",
+        "moron",
+        "interferon",
+        "aileron"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "sci-",
+      "context": "unstressed before a vowel",
+      "value": "ʃ",
+      "examples": [
+        "conscience",
+        "luscious",
+        "prosciutto"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "scle",
+      "context": "word final",
+      "value": "səl",
+      "examples": [
+        "muscle"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-se",
+      "context": "word final after vowel (noun)",
+      "value": "s",
+      "examples": [
+        "house",
+        "excuse",
+        "moose",
+        "anise",
+        "geese"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-se",
+      "context": "word final after vowel (verb)",
+      "value": "z",
+      "examples": [
+        "house",
+        "excuse",
+        "choose",
+        "arise",
+        "please"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-si",
+      "context": "unstressed after a vowel",
+      "value": "ʒ",
+      "examples": [
+        "vision",
+        "occasion",
+        "explosion",
+        "illusion"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-si",
+      "context": "unstressed after a cons.",
+      "value": "ʃ",
+      "examples": [
+        "pension",
+        "controversial",
+        "compulsion"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-ssi",
+      "context": "unstressed before a vowel",
+      "value": "ʃ",
+      "examples": [
+        "mission",
+        "passion",
+        "russia",
+        "session"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-sti",
+      "context": "unstressed before a vowel",
+      "value": "stʃ",
+      "examples": [
+        "question",
+        "christian",
+        "suggestion"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-sure",
+      "context": "unstressed after a vowel",
+      "value": "ʒər",
+      "examples": [
+        "leisure",
+        "treasure"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "-sure",
+      "context": "unstressed after a cons.",
+      "value": "ʃər",
+      "examples": [
+        "censure"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "-ti",
+      "context": "unstressed before a vowel",
+      "value": "ʃ",
+      "examples": [
+        "cautious",
+        "patient",
+        "inertia",
+        "initial",
+        "ration"
+      ],
+      "check": "confirmed"
+    },
+    {
+      "grapheme": "-ture",
+      "context": "unstressed",
+      "value": "tʃər",
+      "examples": [
+        "nature",
+        "picture"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    },
+    {
+      "grapheme": "-zure",
+      "context": "unstressed",
+      "value": "ʒər",
+      "examples": [
+        "seizure",
+        "azure"
+      ],
+      "check": "unverifiable",
+      "note": "cluster segmentation unproven, not a refutation"
+    }
+  ]
+}
