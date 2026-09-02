@@ -9471,6 +9471,111 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // ⭐⭐ WEIGHTS DOWNLOAD — operator: *"i do want some download model weights
+  // buttons in the traingviewer so at any point i can click a button and a save
+  // as opens"*.
+  //
+  // Two routes: `/weights/list` enumerates what is downloadable right now, and
+  // `/weights/download?file=` streams one back as an attachment so the browser
+  // opens its Save As dialog.
+  //
+  // ⛔ STREAMED, NEVER READ INTO MEMORY. The binary weights measure **4.16 GB**
+  // on this machine right now; `readFileSync` would blow the heap and, worse,
+  // would pin the event loop for the whole read on the same loop the teach lane
+  // and the donor socket share.
+  //
+  // ⚠ ADMIN-GATED through the SAME `requireLoopback` every other privileged
+  // route uses — which behind the reverse proxy means the Forgejo-vouched
+  // identity, not merely localhost. These files ARE the brain; they do not go
+  // out over an unauthenticated lane.
+  if (req.url === '/weights/list' && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/weights/list')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    try {
+      // ⛔ AN ALLOWLIST OF EXACT NAMES, NOT A DIRECTORY SCAN AND NOT A PATTERN.
+      // The download route below resolves `file` against THIS list only, so a
+      // traversal string can never name a path — there is nothing to traverse
+      // to. A scan would also expose whatever else happens to sit in server/.
+      const names = ['brain-weights.json', 'brain-weights.bin'];
+      for (let i = 0; i < CHECKPOINT_SLOTS; i++) {
+        names.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`);
+      }
+      const files = [];
+      for (const n of names) {
+        try {
+          const st = fs.statSync(path.join(__dirname, n));
+          if (!st.isFile() || st.size === 0) continue;
+          files.push({ name: n, bytes: st.size, mtime: st.mtimeMs });
+        } catch { /* absent slot — simply not offered */ }
+      }
+      // ⚠ A `.tmp` alongside a real file means a save is IN FLIGHT. It is
+      // reported so the page can warn, and it is deliberately NOT offered for
+      // download: half a checkpoint downloads as a complete-looking corrupt file.
+      let writing = null;
+      try {
+        const t = fs.statSync(path.join(__dirname, 'brain-weights.bin.tmp'));
+        if (t.isFile()) writing = { name: 'brain-weights.bin.tmp', bytes: t.size, mtime: t.mtimeMs };
+      } catch { /* no save in flight */ }
+      res.end(JSON.stringify({ files, writing, dir: 'server/' }));
+    } catch (err) {
+      res.end(JSON.stringify({ files: [], error: err && err.message }));
+    }
+    return;
+  }
+
+  if (req.url && req.url.startsWith('/weights/download') && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/weights/download')) return;
+    let want = '';
+    try { want = new URL(req.url, 'http://localhost').searchParams.get('file') || ''; } catch { want = ''; }
+    const allowed = ['brain-weights.json', 'brain-weights.bin'];
+    for (let i = 0; i < CHECKPOINT_SLOTS; i++) allowed.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`);
+    if (!allowed.includes(want)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'unknown weights file', allowed }));
+      return;
+    }
+    const full = path.join(__dirname, want);
+    let st;
+    try { st = fs.statSync(full); } catch {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `${want} does not exist on this box` }));
+      return;
+    }
+    // ⛔ REFUSE A FILE THAT IS BEING WRITTEN RIGHT NOW. A checkpoint save is not
+    // atomic from a reader's point of view, and a partially-written 4 GB binary
+    // downloads as a file that LOOKS complete and restores as garbage. Refusing
+    // with a reason is the only honest answer; the caller can retry in seconds.
+    if (want.endsWith('.bin')) {
+      try {
+        const tmp = fs.statSync(path.join(__dirname, 'brain-weights.bin.tmp'));
+        if (tmp.isFile() && (Date.now() - tmp.mtimeMs) < 30000) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'a weights save is in flight — retry in a moment', writingSince: tmp.mtimeMs }));
+          return;
+        }
+      } catch { /* no save in flight — proceed */ }
+    }
+    // `attachment` is what makes the browser open Save As rather than render it.
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(st.size),
+      'Content-Disposition': `attachment; filename="${want}"`,
+      'Cache-Control': 'no-store',
+    });
+    const stream = fs.createReadStream(full);
+    // ⚠ Destroy the read on client abort. A 4 GB stream whose browser tab closed
+    // would otherwise keep reading to the end, spending disk and loop time on a
+    // download nobody is receiving.
+    req.on('aborted', () => { try { stream.destroy(); } catch { /* nf */ } });
+    stream.on('error', (e) => {
+      console.warn('[Server] /weights/download stream failed —', e && e.message);
+      try { res.destroy(); } catch { /* nf */ }
+    });
+    console.log(`[Server] /weights/download streaming ${want} (${(st.size / 1048576).toFixed(1)} MB)`);
+    stream.pipe(res);
+    return;
+  }
+
   // #112.11 — manual checkpoint (dashboard "Save checkpoint now"). Forces an
   // immediate versioned save between the 5-min periodic ticks. Admin-gated.
   if (req.url === '/checkpoint' && req.method === 'POST') {

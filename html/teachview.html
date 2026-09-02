@@ -209,6 +209,23 @@
       <div class="tv-body" id="tvCoverage"><div class="tv-note">—</div></div>
     </div>
 
+    <!-- ⭐⭐ DOWNLOAD HER WEIGHTS. Operator: *"i do want some download model
+         weights buttons in the traingviewer so at any point i can click a button
+         and a save as opens"*. One button per file that actually exists right
+         now; the browser's Save As opens because the route sends
+         Content-Disposition: attachment. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2>
+        <span class="tv-tip tip-l"
+          title="Download the trained weights — one button per file, browser Save As."
+          data-tip="Download her trained weights straight from the box. Clicking a button opens the browser's own Save As dialog.&#10;&#10;⭐ These files ARE the brain: brain-weights.json is the structure and bookkeeping, brain-weights.bin is the weight matrices themselves and is measured in GIGABYTES. The -v0/-v1/-v2 pairs are the rotating checkpoint slots, so an older one is a rollback point.&#10;&#10;⛔ A save in flight is REFUSED rather than served. A checkpoint write is not atomic to a reader, and half a 4 GB binary downloads as a file that looks complete and restores as garbage.&#10;&#10;⚠ Admin-gated on the same identity as every other privileged route.">Download model weights</span>
+        <span class="tv-sub" id="tvWeightsNote">—</span>
+      </h2>
+      <div class="tv-body">
+        <div id="tvWeights"><div class="tv-note">—</div></div>
+      </div>
+    </div>
+
     <!-- ⭐⭐ THE INSTRUMENT DECK. The operator's ask: *"graphes and dials and bar
          grpahs like equalizersser and traing line graphases all high tech and
          futuristic looking in line with the rest of the project"*.
@@ -789,6 +806,100 @@ $('tvKnobOnlySet').onchange = () => renderKnobs(null);
 $('tvKnobDetail').onchange = () => renderKnobs(null);
 
 /* ────────────────────────────────────────────────────────────────────────────
+   DOWNLOAD HER WEIGHTS
+
+   ⚠ A PLAIN LINK, NOT A fetch(). An `<a download href=…>` hands the transfer to
+   the browser, which streams it to disk with its own progress UI and its own
+   Save As dialog. Pulling 4 GB through `fetch` into a Blob would buffer the
+   whole file in the tab's memory before writing a byte — the tab would die long
+   before the download finished.
+
+   ⛔ THE SIZE IS PRINTED ON THE BUTTON ON PURPOSE. "brain-weights.bin" gives no
+   hint that clicking it starts a multi-gigabyte transfer; "4.0 GB" does.
+   ──────────────────────────────────────────────────────────────────────────── */
+/* ⚠ DECLARED ABOVE THE FUNCTION THAT READS THEM, DELIBERATELY. `const`/`let` are
+   in a temporal dead zone until their line executes, and a `typeof` guard does
+   NOT shield them — this codebase has already taken a crash-loop from exactly
+   that shape. Hoisting only saves function declarations, never these. */
+const WEIGHT_BASES = (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? ['http://localhost:7525', '']
+  : [''];
+let WEIGHT_BASE = '';
+
+function fmtBytes(b) {
+  if (!Number.isFinite(b)) return '—';
+  if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+  if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+  if (b >= 1024) return (b / 1024).toFixed(0) + ' KB';
+  return b + ' B';
+}
+
+async function loadWeightsList() {
+  const host = $('tvWeights'); if (!host) return;
+  let j = null;
+  for (const base of WEIGHT_BASES) {
+    try {
+      const r = await fetch(base + '/weights/list', { cache: 'no-store' });
+      if (r.ok) { j = await r.json(); WEIGHT_BASE = base; break; }
+      /* ⛔ 403 IS A DISTINCT ANSWER AND MUST NOT READ AS "no weights". The route
+         is admin-gated, so an unauthenticated page gets a refusal, not an empty
+         list — reporting that as "none found" would be a lie about the brain. */
+      if (r.status === 403) {
+        $('tvWeightsNote').textContent = 'admin lane not authenticated';
+        host.innerHTML = '<div class="tv-note">⛔ <b>The weights lane refused this page (403).</b> '
+          + 'That is an AUTH answer, not an empty box — the files are there, this page is not '
+          + 'authenticated to list them. It says nothing about the brain\'s health.</div>';
+        return;
+      }
+    } catch { /* try the next base */ }
+  }
+  if (!j) {
+    $('tvWeightsNote').textContent = 'unreachable';
+    host.innerHTML = '<div class="tv-note">⛔ <b>Could not reach the weights lane.</b> '
+      + 'This means the request failed — <b>not</b> that no weights exist.</div>';
+    return;
+  }
+  const files = j.files || [];
+  $('tvWeightsNote').textContent = files.length
+    ? `${files.length} file${files.length === 1 ? '' : 's'}`
+    : 'none on disk';
+  if (!files.length) {
+    host.innerHTML = '<div class="tv-note">No weights file exists on the box yet — '
+      + 'nothing has been saved. On a fresh brain this is correct.</div>';
+    return;
+  }
+  /* Newest first: the most recent save is what you almost always want. */
+  files.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+  let html = '';
+  if (j.writing) {
+    html += `<div class="tv-note">⚠ <b>A save is in flight</b> (${knobEsc(j.writing.name)}, `
+      + `${fmtBytes(j.writing.bytes)} so far). <b>Binary downloads are refused while it runs</b> — `
+      + `a partially-written checkpoint would download as a complete-looking file that restores as garbage.</div>`;
+  }
+  for (const f of files) {
+    const age = Math.max(0, Math.round((Date.now() - (f.mtime || 0)) / 1000));
+    const ageTxt = age < 90 ? `${age}s ago` : age < 5400 ? `${Math.round(age / 60)}m ago` : `${(age / 3600).toFixed(1)}h ago`;
+    const slot = /-v(\d+)\./.exec(f.name);
+    const what = f.name.endsWith('.bin')
+      ? (slot ? `checkpoint slot ${slot[1]} — the weight matrices` : 'THE weight matrices — this is the brain itself')
+      : (slot ? `checkpoint slot ${slot[1]} — structure + bookkeeping` : 'structure + bookkeeping (small; not the matrices)');
+    html += `<div style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);display:flex;`
+      + `gap:10px;align-items:center;flex-wrap:wrap">`
+      + `<a class="tv-tip tip-l" download href="${knobEsc(WEIGHT_BASE)}/weights/download?file=${encodeURIComponent(f.name)}"`
+      + ` data-tip="${knobEsc(f.name + '\n' + what + '\n\nSize: ' + fmtBytes(f.bytes) + '\nSaved: ' + ageTxt + '\n\nClicking opens your browser Save As. The transfer is streamed, so it starts immediately rather than waiting for the whole file.')}"`
+      + ` title="Download ${knobEsc(f.name)}"`
+      + ` style="padding:5px 11px;border:1px solid var(--tv-line);border-radius:5px;`
+      + `background:#0a0e14;color:var(--tv-accent);text-decoration:none;font-size:12.5px">`
+      + `⤓ ${knobEsc(f.name)}</a>`
+      + `<b style="font-size:12.5px">${fmtBytes(f.bytes)}</b>`
+      + `<span class="tv-sub">${ageTxt} · ${knobEsc(what)}</span>`
+      + `</div>`;
+  }
+  host.innerHTML = html;
+}
+
+
+/* ────────────────────────────────────────────────────────────────────────────
    THE INSTRUMENT DECK — dials, a lane equalizer, and a throughput trace.
 
    ⛔ THE RULE EVERY INSTRUMENT HERE OBEYS: a gauge with no data reads NO SIGNAL
@@ -1002,7 +1113,11 @@ function renderInstruments(st, tv) {
   catch (e) { /* an instrument must never take the page down */ }
 }
 
-poll(); pollEye(); loadLedgerCells();
+poll(); pollEye(); loadLedgerCells(); loadWeightsList();
+/* Slow on purpose: a weights file changes on a save, not on a tick, and the
+   listing stats several multi-gigabyte files. 30s is far more often than a save
+   happens and costs nothing. */
+setInterval(loadWeightsList, 30000);
 setInterval(poll, 2000);
 setInterval(pollEye, 5000);
 /* Slow on purpose: the cell list is a GROUP BY over the whole ledger, and this
