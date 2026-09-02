@@ -103,19 +103,45 @@ const LADDER = {
   // before it was written here, per the rule `LITGRADE.1` earned: of eight ids
   // guessed from memory in the first pass, two resolved to *The Illustrated War
   // News* and a *Pony Rider Boys* novel.
-  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"]],
-  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"]],
+  // ⭐⭐ THE AMERICAN CLASSICS, ADDED 2026-09-02 ON THE OPERATOR'S INSTRUCTION —
+  // *"dont get random books get all the american classics for early grades"*.
+  //
+  // ⛔ THAT INSTRUCTION REPLACED A WORSE PLAN. I had been probing illustrated
+  // children's-book HOSTS — collections of regionally-set stories that do not
+  // match her canon, which is an American school year: McGuffey readers, US
+  // social studies, the American Revolution. The canon she walks decides the
+  // books, not whichever host has the most pictures.
+  //
+  // ⛔⛔ EVERY ID BELOW WAS VERIFIED AGAINST GUTENBERG'S OWN `Title:` HEADER, and
+  // the check earned its keep immediately: candidate ids I proposed resolved to
+  // *The Three Musketeers*, *Siddhartha*, *Dr Jekyll and Mr Hyde*, *The Eskdale
+  // Herd-boy* and Whistler's *The Gentle Art of Making Enemies*. **A wrong id
+  // does not fail — it teaches the wrong book**, which is how a PhD English year
+  // nearly read French maritime fiction.
+  //
+  // ⭐ AND ALL 22 HAVE AN ILLUSTRATED EDITION, which is why they were chosen in
+  // this order: the early band holds 348 pictures against college's 8,852, so
+  // these titles feed the thinnest prose AND the emptiest eyes at once.
+  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"],
+    [11757, 'The Velveteen Rabbit'], [18190, 'Raggedy Ann Stories']],
+  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"],
+    [19994, 'The Aesop for Children'], [25609, "A Child's Garden of Verses"]],
   // ⭐⭐ A YEAR'S READING, NOT A TOKEN TWO BOOKS — expanded 2026-09-02.
   // Gee: *"what about all the books like wizard of oz and shit that all the
   // lower grades and uper grades get to read"*. Removing the sentence cap made
   // each book whole and left THE LIST as the cap: two titles is not a year.
   // ⛔ All 23 additions verified against Gutenberg's own `Title:` header in one
   // batch before being written here.
-  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"], [14838, 'The Tale of Peter Rabbit']],
-  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"], [2781, 'Just So Stories']],
-  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"], [500, 'The Adventures of Pinocchio'], [236, 'The Jungle Book']],
-  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"], [289, 'The Wind in the Willows'], [1448, 'Heidi']],
-  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"], [45, 'Anne of Green Gables'], [271, 'Black Beauty'], [113, 'The Secret Garden']],
+  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"], [14838, 'The Tale of Peter Rabbit'],
+    [4357, 'American Fairy Tales']],
+  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"], [2781, 'Just So Stories'],
+    [2591, "Grimms' Fairy Tales"], [503, 'The Blue Fairy Book']],
+  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"], [500, 'The Adventures of Pinocchio'], [236, 'The Jungle Book'],
+    [1597, "Andersen's Fairy Tales"], [54, 'The Marvelous Land of Oz']],
+  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"], [289, 'The Wind in the Willows'], [1448, 'Heidi'],
+    [33361, 'Ozma of Oz'], [420, 'Dorothy and the Wizard in Oz'], [501, 'The Story of Doctor Dolittle'], [1450, 'Pollyanna']],
+  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"], [45, 'Anne of Green Gables'], [271, 'Black Beauty'], [113, 'The Secret Garden'],
+    [146, 'A Little Princess'], [514, 'Little Women'], [964, 'The Merry Adventures of Robin Hood'], [41, 'The Legend of Sleepy Hollow']],
   grade6:  [[120, 'Treasure Island'], [514, 'Little Women'], [16751, "McGuffey's Sixth Eclectic Reader"], [521, 'Robinson Crusoe'], [103, 'Around the World in Eighty Days']],
   grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild'], [910, 'White Fang'], [421, 'Kidnapped'], [35, 'The Time Machine']],
   grade8:  [[76, 'Adventures of Huckleberry Finn'], [829, "Gulliver's Travels"], [164, 'Twenty Thousand Leagues under the Sea'], [1661, 'The Adventures of Sherlock Holmes']],

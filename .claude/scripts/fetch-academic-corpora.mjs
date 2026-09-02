@@ -469,10 +469,25 @@ const TOPICS = {
   // half: seeing, naming, materials, then history and criticism. Her drawing
   // skill is trained separately by the practice loop.
   art: {
-    'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square'],
-    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern'],
-    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait'],
-    grade2: ['Color wheel', 'Landscape painting', 'Still life', 'Sculpture', 'Pottery', 'Printmaking', 'Symmetry', 'Mosaic'],
+    // ⛔ THE EARLY BAND IS THE PRIORITY (operator ruling 2026-09-02, `TEXTBOOK.2`),
+    // AND IT IS THE THINNEST PART OF THE CORPUS. Measured against a 7,300-word
+    // band floor: `art/kindergarten` **1,453 words**, `art/pre-K` 2,086,
+    // `pe/kindergarten` 2,127, `art/grade1` 3,439. ⭐ The gap is NOT a missing
+    // source — `ela` is well fed here by 31 Gutenberg books (McGuffey, Aesop,
+    // Alice, Oz). It is that art/pe/music/health run on 8-topic wiki lists.
+    // Expanded to ~18 apiece, the same lever that fixed ela and social.
+    // ⚠ Unverified against the live API for the same reason recorded on the `ela`
+    // block: both wiki ingests hold the quota, and a title check under a throttle
+    // cannot tell "no such article" from "refused". A wrong title fails LOUDLY as
+    // `no-such-page` in `SKIP_REASONS`.
+    'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square',
+      'Triangle', 'Paint', 'Pencil', 'Brush', 'Scissors', 'Glue', 'Chalk', 'Rainbow', 'Clay', 'Doll'],
+    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern',
+      'Paper', 'Crayon', 'Paint', 'Scissors', 'Rectangle', 'Circle', 'Triangle', 'Square', 'Craft', 'Picture book'],
+    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait',
+      'Color', 'Watercolor painting', 'Paintbrush', 'Canvas', 'Pattern', 'Clay', 'Origami', 'Mask', 'Puppet', 'Statue'],
+    grade2: ['Color wheel', 'Landscape painting', 'Still life', 'Sculpture', 'Pottery', 'Printmaking', 'Symmetry', 'Mosaic',
+      'Painting', 'Drawing', 'Weaving', 'Quilt', 'Basket', 'Mural', 'Stained glass', 'Portrait', 'Sketch (drawing)', 'Craft'],
     grade3: ['Watercolor painting', 'Sketch (drawing)', 'Perspective (graphical)', 'Mural', 'Weaving', 'Origami', 'Colour theory', 'Portrait painting'],
     grade4: ['Perspective (graphical)', 'Cave painting', 'Ancient Egyptian art', 'Pottery', 'Printmaking', 'Sculpture', 'Mosaic', 'Calligraphy'],
     grade5: ['Renaissance art', 'Leonardo da Vinci', 'Michelangelo', 'Perspective (graphical)', 'Fresco', 'Sculpture', 'Composition (visual arts)', 'Shading'],
