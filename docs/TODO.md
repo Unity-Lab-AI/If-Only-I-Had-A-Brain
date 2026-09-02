@@ -1944,6 +1944,34 @@ Gee, verbatim, in the order he said it:
     3. A **retry pass that reads only that ledger**, honours the classification, and uses the fixed User-Agent (the Wikimedia refusal was an identity rejection, not a rate limit — 0/6 vs 6/6 measured).
     4. ⭐ **A verdict per permanent failure**, so the corpus can be corrected at the source rather than the figure being silently absent forever.
   - ⚠ **Known permanent classes already observed and named, so the classifier starts from evidence:** non-Wikimedia SVGs (no rasteriser in the path), GIFs (no decoder — jpeg/png/webp only), and dead `raw.githubusercontent.com` paths from re-organised book repos.
+
+  ### ⭐⭐ MEASURED 2026-09-02 — THE MISS SET BROKEN DOWN BY FORMAT AND HOST
+
+  Gee: *"how are the downloads going? they should of been done an hour ago by first estimate you gave me, but like i said we will have to rebuild the downloader to properly go bakc and download the ones that erooroed ie they might not be webp"*.
+
+  - ⛔ **MY ETA WAS WRONG AND THE REASON IS A FALLING YIELD, NOT A SLOWDOWN.** Per `--limit 1500` pass: **999 → 911 → 854 → 860 → 862 → 788 → 692 → 617**, i.e. success **66% → 41%**. I estimated off the early passes and assumed the rate held. **At ~650/pass the remaining ~9,200 is ~2.5 h and lengthening.**
+  - ⛔⛔ **CONFIRMED AT THE FILE: `uploaded.jsonl` RECORDS SUCCESSES ONLY — 23,777 rows, every one `ok`, ZERO failures.** The stage counters are printed to stdout and the batch loop greps stdout down to three patterns, so **every failure reason dies at the pipe exactly as this row predicted.** The miss set therefore had to be recovered by DIFFING the candidate list against the ledger.
+  - ⚠ **AND MY FIRST DIFF WAS WRONG — it reported "38,318 missing of 38,318" and 0% success for every format.** `LINKS.jsonl` rows carry **no `key` field** (they hold `subject/grade/theme/source/licence/alt/caption/context/url`), so keying on `r.key` matched nothing. **Re-done on URL.** A total that says *everything failed* should always be suspected of being the instrument.
+  ```
+    distinct candidates 32,296 · delivered 23,777 · NOT DELIVERED 8,519
+    ext        delivered   missing   success rate for that format
+      .jpg        19,143     4,477      81%   <- the BIGGEST bucket, and it decodes fine
+      .(none)      1,445     1,922      43%
+      .svg           648     1,104      37%
+      .png         2,490       765      76%
+      .gif             0       181       0%   <- TOTAL format failure
+      .jpeg           32        31      51%
+      .webp            6        14      30%
+      .tif            12        13      48%
+      .pdf             0        10       0%   <- not an image; never should have been a candidate
+      .djvu            0         1       0%
+      .stl             0         1       0%
+    missing by host: wikimedia 3,467 · illustrativemathematics 1,909 · githubusercontent 1,526 · saylor 804
+  ```
+  - ⛔ **SO THE "might not be webp" HYPOTHESIS IS RIGHT FOR THE TAIL AND WRONG FOR THE BULK.** `.gif` (0/181), `.pdf`/`.djvu`/`.stl` and much of `.svg` **are** format failures. But **`.jpg` is 81% successful and still accounts for 4,477 of the 8,519** — those are **transport** failures (404 / 429 / timeout) or not-yet-reached, **not format**. ⚠ **A format-only rebuild would leave the largest bucket untouched.**
+  - ⭐ **THE GIF MECHANISM, TRACED:** `renderable()` does include `gif`, and `wikiRendition` asks the MediaWiki API for a rendition when the direct decode fails — **but MediaWiki serves a GIF thumbnail for a GIF file**, so the second decode hits the same missing decoder. **0 of 181 is not a rate problem, it is two attempts at a format nothing in the path can read.** ⚠ `pdf`/`djvu` are the opposite case and are *fixable*: MediaWiki renders those to `lossy-page1-….jpg`, so a rendition request would work where a direct fetch cannot.
+  - ⚠ **THE MISS SET CANNOT YET BE SPLIT INTO "FAILED" AND "NOT YET REACHED"** — because the failures are unrecorded, which is this row's whole point. The format rates above are computed over what has been attempted, and with the run **71% complete** a 0/181 is strong evidence of a real format gap while a 4,477-strong `.jpg` bucket is not.
+  - ⛔ **SEQUENCING: THE PRODUCER MUST NOT BE EDITED WHILE THE RUN IS LIVE** (`WAVESEE.2` — the batch loop respawns `node` every batch, so an edit lands mid-run). **The rebuild happens when this run ends.**
   - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
 
 - [x] `FIGPAIR.1` — ✅⭐ **BUILT AND HARNESSED 2026-09-02 — 43/43 CHECKS ACROSS FOUR HARNESSES. The picture now lands between its own section's prose and the next section's.**
