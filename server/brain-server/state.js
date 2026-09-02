@@ -739,6 +739,12 @@ const SERVER_STATE_MIXIN = {
             try { return require('../figure-field-store.js').fieldStoreStats(); }
             catch { return null; }
           })(),
+          // ⭐ HEARING.1 — what her EARS did, counted by reason. `received`
+          // climbing with `banked` flat means the percept arrived unusable;
+          // `banked` climbing with `taught` flat is the figure lane's old
+          // defect repeating — the sound stored and the words never bound.
+          // null = no utterance has ever reached her, never "she heard nothing".
+          heard: this._hearStats || null,
           // VMRELATE — what the phrase-teach lane actually spent. Published
           // because an unbounded teach layer cost 70 minutes per cell once
           // already: `skippedBusy` climbing means the bound is doing its job,

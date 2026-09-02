@@ -11455,6 +11455,27 @@ wss.on('connection', (ws, req) => {
           break;
         }
 
+        case 'heard': {
+          // ⭐⭐ HEARING.1 — SHE HEARS, AND WHAT SHE HEARD MOVES HER WEIGHTS.
+          // Operator: *"she need to be able to hear too when talked too not
+          // just a TTS wrapper on a text chain"*.
+          //
+          // The client perceived the microphone PCM into a CDF 9/7 field-A and
+          // read it as an octave-band percept; what arrives here is a few KB of
+          // equations plus the words that sound carried. This banks it under
+          // `heard:` and binds the phrase, which is the SAME four steps a
+          // picture takes — perceive, describe, store, teach — so hearing and
+          // seeing are one mechanism rather than two.
+          //
+          // ⛔ THE `heard:` NAMESPACE IS LOAD-BEARING. A percept keyed by the
+          // words alone would let a spoken sentence overwrite what a WORD
+          // LOOKS LIKE in the same store. That is the CAMPOISON defect — an
+          // unlabelled frame becoming her memory of a word — and namespacing
+          // is what makes the two modalities unable to collide.
+          brain._ingestHeard(msg).catch(() => { /* hearing is best-effort */ });
+          break;
+        }
+
         case 'gaze': {
           // ⭐ FOCUSDEAD.3 — WHERE SHE IS LOOKING, ARRIVING FROM THE EYE THAT
           // ACTUALLY COMPUTES IT. The visual cortex runs in the BROWSER on the

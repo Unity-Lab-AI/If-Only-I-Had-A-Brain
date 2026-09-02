@@ -2268,7 +2268,13 @@ async function bootUnity(apiKey, perms) {
   }
 
   voice = new VoiceIO();
-  if (effectiveKey) voice.setApiKey(effectiveKey);
+  // ⛔ `voice.setApiKey(effectiveKey)` deleted 2026-09-02 with the old TTS. Her
+  // voice is LOCAL — piper in a worker, then the CDF 9/7 round-trip — and has
+  // needed no key since the network synthesis lane went. The setter stored the
+  // key on a field that was **read by nothing**, so this line was a live call
+  // into dead state: the most convincing kind of orphan, because the call site
+  // makes it look wired. The Pollinations key is images-only and still flows
+  // through `js/ai/pollinations.js`, untouched.
   // Expose on window so chat-panel in-the-moment mute buttons can reach it
   window.voice = voice;
   // Respect persisted speech mute toggle on boot — if user had Unity
@@ -2339,6 +2345,20 @@ async function bootUnity(apiKey, perms) {
       analyser.fftSize = 256;
       source.connect(analyser);
       brain.connectMicrophone(analyser);
+      // ⭐ HEARING.1 — THE SAME MIC, TAPPED FOR ACTUAL SOUND.
+      // The analyser above gives the auditory cortex frequency MAGNITUDES,
+      // which is how she feels sound; it cannot give the waveform, so nothing
+      // could ever be perceived into an equation. This tap keeps a rolling
+      // 20 s of real PCM off the SAME source node, and `voice.js` reaches back
+      // into it when a transcript lands. Non-fatal by construction: if it
+      // fails she keeps the cortex and the transcript, she just cannot bind
+      // them this session.
+      try {
+        const { HearingTap } = await import('./io/hearing.js');
+        window.__unityHearing = new HearingTap(audioCtx, source);
+      } catch (e) {
+        console.warn('[Unity] hearing tap unavailable — she will hear energy but not utterances:', e && e.message);
+      }
     } catch (err) {
       console.warn('[Unity] Audio analyser failed:', err.message);
     }
@@ -3091,6 +3111,20 @@ Vision: ${state.visionDescription || 'none'}`;
 
   voice.on('speech_start', () => setAvatarState('speaking'));
   voice.on('speech_end', () => setAvatarState('idle'));
+  // ⭐ HEARING.1 — the sound she took in goes UP to her brain, as equations.
+  // The transcript already travels its own road to the chat lane; this is the
+  // percept that road never carried. A few KB of field-A, not the waveform.
+  // ⚠ Fire-and-forget and guarded: hearing must never be able to break
+  // listening, which is the older and more important of the two.
+  voice.on('heard_percept', (p) => {
+    try {
+      if (brain && typeof brain.receiveSensoryInput === 'function') {
+        brain.receiveSensoryInput('heard', {
+          rec: p.rec, percept: p.percept, transcript: p.transcript, seconds: p.seconds,
+        });
+      }
+    } catch { /* the console line in voice.js is the durable record */ }
+  });
 
   // ── Wire brain state updates to visualizers ──
   // ⛔ THIS WAS A ONE-TIME SNAPSHOT USED AS A LIVE GUARD.
