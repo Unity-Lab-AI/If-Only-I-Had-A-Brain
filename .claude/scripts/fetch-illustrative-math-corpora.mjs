@@ -34,6 +34,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { stripLeakedMarkup } from './clean-math.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, '..', '..', 'corpora', 'academic');
@@ -156,6 +157,13 @@ function cleanSentences(html) {
     if (/skip to main content|kendall hunt|google classroom|illustrative mathematics is a|creative commons|all rights reserved|privacy policy|terms of use|sign in|log in/i.test(s)) continue;
     // A run of lesson numbers from the lesson-picker strip ("1 2 3 4 5 …").
     if (/^[\d\s.]+$/.test(s)) continue;
+    // ⛔ THE WORST LEAK IN THE CORPUS BY RATE: 7,868 of this source's 28,879
+    // sentences — **27%** — carried raw LaTeX. A maths textbook is exactly where
+    // notation leaks, and exactly where it must not, because maths here is taught
+    // equationally and never as prose about symbols.
+    const _m = stripLeakedMarkup(s);
+    if (_m.drop) continue;
+    s = _m.text;
     out.push(s.toLowerCase());
   }
   return out;

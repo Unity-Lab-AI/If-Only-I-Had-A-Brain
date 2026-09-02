@@ -33,6 +33,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { stripLeakedMarkup } from './clean-math.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -156,6 +157,14 @@ function cleanSentences(raw, cap) {
     // `supplementary` and `appendix` openings stay dropped — those genuinely
     // are apparatus pointing outside the paper.
     if (/^(supplementary|appendix)\b/i.test(s)) continue;
+    // ⛔ LEAKED MATH MARKUP — 9,946 arxiv sentences carried raw LaTeX, the single
+    // largest markup leak in the corpus. She learns WORDS from prose, so
+    // `$d_{\mathrm{sk}}$` in a sentence teaches her that as vocabulary. Maths is
+    // taught equationally here; leaked notation is the thing the grade gate
+    // exists to forbid, arriving through the back door.
+    const _m = stripLeakedMarkup(s);
+    if (_m.drop) continue;
+    s = _m.text;
     out.push(s.toLowerCase());
     if (out.length >= cap) break;
   }

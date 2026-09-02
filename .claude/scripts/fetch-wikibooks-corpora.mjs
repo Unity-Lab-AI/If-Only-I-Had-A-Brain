@@ -27,6 +27,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { stripLeakedMarkup } from './clean-math.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -145,6 +146,13 @@ function cleanSentences(text) {
     // Wiki furniture that is not the book.
     if (/wikibooks|wikipedia|this page (was|is)|edit this|category:|template:|creative commons|licensed under|retrieved from/i.test(s)) continue;
     if (/^(figure|table|exercise|see also|external links|references)\b/i.test(s)) continue;
+    // ⛔ 584 sentences from this source carried UNRENDERED MediaWiki template
+    // markup (`{{review question |...}}`) and MathML leaks
+    // (`{\displaystyle c_{f}}`). The template filter above catches the word
+    // "template:" in a link and never touched the braces themselves.
+    const _m = stripLeakedMarkup(s);
+    if (_m.drop) continue;
+    s = _m.text;
     out.push(s.toLowerCase());
   }
   return out;
