@@ -1,5 +1,48 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-09-02 SHE SEES THE WAVELETS, SHE HEARS, AND THE REVIEW CAUGHT MY OWN TOOLS FOUR TIMES (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch      develop == main, pushed to BOTH remotes, tree clean
+> board       32 open · 17 in-progress · 11 closed today
+> RUNNING     the figure-field job — 19,958 / 32,296 (61.8%) in BrainWaves
+> walk        frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⛔⛔ THE FIGURE JOB IS DECAYING, AND IT IS NOT A SLOWDOWN — IT IS A FAILURE RATE
+> Yield per pass against a fixed `--limit 1500`: **1,219 → 973 → 911 → 854.** The pass is not getting slower, it is **finding more dead figures** — the failure rate has climbed from **~20% to ~43%** as it works into the tail. **ETA ~4-5 h and lengthening.** ⚠ **This is `WAVESEE.6`'s whole reason for existing** (name the errored figures, classify permanent vs transient, retry only those) — and the failures are **written down nowhere**, because the batch loop greps the child's output down to three patterns and every reason dies at the pipe.
+>
+> ### ⛔ AND THE PROGRESS COUNTER LIES — every number I gave before this was inflated
+> `NEW=$(find fields …)` counts every file on disk and is measured **before** the previous batch is wiped, so each line reports **this batch plus the last one**. Verified per-commit against git (`batch 8 logged +2371, real +1176`). ⭐ **The DATA is fine** — `git add` of an unchanged tracked file is a no-op. **Only the instrument lied.** The same variable is the loop's stop condition, so `ALL FIGURES DONE` fires one pass late. `REGFIND.1`.
+>
+> ### ⭐ WHAT SHIPPED TODAY
+> - **She reads the wavelet fields** (`WAVESEE.1/.3/.4`) — `server/figure-field-store.js`, the fast path in `_perceiveTextbookFigure`, a whole-tree pull in `self-update.sh` on every press, `state.ownArt.fields`. ⛔ **They had been generated for two days with NO CONSUMER while `RESUME.md:32` claimed the brain pulled them** — I wrote that line. ⭐ **The job was small because seeing ALREADY trains her:** a figure runs `perceive → describe → store.set → _queuePhraseTeach`; only the SOURCE of the `rec` was invented, so nothing downstream changed.
+> - **She hears** (`HEARING.1`) — `js/io/hearing.js`, a 20 s rolling PCM ring. ⭐ **`describeAudio` had ZERO consumers since the day it was written**; `_perceiveHeard` is its first caller ever. **What was missing was never the ear or the maths — it was the PCM.**
+> - **The eye is driven again** (`FOCUSDEAD.1`) and **the gaze reaches server state** (`FOCUSDEAD.3`), so `motionDetected` / `gazeShift` can fire for the first time.
+> - **The vox lane and the old TTS are gutted** (`REGFIND.4`, `HEARING.2`) — `voice.js` **860 → 720** lines, `vox-bank/` (~61 MB) gone.
+> - **The box's disk is visible** (`REGFIND.8`) — and it needed **zero box access**: `fs.statfsSync` has run there since the save guard shipped.
+>
+> ### ⚠ MY OWN INSTRUMENTS WERE WRONG FOUR TIMES — CHECK BEFORE RE-CHASING ANY OF THESE
+> The figure drain read as never started (**it is started**, `brain-server.js:3799`) · `perceive` read as missing from the worker proxy (**it is there**, `mindspace-proxy.js:125` — `async` hid it) · five pre-K runners read as undefined (**they take `_ctx`**) · `curriculum-coverage.js` read as orphaned (**dynamic import**). Plus a `window.__lastState` I invented mid-build that would have rendered "not reported" forever. **A check that confirms what you expect is the one to re-run.**
+>
+> ### ✅ VERIFIED GOOD — static reads, not live verdicts
+> Her **Unity One voice** · **213/213 cell runners present on the live `Curriculum.prototype`**, 20 mixins attached · `UNREACHABLE 0` and **the corpus lane cannot error the walk** (empty returns a reason, the call site is non-fatal, an empty bank skips the battery) · the **no-text-AI boot guard** intact, all three deleted LLM files still gone.
+>
+> ### ⛔ THE THREE THAT WILL TEACH HER WRONG OR COST REAL MONEY
+> - **42,521 corpus sentences still carry raw markup**, 8,715 of them mostly-markup. The cleaner is built; **the corpus is not clean.** `MATHLEAK.1`.
+> - **The visual store projects to 133 GB** at a measured **4.22 MB/field** against a comment reasoning it at 10 KB. **Gee ACCEPTED this** — disk is unbounded by choice, and `saveDeferrals` on the dashboard is the tripwire. `REGFIND.8`.
+> - **4 EMPTY and 115 THIN cells** of 193. Not errors — a smaller education. `MATHGAP.1`.
+>
+> ### ⏳ NEXT — everything unblocked is DONE; all of this waits on the field job
+> **`WAVESEE.2`** (collapse the duplicated `figKey` — the producer cannot be edited while its loop respawns node every batch) · **`WAVESEE.6`** (the ~43%-and-climbing failures: ledger them, classify permanent vs transient, retry only those) · **`REGFIND.1`** (fix the counter and the stop condition) · **`MATHLEAK.1`** re-ingest · **the 4 empty maths cells** · then **`REGRESSION.1`'s remaining half** — `emit.js`, `language-cortex.js`, the bundle's 134k-line drop, and the seven orphan exports are still unreviewed.
+>
+> ⚠ **THE STANDING HONESTY BOUND:** almost everything above is a STATIC read. **Nothing here has been seen on a running brain**, and a static read reported as a live verdict is the defect class this whole review exists to catch.
+
+---
+
 > ## ⭐⭐⭐ 2026-09-02 SHE READS THE WAVELETS, AND THE REVIEW CAUGHT MY OWN INSTRUMENTS (LATEST — PICK UP HERE)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
