@@ -115,6 +115,32 @@ Gee (verbatim): *"you alsoo should of been finalizing,, there better not be a fu
 
 ---
 
+## 2026-09-01 - TEXTFIG.1: the textbook figures stop being deleted, and 194 land on disk - feature/textfig-ingest
+
+Gee (verbatim, the original filing): *"yeah these images need to appear in her minds eye too"*
+
+⭐ **EVERY OPENSTAX FIGURE IS A LABELLED PERCEPT AND THE CLEANER WAS THROWING ALL THREE PARTS AWAY.** `![alt](path "caption")` carries an image, a human-written description of it, and a caption tying it to the surrounding prose — deleted in one regex because the cleaner was only ever asked for sentences. `harvestFigures()` now parses them BEFORE the strip.
+
+**DESIGN DECISIONS, each with its reason:**
+- **Paths resolved at INGEST, not at use.** The markdown says `../resources/<name>`, which is meaningless once an entry has been detached from the file it came from.
+- **Figures ride the entry that owns their chapter**, so a percept can be bound to the SAME theme its prose trained under.
+- ⚠ **Captions stay OUT of `story`.** They are not body prose, and folding them in would inflate the word count the corpus bar is measured in.
+- ⚠ **A figure with neither alt nor caption is SKIPPED** — an unlabelled image bound to a concept is exactly the `CAMPOISON` defect.
+- ⚠ **`figures` is attached only when non-empty**, so cells ingested before this existed do not read as "looked for figures, found none" — a different claim from "never looked".
+
+**MEASURED ON REAL DATA — 7 science cells, 194 figures:** `college1` 41 · `college2` 11 · `grade10` 15 · `grade11` 94 · `grade12` 3 · `grade6` 11 · `grade9` 19. **93 of 94 grade11 figures carry alt text, 73 carry captions**, and the alt text is descriptive prose (*"In the given figure, a car is shown from the back, which is turning to the left…"*), not a filename. ⭐ **`TEXTFIG.2` proven feasible in the same read — 5/5 sampled URLs returned `200 image/jpeg`, 130–240 KB.**
+
+⛔⛔ **HOW THE DATA GOT THERE: BY ACCIDENT, AND I AM RECORDING IT RATHER THAN PRESENTING IT AS A PLANNED INGEST.** I ran `import()` on the fetcher intending a syntax check. **It is a CLI script with top-level execution — importing it started a live network ingest.** I killed it at the 2-minute mark, then **verified what it had written instead of assuming**: all 7 files parse, the merge is the existing keep-longer union so the writes are additive, and nothing was lost. They are kept because they are correct, not because they are there.
+⭐ **THE NARROW LESSON: `node --check` is a syntax check; `import()` is an execution.** Two other things in this same batch failed the same way and are worth naming together — a `String.replace` that silently no-opped when its anchor did not match (caught because a follow-up `grep` found one occurrence where two were expected), and `node --check` passing an **undeclared variable** that would have thrown `ReferenceError` at runtime in an ESM module.
+
+**STILL OPEN:** `TEXTFIG.2` (fetch the bytes), `.3` (decode → `perceive()` → bind), `.5` (tables, deleted by the same class of regex), `.6` (RE-PRICE — the perceive work rides the same substrate as the walk), `.7` (the figures reaching her mind's eye, which is what Gee actually asked for).
+
+**Files:** `.claude/scripts/fetch-openstax-corpora.mjs`, `corpora/academic/science/{college1,college2,grade6,grade9,grade10,grade11,grade12}.json`.
+**Docs:** `docs/TODO.md`, `docs/FINALIZED.md` (this), `docs/RESUME.md`, `wiki/log.md`.
+**Verified:** `node --check` · all 7 corpus files parse as JSON · figure counts and alt/caption coverage counted from disk · 5 figure URLs HEAD-checked live · no corpus entry lost (keep-longer merge).
+
+---
+
 ## 2026-09-01 - REPCOMP.5: "no more than 5 reps for any and everything" - measured, then shipped - feature/dialogue-source-audit
 
 Gee (verbatim): *"what the fuck 100 reps!!!!!!!!!!!!!!!!!!!!!!!!!!!! i fuckiong told you we adjust the fucking nobs so that we only have to do no more than 5 reps for any and everything"*

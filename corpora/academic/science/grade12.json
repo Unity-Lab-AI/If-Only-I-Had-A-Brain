@@ -231,9 +231,29 @@
     },
     {
       "theme": "anatomy-and-physiology-acid-base-balance",
-      "story": "a variety of buffering systems permits blood and other bodily fluids to maintain a narrow ph range, even in the face of perturbations. a buffer is a chemical system that prevents a radical change in fluid ph by dampening the change in hydrogen ion concentrations in the case of excess acid or base. most commonly, the substance that absorbs the ions is either a weak acid, which takes up hydroxyl ions, or a weak base, which takes up hydrogen ions. the buffer systems in the human body are extremely efficient, and different systems work at different rates. it takes only seconds for the chemical buffers in the blood to make adjustments to ph. the respiratory tract can adjust the blood ph upward in minutes by exhaling co 2 from the body.",
+      "story": "a variety of buffering systems permits blood and other bodily fluids to maintain a narrow ph range, even in the face of perturbations. a buffer is a chemical system that prevents a radical change in fluid ph by dampening the change in hydrogen ion concentrations in the case of excess acid or base. most commonly, the substance that absorbs the ions is either a weak acid, which takes up hydroxyl ions, or a weak base, which takes up hydrogen ions. the buffer systems in the human body are extremely efficient, and different systems work at different rates. it takes only seconds for the chemical buffers in the blood to make adjustments to ph. the respiratory tract can adjust the blood ph upward in minutes by exhaling co 2 from the body. the renal system can also adjust blood ph through the excretion of hydrogen ions (h + ) and the conservation of bicarbonate, but this process takes hours to days to have an effect.",
       "source": "openstax/anatomy-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/2713_pH_Scale-01.jpg",
+          "alt": "This table gives examples of solutions from PH of zero to 14. Examples of solutions with a PH of zero include battery acid and strong hydrofluoric acid. An example of a solution with a pH of one is the hydrochloric acid secreted by the stomach lining. Examples of solutions with a PH of two include lemon juice and vinegar. Examples of solutions with a PH of three include grapefruit juice, orange juice and soda. Examples of solutions with a PH of four include tomato juice and acid rain. Examples of solutions with a PH of five include soft drinking water and black coffee. Examples of solutions with a PH of six include urine and saliva. An example of a solution with a PH of seven is pure water. An example of a solution with a PH of eight is sea water. An example of a solution with a PH of nine is baking soda. Examples of solutions with a PH of ten include saline lake water and milk of magnesia. An example of a solution with a PH of eleven is an ammonia solution. An example of a solution with a PH of twelve is soapy water. Examples of solutions with a PH of thirteen include bleach and oven cleaner. An example of a solution with a PH of fourteen is liquid drain cleaner.",
+          "caption": "This chart shows where many common substances fall on the pH scale.",
+          "url": "https://raw.githubusercontent.com/philschatz/anatomy-book/master/resources/2713_pH_Scale-01.jpg"
+        },
+        {
+          "src": "../resources/2714_Respiratory_Regulation_of_Blood.jpg",
+          "alt": "This top to bottom flowchart describes the regulation of PH in the blood. The left branch shows acidosis, which is when the PH of the blood drops. Acidosis stimulates brain and arterial receptors, triggering an increase in respiratory rate. This causes a drop in blood CO two and H two CO three. A drop in these two acidic compounds causes the blood PH to rise back to homeostatic levels. The right branch shows alkalosis which is when the PH of the blood rises. Alkalosis also stimulates brain and arterial receptors, but these now trigger a decrease in respiratory rate. This causes an increase in blood CO two and H two CO three, which lowers the PH of the blood back to homeostatic levels.",
+          "caption": "The respiratory system can reduce blood pH by removing CO2 from the blood.",
+          "url": "https://raw.githubusercontent.com/philschatz/anatomy-book/master/resources/2714_Respiratory_Regulation_of_Blood.jpg"
+        },
+        {
+          "src": "../resources/2715_Conservation_of_Bicarbonate_in_Kidney-01.jpg",
+          "alt": "This diagram depicts a cross section of the left wall of a kidney proximal tubule. The wall is composed of two block-shaped cells arranged vertically one on top of each other. The lumen of the proximal tubule is to the left of the two cells. Yellow-colored urine is flowing through the lumen. There is a small strip of blue interstitial fluid to the right of the two cells. To the right of the interstitial fluid is a cross section of a blood vessel. A loop of chemical reactions is occurring in the diagram. Within the lumen of the proximal tubule, HCO three minus is combining with an H plus ion that enters the lumen from a proximal tubule cell. This reaction forms H two CO three. H two CO three then breaks into H two O and CO two, a reaction catalyzed by the enzyme carbonic anhydrase. The CO two then moves from the lumen of the proximal tubule into one of the proximal tubule cells. There, the reaction runs in reverse, with CO two combining with H two O to form H two CO three. The H two CO three then splits into H plus and HCO three minus. The H plus moves into the lumen, reinitiating the first step of the loop. The HCO three minus leaves the proximal tubule cell and enters the blood stream.",
+          "caption": "Tubular cells are not permeable to bicarbonate; thus, bicarbonate is conserved rather than reabsorbed. Steps 1 and 2 of bicarbonate conservation are indicated.",
+          "url": "https://raw.githubusercontent.com/philschatz/anatomy-book/master/resources/2715_Conservation_of_Bicarbonate_in_Kidney-01.jpg"
+        }
+      ]
     },
     {
       "theme": "anatomy-and-physiology-electrolyte-balance",

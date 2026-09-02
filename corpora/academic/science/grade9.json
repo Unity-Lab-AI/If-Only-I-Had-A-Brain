@@ -235,9 +235,53 @@
     },
     {
       "theme": "biology-the-light-dependent-reactions-of-photosynthesis",
-      "story": "like all energy, light can travel, change form, and be harnessed to do work. in the case of photosynthesis, light energy is transformed into chemical energy, which autotrophs use to build carbohydrate molecules. however, autotrophs only use a specific component of sunlight ( ). \") concept in action watch the [process of photosynthesis][1] within a leaf in this video. the sun emits an enormous amount of electromagnetic radiation (solar energy). humans can see only a fraction of this energy, which is referred to as \"visible light.\" the manner in which solar energy travels can be described and measured as waves.",
+      "story": "like all energy, light can travel, change form, and be harnessed to do work. in the case of photosynthesis, light energy is transformed into chemical energy, which autotrophs use to build carbohydrate molecules. however, autotrophs only use a specific component of sunlight ( ). \") concept in action watch the [process of photosynthesis][1] within a leaf in this video. the sun emits an enormous amount of electromagnetic radiation (solar energy). humans can see only a fraction of this energy, which is referred to as \"visible light.\" the manner in which solar energy travels can be described and measured as waves. scientists can determine the amount of energy of a wave by measuring its wavelength , the distance between two consecutive, similar points in a series of waves, such as from crest to crest or trough to trough ( ).",
       "source": "openstax/biology-concepts-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_05_02_01.jpg",
+          "alt": "A photo shows the silhouette of a grassy plant against the sun at sunset.",
+          "caption": "Autotrophs can capture light energy from the sun, converting it into chemical energy used to build food molecules. (credit: modification of work by Gerry Atwell, U.S. Fish and Wildlife Service)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_05_02_01.jpg"
+        },
+        {
+          "src": "../resources/light_reaction2.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/light_reaction2.png"
+        },
+        {
+          "src": "../resources/Figure_05_02_02.jpg",
+          "alt": "This illustration shows two waves. The distance between the crests (shown as the uppermost part, in contrast to the trough at the bottom) is the wavelength.",
+          "caption": "The wavelength of a single wave is the distance between two consecutive points along the wave.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_05_02_02.jpg"
+        },
+        {
+          "src": "../resources/Figure_05_02_03.jpg",
+          "alt": "This illustration lists the types of electromagnetic radiation in order of decreasing wavelength. These are gamma rays, X-rays, ultraviolet, visible, infrared, and radio",
+          "caption": "The sun emits energy in the form of electromagnetic radiation. This radiation exists in different wavelengths, each of which has its own characteristic energy. Visible light is one type of energy emitted from the sun.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_05_02_03.jpg"
+        },
+        {
+          "src": "../resources/Figure_05_02_04.jpg",
+          "alt": "This photo shows undergrowth in a forest.",
+          "caption": "Plants that commonly grow in the shade benefit from having a variety of light-absorbing pigments. Each pigment can absorb different wavelengths of light, which allows the plant to absorb any light that passes through the taller trees. (credit: Jason Hollinger)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_05_02_04.jpg"
+        },
+        {
+          "src": "../resources/Figure_05_02_05.jpg",
+          "alt": "This illustration shows photosystem II, which has a light-harvesting complex surrounding the reaction center. Chlorophyll molecules&#xA0;are found in the light-harvesting complex. In the reaction center, an excited electron is passed to the primary electron acceptor. A molecule of water is split, releasing one oxygen, two protons, and an electron. The electron replaces the one donated to the primary electron acceptor.",
+          "caption": "Light energy is absorbed by a chlorophyll molecule and is passed along a pathway to other chlorophyll molecules. The energy culminates in a molecule of chlorophyll found in the reaction center. The energy &#x201C;excites&#x201D; one of its electrons enough to leave the molecule and be transferred to a nearby primary electron acceptor. A molecule of water splits to release an electron, which is needed to replace the one donated. Oxygen and hydrogen ions are also formed from the splitting of water.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_05_02_05.jpg"
+        },
+        {
+          "src": "../resources/Figure_05_02_06.jpg",
+          "alt": "This illustration shows the components involved in the light reactions. Photosystem II uses light to excite an electron, which is passed on to the chloroplast electron transport chain. The electron is then passed on to photosystem I and to NADP+ reductase, which makes NADPH. This process forms an electrochemical gradient that is used by ATP synthase enzyme to make ATP.",
+          "caption": "From photosystem II, the electron travels along a series of proteins. This electron transport system uses the energy from the electron to pump hydrogen ions into the interior of the thylakoid. A pigment molecule in photosystem I accepts the electron.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_05_02_06.jpg"
+        }
+      ]
     },
     {
       "theme": "biology-the-calvin-cycle",
@@ -385,15 +429,91 @@
     },
     {
       "theme": "biology-organizing-life-on-earth",
-      "story": "biologists map how organisms are related by constructing phylogenetic trees. notice that from a single point, the three domains of archaea, bacteria, and eukarya diverge and then branch repeatedly. the small branch that plants and animals (including humans) occupy in this diagram shows how recently these groups had their origin compared with other groups. \") the phylogenetic tree in illustrates the pathway of evolutionary history. the pathway can be traced from the origin of life to any individual species by navigating through the evolutionary branches between the two points. also, by starting with a single species and tracing backward to any branch point, the organisms related to it by various degrees of closeness can be identified.",
+      "story": "biologists map how organisms are related by constructing phylogenetic trees. notice that from a single point, the three domains of archaea, bacteria, and eukarya diverge and then branch repeatedly. the small branch that plants and animals (including humans) occupy in this diagram shows how recently these groups had their origin compared with other groups. \") the phylogenetic tree in illustrates the pathway of evolutionary history. the pathway can be traced from the origin of life to any individual species by navigating through the evolutionary branches between the two points. also, by starting with a single species and tracing backward to any branch point, the organisms related to it by various degrees of closeness can be identified. a phylogeny is the evolutionary history and the relationships among a species or group of species.",
       "source": "openstax/biology-concepts-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_12_01_01.jpg",
+          "alt": "This phylogenetic tree shows that the three domains of life, Bacteria, Archaea and Eukarya, all arose from a common ancestor.",
+          "caption": "In the evolution of life on Earth, the three domains of life&#x2014;Archaea, Bacteria, and Eukarya&#x2014;branch from a single point. (credit: modification of work by Eric Gaba)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_01_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_12_01_02.png",
+          "alt": "Illustration shows the taxonomic groups shared by various species. All the organisms shown, plants, insects, fish, rabbits, cats, foxes, jackals, wolves and dogs, are in the domain Eukarya. Of these, insects, fish, rabbits, cats, foxes, jackals, wolves and dogs are in the kingdom Animalia. Within the kingdom Animalia, fish, rabbits, cats foxes, jackals, wolves and dogs are in the phylum Chordata. Rabbits, cats, foxes, jackals, wolves, and dogs are in the class Mammalia. Cats, foxes, jackals, wolves and dogs are in the order Carnivora. Foxes, jackals, wolves and dogs are in the family Canidae. Jackals, wolves and dogs are in the Genus Canis. Wolves and dogs have the species name Canis Lupus. Dogs have the subspecies name Canis lupus familiaris.",
+          "caption": "At each sublevel in the taxonomic classification system, organisms become more similar. Dogs and wolves are the same species because they can breed and produce viable offspring, but they are different enough to be classified as different subspecies. (credit &#x201C;plant&#x201D;: modification of work by &quot;berduchwal&quot;/Flickr; credit &#x201C;insect&#x201D;: modification of work by Jon Sullivan; credit &#x201C;fish&#x201D;: modification of work by Christian Mehlf&#xFC;hrer; credit &#x201C;rabbit&#x201D;: modification of work by Aidan Wojtas; credit &#x201C;cat&#x201D;: modification of work by Jonathan Lidbeck; credit &#x201C;fox&#x201D;: modification of work by Kevin Bacher, NPS; credit &#x201C;jackal&#x201D;: modification of work by Thomas A. Hermann, NBII, USGS; credit &#x201C;wolf&#x201D; modification of work by Robert Dewar; credit &#x201C;dog&#x201D;: modification of work by &quot;digital_image_fan&quot;/Flickr)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_01_02.png"
+        },
+        {
+          "src": "../resources/classify_life2.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/classify_life2.png"
+        },
+        {
+          "src": "../resources/Figure_12_01_03.jpg",
+          "alt": "Illustration shows a phylogenetic tree that starts at a root, indicating that all organisms on tree share a common ancestor. Shortly after the root, the tree branches. One branch gives rise to a single, basal lineage, and the other gives rise to all other organisms on the tree. The next branch forks into four different lineages, an example of polytomy. The final branch gives rise to two lineages, an example of sister taxa.",
+          "caption": "A phylogenetic tree is rooted and shows how different organisms, in this case the species and subspecies of living apes, evolved from a common ancestor.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_01_03.jpg"
+        },
+        {
+          "src": "../resources/Figure_12_01_04.jpg",
+          "alt": "The ladder-like phylogenetic tree starts with a trunk at the left. A question next to the trunk asks whether a vertebral column is present. If the answer is no, a branch leads downward to lancelet. If the answer is yes, a branch leads upward to another question, is a hinged jaw present? If the answer is no, a branch leads downward to lampreys.",
+          "caption": "This phylogenetic tree is rooted by an organism that lacked a vertebral column. At each branch point, organisms with different characters are placed in different groups.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_01_04.jpg"
+        },
+        {
+          "src": "../resources/tree_of_life3.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/tree_of_life3.png"
+        }
+      ]
     },
     {
       "theme": "biology-determining-evolutionary-relationships",
-      "story": "similar to detective work, scientists must use evidence to uncover the facts. in the case of phylogeny, evolutionary investigations focus on two types of evidence: morphologic (form and function) and genetic. organisms that share similar physical features and genetic sequences tend to be more closely related than those that do not. features that overlap both morphologically and genetically are referred to as homologous structures; the similarities stem from common evolutionary paths. notice the structure is not simply a single bone, but rather a grouping of several bones arranged in a similar way in each organism even though the elements of the structure may have changed shape and size. \") some organisms may be very closely related, even though a minor genetic change caused a major morphological difference to make them look quite different.",
+      "story": "similar to detective work, scientists must use evidence to uncover the facts. in the case of phylogeny, evolutionary investigations focus on two types of evidence: morphologic (form and function) and genetic. organisms that share similar physical features and genetic sequences tend to be more closely related than those that do not. features that overlap both morphologically and genetically are referred to as homologous structures; the similarities stem from common evolutionary paths. notice the structure is not simply a single bone, but rather a grouping of several bones arranged in a similar way in each organism even though the elements of the structure may have changed shape and size. \") some organisms may be very closely related, even though a minor genetic change caused a major morphological difference to make them look quite different. for example, chimpanzees and humans, the skulls of which are shown in are very similar genetically, sharing 99 percent 1 of their genes.",
       "source": "openstax/biology-concepts-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_12_02_01.jpg",
+          "alt": "Photo A shows a bird in flight, with a corresponding drawing of bird wing bones. Photo B shows a bat in flight with a corresponding drawing of bat wing bones. Photo C shows a horse, with a corresponding drawing of front leg bones. Photo D shows a beluga whale, with a corresponding drawing of flipper bones. Photo E shows a human arm, with a corresponding drawing of arm bones. All the limbs share common bones, analogous to the bones in the arms and fingers of humans. However, in the bat wing, finger bones are long and separate and form a scaffolding on which the wing&#x2019;s membrane is stretched. In the bird wing, the finger bones are fused together. In the horse leg, the ulna is shortened and is fused to the radius. The hand bones are reduced to one long thick bone and the finger bones are reduced to one long thick finger with a modified nail or hoof. In the whale flipper, the humerus, ulna, and radius are very short and thick.",
+          "caption": "Bat and bird wings, the foreleg of a horse, the flipper of a whale, and the arm of a human are homologous structures, indicating that bats, birds, horses, whales, and humans share a common evolutionary past. (credit a photo: modification of work by Steve Hillebrand, USFWS; credit b photo: modification of work by U.S. BLM; credit c photo: modification of work by Virendra Kankariya; credit d photo: modification of work by Russian Gov./Wikimedia Commons)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_02_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_12_02_02ab.jpg",
+          "alt": "Photo A is of a chimpanzee skull. There is a prominent ridged brow, the eye and nose area is quite flat, and the maxilla and mandible (the jaw) protrude. Photo B is of a human skull. The cranium is proportionately larger than the chimpanzee, the brow is smooth, the nose and cheekbones are more prominent and the mandible and maxilla protrude only slightly.",
+          "caption": "(a) The chimpanzee jaw protrudes to a much greater degree than (b) the human jaw. (credit a: modification of work by &quot;Pastorius&quot;/Wikimedia Commons)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_02_02ab.jpg"
+        },
+        {
+          "src": "../resources/Figure_12_02_03.jpg",
+          "alt": "Part A shows a bat wing, part B shows a bat wing, and part C shows a bee wing. All are similar in overall shape. However, the bird wing and bat wing are both made from homologous bones that are similar in appearance. The bee wing is made of a thin, membranous material rather than bone.",
+          "caption": "The wing of a honey bee is similar in shape to a bird wing and a bat wing and serves the same function (flight). The bird and bat wings are homologous structures. However, the honey bee wing has a different structure (it is made of a chitinous exoskeleton, not a boney endoskeleton) and embryonic origin. The bee and bird or bat wing types illustrate an analogy&#x2014;similar structures that do not share an evolutionary history. (credit a photo: modification of work by U.S. BLM; credit b: modification of work by Steve Hillebrand, USFWS; credit c: modification of work by Jon Sullivan)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_02_03.jpg"
+        },
+        {
+          "src": "../resources/relationships2.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/relationships2.png"
+        },
+        {
+          "src": "../resources/Figure_12_02_04f.png",
+          "alt": "Illustration shows the V-shaped Vertebrata clade, which includes lancelets, lamprey, fish, lizards, rabbits and humans. Lancelets are at the left tip of the V, and humans are at the right tip. Four more lines are drawn parallel to the lancelet line; each of these lines starts further up the right arm of the V than the next. At the end of each line, from left to right, are lampreys, fish, lizards, and rabbits. Lizards, rabbits and humans, which form a small V nested in the upper right corner of the Vertebrata V, are in the clade Amniota.",
+          "caption": "Lizards, rabbits, and humans all descend from a common ancestor in which the amniotic egg evolved. Thus, lizards, rabbits, and humans all belong to the clade Amniota. Vertebrata is a larger clade that also includes fish and lamprey.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/Figure_12_02_04f.png"
+        },
+        {
+          "src": "../resources/parsimony2.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-concepts-book/master/resources/parsimony2.png"
+        }
+      ]
     },
     {
       "theme": "biology-prokaryotic-diversity",

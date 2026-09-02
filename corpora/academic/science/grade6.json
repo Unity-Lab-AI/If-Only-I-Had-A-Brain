@@ -2,7 +2,7 @@
   "version": 1,
   "grade": "grade6",
   "subject": "science",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for science/grade6. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
@@ -127,9 +127,29 @@
     },
     {
       "theme": "earth-and-space-science-the-universe-on-the-large-scale",
-      "story": "in a very rough sense, you could think of the solar system as your house or apartment and the galaxy as your town, made up of many houses and buildings. in the twentieth century, astronomers were able to show that, just as our world is made up of many, many towns, so the universe is made up of enormous numbers of galaxies. when they were first discovered, some astronomers called galaxies island universes, and the term is aptly descriptive; galaxies do look like islands of stars in the vast, dark seas of intergalactic space.",
+      "story": "in a very rough sense, you could think of the solar system as your house or apartment and the galaxy as your town, made up of many houses and buildings. in the twentieth century, astronomers were able to show that, just as our world is made up of many, many towns, so the universe is made up of enormous numbers of galaxies. when they were first discovered, some astronomers called galaxies island universes, and the term is aptly descriptive; galaxies do look like islands of stars in the vast, dark seas of intergalactic space. the nearest galaxy, discovered in 1993, is a small one that lies 75,000 light-years from the sun in the direction of the constellation sagittarius, where the smog in our own galaxy makes it especially difficult to discern.",
       "source": "openstax/astronomy-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/OSC_Astro_01_07_NGalaxy.jpg",
+          "alt": "Image of the Atacama Large Millimeter/Submillimeter Array (ALMA) observatory at night. In the foreground are the many radio telescopes of the array. In the background above the array are two diffuse patches of light. The larger patch of light close to the horizon is the Large Magellanic Cloud. The smaller patch above and to the right is the Small Magellanic Cloud. A few stars from our Milky Way are scattered across the sky.",
+          "caption": "This image shows both the Large Magellanic Cloud and the Small Magellanic Cloud above the telescopes of the Atacama Large Millimeter/Submillimeter Array (ALMA) in the Atacama Desert of northern Chile. (credit: ESO, C. Malin)",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_01_07_NGalaxy.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_01_07_SShape.jpg",
+          "alt": "Image of the Andromeda Galaxy. This spiral galaxy is seen almost edge-on as an oval patch of light with a very bright center (nucleus), and dark bands of dust along its outer edges.",
+          "caption": "The Andromeda galaxy (M31) is a spiral-shaped collection of stars similar to our own Milky Way. (credit: Adam Evans)",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_01_07_SShape.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_01_07_Fornax.jpg",
+          "alt": "Image of the Fornax Cluster of Galaxies. Many elliptical and spiral galaxies are scattered throughout the image.",
+          "caption": "In this image, you can see part of a cluster of galaxies located about 60 million light-years away in the constellation of Fornax. All the objects that are not pinpoints of light in the picture are galaxies of billions of stars. (credit: ESO, J. Emerson, VISTA. Acknowledgment: Cambridge Astronomical Survey Unit)",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_01_07_Fornax.jpg"
+        }
+      ]
     },
     {
       "theme": "earth-and-space-science-a-conclusion-and-a-beginning",
@@ -307,9 +327,47 @@
     },
     {
       "theme": "earth-and-space-science-measuring-stellar-masses",
-      "story": "yet the mass of a star is very difficult to measure directly. somehow, we need to put a star on the cosmic equivalent of a scale. luckily, not all stars live like the sun, in isolation from other stars.",
+      "story": "yet the mass of a star is very difficult to measure directly. somehow, we need to put a star on the cosmic equivalent of a scale. luckily, not all stars live like the sun, in isolation from other stars. about half the stars are binary stars -two stars that orbit each other, bound together by gravity.",
       "source": "openstax/astronomy-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/OSC_Astro_18_02_Period.jpg",
+          "alt": "Revolution of a Binary Star. This figure shows seven observations of the mutual revolution of two stars, one a brown dwarf and one an ultra-cool L dwarf. At center one of the stars is drawn as a red dot surrounded by a blue ellipse. The positions of the companion star at seven different dates are shown as red dots along the blue ellipse. A white arrow points from each red dot on the ellipse to an actual image of the system. Moving clockwise from lower left around the ellipse the observation dates for the individual images are, &#x201C;April 2000&#x201D;, &#x201C;February 2002&#x201D;, &#x201C;October 2002&#x201D;, &#x201C;February 2003&#x201D;, &#x201C;March 2003&#x201D;, &#x201C;December 2003&#x201D; and &#x201C;January 2004&#x201D;.",
+          "caption": "This figure shows seven observations of the mutual revolution of two stars, one a brown dwarf and one an ultra-cool L dwarf. Each red dot on the orbit, which is shown by the blue ellipse, corresponds to the position of one of the dwarfs relative to the other. The reason that the pair of stars looks different on the different dates is that some images were taken with the Hubble Space Telescope and others were taken from the ground. The arrows point to the actual observations that correspond to the positions of each red dot. From these observations, an international team of astronomers directly measured the mass of an ultra-cool brown dwarf star for the first time. Barely the size of the planet Jupiter, the dwarf star weighs in at just 8.5% of the mass of our Sun. (credit: modification of work by ESA/NASA and Herve Bouy (Max-Planck-Institut f&#xFC;r Extraterrestrische Physik/ESO, Germany))",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_18_02_Period.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_18_02_BSystem.jpg",
+          "alt": "Diagram illustrating the concept of center of mass in a binary star system. A seesaw is shown in profile, with the plank horizontal indicating that the system is in balance. Sitting on the left side of the plank is a red sphere labeled &#x201C;High-mass star&#x201D;, and on the right side is a small blue sphere labeled &#x201C;Low-mass star&#x201D;. In this case the fulcrum (or pivot) is not located below the center of the seesaw, but placed to the left of center near the high mass star. The point where the fulcrum touches the plank is labeled &#x201C;Center of mass&#x201D;.",
+          "caption": "In a binary star system, both stars orbit their center of mass. The image shows the relative positions of two, different-mass stars from their center of mass, similar to how two masses would have to be located on a seesaw in order to keep it level. The star with the higher mass will be found closer to the center of mass, while the star with the lower mass will be farther from it.",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_18_02_BSystem.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_18_02_Motion.jpg",
+          "alt": "Motions of Two Stars Orbiting Each Other and What the Spectrum Shows. This figure has four binary star spectra, each with blue wavelengths on the left and red wavelengths on the right. Above each spectrum is a diagram showing the orbit of the two binary stars. Spectrum 1 has two spectral lines, one from each star. The lines for star B is roughly in the center of the spectrum, and the line for star A is a little to the left. The orbit shows the stars at opposite sides horizontally, with an arrow pointing down from star A and an arrow pointing up from star B, indicating that the stars are moving horizontally to our line of sight. In spectrum 2, both lines merge into one and the line is labeled &#x201C;A + B&#x201D;. The orbit shows the stars at opposite sides horizontally, with an arrow pointing right from star A and an arrow pointing left from star B, indicating that the stars are moving perpendicularly to our line of sight. In spectrum 3 the line for star B is near the center and that of star A is on the right. The orbit shows the stars at opposite sides horizontally, with an arrow pointing up from star A and an arrow pointing down from star B, indicating that the stars are moving horizontally to our line of sight. Finally, in spectrum 4, the lines have again merged near the center and the line is labeled &#x201C;B + A&#x201D;. The orbit shows the stars at opposite sides horizontally, with an arrow pointing left from star A and an arrow pointing right from star B, indicating that the stars are moving perpendicularly to our line of sight.",
+          "caption": "We see changes in velocity because when one star is moving toward Earth, the other is moving away; half a cycle later, the situation is reversed. Doppler shifts cause the spectral lines to move back and forth. In diagrams 1 and 3, lines from both stars can be seen well separated from each other. When the two stars are moving perpendicular to our line of sight (that is, they are not moving either toward or away from us), the two lines are exactly superimposed, and so in diagrams 2 and 4, we see only a single spectral line. Note that in the diagrams, the orbit of the star pair is tipped slightly with respect to the viewer (or if the viewer were looking at it in the sky, the orbit would be tilted with respect to the viewer&#x2019;s line of sight). If the orbit were exactly in the plane of the page or screen (or the sky), then it would look nearly circular, but we would see no change in radial velocity (no part of the motion would be toward us or away from us.) If the orbit were perpendicular to the plane of the page or screen, then the stars would appear to move back and forth in a straight line, and we would see the largest-possible radial velocity variations.",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_18_02_Motion.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_18_02_Radial.jpg",
+          "alt": "Radial Velocities in a Spectroscopic Binary System. The upper portion of this figure has four binary star spectra, each with blue wavelengths on the left and red wavelengths on the right. Spectrum 1 at left has two spectral lines, one from each star. The line for star A is near the center and that for star B is toward the right. In spectrum 2, both lines merge into one and is labeled &#x201C;A + B&#x201D;. In spectrum 3 the line for star B is near the center and that of star A is on the right. Finally, in spectrum 4, the lines have again merged near the center and labeled &#x201C;B + A&#x201D;. The bottom portion shows a graph of measured radial velocities vs. time. The vertical axis is labeled &#x201C;Radial Velocity (km/s)&#x201D;, in 40 km/s increments. The horizontal axis is labeled &#x201C;Time (days)&#x201D;, in 2 day increments. Curves are plotted corresponding to the motion of stars A and B that are shown in the spectra above the plot. Both curves begin at day zero on the left at +40 km/s. At day 4, corresponding to spectrum 1, star A has a velocity of +15 km/s and B +110 km/s. At day 9 for spectrum 2, both stars are at +40 km/s. At day 13 (spectrum 3) star A is near +65 km/s and star B near -30 km/s. Finally, near day 17 (spectrum 4), both stars are again at +40 km/s.",
+          "caption": "These curves plot the radial velocities of two stars in a spectroscopic binary system, showing how the stars alternately approach and recede from Earth. Note that positive velocity means the star is moving away from us relative to the center of mass of the system, which in this case is 40 kilometers per second. Negative velocity means the star is moving toward us relative to the center of mass. The positions on the curve corresponding to the illustrations in [link] are marked with the diagram number (1&#x2013;4).",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_18_02_Radial.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_18_02_Brown.jpg",
+          "alt": "Brown Dwarfs in the Orion Nebula. In image (a), taken in visible light, bright clouds of gas dominate the image. Just a few bright stars around the Trapezium are visible below center. In image (b), taken in infrared light, much less nebulosity is seen and many more stars cover the entire field.",
+          "caption": "These images, taken with the Hubble Space Telescope, show the region surrounding the Trapezium star cluster inside the star-forming region called the Orion Nebula. (a) No brown dwarfs are seen in the visible light image, both because they put out very little light in the visible and because they are hidden within the clouds of dust in this region. (b) This image was taken in infrared light, which can make its way to us through the dust. The faintest objects in this image are brown dwarfs with masses between 13 and 80 times the mass of Jupiter. (credit a: NASA, C.R. O&#x2019;Dell and S.K. Wong (Rice University); credit b: NASA; K.L. Luhman (Harvard-Smithsonian Center for Astrophysics) and G. Schneider, E. Young, G. Rieke, A. Cotera, H. Chen, M. Rieke, R. Thompson (Steward Observatory))",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_18_02_Brown.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_18_02_Mass.jpg",
+          "alt": "Plot of the Mass-Luminosity Relation. In this graph the vertical axis is labeled &#x201C;Luminosity (LSun)&#x201D;. It is a logarithmic scale, ranging from 0 to 1,000,000. The horizontal axis is labeled &#x201C;Mass (solar masses)&#x201D;. It is a non-logarithmic scale ranging from zero to 20. About 100 stars are plotted on the graph, with nearly all lying on a straight line running from the lower left corner to the upper right corner. A few points lie below the lower left part of the main line and are white dwarf stars.",
+          "caption": "The plotted points show the masses and luminosities of stars. The three points lying below the sequence of points are all white dwarf stars.",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_18_02_Mass.jpg"
+        }
+      ]
     },
     {
       "theme": "earth-and-space-science-variable-stars-one-key-to-cosmic-distances",
@@ -385,9 +443,23 @@
     },
     {
       "theme": "earth-and-space-science-the-extragalactic-distance-scale",
-      "story": "if we know the distance to a galaxy, we can convert how bright the galaxy appears to us in the sky into its true luminosity because we know the precise way light is dimmed by distance. for decades after hubble's initial work, the techniques used to measure galaxy distances were relatively inaccurate, and different astronomers derived distances that differed by as much as a factor of two. before astronomers could measure distances to other galaxies, they first had to establish the scale of cosmic distances using objects in our own galaxy.",
+      "story": "if we know the distance to a galaxy, we can convert how bright the galaxy appears to us in the sky into its true luminosity because we know the precise way light is dimmed by distance. for decades after hubble's initial work, the techniques used to measure galaxy distances were relatively inaccurate, and different astronomers derived distances that differed by as much as a factor of two. before astronomers could measure distances to other galaxies, they first had to establish the scale of cosmic distances using objects in our own galaxy. we described the chain of these distance methods in celestial distances (and we recommend that you review that chapter if it has been a while since you've read it).",
       "source": "openstax/astronomy-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/OSC_Astro_26_04_M100Ceph.jpg",
+          "alt": "Cepheid Variable Star in M100. In the background of this image is a portion of the galaxy M100. At center right is a small white box indicating the area that contains the variable star observed using the Hubble Space Telescope. Along the top of the image are three insets showing the star at three different times. From left: &#x201C;May 4&#x201D;, &#x201C;May 9&#x201D; and &#x201C;May 31&#x201D;. The star is significantly brighter in the May 31 image.",
+          "caption": "In 1994, using the Hubble Space Telescope, astronomers were able to make out an individual cepheid variable star in the galaxy M100 and measure its distance to be 56 million light-years. The insets show the star on three different nights; you can see that its brightness is indeed variable. (credit: modification of work by Wendy L. Freedman, Observatories of the Carnegie Institution of Washington, and NASA/ESA)",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_26_04_M100Ceph.jpg"
+        },
+        {
+          "src": "../resources/OSC_Astro_26_04_Indicator.jpg",
+          "alt": "Type Ia Supernova. The very bright star to the left of center is a type Ia supernova at the outskirts of the spiral galaxy seen at upper right.",
+          "caption": "The bright object at the bottom left of center is a type Ia supernova near its peak intensity. The supernova easily outshines its host galaxy. This extreme increase and luminosity help astronomers use Ia supernova as standard bulbs. (credit: NASA, ESA, A. Riess (STScI))",
+          "url": "https://raw.githubusercontent.com/philschatz/astronomy-book/master/resources/OSC_Astro_26_04_Indicator.jpg"
+        }
+      ]
     },
     {
       "theme": "earth-and-space-science-the-discovery-of-galaxies",

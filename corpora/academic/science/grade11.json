@@ -141,9 +141,65 @@
     },
     {
       "theme": "physics-centripetal-force",
-      "story": "calculate coefficient of friction on a car tire. calculate ideal speed and angle of a car on a turn. any force or combination of forces can cause a centripetal or radial acceleration. just a few examples are the tension in the rope on a tether ball, the force of earth's gravity on the moon, friction between roller skates and a rink floor, a banked roadway's force on a car, and forces on the tube of a spinning centrifuge. any net force causing uniform circular motion is called a centripetal force . the direction of a centripetal force is toward the center of curvature, the same as the direction of centripetal acceleration.",
+      "story": "calculate coefficient of friction on a car tire. calculate ideal speed and angle of a car on a turn. any force or combination of forces can cause a centripetal or radial acceleration. just a few examples are the tension in the rope on a tether ball, the force of earth's gravity on the moon, friction between roller skates and a rink floor, a banked roadway's force on a car, and forces on the tube of a spinning centrifuge. any net force causing uniform circular motion is called a centripetal force . the direction of a centripetal force is toward the center of curvature, the same as the direction of centripetal acceleration. what coefficient of friction do car tires need on a flat curve?",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_07_03_02a.jpg",
+          "alt": "In the given figure, a car is shown from the back, which is turning to the left. The weight, w, of the car is shown with a down arrow and N with an up arrow at the back of the car. At the right rear wheel, centripetal force is shown along with its equation formula in a leftward horizontal arrow. The free-body diagram shows three vectors, one upward, depicting N, one downward, depicting w, and one leftward, depicting centripetal force.",
+          "caption": "This car on level ground is moving away and turning to the left. The centripetal force causing the car to turn in a circular path is due to friction between the tires and the road. A minimum coefficient of friction is needed, or the car will move in a larger-radius curve and leave the roadway.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_03a.jpg",
+          "alt": "In this figure, a car from the backside is shown, turning to the left, on a slope angling downward to the left. A point in the middle of the back of the car is shown which shows one downward vector depicting weight, w, and an upward arrow depicting force N, which is a linear line along the car and is at an angle theta with the straight up arrow. The slope is at an angle theta with the horizontal surface below the slope. The force values, N multipliy sine theta equals to centripetal force, the net force on the car and N cosine theta equal to w are given below the car.",
+          "caption": "The car on this banked curve is moving away and turning to the left.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_03a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_04a.jpg",
+          "alt": "In the figure, two paths are shown inside a race track through a steep curve, approximately equal to ninety degrees. Two cars are shown. One car is on the path one, which is the inside path along the track. The path of this car is shown with an arrow through the inside path. The second car is shown overtaking the first car, while taking a left turn, showing it to be crossing into the inside path from the second path. The path of this car is also shown with an arrow throughout.",
+          "caption": "Two paths around a race track curve are shown. Race car drivers will take the inside path (called cutting the corner) whenever possible because it allows them to take the curve at the highest speed.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_04a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_05a.jpg",
+          "alt": "In the given line diagram, a circular amusement ride is shown from the front with a boat having four people seated in it going upward from the left to the right. The ride starts from the left in a horizontal direction, then goes upward, then turns sideways to the left, comes down from the right and moves horizontal to the right and then ends. It looks like a single knot of a thread, viewed from sideways. Some square iron blocks are also shown below the ride path.",
+          "caption": "Amusement rides with a vertical loop are an example of a form of curved motion.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_05a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_06a.jpg",
+          "alt": "The given figure shows the circular base of a merry-go-round, whose angular velocity is clockwise, shown here with an arrow. A single horse is shown on whom a child is sitting, with a vertical line shown passed through her, which goes from the bottom of the merry-go-round to the top of it. A point P is shown alongside the horse, through which three arrows in downward three directions are shown which depicts the three possible path of the fall of the lunch box.",
+          "caption": "A child riding on a merry-go-round releases her lunch box at point P. This is a view from above the clockwise rotation. Assuming it slides with negligible friction, will it follow path A, B, or C, as viewed from Earth&#x2019;s frame of reference? What will be the shape of the path it leaves in the dust on the merry-go-round?",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_06a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_07a.jpg",
+          "alt": "In the figure a table is shown. On the table a mass is attached to a nail at the center with the help of a string. The mass is moving on a circular path in counterclockwise direction.",
+          "caption": "A mass attached to a nail on a frictionless table moves in a circular path. The force stretching the string is real and not fictional. What is the physical origin of the force on the string?",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_07a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_08a.jpg",
+          "alt": "The given figure shows a boy riding a bicycle, from the front. The boy is sliding leftward to his left. Three vectors are shown. One is from the bottom the front cycle wheel to the right depicting centripetal force, another one is from the same point drawn vertically upward showing the force N, making an angle theta with the slope of the front cycle wheel. The third vector is drawn from the chest of the boy to vertically downward to the bottom showing his weight, w. An arrow from the bottom of the wheel to the chest point of the boy is also shown depicting the slope of the bicycle with force F exerting on it. A free-body diagram is also given alongside the figure showing the direction of weight and force vectors. And the values of net F equals to sum of N and centripetal force, and N equals to weight W also given alongside on the right.",
+          "caption": "A bicyclist negotiating a turn on level ground must lean at the correct angle&#x2014;the ability to do this becomes instinctive. The force of the ground on the wheel needs to be on a line through the center of gravity. The net external force on the system is the centripetal force. The vertical component of the force on the wheel cancels the weight of the system while its horizontal component must supply the centripetal force. This process produces a relationship among the angle &#x3B8;, the speed v, and the radius of curvature r of the turn similar to that for the ideal banking of roadways.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_08a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_09a.jpg",
+          "alt": "Figure a shows a NASA centrifuge n a big hall. In figure b, there is a girl sitting in the cage of the centrifuge. The centripetal force on the cage is directed toward left. The direction of the weight of the cage is downward and the force on the arm is directed in north-west direction.",
+          "caption": "(a) NASA centrifuge used to subject trainees to accelerations similar to those experienced in rocket launches and reentries. (credit: NASA) (b) Rider in cage showing how the cage pivots outward during rotation. This allows the total force exerted on the rider by the cage to be along its axis at all times.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_09a.jpg"
+        },
+        {
+          "src": "../resources/Figure_07_03_10a.jpg",
+          "alt": "A teardrop shaped loop of a roller coaster is shown. The car of the roller coaster starts from the point A near the right of the base and covers the teardrop portion of the roller coaster and move to a point D at the left of base. Near the top of tear drop portion an upward arrow is shown labeled as r-minimum. Also at a point near the base toward A there is a label called r-maximum. The wire frame of the base is also shown.",
+          "caption": "Teardrop-shaped loops are used in the latest roller coasters so that the radius of curvature gradually decreases to a minimum at the top. This means that the centripetal acceleration builds from zero to a maximum at the top and gradually decreases again. A circular loop would cause a jolting change in acceleration at entry, a disadvantage discovered long ago in railroad curve design. With a small radius of curvature at the top, the centripetal acceleration can more easily be kept greater than &#10; &#10; &#10; g&#10; &#10; &#10; so that the passengers do not lose contact with their seats nor do they need seat belts to keep them in place.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_07_03_10a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-motion-equations-for-constant-acceleration-in-one-dimension",
@@ -165,15 +221,193 @@
     },
     {
       "theme": "physics-vector-addition-and-subtraction-graphical-methods",
-      "story": "understand the rules of vector addition, subtraction, and multiplication. apply graphical methods of vector addition and subtraction to determine the displacement of moving objects. \") a vector is a quantity that has magnitude and direction. displacement, velocity, acceleration, and force, for example, are all vectors. in one-dimensional, or straight-line, motion, the direction of a vector can be given simply by a plus or minus sign. shows such a graphical representation of a vector, using as an example the total displacement for the person walking in a city considered in kinematics in two dimensions: an introduction.",
+      "story": "understand the rules of vector addition, subtraction, and multiplication. apply graphical methods of vector addition and subtraction to determine the displacement of moving objects. \") a vector is a quantity that has magnitude and direction. displacement, velocity, acceleration, and force, for example, are all vectors. in one-dimensional, or straight-line, motion, the direction of a vector can be given simply by a plus or minus sign. shows such a graphical representation of a vector, using as an example the total displacement for the person walking in a city considered in kinematics in two dimensions: an introduction. vectors in this text in this text, we will represent a vector with a boldface variable.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_03_02_00a.jpg",
+          "alt": "Some Hawaiian Islands like Kauai Oahu, Molokai, Lanai, Maui, Kahoolawe, and Hawaii are shown. On the scale map of Hawaiian Islands the path of a journey is shown moving from Hawaii to Molokai. The path of the journey is turning at different angles and finally reaching its destination. The displacement of the journey is shown with the help of a straight line connecting its starting point and the destination.",
+          "caption": "Displacement can be determined graphically using a scale map, such as this one of the Hawaiian Islands. A journey from Hawai&#x2019;i to Moloka&#x2019;i has a number of legs, or journey segments. These segments can be added graphically with a ruler to determine the total two-dimensional displacement of the journey. (credit: US Geological Survey)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_00a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_01.jpg",
+          "alt": "A graph is shown. On the axes the scale is set to one block is equal to one unit. A helicopter starts moving from the origin at an angle of twenty nine point one degrees above the x axis. The current position of the helicopter is ten point three blocks along its line of motion. The destination of the helicopter is the point which is nine blocks in the positive x direction and five blocks in the positive y direction. The positive direction of the x axis is east and the positive direction of the y axis is north.",
+          "caption": "A person walks 9 blocks east and 5 blocks north. The displacement is 10.3 blocks at an angle 29.1&#xBA; size 12{&quot;29&quot; &quot;.&quot; &quot;1&#xBA;&quot;} {} north of east.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_02a.jpg",
+          "alt": "On a graph a vector is shown. It is inclined at an angle theta equal to twenty nine point one degrees above the positive x axis. A protractor is shown to the right of the x axis to measure the angle. A ruler is also shown parallel to the vector to measure its length. The ruler shows that the length of the vector is ten point three units.",
+          "caption": "To describe the resultant vector for the person walking in a city considered in [link] graphically, draw an arrow to represent the total displacement vector D size 12{D} {}. Using a protractor, draw a line at an angle &#x3B8; size 12{&#x3B8;} {} relative to the east-west axis. The length D size 12{D} {} of the arrow is proportional to the vector&#x2019;s magnitude and is measured along the line with a ruler. In this example, the magnitude D size 12{D} {} of the vector is 10.3 units, and the direction &#x3B8; size 12{&#x3B8;} {} is 29.1&#xBA; size 12{&quot;29&quot; &quot;.&quot; 1 rSup { size 12{&#xBA;} } } {} north of east.&#10;",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_03.jpg",
+          "alt": "In part a, a vector of magnitude of nine units and making an angle of theta is equal to zero degrees is drawn from the origin and along the positive direction of x axis. In part b a vector of magnitude of nine units and making an angle of theta is equal to zero degree is drawn from the origin and along the positive direction of x axis. Then a vertical arrow from the head of the horizontal arrow is drawn. In part c a vector D of magnitude ten point three is drawn from the tail of the horizontal vector at an angle theta is equal to twenty nine point one degrees from the positive direction of x axis. The head of the vector D meets the head of the vertical vector. A scale is shown parallel to the vector D to measure its length. Also a protractor is shown to measure the inclination of the vectorD.",
+          "caption": "Head-to-Tail Method: The head-to-tail method of graphically adding vectors is illustrated for the two displacements of the person walking in a city considered in [link]. (a) Draw a vector representing the displacement to the east. (b) Draw a vector representing the displacement to the north. The tail of this vector should originate from the head of the first, east-pointing vector. (c) Draw a line from the tail of the east-pointing vector to the head of the north-pointing vector to form the sum or resultant vector D size 12{A} {}. The length of the arrow D size 12{A} {} is proportional to the vector&#x2019;s magnitude and is measured to be 10.3 units . Its direction, described as the angle with respect to the east (or horizontal axis) &#x3B8; size 12{&#x3B8;} {} is measured with a protractor to be &#10; &#10; &#10; &#10; &#10; &#10; 29&#10; .&#10; 1&#xBA;&#10; &#10; &#10; &#10; &#10; &#10; size 12{&quot;29&quot; &quot;.&quot; 1&#xB0;} {}&#10; &#10; .",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_03.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_04a.jpg",
+          "alt": "In part a, a vector of magnitude of nine units and making an angle theta is equal to zero degree is drawn from the origin and along the positive direction of x axis.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_04a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_05a.jpg",
+          "alt": "In part b, a vector of magnitude of nine units and making an angle theta is equal to zero degree is drawn from the origin and along the positive direction of x axis. Then a vertical vector from the head of the horizontal vector is drawn.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_05a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_06a.jpg",
+          "alt": "In part c, a vector D of magnitude ten point three is drawn from the tail of the horizontal vector at an angle theta is equal to twenty nine point one degrees from the positive direction of the x axis. The head of the vector D meets the head of the vertical vector. A scale is shown parallel to the vector D to measure its length. Also a protractor is shown to measure the inclination of the vector D.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_06a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_08.jpg",
+          "alt": "On the graph a vector of magnitude twenty three meters and inclined above the x axis at an angle theta-b equal to fifteen degrees is shown. This vector is labeled as B.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_08.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_09.jpg",
+          "alt": "In this figure a vector A with a positive slope is drawn from the origin. Then from the head of the vector A another vector B with positive slope is drawn and then another vector C with negative slope from the head of the vector B is drawn which cuts the x axis.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_09.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_10.jpg",
+          "alt": "In this figure a vector A with a positive slope is drawn from the origin. Then from the head of the vector A another vector B with positive slope is drawn and then another vector C with negative slope from the head of the vector B is drawn which cuts the x axis. From the tail of the vector A a vector R of magnitude of fifty point zero meters and with negative slope of seven degrees is drawn. The head of this vector R meets the head of the vector C. The vector R is known as the resultant vector.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_10.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_11a.jpg",
+          "alt": "In this figure a vector A with a positive slope is drawn from the origin. Then from the head of the vector A another vector B with positive slope is drawn and then another vector C with negative slope from the head of the vector B is drawn which cuts the x axis. From the tail of the vector A a vector R of magnitude of fifty meter and with negative slope of seven degrees is drawn. The head of this vector R meets the head of the vector C. The vector R is known as the resultant vector. A ruler is placed along the vector R to measure it. Also there is a protractor to measure the angle.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_11a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_12.jpg",
+          "alt": "In this figure a vector C with a negative slope is drawn from the origin. Then from the head of the vector C another vector A with positive slope is drawn and then another vector B with negative slope from the head of the vector A is drawn. From the tail of the vector C a vector R of magnitude of fifty point zero meters and with negative slope of seven degrees is drawn. The head of this vector R meets the head of the vector B. The vector R is known as the resultant vector.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_12.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_13a.jpg",
+          "alt": "Two vectors are shown. One of the vectors is labeled as vector in north east direction. The other vector is of the same magnitude and is in the opposite direction to that of vector B. This vector is denoted as negative B.",
+          "caption": "The negative of a vector is just another vector of the same magnitude but pointing in the opposite direction. So B size 12{B} {} is the negative of &#x2013;B size 12{ ital &quot;-B&quot;} {}; it has the same length but opposite direction.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_13a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_14.jpg",
+          "alt": "A vector of magnitude twenty seven point five meters is shown. It is inclined to the horizontal at an angle of sixty six degrees. Another vector of magnitude thirty point zero meters is shown. It is inclined to the horizontal at an angle of one hundred and twelve degrees.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_14.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_15a.jpg",
+          "alt": "A vector labeled negative B is inclined at an angle of sixty-eight degrees below a horizontal line. A dotted line in the reverse direction inclined at one hundred and twelve degrees above the horizontal line is also shown.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_15a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_16a.jpg",
+          "alt": "Vectors A and negative B are connected in head to tail method. Vector A is inclined with horizontal with positive slope and vector negative B with a negative slope. The resultant of these two vectors is shown as a vector R from tail of A to the head of negative B. The length of the resultant is twenty three point zero meters and has a negative slope of seven point five degrees.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_16a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_17a.jpg",
+          "alt": "A vector A inclined at sixty six degrees with horizontal is shown. From the head of this vector another vector B is started. Vector B is inclined at one hundred and twelve degrees with the horizontal. Another vector labeled as R prime from the tail of vector A to the head of vector B is drawn. The length of this vector is fifty two point nine meters and its inclination with the horizontal is shown as ninety point one degrees. Vector R prime is equal to the sum of vectors A and B.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_17a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_18a.jpg",
+          "alt": "At the southwest corner of the figure is a cabin and in the northeast corner is a lake. A vector S with a length five point zero kilometers connects the cabin to the lake at an angle of 40 degrees north of east. Two winding paths labeled Path 1 and Path 2 represent the routes travelled from the cabin to the lake.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_18a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_19a.jpg",
+          "alt": "A map of northern California with a circle with a radius of one hundred twenty three kilometers centered on San Francisco. Sacramento lies on the circumference of this circle in a direction forty-five degrees north of east from San Francisco.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_19a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_20a.jpg",
+          "alt": "A map of city is shown. The houses are in form of square blocks of side one hundred and twenty meters each. The path of A extends to three blocks towards north and then one block towards east. It is asked to find out the total distance traveled the magnitude and the direction of the displacement from start to finish.",
+          "caption": "The various lines represent paths taken by different people walking in a city. All blocks are 120 m on a side.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_20a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_21a.jpg",
+          "alt": "In this figure coordinate axes are shown. Vector A from the origin towards the negative of x axis is shown. From the head of the vector A another vector B is drawn towards the positive direction of y axis. The resultant R of these two vectors is shown as a vector from the tail of vector A to the head of vector B. This vector R is inclined at an angle theta with the negative x axis.",
+          "caption": "The two displacements A size 12{A} {} and B size 12{B} {} add to give a total displacement R size 12{R} {} having magnitude R size 12{R} {} and direction &#x3B8; size 12{&#x3B8;} {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_21a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_22a.jpg",
+          "alt": "In the given figure coordinates axes are shown. Vector A with tail at origin is inclined at an angle of twenty degrees with the positive direction of x axis. The magnitude of vector A is twelve meters. Another vector B is starts from the head of vector A and inclined at an angle of forty degrees with the horizontal. The resultant R of the vectors A and B is also drawn from the tail of vector A to the head of vector B. The inclination of vector R is theta with the horizontal.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_22a.jpg"
+        },
+        {
+          "src": "../resources/Figure_03_02_23a.jpg",
+          "alt": "On the graph velocity vector V sub A begins at the origin and is inclined to x axis at an angle of twenty two point five degrees. From the head of vector V sub A another vector V sub B begins. The resultant of the two vectors, labeled V sub tot, is inclined to vector V sub A at twenty six point five degrees and to the vector V sub B at twenty three point zero degrees. V sub tot has a magnitude of 6.72 meters per second.",
+          "caption": "The two velocities vA size 12{v rSub { size 8{A} } } {} and vB size 12{v rSub { size 8{B} } } {} add to give a total vtot size 12{v rSub { size 8{&quot;tot&quot;} } } {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_03_02_23a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-further-applications-of-newton-s-laws-of-motion",
-      "story": "apply problem-solving techniques to solve for quantities in more complex systems of forces. integrate concepts from kinematics to solve problems using newton\\'s laws of motion. there are many interesting applications of newton's laws of motion, a few more of which are presented in this section. these serve also to illustrate some further subtleties of physics and to help build problem-solving skills. a view from above of two tugboats pushing on a barge. (b) the free-body diagram for the ship contains only forces acting in the plane of the water.",
+      "story": "apply problem-solving techniques to solve for quantities in more complex systems of forces. integrate concepts from kinematics to solve problems using newton\\'s laws of motion. there are many interesting applications of newton's laws of motion, a few more of which are presented in this section. these serve also to illustrate some further subtleties of physics and to help build problem-solving skills. a view from above of two tugboats pushing on a barge. (b) the free-body diagram for the ship contains only forces acting in the plane of the water. it omits the two vertical forces&#x2014;the weight of the barge and the buoyant force of the water supporting it cancel and are not shown.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_04_07_01.jpg",
+          "alt": "(a) A view from above two tugboats pushing on a barge. One tugboat is pushing with the force F sub x equal to two point seven multiplied by ten to the power five newtons, shown by a vector arrow acting toward the right in the x direction. Another tugboat is pushing with a force F sub y equal to three point six multiplied by ten to the power five newtons acting upward in the positive y direction. Acceleration of the barge, a, is shown by a vector arrow directed fifty-three point one degree angle above the x axis. In the free-body diagram, F sub y is acting on a point upward, F sub x is acting toward the right, and F sub D is acting approximately southwest. (b) A right triangle is made by the vectors F sub x and F sub y. The base vector is shown by the force vector F sub x. and the perpendicular vector is shown by the force vector F sub y. The resultant is the hypotenuse of this triangle, making a fifty-three point one degree angle from the base, shown by the vector force F sub net pointing up the inclination. A vector F sub D points down the incline.",
+          "caption": "(a) A view from above of two tugboats pushing on a barge. (b) The free-body diagram for the ship contains only forces acting in the plane of the water. It omits the two vertical forces&#x2014;the weight of the barge and the buoyant force of the water supporting it cancel and are not shown. Since the applied forces are perpendicular, the x- and y-axes are in the same direction as Fx size 12{F rSub { size 8{x} } } {} and Fy size 12{F rSub { size 8{y} } } {}. The problem quickly becomes a one-dimensional problem along the direction of Fapp size 12{F rSub { size 8{&quot;app&quot;} } } {}, since friction is in the direction opposite to Fapp size 12{F rSub { size 8{&quot;app&quot;} } } {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_04_07_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_04_07_02.jpg",
+          "alt": "A sketch of a traffic light suspended from two wires supported by two poles is shown. (b) Some forces are shown in this system. Tension T sub one pulling the top of the left-hand pole is shown by the vector arrow along the left wire from the top of the pole, and an equal but opposite tension T sub one is shown by the arrow pointing up along the left-hand wire where it is attached to the light; the wire makes a thirty-degree angle with the horizontal. Tension T sub two is shown by a vector arrow pointing downward from the top of the right-hand pole along the right-hand wire, and an equal but opposite tension T sub two is shown by the arrow pointing up along the right-hand wire, which makes a forty-five degree angle with the horizontal. The traffic light is suspended at the lower end of the wires, and its weight W is shown by a vector arrow acting downward. (c) The traffic light is the system of interest. Tension T sub one starting from the traffic light is shown by an arrow along the wire making an angle of thirty degrees with the horizontal. Tension T sub two starting from the traffic light is shown by an arrow along the wire making an angle of forty-five degrees with the horizontal. The weight W is shown by a vector arrow pointing downward from the traffic light. A free-body diagram is shown with three forces acting on a point. Weight W acts downward; T sub one and T sub two act at an angle with the vertical. (d) Forces are shown with their components T sub one y and T sub two y pointing vertically upward. T sub one x points along the negative x direction, T sub two x points along the positive x direction, and weight W points vertically downward. (e) Vertical forces and horizontal forces are shown separately. Vertical forces T sub one y and T sub two y are shown by vector arrows acting along a vertical line pointing upward, and weight W is shown by a vector arrow acting downward. The net vertical force is zero, so T sub one y plus T sub two y is equal to W. On the other hand, T sub two x is shown by an arrow pointing toward the right, and T sub one x is shown by an arrow pointing toward the left. The net horizontal force is zero, so T sub one x is equal to T sub two x.",
+          "caption": "A traffic light is suspended from two wires. (b) Some of the forces involved. (c) Only forces acting on the system are shown here. The free-body diagram for the traffic light is also shown. (d) The forces projected onto vertical (y) and horizontal (x) axes. The horizontal components of the tensions must cancel, and the sum of the vertical components of the tensions must equal the weight of the traffic light. (e) The free-body diagram shows the vertical and horizontal forces acting on the traffic light.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_04_07_02.jpg"
+        },
+        {
+          "src": "../resources/Figure_04_07_03.jpg",
+          "alt": "A person is standing on a bathroom scale in an elevator. His weight w is shown by an arrow pointing downward. F sub s is the force of the scale on the person, shown by a vector starting from his feet pointing vertically upward. W sub s is the weight of the scale pointing vertically downward. W sub e is the weight of the elevator, shown by the broken arrow pointing vertically downward. F sub p is the force of the person on the scale, acting vertically downward. F sub t is the force of the scale on the floor of the elevator, pointing vertically downward, and N is the normal force of the floor on the scale, pointing upward. (b) The same person is shown on the scale in the elevator, but only a few forces are shown acting on the person, which is our system of interest. W is shown by an arrow acting downward, and F sub s is the force of the scale on the person, shown by a vector starting from his feet pointing vertically upward. The free-body diagram is also shown, with two forces acting on a point. F sub s acts vertically upward, and w acts vertically downward.",
+          "caption": "(a) The various forces acting when a person stands on a bathroom scale in an elevator. The arrows are approximately correct for when the elevator is accelerating upward&#x2014;broken arrows represent forces too large to be drawn to scale. T size 12{T} is the tension in the supporting cable, w size 12{w} is the weight of the person, ws size 12{w rSub { size 8{s} } } {} is the weight of the scale, we size 12{w rSub { size 8{e} } } {} is the weight of the elevator, Fs size 12{F rSub { size 8{s} } } {} is the force of the scale on the person, Fp size 12{F rSub { size 8{p} } } {} is the force of the person on the scale, Ft size 12{F rSub { size 8{t} } } {} is the force of the scale on the floor of the elevator, and N size 12{N} is the force of the floor upward on the scale. (b) The free-body diagram shows only the external forces acting on the designated system of interest&#x2014;the person.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_04_07_03.jpg"
+        },
+        {
+          "src": "../resources/Figure_04_07_04.jpg",
+          "alt": "An Achilles tendon is shown in the figure with two forces acting upward, one at an angle of plus twenty degrees, one at minus twenty degrees. F sub one, equal to two hundred newtons, is shown by a vector making an angle twenty degrees toward the right with the vertical, and F sub two, equal to two hundred newtons, is shown making an angle of twenty degrees left from the vertical.",
+          "caption": "Achilles tendon",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_04_07_04.jpg"
+        },
+        {
+          "src": "../resources/Figure_04_07_07.jpg",
+          "alt": "An object of mass m is shown being pulled by two ropes. Tension T sub two acts toward the right at an angle of ten degrees above the horizontal. Another rope makes an angle fifteen degrees to the left of the vertical direction, and tension in the rope is T sub one, shown by a vector arrow. Weight w is acting vertically downward.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_04_07_07.jpg"
+        },
+        {
+          "src": "../resources/Figure_04_07_08.jpg",
+          "alt": "A lady is being pulled away from a burning building using a rope. She is in the middle of the rope; her weight is shown by a vector acting vertically downward. Tension, T sub one, acts upward through the left side of the rope, making an angle of fifteen degrees with the vertical. Tension T sub two acts through the right side of the rope, making an angle of ten degrees above the positive x axis.",
+          "caption": "The force T2 size 12{T rSub { size 8{2} } } {} needed to hold steady the person being rescued from the fire is less than her weight and less than the force T1 size 12{T rSub { size 8{1} } } {} in the other rope, since the more vertical rope supports a greater part of her weight (a vertical force).&#10;",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_04_07_08.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-introduction-to-uniform-circular-motion-and-gravitation",
@@ -189,15 +423,79 @@
     },
     {
       "theme": "physics-conservative-forces-and-potential-energy",
-      "story": "define conservative force, potential energy, and mechanical energy. explain the potential energy of a spring in terms of its compression when hooke's law applies. use the work-energy theorem to show how having only conservative forces implies conservation of mechanical energy. work is done by a force, and some forces, such as weight, have special characteristics. a conservative force is one, like the gravitational force, for which work done by or against it depends only on the starting and ending points of a motion and not on the path taken. for example, when you wind up a toy, an egg timer, or an old-fashioned watch, you do work against its spring and store energy in it.",
+      "story": "define conservative force, potential energy, and mechanical energy. explain the potential energy of a spring in terms of its compression when hooke's law applies. use the work-energy theorem to show how having only conservative forces implies conservation of mechanical energy. work is done by a force, and some forces, such as weight, have special characteristics. a conservative force is one, like the gravitational force, for which work done by or against it depends only on the starting and ending points of a motion and not on the path taken. for example, when you wind up a toy, an egg timer, or an old-fashioned watch, you do work against its spring and store energy in it. (we treat these springs as ideal, in that we assume there is no friction and no production of thermal energy.) this stored energy is recoverable as work, and it is useful to think of it as potential energy contained in the spring.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_08_04_01a.jpg",
+          "alt": "An undeformed spring fixed at one end with no potential energy. (b) A spring fixed at one end and stretched by a distance x by a force F equal to k x. Work done W is equal to one half k x squared. P E s is equal to one half k x squared. (c) A graph of force F versus elongation x in the spring. A straight line inclined to x axis starts from origin. The area under this line forms a right triangle with base of x and height of k x. Area of this triangle is equal to one half k x squared.",
+          "caption": "(a) An undeformed spring has no PEs size 12{&quot;PE&quot; rSub { size 8{s} } } {} stored in it. (b) The force needed to stretch (or compress) the spring a distance x size 12{x} {} has a magnitude F=kx size 12{F= ital &quot;kx&quot;} {} , and the work done to stretch (or compress) it is 12kx2 size 12{ { {1} over {2} } ital &quot;kx&quot; rSup { size 8{2} } } {}. Because the force is conservative, this work is stored as potential energy (PEs) size 12{ \\( &quot;PE&quot; rSub { size 8{s} } \\) } {} in the spring, and it can be fully recovered. (c) A graph of F size 12{F} {} vs. x size 12{x} {} has a slope of k size 12{k} {}, and the area under the graph is 12kx2 size 12{ { {1} over {2} } ital &quot;kx&quot; rSup { size 8{2} } } {}. Thus the work done or potential energy stored is 12kx2.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_04_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_04_02a.jpg",
+          "alt": "A six-string guitar is placed vertically. The left-most string is plucked in the left direction with a force F shown by an arrow pointing left. The displacement of the string from the mean position is d. The plucked string is labeled P E sub string, to represent the potential energy of the string.",
+          "caption": "Work is done to deform the guitar string, giving it potential energy. When released, the potential energy is converted to kinetic energy and back to potential as the string oscillates back and forth. A very small fraction is dissipated as sound energy, slowly removing energy from the string.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_04_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_04_03a.jpg",
+          "alt": "The figure shows a toy race car that has just been released from a spring. Two possible paths for the car are shown. One path has a gradual upward incline, leveling off at a height of eighteen centimeters above its starting level. An alternative path shows the car descending from its starting point, making a loop, and then ascending back up and leveling off at a height of eighteen centimeters above its starting level.",
+          "caption": "A toy car is pushed by a compressed spring and coasts up a slope. Assuming negligible friction, the potential energy in the spring is first completely converted to kinetic energy, and then to a combination of kinetic and gravitational potential energy as the car rises. The details of the path are unimportant because all forces are conservative&#x2014;the car would have the same final speed if it took the alternate path shown.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_04_03a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-work-energy-and-power-in-humans",
-      "story": "explain the human body's consumption of energy when at rest vs. when engaged in activities that do useful work. calculate the conversion of chemical energy in food into useful work. our own bodies, like all living organisms, are energy conversion machines. conservation of energy implies that the chemical energy stored in food is converted into work, thermal energy, and/or stored as chemical energy in fatty tissue. if we eat more than is needed to do work and stay warm, the remainder goes into body fat.",
+      "story": "explain the human body's consumption of energy when at rest vs. when engaged in activities that do useful work. calculate the conversion of chemical energy in food into useful work. our own bodies, like all living organisms, are energy conversion machines. conservation of energy implies that the chemical energy stored in food is converted into work, thermal energy, and/or stored as chemical energy in fatty tissue. if we eat more than is needed to do work and stay warm, the remainder goes into body fat. the rate at which the body uses food energy to sustain life and to do different activities is called the metabolic rate .",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_08_08_01a.jpg",
+          "alt": "A schematic diagram of energy consumed by humans and converted to various other forms is shown. Food energy is converted into work, thermal energy, and stored fat depicted by an arrow branching out of food energy and ending at these three forms. Stored fat plus thermal energy is equal to the final other energy, labeled O E sub f, and nonconservative work is shown by W sub n c, which is negative, so the initial other energy, labeled O E sub i, plus W sub n c is equal to O E sub f .",
+          "caption": "Energy consumed by humans is converted to work, thermal energy, and stored fat. By far the largest fraction goes to thermal energy, although the fraction varies depending on the type of physical activity.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_08_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_08_02a.jpg",
+          "alt": "A person is measuring the amount of oxygen in blood and metabolic rate using a pulse oxymeter. The pulse oxymeter is strapped to the person&#x2019;s wrist, and the index finger is inside the clip.",
+          "caption": "A pulse oxymeter is an apparatus that measures the amount of oxygen in blood. Oxymeters can be used to determine a person&#x2019;s metabolic rate, which is the rate at which food energy is converted to another form. Such measurements can indicate the level of athletic conditioning as well as certain medical problems. (credit: UusiAjaja, Wikimedia Commons)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_08_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_08_03a.jpg",
+          "alt": "An f M R I scan of a human head with energy consumption in the vision center shown by a bright spot. This brightness indicates the energy consumption.",
+          "caption": "This fMRI scan shows an increased level of energy consumption in the vision center of the brain. Here, the patient was being asked to recognize faces. (credit: NIH via Wikimedia Commons)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_08_03a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_08_04a.jpg",
+          "alt": "A close view of a shot-putter throwing the shot.",
+          "caption": "Shot putter at the Dornoch Highland Gathering in 2007. (credit: John Haslam, Flickr)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_08_04a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_08_05a.jpg",
+          "alt": "An aircraft flying in the air shown from outside, which is powered by a bicycle-type drive mechanism.",
+          "caption": "The Daedalus 88 in flight. (credit: NASA photo by Beasley)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_08_05a.jpg"
+        },
+        {
+          "src": "../resources/Figure_08_08_06a.jpg",
+          "alt": "A person swimming and his arm motion in each stroke is represented. The arm action is shown by an arc starting from where his hand enters the surface of the water and ending at the point where his hand emerges from the water. The diameter of this arc made by the person&#x2019;s hand tip in one stroke is one point eight meters.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_08_08_06a.jpg"
+        },
+        {
+          "src": "../resources/graphics7.png",
+          "alt": "A model of a step pyramid is shown with ramps along the sides of each step.",
+          "caption": "Ancient pyramids were probably constructed using ramps as simple machines. (credit: Franck Monnier, Wikimedia Commons)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/graphics7.png"
+        }
+      ]
     },
     {
       "theme": "physics-impulse",
@@ -237,9 +535,29 @@
     },
     {
       "theme": "physics-pressure",
-      "story": "explain the relationship between pressure and force. calculate force given pressure and area. you have no doubt heard the word pressure being used in relation to blood (high or low blood pressure) and in relation to the weather (high- and low-pressure weather systems). these are only two of many examples of pressures in fluids. pressure pressure is defined as the force divided by the area perpendicular to the force over which the force is applied, or p = f a .",
+      "story": "explain the relationship between pressure and force. calculate force given pressure and area. you have no doubt heard the word pressure being used in relation to blood (high or low blood pressure) and in relation to the weather (high- and low-pressure weather systems). these are only two of many examples of pressures in fluids. pressure pressure is defined as the force divided by the area perpendicular to the force over which the force is applied, or p = f a . the si unit for pressure is the pascal, where 1 pa = 1 n/m 2 . pressure is defined for all states of matter but is particularly important when discussing fluids.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_12_03_01a.jpg",
+          "alt": "In figure a, the person is poked with a finger exerting a small pressure due to the large area of contact and, in b, he is poked with a syringe exerting a large pressure due to the small area of contact.",
+          "caption": "(a) While the person being poked with the finger might be irritated, the force has little lasting effect. (b) In contrast, the same force applied to an area the size of the sharp end of a needle is great enough to break the skin.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_12_03_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_12_03_02a.jpg",
+          "alt": "The forces inside a tire are shown by arrow lines. An inset shows an enlarged view of the valve in the tire. Air pressure in the tire keeps the valve closed.",
+          "caption": "Pressure inside this tire exerts forces perpendicular to all surfaces it contacts. The arrows give representative directions and magnitudes of the forces exerted at various points. Note that static fluids do not exert shearing forces.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_12_03_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_12_03_03a.jpg",
+          "alt": "A man swimming underwater has many arrows pointing toward him to represent the directions and magnitudes of the forces exerted on him at various points.",
+          "caption": "Pressure is exerted on all sides of this swimmer, since the water would flow into the space he occupies if he were not there. The arrows represent the directions and magnitudes of the forces exerted at various points on the swimmer. Note that the forces are larger underneath, due to greater depth, giving a net upward or buoyant force that is balanced by the weight of the swimmer.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_12_03_03a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-archimedes-principle",
@@ -249,15 +567,49 @@
     },
     {
       "theme": "physics-flow-rate-and-its-relation-to-velocity",
-      "story": "describe incompressible fluids. explain the consequences of the equation of continuity. for example, the heart of a resting adult pumps blood at a rate of 5.00 liters per minute (l/min).",
+      "story": "describe incompressible fluids. explain the consequences of the equation of continuity. for example, the heart of a resting adult pumps blood at a rate of 5.00 liters per minute (l/min). in this text we shall use whatever metric units are most convenient for a given situation. calculating volume from flow rate: the heart pumps a lot of blood in a lifetime how many cubic meters of blood does the heart pump in a 75-year lifetime, assuming the average flow rate is 5.00 l/min? 00 l 1 min ( 75 y ) 1 m 3 10 3 l 5 . for comparison, this value is equivalent to about 200 times the volume of water contained in a 6-lane 50-m lap pool.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_13_01_01a.jpg",
+          "alt": "The figure shows a fluid flowing through a cylindrical pipe open at both ends. A portion of the cylindrical pipe with the fluid is shaded for a length d. The velocity of the fluid in the shaded region is shown by v toward the right. The cross sections of the shaded cylinder are marked as A. This cylinder of fluid flows past a point P on the cylindrical pipe. The velocity v is equal to d over t.",
+          "caption": "Flow rate is the volume of fluid per unit time flowing past a point through the area A size 12{A} {}. Here the shaded cylinder of fluid flows past point P size 12{P} {} in a uniform pipe in time t size 12{t} {}. The volume of the cylinder is Ad size 12{ ital &quot;Ad&quot;} {} and the average velocity is &#10;&#10;&#10; v&#10; &#xAF;&#10;&#10;&#10;=d/t size 12{ {overline {v}} =d/t} {} so that the flow rate is Q=Ad/t=A&#10;&#10; v&#10; &#xAF;&#10; size 12{Q= ital &quot;Ad&quot;/t=A {overline {v}} } {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_13_01_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_13_01_02a.jpg",
+          "alt": "The figure shows a cylindrical tube broad at the left and narrow at the right. The fluid is shown to flow through the cylindrical tube toward right along the axis of the tube. A shaded area is marked on the broader cylinder on the left. A cross section is marked on it as A one. A point one is marked on this cross section. The velocity of the fluid through the shaded area on narrow tube is marked by v one as an arrow toward right. Another shaded area is marked on the narrow cylindrical on the right. The shaded area on narrow tube is longer than the one on broader tube to show that when a tube narrows, the same volume occupies a greater length. A cross section is marked on the narrow cylindrical tube as A two. A point two is marked on this cross section. The velocity of fluid through the shaded area on narrow tube is marked v two toward right. The arrow depicting v two is longer than for v one showing v two to be greater in value than v one.",
+          "caption": "When a tube narrows, the same volume occupies a greater length. For the same volume to pass points 1 and 2 in a given time, the speed must be greater at point 2. The process is exactly reversible. If the fluid flows in the opposite direction, its speed will decrease when the tube widens. (Note that the relative volumes of the two cylinders and the corresponding velocity vector arrows are not drawn to scale.)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_13_01_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_13_01_04a.jpg",
+          "alt": "Water rushes over a fall.",
+          "caption": "The Huka Falls in Taupo, New Zealand, demonstrate flow rate. (credit: RaviGogna, Flickr)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_13_01_04a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-the-onset-of-turbulence",
-      "story": "use the reynolds number for a system to determine whether it is laminar or turbulent. sometimes we can predict if flow will be laminar or turbulent. we know that flow in a very smooth tube or around a smooth, streamlined object will be laminar at low velocity. we also know that at high velocity, even flow in a smooth tube or around a smooth object will experience turbulence. in between, it is more difficult to predict. in fact, at intermediate velocities, flow may oscillate back and forth indefinitely between laminar and turbulent.",
+      "story": "use the reynolds number for a system to determine whether it is laminar or turbulent. sometimes we can predict if flow will be laminar or turbulent. we know that flow in a very smooth tube or around a smooth, streamlined object will be laminar at low velocity. we also know that at high velocity, even flow in a smooth tube or around a smooth object will experience turbulence. in between, it is more difficult to predict. in fact, at intermediate velocities, flow may oscillate back and forth indefinitely between laminar and turbulent. turbulence in the circulatory system is noisy and can sometimes be detected with a stethoscope, such as when measuring diastolic pressure in the upper arm's partially collapsed brachial artery.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_13_05_01a.jpg",
+          "alt": "Figure shows a rectangular section of a blood vessel. The blood flow is shown toward right. The blood vessel is shown to be broader at one end and narrow toward the opposite end. The flow is shown to be laminar as shown by horizontal parallel lines. The velocity is v one in the broader section of blood vessel. The junction where the tube narrows the velocity is v two. The lines of flow are shown to bend. The regions where the blood vessels are narrow, the flow is shown to be turbulent as shown to by curling arrows. The velocity is given by v three toward right. The length of the arrows depicting the velocities represent that v three is greater than v two greater than v one.",
+          "caption": "Flow is laminar in the large part of this blood vessel and turbulent in the part narrowed by plaque, where velocity is high. In the transition region, the flow can oscillate chaotically between laminar and turbulent flow.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_13_05_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_13_05_02a.jpg",
+          "alt": "Shows a picture of a small ring shaped section of a cylinder. It is shown to be partitioned in to four equal portions.",
+          "caption": "You will find devices such as this in many drains. They significantly increase flow rate.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_13_05_02a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-temperature",
@@ -273,9 +625,29 @@
     },
     {
       "theme": "physics-temperature-change-and-heat-capacity",
-      "story": "observe heat transfer and change in temperature and mass. calculate final temperature after heat transfer between two objects. one of the major effects of heat transfer is temperature change: heating increases the temperature while cooling decreases it. we assume that there is no phase change and that no work is done on or by the system. experiments show that the transferred heat depends on three factors-the change in temperature, the mass of the system, and the substance and phase of the substance. the amount of heat transferred is directly proportional to the temperature change.",
+      "story": "observe heat transfer and change in temperature and mass. calculate final temperature after heat transfer between two objects. one of the major effects of heat transfer is temperature change: heating increases the temperature while cooling decreases it. we assume that there is no phase change and that no work is done on or by the system. experiments show that the transferred heat depends on three factors-the change in temperature, the mass of the system, and the substance and phase of the substance. the amount of heat transferred is directly proportional to the temperature change. (b) the amount of heat transferred is also directly proportional to the mass.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_15_02_01.jpg",
+          "alt": "Figure a shows a copper-colored cylinder of mass m and temperature change delta T. The heat Q, shown as a wavy rightward horizontal arrow, is transferred to the cylinder from the left. To the right of this image is a similar image, except that the heat transferred Q prime is twice the heat Q. The temperature change of this second cylinder, which is also labeled m, is two delta T. This cylinder is surrounded by small black wavy lines radiating outward. Figure b shows the same two cylinders as in Figure a. The left cylinder is labeled m and delta T and has a wavy heat arrow pointing at it from the left that is labeled Q. The right cylinder is labeled two m and delta T and has a wavy heat arrow pointing to it from the left labeled Q prime equals two Q. Figure c shows the same copper cylinder of mass m and with temperature change delta T, with heat Q being transferred to it. To the right of this cylinder, Q prime equals ten point eight times Q is being transferred to another cylinder filled with water whose mass and change in temperature are the same as that of the copper cylinder.",
+          "caption": "The heat Q size 12{Q} {} transferred to cause a temperature change depends on the magnitude of the temperature change, the mass of the system, and the substance and phase involved. (a) The amount of heat transferred is directly proportional to the temperature change. To double the temperature change of a mass m size 12{m} {}, you need to add twice the heat. (b) The amount of heat transferred is also directly proportional to the mass. To cause an equivalent temperature change in a doubled mass, you need to add twice the heat. (c) The amount of heat transferred depends on the substance and its phase. If it takes an amount Q size 12{Q} {} of heat to cause a temperature change &#x394;T size 12{&#x394;T} {} in a given mass of copper, it will take 10.8 times that amount of heat to cause the equivalent temperature change in the same mass of water assuming no phase change in either substance.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_15_02_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_15_02_02.jpg",
+          "alt": "The figure shows a truck coming from the left and moving on a road which is sloping downhill to the right. Smoke is coming from the area of the wheels of the truck.",
+          "caption": "The smoking brakes on this truck are a visible evidence of the mechanical equivalent of heat.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_15_02_02.jpg"
+        },
+        {
+          "src": "../resources/Figure_15_02_03.jpg",
+          "alt": "The figure shows a view from above of a radioactive spent fuel pool inside a nuclear power plant.",
+          "caption": "Radioactive spent-fuel pool at a nuclear power plant. Spent fuel stays hot for a long time. (credit: U.S. Department of Energy)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_15_02_03.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-convection",
@@ -297,9 +669,17 @@
     },
     {
       "theme": "physics-period-and-frequency-in-oscillations",
-      "story": "observe the vibrations of a guitar string. determine the frequency of oscillations. \") when you pluck a guitar string, the resulting sound has a steady tone and lasts a long time. each successive vibration of the string takes the same time as the previous one. we define periodic motion to be a motion that repeats itself at regular time intervals, such as exhibited by the guitar string or by an object on a spring moving up and down. its units are usually seconds, but may be any convenient unit of time.",
+      "story": "observe the vibrations of a guitar string. determine the frequency of oscillations. \") when you pluck a guitar string, the resulting sound has a steady tone and lasts a long time. each successive vibration of the string takes the same time as the previous one. we define periodic motion to be a motion that repeats itself at regular time intervals, such as exhibited by the guitar string or by an object on a spring moving up and down. its units are usually seconds, but may be any convenient unit of time. the word period refers to the time for some event whether repetitive or not; but we shall be primarily interested in periodic motion, which is by definition repetitive.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_17_02_01a.jpg",
+          "alt": "The given figure shows a closed zoom view of the strings of a guitar. There are two slanting white colored strings in the picture. In the nearer string, the gaps between the circular threads of the string are visible, whereas the second white string at the back looks like a white thin stick.",
+          "caption": "The strings on this guitar vibrate at regular time intervals. (credit: JAR)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_17_02_01a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-uniform-circular-motion-and-simple-harmonic-motion",
@@ -327,21 +707,129 @@
     },
     {
       "theme": "physics-static-electricity-and-charge-conservation-of-charge",
-      "story": "define electric charge, and describe how the two types of charge interact. describe three common situations that generate static electricity. state the law of conservation of charge. \") what makes plastic wrap cling? not only are applications of static electricity common these days, its existence has been known since ancient times. that polishing amber temporarily enabled it to attract bits of straw (see ).",
+      "story": "define electric charge, and describe how the two types of charge interact. describe three common situations that generate static electricity. state the law of conservation of charge. \") what makes plastic wrap cling? not only are applications of static electricity common these days, its existence has been known since ancient times. the first record of its effects dates to ancient greeks who noted more than 500 years b.c. that polishing amber temporarily enabled it to attract bits of straw (see ).",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_19_01_01a.jpg",
+          "alt": "This piece of gold-colored amber from Malaysia has been rubbed and polished to a smooth, rounded shape.",
+          "caption": "Borneo amber was mined in Sabah, Malaysia, from shale-sandstone-mudstone veins. When a piece of amber is rubbed with a piece of silk, the amber gains more electrons, giving it a net negative charge. At the same time, the silk, having lost electrons, becomes positively charged. (credit: Sebakoamber, Wikimedia Commons)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_01_02a.jpg",
+          "alt": "(a) Negatively charged cloth is attracted to the positively charged glass rod which is hanging by the thread. (b) A positively charged glass rod is hanging with a thread. When another positively charged glass rod brought close to the first rod it deflects due to the repulsive force. (c) Two negatively charged silk cloth brought close to each other repel each other.",
+          "caption": "A glass rod becomes positively charged when rubbed with silk, while the silk becomes negatively charged. (a) The glass rod is attracted to the silk because their charges are opposite. (b) Two similarly charged glass rods repel. (c) Two similarly charged silk cloths repel.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_01_03a.jpg",
+          "alt": "Three electrons are shown moving in different direction around the nucleus and their motion is similar to planetary motion.",
+          "caption": "This simplified (and not to scale) view of an atom is called the planetary model of the atom. Negative electrons orbit a much heavier positive nucleus, as the planets orbit the much heavier sun. There the similarity ends, because forces in the atom are electromagnetic, whereas those in the planetary system are gravitational. Normal macroscopic amounts of matter contain immense numbers of atoms and molecules and, hence, even greater numbers of individual negative and positive charges.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_03a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_01_04a.jpg",
+          "alt": "A girl is touching a Van de Graaff generator with her hair standing up. A magnified view of her single hair is shown which is filled with electrons and protons.",
+          "caption": "When this person touches a Van de Graaff generator, she receives an excess of positive charge, causing her hair to stand on end. The charges in one hair are shown. An artist&#x2019;s conception of an electron and a proton illustrate the particles carrying the negative and positive charges. We cannot really see these particles with visible light because they are so small (the electron seems to be an infinitesimal point), but we know a great deal about their measurable properties, such as the charges they carry.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_04a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_01_05a.jpg",
+          "alt": "A magnified view of a fraction of proton is shown in an art having three quarks of spherical shape separated from each other.",
+          "caption": "Artist&#x2019;s conception of fractional quark charges inside a proton. A group of three quark charges add up to the single positive charge on the proton: &#x2212;13qe+23qe+23qe=+1qe.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_05a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_01_06a.jpg",
+          "alt": "",
+          "caption": "When materials are rubbed together, charges can be separated, particularly if one material has a greater affinity for electrons than another. (a) Both the amber and cloth are originally neutral, with equal positive and negative charges. Only a tiny fraction of the charges are involved, and only a few of them are shown here. (b) When rubbed together, some negative charge is transferred to the amber, leaving the cloth with a net positive charge. (c) When separated, the amber and cloth now have net charges, but the absolute value of the net positive and negative charges will be equal.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_06a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_01_07a.jpg",
+          "alt": "Here energy is shown by a vector. Initially electrostatic charge q tot is equal to zero. Now energy gets converted into matter and creates one electron and antielectron pair but final electrostatic charge is equal to zero so change in mass delta m is equal to two m e, which is equal to E divided by c square. (b) In this figure, Electron and antielectron are colliding with each other. The electrostatic charge q tot before collision is zero and after collision it will remain zero.",
+          "caption": "(a) When enough energy is present, it can be converted into matter. Here the matter created is an electron&#x2013;antielectron pair. (me size 12{m rSub { size 8{e} } } {} is the electron&#x2019;s mass.) The total charge before and after this event is zero. (b) When matter and antimatter collide, they annihilate each other; the total charge is conserved at zero before and after the annihilation.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_01_07a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-electric-field-lines-multiple-charges",
-      "story": "drawings using lines to represent electric fields around charged objects are very useful in visualizing field strength and direction. since the electric field has both magnitude and direction, it is a vector. like all vectors , the electric field can be represented by an arrow that has length proportional to its magnitude and that points in the correct direction. (b) shows the standard representation using continuous lines. field lines are essentially a map of infinitesimal force vectors.",
+      "story": "drawings using lines to represent electric fields around charged objects are very useful in visualizing field strength and direction. since the electric field has both magnitude and direction, it is a vector. like all vectors , the electric field can be represented by an arrow that has length proportional to its magnitude and that points in the correct direction. (b) shows the standard representation using continuous lines. field lines are essentially a map of infinitesimal force vectors. arrows representing the electric field&#x2019;s magnitude and direction. (b) in the standard representation, the arrows are replaced by continuous field lines having the same direction at any point as the electric field.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_19_05_02a.jpg",
+          "alt": "In part a, electric field lines emanating from the charge Q are shown by the vector arrows pointing outward in every direction of two dimensional space. In part b, electric field lines emanating from the charge Q are shown by the vector arrows pointing outward in every direction of two dimensional space.",
+          "caption": "Two equivalent representations of the electric field due to a positive charge Q size 12{Q} {}. (a) Arrows representing the electric field&#x2019;s magnitude and direction. (b) In the standard representation, the arrows are replaced by continuous field lines having the same direction at any point as the electric field. The closeness of the lines is directly related to the strength of the electric field. A test charge placed anywhere will feel a force in the direction of the field line; this force will have a strength proportional to the density of the lines (being greater near the charge, for example).",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_05_03a.jpg",
+          "alt": "In part a, electric field lines emanating from a positive charge is shown by the vector arrows in all direction of two dimensional space and the density of these field lines is less. In part b, electric field lines entering the negative charge is shown by the vector arrows coming from all direction of two dimensional space and the density of these field lines is less. In part c, electric field lines entering the negative charge is shown by the vector arrows coming from all direction of two dimensional space and the density of these field lines is large.",
+          "caption": "The electric field surrounding three different point charges. (a) A positive charge. (b) A negative charge of equal magnitude. (c) A larger negative charge.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_03a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_05_04a.jpg",
+          "alt": "Two charges are placed on a coordinate axes. Q two is at the position x equals 4 and y equals 0 centimeters. Q one is at the position x equals 0 and y equals two centimeters. Charge on q one is plus five point zero nano coulomb and charge on q two is plus ten nano coulomb. The electric field, E one having a magnitude of one point one three multiplied by ten raise to the power five Newton per coulomb is represented by a vector arrow along positive y axis starting from the origin. The electric field, E two having magnitude zero point five six multiplied by ten raise to the power five Newton per coulomb is represented by a vector arrow along negative x axis starting from the origin. The resultant field makes an angle of sixty three point four degree above the negative y axis having magnitude one point two six multiplied by ten raise to the power five Newton per coulomb is represented by a vector arrow pointing away from the origin in the second quadrant.",
+          "caption": "The electric fields E1 size 12{E rSub { size 8{1} } } {} and E2 size 12{E rSub { size 8{2} } } {} at the origin O add to Etot size 12{E rSub { size 8{&quot;tot&quot;} } } {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_04a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_05_05a.jpg",
+          "alt": "Two charges q one and q two are placed at a distance and their field lines shown by curved arrows move away from each other. At a point P on the field lines emanating from q one, the resultant electric field is represented by a vector arrow tangent to the curve representing this field line. A point P prime on a field line emanating from the charge q two and the resultant electric field is represented by a vector arrow tangent to the curve representing this field line.",
+          "caption": "Two positive point charges q1 size 12{q rSub { size 8{1} } } {} and q2 size 12{q rSub { size 8{2} } } {} produce the resultant electric field shown. The field is calculated at representative points and then smooth field lines drawn following the rules outlined in the text.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_05a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_05_06a.jpg",
+          "alt": "In part a, two negative charges of magnitude minus q are placed at some distance. Their field lines are represented by curved arrows terminating into the negative charges. The curves are divergent. In part b, two charges are placed at a distance where one is positive labeled as plus q and other is negative labeled as minus q. The field lines represented by curved arrows start from the positive charge and end at the negative charge. The curves are convergent.",
+          "caption": "(a) Two negative charges produce the fields shown. It is very similar to the field produced by two positive charges, except that the directions are reversed. The field is clearly weaker between the charges. The individual forces on a test charge in that region are in opposite directions. (b) Two opposite charges produce the field shown, which is stronger in the region between the charges.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_06a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_05_07a.jpg",
+          "alt": "Five field lines represented by long arrows horizontally from left to right are shown. Two arrows diverge from other three, one arrow runs straight toward right and two arrows end abruptly.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_07a.jpg"
+        },
+        {
+          "src": "../resources/Figure_19_05_08a.jpg",
+          "alt": "Field lines between a positive and a negative charge represented by curved lines is shown",
+          "caption": "The electric field near two charges.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_19_05_08a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-electric-potential-energy-potential-difference",
-      "story": "define electric potential and electric potential energy. describe the relationship between potential difference and electrical potential energy. explain electron volt and its usage in submicroscopic process. determine electric potential energy given potential difference and amount of charge. the process is analogous to an object being accelerated by a gravitational field. it is as if the charge is going down an electrical hill where its electric potential energy is converted to kinetic energy.",
+      "story": "define electric potential and electric potential energy. describe the relationship between potential difference and electrical potential energy. explain electron volt and its usage in submicroscopic process. determine electric potential energy given potential difference and amount of charge. the process is analogous to an object being accelerated by a gravitational field. it is as if the charge is going down an electrical hill where its electric potential energy is converted to kinetic energy. this is exactly analogous to the gravitational force in the absence of dissipative forces such as friction.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_20_01_01a.jpg",
+          "alt": "A charge plus q moves from a positive to a negative sheet of charge. The change in the electric potential energy equals the change in kinetic energy. This is similar to the change from gravitational potential energy to kinetic energy when an object of mass m rolls downhill.",
+          "caption": "A charge accelerated by an electric field is analogous to a mass going down a hill. In both cases potential energy is converted to another form. Work is done by a force, but since this force is conservative, we can write W = &#x2013;&#x394;PE size 12{W= - ?&quot;PE&quot;} {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_20_01_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_20_01_02a.jpg",
+          "alt": "A headlight is connected to a 12 V battery. Negative charges move from the negative terminal of the battery to the positive terminal, resulting in a current flow and making the headlight glow. However, the positive terminal is at a greater potential than the negative terminal.",
+          "caption": "A battery moves negative charge from its negative terminal through a headlight to its positive terminal. Appropriate combinations of chemicals in the battery separate charges so that the negative terminal has an excess of negative charge, which is repelled by it and attracted to the excess positive charge on the other terminal. In terms of potential, the positive terminal is at a higher voltage than the negative. Inside the battery, both positive and negative charges move.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_20_01_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_20_01_03a.jpg",
+          "alt": "In an electron gun the electrons move from the negatively charged plate to the positively charged plate. Their kinetic energy will be equal to the potential energy.",
+          "caption": "A typical electron gun accelerates electrons using a potential difference between two metal plates. The energy of the electron in electron volts is numerically the same as the voltage between the plates. For example, a 5000 V potential difference produces 5000 eV electrons.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_20_01_03a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-equipotential-lines",
@@ -375,27 +863,131 @@
     },
     {
       "theme": "physics-magnetic-fields-and-magnetic-field-lines",
-      "story": "define magnetic field and describe the magnetic field lines of various magnetic fields. einstein is said to have been fascinated by a compass as a child, perhaps musing on how the needle felt a force without direct physical contact. his ability to think deeply and clearly about action at a distance, particularly for gravitational, electric, and magnetic forces, later enabled him to create his revolutionary theory of relativity. since magnetic forces act at a distance, we define a magnetic field to represent magnetic forces. the pictorial representation of magnetic field lines is very useful in visualizing the strength and direction of the magnetic field. the magnetic field is traditionally called the b-field .",
+      "story": "define magnetic field and describe the magnetic field lines of various magnetic fields. einstein is said to have been fascinated by a compass as a child, perhaps musing on how the needle felt a force without direct physical contact. his ability to think deeply and clearly about action at a distance, particularly for gravitational, electric, and magnetic forces, later enabled him to create his revolutionary theory of relativity. since magnetic forces act at a distance, we define a magnetic field to represent magnetic forces. the pictorial representation of magnetic field lines is very useful in visualizing the strength and direction of the magnetic field. the magnetic field is traditionally called the b-field . if small compasses are used to map the magnetic field around a bar magnet, they will point in the directions shown: away from the north pole of the magnet, toward the south pole of the magnet.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_23_03_01a.jpg",
+          "alt": "Three diagrams illustrating magnetic field lines. Figure a shows a bar magnet with a number of compasses arranged along the magnet on either side. The needles of the compasses at the north pole of the magnet point away from the pole. The needles of the compasses at the south pole of the magnet point toward the pole. The needles of compasses in between the two poles point parallel to the magnet, toward the south pole. Figure b shows lines running from the north pole out and around to the south pole. Figure c shows lines as closed loops running from the north pole outside the magnet and around the south pole, and then up through the magnet to the north pole.",
+          "caption": "Magnetic field lines are defined to have the direction that a small compass points when placed at a location. (a) If small compasses are used to map the magnetic field around a bar magnet, they will point in the directions shown: away from the north pole of the magnet, toward the south pole of the magnet. (Recall that the Earth&#x2019;s north magnetic pole is really a south pole in terms of definitions of poles on a bar magnet.) (b) Connecting the arrows gives continuous magnetic field lines. The strength of the field is proportional to the closeness (or density) of the lines. (c) If the interior of the magnet could be probed, the field lines would be found to form continuous closed loops.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_03_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_03_02a.jpg",
+          "alt": "Figure a: magnetic field of a circular current loop with a current moving counter-clockwise. The field lines are also roughly circular, running up through the center of the current loop, and back down outside the loop. Figure b: a straight wire with a current running straight up. The magnetic field lines circle the wire in a counter-clockwise direction. Figure c: a right hand with the thumb pointing up, parallel to a wire with the current running upward. The figures of the hand curl around the wire in the counter-clockwise direction to show the direction of the magnetic field when current is up. The symbol to represent magnetic field lines running out of the surface and toward the viewer&#x2014;B out&#x2014;is a circle with a sold circle inside. The symbol to represent magnetic field lines running into the surface and away from the viewer&#x2014;B in&#x2014;is represented with a circle with an x inside it. When the current is running straight up, B out is to the left and B in is to the right.",
+          "caption": "Small compasses could be used to map the fields shown here. (a) The magnetic field of a circular current loop is similar to that of a bar magnet. (b) A long and straight wire creates a field with magnetic field lines forming circular loops. (c) When the wire is in the plane of the paper, the field is perpendicular to the paper. Note that the symbols used for the field pointing inward (like the tail of an arrow) and the field pointing outward (like the tip of an arrow).",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_03_02a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-torque-on-a-current-loop-motors-and-meters",
-      "story": "describe how motors and meters work in terms of torque on a current loop. calculate the torque on a current-carrying loop in a magnetic field. motors are the most common application of magnetic force on current-carrying wires. motors have loops of wire in a magnetic field. when current is passed through the loops, the magnetic field exerts torque on the loops, which rotates a shaft. electrical energy is converted to mechanical work in the process.",
+      "story": "describe how motors and meters work in terms of torque on a current loop. calculate the torque on a current-carrying loop in a magnetic field. motors are the most common application of magnetic force on current-carrying wires. motors have loops of wire in a magnetic field. when current is passed through the loops, the magnetic field exerts torque on the loops, which rotates a shaft. electrical energy is converted to mechanical work in the process. (this will lead to a useful equation for the torque on the loop.) we take the magnetic field to be uniform over the rectangular loop, which has width w and height l .",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_23_08_01a.jpg",
+          "alt": "Diagram showing a current-carrying loop of width w and length l between the north and south poles of a magnet. The north pole is to the left and the south pole is to the right of the loop. The magnetic field B runs from the north pole across the loop to the south pole. The loop is shown at an instant, while rotating clockwise. The current runs up the left side of the loop, across the top, and down the right side. There is a force F oriented into the page on the left side of the loop and a force F oriented out of the page on the right side of the loop. The torque on the loop is clockwise as viewed from above.",
+          "caption": "Torque on a current loop. A current-carrying loop of wire attached to a vertically rotating shaft feels magnetic forces that produce a clockwise torque as viewed from above.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_08_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_08_02a.jpg",
+          "alt": "Diagram showing a current-carrying loop from the top, and four different times as it rotates in a magnetic field. The magnetic field oriented toward the right, perpendicular to the vertical dimension of the loop. In figure a, the top view of the loop is oriented at an angle to the magnetic field lines, which run left to right. The force on the loop is up on the lower left side where the current comes out of the page. The force is down on the upper right side where the loop goes into the page. The angle between the force and the loop is theta. Torque is clockwise and equals w over 2 times I l B sine theta. Figure b shows the top view of the loop parallel to the magnetic field lines. The force on the loop is up on the left side where I comes out of the page. The force on the loop is down on the right side where I goes into the page. The angle theta between the F and B is ninety degrees. Torque is clockwise and equals w over 2 I l B equals maximum torque. Figure c shows the top view of the loop oriented perpendicular to B. The force on the loop is up at the top, where I comes out of the page, and down at the bottom where I goes into the page. Theta equals 0 degrees. Torque equals zero since sine theta equals 0. In figure d the force is down on the lower left side of the loop where I goes in, and up on the upper right side of the loop where I comes out. The torque is counterclockwise. Torque is negative.",
+          "caption": "Top views of a current-carrying loop in a magnetic field. (a) The equation for torque is derived using this view. Note that the perpendicular to the loop makes an angle &#x3B8; size 12{&#x3B8;} {} with the field that is the same as the angle between w/2 size 12{w/2} {} and F size 12{F} {}. (b) The maximum torque occurs when &#x3B8; size 12{&#x3B8;} {} is a right angle and sin&#x3B8;=1 size 12{&quot;sin&quot;&#x3B8;=1} {}. (c) Zero (minimum) torque occurs when &#x3B8; size 12{&#x3B8;} {} is zero and sin&#x3B8;=0. (d) The torque reverses once the loop rotates past &#x3B8;=0.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_08_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_08_03a.jpg",
+          "alt": "The diagram shows a current-carrying loop between the north and south poles of a magnet at two different times. The north pole is to the left and the south pole is to the right. The magnetic field runs from the north pole to the right to the south pole. Figure a shows the current running through the loop. It runs up on the left side, and down on the right side. The force on the left side is into the page. The force on the right side is out of the page. The torque is clockwise when viewed from above. Figure b shows the loop when it is oriented perpendicular to the magnet. In both diagrams, the bottom of each side of the loop is connected to a half-cylinder that is next to a rectangular brush that is then connected to the rest of the circuit.",
+          "caption": "(a) As the angular momentum of the coil carries it through &#x3B8;=0 size 12{&#x3B8;=0} {}, the brushes reverse the current to keep the torque clockwise. (b) The coil will rotate continuously in the clockwise direction, with the current reversing each half revolution to maintain the clockwise torque.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_08_03a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_08_04a.jpg",
+          "alt": "Diagram of a meter showing a current-carrying loop between two poles of a magnet. The torque on the magnet is clockwise. The top of the loop is connected to a spring and to a pointer that points to a scale as the loop rotates.",
+          "caption": "Meters are very similar to motors but only rotate through a part of a revolution. The magnetic poles of this meter are shaped to keep the component of B size 12{B} {} perpendicular to the loop constant, so that the torque does not depend on &#x3B8; size 12{&#x3B8;} {} and the deflection against the return spring is proportional only to the current I size 12{I} {}.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_08_04a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-introduction-to-electromagnetic-induction-ac-circuits-and-electrical-technologies",
-      "story": "a butterfly's wings exhibit an appealing symmetry in a complex system. since we place a high value on symmetry, we look for it when we explore nature. the remarkable thing is that we find it. \") the hint of symmetry between electricity and magnetism found in the preceding chapter will be elaborated upon in this chapter. specifically, we know that a current creates a magnetic field. if nature is symmetric here, then perhaps a magnetic field can create a current.",
+      "story": "a butterfly's wings exhibit an appealing symmetry in a complex system. since we place a high value on symmetry, we look for it when we explore nature. the remarkable thing is that we find it. \") the hint of symmetry between electricity and magnetism found in the preceding chapter will be elaborated upon in this chapter. specifically, we know that a current creates a magnetic field. if nature is symmetric here, then perhaps a magnetic field can create a current. the hall effect is a voltage caused by a magnetic force.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_23_00_01.jpg",
+          "alt": "Wind turbine with three blades moored in shallow water.",
+          "caption": "These wind turbines in the Thames Estuary in the UK are an example of induction at work. Wind pushes the blades of the turbine, spinning a shaft attached to magnets. The magnets spin around a conductive coil, inducing an electric current in the coil, and eventually feeding the electrical grid. (credit: modification of work by Petr Kratochvil)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_00_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_24_00_02.jpg",
+          "alt": "Photograph of a butterfly with its wings spread out symmetrically is shown to rest on a bunch of flowers.",
+          "caption": "Physics, like this butterfly, has inherent symmetries. (credit: Thomas Bresson)",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_24_00_02.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-magnetic-force-on-a-current-carrying-conductor",
-      "story": "describe the effects of a magnetic force on a current-carrying conductor. calculate the magnetic force on a current-carrying conductor. because charges ordinarily cannot escape a conductor, the magnetic force on charges moving in a conductor is transmitted to the conductor itself.",
+      "story": "describe the effects of a magnetic force on a current-carrying conductor. calculate the magnetic force on a current-carrying conductor. because charges ordinarily cannot escape a conductor, the magnetic force on charges moving in a conductor is transmitted to the conductor itself. magnetic force on current-carrying conductors is used to convert electric energy to work. (motors are a prime example-they employ loops of wire and are considered in the next section.) magnetohydrodynamics (mhd) is the technical name given to a clever application where magnetic force pumps fluids without moving mechanical parts. the absence of moving parts makes this attractive for moving a hot, chemically active substance, such as the liquid sodium employed in some nuclear reactors. experimental artificial hearts are testing with this technique for pumping blood, perhaps circumventing the adverse effects of mechanical pumps.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_23_07_01a.jpg",
+          "alt": "A diagram showing a circuit with current I running through it. One section of the wire passes between the north and south poles of a magnet with a diameter l. Magnetic field B is oriented toward the right, from the north to the south pole of the magnet, across the wire. The current runs out of the page. The force on the wire is directed up. An illustration of the right hand rule 1 shows the thumb pointing out of the page in the direction of the current, the fingers pointing right in the direction of B, and the F vector pointing up and away from the palm.",
+          "caption": "The magnetic field exerts a force on a current-carrying wire in a direction given by the right hand rule 1 (the same direction as that on the individual moving charges). This force can easily be large enough to move the wire, since typical currents consist of very large numbers of moving charges.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_01a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_02a.jpg",
+          "alt": "Illustration of the right hand rule 1 showing the thumb pointing right in the direction of current I, the fingers pointing into the page with magnetic field B, and the force directed up, away from the palm.",
+          "caption": "The force on a current-carrying wire in a magnetic field is F=IlBsin&#x3B8; size 12{F= ital &quot;IlB&quot;&quot;sin&quot;&#x3B8;} {}. Its direction is given by RHR-1.&#10;",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_02a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_03a.jpg",
+          "alt": "Diagram showing a cylinder of fluid of diameter l placed between the north and south poles of a magnet. The north pole is to the left. The south pole is to the right. The cylinder is oriented out of the page. The magnetic field is oriented toward the right, from the north to the south pole, and across the cylinder of fluid. A current-carrying wire runs through the fluid cylinder with current I oriented downward, perpendicular to the cylinder. Negative charges within the fluid have a velocity vector pointing up. Positive charges within the fluid have a velocity vector pointing downward. The force on the fluid is out of the page. An illustration of the right hand rule 1 shows the thumb pointing downward with the current, the fingers pointing to the right with B, and force F oriented out of the page, away from the palm.",
+          "caption": "Magnetohydrodynamics. The magnetic force on the current passed through this fluid can be used as a nonmechanical pump.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_03a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_04a.jpg",
+          "alt": "Diagram showing a zoom in to a magnetohydrodynamic propulsion system on a nuclear submarine. Liquid moves through the thruster duct, which is oriented out of the page. Magnetic fields emanate from the coils and pass through a duct. The magnetic flux is oriented up, perpendicular to the duct. Each duct is wrapped in saddle-shaped superconducting coils. An electric current runs to the right, through the liquid and perpendicular to the velocity of the liquid. The electric current flows between a pair of electrodes inside each thruster duct. A repulsive interaction between the magnetic field and electric current drives water through the duct. An illustration of the right hand rule shows the thumb pointing to the right with the electric current. The fingers point up with the magnetic field. The force on the liquid is oriented out of the page, away from the palm.",
+          "caption": "An MHD propulsion system in a nuclear submarine could produce significantly less turbulence than propellers and allow it to run more silently. The development of a silent drive submarine was dramatized in the book and the film The Hunt for Red October.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_04a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_05a.jpg",
+          "alt": "Figure a shows the magnetic field B out of the page and the current I downward. Figure b shows B toward the right and I upward. Figure c shows B into the page and I toward the right. Figure d shows B toward the right and I toward the left. Figure e shows B upward and I into the page. Figure f shows B toward the left and I out of the page.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_05a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_06a.jpg",
+          "alt": "Figure a shows magnetic field B out of the page and force F upward. Figure b shows B toward the right and F upward. Figure c shows B into the page and F toward the left.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_06a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_07a.jpg",
+          "alt": "Figure a show the current I vector pointing upward and the force F vector pointing left. Figure b shows the current vector pointing down and F directed into the page. Figure c shows the current pointing left and force pointing up.",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_07a.jpg"
+        },
+        {
+          "src": "../resources/Figure_23_07_08a.jpg",
+          "alt": "Diagram showing a rectangular loop of wire, one end of which is within a magnetic field that is present within a circular area. The field B is oriented out of the page. The current I runs in the plane of the page, down the left side of the circuit, toward the right at the bottom of the circuit, and upward on the right side of the circuit. The length of the segment of wire that runs left to right at the bottom of the circuit is twenty centimeters long.",
+          "caption": "A rectangular loop of wire carrying a current is perpendicular to a magnetic field. The field is uniform in the region shown and is zero outside that region.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_23_07_08a.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-back-emf",
@@ -405,9 +997,17 @@
     },
     {
       "theme": "physics-rl-circuits",
-      "story": "calculate the current in an rl circuit after a specified number of characteristic time steps. calculate the characteristic time of an rl circuit. sketch the current in an rl circuit over time. the change in current changes flux, inducing an emf opposing the change (lenz's law). how long does the opposition last? current will flow and can be turned off, but how long does it take?",
+      "story": "calculate the current in an rl circuit after a specified number of characteristic time steps. calculate the characteristic time of an rl circuit. sketch the current in an rl circuit over time. the change in current changes flux, inducing an emf opposing the change (lenz's law). how long does the opposition last? current will flow and can be turned off, but how long does it take? shows a switching circuit that can be used to examine current through an inductor as a function of time.",
       "source": "openstax/physics-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_24_10_01.jpg",
+          "alt": "Part a of the figure shows an inductor connected in series with a resistor. The arrangement is connected across a cell by an on and off switch with two positions. When in position one, the battery, resistor, and inductor are in series and a current is established. In position two, the battery is removed and the current stops eventually because of energy loss in the resistor. Part b of the diagram shows the graph when the switch is in position one. It shows a graph for current growth verses time. The current is along the Y axis and the time is along the X axis. The graph shows a smooth rise from origin to a maximum value I zero corresponding to Y axis and value four tau on X axis. Part c of the diagram shows the graph when the switch is in position two. It shows a graph for current decay verses time is shown. The current is along the Y axis and the time is along the X axis. The graph is decreasing curve from a value I zero on Y axis, touching the X axis at a point where value of time equals four tau.",
+          "caption": "(a) An RL circuit with a switch to turn current on and off. When in position 1, the battery, resistor, and inductor are in series and a current is established. In position 2, the battery is removed and the current eventually stops because of energy loss in the resistor. (b) A graph of current growth versus time when the switch is moved to position 1. (c) A graph of current decay when the switch is moved to position 2.",
+          "url": "https://raw.githubusercontent.com/philschatz/physics-book/master/resources/Figure_24_10_01.jpg"
+        }
+      ]
     },
     {
       "theme": "physics-maxwell-s-equations-electromagnetic-waves-predicted-and-observed",
