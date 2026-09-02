@@ -226,8 +226,23 @@ export class VisualCortex {
    */
   processFrame() {
     if (!this._active || !this._video || !this._ctx) {
+      // FOCUSDEAD — counted, because "she isn't looking at anything" and "the
+      // driver stopped calling me" are different failures and they looked
+      // identical for months. A refusal here means the cortex was asked and
+      // could not run; a flat `frames` means nothing asked at all.
+      this.framesRefused = (this.framesRefused | 0) + 1;
       return { currents: new Float32Array(100), salience: 0, gaze: { x: 0.5, y: 0.5 }, colors: this.colors };
     }
+
+    // ⭐ FOCUSDEAD — THE ONLY HONEST WITNESS THAT THE EYE IS BEING DRIVEN.
+    // Gaze is computed CLIENT-side and never published in server state, so
+    // when the focus tracker froze there was no way to tell a dead driver from
+    // a working driver whose gaze happened not to move. This counter sits at
+    // the chokepoint every driver must pass — the RemoteBrain RAF loop and the
+    // local engine tick alike — so `frames` advancing while `gazeX` sits still
+    // is a COMPUTE problem, and `frames` flat is a DRIVER problem.
+    this.frames = (this.frames | 0) + 1;
+    this.lastFrameAt = Date.now();
 
     // Capture frame
     this._ctx.drawImage(this._video, 0, 0, FRAME_W, FRAME_H);
@@ -778,6 +793,14 @@ export class VisualCortex {
       motionEnergy: this.motionEnergy,
       colors: this.colors,
       maxSalience: this._maxSalience(),
+      // FOCUSDEAD — read these two BEFORE concluding anything about the gaze.
+      // `frames` flat ⟹ nothing is calling processFrame (a driver problem);
+      // `frames` climbing while gaze sits still ⟹ the salience competition is
+      // the problem. `framesRefused` climbing means the cortex is being driven
+      // but has no video/context to work with.
+      frames: this.frames | 0,
+      framesRefused: this.framesRefused | 0,
+      lastFrameAgeMs: this.lastFrameAt ? Date.now() - this.lastFrameAt : null,
     };
   }
 }
