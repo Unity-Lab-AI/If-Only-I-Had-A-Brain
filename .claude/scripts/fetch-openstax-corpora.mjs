@@ -84,6 +84,36 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // exercise divs), CNX link syntax and inline term-attribute spans. Every one of
 // those yields text that looks like a sentence and is not prose, so they are
 // removed BEFORE segmentation rather than filtered after.
+// ⭐ `TEXTFIG.1` — HARVEST THE FIGURES INSTEAD OF DELETING THEM.
+//
+// Every OpenStax figure ships as `![alt text](path "caption")`, which is a
+// LABELLED PERCEPT: an image, a human-written description of it, and a caption
+// tying it to the surrounding prose. The cleaner used to delete all three in
+// one regex because it was only ever asked for sentences.
+//
+// ⚠ Alt text and caption are kept SEPARATE from `story` on purpose. They are
+// not body prose — folding them in would inflate the word count with material
+// that reads like a caption, and the corpus bar is measured in prose words.
+function harvestFigures(md) {
+  const figs = [];
+  if (!md) return figs;
+  // ![alt](path "caption")  — caption optional, quotes single or double.
+  const re = /!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+["']([^"']*)["'])?\s*\)/g;
+  let m;
+  while ((m = re.exec(String(md))) !== null) {
+    const alt = (m[1] || '').replace(/\s+/g, ' ').trim();
+    const src = (m[2] || '').trim();
+    const caption = (m[3] || '').replace(/\s+/g, ' ').trim();
+    if (!src) continue;
+    // A figure with no words attached teaches nothing a percept can bind TO —
+    // it would be an image with no label, which is the camera-frame defect
+    // (`CAMPOISON`) all over again. Skip rather than bank an unlabelled image.
+    if (!alt && !caption) continue;
+    figs.push({ src, alt, caption });
+  }
+  return figs;
+}
+
 function cleanOpenStax(md, cap) {
   if (!md) return [];
   let t = String(md);
@@ -92,7 +122,7 @@ function cleanOpenStax(md, cap) {
   t = t.replace(/<div[^>]*>|<\/div>/gi, ' ');             // block wrappers
   t = t.replace(/<[^>]+>/g, ' ');                         // any remaining html
   t = t.replace(/\{:[^}]*\}/g, ' ');                      // {: data-type="term"} spans
-  t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');            // images
+  t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');            // images — harvested separately by harvestFigures()
   t = t.replace(/\[\\?\[?link\\?\]?\]\([^)]*\)/gi, ' ');  // [\[link\]](#id)
   t = t.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');          // [text](url) -> text
   t = t.replace(/^\s*[*+-]\s+/gm, ' ');                   // bullet markers
@@ -187,6 +217,7 @@ async function buildBook({ repo, subject, grade, label }) {
 
   const experiences = [];
   let taken = 0;
+  let figuresFound = 0;
   for (const f of picked) {
     if (taken >= cap) break;
     const md = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/contents/${f.name}`);
@@ -194,13 +225,30 @@ async function buildBook({ repo, subject, grade, label }) {
     const room = Math.min(perChapter, cap - taken);
     const sents = cleanOpenStax(md, room);
     if (sents.length >= 3) {
-      experiences.push({
+      // `TEXTFIG.1` — figures ride the entry that owns their chapter, so a
+      // percept can be bound to the SAME theme its prose trained under. Paths
+      // are resolved against the book repo here rather than at use time: the
+      // markdown says `../resources/<name>`, which is meaningless once the
+      // entry has been detached from the file it came from.
+      const figs = harvestFigures(md).map((g) => ({
+        ...g,
+        url: /^https?:/i.test(g.src)
+          ? g.src
+          : `https://raw.githubusercontent.com/${OWNER}/${repo}/master/resources/${g.src.replace(/^.*\//, '')}`,
+      }));
+      const entry = {
         theme: `${label}: ${title}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
         story: sents.join(' '),
         source: `openstax/${repo}`,
         licence: lic.id,
-      });
+      };
+      // Only attach when there is something to attach. An empty array on every
+      // entry would read as "figures were looked for and found none" on cells
+      // ingested before this existed, which is a different claim.
+      if (figs.length) entry.figures = figs;
+      experiences.push(entry);
       taken += sents.length;
+      figuresFound += figs.length;
     }
     await sleep(120);   // polite to raw.githubusercontent
   }
