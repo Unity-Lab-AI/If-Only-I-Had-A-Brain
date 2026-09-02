@@ -1341,6 +1341,29 @@ Gee was asked which of the blocked decisions to settle. He settled all four.
 >
 > **THE REST OF THE HUNT, so it is not repeated:** `ck12.org` **403** (refuses this client) · `engageny.org` **retired** · `utahmiddleschoolmath.org` **unreachable** · `openupresources.org` **200** (CC-BY, IM-derived 6-8 — same content as above) · `mathematicsvisionproject.org` **200** (CC-BY-NC-SA, secondary I-III; NC is accepted now) · **no OpenStax K-8 markdown mirror exists** — `philschatz` has 11 `*-book` repos and exactly three are maths, all already mapped by `MATHBOOK.1`.
 >
+> ### ✅ **BUILT AND RUN 2026-09-02 — `.claude/scripts/fetch-illustrative-math-corpora.mjs`. MATHS HAD ZERO PROSE CELLS; IT NOW HAS ELEVEN.**
+> ```
+>   grade6   Math 6      9 units · 147 lessons · 5,633 sent ·  92,979 w ·  572 fig
+>   grade7   Math 7      9 units · 145 lessons · 4,682 sent ·  81,005 w ·  444 fig
+>   grade8   Math 8      9 units · 131 lessons · 4,140 sent ·  71,154 w ·  485 fig
+>   grade8   Algebra I   7 units · 132 lessons · 5,537 sent · 101,678 w ·  552 fig
+>   grade9   Geometry    8 units · 124 lessons · 3,989 sent ·  67,775 w ·  672 fig
+>   grade10  Algebra II  7 units · 120 lessons · 3,855 sent ·  74,038 w ·  411 fig
+>   K-5      six cells, unit summaries only ······· 20,475 w ·  246 fig
+>   ─────────────────────────────────────────────────────────────────────
+>   DONE     509,104 words · 799 lessons · 3,382 figures
+> ```
+> ⭐ **Verified through the WALK'S OWN accessors, not the run log** — `academicStorySentences('math', g)` and `academicStoryFigures('math', g)`: **11 cells with prose, 509,104 words, 3,382 reachable figures, and 2,369 of them carrying `context`.** ⛔ **This is the FIRST corpus content anywhere that carries figure context** — `FIGTEXT.1` built the mechanism and had no data in it until now.
+>
+> ⭐ **THE GRADE MAP WAS READ, NOT ASSUMED.** Each course was identified from its own Lesson 1: HS/1 *"Getting to Know You — collect data"* = Algebra I · HS/2 *"Build It — create shapes precisely"* = Geometry · HS/3 *"A Towering Sequence — Tower of Hanoi"* = Algebra II · MS/3 *"Moving in the Plane"* = Math 8. **All three HS courses land exactly on `courseNameFor('math', g)`.** grade11/grade12 are deliberately absent — OpenStax already feeds Pre-Calculus and AP Calculus via `MATHBOOK.1`, and duplicating them would be corpus-bleed.
+>
+> ⚠ **THE K-5 HALF IS LABELLED HONESTLY IN THE CODE AND IN ITS OWN LOG LINE — "unit summaries (FAMILY-FACING, not student lessons)".** ~3,200 words per cell against a **7,300-word** early-band floor, so **the primary maths gap is NARROWED, not closed**; `MATHBOOK.2` stays open for it. **K-5 student pages are served through Kendall Hunt, not this host.**
+>
+> ⛔ **Ran safely beside the two live wiki ingests because it writes ONLY `math/*` and neither of them touches maths** — checked by loading their plans (`TOPICS` has 18 subjects, no math; the Wikibooks `PLAN` has none), not assumed. `CELLRACE.1`'s atomic write is not a transaction, so that check was the precondition.
+>
+> ⚠ **Nav/header/footer stripping is load-bearing on this source:** ~1,200 pages each repeat *"Skip to main content · IM Curriculum · About Us"*, and left in, the corpus would have been mostly site furniture — the commonest defect in an HTML ingest. Verified on a real geometry lesson: 34 sentences / 549 words, zero furniture, 8 figures each with alt text AND surrounding prose.
+>
+> **Original remaining-work note:**
 > ⏳ **WHAT REMAINS IS THE FETCHER, not the search.** It is the Saylor shape — enumerate `.html` links one level down, clean, cap-free — and it must route to `math/<grade>` cells, which are reachable now that `MATHBOOK.1` put `math` in `PROSE_ACADEMIC_SUBJECTS`. ⛔ **RE-PRICE before it runs**, and ⛔ **do not start it while the two wiki ingests are writing** — different host, but the same cell files.
 >
 > **Original filing:**

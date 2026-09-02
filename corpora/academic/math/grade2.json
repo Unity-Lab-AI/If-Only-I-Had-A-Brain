@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "grade": "grade2",
+  "subject": "math",
+  "source": "hybrid: Illustrative Mathematics (CC-BY 4.0) + prior sources, cleaned + sentence-segmented",
+  "note": "Maths KNOWLEDGE corpus for math/grade2. Trained via curriculum._trainAcademicStories alongside the equational runners, which are untouched.",
+  "experiences": [
+    {
+      "theme": "im-k5-grade-2",
+      "story": "they learn how to represent and interpret data on picture graphs and bar graphs, and they use these graphs to solve story problems involving addition and subtraction within 100. students also learn a new representation, tape diagrams, to apply their understanding of the relationship between addition and subtraction and to solve problems. section a: add and subtract within 20 in this section, students use what they know about the relationship between addition and subtraction to find the missing values in equations. they use strategies learned in grade 1 such as making a ten, counting on, and counting back to add within 50 and subtract within 20. for example, when adding \\(8 + 7\\) , students break apart the 7 into \\(2 + 5\\) , and make a ten by adding \\(8 + 2\\) and then add 5, so \\(8 + 2 + 5 = 15\\) . students later use these strategies to add and subtract within 100. section b: ways to represent data in this section, students are asked to make sense of two new data representations: a picture graph and a bar graph. students learn to represent and interpret data on these graphs, and they ask and answer questions based on the data. section c: diagrams to compare in this section, students solve story problems involving addition and subtraction within 100. the tape diagram is introduced in this section to support students with making sense of story problems and understanding the relationship between addition and subtraction. before using a tape diagram, students have an opportunity to make sense of its structure and connect it to story problems. as an example the following problem can be represented on this type of diagram. jada spent 30 more minutes swimming than noah. how many minutes did jada spend swimming? near the end of the unit: ask your student to write as many statements as they can about the bar graph. ask your student to represent and solve the following problem: andre read 45 pages of his book last night. priya read 20 fewer pages of her book than andre. questions that may be helpful as they work: how does the graph support that statement? how does the graph show that piece of information? can you explain to me how you solved the problem? what pieces of information were helpful? they then use what they know to solve story problems. section a: add and subtract this section allows students to use methods that make sense to them to help them solve addition and subtraction problems. they can draw diagrams and use connecting cubes to show their thinking. for example, students would be exposed to the following situation: make trains with cubes. find the total number of cubes you and your partner used. find the difference between the number of cubes you and your partner used. as the lessons progress, students analyze the structure of base-ten blocks and use them to support place-value reasoning. unlike connecting cubes, base-ten blocks cannot be pulled apart. students begin to think about two-digit numbers in terms of tens and ones. to add using base-ten blocks, they group the tens and the ones, and then count to find the sum. section b: decompose to subtract in this section, students subtract one- and two-digit numbers from two-digit numbers within 100. they use strategies based on place value and the properties of operations to evaluate expressions that involve decomposing a ten. for example, to evaluate expressions such as \\(63 -18\\) , students use connecting cubes or base-ten blocks as they learn to trade in a ten for 10 ones before grouping by place value. in this case they can trade one of the tens in 63 for 10 ones, making it 5 tens and 13 ones. they can then subtract 1 ten from 5 tens and 8 ones from 13 ones, resulting in 4 tens and 5 ones, or 45. section c: represent and solve story problems this section focuses on solving one-step story problems that involve addition and subtraction within 100. the story problems are all types-add to, take from, put together, take apart, and compare-and have unknowns in all positions. a question that your student might be exposed to is: diego gathered 42 orange seeds. how many more seeds did diego gather than jada? near the end of the unit ask your student to solve the following word problem: diego gathered 37 orange seeds. jada gathered 25 more apple seeds than diego. questions that may be helpful as they work: can you explain to me how you solved the problem? how does your representation show the answer to the problem? section a: metric measurement in this section, before learning to use a ruler, students use base-ten blocks, which have lengths of 1 cm and 10 cm, to measure objects in the classroom. using these tools to measure the length of objects reinforces place value concepts. students use metric units to create their own centimeter ruler to see the tick marks as noting the distance in centimeters from the 0 mark and the accumulation of length units as they move along the ruler. they learn the importance of placing the end of an object at the starting point of zero and discuss that the numbers on the ruler represent the distance from zero. students learn about the meter, which is equivalent to 100 centimeters, further reinforcing place value concepts. they make estimations about metric units and measure shorter objects with centimeters and longer objects with decimeters and meters. section b: customary measurement in this section, students learn about customary units of linear measurement (inches and feet). they apply length measurement concepts and skills from the previous section in order to measure and estimate with customary units. students develop the generalization that when a unit of measure is longer, it requires fewer of those units to measure the length of the object. students make choices about which tool would be appropriate based on the size of the object. section c: line plots in this section, students represent their measurement data on a line plot. students learn that the horizontal scale is marked off in whole number units that represent the counting sequence. students use a template to create line plots and understand that each data point is represented by an x made above the number on the number line representing the length of the object. they label line plots with titles and the measurement unit used. near the end of the unit, ask your student to measure objects around the house with a ruler or other measuring tool. questions that may be helpful as they work: why did you choose to measure that object using ___________ (feet, inches, centimeters, and so on)? if you measured it using __________ (feet, inches, centimeters, and so on) would there be more or fewer of those units needed? they also relate addition and subtraction to length and represent the operations on the number line diagram. section a: the structure of the number line in this section, students make connections between rulers and the number line. students notice how they are the same and different and finally understand the number line to be a visual representation of numbers. they learn that number lines display numbers in sequence from left to right, with equal spacing between each number. as students begin to use the number line as a tool for understanding numbers and number relationships, they learn that whole numbers can be represented with a point on the number line. they identify, locate, and represent numbers on a number line. students also use the number line to compare numbers based on their location relative to zero and each other. they understand that numbers to the right are larger and numbers to the left are smaller. section b: add and subtract on a number line in this section, students learn to represent sums and differences on the number line. they begin by representing addition and subtraction with directional arrows. an arrow pointing right represents addition, and an arrow pointing left represents subtraction. for example, the number lines show how students can represent \\(8 + 4 = 12\\) (top) and \\(12 - 4 = 8\\) (bottom) on the number line. students use this understanding to write equations based on number line representations, as well as create the number line representation of a given equation. students also use the number line to represent computation strategies based on place value and the properties of addition (for example, adding tens then ones vs. adding ones then tens) as they explain their strategies and compare their strategies with those of their classmates. near the end of the unit, ask your student to solve the following problems on a number line: \\(29 + 48\\) \\(54 - 37\\) questions that may be helpful as they work: how are the problems similar? where is your answer on the number line? could you have solved it a different way? section a: the value of three digits in this section, the unit of a hundred is introduced. students begin by looking at the large square base-ten block, and its corresponding base-ten drawing, to visualize 100, and to establish that 1 hundred equals 10 tens, which equals 100 ones. after students develop an understanding of a hundred as a unit, students learn that the digits in three-digit numbers represent amounts of hundreds, tens, and ones. students read and write three-digit numbers in different forms, including using base-ten numerals, number names, and expanded form. students write expressions and equations based on the base-ten blocks and base-ten drawings that they see. they recognize that the value of the digits in a three-digit number is revealed when using the fewest number of blocks to represent the number. for example, the picture shows 2 hundreds, 11 tens, and 12 ones. however, students recognize that they will need to exchange 10 of the ones for a ten and 10 of the tens for a hundred to find the value of their number. after doing so, they recognize that they have 3 hundreds, 2 tens, and 2 ones for a value of 322. section b: compare and order numbers within 1000 in this section, students continue to deepen their understanding of numbers to 1,000 using place value understanding and the number line diagram. as students recall the structure of the number line from the previous unit, they use this structure and place value understanding to locate, compare, and order numbers on the number line. as students locate or estimate the location of three-digit numbers on number lines, they demonstrate an understanding of the number's relative distance from zero, as well as the place value of the digits. this understanding helps them to compare and order three-digit numbers. for example, to order numbers, students can first locate them on the number line. then, the numbers will be in order from least to greatest as students look from left to right on the number line. in addition to using the number line to compare three-digit numbers, students also use familiar place value representations such as base-ten blocks and base-ten diagrams. students compare and order numbers and write the comparisons using the symbols, \\( \\) , \\( \\) , and \\(=\\) . near the end of the unit, ask your student to think about the number 593 and complete the following tasks: write the number as a number name and in expanded form. draw an amount of base-ten blocks that has the same value. create a number line from 500 to 600 and place the number on a number line. compare the number to 539 using either \\( \\) , \\( \\) , or \\(=\\) . questions that may be helpful as they work: what pieces of information were helpful? could you have drawn a different amount of base-ten blocks? this work helps to build their foundation for fractions. students also use their understanding of fourths, quarters, and skip-counting by 5 to tell time, and solve story problems involving money. section a: attributes of shapes in this section, students extend their understanding of geometry from previous grades to identify and draw triangles, quadrilaterals, pentagons, and hexagons. students learn to count the sides to determine the name of a shape and come to see that any shape has the same number of corners as the number of sides. for example, students are familiar with the hexagon shape from the frequent use of pattern blocks in previous grades. they expand their understanding to realize that hexagons include any shape with six sides and six corners, and may look different from the pattern block they worked with in the past. at the end of the section, students use their understanding of two-dimensional shapes to identify three-dimensional (solid) shapes. they recognize that two-dimensional shapes make up the faces of solid shapes, and use the names of two-dimensional shapes to describe solid shapes. for example, students learn to describe a cube as a solid shape that has 6 equal-sized square faces. section b: halves, thirds, and fourths in this section, students learn that shapes can be partitioned into 2, 3, or 4 equal pieces called halves, thirds, and fourths or quarters. in grade 1, students partitioned shapes into 2 and 4 equal pieces, and described each piece as a half or a fourth or quarter. in this section, students add the term \"thirds\" to their vocabulary. after analyzing examples and non-examples, students identify equal pieces, and partition rectangles into halves, thirds, and fourths. shapes are partitioned in different ways to build an understanding that equal pieces of identical wholes do not need to be the same shape. they learn that if the wholes are divided into the same number of equal pieces, the names of the pieces are the same. the example in the image shows a square partitioned into fourths, first using smaller triangles, and then using smaller squares. they also learn that 2 halves, 3 thirds, and 4 fourths each make up one whole. section c: time on the clock this section continues the focus on the language of fractions as students use their understanding of fourths and quarters to tell time. in this section, students first make a connection between the analog clock and circles partitioned into fourths to tell time using \"half past,\" \"quarter past,\" and \"quarter 'til.\" students recognize that the hour hand on an analog clock moves toward the next hour as time passes, and they skip-count by 5 to tell time in 5-minute intervals. they represent time on analog clocks by drawing the hour and minute hands and writing the time numerically. students learn that each hour comes around twice a day on a 12-hour clock and is labeled with a.m. toward the end of this section, students relate a.m. section d: the value of money in this section, students continue to develop fluency with addition and subtraction within 100 through a money context. they identify coins such as quarters, dimes, nickels, and pennies, and find the total value of different coin combinations. they learn that 1 dollar has the same value as 100 cents and solve problems involving dollars and cents. near the end of the unit, ask your student to do the following tasks: find different shapes around the house (bonus points for finding non-traditional shapes!). pull out some coins and determine the value of the coin combination. questions that may be helpful as they work: how did you know it was (shape name)? how did you figure out the total value of the coin combination? section a: add and subtract within 1,000 without composition or decomposition in this section, students add and subtract within 1,000 using strategies where they do not make or break apart a ten or a hundred. the number line diagram is used to help students recognize that when numbers are relatively close, they can count on or count back to calculate the difference. for example, students notice that \\(562-559\\) is easier to solve by counting on from 559 to 562 than using a formal procedure to subtract. students then engage in problems that encourage them to use the relationship between addition and subtraction to reason about sums and differences. they analyze and connect methods that use number lines, base-ten diagrams, and equations. they calculate sums and differences using methods that make sense to them. section b: add within 1,000 using place value strategies this section introduces the idea that when adding three-digit numbers, it is sometimes necessary to compose (make) a hundred from 10 tens. students begin the section with sums that allow them to decide when to make a new ten (for example \\(414 + 28\\) ). they then work with larger values in the tens place and determine whether to compose a hundred (for example, \\(736 + 91\\) ). as the section progresses, students compose 2 units to find sums using place value strategies, and experience adding two- and three-digit numbers to three-digit numbers (for example, \\(149 + 282\\) ). throughout the section students use base-ten blocks, base-ten diagrams, expanded form, and other equations to build conceptual understanding and show place value reasoning. priya and lin were asked to find the value of \\(358 + 67\\) . as they subtract by place, hundreds from hundreds, tens from tens, and ones from ones, they experience exchanging a ten for 10 ones or a hundred for 10 tens when needed. for example, this is a helpful way to represent 244 if you need to subtract a number with more than 4 ones: throughout the section, students compare the steps they use when they decompose and the different ways they can represent and record the units they decompose. near the end of the unit, ask your student to do the following problems: \\(361 + 294\\) \\(421 - 203\\) questions that may be helpful as they work: do you need to compose (put together) or decompose (take apart) any tens or hundreds? can you show your thinking with a diagram? is there another way to solve this problem? this understanding builds on students' experiences with skip counting and finding the sums of equal addends. section a: odd and even in this section, students build on their personal experiences with sharing equal groups of objects and making pairs to define the terms odd and even. they begin by noticing that some groups of objects can be made into two equal groups without a \"leftover\" and other groups can be made into two equal groups with \"1 leftover.\" they notice this same pattern when pairing objects. after the terms even and odd are introduced, students focus on justifying why a group has an even or odd number of members by showing whether the objects can be made into two equal groups, whether the objects can be paired without a leftover, or whether they can skip-count by 2 to count the total number of objects. section b: rectangular arrays in this section, students are introduced to rectangular arrays. they learn that rectangular arrays contain objects arranged into rows and columns. they recognize that each row has the same number of objects and each column has the same number of objects. using this structure, students can skip count by the number in each row or the number in each column to find the total number of objects. in addition to skip counting, students learn that they can write equations with equal addends to represent the total number of objects in a rectangular array. students connect these equations to the structure of the array and describe how equations can show the total number of objects as the sum of the objects in each row or the sum of the objects in each column. students also connect their work with arrays to their previous work with partitioning shapes into equal-size pieces. starting with a rectangle, students partition them into equal-sized squares by considering rows and columns. rectangles in this section have up to 5 rows and 5 columns. students use the structure of the rows and columns created by the partitions in the rectangle to count the total number of equal-sized squares. near the end of the unit, ask your student to do the following problems: write 2 equations to represent the total number of squares. questions that may be helpful as they work: how many rows? section a: fluency within 20 students develop fluency with addition and subtraction within 20. one of the requirements in grade 2 is to have fluency with all sums and differences within 20, and know from memory all sums of 2 one-digit numbers. when students encounter sums and differences they do not know right away, they use mental math strategies and other methods they have learned throughout the year. they may use facts they know, make equivalent expressions, or compose or decompose a number to make a 10. students continue to apply their mental strategies as they find sums and differences within 20 in a measurement context. they measure lengths with standard units and create line plots, and then use the measurements to add and subtract. section b: numbers to 1,000 students revisit numbers within 1,000 and focus on developing fluency with addition and subtraction within 100. they develop and show their understanding of place value and operations with larger numbers that may require composing or decomposing multiple units before focusing on fluency practice with numbers within 100. students practice decomposing and composing three-digit numbers in multiple ways using base-ten blocks, base-ten diagrams, words, and symbols. they also compose and decompose units as they match and create equivalent expressions for three-digit numbers. students practice addition and subtraction within 1,000 and reason about which sums and differences are more or less difficult to solve. 263 \\(2 \\text{ hundreds} + 4 \\text { tens} + 23 \\text { ones} \\) section c: create and solve story problems students create and solve one- and two-step story problems with the unknown in all positions, discuss how they made sense of the problem, and share the strategies they used to solve. at this point in the year, students should be able to solve all types of story problems within 100, using a representation that makes sense to them. students make connections across representations with a focus on tape diagrams and equations. they analyze stories and determine the types of questions that could be asked based on the provided information, in preparation for writing their own story problems based on images and their own experiences. the lessons offer space for students to apply their fluency with addition and subtraction within 100, as they engage with the story problems in this section. near the end of the unit, ask your student: using our favorite objects from home, let's make different types of story problems. questions that may be helpful as they work: what part of the story problem are we trying to find out? how could you represent the problem with a diagram?",
+      "source": "illustrative-math/k5/grade-2",
+      "licence": "CC-BY 4.0",
+      "figures": [
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/4mawy576gl3fyenwelmbbb3hegvw",
+          "alt": "Picture Graph. Favorite Pets. Key, picture of animal represents one pet. Cat, 6. Dog, 10. Fish, 5. Lizard, 3 .",
+          "caption": "",
+          "context": "section b: ways to represent data in this section, students are asked to make sense of two new data representations: a picture graph and a bar graph. students learn to represent and interpret data on these graphs, and they ask and answer questions based on the data."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/expand.png",
+          "alt": "Expand image",
+          "caption": "",
+          "context": "section b: ways to represent data in this section, students are asked to make sense of two new data representations: a picture graph and a bar graph. students learn to represent and interpret data on these graphs, and they ask and answer questions based on the data."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5utrvrxtc7ib3cxp64rtgwld97k7",
+          "alt": "Bar graph. Horizontal axis labeled cat, dog, fish, lizard. Vertical axis from 0 to 10 by ones. Height of bar at each category: Cat, 6. Dog, 10. Fish, 5. Lizard, 3.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/w1hvxokgg5h8ido85gt6u4piqzv6",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": "jada spent 30 more minutes swimming than noah. how many minutes did jada spend swimming?"
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/2021-06-04_im_certified_badge.svg",
+          "alt": "IM (Illustrative Mathematics) Certified",
+          "caption": "",
+          "context": "these materials include public domain images or openly licensed images that are copyrighted by their respective owners. openly licensed images remain under the terms of their respective licenses."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/y5hf13djv4hi1gvy5ael3cdi06gw",
+          "alt": "2 connecting cube towers of different lengths.",
+          "caption": "",
+          "context": "section a: add and subtract this section allows students to use methods that make sense to them to help them solve addition and subtraction problems. they can draw diagrams and use connecting cubes to show their thinking."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/k4kfxwozv7gf1ci6xdq6q5eq00f6",
+          "alt": "Base ten diagram. 6 tens, and 3 ones. 2 tens crossed out and the 3 ones, crossed out. One of the crossed out tens has an arrow pointing to a circle with10 ones inside. 5 ones in the circle are crossed out.",
+          "caption": "",
+          "context": "in this case they can trade one of the tens in 63 for 10 ones, making it 5 tens and 13 ones. they can then subtract 1 ten from 5 tens and 8 ones from 13 ones, resulting in 4 tens and 5 ones, or 45."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3mcuvj234sp92i9qhyjcl69crs4c",
+          "alt": "Number line.",
+          "caption": "",
+          "context": "students also use the number line to compare numbers based on their location relative to zero and each other. they understand that numbers to the right are larger and numbers to the left are smaller."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/avf5xsgfn26492oer3rhdqmawvr0",
+          "alt": "Ruler labeled 0 to 12 by 1's.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ucm1gkm81chyvz6u5gfmbntvnry2",
+          "alt": "Number line.",
+          "caption": "",
+          "context": "an arrow pointing right represents addition, and an arrow pointing left represents subtraction. for example, the number lines show how students can represent \\(8 + 4 = 12\\) (top) and \\(12 - 4 = 8\\) (bottom) on the number line."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/gwwb1wehqqa033deg43ujgg9y53w",
+          "alt": "Number line. Scale, 0 to 15, by 1's. Arrow from 12 to 8.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/wrd3j8u8o7b57d76kc3ut4s5qksv",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": "section a: the value of three digits in this section, the unit of a hundred is introduced. students begin by looking at the large square base-ten block, and its corresponding base-ten drawing, to visualize 100, and to establish that 1 hundred equals 10 tens, which equals 100 ones."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/se756zvn99it6eaodaie6e94mszd",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/rvkbwmj7g1ac307ct1t861pdvcjl",
+          "alt": "Base-ten diagram. 1 hundred.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/9drjm54gwz0yp04xb37sofhc5tff",
+          "alt": "Base-ten diagram.",
+          "caption": "",
+          "context": "students write expressions and equations based on the base-ten blocks and base-ten drawings that they see. they recognize that the value of the digits in a three-digit number is revealed when using the fewest number of blocks to represent the number."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/1tv3q0vvzrn277ogp9qeyz9l10ky",
+          "alt": "Hexagon.",
+          "caption": "",
+          "context": "for example, students are familiar with the hexagon shape from the frequent use of pattern blocks in previous grades. they expand their understanding to realize that hexagons include any shape with six sides and six corners, and may look different from the pattern block they worked with in the past."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/orkgg3uzmth64akqm6igsc1r64s1",
+          "alt": "Hexagon.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/e1m6smjw0o42g69bpcb4i462dt4j",
+          "alt": "Hexagon.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/f2uw0lvvid0ihc4ebhwnwkzkrau5",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": "the example in the image shows a square partitioned into fourths, first using smaller triangles, and then using smaller squares. they also learn that 2 halves, 3 thirds, and 4 fourths each make up one whole."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xjxwr4npg2jhmxev4ezoyqo8fjac",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/78qm7omk9j7d5m4ce0qh132vq7uj",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": "in this section, students first make a connection between the analog clock and circles partitioned into fourths to tell time using \"half past,\" \"quarter past,\" and \"quarter 'til.\" students recognize that the hour hand on an analog clock moves toward the next hour as time passes, and they skip-count by 5 to tell time in 5-minute intervals. they represent time on analog clocks by drawing the hour and minute hands and writing the time numerically."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/7w5igfxdb40ogk894bw9ej75yx3z",
+          "alt": "Analog clock.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/byc088z6wp5cddc8u5tt6jwphwf1",
+          "alt": "Hours in day.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/o2hklbw6ovryo711ec8wp5531jem",
+          "alt": "Number line.",
+          "caption": "",
+          "context": "the number line diagram is used to help students recognize that when numbers are relatively close, they can count on or count back to calculate the difference. for example, students notice that \\(562-559\\) is easier to solve by counting on from 559 to 562 than using a formal procedure to subtract."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/drzi9z6tiy1n524nh3bn9y8urwxy",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": "throughout the section students use base-ten blocks, base-ten diagrams, expanded form, and other equations to build conceptual understanding and show place value reasoning. priya and lin were asked to find the value of \\(358 + 67\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/nzw1bnnuxcc3uei221yrnxlkpfur",
+          "alt": "Base ten diagram. 2 hundreds, 3 tens, 14 ones.",
+          "caption": "",
+          "context": "as they subtract by place, hundreds from hundreds, tens from tens, and ones from ones, they experience exchanging a ten for 10 ones or a hundred for 10 tens when needed."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/zaz8mz1r5m5777s9o6dnmwg8fmod",
+          "alt": "Dot image.",
+          "caption": "",
+          "context": "they begin by noticing that some groups of objects can be made into two equal groups without a \"leftover\" and other groups can be made into two equal groups with \"1 leftover.\" they notice this same pattern when pairing objects. after the terms even and odd are introduced, students focus on justifying why a group has an even or odd number of members by showing whether the objects can be made into two equal groups, whether the objects can be paired without a leftover, or whether they can skip-count by 2 to count the total number of objects."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/oikoqkey50a0h3kloaj0er4t5j3b",
+          "alt": "Circles.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/y1zppdr7zc7fz3sgj63va5pzy9ll",
+          "alt": "Rectangle partitioned into squares.",
+          "caption": "",
+          "context": "students use the structure of the rows and columns created by the partitions in the rectangle to count the total number of equal-sized squares. near the end of the unit, ask your student to do the following problems: write 2 equations to represent the total number of squares."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/8m7u66c3031kkmtny8zkhk8yghra",
+          "alt": "sum of 2, one digit number chart",
+          "caption": "",
+          "context": "students continue to apply their mental strategies as they find sums and differences within 20 in a measurement context. they measure lengths with standard units and create line plots, and then use the measurements to add and subtract."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/f1isjtdia5epljxyhzabjilfse4f",
+          "alt": "base ten blocks, 3 digit number",
+          "caption": "",
+          "context": "they also compose and decompose units as they match and create equivalent expressions for three-digit numbers. students practice addition and subtraction within 1,000 and reason about which sums and differences are more or less difficult to solve."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/jgrg92nt1myupl1dnussbwse100x",
+          "alt": "tape diagram",
+          "caption": "",
+          "context": "they analyze stories and determine the types of questions that could be asked based on the provided information, in preparation for writing their own story problems based on images and their own experiences. the lessons offer space for students to apply their fluency with addition and subtraction within 100, as they engage with the story problems in this section."
+        }
+      ]
+    }
+  ]
+}
