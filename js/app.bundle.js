@@ -20551,6 +20551,20 @@ var RemoteBrain = class extends EventEmitter {
                 vc.setAttentionState({ arousal, secondsSinceInput });
               }
               vc.processFrame();
+              const _gnow = Date.now();
+              if (_gnow - (this._gazeSentAt || 0) > 250) {
+                this._gazeSentAt = _gnow;
+                const g = typeof vc.getState === "function" ? vc.getState() : null;
+                if (g) this.receiveSensoryInput("gaze", {
+                  gazeX: g.gazeX,
+                  gazeY: g.gazeY,
+                  gazeTarget: g.gazeTarget,
+                  motionEnergy: g.motionEnergy,
+                  maxSalience: g.maxSalience,
+                  frames: g.frames,
+                  framesRefused: g.framesRefused
+                });
+              }
             } catch (err) {
               this._visionErrs = (this._visionErrs | 0) + 1;
               if (this._visionErrs === 1 || this._visionErrs % 300 === 0) {

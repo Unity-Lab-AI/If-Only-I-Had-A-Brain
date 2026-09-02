@@ -2339,11 +2339,23 @@ export class Brain3D {
     // Fix: synthesize the nested shape from flat fields AND from
     // cluster-level activity data (spikeCount / firingRate / size)
     // for every detector path the server can reasonably derive.
-    // Detectors that read visual/audio fields (colorSurge,
-    // motionDetected, gazeShift, heardOwnVoice) still won't fire on
-    // server-brain mode because the server doesn't run a visual
-    // cortex — that's fine, those 4 detectors are visual-pipeline-
-    // only by design.
+    // ⭐ CORRECTED 2026-09-02 (FOCUSDEAD.3). This used to read: "colorSurge,
+    // motionDetected, gazeShift, heardOwnVoice still won't fire on server-brain
+    // mode because the server doesn't run a visual cortex — that's fine, those
+    // 4 detectors are visual-pipeline-only by design."
+    //
+    // ⛔ IT WAS NOT FINE, AND "BY DESIGN" WAS DOING A LOT OF WORK. The server
+    // genuinely does not run a visual cortex — the browser does — but the
+    // conclusion drawn from that was to accept two permanently-dead detectors
+    // rather than to send the browser's gaze up. `motionDetected` and
+    // `gazeShift` now fire: the client publishes gaze at ~4 Hz and the server
+    // exposes it at `state.visualCortex`.
+    //
+    // ⚠ `colorSurge` and `heardOwnVoice` are still dark and are NOT claimed
+    // fixed — they need their own writers, and saying otherwise here would
+    // repeat the exact mistake this comment is correcting.
+    // ⚠ Read `state.visualCortex.ageMs` before trusting a fixation: a closed
+    // viewer tab leaves the last gaze frozen, and frozen looks attentive.
     const clusters = state.clusters || {};
     const activityOf = (k) => {
       const c = clusters[k];

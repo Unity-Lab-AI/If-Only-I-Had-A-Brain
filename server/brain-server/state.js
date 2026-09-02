@@ -635,6 +635,29 @@ const SERVER_STATE_MIXIN = {
       // many concepts she has abstracted a shape from (the thing that makes a drawing
       // hers), and `lastLabel` distinguishes `canvas:own:` from `canvas:draw:`. Every
       // read is defensive — a missing store degrades to 0, never throws.
+      // ⭐ FOCUSDEAD.3 — WHERE SHE IS LOOKING, published so the detectors that
+      // read it can finally fire. `motionDetected` and `gazeShift`
+      // (`js/ui/brain-event-detectors.js`) both `pick(s, 'visualCortex.…')`,
+      // and on the RemoteBrain path the visual cortex runs in the BROWSER — so
+      // this key had no writer and the two detectors were structurally dead.
+      // `brain-3d.js` recorded that in a comment instead of anyone fixing it.
+      //
+      // ⚠ `ageMs` IS THE LOAD-BEARING FIELD, not the coordinates. A viewer that
+      // closed its tab leaves the last gaze frozen here forever, and a frozen
+      // fixation reads exactly like an attentive one. Anything consuming this
+      // must check the age first — the lesson `MIRRORID.5` paid for when a
+      // stalled donor kept showing the rate it earned minutes earlier.
+      // `null` = no browser eye has ever reported, never "she is looking at 0,0".
+      visualCortex: (() => {
+        const g = this._clientGaze;
+        if (!g) return null;
+        return {
+          gazeX: g.gazeX, gazeY: g.gazeY, gazeTarget: g.gazeTarget,
+          motionEnergy: g.motionEnergy, maxSalience: g.maxSalience,
+          frames: g.frames, framesRefused: g.framesRefused,
+          ageMs: Date.now() - g.at, from: g.from,
+        };
+      })(),
       ownArt: (() => {
         let schemas = 0, seen = 0;
         try {
