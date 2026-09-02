@@ -41,7 +41,13 @@ const SENT_MIN = 30, SENT_MAX = 240;
 // 16 gap-words those four books demonstrably contain, because stride-sampling 30
 // sentences out of a whole book misses specific vocabulary. The cap, not the
 // source, was the binding constraint on the SECOND pass.
-const SENT_CAP_BY_BAND = { early: 400, middle: 400, upper: 240, high: 400, college: 600, grad: 800 };
+// ⛔⛔⛔ NO CAP — 2026-09-02, on Gee's instruction that *"all the corpus needs to
+// be complete"*. Everything above this line about 60 vs 400 was an argument
+// about WHICH ceiling, when the ceiling itself was the defect: a 400-sentence
+// cap on Great Expectations downloads a 183,000-word novel and keeps ~8,000
+// words of it. **She reads the book.** What says when a CELL is finished is the
+// band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`.
+const SENT_CAP_BY_BAND = { early: Infinity, middle: Infinity, upper: Infinity, high: Infinity, college: Infinity, grad: Infinity };
 const BAND_OF_GRADE = new Map([
   ['pre-k', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
   ['grade3', 'middle'], ['grade4', 'middle'], ['grade5', 'middle'],
@@ -403,9 +409,11 @@ async function buildGrade(grade, books) {
   const cap = sentCapFor(grade);
   console.log(`[gutenberg] ela/${grade} (cap ${cap}) — ${books.length} work(s)`);
   const experiences = [];
-  // Split the grade's budget across its works so a year reads all of its
-  // assigned texts rather than the first one at full depth.
-  const per = Math.max(20, Math.floor(cap / books.length));
+  // ⛔ THERE IS NO BUDGET TO SPLIT ANY MORE (2026-09-02). This line divided a
+  // grade's sentence budget between its assigned works, which meant a year with
+  // four books read a quarter of each. A real school year reads all four of
+  // them, whole. `per` stays `Infinity` so both readers below take everything.
+  const per = Infinity;
   for (const [id, title] of books) {
     const txt = await fetchBook(id);
     if (!txt) { console.log(`  ${title} — UNAVAILABLE (id ${id})`); continue; }

@@ -48,8 +48,14 @@ const SENT_MIN = 30, SENT_MAX = 240;
 // Same grade-banded ceiling as the wiki ingest — a real year is a different
 // size at every grade, and one flat number applied to twenty different years is
 // exactly the defect that kept the whole corpus at 14 sentences per topic.
+// ⛔⛔⛔ NO CAP — 2026-09-02, on Gee's instruction that *"all the corpus needs to
+// be complete"*. The comment above is right about flat numbers and was still
+// describing a ceiling; a grade-banded ceiling is a smaller version of the same
+// knife. **A textbook is taken whole.** The band floor in
+// `docs/CURRICULUM-GAP.md §THE TARGET LADDER` says when a CELL is full; nothing
+// says how much of a book she is allowed to read.
 const SENT_CAP_BY_BAND = {
-  early: 60, middle: 120, upper: 240, high: 400, college: 600, grad: 800,
+  early: Infinity, middle: Infinity, upper: Infinity, high: Infinity, college: Infinity, grad: Infinity,
 };
 const BAND_OF_GRADE = new Map([
   ['pre-k', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
@@ -290,24 +296,21 @@ async function buildBook({ repo, subject, grade, label }) {
   const mds = files.filter((f) => f.type === 'file' && f.name.endsWith('.md'));
   if (!mds.length) { console.log('  SKIPPED — no chapter files'); return 0; }
 
-  // ⛔ SPREAD THE BUDGET ACROSS THE WHOLE BOOK, never front-load it. Taking the
-  // cap from the first chapters would teach her chapter 1 in depth and leave
-  // the other 250 sections untaught — the same "one number, wrong shape" error
-  // as the flat sentence cap, one level up.
-  const perChapter = Math.max(3, Math.ceil(cap / Math.min(mds.length, 60)));
-  const stride = Math.max(1, Math.floor(mds.length / Math.min(mds.length, 60)));
-  const picked = [];
-  for (let i = 0; i < mds.length && picked.length < 60; i += stride) picked.push(mds[i]);
+  // ⛔⛔ EVERY CHAPTER, WHOLE — 2026-09-02. This block used to stride-sample **60
+  // of the book's chapters** and give each a slice of a global cap, so a
+  // 283-chapter physics textbook shipped ~60 partial chapters and 223 were never
+  // downloaded at all. The comment above was right that front-loading is wrong
+  // and still left most of the book on the server. Gee: *"all the corpus needs
+  // to be complete"*.
+  const picked = mds;
 
   const experiences = [];
   let taken = 0;
   let figuresFound = 0;
   for (const f of picked) {
-    if (taken >= cap) break;
     const md = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/contents/${f.name}`);
     const title = (/^title:\s*"?([^"\n]+)"?/m.exec(md || '') || [, f.name.replace(/\.md$/, '')])[1].trim();
-    const room = Math.min(perChapter, cap - taken);
-    const sents = cleanOpenStax(md, room);
+    const sents = cleanOpenStax(md, Infinity);
     if (sents.length >= 3) {
       // `TEXTFIG.1` — figures ride the entry that owns their chapter, so a
       // percept can be bound to the SAME theme its prose trained under. Paths

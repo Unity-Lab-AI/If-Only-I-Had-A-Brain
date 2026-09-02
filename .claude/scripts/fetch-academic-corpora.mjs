@@ -52,13 +52,25 @@ const OUT = path.join(ROOT, 'corpora', 'academic');
 // corpus to grow as words^0.796 (model fit within 0.1% across a 15x subsample
 // sweep). So 100x the content costs ~39x on the expensive lane, not 100x, and
 // the dedup ratio IMPROVES as the corpus grows (73.8% -> 42.6% measured).
+// ⛔⛔⛔ THE PER-SOURCE CAP IS GONE — 2026-09-02, ON GEE'S INSTRUCTION.
+//
+// Gee: *"all the corpus needs to be complete!!!!!! not the same fucking horse
+// shit you have been doing to me for a year"*, after catching every book in a
+// new ingest yielding an identical 1,200 sentences — the signature of a cap, not
+// of the sources.
+//
+// The band ladder below (60 / 120 / 240 / 400 / 600 / 800) was a smaller version
+// of `MAX_SENT_PER_TOPIC = 14`: the API returns the FULL article every time, and
+// the cap threw away everything past the Nth sentence AFTER downloading it.
+// **A source is now taken whole.** The thing that says when a CELL is finished
+// is the band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`, which is a
+// statement about the cell — not a knife applied to each article on the way in.
+//
+// `Infinity` rather than a large number, deliberately: a large number is a cap
+// somebody will hit and never notice.
 const SENT_CAP_BY_BAND = {
-  early:   60,    // pre-K .. grade2  — short, concrete, Simple-English prose
-  middle: 120,    // grade3 .. grade5
-  upper:  240,    // grade6 .. grade8
-  high:   400,    // grade9 .. grade12
-  college: 600,   // college1 .. college4 — including her CS major
-  grad:    800,   // grad, phd — the research literature
+  early: Infinity, middle: Infinity, upper: Infinity,
+  high: Infinity, college: Infinity, grad: Infinity,
 };
 const BAND_OF_GRADE = new Map([
   ['pre-k', 'early'], ['prek', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
