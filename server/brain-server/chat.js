@@ -197,8 +197,13 @@ const SERVER_CHAT_MIXIN = {
         }
         if (!rec) {
           const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
+          // ⭐ CRYSTAL — 192 -> 512. This call site was pinning the imagined field
+          // to 192px while `imagineFromState`'s own default had already been
+          // raised to 512, so the ceiling work never reached the mind's eye: an
+          // explicit argument beats a raised default every time. The plane is
+          // built in the mind-space worker, not on the event loop.
           rec = await this.mindSpace.imagineFromState(emb, {
-            maxSide: 192, text: imgPrompt,
+            maxSide: 512, text: imgPrompt,
             mood: { arousal: this.arousal, valence: this.valence },
             priority: 0.4, value: 0.6,
           });
@@ -1666,8 +1671,11 @@ const SERVER_CHAT_MIXIN = {
         }
       }
       if (!rec) {
+        // ⭐ CRYSTAL — 192 -> 512, same reason as the chat imagery site: an
+        // explicit 192 here overrode the raised default, so her inner-voice
+        // field rendered at a fraction of what the engine was willing to give.
         rec = await this.mindSpace.imagineFromState(_seed, {
-          maxSide: 192, text: _seedText,
+          maxSide: 512, text: _seedText,
           mood: { arousal: this.arousal, valence: this.valence },
           priority: 0.25, value: 0.4,
         });
@@ -2707,11 +2715,33 @@ const SERVER_CHAT_MIXIN = {
     // publishes through the normal lane and MINDMOTION.3 morphs from the last
     // progress frame — the whole birth reads continuously. DREAM_EYE_PROCESS=0
     // disables; short pieces (<24 strokes) skip — nothing to show.
+    // ⭐ CRYSTAL — THE CANVAS TAKES THE SHAPE OF THE THING. Portrait for a tall
+    // subject, landscape for a wide one, square only when that is genuinely the
+    // shape — read from the stored record of the reference she actually SAW
+    // (`rec.width`/`rec.height`), not guessed and not fixed. Every stroke is in
+    // normalised coordinates, so nothing about the composition changes; the plane
+    // simply stops cropping a tall subject and stops padding a wide one.
+    // ⚠ Banded 0.25-4.0: a genuinely extreme reference (a 805x2480 multi-panel
+    // plate is real, and its aspect is 0.32) still gets its shape, while a
+    // degenerate record cannot produce a sliver canvas a stroke cannot land on.
+    // ⚠ Falls back to square when the subject has no stored reference — an
+    // unknown shape is not a licence to invent one.
+    let _aspect = 1;
+    try {
+      const _vs = (typeof this._vmStore === 'function') ? this._vmStore() : null;
+      const _primary = plan.subjects[0] && plan.subjects[0].word;
+      const _e = (_vs && _primary) ? _vs.get(_primary) : null;
+      const _rw = _e && _e.rec && Number(_e.rec.width), _rh = _e && _e.rec && Number(_e.rec.height);
+      if (_rw > 0 && _rh > 0) _aspect = Math.min(4, Math.max(0.25, _rw / _rh));
+    } catch { /* no reference on file — square, and say nothing false about it */ }
     if (process.env.DREAM_EYE_PROCESS !== '0' && finalStrokes.length >= 24 && opts.progress !== false) {
       for (const frac of [0.35, 0.7]) {
         try {
           const part = finalStrokes.slice(0, Math.max(4, Math.floor(finalStrokes.length * frac)));
-          const partial = await this.mindSpace.sketch(part, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } });
+          // Same aspect as the final frame — a progress render that changed shape
+          // mid-birth would read as a different drawing, and MINDMOTION.3 morphs
+          // from the last progress frame, which requires the planes to agree.
+          const partial = await this.mindSpace.sketch(part, { maxSide: side, aspect: _aspect, mood: { arousal: this.arousal, valence: this.valence } });
           if (partial) this._publishEyeTransient(partial, `draw:progress:${Math.round(frac * 100)}`);
           await new Promise(r => setTimeout(r, 450));
         } catch { break; /* process frames are best-effort — the piece itself still lands */ }
@@ -2721,6 +2751,7 @@ const SERVER_CHAT_MIXIN = {
     try {
       drawn = await this.mindSpace.sketch(finalStrokes, {
         maxSide: side,
+        aspect: _aspect,
         mood: { arousal: this.arousal, valence: this.valence },
       });
     } catch { return null; }
@@ -4212,10 +4243,20 @@ const SERVER_CHAT_MIXIN = {
   _drawCanvasSide() {
     // ZERO DUMBING (Gee 2026-07-15: "rip out BOTH gates ... K quality == PhD
     // quality, zero intentional limits"). NO grade cap on canvas resolution — every
-    // drawing renders at the full canvas (512, the sketch ceiling) regardless of
-    // grade. Her drawing quality is her FULL capability, not gated by how far she's
-    // walked. (env override for a smaller box if ever needed.)
-    return Number(process.env.DREAM_DRAW_CANVAS) || 512;
+    // drawing renders at the full canvas regardless of grade. Her drawing quality is
+    // her FULL capability, not gated by how far she's walked. (env override for a
+    // smaller box if ever needed.)
+    //
+    // ⭐ CRYSTAL — 512 -> 1024. The comment above called 512 "the sketch ceiling"
+    // and it stopped being one: the ceiling is MAX_LINE (2048), and 512 was a
+    // stale default nobody re-priced after her schemas started keeping her FULL
+    // VECTOR TRACE (up to ~260 strokes with fine contours). Cramming that trace
+    // into 512² is where the fine detail died. RE-PRICED on a 260-stroke canvas
+    // before changing it — 512²: 452 ms / 277,790 coefficients / 1,085 KB;
+    // 1024²: 1,378 ms / 620,295 / 2,424 KB; 2048²: 4,878 ms / 1,295,291 / 5,075 KB.
+    // 1024 buys 2× the linear detail for 3× worker time, and `sketch` is PROXIED
+    // to the mind-space worker so that time is never an event-loop block.
+    return Number(process.env.DREAM_DRAW_CANVAS) || 1024;
   },
 
   // Is this a DRAWABLE concept? DYNAMIC — works for ANY word including never-seen

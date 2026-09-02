@@ -599,7 +599,18 @@ export class MindSpaceGPU {
       side = Math.max(96, Math.round(maxSide * (0.6 + 0.4 * ratio)));
     }
     if (!opts.side) side = Math.min(side, maxSide);
-    const W = side, H = side;
+    // ⭐ CRYSTAL — the imagined field takes the shape of what it is a field OF.
+    // `renderThoughtPlane` already takes W and H separately, so this is the same
+    // one-assignment change as the sketch plane.
+    //
+    // ⚠ `opts.side` STAYS SQUARE ON PURPOSE and aspect is ignored when it is set.
+    // That path exists for `morphField`, which requires identical canvas AND pad
+    // dimensions between the two fields it blends — silently reshaping a plane an
+    // anchored caller asked for by exact side would break the morph invariant
+    // rather than improve the picture.
+    const _iar = (!opts.side && Number(opts.aspect) > 0 && Number.isFinite(Number(opts.aspect))) ? Number(opts.aspect) : 1;
+    const W = _iar >= 1 ? side : Math.max(16, Math.round(side * _iar));
+    const H = _iar >= 1 ? Math.max(16, Math.round(side / _iar)) : side;
     const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-denovo' };
@@ -630,8 +641,26 @@ export class MindSpaceGPU {
     const _sketchCeil = (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0)
       ? Math.min(Number(process.env.DREAM_MINDSEYE_MAX_SIDE), MAX_LINE)
       : MAX_LINE;
-    const side = Math.max(16, Math.min(opts.maxSide ?? 96, _sketchCeil));
-    const W = side, H = side, N = W * H;
+    // ⭐ CRYSTAL — the DEFAULT rises 96 -> 512. The previous note said "default
+    // unchanged (96) so casual callers are unaffected", which is exactly the
+    // problem: a caller that does not pass a side got a 96px drawing, and 96px
+    // is not a considered choice for anything with strokes in it. Explicit
+    // callers are unaffected either way; the ceiling is still MAX_LINE.
+    const side = Math.max(16, Math.min(opts.maxSide ?? 512, _sketchCeil));
+    // ⭐ CRYSTAL — THE CANVAS TAKES THE SHAPE OF ITS SUBJECT: portrait, landscape
+    // or square, instead of always square. `maxSide` is now the LONG edge and
+    // `opts.aspect` (width/height) sets the other one.
+    //
+    // The rasteriser already worked per-axis — every primitive maps normalised
+    // stroke coordinates through `x * (W-1)` and `y * (H-1)` and measures step
+    // counts with `hypot((x1-x0)*W, (y1-y0)*H)` — so a non-square plane needed no
+    // drawing changes at all, and `equationalizeImageData` pads each dimension
+    // independently. **The squareness was one assignment, not a constraint**, and
+    // it cost a tall subject its height and a wide scene its width.
+    const _ar = Number(opts.aspect) > 0 && Number.isFinite(Number(opts.aspect)) ? Number(opts.aspect) : 1;
+    const W = _ar >= 1 ? side : Math.max(16, Math.round(side * _ar));
+    const H = _ar >= 1 ? Math.max(16, Math.round(side / _ar)) : side;
+    const N = W * H;
     const data = new Uint8ClampedArray(N * 4);
     // DRAW.3 — background is PAPER (her dark sketchbook page), not a mood
     // wash. The old bg painted moodTint*0.12 AND the default ink was the

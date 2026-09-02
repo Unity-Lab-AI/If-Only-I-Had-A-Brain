@@ -88,6 +88,40 @@ const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
 // the RAM bound on the hot in-memory Map (~10KB/entry ⟹ 25k ≈ 250MB beside the
 // brain on a shared box). DREAM_VM_CAP raises it whenever more RAM is available.
 const VM_CAP = Number(process.env.DREAM_VM_CAP) > 0 ? Number(process.env.DREAM_VM_CAP) : 25000;
+
+// ⛔⛔ CRYSTAL — NOTHING SHE PERCEIVES IS SCALED DOWN, FILTERED OR SOFTENED
+// BEFORE THE TRANSFORM. Default 0 = full resolution, no resampling at all.
+//
+// This used to be 320 with nearest-neighbour resampling, and the reason that is
+// wrong is worth keeping because the counter-argument is nearly right: a wavelet
+// record IS resolution-independent — a coefficient is (scale, position,
+// magnitude) and reconstructs onto any canvas, so nothing DOWNSTREAM needs a
+// pixel size. But the ANALYSIS is discrete. Downsampling before
+// `equationalizeImageData` means the fine-scale subbands carrying a one-pixel
+// axis-label stroke are never created, and resolution-independence cannot
+// evaluate a coefficient that does not exist. **Render-at-any-size and
+// capture-all-detail are different properties, and only the second one a
+// pre-transform downsample destroys.** Measured on a real 1600x1181 figure:
+// 320px kept 27,204 coefficients, full resolution kept 184,981.
+//
+// Safe on the teach lane because `perceive` is PROXIED — it runs on the donor
+// GPU or the mind-space worker thread, never the main event loop, so the ~1.9s
+// full-resolution transform is worker time and not a loop block.
+//
+// ⚠ Kept as an OPT-IN for a constrained box, and when it engages it SAYS SO
+// once per minute. A percept quietly degraded is exactly the class of silent
+// loss this file already carries scars from.
+const REF_MAXSIDE = Number(process.env.DREAM_REF_MAXSIDE) > 0 ? Number(process.env.DREAM_REF_MAXSIDE) : 0;
+
+// ⭐ THE RESIDENCY BOUND IS BYTES, because that is the resource. `VM_CAP` remains
+// as a secondary count guard, but a count is only a RAM bound when every entry
+// is the same size — and this file's own estimate of ~10 KB an entry is off by
+// roughly 50x for a full-resolution figure field. 512 MB of hot entries beside a
+// brain that wants the rest of the box; disk holds everything and is not bounded
+// here at all.
+const VM_BYTES = Number(process.env.DREAM_VM_MAX_MB) > 0
+  ? Number(process.env.DREAM_VM_MAX_MB) * 1048576
+  : 512 * 1048576;
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'of', 'in', 'on', 'at', 'to', 'is',
@@ -142,9 +176,64 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   _vmStore() {
     if (!this._visualMemory) {
       const self = this;
+      // ⛔⛔ EVICT AND DELETE ARE DIFFERENT OPERATIONS AND WERE THE SAME ONE.
+      //
+      // `delete()` marks the key dirty-for-removal and the flush runs
+      // `DELETE FROM concepts`, so the LRU trim — `while (size > VM_CAP)
+      // store.delete(...)` — was DESTROYING THE ROW ON DISK. That is forgetting,
+      // not residency, and the file's own comment claimed the opposite: "this cap
+      // is the RAM bound ... not a disk bound" and "the DISK does not care".
+      //
+      // At ~10 KB an entry the lie never showed. At full-fidelity figure fields
+      // (~560 KB resident) holding RAM at 250 MB means a cap near 450, which
+      // would have silently deleted tens of thousands of her visual memories off
+      // a 500 GB disk while the comment insisted disk was the only ceiling.
+      //
+      // Three axes, separated:
+      //   • DELETE   — she is meant to forget it (a rejected drawing). Disk too.
+      //   • EVICT    — RAM pressure only. The row STAYS on disk.
+      //   • GET miss — lazily re-read from disk, so eviction costs a read and
+      //                never a memory.
       class VMMap extends Map {
-        set(k, v) { const r = super.set(k, v); try { self._vmMarkDirty(k, false); } catch { /* nf */ } return r; }
-        delete(k) { const had = super.delete(k); if (had) { try { self._vmMarkDirty(k, true); } catch { /* nf */ } } return had; }
+        set(k, v) {
+          const prev = super.get(k);
+          if (prev !== undefined) self._vmResidentBytes -= self._recResidentBytes(prev);
+          const r = super.set(k, v);
+          self._vmResidentBytes += self._recResidentBytes(v);
+          try { self._vmMarkDirty(k, false); } catch { /* nf */ }
+          return r;
+        }
+        delete(k) {
+          const prev = super.get(k);
+          const had = super.delete(k);
+          if (had) {
+            self._vmResidentBytes -= self._recResidentBytes(prev);
+            try { self._vmMarkDirty(k, true); } catch { /* nf */ }
+          }
+          return had;
+        }
+        // Drop from RAM ONLY — no dirty mark, so the flush never issues a DELETE.
+        evict(k) {
+          const prev = super.get(k);
+          const had = super.delete(k);
+          if (had) self._vmResidentBytes -= self._recResidentBytes(prev);
+          return had;
+        }
+        // A miss is not an absence. Read it back from sqlite, and re-insert
+        // through the RAW Map so a lazy load is not mistaken for a write.
+        get(k) {
+          const hit = super.get(k);
+          if (hit !== undefined) return hit;
+          const loaded = self._vmLoadOne(k);
+          if (loaded === null) return undefined;
+          Map.prototype.set.call(this, k, loaded);
+          self._vmResidentBytes += self._recResidentBytes(loaded);
+          self._vmLazyLoads = (self._vmLazyLoads | 0) + 1;
+          return loaded;
+        }
+        // `has` must agree with `get`, or a caller that checks before reading
+        // concludes a paged-out memory does not exist.
+        has(k) { return super.has(k) || this.get(k) !== undefined; }
       }
       this._visualMemory = new VMMap();
       this._vmRestoring = true;   // restore must not mark its own inserts dirty-for-write
@@ -153,15 +242,33 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (db) {
           const t0 = Date.now();
           const rows = db.prepare('SELECT key, entry, bin FROM concepts ORDER BY at ASC').all();
-          for (const r of rows.slice(-VM_CAP)) {
+          // ⛔ RESTORE STOPS AT THE BYTE BUDGET, NOT AT A ROW COUNT. Loading the
+          // newest VM_CAP rows was safe at ~10 KB an entry and is 14 GB at
+          // full-resolution figure fields. Newest-first so the most recent
+          // memories are the resident ones; everything else stays on disk and
+          // loads on demand.
+          this._vmResidentBytes = 0;
+          let loaded = 0;
+          for (let i = rows.length - 1; i >= 0 && loaded < VM_CAP && this._vmResidentBytes < VM_BYTES; i--) {
+            const r = rows[i];
             try {
               const e = JSON.parse(r.entry);
               if (r.bin) this._recAttachBin(e, r.bin);   // BLOBSTORE — reattach binary payload as Buffers
-              if (e && e.rec && e.rec.channels) Map.prototype.set.call(this._visualMemory, r.key, e);
+              if (e && e.rec && e.rec.channels) {
+                Map.prototype.set.call(this._visualMemory, r.key, e);
+                this._vmResidentBytes += this._recResidentBytes(e);
+                loaded++;
+              }
             } catch { /* one bad row never blocks the rest */ }
           }
+          this._vmDiskRows = rows.length;
           if (this._visualMemory.size > 0) {
-            console.log(`[VisualMemory] restored ${this._visualMemory.size} seen-concept field(s) from sqlite in ${Date.now() - t0}ms (${rows.length} rows on disk, cap ${VM_CAP}).`);
+            // Says RESIDENT and ON DISK separately, because they are now
+            // different numbers and the difference is the whole point: a row
+            // that is not resident is paged out, not forgotten.
+            console.log(`[VisualMemory] ${this._visualMemory.size} field(s) resident `
+              + `(${(this._vmResidentBytes / 1048576).toFixed(0)} MB of ${(VM_BYTES / 1048576).toFixed(0)} MB budget), `
+              + `${rows.length} on disk — the rest load on demand. ${Date.now() - t0}ms.`);
           }
         }
       } catch (e) { console.warn('[VisualMemory] load failed:', e?.message || e); }
@@ -169,6 +276,55 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     return this._visualMemory;
   },
+  // Resident cost of one entry. The coefficient payload dominates by orders of
+  // magnitude, so it is measured and the skeleton is estimated — an exact
+  // JSON.stringify per entry would cost more than the accounting is worth.
+  _recResidentBytes(e) {
+    if (!e || !e.rec || !e.rec.channels) return 512;
+    let n = 512;
+    for (const c of Object.keys(e.rec.channels)) {
+      const ch = e.rec.channels[c];
+      if (!ch) continue;
+      if (ch.val && ch.val.length) n += ch.val.length;
+      if (ch.pos && ch.pos.length) n += ch.pos.length;
+      if (ch.val_b64) n += ch.val_b64.length;
+      if (ch.pos_b64) n += ch.pos_b64.length;
+    }
+    if (e.p && e.p.length) n += e.p.length * 8;
+    return n;
+  },
+
+  // Read ONE entry back from sqlite. This is what makes eviction safe: a key
+  // that is not resident is on disk, not gone.
+  _vmLoadOne(key) {
+    try {
+      const db = this._vmDb();
+      if (!db) return null;
+      const r = db.prepare('SELECT entry, bin FROM concepts WHERE key = ?').get(key);
+      if (!r) return null;
+      const e = JSON.parse(r.entry);
+      if (r.bin) this._recAttachBin(e, r.bin);
+      if (!(e && e.rec && e.rec.channels)) return null;
+      return e;
+    } catch { return null; }
+  },
+
+  // ⛔ TRIM BY BYTES, NOT BY A COUNT STANDING IN FOR BYTES. An entry-count cap
+  // is only a RAM bound if every entry is the same size, and the assumption
+  // written into this file (~10 KB each) is off by 50x for a full-resolution
+  // figure field. Evicts oldest-first — Map iteration order is insertion order
+  // and a touch re-inserts, so that is genuine LRU — and evicting NEVER deletes
+  // from disk.
+  _vmTrimResident(store) {
+    let guard = 0;
+    while ((store.size > VM_CAP || this._vmResidentBytes > VM_BYTES) && store.size > 1 && guard++ < 100000) {
+      const oldest = store.keys().next().value;
+      if (oldest === undefined) break;
+      store.evict(oldest);
+      this._vmEvictions = (this._vmEvictions | 0) + 1;
+    }
+  },
+
   // Dirty-key tracking: a set() queues an upsert, a delete() queues a removal,
   // a set() after a delete cancels the removal (LRU touch = delete+set of the
   // same key nets to one upsert). Flush is debounced 5s and batched in ONE
@@ -624,7 +780,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept, phrase: _phrase });   // newer provisional replaces provisional
       }
     }
-    while (store.size > VM_CAP) store.delete(store.keys().next().value);
+    this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
 
     // ── OWNART.8 (2026-08-20) — SHE LEARNS THE *CONSTRUCTION* OF WHAT SHE SEES,
     // ── at perception time, not only when something asks her to draw.
@@ -1529,7 +1685,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       st.lastErr = `figure undecodable (${buf ? buf.length : 0} bytes)`; st.lastErrAt = now;
       return null;
     }
-    const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+    const small = this._perceptSource(img, 'corpus figure');
     let rec;
     try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); }
     catch (e) {
@@ -1581,7 +1737,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       // here is PROVENANCE (an authored, licensed, human-captioned diagram)
       // rather than agreement between two guesses.
       store.set(key, { rec, at: now, seen: 1, conf: true, p: percept, phrase, figure: { url: fig.url, theme: opts.theme || null } });
-      while (store.size > VM_CAP) store.delete(store.keys().next().value);
+      this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
       this._vmSaveSoon();
       st.figGrounded = (st.figGrounded | 0) + 1;
       st.lastFigKey = key; st.lastFigAt = now;
@@ -1891,9 +2047,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       if (!img) return this._vmLookFail(key, 'decodeFails', `unknown/undecodable image (${buf ? buf.length : 0} bytes)`);
       // NOLIMIT — a reference is what she LEARNS the appearance from, so 128px was
       // throwing away the detail her shape-schema is built out of. 320 default
-      // (env-tunable), which is still a downsample of a 256-1024px render but keeps
-      // the contours and part proportions that OWNART reads.
-      const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+      // ⛔ WAS a 320px nearest-neighbour downsample "which keeps the contours and
+      // part proportions that OWNART reads" — a claim about what survives, made
+      // without measuring what does not. It is now full resolution by default,
+      // the same door the corpus figures go through.
+      const small = this._perceptSource(img, 'reference look-up');
       let rec;
       // perceive was the ONLY post-budget stage with a fully bare catch — a dead
       // mind-space worker killed every look with zero evidence. It names itself now.
@@ -1928,7 +2086,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             const buf2 = Buffer.from(await r2.arrayBuffer());
             const img2 = this._decodeImageToRGBA(buf2);
             if (img2) {
-              const small2 = this._downsampleRGBA(img2, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+              const small2 = this._perceptSource(img2, 'look-up second seed');
               rec2 = await this.mindSpace.perceive({ width: small2.w, height: small2.h, data: small2.data });
               if (rec2 && rec2.channels) { const _d2 = await this.mindSpace.describe(rec2); if (_d2) percept2 = Array.from(_d2); }
             }
@@ -1952,7 +2110,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         // VMPHRASE.3 — the concept she asked to look at, whole. `key` is the
         // head noun; this keeps the phrase that produced it.
         store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt, phrase: (String(concept || '').trim().slice(0, 160) || (prev && prev.phrase) || null) });
-        while (store.size > VM_CAP) store.delete(store.keys().next().value);
+        this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
         this._vmSaveSoon();
         // VMRELATE — the look taught. `concept` is what she asked to see, whole:
         // its modifiers, its glue and its relation, not the head noun `key` was
@@ -2038,7 +2196,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       if (b.length < 4) return null;
       if (b[0] === 0xFF && b[1] === 0xD8) {                                      // JPEG
         const jpeg = this._jpegDec || (this._jpegDec = require('jpeg-js'));
-        const r = jpeg.decode(b, { useTArray: true, maxMemoryUsageInMB: 512 });
+        // ⛔ THE 512 MB CAP SILENTLY REFUSED THE LARGEST FIGURES IN THE CORPUS.
+        // Wikimedia serves archival masters — 2.2 MP mean, many far larger — and
+        // jpeg-js counts its own working set generously, so a real illustration
+        // came back as `decode failed: maxMemoryUsageInMB limit exceeded` and was
+        // recorded as undecodable. That reads as a broken file rather than a
+        // ceiling we chose. Measured: 11 of 30 corpus figures refused at 512.
+        // Env-tunable so a small box can put it back without editing code.
+        const jpegCapMb = Number(process.env.DREAM_JPEG_MAX_MB) > 0 ? Number(process.env.DREAM_JPEG_MAX_MB) : 2048;
+        const r = jpeg.decode(b, { useTArray: true, maxMemoryUsageInMB: jpegCapMb });
         if (!r || !r.data) return null;
         return { w: r.width, h: r.height, data: new Uint8ClampedArray(r.data.buffer, r.data.byteOffset, r.data.length) };
       }
@@ -2047,6 +2213,26 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         const p = PNG.sync.read(Buffer.from(b));
         if (!p || !p.data) return null;
         return { w: p.width, h: p.height, data: new Uint8ClampedArray(p.data.buffer, p.data.byteOffset, p.data.length) };
+      }
+      // WEBP — `RIFF....WEBP`. In-repo VP8 decoder, no native build and no new
+      // dependency, so a webp figure reaches the CDF 9/7 transform through the
+      // same RGBA door a jpeg or png does. Everything downstream is unchanged:
+      // the coefficient stage was always format-blind, it was only ever missing
+      // pixels. Before this, every figure PubMed Central serves for a modern
+      // article decoded to null and was recorded as a perception failure
+      // indistinguishable from a dead link.
+      if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46
+          && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) {
+        const { decodeWebP } = this._webpDec || (this._webpDec = require('../webp-decode.js'));
+        const img = decodeWebP(b);
+        // A refusal NAMES ITSELF rather than joining the silent-null pile —
+        // "I do not decode the lossless variant" and "this file is corrupt" are
+        // different facts and the counters must be able to tell them apart.
+        if (!img && decodeWebP.lastReason && (!this._vmWebpErrAt || Date.now() - this._vmWebpErrAt > 60000)) {
+          this._vmWebpErrAt = Date.now();
+          console.warn(`[VisualMemory] webp decode declined: ${decodeWebP.lastReason}`);
+        }
+        return img;
       }
     } catch (e) {
       if (!this._vmDecodeErrAt || Date.now() - this._vmDecodeErrAt > 60000) { this._vmDecodeErrAt = Date.now(); console.warn(`[VisualMemory] image decode failed: ${e?.message || e}`); }
@@ -2057,6 +2243,20 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // Nearest-neighbor downsample of an RGBA image to a bounded max side (aspect
   // kept). A reference only needs ~128px for a clean traced percept; smaller =
   // faster perceive + cleaner contours.
+  // CRYSTAL — the ONE door every percept goes through, so "crystal clear" is a
+  // property of the choke point rather than a promise repeated at three call
+  // sites that can drift apart. Returns the image UNTOUCHED unless an operator
+  // has explicitly opted into a ceiling, and never returns a degraded percept
+  // silently.
+  _perceptSource(img, why) {
+    if (!REF_MAXSIDE || Math.max(img.w, img.h) <= REF_MAXSIDE) return img;
+    if (!this._vmScaleWarnAt || Date.now() - this._vmScaleWarnAt > 60000) {
+      this._vmScaleWarnAt = Date.now();
+      console.warn(`[VisualMemory] DREAM_REF_MAXSIDE=${REF_MAXSIDE} is DEGRADING what she perceives: ${why} ${img.w}x${img.h} resampled down. Fine detail is lost at analysis time and cannot be recovered from the record.`);
+    }
+    return this._downsampleRGBA(img, REF_MAXSIDE);
+  },
+
   _downsampleRGBA(img, maxSide) {
     const sw = img.w, sh = img.h;
     const scale = Math.min(1, maxSide / Math.max(sw, sh));
@@ -2072,6 +2272,82 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       }
     }
     return { w, h, data: out };
+  },
+
+  // ⭐⭐ THE BACKGROUND FIGURE DRAIN — every illustration in the corpus gets
+  // seen, without any cell pass paying for it.
+  //
+  // Gee chose this over perceiving inline: *"option 1 ... but they have to link
+  // to thhe text corrctly"*. The measurement behind it — 37,592 figures at 6 per
+  // cell visit meant `math/grade10` needed **462 visits** to finish 2,769, and a
+  // cell is visited a handful of times.
+  //
+  // ⛔⛔ THE LINK TRAVELS WITH THE ROW, WHICH IS WHAT MAKES DEFERRAL SAFE. Each
+  // queued figure carries its own `alt`, `caption`, `context` (the corpus prose
+  // it sits inside) and `theme`, and `_perceiveTextbookFigure` builds its phrase
+  // and its store key from exactly those. **Nothing here reads what is currently
+  // being taught** — which is the `CAMPOISON` fix holding: a frame that fuses
+  // with "whatever word is current" is the defect that made a webcam placeholder
+  // become her memory of a word, and resolving the binding at perception time
+  // instead of carrying it would re-open that instantly.
+  //
+  // ⚠ ONE AT A TIME, ON A TIMER, `unref`'d. This shares the loop with the teach
+  // lane, so it takes one figure per tick and never batches — the whole reason
+  // it exists is to stop figure work from pinning anything. `DREAM_FIGDRAIN_MS`
+  // tunes the pace; `=0` disables the lane and says so.
+  _startFigureDrain() {
+    if (this._figDrainTimer) return;
+    const raw = process.env.DREAM_FIGDRAIN_MS;
+    const every = raw === undefined || raw === '' ? 1500 : Math.max(0, Number(raw) || 0);
+    if (every === 0) { console.log('[FigureDrain] disabled by DREAM_FIGDRAIN_MS=0 — queued figures will NOT be perceived'); return; }
+    this._figDrainBusy = false;
+    this._figDrainTimer = setInterval(async () => {
+      if (this._figDrainBusy) return;                 // never overlap a fetch
+      if (!this._figureQueue) return;
+      this._figDrainBusy = true;
+      try {
+        const row = this._figureQueue.next();
+        if (!row) return;
+        // ⚠ Rebuilt into the exact shape the inline path passes, so the two
+        // callers cannot drift into binding the same figure differently.
+        const fig = {
+          url: row.url, src: row.url,
+          alt: row.alt || '', caption: row.caption || '',
+          context: row.context || '',
+          theme: row.theme || null,
+        };
+        let rec = null;
+        try {
+          rec = await this._perceiveTextbookFigure(fig, {
+            key: `${row.theme || row.subject}-${row.k.split('-').pop()}`,
+            theme: row.theme || `${row.subject}/${row.grade}`,
+          });
+        } catch (e) {
+          this._figureQueue.markFailed(row.k, e?.message || String(e));
+          return;
+        }
+        // ⛔ `null` here is AMBIGUOUS and must not be recorded as a failure: the
+        // perceive path returns null both for "already held" and for "fetch
+        // failed", and the store is the only thing that can tell them apart.
+        // A held figure is DONE; a failed one is retried a bounded number of
+        // times. Collapsing the two would either re-fetch the whole corpus
+        // forever or silently drop pictures.
+        if (rec) { this._figureQueue.markDone(row.k, 'seen'); return; }
+        let held = false;
+        try {
+          const st = this._vmStore && this._vmStore();
+          held = !!(st && st.get(`fig:${row.theme || row.subject}-${row.k.split('-').pop()}`));
+        } catch { held = false; }
+        if (held) this._figureQueue.markDone(row.k, 'held');
+        else this._figureQueue.markFailed(row.k, 'perceive returned nothing');
+      } catch (e) {
+        console.warn('[FigureDrain] tick failed —', e?.message || e);
+      } finally {
+        this._figDrainBusy = false;
+      }
+    }, every);
+    if (this._figDrainTimer.unref) this._figDrainTimer.unref();
+    console.log(`[FigureDrain] started — one figure every ${every}ms, off the teach lane (DREAM_FIGDRAIN_MS)`);
   },
 };
 

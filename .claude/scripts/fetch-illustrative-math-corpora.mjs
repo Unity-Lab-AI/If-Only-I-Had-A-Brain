@@ -34,10 +34,32 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { stripLeakedMarkup } from './clean-math.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, '..', '..', 'corpora', 'academic');
 const BASE = 'https://curriculum.illustrativemathematics.org';
+// ⭐⭐ THE SECOND HOST, AND IT EXISTS BECAUSE THE FIRST ONE GENUINELY DOES NOT
+// CARRY THE PRIMARY LESSONS (probed 2026-09-02, not assumed).
+//
+// Every `k5/students/*` shape returns 404 on the publisher's own host. That is
+// not a broken path — **IM K-5 does not publish a student book.** At these
+// grades the lesson content lives in the TEACHER guide, and the search for a
+// primary "student textbook" was a search for a document nobody printed.
+//
+// Kendall Hunt is IM's distributor and serves that guide as static HTML at
+// CC-BY 4.0 (licence read off its own curriculum index, not assumed from the
+// publisher's reputation): 50 units and 869 lessons across K-5.
+//
+// ⚠ Probed alongside it and rejected, with the reason, so nobody re-walks these:
+//   Open Up Resources  200 — and a LOGIN WALL behind the 200. Same IM content,
+//                            gated on a registered account. A 200 with HTML in
+//                            it is not reachability.
+//   OER Commons        403 — refuses this client
+//   CK-12              403 — refuses this client
+// ⛔ Neither 403 is worked around by forging a browser User-Agent. A host saying
+// no is an answer.
+const KH = 'https://im.kendallhunt.com';
 const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
 const LICENCE = 'CC-BY 4.0';
 
@@ -70,9 +92,17 @@ const SECONDARY = [
 // UNIT SUMMARIES written for families — "In this unit, students recognize
 // numbers and quantities in their world" — not student lessons. Real numeracy
 // prose naming counting, quantity and number, but ~533 words per unit against a
-// 7,300-word early-band floor. **K-5 student pages are served through Kendall
-// Hunt, not this host.** Included because the early band has NO maths prose at
-// all today, and labelled honestly rather than counted as a solved primary year.
+// 7,300-word early-band floor. Included because the early band has NO maths
+// prose at all today, and labelled honestly rather than counted as a solved
+// primary year.
+//
+// ⛔ THIS COMMENT USED TO SAY "K-5 student pages are served through Kendall
+// Hunt, not this host", AND THAT WAS WRONG IN A WAY WORTH KEEPING VISIBLE.
+// There are no K-5 student pages on any host: IM does not publish a student book
+// at these grades. The lessons are in the TEACHER guide, which Kendall Hunt does
+// serve — see `walkPrimaryLessons` below, which is what actually closes this.
+// **A guess about WHERE a document lives reads exactly like a fact about
+// WHETHER it exists, and it sat here unchallenged until the paths were probed.**
 const PRIMARY = [
   { slug: 'kindergarten', grade: 'kindergarten' },
   { slug: 'grade-1', grade: 'grade1' },
@@ -127,6 +157,13 @@ function cleanSentences(html) {
     if (/skip to main content|kendall hunt|google classroom|illustrative mathematics is a|creative commons|all rights reserved|privacy policy|terms of use|sign in|log in/i.test(s)) continue;
     // A run of lesson numbers from the lesson-picker strip ("1 2 3 4 5 …").
     if (/^[\d\s.]+$/.test(s)) continue;
+    // ⛔ THE WORST LEAK IN THE CORPUS BY RATE: 7,868 of this source's 28,879
+    // sentences — **27%** — carried raw LaTeX. A maths textbook is exactly where
+    // notation leaks, and exactly where it must not, because maths here is taught
+    // equationally and never as prose about symbols.
+    const _m = stripLeakedMarkup(s);
+    if (_m.drop) continue;
+    s = _m.text;
     out.push(s.toLowerCase());
   }
   return out;
@@ -226,6 +263,61 @@ async function walkPrimary(slug) {
   return { sentences: all.filter((s) => !seen.has(s) && seen.add(s)), figures, units: units.length };
 }
 
+// ⭐⭐ THE PRIMARY LESSONS THEMSELVES — the half `MATHBOOK.2` was filed against.
+//
+// Shape, read off the live site rather than guessed:
+//   /K5/teachers/<slug>/units.html            -> unit links
+//   /k5/teachers/<slug>/unit-N/lessons.html   -> lesson links
+//   /k5/teachers/<slug>/unit-N/lesson-M/*.html
+// ⚠ The index links are lower-case `/k5/` while the index itself answers on
+// `/K5/`; the host is case-insensitive, and the links are followed AS SERVED
+// rather than re-cased, so this lane never depends on which one is canonical.
+//
+// ⚠ REGISTER IS TEACHER-FACING AND THE LOG LINE SAYS SO EVERY TIME. These pages
+// describe the lesson in the third person — "students count objects and relate
+// counting to addition" — around the mathematics itself. That is real numeracy
+// prose naming quantity, counting and number, and it is the only form this
+// content is published in; it is NOT a student's own reading voice, and calling
+// it one would be the same overclaim the family-materials lane was caught making.
+async function walkPrimaryLessons(slug) {
+  const idx = await fetchText(`${KH}/K5/teachers/${slug}/units.html`);
+  if (!idx) return { sentences: [], figures: [], units: 0, lessons: 0, dead: 1 };
+  const units = [...new Set([...idx.matchAll(/href="([^"]*\/unit-\d+\/[^"]*)"/g)].map((m) => m[1]))]
+    .filter((h) => new RegExp(`/teachers/${slug}/unit-\\d+/`, 'i').test(h));
+  const all = [], figures = [];
+  const figSeen = new Set();
+  let lessons = 0, dead = 0;
+  for (const u of units) {
+    const unitUrl = new URL(u, KH).href;
+    const unitHtml = await fetchText(unitUrl);
+    if (!unitHtml) { dead++; continue; }
+    all.push(...cleanSentences(unitHtml));
+    // One entry per lesson NUMBER — a lesson may serve several sibling pages and
+    // they are all part of the same lesson, so they are all read.
+    const lessonPages = [...new Set([...unitHtml.matchAll(/href="([^"]*\/lesson-\d+\/[^"]+\.html)"/g)].map((m) => m[1]))]
+      .filter((h) => new RegExp(`/teachers/${slug}/unit-\\d+/lesson-\\d+/`, 'i').test(h));
+    const seenLesson = new Set();
+    for (const l of lessonPages) {
+      const lessonUrl = new URL(l, KH).href;
+      const html = await fetchText(lessonUrl);
+      if (!html) { dead++; continue; }
+      const num = (/\/lesson-(\d+)\//.exec(l) || [])[1];
+      if (num && !seenLesson.has(num)) { seenLesson.add(num); lessons++; }
+      all.push(...cleanSentences(html));
+      for (const f of harvestFigures(html, lessonUrl)) {
+        if (figSeen.has(f.src)) continue;
+        figSeen.add(f.src);
+        figures.push(f);
+      }
+      await sleep(200);
+    }
+    await sleep(200);
+  }
+  if (dead) console.log(`      (${dead} page(s) unreachable or timed out — a shortfall, not a verdict)`);
+  const seen = new Set();
+  return { sentences: all.filter((s) => !seen.has(s) && seen.add(s)), figures, units: units.length, lessons, dead };
+}
+
 function writeCell(subject, grade, entry) {
   const dir = path.join(OUT, subject);
   fs.mkdirSync(dir, { recursive: true });
@@ -294,6 +386,28 @@ for (const p of PRIMARY) {
   grandWords += words; grandFigs += got.figures.length;
   // ⚠ Says what it is every time: unit summaries, not lessons.
   console.log(`  ${got.units} unit summaries (FAMILY-FACING, not student lessons) · ${words.toLocaleString()} words · ${got.figures.length} figures (cell now ${n} entries)`);
+}
+
+// ⭐ The primary LESSONS, from Kendall Hunt. Kept as its own entry beside the
+// family summaries rather than replacing them: the merge keys on theme, the two
+// are genuinely different texts about the same unit, and a parent-facing
+// explanation is worth having next to the lesson it explains.
+for (const p of PRIMARY) {
+  if (only && p.grade !== only) continue;
+  console.log(`[im] K-5 LESSONS ${p.slug} -> math/${p.grade}  (${KH})`);
+  const got = await walkPrimaryLessons(p.slug);
+  if (got.sentences.length < 50) { console.log(`  SKIPPED — only ${got.sentences.length} usable sentences`); continue; }
+  const words = got.sentences.join(' ').split(/\s+/).length;
+  const entry = {
+    theme: `im-k5-lessons-${p.slug}`,
+    story: got.sentences.join(' '),
+    source: `illustrative-math-kh/k5/teachers/${p.slug}`,
+    licence: LICENCE,
+  };
+  if (got.figures.length) entry.figures = got.figures;
+  const n = writeCell('math', p.grade, entry);
+  grandWords += words; grandFigs += got.figures.length; grandLessons += got.lessons;
+  console.log(`  ${got.units} units · ${got.lessons} lessons (TEACHER-FACING lesson text — the only form IM publishes K-5) · ${words.toLocaleString()} words · ${got.figures.length} figures (cell now ${n} entries)`);
 }
 
 console.log(`[im] DONE — ${grandWords.toLocaleString()} words, ${grandLessons} lessons, ${grandFigs.toLocaleString()} figures written under corpora/academic/math/.`);

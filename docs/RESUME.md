@@ -1,6 +1,168 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 MATHS GETS ITS TEXTBOOK (LATEST — PICK UP HERE) — AND THE "71 UNUSED EXPORTS" WERE SEVEN
+> ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW — A LONG JOB IS RUNNING. DO NOT START ANYTHING THAT WRITES `corpora/`
+> ```
+> board          30 open · 22 in-progress   (19 rows migrated out, then PHONBANK closed)
+> git            feature/board-triage-0902, NOT cascaded
+>                30 ahead of develop · 31 ahead of main   ⚠ BOTH are true; a bare
+>                "N commits" is a count against an unstated target
+> RUNNING        the figure-field job — batch 7 of ~26
+>                8,316 confirmed in delivered.txt, batch 6 (+2,392) pushed
+>                log: .scratch/bw.log      rate ~3.0/s, ETA ~2 h
+> walk           frozen ON PURPOSE — training still being BUILT
+> donor pod      i03ihi54kccu0l EXITED on purpose. restart = start-pod, NEVER terminate
+> ```
+> ### ⭐ SHIPPED SINCE THE BLOCK BELOW WAS WRITTEN — the phonics wiring (`PHONBANK.2`)
+> The generated set was a file nothing read. `phonicsExamQuestions()` → cluster bridge → **`injectGeneratedExamQuestions()` inside `student-question-banks.js`** → called in `curriculum.js` immediately BEFORE the held-out check, so the check validates the injected rows. **`ela/kindergarten` 190 → 300, 110 of 110 admitted, overlap still 0.**
+> - ⛔ **The merge belongs in the bank module, not at the call site** — held-out validity there is a property of the export, and a push would run after the load-time strip and walk past it.
+> - ⚠ **Refusals are counted BY REASON because it must be idempotent** — a second injection doubles the bank while every log line still reads healthy. Run twice: `added 0, rejectedDuplicate 110`.
+> - ✅ **Letters carrying more than one sound in the held-out exam: `0/26` → `9/26`** plus digraphs. No phoneme is spelled out anywhere.
+> - ⛔⛔ **`PHONBANK.1` part ① RETRACTED — "b n q r t have no letter-sound question" is not true today** (all five answer; the sanitize takes their *naming* question, and the train bank holds three of them out). **My before/after is `26/26 → 26/26` and I nearly claimed the fix.** ⚠ My first check had an escaping bug that agreed with the row — **a check that confirms what you expect is the one to re-run.**
+> - ⏳ **Still owed there: only the 12-cell → 213-cell scope.** The injector creates a missing cell and reports `createdCell`; content checked against each band's vocabulary is what does not exist.
+> ⛔ **The running loop reads `corpora/academic` at the start of every batch.** Changing the corpus mid-flight changes the figure list it is walking. The two owed re-ingests (`MATHLEAK.1`, `CELLRACE.2`) are deferred for exactly this reason.
+>
+> ### ⛔⛔ THE FINDING THAT MATTERS MOST: BUILDING A LANE IS NOT RUNNING IT
+> The figure queue, the background drain and the link-travels-with-the-row design were all built — **and had never executed once.** Proven three ways rather than assumed: **zero** keys beginning `fig:` in the visual store, all 410 records stamped `source=reference-lookup` and dated 2026-08-29, and **`figure-queue.db` absent from disk entirely**. Gee stopped me packaging 349 MB of her old look-ups and calling it the corpus figures. **A reference is not a percept.**
+>
+> ### ⭐ WHAT EXISTS NOW THAT DID NOT THIS MORNING
+> - **`UnityAILab/BrainWaves`** — the corpus in full (189 cells, 50.2M words) **plus** one CDF 9/7 wavelet field per figure, at **full source resolution**, delivered over **Git LFS** and pulled by the brain at `/media/branch/main/fields/<xx>/<key>.field.json`.
+> - **`LINKS.jsonl`** (38,318 citations → 32,296 waves) and **`LINKS-by-cell.json`** — the text↔wave join, generated from the corpus alone so it is correct before the fields finish.
+> - **`server/webp-decode.js`** — an in-repo VP8 decoder. Her eyes understood jpeg and png only, and every PMC figure is webp.
+> - **`.claude/scripts/`** — `perceive-corpus-figures.mjs`, `gen-phonics-questions.mjs`, `gen-figure-links.mjs`, `gen-vp8-tables.mjs`, `clean-math.mjs`.
+>
+> ### ⛔⛔ THE DEFECT SPECIES THAT REPEATED ALL DAY — CHECK FOR IT BEFORE BELIEVING ANY "FIXED"
+> **A merge rule that makes every repair run a silent no-op.** `if (!old || e.story.length > old.story.length)` compares a re-fetch of the same source against itself: identical prose, `>` is false, the old entry wins, and **any improvement that does not LENGTHEN the text can never land.** Found in **three separate fetchers on three separate days** — it held 7,055 openstax figures with no `context` key while two repair runs rewrote the cells, logged success and changed nothing. ⭐ **The evidence that cracked it was that the key was ABSENT, not empty** — code that ran would have written it even blank. All six fetchers now carry `sameSource`-wins.
+>
+> ### ⚠ MY OWN ERRORS TODAY, EVERY ONE CAUGHT BY A NUMBER BEING IMPLAUSIBLE
+> - **Four wrong size estimates before one right**: 276 GB (sample was all Wikimedia photo originals), 562 GB (`--limit` took the FIRST N and the corpus opens with `ap/`), 211 GB, then **93 GB** measured off 2,309 real fields. **A calibration ordered by subject measures the subject.**
+> - **Three currency bugs in one cleaner**: dropping any sentence containing `$` discarded 9,307 saylor sentences (economics text — `$10,000` *is* the subject); then `$…$` ate the words between two prices; then a `>= 2 dollars` rule made the same mistake a third time. **The signal was never the count or the delimiter — it is what FOLLOWS the sign.**
+> - **A Windows filename trap**: `figKey` returns `fig:<hash>` and a colon is illegal in a filename — NTFS made an alternate data stream on a file called `fig`, with no write error at all.
+> - **`bare()` defined inside the `isMainThread` branch**, so every worker threw a `ReferenceError` the catch filed as `transformFail` — 115 of 120 "failed to transform" without the transform being reached.
+> - **I killed a job and its `;`-chain advanced to the next stage**, and separately my own pre-compaction waiter was still alive and fired a duplicate. ⚠ **`ps` in this shell shows neither node nor bash truthfully — only PowerShell `Get-CimInstance`.**
+>
+> ### ⛔ TWO RULINGS OF GEE'S THAT GOVERN
+> - **Nothing she perceives is scaled down** — the 320 px pre-transform downsample is gone. A wavelet record is resolution-independent on the way OUT; the analysis is discrete, so shrinking first destroys the fine subbands permanently. *Render-at-any-size* and *capture-all-detail* are different properties.
+> - **BrainWaves stays PUBLIC**, decided with the facts in hand after I demonstrated by anonymous fetch that a public Forgejo repo needs no login to download. It holds NC and ND material; the README states that plainly rather than implying otherwise.
+>
+> ### ⏳ NEXT
+> **Let the field job finish (~2.5 h), then run the two deferred re-ingests** — `MATHLEAK.1` (22,859 LaTeX-bearing sentences; the cleaner is built, the corpus is not yet clean) and `CELLRACE.2`'s confirming pass, now that academic can finally replace its own entries · **retry sweep for the ~19% of figures that fail per batch** (dead URLs, non-Wikimedia SVGs, GIFs — failures are not ledgered so a re-run picks them up) · ✅ **the 110 generated phonics questions ARE wired** (2026-09-02) — what remains of that item is the 12-cell → 213-cell scope alone · **4 empty maths cells** · **cascade the branch** (30 ahead of develop, 31 of main) · **`REGRESSION.1` is last by construction.**
+>
+> ⚠ **Every remaining board item writes `corpora/`, which the running job reads at the start of every batch** — that is why the phonics wiring was the one picked up. Nothing else is unblocked until the job ends.
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 EVERY PICTURE, AND THE BOUND THAT WAS NEVER A RATE LIMIT (EARLIER)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW — TWO JOBS ARE RUNNING, DO NOT START A THIRD THAT WRITES `corpora/academic`
+> ```
+> board            33 open · 17 in-progress · 18 closed
+> git              15 commits on feature/board-triage-0902, NOT cascaded
+>                  main 35d1eda5 · develop 24e4fa7f
+> RUNNING          fetch-academic-corpora.mjs  — 726/1887 articles, 7,884 figures
+>                  log: .scratch/academic-nocap.log
+> QUEUED           openstax then saylor, chained on a FILE MARKER
+>                  ("WIKIBOOKS DONE" in .scratch/wikibooks-nocap.log)
+>                  log: .scratch/context-refetch.log (absent until it starts)
+> walk             frozen ON PURPOSE — training still being BUILT
+> donor pod        i03ihi54kccu0l EXITED on purpose. restart = start-pod, NEVER terminate
+> ```
+>
+> ### ⛔⛔ THE ONE FINDING THAT REWRITES OTHER PEOPLE'S CONCLUSIONS
+> **The Wikimedia "throttle" this repo has fought for weeks was the USER-AGENT, not the request rate.** Six identical requests, back to back: **0 OK / 6× 429 without contact details, 6 OK / 0× 429 with them.** Wikimedia's policy requires a contact URL or address; ours had none, so the API refused essentially everything — **an identity rejection that no amount of waiting or backing off could ever clear.**
+> - Each refused topic burned the whole ladder `1,500 + 6,000 + 18,000 + 48,000 = 73.5 s` × ~1,887 topics = **38.5 hours**, for a job whose deliberate pacing totals **22 minutes**. Two live processes measured **22 and 25 CPU-SECONDS across 7.75 hours**.
+> - After the fix: **one full cell in 14.8 s, `SKIPPED BY REASON — none`**; the whole academic pass ran in **~42 minutes**.
+> - ⛔ **`fetch-academic-corpora.mjs`'s own comment records tuning the between-cell sleep 4s→8s→20s, measuring no gain at any value, and then blaming a DIFFERENT pacing parameter.** A parameter that produces no change across three values is not the cause — and the second guess was wrong too. **Every "lost to throttle" topic, every silently-thin cell, and every "unverified because the check was throttled" note in this repo belongs to the agent string.**
+> - ⛔ **This is NOT the banned UA forgery.** Forgery is claiming to be a browser to defeat a control that refuses robots — still banned, and the UMN / CK-12 / OER-Commons 403s stay unworked-around. This adds the contact the host asks every robot to send.
+> - ⚠ **AND IT VOIDS OTHER BOUNDS' JUSTIFICATIONS.** `WB_FIG_CHAPTERS = 8` defended itself as protection against *"an API this project has been throttled off repeatedly"*. **It was rationing requests against a limit that was never rate-based.** Every "we must not ask for too much" bound in this repo now inherits that suspicion.
+>
+> ### ⛔⛔ GEE'S RULINGS THIS SESSION — THESE GOVERN
+> - *"THERE IS NOT CAP TO FIGURES!!! REMOVE IT"* → **three caps existed and are gone**: `WIKI_FIG_PER_ARTICLE 12`, `WB_FIG_CHAPTERS 8`, `WB_FIG_PER_CHAPTER 6`. Measured cost before removal: **372 of 1,848 articles clipped at exactly 12**, and a 68-chapter book had **8 chapters searched and 60 skipped**. ⭐ **The clipping fell hardest on the RICHEST pages** — first 69 articles of the uncapped run, 20 exceed the old ceiling and one yielded **47 figures**. It was decapitating the best pages, not trimming a tail.
+> - *"okay i guess that means u need to replace the old and refetch correctly"* → the whole corpus is being re-fetched uncapped. **Baseline to beat: 189 cells / 37,592 figures.**
+> - *"all illistrastions shall always be direclty connected and trained to the text that refrences them"* → audited: **only 54% were.** `saylor` 6,176 figures with **ZERO** context; `openstax` 13,207 at **38%**. The code is fine — both write `context` today — those figures **predate the field**, so only a re-ingest fixes it. That is the queued job.
+> - **Option 1 for the figure lane**, *"but they have to link to thhe text corrctly"* → the background drain, below.
+> - *"is that going to work building it by hand shouldnt we using something similar to hooked on phonics?"* → **he stopped me rebuilding the broken thing by hand.** Hooked on Phonics is proprietary; the METHOD is a systematic scope-and-sequence and that is openly published.
+>
+> ### ⭐ WHAT LANDED
+> - **Her major TRIPLED — 494,172 → 1,656,511 words, 0 → 1,703 figures.** Theory of Computation 8%→64%, Computer Architecture 8%→62%, Networks 11%→**167%** (first CS cell over its floor). Includes three **CC-BY-NC-ND** books admitted on his ruling and recorded honestly as ND. ⭐ **Round one of the search would have failed** — 3 of its first 4 hits were ND, and the best book of the set (Peterson, CC-BY 4.0) shows **no licence on its own pages**; it lives in the repo's `LICENSE`.
+> - **The teach ledger + panel** — *everything a cell ever taught*, paged with `total` beside `returned`. **The ring stays at 400**; a bigger window was never the answer.
+> - **Systematic phonics, derived not typed** — `corpora/phonics/gpc.json`, **241 usable rules · 156 graphemes · 52 with more than one sound** (the exam bank had ZERO). `c → s ʃ k`, `g → dʒ ɡ`, `ch → tʃ k ʃ`, `th → θ ð`.
+> - **The figure background lane** — `server/figure-queue.js`. Cell pass enqueues everything; a drain takes one per tick off the teach lane. ⛔ **The link TRAVELS WITH THE ROW** (own alt/caption/context/theme), which is the only reason deferral is safe — proven on 563 real figures: **`phrase identical: true`** against what the inline path would bind.
+> - **`UNREACHABLE 0`** for the first time; the dead `economics/college1` retired after a theme-by-theme superset check.
+>
+> ### ⛔⛔ THE DEFECT SPECIES THAT REPEATED ALL DAY — CHECK FOR IT BEFORE BELIEVING ANY COUNT
+> **A bound that strands the tail while every number it prints stays truthful.**
+> - `_perceiveCellFigures` counted ALREADY-HELD figures against its attempt bound, so after 24 were banked every later visit returned `perceived: 0` — **silently, because the log only prints on success.** Harness: **24/175 → 175/175**.
+> - `_trainAcademicStories` took `newWords.slice(0, 60)`, and a word the dictionary cannot define is never recorded as taught — so it sits at the head forever. **Harness: 0 of 340 anchored → 340 of 340.** Academic vocabulary anchoring could have been dead outright.
+> - `DREAM_TEXTFIG_PER_CELL = 6` needed **462 visits** to finish `math/grade10`. The cursor fixed *"the same 24 forever"* and could not fix *"6 per visit × few visits"*.
+> - ⚠ **Fix with a rotating cursor, never a miss-list** — a miss-list cannot tell *"no definition exists"* from *"the API refused me just now"*.
+>
+> ### ⚠ MY OWN ERRORS THIS SESSION, ALL CAUGHT BY A NUMBER BEING IMPLAUSIBLE
+> - **My fetcher read the table of contents and called it the book** — 2,958 words for a whole networking textbook. Two-level walk: **→ 200,575**. ⚠ And my first diagnosis blamed the sentence filters; measuring showed **18 of 18 survived every filter**. Measuring stopped me "fixing" something that worked.
+> - **A licence field held half a sentence** — `"CC license described below"`, because the prose pattern beat the machine-readable URL slug.
+> - **I shipped the field-name bug the monitor exists to catch** — the sweep report has no top-level `missing` array, so the page would have printed a confident **"✅ every exam word appears"** while `totalMissing` was 10. Third field-name mismatch of the day; `toProbeShape` renames `q`→`question` caught me again.
+> - **My first figure-queue "waiter" was a launcher** — its condition evaluated false on the first pass and openstax started immediately, racing the academic run. Then I **misdiagnosed the second attempt as also failing** (the marker file reappearing was the OLD waiter's trailing echo). ⚠ **`ps aux` in this shell shows neither node nor the waiter — PowerShell `Get-CimInstance` is the only truthful process view here.**
+> - **I measured "prose lost" by exact string comparison** and reported 95–115 sentences lost per article while the totals said `544 → 543`. Removing a citation marker CHANGES a sentence, so it stops matching. Honest net: **−1, −5, −42**.
+> - ⚠ **Cluster checking took phonics refutations 4 → 28 and every new one was mine** (r-coloured diphthongs; ARPAbet writes *fear* as `F IH1 R`). **The encyclopedia was right and the checker was wrong**, and the report was about to say the opposite. Verdicts are now asymmetric: a single-phoneme mismatch may be REFUTED, a sequence can only fail UNPROVEN. **An instrument must not accuse a source of an error that lives in the instrument.**
+>
+> ### ⏳ NEXT
+> **Wait for the academic pass, then the queued openstax+saylor context re-fetch** (it fixes ~17,000 figures bound to no text) · **re-measure the figure total against the 37,592 baseline** · **re-run academic ONCE more** so the `stripWikiChrome` boilerplate fix reaches the wiki contexts · **`science/grade9`** (the one cell held back from the OpenStax pass) · **the phonics question GENERATOR** and the 12-cell→213-cell exam-bank scope problem · **4 empty maths cells** (`pre-K`, `college4`, `grad`, `phd`) · **cascade the 15 commits** · **the purge still does not exist** · **`REGRESSION.1` is last by construction.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 THE CANON PICKS THE BOOKS (EARLIER) — AND FOUR RULINGS SET THE ORDER
+>
+> ### Read in this order: this block → `docs/TODO.md` → `docs/TEACHVIEW-INVENTORY.md` → the blocks below.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                 48 open
+> corpus                187 cells · 46,177,474 words · 23,057 figures · 299 MB
+> cells walked          213 · 56 full · 130 thin · 7 empty
+> maths                 0 prose cells this morning -> 13 · 1,453,196 words · 8,683 figures
+> reading ladder        73 -> 90 placements / 84 books · early band 31 -> 48
+> git                   4 commits on feature/board-triage-0902, NOT cascaded
+>                       main 35d1eda5 · develop 24e4fa7f on both remotes
+> ⚠ NOT pushed          the corpus files the two ingests are still writing
+> ingests RUNNING       the encyclopedia pass + the open-textbook pass — many hours in
+> walk                  frozen ON PURPOSE — training still being BUILT
+> donor pod i03ihi54kccu0l  EXITED on purpose. restart = start-pod, NEVER terminate.
+> ```
+>
+> ### ⛔⛔ GEE'S RULINGS — THESE GOVERN, AND TWO OF THEM CORRECTED ME MID-WORK
+> - *"dont get random books get all the american classics for early grades"* → ⭐ **THE CANON DECIDES THE BOOKS.** I was probing illustrated children's-book HOSTS; her canon is an American school year — McGuffey, US social studies, the Revolution. **The host with the most pictures does not get to pick.** One source he rejected outright: not pursued, do not re-propose it.
+> - *"remember the teach view is not a verbatim copy of the dashboard it is the verbatim shit i told you to all put in it"* → **the training monitor is about THE TRAINING.** Her vital signs — consciousness, mood, hormones, donor throughput, loop lag — are the DASHBOARD's job. My first inventory was a regrouping of those and was wrong.
+> - *"and we dont use item numbers or code names and shit we use plain english for it all"* → **brain documents name the thing, never the ticket.** A reader cannot look up a ticket number.
+> - **Ordering ruled earlier the same session:** find a bigger source before writing fetchers · early band first · panel inventory then one full vertical slice · run the maths ingest scoped now and the full pass after the ingests stop.
+>
+> ### ⭐ WHAT LANDED
+> **Maths went from nothing to a full shelf.** Illustrative Mathematics (K-10) plus three OpenStax books (grade10-12): **13 cells · 1,453,196 words · 8,683 figures**, and **2,369 of those figures carry the prose they sit inside — the first corpus content anywhere that does.**
+>
+> **The American classics — early band 31 → 48 books, all with illustrated editions.** Chosen that way deliberately: the early band held **348 pictures against college's 8,852**, so these feed the thinnest prose and the emptiest eyes at once.
+>
+> **The training-monitor inventory** (`docs/TEACHVIEW-INVENTORY.md`) — organised by each clause of what he asked for. **The real gaps: what is actually being SENT (bytes, frame shapes, and the pictures she is shown that the page never mentions), having ALL of it rather than a 400-item window, and controls — the page is read-only today apart from the art verdicts.**
+>
+> ### ⛔⛔ THE RULE THAT KEPT PAYING: VERIFY THE ID, NOT THE TITLE YOU MEANT
+> Candidate book ids proposed for the classics batch resolved to **The Three Musketeers · Siddhartha · Dr Jekyll and Mr Hyde · The Eskdale Herd-boy · Whistler's *The Gentle Art of Making Enemies***. **A wrong id does not fail — it teaches the wrong book.** ⚠ The first verification attempt **timed out** because the catalogue API was returning 503; **the method that works is reading each book's own header straight from Gutenberg, in parallel** — seconds instead of minutes.
+>
+> ### ⚠ TWO DEFECTS I INTRODUCED THE SAME DAY AND FOUND BY RUNNING THINGS
+> - **A mapping is not an ingest.** Three maths books were added to the book map in the morning and the fetcher was never executed — two cells sat EMPTY until the auditor was pointed at them.
+> - **The coverage auditor still called maths a by-design absence** after maths became a prose subject, so it reported the same nine cells as *both* "no prose lane by design" **and** "EMPTY". A set that encodes a policy has to move when the policy moves.
+>
+> ### ⏳ NEXT — three are queued behind the running ingests
+> **Fetch the classics** (writes the English cells; the encyclopedia pass is writing them too) · **the full textbook pass** (writes the general-education cells; also retires the dead economics cell holding 342,056 unread words) · **audit the two concurrent ingests for entries they lost** · **then one full vertical slice of the monitor — he needs to pick the area** · **the purge still does not exist** · **the full regression review is last by construction.**
+>
+> ### ⚠ OWNED FOULS THIS SESSION
+> A Python heredoc and a `sed -i` on files that should have gone through the editor. Three separate measurement tools that reported confident wrong answers — a `%VAR%`-eaten git format string, a regex assuming the wrong data shape, and an occurrence count posing as a file count. **Each was caught by a number being implausible, not by anything erroring.** On Windows the shell is cmd.exe, so `%` in any argument is a variable reference.
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 MATHS GETS ITS TEXTBOOK (EARLIER) — AND THE "71 UNUSED EXPORTS" WERE SEVEN
 >
 > ### Read in this order: this block → `docs/TODO.md` (`MATHBOOK.2`, `TEACHVIEW.9`, `FIGTEXT.4` are the live successors) → the blocks below.
 >

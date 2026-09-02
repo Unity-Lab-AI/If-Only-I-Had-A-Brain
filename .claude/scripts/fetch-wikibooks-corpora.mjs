@@ -27,11 +27,19 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { stripLeakedMarkup } from './clean-math.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const OUT = path.join(ROOT, 'corpora', 'academic');
-const UA = 'UnityBrainCurriculum/1.0 (non-profit educational research; open textbooks)';
+// ⛔⛔ CONTACT DETAILS ARE MANDATORY FOR WIKIMEDIA, AND WITHOUT THEM THIS LANE
+// WAS REFUSED ON ESSENTIALLY EVERY REQUEST (measured 2026-09-02 — six identical
+// requests: 0 OK / 6x 429 without contact info, 6 OK / 0x 429 with it).
+// The refusal is an identity rejection, not a rate limit, so no amount of
+// slowing down or backing off could ever clear it.
+// ⛔ Not UA forgery — the agent still says exactly what it is and who runs it,
+// and adds the contact details the host asks every robot to send.
+const UA = 'UnityBrainCurriculum/1.0 (https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain; contact@unityailab.com) node-fetch educational-research';
 const API = 'https://en.wikibooks.org/w/api.php';
 
 const SENT_MIN = 40, SENT_MAX = 320;
@@ -138,6 +146,13 @@ function cleanSentences(text) {
     // Wiki furniture that is not the book.
     if (/wikibooks|wikipedia|this page (was|is)|edit this|category:|template:|creative commons|licensed under|retrieved from/i.test(s)) continue;
     if (/^(figure|table|exercise|see also|external links|references)\b/i.test(s)) continue;
+    // ⛔ 584 sentences from this source carried UNRENDERED MediaWiki template
+    // markup (`{{review question |...}}`) and MathML leaks
+    // (`{\displaystyle c_{f}}`). The template filter above catches the word
+    // "template:" in a link and never touched the braces themselves.
+    const _m = stripLeakedMarkup(s);
+    if (_m.drop) continue;
+    s = _m.text;
     out.push(s.toLowerCase());
   }
   return out;
@@ -184,8 +199,24 @@ async function extractsFor(titles) {
 // throttled off repeatedly. `WB_FIG_CHAPTERS` chapters are walked, in the book's
 // own order, and the log says how many were skipped so the bound is never
 // mistaken for an absence.
-const WB_FIG_CHAPTERS = Number(process.env.WB_FIG_CHAPTERS) || 8;
-const WB_FIG_PER_CHAPTER = 6;
+// ⛔⛔⛔ NO CAP ON FIGURES. EVER. (Gee 2026-09-02: *"THERE IS NOT CAP TO
+// FIGURES!!! REMOVE IT"*, and *"we need to make sure we use all illistrations
+// and figures in all corpus so Unity can see them"*.)
+//
+// Both bounds are gone. They cost real pictures: a 68-chapter book had **8
+// chapters searched and 60 skipped**, at a ceiling of 6 figures each — so at
+// most 48 images from a book that carries hundreds.
+//
+// ⚠ THE STATED REASON FOR THE BOUND IS ALSO VOID, WHICH IS THE PART WORTH
+// KEEPING. The comment above justified it as protection against "an API this
+// project has been throttled off repeatedly" — and that throttle was measured on
+// 2026-09-02 to be the **User-Agent**, not the request rate: six identical
+// requests gave 0 OK / 6× 429 without contact details and 6 OK / 0× 429 with
+// them. **The bound was rationing requests against a limit that was never
+// rate-based.** Every "we must not ask for too much" bound in this repo inherits
+// that suspicion.
+const WB_FIG_CHAPTERS = Infinity;
+const WB_FIG_PER_CHAPTER = Infinity;
 
 function wbFileName(src) {
   const m = /\/wikipedia\/[a-z]+\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/i.exec(String(src || ''));

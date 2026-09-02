@@ -87,7 +87,40 @@ function sentCapFor(grade) {
   return SENT_CAP_BY_BAND[band] || SENT_CAP_BY_BAND.early;
 }
 const SENT_MIN = 30, SENT_MAX = 240;
-const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
+// ⛔⛔⛔ THE USER-AGENT WAS THE THROTTLE, AND EVERY PACING FIX EVER MADE TO THIS
+// FILE WAS TREATING A SYMPTOM (measured 2026-09-02).
+//
+// Gee: *"something is wrong it should not take 16 hours to down load a few books
+// that are MB a piece"*. He was right, and the cause was not rate at all.
+//
+// ⭐ THE MEASUREMENT, six identical requests per UA, back to back:
+//     'UnityBrainCurriculum/1.0 (educational research; ...)'   ok=0  429=6
+//     the same string + a contact URL and email                ok=6  429=0
+//
+// **Wikimedia's User-Agent policy requires a descriptive agent carrying a
+// contact URL or address.** The old string had none, so the API refused
+// essentially every request — and the refusal was not a rate limit that waiting
+// could clear, it was an identity rejection that waiting could never clear.
+//
+// ⚠ THE COST, in arithmetic that matches the observed run exactly: each refused
+// topic burned the whole backoff ladder, 1,500 + 6,000 + 18,000 + 48,000 =
+// **73.5 s**, and there are ~1,887 topics. **1,887 x 73.5 s = 38.5 hours** for a
+// job whose deliberate pacing totals 22 minutes. Two live processes showed **22
+// and 25 CPU-SECONDS across 7.75 hours** — almost the entire run was sleeping in
+// backoff.
+//
+// ⛔ AND IT EXPLAINS THE HISTORY WRITTEN INTO THIS VERY FILE. The note below
+// about tuning the between-cell sleep 4s -> 8s -> 20s and measuring no gain at
+// any setting, then blaming the in-cell burst, was chasing the wrong variable
+// twice: **a parameter that produces no change across three values is not the
+// cause**, and the real cause was never pacing. Every "lost to throttle" topic
+// and every silently-empty cell attributed to burst rate belongs here instead.
+//
+// ⛔ THIS IS NOT UA FORGERY, WHICH IS BANNED AND STAYS BANNED. Forgery is
+// claiming to be a browser to get past an access control that refuses robots.
+// This is the opposite: the agent still says exactly what it is and who runs it,
+// and adds the contact details the host explicitly asks every robot to send.
+const UA = 'UnityBrainCurriculum/1.0 (https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain; contact@unityailab.com) node-fetch educational-research';
 
 // (subject, grade) → real-course Wikipedia topics (scope-sequence aligned).
 // Each cell carries the FULL real-grade topic spread (not a thin sample) so the
@@ -469,10 +502,25 @@ const TOPICS = {
   // half: seeing, naming, materials, then history and criticism. Her drawing
   // skill is trained separately by the practice loop.
   art: {
-    'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square'],
-    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern'],
-    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait'],
-    grade2: ['Color wheel', 'Landscape painting', 'Still life', 'Sculpture', 'Pottery', 'Printmaking', 'Symmetry', 'Mosaic'],
+    // ⛔ THE EARLY BAND IS THE PRIORITY (operator ruling 2026-09-02, `TEXTBOOK.2`),
+    // AND IT IS THE THINNEST PART OF THE CORPUS. Measured against a 7,300-word
+    // band floor: `art/kindergarten` **1,453 words**, `art/pre-K` 2,086,
+    // `pe/kindergarten` 2,127, `art/grade1` 3,439. ⭐ The gap is NOT a missing
+    // source — `ela` is well fed here by 31 Gutenberg books (McGuffey, Aesop,
+    // Alice, Oz). It is that art/pe/music/health run on 8-topic wiki lists.
+    // Expanded to ~18 apiece, the same lever that fixed ela and social.
+    // ⚠ Unverified against the live API for the same reason recorded on the `ela`
+    // block: both wiki ingests hold the quota, and a title check under a throttle
+    // cannot tell "no such article" from "refused". A wrong title fails LOUDLY as
+    // `no-such-page` in `SKIP_REASONS`.
+    'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square',
+      'Triangle', 'Paint', 'Pencil', 'Brush', 'Scissors', 'Glue', 'Chalk', 'Rainbow', 'Clay', 'Doll'],
+    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern',
+      'Paper', 'Crayon', 'Paint', 'Scissors', 'Rectangle', 'Circle', 'Triangle', 'Square', 'Craft', 'Picture book'],
+    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait',
+      'Color', 'Watercolor painting', 'Paintbrush', 'Canvas', 'Pattern', 'Clay', 'Origami', 'Mask', 'Puppet', 'Statue'],
+    grade2: ['Color wheel', 'Landscape painting', 'Still life', 'Sculpture', 'Pottery', 'Printmaking', 'Symmetry', 'Mosaic',
+      'Painting', 'Drawing', 'Weaving', 'Quilt', 'Basket', 'Mural', 'Stained glass', 'Portrait', 'Sketch (drawing)', 'Craft'],
     grade3: ['Watercolor painting', 'Sketch (drawing)', 'Perspective (graphical)', 'Mural', 'Weaving', 'Origami', 'Colour theory', 'Portrait painting'],
     grade4: ['Perspective (graphical)', 'Cave painting', 'Ancient Egyptian art', 'Pottery', 'Printmaking', 'Sculpture', 'Mosaic', 'Calligraphy'],
     grade5: ['Renaissance art', 'Leonardo da Vinci', 'Michelangelo', 'Perspective (graphical)', 'Fresco', 'Sculpture', 'Composition (visual arts)', 'Shading'],
@@ -803,7 +851,43 @@ async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_B
 // anything that is not a public-domain or CC mark is refused. ⚠ ND is refused
 // here for the same reason the book lanes refuse it: this corpus publishes an
 // adaptation.
-const WIKI_FIG_PER_ARTICLE = 12;
+// ⛔⛔⛔ REMOVED 2026-09-02 — THERE IS NO CAP ON FIGURES. Retained only as a
+// named constant so nothing references a deleted symbol; it is NOT consulted.
+// Measured cost of the cap before it went: 372 of 1,848 articles clipped.
+const WIKI_FIG_PER_ARTICLE = Infinity;
+
+// ⛔⛔ WIKIPEDIA CHROME IS REMOVED BEFORE ANY INDEX IS TAKEN, AND IT HAD BEEN
+// BECOMING A FIGURE'S "LINKED TEXT" (measured 2026-09-02).
+//
+// A harness on a real queued figure printed its binding phrase as:
+//     "icon this article needs more citations . please help improve this
+//      article by adding citati…"
+// — a maintenance banner, standing in for the prose that references the picture.
+// Swept across the whole corpus: **994 of 20,420 contexts (4.9%) were not
+// subject prose** — 491 citation banners, 217 navigation strings, 187 naming
+// Wikipedia itself, 99 other templates — and **952 of the 994 came from these
+// two wiki lanes.**
+//
+// ⭐ STRUCTURAL, NOT A WORD LIST. Those banners live in known containers
+// (`ambox`, `hatnote`, `navbox`, `metadata`, `mbox`, `reflist`, edit links), so
+// removing the ELEMENTS kills the whole class — including templates nobody has
+// seen yet — where a phrase blacklist would only catch the wordings already
+// observed. This project's standing rule is the same one: classify by structure,
+// never by a list of strings.
+//
+// ⚠ MUST RUN ONCE ON THE WHOLE DOCUMENT, BEFORE `<img>` OFFSETS ARE COLLECTED.
+// The context window is cut by byte index around each image, so stripping
+// elements afterwards would shift every offset and slide each figure's text off
+// the picture it belongs to.
+function stripWikiChrome(html) {
+  let h = String(html || '');
+  h = h.replace(/<table[^>]*class="[^"]*\b(ambox|navbox|metadata|mbox|sistersitebox|infobox-subbox)\b[^"]*"[\s\S]*?<\/table>/gi, ' ');
+  h = h.replace(/<div[^>]*class="[^"]*\b(hatnote|ambox|navbox|metadata|mbox-text|reflist|thumbcaption-nav|shortdescription)\b[^"]*"[\s\S]*?<\/div>/gi, ' ');
+  h = h.replace(/<div[^>]*role="note"[\s\S]*?<\/div>/gi, ' ');
+  h = h.replace(/<span[^>]*class="[^"]*\bmw-editsection\b[^"]*"[\s\S]*?<\/span>/gi, ' ');
+  h = h.replace(/<sup[^>]*class="[^"]*\b(reference|noprint)\b[^"]*"[\s\S]*?<\/sup>/gi, ' ');
+  return h;
+}
 
 function wikiFigContext(html, index, cap) {
   const strip = (x) => String(x)
@@ -886,13 +970,26 @@ async function fetchFigures(title, host, cap) {
   };
 
   const parsed = await get(`https://${host}/w/api.php?format=json&action=parse&prop=text&redirects=1&page=${encodeURIComponent(title)}`);
-  const html = parsed?.parse?.text?.['*'];
-  if (!html) return { figures: [], reason: parsed ? 'no-html' : lastKind };
+  const rawHtml = parsed?.parse?.text?.['*'];
+  if (!rawHtml) return { figures: [], reason: parsed ? 'no-html' : lastKind };
+  // ⚠ Chrome out FIRST, so every `<img>` offset below is an offset into the
+  // same document the context window is cut from. See `stripWikiChrome`.
+  const html = stripWikiChrome(rawHtml);
 
   const found = [];
   const seenFile = new Set();
   for (const m of String(html).matchAll(/<img\b([^>]*)>/gi)) {
-    if (found.length >= WIKI_FIG_PER_ARTICLE) break;
+    // ⛔⛔⛔ NO CAP ON FIGURES. EVER. (Gee 2026-09-02: *"THERE IS NOT CAP TO
+    // FIGURES!!! REMOVE IT"*.) This loop used to stop at
+    // `WIKI_FIG_PER_ARTICLE = 12`, which CLIPPED 372 of 1,848 articles in the
+    // last run — one article in five silently lost pictures, and the log printed
+    // a confident "12 fig" as though that were the whole article.
+    //
+    // ⭐ Every illustration in the curriculum is training data: it goes to her
+    // eyes through the forward CDF 9/7 transform and is bound to the prose it
+    // sits inside. A cap on figures is a cap on what she can SEE, and it is the
+    // same class of defect as every other bound found today — the walk reached
+    // the head of the material and reported the head as the whole.
     const attrs = m[1];
     const src = (/\bsrc="([^"]+)"/i.exec(attrs) || [])[1] || '';
     const file = wikiFileName(src);
@@ -1077,7 +1174,23 @@ async function buildCell(subject, grade, titles) {
     const old = byTheme.get(e.theme);
     // Default: keep the longer story (monotonic coverage for a flaky source).
     // --replace (FC.9): newly-fetched simpler content always wins.
-    if (REPLACE || !old || e.story.length > old.story.length) { byTheme.set(e.theme, e); continue; }
+    //
+    // ⛔⛔ SAME SOURCE WINS OUTRIGHT — the clause five of the six fetchers already
+    // had and this one did not, which made every repair run against it a
+    // guaranteed no-op. Keep-longer alone compares a re-fetch of the SAME topic
+    // against itself: the prose is identical, `>` is false, the old entry wins,
+    // and any improvement that does not LENGTHEN the text can never land — a
+    // figure's `context`, a corrected licence, the `stripWikiChrome` boilerplate
+    // fix, a new field entirely.
+    //
+    // This is not hypothetical. The identical missing clause in
+    // `fetch-openstax-corpora.mjs` held 7,055 figures with no `context` key at
+    // all, and re-running that fetcher rewrote the cells, logged success and
+    // changed nothing, twice, before the merge was suspected instead of the
+    // harvest. ⚠ It also means this fetcher could not repair an entry lost to
+    // the two concurrent ingests — the audit `CELLRACE.2` asked for.
+    const sameSource = old && old.source === e.source;
+    if (REPLACE || !old || sameSource || e.story.length > old.story.length) { byTheme.set(e.theme, e); continue; }
     // ⛔⛔ THE KEEP-LONGER RULE WOULD HAVE THROWN AWAY EVERY PICTURE. The old
     // entry wins whenever its story is at least as long — which is the normal
     // case on a re-fetch of the same article — and the winner is the entry from
