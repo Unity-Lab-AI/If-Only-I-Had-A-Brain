@@ -292,6 +292,24 @@ export const SUBJECTS_RETIRED_AT = {
  * two copies of this rule drifting apart is how a walk silently restarts.
  * An empty ledger is genuinely fresh and correctly yields 0.
  */
+/**
+ * A stable identity for a textbook figure, derived from its own address.
+ *
+ * ⛔ EXISTS BECAUSE THE FIGURE KEY USED TO BE A LOOP COUNTER. Keyed on position,
+ * a re-ingest that inserted one figure shifted every subsequent key by one, so
+ * every banked percept in that cell silently re-bound to a DIFFERENT picture —
+ * and nothing could detect it, because the key still looked well-formed.
+ *
+ * A URL identifies the picture; an index identifies where it happened to sit
+ * that day. Short, filename-safe, and stable across re-ingests and reorderings.
+ */
+export function figKeyOf(fig) {
+  const src = String((fig && (fig.url || fig.src)) || '');
+  let h = 5381;
+  for (let i = 0; i < src.length; i++) h = (((h << 5) + h) ^ src.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 export function ledgerFloorIdx(passedCells) {
   const ledger = (passedCells instanceof Set)
     ? passedCells
@@ -8868,26 +8886,58 @@ export class Curriculum {
     try { figs = cluster.academicStoryFigures(subject, grade) || []; } catch { figs = []; }
     if (!figs.length) return { perceived: 0 };
 
-    let perceived = 0, tried = 0;
-    for (const fig of figs) {
+    // ⛔⛔ A RESUME CURSOR, BECAUSE "TAKEN IN ORDER SO A RE-VISIT RESUMES" WAS
+    // WHAT THE COMMENT SAID AND NOT WHAT THE CODE DID (fixed 2026-09-02).
+    //
+    // The loop restarted at index 0 every visit and counted ALREADY-HELD figures
+    // against the attempt bound. With the default cap that bound is 24, so once
+    // the first 24 figures of a cell were banked, every later visit walked those
+    // 24, hit the bound, and returned `perceived: 0` — **and because the log line
+    // only prints when something was perceived, it did so in silence.**
+    //
+    // ⚠ THE COST WAS NOT MARGINAL. A cell holds far more than 24: the discrete
+    // maths cell holds 175 figures and one maths cell holds 2,769. **Everything
+    // past roughly the 24th picture in every cell was unreachable for the entire
+    // life of the lane**, which is the precise opposite of the requirement that
+    // she be shown all of a book's illustrations.
+    //
+    // The cursor advances past what was examined this visit and wraps, so
+    // successive visits sweep the whole cell. It is per-process and deliberately
+    // not persisted: losing it costs one re-walk of already-held keys, which the
+    // store answers without a fetch.
+    if (!this._cellFigCursor) this._cellFigCursor = new Map();
+    const cursorKey = `${subject}/${grade}`;
+    const start = (this._cellFigCursor.get(cursorKey) | 0) % figs.length;
+
+    let perceived = 0, examined = 0, held = 0;
+    let i = 0;
+    for (; i < figs.length; i++) {
       if (perceived >= cap) break;
-      tried++;
-      // Bound the ATTEMPTS too, not just the successes — a cell where every
-      // figure is already held would otherwise walk all 94 every visit doing
-      // store lookups, and a cell where every fetch 404s would retry forever.
-      if (tried > cap * 4) break;
+      // Bound the genuine ATTEMPTS — a cell where every fetch 404s must not
+      // retry forever. ⭐ An already-held figure is NOT an attempt: it costs a
+      // store lookup, not a fetch, and counting it here is the bug above.
+      if (examined - held > cap * 4) break;
+      const fig = figs[(start + i) % figs.length];
+      examined++;
       try {
+        // ⛔ KEYED ON THE FIGURE'S OWN ADDRESS, NOT ITS POSITION IN THE LIST.
+        // The key used to be the loop counter, so a re-ingest that inserted a
+        // single figure shifted every subsequent key by one and silently
+        // rebound every banked percept in the cell to a DIFFERENT picture.
+        // A URL identifies the picture; an index identifies where it happened
+        // to sit that day.
         const rec = await cluster.perceiveTextbookFigure(fig, {
-          key: `${fig.theme || subject}-${tried}`,
+          key: `${fig.theme || subject}-${figKeyOf(fig)}`,
           theme: fig.theme || `${subject}/${grade}`,
         });
-        if (rec) perceived++;
+        if (rec) perceived++; else held++;
       } catch { /* one bad figure never costs the cell */ }
     }
+    this._cellFigCursor.set(cursorKey, (start + i) % figs.length);
     if (perceived > 0) {
-      this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) — ${perceived} textbook figure(s) perceived and shown (${figs.length} in this cell, cap ${cap}/visit).`);
+      this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) — ${perceived} textbook figure(s) perceived and shown (${figs.length} in this cell, cap ${cap}/visit, resuming at ${start}).`);
     }
-    return { perceived, available: figs.length };
+    return { perceived, available: figs.length, examined, from: start };
   }
 
   /**
@@ -16331,7 +16381,33 @@ export class Curriculum {
           }
         }
         const VOCAB_CAP = opts.vocabCap ?? 60;
-        const batch = newWords.slice(0, VOCAB_CAP);
+        // ⛔⛔ ROTATE THE WINDOW — `slice(0, CAP)` STRANDS EVERY WORD PAST THE
+        // FIRST 60 AS SOON AS 60 UNDEFINABLE ONES COLLECT AT THE HEAD
+        // (found 2026-09-02 sweeping the teach path for this shape).
+        //
+        // `newWords` is rebuilt each visit by filtering out
+        // `_definitionTaughtWords` — which is only ever added to when
+        // `defsBound > 0`. **A word the dictionary has no entry for is never
+        // recorded**, so it stays unlearned, stays at the head of the list in
+        // corpus order, and is retried on every single visit forever. Academic
+        // prose is full of them: proper nouns, inflected forms, technical
+        // coinages. Once sixty accumulate, **the cell's remaining vocabulary can
+        // never be anchored again** — and the log line would still read
+        // "0/60 anchored", which looks like a bad batch rather than a wall.
+        //
+        // ⚠ A MISS-LIST IS THE WRONG FIX HERE AND WAS REJECTED. Marking a word
+        // permanently-missed on a failed lookup cannot tell "this word has no
+        // definition" from "the API refused me just now" — the exact conflation
+        // this corpus has been bitten by repeatedly. A rotating window needs no
+        // such judgement: a blocked head cannot hide the tail, and a word that
+        // becomes definable later is still picked up on a later pass.
+        if (!this._acadVocabCursor) this._acadVocabCursor = new Map();
+        const vcKey = `${subject}/${grade}`;
+        const vStart = newWords.length ? (this._acadVocabCursor.get(vcKey) | 0) % newWords.length : 0;
+        const batch = newWords.length <= VOCAB_CAP
+          ? newWords
+          : Array.from({ length: VOCAB_CAP }, (_, k) => newWords[(vStart + k) % newWords.length]);
+        if (newWords.length) this._acadVocabCursor.set(vcKey, (vStart + batch.length) % newWords.length);
         if (batch.length && typeof cluster.prefetchDefinitions === 'function') {
           try { await cluster.prefetchDefinitions(batch, { timeoutMs: 8000 }); } catch { /* prefetch best-effort */ }
         }
@@ -16340,7 +16416,7 @@ export class Curriculum {
           try { const r = await this._teachWordDefinition(w, { reps: 3, label: `ACADEMIC-PREVOCAB-${subject}-${grade}` }); if (r && r.defsBound > 0) anchored++; }
           catch { /* per-word best-effort */ }
         }
-        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, capped ${VOCAB_CAP}). Prose now binds on anchored basins, not phantom word basins.`);
+        if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) PRE-VOCAB — ${anchored}/${batch.length} academic terms definition-anchored before prose binding (${newWords.length} unlearned content words found, window ${VOCAB_CAP} from offset ${vStart}). Prose now binds on anchored basins, not phantom word basins.`);
       }
     } catch { /* pre-vocab is best-effort; never blocks the story train */ }
 

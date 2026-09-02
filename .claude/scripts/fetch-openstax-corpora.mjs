@@ -127,7 +127,40 @@ const BOOK_MAP = [
   // chapter counts read from the repo rather than assumed: 83 / 96 / 131.
   { repo: 'algebra-intermediate-book',  subject: 'math', grade: 'grade10',  label: 'Algebra II' },
   { repo: 'algebra-trigonometry-book',  subject: 'math', grade: 'grade11',  label: 'Pre-Calculus' },
-  { repo: 'calculus-book',              subject: 'math', grade: 'grade12',  label: 'AP Calculus' },
+  // ⛔⛔ THE CALCULUS MIRROR IS ALL THREE PUBLISHED VOLUMES IN ONE REPO, AND
+  // UNSPLIT IT PUT MULTIVARIABLE VECTOR CALCULUS IN A GRADE-TWELVE CELL.
+  //
+  // Found 2026-09-02 by reading `math/grade12`'s own theme list back: it carried
+  // `triple-integrals`, `vectors-in-three-dimensions`, `green-s-theorem`,
+  // `stokes-theorem` and `the-divergence-theorem` — Volume 3 — while
+  // `courseNameFor('math','college1')` is literally **"Calculus II and
+  // Multivariable"** and that cell was EMPTY. Content four years above its grade,
+  // in the corpus, while the cell named for it held nothing.
+  //
+  // ⭐ THE SPLIT IS THE PUBLISHER'S, READ FROM `SUMMARY.md` — chapter titles, not
+  // keywords, and `buildBook` refuses the whole book if a title is not in that
+  // TOC. OpenStax's Volume 3 is the seven chapters from Parametric Equations
+  // onward; the first of those is ALSO the last chapter of Volume 2, so it stays
+  // with AP Calculus (BC covers it) and Volume 3 proper starts at Vectors in
+  // Space. Volume 1 + Volume 2 = AP Calculus; Volume 3 = the multivariable half
+  // of the college course.
+  {
+    repo: 'calculus-book', subject: 'math', grade: 'grade12', label: 'AP Calculus',
+    chapters: [
+      'Functions and Graphs', 'Limits', 'Derivatives', 'Applications of Derivatives',
+      'Integration', 'Applications of Integrations', 'Techniques of Integration',
+      'Introduction to Differential Equations', 'Sequences and Series', 'Power Series',
+      'Parametric Equations and Polar Coordinates',
+    ],
+  },
+  {
+    repo: 'calculus-book', subject: 'math', grade: 'college1', label: 'Multivariable Calculus',
+    chapters: [
+      'Vectors in Space', 'Vector-Valued Functions',
+      'Differentiation of Functions of Several Variables', 'Multiple Integration',
+      'Vector Calculus', 'Second-Order Differential Equations',
+    ],
+  },
   // ⛔⛔ "PHILSCHATZ CARRIES 11 *-BOOK REPOS AND EXACTLY THREE ARE MATHS" WAS
   // WRONG, AND IT WAS WRITTEN AS A CHECKED FACT (corrected 2026-09-02).
   // The org carries **22** `*-book` repos and **five** are maths: the three
@@ -370,9 +403,39 @@ async function licenceOf(repo) {
   return { id: `CC-BY${tail ? ' ' + tail : ''}`.trim(), ok: true };
 }
 
-async function buildBook({ repo, subject, grade, label }) {
+// ⭐⭐ THE PUBLISHER'S OWN CHAPTER MAP — the thing that makes a volume split a
+// READ rather than a guess.
+//
+// A book repo ships `SUMMARY.md`, its table of contents: one line per chapter
+// tagged `{: .chapter}` followed by its section lines, every one carrying the
+// module id it lives in. That is an authoritative chapter → modules mapping
+// written by the publisher.
+//
+// ⛔ THIS EXISTS BECAUSE THE ALTERNATIVE WAS BANNED, AND RIGHTLY. The merged
+// calculus mirror carries all three published volumes as ONE repo with opaque
+// module-id filenames (`m53472.md`), so the only other way to split it is to
+// classify chapters by keywords in their titles — a word list acting as a
+// classifier, which is the approach this project has been corrected on three
+// separate times. **The map was sitting in the repo the whole time.**
+async function bookToc(repo) {
+  const md = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/SUMMARY.md`);
+  if (!md) return null;
+  const chapters = [];
+  let cur = null;
+  for (const line of String(md).split(/\n/)) {
+    const chap = /\{:\s*\.chapter\s*\}\s*\[([^\]]+)\]\(contents\/([^)]+)\)/.exec(line);
+    if (chap) { cur = { title: chap[1].trim(), modules: [chap[2].trim()] }; chapters.push(cur); continue; }
+    // A preface or appendix ends the current chapter's run of sections.
+    if (/\{:\s*\.(preface|appendix)\s*\}/.test(line)) { cur = null; continue; }
+    const sect = /\[([^\]]+)\]\(contents\/([^)]+)\)/.exec(line);
+    if (sect && cur) cur.modules.push(sect[2].trim());
+  }
+  return chapters.length ? chapters : null;
+}
+
+async function buildBook({ repo, subject, grade, label, chapters }) {
   const cap = sentCapFor(grade);
-  console.log(`[openstax] ${repo} -> ${subject}/${grade} (cap ${cap})`);
+  console.log(`[openstax] ${repo} -> ${subject}/${grade} (cap ${cap})${chapters ? `  [${chapters.length} chapter(s) of the book]` : ''}`);
 
   const lic = await licenceOf(repo);
   if (!lic) { console.log(`  SKIPPED — no readable licence in ${repo}/LICENSE.txt`); return 0; }
@@ -391,7 +454,31 @@ async function buildBook({ repo, subject, grade, label }) {
   // downloaded at all. The comment above was right that front-loading is wrong
   // and still left most of the book on the server. Gee: *"all the corpus needs
   // to be complete"*.
-  const picked = mds;
+  let picked = mds;
+
+  // ⭐ A VOLUME SPLIT, DRIVEN BY THE PUBLISHER'S TABLE OF CONTENTS.
+  // ⛔ FAILS LOUDLY RATHER THAN SILENTLY INGESTING THE WHOLE BOOK: if the TOC is
+  // unreadable, or a named chapter is not in it, this returns 0 instead of
+  // writing every chapter into a cell that asked for seven. **A filter that
+  // falls back to "everything" on error is how a grade-twelve cell would quietly
+  // acquire a multivariable calculus course — which is the exact defect this
+  // split exists to undo.**
+  if (chapters) {
+    const toc = await bookToc(repo);
+    if (!toc) { console.log(`  SKIPPED — ${repo}/SUMMARY.md unreadable, and a chapter filter may not guess`); return 0; }
+    const known = new Set(toc.map((c) => c.title));
+    const missing = chapters.filter((t) => !known.has(t));
+    if (missing.length) {
+      console.log(`  SKIPPED — chapter(s) not in the book's own TOC: ${missing.join(' | ')}`);
+      console.log(`            the TOC lists: ${toc.map((c) => c.title).join(' | ')}`);
+      return 0;
+    }
+    const want = new Set();
+    for (const c of toc) if (chapters.includes(c.title)) for (const m of c.modules) want.add(m);
+    picked = mds.filter((f) => want.has(f.name));
+    console.log(`  ${picked.length} of ${mds.length} chapter files selected by the book's own TOC`);
+    if (!picked.length) { console.log('  SKIPPED — TOC matched no files on disk'); return 0; }
+  }
 
   const experiences = [];
   let taken = 0;
