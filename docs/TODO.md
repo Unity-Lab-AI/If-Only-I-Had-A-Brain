@@ -2142,6 +2142,27 @@ Gee, verbatim:
 
 - [ ] `TEACHKNOB.3` — **THE TEACH VIEW IS TWO-THIRDS DONE AND HE ASKED FOR THE MISSING THIRD.** `TEACHVIEW.10` part ② shipped (the ledger, `server/teach-ledger.js` — *everything a cell ever taught*, paged, with `total` beside `returned`). ⏳ **`TEACHVIEW.8` (retention + export) and `TEACHVIEW.9` remain open**, and `.9` is his verbatim ask: *"i want to know everything and seee everything in bars graphs, charts readouts of whats being sent stati…"*. ⚠ **`TEACHKNOB.1`'s panel belongs beside it, not in a separate screen** — what she is being taught and the knobs that shape how it lands are one question.
 
+## COURSEGUT — "did we properly gut all the wrong course materials?" — audited 2026-09-02
+
+Gee, verbatim:
+
+> *"and we properly gutted all the wrong course materials right?"*
+
+- [ ] `COURSEGUT.1` — ⭐⛔ **STRUCTURE: YES, AND IT WAS CHECKED RATHER THAN ASSERTED. CONTENT: NO — 12,830 SENTENCES STILL CARRY RAW MARKUP.**
+  - ✅ **NO WRONG-BAND TEXTBOOK ANYWHERE.** Every source was mapped to the grade span of the cells holding it, and **only two sources span 5+ bands — both encyclopedias, which is by design.** No textbook bleeds across bands, which is the defect the grade gate exists to stop.
+  - ✅⭐ **`simple.wikipedia` IS CORRECTLY CONFINED TO THE EARLY GRADES — I checked this specifically because a simplified-English encyclopedia at college level would be exactly the wrong material.** It is dense through **pre-K → grade5** (`art 18/18`, `science 15/16`, `social 17/18` — right where simplified English belongs) and above grade5 it is **one experience per cell** (`science/college1 1/216`, `psychology/grade9 1/18`, `cssystems/college3 1/10`). **Strays at trace level, not bleed.**
+  - ✅ **NO ORPHANED COURSES IN EITHER DIRECTION.** Subject dirs on disk the walk never reads: **none.** Subjects the walk runs with no corpus dir: **none.** Corpus files naming a grade that is not in `GRADE_ORDER`: **none.** ⭐ **This is the `PROSE_ACADEMIC_SUBJECTS` reachability trap checked from both sides** — the defect that once left `cs/college*` holding 268,481 words nothing trained on.
+  - ⛔⛔ **BUT THE CONTENT IS NOT CLEAN, AND THIS IS THE REAL ANSWER TO HIS QUESTION.** Re-measured across all 2,542,395 sentences on disk:
+  ```
+    carrying raw markup   12,830   (0.505%)
+    mostly-markup            121   (what the cleaner would drop outright)
+    worst sources   arxiv 5,940 · illustrative-math HS/MS students 3,000+ · openstax/calculus 377
+    worst cells     major/grad 1,627 · major/phd 1,627 · math/grade8 1,177 · math/grade10 1,006
+  ```
+  **She would learn `\mathrm` as a word.** ⚠ **This is `MATHLEAK.1` and its re-ingest is still owed** — the cleaner is built and the corpus is not clean.
+  - ⚠⚠ **DO NOT READ 12,830 AS AN IMPROVEMENT ON THE BOARD'S 42,521.** That figure was produced by a different predicate, and **two contamination counts taken with different regexes are not comparable.** Mine may be narrower. **The honest statement is that by THIS predicate it is 12,830; whether the corpus got cleaner is a question only one predicate run twice can answer.**
+  - ⛔ **AND THE 4 EMPTY MATHS CELLS ARE STILL EMPTY** (`MATHGAP.1`) — not wrong material, but absent material, and it is the same question one step over.
+
 ## TEMPORAL — motion reaches her attention but never her memory — filed 2026-09-02
 
 Gee, verbatim:
