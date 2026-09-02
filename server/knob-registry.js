@@ -27,8 +27,20 @@
  *          use and a write takes effect on the next call
  *   boot   the read happens at module scope, so the value was frozen when the
  *          process started and a write CANNOT take effect until a restart
+ *   cached the read is guarded by an `if (this._x === undefined)` first-use
+ *          cache, so it is read ONCE and then never again. A write BEFORE the
+ *          first use takes effect; a write after it is silently ignored.
  *   ???    not yet verified — the read site is recorded, the scope is not
  *          proven, and it is rendered as unproven rather than guessed
+ *
+ * ⛔⛔ `cached` WAS FOUND BY READING THE SITES, AFTER TWO AUTOMATED CLASSIFIERS
+ * HAD BOTH LIED — and it is the most dangerous of the three, because it looks
+ * exactly like `live` in the source. `DREAM_FIRING_TARGET_PCT` and
+ * `DREAM_NOISE_GATE` were both carried here as `live` and both sit behind a
+ * first-use cache: on a brain that has already run, **a write to either is
+ * accepted, reads back correctly, and changes nothing.** That is the precise
+ * failure this whole panel exists to prevent, and it was in this file's own
+ * hand-written data until it was checked line by line.
  *
  * ⚠ EVERY `effect` BELOW WAS DETERMINED BY READING THE READ SITE, NOT BY A
  * SCANNER. A brace-depth classifier was written first and it reported
@@ -57,8 +69,8 @@ const KNOBS = [
   },
   {
     key: 'DREAM_SM_LR_SCALE', group: 'Learning rate & dose', dflt: '0.5',
-    effect: '???', site: 'js/brain/cluster/hebbian.js:403',
-    proof: 'read beside an instance field assignment; per-cluster vs per-call not yet proven',
+    effect: 'cached', site: 'js/brain/cluster/hebbian.js',
+    proof: 'guarded by `if (this._smLrScale === undefined)` — read ONCE per cluster. Resolved from `???` by reading the site.',
     what: 'Damping on the sem→motor and sem→word_motor Hebbian rate. This is a saturation-prevention lever; 1.0 restores undamped behaviour.',
   },
   {
@@ -153,8 +165,8 @@ const KNOBS = [
   // ── firing and drive ──────────────────────────────────────────────────────
   {
     key: 'DREAM_FIRING_TARGET_PCT', group: 'Firing & drive', dflt: '7.5',
-    effect: 'live', site: 'server/brain-server.js:5292',
-    proof: 'read inside the tick path',
+    effect: 'cached', site: 'server/brain-server.js',
+    proof: 'guarded by `if (this._fireTargetCached === undefined)` — read ONCE, then never again. ⛔ Carried here as `live` until the sites were read line by line.',
     what: 'Target share of neurons firing per tick. The homeostatic set point everything else is driven toward.',
   },
   {
@@ -165,8 +177,8 @@ const KNOBS = [
   },
   {
     key: 'DREAM_NOISE_GATE', group: 'Firing & drive', dflt: 'on ("0" disables)',
-    effect: 'live', site: 'js/brain/cluster.js:2161',
-    proof: 'read at the gate site',
+    effect: 'cached', site: 'js/brain/cluster.js',
+    proof: 'guarded by `if (this._noiseGateEnabled === undefined)` — read ONCE per cluster, then never again. ⛔ Carried here as `live` until the sites were read line by line.',
     what: 'The noise gate. ⚠ It is ON by default and this is an OPT-OUT — a past audit read it as a disabled feature and was wrong.',
   },
   {
@@ -454,9 +466,25 @@ function knobState() {
   const groups = new Map();
   let overridden = 0, boot = 0, unproven = 0, described = 0;
 
-  // Hand-written first so they win; then everything discovered that is not
-  // already covered.
-  const all = [...KNOBS];
+  // ⛔⛔ THE SITE IS RESOLVED AT RUNTIME, BECAUSE HARDCODED LINE NUMBERS GO
+  // STALE THE MOMENT THE FILE IS EDITED — AND THEY DID.
+  //
+  // The hand-written entries above originally carried `file:line`. After a day
+  // of editing `curriculum.js`, `DREAM_CONTENT_LR`'s recorded line pointed at a
+  // bare `}` and `DREAM_REP_COMPRESS`'s pointed into the middle of a comment.
+  // ⚠ **The panel renders `site` as EVIDENCE for the effect class**, so a stale
+  // line is not a cosmetic drift — it is a citation to the wrong code, on the
+  // one field a reader would use to check the claim.
+  //
+  // ⭐ Discovery already locates every knob's CURRENT read site by scanning the
+  // running source, so the hand-written `site` is overridden with it whenever
+  // discovery found one. Hand-written entries now record only the FILE; the
+  // line is always resolved fresh and can never rot again.
+  const _disc = (() => { try { return discover(); } catch { return new Map(); } })();
+  const all = [...KNOBS].map((k) => {
+    const d = _disc.get(k.key);
+    return d && d.site ? { ...k, site: d.site } : k;
+  });
   const byKey = new Set(KNOBS.map((k) => k.key));
   let discoveredCount = 0;
   try {

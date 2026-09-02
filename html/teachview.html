@@ -747,8 +747,13 @@ function renderKnobs(k) {
     if (!rows.length) continue;
     html += `<div style="margin-top:11px"><b>${knobEsc(g.name)}</b></div>`;
     for (const x of rows) {
+      /* ⛔ `cached` IS THE MOST DANGEROUS CLASS AND IT LOOKS EXACTLY LIKE `live`
+         IN THE SOURCE — a first-use cache means a write is accepted, reads back
+         correctly, and changes nothing on a brain that has already run. It gets
+         its own badge rather than being folded into either neighbour. */
       const badge = x.effect === 'live' ? '<span class="tv-dot ok"></span>live'
-        : x.effect === 'boot' ? '<span class="tv-dot warn"></span>boot-frozen'
+        : x.effect === 'boot' ? '<span class="tv-dot bad"></span>boot-frozen'
+        : x.effect === 'cached' ? '<span class="tv-dot warn"></span>cached on first use'
         : '<span class="tv-dot warn"></span>effect unproven';
       /* ⭐ EVERY KNOB CARRIES ITS OWN TOOLTIP, so the list is operable with the
          descriptions collapsed. The bubble holds what it does, its default, its
@@ -758,7 +763,9 @@ function renderKnobs(k) {
         ? 'LIVE — re-read on every use, so a write would take effect on the next call.'
         : x.effect === 'boot'
           ? 'BOOT-FROZEN — captured at module load. A write updates the environment, reads back correctly, and changes NOTHING until a restart.'
-          : 'EFFECT UNPROVEN — the read site is recorded but its scope has not been verified. Not guessed into a class it may not belong to.';
+          : x.effect === 'cached'
+            ? 'CACHED ON FIRST USE — read once behind an "if undefined" guard, then never again. A write BEFORE first use takes effect; a write after it is accepted, reads back correctly, and is SILENTLY IGNORED. This class looks identical to live in the source and can only be found by reading the guard.'
+            : 'EFFECT UNPROVEN — the read site is recorded but its scope has not been verified. Not guessed into a class it may not belong to.';
       const tip = `${x.what}\n\nDefault: ${x.dflt}\nNow: ${x.effective}${x.overridden ? ' (set in the environment)' : ' (default — not set)'}\n\n${effectLine}\nRead site: ${x.site}\nEvidence: ${x.proof}`;
       html += `<div class="tv-tip tip-l" data-tip="${knobEsc(tip)}" title="${knobEsc(x.what)}"`
         + ` style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);border-left:0">`
