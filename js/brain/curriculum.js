@@ -16469,9 +16469,93 @@ export class Curriculum {
 
     const reps = opts.reps ?? 3;
     const ticksPerWord = opts.ticksPerWord ?? 2;
-    // TEACHVIEW — carry the CELL and the SOURCE FILE down into the bus so the
-    // feed can say not just what she is being taught but where it came from,
-    // which is the question that could not be answered at all before today.
+    // ⭐⭐ FIGPAIR.1 — THE PICTURE LANDS ON THE PAGE IT BELONGS TO.
+    //
+    // Operator: *"we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER
+    // EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS ...
+    // it would be stupid to just feed her a shit tone of images on a fucking
+    // timer with no fucking relation to the actual text"*.
+    //
+    // ⛔ WHAT WAS WRONG, PRECISELY: the caption binding was never the problem —
+    // a queued figure carries its own alt/caption/context and binds to its own
+    // words wherever it is drained. **CO-ACTIVATION was the problem.** Hebbian
+    // learning is fires-together-wires-together, so a cell diagram perceived
+    // while she is being taught weather never co-activates with the
+    // cell-biology prose it illustrates. The picture kept its caption and lost
+    // its lesson.
+    //
+    // ⭐ THE REASON THIS IS ONLY NOW POSSIBLE: the background drain existed
+    // because ONE figure cost ~7.7s (fetch + decode + full CDF 9/7), so inline
+    // was capped at 6 per visit and `math/grade10` needed 462 cell visits for
+    // its 2,769 figures. With the precomputed field store a figure is a ~50ms
+    // local read — that same cell is ~138 seconds. **The cap and the timer were
+    // both consequences of a cost that no longer exists.**
+    //
+    // ⛔⛔ AND THAT IS WHY THE INLINE PATH IS GATED ON A FIELD HIT. `opts.fieldOnly`
+    // makes the percept refuse to fall back to the network here: on a miss the
+    // figure goes to the background queue exactly as before. Without that gate a
+    // fieldless cell would revert to ~7.7s each and put 5.9 HOURS inside one
+    // cell pass — the precise failure the drain was built to prevent. **Field
+    // hit → inline, beside its text. Miss → the queue. Never the reverse.**
+    let sectionFigs = 0;
+    const cluster2 = this.cluster;
+    if (typeof cluster2?.academicStoryExperiences === 'function'
+        && typeof cluster2?.perceiveTextbookFigure === 'function') {
+      let sections = [];
+      try { sections = cluster2.academicStoryExperiences(subject, grade) || []; } catch { sections = []; }
+      if (sections.length) {
+        for (const sec of sections) {
+          if (!Array.isArray(sec.sentences) || !sec.sentences.length) continue;
+          // TEACHVIEW — carry the CELL and the SOURCE FILE down into the bus so
+          // the feed can say not just what she is being taught but where it came
+          // from. ⚠ The `label` deliberately stays the cell-wide
+          // `ACADEMIC-<subject>-<grade>-STORIES` string the flat path used, so
+          // the ledger's per-cell totals are continuous across this change and a
+          // section is a PHASE boundary rather than a new kind of lesson.
+          await this._phasedTeach(`ACADEMIC-${subject}-${grade}-SEC-${sec.theme || 'section'}`, () =>
+            this._teachSentenceList(sec.sentences, ctx, {
+              reps, ticksPerWord,
+              label: `ACADEMIC-${subject}-${grade}-STORIES`,
+              source: `corpora/academic/${subject}/${grade}.json`,
+            })
+          );
+          // The section's own pictures, NOW, while its prose is the active state.
+          //
+          // ⛔⛔ THE KEY IS `theme + figKeyOf(url)` AND IT MUST BE, BECAUSE THAT
+          // IS WHAT THE OTHER TWO LANES BANK UNDER. Caught in this row's own
+          // harness before it shipped: passing the bare section theme as the key
+          // gives every figure in a section the SAME store key, so of the five
+          // pictures on the cell-biology page only the first would ever land —
+          // the rest read as already-held and return null. Worse, that collision
+          // key is one NO other lane uses, so the one figure that did land was
+          // banked under a phantom address `_perceiveCellFigures` and the drain
+          // would both miss, and re-perceive from the network anyway.
+          // **One picture, one address, one owner of the rule.**
+          for (const fig of (sec.figures || [])) {
+            try {
+              const rec = await cluster2.perceiveTextbookFigure(fig, {
+                key: `${sec.theme || subject}-${figKeyOf(fig)}`,
+                theme: sec.theme || `${subject}/${grade}`,
+                fieldOnly: true,
+              });
+              if (rec) sectionFigs++;
+            } catch { /* a picture must never break the lesson it illustrates */ }
+          }
+        }
+        this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — ${sections.length} chapter sections taught IN ORDER, each with its own figures perceived beside its prose (${sectionFigs} landed from the field store; the rest ride the background queue). Source: corpora/academic/${subject}/${grade}.json.`);
+        return { trained: sentences.length, sections: sections.length, figuresInline: sectionFigs };
+      }
+    }
+
+    // ⚠ FALLBACK — the flat sentence walk, byte-for-byte what ran before this
+    // change. Reached in exactly two cases, and NEITHER is "the browser build":
+    // this module is server-only in practice (`brain-server.js:2501` is its one
+    // importer, by dynamic import, and it is absent from `js/app.bundle.js`
+    // entirely — checked, not assumed). The two real cases are **the section
+    // bridge failed to attach at boot**, and **the cell has experiences but none
+    // of them carry prose**. It teaches the same sentences in the same order and
+    // the totals are identical (harnessed); only the figure pairing is lost, and
+    // the background queue still covers every one of those figures.
     await this._phasedTeach(`ACADEMIC-${subject}-${grade}-STORIES`, () =>
       this._teachSentenceList(sentences, ctx, {
         reps, ticksPerWord,

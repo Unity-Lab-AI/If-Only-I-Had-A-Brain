@@ -3764,6 +3764,11 @@ class ServerBrain {
       // cell's pictures the same way it asks for its text.
       this.cortexCluster.academicStoryFigures = (subject, grade) =>
         lifeCurriculum.academicStoryFigures(subject, grade);
+      // ⭐ FIGPAIR.1 — the SECTION-level view: each chapter section with its own
+      // sentences AND its own figures, so a diagram can be perceived while the
+      // page it sits on is the active state rather than hours later off a timer.
+      this.cortexCluster.academicStoryExperiences = (subject, grade) =>
+        lifeCurriculum.academicStoryExperiences(subject, grade);
       // The generated phonics exam rows — derived from the grapheme-phoneme
       // rules rather than typed. Same bridge, same reason: the question-bank
       // module is browser-bundled and cannot read a file. The curriculum guards

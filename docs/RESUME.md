@@ -1,6 +1,56 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 SHE SEES THE WAVELETS, SHE HEARS, AND THE REVIEW CAUGHT MY OWN TOOLS FOUR TIMES (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 THE FIGURE GOES ON ITS OWN PAGE, THE KNOBS ARE UNREACHABLE, AND 8 OF 9 COURSES NEVER REHEARSE (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch      feature/figpair-0902 — FIGPAIR.1 BUILT AND HARNESSED 43/43, docs swept
+> develop/main pushed to both remotes and equal as of 35005fc4
+> RUNNING     the figure-field job — batch 19 generated, ~20,820 / 32,296 (64%)
+> walk        frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⭐⭐ FIGPAIR.1 IS DONE, AND ITS OWN HARNESS CAUGHT A BUG IN MY BUILD
+> The proof is one line — `[T<n>]` is a section's sentences taught, `f` is one of **that section's** figures perceived, from `science/grade5` through the real `Curriculum.prototype`:
+> ```
+> [T94] f f f f f  [T40] f  [T118] f f f  [T120] f  [T120] f f f f  [T33]  [T34]  [T531] f f f f f f f f f f f f
+> ```
+> ⛔⛔ **The bug it caught: the store key collided.** My first cut passed the bare section theme as `opts.key`, and the key is built from it — so **every figure in a section resolved to ONE address**. Only the first of the five cell-biology pictures would ever have landed, **at an address no other lane uses**, so the cell lane and the drain would both have missed it and re-fetched from the network. Fixed to the shared `theme + hash(url)` rule. ⭐ **Because the rule is shared the two lanes now COMPOSE** — what the section walk banked reads as already-held to the cell lane, which spends its six per-visit attempts on the figures that had **no field at all**. **43/43: 18 accessor · 4 key rule (189-cell sweep, 0 figures lost) · 9 on the real mixin with `fetch` instrumented (a gated miss = 0 fetch calls) · 12 on the real prototype.**
+> ⚠ **Two wiki claims were corrected against the code on the way:** `curriculum.js` and `student-question-banks.js` were both documented as **"browser-bundled"** and **neither is in `js/app.bundle.js`**. The bridge exists because of the browser **contract** (browser-safe ESM, no filesystem), not because of a build output. ⏳ **Not seen on a running brain** — a press must show `figuresInline` climbing and `figFieldOnlyMiss` naming the fall-throughs.
+>
+> ### ⛔⛔ NEW RULING — I AM THE ONE WHO TURNS THE KNOBS, AND THEY LIVE IN THE TEACH VIEW (`TEACHKNOB.4`)
+> Gee: *"we have all the knobs in the teachview ... you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain after we get the wavlets downladed and all todos done"*. **This re-scopes `TEACHKNOB.1`: read-only is now step one of two, not the deliverable.** ⛔ **The hard part is not the UI — it is that a write must not be able to lie.** Several of the 31 are captured **once at boot** (`DREAM_CONTENT_LR` at `curriculum.js:24188` is proven), so a live write would read back correctly and change nothing about the training. **Every knob gets classified LIVE / NEXT-CELL / BOOT-FROZEN before one write control is drawn, and a BOOT-FROZEN knob renders as refused-with-a-reason — never accepted and silently ignored.** ⚠ **RE-PRICE binds me exactly as it would him**: lowering a dose mid-test still means recomputing `corpus × reps × scale × visits` first.
+>
+> ### ⛔⛔ GEE'S CORRECTION THAT DROVE FIGPAIR — I HAD THE FIGURE LANE WRONG
+> His words: *"we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS ... it would be stupid to just feed her a shit tone of images on a fucking timer with no fucking relation to the actual text"*.
+> - ⭐ **The corpus already agrees with him:** `science/grade5` holds **8 experiences**, one carrying `theme: "cell-biology-"`, an **8,142-char story AND its own 5 figures**, each with the context prose it sits inside. **The section and its pictures are stored together.**
+> - ⛔ **Three accessors destroy that pairing:** `academicStorySentences` flattens all sections into one array · `academicStoryFigures` flattens all figures and loses the owner · `storyExperiences` preserves sections but **drops `figures` entirely** (`life-curriculum.js:105`). No `academicStoryExperiences` existed.
+> - ⛔ **What was lost is NOT the caption binding** — a queued figure carries its own alt/caption/context and binds to its own words wherever it drains. **CO-ACTIVATION was lost.** A cell diagram perceived while she is taught weather never fires together with the cell-biology prose. **The picture kept its caption and lost its lesson.**
+> - ⭐⭐ **The timer only existed because a figure cost ~7.7 s.** With the field consumer it is a **~50 ms local read** — `math/grade10` goes from **462 cell visits** to **~138 seconds**. **The cap and the timer were both consequences of a cost that no longer exists.**
+> - ⚠ **`fieldOnly` IS THE LOAD-BEARING GATE:** inline perception must refuse to fall back to the network, or a fieldless cell reverts to 7.7 s each and puts **5.9 hours inside one cell pass**. **Field hit → inline beside its text. Miss → the queue. Never the reverse.**
+>
+> ### ⛔ THE KNOBS — 31 EXIST, HE CAN REACH NONE OF THEM
+> `217` distinct `DREAM_*` knobs; **31** govern training/weights/saturation/consolidation; the dashboard shows **4**, and **none of the four are training knobs.** They are read from `process.env` at boot = the systemd unit = **a box he has no shell on.** `TEACHKNOB.1` wants a **read-only panel first** — today he cannot answer *"what is `DREAM_CONTENT_LR` actually set to right now?"*. ⚠ Write support is separate and heavier: several are captured once at boot, so a live write would change nothing while appearing to work.
+>
+> ### ⛔⛔ "WITHOUT REPLACING OLD TEACHINGS WITH CURRENT" — 8 OF 9 COURSES HAVE NO REHEARSAL
+> What protects old learning: **Oja self-normalises** (but its `−η·post²·w` term IS the forgetting mechanism) · **saturation detection with a replay VETO** (8 consumers) · **CLS consolidation replay** with a fair-share cursor — ⚠ **that is MEMORY consolidation, not CURRICULUM rehearsal** · and **a real spaced-repetition refresh that covers ELA alphabet mechanics and nothing else.** ⛔ `math`, `science`, `social`, `art`, `music`, `pe`, `health`, `life` get **no re-presentation of earlier grades at any point** — when grade 10 trains, the Oja decay on grade 3 is **unopposed**. `TEACHKNOB.2`. **Fix at the `_cellRunner` chokepoint and RE-PRICE first.**
+>
+> ### ✅ THE DISK QUESTION IS CLOSED — AND THE NUMBER THAT DROVE IT WAS NEVER MEASURED
+> **The box is 1 TB** (Gee: *"we have 1T on the box i found out"*). The `500 GB` that `REGFIND.8`, `WAVESEE.7` and one operator acceptance all rested on was **a sentence in `visual-memory.js`, repeated three times** — corrected at all three sites. Real arithmetic **counting all three copies of the fields** (Forgejo LFS + the pulled `fields/` staging copy + the visual store): **~420 GB of 1,000, 42%**, against an 8 GB save floor. ⚠ **The acceptance was given twice against wrong numbers and survives both — that is luck, not verification.** The disk panel (`state.disk`, `usedPct`, `saveDeferrals`) is the standing mitigation.
+>
+> ### ⭐ ALSO SHIPPED TODAY
+> She **reads the wavelet fields** · she **hears** (`describeAudio` had zero consumers until now) · the **eye is driven again** and the **gaze reaches server state** · the **vox lane and old TTS are gutted** (`voice.js` 860 → 720) · the **box disk is visible**.
+>
+> ### ⏳ NEXT
+> **`TEACHKNOB.2`** the cross-grade rehearsal — **the one that changes what she ends up knowing** · **`TEACHKNOB.1` then `.4`**, the knob panel in the teach view, read first then write, with the LIVE/NEXT-CELL/BOOT-FROZEN classification as the gate between them · **`TEACHVIEW.9`** his bars/graphs ask · then the field-job-blocked set: **`WAVESEE.2`**, **`WAVESEE.6`** (failure rate ~43% and climbing into the tail), **`REGFIND.1`**, **`MATHLEAK.1`**, the 4 empty maths cells, and **`REGRESSION.1`'s** unreviewed half.
+>
+> ⚠ **STANDING BOUND: almost everything here is a STATIC read. Nothing has been seen on a running brain.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 SHE SEES THE WAVELETS, SHE HEARS, AND THE REVIEW CAUGHT MY OWN TOOLS FOUR TIMES (superseded — the block above is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
@@ -43,7 +93,7 @@
 
 ---
 
-> ## ⭐⭐⭐ 2026-09-02 SHE READS THE WAVELETS, AND THE REVIEW CAUGHT MY OWN INSTRUMENTS (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 SHE READS THE WAVELETS, AND THE REVIEW CAUGHT MY OWN INSTRUMENTS (superseded — the top block is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
@@ -81,7 +131,7 @@
 
 ---
 
-> ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (superseded — the top block is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
@@ -408,7 +458,7 @@
 
 ---
 
-> ## ⭐⭐⭐ 2026-09-02 FIFTH + SIXTH BATCH (LATEST — PICK UP HERE) — THE REPOSITORY KEPT ALREADY HAVING WHAT THE BOARD WAS ASKING FOR
+> ## ⭐⭐⭐ 2026-09-02 FIFTH + SIXTH BATCH (superseded — the top block is current) — THE REPOSITORY KEPT ALREADY HAVING WHAT THE BOARD WAS ASKING FOR
 >
 > ### Read in this order: this block → `docs/TODO.md` (`CURVEDEPTH.11` is the live successor) → the batches below.
 >
@@ -627,7 +677,7 @@
 
 
 
-> ## ⛔⛔⛔ 2026-09-01 NEWBORNMUTE (LATEST — PICK UP HERE) — THE RETRIEVAL LANE IS GONE FOR EVERY BRAIN, AND IT EXPOSED A SECOND ORACLE THAT IS BIGGER THAN THE ONE REMOVED
+> ## ⛔⛔⛔ 2026-09-01 NEWBORNMUTE (superseded — the top block is current) — THE RETRIEVAL LANE IS GONE FOR EVERY BRAIN, AND IT EXPOSED A SECOND ORACLE THAT IS BIGGER THAN THE ONE REMOVED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`ORACLEB`, then `REGRESSION` which is the LAST item) → the blocks below.
 >

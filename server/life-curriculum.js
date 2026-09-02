@@ -159,6 +159,53 @@ function figureAddress(f) {
   return /^https?:\/\//i.test(href) ? href : '';
 }
 
+// ⭐⭐ FIGPAIR.1 — THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS
+// THEM. Operator: *"WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT
+// AND CHAPETERSECTIONS IN THE TEXT BOOKS ... WEHRE THE IMAGES ARE ON THAT PAGE
+// OF TEXT SHE IS READING"*.
+//
+// ⛔ THE CORPUS ALWAYS HAD THIS AND THREE ACCESSORS THREW IT AWAY.
+// `academicStorySentences` flattens every experience into one sentence array,
+// `academicStoryFigures` flattens every figure and loses which section owned it,
+// and `storyExperiences` — the one that DOES preserve sections — drops `figures`
+// on purpose. So the walk could see the prose in order, or the pictures in a
+// heap, but never a page with its own diagram on it.
+//
+// ⚠ A SEPARATE ACCESSOR, NOT A WIDER `storyExperiences`. That shape feeds the
+// prose teach path, which walks `sentences` and wants nothing else; adding
+// figure metadata to it would put binary-bearing rows on the hot text lane for
+// every caller that never asked. The comment on `academicStoryFigures` already
+// made that call once and it was right.
+//
+// ⚠ Figures are filtered through the SAME `figureAddress` predicate the flat
+// accessor uses — one rule, one place. A second copy is how 6,899 figures came
+// to be counted as present while the walk could not see one of them.
+function academicStoryExperiences(subject, grade) {
+  const data = loadStories(`academic/${subject}`, grade);
+  if (!data || !Array.isArray(data.experiences)) return [];
+  const out = [];
+  for (const exp of data.experiences) {
+    if (!exp || typeof exp.story !== 'string') continue;
+    const sentences = exp.story.split(/(?<=[.!?])\s+/).map((x) => properCaseStory(x.trim())).filter(Boolean);
+    if (!sentences.length) continue;
+    const theme = typeof exp.theme === 'string' ? exp.theme : '';
+    const figures = [];
+    for (const f of (Array.isArray(exp.figures) ? exp.figures : [])) {
+      const href = figureAddress(f);
+      if (!href) continue;
+      figures.push({
+        url: href,
+        alt: typeof f.alt === 'string' ? f.alt : '',
+        caption: typeof f.caption === 'string' ? f.caption : '',
+        context: typeof f.context === 'string' ? f.context : '',
+        theme,
+      });
+    }
+    out.push({ theme, sentences, figures });
+  }
+  return out;
+}
+
 function academicStoryFigures(subject, grade) {
   const data = loadStories(`academic/${subject}`, grade);
   const out = [];
@@ -224,6 +271,7 @@ module.exports = {
   loadStories, storySentences, storyExperiences, clearCache, CORPORA,
   loadLifeStories, lifeStorySentences, lifeStoryExperiences,
   loadCodingStories, codingStorySentences,
-  loadAcademicStories, academicStorySentences, academicStoryFigures, figureAddress,
+  loadAcademicStories, academicStorySentences, academicStoryFigures,
+  academicStoryExperiences, figureAddress,
   phonicsExamQuestions,
 };

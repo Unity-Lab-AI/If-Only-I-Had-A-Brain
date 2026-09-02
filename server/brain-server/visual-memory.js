@@ -1777,6 +1777,19 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       st.lastErr = `field store: ${e && e.message}`; st.lastErrAt = now;
     }
 
+    // ⛔⛔ FIGPAIR.1 — `fieldOnly` IS THE GATE THAT KEEPS INLINE PERCEPTION
+    // AFFORDABLE. The section-walk in `_trainAcademicStories` perceives a
+    // section's figures beside its prose, which is only cheap on the field path
+    // (~50ms a local read). On a MISS this must NOT fall through to
+    // fetch+decode+transform at ~7.7s each — `math/grade10` alone would put 5.9
+    // HOURS inside one cell pass, the exact failure the background drain exists
+    // to prevent. A miss returns null and the figure rides the queue instead.
+    // **Field hit → inline, beside its text. Miss → the queue. Never the reverse.**
+    if (!rec && opts.fieldOnly) {
+      st.figFieldOnlyMiss = (st.figFieldOnlyMiss | 0) + 1;
+      return null;
+    }
+
     if (!rec) {
       let buf;
       try {
