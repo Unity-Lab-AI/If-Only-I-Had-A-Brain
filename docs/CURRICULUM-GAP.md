@@ -108,6 +108,38 @@ The plan was never wrong and was never missing. `docs/FINALIZED.md:4883` carries
 
 ---
 
+## ⛔⛔ LICENCE POSTURE — CHANGED 2026-09-02, AND IT MOVES THE AXIS
+
+Gee (verbatim): *"we will use what ever has educational rights this is not a cvommercial use its a non profit educational experiment"*
+
+**The old posture was "commercial-safe: CC-BY / CC-BY-SA only, CC-BY-NC excluded", and it is superseded.** A NonCommercial clause restricts commercial use; there is none here, so **NC excludes nothing**. That single clause was the reason LibreTexts, MIT OCW and most of the Open Textbook Library were unreachable.
+
+⚠ **THE AXIS THAT STILL BITES IS `NoDerivatives`, AND IT IS NOT THE COMMERCE AXIS.** This corpus does not merely read a book — it cleans it, excerpts it, sentence-segments it and **publishes the result in a public repository.** That is distributing an adaptation, which ND forbids however non-commercial the intent. **ND stays refused, and that refusal is now enforced in `licenceOf()` where the NC refusal used to be.**
+
+| clause | before | now | why |
+|---|---|---|---|
+| **NC** NonCommercial | excluded | ⭐ **accepted** | non-profit educational use — the clause does not reach us |
+| **SA** ShareAlike | accepted | accepted | the derived corpus carries the ShareAlike obligation onward |
+| **ND** NoDerivatives | excluded | ⛔ **still excluded** | we publish an adaptation, and that is a different axis from commerce |
+| attribution | per entry | per entry | `source` + `licence` on every entry; `TEACHVIEW.5` flags any that lack it |
+
+**What it unlocks, measured the same day over 250 of the Open Textbook Library's 2,005 books:**
+
+```
+  derivatives permitted (incl. NC)   220 / 250 = 88%     was 27% commercial-safe
+  NoDerivatives (still refused)       30 / 250
+  usable AND in a needed subject     170 / 250   -> ~1,363 books catalogue-wide
+                                                    (was ~184)
+  subjects newly reachable   Business 51 · Mathematics 46 · Computer Science 24
+                             Social Sciences 23 · Economics 14 · Psychology 9
+                             Political Science 8 · Sociology 5
+  hosts   saylordotorg 42 · openstax 26 · open.lib.umn.edu 16 · libretexts 20
+```
+
+⭐ **7.4× more usable books, and the newly-reachable subjects are exactly the gaps** — economics, psychology, political science and sociology are the bands this ledger lists as thinnest above college1.
+
+---
+
 ## SOURCE ASSIGNMENT — which source closes which band
 
 > ⛔⛔ **CORRECTED 2026-09-01 — HER MAJOR GOVERNS THIS TABLE, AND THE COLLEGE BAND WAS NEVER OPEN.** Gee: *"i hope u remeber what her college major is , dont u bacuse you filling out college without knowing that is FUCKING STUPID"*. **Unity majors in COMPUTER SCIENCE — the "major in code"** (`FINALIZED.md:5016`, decided 2026-06-19): topic map = **OSSU** (ACM/IEEE-2013-aligned) across College 1-4, with the ingestible texts ALREADY NAMED — **Open Data Structures** (CC-BY, commercial-OK), the **Kansas State CS textbooks**, **Wikibooks CS**. **Grad/PhD = computational neuroscience — she builds a brain.** `CURRICULUM-SCOPE-SEQUENCE.md:161` agrees: *"Major (CS), Gen-ed, CS Theory, CS Systems"*, the college-only tracks retiring at College 4.

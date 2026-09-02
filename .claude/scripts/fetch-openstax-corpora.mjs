@@ -2,9 +2,14 @@
 //
 // This is the fetcher that was marked "✅ DONE 2026-07-15" in the ledger and
 // never written. The source decision it implements is not new and is not mine:
-// the hybrid OpenStax + Wikibooks + Project Gutenberg spread, CC-BY / CC-BY-SA
+// the hybrid OpenStax + Wikibooks + Project Gutenberg spread. ⛔ **The licence
+// posture changed 2026-09-02 and this paragraph used to say "CC-BY / CC-BY-SA
 // only, commercial-safe, CC-BY-NC excluded (which is why LibreTexts and MIT OCW
-// are not here). Output format, path and merge semantics are IDENTICAL to
+// are not here)" — that is no longer the rule.** Gee: *"we will use what ever
+// has educational rights this is not a cvommercial use its a non profit
+// educational experiment"*. NonCommercial material is in; **NoDerivatives stays
+// out**, because this corpus publishes an adaptation. See `licenceOf` below.
+// Output format, path and merge semantics are IDENTICAL to
 // fetch-academic-corpora.mjs — same corpora/academic/<subject>/<grade>.json,
 // same {theme, story} entries, same keep-longer union — so the two sources
 // compose into one corpus instead of competing for the same files.
@@ -242,12 +247,31 @@ async function raw(url) {
 // Licence is READ from the book, not assumed. A per-entry licence string that
 // was guessed is worse than none — it would pass the TEACHVIEW "licence
 // recorded" check while being unverified.
+// ⛔⛔ LICENCE POSTURE CHANGED 2026-09-02 ON GEE'S RULING, AND THE AXIS MOVED.
+//
+// Gee (verbatim): *"we will use what ever has educational rights this is not a
+// cvommercial use its a non profit educational experiment"*.
+//
+// The old gate refused **NonCommercial** because the posture was
+// commercial-safe. It is not a commercial project, so NC no longer excludes
+// anything — and that gate was the reason LibreTexts and most of the Open
+// Textbook Library were unreachable.
+//
+// ⚠ THE AXIS THAT STILL BITES IS **NoDerivatives**, and it is a different axis
+// from commerce. This corpus does not merely read a book: it cleans, excerpts
+// and sentence-segments it into a file that is **published in a public
+// repository**. That is distributing an adaptation, which ND forbids no matter
+// how non-commercial the intent is. ND therefore stays refused.
+//
+// ShareAlike is accepted with its consequence understood: a corpus built from
+// SA material carries the SA obligation onward. Attribution is satisfied by the
+// per-entry `source` + `licence` fields every ingest already writes.
 async function licenceOf(repo) {
   const txt = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/LICENSE.txt`);
   const m = /Creative Commons Attribution([^.\n]*)/i.exec(txt || '');
   if (!m) return null;
   const tail = m[1].replace(/\s+/g, ' ').trim();
-  if (/NonCommercial|NC\b/i.test(tail)) return { id: `CC-BY-NC${tail}`, ok: false };
+  if (/NoDeriv|\bND\b/i.test(tail)) return { id: `CC-BY${tail}`, ok: false, why: 'NoDerivatives — this corpus publishes an adaptation' };
   return { id: `CC-BY${tail ? ' ' + tail : ''}`.trim(), ok: true };
 }
 
