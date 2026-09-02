@@ -1,6 +1,66 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 THE CANON PICKS THE BOOKS (LATEST — PICK UP HERE) — AND FOUR RULINGS SET THE ORDER
+> ## ⭐⭐⭐ 2026-09-02 EVERY PICTURE, AND THE BOUND THAT WAS NEVER A RATE LIMIT (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW — TWO JOBS ARE RUNNING, DO NOT START A THIRD THAT WRITES `corpora/academic`
+> ```
+> board            33 open · 17 in-progress · 18 closed
+> git              15 commits on feature/board-triage-0902, NOT cascaded
+>                  main 35d1eda5 · develop 24e4fa7f
+> RUNNING          fetch-academic-corpora.mjs  — 726/1887 articles, 7,884 figures
+>                  log: .scratch/academic-nocap.log
+> QUEUED           openstax then saylor, chained on a FILE MARKER
+>                  ("WIKIBOOKS DONE" in .scratch/wikibooks-nocap.log)
+>                  log: .scratch/context-refetch.log (absent until it starts)
+> walk             frozen ON PURPOSE — training still being BUILT
+> donor pod        i03ihi54kccu0l EXITED on purpose. restart = start-pod, NEVER terminate
+> ```
+>
+> ### ⛔⛔ THE ONE FINDING THAT REWRITES OTHER PEOPLE'S CONCLUSIONS
+> **The Wikimedia "throttle" this repo has fought for weeks was the USER-AGENT, not the request rate.** Six identical requests, back to back: **0 OK / 6× 429 without contact details, 6 OK / 0× 429 with them.** Wikimedia's policy requires a contact URL or address; ours had none, so the API refused essentially everything — **an identity rejection that no amount of waiting or backing off could ever clear.**
+> - Each refused topic burned the whole ladder `1,500 + 6,000 + 18,000 + 48,000 = 73.5 s` × ~1,887 topics = **38.5 hours**, for a job whose deliberate pacing totals **22 minutes**. Two live processes measured **22 and 25 CPU-SECONDS across 7.75 hours**.
+> - After the fix: **one full cell in 14.8 s, `SKIPPED BY REASON — none`**; the whole academic pass ran in **~42 minutes**.
+> - ⛔ **`fetch-academic-corpora.mjs`'s own comment records tuning the between-cell sleep 4s→8s→20s, measuring no gain at any value, and then blaming a DIFFERENT pacing parameter.** A parameter that produces no change across three values is not the cause — and the second guess was wrong too. **Every "lost to throttle" topic, every silently-thin cell, and every "unverified because the check was throttled" note in this repo belongs to the agent string.**
+> - ⛔ **This is NOT the banned UA forgery.** Forgery is claiming to be a browser to defeat a control that refuses robots — still banned, and the UMN / CK-12 / OER-Commons 403s stay unworked-around. This adds the contact the host asks every robot to send.
+> - ⚠ **AND IT VOIDS OTHER BOUNDS' JUSTIFICATIONS.** `WB_FIG_CHAPTERS = 8` defended itself as protection against *"an API this project has been throttled off repeatedly"*. **It was rationing requests against a limit that was never rate-based.** Every "we must not ask for too much" bound in this repo now inherits that suspicion.
+>
+> ### ⛔⛔ GEE'S RULINGS THIS SESSION — THESE GOVERN
+> - *"THERE IS NOT CAP TO FIGURES!!! REMOVE IT"* → **three caps existed and are gone**: `WIKI_FIG_PER_ARTICLE 12`, `WB_FIG_CHAPTERS 8`, `WB_FIG_PER_CHAPTER 6`. Measured cost before removal: **372 of 1,848 articles clipped at exactly 12**, and a 68-chapter book had **8 chapters searched and 60 skipped**. ⭐ **The clipping fell hardest on the RICHEST pages** — first 69 articles of the uncapped run, 20 exceed the old ceiling and one yielded **47 figures**. It was decapitating the best pages, not trimming a tail.
+> - *"okay i guess that means u need to replace the old and refetch correctly"* → the whole corpus is being re-fetched uncapped. **Baseline to beat: 189 cells / 37,592 figures.**
+> - *"all illistrastions shall always be direclty connected and trained to the text that refrences them"* → audited: **only 54% were.** `saylor` 6,176 figures with **ZERO** context; `openstax` 13,207 at **38%**. The code is fine — both write `context` today — those figures **predate the field**, so only a re-ingest fixes it. That is the queued job.
+> - **Option 1 for the figure lane**, *"but they have to link to thhe text corrctly"* → the background drain, below.
+> - *"is that going to work building it by hand shouldnt we using something similar to hooked on phonics?"* → **he stopped me rebuilding the broken thing by hand.** Hooked on Phonics is proprietary; the METHOD is a systematic scope-and-sequence and that is openly published.
+>
+> ### ⭐ WHAT LANDED
+> - **Her major TRIPLED — 494,172 → 1,656,511 words, 0 → 1,703 figures.** Theory of Computation 8%→64%, Computer Architecture 8%→62%, Networks 11%→**167%** (first CS cell over its floor). Includes three **CC-BY-NC-ND** books admitted on his ruling and recorded honestly as ND. ⭐ **Round one of the search would have failed** — 3 of its first 4 hits were ND, and the best book of the set (Peterson, CC-BY 4.0) shows **no licence on its own pages**; it lives in the repo's `LICENSE`.
+> - **The teach ledger + panel** — *everything a cell ever taught*, paged with `total` beside `returned`. **The ring stays at 400**; a bigger window was never the answer.
+> - **Systematic phonics, derived not typed** — `corpora/phonics/gpc.json`, **241 usable rules · 156 graphemes · 52 with more than one sound** (the exam bank had ZERO). `c → s ʃ k`, `g → dʒ ɡ`, `ch → tʃ k ʃ`, `th → θ ð`.
+> - **The figure background lane** — `server/figure-queue.js`. Cell pass enqueues everything; a drain takes one per tick off the teach lane. ⛔ **The link TRAVELS WITH THE ROW** (own alt/caption/context/theme), which is the only reason deferral is safe — proven on 563 real figures: **`phrase identical: true`** against what the inline path would bind.
+> - **`UNREACHABLE 0`** for the first time; the dead `economics/college1` retired after a theme-by-theme superset check.
+>
+> ### ⛔⛔ THE DEFECT SPECIES THAT REPEATED ALL DAY — CHECK FOR IT BEFORE BELIEVING ANY COUNT
+> **A bound that strands the tail while every number it prints stays truthful.**
+> - `_perceiveCellFigures` counted ALREADY-HELD figures against its attempt bound, so after 24 were banked every later visit returned `perceived: 0` — **silently, because the log only prints on success.** Harness: **24/175 → 175/175**.
+> - `_trainAcademicStories` took `newWords.slice(0, 60)`, and a word the dictionary cannot define is never recorded as taught — so it sits at the head forever. **Harness: 0 of 340 anchored → 340 of 340.** Academic vocabulary anchoring could have been dead outright.
+> - `DREAM_TEXTFIG_PER_CELL = 6` needed **462 visits** to finish `math/grade10`. The cursor fixed *"the same 24 forever"* and could not fix *"6 per visit × few visits"*.
+> - ⚠ **Fix with a rotating cursor, never a miss-list** — a miss-list cannot tell *"no definition exists"* from *"the API refused me just now"*.
+>
+> ### ⚠ MY OWN ERRORS THIS SESSION, ALL CAUGHT BY A NUMBER BEING IMPLAUSIBLE
+> - **My fetcher read the table of contents and called it the book** — 2,958 words for a whole networking textbook. Two-level walk: **→ 200,575**. ⚠ And my first diagnosis blamed the sentence filters; measuring showed **18 of 18 survived every filter**. Measuring stopped me "fixing" something that worked.
+> - **A licence field held half a sentence** — `"CC license described below"`, because the prose pattern beat the machine-readable URL slug.
+> - **I shipped the field-name bug the monitor exists to catch** — the sweep report has no top-level `missing` array, so the page would have printed a confident **"✅ every exam word appears"** while `totalMissing` was 10. Third field-name mismatch of the day; `toProbeShape` renames `q`→`question` caught me again.
+> - **My first figure-queue "waiter" was a launcher** — its condition evaluated false on the first pass and openstax started immediately, racing the academic run. Then I **misdiagnosed the second attempt as also failing** (the marker file reappearing was the OLD waiter's trailing echo). ⚠ **`ps aux` in this shell shows neither node nor the waiter — PowerShell `Get-CimInstance` is the only truthful process view here.**
+> - **I measured "prose lost" by exact string comparison** and reported 95–115 sentences lost per article while the totals said `544 → 543`. Removing a citation marker CHANGES a sentence, so it stops matching. Honest net: **−1, −5, −42**.
+> - ⚠ **Cluster checking took phonics refutations 4 → 28 and every new one was mine** (r-coloured diphthongs; ARPAbet writes *fear* as `F IH1 R`). **The encyclopedia was right and the checker was wrong**, and the report was about to say the opposite. Verdicts are now asymmetric: a single-phoneme mismatch may be REFUTED, a sequence can only fail UNPROVEN. **An instrument must not accuse a source of an error that lives in the instrument.**
+>
+> ### ⏳ NEXT
+> **Wait for the academic pass, then the queued openstax+saylor context re-fetch** (it fixes ~17,000 figures bound to no text) · **re-measure the figure total against the 37,592 baseline** · **re-run academic ONCE more** so the `stripWikiChrome` boilerplate fix reaches the wiki contexts · **`science/grade9`** (the one cell held back from the OpenStax pass) · **the phonics question GENERATOR** and the 12-cell→213-cell exam-bank scope problem · **4 empty maths cells** (`pre-K`, `college4`, `grad`, `phd`) · **cascade the 15 commits** · **the purge still does not exist** · **`REGRESSION.1` is last by construction.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 THE CANON PICKS THE BOOKS (EARLIER) — AND FOUR RULINGS SET THE ORDER
 >
 > ### Read in this order: this block → `docs/TODO.md` → `docs/TEACHVIEW-INVENTORY.md` → the blocks below.
 >
