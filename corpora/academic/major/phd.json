@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "phd",
   "subject": "major",
-  "source": "hybrid: PubMed Central Open Access full text + arXiv abstracts + prior sources, cleaned + sentence-segmented",
-  "note": "Research-literature corpus for major/phd. Trained via curriculum._trainAcademicStories. A graduate year reads papers, not a bigger textbook.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for major/phd. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "computational-neuroscience",

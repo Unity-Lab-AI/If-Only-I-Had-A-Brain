@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college3",
   "subject": "major",
-  "source": "hybrid: Open Data Structures (CC-BY) + Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
-  "note": "Hybrid academic-depth corpus for major/college3 — the CS major. Trained via curriculum._trainAcademicStories.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for major/college3. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "ods-skiplists",

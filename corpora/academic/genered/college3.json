@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college3",
   "subject": "genered",
-  "source": "hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Upper-undergraduate textbook corpus for genered/college3. Trained via curriculum._trainAcademicStories. A college year is a course with a book.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for genered/college3. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "world-history",

@@ -2,7 +2,7 @@
   "version": 1,
   "grade": "grade11",
   "subject": "economics",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "source": "hybrid: OpenStax textbooks (CC-BY) + Simple/English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
   "note": "Hybrid academic-depth corpus for economics/grade11. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {

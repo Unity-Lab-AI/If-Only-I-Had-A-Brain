@@ -468,6 +468,11 @@ function cleanProse(txt, cap) {
 // defect, where an unlabelled frame fused with whatever word was current and
 // became a false memory.
 //
+// ⚠ "Words attached" means the LABEL OR THE PASSAGE, and reading it as label-only
+// is what silently discarded 35% of the ladder's plates until 2026-09-02 — see
+// the measurement at the refusal itself. An unlabelled plate inside the prose it
+// illustrates has plenty to bind to; it is a plate with neither that is refused.
+//
 // ⭐⭐ AND EVERY PLATE CARRIES THE PASSAGE IT ILLUSTRATES (`context`). A plate's
 // own caption is typically a line of dialogue or a chapter reference — "Reading
 // Jane's Letters. Chap 34." — which names where the picture sits and says
@@ -504,14 +509,41 @@ function plateContext(html, index) {
     .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
 }
 
+// ⛔⛔ RETURNS A REASON, BECAUSE "NO PICTURES" AND "I WAS REFUSED" ARE DIFFERENT
+// ANSWERS AND THIS FUNCTION USED TO GIVE THE SECOND ONE AS THE FIRST.
+//
+// Every failure path here returned a bare `[]`, which the caller printed as
+// `0 illustrations` — identical to the output for a text-only edition. A
+// throttled or 404'd fetch was therefore indistinguishable from a book that
+// genuinely has no plates, in a run that makes 90 requests to one host.
+//
+// ⚠ This is the SAME defect species already fixed once in the encyclopedia
+// figure lane during this stretch, in a different file, and it survived here
+// because nothing forced the two lanes to agree. **A lane that cannot tell "I
+// failed" from "there is nothing there" reports the second, and it reports it
+// with a confident number.**
+//
+// ⭐ Transient refusals are also RETRIED rather than merely reported: a 429 or a
+// 5xx during a long sequential run is the expected case, not an exceptional one,
+// and losing a whole book's plates to one is a silent corpus hole.
 async function fetchIllustrations(id) {
   const base = `https://www.gutenberg.org/cache/epub/${id}/`;
   let html = '';
-  try {
-    const r = await fetch(`${base}pg${id}-images.html`, { headers: { 'User-Agent': UA } });
-    if (!r.ok) return [];
-    html = await r.text();
-  } catch { return []; }
+  let lastReason = 'unknown';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`${base}pg${id}-images.html`, { headers: { 'User-Agent': UA } });
+      if (r.ok) { html = await r.text(); lastReason = ''; break; }
+      lastReason = `HTTP ${r.status}`;
+      // 404 is a fact about the edition and will not change on a retry; a
+      // throttle or a server fault will.
+      if (r.status === 404) break;
+    } catch (e) {
+      lastReason = `network: ${e?.message || e}`;
+    }
+    if (attempt < 2) await sleep(2000 * (attempt + 1));
+  }
+  if (lastReason) return { figs: [], reason: lastReason };
   const figs = [];
   const seen = new Set();
   for (const m of html.matchAll(/<img\b([^>]*)>/gi)) {
@@ -541,15 +573,45 @@ async function fetchIllustrations(id) {
     // OR real surrounding prose, and a plate carrying neither is refused.
     const placeholder = /^(illustration|image|figure|photo|picture|graphic|logo|decoration)(\s+\d+)?$/i
       .test(words.replace(/\s+/g, ' ').trim());
-    if (words.length < 3) continue;                       // no words to bind to
-    if (placeholder && context.length < 40) continue;     // nor any in the prose
+    // ⛔⛔ THE RULE STATED THREE LINES ABOVE WAS NOT THE RULE THE CODE RAN, AND IT
+    // COST 35% OF EVERY PLATE IN THE LADDER (measured 2026-09-02).
+    //
+    // The stated rule is "a real label OR real surrounding prose, and a plate
+    // carrying neither is refused". The code refused on a missing LABEL first and
+    // only consulted the prose afterwards, for placeholders — so an unlabelled
+    // plate sitting in 700 characters of the passage it illustrates was thrown
+    // away without the prose ever being looked at.
+    //
+    // ⚠ THE COST, counted over an 11-book sample of this ladder rather than
+    // estimated: 770 plates present, 497 kept, **273 refused that the stated rule
+    // keeps**. It is not spread evenly — it takes whole books at a time, because
+    // whether a transcriber typed alt text is a property of the EDITION:
+    //     The Jungle Book        56 plates, 0 kept   — the entire book
+    //     The Marvelous Land of Oz  274 plates, 137 kept
+    //     Ozma of Oz            111 plates,  35 kept
+    // while books whose transcriber captioned everything lost nothing at all.
+    // ⭐ That is also why the run log looked plausible: the failure is per-edition,
+    // so it reads as "some editions have no plates" — which is a true statement
+    // about a different set of books.
+    //
+    // ⭐ Binding an unlabelled plate to its passage is not a loosening of the
+    // no-words refusal, it is the whole point of capturing context: the percept
+    // gets the narrative the artist drew, instead of a transcriber's bracket. The
+    // refusal that matters — a plate with nothing whatsoever to bind to — is
+    // unchanged, and a placeholder label still counts as nothing.
+    const realLabel = words.length >= 3 && !placeholder;
+    const realContext = context.length >= 40;
+    if (!realLabel && !realContext) continue;             // nothing to bind to, in label or prose
     let abs;
     try { abs = new URL(src, base).href; } catch { continue; }
     if (seen.has(abs)) continue;
     seen.add(abs);
     figs.push({ src: abs, alt: alt || title, caption, context });
   }
-  return figs;
+  // Reached the edition and read it: a zero here is the edition's own answer.
+  // ⚠ The reason is empty when plates were found, so a caller that reads it
+  // unconditionally cannot be told "carries no plates" about a book that does.
+  return { figs, reason: figs.length ? '' : 'edition carries no plates' };
 }
 
 async function fetchBook(id) {
@@ -593,7 +655,7 @@ async function buildGrade(grade, books) {
     // ⭐ Namespacing keeps BOTH: she reads the play AND what is written about
     // it, which is what a real English class does.
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const plates = await fetchIllustrations(id);
+    const { figs: plates, reason: plateReason } = await fetchIllustrations(id);
     const entry = {
       theme: `text-${slug}`,
       story: sents.join(' '),
@@ -605,7 +667,7 @@ async function buildGrade(grade, books) {
     // edition is text only".
     if (plates.length) entry.figures = plates;
     experiences.push(entry);
-    console.log(`  ${title} — ${sents.length} sentences, ${plates.length} illustrations`);
+    console.log(`  ${title} — ${sents.length} sentences, ${plates.length} illustrations${plates.length ? '' : ` (${plateReason})`}`);
     // ⭐ THE SPEECH IN THE SAME BOOK, AS ITS OWN ENTRY. Kept separate from the
     // narration entry on purpose: the merge is per theme, so a book's dialogue
     // can grow or shrink without displacing its prose, and the corpus auditor
