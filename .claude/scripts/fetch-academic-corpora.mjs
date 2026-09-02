@@ -851,7 +851,10 @@ async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_B
 // anything that is not a public-domain or CC mark is refused. ⚠ ND is refused
 // here for the same reason the book lanes refuse it: this corpus publishes an
 // adaptation.
-const WIKI_FIG_PER_ARTICLE = 12;
+// ⛔⛔⛔ REMOVED 2026-09-02 — THERE IS NO CAP ON FIGURES. Retained only as a
+// named constant so nothing references a deleted symbol; it is NOT consulted.
+// Measured cost of the cap before it went: 372 of 1,848 articles clipped.
+const WIKI_FIG_PER_ARTICLE = Infinity;
 
 function wikiFigContext(html, index, cap) {
   const strip = (x) => String(x)
@@ -940,7 +943,17 @@ async function fetchFigures(title, host, cap) {
   const found = [];
   const seenFile = new Set();
   for (const m of String(html).matchAll(/<img\b([^>]*)>/gi)) {
-    if (found.length >= WIKI_FIG_PER_ARTICLE) break;
+    // ⛔⛔⛔ NO CAP ON FIGURES. EVER. (Gee 2026-09-02: *"THERE IS NOT CAP TO
+    // FIGURES!!! REMOVE IT"*.) This loop used to stop at
+    // `WIKI_FIG_PER_ARTICLE = 12`, which CLIPPED 372 of 1,848 articles in the
+    // last run — one article in five silently lost pictures, and the log printed
+    // a confident "12 fig" as though that were the whole article.
+    //
+    // ⭐ Every illustration in the curriculum is training data: it goes to her
+    // eyes through the forward CDF 9/7 transform and is bound to the prose it
+    // sits inside. A cap on figures is a cap on what she can SEE, and it is the
+    // same class of defect as every other bound found today — the walk reached
+    // the head of the material and reported the head as the whole.
     const attrs = m[1];
     const src = (/\bsrc="([^"]+)"/i.exec(attrs) || [])[1] || '';
     const file = wikiFileName(src);
