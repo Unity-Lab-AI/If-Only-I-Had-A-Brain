@@ -73,10 +73,24 @@ const sentCapFor = (g) => SENT_CAP_BY_BAND[BAND_OF_GRADE.get(String(g || '').toL
 // Anatomy/Physiology. The textbook simply replaces the encyclopedia summaries
 // that were standing in for those courses.
 //
-// ⚠ MATH IS ABSENT ON PURPOSE. Math is equational by design and trains through
-// its own bespoke runners; the algebra/calculus/precalculus mirrors exist and
-// are deliberately NOT mapped. Adding prose there would be a change to how math
-// is taught, which is a curriculum decision, not an ingest decision.
+// ⛔⛔ MATH WAS ABSENT ON PURPOSE, AND THE OPERATOR MADE THE CURRICULUM
+// DECISION ON 2026-09-02. The note here used to read: *"the algebra/calculus/
+// precalculus mirrors exist and are deliberately NOT mapped. Adding prose there
+// would be a change to how math is taught, which is a curriculum decision, not
+// an ingest decision."* That was the correct boundary and it was correctly
+// refused at the ingest level — the decision was simply made above it, and math
+// is now in `PROSE_ACADEMIC_SUBJECTS`, so these files are reachable.
+//
+// ⭐ Math is still TAUGHT equationally. The book supplies the knowledge half —
+// what a variable is, why a limit exists, what the theorem says — beside runners
+// that are untouched.
+//
+// ⚠ THE GRADES ARE THE ROSTER'S OWN, not invented here: `courseNameFor('math',
+// g)` gives Algebra II at grade10, Pre-Calculus at grade11, AP Calculus at
+// grade12, so the three mirrors that exist land where the course names already
+// say they belong. ⛔ **There is no OpenStax mirror for Math 1-5, Algebra I or
+// Geometry**, so those cells still have no textbook; that gap is real and is on
+// the board rather than papered over by putting a calculus book in grade 8.
 const BOOK_MAP = [
   { repo: 'biology-concepts-book', subject: 'science', grade: 'grade9',    label: 'Biology' },
   { repo: 'chemistry-book',        subject: 'science', grade: 'grade10',   label: 'Chemistry' },
@@ -101,6 +115,12 @@ const BOOK_MAP = [
   // dead cell is how a gap survives two corrections.** `genered` matches
   // Saylor's own `COLLEGE_HOME` for economics, so the two agree now.
   { repo: 'economics-book',        subject: 'genered',   grade: 'college1', label: 'Principles of Economics' },
+  // Math's knowledge half — see the block above. Grades follow the roster's own
+  // `courseNameFor('math', g)`; licences verified CC-BY 3.0 on all three, and
+  // chapter counts read from the repo rather than assumed: 83 / 96 / 131.
+  { repo: 'algebra-intermediate-book',  subject: 'math', grade: 'grade10',  label: 'Algebra II' },
+  { repo: 'algebra-trigonometry-book',  subject: 'math', grade: 'grade11',  label: 'Pre-Calculus' },
+  { repo: 'calculus-book',              subject: 'math', grade: 'grade12',  label: 'AP Calculus' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "grade": "grade1",
+  "subject": "math",
+  "source": "hybrid: Illustrative Mathematics (CC-BY 4.0) + prior sources, cleaned + sentence-segmented",
+  "note": "Maths KNOWLEDGE corpus for math/grade1. Trained via curriculum._trainAcademicStories alongside the equational runners, which are untouched.",
+  "experiences": [
+    {
+      "theme": "im-k5-grade-1",
+      "story": "section a: add and subtract within 10 in this section, students add and subtract within 10 while working in pairs at centers. throughout the school year students work to develop fluency within 10. at this point the emphasis is on adding and subtracting 1 or 2. section b: show us your data in this section, students sort, collect, and organize data about the world around them, including conducting class surveys. students create representations of data that make sense to them. they describe their categories and tell how many are in each category by counting. in this section, students look at data represented in different ways (pictures, tallies, numbers) and ask and answer questions. for example, these diagrams show survey data from students who were asked which animal would make the best class pet? one table uses tallies and one table uses numbers. --> in this section, students look at data represented in different ways (pictures, tally marks, numbers) and ask and answer questions. for example, these diagrams show survey data from students who were asked \"which animal would make the best class pet?\" one table uses tally marks and one table uses numbers. students ask and answer questions like: which animal did the most students vote for? (20) how many students voted for dog or turtle? near the end of the unit: ask your student addition and subtraction questions where the answer is 10 or less (for example, \\(3 + 5\\) or \\(6 - 1\\) ). questions that may be helpful as they work: how could you draw the problem? could you tell me how to count on or count back to find the answer? after bringing in groceries, ask your student to sort items into categories, describe the categories, and make a representation using drawings, tally marks, or numbers. questions that may be helpful as they work: how did you decide to sort? what questions can you answer based on your data display? they develop an understanding of the meaning of the equal sign and connect story problems to equations. section a: add to/take from story problems in this section, students revisit familiar story problem types. students work formally with equations for the first time. they write equations such as \\(2 + 7 = \\boxed{9}\\) and learn to draw a box around the answer to the question in the story problem. students work with problems where they have to figure out how much is being added: diego had 7 pencils. how many pencils did diego's sister give him? students see that these problems can be solved by either addition or subtraction. they can solve this problem by counting on from 7 to 9 and write the equation \\(7 + \\boxed{2} = 9\\) . students can also solve this problem by taking away 7 from 9, and write the equation \\(9 - 7 = \\boxed{2}\\) . section b: put together/take apart problems in this section, students solve problems where two groups are put together. in some problems they find the total, and in other problems the total is given and they find the missing group. students solve problems in the context of shake and spill, a game that uses two-color counters. counters are put into a cup and spilled out. students make observations about what they see or different combinations that might occur. during his first round he spilled these counters. write 2 equations to represent his counters. show other combinations of red and yellow counters that tyler could spill. with this type of problem, students can look at different kinds of equations, such as those with the total before the equal sign ( \\(7 = 4 + 3\\) ). section c: compare story problems in this section, students solve story problems where they find \"how many more\" or \"how many fewer\" one group has than another group, such as: there are 8 glue sticks and 3 scissors at the art station. how many fewer scissors are there than glue sticks? students think about the relationship between addition and subtraction. they start by considering how many they need to add to make two towers the same length. for example: how many more cubes does clare have than andre? for this type of problem, students may count the extra cubes in clare's tower to find the answer. they may start at 3 and count up to 10 or start at 10 and count back to 3. students analyze both addition ( \\(3 + 7 = 10\\) ) and subtraction ( \\(10 - 3 = 7\\) ) equations. section d: all kinds of story problems this section brings the work of the unit together as students solve a variety of problem types and make sense of equations with a symbol for the unknown, such as \\(10 = \\!\\boxed{\\phantom{4}} + 6\\) . near the end of the unit, ask your student to solve the following word problems: clare has 8 pencils. how many pens did diego's mother give him? how can you count on or take away to find the answer? what equation can you write to represent this problem? section a: develop fluency with addition and subtraction to 10 this section focuses on developing students' fluency with addition and subtraction within 10. students need to have fluency with addition and subtraction facts within 10 by the end of grade 1. students are encouraged to think about addition facts that can help them figure out subtraction facts. for example, given \\(9 - 4\\) , students may say \"i know that \\(5 + 4 = 9\\) , so \\(9 - 4 = 5\\) .\" students develop fluency with sums of 10 and the 10-frame is used as a helpful visual. for example, this 10-frame may allow students to see several related facts. \\(8 + 2 = 10\\) \\(2 + 8 = 10\\) \\(10 - 2 = 8\\) \\(10 - 8 = 2\\) students also continue to build an understanding of the equal sign as they work with equations with an expression on both sides. they may use computation, or reasoning about the numbers, to determine if the equations are true or false. section b: use the structure of 10 to add and subtract in this section, students explore the base-ten system and place value as they learn that ten ones are put together to make a new unit, a ten. students see that teen numbers are a group of ten plus some number of ones. students use connecting cubes organized into towers of 10 and 10-frames to make sense of ten as a unit. students use 10-frames to help them add and subtract from teen numbers. for example, this image shows \\(12 + 5\\) and \\(17 - 5\\) . section c: add within 20 in this section, students add 2 or 3 numbers with a total within 20. they start with problems where 2 of the numbers make a 10 (for example, \\(6 + 8 + 4\\) ) and learn that you can add numbers in any order, which can make adding easier. they discover the usefulness of grouping numbers to find a sum of 10 when adding. students find the sum of 2 addends using methods where they count on or use related facts they know. for example, making a ten is helpful when finding the value of \\(9 + 5\\) . students can take 1 from the 5 and group it with the 9 to make 10, and then add the 4. \\(\\hspace{2cm}\\) \\(9 + 5\\) \\(9 + 1 + 4\\) \\(10 + 4\\) 14 section d: subtract within 20 in this section, students subtract within 20. they use the relationship between addition and subtraction and their understanding of the usefulness of a ten. for example, given \\(15 - 8\\) , students may take away 5 to get to 10 and then take away another 3 to find the difference of 7. \\(\\hspace{2cm}\\) \\(15 - 5 = 10 \\) \\(10 - 3 = 7\\) they may also start with 8 and count on to get 10, and then add another 5 to reach 15. \\(\\hspace{2cm}\\) \\(8 + 2 = 10 \\) \\(10 + 5 = 15\\) \\(2 + 5 = 7\\) try it at home! near the end of the unit ask your student to solve these expressions: \\(7 + 2 + 3\\) \\(18 - 9\\) questions that may be helpful as they work: how could you make a 10 to help you? could you tell me how to count on/count back to find the answer? could you solve this problem a different way? this unit is the first introduction to the base-ten system. the understanding students develop about units of tens and ones will be the foundation for base-ten work, including decimals, that continues through grade 5. section a: units of ten in this section, students use connecting cubes organized in towers of 10. students count and represent collections. the total number of objects in each collection is a multiple of 10. they develop an understanding that counting the same group by one or by ten gives them the same number. through the section, students make sense of base-ten representations (towers of 10, base-ten drawings, words, and numbers). for example, the two diagrams each show 40. students add and subtract multiples of ten and see that 3 tens and 2 tens is 5 tens. --> section b: units of ten and units of one in this section, students use the same representations from the previous section to make sense of two-digit numbers. for example, these are representations for 73: students are introduced to addition expressions to represent two-digit numbers. to ensure that students have a deep understanding of decomposing numbers, they are asked to consider expressions like \\(3 + 70\\) in addition to the traditional standard form ( \\(70 + 3\\) ). students use their base-ten understanding of two-digit numbers to add multiples of ten to any two-digit number and mentally find 10 more or 10 less than any number (that is, \\(52 + 10\\) or \\(32 - 10\\) ). they see that the value of the tens digit changes based on the number of tens added or subtracted, but the value of the ones digit remains the same. section c: compare numbers to 99 in this section, students compare and order numbers to 99. they use their place value understanding to compare numbers and may recognize that the digit in the tens place is more important than the digit in the ones place when comparing two-digit numbers. students are introduced to the \\( \\) and \\( \\) symbols. section d: different ways to make a number in this section, students dive deeper into place value understanding by breaking apart two-digit numbers using different amounts of tens and ones. the focus of this section is for students to see that there are different ways to decompose a number into tens and ones. these representations show that 62 is the same as 5 tens and 12 ones. students extend comparison work by using the \\( \\) , \\(=\\) , or \\( \\) signs to compare numbers broken apart in different ways. near the end of the unit ask your student to do the following with the number 62: draw a representation of 62. what are two different ways that you can make 62 with tens and ones? questions that may be helpful as they work: can you tell me how your drawing shows 62? section a: add without making a ten in this section, students add a one-digit and a two-digit number, or 2 two-digit numbers within 100 without composing a ten. students consider adding tens and tens and ones and ones ( \\(30 + 20 = 50\\) , \\(2 + 5 = 7\\) , and \\(50 + 7 = 57\\) ) and adding on tens and ones ( \\(32 + 20 = 52\\) , \\(52 + 5 = 57\\) ). section b: add one-digit and two-digit numbers with making a ten in this section, students are introduced to the idea that sometimes when adding numbers within 100, a new ten must be composed. students add one-digit numbers and two-digit numbers like \\(68 + 6\\) . students may compose a new ten as they count on ( \\(68 + 2 + 4 = 74\\) ), seen in the first image, or they may combine the ones and then add the tens ( \\(8 + 6 = 14\\) , \\(14 + 60 = 74\\) ), seen in the second image. students represent their thinking with drawings, expressions, or equations. section c: add within 100, making a ten in this section, students apply what they learned to add any numbers within 100. students see that no matter which order they use to combine parts of each of the addends, the sum remains the same. near the end of the unit ask your student to do the following problem: \\(19 + 39\\) questions that may be helpful as they work: do you need to make a new ten? can you solve the problem in a different way? they also solve addition and subtraction story problems with unknowns in all positions. section a: from direct to indirect measurements in this section, students use indirect comparison to order three objects by length. for example, if the highlighter is longer than the pen and the pencil is shorter than the pen, then we know the highlighter is longer than the pencil. section b: measure to 120 by iterating units in this section, students learn the conventions of length measurement and represent length measurements with a number and a unit. they understand that the length measurement of an object is the number of same-size length units that span it without gaps or overlaps. students use manipulatives (connecting cubes, paper clips, and base-ten cubes) as length units. they use base-ten cubes to measure lengths that are longer than 99 units as they expand their counting and number-writing skills to 120. in the example, the shoe is 15 connecting cubes long. section c: all kinds of story problems in this section, students solve all types of story problems with unknowns in all positions. students use the context of measurement which invites them to build and compare concrete objects as they solve problems. they interpret diagrams that represent these problems. students will be asked to solve a problem like: kiran's bracelet is 14 cubes long. how much longer is kiran's bracelet than his sister's? and make sense of this representation of the problem: students solve take away problems when the start is unknown. these problems can be tricky because the action is take away but students need to add to solve the problem. for example: elena has some beads in a box. an equation that represents the situation is \\(? however, students might write \\(10 + 5 = ?\\) to find the answer to the question. it is important for students to explain how the equation they wrote matches the story problem. near the end of the unit ask your student to measure different objects around the home using paper clips and write the measurements down. questions that may be helpful as they work: what is the longest object you measured? how much longer is the __________ than the __________? what is the length of __________ and __________ combined? students also tell time to the hour and half hour. section a: flat and solid shapes in this section, students explore and reason about attributes of two- and three-dimensional shapes. students name shapes, including cone, sphere, cylinder, cube, square, rectangle, triangle, rhombus, and hexagon. students identify defining attributes (number of straight sides and corners) of triangles, rectangles, and squares, and distinguish them from non-defining attributes (color, orientation, size). they describe why a shape belongs in a certain category using their own language. for example, \"these are all triangles because they have three straight sides and three corners. this is not a triangle because the sides don't touch.\" triangles not triangles section b: halves and quarters in this section, students explore the idea of halves and fourths or quarters as equal pieces of a whole. students hear and use the term halves to describe a shape split into two equal pieces and the terms fourths and quarters to describe a shape split into four equal pieces. they consider the size of a fourth and a half in relation to the same whole. they use the language whole, halves, quarters, fourths, a half of, a fourth of, and a quarter of to describe the pieces and relationship of the pieces to the whole. section c: telling time in hours and half hours in this section, students learn to tell time in hours and half hours on analog and digital clocks by relating the numbers 1-12 to a clock face and a written time. --> they identify the minute and hour hands. students learn that the hour hand points to a number or between two numbers, and tells us what hour it is. they also learn that when the minute hand points directly to the 12 it is o'clock or ___:00 and when the minute hand points to the 6 it is half past or ___:30. play \"i spy\" with your child to help your student identify shapes in the real-world. connect your student's schedule with time on digital and analog clocks to the hour and half hour. ask: what time do you go to bed (get up for school, eat breakfast)? what would the clock read when it is time for bed? what would the clock look like if it were 3:00? section a: add and subtract within 20 in this section, students finalize their fluency with addition and subtraction within 10. students do an inventory of addition and subtraction facts to identify the facts they are not yet fluent with. they are encouraged to continue working with those facts throughout the section. there is a focus on the relationship between addition and subtraction in order to help students recognize how knowing an addition fact allows them to also know the related subtraction facts. students recognize how adding and subtracting fluently within 10 helps them add and subtract larger numbers as they work with numbers up to 20. section b: story problems in this section, students revisit some of the different types of story problems that were introduced in previous units. they solve these problems in any way that makes sense to them. students discuss how understanding the relationship between addition and subtraction is helpful when solving these problems. they also discuss methods for addition and subtraction that involve making a ten, which is helpful when working with numbers up to 20. section c: numbers to 120 in this section, students organize, count, and represent groups of up to 120 objects using their understanding of place value. students create multiple representations of two-digit numbers, demonstrating their understanding that the two digits in a two-digit number represent amounts of tens and ones and that numbers can also be composed of different amounts of tens and ones. ask your student to solve the following: which facts are you not yet fluent with? questions that may be helpful as they share: are there any other facts that could help you with this one? how can we represent this fact with pictures or objects? near the end of the unit, ask your student to solve the following problems: let's count (forward/backward) starting at (a number 1-120). let's find objects in our home to count. questions that may be helpful as they work: how did you know which number comes next?",
+      "source": "illustrative-math/k5/grade-1",
+      "licence": "CC-BY 4.0",
+      "figures": [
+        {
+          "src": "https://curriculum.illustrativemathematics.org/image_files/38531.png",
+          "alt": "",
+          "caption": "",
+          "context": "for example, these diagrams show survey data from students who were asked which animal would make the best class pet? one table uses tallies and one table uses numbers. --> in this section, students look at data represented in different ways (pictures, tally marks, numbers) and ask and answer questions. for example, these diagrams show survey data from students who were asked \"which animal would make the best class pet?\" one table uses tally marks and one table uses numbers."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/image_files/40229.png",
+          "alt": "",
+          "caption": "",
+          "context": "for example, these diagrams show survey data from students who were asked which animal would make the best class pet? one table uses tallies and one table uses numbers. --> in this section, students look at data represented in different ways (pictures, tally marks, numbers) and ask and answer questions. for example, these diagrams show survey data from students who were asked \"which animal would make the best class pet?\" one table uses tally marks and one table uses numbers."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fd1cykl2wl4zyfc6vzfkl3x09pvr",
+          "alt": "Tally Chart. Turtle, tallies, 6. Dog, tallies, 2. Rabbit, tallies, 12.",
+          "caption": "",
+          "context": "--> in this section, students look at data represented in different ways (pictures, tally marks, numbers) and ask and answer questions. for example, these diagrams show survey data from students who were asked \"which animal would make the best class pet?\" one table uses tally marks and one table uses numbers."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/expand.png",
+          "alt": "Expand image",
+          "caption": "",
+          "context": "for example, these diagrams show survey data from students who were asked \"which animal would make the best class pet?\" one table uses tally marks and one table uses numbers."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ihlvn3h9mokcodjh2v0t5gv6wiaj",
+          "alt": "Data chart",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/2021-06-04_im_certified_badge.svg",
+          "alt": "IM (Illustrative Mathematics) Certified",
+          "caption": "",
+          "context": "these materials include public domain images or openly licensed images that are copyrighted by their respective owners. openly licensed images remain under the terms of their respective licenses."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/wp9ib0euvl5zeq8kvy6ra3kyckls",
+          "alt": "Two color counters.",
+          "caption": "",
+          "context": "students make observations about what they see or different combinations that might occur. during his first round he spilled these counters."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/nsr2w60fpwvjg3qtnqpk0kt0kpuy",
+          "alt": "Connecting cube towers. Andre. Clare.",
+          "caption": "",
+          "context": "they start by considering how many they need to add to make two towers the same length. for example: how many more cubes does clare have than andre?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/otxaetetoymvqvjl126a15nt7rsc",
+          "alt": "Ten frame, full. Red, 8. Yellow, 2.",
+          "caption": "",
+          "context": "for example, given \\(9 - 4\\) , students may say \"i know that \\(5 + 4 = 9\\) , so \\(9 - 4 = 5\\) .\" students develop fluency with sums of 10 and the 10-frame is used as a helpful visual. for example, this 10-frame may allow students to see several related facts."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/rkcagf6l7yajpdf7zo96mvsfdz6w",
+          "alt": "connecting cubes. tower of 10. 4 cubes.",
+          "caption": "",
+          "context": "students see that teen numbers are a group of ten plus some number of ones. students use connecting cubes organized into towers of 10 and 10-frames to make sense of ten as a unit."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/hk4e2clulqbyu4mpeiwi4ol81735",
+          "alt": "Two ten frames. top frame, Red, 10. Bottom frame, red, 2. Yellow, 5.",
+          "caption": "",
+          "context": "for example, this image shows \\(12 + 5\\) and \\(17 - 5\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5mpbw73w1hs16ru1ay863e829mkk",
+          "alt": "Two ten frames. Top frame, red, 9. yellow, 1. Bottom frame, yellow, 5.",
+          "caption": "",
+          "context": "for example, making a ten is helpful when finding the value of \\(9 + 5\\) . students can take 1 from the 5 and group it with the 9 to make 10, and then add the 4."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/1q11h83m0efz5r8zcejk8vue3gyp",
+          "alt": "Ten frame. 7 counters not crossed out. 3 counters crossed out.",
+          "caption": "",
+          "context": "they use the relationship between addition and subtraction and their understanding of the usefulness of a ten. for example, given \\(15 - 8\\) , students may take away 5 to get to 10 and then take away another 3 to find the difference of 7."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/0xwfy7zzsta8f6o33vmv8ljwpbui",
+          "alt": "Ten frame. 5 red counters crossed out.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/14h3sk3jejkiyhhhneaesemsatr9",
+          "alt": "Ten frame. 5 yellow counters.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/sj1xh2hv50d659wlsukq7laxovkh",
+          "alt": "Connecting cubes, 40. 4 towers of 10 cubes.",
+          "caption": "",
+          "context": "through the section, students make sense of base-ten representations (towers of 10, base-ten drawings, words, and numbers). for example, the two diagrams each show 40."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/kou7xkmen9nywxpuggh14dp4y2lk",
+          "alt": "Base ten drawing. 4 tens.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/147419.svg",
+          "alt": "",
+          "caption": "",
+          "context": "for example, the two diagrams each show 40. students add and subtract multiples of ten and see that 3 tens and 2 tens is 5 tens. --> section b: units of ten and units of one in this section, students use the same representations from the previous section to make sense of two-digit numbers."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/147420.svg",
+          "alt": "",
+          "caption": "",
+          "context": "for example, the two diagrams each show 40. students add and subtract multiples of ten and see that 3 tens and 2 tens is 5 tens. --> section b: units of ten and units of one in this section, students use the same representations from the previous section to make sense of two-digit numbers."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/g6qdshuooifg7dsa681adtitpbti",
+          "alt": "Connecting cubes.",
+          "caption": "",
+          "context": "--> section b: units of ten and units of one in this section, students use the same representations from the previous section to make sense of two-digit numbers."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/guba0g93b90yglnq86dtspou7oec",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/u3gbtp7x5cdsdw6gtjra59gls6gq",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": "the focus of this section is for students to see that there are different ways to decompose a number into tens and ones. these representations show that 62 is the same as 5 tens and 12 ones."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/eckua1z984ltv8f2mbnuaxcstuom",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5qhaen8rufo7mnsf9zy1m32vhlat",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": "students may compose a new ten as they count on ( \\(68 + 2 + 4 = 74\\) ), seen in the first image, or they may combine the ones and then add the tens ( \\(8 + 6 = 14\\) , \\(14 + 60 = 74\\) ), seen in the second image. students represent their thinking with drawings, expressions, or equations."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/r99886hna73nehmxrbr5naaf4ym1",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/bpzfs7k42vcdbakk1ax840cw8521",
+          "alt": "3 objects. Pencil, highlighter, pen.",
+          "caption": "",
+          "context": "section a: from direct to indirect measurements in this section, students use indirect comparison to order three objects by length. for example, if the highlighter is longer than the pen and the pencil is shorter than the pen, then we know the highlighter is longer than the pencil."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/u74t51ghb03x0b44tyr8iz09ccma",
+          "alt": "Shoe. Underneath from toe to heel, 15 connecting cubes all the same size in a tower.",
+          "caption": "",
+          "context": "they understand that the length measurement of an object is the number of same-size length units that span it without gaps or overlaps."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ipdsyopkch779zwmftxnjle4abi1",
+          "alt": "Diagram. Two rectangles. Bottom rectangle, 10 white cubes. Top rectangle, 10 white cubes and 4 blue cubes. Same size cubes.",
+          "caption": "",
+          "context": "students will be asked to solve a problem like: kiran's bracelet is 14 cubes long. how much longer is kiran's bracelet than his sister's?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/r33dple7ha0e9ig26qmxqhxmjkr7",
+          "alt": "Triangle.",
+          "caption": "",
+          "context": "they describe why a shape belongs in a certain category using their own language. for example, \"these are all triangles because they have three straight sides and three corners."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/w5rayfz0xsqu94oe7qfkqp243734",
+          "alt": "shape",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/u3idvtwdvnhbpkq8qp9f9nhz3ji3",
+          "alt": "Triangle.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/cy2xp4yqpyy2hnsfw616raihgfz6",
+          "alt": "Closed shape. 3 straight sides. 3 corners, pointy.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/2us7spbft7w1ouxdccg793cvienp",
+          "alt": "Closed shape. 4 straight sides, different lengths. 4 points.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/a9ksdqfts97jlzgxhx7gw5xxk0rj",
+          "alt": "shape",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/yfsapkv31q8dmwvonztz847yqu89",
+          "alt": "Shape. 3 straight sides that do not touch.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3ghzgpivb0udlsk3lmghlmrg8zuq",
+          "alt": "Closed shape. 3 total sides, 2 straight, 1 curved.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/z26rwok35rttvqfu5yxz2c21l633",
+          "alt": "Circle, partitioned into 4 equal parts, 4 parts shaded.",
+          "caption": "",
+          "context": "they consider the size of a fourth and a half in relation to the same whole. they use the language whole, halves, quarters, fourths, a half of, a fourth of, and a quarter of to describe the pieces and relationship of the pieces to the whole."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xbi0dt3kejqneyvp8ryhuiesyttg",
+          "alt": "Circle, partitioned into 2 equal parts.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/g27fqrfe8d7n6gb53n6pwf8ol8c0",
+          "alt": "Square, partitioned into 4 equal parts, 1 part shaded.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6iewu58uqw1zp84oxfwdjyn92y7t",
+          "alt": "Square, partitioned into 2 equal parts, 2 parts shaded.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/crfvibftlbfuevtfqsp5swc0cwhw",
+          "alt": "Circle, half shaded.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5hyvlp7d7n5ojxoeubr3myaxcllz",
+          "alt": "Clock example.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/135502.svg",
+          "alt": "",
+          "caption": "",
+          "context": "--> they identify the minute and hour hands. students learn that the hour hand points to a number or between two numbers, and tells us what hour it is."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/135503.svg",
+          "alt": "",
+          "caption": "",
+          "context": "--> they identify the minute and hour hands. students learn that the hour hand points to a number or between two numbers, and tells us what hour it is."
+        }
+      ]
+    }
+  ]
+}

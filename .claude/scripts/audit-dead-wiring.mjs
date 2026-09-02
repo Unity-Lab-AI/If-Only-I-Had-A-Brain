@@ -30,7 +30,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const SKIP_DIR = /node_modules|\.git|\.scratch|corpora|piper|graphify-out|wiki/;
-const CODE = /\.(js|mjs|cjs)$/;
+// ⛔⛔ HTML IS CODE HERE, AND LEAVING IT OUT MADE THIS DETECTOR LIE.
+//
+// Found 2026-09-02 while auditing the 71 "exports referenced nowhere": one of
+// them was `GPUCompute`, which `html/compute.html` **imports and constructs
+// twice** — that page IS the browser-donor GPU surface, one of this project's
+// live production lanes. The scan only walked `.js|.mjs|.cjs`, so an export
+// consumed exclusively by a page read as a total orphan.
+//
+// ⚠ THE CONSEQUENCE WAS NOT COSMETIC. The standing instruction on those 71 is
+// *do not bulk-strip* precisely because this codebase has been bitten by
+// deleting things that looked unused — and this blind spot is the mechanism that
+// would have made a wired class look safe to delete. Pages carry `<script
+// type="module">` imports, inline handlers and `new X()` calls; none of it was
+// visible.
+const CODE = /\.(js|mjs|cjs|html)$/;
 // The bundle is generated from js/brain — including it double-counts every
 // definition and makes an unwired method look wired.
 const SKIP_FILE = /bundle|\.min\./;
@@ -75,6 +89,15 @@ const PLATFORM_GLOBALS = new Set([
   'getHeapStatistics', 'memoryUsage', 'resourceUsage', 'loadavg', 'unref', 'ref',
   'structuredClone', 'reportError', 'gc', 'setInterval', 'setTimeout', 'fetch',
   'createImageBitmap', 'BroadcastChannel', 'WebAssembly', 'performance',
+  // `percentile` is a method of Node's RecordableHistogram, returned by
+  // `perf_hooks.monitorEventLoopDelay()` — NOT a repo function, so no
+  // definition for it exists here and none should. Verified 2026-09-02 by
+  // following the one reported site: `brain-server.js` constructs the histogram
+  // at `resolution: 20`, calls `.enable()`, and assigns it to
+  // `_eventLoopHistogram`; `state.js` reads `p50`/`p99` off it. The lane is
+  // fully live. ⛔ Listed rather than silently tolerated because an allowlist
+  // entry with no reason becomes indistinguishable from a suppressed bug.
+  'percentile',
 ]);
 
 // Definition shapes, INCLUDING the blind spots — and widened after the FIRST

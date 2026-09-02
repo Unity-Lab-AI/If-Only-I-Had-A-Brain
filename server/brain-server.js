@@ -1468,6 +1468,14 @@ function autoClearStaleState() {
     // SURVIVED a fresh walk because these files were missing from the wipe.
     path.join(__dirname, 'visual-memory.json'),
     path.join(__dirname, 'mindspace-memory-v3.json'),   // RINGWIPE — versioned with the ring
+    // TEACHVIEW RETENTION — the teach view counts what was taught INTO these
+    // weights, so it must die with them. ⛔ Surviving a fresh walk is the whole
+    // failure mode: the pane would open on a wiped brain showing millions of
+    // teach events and every cell "covered", which is the exact shape of lie
+    // this instrument was built to detect. It is deliberately NOT in the
+    // resume-safe excludes below — a Savestart keeps it (that is the retention
+    // this file exists for), a fresh walk does not.
+    path.join(__dirname, 'teachview-state.json'),
   ];
 
   // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
@@ -3590,6 +3598,39 @@ class ServerBrain {
         this.dictionary,
         this.languageCortex,
       );
+      // TEACHVIEW RETENTION — restore the teach view from the last boot, then
+      // snapshot it on a timer. The walk runs for WEEKS and every reboot used to
+      // reset the totals to zero and drop the 400-row reading ring, so the
+      // evidence was gone by the time anyone wanted it.
+      //
+      // ⚠ Attached HERE, not in the curriculum, for the same reason every other
+      // fs-touching capability is: `js/brain/curriculum.js` is browser-bundled
+      // and must never import `fs`. `teachBus` keeps its no-I/O contract.
+      try {
+        const tvStore = require('./teachview-store.js');
+        // `teachBus` lazily creates `_teachView` on first use, so ask for it
+        // before restoring rather than assuming the shape exists yet.
+        this.curriculum.teachBus('boot-restore', '');
+        const saved = tvStore.load();
+        const info = saved ? tvStore.restoreInto(this.curriculum._teachView, saved) : null;
+        console.log(info
+          ? `[TeachView] restored ${info.total.toLocaleString()} teach events + ${info.ring} feed rows from ${info.writtenAt} — totals accumulate across restarts`
+          : '[TeachView] no prior snapshot — this is a fresh teach view');
+        // ⚠ 60 s, and the cadence is the point: the snapshot is a stringify of
+        // up to ~120 KB plus one write, which must not ride the teach path. It
+        // is `unref`'d so it can never hold the process open at shutdown.
+        this._teachViewSaveTimer = setInterval(() => {
+          try { tvStore.save(this.curriculum && this.curriculum._teachView); } catch { /* best-effort */ }
+        }, 60000);
+        if (this._teachViewSaveTimer.unref) this._teachViewSaveTimer.unref();
+        // A clean exit snapshots immediately, so the last minute of a shutdown
+        // is not the one minute that gets lost.
+        process.on('exit', () => {
+          try { tvStore.save(this.curriculum && this.curriculum._teachView); } catch { /* nf */ }
+        });
+      } catch (e) {
+        console.warn(`[TeachView] retention not wired: ${e && e.message}`);
+      }
       // Stash the curriculum's subject + grade-order vocab so privileged
       // endpoints (e.g. POST /curriculum/forget — live single-cell re-teach)
       // can validate {subject,grade} input synchronously without re-importing

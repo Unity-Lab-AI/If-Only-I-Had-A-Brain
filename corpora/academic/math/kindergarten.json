@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "grade": "kindergarten",
+  "subject": "math",
+  "source": "hybrid: Illustrative Mathematics (CC-BY 4.0) + prior sources, cleaned + sentence-segmented",
+  "note": "Maths KNOWLEDGE corpus for math/kindergarten. Trained via curriculum._trainAcademicStories alongside the equational runners, which are untouched.",
+  "experiences": [
+    {
+      "theme": "im-k5-kindergarten",
+      "story": "section a: exploring our tools in this section, students discuss what it looks like to do math in their classrooms. they work with the math tools they will use during math activities and centers throughout the year. students have the opportunity for free exploration in order to think of mathematical purposes for the tools. students are encouraged to use their own language to describe their work, as well as listen to the ideas of others in the class, which positions students as mathematicians who have interesting and worthwhile ideas to share. the math tools students used in this section include: connecting cubes pattern blocks geoblocks 5-frame section b: recognizing quantities in this section, students continue to explore math in their classrooms, focusing on small groups of objects or images. students may begin to see dot images in arrangements that allow them to know how many without counting such as these: these lessons encourage students to notice and ask questions about math in their world. students continue to develop the language to express these ideas and listen and share ideas with their peers. in this section, students count groups of objects by touching and counting, saying one number for each object. students answer the question \"are there enough?\" and match and create groups with the same number of objects. section d: counting collections in this section, students focus on the question \"how many of us are here today?\" students think about different ways to answer the question and represent the information. students also count collections of objects each day. collections are created from classroom objects such as connecting cubes, two-color counters, pattern blocks, buttons, or objects to count from home. for collections of up to 10 objects, students begin to recognize that the last number named tells how many objects there are. near the end of the unit, ask your student to count a given number of objects around your home. questions that may be helpful as they work: how many are there? are there enough for everyone in the house? students count out and compare groups within 10 and write numbers to represent how many. section a: count and compare groups of objects in this section, students connect the quantities they see and the spoken number words as they count to answer questions about \"how many\". they rearrange and count groups of objects, and notice that the arrangement of objects does not affect the total number of objects. students compare groups of objects and use the language of more and fewer, which may be new to them. for example, students may compare a group of 7 objects to a group of 2 objects. section b: count and compare groups of images in this section, students begin by counting images for the first time. this can be more challenging for students because images cannot be rearranged and it can be more difficult to keep track of which images they have counted. students count groups of images in lines, arrays, on 5-frames, in number cube arrangements, and on fingers. students count and compare images arranged on 5-frames and images of fingers throughout the section. these images have the structure of 5 and some more, which supports students to count on from 5 to determine how many images there are. section c: connect quantities and numbers in this section, students write numbers to represent quantity for the first time in this section. students continue their work from section b of counting groups of organized images, and begin to count images arranged in a circle which requires students to develop a method to keep track of which images they have counted. students also represent numbers by counting out groups of objects and drawing groups of images. for example, students match the written numeral on the left to the dots on the right side of the page. section d: compare numbers in this section, students compare written numbers. students see that, as they count, the numbers get larger and that there is 1 more each time. they find 1 more and 1 less than a given number or group of objects. students may compare written numbers in several ways: create a drawing of each number and use the drawings to compare. use mental images of numbers or number sense. use the knowledge of the count sequence and know that numbers that come later in the count sequence are greater. near the end of the unit, ask your student to compare two amounts of objects (pencils, cups, fruit, etc.) questions that may be helpful as they work: how many _____ do you have? (repeat for both sets of objects.) which one has more? section a: exploring shapes in our environment in this section, students look for shapes in the world around them and describe and compare them using their own language. students begin by identifying objects in books and in their world that look like flat shapes. for example, students may look at a tissue box and say it looks like a rectangle. (the difference between flat and solid shapes will be investigated in a later unit.) students do not need to use formal vocabulary to describe or name shapes. however, they are asked to identify circles, squares, rectangles, and triangles. they are introduced to the idea that a square is a special kind of rectangle with all 4 sides the same length. students see a wide range of examples of specific shapes, to help them develop an understanding of what the shapes are. for example, students see these shapes and talk about what makes them triangles. section b: making shapes in this section, students develop spatial reasoning as they make shapes out of pattern blocks. students find shapes that match exactly. students work on shape puzzles that may require them to change the orientation of shapes to complete the puzzles. students use their own language to describe how the shapes they are using and building are alike and different. near the end of the unit, ask your student to go on a scavenger hunt to find shapes around the home or in places you visit often. questions that may be helpful as they work: can you find a square, a rectangle, a triangle, and a circle? section a: count to add and subtract in this section, students are introduced to addition as counting the total number of objects in two groups. the language \"add\", \"put together\", \"subtract\", and \"take away\" is used throughout the section. students also count images in scattered configurations for the first time, recognizing the need to keep track of the images they have counted. for example, students may count all the black dots first and then the white dots, or they may count the black dots and white dots together. students may cross off the dots as they count to keep track of the dots they have counted. students see that although they may count the images in a different order, they arrive at the same total. section b: representing and solving story problems in this section, students represent and solve story problems. this work starts slowly, with students acting out and then representing story problems that don't have a question in them such as: there were 5 students jumping rope at recess. 2 more students came out to play with them. questionless story problems encourage students to think about the context and the action in the story problem without feeling pressured or rushed to solve the problem. eventually, students answer questions such as \"how many students are jumping rope now?\" about stories. students represent story problems with objects, math tools, drawings and numbers. they may represent each story problem in any way that makes sense to them. the important thing is for students to be able to explain how their representation connects to the story. while students are not required to create drawings in a particular way, they notice that organized drawings make it easier to see how the drawing matches the story problem. for example, the students may use any of these diagrams to represent a story that matches the expression \\(5 + 2\\) . section c: addition and subtraction expressions in this section, students work with expressions for the first time. they match expressions to story problems and drawings. students explain why an expression matches a given problem or drawing. students move from working with expressions in relation to story problems to finding the value for expressions without a story. students may add or subtract in a way that makes sense to them, including using fingers, objects, or drawings. with repeated experience, students begin to notice patterns when adding and subtracting, such as that adding 1 results in the next counting number and that adding 0 results in the same number. near the end of the unit, ask your student to draw a picture that goes with this story: there were 4 students jumping rope at recess. questions that may be helpful as they work: explain your picture to me. how many students are jumping rope in the end? does this story match the expression \\(4 + 6\\) , \\(6 + 2\\) or \\(4 + 2\\) ? we call this \"making\" and \"breaking apart\" numbers. section a: compose and decompose numbers to 9 in this section, students compose and decompose numbers to 9. at first, students only work with numbers up to 5 to build fluency with addition and subtraction within 5 as they compose and decompose numbers in different ways. students understand that there are different ways to compose and decompose a given number. they work with physical objects, such as counters and connecting cubes, that they can use to compose and decompose numbers. 6 is 3 and 3 6 is 4 and 2 6 is 5 and 1 section b: more types of story problems in this section, students represent and solve story problems. students compose and decompose numbers as they solve story problems where both addends are unknown. for example, jada made 6 paletas with her brother. they made two flavors, lime and coconut. then how many of the paletas were coconut? these problems may be more challenging to make sense of because there is no action in the story and they have more than one solution. by the end of the section, students find multiple solutions to problems. students use math tools and drawings to represent and solve story problems. it is important that students can explain how their representation shows the story. some students may be interested in finding all the solutions to a problem and they should be encouraged to do so, though this is not an expectation for kindergarten. section c: make and break apart 10 the number 10 is foundational to the place value work students will do in later grades. in this section, students are introduced to a 10-frame by putting together two 5-frames which allows them to build on previous understandings of the numbers 6-9 in relation to 5. students use the 10-frame, as well as their fingers, to make and break apart 10 in different ways. these tools are helpful because the blank squares in the 10-frame and the fingers that are down allow students to see or count how many more are needed to make 10. students use these tools to figure out the number to add to any number from 1 to 9 to make 10. near the end of the unit, ask your student to draw a picture that goes with this story: at the market, you get 10 apples from a bin. some of the apples are green and some of the apples are red. how many green apples and how many red apples did you draw? does this story match the expression \\(10 = 1 + 9\\) , \\(10 = 2 + 8\\) , \\(10 = 3 + 7\\) , \\(10 = 4 + 6\\) or \\(10 = 5 + 5\\) ? is there another way you can make 10 apples? they understand that numbers 11 to 19 are made of ten ones and one, two, three, four, five, six, seven, eight, or nine ones. section a: count groups of 11-20 objects in this section, students count groups of 11-20 objects using strategies they developed in earlier units with smaller sets of objects. students may use a counting mat or a 10-frame and think about how organizing can help them count the objects accurately. section b: 10 ones and some more ones in this section, students see the numbers from 11 to 19 as 10 ones and some more ones. students use fingers and 10-frames to represent these numbers with more emphasis on the 10-frame as the section progresses. as students represent these numbers, they fill a 10-frame and show some more ones. students may show these ones in different ways. students use objects, draw pictures, and fill in equations to show teen numbers as \\(10 + \\underline{\\hspace{1 cm}}\\) . while not required in kindergarten, this work encourages students to count on from 10. section c: count groups of 11-20 images in this section, students count groups of up to 20 images. students work with images arranged in lines, arrays, circles, and on 10-frames. images arranged in a circle can be tricky for students as it becomes very important to keep track of which images have been counted. students write numbers to show how many images there are. throughout the unit you can support your student by finding everyday opportunities to practice counting groups of up to 20 objects. for example: questions to ask your student: how many oranges do you think are in the bag? what can you do to figure out how many oranges there are? students revisit counting, addition, and subtraction while working with familiar two-dimensional shapes. with students, we refer to two-dimensional shapes as flat shapes and three-dimensional shapes as solid shapes. section a: compose and count with flat shapes in this section, students revisit number concepts while working with pattern blocks. students practice counting, comparing, and writing numbers as well as solving story problems as they fill in more difficult pattern block puzzles, which can be completed in more than one way, for example: section b: describe, compare, and create solid shapes in this section, students are introduced to solid shapes as they distinguish between flat and solid shapes. students identify examples of solid shapes in their environment and work with geoblocks, including cones, cubes, cylinders, spheres, pyramids, and prisms. while students are introduced to the formal names of solid shapes, students use their own language to describe and compare these shapes. for example, students may say \"ball\" to refer to a sphere and may compare the \"points\" of a pyramid and the \"curves\" of a cone. students use a variety of materials to create solid shapes and eventually use solid shapes to build larger creations, such as a tower. near the end of the unit, ask your student to go on a scavenger hunt to find solid shapes around the house. questions that may be helpful as they work: can you find a cone, a cube, a sphere, and a cylinder? can you find something else that has the same shape as this can? what is the same about these two shapes that you found? can you find something that you can use to create a cone? section a: counting and comparing in this section, students count and compare collections of up to 20 objects. students focus on the count sequence up to 20 and use their knowledge of the count sequence to determine one more or one less than a given quantity or number. section b: math in our school in this section, students explore and describe the math that they see in their environment. students participate in multiple activities that allow them to notice, record, ask questions, and tell stories about math in their community. students record quantities that they see in their school by making their own number book. then students ask and answer their own mathematical questions about their school, such as \"how many tiles are there from the office to the cafeteria?\" or \"are there more doors or more windows in the library?\" finally students create, share, and solve story problems about their school environment and community. while the school building is used as a context, the activities in this section can be adapted for students to do in the community or at home. section c: fluency within 5 in this section, students develop fluency with adding and subtracting within 5. repeated practice with different compositions of numbers to 5 prepares students to fluently find the value of addition and subtraction expression. students apply what they learned throughout the section to find a missing part with totals up to 5 with both objects and equations. section d: all about 10 in this section, students work with 10 as a benchmark for numbers within 20. this work prepares them for grade 1 work adding within 20 where students will be encouraged to make a ten. students compose and decompose 10 in different ways and connect these compositions and decompositions with equations. students find the number that makes 10 when added to any given number. they use their understanding of the magnitude of 10 to estimate if groups have more or fewer than 10 items. finally, students compose and decompose teen numbers 11-19, always working with a group of 10 ones and some more ones. throughout this section, students use fingers, objects, drawings, 10-frames and equations to represent their thinking. near the end of the unit, ask your student to solve the following problems: are there more doors or windows in our home? let's find objects in our home to count. questions that may be helpful as they work: how do you know? are there more than 10 objects/doors/windows or less than 10 objects/doors/windows?",
+      "source": "illustrative-math/k5/kindergarten",
+      "licence": "CC-BY 4.0",
+      "figures": [
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/zmpe9mq6f64ma2kzocqb22rore5g",
+          "alt": "Center Activity. Connecting cubes.",
+          "caption": "",
+          "context": "students have the opportunity for free exploration in order to think of mathematical purposes for the tools. students are encouraged to use their own language to describe their work, as well as listen to the ideas of others in the class, which positions students as mathematicians who have interesting and worthwhile ideas to share."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/expand.png",
+          "alt": "Expand image",
+          "caption": "",
+          "context": "students have the opportunity for free exploration in order to think of mathematical purposes for the tools. students are encouraged to use their own language to describe their work, as well as listen to the ideas of others in the class, which positions students as mathematicians who have interesting and worthwhile ideas to share."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5okavkdz88ypbxbx6gzomqhl03h9",
+          "alt": "Center Activity. Pattern blocks.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xx2hhykexjcgfvdpaweof5r9ovlv",
+          "alt": "Center Activity. Geoblocks.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/08d9h2panc13cfi7flordznjy6di",
+          "alt": "Center activity. Blank 5 frame.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/7w1s6nw8du8y8exwzbscxz87wcf7",
+          "alt": "Dot image. 3 dots.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/r8c4v50d1pyhawwedoalvmtkuz0l",
+          "alt": "Dot image. 5 dots.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/f2725zbbcs47ryritgu4azi598q5",
+          "alt": "Dot image. 2 dots.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/2021-06-04_im_certified_badge.svg",
+          "alt": "IM (Illustrative Mathematics) Certified",
+          "caption": "",
+          "context": "these materials include public domain images or openly licensed images that are copyrighted by their respective owners. openly licensed images remain under the terms of their respective licenses."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6of3fsn3ooc42k9of8jna9hbrt72",
+          "alt": "5 frame, filled Below, 1 counter.",
+          "caption": "",
+          "context": "this can be more challenging for students because images cannot be rearranged and it can be more difficult to keep track of which images they have counted. students count groups of images in lines, arrays, on 5-frames, in number cube arrangements, and on fingers."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/0piu266labvr0l95gkevt6hzlih6",
+          "alt": "Fingers showing 6.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/wd3kh0nwcw18eyecagc9jgifsp2e",
+          "alt": "Connect quantities and numbers figure",
+          "caption": "",
+          "context": "students also represent numbers by counting out groups of objects and drawing groups of images. for example, students match the written numeral on the left to the dots on the right side of the page."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/uzwrpu8nmqeer0knwpz8l4zyqq3a",
+          "alt": "Triangle",
+          "caption": "",
+          "context": "students see a wide range of examples of specific shapes, to help them develop an understanding of what the shapes are. for example, students see these shapes and talk about what makes them triangles."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3ytlet3ftheiu6wza5gk6o27nlat",
+          "alt": "Triangle.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/cw8cjrhw3cj63vy68ctgm17psxq7",
+          "alt": "Triangle.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ph0xo9dql219sgdyalu75q0e5drf",
+          "alt": "Triangle.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3k6v9uklsgg3yleciepb5y9av32o",
+          "alt": "Pattern block arrangement.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/7ka5bbvxm76fyd0hxgz6sgbhoffj",
+          "alt": "Pattern block arrangement.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/cmzeh1n0o6ubnib6sj1vxiwi9m7q",
+          "alt": "Black and White Dots",
+          "caption": "",
+          "context": "students also count images in scattered configurations for the first time, recognizing the need to keep track of the images they have counted. for example, students may count all the black dots first and then the white dots, or they may count the black dots and white dots together."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/gd2s97sx0ded4z0uz5pb8vfzxiqh",
+          "alt": "Two-colored counters",
+          "caption": "",
+          "context": "while students are not required to create drawings in a particular way, they notice that organized drawings make it easier to see how the drawing matches the story problem. for example, the students may use any of these diagrams to represent a story that matches the expression \\(5 + 2\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6y2ityphm243nwab502jljnta4a4",
+          "alt": "Sample student response.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/wref2vdg988s2v85g14zrgbjxafq",
+          "alt": "Sample student response.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6xndmiccq3nc2sw7738311ubjdeb",
+          "alt": "Counters.",
+          "caption": "",
+          "context": "students understand that there are different ways to compose and decompose a given number. they work with physical objects, such as counters and connecting cubes, that they can use to compose and decompose numbers."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ibp6kr6mxf1md2t8e11tn2ng3zvk",
+          "alt": "Counters.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/qd8sqoyll2f7l8cbp7v8gyzfl6hf",
+          "alt": "Counters.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fls81k5igtmzqnm7hke32s57blzv",
+          "alt": "Ten frame. 9 counters.",
+          "caption": "",
+          "context": "section c: make and break apart 10 the number 10 is foundational to the place value work students will do in later grades. in this section, students are introduced to a 10-frame by putting together two 5-frames which allows them to build on previous understandings of the numbers 6-9 in relation to 5."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/8o0tzg9nztean2f659ctmyr0ybw8",
+          "alt": "Fingers.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/q8zhipt9pye5y81tyvp2kmxdminw",
+          "alt": "Full ten frame and 4 ones",
+          "caption": "",
+          "context": "as students represent these numbers, they fill a 10-frame and show some more ones. students may show these ones in different ways."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/62h3cb3g5jmowy1r8q91p5nymlsc",
+          "alt": "10-frame diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/p8qs3s50nvm66k2jxq9nja1dxvak",
+          "alt": "Representations of 14.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fqynj73wjltle6wpskya8qoc2cgl",
+          "alt": "Line of rectangles.",
+          "caption": "",
+          "context": "section c: count groups of 11-20 images in this section, students count groups of up to 20 images. students work with images arranged in lines, arrays, circles, and on 10-frames."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/uvbv1wwit5k6r87h7vgxraxun8yl",
+          "alt": "Triangles.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/q9qjepdlka13tj9cgoaorursqesg",
+          "alt": "Array of 12 squares.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/1z1x2zum8u0vpumi6ij7xb2gdc9e",
+          "alt": "bag of oranges",
+          "caption": "",
+          "context": "students write numbers to show how many images there are. throughout the unit you can support your student by finding everyday opportunities to practice counting groups of up to 20 objects."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/y7bk01p7v66wira2e0biscwt606e",
+          "alt": "Pattern block puzzle",
+          "caption": "",
+          "context": "with students, we refer to two-dimensional shapes as flat shapes and three-dimensional shapes as solid shapes. section a: compose and count with flat shapes in this section, students revisit number concepts while working with pattern blocks."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6cg0xshdxbhrx645r5o0l8ox9lrk",
+          "alt": "Pattern block puzzle",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/7thu9yn2ksm3nyeckhmj8ire0j44",
+          "alt": "number cube",
+          "caption": "",
+          "context": "students identify examples of solid shapes in their environment and work with geoblocks, including cones, cubes, cylinders, spheres, pyramids, and prisms."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/tv5jxksvhs77pneztkubfc7f6lm1",
+          "alt": "Party hat in the shape of a cone",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/plapbfnruizxf6qqi7z4e01hihp9",
+          "alt": "Can",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/uiz8qv86r6oika35wrycvtbc4x4r",
+          "alt": "soccer ball in the shape of a sphere",
+          "caption": "",
+          "context": ""
+        }
+      ]
+    }
+  ]
+}
