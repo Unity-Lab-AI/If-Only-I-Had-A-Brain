@@ -1,6 +1,42 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 THIRD + FOURTH BATCH (LATEST — PICK UP HERE) — SHAKESPEARE JOINS THE CORPUS, THE LADDER REACHES PhD, AND THE BOARD IS FULLY MIGRATED
+> ## ⭐⭐⭐ 2026-09-02 FIFTH + SIXTH BATCH (LATEST — PICK UP HERE) — THE REPOSITORY KEPT ALREADY HAVING WHAT THE BOARD WAS ASKING FOR
+>
+> ### Read in this order: this block → `docs/TODO.md` (`CURVEDEPTH.11` is the live successor) → the batches below.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                      29 open · 9 in-progress · 0 closed rows on the board
+> corpus                     5,629,408 reachable words · UNREACHABLE 0 · avg cell 32,540 (22.2% of a course year)
+> against the bar            6 of 173 cells at/above band floor · 167 THIN · 0 EMPTY
+> grad/PhD lane              LIVE — PMC full text + arXiv abstracts, 969,732 words
+> walk                       frozen ON PURPOSE — the training is still being BUILT
+> donor pod i03ihi54kccu0l   EXITED on purpose. restart = start-pod, NEVER terminate.
+> git                        develop / main on BOTH remotes, tree clean
+> ```
+>
+> ### ⛔⛔ THE PATTERN OF THESE TWO BATCHES: THREE ROWS ASKED FOR SOMETHING THE REPO ALREADY HAD
+> - **`CURVEBUILD.2`** wanted a per-cell target ladder. **It already existed** in `server/curriculum-coverage.js`, derived from measured OpenStax books, enforced by the live auditor — and was simply **never written into `docs/CURRICULUM-GAP.md`**, whose acceptance criterion therefore named no target at all. ⚠ **I derived a second ladder before reading the first, and it was circular** — floored at what the corpus already holds, i.e. "deep enough" = "what we have". Discarded; the failure mode is in `THRESHOLD-DERIVATION.md` because it outlives the numbers.
+> - **`CURVEBUILD.5`** was holding for a call **it quotes in its own body** (*"so no 150 reps" → "on everything"*), already shipped by `REPCOMP5.1` at 4-5 presentations.
+> - **`CHATFAULT.2`** offered three options; **two expired** — (b) names a deleted flag, (c) is a bootstrap with a threshold — and (a) is what the code already does.
+>
+> **`CURVEBUILD.4`, the mirror audit, is what found the last two**, over all 41 open rows: 5 assert an unmade decision, 2 were already answered, and the 3 that stay open have the reason written next to each.
+>
+> ### ⭐ GEE NAMED THE COLLEGE→PhD SOURCE, AND HALF OF IT IS BUILT
+> Asked via `AskUserQuestion`. **His choice: "Split: textbooks then papers"** — OTL for college2-4, **arXiv + PMC OA for grad/PhD**. The grad/PhD half shipped the same hour: **969,732 words**, corpus **+20.8%**. PMC gives **full text**; **arXiv gives ABSTRACTS ONLY** (the paper is a PDF or a LaTeX e-print), so they are separate `papers-*` / `abstracts-*` entries. **`civics` gets no lane and the script says so.**
+>
+> ### ⛔⛔ THE AUDITOR CAUGHT ME COMMITTING THE DEFECT IT WAS BUILT FOR
+> My first run wrote `cs`/`economics`/`psychology` cells at grad and phd. The audit reported **`UNREACHABLE: 6 files, 465,704 words the walk never reads`** where it had said **0** an hour before — those three subjects **retire at grade12**, superseded by `major`/`cstheory`/`cssystems`/`research`. **Not thin cells; cells the roster never asks for.** Fixed by routing (`cs → major`, `economics`/`psychology` → `research`), files deleted before they were ever committed, **UNREACHABLE back to 0.**
+>
+> ### ⚠ THE OTHER HALF HAS A MEASURED OBSTACLE HE COULD NOT HAVE KNOWN — `CURVEDEPTH.11`
+> 250 of Open Textbook Library's 2,005 books, probed: **27% licence-safe, 23/250 both licence-safe and in a needed subject (~184 books), and the biggest host in that remainder is `openstax.org`** — books already ingested; most "Online" links go to LibreTexts, already excluded. **DOAJ (his option B) is the obvious cover, and that is his call to revisit with numbers rather than a question asked cold.**
+>
+> ### ⏳ NEXT
+> **`CURVEDEPTH.11`** · **`CORPUSBRACKET.1`** (643 bracket sentences shipped, sequence with the wiki top-up) · **`NOFALLBACK.5/.6/.7`** · **THE FRESH WALK IS LAST, `REGRESSION.1` last of all.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 THIRD + FOURTH BATCH — SHAKESPEARE JOINS THE CORPUS, THE LADDER REACHES PhD, AND THE BOARD IS FULLY MIGRATED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`CORPUSBRACKET.1`, `NOFALLBACK.5/.6/.7` are the live successors) → the batches below.
 >

@@ -39,6 +39,44 @@
 
 ---
 
+## 2026-09-02 (SIXTH BATCH) — `CURVEDEPTH.6` ANSWERED BY GEE AND HALF-BUILT THE SAME HOUR, AND THE AUDITOR CAUGHT ME PUTTING 465,704 WORDS WHERE NOTHING READS THEM
+
+- [x] `CURVEDEPTH.6` — ⛔ **THE ONE GENUINELY OPEN QUESTION, AND IT IS GEE'S: the college→PhD source.** His words, twice: *"we had to find a real fucking PHD equivelent informational database to teach her college"*. **OpenStax stops at intro undergrad** — it cannot carry college2→PhD. Candidates that are real, open-licensed and machine-fetchable: **arXiv** (full-text, CC-BY on many), **PubMed Central Open Access subset** (CC-BY), **DOAJ** (open-access journals), **OpenStax→beyond via OERTX/Open Textbook Library**. ⚠ This is a sourcing decision with licensing consequences, not an engineering pick. **Name it and the ingest is mechanical.**
+
+> ✅ **ANSWERED BY GEE 2026-09-02, asked via `AskUserQuestion` because it is exactly the kind of fork he told me to bring him that way.** His choice, verbatim from the option he selected: **"Split: textbooks then papers"** — *"Open Textbook Library / OERTX for college2-4 (real upper-level COURSE books — closest to 'what that year actually teaches'), then arXiv + PubMed Central OA for grad/PhD (the research literature, which is literally what those years read). Matches the corpus to what each year really is, at the cost of building two fetchers instead of one."*
+>
+> ### ⭐ THE GRAD/PhD HALF IS BUILT AND LANDED — `.claude/scripts/fetch-research-corpora.mjs`
+> ```
+>   969,732 words of open-access literature written
+>   reachable corpus   4,659,676 -> 5,629,408 words   (+20.8%)
+>   average prose cell    26,935 ->    32,540 words   (18.4% -> 22.2% of a course year)
+>   UNREACHABLE                0 words
+> ```
+> **Two lanes, and they are deliberately NOT interchangeable:** PubMed Central Open Access returns **full text** — whole sections of real scholarly prose — and covers biology, medicine, psychology and parts of social science; **arXiv returns ABSTRACTS ONLY**, because the full paper lives in a PDF or a LaTeX e-print and neither is clean prose. ⚠ **An abstract is still real writing at exactly this register — dense, hedged, structured — but it is 150-250 words, so an arXiv cell needs hundreds of them.** The two are separate entries (`papers-*` vs `abstracts-*`) so nobody has to guess which one a cell holds.
+>
+> ⛔ **`civics` gets NO LANE and that is written into the script rather than papered over** — there is no open-access research archive for civics, and pointing it at a biomedical index to fill a number would be worse than the gap.
+>
+> ### ⛔⛔ THE AUDITOR CAUGHT ME COMMITTING THE EXACT DEFECT IT WAS BUILT FOR
+> The first run wrote `cs/grad`, `cs/phd`, `economics/grad`, `economics/phd`, `psychology/grad`, `psychology/phd`. The coverage audit then reported **`UNREACHABLE files: 6 (465,704 words the walk never reads)`** where it had reported **0** an hour earlier.
+>
+> **Why:** `SUBJECTS_RETIRED_AT` retires `cs`, `economics` and `psychology` at **grade12** — above that they are superseded by `major` / `cstheory` / `cssystems` and, at grad level, by `research`. **A `psychology/phd.json` is not a thin cell, it is one the roster never asks for.** ⭐ **This is the same defect that instrument exists to catch — 268,481 words that once sat in `cs/college*`, `/grad`, `/phd` where nothing read them — reproduced by me in a single command.**
+>
+> **Fixed by routing rather than by renaming files:** `cellFor()` maps a retired subject's literature to the cell that is live at that band — `cs → major`, `economics → research`, `psychology → research` — and the run prints the routing on every line it applies. The six files were deleted before they were ever committed, and the re-run put the same words where the walk reads them. **UNREACHABLE back to 0.**
+>
+> ### ⚠ THE COLLEGE2-4 HALF HAS A MEASURED OBSTACLE, AND IT WAS NOT KNOWN WHEN THE CHOICE WAS MADE
+> Open Textbook Library was probed before building on it — 250 of its 2,005 books sampled through its JSON API:
+> ```
+>   commercial-safe licence (CC-BY / CC-BY-SA / GFDL)   67 of 250   = 27%
+>   ...AND in a subject this corpus needs                23 of 250
+>   extrapolated usable catalogue                        ~184 books
+>   where those books are hosted   openstax.org 25 · audileo 10 · amazon 8 · archive.org 6
+> ```
+> ⛔ **Two thirds of OTL is CC-BY-NC-***, which this project's licence posture excludes, **and the largest single host in the usable remainder is openstax.org — books this corpus already ingests.** The "Online" format links mostly point at **LibreTexts**, which the gap ledger already excludes for the same licence reason.
+>
+> **So the textbook half of his choice is thinner than it looks, and that is stated rather than quietly substituted.** Filed as `CURVEDEPTH.11` with the numbers, so the call can be revisited with data instead of re-asked cold. **DOAJ — his option B — remains the obvious cover for college2-4 if the ~184-book slice proves too thin, and that is his call to make, not mine to take.**
+
+---
+
 ## 2026-09-02 (FIFTH BATCH, part 2) — `CURVEBUILD.4` — THE MIRROR AUDIT, AND IT FOUND TWO SETTLED QUESTIONS SITTING OPEN
 
 - [x] `CURVEBUILD.4` — **`LEDGERLIE.1` RUNS IN BOTH DIRECTIONS.** The original row audits every `✅ DONE` that claims a deliverable which does not exist. **This adds the mirror: every board row asserting a question is OPEN or a decision is UNMADE must be checked against the ledger for a decision that already exists** — because that is the defect caught today, when `CURVEDEPTH.6` sent a settled question back to Gee. Both directions are the same failure: **the board's summary of the ledger is not the ledger.**
