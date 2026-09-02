@@ -597,6 +597,82 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // this is a PUBLIC-lane message — a malformed frame must never reach the
   // wavelet transform. Async (perceive may take the GPU path on a GPU host);
   // callers fire-and-forget.
+  // ⭐⭐ HEARING.1 — WHAT SHE HEARD, BANKED AND BOUND.
+  //
+  // Operator: *"she need to be able to hear too when talked too not just a TTS
+  // wrapper on a text chain"*. This is the audio twin of
+  // `_perceiveTextbookFigure`, and it runs the SAME four steps a picture takes
+  // — perceive, describe, store, teach — so hearing and seeing are one
+  // mechanism rather than two that drift apart.
+  //
+  // ⛔ THE PERCEPTION ALREADY HAPPENED, ON THE CLIENT, AND THAT IS THE DESIGN.
+  // Raw PCM for one utterance is ~72,000 floats; as JSON that is most of a
+  // megabyte on the socket the walk teaches over. `perceiveAudio` is pure and
+  // runs fine in the browser, and a field-A record is a few KB. **The equation
+  // travels, never the waveform.**
+  //
+  // ⛔ `heard:` IS NAMESPACED FOR THE SAME REASON `fig:` IS. Keyed by the words
+  // alone, a spoken sentence would overwrite what a WORD LOOKS LIKE in the same
+  // store — the CAMPOISON defect, where an unlabelled frame became her memory
+  // of a word. Namespacing is what makes the modalities unable to collide.
+  //
+  // ⚠ NOT A CLAIM OF SPEECH RECOGNITION. The transcript still comes from the
+  // browser. What changes is that the sound is no longer discarded and her
+  // words are anchored to a percept she actually took in.
+  async _ingestHeard(msg) {
+    const st = this._hearStats || (this._hearStats = {
+      received: 0, banked: 0, taught: 0, rejected: 0, lastAt: 0, lastPhrase: null, lastErr: null,
+    });
+    st.received++;
+    const rec = msg && msg.rec;
+    const transcript = String((msg && msg.transcript) || '').replace(/\s+/g, ' ').trim().slice(0, 400);
+    // A record with no chunks is not a percept, and a phrase with no words
+    // cannot be bound — refuse rather than bank something unusable.
+    if (!rec || !Array.isArray(rec.chunks) || !rec.chunks.length || !transcript) {
+      st.rejected++; st.lastErr = 'no chunks or empty transcript';
+      return;
+    }
+    const now = Date.now();
+    try {
+      const store = this._vmStore && this._vmStore();
+      if (store) {
+        // Keyed by the PHRASE under a `heard:` prefix — so a second hearing of
+        // the same sentence updates one row instead of growing the store
+        // without bound, and can never touch `seen:`/`fig:`/`canvas:own:`.
+        const key = `heard:${transcript.toLowerCase().slice(0, 80)}`;
+        const prev = store.get(key);
+        store.set(key, {
+          rec,
+          at: now,
+          seen: (prev && prev.seen ? prev.seen : 0) + 1,
+          conf: true,          // she took it in directly — there is no second guess to agree with
+          p: Array.isArray(msg.percept) ? msg.percept : null,
+          phrase: transcript,
+          heard: { seconds: Number(msg.seconds) || null },
+        });
+        this._vmTrimResident(store);   // evicts from RAM; the row STAYS on disk
+        this._vmSaveSoon();
+        st.banked++;
+      }
+    } catch (e) {
+      st.rejected++; st.lastErr = `store: ${(e && e.message) || e}`;
+    }
+
+    // ⭐ THE WORDS SHE HEARD ARE TAUGHT, which is the whole point. The figure
+    // lane shipped once with the percept banked and the phrase never bound —
+    // "the picture arrives with its text" was true of the DATA and false of the
+    // brain. Not repeating that here.
+    try {
+      if (typeof this._queuePhraseTeach === 'function') {
+        this._queuePhraseTeach(transcript);
+        st.taught++;
+      }
+    } catch { /* the teach queue has its own bounds and counters */ }
+
+    st.lastAt = now;
+    st.lastPhrase = transcript.slice(0, 80);
+  },
+
   async _ingestVisualFrame(msg) {
     if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return;
     const now = Date.now();
