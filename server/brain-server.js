@@ -1485,6 +1485,16 @@ function autoClearStaleState() {
     path.join(__dirname, 'teach-ledger.db'),
     path.join(__dirname, 'teach-ledger.db-wal'),
     path.join(__dirname, 'teach-ledger.db-shm'),
+    // ⛔ THE FIGURE QUEUE DIES WITH THE WEIGHTS, AND FOR A SHARPER REASON THAN
+    // THE LEDGER. It records which illustrations she has ALREADY SEEN — and a
+    // fresh walk wipes the visual store, so every one of those percepts is gone.
+    // Surviving the wipe would mark tens of thousands of figures `seen` against
+    // a brain that has never seen any of them, and the drain would skip them
+    // forever. **A queue that remembers work done on a deleted brain does not
+    // resume, it silently cancels.** A Savestart keeps it; a fresh walk does not.
+    path.join(__dirname, 'figure-queue.db'),
+    path.join(__dirname, 'figure-queue.db-wal'),
+    path.join(__dirname, 'figure-queue.db-shm'),
   ];
 
   // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
@@ -3771,6 +3781,15 @@ class ServerBrain {
         this._teachLedger = new TeachLedger();
       }
       this.cortexCluster.teachLedgerAppend = (row) => this._teachLedger.append(row);
+      // ⭐⭐ THE FIGURE QUEUE BRIDGE — every illustration gets seen, off the cell
+      // pass. Attached like the accessors above and for the same reason.
+      if (!this._figureQueue) {
+        const { FigureQueue } = require('./figure-queue.js');
+        this._figureQueue = new FigureQueue();
+      }
+      this.cortexCluster.figureQueueEnqueue = (subject, grade, figs) =>
+        this._figureQueue.enqueueCell(subject, grade, figs);
+      this._startFigureDrain();
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
       // a successful definition lookup so sem(word) → sem(def_words)

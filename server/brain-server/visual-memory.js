@@ -2073,6 +2073,82 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     return { w, h, data: out };
   },
+
+  // ⭐⭐ THE BACKGROUND FIGURE DRAIN — every illustration in the corpus gets
+  // seen, without any cell pass paying for it.
+  //
+  // Gee chose this over perceiving inline: *"option 1 ... but they have to link
+  // to thhe text corrctly"*. The measurement behind it — 37,592 figures at 6 per
+  // cell visit meant `math/grade10` needed **462 visits** to finish 2,769, and a
+  // cell is visited a handful of times.
+  //
+  // ⛔⛔ THE LINK TRAVELS WITH THE ROW, WHICH IS WHAT MAKES DEFERRAL SAFE. Each
+  // queued figure carries its own `alt`, `caption`, `context` (the corpus prose
+  // it sits inside) and `theme`, and `_perceiveTextbookFigure` builds its phrase
+  // and its store key from exactly those. **Nothing here reads what is currently
+  // being taught** — which is the `CAMPOISON` fix holding: a frame that fuses
+  // with "whatever word is current" is the defect that made a webcam placeholder
+  // become her memory of a word, and resolving the binding at perception time
+  // instead of carrying it would re-open that instantly.
+  //
+  // ⚠ ONE AT A TIME, ON A TIMER, `unref`'d. This shares the loop with the teach
+  // lane, so it takes one figure per tick and never batches — the whole reason
+  // it exists is to stop figure work from pinning anything. `DREAM_FIGDRAIN_MS`
+  // tunes the pace; `=0` disables the lane and says so.
+  _startFigureDrain() {
+    if (this._figDrainTimer) return;
+    const raw = process.env.DREAM_FIGDRAIN_MS;
+    const every = raw === undefined || raw === '' ? 1500 : Math.max(0, Number(raw) || 0);
+    if (every === 0) { console.log('[FigureDrain] disabled by DREAM_FIGDRAIN_MS=0 — queued figures will NOT be perceived'); return; }
+    this._figDrainBusy = false;
+    this._figDrainTimer = setInterval(async () => {
+      if (this._figDrainBusy) return;                 // never overlap a fetch
+      if (!this._figureQueue) return;
+      this._figDrainBusy = true;
+      try {
+        const row = this._figureQueue.next();
+        if (!row) return;
+        // ⚠ Rebuilt into the exact shape the inline path passes, so the two
+        // callers cannot drift into binding the same figure differently.
+        const fig = {
+          url: row.url, src: row.url,
+          alt: row.alt || '', caption: row.caption || '',
+          context: row.context || '',
+          theme: row.theme || null,
+        };
+        let rec = null;
+        try {
+          rec = await this._perceiveTextbookFigure(fig, {
+            key: `${row.theme || row.subject}-${row.k.split('-').pop()}`,
+            theme: row.theme || `${row.subject}/${row.grade}`,
+          });
+        } catch (e) {
+          this._figureQueue.markFailed(row.k, e?.message || String(e));
+          return;
+        }
+        // ⛔ `null` here is AMBIGUOUS and must not be recorded as a failure: the
+        // perceive path returns null both for "already held" and for "fetch
+        // failed", and the store is the only thing that can tell them apart.
+        // A held figure is DONE; a failed one is retried a bounded number of
+        // times. Collapsing the two would either re-fetch the whole corpus
+        // forever or silently drop pictures.
+        if (rec) { this._figureQueue.markDone(row.k, 'seen'); return; }
+        let held = false;
+        try {
+          const st = this._vmStore && this._vmStore();
+          held = !!(st && st.get(`fig:${row.theme || row.subject}-${row.k.split('-').pop()}`));
+        } catch { held = false; }
+        if (held) this._figureQueue.markDone(row.k, 'held');
+        else this._figureQueue.markFailed(row.k, 'perceive returned nothing');
+      } catch (e) {
+        console.warn('[FigureDrain] tick failed —', e?.message || e);
+      } finally {
+        this._figDrainBusy = false;
+      }
+    }, every);
+    if (this._figDrainTimer.unref) this._figDrainTimer.unref();
+    console.log(`[FigureDrain] started — one figure every ${every}ms, off the teach lane (DREAM_FIGDRAIN_MS)`);
+  },
 };
 
 module.exports = { SERVER_VISUAL_MEMORY_MIXIN };

@@ -8915,6 +8915,24 @@ export class Curriculum {
     try { figs = cluster.academicStoryFigures(subject, grade) || []; } catch { figs = []; }
     if (!figs.length) return { perceived: 0 };
 
+    // ⭐⭐ ENQUEUE THE WHOLE CELL FIRST, so nothing depends on how many visits
+    // this cell gets. The inline loop below still perceives the first few
+    // immediately — those bind while the prose is freshest — and the background
+    // lane works through the remainder at its own pace.
+    //
+    // ⛔ THE CAP WAS A CEILING ON WHAT SHE CAN EVER SEE, NOT A COST CONTROL.
+    // Measured: 37,592 figures on disk, and at 6 per visit `math/grade10` needed
+    // **462 cell visits** to finish its 2,769. A cell is visited a handful of
+    // times, so the richest cells were showing a fraction of a percent. The
+    // resume cursor fixed "the same few forever" and could not fix this.
+    //
+    // ⚠ The enqueue is a metadata insert and is idempotent on the figure's own
+    // address, so re-teaching a cell costs nothing and cannot duplicate.
+    const enq = cluster.figureQueueEnqueue;
+    if (typeof enq === 'function') {
+      try { enq(subject, grade, figs); } catch { /* the view must never break a teach */ }
+    }
+
     // ⛔⛔ A RESUME CURSOR, BECAUSE "TAKEN IN ORDER SO A RE-VISIT RESUMES" WAS
     // WHAT THE COMMENT SAID AND NOT WHAT THE CODE DID (fixed 2026-09-02).
     //

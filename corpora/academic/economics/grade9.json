@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "grade9",
   "subject": "economics",
-  "source": "hybrid: Wikibooks open textbooks + prior sources, cleaned + sentence-segmented",
-  "note": "Textbook corpus for economics/grade9. Trained via curriculum._trainAcademicStories. A course is a book, not an article about the subject.",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for economics/grade9. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
   "experiences": [
     {
       "theme": "money",

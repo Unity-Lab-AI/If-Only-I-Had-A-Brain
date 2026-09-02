@@ -856,6 +856,39 @@ async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_B
 // Measured cost of the cap before it went: 372 of 1,848 articles clipped.
 const WIKI_FIG_PER_ARTICLE = Infinity;
 
+// ⛔⛔ WIKIPEDIA CHROME IS REMOVED BEFORE ANY INDEX IS TAKEN, AND IT HAD BEEN
+// BECOMING A FIGURE'S "LINKED TEXT" (measured 2026-09-02).
+//
+// A harness on a real queued figure printed its binding phrase as:
+//     "icon this article needs more citations . please help improve this
+//      article by adding citati…"
+// — a maintenance banner, standing in for the prose that references the picture.
+// Swept across the whole corpus: **994 of 20,420 contexts (4.9%) were not
+// subject prose** — 491 citation banners, 217 navigation strings, 187 naming
+// Wikipedia itself, 99 other templates — and **952 of the 994 came from these
+// two wiki lanes.**
+//
+// ⭐ STRUCTURAL, NOT A WORD LIST. Those banners live in known containers
+// (`ambox`, `hatnote`, `navbox`, `metadata`, `mbox`, `reflist`, edit links), so
+// removing the ELEMENTS kills the whole class — including templates nobody has
+// seen yet — where a phrase blacklist would only catch the wordings already
+// observed. This project's standing rule is the same one: classify by structure,
+// never by a list of strings.
+//
+// ⚠ MUST RUN ONCE ON THE WHOLE DOCUMENT, BEFORE `<img>` OFFSETS ARE COLLECTED.
+// The context window is cut by byte index around each image, so stripping
+// elements afterwards would shift every offset and slide each figure's text off
+// the picture it belongs to.
+function stripWikiChrome(html) {
+  let h = String(html || '');
+  h = h.replace(/<table[^>]*class="[^"]*\b(ambox|navbox|metadata|mbox|sistersitebox|infobox-subbox)\b[^"]*"[\s\S]*?<\/table>/gi, ' ');
+  h = h.replace(/<div[^>]*class="[^"]*\b(hatnote|ambox|navbox|metadata|mbox-text|reflist|thumbcaption-nav|shortdescription)\b[^"]*"[\s\S]*?<\/div>/gi, ' ');
+  h = h.replace(/<div[^>]*role="note"[\s\S]*?<\/div>/gi, ' ');
+  h = h.replace(/<span[^>]*class="[^"]*\bmw-editsection\b[^"]*"[\s\S]*?<\/span>/gi, ' ');
+  h = h.replace(/<sup[^>]*class="[^"]*\b(reference|noprint)\b[^"]*"[\s\S]*?<\/sup>/gi, ' ');
+  return h;
+}
+
 function wikiFigContext(html, index, cap) {
   const strip = (x) => String(x)
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -937,8 +970,11 @@ async function fetchFigures(title, host, cap) {
   };
 
   const parsed = await get(`https://${host}/w/api.php?format=json&action=parse&prop=text&redirects=1&page=${encodeURIComponent(title)}`);
-  const html = parsed?.parse?.text?.['*'];
-  if (!html) return { figures: [], reason: parsed ? 'no-html' : lastKind };
+  const rawHtml = parsed?.parse?.text?.['*'];
+  if (!rawHtml) return { figures: [], reason: parsed ? 'no-html' : lastKind };
+  // ⚠ Chrome out FIRST, so every `<img>` offset below is an offset into the
+  // same document the context window is cut from. See `stripWikiChrome`.
+  const html = stripWikiChrome(rawHtml);
 
   const found = [];
   const seenFile = new Set();
