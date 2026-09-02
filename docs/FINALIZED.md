@@ -39,6 +39,40 @@
 
 ---
 
+## 2026-09-02 (FIFTH BATCH, part 2) — `CURVEBUILD.4` — THE MIRROR AUDIT, AND IT FOUND TWO SETTLED QUESTIONS SITTING OPEN
+
+- [x] `CURVEBUILD.4` — **`LEDGERLIE.1` RUNS IN BOTH DIRECTIONS.** The original row audits every `✅ DONE` that claims a deliverable which does not exist. **This adds the mirror: every board row asserting a question is OPEN or a decision is UNMADE must be checked against the ledger for a decision that already exists** — because that is the defect caught today, when `CURVEDEPTH.6` sent a settled question back to Gee. Both directions are the same failure: **the board's summary of the ledger is not the ledger.**
+
+> ✅ **DONE — the audit ran over all 41 open and in-progress rows; 5 assert an unmade decision; 2 of those were already answered.**
+>
+> | row | verdict |
+> |---|---|
+> | `CURVEBUILD.5` | ⛔ **ANSWERED IN ITS OWN BODY AND ALREADY SHIPPED.** The row quotes Gee's call verbatim — *"so no 150 reps"* → *"on everything"* — and `REPCOMP5.1` executed it: every authored dose in the tree runs at **4-5 presentations**, deposit unchanged. **Closed.** |
+> | `CHATFAULT.2` | ⛔ **SETTLED BY A STANDING RULING.** Two of its three options no longer exist: (b) `DREAM_DICT_FALLBACK=1` is a **deleted flag** whose own warning read *"but then her words are not hers"*, and (c) "taper the gate" is a bootstrap with a threshold, which is still a bootstrap. (a) "keep strict" is **already the behaviour** since retrieval was deleted for every brain in every state. **Closed.** |
+> | `REPLAYOFF.4` | ✅ legitimately open — held on margin evidence across gate verdicts, and exactly one verdict exists. Walk-gated, not question-gated. |
+> | `READBACKEYE.3` | ✅ legitimately open — whether to spend a donor release is a real call with a real cost. |
+> | `CURVEDEPTH.6` | ✅ **legitimately open, and the only one of the five that is** — the college→PhD source is a sourcing decision with licensing consequences. Asked properly rather than left on the board as a note. |
+>
+> ⭐ **THE AUDIT CAUGHT ITS OWN CLASS OF DEFECT ON THE SAME DAY IT SHIPPED.** `CURVEBUILD.2`, closed an hour earlier, was a row asking for a ladder that already existed in code. **The mirror direction is not hypothetical: three rows in one session were asking for something the repository already had.**
+>
+> ⚠ **What this audit is NOT:** a licence to close a row because I would like it closed. Each verdict above names the specific artifact that answers it — a verbatim quote plus a shipped change, a deleted flag plus a standing ruling. **Three of five stay open, and the reason is written next to each.**
+
+---
+
+- [x] `CURVEBUILD.5` — ⛔⛔ **NO 150 REPS ON EVERYTHING — THE REP RE-PRICE, AND HIS CALL IS THE THING THE BOARD WAS HOLDING IT FOR.** Gee (verbatim): *"yea it grows substantually but we are wirting the brains of Unity to not need repition to learn"* → *"so no 150 reps"* → *"on everything"*.
+
+> ✅ **CLOSED BY THE `CURVEBUILD.4` AUDIT.** The row was holding for a call **whose answer it quotes in its own body**, and `REPCOMP5.1` shipped that answer: every authored dose at 4-5 presentations, deposit preserved by solving for the learning rate rather than by trimming the dose. Answered, executed, and left open on the board — the exact defect the mirror audit exists to catch.
+
+---
+
+- [x] `CHATFAULT.2` — ⚠ **THE DESIGN FORK BEHIND "shouldnt she be talking?" — GEE'S CALL, deliberately not decided in code.** Even with `.1` fixed, "HI" at this moment reads as HONEST SILENCE: OWNWORDS.2 shuts the dictionary-cosine retrieval bootstrap off at `passedCells.length > 0` — ONE cell of ~180 — so the crutch that made her "normally talking" died the moment ela/kindergarten passed, while her trained motor emission mid-walk (loop at 35-42% service) still composes nothing for a bare greeting. Options, each honest: **(a) keep strict** — she is silent until her own matrix speaks, the OWNWORDS.2 ideal, and `silentReason` on the page says why; **(b) `DREAM_DICT_FALLBACK=1` for the early walk** — retrieval speaks for her again, flag off later (but then her words are not hers, the counter tracks it); **(c) taper the gate** — bootstrap allowed until a REAL threshold (K row complete, or first word_motor everFired), then strict. The `state.voice` block + `_honestSilenceCount` will show how often silence actually happens once `.1` lands. Decide after the press shows real silence rates. *(Relocated here from under §LETTERBLOCK by the 2026-09-01 board audit, text byte-identical — it was filed in THIS section and its pointer above says "below".)*
+
+> ✅ **CLOSED BY THE `CURVEBUILD.4` AUDIT AS SETTLED, NOT AS DECIDED.** ⛔ The option set expired: **(b) names a flag that has been deleted** — and its own warning already conceded *"but then her words are not hers"* — while **(c) is a bootstrap with a threshold, which is a bootstrap**, forbidden by the whole-stack no-fallbacks ruling. **(a) is what the code does today**, since the retrieval lane was removed for every brain in every state on 2026-09-01.
+>
+> ⭐ **Re-asking would have been the fourth time an instance of a settled rule went back to him**, which is precisely the pattern the ruling corrected. The instruments the row asked for are live and unaffected: `state.voice` and `_honestSilenceCount` still report how often silence actually happens. **That is measurement, not a pending decision.**
+
+---
+
 ## 2026-09-02 (FOURTH BATCH) — `LITGRADE.1` — THE LAST FOUR ELA YEARS GET THEIR READING, AND THE VERIFICATION RULE CAUGHT A WRONG BOOK ON THE FIRST PASS
 
 - [x] `LITGRADE.1` — **EXTEND THE TITLE TABLE THROUGH `college3` / `college4` / `grad` / `phd`.** ⛔ **Every Gutenberg ID must be VERIFIED to resolve to its intended title before it is committed** — a wrong ID silently ingests the wrong book, and this corpus has already been burned once by a fetch that returned a translator's preface instead of the work (`CURVEBUILD.9`). ⚠ **Level-appropriate, not just longer:** upper-college and graduate ELA is criticism, theory and dense prose rather than more novels, so the picks should reflect what that year actually reads. ⭐ **Low urgency, stated plainly:** these are the four grades where she is LEAST likely to need dialogue exposure, since form is trained at K by `_teachConcreteSentences`. **The reason to do it is course fidelity — an ELA year with no assigned reading is not an ELA year — not sentence form.**
