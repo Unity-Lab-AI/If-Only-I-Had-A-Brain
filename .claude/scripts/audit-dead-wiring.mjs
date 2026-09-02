@@ -30,7 +30,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const SKIP_DIR = /node_modules|\.git|\.scratch|corpora|piper|graphify-out|wiki/;
-const CODE = /\.(js|mjs|cjs)$/;
+// ⛔⛔ HTML IS CODE HERE, AND LEAVING IT OUT MADE THIS DETECTOR LIE.
+//
+// Found 2026-09-02 while auditing the 71 "exports referenced nowhere": one of
+// them was `GPUCompute`, which `html/compute.html` **imports and constructs
+// twice** — that page IS the browser-donor GPU surface, one of this project's
+// live production lanes. The scan only walked `.js|.mjs|.cjs`, so an export
+// consumed exclusively by a page read as a total orphan.
+//
+// ⚠ THE CONSEQUENCE WAS NOT COSMETIC. The standing instruction on those 71 is
+// *do not bulk-strip* precisely because this codebase has been bitten by
+// deleting things that looked unused — and this blind spot is the mechanism that
+// would have made a wired class look safe to delete. Pages carry `<script
+// type="module">` imports, inline handlers and `new X()` calls; none of it was
+// visible.
+const CODE = /\.(js|mjs|cjs|html)$/;
 // The bundle is generated from js/brain — including it double-counts every
 // definition and makes an unwired method look wired.
 const SKIP_FILE = /bundle|\.min\./;
