@@ -256,6 +256,16 @@ For K-vocab |V| = 2247: `H ≈ log₂(2247) ≈ 11.13 bits/word`.
 
 ---
 
+## 2026-09-02 — the per-cell corpus floor ladder: CROSS-CHECKED, not newly derived
+
+- **Constants:** `FLOOR` in `server/curriculum-coverage.js` — early **7,300** · middle **29,000** · upper **73,000** · high **146,000** · college **330,000** · grad **330,000**
+- **Status:** ⛔ **NOT a new threshold.** These were derived on 2026-09-01 from measured OpenStax books and have been enforced by the live auditor since. What changed on 2026-09-02 is that they are now **published in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`**, where the acceptance criterion had been saying *"at or above its target"* while naming no target — enforced in code, unfalsifiable in the doc.
+- **Existing derivation (unchanged, restated so this page carries it):** 8 chapters sampled across `chemistry-book`, run through the production cleaner's shape → 417,371 raw bytes = 31,038 clean words = **one clean word per 13.4 bytes**, applied to each book's true size (biology-concepts 146,598 · anatomy 334,525 · chemistry 524,791 · physics 878,811). `high` and `college` take the SMALLEST complete book at that band so the value is a floor; `upper`/`middle`/`early` are ratio-extrapolated at 0.50/0.20/0.05 × high and are **labelled as extrapolated in `FLOOR_BASIS`**; `grad` reuses the college anchor and is labelled as the weakest link.
+- **⭐ NEW CROSS-CHECK (2026-09-02), from a completely unrelated source:** the full text of every work on the ELA reading ladder was counted — 43,835 → 554,505 words per assigned year; band medians early 180,815 · middle 86,940 · upper 111,097 · high 270,798 · college 198,632 · grad 254,727. **`high`'s assigned reading is 1.9× its textbook-derived floor**, so the floor is conservative as intended. **And the grad band — the one anchor with no counted basis — measures 45,321 and 464,132, a median of 254,727 that brackets the reused 330,000.** The reuse is now cross-checked rather than merely admitted.
+- **⚠ A SECOND LADDER WAS DERIVED AND DISCARDED THE SAME DAY.** Before reading the code, I built early 20,000 · middle 30,000 · upper 40,000 · high 55,000 · college 70,000 · grad 85,000, floored at *what the corpus already holds*. That is **circular** — it defines "deep enough" as "what we have" — and it would have contradicted the live instrument, leaving doc and tool disagreeing about what "done" means. Recorded here because the failure mode (deriving before reading) is more reusable than the numbers were.
+- **Cost of closing to the floor, computed 2026-09-02:** 173 prose cells × band floor ≈ **31.6M words** against 4.66M today = **6.8× corpus → 6.8^0.80 = 4.7×** on `_trainAcademicStories` alone. Exponent measured on this corpus (10.2× sentences → 6.4× expensive-lane growth). **This is the number that says the floors cannot all be reached by fetching harder.**
+- **Drift trigger:** re-measure whenever a cap or a source changes; re-compute the 4.7× immediately before the press.
+
 ## Update protocol
 
 Any new threshold MUST land with:
