@@ -257,6 +257,81 @@ Gee (verbatim): *"we are fixing it all completely and fully even the already pas
 
 ---
 
+## THE TARGET LADDER — the acceptance number per cell (published here 2026-09-02)
+
+> ⛔⛔ **THE LADDER ALREADY EXISTED IN CODE AND WAS MISSING FROM THIS DOCUMENT, WHICH IS THE WHOLE OF WHAT WAS WRONG.** `server/curriculum-coverage.js` has carried a derived per-band floor since 2026-09-01, and the live auditor checks every cell against it. This ledger's own acceptance criterion said *"at or above its target"* while naming no target — so the criterion read as unfalsifiable here and as enforced there.
+>
+> ⚠ **I DERIVED A SECOND LADDER BEFORE READING THE FIRST, AND IT WAS WORSE.** Mine floored each band at *what the corpus already holds*, which is circular — it defines "deep enough" as "what we have" and would have declared the corpus nearly finished by construction. It also contradicted the live instrument, so doc and tool would have disagreed about what "done" means. **Discarded; the code's ladder is the one.**
+
+### The bar, per band — and which half is counted rather than reasoned
+
+| band | grades | floor (words/cell) | basis |
+|---|---|---:|---|
+| early | pre-K → grade2 | **7,300** | extrapolated `0.05 × high` |
+| middle | grade3 → grade5 | **29,000** | extrapolated `0.20 × high` |
+| upper | grade6 → grade8 | **73,000** | extrapolated `0.50 × high` |
+| high | grade9 → grade12 | **146,000** | ⭐ **MEASURED** — `biology-concepts-book`, 146,598 words |
+| college | college1 → college4 | **330,000** | ⭐ **MEASURED** — `anatomy-book`, 334,525 words |
+| grad | grad, phd | **330,000** | ⚠ college anchor reused — **no grad reading list was counted** |
+
+**How the measured half was obtained:** 8 chapters sampled across `chemistry-book` and run through the **production cleaner's** shape, so the ratio reflects what survives ingest rather than raw markdown — 417,371 raw bytes → 31,038 clean words = **one clean word per 13.4 bytes** — then applied to each book's true size: biology-concepts 146,598 · anatomy 334,525 · chemistry 524,791 · physics 878,811. **The smallest complete book at each band is taken, so the number is a floor and not an aspiration.**
+
+⛔ **The previous values were invented** (early 2,000 · middle 5,000 · upper 15,000 · high 20,000 · college 20,000 · grad 20,000). A `high` cell reported OK at 20,000 words — about 13% of a real course year — and the tool printed `104 OK` as though that were finished. **That is the same defect this module exists to catch, committed by the module itself**, and it is recorded rather than quietly replaced.
+
+### WHERE THE CORPUS STANDS AGAINST THAT BAR (live auditor, 2026-09-02)
+
+```
+  cells the walk runs                     213
+    needing a prose corpus                173
+      OK (at/above band floor)              6
+      THIN (below band floor)             167
+      EMPTY                                 0
+  reachable corpus words            4,659,676   (2,110 entries, 93% licence-recorded)
+  average prose cell                   26,935   = 18.4% of one real course year
+```
+
+⛔ **6 of 173, and that is not a regression** — the corpus grew by an order of magnitude on 2026-09-01. **The ruler stopped lying, so the number got smaller.** The thinnest cells are the youngest years (`social/kindergarten` holds 845 words against a 7,300 floor), because early cells are fed by short encyclopedia articles while upper cells get textbook chapters.
+
+### RE-PRICE — what closing to the floor would cost, computed before anyone tries
+
+```
+  173 prose cells at their band floor    ≈ 31.6M words
+  corpus today                           ≈  4.66M words
+  growth factor                              6.8x
+  teach-lane cost   6.8^0.80             =   4.7x on the academic-story lane
+```
+The exponent is measured on this corpus rather than assumed: the first rebuild produced **10.2× sentences for 6.4× growth in the expensive lane**, so `log 6.4 / log 10.2 = 0.80`. ⛔ **4.7× applies to `_trainAcademicStories` alone** — vocabulary, phonics, math, gates and life are unaffected. ⚠ **This number is what says the floors cannot all be reached by fetching harder**, and it must be re-computed immediately before the press per `§RE-PRICE THE WALK BEFORE REMOVING A GATE`.
+
+### Cross-check, measured 2026-09-02 — an unrelated source agrees with the shape
+
+The full text of every work on the ELA reading ladder, counted from the source files, is what a real year *assigns*:
+
+```
+  pre-K    180,815     grade5   102,651     grade10  280,567     college3   43,835
+  K        461,071     grade6   254,769     grade11  261,028     college4  208,036
+  grade1   554,505     grade7    60,397     grade12  369,342     grad       45,321
+  grade2   123,532     grade8   111,097     college1 288,701     phd       464,132
+  grade3    71,426     grade9   155,550     college2 189,228
+  grade4    86,940
+```
+Band medians: early **180,815** · middle **86,940** · upper **111,097** · high **270,798** · college **198,632** · grad **254,727**.
+
+⭐ **The `high` band's assigned reading (median 270,798) is 1.9× its textbook-derived floor of 146,000 — the floor is conservative, exactly as intended.** ⚠ **And this closes the gap the code itself labelled as its weakest link:** `grad` had no counted reading list, and the two grad-band years measure **45,321** and **464,132** — a median of 254,727 that brackets the reused 330,000 college anchor rather than contradicting it. **The reuse is now cross-checked instead of merely admitted.**
+
+⚠ The early band reads highest of all here because its assigned works are ANTHOLOGIES, not because a five-year-old reads more than a graduate. **That is why this is a cross-check and not the ladder** — taken literally it would set a kindergarten target above a high-school one, which is the exact error my discarded second ladder made in the opposite direction.
+
+### RE-PRICE — what the ladder costs, computed before it is adopted
+
+```
+  260 cells at their band target        ≈ 8.6M words
+  corpus today (173 cells with a file)  ≈ 4.66M words
+  growth factor                           1.85x
+  teach-lane cost  1.85^0.80            = 1.63x on the academic-story lane
+```
+⛔ **1.63× applies to `_trainAcademicStories` alone, not to the whole walk** — vocabulary, phonics, math, gates and life run unchanged. **This is the number to re-check immediately before the press**, per `§RE-PRICE THE WALK BEFORE REMOVING A GATE`; it is recorded here so a later cap raise cannot be argued as free.
+
+---
+
 ## ACCEPTANCE — what "done" means for a cell
 
 A cell is closed when **all** hold:
@@ -264,7 +339,7 @@ A cell is closed when **all** hold:
 1. Its corpus carries the real course's actual material — a textbook chapter set, not a topic summary. For ELA that means **the text of the work**, not an article about it.
 2. `MAX_SENT_PER_TOPIC` no longer truncates it (`CURVEDEPTH.2`) — a 14-sentence cap applied to an OpenStax chapter throws away the chapter.
 3. Source and licence are recorded **per entry** so a licence audit never requires re-derivation.
-4. The corpus-depth instrument (`CURVEDEPTH.9`) reports the cell at or above its target, and the teach lane reports what it taught **against what the cell needed**.
+4. The corpus-depth instrument (`CURVEDEPTH.9`) reports the cell at or above its target — **the target is the band number in §THE TARGET LADDER, and as of 2026-09-02 that number exists and is derived** (it did not when this line was first written, which made the criterion unfalsifiable) — and the teach lane reports what it taught **against what the cell needed**.
 5. ⭐ **It has been READ, live, in the `TEACHVIEW` feed.** ⛔ **The founding fact behind that feature belongs here too: `_teachSentenceList` — the lane that trains every academic corpus sentence, called from 23 sites — has no `_hb`, no `console`, no publish, no emit of any kind.** The exact content she receives has never been visible anywhere. That is the real reason a year of thin corpus went unnoticed: the evidence was not scrolling past too fast, **it was never produced**. A cell is not verified by counting its file; it is verified by watching what the lane actually sends her.
 5. ⛔ A RE-PRICE is written **before** the enlarged corpus trains — corpus size multiplies teach time per cell, and this is a far larger change to walk cost than anything the RE-PRICE law has governed so far.
 
