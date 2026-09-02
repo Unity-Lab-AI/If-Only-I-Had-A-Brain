@@ -2166,6 +2166,21 @@ Gee, verbatim:
   - ⚠⚠ **DO NOT READ 12,830 AS AN IMPROVEMENT ON THE BOARD'S 42,521.** That figure was produced by a different predicate, and **two contamination counts taken with different regexes are not comparable.** Mine may be narrower. **The honest statement is that by THIS predicate it is 12,830; whether the corpus got cleaner is a question only one predicate run twice can answer.**
   - ⛔ **AND THE 4 EMPTY MATHS CELLS ARE STILL EMPTY** (`MATHGAP.1`) — not wrong material, but absent material, and it is the same question one step over.
 
+## WRONGREPO — I committed brain work into the live field-data repo and deleted 23,782 files — 2026-09-02
+
+- [x] `WRONGREPO.1` — ⛔⛔⛔ **FOUL, MINE, CAUGHT BY A HOOK RATHER THAN BY ME. Two brain-repo commits landed in `UnityAILab/BrainWaves` and removed 23,782 field files from a repository a live job was writing to. Pushed to `origin/main` before it was noticed.**
+  - **THE CAUSE, exactly:** I prefixed two commands with `cd /c/Users/gfour/Desktop/BrainWaves` to read the download counter, then chained `&& git add -A && git commit` **in the same command**. The `cd` persisted, so the commit ran there. ⛔ **And `git add -A` in that repo stages the field-file deletions the generator's own post-batch wipe leaves behind** — so a commit whose message was about a wiki page silently carried away most of the corpus index.
+  ```
+    good commit 275ff1c0   24,330 field files
+    after my two commits      548 field files      -23,782, and PUSHED
+  ```
+  - ⛔⛔ **WHY IT MATTERED, and it is not "a messy history":** `deploy/self-update.sh` clones this repo's TIP, and the generator rebuilds `delivered.txt` from `git ls-files` before every batch. **Left alone, the next batch would have read 548 delivered and re-derived roughly eight hours of wavelet work.** The data itself was never at risk — the objects were in history and in LFS — **the INDEX was the casualty, and the index is what everything downstream reads.**
+  - ✅ **RECOVERED.** `git restore --source=275ff1c0 --staged fields/` put every deleted path back in the index **without materialising them in the working tree** — a plain checkout would have pulled 100+ GB back down through LFS for nothing. Committed as `b592360b`, pushed, and **`origin/main` verified back at 24,330**. ⭐ **The generator was never disrupted**: `uploaded.jsonl` kept climbing throughout (25,273 at recovery) and `delivered.txt` re-read 24,330, because batch 25 was still generating and rebuilds that file before it commits.
+  - ⚠ **`index.json` and `uploaded.jsonl` were deliberately NOT reverted** — my bad commit happened to capture real generator progress in them, and rolling those back would have discarded it. **The restore was surgical to `fields/` for that reason.**
+  - ⚠ **THE TWO JUNK COMMIT MESSAGES STAY IN THAT REPO'S HISTORY.** Rewriting pushed history on a repository a live job is committing to is a worse risk than two mislabelled commits. **Recorded here instead so the history is explicable.**
+  - ⛔⛔ **THE RULE THIS EARNS: NEVER CHAIN `cd <other repo>` WITH `git add`/`git commit` IN ONE COMMAND.** Read from another repo with an explicit `git -C <path>` or a subshell, and let the commit run in the session's own working directory where the branch guard applies. ⭐ **The hook that caught this was the WIKI STALENESS hook, firing about a doc it thought I had not updated** — I had updated it, into the wrong repo. **An unrelated instrument found a data-loss foul that no git-facing check did.**
+  - ⚠ **AND IT DEFEATED THE BRANCH GUARD SILENTLY.** The Git Flow check fires on edits in *this* repo; a commit executed inside another repo is invisible to it. **A protection that only watches one directory does not protect a session that changes directory.**
+
 ## REGFIND.9 — the second half of the two-day review, finally run — 2026-09-02
 
 Closing the half of `REGRESSION.1` that had stayed unreviewed: `emit.js` (2,377 lines) and `language-cortex.js` (3,120), plus the export sweep.
