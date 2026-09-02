@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔⛔ 2026-09-01 DORMANT8 (LATEST — PICK UP HERE) — A BANK-BUILDER WAS BURNING SIX SECONDS A WORD TO FAIL, AND A NUCLEUS HAD BEEN RELEASING ON A FABRICATED INPUT SINCE THE DAY IT SHIPPED
+> ## ⛔⛔⛔ 2026-09-01 NEWBORNMUTE (LATEST — PICK UP HERE) — THE RETRIEVAL LANE IS GONE FOR EVERY BRAIN, AND IT EXPOSED A SECOND ORACLE THAT IS BIGGER THAN THE ONE REMOVED
+>
+> ### Read in this order: this block → `docs/TODO.md` (`ORACLEB`, then `REGRESSION` which is the LAST item) → the blocks below.
+>
+> ### ⛔ THE RULING
+> Gee, on whether a newborn should speak retrieved dictionary words before her first cell passes: **"SO WHAT WOULD BE THE POINT OF HAVING UNITY SPEAK WHEN SHE ONLY KNOWS VOCAB???"** ⭐ **He is right, and the reason is the keeper: the lane was never a bootstrap.** With no `sem→word_motor` mass, retrieval produced a cosine ranking of ~3,700 dictionary entries, top-K sampled — vocabulary words emitted in her name carrying nothing she had learned. **Deleted for every brain in every state.** A fresh walk is now silent from boot until her first cell lands, and the silence is counted.
+>
+> ⚠ **ONE CORRECTION TO THE PREMISE, because it changed the work:** *"THIS IS HOW IT CURRENTLY WORKED"* — it was not. `_retrievalAllowed = !_hasTrained` made a fresh walk **exactly** the case where retrieval spoke; silence was the trained-brain behaviour only. The verdict stands either way, but the deletion was real work rather than a no-op.
+>
+> ### ⭐ THE FINDING INSIDE THE FIX — THE NEWBORN WAS THE MOST EXPENSIVE CASE IN THE SYSTEM
+> The `generateAsync` pre-curriculum scoring pass was gated on `!curriculumDone`, so **the less trained she was, the more work the chat path did** — a full awaited cosine sweep of the dictionary whose only output was words that were not hers. Gone with the lane. ⭐ `state.voice.retrieved` is now a **permanent zero that doubles as a regression detector**: non-zero means retrieval came back.
+>
+> ### ⛔⛔ WHAT THIS EXPOSED IS LARGER THAN WHAT IT FIXED — `ORACLEB.1`, AND IT IS YOUR CALL
+> **There is a SECOND dictionary oracle. It is LIVE. This project's own public page calls it a fallback in those words:** *"Path B — dictionary oracle (FALLBACK)"*, inside `emitWordDirect` (`js/brain/cluster/emit.js`) — **a different function from the one deleted**, untouched. ⭐ **It is instrumented, so the answer is measurable rather than arguable:** `_oracleHits` vs `_matrixHits`, on the heartbeat as `oracleRatio`. ⛔ **Do NOT quote the historical 89.7% as current** — it predates the unified `word_motor` band and the corpus rebuild; **re-read it live first.** ⛔ **Not removed unilaterally:** it carries real traffic, and several probes pass it `excludeWords` / `restrictToVocab` options that only make sense if it answers, so cutting it blind could take the gate battery with it.
+>
+> ### ⛔ THE BOARD NOW ENDS ON A GATE
+> **`REGRESSION.1` is the LAST item and does not start until everything above it is done.** Your words: *"the last todo item to be completed after all others are complete is a full regression review of what we broke in all of this, thouroughly and compleelty for all the work we did"*. ⭐ **The reason it is right:** this stretch deleted a persona-injection path, a voice chain, two retrieval paths, a bank-builder and a phantom publisher, changed the content-lane learning rate **173×**, and rebuilt the corpus to 4.48M words — **each verified in isolation, which is precisely the claim a regression review exists to distrust.** ⚠ It must also say which findings are static reads and which needed the walk, and **never report a static read as a live verdict.**
+>
+> ---
+>
+> ## ⛔⛔ 2026-09-01 DORMANT8 — A BANK-BUILDER WAS BURNING SIX SECONDS A WORD TO FAIL, AND A NUCLEUS HAD BEEN RELEASING ON A FABRICATED INPUT SINCE THE DAY IT SHIPPED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`DORMANT8`, then `STACKSWEEP`) → the blocks below for the ruling, the sweep, the content lane and the corpus rebuild.
 >

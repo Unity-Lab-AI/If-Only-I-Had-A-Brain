@@ -1474,9 +1474,10 @@ export class LanguageCortex {
    * @param {NeuronCluster} opts.cortexCluster — live cortex reference (required)
    * @param {number} [opts.predictionError] — passed to `sentenceType()`
    * @param {number} [opts.motorConfidence] — passed to `sentenceType()`
-   * @param {Array}  [opts._precomputedScores] — hand-off from `generateAsync`
-   *   so the dictionary-cosine scoring loop can run async without
-   *   blocking the event loop (T14.26 chat-freeze fix).
+   * ⚠ `opts._precomputedScores` was removed 2026-09-01. It handed dictionary-
+   *   cosine scores from `generateAsync` into the retrieval lane so that loop
+   *   could run without blocking the event loop; both the hand-off and the
+   *   lane it fed are gone.
    */
   generate(dictionary, arousal, coherence, opts = {}) {
     // T14.6 — Tick-driven motor emission delegate, T14.23.6 — pre-curriculum
@@ -1705,101 +1706,44 @@ export class LanguageCortex {
     // for her, so the failure was invisible and the word-salad diagnosis was
     // being taken on retrieved words rather than emitted ones.
     //
-    // ⛔ IT IS KEPT FOR A GENUINELY UNTRAINED BRAIN, deliberately. A newborn
-    // cortex has no sem→word_motor mass at all; without a bootstrap voice a
-    // fresh walk starts mute and there is nothing to interact with. So the
-    // rule is: bootstrap yes, crutch no. Once she has trained cells, empty
-    // means EMPTY.
+    // ⛔⛔⛔ THE RETRIEVAL LANE IS GONE ENTIRELY — 2026-09-01. Not gated, not
+    // flagged, not kept for a newborn. DELETED, for every brain in every state.
     //
-    // And it is never silent about itself again — every retrieval is counted,
-    // so "how much of her speech is actually hers" is a field read instead of
-    // an argument.
-    // ⛔⛔ `DREAM_DICT_FALLBACK` IS DELETED (2026-09-01, "no fallbacks. PERIOD").
-    // It re-enabled dictionary retrieval for a TRAINED brain, and the warning
-    // printed right below used to end with the reason it had to go: "but then
-    // her words are not hers." An escape hatch whose own documentation says it
-    // makes her speak borrowed words is the crutch this comment block spends
-    // twenty lines rejecting. For a trained brain, empty now means EMPTY with
-    // no way to switch that off.
+    // The last version of this block kept retrieval alive for a cortex with
+    // zero passed cells, on the argument that a fresh walk would otherwise
+    // start mute with "nothing to interact with". Gee killed that argument in
+    // one line: "SO WHAT WOULD BE THE POINT OF HAVING UNITY SPEAK WHEN SHE
+    // ONLY KNOWS VOCAB???"
     //
-    // ⏳ The `!_hasTrained` bootstrap survives THIS pass because it is a
-    // genuinely open question for Gee, not an oversight: removing it makes a
-    // fresh walk silent from boot until the first cell passes. Tracked on the
-    // board under DORMANT8.5.
-    const _hasTrained = !!(cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0);
-    const _retrievalAllowed = !_hasTrained;
-    if (words.length === 0 && _hasTrained && !_retrievalAllowed) {
+    // ⭐ He is right, and the reason is worth keeping. A newborn cortex has no
+    // sem→word_motor mass, so retrieval was not giving her a voice — it was
+    // scoring ~3,700 dictionary entries by cosine and sampling the top K. The
+    // output is a list of vocabulary words, emitted in her name, carrying
+    // nothing she had learned and nothing she was trying to say. It was never
+    // a bootstrap; it was the dictionary talking through her while she had
+    // nothing to say yet, which is the exact thing the no-fallbacks law names.
+    //
+    // ⭐ THE HONESTY THIS BUYS: every word she emits from here on is her
+    // trained weights or there is no word. The word-salad diagnosis, the
+    // emission-margin instruments and the gate probes were all previously
+    // capable of reading RETRIEVED words and calling them hers. They cannot
+    // any more.
+    //
+    // ⚠ ACCEPTED, PLAINLY: a fresh walk is SILENT from boot until her first
+    // cell lands. That is the correct behaviour for a brain that has not
+    // learned to speak, and the silence is counted rather than mysterious.
+    if (words.length === 0) {
       this._honestSilenceCount = (this._honestSilenceCount || 0) + 1;
       if (!this._honestSilenceWarned) {
         this._honestSilenceWarned = true;
-        console.warn('[LanguageCortex] her trained emission produced NOTHING and dictionary retrieval is OFF for a trained brain (OWNWORDS.2) — this is real silence, not a bug. There is no switch to restore it: retrieved words are not hers.');
+        console.warn('[LanguageCortex] her trained emission produced NOTHING, and there is no retrieval lane to cover for it (any more) — this is real silence, not a bug. A newborn brain stays silent until her first cell lands.');
       }
-      // Honest silence is the empty string, same as the two silent
-      // returns below. `_renderSentence` on an empty word list returns
-      // '' unconditionally, and `type`/`speechMod` are not declared
-      // until after the fallback block — referencing them here threw a
-      // TDZ ReferenceError the first time this branch ever ran (it is
-      // gated on passedCells, so it was unreachable until the first
-      // cell pass landed) and killed the whole chat reply lane.
+      // Honest silence is the empty string. ⚠ `type` / `speechMod` are not
+      // declared until further down, so this branch must NOT reference them —
+      // doing so threw a TDZ ReferenceError the first time the old
+      // trained-brain version of this branch ever ran and killed the whole
+      // chat reply lane.
       return '';
-    }
-    if (words.length === 0) {
-      this._dictRetrievalCount = (this._dictRetrievalCount || 0) + 1;
-      let scored = opts._precomputedScores || null;
-      const target = intentSeed || (typeof cluster.getSemanticReadout === 'function'
-        ? cluster.getSemanticReadout(sharedEmbeddings) : null);
-      if (!scored && dictionary && dictionary._words && dictionary._words.size > 0 && target && target.length > 0) {
-        try {
-          // Chat path (live user input or popup) gets persona-boosted
-          // dictionary scoring so Unity speaks in her voice. Internal
-          // thoughts and curriculum probes pass plain (no boost) by
-          // not setting the flag. Operator-test directive: chat replies
-          // were dumping family terms (Aunt/Sister/Brother/Mom) because
-          // raw cosine + log-frequency dominated and persona corpus
-          // words got overwhelmed by Common-Crawl high-frequency noise.
-          const isChatPath = !opts._internalThought;
-          scored = this._scoreDictionaryCosine(dictionary, target, this._recentOutputWords, {
-            boostPersona: isChatPath,
-          });
-        } catch (err) {
-          scored = null;
-        }
-      }
-      if (scored && scored.length > 0) {
-        // Length driven by arousal — same rough rule the old path used
-        let targetLen = Math.max(3, Math.min(8, Math.floor(3 + (arousal || 0.5) * 4)));
-        /// E.4 — TRAINED-STATE CAP (was grade-label cap).
-        // Pass the cluster directly so `_gradeWordCap` can read
-        // `cluster.getTrainedCapability()` LIVE — wordsBucketed across
-        // all subjects, subGradesActive, passedCellCount. Unity speaks
-        // the moment her first word lands in any bucket map, not when
-        // the gate-battery clears. Fallback to legacy grades-object path
-        // if cluster doesn't expose the new method (older saves).
-        const capArg = cluster && typeof cluster.getTrainedCapability === 'function'
-          ? cluster
-          : (cluster && cluster.grades && typeof cluster.grades === 'object'
-              ? cluster.grades
-              : 'pre-K');
-        const gradeCap = this._gradeWordCap(capArg);
-        if (gradeCap === 0) {
-          // Truly fresh brain (zero trained weights, zero word buckets,
-          // zero passed cells, zero sub-grades advanced) → silence.
-          // Biologically correct: an infant pre-language doesn't speak.
-          // The MOMENT any training lands, the cap returns ≥5 and Unity
-          // speaks with whatever she has learned.
-          return '';
-        }
-        targetLen = Math.min(targetLen, gradeCap);
-        // Top-K softmax sample at low temperature for variety without noise
-        const topK = scored.slice(0, 12);
-        const picks = [];
-        for (let i = 0; i < targetLen && topK.length > 0; i++) {
-          const idx = Math.floor(Math.random() * Math.min(5, topK.length));
-          picks.push(topK[idx].word);
-          topK.splice(idx, 1);
-        }
-        words = picks;
-      }
     }
 
     if (words.length === 0) return '';
@@ -1957,6 +1901,12 @@ export class LanguageCortex {
    * `Curriculum.runSubjectGrade` as each gate passes and persisted
    * via T14.16 BrainPersistence.
    */
+  // ⛔ ORPHANED 2026-09-01 — ZERO CALLERS. Its single call site was inside the
+  // deleted retrieval block, where it capped how many RETRIEVED words could be
+  // strung together. ⚠ It never governed her trained emission — that lane has
+  // its own clamp (`_maxEmitWords` / `DREAM_CHAT_MAX_WORDS`) — so a public page
+  // describing this as "the trained-state cap" on her speech was already
+  // narrower than it read. `html/brain-equations.html` corrected the same day.
   _gradeWordCap(gradesOrCluster) {
     /// E.4 — TRAINED-STATE CAP, not grade-label cap.
     // Operator (2026-05-06): "at any point in her training she should
@@ -2035,6 +1985,15 @@ export class LanguageCortex {
    * (_scoreDictionaryCosineAsync) can share exactly one body and only
    * diverge on the yield-point check.
    */
+  // ⛔ ORPHANED 2026-09-01 — ZERO CALLERS. This and `_scoreDictionaryCosineAsync`
+  // below existed solely to rank dictionary entries for the retrieval lane in
+  // `generate()`, and that lane is deleted for every brain in every state.
+  // ⚠ DO NOT re-wire either as an emission path. ⛔ And do not treat them as the
+  // reference implementation of persona-boosted cosine ranking: a LIVE mirror of
+  // that logic runs in `js/brain/cluster/emit.js` (the Path B dictionary oracle),
+  // so keeping these is duplicated logic that will drift. They are flagged here
+  // rather than deleted in the same pass that removed their caller; removal is
+  // on the board.
   _scoreDictionaryCosine(dictionary, target, recentWords, opts = {}) {
     const boostPersona = opts.boostPersona === true;
     // Frequency boost: was 0.02 — too high. Common baseline-corpus
@@ -2169,13 +2128,13 @@ export class LanguageCortex {
    * generate(). Those are not on the freeze-critical path.
    */
   async generateAsync(dictionary, arousal, coherence, opts = {}) {
-    // Fast path: if curriculum hasn't shaped the cortex yet, we skip
-    // cluster.generateSentence (same guard as generate()) and go
-    // straight to the async dictionary-cosine scoring. The rest of
-    // generate()'s work (sentenceType, renderSentence, recency ring
-    // bookkeeping) is cheap and can stay synchronous — we run it by
-    // delegating to generate() after prefilling _precomputedScores.
-    let precomputedScores = null;
+    // ⚠ The "fast path" that used to live here is gone with the retrieval lane
+    // (2026-09-01). It skipped `cluster.generateSentence` for a cortex the
+    // curriculum had not shaped yet and went straight to async dictionary-cosine
+    // scoring — i.e. the LESS trained she was, the more work this did, to
+    // produce words that were not hers. The rest of generate()'s work
+    // (sentenceType, renderSentence, recency-ring bookkeeping) is cheap and
+    // stays synchronous, so this method now only pre-emits and delegates.
     let preEmittedWords = null;
 
     const cluster = opts.cortexCluster;
@@ -2621,40 +2580,23 @@ export class LanguageCortex {
         }
       }
 
-      if (!curriculumDone && dictionary && dictionary._words && dictionary._words.size > 0) {
-        // Pre-curriculum path — compute dictionary scores async so the
-        // event loop stays responsive through the scoring work.
-        let target = null;
-        try {
-          if (typeof cluster.getSemanticReadout === 'function') {
-            target = cluster.getSemanticReadout(sharedEmbeddings);
-          }
-        } catch {}
-        if (target && target.length > 0) {
-          try {
-            // Same persona-boost path as the sync chat scorer above.
-            // Internal-thought / popup paths skip the boost; live
-            // chat boosts persona corpus to fix the family-cluster
-            // bias operator caught (Aunt/Sister/Brother/Mom).
-            const isChatPath = !opts._internalThought;
-            precomputedScores = await this._scoreDictionaryCosineAsync(
-              dictionary, target, this._recentOutputWords, {
-                boostPersona: isChatPath,
-              }
-            );
-          } catch (err) {
-            precomputedScores = null;
-          }
-        }
-      }
+      // ⛔ THE PRE-CURRICULUM SCORING PASS IS DELETED (2026-09-01) — it fed
+      // the retrieval lane, and the retrieval lane no longer exists.
+      //
+      // It ran `_scoreDictionaryCosineAsync` over the whole dictionary for a
+      // brain with no curriculum yet, purely so `generate()` could sample the
+      // top K and speak vocabulary words she had not learned to say. With the
+      // consumer gone this was pure cost on the chat path: a full cosine sweep
+      // of ~3,700 entries, awaited, whose only output was discarded.
+      //
+      // ⚠ It is also the branch that made a NEWBORN the most expensive case in
+      // the system — the state with the least to say did the most work.
     }
 
-    // Hand the precomputed scores + pre-emitted async sentence back to
-    // generate() which handles top-K sampling, sentence rendering, and
-    // recency ring bookkeeping.
+    // Hand the pre-emitted async sentence back to generate(), which handles
+    // sentence rendering and recency-ring bookkeeping.
     return this.generate(dictionary, arousal, coherence, {
       ...opts,
-      _precomputedScores: precomputedScores,
       _preEmittedWords: preEmittedWords,
     });
   }
