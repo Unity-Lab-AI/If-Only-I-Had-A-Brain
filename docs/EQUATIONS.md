@@ -1875,7 +1875,7 @@ R2 replaced every word-pattern emission site with 50-dim GloVe co-occurrence emb
 ```
 // js/brain/embeddings.js — module-level singleton
 export const sharedEmbeddings = new SemanticEmbeddings()
-export const EMBED_DIM = 300   // GloVe 300d (T14.0 bump from 50) + fastText subword fallback
+export const EMBED_DIM = 300   // GloVe 300d, required; fastText subword n-grams for OOV words
 
 // js/brain/sensory.js        — INPUT side (user text → cortex current)
 I_cortex[langStart + d·groupSize + n] = sharedEmbeddings.getEmbedding(word)[d] · 8.0
@@ -1922,7 +1922,9 @@ Called via the `cluster.getSemanticReadout(sharedEmbeddings)` wrapper which buil
 ### Online Context Refinement + R8 Persistence
 
 ```
-base[w]      ∈ ℝ³⁰⁰   ← GloVe 300d from CDN or fastText subword fallback, reloaded every session (not persisted)
+base[w]      ∈ ℝ³⁰⁰   ← GloVe 300d read from local disk (REQUIRED — boot stops without it);
+                        fastText subword n-grams encode only words the table lacks;
+                        reloaded every session (not persisted)
 delta[w](t)  ∈ ℝ⁵⁰   ← online context-refinement, learned live, PERSISTED (R8 commit b67aa46)
 
 embedding(w) = base[w] + delta[w](t)

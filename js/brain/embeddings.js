@@ -53,12 +53,13 @@ const GLOVE_LOCAL_PATH = 'corpora/glove.6B.300d.txt';
 // and the HuggingFace URL returns 404 because the resolve path is
 // wrong. Both used to hang for ~90s each before erroring out, eating
 // 3+ minutes of boot time. Now only the localhost URL is attempted.
-// Operators who want full GloVe download the file manually and place
-// it at corpora/glove.6B.300d.txt — the server mounts /corpora/
-// statically so the local URL hits it at runtime. Missing file
-// produces a fast 404 which falls through to hash embeddings in
-// under a second. External CDN fallback re-added if/when a CORS-
-// permitting mirror is found.
+// The file lives at corpora/glove.6B.300d.txt and the server mounts /corpora/
+// statically so the local URL hits it at runtime. ⛔ CORRECTED 2026-09-02: this
+// used to read "operators who WANT full GloVe download the file manually" and
+// "missing file produces a fast 404 which falls through to hash embeddings" —
+// optional-sounding on both counts. On the brain the table is mandatory and a
+// missing file stops boot; only the browser lane still tolerates its absence,
+// and that lane is filed for removal.
 // DF.4 — deployment-aware browser GloVe origin. The Node server reads GloVe
 // straight from local disk (the isNode branch above); only the BROWSER
 // fallback brain ever fetches it over HTTP, so this URL list is browser-only.
@@ -93,11 +94,23 @@ export class SemanticEmbeddings {
   }
 
   /**
-   * T14.0 — Load full GloVe 300d vocabulary (~400K words). Server reads
-   * from local disk (`corpora/glove.6B.300d.txt`); browser falls through
-   * to the server's static file mount or remote CDN as fallback. Hash
-   * embeddings remain as a last-resort floor when no GloVe is reachable,
-   * but the foundation lift assumes GloVe is present in production.
+   * Load full GloVe 300d vocabulary (~400K words) from local disk
+   * (`corpora/glove.6B.300d.txt`, 1.04 GB, streamed line-by-line).
+   *
+   * ⛔ REQUIRED, NOT PREFERRED (2026-09-02). This doc block used to say hash
+   * embeddings "remain as a last-resort floor when no GloVe is reachable, but
+   * the foundation lift assumes GloVe is present in production" — a requirement
+   * and its own exception in one sentence, and the catch below took the
+   * exception. On the brain the table is now mandatory and its absence stops
+   * boot. Subword n-gram vectors serve exactly one purpose: encoding a word the
+   * table does not contain (`getEmbedding` OOV). They are not a substitute for
+   * the table, because they carry spelling similarity, not meaning.
+   *
+   * ⚠ GloVe was NOT removed by the text-AI purge and is not a language model.
+   * It is a static word→vector table — sensory encoding of the same class as a
+   * dictionary definition. What the purge removed was every path that could
+   * PRODUCE TEXT: the transformer backend, the chat fetches, the vision
+   * describer, and later the dictionary retrieval lane and the emission oracle.
    *
    * No vocabulary cap. The full 400k-word file loads if reachable.
    * Memory at 400k × 300d × 4 bytes = ~480 MB on the server, which is
@@ -264,12 +277,42 @@ export class SemanticEmbeddings {
       console.log(`[Embeddings] Loaded ${count.toLocaleString()} word vectors (${EMBED_DIM}d)`);
       return count;
     } catch (err) {
-      // Missing GloVe is no longer a degraded state — the default
-      // fallback is fastText-style subword n-gram embeddings, not a
-      // random hash. GloVe is an optional upgrade, not a requirement.
-      console.log(`[Embeddings] GloVe ${EMBED_DIM}d not found — using built-in fastText-style subword embeddings (no download needed).`);
-      console.log('[Embeddings] For real GloVe 6B.300d upgrade, place glove.6B.300d.txt at corpora/glove.6B.300d.txt. Optional.');
+      // ⛔⛔⛔ NO FALLBACKS (2026-09-02) — ON THE BRAIN, A MISSING TABLE IS FATAL.
+      //
+      // This catch used to swallow EVERY failure — including the server path's
+      // own `throw` for a missing file — log "GloVe is an optional upgrade, not
+      // a requirement", set `_loaded = false` and return 0. Two consequences,
+      // both bad:
+      //   • The brain then ran its whole semantic substrate on subword n-gram
+      //     hashes. Those are a fine encoding for a word the table does not
+      //     have; they are NOT a substitute for the table, because every sem
+      //     injection, intent seed, definition binding and cosine in the walk
+      //     is a claim about MEANING, and n-gram geometry only encodes SPELLING.
+      //     "cat" and "car" land near each other; "cat" and "kitten" do not.
+      //   • It swallowed the throw one layer above it, so the boot guard added
+      //     in `brain-server.js` today could never have fired. A guard behind a
+      //     swallow is decoration.
+      //
+      // The table IS present in this repo (corpora/glove.6B.300d.txt, 1.04 GB)
+      // and is read from local disk at boot. Nothing about GloVe was removed by
+      // the text-AI purge — what went then was the LLM lanes (transformer
+      // backend, the chat fetches, the describer) and later the dictionary
+      // retrieval and oracle. A static vector table is sensory encoding, the
+      // same class as a dictionary definition, not a model that speaks for her.
+      const isNodeRuntime = typeof process !== 'undefined' && process.versions && process.versions.node && typeof window === 'undefined';
       this._loaded = false;
+      if (isNodeRuntime) {
+        console.error(`[Embeddings] ⛔ FATAL — GloVe ${EMBED_DIM}d could not be loaded: ${err?.message || err}`);
+        console.error('[Embeddings] ⛔ The brain does not boot without it (NO FALLBACKS). Subword n-gram vectors encode spelling, not meaning, and a walk trained on them deposits real weight against arbitrary positions.');
+        console.error('[Embeddings] ⛔ Place glove.6B.300d.txt at corpora/glove.6B.300d.txt — https://nlp.stanford.edu/data/glove.6B.zip');
+        throw err;
+      }
+      // ⚠ BROWSER LANE, LEFT AS IT IS AND SAID OUT LOUD: the only thing that
+      // fetches GloVe over HTTP is the small local brain an unauthed visitor
+      // runs on the public page. That whole brain is itself a capability
+      // fallback and is filed for removal on its own row — throwing here would
+      // take the public page down ahead of that decision instead of with it.
+      console.warn(`[Embeddings] GloVe ${EMBED_DIM}d unreachable in the browser lane — the local visitor brain continues on subword n-gram vectors, which encode spelling and not meaning. This lane is filed for removal.`);
       return 0;
     }
   }
@@ -311,7 +354,12 @@ export class SemanticEmbeddings {
   /**
    * Get embedding for a word.
    * Returns pre-trained + learned refinement if available.
-   * Falls back to hash-based embedding for unknown words.
+   *
+   * A word the table does not contain is encoded by subword n-gram sum
+   * (`_subwordEmbedding`). That is the DEFINED ENCODING for an out-of-vocabulary
+   * word — the only thing available about a word nobody has a vector for is its
+   * shape — not a fallback for a missing table. The table itself is mandatory;
+   * see `loadPreTrained`.
    *
    * @param {string} word
    * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d after T14.0)

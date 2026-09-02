@@ -2438,7 +2438,9 @@ class ServerBrain {
 
     // R3 — Language subsystem placeholders. Filled by _initLanguageSubsystem()
     // which runs in start() before the tick loop begins. Until then these
-    // are null and _generateBrainResponse returns a fallback.
+    // are null and _generateBrainResponse takes its honest-failure path (no
+    // substitute answer — the word "fallback" stood here until 2026-09-02 and
+    // named the wrong thing).
     this.dictionary = null;
     this.languageCortex = null;
     this.sharedEmbeddings = null;
@@ -4105,11 +4107,29 @@ class ServerBrain {
       // training so persona words get real semantic patterns from the
       // start instead of hash-fallback vectors that would be wrong
       // once embeddings arrive.
+      // ⛔⛔⛔ NO FALLBACKS (2026-09-02) — A FAILED EMBEDDING LOAD IS NOW FATAL.
+      //
+      // This catch used to print `Embeddings load failed, using hash fallback`
+      // as a WARN and let boot continue. What that bought was the worst silent
+      // degradation in the stack: with no GloVe table, EVERY word — corpus,
+      // vocabulary, identity anchors, intent seeds, definition bindings — gets a
+      // deterministic hash vector instead of a semantic one. The geometry is
+      // arbitrary, so nothing is near anything it means, and a walk trained on
+      // it deposits real weights over meaningless positions. The comment two
+      // lines up already said the vectors "would be wrong"; the handler then
+      // used them anyway, and the only evidence was one warn line scrolling past
+      // at boot in a log nobody re-reads hours later.
+      //
+      // Dying here is the cheap outcome. The expensive one is a walk that runs
+      // for days and has to be thrown away.
       try {
         await this.sharedEmbeddings.loadPreTrained();
         console.log('[Brain] Semantic embeddings ready:', this.sharedEmbeddings.stats);
       } catch (err) {
-        console.warn('[Brain] Embeddings load failed, using hash fallback:', err.message);
+        console.error('[Brain] ⛔ FATAL — GloVe embeddings failed to load: ' + (err?.message || err));
+        console.error('[Brain] ⛔ Boot STOPS here by design (NO FALLBACKS). Every word would otherwise train on hash vectors, which is worse than not training: the semantic geometry would be arbitrary and every deposit made against it wasted.');
+        console.error('[Brain] ⛔ Fix the table, then boot again — corpora/glove.6B.300d.txt from https://nlp.stanford.edu/data/glove.6B.zip');
+        throw err;
       }
 
       // Tier 3 identity-anchor seeding happens HERE — after embeddings load —
@@ -10365,15 +10385,15 @@ const httpServer = http.createServer((req, res) => {
             } else if (typeof result === 'string') {
               answer = result;
             }
-          } else if (brain && brain.innerVoice && brain.innerVoice.languageCortex) {
-            // Fallback: direct languageCortex generate if processAndRespond
-            // isn't available.
-            const emb = brain.sharedEmbeddings ? brain.sharedEmbeddings.getEmbedding(question) : null;
-            if (emb && brain.clusters && brain.clusters.cortex) {
-              brain.clusters.cortex._lastUserInputEmbedding = emb;
-            }
-            answer = brain.innerVoice.languageCortex.generate(brain.dictionary, 0.7, 0.7, { cortexCluster: brain.clusters?.cortex }) || '';
           }
+          // ⛔ NO FALLBACKS (2026-09-02). A second answering path used to hang
+          // off this branch: if `processAndRespond` "isn't available", call
+          // `languageCortex.generate` directly. It is always available — it is a
+          // method on the brain — so the branch was dead, and what it would have
+          // done if it ever fired is worse than dying: answer an EXAM question
+          // through a different pipeline than the one live chat uses, so the
+          // score would describe a path she does not speak through. One answering
+          // path, or no answer.
         } catch (err) {
           console.warn('[exam-answer] generation failed:', err?.message || err);
           answer = '';

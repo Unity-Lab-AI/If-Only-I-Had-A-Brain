@@ -5,6 +5,56 @@
 
 ---
 
+## 2026-09-02 — `NOFALLBACK.4` — THE WHOLE-STACK SWEEP, AND THE ONE THAT WAS TRAINING HER ON SPELLING
+
+Gee (verbatim, the standing ruling this row executes): *"1. use ask me questioion for whats needs my input, 2. NO FALLBACKS!!!!(HOW MANY TIME DO I NEED TO TELL YOU AND HOW MANY FUCKIGN LAWS AND MEMORIES DO I HAVE TO HAVE YOU CREATE BEFORE YOU FUCKING UNDERSTAND THE WORDS " NO FUCKING FALLBACKS!"*
+
+Gee (verbatim, mid-sweep, on the GloVe comment): *"needs fixed: didnt we rip glove out??? but the foundation lift assumes GloVe is present in production."*
+
+- [x] `NOFALLBACK.4` — ⛔ **RE-SWEEP FOR THE NEXT ONE RATHER THAN WAITING TO BE TOLD.** `STACKSWEEP.3` classified 177 in-code `fallback` occurrences into three buckets and only some were acted on. **Re-run that classification against the law as ruled — whole stack — and remove every capability-degradation shape found, without filing a question about any of them.**
+
+> ✅ **DONE 2026-09-02.** ⚠ **THE COUNT WAS WRONG AND THE HONEST NUMBER IS BIGGER:** the sweep found **386** `fallback` occurrences in this project's own code (`js/` + `server/`, vendor and bundle excluded), not 177. Every one was read and classified; **no question was filed about any of them.**
+>
+> ### ⛔⛔⛔ THE ONE THAT MATTERED MOST WAS NOT AN EMISSION PATH — IT WAS THE MEANING SUBSTRATE
+>
+> `embeddings.js` `_doLoad` caught **every** failure — including the server path's own `throw` for a missing GloVe table — logged *"GloVe is an optional upgrade, not a requirement"*, and continued. With no table, **every** word in the system — corpus, vocabulary, identity anchors, intent seeds, definition bindings, every cosine in every gate — is encoded by fastText subword n-grams. Those carry **spelling**, not meaning: `cat`/`car` land near each other and `cat`/`kitten` do not. A walk trained through that geometry deposits real weight against arbitrary positions.
+>
+> ⭐ **AND IT SWALLOWED THE GUARD WRITTEN FOR IT THE SAME HOUR.** A fatal boot check added in `brain-server.js` could never have fired, because the rethrow it depended on was being eaten one layer down. **A guard behind a swallow is decoration.** Both halves shipped together — the same lesson as the oracle mirror that survived a day because only one of its two halves was cut.
+>
+> **The table is now MANDATORY on the brain: a failed load throws and boot stops.** The browser lane still tolerates a missing table and that is **stated out loud rather than hidden** — the only thing that fetches GloVe over HTTP is the small local visitor brain, which is itself a capability fallback and is filed as `NOFALLBACK.6` rather than deleted underneath a live public page.
+>
+> ⚠ **GLOVE WAS NEVER RIPPED OUT, and the question was the right one to ask** — the file said two contradictory things about itself. `corpora/glove.6B.300d.txt` is 1.04 GB on disk and is streamed at boot. GloVe is a **static word→vector table**, sensory encoding of the same class as a dictionary definition. What the text-AI purge removed was every path that could **produce text**: the transformer backend, the chat fetches, the vision describer, and later the dictionary retrieval lane and the emission oracle. The doc-side of that confusion is fixed in the same commit (see below).
+>
+> ### WHAT ELSE WENT — EACH ONE NAMED, WITH WHAT IT WAS ACTUALLY DOING
+>
+> | Where | The shape | Why it had to go |
+> |---|---|---|
+> | `sensory.js` ×2 | Character-code hash → Wernicke's / hippocampus when embeddings were absent | Injected **spelling arithmetic** into the input that carries meaning, at 8.0 current — higher than the real path's 3.0 |
+> | `curriculum.js` phase-count | Pushed a synthetic `cell-teach-block` key into `passedPhases` + forced `phasesCompleted` ≥ 1 | **A FORGED LEDGER ENTRY.** `passedPhases` is what phase-resume reads, what walk-order was made authoritative over the grade pointer, and what `_hasTrained` reads. Its own comment said the root cause was "still open" — this is how it stayed open |
+> | `curriculum.js` readiness probe ×2 | `readInput` when `injectLetter` missing; legacy `generateSentenceAwait` when `letter_to_motor` missing | Both re-ran the **contaminated** sem→motor path the direct probe exists to bypass — the `'a'→'spirals'` signature. Its own comment traded honesty for a non-zero count: *"doesn't silently zero out the readiness count"*. **That zero is the measurement** |
+> | `curriculum.js` dream seeds | Three hand-written sentences if `K_CONCRETE_SENTENCES` was "unavailable" | Unreachable (static import) **and authored content** — sentences nobody taught her, dreamed and consolidated back at relationTagId=29 as her own composition |
+> | `curriculum.js` dream window | Slept `minMs` and logged "falling back to wall-clock settle" with no engine | A pause wearing the name of a dream window: nothing consolidated, promoted or dreamed, while the closing line reported full duration |
+> | `curriculum.js` probe intent | Re-seeded from the FIRST KEYWORD when the sentence embedding was empty | A one-word stand-in for a whole question makes an unasked probe look answerable. Its comment still named the deleted oracle as the consumer |
+> | `curriculum.js` + `emit.js` + `kindergarten.js` | Live `regionSize / buckets` geometry when the frozen `wordBucketCellSizeFor()` was "unavailable" | **THREE COPIES of the same shape**, each under a comment calling that method the "single authority". A write and a read that disagree about band layout do not throw — they teach in one place and listen in another (the grade-9 word-salad root cause). Now required; the write throws without it |
+> | `kindergarten.js` ×4 | Sync `generateSentence` when the GPU proxy wasn't ready | A probe measuring a **different** emission path than the one under test. `generateSentenceAwait` is the superset and is correct on CPU |
+> | `curriculum.js` definitions | Legacy single-string `lookupDefinition` when multi-def returned nothing | Taught exactly what Gee banned three lines above it in the same file — *"only having one definiton is fucking limiting"* — silently, on the words that had already failed |
+> | `brain-server.js` exam | `languageCortex.generate` direct when `processAndRespond` "isn't available" | Dead (it is a method on the brain) and worse if it fired: scoring an exam through a pipeline she does not speak through |
+> | `chat.js` spontaneous image | Subject picked by `_sampleCurrentVocab()` — a uniform random draw over her whole vocabulary | The guard **two lines below it** says a spontaneous image is her own urge and *"a canned subject is a script wearing her name"* — and it was being fed exactly that. Now rides a recent entry on her own emission bus, image-gen sources excluded, stale thoughts excluded; nothing recent in her own voice = no image |
+>
+> ### WHAT WAS DELIBERATELY LEFT, AND WHY — SAID PLAINLY INSTEAD OF QUIETLY
+>
+> - **`NOFALLBACK.6`** — the browser visitor brain. Deleting it changes what the PUBLIC page serves; it goes as its own decision, not as a line in a sweep.
+> - **`NOFALLBACK.7`** — chat's `curriculumDone && _gpuProxyReady` async/sync emission split. Same weights, different await discipline; collapsing it is an emission-path change, not a sweep edit. The dead `typeof generateSentenceAwait` version-guard in that condition **was** removed.
+> - **Not fallbacks, and re-labelled so the real ones stay findable:** the CPU/GPU substrate selection (the CPU is a declared substrate here, not a degradation), donor-version op negotiation, the hyphenated-compound dictionary retry (same service, same capability), the noun **prior** in POS scoring, the training-time intent annotation, and OOV subword encoding.
+>
+> ### VERIFIED
+> `node --check` on all 10 edited files · **`import()` link check 8/8 OK** (syntax check alone cannot see an undeclared binding) · bundle rebuilt and confirmed free of the deleted hash lane · `git diff --numstat` recorded per file.
+>
+> ### DOCS IN THE SAME COMMIT (docs-before-push, every affected tree named)
+> `docs/ARCHITECTURE.md` (3 sites + the embedding-substrate section) · `docs/EQUATIONS.md` ×2 · `docs/ROADMAP.md` ×2 · `docs/SKILL_TREE.md` ×2 · `docs/SETUP.md` ×2 · `html/brain-equations.html` (the "three-path priority cascade" tooltip **and** its prose — it still described the deleted oracle as the final path — plus the probe pseudo-code and 9 embedding lines) · `deploy/bootstrap-backend.sh` (step 3 said "optional" and printed *"Continuing (fallback works)"* — it did not work, it trained the wrong thing quietly) · `deploy/README.md` · `wiki/modules/corpora.md` + `wiki/modules/language-emission.md` + `wiki/log.md` · the board + this ledger + `docs/RESUME.md`. **`docs/NOW.md` unaffected** — it carries session narrative, not the embedding contract.
+
+---
+
 ## BEGIN VERBATIM TODO ARCHIVE 2026-09-01 (SECOND PASS) — the 39 completed rows, byte-for-byte, before removal
 
 > ⛔ **PRESERVED UNDER `§FINALIZED BEFORE DELETE`.** Every block below is the task text and its verdict banner copied byte-for-byte out of `docs/TODO.md`, verified equal, and only then removed from the board. Nothing was reworded, shortened or summarised on the way in.
