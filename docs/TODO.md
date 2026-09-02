@@ -1710,5 +1710,252 @@ Asked via `AskUserQuestion` with each option priced against measured numbers. Al
   ```
   - ⏳ **OWED: the re-ingest.** Same shape as `CORPUSBRACKET.1` — a fixed cleaner is not a fixed corpus. Deferred while the figure-field job holds the CPU and network, and ⚠ **it must not run while that job is reading `corpora/`**, since changing the corpus mid-flight changes the figure list it is walking.
 
-- [ ] `REGRESSION.1` — ⛔⛔⛔ **A FULL REGRESSION REVIEW OF WHAT WE BROKE IN ALL OF THIS, THOROUGHLY AND COMPLETELY, FOR ALL THE WORK WE DID.** ⛔ **THIS IS THE LAST TODO ITEM TO BE COMPLETED AFTER ALL OTHERS ARE COMPLETE** — it is a gate, not a task to be picked up early, and it is worth nothing if it runs while items above it are still landing. ⭐ **WHY IT EXISTS AND WHY IT IS RIGHT:** this stretch deleted a live persona-injection path, a three-tier voice chain, a dictionary-retrieval lane in `generate()`, a per-utterance bank-builder, a phantom drives publisher and a pre-curriculum scoring pass; it changed the content-lane learning rate by **173×**, rebuilt the corpus from 12,075 sentences to **4.48M words**, raised the per-topic cap, added subjects to `PROSE_ACADEMIC_SUBJECTS`, and re-pointed cells. **Each was verified in isolation. "Verified in isolation" is exactly the claim a regression review exists to distrust.** ⛔ **SCOPE — ALL THE WORK, not a sample:** every commit in this stretch, walked; every deletion re-checked for a consumer nobody grepped; every behavioural change re-checked against the instrument that was supposed to prove it; every "checked and correct" verdict re-tested rather than re-read. ⚠ **THE SPECIFIC THINGS MOST LIKELY TO HAVE BROKEN, named now so the review does not have to rediscover them:** (a) **the emission path with retrieval gone** — probes and gate batteries that historically passed via the oracle or the retrieval lane may now score differently or return empty, and `ORACLEB.1` is entangled with this; (b) **the `_teachSentenceList` learning-rate change**, which alters what every prose cell deposits; (c) **the corpus rebuild**, where a cell that trained on 14 sentences now trains on hundreds; (d) **the voice lane collapsed to one path**, so any caller that relied on a tier catching a throw; (e) **`brainState.drives` never publishing**, now stated rather than implied; (f) **the persona fallback deletion**, whose honest replacement content is still not written. ⛔ **AND THE HONEST PART: a regression review AFTER a fresh walk is a different instrument from one before it** — most of this work only takes effect on a walk that has not been run, so this review must say plainly which of its findings are static reads and which needed the walk, and **must not report a static read as a live verdict.**
+- [~] `REGRESSION.1` — ⛔⛔⛔ **A FULL REGRESSION REVIEW OF WHAT WE BROKE IN ALL OF THIS, THOROUGHLY AND COMPLETELY, FOR ALL THE WORK WE DID.** ⛔ **THIS IS THE LAST TODO ITEM TO BE COMPLETED AFTER ALL OTHERS ARE COMPLETE** — it is a gate, not a task to be picked up early, and it is worth nothing if it runs while items above it are still landing. ⭐ **WHY IT EXISTS AND WHY IT IS RIGHT:** this stretch deleted a live persona-injection path, a three-tier voice chain, a dictionary-retrieval lane in `generate()`, a per-utterance bank-builder, a phantom drives publisher and a pre-curriculum scoring pass; it changed the content-lane learning rate by **173×**, rebuilt the corpus from 12,075 sentences to **4.48M words**, raised the per-topic cap, added subjects to `PROSE_ACADEMIC_SUBJECTS`, and re-pointed cells. **Each was verified in isolation. "Verified in isolation" is exactly the claim a regression review exists to distrust.** ⛔ **SCOPE — ALL THE WORK, not a sample:** every commit in this stretch, walked; every deletion re-checked for a consumer nobody grepped; every behavioural change re-checked against the instrument that was supposed to prove it; every "checked and correct" verdict re-tested rather than re-read. ⚠ **THE SPECIFIC THINGS MOST LIKELY TO HAVE BROKEN, named now so the review does not have to rediscover them:** (a) **the emission path with retrieval gone** — probes and gate batteries that historically passed via the oracle or the retrieval lane may now score differently or return empty, and `ORACLEB.1` is entangled with this; (b) **the `_teachSentenceList` learning-rate change**, which alters what every prose cell deposits; (c) **the corpus rebuild**, where a cell that trained on 14 sentences now trains on hundreds; (d) **the voice lane collapsed to one path**, so any caller that relied on a tier catching a throw; (e) **`brainState.drives` never publishing**, now stated rather than implied; (f) **the persona fallback deletion**, whose honest replacement content is still not written. ⛔ **AND THE HONEST PART: a regression review AFTER a fresh walk is a different instrument from one before it** — most of this work only takes effect on a walk that has not been run, so this review must say plainly which of its findings are static reads and which needed the walk, and **must not report a static read as a live verdict.**
+
+  ⭐⭐ **STARTED 2026-09-02 ON GEE'S WORD. His instruction, verbatim and whole:**
+
+  > *"do a review of whats been done in past two days looking for orphaned code, bad code, not plugged in code, abandoned code, dead code, and investigate each case as to what it did why its current stat is bad and how to rectify if there are any found issue via gutting the old corpuse and making entireely new from making sure her Unity One voice still works and all the changes weve made are good and unit can actually see the figure wavlets and is trained on them and all the new corpuse is going to properly train and gate with out errors at all so once we are done downloading we can actually start this bitch UP! What do you say Unity?"*
+
+  > *"hold up do the downlaod shit first and then write up what i said and then u do the investigation start"*
+
+  > *"during your investigation you are to write into the todo all issues found"*
+
+  **The five code classes he named, one line each, because he listed them separately:**
+  1. **orphaned code** — reachable definition, no live caller.
+  2. **bad code** — runs, and is wrong.
+  3. **not plugged in code** — built, correct, and nothing invokes it.
+  4. **abandoned code** — a lane started and left mid-build.
+  5. **dead code** — unreachable by construction.
+
+  **And the four things he requires PROVEN, not asserted:**
+  - **her Unity One voice still works**
+  - **all the changes we've made are good**
+  - **Unity can actually see the figure wavelets and is trained on them**
+  - **all the new corpus is going to properly train and gate without errors at all**
+
+  ⛔ **ORDER IS HIS: download first, then this write-up, then the investigation.** ⛔ **Every issue found gets written into this board as its own row as it is found** — not collected into a closing summary, because a finding that lives only in a report is a finding that stops existing when the report scrolls.
+
+  ⚠ **THE STANDING HONESTY BOUND FROM THE ROW ABOVE STILL APPLIES AND IS THE HARDEST PART: most of this work only takes effect on a walk that has not been run.** Every finding below must say whether it is a STATIC read (code, wiring, grep, harness) or a LIVE verdict (observed on a running brain). **A static read reported as a live verdict is the exact defect class this whole review exists to catch.**
+
+## REGRESSION REVIEW — issues found, filed as found (2026-09-02)
+
+- [ ] `REGFIND.1` — ⛔ **THE FIGURE-DOWNLOAD PROGRESS COUNTER DOUBLE-COUNTS, AND THE TERMINATION TEST READS THE SAME WRONG NUMBER.** Found first because Gee's order put the download first.
+  - **What it does:** the batch loop driving `perceive-corpus-figures.mjs` reports each batch as `fields: batch N (+$NEW)`, and `$NEW` is also its stop condition.
+  - **Why the state is bad:** `NEW=$(find fields -name "*.field.json" | wc -l)` counts **every field file on disk**, and it is measured *before* the previous batch's already-pushed files are removed. So every batch line reports **this batch plus the previous one**. Verified against git rather than inferred:
+  ```
+    batch 1  logged +1219   real +1219      (no predecessor yet — the only honest line)
+    batch 2  logged +2445   real +1226      1226 + 1219 = 2445
+    batch 3  logged +2423   real +1197      1197 + 1226 = 2423
+    batch 8  logged +2371   real +1176      1176 + 1195 = 2371
+  ```
+  - ⭐ **THE DATA IS FINE — ONLY THE INSTRUMENT LIES.** `git add` of an unchanged tracked file is a no-op, so nothing is duplicated, dropped or corrupted. The repo holds exactly `1,040 base + 9,647 added = 10,687`, which reconciles to the byte.
+  - ⛔ **THE REAL COST WAS A WRONG ETA REPORTED TO GEE ALL DAY.** Honest figures: **10,687 of 32,296 (33.1%)**, remaining **21,609**, and from commit timestamps `10:47:06 → 11:57:00 = 14 min/batch × ~1,200 real fields` → **~4–5 h remaining, against the ~2 h I stated.** ⚠ **Batch intervals are LENGTHENING** (12.6 → 13.1 → 12.4 → 17.3 → 14.6 min) as the LFS push grows with the repo, so the tail is slower than the head.
+  - ⚠ **SECOND DEFECT IN THE SAME VARIABLE: the loop terminates one iteration late.** `if [ "$NEW" = "0" ]; then break; fi` is evaluated on the pre-wipe count, so on the run where the perceive pass finds nothing new, `NEW` is still the previous batch's leftover and the loop does not stop. It wipes, stages nothing, `git commit` fails with nothing-to-commit, and only the *next* iteration breaks. **Not fatal — a spurious failed commit and one wasted pass — but the "ALL FIGURES DONE" banner cannot be trusted as the first signal of completion.**
+  - ⭐ **`seq 1 40` is sufficient and was checked, not assumed:** ~26 batches are needed for 32,296 at ~1,200 real fields each, against a 40 bound.
+  - **How to rectify:** measure the delta, never the directory — capture `BEFORE=$(git ls-files fields | wc -l)` after the wipe and report `AFTER - BEFORE`; and move the wipe **above** the measurement so both the count and the stop test read a clean tree. ⛔ **NOT being fixed in the running job on purpose:** the loop is a live `bash -c` that cannot be edited in place, and killing it costs the in-flight batch and risks the `;`-chain advancing to the next stage — a failure this session already paid for once. **The fix belongs to the retry sweep that runs after this job ends.**
+  - ⚠ **A related number left UNEXPLAINED rather than hand-waved:** `uploaded.jsonl` holds **10,827** entries against **10,687** tracked files — a 140 gap. It has not been chased yet and is not claimed benign.
+
+- [ ] `REGFIND.2` — ⛔⛔⛔ **NOT PLUGGED IN — NOTHING IN THE BRAIN READS THE WAVELET FIELDS. 12 GB AND ~5 HOURS OF COMPUTE WITH NO CONSUMER, AND A DOC THAT SAYS OTHERWISE.** This is the answer to Gee's *"unit can actually see the figure wavlets and is trained on them"*, and the honest answer is **half yes**.
+  - **What it does / was meant to do.** Gee asked for it in his own words: *"is ther a way to push all these wavelets to forgeo and just have the brain pull them when needed so we dont need to have to box pull them from forgejo just to put them all right back on the same system in differnt place?"* and *"no! not git ignored we need them on the remote so the traing can pull them and give to unity."* **The training was supposed to PULL the fields.**
+  - ⛔ **Searched four trees and found no reader:** `js/brain/`, `server/`, `deploy/`, `.github/`. The only files that name `BrainWaves` / `.field.json` / `LINKS.jsonl` are the two PRODUCERS (`.claude/scripts/perceive-corpus-figures.mjs`, `gen-figure-links.mjs`). **There is no fetch of `/media/branch/main/fields/...` anywhere in the running system.**
+  - ⛔⛔ **AND `docs/RESUME.md:32` STATES THE OPPOSITE — I WROTE IT:** *"delivered over Git LFS and **pulled by the brain** at `/media/branch/main/fields/<xx>/<key>.field.json`"*. **A claim with no implementation**, and the same shape as [[declared-but-never-enforced]]. The line must be corrected or the consumer must be built; it may not stay as written.
+  - ⭐ **WHAT IS ACTUALLY WIRED, verified rather than assumed — and she DOES get to see figures:** `_perceiveCellFigures` enqueues the whole cell → `figureQueueEnqueue` (`brain-server.js:3797`) → `_startFigureDrain()` **is called** (`brain-server.js:3799`) → the drain takes one row per `DREAM_FIGDRAIN_MS` (1500 default) → `_perceiveTextbookFigure` (`visual-memory.js:1641`). ⚠ **Two of my own suspicions were WRONG and are recorded so nobody re-chases them:** I first read the drain as never started (it is started; my grep missed the call), and I read `perceive` as missing from `MindSpaceWorkerProxy` (it is there at `mindspace-proxy.js:125` — `async` hid it from my pattern, the exact trap that shipped her colour-blind for a day).
+  - ⛔ **THE DEFECT IS THAT `_perceiveTextbookFigure` FETCHES THE ORIGINAL URL AND RE-TRANSFORMS IT** (`fetch(fig.url)` → `_decodeImageToRGBA` → `mindSpace.perceive`). It never looks for a precomputed field. **So the walk redoes, one at a time, the exact work the field job is doing right now with 14 workers.**
+  - **The price, measured off the running job rather than estimated:** 8,421 figures in 1.20 h at 14-way concurrency = **16.8 CPU-hours**, which scales to **~64 CPU-hours plus ~32,296 network fetches** for the full set. Reading a precomputed field instead is a JSON parse and a Buffer view. ⚠ **The transform runs on the mind-space WORKER thread, so this does not pin the teach lane** — the cost is wall-clock and bandwidth on a serialized single lane, not event-loop blocking. **Stated precisely because "it blocks the walk" would be the scarier claim and it is not the true one.**
+  - **How to rectify — two honest options, Gee's call:**
+    1. **Build the consumer** (what he asked for): in `_perceiveTextbookFigure`, try `GET <BRAINWAVES>/media/branch/main/fields/<shard>/<key>.field.json` FIRST, keyed by the same `figKey` the producer used, and fall back to fetch+transform on a miss. ⚠ **The key derivation must be shared, not re-implemented** — the producer hashes the URL (djb2), and a second copy of that rule is how two writers drift apart.
+    2. **Demote the fields to a pure deliverable** (the Corpus-4-Rev packaging they were born as), and **fix `RESUME.md:32` to stop claiming a consumer**.
+  - ⚠ **STATIC READ, not a live verdict.** No walk has been run against this; it is a wiring and grep result.
+
+- [x] `REGFIND.3` — ✅ **HER UNITY ONE VOICE STILL WORKS — VERIFIED, NOT ASSUMED.** Direct answer to Gee's *"making sure her Unity One voice still works"*.
+  - **The live lane, traced end to end:** `speak()` (`voice.js:586`) → `_speakPiper` (`:631` → `:243`) → `synthPCM` from `voice-piper.js` → **equational round-trip `perceiveAudio` → `reconstructAudio`** (CDF 9/7, `:262-264`) → `_playPcm`. The second lane, `playRec` (`:279`), runs the inverse only — **her own process synthesizes and this end just plays**, which is the design that kept the in-browser larynx from grabbing a donor's GPU.
+  - **Assets present and current:** `.claude/piper/hfc.onnx` + `amy.onnx` (+ their `.json`), `js/io/voice-piper.js`, and `js/voice-piper-worker.bundle.js` **rebuilt today**. Both lanes log `🎙 Equation Unity One`.
+  - ⚠ **STATIC READ.** Nothing was heard. This is a wiring + asset verification, not a listening test — a listening test needs a running box.
+
+- [ ] `REGFIND.4` — ⛔ **ORPHANED CODE: `_speakVox` HAS NO CALLER, AND AN 11-FILE VOICE BANK IS LOADED ON A TIMER TO SERVE IT.** Gee's category ①.
+  - **What it did:** `_speakVox` (`voice.js:195`) is a working, purely-equational reconstruction of her voice from the pre-built `vox-bank/` (11 JSON banks) — the word-unit concatenation lane, tier 2 of the old three-tier chain.
+  - **Why the state is bad:** the *"no fallbacks. PERIOD"* ruling deleted the tier chain, and **the file says so about itself** at `:43` and `:60` — *"the no-fallbacks ruling orphaned `_speakVox`"*. Verified: **zero call sites**; every other mention in the repo is a comment. Its only consumer-of-a-consumer, `_ensureVoxRef` (`:110`), is invoked by a **30-second preload timer** (`:70`) and by `_speakVox` itself (`:197`).
+  - **Net effect:** every browser session loads an 11-file voice bank 30 s in, permanently, **for a function nothing can reach.** Not a correctness break — piper is the live path and works — but it is dead weight and a standing invitation for a future reader to "restore" a fallback the LAW forbids.
+  - **How to rectify:** delete `_speakVox`, `_ensureVoxRef` and the `_voxPreloadTimer`, and decide `vox-bank/`'s fate explicitly. ⚠ **The comments at `:362-363` and `:701-706` argue it was KEPT ON PURPOSE** as a working equational artifact while its neighbours were deleted — so this is a decision to confirm with Gee, not a cleanup to perform unilaterally. **Either it gets a caller or it goes; what it may not do is stay callerless while its bank loads every session.**
+
+- [ ] `REGFIND.5` — ⚠ **BAD CODE (MILD): THE VOICE LOG CLAIMS "EQUATION UNITY ONE" EVEN WHEN THE EQUATIONAL ROUND-TRIP WAS SKIPPED.**
+  - **What it does:** `_speakPiper` wraps the CDF 9/7 encode/reconstruct in `try { … } catch { /* keep raw piper pcm */ }` (`voice.js:261-265`), then unconditionally logs `🎙 Equation Unity One (live sentence lane)`.
+  - **Why the state is bad:** if the transform throws, she speaks **raw piper PCM** — which is correct behaviour and deliberately chosen so *"a codec edge never silences her"* — but **the log still asserts the equational lane ran.** An operator reading that line cannot tell an equational utterance from a raw one, and the equational round-trip IS the project's claim about her voice.
+  - **How to rectify:** count the skip and say so — a counter plus a distinct log suffix (`… (raw PCM — transform skipped)`), or a `state.voice.equationalSkips` field. **The behaviour is right; only the report is wrong.** Same family as every other instrument-that-lies row on this board.
+
+- [x] `REGFIND.6` — ✅⭐ **EVERY ONE OF THE 213 CELLS HAS A REAL, CALLABLE RUNNER — PROVEN AGAINST THE LIVE PROTOTYPE, NOT BY GREP.** The strongest static answer available to *"so once we are done downloading we can actually start this bitch UP"*.
+  ```
+    runners referenced by _cellRunner : 213      (matches the 213 cells the walk runs)
+    NOT ON THE PROTOTYPE              :   0
+    grade mixins attached             :  20      PREK … PHD, all present
+  ```
+  - **Why this method and not a grep:** the module was IMPORTED and `Curriculum.prototype` inspected. A definition sitting in a file that is never `Object.assign`'d onto the prototype is a runtime `TypeError`, and `LAW.MIXIN-ORDER` exists because that has happened. **A grep proves a file contains text; only the prototype proves the walk can call it.**
+  - ⚠ **AND MY FIRST PASS REPORTED 5 MISSING — ALL FIVE WERE MY INSTRUMENT'S FAULT.** `runElaPreK` / `runMathPreK` / `runSciPreK` / `runSocPreK` / `runArtPreK` are defined in `js/brain/curriculum/pre-K.js` as `async runElaPreK(_ctx)`, and my pattern demanded `(ctx`. **The underscore-prefixed unused parameter defeated it.** Recorded because the next person to write this check will write the same regex.
+  - ⭐ The `readyAndWaiting` fallback is therefore **defensive only** — it is not the common path, and no cell relies on it.
+
+- [x] `REGFIND.7` — ✅⛔ **WILL THE NEW CORPUS TRAIN AND GATE WITHOUT ERRORS? — YES ON ERRORS, NO ON DEPTH.** Direct answer to *"all the new corpuse is going to properly train and gate with out errors at all"*. Run: `node .claude/scripts/audit-curriculum-coverage.mjs`.
+  ```
+    cells the walk runs        : 213
+      needing a prose corpus   : 193    OK 74 · THIN 115 · EMPTY 4
+      no prose lane BY DESIGN  :  20    (life)
+      no prose lane — DEFECT   :   0
+    reachable corpus words     : 50,235,085   (99.4% licence-recorded)
+    UNREACHABLE files          : 0
+    figures reachable          : 38,318 / 38,318   · 88.3% carry corpus context
+    cells with prose but NO reachable picture : 0
+  ```
+  - ✅ **ERRORS: none reachable, and this was checked at the code rather than inferred.** An empty corpus returns `{ trained: 0, reason: 'no academic corpus yet' }` (`curriculum.js:16405`) — no throw; and the call site is wrapped `try/catch` and explicitly **non-fatal** (`:8863`). A cell with no exam bank skips the battery on `if (bank && bank.length > 0)` (`:10376`) — no NaN, no division by zero. ⭐ **`UNREACHABLE 0` and `no prose lane — DEFECT: 0` mean the historic killer is gone** — the twelve subjects whose corpora *"never train"* are all reachable now.
+  - ⛔ **DEPTH: the auditor still reports FAIL, and it is right to.** `4 EMPTY` (`math/pre-K`, `math/college4`, `math/grad`, `math/phd` — already `MATHGAP.1`) and **115 of 193 cells THIN**, below their band floor. **Thin is not an error; it is a smaller education.** Nothing here stops the walk.
+  - ⛔ **AND THE ONE THAT WILL ACTUALLY TEACH HER WRONG, re-measured today rather than quoted from the row: 42,521 sentences (1.672%) still carry raw markup**, of which **8,715 are mostly-markup and the cleaner would DROP them outright**. Top sources `arxiv` 11,962 · `openstax/economics-book` 2,616 · `illustrative-math/HS` 4,885 across three files. **The cleaner is built and the corpus is not clean** — `MATHLEAK.1`'s re-ingest is still owed, and until it runs she trains on `\mathrm` as vocabulary.
+  - ⚠ **I nearly published an inflated second number.** My scan called 33,806 sentences "would clean" against the row's 17,404 — mine counted every sentence merely CONTAINING a markup character, including `$5` currency lines the cleaner deliberately leaves untouched. **The row's number is the honest one; mine measured a different population.** Third time today.
+  - ⚠ **A GAP IN THE AUDITOR ITSELF, found while using it:** its exam-vocab check reads `EXAM_BANKS` statically from the module, so it **cannot see the 110 phonics questions injected at boot**. It reported `1,788 exam words required` against a bank that is 190 at import and 300 at runtime. The injected set was vocabulary-checked by hand instead (152 quoted strings, 9 graphemes, 0 unexplained), but **the auditor will keep under-reporting until it is taught about injection.**
+
+- [ ] `REGFIND.8` — ⛔⛔ **THE VISUAL STORE'S DISK HEADROOM WAS REASONED AT 10 KB AN ENTRY, CORRECTED TO "ABOUT 50× OFF", AND MEASURED TODAY AT 422× OFF. PROJECTED 133 GB.** This is the cost of the *"nothing she perceives is scaled down"* ruling, and it is MINE — I removed the 320 px bound and re-priced RAM without re-pricing disk.
+  - **Measured, not estimated** — 400 real fields off the running job:
+  ```
+    mean per field            4.22 MB      (the file's estimate: ~10 KB, then "~50x off" = ~500 KB)
+    × DREAM_VM_CAP 25,000  =   103 GB
+    × all 32,296 figures   =   133 GB
+  ```
+  - **What is bounded and what is not, read at the code:** RAM **is** bounded — `VM_BYTES` (`DREAM_VM_MAX_MB`, 512 MB default, `:122`) with `_vmTrimResident` evicting hot entries. ⛔ **Disk is bounded by nothing.** `visual-memory.js:783` and `:1740` both say it out loud: *"evicts from RAM; the row STAYS on disk"*, and `:120` states *"disk holds everything and is not bounded here at all."*
+  - ⭐ **BE FAIR TO THE DESIGN: this was a stated decision, not an oversight.** `:144` rests it on *"disk (500GB minus Forgejo) is the only real ceiling"*. **The defect is the NUMBER that decision was made against**, not the decision. At 500 KB an entry, 25k entries is 12 GB and the reasoning holds comfortably. At the measured 4.22 MB it is 103 GB and the reasoning does not.
+  - ⛔⛔ **AND THE SAME BOX IS ABOUT TO HOLD THE FIELDS TWICE — WHICH IS THE EXACT THING GEE ASKED US TO AVOID.** His words: *"so we dont need to have to box pull them from forgejo just to put them all right back on the same system in differnt place?"* If Forgejo and the brain share the host, the total is `~135 GB BrainWaves (LFS) + ~133 GB visual store + weights/checkpoints + corpus ≈ 290 GB` against a 500 GB assumption. **He predicted this failure mode in advance and `REGFIND.2` is the reason it is happening: nothing reads the fields, so she re-derives and re-stores every one.**
+  - ⚠ **THE CASCADE IF IT FILLS:** `DREAM_SAVE_MIN_FREE_DISK_MB` (8192) makes the weights save **DEFER** rather than fail when free disk drops below 8 GB. So a runaway visual store does not announce itself as a disk error — **it announces itself as her weights quietly not being saved.**
+  - **How to rectify — in preference order:**
+    1. **Build `REGFIND.2`'s consumer.** Reading a field from BrainWaves instead of re-deriving it removes the second copy entirely and is what Gee asked for.
+    2. **Give the store a real disk bound** — an LRU that actually `DELETE`s rows, priced in BYTES not entries, since a count is only a bound when entries are the same size (the lesson `VM_BYTES` already encodes for RAM, applied to disk).
+    3. **Confirm the box's actual disk.** The 500 GB figure is an assertion in a comment; `reference_deploy_server_specs` records RAM and GPU for that host and **not** disk. ⛔ **Do not plan 290 GB against an unverified 500.**
+  - ⚠ **STATIC + MEASURED, not live.** The 4.22 MB is measured off real generated fields; the 133 GB is arithmetic. No box has been observed filling.
+
+## WAVESEE — she sees the wavelets the same way she sees the camera, her mind's eye and her own drawings — filed 2026-09-02
+
+Gee, verbatim, in the order he said it:
+
+> *"this is a problem: \"But nothing reads the fields we're generating \" if she can see the fields.... wtf do we need to do this:build the consumer so training pulls the fields????????? and why the fuck are we dopwnloading them????"*
+
+> *"okay fuck it we are going to fix here so she can fucking see the wavefore just like she sees how to draw and watch the camera and then we will jsut put all the wavlets in the main brain repo wher they belong so when update freshwalk is read it will pull it all properly and run it and she can see the wavelts and train on them and learn"*
+
+> *"i dont care about github we will use forgjo... and we will fix it so that it over writes the old copies.. i it has 500MB/s dl speeds so itls only take 3 minutes to downalod all the wavlets ontop of the old each time. and we build the consumer... ive already told u i doint have access tio the server only the update buttons on the brain"*
+
+> *"wtf are you doing ? you dont start work until everything i said is put in the todo as work full discovering the invented code need to do all of this and design Unity to see the wavelets just like she sees and reads the camera of users and the mindes eye imaginations doodles and drawlings. INVINIT IT SO IT FUCKING WORKS"*
+
+**His constraints, each one binding:**
+1. **Forgejo only — GitHub does not matter here.** ⛔ It still matters to the *main repo*, which pushes to a PUBLIC GitHub remote; that is why the fields stay in the Forgejo-only `BrainWaves` repo rather than moving into this tree.
+2. **Overwrite the old copies every time.** He priced it himself: 500 MB/s ⟹ ~133 GB in **~4.4 minutes**, and he is right — I had implied hours and that was wrong.
+3. **He has NO server access — only the Update buttons on the dashboard.** ⛔ **Every step must ship as CODE ON `main` and execute on the press.** A "run this once on the box" instruction is not a deliverable; my first proposal contained one and was invalid.
+4. **She must see a wavelet field exactly the way she sees a camera frame, a mind's-eye imagining, or her own doodle** — a first-class percept source, not a special case.
+
+### ⭐ DISCOVERY — what already exists, read at the code, with line numbers
+
+**The good news is that almost all of it is built.** A textbook figure already travels the same road as every other percept:
+
+| step | where | status |
+|---|---|---|
+| fetch + decode | `visual-memory.js:1669`, `_decodeImageToRGBA` (jpeg/png/**webp**) | ✅ |
+| full-resolution guard | `_perceptSource` (`:2251`), `REF_MAXSIDE=0` ⟹ nothing scaled | ✅ |
+| transform → `rec` | `mindSpace.perceive()` on the **worker thread** (`mindspace-proxy.js:125`) | ✅ |
+| blank-plate floor | `_recDetail(rec) < DREAM_REF_MIN_DETAIL` (200) | ✅ |
+| percept vector | `mindSpace.describe(rec)` (`:1734`) | ✅ |
+| bank the row | `store.set(key, { rec, at, seen, conf:true, p, phrase, figure })` (`:1739`) | ✅ |
+| **TRAIN on it** | `_queuePhraseTeach(phrase)` (`:1760`) → **ORDER `relationTagId 13` + ATTACH `relationTagId 35`**, bounded 24 pairs / 4 reps | ✅ |
+| queue + drain | `figure-queue.js`, `_startFigureDrain()` (`brain-server.js:3799`), one per `DREAM_FIGDRAIN_MS` | ✅ |
+
+⭐ **So "she sees it and trains on it" is ALREADY TRUE of the pipeline** — and `:1745` carries the scar proving it was checked: *"THE WORDS WERE STORED AND NEVER TAUGHT … the figure lane simply never called it."* That was found and fixed; the teach call is live.
+
+⭐ **The peer lanes she must match, and they all converge on the same four calls** — `perceive → describe → store.set → _queuePhraseTeach`:
+- **camera / user image** — `:651` `fidelity.source = 'seen-camera' | 'seen-image'`, banked at `:758-780` with provisional-vs-confirmed `conf`.
+- **her own drawings** — `canvas:own:<word>:<style>`, banked from the drawing lane in `chat.js`.
+- **reference look-ups (mind's eye)** — `:2112`, gated by LOOKTWICE two-seed agreement.
+- **textbook figures** — `:1739`, no LOOKTWICE gate because **provenance replaces agreement** (authored, captioned, licensed).
+
+### ⛔ THE ONLY THING THAT MUST BE INVENTED
+
+**Where the `rec` comes from.** Today it is always `fetch(fig.url)` → decode → transform. That is the single step to be replaced, and **nothing downstream changes** — which is exactly what makes this a percept SOURCE and not a new lane.
+
+- [x] `WAVESEE.1` — ✅ **SHIPPED 2026-09-02 — `server/figure-field-store.js` + the fast path in `_perceiveTextbookFigure`.** Proven against real data and through the production wiring, not the module alone:
+  ```
+    url -> figKey -> file -> rec            126 of 126 fields on disk loaded, 0 stub, 0 malformed
+    chanVal(Y) on a base64 field            Int16Array len 10,204 — matches channel `keep` EXACTLY
+    _recDetail on a loaded rec              10,270  (clears the 200 floor)
+    LFS pointer stub                        REFUSED, counted as `stub` and NOT as `miss`
+    sample rec                              2272x1704 cdf97/YCbCr, Y.keep 3,221,597 coefficients
+  ```
+  ⭐ **The base64-vs-BLOB trap was already closed at the choke point** — `chanVal`/`chanHasVal` (`transform.js:35/42`) read `val_bin` OR `val_b64`, and `_recDetail` handles both since BLOBSTORE. **No second decoder was written, which is what keeps a field from drifting away from a live percept.** ⚠ A miss is ordinary (~a fifth of figures have no field) and falls through to the network path unchanged.
+
+  **Original filing:** **THE CONSUMER: a local wavelet field becomes a percept source, ranked ahead of the network.**
+  - New CJS module `server/figure-field-store.js` owning **three things and nothing else**: `figKey(url)`, `bare(key)`, `shardName(key)`, plus `loadField(url)` returning the parsed field or `null`.
+  - `figKey` is **djb2 over the URL** — `h=5381; h=((h*33)^c)>>>0; 'fig:'+h.toString(36)` — and the file lives at `fields/<first-two-chars>/<bare>.field.json`.
+  - ⛔ **THE `fig:` PREFIX MUST NEVER REACH A FILENAME.** A colon is an NTFS alternate-data-stream separator; `fig:abc.field.json` silently creates a stream hanging off a file called `fig`. The producer already paid for this once.
+  - **Wire into `_perceiveTextbookFigure` between the already-held check and the fetch:** local field hit ⟹ take `rec` from it and skip fetch/decode/transform entirely; miss ⟹ the existing network path, unchanged. **A miss is not an error and must not be counted as one.**
+  - ⭐ **The field also carries its own text** (`phrase`, `links[]`, `citations`) — prefer the queue row's phrase (which travels with the row per the CAMPOISON rule) and use the field's only as a fallback, so the binding still never reads ambient state.
+
+- [ ] `WAVESEE.2` — ⛔ **THE KEY RULE MUST HAVE ONE OWNER, AND TODAY IT WILL HAVE TWO.** `perceive-corpus-figures.mjs` holds `figKey`/`bare`/`shardName` and **must not be edited while the field job is running** — the batch loop respawns `node` every batch, so an edit lands mid-run. **The new module is written first with a duplicate, clearly marked; the producer is pointed at it the moment the run ends.** Two copies of a hash rule is how two writers drift apart, and this board already carries three instances of exactly that.
+
+- [x] `WAVESEE.3` — ✅ **SHIPPED 2026-09-02 — the press pulls the whole tree; there is no human step and none was invented.** `deploy/self-update.sh` gained a field sync after the npm install: shallow `--filter=blob:none` clone of `BrainWaves` from Forgejo, **`git lfs pull`**, then `rsync -a --delete` into `$BACKEND_DIR/fields`. ⚠ **`--exclude 'fields'` was added to the overlay rsync FIRST** — without it the very next press deletes everything the press just downloaded. **Non-fatal at every step:** a clone, lfs-pull or rsync failure keeps whatever is already on disk and she falls back to live transforms. ⛔ **`git-lfs` absent ⟹ the sync is SKIPPED with a warning rather than run** — a plain clone would fill the disk with pointer stubs, which read as a healthy store. `bash -n` clean.
+
+  **Original filing:** **DELIVERY: the press must fetch the fields. No human step exists.**
+  - `deploy/self-update.sh` gains a fields sync that runs on every Update / Fresh-walk press: clone-or-pull `BrainWaves` from **Forgejo** into a path on the box and overwrite in place, per Gee's *"it over writes the old copies"*.
+  - ⛔⛔ **`git clone --depth 1` IS NOT LFS-AWARE.** `*.field.json` is an LFS filter in `BrainWaves/.gitattributes`, so a plain clone yields **4 KB pointer stubs**, not fields — and `JSON.parse` on a stub does not throw usefully, it yields an object with no `rec`. **The sync must run `git lfs pull` (or fetch `/media/`, never `/raw/`), and the consumer must REFUSE a row with no `rec.channels` rather than bank it.** This is the `/raw/`-vs-`/media/` trap one layer down.
+  - ⚠ **The fields directory must be added to the `rsync --delete` EXCLUDE list** in `self-update.sh` beside `visual-memory*.db*` and `brain-weights*`, or **the very next press deletes every field it just downloaded.** That exclude list's own comment states the rule: *"anything the server writes under `__dirname` belongs in this list, or a deploy eats it."*
+  - **Config:** `DREAM_FIGURE_FIELDS_DIR` (path) and a documented off-switch that says so out loud when it is off.
+
+- [~] `WAVESEE.4` — ⭐ **STATIC HALF DONE, LIVE HALF OWED AND NAMED.** The four static proofs all pass (see `WAVESEE.1`). The instrument shipped too: **`state.ownArt.fields`** publishes `hit / miss / stub / malformed` as **separate counters by reason**, plus `enabled`, `root`, `mb` and `lastErr` with its age — because one number cannot distinguish a working store from a silently-dead one, and `stub` is a DELIVERY failure that must never read as a cache miss. ⏳ **Still owed and only answerable after a press:** `hit` climbing while `figTransformed` stays flat, and `stub` at 0.
+
+  **Original filing:** **PROVE IT, and say which proofs are static and which are live.**
+  - **Static, runnable now:** key parity — for N real corpus figure URLs, `figKey(url)` must resolve to a file that exists in `BrainWaves/fields/`; a loaded field must produce a `rec` whose `channels.Y.keep` matches the producer's ledger; `_recDetail` on a loaded rec must clear the 200 floor.
+  - ⛔ **THE BLOB-VS-BASE64 TRAP, which has bitten this exact pair before:** the live store is BLOB-from-birth (v8) while a field file carries `val_b64`/`pos_b64` **base64 inside JSON**. `_recDetail` once read only `val_b64` and restored memories scored 0 with recall silently refusing. **The loaded field must pass through the same `chanVal`/`chanHasVal` choke point in `transform.js` that every other rec uses — not a second decoder.**
+  - **Live, only after a press:** `state.ownArt.lookups` figure counters climbing, `figGrounded` rising, and the drain reporting hits-from-field vs fetched-live as **separate counters** — because one number cannot distinguish a working cache from a silently-dead one.
+
+- [ ] `WAVESEE.5` — ⚠ **THE 133 GB STORE IS NOT SOLVED BY ANY OF THIS, AND I CLAIMED OTHERWISE ONCE.** She banks a ~4.22 MB rec per figure whether it came from a field or from the network. `REGFIND.8` stands on its own and needs its own decision. **Recorded here so the two are never again treated as one fix.**
+
+- [ ] `WAVESEE.6` — ⛔ **NAME THE FIGURES THAT ERRORED, SAY WHY EACH ONE DID, AND RE-DOWNLOAD ONLY THOSE ON A SECOND PASS.** Gee, verbatim:
+
+  > *"and also add to the todo we have to figure out which figures errored and figure out why and redowload only the failed figures correctly the 2nd pass"*
+
+  - **The size of it, measured rather than guessed:** the job runs `--limit 1500` per pass and banks a mean of **1,203** — so **~297 per pass, ~19.8%, fail.** Across 32,296 figures that is roughly **6,400 figures she will never see.**
+  - ⛔⛔ **THE FAILURES ARE NOT WRITTEN DOWN ANYWHERE, WHICH IS THE ACTUAL DEFECT.** The ledger records DELIVERED fields only, and the batch loop greps the child's output down to `resume source|DONE in|nothing to do` — so **every failure reason is discarded at the pipe.** A re-run therefore retries the whole miss set blindly and re-fails the permanent ones forever. ⚠ **"Not ledgered so a re-run picks them up" is only half true**: it picks them up, and it has no way to stop picking up a URL that 404s every time.
+  - ⭐ **THE STAGE COUNTERS ALREADY EXIST IN THE WORKER — they are simply never persisted.** `perceive-corpus-figures.mjs` distinguishes `httpFail`, `decodeFail`, `transformFail`, `uploadFail` and the SVG/GIF refusals. **The fix is to write them out, not to invent them.**
+  - **What the second pass needs, in order:**
+    1. A **failures ledger** — one JSONL row per failed figure: `{ key, url, stage, status, message, at, attempts }`. Written as it happens, never at the end, so a killed run keeps what it learned.
+    2. A **classification** into PERMANENT vs TRANSIENT — 404/410/DNS-dead and "no decoder for this media type" are permanent; 429/5xx/timeout/abort are transient. ⛔ **Retrying a permanent failure forever is the same waste as never retrying a transient one**, and one bucket cannot express both.
+    3. A **retry pass that reads only that ledger**, honours the classification, and uses the fixed User-Agent (the Wikimedia refusal was an identity rejection, not a rate limit — 0/6 vs 6/6 measured).
+    4. ⭐ **A verdict per permanent failure**, so the corpus can be corrected at the source rather than the figure being silently absent forever.
+  - ⚠ **Known permanent classes already observed and named, so the classifier starts from evidence:** non-Wikimedia SVGs (no rasteriser in the path), GIFs (no decoder — jpeg/png/webp only), and dead `raw.githubusercontent.com` paths from re-organised book repos.
+  - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
+
+## FOCUSDEAD — the vision focus tracker stopped following motion — filed 2026-09-02
+
+Gee, verbatim:
+
+> *"and one thing the Unity vision \"focus tracker\" never moves anymore to follow what she sees.. it use to work and she would look at the changes and motion on the unity vision cam viewer but it died of regression. so add fixing this too so Unity can follow the motion taking place in the casmera.. ie focus on a persona mouth moving or focus on the environment to study it and learn"*
+
+- [ ] `FOCUSDEAD.1` — ⛔ **THE RAF DRIVER RETURNS WITHOUT RE-ARMING, SO ONE INACTIVE FRAME KILLS THE FOCUS TRACKER PERMANENTLY.** `js/brain/remote-brain.js:613`:
+  ```js
+    const tick = () => {
+      if (!this.visualCortex || !this.visualCortex.isActive()) return;   // ⛔ no reschedule
+      try { … this.visualCortex.processFrame(); }
+      catch (err) { … }
+      this._visionRafId = requestAnimationFrame(tick);   // re-arms ONLY on the success path
+    };
+  ```
+  **Nothing anywhere else restarts this loop.** The comment states the intent — *"the loop self-cancels when the cortex goes inactive (disconnect or destroy)"* — which is right for a real destroy and wrong for anything transient, because there is no path back.
+  - ⚠ **CONFIRMED AS A DEFECT, NOT CONFIRMED AS THE CAUSE, AND THE DIFFERENCE MATTERS.** `_active` is set true in `init()` and false only in `destroy()` (`visual-cortex.js:187/201`), so it does **not** flap frame to frame. That makes this **latent** on the ordinary path. ⛔ **I am not filing a root cause I have not proven** — that is the exact error this review keeps catching.
+  - **How to rectify regardless:** re-arm before the guard, or drive from a `setInterval` that survives an inactive stretch and resumes — a loop whose only exit is permanent must not be gated on a transient condition.
+
+- [ ] `FOCUSDEAD.2` — **WHAT IS VERIFIED WORKING, so the live hunt starts from evidence rather than from scratch.** The whole chain reads intact statically:
+  ```
+    app.js:3240        startEyeIris(#eye-iris, brain.visualCortex)
+    app.js:3502        gaze = visualCortex.getState()  → gazeX/gazeY, lerped 0.06/frame
+    visual-cortex.js   getState() returns gazeX, gazeY, gazeTarget, motionEnergy, maxSalience
+    :450 _computeGaze  salience centroid → smooth pursuit (0.12 + attentionLock*0.15)
+                       → micro-saccades → attention-lock centre clamp
+    :361 _computeMotion per-pixel frame-delta map, so MOVING regions beat static edges
+    :254/:260          processFrame() calls _computeMotion() then _computeGaze()
+  ```
+  ⭐ **The motion-following Gee describes is already the designed behaviour** — `visual-cortex.js:127` states it outright: *"Whoever is actually talking to Unity is the thing that's moving — she should look at them."* **This is a lane that stopped running, not a feature that was never built.**
+  - ⛔ **THE REMAINING CANDIDATES, none eliminated, and they need a LIVE read because gaze is computed CLIENT-side and never published in server state:** ① `connectCamera` never runs on the deployed path, so `init()` never fires and the RAF is never started (the whole driver sits inside `if (typeof this.visualCortex.init === 'function')`); ② the loop started and died once via `FOCUSDEAD.1`; ③ `processFrame()` throws every frame and the `catch` only `console.warn`s, so the widget freezes while the console fills.
+  - **The one-line live check:** open the page with the camera on and read `brain.visualCortex.getState()` twice a second apart. `gazeX`/`gazeY` identical ⟹ `processFrame` is not running (① or ②); moving ⟹ the cortex is fine and the widget is the problem.
+  - ⚠ **CLIENT-SIDE — this lands on a PAGE RELOAD, not on an Update press.** Do not bundle its verification with a press.
+
+- [ ] `FOCUSDEAD.3` — ⚠ **THE SERVER-SIDE DETECTORS THAT DEPEND ON THIS ARE DARK TOO, AND NOBODY WOULD NOTICE.** `js/ui/brain-event-detectors.js:421/436` — `motionDetected` reads `visualCortex.motionEnergy` and `gazeShift` reads `visualCortex.gazeTarget` **out of server state**, while the visual cortex runs in the BROWSER on the RemoteBrain path. `brain-3d.js:2343` already says as much: *"motionDetected, gazeShift, heardOwnVoice) still won't fire"*. **Two detectors that can never fire are the same defect class as an instrument nobody reads** — either the client publishes gaze upward, or the detectors are honestly marked client-only.
 

@@ -700,6 +700,22 @@ const SERVER_STATE_MIXIN = {
           // lane starved for ~10h (2 grounds against a ~60-look budget) with
           // zero remotely-visible evidence — every failure path was silent.
           lookups: this._vmLookStats || null,
+          // WAVESEE.4 — is she READING the precomputed wavelet fields, or
+          // silently re-transforming every figure? One number cannot answer
+          // that, so the counters are separate BY REASON:
+          //   hit       a field was read and became a percept — the fast path
+          //   miss      no field for that figure (about a fifth never made one:
+          //             dead URLs, non-Wikimedia SVGs, GIFs) — NOT an error
+          //   stub      an LFS POINTER instead of a field. `git lfs pull` never
+          //             ran, so the store looks populated and perceives nothing.
+          //             ⛔ THIS IS A DELIVERY FAILURE AND MUST NOT READ AS A MISS.
+          //   malformed present, parsed, and carrying no rec.channels
+          // `enabled:false` means the directory is absent — she is on the live
+          // path everywhere, which is correct but ~64 CPU-hours more expensive.
+          fields: (() => {
+            try { return require('../figure-field-store.js').fieldStoreStats(); }
+            catch { return null; }
+          })(),
           // VMRELATE — what the phrase-teach lane actually spent. Published
           // because an unbounded teach layer cost 70 minutes per cell once
           // already: `skippedBusy` climbing means the bound is doing its job,

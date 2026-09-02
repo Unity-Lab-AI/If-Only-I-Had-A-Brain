@@ -1,0 +1,175 @@
+// figure-field-store.js — A PRECOMPUTED WAVELET FIELD IS A PERCEPT SOURCE.
+//
+// Gee: *"we are going to fix here so she can fucking see the wavefore just like
+// she sees how to draw and watch the camera"*. That is the whole design goal:
+// a field read here enters `_perceiveTextbookFigure` at exactly the point a
+// freshly-transformed image would, and every step after it — `describe`,
+// `store.set`, `_queuePhraseTeach` (ORDER tag 13 + ATTACH tag 35) — is
+// untouched. **A percept SOURCE, not a new lane**, which is the only reason
+// this cannot drift away from how she sees a camera frame or her own drawing.
+//
+// ⛔ WHY THIS EXISTS AT ALL. The corpus figures were transformed once already,
+// into `UnityAILab/BrainWaves`. Nothing in the brain read them, so the walk
+// re-fetched and re-transformed all 32,296 — measured at ~64 CPU-hours and
+// 32,296 third-party fetches for work already done. Reading the field instead
+// is a JSON parse, and the figure drain goes from ~69 h to the pacing floor.
+//
+// ⚠ A MISS IS NOT AN ERROR. Roughly a fifth of corpus figures never produced a
+// field (dead URLs, non-Wikimedia SVGs, GIFs), and the network path remains
+// correct for every one of them. `miss` is counted separately from `stub` and
+// `malformed` precisely so a silently-dead cache cannot hide inside one number.
+const fs = require('fs');
+const path = require('path');
+
+// ⛔⛔ THIS RULE HAS A SECOND COPY TODAY, AND THAT IS A KNOWN DEFECT, NOT AN
+// OVERSIGHT. `.claude/scripts/perceive-corpus-figures.mjs` holds the identical
+// `figKey`/`bare`/`shardName`, and it could not be edited when this shipped:
+// its batch loop respawns `node` every batch, so an edit lands mid-run against
+// a job with hours left. **The producer is pointed at this module the moment
+// that run ends (WAVESEE.2).** Two owners of a hash rule is how two writers
+// drift apart, and this board already carries three separate instances of it.
+//
+// djb2 over the URL — the figure's IDENTITY, never its position in a file. A
+// list index into a corpus that gets re-ingested silently re-points at
+// different content, a defect this project has already paid for once.
+function figKey(url) {
+  let h = 5381;
+  const s = String(url || '');
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return `fig:${h.toString(36)}`;
+}
+
+// ⛔ THE `fig:` PREFIX MUST NEVER REACH A FILENAME. A colon is illegal on
+// Windows and NTFS reads it as an alternate-data-stream separator, so
+// `fig:abc.field.json` silently produces a stream hanging off a file named
+// `fig` — with no write error at all. The producer paid for this once.
+const bare = (key) => String(key).replace(/^fig:/, '');
+const shardName = (key) => bare(key).slice(0, 2).padEnd(2, '0');
+
+// Where the press leaves them. `deploy/self-update.sh` syncs `BrainWaves` here
+// on every Update / Fresh-walk, and the path is on the rsync EXCLUDE list so
+// the next press cannot delete what it just downloaded.
+function fieldsRoot() {
+  const env = process.env.DREAM_FIGURE_FIELDS_DIR;
+  if (env && String(env).trim()) return String(env).trim();
+  return path.join(__dirname, '..', 'fields');
+}
+
+const stats = {
+  enabled: null,      // resolved on first use, so the log states it once
+  root: null,
+  hit: 0,             // a field was read and produced a usable rec
+  miss: 0,            // no file — the network path handles it, NOT an error
+  stub: 0,            // an LFS pointer stub: `git lfs pull` never ran
+  malformed: 0,       // present, parsed, and not a field
+  bytes: 0,
+  lastErr: null,
+  lastErrAt: 0,
+};
+
+// An LFS pointer is a tiny text file that begins with a version line. It parses
+// as neither JSON nor a field, and — the trap — `JSON.parse` failing on it
+// looks identical to a corrupt field unless you check for this shape first.
+function looksLikePointer(buf) {
+  if (buf.length > 400) return false;
+  return buf.slice(0, 60).toString('utf8').startsWith('version https://git-lfs');
+}
+
+/**
+ * Load the precomputed field for a figure URL.
+ *
+ * @returns {null | { rec, phrase, links, citations, url, bytes }}
+ *   `null` on any miss, stub or malformed file — the caller falls through to
+ *   the network path, which is always correct.
+ */
+function loadField(url) {
+  if (stats.enabled === false) return null;
+  const root = stats.root || (stats.root = fieldsRoot());
+  if (stats.enabled === null) {
+    stats.enabled = fs.existsSync(root);
+    if (!stats.enabled) {
+      console.log(`[FigureField] no field store at ${root} — every figure will be fetched and transformed live (set DREAM_FIGURE_FIELDS_DIR, or let the press sync BrainWaves).`);
+      return null;
+    }
+    console.log(`[FigureField] field store found at ${root} — precomputed wavelet fields will be read instead of re-transformed.`);
+  }
+
+  const key = figKey(url);
+  const file = path.join(root, shardName(key), `${bare(key)}.field.json`);
+  let buf;
+  try {
+    buf = fs.readFileSync(file);
+  } catch {
+    stats.miss++;
+    return null;
+  }
+
+  // ⛔⛔ THE POINTER-STUB CHECK IS THE WHOLE REASON THIS IS NOT A ONE-LINER.
+  // `*.field.json` is an LFS filter in BrainWaves, and `git clone --depth 1` is
+  // NOT LFS-aware — without `git lfs pull` every file on disk is a ~130-byte
+  // pointer. That is the `/raw/` vs `/media/` trap one layer down, and it fails
+  // OPEN: a stub is a real file, so a naive existence check reports a healthy
+  // cache while she perceives nothing.
+  if (looksLikePointer(buf)) {
+    stats.stub++;
+    if (stats.stub === 1 || stats.stub % 500 === 0) {
+      stats.lastErr = 'LFS pointer stub — `git lfs pull` has not run for the field store';
+      stats.lastErrAt = Date.now();
+      console.warn(`[FigureField] ⛔ ${file} is an LFS POINTER, not a field (${stats.stub} so far). The sync ran without \`git lfs pull\`; she is transforming every figure live. This is a delivery failure, not a cache miss.`);
+    }
+    return null;
+  }
+
+  let j;
+  try {
+    j = JSON.parse(buf.toString('utf8'));
+  } catch (e) {
+    stats.malformed++;
+    stats.lastErr = `field parse: ${e && e.message}`;
+    stats.lastErrAt = Date.now();
+    return null;
+  }
+
+  // A field without channels is not a field. Refusing here rather than banking
+  // it is what stops a truncated or half-written file from becoming a memory
+  // that scores 0 forever — the recall lane cannot tell those apart later.
+  const rec = j && j.rec;
+  if (!rec || !rec.channels || !rec.channels.Y) {
+    stats.malformed++;
+    stats.lastErr = 'field carried no rec.channels';
+    stats.lastErrAt = Date.now();
+    return null;
+  }
+
+  stats.hit++;
+  stats.bytes += buf.length;
+  return {
+    rec,
+    // ⚠ The caller PREFERS the queue row's phrase. The row's text travels with
+    // it (the CAMPOISON rule — a binding resolved at perception time reads
+    // ambient state), so the field's own copy is a fallback for a figure that
+    // reached the drain without one, never an override.
+    phrase: typeof j.phrase === 'string' ? j.phrase : null,
+    links: Array.isArray(j.links) ? j.links : [],
+    citations: Number(j.citations) || 0,
+    url: typeof j.url === 'string' ? j.url : String(url || ''),
+    bytes: buf.length,
+  };
+}
+
+/** Dashboard-shaped snapshot. Counters are separate BY REASON on purpose. */
+function fieldStoreStats() {
+  return {
+    enabled: stats.enabled,
+    root: stats.root,
+    hit: stats.hit,
+    miss: stats.miss,
+    stub: stats.stub,
+    malformed: stats.malformed,
+    mb: +(stats.bytes / 1048576).toFixed(1),
+    lastErr: stats.lastErr,
+    lastErrAgeMs: stats.lastErrAt ? Date.now() - stats.lastErrAt : null,
+  };
+}
+
+module.exports = { figKey, bare, shardName, fieldsRoot, loadField, fieldStoreStats };
