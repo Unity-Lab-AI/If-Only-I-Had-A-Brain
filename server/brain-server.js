@@ -11455,6 +11455,32 @@ wss.on('connection', (ws, req) => {
           break;
         }
 
+        case 'gaze': {
+          // ⭐ FOCUSDEAD.3 — WHERE SHE IS LOOKING, ARRIVING FROM THE EYE THAT
+          // ACTUALLY COMPUTES IT. The visual cortex runs in the BROWSER on the
+          // RemoteBrain path, so `motionDetected` and `gazeShift` in
+          // `js/ui/brain-event-detectors.js` were reading `visualCortex.*` out
+          // of server state that nothing ever wrote — two detectors that could
+          // never fire, which `brain-3d.js` recorded in a comment instead of
+          // fixing. This is the missing writer.
+          //
+          // ⚠ LAST-WRITER-WINS ACROSS CLIENTS, deliberately: this is HER one
+          // gaze, not a per-viewer value, and averaging two watchers' cameras
+          // would invent a direction neither of them saw. Client-throttled to
+          // ~4 Hz. Stamped so a stale reading is visible as stale rather than
+          // reading as a live fixation — the mistake `MIRRORID.5` cost once.
+          const g = msg.gaze || {};
+          const _num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+          brain._clientGaze = {
+            gazeX: _num(g.gazeX), gazeY: _num(g.gazeY),
+            gazeTarget: typeof g.gazeTarget === 'string' ? g.gazeTarget.slice(0, 80) : '',
+            motionEnergy: _num(g.motionEnergy), maxSalience: _num(g.maxSalience),
+            frames: _num(g.frames), framesRefused: _num(g.framesRefused),
+            at: Date.now(), from: client.name || 'viewer',
+          };
+          break;
+        }
+
         case 'setName':
           client.name = msg.name;
           break;

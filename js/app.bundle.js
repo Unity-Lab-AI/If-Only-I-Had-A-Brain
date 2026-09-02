@@ -2698,31 +2698,6 @@ function reconstructAudio(rec) {
   }
   return out;
 }
-function concatAudio(pcms, sampleRate = 24e3, xfadeMs = 30) {
-  const parts = (pcms || []).filter((p) => p && p.length);
-  if (!parts.length) return null;
-  const xf = Math.max(0, Math.round(sampleRate * xfadeMs / 1e3));
-  let total = 0;
-  for (const p of parts) total += p.length;
-  total -= xf * (parts.length - 1);
-  const out = new Float32Array(Math.max(1, total));
-  let off = 0;
-  for (let pi = 0; pi < parts.length; pi++) {
-    const p = parts[pi];
-    const start = pi === 0 ? 0 : xf;
-    if (pi > 0) {
-      for (let i = 0; i < xf && off - xf + i < out.length && i < p.length; i++) {
-        const t = i / xf;
-        out[off - xf + i] = out[off - xf + i] * (1 - t) + p[i] * t;
-      }
-    }
-    for (let i = start; i < p.length && off + i - start < out.length; i++) {
-      out[off + i - start] = p[i];
-    }
-    off += p.length - start;
-  }
-  return out;
-}
 
 // ../js/io/voice-piper.js
 var WORKER_URL = "/js/voice-piper-worker.bundle.js?v=" + Date.now();
@@ -2798,49 +2773,8 @@ var VoiceIO = class {
     this._onResult = null;
     this._onError = null;
     this._listeners = {};
-    this._voxBank = /* @__PURE__ */ new Map();
-    this._voxEnabled = typeof localStorage === "undefined" || localStorage.getItem("unity_vox_equational") !== "false";
-    this._voxDb = null;
-    this._voxInitDb();
-    this._voxRef = /* @__PURE__ */ new Map();
-    this._voxPreloadTimer = setTimeout(() => {
-      this._ensureVoxRef();
-    }, 3e4);
     this._installAudioUnlock();
     this._initRecognition();
-  }
-  // ── VOX — equational voice bank ─────────────────────────────────────────
-  _voxTier() {
-    const a = this._age || 25;
-    return a < 11 ? "k" : a < 14 ? "mid" : a < 18 ? "teen" : a < 23 ? "college" : "adult";
-  }
-  /** VOXREF — preload the reference-voice equation bank (chunked JSON,
-   *  sequential + cache-friendly). Missing bank (404) degrades silently to
-   *  the executor/browser fallback chain, unchanged. */
-  async _voxPreloadRef() {
-    if (typeof fetch === "undefined") return;
-    try {
-      const man = await (await fetch("/vox-bank/manifest.json", { cache: "force-cache" })).json();
-      if (!man || !Array.isArray(man.chunks)) return;
-      console.log(`[VoiceIO] \u{1F399} VOX reference bank: ${man.words} words / ${man.chunks.length} chunks (${man.reference}) \u2014 loading\u2026`);
-      for (const c of man.chunks) {
-        try {
-          const chunk = await (await fetch("/vox-bank/" + c.file, { cache: "force-cache" })).json();
-          for (const [w, rec] of Object.entries(chunk)) this._voxRef.set(w, rec);
-        } catch {
-        }
-        await new Promise((r) => setTimeout(r, 60));
-      }
-      console.log(`[VoiceIO] \u{1F399} VOX reference bank READY \u2014 ${this._voxRef.size} word equations held. Her voice is local + equational; the executor is not needed.`);
-    } catch {
-    }
-  }
-  /** Lazy single-flight bank load — first speak (or the 30s idle timer)
-   *  starts it; every later caller shares the same promise. */
-  _ensureVoxRef() {
-    if (!this._voxPreloadPromise) this._voxPreloadPromise = this._voxPreloadRef().catch(() => {
-    });
-    return this._voxPreloadPromise;
   }
   /** One unlock for the tab: browsers suspend a gesture-less AudioContext
    *  (autoplay policy) and resume() without a gesture never completes —
@@ -2864,99 +2798,6 @@ var VoiceIO = class {
     for (const ev of ["pointerdown", "keydown", "touchstart"]) {
       document.addEventListener(ev, unlock, { passive: true });
     }
-  }
-  _voxWords(text) {
-    return String(text || "").toLowerCase().split(/[^a-z']+/).filter((w) => w.length >= 1 && w.length <= 24).slice(0, 64);
-  }
-  _voxInitDb() {
-    try {
-      if (typeof indexedDB === "undefined") return;
-      const req = indexedDB.open("unity-vox", 1);
-      req.onupgradeneeded = () => {
-        req.result.createObjectStore("bank");
-      };
-      req.onsuccess = () => {
-        this._voxDb = req.result;
-        try {
-          const tx = this._voxDb.transaction("bank", "readonly");
-          const store = tx.objectStore("bank");
-          const cur = store.openCursor();
-          let n = 0;
-          cur.onsuccess = () => {
-            const c = cur.result;
-            if (c) {
-              this._voxBank.set(c.key, c.value);
-              n++;
-              c.continue();
-            } else if (n > 0) console.log(`[VoiceIO] VOX bank hydrated \u2014 ${n} word equation(s) from IndexedDB`);
-          };
-        } catch {
-        }
-      };
-      req.onerror = () => {
-      };
-    } catch {
-    }
-  }
-  _voxPersist(key, rec) {
-    try {
-      if (!this._voxDb) return;
-      const tx = this._voxDb.transaction("bank", "readwrite");
-      tx.objectStore("bank").put(rec, key);
-    } catch {
-    }
-  }
-  /**
-   * Speak from HER equations alone. Returns true only when every word of
-   * the text is banked for the current age tier.
-   * ⚠ The "caller falls through to the executor, which primes the missing
-   * words" behaviour this used to document is gone twice over: there is no
-   * caller, and the primer that banked missing words was deleted with the
-   * external fetch it depended on.
-   */
-  // ⛔⛔ DEAD AS OF 2026-09-01 — NO CALLERS ANYWHERE, and that is deliberate.
-  // The three-tier voice chain (piper → vox → browser) was removed under Gee's
-  // "no fallbacks. PERIOD" ruling, and this was tier 2. ⭐ Her own canon calls
-  // this lane a fallback in as many words — sentence-level Equation Unity One
-  // carries the quality, per-word bank concat is the substitute — so removing
-  // the chain necessarily orphaned it.
-  // ⚠ LEFT IN PLACE RATHER THAN DELETED, and flagged instead: it is a large,
-  // working, purely-equational implementation of HER OWN voice (no foreign
-  // synthesis, no network), and if the sentence lane is ever redesigned this is
-  // the reference for how word-level reconstruction was done. ⛔ It must NOT be
-  // re-wired as a fallback tier. Tracked on the board under STACKSWEEP.
-  async _speakVox(text, rate) {
-    if (!this._voxEnabled) return false;
-    this._ensureVoxRef();
-    const tier = this._voxTier();
-    const toks = this._voxWords(text);
-    if (!toks.length) return false;
-    const recs = [];
-    const _lookup = (key) => this._voxBank.get(`${tier}:${key}`) || this._voxRef && this._voxRef.get(key) || null;
-    let _ti = 0;
-    while (_ti < toks.length) {
-      let hit = null, span = 0;
-      for (let n = Math.min(3, toks.length - _ti); n >= 1; n--) {
-        const key = toks.slice(_ti, _ti + n).join(" ");
-        const rec = _lookup(key);
-        if (rec) {
-          hit = rec;
-          span = n;
-          break;
-        }
-      }
-      if (!hit) return false;
-      recs.push(hit);
-      _ti += span;
-    }
-    const pcms = recs.map((r) => reconstructAudio(r)).filter(Boolean);
-    if (pcms.length !== recs.length) return false;
-    const sr = recs[0].sampleRate || 24e3;
-    const pcm = concatAudio(pcms, sr, 70);
-    if (!pcm || !pcm.length) return false;
-    console.log(`[VoiceIO] \u{1F399} VOX equational speech \u2014 ${toks.length} word(s) from her own bank, zero executor`);
-    await this._playPcm(pcm, sr, rate || 1);
-    return true;
   }
   /**
    * LIVE SENTENCE LANE — Equation Unity One, her REAL voice, synthesized in the
@@ -2996,11 +2837,11 @@ var VoiceIO = class {
         equational = true;
       }
     } catch (e) {
-      this._voxEquationalSkips = (this._voxEquationalSkips | 0) + 1;
-      this._voxLastSkipReason = e && e.message || "transform returned nothing";
+      this._equationalSkips = (this._equationalSkips | 0) + 1;
+      this._lastEquationalSkipReason = e && e.message || "transform returned nothing";
     }
-    if (!equational && !this._voxLastSkipReason) this._voxLastSkipReason = "transform returned nothing";
-    console.log(equational ? `[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser` : `[VoiceIO] \u{1F399} raw piper PCM \u2014 transform SKIPPED (${this._voxEquationalSkips | 0}x, ${this._voxLastSkipReason}) \u2014 "${String(text).slice(0, 40)}" is NOT equational this utterance`);
+    if (!equational && !this._lastEquationalSkipReason) this._lastEquationalSkipReason = "transform returned nothing";
+    console.log(equational ? `[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser` : `[VoiceIO] \u{1F399} raw piper PCM \u2014 transform SKIPPED (${this._equationalSkips | 0}x, ${this._lastEquationalSkipReason}) \u2014 "${String(text).slice(0, 40)}" is NOT equational this utterance`);
     await this._playPcm(pcm, sr, rate || 1);
     return true;
   }
@@ -3089,26 +2930,30 @@ var VoiceIO = class {
   // unity one equations") — guaranteed the exception. Each word therefore cost
   // one throw, one `VOX prime failed` warn, and a hardcoded 6-second sleep.
   //
-  // ⭐ WHY THEY WERE DELETED RATHER THAN FLAGGED, when `_speakVox` beside them
-  // was kept: `_speakVox` is a working, purely-equational reconstruction of HER
-  // OWN voice and is worth reading if the sentence lane is ever redesigned.
-  // A fetch loop pointed at a deleted endpoint is not a reference for anything.
+  // ⚠ `_speakVox` and the whole word-bank lane went too, on 2026-09-02 — see
+  // the constructor. `_voxPersist` and its IndexedDB store went with them.
   //
-  // ⚠ CONSEQUENCE, STATED: the VOX bank can no longer GROW at runtime. It never
-  // could — the fetch has been dead since LLMGUT.6 — the difference is that the
-  // code now says so. Coverage is the offline VOXREF reference bank plus any
-  // IndexedDB rows an old session persisted.
-  //
-  // ⚠ `_voxDecodeTo24kMono` and `_voxPersist` below were called ONLY from the
-  // deleted loop and are now orphaned. Kept as general audio utilities rather
-  // than removed in the same pass; they are correct, small, and side-effect
-  // free. Tracked on the board under DORMANT8.
-  /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
-  async _voxDecodeTo24kMono(arrayBuffer) {
+  // ⭐⭐ `_decodeTo24kMono` BELOW SURVIVED THAT DELETION ON PURPOSE, and the
+  // reason matters: it is not vox-bank debris, it is the AUDIO FRONT END. It
+  // decodes any compressed audio to 24 kHz mono Float32 — exactly the shape
+  // `perceiveAudio` (CDF 9/7) consumes — which makes it the primitive HEARING
+  // needs, not the primitive speaking needed. Deleting it as part of the vox
+  // sweep would have meant writing it again for the microphone lane.
+  // ⚠ Renamed off the `_vox` prefix in the same pass, because a name that
+  // says "voice bank" on the one piece that outlived the voice bank is how
+  // the next reader deletes it by mistake.
+  /**
+   * Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext.
+   *
+   * ⭐ THE HEARING FRONT END. Her ears are equational the same way her eyes
+   * are: audio becomes PCM at a known rate, then `perceiveAudio` turns it into
+   * a CDF 9/7 record. This is step one of that path.
+   */
+  async _decodeTo24kMono(arrayBuffer) {
     const AC = typeof AudioContext !== "undefined" ? AudioContext : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
     if (!AC) throw new Error("No AudioContext");
-    if (!this._voxDecodeCtx) this._voxDecodeCtx = new AC();
-    const decoded = await this._voxDecodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    if (!this._decodeCtx) this._decodeCtx = new AC();
+    const decoded = await this._decodeCtx.decodeAudioData(arrayBuffer.slice(0));
     const frames = Math.ceil(decoded.duration * 24e3);
     const off = new OfflineAudioContext(1, Math.max(1, frames), 24e3);
     const src = off.createBufferSource();
@@ -20706,6 +20551,20 @@ var RemoteBrain = class extends EventEmitter {
                 vc.setAttentionState({ arousal, secondsSinceInput });
               }
               vc.processFrame();
+              const _gnow = Date.now();
+              if (_gnow - (this._gazeSentAt || 0) > 250) {
+                this._gazeSentAt = _gnow;
+                const g = typeof vc.getState === "function" ? vc.getState() : null;
+                if (g) this.receiveSensoryInput("gaze", {
+                  gazeX: g.gazeX,
+                  gazeY: g.gazeY,
+                  gazeTarget: g.gazeTarget,
+                  motionEnergy: g.motionEnergy,
+                  maxSalience: g.maxSalience,
+                  frames: g.frames,
+                  framesRefused: g.framesRefused
+                });
+              }
             } catch (err) {
               this._visionErrs = (this._visionErrs | 0) + 1;
               if (this._visionErrs === 1 || this._visionErrs % 300 === 0) {

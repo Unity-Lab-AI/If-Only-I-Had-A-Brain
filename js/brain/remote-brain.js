@@ -676,6 +676,29 @@ export class RemoteBrain extends EventEmitter {
                 vc.setAttentionState({ arousal, secondsSinceInput });
               }
               vc.processFrame();
+              // ⭐ FOCUSDEAD.3 — PUBLISH THE GAZE UPWARD, because two detectors
+              // have been reading it out of SERVER state while the visual cortex
+              // runs HERE, in the browser. `motionDetected` and `gazeShift` in
+              // `js/ui/brain-event-detectors.js` could therefore never fire on
+              // the RemoteBrain path, and `brain-3d.js` already said so in a
+              // comment rather than anyone fixing it.
+              //
+              // ⚠ THROTTLED HARD AND ON PURPOSE. This rides the same 60 Hz loop
+              // that drives perception; sending every frame would put 60 msg/s
+              // of telemetry on the socket the walk teaches over. A quarter-
+              // second is far finer than either detector's resolution — one
+              // needs a motion SPIKE, the other a gazeTarget CHANGE — so the
+              // cheaper cadence loses nothing they can measure.
+              const _gnow = Date.now();
+              if (_gnow - (this._gazeSentAt || 0) > 250) {
+                this._gazeSentAt = _gnow;
+                const g = typeof vc.getState === 'function' ? vc.getState() : null;
+                if (g) this.receiveSensoryInput('gaze', {
+                  gazeX: g.gazeX, gazeY: g.gazeY, gazeTarget: g.gazeTarget,
+                  motionEnergy: g.motionEnergy, maxSalience: g.maxSalience,
+                  frames: g.frames, framesRefused: g.framesRefused,
+                });
+              }
             } catch (err) {
               // ⚠ Counted, not just warned. A throw every frame used to freeze
               // the widget while filling the console, and nothing summarised it.
