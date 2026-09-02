@@ -323,7 +323,7 @@ Gee (verbatim): *"NO FALLBACKS!!!!(HOW MANY TIME DO I NEED TO TELL YOU AND HOW M
 
 ⛔⛔⛔ **THE FAILURE WAS MINE AND IT WAS A PATTERN, NOT AN INCIDENT.** He ruled *"no fallbacks. PERIOD"* — whole stack — and I then treated **every newly-found fallback as a fresh question**. `STACKSWEEP.2` asked. `.5` asked. `DORMANT8.5` asked. Then I filed `ORACLEB.1` and asked **again**, about a lane this project's own public page labelled *"Path B — dictionary oracle (**FALLBACK**)"*. ⭐ **A standing ruling does not need re-consent per instance. Finding a new one is not a new decision — it is the same decision, already made.**
 
-**WHAT WENT — 502 lines.**
+**WHAT WENT — 504 lines from the two emission files (`emit.js` 376 + `language-cortex.js` 128), 514 counting the curriculum edits.** ⚠ *An earlier draft of this entry said 502; the figure was corrected against `git show --numstat` rather than left as a remembered number.*
 - **`_dictionaryOracleEmit`, 311 lines**, plus **both** call sites: the gate/probe emission path and `emitWordDirect`.
 - **`_scoreDictionaryCosine` + `_scoreDictionaryCosineAsync`, 130 lines.** These had been spared one day earlier *only* because a live mirror of the same persona-boosted cosine ranking still ran in `emit.js`. **Deleting them alone would have left the real one standing** — which is precisely why the note said so. That mirror is now gone, so **nothing anywhere ranks dictionary entries to answer for her.**
 - The `skipDictionaryOracle: true` opt-out at the gate, now a no-op that implied a choice still existed.
