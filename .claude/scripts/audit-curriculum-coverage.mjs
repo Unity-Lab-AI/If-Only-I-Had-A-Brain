@@ -39,7 +39,7 @@ const mod = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'curriculu
 // because Node statically detects `module.exports = { ... }` and synthesises
 // named exports — verified by running this, not assumed. If it is ever changed
 // to a computed export shape, this line silently yields undefined.
-const { computeCoverage } = await import(pathToFileURL(path.join(ROOT, 'server', 'curriculum-coverage.js')).href);
+const { computeCoverage, BY_DESIGN_NO_PROSE } = await import(pathToFileURL(path.join(ROOT, 'server', 'curriculum-coverage.js')).href);
 
 // ⭐ EXAM-VOCAB PRE-WALK CHECK — wiring an auditor that existed and had never
 // been called. `auditAllExamVocabCoverage` (student-question-banks.js) was found
@@ -114,7 +114,10 @@ if (process.argv.includes('--json')) {
   console.log(`      OK (at/above band floor) : ${r.ok}${r.floorsDerived ? '' : '   ⛔ bar is UNDERIVED'}`);
   console.log(`      THIN (below band floor): ${r.thin}`);
   console.log(`      EMPTY                  : ${r.empty}`);
-  console.log(`    no prose lane BY DESIGN  : ${r.byDesignNoProse}  (math, life)`);
+  // ⚠ The list is NOT hardcoded here any more. It read "(math, life)" while the
+  // set behind it had already dropped math, which is a label disagreeing with
+  // its own number — the smallest version of the defect this tool exists to find.
+  console.log(`    no prose lane BY DESIGN  : ${r.byDesignNoProse}  (${[...BY_DESIGN_NO_PROSE].join(', ')})`);
   console.log(`    no prose lane — DEFECT   : ${r.missingLane}`);
   console.log(`  reachable corpus words     : ${r.reachableWords.toLocaleString()}  (${r.entries} entries, ${r.licencePct}% licence-recorded)`);
   console.log(`  UNREACHABLE files          : ${r.unreachableFiles}  (${r.unreachableWords.toLocaleString()} words the walk never reads)`);

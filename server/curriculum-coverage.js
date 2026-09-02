@@ -40,7 +40,18 @@ const { figureAddress } = require('./life-curriculum.js');
 // lived year is hand-authored because it is HER life. Anything else without a
 // lane is a finding, not a policy, and that distinction is the whole point of
 // naming them here rather than silently skipping.
-const BY_DESIGN_NO_PROSE = new Set(['math', 'life']);
+// ⛔⛔ `math` WAS REMOVED FROM THIS SET 2026-09-02 AND THE REASON MATTERS.
+// It listed math as a legitimate absence — correct until the operator ruled
+// *"we need a fucking text book like everything else you fool"* and `math` went
+// into `PROSE_ACADEMIC_SUBJECTS`. Leaving it here made this instrument
+// contradict itself in one run: math cells were counted as `byDesignNoProse`
+// (40, with life) AND separately evaluated for thinness, so the same nine
+// `math/*` cells were reported as both "no prose lane by design" and "EMPTY".
+// ⚠ A set that encodes a policy has to move when the policy moves; this one is
+// a hand-maintained mirror of a decision made in another file, which is exactly
+// the drift this module exists to catch — committed by the module.
+// `life` stays: the lived year is hand-authored because it is HER life.
+const BY_DESIGN_NO_PROSE = new Set(['life']);
 
 const BAND = {
   'pre-K': 'early', kindergarten: 'early', grade1: 'early', grade2: 'early',
