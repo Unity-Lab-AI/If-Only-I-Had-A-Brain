@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-09-02 (FIFTH BATCH) — `CURVEBUILD.2` — THE TARGET LADDER WAS ALREADY IN CODE, AND I DERIVED A WORSE ONE BEFORE READING IT
+
+- [x] `CURVEBUILD.2` — **GRADE-BANDED WORD TARGETS, written into `docs/CURRICULUM-GAP.md` as the acceptance number per cell.** A real year at kindergarten is a few thousand words of prose; a real year at PhD is the literature. Flat targets are how `MAX_SENT_PER_TOPIC = 14` happened in the first place — one number applied to twenty different years. The ladder replaces `CURVEDEPTH.2`'s bare "raise the cap": **the cap becomes source-aware AND grade-aware**, and the per-cell target is expressed as *a real year of that course*.
+
+> ✅ **DONE — but not the way the row expected, and the difference is the whole entry.**
+>
+> ⛔⛔ **THE LADDER ALREADY EXISTED.** `server/curriculum-coverage.js` has carried `FLOOR = { early 7,300 · middle 29,000 · upper 73,000 · high 146,000 · college 330,000 · grad 330,000 }` since 2026-09-01, derived from measured OpenStax books, and the live auditor has been checking every cell against it. **What was actually missing is what the row's own title asks for: it was never written into `docs/CURRICULUM-GAP.md`** — so that ledger's acceptance criterion read *"the instrument reports the cell at or above its target"* while naming no target anywhere. **Enforced in code, unfalsifiable in the doc.** Published now, with `FLOOR_BASIS` intact so a reader can see which half is counted and which is a ratio.
+>
+> ⚠⚠ **AND I DERIVED A SECOND LADDER BEFORE READING THE FIRST.** Mine was early 20,000 · middle 30,000 · upper 40,000 · high 55,000 · college 70,000 · grad 85,000, and it was **worse in a way worth recording: it floored each band at what the corpus already holds.** That is circular — it defines "deep enough" as "what we have", so it would have declared the corpus nearly finished by construction — and it contradicted the live instrument, which would have left the doc and the tool disagreeing about what "done" means. **Discarded.** ⭐ The failure mode (deriving before reading) is more reusable than the numbers were, so it is written into `docs/THRESHOLD-DERIVATION.md` rather than quietly dropped.
+>
+> ### ⭐ WHAT THE PASS DID ADD, AND IT LANDS ON THE CODE'S OWN WEAKEST ANCHOR
+> The full text of **every work on the ELA reading ladder** was counted from source — a completely independent measurement of "a real year of that course":
+> ```
+>   assigned words per year, measured: 43,835 -> 554,505
+>   band medians  early 180,815 · middle 86,940 · upper 111,097
+>                 high  270,798 · college 198,632 · grad 254,727
+> ```
+> - **`high`'s assigned reading is 1.9× its textbook-derived floor of 146,000** — the floor is conservative, exactly as it claims to be.
+> - ⭐ **`grad` was the one anchor the code labelled as unsupported** (*"college anchor reused — no grad reading list counted"*). The two grad-band years measure **45,321** and **464,132**, median **254,727**, which **brackets the reused 330,000** rather than contradicting it. **That label can now say cross-checked instead of admitted.**
+> - ⚠ The early band measures highest of all, because its assigned works are anthologies — **which is exactly why this is a cross-check and not a ladder.** Taken literally it sets a kindergarten target above a high-school one.
+>
+> ### THE STATE THE BAR REVEALS, AND THE RE-PRICE
+> ```
+>   prose cells                173      OK at/above floor      6
+>   THIN                       167      EMPTY                  0
+>   corpus                4,659,676 words · average cell 26,935 = 18.4% of a course year
+>
+>   closing all 173 to their floor  ≈ 31.6M words  = 6.8x corpus
+>   teach-lane cost   6.8^0.80      =  4.7x   (exponent measured: 10.2x sentences -> 6.4x lane)
+> ```
+> ⛔ **6 of 173 is the honest state and it is not a regression** — the corpus grew tenfold the day before. **The ruler stopped lying, so the number got smaller.** ⚠ **And the 4.7× is the finding that matters more than the ladder: the floors cannot all be reached by fetching harder.** It applies to `_trainAcademicStories` alone and must be re-computed immediately before the press.
+
+---
+
 ## 2026-09-02 (FOURTH BATCH) — `LITGRADE.1` — THE LAST FOUR ELA YEARS GET THEIR READING, AND THE VERIFICATION RULE CAUGHT A WRONG BOOK ON THE FIRST PASS
 
 - [x] `LITGRADE.1` — **EXTEND THE TITLE TABLE THROUGH `college3` / `college4` / `grad` / `phd`.** ⛔ **Every Gutenberg ID must be VERIFIED to resolve to its intended title before it is committed** — a wrong ID silently ingests the wrong book, and this corpus has already been burned once by a fetch that returned a translator's preface instead of the work (`CURVEBUILD.9`). ⚠ **Level-appropriate, not just longer:** upper-college and graduate ELA is criticism, theory and dense prose rather than more novels, so the picks should reflect what that year actually reads. ⭐ **Low urgency, stated plainly:** these are the four grades where she is LEAST likely to need dialogue exposure, since form is trained at K by `_teachConcreteSentences`. **The reason to do it is course fidelity — an ELA year with no assigned reading is not an ELA year — not sentence form.**
