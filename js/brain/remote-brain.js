@@ -561,8 +561,28 @@ export class RemoteBrain extends EventEmitter {
    * hands the element to VisualCortex.init() which starts the
    * 60×45 V1 edge + saccade + salience loop.
    */
+  /**
+   * FOCUSDEAD.1 — the terminal stop the old loop never had.
+   *
+   * ⛔ It is deliberately NOT called on a transient. The loop parks and re-arms
+   * for anything temporary; this is only for a real teardown, and its one real
+   * caller is `connectCamera` re-entering — without it a second call would
+   * stack a second RAF loop driving the same cortex forever.
+   */
+  stopVisionLoop() {
+    this._visionLoopStopped = true;
+    try { if (this._visionRafId) cancelAnimationFrame(this._visionRafId); } catch { /* not in a DOM */ }
+    try { if (this._visionParkTimer) clearTimeout(this._visionParkTimer); } catch { /* nf */ }
+    this._visionRafId = null;
+    this._visionParkTimer = null;
+  }
+
   connectCamera(stream, videoElement) {
     if (!stream) return;
+    // ⚠ Re-entering must not leave the previous driver running. `_visionRafId`
+    // was assigned in two places and passed to `cancelAnimationFrame` in NONE,
+    // so a second connect would have stacked loops silently.
+    this.stopVisionLoop();
     try {
       let vid = videoElement;
       if (!vid) {
@@ -610,19 +630,60 @@ export class RemoteBrain extends EventEmitter {
           // the raw competition. setAttentionState only needs two
           // numbers (current arousal, seconds since last input),
           // both of which we can read from local state + lastTextTime.
+          // ⛔⛔ FOCUSDEAD.1 — STOPPING AND PAUSING WERE THE SAME CODE PATH, AND
+          // THAT IS WHY THE FOCUS TRACKER DIED. The previous loop read:
+          //
+          //     if (!this.visualCortex || !this.visualCortex.isActive()) return;
+          //
+          // — a bare `return` with NO reschedule, and `_visionRafId` is never
+          // passed to `cancelAnimationFrame` anywhere in the codebase. So that
+          // guard was simultaneously the only way to stop the loop and the only
+          // way to break it: one frame in which the cortex was not active and
+          // the eye stopped being driven FOREVER, with nothing anywhere able to
+          // restart it. Operator: *"the focus tracker never moves anymore to
+          // follow what she sees … it died of regression"*.
+          //
+          // ⭐ The two are now separate concerns:
+          //   • STOP  — an explicit flag set by teardown. Terminal, on purpose.
+          //   • PAUSE — the cortex is momentarily not active (camera warming,
+          //     a permission re-prompt, a backgrounded tab). The loop PARKS on
+          //     a slow timer and re-arms itself, because every one of those is
+          //     temporary and none of them should be fatal.
+          //
+          // ⚠ The park uses a 500ms timer rather than re-arming RAF at 60Hz:
+          // a backgrounded tab throttles RAF anyway, and spinning the frame
+          // callback against a dead camera is the cost this loop exists to
+          // avoid paying.
+          this._visionLoopStopped = false;
+          const PARK_MS = 500;
           const tick = () => {
-            if (!this.visualCortex || !this.visualCortex.isActive()) return;
+            if (this._visionLoopStopped) return;           // terminal, and ONLY this
+            const vc = this.visualCortex;
+            if (!vc || typeof vc.isActive !== 'function' || !vc.isActive()) {
+              this._visionParked = (this._visionParked | 0) + 1;
+              this._visionParkTimer = setTimeout(() => {
+                if (this._visionLoopStopped) return;
+                this._visionRafId = requestAnimationFrame(tick);
+              }, PARK_MS);
+              return;
+            }
             try {
               const arousal = this.state?.amygdala?.arousal ?? 0.5;
               const now = Date.now();
               const lastInput = this._lastTextSendTime || 0;
               const secondsSinceInput = lastInput > 0 ? (now - lastInput) / 1000 : 9999;
-              if (typeof this.visualCortex.setAttentionState === 'function') {
-                this.visualCortex.setAttentionState({ arousal, secondsSinceInput });
+              if (typeof vc.setAttentionState === 'function') {
+                vc.setAttentionState({ arousal, secondsSinceInput });
               }
-              this.visualCortex.processFrame();
+              vc.processFrame();
+            } catch (err) {
+              // ⚠ Counted, not just warned. A throw every frame used to freeze
+              // the widget while filling the console, and nothing summarised it.
+              this._visionErrs = (this._visionErrs | 0) + 1;
+              if (this._visionErrs === 1 || this._visionErrs % 300 === 0) {
+                console.warn(`[RemoteBrain] visualCortex.processFrame threw (${this._visionErrs}x):`, err?.message || err);
+              }
             }
-            catch (err) { console.warn('[RemoteBrain] visualCortex.processFrame threw:', err?.message || err); }
             this._visionRafId = requestAnimationFrame(tick);
           };
           this._visionRafId = requestAnimationFrame(tick);

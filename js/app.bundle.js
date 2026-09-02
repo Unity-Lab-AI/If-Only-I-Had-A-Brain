@@ -2986,16 +2986,21 @@ var VoiceIO = class {
     if (!out || !out.pcm || !out.pcm.length) return false;
     let pcm = out.pcm;
     let sr = out.sampleRate;
+    let equational = false;
     try {
       const rec = perceiveAudio(pcm, sr);
       const recon = reconstructAudio(rec);
       if (recon && recon.length) {
         pcm = recon;
         sr = rec.sampleRate || sr;
+        equational = true;
       }
-    } catch {
+    } catch (e) {
+      this._voxEquationalSkips = (this._voxEquationalSkips | 0) + 1;
+      this._voxLastSkipReason = e && e.message || "transform returned nothing";
     }
-    console.log(`[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser`);
+    if (!equational && !this._voxLastSkipReason) this._voxLastSkipReason = "transform returned nothing";
+    console.log(equational ? `[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser` : `[VoiceIO] \u{1F399} raw piper PCM \u2014 transform SKIPPED (${this._voxEquationalSkips | 0}x, ${this._voxLastSkipReason}) \u2014 "${String(text).slice(0, 40)}" is NOT equational this utterance`);
     await this._playPcm(pcm, sr, rate || 1);
     return true;
   }
@@ -13458,8 +13463,11 @@ var VisualCortex = class {
    */
   processFrame() {
     if (!this._active || !this._video || !this._ctx) {
+      this.framesRefused = (this.framesRefused | 0) + 1;
       return { currents: new Float32Array(100), salience: 0, gaze: { x: 0.5, y: 0.5 }, colors: this.colors };
     }
+    this.frames = (this.frames | 0) + 1;
+    this.lastFrameAt = Date.now();
     this._ctx.drawImage(this._video, 0, 0, FRAME_W, FRAME_H);
     const imageData = this._ctx.getImageData(0, 0, FRAME_W, FRAME_H);
     const pixels = imageData.data;
@@ -13905,7 +13913,15 @@ var VisualCortex = class {
       description: this.description,
       motionEnergy: this.motionEnergy,
       colors: this.colors,
-      maxSalience: this._maxSalience()
+      maxSalience: this._maxSalience(),
+      // FOCUSDEAD — read these two BEFORE concluding anything about the gaze.
+      // `frames` flat ⟹ nothing is calling processFrame (a driver problem);
+      // `frames` climbing while gaze sits still ⟹ the salience competition is
+      // the problem. `framesRefused` climbing means the cortex is being driven
+      // but has no video/context to work with.
+      frames: this.frames | 0,
+      framesRefused: this.framesRefused | 0,
+      lastFrameAgeMs: this.lastFrameAt ? Date.now() - this.lastFrameAt : null
     };
   }
 };
@@ -20627,8 +20643,30 @@ var RemoteBrain = class extends EventEmitter {
    * hands the element to VisualCortex.init() which starts the
    * 60×45 V1 edge + saccade + salience loop.
    */
+  /**
+   * FOCUSDEAD.1 — the terminal stop the old loop never had.
+   *
+   * ⛔ It is deliberately NOT called on a transient. The loop parks and re-arms
+   * for anything temporary; this is only for a real teardown, and its one real
+   * caller is `connectCamera` re-entering — without it a second call would
+   * stack a second RAF loop driving the same cortex forever.
+   */
+  stopVisionLoop() {
+    this._visionLoopStopped = true;
+    try {
+      if (this._visionRafId) cancelAnimationFrame(this._visionRafId);
+    } catch {
+    }
+    try {
+      if (this._visionParkTimer) clearTimeout(this._visionParkTimer);
+    } catch {
+    }
+    this._visionRafId = null;
+    this._visionParkTimer = null;
+  }
   connectCamera(stream, videoElement) {
     if (!stream) return;
+    this.stopVisionLoop();
     try {
       let vid = videoElement;
       if (!vid) {
@@ -20646,19 +20684,33 @@ var RemoteBrain = class extends EventEmitter {
         if (this.visualCortex && typeof this.visualCortex.init === "function") {
           this.visualCortex.init(vid);
           console.log("[RemoteBrain] Visual cortex connected to camera");
+          this._visionLoopStopped = false;
+          const PARK_MS = 500;
           const tick = () => {
-            if (!this.visualCortex || !this.visualCortex.isActive()) return;
+            if (this._visionLoopStopped) return;
+            const vc = this.visualCortex;
+            if (!vc || typeof vc.isActive !== "function" || !vc.isActive()) {
+              this._visionParked = (this._visionParked | 0) + 1;
+              this._visionParkTimer = setTimeout(() => {
+                if (this._visionLoopStopped) return;
+                this._visionRafId = requestAnimationFrame(tick);
+              }, PARK_MS);
+              return;
+            }
             try {
               const arousal = this.state?.amygdala?.arousal ?? 0.5;
               const now = Date.now();
               const lastInput = this._lastTextSendTime || 0;
               const secondsSinceInput = lastInput > 0 ? (now - lastInput) / 1e3 : 9999;
-              if (typeof this.visualCortex.setAttentionState === "function") {
-                this.visualCortex.setAttentionState({ arousal, secondsSinceInput });
+              if (typeof vc.setAttentionState === "function") {
+                vc.setAttentionState({ arousal, secondsSinceInput });
               }
-              this.visualCortex.processFrame();
+              vc.processFrame();
             } catch (err) {
-              console.warn("[RemoteBrain] visualCortex.processFrame threw:", err?.message || err);
+              this._visionErrs = (this._visionErrs | 0) + 1;
+              if (this._visionErrs === 1 || this._visionErrs % 300 === 0) {
+                console.warn(`[RemoteBrain] visualCortex.processFrame threw (${this._visionErrs}x):`, err?.message || err);
+              }
             }
             this._visionRafId = requestAnimationFrame(tick);
           };
