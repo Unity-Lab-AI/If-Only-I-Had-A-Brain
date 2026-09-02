@@ -1,0 +1,371 @@
+{
+  "version": 1,
+  "grade": "grade3",
+  "subject": "math",
+  "source": "hybrid: Illustrative Mathematics (CC-BY 4.0) + prior sources, cleaned + sentence-segmented",
+  "note": "Maths KNOWLEDGE corpus for math/grade3. Trained via curriculum._trainAcademicStories alongside the equational runners, which are untouched.",
+  "experiences": [
+    {
+      "theme": "im-k5-grade-3",
+      "story": "then, they are introduced to the concept of multiplication. section a: interpret and represent data on scaled graphs in this section, students make sense of and draw picture graphs and bar graphs. they see that each picture in a picture graph, or each step on a bar graph, can represent more than one object. they work with scales of 2, 5, and 10 (where each picture or step represents 2 objects, 5 objects, or 10 objects). students use the scaled bar graphs to solve \"how many more\" and \"how many fewer\" problems where the numbers are within 100. bar graph caption: bar graph scaled bar graph caption: scaled bar graph section b: from graphs to multiplication in this section, students use the idea of \"each picture representing multiple objects\" to think about equal-size groups and learn about multiplication. they create drawings and tape diagrams to represent situations that involve equal-size groups. drawing of equal groups caption: drawing of equal groups tape diagram caption: tape diagram students learn that we can write \\(3 \\times 2\\) to represent these drawings and interpret the expression to mean \"3 groups of 2.\" later, they write equations to represent multiplication situations. they also find unknown factors and products in equations (for example, \\(4 \\times {?} = 12\\) and \\(5 \\times 4 = {?}\\) ). section c: represent multiplication with arrays and the commutative property in this section, students connect the equal-group representations to arrays. an array is a set of objects organized in rows and columns. students look for equal-size groups in arrays like in these diagrams: students write expressions to represent arrays. for example, in the shown arrays, we can write \\(2 \\times 5\\) (or 2 groups of 5) and \\(5 \\times 2\\) (or 5 groups of 2). near the end of the unit, ask your student to find examples of equal-size groups or arrays at home, or use household objects to make such groups or arrays. questions that may be helpful as they work: how many groups are there? represent the objects with a drawing, a diagram, and an expression. how does your drawing and diagram match the expression? section a: concepts of area measurement in this section, students make sense of the area of flat shapes. they learn that the area of a shape is the amount of space it covers, and it can be measured by the number of square units that cover it without gaps or overlaps. students explore this idea by tiling shapes with squares and counting the number of squares. we cannot measure area by the number of squares when they cover a shape with gaps and overlaps. --> we can measure the area of this shape by the number of squares because the squares tile the shape. section b: relate area to multiplication in this section, students relate the area of rectangles to multiplication. they see that rectangles can be tiled with squares in equal-size rows (or columns), so if the rectangle is 6 units by 4 units, there are 6 groups of 4 or 4 groups of 6. the number of square units is then \\(6 \\times 4\\) or \\(4 \\times 6\\) . students come to understand that multiplying the side lengths of a rectangle gives the same number of squares as counting them. a rectangle that is 3 units by 6 units can be tiled with 3 rows of 6 squares, so its area is \\(3 \\times 6\\) or 18 square units. students then use these ideas to solve real-world story problems related to area. section c: find area of figures composed of rectangles in this section, students find the area of figures composed of rectangles. they do so by decomposing (breaking apart) the figures into non-overlapping rectangles, finding the area of each rectangle, and adding all the areas. students also use the structure of rectangles to find missing side lengths in figures composed of rectangles. near the end of the unit, ask your student to find the area of this figure: --> questions that may be helpful as they work: how can this figure be decomposed into rectangles? how many rows (or columns) are there in each rectangle? what multiplication expressions would you use to find the area? section a: add within 1,000 in this section, students revisit numbers within 1,000 and consider ways to decompose (break apart) the numbers based on place value (hundreds, tens, and ones). to add and subtract numbers within 1,000, they start by using diagrams and strategies learned in grade 2. then, they make sense of algorithms (steps that work every time, no matter the numbers involved) that make adding more efficient. for example, here are three ways to find the value of \\(362 + 354\\) : using base-ten blocks or diagrams using expanded form recording partial sums vertically using the standard algorithm for addition is not required until grade 4. students who already know the standard algorithm still need to make sense the role of place value in the algorithm to support their work with decimals and fractions in future grades. section b: subtract within 1,000 in this section, students analyze and use algorithms for subtraction, while continuing to use base-ten blocks and diagrams to think about subtraction. they notice that it is difficult to use drawings to show a hundred being decomposed or regrouped into tens (or a ten into ones), and that an algorithm is helpful. students make sense of a subtraction algorithm that uses expanded form to show how numbers are being regrouped. this non-conventional notation allows students to see the meaning behind the digits above the numbers in the standard algorithm. subtracting using expanded form standard subtraction algorithm as with addition, the standard algorithm for subtraction is not expected until grade 4. the work here focuses on making sense of the regrouping sometimes required when we subtract. section c: round within 1,000 in this section, students learn to round whole numbers to the nearest ten or hundred, using number line diagrams in their reasoning. for example, they can see that for 364, the nearest ten (or multiple of 10) is 360, and the nearest hundred (or multiple of 100) is 400. section d: solve two-step problems in this section, students apply their work with addition, subtraction, and multiplication to solve problems that require two steps, such as: mai had 104 beads. she bought two packs of beads and now she has 124 beads. near the end of the unit, ask your student to find answers to the following problems using an algorithm of their choice: \\(293 + 592\\) \\(728 - 384\\) questions that may be helpful as they work: can you explain the steps in your algorithm? can you round your answer to the nearest multiple of 10? they also use the four operations to represent and solve two-step word problems. students work toward these end-of-year goals: fluently multiply and divide within 100 know from memory all products of two one-digit numbers section a: what is division? in this section, students think about division in terms of equal-size groups, just as they have done with multiplication. for instance, the expression \\(30 \\div 5\\) can represent putting 30 objects into 5 equal groups, or putting 30 objects into groups of 5. students see that, in general, dividing can mean answering the question \"how much is in one group?\" or \"how many equal groups can be made?\" 30 objects put into 5 equal groups 30 objects put into groups of 5 section b: relating multiplication and division in this section, students make connections between the result of division and the missing factor in a multiplication equation. for example, the value of \\(30 \\div 6\\) is the missing factor in \\(\\underline{\\hspace{1 cm}} \\times 6 = 30\\) . this understanding helps students recognize division facts based on the multiplication facts they know. students also learn to use properties of operations to multiply. for example, if they know \\(3 \\times 7\\) , they also know \\(7 \\times 3\\) . they can also decompose (or break apart) the 7 in \\(7 \\times 3\\) into 5 and 2, and then find \\((5 \\times 3) + (2 \\times 3)\\) . an area diagram can show this strategy for multiplying. section c: multiplying larger numbers in this section, students use different strategies to multiply larger numbers. first, they multiply a single-digit number by a multiple of 10, relying on what they know about place value. for instance, \\(2 \\times 40\\) means 2 groups of 4 tens, or \\(2 \\times 4 \\times 10\\) . then, they multiply a single-digit number by other two-digit numbers. students see that it is helpful to break apart the two-digit numbers by place value, into tens and ones. for example, \\(3 \\times 15\\) can be calculated by finding \\(3 \\times 10\\) and \\(3 \\times 5\\) . they use base-ten blocks or diagrams and area diagrams (with and without a grid) to help them find such products. base-ten blocks or diagrams gridded area diagram ungridded area diagram section d: dividing larger numbers in this section, students divide larger numbers. they continue to use the relationship between multiplication and division and their understanding of place value to find quotients. for example, to find the value of \\(78 \\div 3\\) , they may think about putting 78 in 3 equal groups and use multiplication to find what is in each group. \\(3 \\times 10 = 30\\) \\(3 \\times 10 = 30\\) \\(3 \\times 6 = 18\\) \\(10 + 10 + 6 = 26\\) \\(3 \\times 20 = 60\\) \\(3 \\times 6 = 18\\) \\(20 + 6 = 26\\) try it at home! near the end of the unit, ask your student to find answers to the following problems: \\(6 \\times 16\\) \\(98 \\div 7\\) questions that may be helpful as they work: how did you break up the problem to make it easier for you to solve? can you rewrite the division problem as a multiplication problem? they represent fractions with diagrams and number lines and compare and find equivalent fractions. section a: introduction to fractions in this section, students use diagrams and fraction strips to learn about fractions. in grade 2, they learned about halves, thirds, and fourths. now, they partition 1 whole into 6 or 8 parts, describe each part as \"a sixth\" and \"an eighth,\" and write the notation \\(\\frac{1}{6}\\) and \\(\\frac{1}{8}\\) . students learn that the notation \\(\\frac{1}{b}\\) means 1 whole is partitioned into b parts and each part has size \\(\\frac{1}{b}\\) . in these diagrams, each part is a unit fraction with the size \\(\\frac{1}{4}\\) . \\(\\frac{3}{4}\\) students see that composing unit fractions create non-unit fractions (fractions with numerators greater than 1). for example, putting together 3 parts of \\(\\frac{1}{4}\\) gives \\(\\frac{3}{4}\\) . section b: fractions on the number line in this section, students locate fractions on the number line. they learn that, just like whole numbers, fractions can be represented as distances from 0 on the number line. students partition the interval from 0 to 1 into \\(b\\) equal parts. they label the first tick mark with a unit fraction \\(\\frac{1}{b}\\) . then, students locate non-unit fractions on the number line by counting unit fractions. they notice that certain fractions are in the same location as whole numbers on the number line. for example, \\(\\frac{4}{4}\\) is at the same location as 1 and \\(\\frac{8}{4}\\) is at the same location as 2. --> the terms \"numerator\" and \"denominator\" are introduced here. section c: equivalent fractions in this section, students learn that equivalent fractions are fractions that are the same size. they use fraction strips and diagrams to show and find equivalent fractions. the shaded parts of the diagrams show that \\(\\frac{1}{3}\\) and \\(\\frac{2}{6}\\) are the same size, so \\(\\frac{1}{3} = \\frac{2}{6}\\) . the number line diagram shows that \\(\\frac{6}{8}\\) and \\( \\frac{3}{4}\\) are at the same location or are the same distance from 0, so \\(\\frac{6}{8} = \\frac{3}{4}\\) . they learn that comparisons are only valid if the fractions being compared refer to the same whole. students first compare fractions with the same denominator (such as \\(\\frac{4}{6}\\) and \\(\\frac{5}{6}\\) ). then, they compare fractions with the same numerator (such as \\(\\frac{5}{6}\\) and \\(\\frac{5}{8}\\) ). near the end of the unit, ask your student to show the fractions \\(\\frac{5}{8}\\) and \\(\\frac{6}{4}\\) on a fraction strip and a number line. questions that may be helpful as they work: how did you determine how many partitions needed to be made? how did you know how many parts to shade in? how did you know where to place the fraction on the number line? they learn about units for measuring weight, liquid volume, and time. they then use the four operations to solve problems involving measurement. section a: measurement data on line plots in this section, students measure in halves and fourths of an inch, learn to use mixed numbers to represent lengths greater than 1, and interpret and create line plots that represent lengths. students relate the fractions on a ruler to those on a number line. the work here reinforces the idea that whole numbers can be expressed as fractions. section b: weight and liquid volume in this section, students learn to estimate and measure weight (in grams and kilograms) and liquid volume (in liters). students make sense of grams and kilograms by holding objects that are about 1 gram and about 1 kilogram. they see, for example, that a paper clip weighs about 1 gram and a regular cantaloupe weighs about 1 kilogram. to make sense of liters, students engage in activities that require pouring water into containers. they also estimate the volume of liquid in everyday objects such as a bottle, a bucket, a sink, and so on. students also analyze the scale on liquid measuring tools, as shown here, and make sense of fractional units of liquid volume. section c: problems involving time in this section, students learn to tell and write time to the nearest minute. they solve elapsed-time problems where the start time, the end time, or the duration is unknown. to reason about time, students use representations that make sense to them, including drawings, tables, equations, or words. for example, the clock shows how students could think about 24 minutes after 3:45. --> section d: explore the fair in this section, students apply what they learned in this unit to solve problems that involve measurements. all the activities use the context of a state or county fair. the work here gives students many opportunity to make sense of problems, use all four operations, and think carefully about their strategies and solutions. near the end of the unit, ask your student to find the following measurements of objects around your home: length measured to the nearest quarter inch weight measured in kilograms or grams liquid volume in liters questions that may be helpful as they work: before you measure, estimate the object's length, weight or volume. why do you think it will be that measurement? can you create a line plot of your data? section a: reason with shapes in this section, students describe, compare, and sort a variety of shapes. students think about ways to sort triangles and quadrilaterals into more specific categories based on their attributes. they see that triangles and quadrilaterals can be classified and named based on their sides (whether some sides are the same length) and angles (whether they have right angles). students see that a shape can have more than one name if it has the attributes that define different shapes. for example, a shape that is a square is also a rhombus and a rectangle. in this section, students learn that perimeter is the distance around a shape. they first find perimeter by counting or adding the units of length on each side of a shape. later, they find the perimeter of shapes whose sides are labeled with lengths. students also draw shapes with a specified perimeter and see that different shapes can have the same perimeter. section c: expanding on perimeter in this section, students solve problems that involve both area and perimeter. they draw rectangles with the same area and different perimeters, and rectangles with the same perimeter and different areas. for example, the rectangles in the image all have a perimeter of 16 units, but they have different areas. section d: design with perimeter and area in this section, students apply what they've learned about geometric shapes, perimeter, and area to solve design problems. they design a park that has certain components, a west african wax print pattern with certain shapes, and a robot that meet certain requirements. near the end of the unit, ask your student to find: these shapes around the house: a rhombus, a rectangle, a square, and a quadrilateral that isn't a rhombus, rectangle, or square the area and perimeter of a rectangle in the house questions that may be helpful as they work: what kind of quadrilateral is this? section a: fraction fun in this section, students revisit and build on important fraction ideas that they have learned in the course. they think about different ways to represent fractions and to estimate the size of fractions presented in different forms: as an area diagram, a shaded strip, and a number line. what number is represented by the point on the number line? students also practice identifying and locating fractions on the number line, using tape to create a number line that shows a large number of fractions. section b: measurement and data in this section, students first use their knowledge of shapes, perimeter, and area to design their own tiny house. they ask and answer questions about the area and perimeter of shapes in their design. then, they calculate the cost of finishing a room in their tiny house. attribution: a cabin-inspired tiny home built in the woods, by ben chun. next, students focus on data collection and representation. they conduct a survey in the school community, organize their data, and represent the data with a scaled graph. they also ask and answer questions about the data. section c: multiplication and division games in this section, students continue to build their fluency with multiplication and division. they reflect on the products within 100 they know from memory or can find quickly and the ones they don't know yet. students then practice multiplication facts through games. students also reinforce their understanding of the connections between multiplication and division by matching equations and diagrams. a caption: a b caption: b c caption: c d caption: d section d: create and design throughout the course, students have participated in warm-up routines such as how many do you see, exploration estimation, which one doesn't belong, true or false, and number talk. in this section, they apply the mathematics they have learned to design warm-ups that use some of these routines. near the end of the unit, ask your student to share the warm-up routines they created. questions that may be helpful as they share: how did you design the routine? how does the routine relate to what you learned this year? what might you change to improve the routine?",
+      "source": "illustrative-math/k5/grade-3",
+      "licence": "CC-BY 4.0",
+      "figures": [
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/0jhkfhu8s0dqvlrlht2gwbqub3u9",
+          "alt": "bar graph. How we get home.",
+          "caption": "",
+          "context": "they work with scales of 2, 5, and 10 (where each picture or step represents 2 objects, 5 objects, or 10 objects). students use the scaled bar graphs to solve \"how many more\" and \"how many fewer\" problems where the numbers are within 100."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/expand.png",
+          "alt": "Expand image",
+          "caption": "",
+          "context": "they work with scales of 2, 5, and 10 (where each picture or step represents 2 objects, 5 objects, or 10 objects). students use the scaled bar graphs to solve \"how many more\" and \"how many fewer\" problems where the numbers are within 100."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ghcsrsisbu3avf1dqztx1a4e4g0j",
+          "alt": "Bar graph. How we get home.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/dpowu4a5udfli44kgnrdisweazj1",
+          "alt": "Drawing of equal groups",
+          "caption": "",
+          "context": "they create drawings and tape diagrams to represent situations that involve equal-size groups."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/npr7be1dzxgoaelvtl0parktgn1n",
+          "alt": "tape diagram",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/2zdbaxo02y3wtbzj0m2ridbc9oov",
+          "alt": "Array. 2 groups of 5.",
+          "caption": "",
+          "context": "section c: represent multiplication with arrays and the commutative property in this section, students connect the equal-group representations to arrays. an array is a set of objects organized in rows and columns."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fmfq3lvwhq49lzi06k21c6k8exq6",
+          "alt": "Array. 5 groups of 2.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/2021-06-04_im_certified_badge.svg",
+          "alt": "IM (Illustrative Mathematics) Certified",
+          "caption": "",
+          "context": "these materials include public domain images or openly licensed images that are copyrighted by their respective owners. openly licensed images remain under the terms of their respective licenses."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/zjk96iaov30ty8jprvnlrl755tmy",
+          "alt": "Rectangle. 6 rows of 4 square tiles with gaps and overlaps.",
+          "caption": "",
+          "context": "they learn that the area of a shape is the amount of space it covers, and it can be measured by the number of square units that cover it without gaps or overlaps. students explore this idea by tiling shapes with squares and counting the number of squares."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/sjo1ijcaqtbvgn1jg5wz088w0xwy",
+          "alt": "Rectangle. 6 by 3 unit tiles. No gaps, no overlap.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/pnptvrfy69a9ooz9th16g59njc0a",
+          "alt": "Area diagram. Length, 6. Width, 3.",
+          "caption": "",
+          "context": "students come to understand that multiplying the side lengths of a rectangle gives the same number of squares as counting them. a rectangle that is 3 units by 6 units can be tiled with 3 rows of 6 squares, so its area is \\(3 \\times 6\\) or 18 square units."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/e8yc562erfw50074ds17up28v3qi",
+          "alt": "Rectangle. Width, 3 tick marks. Length, 6 tick marks.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5qtus6t6lx7bfi2ljswid9rbwfxq",
+          "alt": "Rectangle. Horizontal side, 6. Vertical side, 3.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6bsb0l7e8tkyz7wd241njwdmort5",
+          "alt": "6-sided shape. Straight sides. All side lengths meet at right angles: Bottom, 4 m. Right side rises 12 m, goes left 8 m, down 6 m, right 4 m, down question mark m.",
+          "caption": "",
+          "context": "they do so by decomposing (breaking apart) the figures into non-overlapping rectangles, finding the area of each rectangle, and adding all the areas. students also use the structure of rectangles to find missing side lengths in figures composed of rectangles."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fm0t2d3c27i1b2rnjtzjbc7ch7dx",
+          "alt": "A figure for finding area.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/158855.svg",
+          "alt": "",
+          "caption": "",
+          "context": "--> questions that may be helpful as they work: how can this figure be decomposed into rectangles? how many rows (or columns) are there in each rectangle?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/pwtym3vcdqcbddnbae3bihgfipck",
+          "alt": "Base ten diagram.",
+          "caption": "",
+          "context": "to add and subtract numbers within 1,000, they start by using diagrams and strategies learned in grade 2. then, they make sense of algorithms (steps that work every time, no matter the numbers involved) that make adding more efficient."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/jt5vp8v3izpjpksa12xom9e9wtpw",
+          "alt": "Addition. Three-hundred plus sixty plus two, plus three-hundred plus fifty plus four, equals six-hundred plus one-hundred ten plus six.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/36ynznusgis0ip6htprml475xfbf",
+          "alt": "recording partial sums vertically",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/enx6o31fqimn1hai42rtvpoazxa8",
+          "alt": "Subtraction. Five-hundred plus twenty plus eight, minus two-hundred plus seventy plus one.",
+          "caption": "",
+          "context": "students make sense of a subtraction algorithm that uses expanded form to show how numbers are being regrouped. this non-conventional notation allows students to see the meaning behind the digits above the numbers in the standard algorithm."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6ldcjt3v386y0iaczzdtwxl1izzb",
+          "alt": "Subtraction. Five-hundred twenty-eight minus two-hundred seventy-one.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fgvzqzjl0xf0f3jaadvd3xlq16yr",
+          "alt": "point on the number line",
+          "caption": "",
+          "context": "section c: round within 1,000 in this section, students learn to round whole numbers to the nearest ten or hundred, using number line diagrams in their reasoning. for example, they can see that for 364, the nearest ten (or multiple of 10) is 360, and the nearest hundred (or multiple of 100) is 400."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/g4jempqtg2x0knnaa1xwc67r0s5o",
+          "alt": "Groups of dots.",
+          "caption": "",
+          "context": "in this section, students think about division in terms of equal-size groups, just as they have done with multiplication. for instance, the expression \\(30 \\div 5\\) can represent putting 30 objects into 5 equal groups, or putting 30 objects into groups of 5."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/87kra6siwpak79pfczcbxg28orp9",
+          "alt": "equal sized groups. 30 objects in groups of 5",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/lh3yyxdomcwilrptc76u8jknszyy",
+          "alt": "Area diagram.",
+          "caption": "",
+          "context": "they can also decompose (or break apart) the 7 in \\(7 \\times 3\\) into 5 and 2, and then find \\((5 \\times 3) + (2 \\times 3)\\) . an area diagram can show this strategy for multiplying."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/a4wc630tlh17emyiqm7f8qho5jn5",
+          "alt": "Base ten blocks or diagrams.",
+          "caption": "",
+          "context": "for example, \\(3 \\times 15\\) can be calculated by finding \\(3 \\times 10\\) and \\(3 \\times 5\\) . they use base-ten blocks or diagrams and area diagrams (with and without a grid) to help them find such products."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3sbdy23j9lcob4e7dxossxxe6smt",
+          "alt": "Area diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/v2zkvn4fw8gb0akhh84vyo9ut81y",
+          "alt": "Ungridded area diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/o2p69642z8dhoq74ewvhggqe6eq2",
+          "alt": "diagram. fraction strip. one fourth",
+          "caption": "",
+          "context": "students learn that the notation \\(\\frac{1}{b}\\) means 1 whole is partitioned into b parts and each part has size \\(\\frac{1}{b}\\) . in these diagrams, each part is a unit fraction with the size \\(\\frac{1}{4}\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/pd30riov6ps83e0f5udgmt6zynp1",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/myrwuckxkt7re4ki05vt2rafvlqp",
+          "alt": "number line",
+          "caption": "",
+          "context": "students partition the interval from 0 to 1 into \\(b\\) equal parts. they label the first tick mark with a unit fraction \\(\\frac{1}{b}\\) ."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/147450.svg",
+          "alt": "",
+          "caption": "",
+          "context": "they notice that certain fractions are in the same location as whole numbers on the number line. for example, \\(\\frac{4}{4}\\) is at the same location as 1 and \\(\\frac{8}{4}\\) is at the same location as 2."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/655uh7daehhpde40fn179kaism4l",
+          "alt": "points on the number line",
+          "caption": "",
+          "context": "they notice that certain fractions are in the same location as whole numbers on the number line. for example, \\(\\frac{4}{4}\\) is at the same location as 1 and \\(\\frac{8}{4}\\) is at the same location as 2."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/gn36k7og6x4ezikgm3bwdsmrkib9",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": "they use fraction strips and diagrams to show and find equivalent fractions. the shaded parts of the diagrams show that \\(\\frac{1}{3}\\) and \\(\\frac{2}{6}\\) are the same size, so \\(\\frac{1}{3} = \\frac{2}{6}\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/r0g4v0rn2gjea508it23g89o4t3r",
+          "alt": "Diagram.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/9x4x5f7p5u0n1v5l9cfxe17zgcpq",
+          "alt": "Number line. Scale 0 to 1 by eighths and fourths. Evenly spaced tick marks. First tick mark, 0. Last tick mark, 1. Point plotted at 3 fourths.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/9bqicpj5upub8oidlvm06rwq660z",
+          "alt": "points on two number lines",
+          "caption": "",
+          "context": "students first compare fractions with the same denominator (such as \\(\\frac{4}{6}\\) and \\(\\frac{5}{6}\\) ). then, they compare fractions with the same numerator (such as \\(\\frac{5}{6}\\) and \\(\\frac{5}{8}\\) )."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/j8jbriarecucfeouf6ua7fdb0377",
+          "alt": "diagram. fraction strip. one sixth. 5 parts shaded",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/tpfv8h0dwgyzta10iq1cei1rg1hl",
+          "alt": "diagram. fraction strip. one eighth. 5 parts shaded.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/wfwsh7f47t9r1jpnl8vwl55wkseq",
+          "alt": "Line plots and a ruler.",
+          "caption": "",
+          "context": "they then use the four operations to solve problems involving measurement. section a: measurement data on line plots in this section, students measure in halves and fourths of an inch, learn to use mixed numbers to represent lengths greater than 1, and interpret and create line plots that represent lengths."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/hg4r0khsd8w1ldck4mude3lypu9x",
+          "alt": "A container measuring water in liters.",
+          "caption": "",
+          "context": "they also estimate the volume of liquid in everyday objects such as a bottle, a bucket, a sink, and so on. students also analyze the scale on liquid measuring tools, as shown here, and make sense of fractional units of liquid volume."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/134609.svg",
+          "alt": "",
+          "caption": "",
+          "context": "to reason about time, students use representations that make sense to them, including drawings, tables, equations, or words. for example, the clock shows how students could think about 24 minutes after 3:45."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/31wvkfq07sz9i0r47ylkz4lvu2nc",
+          "alt": "Analog clock.",
+          "caption": "",
+          "context": "to reason about time, students use representations that make sense to them, including drawings, tables, equations, or words. for example, the clock shows how students could think about 24 minutes after 3:45."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6ezffsmbbbjrharxn10zo9qdbih7",
+          "alt": "6 rectangles.",
+          "caption": "",
+          "context": "students think about ways to sort triangles and quadrilaterals into more specific categories based on their attributes. they see that triangles and quadrilaterals can be classified and named based on their sides (whether some sides are the same length) and angles (whether they have right angles)."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/p6wr41h4bbc7roaikrgge9a5rbxu",
+          "alt": "Six 4-sided shapes.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/f9dnxe6in2hsm5tyq3gm7he4oyo2",
+          "alt": "shape on a dot grid",
+          "caption": "",
+          "context": "they first find perimeter by counting or adding the units of length on each side of a shape. later, they find the perimeter of shapes whose sides are labeled with lengths."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ytcgb1xv44t3ceu4w4i55vt1721e",
+          "alt": "shape",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/msbgnbekrg3w7imyut15d5ifkyqt",
+          "alt": "Shape with four sides that are 9 centimeters.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xwudxcrss7gyu4tl0fhci6bh4qsk",
+          "alt": "4 shapes on dot grid.",
+          "caption": "",
+          "context": "they draw rectangles with the same area and different perimeters, and rectangles with the same perimeter and different areas. for example, the rectangles in the image all have a perimeter of 16 units, but they have different areas."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/27qb5u5qftffbh8k2ma5256szkhj",
+          "alt": "Woman selling wax prints.",
+          "caption": "",
+          "context": "they design a park that has certain components, a west african wax print pattern with certain shapes, and a robot that meet certain requirements."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/8vfqu6h7zqi7sdnp2gx4kvsjrhrt",
+          "alt": "square. partitioned into 2 parts. larger part shaded",
+          "caption": "",
+          "context": "section a: fraction fun in this section, students revisit and build on important fraction ideas that they have learned in the course. they think about different ways to represent fractions and to estimate the size of fractions presented in different forms: as an area diagram, a shaded strip, and a number line."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/p5q6t94eqpsimcvouy7v70w8hxck",
+          "alt": "point on a number line",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ybwgmq0hy6iilq50z5h5k1reditw",
+          "alt": "Tiny house",
+          "caption": "",
+          "context": "they ask and answer questions about the area and perimeter of shapes in their design. then, they calculate the cost of finishing a room in their tiny house."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/pne4djkyntch6oa5uevgyi61kg86",
+          "alt": "bar graph. Favorite science topic",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/k4yin771x9fp717h0pa70aaj7cmq",
+          "alt": "Diagram. Array",
+          "caption": "",
+          "context": "students then practice multiplication facts through games. students also reinforce their understanding of the connections between multiplication and division by matching equations and diagrams."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/bmap47tgmt1t9i07esxjmu17pdff",
+          "alt": "Diagram. Rectangle",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/m0sq8f8o9kk4362n8a395dw4r8i2",
+          "alt": "diagram. tape diagram",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/raux9z2kjg7m6giey0yb7t8j64xt",
+          "alt": "Division expression. 24 divided by 6",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/uxb54rvzagz6ig35fqckvh5vuurd",
+          "alt": "How Many Do you see activity. group of dots. 9 groups of 4",
+          "caption": "",
+          "context": "in this section, they apply the mathematics they have learned to design warm-ups that use some of these routines."
+        }
+      ]
+    }
+  ]
+}

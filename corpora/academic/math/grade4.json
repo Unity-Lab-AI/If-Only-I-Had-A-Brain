@@ -1,0 +1,263 @@
+{
+  "version": 1,
+  "grade": "grade4",
+  "subject": "math",
+  "source": "hybrid: Illustrative Mathematics (CC-BY 4.0) + prior sources, cleaned + sentence-segmented",
+  "note": "Maths KNOWLEDGE corpus for math/grade4. Trained via curriculum._trainAcademicStories alongside the equational runners, which are untouched.",
+  "experiences": [
+    {
+      "theme": "im-k5-grade-4",
+      "story": "students determine if a number between 1 and 100 is prime or composite. section a: understand factors and multiples in this section, students learn about the meaning of factors and multiples by relating them to the concept of area. they use square tiles to build rectangles with given length and width. then, they find the area of the rectangles. for example, this rectangle has an area of 14 square units with side lengths of 7 and 2. we can say that 7 and 2 are a factor pair of 14, and that \\(7 \\times 2 = 14\\) . we can also say that 14 is a multiple of 7 and a multiple of 2. students discover that some numbers have many factor pairs and others have only one possible factor pair. they decide if a number is prime or composite based on how many rectangles can be made with that number as the area. section b: find factor pairs and multiples in this section, students apply what they learned about factors and multiples to play games and solve problems in different contexts. through the tasks, students look for patterns with factors and multiples. they find all of the factor pairs of a whole number between 1-100. they also decide if a whole number within 100 is a multiple of a given one-digit number. complete the statements for each number. number factor multiple 5 \\(\\underline{\\hspace{1cm}}\\) is a factor of \\(\\underline{\\hspace{1cm}}\\) because . \\(\\underline{\\hspace{1cm}}\\) is a multiple of \\(\\underline{\\hspace{1cm}}\\) because . 18 \\(\\underline{\\hspace{1cm}}\\) is a factor of \\(\\underline{\\hspace{1cm}}\\) because . questions that may be helpful as they work: how did you know this was a factor of that number? how did you know this was a multiple of that number? they explore the size of fractions, write equivalent fractions, and compare and order fractions with the denominators 2, 3, 4, 5, 6, 8, 10, 12, and 100. section a: size and location of fractions in this section, students revisit the meaning of fractions. they use fraction strips, tape diagrams, and number lines to represent fractions. students compare fractions with the same numerators or the same denominators, and recall that equivalent fractions have the same size. students consider the size of fractions whose denominators are related, such as \\(\\frac{1}{5}\\) and \\(\\frac{1}{10}\\) , or \\(\\frac{1}{6}\\) and \\(\\frac{1}{12}\\) . they also compare fractions to benchmarks such as \\(\\frac{1}{2}\\) and 1. (for instance, they see that \\(\\frac{3}{10}\\) is less than \\(\\frac{1}{2}\\) and \\(\\frac{3}{5}\\) is more than \\(\\frac{1}{2}\\) .) section b: equivalent fractions here, students take a closer look at equivalent fractions and reason using number lines. they show that fractions that are at the same point on the number line are equivalent. students then learn to tell if two fractions are equivalent without using number lines. for example, they can explain that the fraction \\(\\frac{2}{3}\\) is equivalent to \\(\\frac{8}{12}\\) because the numerator and the denominator of \\(\\frac{2}{3}\\) are each multiplied by the same number, 4, to get \\(\\frac{8}{12}\\) . students use such observations to identify and write equivalent fractions. section c: fraction comparison in this section, students compare fractions with different numerators and denominators using various strategies. for example, they may think about how far each fraction is from 0 on a number line, how each fraction compares to \\(\\frac{1}{2}\\) or 1, or think of the fractions in terms of the same denominator. students record the results of comparisons with symbols \\( \\) , \\(=\\) , or \\( \\) . they then solve problems that involve comparing fractional measurements, such as lengths in fractions of an inch. near the end of the unit, ask your student to compare \\(\\frac{3}{5}\\) and \\(\\frac{3}{7}\\) . questions that may be helpful as they work: how are the two fractions alike? is there a different strategy that you could use to compare? they also learn about fraction operations: multiplying fractions and whole numbers, adding and subtracting fractions with the same denominator, and adding tenths and hundredths. section a: equal groups of fractions previously, students thought about multiplication as equal groups of whole numbers of objects, such as 5 bags with 2 oranges in each bag. in this section, they think about equal groups of fractional pieces, such as 5 plates with \\(\\frac{1}{2}\\) orange on each plate. they see that the amount can be represented by \\(5 \\times \\frac{1}{2}\\) , which is \\(\\frac{5}{2}\\) . students then make sense of diagrams and equations that represent the multiplication of a whole number and a fraction, such as \\(4 \\times \\frac{2}{3} = \\frac{8}{3}\\) . they learn that the numerator in the resulting fraction is the product of the whole number (the 4) and the numerator of the fractional factor (the 2 in \\(\\frac{2}{3}\\) ), and the denominator is the same as in the fractional factor (the 3 in \\(\\frac{2}{3}\\) ). diagrams can help students see that some fractions can be represented by more than one multiplication expression. for example, the diagram shows that the following expressions all have the value of \\(\\frac{8}{3}\\) . \\(4 \\times \\frac{2}{3}\\) \\(4 \\times 2 \\times \\frac{1}{3}\\) \\(2 \\times 4 \\times \\frac{1}{3}\\) \\(8 \\times \\frac{1}{3}\\) section b: addition and subtraction of fractions in this section, students learn to add and subtract fractions by decomposing them into sums of smaller fractions, writing equivalent fractions, and using number lines. students first think about a fraction as a sum of other smaller fractions. they represent different ways to decompose a fraction by drawing \"jumps\" on number lines and writing different equations. later, they use number lines to represent subtraction of fractions. \\(\\frac{13}{10} = \\frac{5}{10} + \\frac{8}{10}\\) description: number line. arrow, labeled five tenths, from first tick mark to sixth tick mark. arrow, labeled eight tenths, from sixth tick mark to point at fourteenth tick mark, labeled thirteen tenths. working with number lines helps students see that a fraction greater than 1 can be decomposed into a whole number and a fraction, and then written as a mixed number. for example, to find the value of \\(3 - \\frac{2}{5}\\) , it helps to first decompose the 3 into \\(2 + \\frac{5}{5}\\) , and then subtract \\(\\frac{2}{5}\\) from the \\(\\frac{5}{5}\\) to get \\(2\\frac{3}{5}\\) . section c: adding tenths and hundredths in this section, students learn to add tenths and hundredths. previously, students learned that \\(\\frac{1}{10} = \\frac{10}{100}\\) . they use this reasoning to find equivalent fractions that can help them add tenths and hundredths. near the end of the unit, ask your student to solve the following problems: what equation is represented by the jump on the number line? find the value of \\(\\frac{8}{10} + \\frac{29}{100}\\) . questions that may be helpful as they work: how did you know those fractions were needed for the equation? how could you solve your problem in a different way? they learn to write tenths and hundredths using decimal notation and to work with whole numbers within 1 million. section a: decimals with tenths and hundredths in this section, students relate the fraction \\(\\frac{1}{10}\\) to the notation 0.1 and \\(\\frac{1}{100}\\) to 0.01. they learn to read 0.1 as \"one tenth\" and 0.01 as \"one hundredth.\" to connect the fraction notation, decimal notation, and word name of a fraction, students reason with square diagrams that each represent 1 and are partitioned into hundredths. the gridded square helps students see that \\(\\frac{1}{10}\\) (or 0.1) and \\(\\frac{10}{100}\\) (or 0.10) represent the same amount. it also allows students to recognize other tenths and hundredths that are equivalent. they compare decimals based on size and write comparison statements using the symbols , , and =. section b: place-value relationships through 1,000,000 in this section, students make sense of whole numbers up to the hundred-thousands place. they use base-ten blocks and diagrams to represent large numbers. students come to understand the value of the digit in each position in a multi-digit number. they see that a digit in one place has a value that is ten times the value of the same digit in a place to its right. for example, the 3 in 347,000 has a value ten times that of the 3 in 34,700, because \\(300,\\!000 = 10 \\times 30,\\!000\\) . section c: compare, order, and round in this section, they compare and round numbers within 1,000,000. to compare numbers, students think about the value of the digits and locate the numbers on a number line. to round a number, they think about multiples of 10, 100, 1,000, 10,000, and 100,000 that are the closest to the number. for example, 215,300 rounded to the nearest hundred-thousand is 200,000.& students then solve problems involving large numbers in various situations. section d: add and subtract in this section, students learn to use the standard algorithm for addition and subtraction. as in earlier grades, they think about composing (putting together) or decomposing (or breaking apart) base-ten units to add and subtract. to find the value of \\(17,\\!375 + 14,\\!024\\) , for example, students may first write each number in expanded form and then add the values in each place (ten-thousands, thousands, hundreds, tens, ones). later, they connect this way of adding to the standard algorithm for addition. near the end of the unit, ask your student about the numbers 769,038 and 170,932: what is the value of the 7 in each number? write a multiplication or division equation to show the relationship between these two values. round each number to the nearest multiple of 1,000 and multiple of 100,000. find the sum and difference of the two numbers. questions that may be helpful as they work: how did you find your answer? they use this understanding to convert units of measurement and to solve problems about measurement. section a: multiplicative comparison in this section, students learn to compare quantities in terms of multiplication. in a multiplicative comparison, the underlying question is \"how many times as many?\" (in contrast, in an additive comparison, the question is \"how many more (or less)?\") students begin with comparisons that involve small factors and familiar situations, using familiar multiplicative comparison language (such as \"twice,\" or \"twice as many\"). for example, students learn that they can compare the number of cubes in the image by saying, \"han has 2 times (or twice) as many cubes as andre.\" as larger factors and more abstract situations are introduced, students interpret and use abstract tape diagrams where each section of the diagram is labeled to represent any quantity. in this example, while we do not know how many cubes andre has, we know that jada has 3 times as many cubes as andre. section b: measurement conversion in this section, students expand their knowledge of units of measurement from earlier grades. previously, they learned that there are 100 centimeters in 1 meter. here, they relate centimeters and meters in terms of multiplication-1 meter is 100 times as long as 1 centimeter-and use this reasoning to convert any number of meters to centimeters. students also relate other units of measurement in terms of multiplication: meters and kilometers, grams and kilograms, milliliters and liters, ounces and pounds, and seconds, minutes, and hours. they then solve problems that involve converting a larger unit to a smaller unit. section c: let's put it to work in this section, students use multiplicative comparison and measurement conversion to solve multi-step problems. they convert units of length, weight, and capacity in the metric system and customary system (working with length units such as yards, feet, and inches, and capacity units such as gallons, quarts, and cups). as they solve problems, students develop their sense of the relative size of these units. for a potluck party, priya and three other relatives are bringing mango lassi. how many cups of lassi did all the guests bring? guest amount of mango lassi priya 10 cups uncle 3 quarts cousin 8 cups grandma 2 gallons students also solve problems in geometric contexts. they analyze the relationship between the side lengths and perimeter of quadrilaterals and perform unit conversion along the way. near the end of the unit, ask your student to solve the following problem: a paint store sold 79 gallons of paint the first week it opened. the following week, the paint store sold 4 times as many gallons of paint. how many gallons of paint did the paint store sell in the second week? questions that may be helpful as they work: can you draw a diagram to show the multiplicative comparison? can you write an equation that goes along with the story problem? how would you convert the amount of gallons to quarts? section a: features of patterns in this section, students analyze patterns. they use ideas related to multiplication (such as factors, multiples, double, and triple) to describe and extend the patterns. if the pattern continues, could 50 represent the side length or the area of one of the rectangles? section b: multi-digit multiplication in this section, students multiply one-digit numbers and numbers up to four digits, and pairs of two-digit numbers. they learn to use increasingly more efficient methods to multiply. students begin by using visual representations-arrays, base-ten diagrams, and grids-to help them find products. they recall that rectangles can be used to represent multiplication, with the side lengths representing the factors and the area representing the product. students see that it helps to decompose (break apart) the factors by place value. for example, to multiply 31 and 15, we can think of the 31 as \\(30 + 1\\) and the 15 as \\(10 + 5\\) . we can then label these values on a diagram, multiply the parts separately, and add the partial products. later, students use an algorithm that lists partial products vertically. this work prepares them to make sense of the standard algorithm for multiplication, to be studied closely in grade 5. section c: multi-digit division in this section, students divide larger numbers (up to four digits), explore new division strategies, and interpret division situations that involve remainders. students begin by solving various problems that involve division, including those about equal groups, factors and multiples, and area of rectangles. they recall that an expression such as \\(96 \\div 8\\) can be used to find how many groups of 8 in 96, or to find the size of one group if 96 are put into 8 equal groups. students see that just as they can multiply two numbers by decomposing the factors and finding partial products, they can divide by decomposing the dividend (the number being divided) and finding partial quotients. thinking about place value can help us as well. students then learn to organize partial quotients using equations and an algorithm that records division vertically. \\(\\begin{align} 400\\div 5&= 80\\\\ 60\\div 5 &= 12\\\\ 5 \\div 5 &= \\phantom{0}1 \\\\ \\overline {\\hspace{5mm}465 \\div 5} &\\overline{\\hspace{1mm}= 93 \\phantom{000}}\\end{align}\\) --> section d: let's put it to work: problem solving with large numbers students solve a variety of problems that involve all four operations on multi-digit numbers. the problems can be approached in many ways, allowing students to choose their methods and representations strategically. many of them also involve multiple steps. near the end of the unit, ask your student to solve the following problems: \\(16 \\times 48\\) \\(324 \\div 6\\) questions that may be helpful as they work: can you draw a diagram to help you solve the problem? can you explain the steps of your algorithm? they also learn to talk about angles, measure their size, and draw angles of different measurements. section a: points, lines, segments, rays, and angles this section introduces students to some building blocks of geometric figures-points, rays, segments, angles, and lines. students learn about parallel lines (lines that never intersect) and perpendicular lines (lines that meet or intersect at a right angle). they also learn that an angle is a figure that is made up of two rays that share the same endpoint, called the vertex of the angle. students practice identifying angles, noticing that angles are all around us and can have different sizes. section b: the size of angles in this section, students compare and describe the size of angles. they begin by comparing angles visually, for example, by considering ways to describe the size of angles on a clock. the hands of a clock helps to show that an angle is formed when one ray rotates around a point shared with another ray. later in the section, students learn to use a protractor to measure angles and to draw angles. section c: angle analysis in this section, students continue to draw and analyze angles and to reason about their measurement. they classify angles by their size and identify angles as right, acute, obtuse, and straight. students learn that angles can be added. to investigate this idea, they use paper cutouts, patty paper, and drawings. students fold, cut, mark, and assemble pieces of paper to see how angles can be composed (put together) and decomposed (broken apart). later, students solve problems and find unknown angle measurements in different contexts. right angle partitioned into two angles. one shaded green, one labeled 62 degrees. straight angle partitioned into 3 angles. one labeled 71 degrees, one shaded yellow, one marked with a right angle symbol. horizontal straight line partitioned into 2 angles on top by a ray and 2 angles below by another ray. on top, left angle shaded blue, right angle labeled 1 hundred 8 degrees. on the bottom, left angle labeled 1 hundred 54 degrees, right angle shaded red. two straight lines intersect and partitioned into 2 angles on top and 2 angles below. on top, smaller angle on the left shaded green and bigger angle on the right unlabeled. on the bottom, bigger angle on the left shaded yellow, smaller angle on the right, labeled 43 degrees. near the end of the unit, ask your student to: find an acute angle, obtuse angle, straight angle, right angle, and parallel and perpendicular lines around the house. describe and measure some angles found around the house. questions that may be helpful as they work: how would you describe that figure? how does that angle compare to a right angle (or a straight angle)? they also learn about lines of symmetry in two-dimensional figures. students then use these attributes of figures to solve geometric problems, including those about perimeter and area. section a: side lengths, angles, and lines of symmetry in this section, students think about different attributes of two-dimensional shapes, such as: number of sides length of sides size of angles presence of parallel or perpendicular lines symmetry they examine shapes, classify them by the attributes they share, and explain their classifications. for example, given examples of parallelograms and rhombuses, students think about what must be true about the sides and angles of each type of quadrilaterals. --> quadrilaterals n, u, and z are parallelograms. quadrilaterals aa, ee, and jj are rhombuses. students also learn about symmetry-whether a figure can be folded along a line into two equal halves that match up exactly. they draw lines of symmetry for given figures, and complete drawings of figures that are halved by a line of symmetry. section b: reason about properties to solve problems in this section, students reason about measurements in shapes. students begin by finding the perimeter of shapes where the side lengths are all given. then, they look at shapes where the side lengths are not all given but can be found because of the attributes of the shapes (for example, the opposite sides are the same length) or because the perimeter is known. figures p, q, and r each have 1 line of symmetry. all figures have a perimeter of 64 inches. as they find perimeters and side lengths, students also practice performing operations on whole numbers and fractions. near the end of the unit, ask your student to solve the following problems: what attributes do these figures all have in common? for each figure, how many lines of symmetry can you find? what shapes do you see around the home or in places we visit? how could we classify them into categories? questions that may be helpful as they work: can you describe the attributes of these shapes? what does it mean to have a line of symmetry? section a: fraction fun in this section, students practice multiplying fractions and whole numbers, as well as adding and subtracting fractions with the same denominator. they also solve problems that involve comparing fractions and adding and subtracting tenths and hundredths. here are the times of the runners for two teams. students begin by using the standard algorithm to add and subtract numbers within 1 million. they recall when to compose (or \"carry\") a new place-value unit (a ten, a hundred, a thousand, and so on) when adding, and when to decompose a unit (or \"regroup\") when subtracting. students learn to pay attention to potential errors, especially when subtracting a number with non-zero digits from a number with zeros, and to be more strategic in choosing a method. use both priya and han's methods to find the difference of 20,000 and 472. priya caption: priya han caption: han next, students practice multiplying and dividing multi-digit numbers using algorithms that involve partial products and partial quotients. in both cases, students make connections across the different methods they see or use. section c: multiplicative comparison and world travel in this section, students use multiplication and division to make comparisons and solve real-world problems. they make estimates to simplify a problem, help with calculations, or assess whether a statement or a number is reasonable. a school needs buses to take 375 people on a field trip. bus company a has small buses with 27 seats in each. bus company b has large buses with 48 seats in each. which bus company should the school choose? section d: creation and design throughout the course, students have participated in warm-up routines such as how many do you see, exploration estimation, which one doesn't belong, true or false, and number talk. in this section, they apply the mathematics they have learned to design warm-ups that use some of these routines. near the end of the unit, ask your student to share the warm-up routines they created. questions that may be helpful as they share: how did you design the routine? how does the routine relate to what you learned this year? what might you change to improve the routine?",
+      "source": "illustrative-math/k5/grade-4",
+      "licence": "CC-BY 4.0",
+      "figures": [
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/aucxbyfic0r2f9jcun82obgc0060",
+          "alt": "rectangle",
+          "caption": "",
+          "context": "then, they find the area of the rectangles. for example, this rectangle has an area of 14 square units with side lengths of 7 and 2."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/expand.png",
+          "alt": "Expand image",
+          "caption": "",
+          "context": "then, they find the area of the rectangles. for example, this rectangle has an area of 14 square units with side lengths of 7 and 2."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/2021-06-04_im_certified_badge.svg",
+          "alt": "IM (Illustrative Mathematics) Certified",
+          "caption": "",
+          "context": "these materials include public domain images or openly licensed images that are copyrighted by their respective owners. openly licensed images remain under the terms of their respective licenses."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/sdcgkoe0hi72325n7em6euvs7zj8",
+          "alt": "number line. 6 evenly spaced tick marks. First tick mark, 0. Point at second tick mark, 1 fifth. Last tick mark, 1.",
+          "caption": "",
+          "context": "they show that fractions that are at the same point on the number line are equivalent. students then learn to tell if two fractions are equivalent without using number lines."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/e9gymsh8gnepy27ac76a2cjwzyb5",
+          "alt": "Number line from 0 to 1. Evenly spaced by tenths. Point at 2 tenths.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/8kfd4rw9aza9ale3agkskixx8q33",
+          "alt": "number line. 16 evenly spaced tick marks. First tick mark, 0. Fourth tick mark, 3 fifteenths. Last tick mark, 1.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xj80uobjk6jxbssivt9uu1doe0t3",
+          "alt": "Number line. 20 tick marks. First tick mark, 0. Fourth tick mark, 4 twentieths. Twentieth tick mark, 1.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/euyuscuzuu15yo4u4awltbgfks1r",
+          "alt": "5 plates with one half orange on each plate",
+          "caption": "",
+          "context": "in this section, they think about equal groups of fractional pieces, such as 5 plates with \\(\\frac{1}{2}\\) orange on each plate. they see that the amount can be represented by \\(5 \\times \\frac{1}{2}\\) , which is \\(\\frac{5}{2}\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/32lea7x9ijwn9w0l5a0wr6p1uhlt",
+          "alt": "diagram",
+          "caption": "",
+          "context": "diagrams can help students see that some fractions can be represented by more than one multiplication expression. for example, the diagram shows that the following expressions all have the value of \\(\\frac{8}{3}\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/wckq5l5f1ny0u9w60x1gemu9z27f",
+          "alt": "Number line.",
+          "caption": "",
+          "context": "they represent different ways to decompose a fraction by drawing \"jumps\" on number lines and writing different equations. later, they use number lines to represent subtraction of fractions."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/qn2g4etjfdxxlslym2q3e9r1oifd",
+          "alt": "subtract eleven sixths and seven sixths on number line",
+          "caption": "",
+          "context": "they use this reasoning to find equivalent fractions that can help them add tenths and hundredths. near the end of the unit, ask your student to solve the following problems: what equation is represented by the jump on the number line?"
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/147470.svg",
+          "alt": "",
+          "caption": "",
+          "context": "the gridded square helps students see that \\(\\frac{1}{10}\\) (or 0.1) and \\(\\frac{10}{100}\\) (or 0.10) represent the same amount. it also allows students to recognize other tenths and hundredths that are equivalent. --> <path d=\"m1162.5,198.75,1001.25,37.5,600,438.75,198.75,37.5,37.5,198."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/mxf30gxeazbs0uow5z27afxyvvz9",
+          "alt": "square diagram. partitioned into hundredths. 40 hundredths shaded",
+          "caption": "",
+          "context": "the gridded square helps students see that \\(\\frac{1}{10}\\) (or 0.1) and \\(\\frac{10}{100}\\) (or 0.10) represent the same amount. it also allows students to recognize other tenths and hundredths that are equivalent."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/z4jmrz1fuukrlvvhwbo7mb6t7b74",
+          "alt": "Base-ten blocks. 1 thousand. 3 hundreds. 2 tens. 5 ones.",
+          "caption": "",
+          "context": "students come to understand the value of the digit in each position in a multi-digit number. they see that a digit in one place has a value that is ten times the value of the same digit in a place to its right."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/n8a0z9q13zapwksva3w677164szm",
+          "alt": "point on a number line",
+          "caption": "",
+          "context": "to round a number, they think about multiples of 10, 100, 1,000, 10,000, and 100,000 that are the closest to the number. for example, 215,300 rounded to the nearest hundred-thousand is 200,000.& students then solve problems involving large numbers in various situations."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/9cv9yw5f4kbjyhju7fxk5o8xzo2c",
+          "alt": "Addition algorithm in expanded form",
+          "caption": "",
+          "context": "to find the value of \\(17,\\!375 + 14,\\!024\\) , for example, students may first write each number in expanded form and then add the values in each place (ten-thousands, thousands, hundreds, tens, ones). later, they connect this way of adding to the standard algorithm for addition."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/d2mnq0b1d72mpa8296a5fbgibctg",
+          "alt": "addition algorithm",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/lw8sq4cqxi9p8rr75e4zfdyql6ni",
+          "alt": "connecting cubes",
+          "caption": "",
+          "context": "section a: multiplicative comparison in this section, students learn to compare quantities in terms of multiplication. in a multiplicative comparison, the underlying question is \"how many times as many?\" (in contrast, in an additive comparison, the question is \"how many more (or less)?\") students begin with comparisons that involve small factors and familiar situations, using familiar multiplicative comparison language (such as \"twice,\" or \"twice as many\")."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/z2og9bhrf855tp0sfmevmb9sjfpv",
+          "alt": "tape diagram",
+          "caption": "",
+          "context": "in this example, while we do not know how many cubes andre has, we know that jada has 3 times as many cubes as andre."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/56xov8byvo3rd9w46bnvp12ydcuw",
+          "alt": "drink. mango lassi",
+          "caption": "",
+          "context": "for a potluck party, priya and three other relatives are bringing mango lassi. how many cups of lassi did all the guests bring?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/240xvvm84y9fuvxzqn52q75bcq7a",
+          "alt": "pattern of rectangles",
+          "caption": "",
+          "context": "they use ideas related to multiplication (such as factors, multiples, double, and triple) to describe and extend the patterns. if the pattern continues, could 50 represent the side length or the area of one of the rectangles?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/2g5r0kuon5go33sn1d4kfobh2v1a",
+          "alt": "area diagram",
+          "caption": "",
+          "context": "for example, to multiply 31 and 15, we can think of the 31 as \\(30 + 1\\) and the 15 as \\(10 + 5\\) . we can then label these values on a diagram, multiply the parts separately, and add the partial products."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/4rgteidlapq2yykz0rfnu3y8vpcq",
+          "alt": "multiplication algorithm",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xdf5717m689idvrn6m1q21m7fdqg",
+          "alt": "division algorithm",
+          "caption": "",
+          "context": "thinking about place value can help us as well. students then learn to organize partial quotients using equations and an algorithm that records division vertically."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/147376.svg",
+          "alt": "",
+          "caption": "",
+          "context": "--> section d: let's put it to work: problem solving with large numbers students solve a variety of problems that involve all four operations on multi-digit numbers. the problems can be approached in many ways, allowing students to choose their methods and representations strategically."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5ztodedcml5wckuuprjlsbaozbj5",
+          "alt": "figures",
+          "caption": "",
+          "context": "section a: points, lines, segments, rays, and angles this section introduces students to some building blocks of geometric figures-points, rays, segments, angles, and lines. students learn about parallel lines (lines that never intersect) and perpendicular lines (lines that meet or intersect at a right angle)."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/38a5vr9fs9qf4barw1qe4i4o6bc7",
+          "alt": "analog clock",
+          "caption": "",
+          "context": "they begin by comparing angles visually, for example, by considering ways to describe the size of angles on a clock. the hands of a clock helps to show that an angle is formed when one ray rotates around a point shared with another ray."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/m4r94dk1jhta7age26ghf8u32ts0",
+          "alt": "protractor measuring an angle. Left side at 0 or 1 hundred 80 degrees. Right side at 100 or 80 degrees.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/6agmd3k7e8u4qywfewk2i0qi082o",
+          "alt": "triangle",
+          "caption": "",
+          "context": "to investigate this idea, they use paper cutouts, patty paper, and drawings. students fold, cut, mark, and assemble pieces of paper to see how angles can be composed (put together) and decomposed (broken apart)."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/h120eq52p6opn5jiqq0zglh7hhdi",
+          "alt": "4 angles.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/image_files/38619.svg",
+          "alt": "",
+          "caption": "",
+          "context": "section a: side lengths, angles, and lines of symmetry in this section, students think about different attributes of two-dimensional shapes, such as: number of sides length of sides size of angles presence of parallel or perpendicular lines symmetry they examine shapes, classify them by the attributes they share, and explain their classifications. for example, given examples of parallelograms and rhombuses, students think about what must be true about the sides and angles of each type of quadrilaterals. --> quadrilaterals n, u, and z are parallelograms."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/7gaf5utljd6kctns7s2av7xofk7d",
+          "alt": "Quadrilaterals. N. U. Z.",
+          "caption": "",
+          "context": "for example, given examples of parallelograms and rhombuses, students think about what must be true about the sides and angles of each type of quadrilaterals. --> quadrilaterals n, u, and z are parallelograms."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/g0q2wi2hjnuto1hnd44vlrjy5ywq",
+          "alt": "Quadrilaterals. A, A. E, E. J, J.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/xti2qnahjecfkx9hck7xpiwu8ouy",
+          "alt": "symmetric shapes",
+          "caption": "",
+          "context": "they draw lines of symmetry for given figures, and complete drawings of figures that are halved by a line of symmetry."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/padra25aokxolcbsxpj8wlxauw5o",
+          "alt": "Figures. P. Q. R. S",
+          "caption": "",
+          "context": "figures p, q, and r each have 1 line of symmetry. all figures have a perimeter of 64 inches."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/rniyd6gygu2incba8cqfhlnr2yfu",
+          "alt": "5 shapes. From left to right. square. parallelogram. Pentagon with 5 equal side lengths. rectangle. triangle with 2 equal side lengths.",
+          "caption": "",
+          "context": "near the end of the unit, ask your student to solve the following problems: what attributes do these figures all have in common? for each figure, how many lines of symmetry can you find?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/e4j5mtle5i2mo1sepfmwh8asqg4d",
+          "alt": "runner",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/5k8p53nga1aprffu5twb4hszttfw",
+          "alt": "subtraction algorithm",
+          "caption": "",
+          "context": "students learn to pay attention to potential errors, especially when subtracting a number with non-zero digits from a number with zeros, and to be more strategic in choosing a method. use both priya and han's methods to find the difference of 20,000 and 472."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/b35kry9wjr29mun28kvgp7d9ptnn",
+          "alt": "addition algorithm",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/yygfklu8m8ybrn0uz9lacsm95sbu",
+          "alt": "school bus",
+          "caption": "",
+          "context": "bus company b has large buses with 48 seats in each. which bus company should the school choose?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3y0b99oihr040yde82z3vxhzuhzk",
+          "alt": "Complete the set. A. B. C. D.",
+          "caption": "",
+          "context": "in this section, they apply the mathematics they have learned to design warm-ups that use some of these routines."
+        }
+      ]
+    }
+  ]
+}

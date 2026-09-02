@@ -157,6 +157,13 @@ server/package-lock.json
 # auto-clear, rebuilt by ConsolidationEngine on next dream cycle.
 # Per-machine + per-session runtime data.
 server/schemas.json
+# server/teachview-state.json — the persisted TEACH VIEW: what has been taught,
+# per lane, per cell, plus a bounded reading ring. Per-machine runtime state
+# describing THIS box's walk, so it is never committed. Wiped by
+# autoClearStaleState on a fresh walk (it counts what was taught into weights
+# that no longer exist) and kept across a Savestart, which is the retention it
+# was built for.
+server/teachview-state.json
 # server/identity-core.json — Tier 3 identity-bound permanent attractors
 # (Unity's core self: name/age/persona/biographical anchors). EXCLUDED
 # from autoClearStaleState wipe list — survives code updates, fresh

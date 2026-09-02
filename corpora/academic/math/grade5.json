@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "grade": "grade5",
+  "subject": "math",
+  "source": "hybrid: Illustrative Mathematics (CC-BY 4.0) + prior sources, cleaned + sentence-segmented",
+  "note": "Maths KNOWLEDGE corpus for math/grade5. Trained via curriculum._trainAcademicStories alongside the equational runners, which are untouched.",
+  "experiences": [
+    {
+      "theme": "im-k5-grade-5",
+      "story": "section a: unit cubes and volume in this section, students learn to call the amount of space an object takes up volume . for example, this prism has a volume of 120 cubes. to find the volume of any prism, students can find the number of cubes in one layer and multiply that number by the number of layers. in this example, students might describe this prism as having 5 layers of 24 cubes. they can find the number of cubes by multiplying 5 and 24. section b: expressions for finding volume in this section, students find the volume of a rectangular prism by multiplying the side lengths or by multiplying the area of the base by the height. for example they can multiply the length by width by height, or \\(3 \\times 5 \\times 6\\) or they can find the bottom area by multiplying \\(3 \\times 5\\) to get 15 and then multiplying 15 by 6. the volume of this rectangular prism is 90 cubic units. section c: volume of solid figures in this section, students learn that some figures are made from two rectangular prisms. they break apart these figures and find the volume of each prism. then, they add the volumes of the two prisms to find the total volume of the figure. description: figure composed of two attached prisms. first prism: 3 cubes by 5 cubes by 5 cubes. second prism: 2 cubes by 2 cubes by 5 cubes. depending on how they break it apart, they can find the volume in different ways. they could multiply in these ways to find the volume of the figure: \\((3 \\times 3 \\times 5) + (5 \\times 2 \\times 5)\\) \\((3 \\times 5 \\times 5) + (2 \\times 2 \\times 5)\\) try it at home! near the end of the unit, find the volume of these figures with your student. questions that may be helpful as they work: how are the 2 problems the same? can you explain or show me how you found the volume? how did you know you needed that number or piece of information? they develop an understanding of fractions as the division of the numerator by the denominator, that is \\(a \\div b = \\frac{a}{b}\\) . they then solve problems that involve the multiplication of a whole number by a fraction or mixed number. section a: fractions as quotients in this section, students learn that fractions are quotients and can be interpreted as division of the numerator by the denominator. students draw and analyze tape diagrams that represent sharing situations. through the context of first sharing 1, then sharing more than 1, then sharing a number of things with increasingly more people, students notice patterns and begin to understand that in general \\(\\frac{a}{b} = a \\div b\\) . for example, students use the diagram below to show 4 objects being shared equally by 3 people, or \\(4 \\div 3\\) , which can also be written as a fraction, \\(\\frac{4}{3}\\) . section b: fractions of whole numbers in this section, students make connections between multiplication and division and use visual representations that can show both operations. for example, the diagram above can also represent 4 groups of \\(\\frac{1}{3}\\) , or \\(4 \\times \\frac{1}{3}\\) . students discover ways of finding the product of a fraction and whole number that make sense to them and connect the product to the context and diagrams. they multiply a whole number by a fraction, \\(\\frac{a}{b} \\times q\\) . section c: area and fractional side lengths in this section, students use what they know about the area of rectangles with whole number side lengths to find the area of rectangles that have one whole number side length and one fractional side length. the expression \\(6 \\times 1\\) represents the area of a rectangle that is 6 units by 1 unit. in the same way, \\(6 \\times \\frac{2}{3}\\) represents the area of a rectangle that is 6 units by \\(\\frac{2}{3}\\) unit. in addition, students see that the expressions \\(6\\times\\frac{2}{3}\\) , \\(6\\times2\\times\\frac{1}{3}\\) , and \\(12\\times\\frac{1}{3}\\) can all represent the area of this same diagram. students analyze diagrams where one side length is a mixed number, for example a rectangle that is 2 by \\(3\\frac{2}{5}\\) . they decompose the shaded region to show the whole units and the fractional units. to find the area represented by this diagram, students may see two rectangles: a rectangle that is 2 units by 3 units and a rectangle that is 2 units by \\(\\frac{2}{5}\\) unit. while they may recognize that the area can be represented as \\(2 \\times 3\\frac{2}{5}\\) , students who see the decomposed rectangle may write \\((2 \\times 3) + (2 \\times \\frac{2}{5})\\) to find the area. near the end of the unit, ask your student the following questions: write as many expressions as you can that represent this diagram: what is the area of the following rectangle? questions that may be helpful as they work: how are the two problems similar? how does your expression represent the diagram? how did you break up the rectangle to help you solve for the entire area? what are the side lengths of the rectangle? they also reason about the relationship between multiplication and division to divide a whole number by a unit fraction and a unit fraction by a whole number. section a: fraction multiplication in this section, students build on their knowledge of fraction multiplication developed in the previous unit by using area concepts to understand the multiplication of a fraction times a fraction. students draw diagrams to represent the fractional area. for example, students learn that the diagrams below can represent the situation \"kiran eats macaroni and cheese from a pan that is \\(\\frac {1}{3}\\) full. he eats \\(\\frac {1}{4}\\) of the remaining macaroni and cheese in the pan. how much of the whole pan did kiran eat?\" pan with \\(\\frac{1}{3} \\) left eat \\(\\frac{1}{4}\\) of what's left \\(\\frac{1}{4}\\) of \\(\\frac{1}{3}\\) is \\(\\frac{1}{12}\\) students extend this conceptual understanding to multiply all types of fractions including fractions greater than 1 (for example, \\(\\frac{7}{4}\\) ). in each case, the students relate this multiplication to finding the area of a rectangle with fractions as side lengths. as the lessons progress, they notice that they can multiply the two numerators and the two denominators to find their product. this reasoning holds true for fractions greater than 1. for example, \\(\\frac{3}{4}\\times\\frac{7}{5}=\\frac{3\\times 7}{4\\times5}=\\frac{21}{20}\\) . section b: fraction division the section begins by using whole numbers to recall that the size of the quotient depends, for example, on the amount being shared and the number of people sharing. that is, each student will get more pretzels if 3 students share 45 pretzels than if 3 students share 24 pretzels. similarly, each student will get fewer pretzels if 6 students share 24 pretzels than if 3 students share 24 pretzels. this thinking helps students understand why dividing a whole number by a unit fraction results in a quotient that is larger than the whole number. for example, \\(2 \\div \\frac{1}{3} = 6\\) because there are 6 groups of \\(\\frac{1}{3}\\) in 2. as students draw diagrams and write expressions involving the division of unit fractions, students recognize the relationship between multiplication and division. for example, they may notice that \\(2 \\div \\frac{1}{3} = 6\\) because \\(6 \\times \\frac{1}{3} = 2\\) , and that \\(\\frac{1}{5} \\div 2 = \\frac {1}{10}\\) is related to \\(2 \\times \\frac{1}{10} = \\frac {1}{5}\\) . section c: problem solving with fractions in this section, students apply what they have learned in the previous sections through problem solving. students see how fraction multiplication and division are useful in different contexts. they use the meaning of multiplication and division to decide which operation to use to solve various problems. as students share strategies, they may realize that some problems could be solved using either division or multiplication. near the end of the unit, ask your student to solve the following question: a painter was painting a wall yellow. he painted \\(\\frac{1}{3}\\) of the wall yellow before being told he needed to paint the wall blue. at the end of the day, he was able to cover up \\(\\frac{1}{5}\\) of the yellow wall in blue. questions that may be helpful as they work: can you draw a diagram to help you solve the problem? what equation would you use to solve the problem? can you solve this using division or multiplication instead? they use the standard algorithm to multiply multi-digit whole numbers and partial quotients algorithms to divide whole numbers up to four digits by two digits. they then apply these skills as they solve problems involving volume. section a: multi-digit multiplication using the standard algorithm students begin this unit by estimating products and quotients in a real-world context. students use their understanding of place value, and their understanding of powers of 10 to make reasonable estimates. students connect multiplication strategies, like partial products, to the standard multiplication algorithm. this is the partial products area diagram for \\(412 \\times 32\\) . they find partial products using area diagrams, and then translate that to a series of equations. these equations are compared against the steps in the standard algorithm to learn how the steps are based on place value reasoning and why the algorithm works. this table shows the connection between an algorithm using partial products and the standard algorithm. partial products area diagram standard algorithm area diagram aligned to standard algorithm section b: multi-digit division using partial quotients students begin the work on whole number division by deepening their understanding of division expressions and the effect that changing the divisor or dividend has on the value of the quotient. in a progression that leads to students engaging in algorithms using partial quotients, students estimate quotients and write partial quotient equations that match their own methods for finding the value of the quotient. once students understand that they can find the value of the quotient by decomposing the dividend into multiples of the divisor, students learn to express this decomposition using equations and then an algorithm using partial quotients. decomposition of the dividend an algorithm using partial quotients \\(448\\div16=(320\\div16)+(80\\div16)+(48\\div16)\\) \\(448\\div16=20+5+3\\) \\(448\\div16=28\\) description: divide. four hundred forty eight divided by 16, 11 rows. fifth row: 16, long division symbol with four hundred forty eight inside. section c: let's put it to work students practice their multiplication and division skills as they solve problems involving volume. students are using the volume formulas ( \\(v = l \\times w \\times h\\) and \\(v = b \\times h\\) ) to practice the multiplication and division work of the previous sections. students engage with relatively large numbers to multiply and divide using these volume formulas, developing fluency with the standard algorithm for multiplication and the algorithm using partial quotients. near the end of the unit, ask your student to solve the following problems: \\(219 \\times 52\\) \\(868 \\div 14\\) questions that may be helpful as they work: can you draw a diagram to help you solve the problem? can you explain the steps of your algorithm? section a: numbers to thousandths in this section, students are introduced to the thousandths place. they represent decimals on gridded area diagrams where the large square has a value of 1, and each small square within represents \\(\\frac{1}{100}\\) . students learn that if they partition each small square into ten equal parts, each of those parts represents 1 thousandth of the large square. students write decimals in expanded form using sums of multiplication expressions. for example, 0.124 in expanded form can be written as \\(\\left(1 \\times \\frac{1}{10}\\right)+ \\left(2 \\times \\frac{1}{100}\\right) + \\left(4 \\times \\frac{1}{1,000}\\right)\\) . students use this developing understanding of place value to the thousandths to locate decimals on a number line. they then use the number line to round, compare, and order decimals. section b: add and subtract decimals in this section, students add and subtract decimals to the hundredths. initially, students add and subtract in ways that make sense to them. this allows students to relate addition and subtraction of decimals to operations with whole numbers. students also use place value reasoning to estimate the value of sums and differences. section c: multiply decimals in this section, students multiply decimals with products up to hundredths. students initially multiply decimals in ways that make sense to them. area diagrams were used to make sense of fraction multiplication in earlier units, and they are used here as a familiar representation to make sense of decimal multiplication. they use the diagrams to relate multiplying with whole numbers to multiplying with decimals. for example, the diagram shown can represent 2 groups of 6 hundredths, or 12 hundredths, which can be written as the equation \\(2 \\times 0.06 = 0.12\\) . students may also see this as 2 times 6 groups of 1 hundredth or \\(2 \\times 6 \\times 0.01 = 12 \\times 0.01 = 0.12\\) . to multiply tenths by tenths, students revisit area concepts from previous units. using area diagrams, they find the area of the shaded region by multiplying side lengths. they use decimal notation to mark the side lengths. the diagram shows how the students would represent \\(0.3 \\times 1.4\\) to arrive at an answer of 0.42. section d: divide decimals just as with whole numbers and fractions, students use the relationship between multiplication and division to make sense of division with decimals. in this section, students consider how many tenths or hundredths are in whole numbers (that is, 10 tenths are in 1 whole, 100 hundredths are in 1 whole). this understanding provides a foundation for students to divide a whole number by any amount of tenths or hundredths. students learn how to use diagrams to help them solve division problems. the example shows how students can divide 4 into groups of 2 tenths. there are 20 groups of 2 tenths in 4 wholes. \\(4 \\div 0.2 = 20\\) description: diagram. partitioned into 10 rows of 10 of the same size squares. for each 20 squares shading alternates, blue, orange. near the end of the unit, ask your student to solve the following problems: \\(1.8 \\times 0.2\\) \\(12.1 \\div 1.1\\) questions that may be helpful as they work: can you draw a diagram to help you solve the problem? how does your diagram show the solution? they also explain patterns when multiplying and dividing by powers of 10. students interpret multiplication as scaling by comparing products with factors. section a: measurement conversions and powers of 10 in this section, students convert smaller units to larger units (for example, centimeters to kilometers), and describe the patterns they notice when multiplying and dividing by powers of 10. students work with the metric and customary system (for example. feet, quarts, pounds, and so on) and develop an understanding of the relative sizes of units of length, volume, and weight. students use the four operations with whole numbers, decimals, and fractions to solve multi-step word problems involving measurement conversions. section b: add and subtract fractions with unlike denominators in this section, students add and subtract fractions and mixed numbers with unlike denominators, and apply this learning to problem solving. students first encounter problems where one denominator is a factor of the other (for example, \\(\\frac {1}{4}\\) s and \\(\\frac {1}{8}\\) s), so that they will only need to change one denominator. then, students solve problems where the denominators are not related (for example, \\(\\frac {1}{3}\\) s and \\(\\frac {1}{4}\\) s). students conclude that multiplying the denominators or finding a common multiple are helpful ways to create common denominators. students also extend their understanding of line plots. they create line plots using measurement data in fractional units (halves, fourths, and eighths), and interpret the data on line plots to solve problems involving the four fraction operations like this one. jada says \\(\\frac{3}{4}\\) of the students spend less than 2 hours on a screen. explain how you know your answer is correct. section c: the size of products in this section, students build on their understanding of multiplication to include the concept of scaling. students interpret multiplication expressions as a quantity that is resized or scaled by a factor. students compare multiplication expressions without performing the multiplication. in the example shown, students reason that \\(\\frac{7}{6} \\times 4\\) is greater than the other two expressions because in each expression, 4 is being multiplied by a fraction, and \\(\\frac{7}{6}\\) is the largest fraction of the three. which of these expressions represents the largest product? \\(\\frac{5}{8} \\times 4\\) \\(\\frac{7}{6} \\times 4\\) \\(\\frac{1}{2} \\times 4\\) students locate multiplication expressions on a number line, and analyze expressions to determine if the product is greater than, less than, or equal to one of its factors. students make sense of their learning by recognizing that if a given number is multiplied by: a fraction greater than 1, then the product will be greater than the given number a fraction less than 1, then the product will be less than the given number a fraction equal to 1, then the product will be equal to the given number try it at home! near the end of the unit, ask your student to solve the following problems: how many kilometers is equal to 200 centimeters? \\(\\frac {2}{3} + \\frac{2}{9}\\) \\(\\frac {2}{3} + \\frac{5}{8}\\) will \\(\\frac {4}{3} \\times 5\\) be greater than, less than, or equal to 5? questions that may be helpful as they work: what strategy are you going to use to help you solve the problem? could you have solved the problem in a different way? they classify triangles and quadrilaterals in a hierarchy based on properties of side length and angle measure. in their work with numerical patterns, students generate two different numerical patterns, and identify relationships between the corresponding terms in the patterns. section a: the coordinate plane in this section, students explore the coordinate grid. they recognize that a point is located where two lines intersect. they describe points on the grid based on the numbers on the horizontal and vertical axes. for example, the point shown is located at \\((7,3)\\) . section b: the hierarchy of shapes in this section, students learn more about shapes. they sort different types of triangles and quadrilaterals based on what the shapes have in common. they classify the shapes into categories and subcategories. for example, section c: numerical patterns in this section, students generate patterns and explore relationships between patterns. after students become familiar with generating patterns from rules and explaining relationships between patterns, they plot pairs of numbers from two patterns on a coordinate grid. they also represent and solve problems by graphing points on the coordinate grid. near the end of the unit, ask your student to solve the following problem: this coordinate grid represents information about rectangles a d. based on the coordinate grid, what do we know about each of these rectangles? how can you show the rectangles represented by these points on the grid? add another point to the grid that represents a different rectangle and describe the rectangle to me. --> after students become familiar with generating patterns from rules and explaining relationships between patterns, they plot pairs of numbers from two patterns on a coordinate grid. near the end of the unit, ask your student to solve the following problem: this coordinate grid represents information about rectangles a-d. section a - multiply and divide whole numbers students deepen their understanding of the standard algorithm for multiplication and practice using it. they recognize and explain place value patterns when multiplying multi-digit numbers, learn how to use the algorithm when one or more of the factors has several zeroes, and examine an alternative recording method for newly composed units. section b - apply volume concepts students investigate volume by calculating the volume of rectangular prisms and estimating the number of books in a library. students solve problems in a real-world context and consider what it means to measure volume using different units. they estimate the amount of water that falls on the roof of their home and use it to reason whether or not that amount is sufficient for many of the daily household chores that use water. section c - fraction and decimal operations students operate with fractions and decimals. each lesson is structured as a game day where students learn games for adding and subtracting fractions, adding and subtracting decimals, and multiplying fractions. section d - creation and design students have the opportunity to apply what they've learned about instructional routines throughout the year to create their own notice and wonder, exploration estimation, number talk, true or false, and which one doesn't belong. students design and create routines in small-groups and can facilitate their routine with another group in the class. each lesson has a content focus provided, so students review major work of the grade through their routines. near the end of the unit, ask your student to share the instructional routines they created. questions that may be helpful as they share: how did you design the routine? how does the routine relate to what you learned this year?",
+      "source": "illustrative-math/k5/grade-5",
+      "licence": "CC-BY 4.0",
+      "figures": [
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3acdjzqo9xny3scttwupnvt99tpb",
+          "alt": "Rectangular prism. 6 cubes by 4 cubes by 5 cubes.",
+          "caption": "",
+          "context": "section a: unit cubes and volume in this section, students learn to call the amount of space an object takes up volume . for example, this prism has a volume of 120 cubes."
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/expand.png",
+          "alt": "Expand image",
+          "caption": "",
+          "context": "section a: unit cubes and volume in this section, students learn to call the amount of space an object takes up volume . for example, this prism has a volume of 120 cubes."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3qbs2oqbhl84dfllvxbcachotldp",
+          "alt": "Rectangular prism.",
+          "caption": "",
+          "context": "they can find the number of cubes by multiplying 5 and 24. section b: expressions for finding volume in this section, students find the volume of a rectangular prism by multiplying the side lengths or by multiplying the area of the base by the height."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/bxkqzfoohjyp0xp3wwwtb0gu7axh",
+          "alt": "Figure composed of two attached prisms.",
+          "caption": "",
+          "context": "they break apart these figures and find the volume of each prism. then, they add the volumes of the two prisms to find the total volume of the figure."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/lnq8c1t76xayxk1ubyo6b0axyzgl",
+          "alt": "Rectangular prism. 4 cubes by 2 cubes by 5 cubes.",
+          "caption": "",
+          "context": "they could multiply in these ways to find the volume of the figure: \\((3 \\times 3 \\times 5) + (5 \\times 2 \\times 5)\\) \\((3 \\times 5 \\times 5) + (2 \\times 2 \\times 5)\\) try it at home! near the end of the unit, find the volume of these figures with your student."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/j86qqra0po64tbhmehfqr65uplpa",
+          "alt": "Rectangular prism.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/assets/2021-06-04_im_certified_badge.svg",
+          "alt": "IM (Illustrative Mathematics) Certified",
+          "caption": "",
+          "context": "these materials include public domain images or openly licensed images that are copyrighted by their respective owners. openly licensed images remain under the terms of their respective licenses."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/tcifz2l02m4r0lex5go6ve91esf8",
+          "alt": "4 diagrams",
+          "caption": "",
+          "context": "through the context of first sharing 1, then sharing more than 1, then sharing a number of things with increasingly more people, students notice patterns and begin to understand that in general \\(\\frac{a}{b} = a \\div b\\) . for example, students use the diagram below to show 4 objects being shared equally by 3 people, or \\(4 \\div 3\\) , which can also be written as a fraction, \\(\\frac{4}{3}\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/1e3wgxn270xwn7nx4bmtqjvnt0bp",
+          "alt": "rectangle",
+          "caption": "",
+          "context": "section c: area and fractional side lengths in this section, students use what they know about the area of rectangles with whole number side lengths to find the area of rectangles that have one whole number side length and one fractional side length. the expression \\(6 \\times 1\\) represents the area of a rectangle that is 6 units by 1 unit."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/ocvcdw3m5090b330zmzqko71euod",
+          "alt": "rectangle",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/oomiu0t39be5harq4173x3h5k6v2",
+          "alt": "Area diagram.",
+          "caption": "",
+          "context": "students analyze diagrams where one side length is a mixed number, for example a rectangle that is 2 by \\(3\\frac{2}{5}\\) . they decompose the shaded region to show the whole units and the fractional units."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/qko40kspgpiq52cz0dggaozjytys",
+          "alt": "Area diagram.",
+          "caption": "",
+          "context": "while they may recognize that the area can be represented as \\(2 \\times 3\\frac{2}{5}\\) , students who see the decomposed rectangle may write \\((2 \\times 3) + (2 \\times \\frac{2}{5})\\) to find the area."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/pgo8tbd4ahcmqzhu1v7khdxntcq9",
+          "alt": "Area diagram",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/p9n0hq827f7pga7lwdmkccfbsxwn",
+          "alt": "diagram. rectangle partitioned into 3 equal pats. 1 part shaded.",
+          "caption": "",
+          "context": "for example, students learn that the diagrams below can represent the situation \"kiran eats macaroni and cheese from a pan that is \\(\\frac {1}{3}\\) full. he eats \\(\\frac {1}{4}\\) of the remaining macaroni and cheese in the pan."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/03ygyz59l1a1vzayuc0w3n6y56zn",
+          "alt": "diagram. rectangle partitioned into 3 equal parts. 1 part shaded and partitioned into another 4 equal parts. 1 of the 4 parts shaded.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/r1x1o16rxom6cwyh6etkwrvvtpvy",
+          "alt": "diagram. rectangle partitioned into 3 equal parts horizontally. row 1 shaded. the rectangle is then partitioned vertically into 4 equal parts, creating 4 columns and 12 equal parts. 1 part of column 1 and row 1 shaded",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/37lv824nrnv89kv8og08oeicp6ql",
+          "alt": "partial products diagram",
+          "caption": "",
+          "context": "students connect multiplication strategies, like partial products, to the standard multiplication algorithm. this is the partial products area diagram for \\(412 \\times 32\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/hiq0ty5wy1so4jxwagi04flfoyo0",
+          "alt": "multiplication algorithm",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/nucqoqne4utj3vtfcc2csi3rltsa",
+          "alt": "diagram",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/qo2rdem5k9mq6wpj43bmgg2b5vwp",
+          "alt": "Divide. four hundred forty eight divided by 16.",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/z7kmy88o8wv15fe0gkkbb6znw90l",
+          "alt": "hundredths grid",
+          "caption": "",
+          "context": "they represent decimals on gridded area diagrams where the large square has a value of 1, and each small square within represents \\(\\frac{1}{100}\\) . students learn that if they partition each small square into ten equal parts, each of those parts represents 1 thousandth of the large square."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/265tj0gu6rpm7sg9v9wqjairwfa1",
+          "alt": "hundredths grids",
+          "caption": "",
+          "context": "for example, the diagram shown can represent 2 groups of 6 hundredths, or 12 hundredths, which can be written as the equation \\(2 \\times 0.06 = 0.12\\) . students may also see this as 2 times 6 groups of 1 hundredth or \\(2 \\times 6 \\times 0.01 = 12 \\times 0.01 = 0.12\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/j8weo9hpy0771s7jhfwlltkpf34n",
+          "alt": "hundredths grids",
+          "caption": "",
+          "context": "they use decimal notation to mark the side lengths. the diagram shows how the students would represent \\(0.3 \\times 1.4\\) to arrive at an answer of 0.42."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/fd21uscy4xqed13s4k7kedey5wvx",
+          "alt": "Diagram. Square.",
+          "caption": "",
+          "context": "the example shows how students can divide 4 into groups of 2 tenths. there are 20 groups of 2 tenths in 4 wholes."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/89in52faqr5h6wl2djhavco1it4u",
+          "alt": "dot plot",
+          "caption": "",
+          "context": "jada says \\(\\frac{3}{4}\\) of the students spend less than 2 hours on a screen. explain how you know your answer is correct."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/zzbwrz8mt3e2j895pwucto1zdjg5",
+          "alt": "Point R on a coordinate grid.",
+          "caption": "",
+          "context": "they describe points on the grid based on the numbers on the horizontal and vertical axes. for example, the point shown is located at \\((7,3)\\) ."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/pchrr6auwtxa2835oxlvzhdwb9fj",
+          "alt": "venn diagram",
+          "caption": "",
+          "context": "they sort different types of triangles and quadrilaterals based on what the shapes have in common. they classify the shapes into categories and subcategories."
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/axjtijdxppdvklaqc6igydmpla8u",
+          "alt": "rectangle partitioned vertically into 10 smaller equal sized rectangle",
+          "caption": "",
+          "context": ""
+        },
+        {
+          "src": "https://curriculum.illustrativemathematics.org/tikz_files/147320.svg",
+          "alt": "",
+          "caption": "",
+          "context": "near the end of the unit, ask your student to solve the following problem: this coordinate grid represents information about rectangles a d. based on the coordinate grid, what do we know about each of these rectangles? questions that may be helpful as they work: what strategy are you going to use to help you solve the problem? how can you show the rectangles represented by these points on the grid?"
+        },
+        {
+          "src": "https://cms-assets.illustrativemathematics.org/3y1e9j5iefv9p4vby9kc002a1xh9",
+          "alt": "coordinate plane",
+          "caption": "",
+          "context": "near the end of the unit, ask your student to solve the following problem: this coordinate grid represents information about rectangles a-d. based on the coordinate grid, what do we know about each of these rectangles?"
+        }
+      ]
+    }
+  ]
+}

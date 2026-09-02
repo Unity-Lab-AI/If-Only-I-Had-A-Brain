@@ -166,6 +166,35 @@ export const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
 // college 31,326 · grad 29,095): 71 cells ≈ 1,799,433 words ≈ 31.3 h at the
 // fast measured teach rate, 76.0 h mid, 200.8 h congested. The transition lane
 // is 68% of that, which is the term the pending rep re-price targets.
+// ⛔⛔⛔ MATH JOINS THE SET 2026-09-02, ON THE OPERATOR'S EXPLICIT RULING, AND
+// THE COMMENT ABOVE SAYING IT "CORRECTLY STAYS OUT" IS THEREBY SUPERSEDED.
+// Kept rather than deleted, because it recorded the reasoning that held until
+// the ruling, and a set member whose own comment argues against it is worse than
+// a stale line.
+//
+// ⭐ WHAT DID NOT CHANGE: math is still TAUGHT equationally. This set governs
+// whether a subject gets the hybrid depth corpus read to it alongside its
+// runners — the KNOWLEDGE half — and every math runner, gate and production
+// stack is untouched. A textbook explains what a variable is, why a limit
+// exists, what the theorem says; that is knowledge, and she was the only student
+// in her school reading none of it.
+//
+// ⚠ THE TRAP THIS AVOIDS, AND IT HAS BITTEN THREE TIMES: writing a corpus file
+// for a subject that is NOT in this set produces an UNREACHABLE cell — the file
+// exists, the counts look healthy, and `_trainAcademicStories` is never called
+// for it. `corpora/academic/math/*.json` would have been dead on arrival
+// without this line, exactly as `cs/college*` and `economics/college1` were.
+//
+// ⚠ RE-PRICE, computed BEFORE this line changed (standing LAW), MEASURED not
+// estimated — four real chapters run through the production cleaner:
+// `algebra-intermediate-book` 2,173 words/chapter × 83 = ~180,338 ·
+// `calculus-book` 4,060 × 131 = ~531,893 · `algebra-trigonometry-book` ~96
+// chapters at a comparable rate ≈ ~240,000. **~950,000 words across THREE
+// cells.** Against the teach rates this file already records (1,799,433 words =
+// 31.3 h fast / 76.0 h mid / 200.8 h congested): **~16.5 h fast, ~40 h mid,
+// ~106 h congested.** ⛔ The other 17 math cells gain the LANE but no corpus, so
+// they train nothing and cost nothing until a book exists for them — an absent
+// file is a no-op, not a failure.
 export const PROSE_ACADEMIC_SUBJECTS = new Set([
   'ela', 'science', 'social', 'economics', 'psychology', 'civics', 'cs',
   // The college-and-above roster — her CS major, gen-ed, the two CS tracks,
@@ -173,6 +202,8 @@ export const PROSE_ACADEMIC_SUBJECTS = new Set([
   'major', 'genered', 'cstheory', 'cssystems', 'research',
   // The six real courses that ran with no prose lane at all.
   'art', 'pe', 'music', 'health', 'language', 'ap',
+  // Math's KNOWLEDGE half. The equational runners keep teaching the method.
+  'math',
 ]);
 
 // Add #10 / #14 — subject-introduction matrix. The 6 core tracks above run
