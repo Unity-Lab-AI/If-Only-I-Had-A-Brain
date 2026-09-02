@@ -1,6 +1,50 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 EVERY PICTURE, AND THE BOUND THAT WAS NEVER A RATE LIMIT (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW — A LONG JOB IS RUNNING. DO NOT START ANYTHING THAT WRITES `corpora/`
+> ```
+> board          31 open · 22 in-progress   (19 completed rows migrated out today)
+> git            29 commits on feature/board-triage-0902, NOT cascaded
+> RUNNING        the figure-field job — batch 5 of ~26
+>                6,273 waves produced · 5,924 pushed to Forgejo · local 15 GB
+>                log: .scratch/bw.log      rate ~2.8/s, ETA ~2.5 h
+> walk           frozen ON PURPOSE — training still being BUILT
+> donor pod      i03ihi54kccu0l EXITED on purpose. restart = start-pod, NEVER terminate
+> ```
+> ⛔ **The running loop reads `corpora/academic` at the start of every batch.** Changing the corpus mid-flight changes the figure list it is walking. The two owed re-ingests (`MATHLEAK.1`, `CELLRACE.2`) are deferred for exactly this reason.
+>
+> ### ⛔⛔ THE FINDING THAT MATTERS MOST: BUILDING A LANE IS NOT RUNNING IT
+> The figure queue, the background drain and the link-travels-with-the-row design were all built — **and had never executed once.** Proven three ways rather than assumed: **zero** keys beginning `fig:` in the visual store, all 410 records stamped `source=reference-lookup` and dated 2026-08-29, and **`figure-queue.db` absent from disk entirely**. Gee stopped me packaging 349 MB of her old look-ups and calling it the corpus figures. **A reference is not a percept.**
+>
+> ### ⭐ WHAT EXISTS NOW THAT DID NOT THIS MORNING
+> - **`UnityAILab/BrainWaves`** — the corpus in full (189 cells, 50.2M words) **plus** one CDF 9/7 wavelet field per figure, at **full source resolution**, delivered over **Git LFS** and pulled by the brain at `/media/branch/main/fields/<xx>/<key>.field.json`.
+> - **`LINKS.jsonl`** (38,318 citations → 32,296 waves) and **`LINKS-by-cell.json`** — the text↔wave join, generated from the corpus alone so it is correct before the fields finish.
+> - **`server/webp-decode.js`** — an in-repo VP8 decoder. Her eyes understood jpeg and png only, and every PMC figure is webp.
+> - **`.claude/scripts/`** — `perceive-corpus-figures.mjs`, `gen-phonics-questions.mjs`, `gen-figure-links.mjs`, `gen-vp8-tables.mjs`, `clean-math.mjs`.
+>
+> ### ⛔⛔ THE DEFECT SPECIES THAT REPEATED ALL DAY — CHECK FOR IT BEFORE BELIEVING ANY "FIXED"
+> **A merge rule that makes every repair run a silent no-op.** `if (!old || e.story.length > old.story.length)` compares a re-fetch of the same source against itself: identical prose, `>` is false, the old entry wins, and **any improvement that does not LENGTHEN the text can never land.** Found in **three separate fetchers on three separate days** — it held 7,055 openstax figures with no `context` key while two repair runs rewrote the cells, logged success and changed nothing. ⭐ **The evidence that cracked it was that the key was ABSENT, not empty** — code that ran would have written it even blank. All six fetchers now carry `sameSource`-wins.
+>
+> ### ⚠ MY OWN ERRORS TODAY, EVERY ONE CAUGHT BY A NUMBER BEING IMPLAUSIBLE
+> - **Four wrong size estimates before one right**: 276 GB (sample was all Wikimedia photo originals), 562 GB (`--limit` took the FIRST N and the corpus opens with `ap/`), 211 GB, then **93 GB** measured off 2,309 real fields. **A calibration ordered by subject measures the subject.**
+> - **Three currency bugs in one cleaner**: dropping any sentence containing `$` discarded 9,307 saylor sentences (economics text — `$10,000` *is* the subject); then `$…$` ate the words between two prices; then a `>= 2 dollars` rule made the same mistake a third time. **The signal was never the count or the delimiter — it is what FOLLOWS the sign.**
+> - **A Windows filename trap**: `figKey` returns `fig:<hash>` and a colon is illegal in a filename — NTFS made an alternate data stream on a file called `fig`, with no write error at all.
+> - **`bare()` defined inside the `isMainThread` branch**, so every worker threw a `ReferenceError` the catch filed as `transformFail` — 115 of 120 "failed to transform" without the transform being reached.
+> - **I killed a job and its `;`-chain advanced to the next stage**, and separately my own pre-compaction waiter was still alive and fired a duplicate. ⚠ **`ps` in this shell shows neither node nor bash truthfully — only PowerShell `Get-CimInstance`.**
+>
+> ### ⛔ TWO RULINGS OF GEE'S THAT GOVERN
+> - **Nothing she perceives is scaled down** — the 320 px pre-transform downsample is gone. A wavelet record is resolution-independent on the way OUT; the analysis is discrete, so shrinking first destroys the fine subbands permanently. *Render-at-any-size* and *capture-all-detail* are different properties.
+> - **BrainWaves stays PUBLIC**, decided with the facts in hand after I demonstrated by anonymous fetch that a public Forgejo repo needs no login to download. It holds NC and ND material; the README states that plainly rather than implying otherwise.
+>
+> ### ⏳ NEXT
+> **Let the field job finish (~2.5 h), then run the two deferred re-ingests** — `MATHLEAK.1` (22,859 LaTeX-bearing sentences; the cleaner is built, the corpus is not yet clean) and `CELLRACE.2`'s confirming pass, now that academic can finally replace its own entries · **retry sweep for the ~19% of figures that fail per batch** (dead URLs, non-Wikimedia SVGs, GIFs — failures are not ledgered so a re-run picks them up) · **wire the 110 generated phonics questions into `EXAM_BANKS`** and the 12-cell → 213-cell scope · **4 empty maths cells** · **cascade the 29 commits** · **`REGRESSION.1` is last by construction.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 EVERY PICTURE, AND THE BOUND THAT WAS NEVER A RATE LIMIT (EARLIER)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
