@@ -31,7 +31,14 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
 const OUT = path.join(ROOT, 'corpora', 'academic');
-const UA = 'UnityBrainCurriculum/1.0 (non-profit educational research; open textbooks)';
+// ⛔⛔ CONTACT DETAILS ARE MANDATORY FOR WIKIMEDIA, AND WITHOUT THEM THIS LANE
+// WAS REFUSED ON ESSENTIALLY EVERY REQUEST (measured 2026-09-02 — six identical
+// requests: 0 OK / 6x 429 without contact info, 6 OK / 0x 429 with it).
+// The refusal is an identity rejection, not a rate limit, so no amount of
+// slowing down or backing off could ever clear it.
+// ⛔ Not UA forgery — the agent still says exactly what it is and who runs it,
+// and adds the contact details the host asks every robot to send.
+const UA = 'UnityBrainCurriculum/1.0 (https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain; contact@unityailab.com) node-fetch educational-research';
 const API = 'https://en.wikibooks.org/w/api.php';
 
 const SENT_MIN = 40, SENT_MAX = 320;

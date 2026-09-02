@@ -9,7 +9,16 @@
       "theme": "habitat",
       "story": "a habitat is the area in which an organism lives. it is a summary term for all the resources, physical and living which are present in an area. it is the natural environment in which an organism lives, and the physical environment which surrounds a population. most animals live in one type of environment because they are best suited to it. we say they are 'adapted to this environment'. for example, animals such as frogs, newts, and ducks have webbed feet to help them swim in the water. there are many different types of habitats and many kinds of adaptations to each habitat. if the habitat changes, it may no longer be suitable for the animals and plants that live there. climate change is making some habitats warmer, and so many animal species are moving to cooler areas. however some species are not able to move and the populations are getting smaller. scientists think that 10% of species may become extinct because of these changes. other habitats have been cleared to make them into farm land. in australia for example, 80% of the eucalypt forests have been cleared for farming over the last 210 years. this is threatening the survival of forest animals such as the koala. just as animals adapt to the places they live, so do plants. plants are adapted to a wide variety of habitats. as a result, each plant has certain characteristics. some are adapted to living on land while others live in water. plants that grow on land usually have stiff stems to hold them upright, while water plants tend to have less rigid stems because the water supports them. plants that live in dry climates like the desert have few or no leaves. many, such as cacti, store water when rain occurs. plants that grow in shaded areas have large leaves to capture as much sunlight as possible, or they climb towards the light.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/7/78/Moose_Canadian_animal.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A Canadian moose in its natural habitat",
+          "context": "a canadian moose in its natural habitat a habitat is the area in which an organism lives. it is a summary term for all the resources, physical and living which are present in an area.",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "animal",
@@ -21,37 +30,182 @@
       "theme": "life-cycle",
       "story": "life cycle means the stages a living thing goes through during its life. in some cases the process is slow, and the changes are gradual. humans have various stages of growth during their lives, such as zygote, embryo, child and adult. the change from a child to an adult is slow and continuous. in many societies it is marked by ceremonies at puberty. in most insects the transition is sharp and well-defined: egg > larva > pupa > imago . in some animals, the parent generation looks different from the child. the most common case is that there are two different forms. one form will have sexual reproduction, the others might not reproduce, or might reproduce asexually. some plants and a few other organisms have a system called alternation of generations which is not quite the same because one form is haploid and the other is dipoid. parasites are organisms that benefit from harming other organisms. the organism they profit from is usually called host. many parasites have complex life cycles, where they need different hosts for different stages of their development. as an example, the cycle egg > snail host > mammal host is common for parasites of herbivorous mammals. malaria is caused by single-celled parasites. these parasites go through two stages in their development. one stage is in the blood of mosquitoes, the other in the blood of humans. examples of this can also be found in the cnidaria. these animals live in the sea or in freshwater and the structure of most is relatively simple. some live as single animals, others form colonies. in a colony, many animals live together. often, each animal in a colony is specialized, and needs the other animals of the colony to survive. = = a well-known example where different generations have different forms is the jellyfish. it has two: one is called medusa: it reproduces sexually, and is what most people associate with the word jellyfish.very ofen the medusa is free-floating. the other form is called polyp. it does not reproduce sexually, and is usually sessile. polyps are generally attached to the sea floor or another hard surface in the water. coral reefs are colonies of polyps. in a complete cycle, the offspring of a medusa will develop into a polyp, and the offspring of a polyp will be a medusa. = = sometimes the cycle is modified or incomplete. anthozoa is a group of the cnidaria which contains sea anemones and corals. in the anthozoa, there is only a polyp stage, and no medusa stage. the box jellyfish form another small group in the cnidaria. in the box jellyfish, the polyp transforms into the medusa. in some cases, only part of the polyp transforms, the part that is left regenerates to form a new polyp. people have also talked about the box jellyfish because many of them produce poison that is very effective, and that can be dangerous to humans. in the stalked jellyfish, there is only one form, which has been interpreted as a sessile medusa.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/9/97/Danaus_plexippus_emerging_from_chrysalis_04.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "butterfly: adult insect life cycle means the stages a living thing goes through during its life. in some cases the process is slow, and the changes are gradual.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/0e/Polypen_einer_Gorgonie.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Polyps",
+          "caption": "",
+          "context": "coral reefs are colonies of polyps. in a complete cycle, the offspring of a medusa will develop into a polyp, and the offspring of a polyp will be a medusa.",
+          "licence": "CC BY-SA 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/28/HydomedusaeAglanthaDigitale.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A medusa",
+          "caption": "",
+          "context": "coral reefs are colonies of polyps. in a complete cycle, the offspring of a medusa will develop into a polyp, and the offspring of a polyp will be a medusa. a medusa incomplete cycle and variations change | change source sometimes the cycle is modified or incomplete. anthozoa is a group of the cnidaria which contains sea anemones and corals .",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/46/Acanthastrea_lordhowensis.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "Single polyp of a coral",
+          "caption": "",
+          "context": "people have also talked about the box jellyfish because many of them produce poison that is very effective, and that can be dangerous to humans. in the stalked jellyfish , there is only one form, which has been interpreted as a sessile medusa.",
+          "licence": "CC BY 2.5"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/0/06/PillarCoral.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A Coral",
+          "caption": "",
+          "context": "people have also talked about the box jellyfish because many of them produce poison that is very effective, and that can be dangerous to humans. in the stalked jellyfish , there is only one form, which has been interpreted as a sessile medusa.",
+          "licence": "Public domain"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Urticina_piscivora_1.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A sea anemone",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Avispa_marina.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "The sea wasp, a box jellyfish",
+          "caption": "",
+          "context": "the sea wasp , a box jellyfish a stalked jellyfish.",
+          "licence": "CC BY-SA 2.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Haliclystus_stejnegeri_1.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "A stalked jellyfish.",
+          "caption": "",
+          "context": "",
+          "licence": "CC BY-SA 2.0"
+        }
+      ]
     },
     {
       "theme": "magnet",
       "story": "a magnet is a special kind of metal which is made out of when a magnet goes near a special kind of metal or another magnet, and the poles touching are opposite, it will pull, or attract the other object closer. if the two poles are the same, the magnet and the other object will push away, or repel, from each other. this attraction and repulsion is called magnetism.all magnets have north and south poles. opposite poles are attracted to each other, while the same poles repel each other like south and south and north and north. when you rub a piece of iron along a magnet, the north-seeking poles of the atoms in the iron line up in the same direction. the force generated by the aligned atoms creates a magnetic field. soft magnets are often used in electromagnets some of the magnets are . these increase the magnetic field of a wire that carries an electrical current and is wrapped around the magnet. the field also increases with the current. magnetic materials: soft magnets. soft magnetic materials are those materials that are easily magnetised and demagnetised. permanent magnets have ferromagnetism. they occur naturally in some rocks, particularly lodestone, but are now commonly manufactured. a magnet's magnetism decreases when it is heated and increases when it is cooled. it has to be heated at around 1,000 degrees celsius . like poles will repel each other while unlike poles will attract each other. magnets are only attracted to special metals. iron, cobalt and nickel are magnetic. metals that have iron in them attract magnets well. metals like brass, copper, zinc and aluminium, silver are not attracted to magnets. non-magnetic materials such as wood and glass are not attracted to magnets as they do not have magnetic materials in them. lanthanum elements can make strong magnets. the spin of their electrons can be aligned, resulting in very strong magnetic fields. so these elements are used for high-strength magnets when their high price is not a concern. the most common types of rare-earth magnets are samarium-cobalt and neodymium-iron-boron magnets. natural/permanent magnets are not artificial. they are a kind of rock called lodestone or magnetite. a compass uses the earth's magnetic field, and points to the north magnetic pole. a north side of the magnet is attracted to the south side of another magnet. however, the north side of the compass points to the north pole, this can only mean that the \"north pole\" is really the magnetic south, and the \"south magnetic pole\" is really the magnetic north. ancient people discovered magnetism from lodestones which are naturally magnetized pieces of iron ore. lodestones, suspended so they could turn, were the first magnetic compasses. the earliest known surviving descriptions of magnets and their properties are from anatolia, india, and china about 2500 years ago. the properties of lodestones and their affinity for iron were written of by pliny the elder in his encyclopedia naturalis historia.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Bar_magnet.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Bar magnet",
+          "context": "bar magnet a magnet is a special kind of metal which is made out of when a magnet goes near a special kind of metal or another magnet, and the poles touching are opposite, it will pull, or attract the other object closer. if the two poles are the same, the magnet and the other object will push away, or repel , from each other.",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "solid",
       "story": "solid is one of the four common states of matter. the molecules in solids are closely bound together, so they can only vibrate. this means solids have a definite shape that only changes when a force is applied. this is different to liquids and gases which move randomly, a process called flow. solids can resist forces applied to their surface. when a solid becomes a liquid, this is called melting. liquids become solid by freezing. some solids, like dry ice, can turn into gas without turning liquid first. the forces between the atoms in a solid can take many forms. for example, a crystal of sodium chloride is made up of ionic sodium and chlorine, which are held together by ionic bonds. in diamond or silicon, the atoms share electrons and make covalent bonds. in metals, electrons are shared in metallic bonding. some solids, like most organic compounds, are held together with \"van der waals forces\" coming from the polarization of the electronic charge cloud on each molecule. the dissimilarities between the types of solid come from the differences between their bonding. most metals are strong, dense, and good conductors of electricity and heat. the mass of the elements in the periodic table, those to the left of a diagonal line drawn from boron to polonium, are metals. mixtures of two or more elements in which the big component is a metal are known as alloys. people have been using metals for many purposes since prehistoric times. the strength and relialbility of metals has led to their widespread use in making of buildings and other things, as well as in most vehicles, many tools, pipes, road signs and railroad tracks. iron and aluminium are the two most commonly used metals. they are also the most common metals in the earth's crust. iron is most commonly used in the form of an alloy, steel, which has up to 2.1% carbon, making it much harder than pure iron. since metals are good conductors of electricity, they are valuable in electrical tools and for carrying an electric current over long distances with little energy loss. because of this, electrical power grids rely on metal cables to get electricity. home electrical systems, for example, are wired with copper for its good conducting uses. the high thermal conductivity of most metals also makes them useful for stovetop cooking utensils. minerals are natural solids formed through many geological processes and having a crystal structure with uniform physical things throughout.. liquid gas plasma \"phases of matter\". archived from the original on 2009-10-30.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/d/dc/Teilchenmodell_Feststoff.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A diagram of how molecules are arranged in a solid.",
+          "context": "a diagram of how molecules are arranged in a solid. solid is one of the four common states of matter .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Chrysler_Building_detail.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "some solids, like most organic compounds, are held together with \"van der waals forces\" coming from the polarization of the electronic charge cloud on each molecule . the dissimilarities between the types of solid come from the differences between their bonding. the pinnacle of new york 's chrysler building , the world's tallest steel -supported brick building . most metals are strong, dense, and good conductors of electricity and heat .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/af/Different_minerals.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A collection of different minerals .",
+          "context": "home electrical systems , for example, are wired with copper for its good conducting uses. the high thermal conductivity of most metals also makes them useful for stovetop cooking utensils . a collection of different minerals . minerals are natural solids formed through many geological processes and having a crystal structure with uniform physical things throughout..",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "liquid",
       "story": "it is settled between solid and gas. liquid has an almost-fixed volume, but no set shape. every small force makes a liquid change its shape by flowing. because of that, gravity makes liquids always take the shape of the container. the molecules that make up the liquid can freely move among themselves. fluids that flow slowly have a high viscosity. some fluids like tar have such a high viscosity that they may seem solid. it is difficult to compress a liquid. if a liquid is cooled down until it is colder than a certain temperature, it will become a solid. this temperature is called the melting point or freezing point and is different for every different type of liquid. if a liquid is heated up it becomes a gas. the temperature this happens at is called the boiling point. examples of liquid are water, oils, tar and blood. in a liquid, the liquid on the top presses down on the liquid underneath, so at the bottom the pressure, p, is bigger than at the top. we call this the density and it is different for all liquids. archived from the original on 2009-10-30.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Drinking_water.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Water is a liquid",
+          "context": "water is a liquid a liquid is a form of matter . it is settled between solid and gas .",
+          "licence": "CC BY-SA 3.0"
+        }
+      ]
     },
     {
       "theme": "gas",
       "story": "a gas is one of the main forms, or states, of matter, like solids, liquids, and plasmas. what makes gases special is that they do not have a fixed shape or a set volume. instead, gas particles, tiny atoms or molecules, are spread out, move freely, and have a lot of energy. because the particles are so far apart and do not stick to each other much, gases can spread out to fill any space or container they are in. gases can also be squeezed into smaller spaces, which is called compression. gases are really important in science. they help us understand how heat, pressure, and motion work. gases are all around us, from the air we breathe to the fuel in engines, and they play big roles in nature and technology. gases have special physical properties that make them different from solids and liquids. for example, gases can be easily compressed , they have low density , and they can spread out and mix with other gases easily . gases also push against the walls of whatever container they are in. this push is called pressure and comes from gas particles bouncing around and hitting the container's walls. scientists use a formula called the ideal gas law to describe how gases behave. it is written as pv = nrt, where: p is pressure, v is volume, n is the amount of gas , r is a constant, t is temperature. this formula helps predict how a gas will act if you change its temperature, pressure, or volume. real gases do not always follow this rule, especially when they are under very high pressure or low temperature. in those cases, the gas particles get closer together and start to interact, which changes how they behave. scientists use more detailed equations, like the van der waals equation, to describe real gas behavior more accurately. gases can change into other forms of matter, like liquids or solids, when the temperature or pressure changes. for example, when a gas cools down or gets squeezed tightly , it can turn into a liquid in a process called condensation. if the conditions are right, a gas can even turn directly into a solid without becoming a liquid first. if you heat a liquid, it can become a gas through vaporization . and sometimes, if you heat a solid, it can turn straight into a gas without melting first. this process is called sublimation . these changes, called phase transitions, are very important. they happen all around us, in cloud formation, breathing, and even during volcanic eruptions. they are also used in many industries, such as refrigeration, distilling liquids, and making chemicals. gases can be made of just one kind of element or of different elements combined. some gases are elemental, meaning they are made of only one type of atom. examples include hydrogen , oxygen , and the noble gases like helium and neon. other gases are compounds, which means they are made of two or more different atoms joined together. examples of these include carbon dioxide , methane , and ammonia . gases can also be mixtures, where many gases are blended together. a good example is air, which we breathe every day. air is mostly made of nitrogen and oxygen, but it also contains small amounts of other gases like argon and carbon dioxide. these gas mixtures are super important. the mix of gases in earth's atmosphere helps regulate the planet's temperature and makes breathing possible. in factories and hospitals, special gas mixtures are used for welding, surgery, and even to keep food fresh. some gases belong to special groups because of how they behave or affect the world around us. noble gases are a group of gases like helium, neon, and argon that do nott easily react with other substances. this is because their atoms have a \"full\" outer shell of electrons, which makes them chemically stable or inert. that means they usually do not join with other atoms to form compounds. greenhouse gases, like carbon dioxide and methane , are gases that trap heat in earth's atmosphere. they let sunlight in but stop some of the heat from escaping, like a blanket. this helps keep the planet warm, but too much of these gases leads to global warming and climate change. there are also toxic gases, which can make people sick or be dangerous to breathe, and flammable gases, which can catch fire easily. these types of gases must be handled carefully to avoid accidents. to study and work with gases, scientists use special tools like gas chromatography and mass spectrometry. these tools help them identify what gases are present, measure how much there is, and even separate or analyze them in great detail. in a pure gas, each molecule may be made of an individual atom. it may be elemental, where each molecule is made of more than one of the same atom bound together. it may be compounds where molecules are made of many types of atoms together. an example of a monoatomic gas is neon, an example of an elemental gas is hydrogen and an example of a compound gas is carbon dioxide. a gas mixture contains a mix of any of the above types. air comprises 78% nitrogen, 21% oxygen, less than 1% argon, around 0.03% carbon dioxide and more other in very small quantities. poison gases were used as chemical weapons in wwi. all gases can flow, like liquids. this means the molecules move about independently of each other. most gases are colourless, like hydrogen. gas particles will spread about, or diffuse, in order to fill all the space in any container such as a bottle or a room. compared to liquids and solids, gases have a very low density and viscosity. we cannot directly see most gases since they aren't coloured. however it is possible to measure their density, volume, temperature and pressure. pressure is the measure of how much pushing force something is putting on another object. in a gas, this is usually the gas pushing on the container of the object or, if the gas is heavy, something inside the gas. pressure is measured in pascals. because of newton's third law, we can change the pressure of a gas by putting force on the object containing it. for example, squeezing a bottle with air inside pressurises the air inside. when talking about gas, pressure is often related to the container. a lot of gas in a small container would have very high pressure. a small amount of a gas in a big container would have low pressure. gas can create pressure itself when there is a lot of it. the weight of the gas creates pressure on anything underneath it, including other gas. on a planet, this is called atmospheric pressure. the temperature of a gas is how hot or cold it is. in physics it is usually measured in kelvin although degrees celsius are used more elsewhere. in a gas, the average velocity, i.e. how fast they move, of the molecules is related to the temperature. the faster the gas molecules are moving, the more they collide, or smash into each other. these collisions release energy, which in a gas comes in the form of heat. conversely if the temperature around the gas becomes hotter then the gas particles will convert the thermal energy to kinetic energy, making them move faster and making the gas hotter. a gas can go through two different state changes. if the temperature is low enough the gas can condense and turn into a liquid. sometimes, if the temperature is low enough it can go through deposition, where it changes straight to a solid. normally a gas must first condense to a liquid, and then freeze to become a solid, but if the temperature is very low it can skip the liquid stage and instantly become solid. frost on the ground in winter is caused by this. water vapour - a gas - goes into the air which is very cold, and instantly becomes ice due to deposition.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/2/21/Gas_particle_movement.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "An illustration of the random way gas molecules move, without being attached to each other.",
+          "context": "for tips on making this article better, read \" how to edit a page \" and \" how to write simple english pages \". for the fuel \"gas\", see gasoline . an illustration of the random way gas molecules move, without being attached to each other. a gas is one of the main forms, or states, of matter , like solids , liquids , and plasmas .",
+          "licence": "Public domain"
+        }
+      ]
     },
     {
       "theme": "plant",
       "story": "plants are one of six big groups of living things. they are autotrophic eukaryotes, this means they have complex cells, and make their own food. plants need sunlight, soil and water whereas seeds need warmth. plants include familiar types such as trees, herbs, bushes, grasses, vines, ferns, mosses, and green algae. the scientific study of plants, known as botany, has identified about 391,000 extant species of plants. most plants grow in the ground, with stems in the air and roots below the surface. the root part absorbs water and some nutrients the plant needs to live and grow. these climb the stem and reach the leaves. the evaporation of water from pores in the leaves pulls water through the plant. a plant needs sunlight, carbon dioxide, minerals from the soil and water to make food by photosynthesis. a green substance in plants called chlorophyll traps the energy from the sun needed to make food. chlorophyll is mostly found in leaves, inside plastids, which are inside the leaf cells. the leaf can be thought of as a food factory. leaves of plants vary in shape and size, but they are always the plant organ best suited to capture solar energy. once the food is made in the leaf, it is transported to the other parts of the plant such as stems and roots. the word \"plant\" can also mean the action of putting something in the ground. for example, farmers plant seeds in the field. with sunlight, water, and carbon dioxide, the plastids make sugars, the basic molecules needed by the plant. free oxygen is produced as a by-product of photosynthesis. later, in the cell cytoplasm, the sugars may be turned into amino acids for proteins, nucleotides for dna and rna, and carbohydrates such as starch. this process needs certain minerals: nitrogen, potassium, phosphorus, iron and magnesium. plant nutrition is the study of the chemical elements that are necessary for plant growth. first, they anchor the plant to the ground. second, they absorb water and various nutrients dissolved in water from the soil. plants use the water to make food. the water also provides the plant with support. plants that lack water become very limp and their stems cannot support their leaves. plants which specialise in desert areas are called xerophytes or phreatophytes, depending on the type of root growth. water is transported from the roots to the rest of the plant through special vessels in the plant. when the water reaches the leaves, some of it evaporates into the air. many plants need the help of fungi to make their roots work properly. this plant/fungi symbiosis is called mycorrhiza. rhizobia bacteria in root nodules help some plants get nitrogen. flowers are the reproductive organ only of flowering plants . the petals of a flower are often brightly colored and scented to attract insects and other pollinators. the stamen is the male part of the plant. it is composed of the filament that holds the anther, which produces the pollen. pollen is needed for plants to produce seeds. the carpel is the female part of the flower. the top part of the carpel contains the stigma. the style is the neck of the carpel. the ovary is the swollen area at the bottom of the carpel. the sepal is a leaf that protects a flower as a bud. how pollen moves from one flower to another flower is called pollination. this transfer can happen in different ways. insects such as bees are attracted to bright, scented flowers. when bees go into the flower to gather nectar, the spiky pollen sticks to their back legs. the sticky stigma on another flower catches the pollen when the bee lands or flies nearby it. some flowers use the wind to carry pollen. their dangling stamens produce lots of pollen that is light enough to be carried by the wind. their flowers are usually small and not highly coloured. the stigmas of these flowers are feathery and hang outside the flower to catch the pollen as it falls. a plant produces many spores or seeds. lower plants such as moss and ferns produce spores. the seed plants are the gymnosperms and angiosperms. if all the seeds fell to the ground beside the plant, the area might become overcrowded. there might not be enough water and minerals for all the seeds. seeds usually have some way to get to new places. some seeds can be dispersed by the wind or by water. seeds inside juicy fruits are dispersed after being eaten. sometimes, seeds stick to animals and are dispersed that way. the question of the earliest plant fossils depends on what is meant by the word \"plant\". if by plants we mean phototrophs using chlorophyll, then cyanobacteria in stromatolites are the first fossils, 3,450 million years ago in the archaean eon. the remarkable precision is possible because the fossils were sandwiched between lava flows that could be precisely dated from embedded zircon crystals. if by plants we include all types of algae, then the earliest known red algae lived 1.6 billion years ago. fossils of them were recently found in india. if by plants we mean green plants, viridiplantae, then the first fossils are green algae. this is probably the majority position amongst professional botanists. there is convincing evidence for the monophyly of charophyte green algae and embryophytes. there are still two choices: acritarchs may be reproductive cysts of green algae. if so, they are present in the neoproterozoic era, 1000 mya. otherwise, there is a large increase in planktonic algae around 540 mya in the cambrian period. if by plants we mean land plants, the first fossils are in the silurian. by the silurian, fossils of whole plants are preserved, including the lycophyte baragwanathia. from the devonian, detailed fossils of rhyniophytes have been found. early fossils of these ancient plants show the individual cells within the plant tissue. the devonian period also saw the evolution of the first tree in the fossil record, wattieza. this fern-like tree had a trunk with fronds, and produced spores. the coal measures are a major source of palaeozoic plant fossils, with many groups of plants in existence at this time. the spoil heaps of coal mines are the best places to collect; coal itself is the remains of fossilised plants, though structural detail of the plant fossils is rarely visible in coal. in the fossil forest at victoria park in glasgow the stumps of lepidodendron trees are found in their original growth positions.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0"
+      "licence": "CC-BY-SA-3.0",
+      "figures": [
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/1/12/Narcissus_2005_spring_002.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Green leaves and yellow flowers of a daffodil plant",
+          "context": "lewis and mccourt 2004 2 chlorobiota kenrick and crane 1997 3 chloroplastida adl et al., 2005 4 phyta barkley 1939 emend. green leaves and yellow flowers of a daffodil plant a picture of a grassy grass plant plants are one of six big groups of living things.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/44/Grassy_grass_plant.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "A picture of a Grassy grass plant",
+          "context": "a picture of a grassy grass plant plants are one of six big groups of living things. they are autotrophic eukaryotes , this means they have complex cells , and make their own food.",
+          "licence": "CC BY 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/4/49/Plagiomnium_affine_laminazellen.jpeg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Chloroplasts visible in the cells of Plagiomnium affine",
+          "context": "chloroplasts visible in the cells of plagiomnium affine at least some plant cells contain photosynthetic organelles which enable them to make food for themselves. with sunlight , water , and carbon dioxide , the plastids make sugars , the basic molecules needed by the plant.",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Lillium_Stamens.jpg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "Reproductive parts of Easter Lily ( Lilium longiflorum ). 1. Stigma, 2. Style, 3. Stamens, 4. Filament, 5. Petal",
+          "context": "reproductive parts of easter lily . petal flowers are the reproductive organ only of flowering plants .",
+          "licence": "CC BY-SA 3.0"
+        },
+        {
+          "src": "https://upload.wikimedia.org/wikipedia/commons/3/36/Plant_phylogeny.png?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
+          "alt": "",
+          "caption": "",
+          "context": "seeds inside juicy fruits are dispersed after being eaten. sometimes, seeds stick to animals and are dispersed that way. phylogenetic plant tree, showing the major clades and traditional groups. monophyletic groups are in black and paraphyletic in blue.",
+          "licence": "CC BY-SA 4.0"
+        }
+      ]
     }
   ]
 }

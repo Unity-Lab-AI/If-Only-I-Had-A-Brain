@@ -31,7 +31,11 @@ const OUT = path.join(ROOT, 'corpora', 'coding');
 
 const MAX_SENT_PER_TOPIC = 12;
 const SENT_MIN = 30, SENT_MAX = 240;
-const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
+// ⛔ Contact details are mandatory for Wikimedia hosts — without them the API
+// refuses essentially every request (0 OK / 6x 429, measured 2026-09-02), and it
+// is an identity rejection that no backoff can clear. Not UA forgery: the agent
+// still says what it is and who runs it.
+const UA = 'UnityBrainCurriculum/1.0 (https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain; contact@unityailab.com) node-fetch educational-research';
 
 // grade -> coding-concept Wikipedia topics, COMPOUNDING (HTML -> CSS -> JS ->
 // web apps -> CS foundations -> systems -> the brain-sim research at grad/phd).

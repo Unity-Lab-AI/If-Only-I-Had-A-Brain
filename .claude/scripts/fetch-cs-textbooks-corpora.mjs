@@ -52,7 +52,12 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, '..', '..', 'corpora', 'academic');
-const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
+// ⛔ Contact details are mandatory for Wikimedia hosts (one book here is a
+// Wikibook) — without them the API refuses essentially every request
+// (0 OK / 6x 429, measured 2026-09-02). It is an identity rejection, not a rate
+// limit, so no backoff can clear it. Not UA forgery: the agent still says
+// exactly what it is and who runs it, and adds the contact the host asks for.
+const UA = 'UnityBrainCurriculum/1.0 (https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain; contact@unityailab.com) node-fetch educational-research';
 
 const SENT_MIN = 40, SENT_MAX = 400;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

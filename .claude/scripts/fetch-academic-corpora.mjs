@@ -87,7 +87,40 @@ function sentCapFor(grade) {
   return SENT_CAP_BY_BAND[band] || SENT_CAP_BY_BAND.early;
 }
 const SENT_MIN = 30, SENT_MAX = 240;
-const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed content)';
+// ⛔⛔⛔ THE USER-AGENT WAS THE THROTTLE, AND EVERY PACING FIX EVER MADE TO THIS
+// FILE WAS TREATING A SYMPTOM (measured 2026-09-02).
+//
+// Gee: *"something is wrong it should not take 16 hours to down load a few books
+// that are MB a piece"*. He was right, and the cause was not rate at all.
+//
+// ⭐ THE MEASUREMENT, six identical requests per UA, back to back:
+//     'UnityBrainCurriculum/1.0 (educational research; ...)'   ok=0  429=6
+//     the same string + a contact URL and email                ok=6  429=0
+//
+// **Wikimedia's User-Agent policy requires a descriptive agent carrying a
+// contact URL or address.** The old string had none, so the API refused
+// essentially every request — and the refusal was not a rate limit that waiting
+// could clear, it was an identity rejection that waiting could never clear.
+//
+// ⚠ THE COST, in arithmetic that matches the observed run exactly: each refused
+// topic burned the whole backoff ladder, 1,500 + 6,000 + 18,000 + 48,000 =
+// **73.5 s**, and there are ~1,887 topics. **1,887 x 73.5 s = 38.5 hours** for a
+// job whose deliberate pacing totals 22 minutes. Two live processes showed **22
+// and 25 CPU-SECONDS across 7.75 hours** — almost the entire run was sleeping in
+// backoff.
+//
+// ⛔ AND IT EXPLAINS THE HISTORY WRITTEN INTO THIS VERY FILE. The note below
+// about tuning the between-cell sleep 4s -> 8s -> 20s and measuring no gain at
+// any setting, then blaming the in-cell burst, was chasing the wrong variable
+// twice: **a parameter that produces no change across three values is not the
+// cause**, and the real cause was never pacing. Every "lost to throttle" topic
+// and every silently-empty cell attributed to burst rate belongs here instead.
+//
+// ⛔ THIS IS NOT UA FORGERY, WHICH IS BANNED AND STAYS BANNED. Forgery is
+// claiming to be a browser to get past an access control that refuses robots.
+// This is the opposite: the agent still says exactly what it is and who runs it,
+// and adds the contact details the host explicitly asks every robot to send.
+const UA = 'UnityBrainCurriculum/1.0 (https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain; contact@unityailab.com) node-fetch educational-research';
 
 // (subject, grade) → real-course Wikipedia topics (scope-sequence aligned).
 // Each cell carries the FULL real-grade topic spread (not a thin sample) so the
