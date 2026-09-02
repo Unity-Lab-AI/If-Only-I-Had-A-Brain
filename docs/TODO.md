@@ -1942,6 +1942,23 @@ Gee, verbatim, in the order he said it:
   - ⚠ **Known permanent classes already observed and named, so the classifier starts from evidence:** non-Wikimedia SVGs (no rasteriser in the path), GIFs (no decoder — jpeg/png/webp only), and dead `raw.githubusercontent.com` paths from re-organised book repos.
   - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
 
+- [ ] `WAVESEE.7` — ⛔⛔ **THREE COPIES OF THE SAME 133 GB, ALL ON ONE 500 GB VOLUME. GEE CAUGHT THIS, NOT ME.** His words: *"and u are putting the waves in the right repo right brainwaves is going to be deleted so we dont end up with three copies... or wait can it still work keeping it in brainwave repo"*.
+  - ✅ **ANSWER TO THE QUESTION HE ASKED: yes, keeping them in `BrainWaves` works, and that repo must NOT be deleted** — it is the source `deploy/self-update.sh` pulls from on every press. Forgejo-only by design, because this repo also pushes to a PUBLIC GitHub remote.
+  - ⛔ **BUT THE THREE COPIES ARE REAL, and they share a disk:** `brain-server.js:7596` says it outright — *"this box also hosts Forgejo"*.
+  ```
+    1. Forgejo LFS store (BrainWaves)          ~133 GB
+    2. $BACKEND_DIR/fields  (pulled per press) ~133 GB
+    3. visual-memory-v8.db  (perceived recs)   ~133 GB
+                                               --------
+                                               ~400 GB of 500
+  ```
+  - ⭐ **COPIES 2 AND 3 ARE THE SAME DATA IN DIFFERENT CONTAINERS.** A `.field.json` holds a `rec`; the store banks that same `rec`. Nothing distinguishes them but the wrapper.
+  - ⭐ **AND `fields/` IS A STAGING AREA, NOT A STORE — which is what makes this cheap to fix.** Each field is read EXACTLY ONCE, at drain time; from then on the rec lives in her visual memory and the file is never opened again.
+  - **Two ways out, in preference order:**
+    1. **Delete `fields/` once the drain has consumed it** → **2 copies steady-state**, 3 only transiently during the walk. ⭐ **The re-pull is already part of every press (~4.4 min at his measured 500 MB/s)**, and a fresh walk wipes the store anyway — so the staging copy is rebuilt exactly when it is needed and absent the rest of the time. A few lines in the drain, no store-format change.
+    2. Have the store row **reference** the field path instead of duplicating the blob — collapses 2 and 3 permanently and the lazy `get()` already has the shape for it. ⚠ But the store then DEPENDS on `fields/` persisting, which trades a disk saving for a new failure mode: a missing file becomes a missing memory.
+  - ⚠ **THIS IS THE MISSING HALF OF `REGFIND.8`.** That row priced the visual store at 133 GB and Gee accepted it on the understanding that the box is big enough. **It did not count the other two copies.** The acceptance was given against a third of the real number, and he should see the corrected figure before it stands.
+
 ## TEACHKNOB — the training knobs exist and the operator cannot reach one of them — filed 2026-09-02
 
 Gee, verbatim:
