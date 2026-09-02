@@ -175,6 +175,16 @@ function cleanOpenStax(md, cap) {
   t = t.replace(/!\[[^\]]*\]\([^)]*\)/g, ' ');            // images — harvested separately by harvestFigures()
   t = t.replace(/\[\\?\[?link\\?\]?\]\([^)]*\)/gi, ' ');  // [\[link\]](#id)
   t = t.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');          // [text](url) -> text
+  // ⛔ THE MARKDOWN AND LaTeX BRACKETS THE RULES ABOVE DO NOT REACH (2026-09-02).
+  // Measured in the shipped corpus, not guessed: `read this [article][1] for an
+  // example`, `link to learning this [video][1] reviews`, `\[ s o subscript 2 \]`
+  // and stray `![` openers all trained as textbook prose. The reference-style
+  // link form `[text][n]` is a different shape from `[text](url)` and slipped
+  // past the line above.
+  t = t.replace(/\[([^\[\]]*)\]\[[^\[\]]*\]/g, '$1');     // [text][1] -> text
+  t = t.replace(/\\\[[\s\S]{0,400}?\\\]/g, ' ');          // \[ ... \] LaTeX display math
+  t = t.replace(/!\[/g, ' ');                             // orphaned image openers
+  t = t.replace(/\[\s*\d+(?:\s*[,-]\s*\d+)*\s*\]/g, ' '); // [ 12 ] numeric refs
   t = t.replace(/^\s*[*+-]\s+/gm, ' ');                   // bullet markers
   t = t.replace(/^#{1,6}\s+.*$/gm, ' ');                  // headings
   t = t.replace(/[*_`]+/g, '');                           // emphasis marks

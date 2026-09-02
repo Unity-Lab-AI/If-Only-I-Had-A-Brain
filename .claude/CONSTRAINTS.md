@@ -374,6 +374,31 @@ If a task becomes obsolete (the underlying code was deleted, the feature was scr
 
 > ⚠ **HOW THIS PROJECT APPLIES IT, from `docs/TODO.md`'s own header:** the verdict is **prepended** and the words `Original filing:` keep the entire original description behind it. ⛔ A completed row left at `[ ]`/`[~]` is the same defect class as an instrument nobody reads — six rows were found in that state on 2026-08-30 and were re-verified **in SOURCE**, not from the ledger, before their markers moved.
 
+## ⛔ A COMPLETION RECORD MAY NOT CONTAIN AN UNRESOLVED WARNING (2026-09-02)
+
+**The rule.** A row may not close while its own body still states an open problem. Either the warning is **resolved before the row closes**, or the row **spawns a live successor row that carries that warning forward** and the closing verdict names the successor. A `[x]` whose body says something is still broken is a lie told in two directions at once — it reports completion to anyone counting, and it reports a live defect to anyone reading.
+
+**Where it came from.** A row marked itself `[x]` while its own body said twelve subjects' corpora *"never train"*. Nothing carried that forward. The warning sat inside a closed record, which is the one place nobody looks for open work.
+
+**What counts as an unresolved warning inside a completion record:**
+
+- *"root cause is still open"* / *"cause unknown"* — the symptom was handled, the defect was not
+- *"never train"* / *"never fires"* / *"unreachable"* — a stated live gap
+- *"not measured"* / *"unmeasured"* / *"has never been measured"* — a claim without its number
+- *"awaiting"* / *"pending"* anything that is not a scheduled press or walk **named in a live row**
+- a `⚠` paragraph describing behaviour that is still wrong
+
+**What does NOT count** (these are records, not open work):
+
+- a retracted claim of mine, kept so the mistake is not repeated
+- a **deliberate** limit with its reason written in (*"left standing because removing it changes the public page — filed as X"*), where **X exists as a live row**
+- a warning about how to READ an instrument (*"quote it with the boot that produced it"*)
+- a fixed defect described in the past tense
+
+**The mechanical form of a legal close.** The verdict names one of: the warning is gone and how that was verified · the warning now lives in row `X` (which must exist, open) · the warning was a misreading, retracted here.
+
+⭐ **Why this belongs beside FINALIZED-BEFORE-DELETE.** That law governs *where* a completion record lives; this one governs *what it may claim*. Both exist because a record that looks complete stops being read, so anything left inside it stops existing.
+
 ---
 
 # LAW — GRADE COMPLETION GATE (Gee, 2026-04-16)

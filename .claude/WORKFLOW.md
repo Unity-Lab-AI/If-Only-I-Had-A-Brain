@@ -251,8 +251,11 @@ Task: [DESCRIPTION]
 Completed: YES
 FINALIZED.md updated: YES/NO (MUST be YES)
 TODO.md cleaned: YES/NO (MUST be YES)
+Unresolved warning left inside the closing record: NONE / carried forward as [ROW]  (MUST be one of these two)
 Gate: PASS/FAIL
 ```
+
+⛔ **The third line is a real check, not a formality** (`CONSTRAINTS.md §NEVER DELETE TODO INFO`, final section). Re-read the body you are about to close: if it still says *"root cause is still open"*, *"never trains"*, *"cause unknown"*, *"not measured"*, or carries a `⚠` describing behaviour that is still wrong, then either fix that first or **open the successor row and name it in the verdict**. A closed record is the one place nobody looks for open work.
 
 ---
 
