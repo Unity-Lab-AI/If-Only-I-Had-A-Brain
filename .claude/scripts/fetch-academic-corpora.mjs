@@ -1174,7 +1174,23 @@ async function buildCell(subject, grade, titles) {
     const old = byTheme.get(e.theme);
     // Default: keep the longer story (monotonic coverage for a flaky source).
     // --replace (FC.9): newly-fetched simpler content always wins.
-    if (REPLACE || !old || e.story.length > old.story.length) { byTheme.set(e.theme, e); continue; }
+    //
+    // ⛔⛔ SAME SOURCE WINS OUTRIGHT — the clause five of the six fetchers already
+    // had and this one did not, which made every repair run against it a
+    // guaranteed no-op. Keep-longer alone compares a re-fetch of the SAME topic
+    // against itself: the prose is identical, `>` is false, the old entry wins,
+    // and any improvement that does not LENGTHEN the text can never land — a
+    // figure's `context`, a corrected licence, the `stripWikiChrome` boilerplate
+    // fix, a new field entirely.
+    //
+    // This is not hypothetical. The identical missing clause in
+    // `fetch-openstax-corpora.mjs` held 7,055 figures with no `context` key at
+    // all, and re-running that fetcher rewrote the cells, logged success and
+    // changed nothing, twice, before the merge was suspected instead of the
+    // harvest. ⚠ It also means this fetcher could not repair an entry lost to
+    // the two concurrent ingests — the audit `CELLRACE.2` asked for.
+    const sameSource = old && old.source === e.source;
+    if (REPLACE || !old || sameSource || e.story.length > old.story.length) { byTheme.set(e.theme, e); continue; }
     // ⛔⛔ THE KEEP-LONGER RULE WOULD HAVE THROWN AWAY EVERY PICTURE. The old
     // entry wins whenever its story is at least as long — which is the normal
     // case on a re-fetch of the same article — and the winner is the entry from
