@@ -1476,6 +1476,15 @@ function autoClearStaleState() {
     // resume-safe excludes below — a Savestart keeps it (that is the retention
     // this file exists for), a fresh walk does not.
     path.join(__dirname, 'teachview-state.json'),
+    // ⛔ THE LEDGER DIES WITH THE WEIGHTS FOR THE SAME REASON, AND MORE SHARPLY.
+    // It records everything a cell ever taught INTO these weights. Surviving a
+    // fresh walk would open the monitor on a wiped brain and answer "show me
+    // everything this cell taught" with millions of rows about a brain that no
+    // longer exists — a more convincing lie than the counts, because it comes
+    // with the sentences. A Savestart keeps it; a fresh walk does not.
+    path.join(__dirname, 'teach-ledger.db'),
+    path.join(__dirname, 'teach-ledger.db-wal'),
+    path.join(__dirname, 'teach-ledger.db-shm'),
   ];
 
   // ── FRESHEYES (Gee 2026-08-20) — NO IMAGE STATE SURVIVES A FRESH WALK ──────
@@ -3627,6 +3636,10 @@ class ServerBrain {
         // is not the one minute that gets lost.
         process.on('exit', () => {
           try { tvStore.save(this.curriculum && this.curriculum._teachView); } catch { /* nf */ }
+          // ⚠ The ledger batches, so up to `FLUSH_ROWS` items sit in memory at
+          // any moment. Without this, every shutdown loses the tail — and the
+          // one guarantee a ledger makes is that it does not lose the tail.
+          try { if (this._teachLedger) this._teachLedger.close(); } catch { /* nf */ }
         });
       } catch (e) {
         console.warn(`[TeachView] retention not wired: ${e && e.message}`);
@@ -3727,6 +3740,17 @@ class ServerBrain {
       // Same pattern as the accessors above, for the same reason.
       this.cortexCluster.perceiveTextbookFigure = (fig, opts) =>
         this._perceiveTextbookFigure(fig, opts);
+      // ⭐ THE TEACH LEDGER BRIDGE — "everything a cell ever taught", which the
+      // 400-item reading ring structurally cannot answer. Attached here rather
+      // than imported in `curriculum.js` for the same reason as the two
+      // accessors above: that module also runs in the browser, where there is no
+      // filesystem, and `teachBus` keeps a no-I/O contract. The browser simply
+      // never sees this function and the guard there fails closed.
+      if (!this._teachLedger) {
+        const { TeachLedger } = require('./teach-ledger.js');
+        this._teachLedger = new TeachLedger();
+      }
+      this.cortexCluster.teachLedgerAppend = (row) => this._teachLedger.append(row);
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
       // a successful definition lookup so sem(word) → sem(def_words)
@@ -9251,6 +9275,54 @@ const httpServer = http.createServer((req, res) => {
         .map((e) => ({ ...e, tsLabel: humanTime(e.ts) }));
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system', count: lines.length, lines }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err && err.message }));
+    }
+    return;
+  }
+  // ⭐⭐ THE TEACH LEDGER — "all of it, not a sample". The reading ring answers
+  // what she is being taught right now and holds 400 items; this answers
+  // **everything a cell has ever taught**, paged to the true end.
+  //
+  // ⛔ EVERY RESPONSE CARRIES `total` BESIDE `returned`, AND `more` RATHER THAN
+  // A GUESS. The standing dashboard law is that a paced or paged feed prints its
+  // COMPLETE count next to the page — a partial view that reads as the whole is
+  // the defect this monitor exists to end. `more` is the honest end-of-data
+  // signal: a client pages until it is false instead of inferring the end from a
+  // short page.
+  //
+  // ⚠ `available:false` is a real answer, not an error. If the native store is
+  // missing the page says so, rather than returning an empty list that reads as
+  // "this cell taught nothing".
+  //
+  //   /teach-ledger.json?cell=math/grade1&after=0&limit=200
+  //   /teach-ledger.json?cells=1      per-cell totals
+  //   /teach-ledger.json?stats=1      rows written, pending, and DROPPED
+  if (req.url && req.url.startsWith('/teach-ledger.json') && req.method === 'GET') {
+    try {
+      const u = new URL(req.url, 'http://x');
+      const led = this._teachLedger;
+      const head = { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' };
+      if (!led) {
+        res.writeHead(200, head);
+        res.end(JSON.stringify({ available: false, reason: 'ledger not attached — the curriculum has not booted yet' }));
+        return;
+      }
+      let body;
+      if (u.searchParams.get('stats')) body = led.stats();
+      else if (u.searchParams.get('cells')) body = led.cells();
+      else {
+        body = led.page({
+          cell: u.searchParams.get('cell') || null,
+          lane: u.searchParams.get('lane') || null,
+          source: u.searchParams.get('source') || null,
+          after: parseInt(u.searchParams.get('after') || '0', 10) || 0,
+          limit: parseInt(u.searchParams.get('limit') || '200', 10) || 200,
+        });
+      }
+      res.writeHead(200, head);
+      res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), ...body }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err && err.message }));

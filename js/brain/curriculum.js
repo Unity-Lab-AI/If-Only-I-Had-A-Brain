@@ -4117,6 +4117,35 @@ export class Curriculum {
       rel: m.relationTagId == null ? null : m.relationTagId,
     });
     if (tv.ring.length > CAP) tv.ring.splice(0, tv.ring.length - CAP);
+
+    // ⭐⭐ THE LEDGER — the ring answers "what is she being taught right now",
+    // this answers "everything this cell has EVER taught", which the ring
+    // structurally cannot: it holds 400 items, about forty-five seconds once
+    // teaching floods it.
+    //
+    // ⛔ ATTACHED, NOT IMPORTED, and that is load-bearing. `teachBus` keeps a
+    // no-I/O contract because `curriculum.js` runs in the browser as well as on
+    // the server, and the browser has no filesystem. The bridge is hung on the
+    // cluster by the server at boot — the same pattern as
+    // `academicStorySentences` and `perceiveTextbookFigure` — so this fails
+    // closed in the browser instead of throwing into a teach.
+    //
+    // ⚠ The ledger batches its own writes; this call is a push onto an array.
+    const led = this.cluster && this.cluster.teachLedgerAppend;
+    if (typeof led === 'function') {
+      try {
+        led({
+          at: tv.lastAt,
+          cell: (m.subject && m.grade) ? `${m.subject}/${m.grade}` : null,
+          lane: L,
+          phase: m.phase || null,
+          source: src,
+          reps: m.reps == null ? null : m.reps,
+          rel: m.relationTagId == null ? null : m.relationTagId,
+          text: text == null ? '' : String(text),
+        });
+      } catch { /* the view must never break a teach */ }
+    }
   }
 
   /**

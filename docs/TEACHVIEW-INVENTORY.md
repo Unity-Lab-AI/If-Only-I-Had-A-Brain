@@ -64,11 +64,52 @@ the poison, which is why the counts were never sampled. **But "in totality" asks
 for something the window cannot give: everything a cell ever taught, retrievable
 afterwards.**
 
+> ### ✅ BUILT 2026-09-02 — the ledger, chosen by Gee as the first area built completely
+>
+> **The ring answers *what is she being taught right now*; the ledger answers
+> *everything this cell has ever taught*.** The ring stays at 400 — it is what a
+> human reads live, and an unbounded ring at teach rates is a memory leak with a
+> nice name. The ledger is a separate append-only store.
+>
+> **Priced before it was built, then measured.** `teachBus` fires **once per
+> unique item, on rep 0 only** — counting per rep would inflate the analytics by
+> the dose — so the row count is the number of distinct things taught, roughly
+> **3.5M across a full walk**. Harnessed at **547 MB projected**; disk is the
+> cheap axis and the resident ring is untouched.
+>
+> ⛔ **The row stores the TEXT, refusing an obvious 4x saving.** A row could
+> store `(source file, sentence ordinal)` and recover the text from the corpus —
+> but an ordinal into a **mutable** file silently re-points at different content
+> the moment that file is re-ingested, and nothing can detect it because the row
+> still looks well-formed. **That is the position-versus-identity bug fixed in
+> the figure lane the same day.** A ledger whose rows quietly change meaning is
+> worse than no ledger.
+>
+> **Reads:** `/teach-ledger.json?cell=<subject>/<grade>&after=N&limit=M` ·
+> `?cells=1` for per-cell totals · `?stats=1` for rows written, pending and
+> **dropped**. ⛔ **Every response carries `total` beside `returned` and an
+> explicit `more` flag** — a client pages until `more` is false rather than
+> inferring the end from a short page, and a partial view can never read as the
+> whole. `available:false` is a real answer, not an error: if the store is
+> missing the page says so instead of returning an empty list that reads as
+> *"this cell taught nothing"*.
+>
+> ⚠ **It dies with the weights.** Surviving a fresh walk would answer *"show me
+> everything this cell taught"* with millions of rows about a brain that no
+> longer exists — **a more convincing lie than the counts, because it comes with
+> the sentences.** A Savestart keeps it; a fresh walk clears it.
+>
+> **Verified through the production wiring, not a stand-in:** the real
+> `TeachLedger` driven through the real `teachBus` — 1,500 items, 0 dropped,
+> per-cell totals derived at the chokepoint (900 / 600), 900 of 900 paged in 5
+> pages, **ring still 400 while the ledger held all 1,500**, and a fresh instance
+> read every row back after a restart.
+
 | what | can we show it? |
 |---|---|
 | Complete per-lane, per-cell, per-source counts | **yes** — never sampled |
 | Totals that survive a restart | **yes** — added today; they accumulate across reboots and reset only on a fresh walk |
-| **Everything a single cell ever taught** | ⛔ **no — nothing keeps it.** This is the unbuilt half of the retention work, and it is **not** a bigger dump of the reading window |
+| **Everything a single cell ever taught** | ✅ **BUILT** — an append-only ledger keeps every item, paged to the true end, with the complete count printed beside every page. It is **not** a bigger reading window: the live ring stays bounded at 400 while the ledger holds all of it |
 | **Test words that appear nowhere in the whole corpus** | **partly** — the sweep exists and runs from the command line; its answer never reaches the page |
 
 ---
