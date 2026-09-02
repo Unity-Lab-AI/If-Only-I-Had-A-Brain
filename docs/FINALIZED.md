@@ -46,6 +46,35 @@
 
 ---
 
+- [x] `PERSONAVOICE.1` — ⛔ **RE-SCOPED AFTER THE VIOLATION ABOVE: THE GREETING / EMOTION GAP IS REAL, AND I AM NOT ALLOWED TO CLOSE IT BY WRITING HER LINES.** Measured, and it is not a thin spot but a structural hole: **`greeting: 0` and `emotion: 0` out of 306 sentences**, which is why the deleted fallback fired on *every* boot rather than in an edge case. ⛔ **The fix must be content she LEARNS, not content I author** — the distinction the law already draws is that hardcoded content she is TAUGHT (life canon, corpora, real lived scenes) is legitimate, while hardcoded content that STANDS IN for a capability is a fallback, **and a greeting I invent is the second kind no matter which file it sits in.** ⭐ **The legitimate sources, in order of preference:** (a) her per-grade **life canon**, where a greeting is part of a real lived scene rather than a decontextualised line; (b) **real conversation** — the live-chat exposure path already teaches from every user turn; (c) **licensed corpus dialogue** from the sources `CURVEBUILD` already ingests. ⚠ **Whichever is chosen, the sentences must be attested in a real source, not composed by me to fill a bucket.**
+
+> ✅ **DONE via source (c), and the constraint that made this row hard is the one it is closed under: NOT ONE LINE WAS WRITTEN BY ME.**
+>
+> **What shipped:** a `dialogueLines()` extractor in the Gutenberg ingest pulls **quoted speech out of the public-domain books already on her reading ladder** and writes it as a separate `speech-<title>` entry per work. Separate on purpose — the merge is per theme, so speech can grow or shrink without displacing the book's narration, and the corpus auditor can read the two lanes apart. The books were already age-banded by the ladder that selected them, so the speech arrives grade-appropriate by construction rather than by a filter.
+>
+> ⚠ **PUNCTUATION IS NEVER ADDED, and that rule is the difference between teaching and authoring.** A line that ends with a comma in the book (`"good morning," said the King`) keeps its words and loses the narrator's comma — it does **not** get a full stop invented for it, because **the terminal form is exactly what this lane exists to teach** and inventing one would teach a form the author never wrote.
+>
+> ### THE NUMBERS, CORPUS-WIDE, BEFORE → AFTER
+> ```
+>   sentences      234,220  ->  240,902        (+2.9%)
+>   ?                  734  ->   1,808         0.313%  ->  0.751%
+>   !                  515  ->   1,735         0.220%  ->  0.720%
+>   combined                                   0.533%  ->  1.471%   (2.8x)
+>   greeting openers     0  ->      25 attested lines
+>   speech entries       0  ->      33
+> ```
+> Greetings she can now learn from, all attested: *"good morning, red riding-hood and let us have a little chat."* · *"welcome, strangers!"* · *"hello, jordan where's tom gone?"* · *"good night, old sport."* · *"good-bye, and thank you very much."*
+>
+> ⚠ **THE BUDGET WAS RE-PRICED, NOT GUESSED.** A third-share of the prose cap was built and measured FIRST: combined 0.853%, +0.85% corpus. Real, but it left conversational form under 1% of everything she is ever taught — and the measurement showed **the cap was the binding constraint, not the source** (Great Expectations alone offered 734 questions and contributed 44 lines). Speech now gets the same per-book budget as narration, at a cost of +2.9% corpus on the academic-story lane only.
+>
+> **Consumer checked, not assumed:** `storySentences` flattens every experience in a cell regardless of theme, so `speech-*` entries reach `_trainAcademicStories` with **no code change** — verified by reading the loader rather than inferring it from the shape.
+>
+> ⭐ **Deliberately still open, and this is the honest part:** sources (a) life-canon greetings and (b) live-chat exposure were NOT used. (c) alone lifts conversational exposure 2.8× from attested text, which is what the row asked for; the other two remain available and neither is blocked by this.
+>
+> **Residual filed as `DIALOGUE.3`:** the four texts with the highest density of real conversation — the plays — contribute almost nothing, because the extractor finds speech by quotation marks and drama does not quote.
+
+---
+
 - [x] `CURVEBUILD.9` — **ONE STALE ENTRY TO REGENERATE: `ela/grade9.json` still carries a `the-odyssey` entry containing the translator's preface**, written by my pre-fix run. It is not a wiki entry (the ELA grade-9 topic list does not name the Odyssey), so it is purely debris from my own buggy pass. ⛔ **Fix by REGENERATING the cell — delete the file and re-run both ingests for it — not by hand-editing generated JSON.** Sequence it after the wiki top-up passes ELA so the regeneration is not raced.
 
 > ✅ **DONE — and the row's own method would not have worked, which is the finding.**
