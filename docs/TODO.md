@@ -2039,7 +2039,14 @@ Gee, verbatim:
   - ⚠ **AND THE RE-PRICE LAW APPLIES TO ME EXACTLY AS IT WOULD TO HIM.** Being the one turning the knob is not an exemption from `§RE-PRICE THE WALK BEFORE REMOVING A GATE` — if I lower a dose or weaken a bound mid-test, `corpus × reps × scale × visits` gets recomputed and written down first. **`DREAM_STRUCTURE_DOSE` was cut to `0.4` and reverted precisely because that arithmetic was skipped**, and a UI that makes the mistake one click away makes it more likely, not less.
   - **Sequence:** `TEACHKNOB.1`'s read panel is still step one and is still most of the value — **I cannot set what I cannot see**, and the classification above has to be established before a single write control is drawn. The write layer is step two, and it lands in the teach view beside the feed.
 
-- [ ] `TEACHKNOB.1` — ⛔⛔ **31 TRAINING / WEIGHT / SATURATION KNOBS EXIST. ZERO ARE ON THE DASHBOARD. HE HAS NO SHELL. HE CANNOT SEE OR TURN A SINGLE ONE.** ⭐ **RE-SCOPED 2026-09-02 BY `TEACHKNOB.4` — the panel lands IN THE TEACH VIEW, and read-only is now step one of two rather than the whole deliverable, because I am the one who will be turning these during the test.**
+- [x] `TEACHKNOB.1` — ✅⭐⭐ **THE READ PANEL SHIPPED 2026-09-02, IN THE TEACH VIEW, CARRYING ALL 193 KNOBS — NOT THE 31 THIS ROW SCOPED. 19/19 on a harness that runs the real page script against the real payload.**
+  - **`server/knob-registry.js` → `state.knobs` → the Training-knobs card in `html/teachview.html`.** Every knob shows its **live value**, its **default**, whether the **environment overrides it**, its **read site**, and whether a write could take effect at all. ⭐ **It renders ABOVE the teach-bus guard** — a stopped walk is precisely when these values want reading, and a panel that vanished when nothing was being taught would be useless at the only moment it matters.
+  - ⛔⛔ **HAND-WRITING 30 AND SHIPPING THAT WOULD HAVE MADE THIS THE THING IT EXISTS TO PREVENT.** Gee: *"how are there over 200 knobs but only 25 tooltips?"* — and he was right. **190 knobs are read from the environment; this row said 31.** The other 163 are **discovered by scanning the running source**, and each description is real authored text: the comment at its own read site, or failing that its row in `docs/ADMIN-CONTROLS.md` (**89 documented there, rescuing 47 that have no comment**). **134 of 193 carry a description; the remaining 59 say they have none rather than inventing one**, and the panel prints that ratio as its own incompleteness.
+  - ⛔⛔ **THE HARD FIELD IS `effect`, AND MY FIRST CLASSIFIER LIED.** A brace-depth scanner reported `DREAM_PHASE_BUDGET_MS` and `DREAM_STRUCTURE_DOSE` as **live** when both are module-scope constants — the IIFE wrapper defeats depth counting. **Caught by spot-checking it against two sites I had already read by hand, and discarded rather than shipped.** Effect is now hand-verified where it is claimed, and **discovery never infers it**: a knob renders `live`, `boot-frozen`, or `???` — and `???` renders as itself.
+  - ⛔ **AND THIS ROW'S OWN CENTRAL CLAIM WAS WRONG.** It said *"`DREAM_CONTENT_LR` is captured into a local at `curriculum.js:24188`"*, implying boot-frozen. **It is read into a method-local `let lr` on every call — it is LIVE.** Only **4** of the 193 are genuinely boot-frozen.
+  - **Two real bugs the render harness caught before this shipped:** `knobEsc` did not escape double quotes, so **one quote inside a real code comment closed the `data-tip` attribute early and injected the rest as markup**; and markdown leaked into tooltips from all three description sources. ⭐ **The second was fixed at the publish chokepoint, not per source** — fixing it per source meant doing it three times and missing the fourth, which is exactly what happened.
+  - ⏳ **WRITE SUPPORT IS `TEACHKNOB.4` AND IS DELIBERATELY NOT HERE.** The panel is read-only and **says so** rather than drawing a control that would not work.
+  - **Original filing:** ⛔⛔ **31 TRAINING / WEIGHT / SATURATION KNOBS EXIST. ZERO ARE ON THE DASHBOARD. HE HAS NO SHELL. HE CANNOT SEE OR TURN A SINGLE ONE.** ⭐ **RE-SCOPED 2026-09-02 BY `TEACHKNOB.4` — the panel lands IN THE TEACH VIEW, and read-only is now step one of two rather than the whole deliverable, because I am the one who will be turning these during the test.**
   - **Measured, not estimated:** `217` distinct `DREAM_*` env knobs across `js/` + `server/`; **31** of them govern training, weights, saturation or consolidation. `grep DREAM_ html/dashboard.html` returns **4**, and **none of the four are training knobs** (`DREAM_GW_IGNITION`, `DREAM_KEEP_STATE`, `DREAM_RECOMB_COHERENCE_MIN`, `DREAM_SELF_FRAME_MAX_UNITS`).
   - ⛔ **THIS IS THE SAME DEFECT CLASS AS EVERY OTHER FINDING TODAY, one level up: built, correct, and unreachable by the person who needs it.** The knobs are read from `process.env` at boot, which on that box means the systemd unit — and `feedback_box_deploy_dashboard_only` plus his own words are unambiguous: **dashboard buttons only, no SSH.** A knob that can only be turned by someone with a shell does not exist for this operator.
   - **The 31, grouped by what they actually govern:**
@@ -2066,7 +2073,23 @@ Gee, verbatim:
   - ⚠ **WRITE support is a SEPARATE and much heavier decision, deliberately not bundled.** Several of these are read ONCE at boot (`DREAM_CONTENT_LR` is captured into a local at `curriculum.js:24188`), so a live write would change nothing while appearing to work — **the exact instrument-that-lies shape this board is full of.** Any writable knob must state whether it takes effect live, at next cell, or only at next boot.
   - ⛔ **AND THE RE-PRICE LAW BINDS ANY WRITABLE KNOB.** `DREAM_STRUCTURE_DOSE` was cut to `0.4` and reverted with the reasoning written down — *"a dose multiplier was never waste, it was less teaching"*. A dashboard that lets a dose be lowered without recomputing `corpus × reps × scale × visits` is a LAW violation with a UI.
 
-- [ ] `TEACHKNOB.2` — ⛔⛔ **"WITHOUT JUST REPLACING OLD TEACHINGS WITH CURRENT TEACHINGS" — THIS IS THE REAL ONE, AND 8 OF HER 9 COURSES HAVE NO REHEARSAL AT ALL.**
+- [x] `TEACHKNOB.2` — ✅⭐ **BUILT 2026-09-02 — `_rehearseEarlierGrades`, at the `_cellRunner` chokepoint, running BEFORE the new material. 12/12 harness + 7/7 on the phase counter.**
+  - ⭐ **THE OUTPUT IS THE PROOF.** `science/grade8` now re-presents every earlier grade of its own subject before it teaches grade 8:
+  ```
+    REHEARSE-science-pre-K  n=27 reps=1     REHEARSE-science-grade4  n=27 reps=1
+    REHEARSE-science-kindergarten  n=27     REHEARSE-science-grade5  n=27 reps=1
+    REHEARSE-science-grade1  n=27 reps=1    REHEARSE-science-grade6  n=27 reps=1
+    REHEARSE-science-grade2  n=27 reps=1    REHEARSE-science-grade7  n=27 reps=1
+    REHEARSE-science-grade3  n=27 reps=1    → 243 sentences across 9 earlier grades
+  ```
+  - ⛔⛔ **RE-PRICE, COMPUTED BEFORE IT SHIPPED AND THEN RE-RUN THROUGH THE REAL METHOD RATHER THAN THE MODEL OF IT.** 189 prose cells, **170 gain a rehearsal** (a subject's first prose grade has nothing earlier). At **2% of the cell capped at 250 sentences at ONE rep** against the content lane's three: **17,125 rehearsal sentence-reps against 7,627,185 new = 0.225%**, worst single cell **0.667%** (`psychology/grade12`). Against ~24 days that is **+77.6 minutes across the entire walk**. ⭐ **The model predicted 0.232% / +80.1 min and the real method returned 0.225% / +77.6 min — the published estimate held.** **Teaching ADDED: no gate removed, no bound weakened, no corpus re-fetched**, so `corpus × reps × scale × visits` is unchanged for every piece of new material.
+  - ⭐ **EVERY EARLIER GRADE IS TOUCHED ON EVERY VISIT, and the budget is split evenly across them rather than spent as one window.** A single flattened window would have spent the whole budget on grade 1 — **the exact shape that made the figure lane unable to reach past its 24th picture.** Each earlier grade carries **its own cursor**, so grade 3 continues where it left off no matter whether grade 4 or grade 11 last rehearsed it (harnessed: cursor `27 → 46` across two different rehearsing cells).
+  - ⛔ **BEFORE the new material, and the order is load-bearing.** The cell's gate at the end grades what was taught THIS grade; rehearsing afterwards would decay exactly what is about to be measured. Warm-up review, then the lesson — which is also what the ELA fundamentals refresh already did.
+  - ⭐ **ONE REP IS A TOP-UP AND IS MEANT TO BE.** Oja deposits `1 − (1 − lr)^n`, so at `DREAM_CONTENT_LR = 0.0468` one exposure re-deposits **4.68%** onto a basin that already exists. **This re-anchors; it does not relearn** — relearning is what would cost real time.
+  - **Knobs, all three live and all three on the new panel:** `DREAM_REHEARSAL_FRACTION` (0.02, `0` disables the lane), `DREAM_REHEARSAL_MAX` (250), `DREAM_REHEARSAL_REPS` (1).
+  - ⚠ **THE PHASE COUNTER WAS CHECKED, NOT ASSUMED.** The new `REHEARSE-*` tags are `_phasedTeach` CHECKPOINT markers, and the phase count derives from `passedPhases` **filtered by the runner's declared `_teach*` name set** — so they are excluded by name and the progress bar cannot skew. **Proven 7/7 against `_declaredPhaseNames` on three cells**, for the section tags too. ⭐ The file's own comment said this; it was verified rather than believed, because a progress bar that lies is this project's signature defect.
+  - ⏳ **NOT SEEN ON A RUNNING BRAIN.** What a press must show: `REHEARSE-<subject>-<grade>` lines in the teach feed before each cell's new material, and the rehearsal lane appearing in the teach view's lane equalizer.
+  - **Original filing:** ⛔⛔ **"WITHOUT JUST REPLACING OLD TEACHINGS WITH CURRENT TEACHINGS" — THIS IS THE REAL ONE, AND 8 OF HER 9 COURSES HAVE NO REHEARSAL AT ALL.**
   - **What protects old learning today, verified at the code:**
     1. ⭐ **Oja is self-normalising** — `Δw = η·post·(pre − post·w)` converges instead of growing without bound. ⚠ **But the same `−η·post²·w` term IS the forgetting mechanism**: firing on new material decays the old weights. Oja bounds the damage; it does not prevent it.
     2. ⭐ **Saturation detection with a replay VETO** — `checkSemMotorHealth()` (`cluster.js:2615`), 4 env knobs, **8 consumers** across consolidation, curriculum, chat, state and the server. It catches the end state where every weight looks like every other (*"everything means everything"*) and **stops consolidation making it worse**.
@@ -2078,6 +2101,42 @@ Gee, verbatim:
   - ⚠ **RE-PRICE BEFORE IT SHIPS.** Rehearsal is teaching ADDED across 213 cells, and the walk's finiteness is currently held by the consolidation gate alone (~24 days with it, ~100 without). **This must be costed against that number before a single rep is added.**
 
 - [ ] `TEACHKNOB.3` — **THE TEACH VIEW IS TWO-THIRDS DONE AND HE ASKED FOR THE MISSING THIRD.** `TEACHVIEW.10` part ② shipped (the ledger, `server/teach-ledger.js` — *everything a cell ever taught*, paged, with `total` beside `returned`). ⏳ **`TEACHVIEW.8` (retention + export) and `TEACHVIEW.9` remain open**, and `.9` is his verbatim ask: *"i want to know everything and seee everything in bars graphs, charts readouts of whats being sent stati…"*. ⚠ **`TEACHKNOB.1`'s panel belongs beside it, not in a separate screen** — what she is being taught and the knobs that shape how it lands are one question.
+
+## CORPUSCALE — is the training still calibrated to the corpus we gutted? — filed 2026-09-02
+
+Gee, verbatim:
+
+> *"now did we re scale the cells phases and grades to all the new corpus? or is it all still based off everything we gutted"*
+
+- [ ] `CORPUSCALE.1` — ⛔⛔⛔ **THE VOCABULARY WINDOW IS 60 WORDS PER CELL VISIT AND THE MEDIAN CELL NEEDS 94 VISITS TO ANCHOR ITS WORDS. THIS IS THE ONE THAT IS STILL SIZED FOR THE OLD CORPUS.** Direct answer to his question, measured across all 189 prose cells.
+  - **What IS current, checked before answering rather than assumed:**
+    - **Phase counts — not corpus-dependent at all.** `_declaredPhaseNames` derives the denominator from the runner's own source, so a bigger corpus cannot skew it.
+    - **Grade band floors — re-derived 2026-09-02** for the rebuilt corpus (the `6.8× corpus → 4.7×` computation in `docs/THRESHOLD-DERIVATION.md`).
+    - **`DREAM_CONTENT_LR` — re-derived 2026-09-02** against the rebuilt corpus, not inherited (`0.0468`, matching a median word's exposure to a real deposit target).
+  - ⛔ **WHAT IS NOT: `VOCAB_CAP`.** `_trainAcademicStories` pre-teaches definitions for unlearned content words so the prose then binds on **anchored** basins rather than phantom ones — that is the whole point of the step. The window is **hardcoded `opts.vocabCap ?? 60`**, with **no env knob at all**, so it is not even a value the new panel could show.
+  ```
+    distinct content words per cell        visits at 60/visit to anchor them all
+      median          5,583                          94
+      science/phd   104,551                       1,743
+      research/phd   93,145                       1,553
+      social/phd     82,054                       1,368
+    total distinct-per-cell content words: 1,996,943
+    visits to anchor EVERY cell fully:        33,370
+  ```
+  **A cell is visited a handful of times.** So for the overwhelming majority of the corpus **the prose binds on basins the pre-vocab step never reached** — the exact failure that step exists to prevent, now defeated by scale rather than by a bug.
+  - ⛔⛔ **AND THE FIX IS NOT SIMPLY A BIGGER NUMBER — THAT WAS PRICED AND IT DOES NOT FIT.** At the measured ~3.9 s per definition, anchoring 1,996,943 words once is **~25 days**, i.e. the entire walk budget. **The bound exists for a real reason; 60 is still arbitrary against a corpus 8× the one it was chosen for.**
+  - ⭐⭐ **THE CHEAP FIX IS THE ORDER, NOT THE SIZE, AND IT IS MEASURED AT 3.0×.** The window rotates through `newWords` in **corpus order** — the order words happen to appear — when it could take the words the prose actually leans on. Share of a cell's total content-word **occurrences** covered by the 60 anchored words:
+  ```
+      cell                corpus order     top-60 by frequency
+      science/grade5          9.14%              27.18%   (3.0x)
+      math/grade10           10.39%              32.96%   (3.2x)
+      ela/grade3              5.49%              19.21%   (3.5x)
+      art/grade4              6.86%              24.49%   (3.6x)
+      science/phd             1.73%               9.84%   (5.7x)
+      MEAN                    6.85%              20.71%   = 3.0x
+  ```
+  **Three times as much of the prose anchored for the SAME 60 lookups and the same wall-clock.** ⚠ **Frequency ordering does not need a RE-PRICE** — the cost is identical, only the selection changes. **Raising the cap does, and must be argued separately.**
+  - ⚠ **The rotating window itself must stay.** It was built to fix a real bug (`slice(0, CAP)` stranded every word past the first 60 once 60 undefinable ones collected at the head) and a miss-list was rejected for a good reason that still holds. **Frequency ordering is a change to the ORDER of the rotation, not a return to a fixed head.**
 
 ## HEARING — she must HEAR, not read a transcript — filed 2026-09-02
 

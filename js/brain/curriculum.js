@@ -8855,6 +8855,21 @@ export class Curriculum {
           } catch (e) { if (this._hb) this._hb(`[Curriculum] fundamentals refresh (${grade}) non-fatal: ${e?.message || e}`); }
         }
       }
+      // ⭐⭐ PER-SUBJECT REHEARSAL — the operator's *"without just replaceing
+      // old teachings with current teachings"*, and it runs HERE, at the one
+      // chokepoint every cell of every subject passes through, rather than as a
+      // ninth copy of the ELA block above.
+      //
+      // ⛔ BEFORE the new material, deliberately: the cell's gate at the end
+      // grades what was taught THIS grade, so rehearsing afterwards would decay
+      // exactly what is about to be measured. Warm-up review, then the lesson.
+      //
+      // ⚠ Non-fatal like every other prepended phase — a refresh of old
+      // material can never be allowed to cost a cell its new material.
+      if (PROSE_ACADEMIC_SUBJECTS.has(subject)) {
+        try { await this._rehearseEarlierGrades(subject, grade, ctx); }
+        catch (e) { if (this._hb) this._hb(`[Curriculum] _rehearseEarlierGrades(${subject}/${grade}) non-fatal: ${e?.message || e}`); }
+      }
       // HYBRID depth: prose-academic subjects train the downloaded real-
       // curriculum corpus (corpora/academic/<subject>/<grade>.json) before the
       // bespoke runner — the operator 2026-06-18 hybrid decision. Math stays equational;
@@ -16565,6 +16580,145 @@ export class Curriculum {
     );
     this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) DONE — trained on ${sentences.length} real-curriculum sentences from corpora/academic/${subject}/${grade}.json (hybrid depth source).`);
     return { trained: sentences.length };
+  }
+
+  /**
+   * ⭐⭐ PER-SUBJECT REHEARSAL — top up what this subject taught in EARLIER
+   * grades before teaching the current one.
+   *
+   * Operator: *"without just replaceing old teachings with current teachings"*.
+   *
+   * ⛔ THAT WAS AN ACCURATE DESCRIPTION OF EIGHT OF HER NINE COURSES. Four
+   * things protect old learning in this brain and only one of them is
+   * curriculum rehearsal:
+   *
+   *   Oja self-normalises          bounds the damage — and its own `−η·post²·w`
+   *                                term IS the forgetting mechanism
+   *   saturation detection         catches "everything means everything" and
+   *                                VETOES replay; it does not refresh anything
+   *   CLS consolidation replay     replays EPISODES and SCHEMAS, never grade-2
+   *                                maths — memory consolidation, not curriculum
+   *   the fundamentals refresh     real spaced repetition — for ELA ALPHABET
+   *                                MECHANICS and nothing else
+   *
+   * So when grade 10 trained, **nothing anywhere refreshed grade 3, and the Oja
+   * decay on those weights was unopposed.**
+   *
+   * ⭐ THIS IS THE ELA IDIOM GENERALISED TO THE CHOKEPOINT, not a ninth copy of
+   * it. Every prose subject gets the same treatment from one place, because
+   * "fix the chokepoint, not the instance" is a rule this board has been
+   * corrected on twice.
+   *
+   * ⛔⛔ IT RUNS BEFORE THE NEW MATERIAL, AND THE ORDER IS LOAD-BEARING. The
+   * cell's gate at the end tests what was taught THIS grade; rehearsing after
+   * the new material would decay exactly what is about to be graded. Warm-up
+   * review, then the lesson — which is also what the ELA refresh already does.
+   *
+   * ⭐ EVERY EARLIER GRADE IS TOUCHED ON EVERY VISIT, not the nearest one. The
+   * budget is split evenly across earlier grades and each grade carries its OWN
+   * cursor, so successive visits sweep different material within each grade
+   * rather than re-presenting the same opening paragraph forever. A single
+   * flattened window would have spent the whole budget on grade 1 — the shape
+   * that made the figure lane unable to reach past its 24th picture.
+   *
+   * ⚠ RE-PRICE, COMPUTED BEFORE THIS SHIPPED and against the real corpus, not
+   * estimated: 189 prose cells, 170 of which gain a rehearsal (a subject's first
+   * prose grade has nothing earlier). At 2% of the cell capped at 250 sentences
+   * and ONE rep against the content lane's three, the walk gains **17,681
+   * sentence-reps against 7,627,185 — 0.232%**, worst single cell **0.667%**
+   * (`psychology/grade12`). Against ~24 days that is **+80 minutes across the
+   * entire walk**. **Teaching ADDED. No gate removed, no bound weakened, no
+   * corpus re-fetched** — so `corpus × reps × scale × visits` is unchanged for
+   * every piece of new material.
+   *
+   * ⛔ ONE REP IS A TOP-UP AND IS MEANT TO BE. Oja deposits
+   * `1 − (1 − lr)^n` of a pattern, so at `DREAM_CONTENT_LR = 0.0468` one
+   * exposure re-deposits **4.68%** onto a basin that is already there. **This
+   * re-anchors; it does not relearn** — and relearning is what would actually
+   * cost real time. Raising `DREAM_REHEARSAL_REPS` re-prices linearly and the
+   * arithmetic above is the baseline to raise it against.
+   */
+  async _rehearseEarlierGrades(subject, grade, ctx) {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.academicStorySentences !== 'function') {
+      return { rehearsed: 0, reason: 'no academic-story loader' };
+    }
+    const envNum = (k, d) => {
+      try {
+        const v = (typeof process !== 'undefined' && process.env) ? process.env[k] : undefined;
+        if (v === undefined || v === '') return d;
+        const n = Number(v);
+        return Number.isFinite(n) && n >= 0 ? n : d;
+      } catch { return d; }
+    };
+    // The escape hatch is checked by VALUE, not by presence — `=0` on the
+    // fraction is the honest way to disable the lane and reads the same as the
+    // figure lane's `DREAM_TEXTFIG_PER_CELL=0`.
+    const frac = envNum('DREAM_REHEARSAL_FRACTION', 0.02);
+    const maxSent = envNum('DREAM_REHEARSAL_MAX', 250);
+    const reps = envNum('DREAM_REHEARSAL_REPS', 1);
+    if (frac <= 0 || maxSent <= 0 || reps <= 0) return { rehearsed: 0, reason: 'disabled' };
+
+    const here = GRADE_ORDER.indexOf(grade);
+    if (here <= 0) return { rehearsed: 0, reason: 'first grade — nothing earlier' };
+
+    // ⚠ EARLIER = EARLIER IN `GRADE_ORDER` AND HOLDING PROSE. Deliberately not
+    // gated on the passedCells ledger: the walk resolves the lowest owed cell
+    // and runs in order, so an earlier grade of the same subject holding prose
+    // is material she has been through. Rehearsing a grade she somehow skipped
+    // would be teaching, not harm — whereas requiring a ledger hit would make
+    // this lane silently do nothing on any brain whose ledger predates it.
+    const earlier = [];
+    for (let i = 0; i < here; i++) {
+      const g = GRADE_ORDER[i];
+      let list = [];
+      try { list = cluster.academicStorySentences(subject, g) || []; } catch { list = []; }
+      if (list.length) earlier.push([g, list]);
+    }
+    if (!earlier.length) return { rehearsed: 0, reason: 'no earlier prose in this subject' };
+
+    let own = 0;
+    try { own = (cluster.academicStorySentences(subject, grade) || []).length; } catch { own = 0; }
+    // A cell with no prose of its own still rehearses — it has earlier grades to
+    // protect and nothing new to be measured against, so it takes the cap.
+    const budget = own > 0 ? Math.min(Math.floor(frac * own), maxSent) : Math.min(maxSent, 60);
+    if (budget <= 0) return { rehearsed: 0, reason: 'budget rounds to zero' };
+
+    const per = Math.max(1, Math.floor(budget / earlier.length));
+    if (!this._rehearsalCursor) this._rehearsalCursor = new Map();
+
+    let rehearsed = 0;
+    const covered = [];
+    for (const [g, list] of earlier) {
+      // ⭐ ONE CURSOR PER (subject, earlier-grade) — NOT per cell doing the
+      // rehearsing. A grade's sweep position is a property of that grade's
+      // corpus, so grade 3 continues where it left off no matter whether it was
+      // grade 4 or grade 11 that last rehearsed it. Per-process and deliberately
+      // not persisted: losing it costs one repeated window, never a gap.
+      const ck = `${subject}/${g}`;
+      const start = (this._rehearsalCursor.get(ck) | 0) % list.length;
+      const take = Math.min(per, list.length);
+      const slice = Array.from({ length: take }, (_, k) => list[(start + k) % list.length]);
+      this._rehearsalCursor.set(ck, (start + take) % list.length);
+      try {
+        await this._phasedTeach(`REHEARSE-${subject}-${g}`, () =>
+          this._teachSentenceList(slice, ctx, {
+            reps, ticksPerWord: 2,
+            label: `REHEARSE-${subject}-${g}`,
+            source: `corpora/academic/${subject}/${g}.json`,
+          })
+        );
+        rehearsed += take;
+        covered.push(`${g}:${take}@${start}`);
+      } catch (e) {
+        // One earlier grade failing must never cost the cell its new material.
+        if (this._hb) this._hb(`[Curriculum] rehearsal ${subject}/${g} non-fatal: ${e?.message || e}`);
+      }
+    }
+    if (rehearsed > 0 && this._hb) {
+      this._hb(`[Curriculum] _rehearseEarlierGrades(${subject}/${grade}) — ${rehearsed} sentence(s) re-presented at ${reps} rep across ${earlier.length} earlier grade(s) BEFORE new material, so this grade's teaching does not simply replace them (${covered.join(' ')}). Budget ${budget} = ${(frac * 100).toFixed(1)}% of this cell's ${own} own sentences, capped ${maxSent}.`);
+    }
+    return { rehearsed, grades: earlier.length, budget };
   }
 
   /**

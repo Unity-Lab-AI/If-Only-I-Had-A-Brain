@@ -71,25 +71,76 @@
   .tv-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
   .ok{background:var(--tv-good)} .warn{background:var(--tv-warn)} .bad{background:var(--tv-bad)}
   code{color:var(--tv-accent)}
+
+  /* ⭐ TOOLTIPS. Every panel, control and knob explains itself on hover, so the
+     page can be operated without a second document open beside it.
+
+     ⚠ A RENDERED TOOLTIP, NOT THE BROWSER'S `title=`. The native one takes
+     roughly a second to appear, truncates, cannot be styled and never wraps
+     usefully — on a page whose whole job is explaining what is being taught
+     and what each knob does, that is not good enough. `title` is kept as well,
+     so the text still exists for a screen reader and for anyone who hovers
+     before the CSS loads.
+
+     ⛔ POSITIONED ABOVE AND CLAMPED TO THE VIEWPORT WIDTH. A tooltip that
+     opens below its trigger falls off the bottom of a long knob table, and one
+     that sizes to its content runs off the right edge inside the narrow
+     right-hand column. */
+  .tv-tip{position:relative;border-bottom:1px dotted rgba(122,168,255,.5);cursor:help}
+  .tv-tip::after{
+    content:attr(data-tip);
+    position:absolute;left:0;bottom:calc(100% + 6px);z-index:40;
+    min-width:220px;max-width:min(420px,80vw);width:max-content;
+    background:#0b1219;border:1px solid #2b3a4a;border-radius:6px;
+    padding:8px 10px;color:#cfe0f0;font-size:11.5px;line-height:1.55;
+    letter-spacing:0;text-transform:none;font-weight:400;text-align:left;
+    white-space:pre-wrap;
+    box-shadow:0 6px 22px rgba(0,0,0,.6);
+    opacity:0;visibility:hidden;transition:opacity .12s ease;
+    pointer-events:none;
+  }
+  .tv-tip:hover::after,.tv-tip:focus-visible::after{opacity:1;visibility:visible}
+  /* Triggers near the right edge open leftward so the bubble stays on screen. */
+  .tv-tip.tip-l::after{left:auto;right:0}
+  /* A card heading is the widest trigger on the page; its bubble hangs below
+     instead, because there is nothing above the first card to hang into. */
+  .tv-card>h2 .tv-tip::after{bottom:auto;top:calc(100% + 6px)}
+  .tv-help{color:var(--tv-dim);font-size:11px;border:1px solid var(--tv-line);
+    border-radius:50%;width:14px;height:14px;display:inline-flex;
+    align-items:center;justify-content:center;margin-left:6px;flex:0 0 auto}
 </style>
 </head>
 <body>
 <header>
   <h1>Teach View</h1>
-  <span class="tv-sub" id="tvStatus"><span class="tv-dot warn"></span>connecting…</span>
-  <span class="tv-sub" id="tvCell">—</span>
+  <span class="tv-sub tv-tip" id="tvStatus"
+    title="Whether the teach bus is publishing. Silent is CORRECT when the walk is stopped."
+    data-tip="Whether the TEACH BUS is publishing right now.&#10;&#10;“teaching” — items arrived in the last 60s.&#10;“last taught Ns ago” — the bus has gone quiet; on a stopped walk that is correct, not a fault.&#10;“teach bus silent” — nothing has been published this boot at all.&#10;“brain unreachable” — the page could not fetch state; this says nothing about whether the brain is learning."><span class="tv-dot warn"></span>connecting…</span>
+  <span class="tv-sub tv-tip" id="tvCell"
+    title="The subject/grade cell being taught right now."
+    data-tip="The subject/grade cell currently being taught, e.g. science/grade5.&#10;&#10;The walk resolves the LOWEST cell still owed and starts there, so this is not necessarily the highest grade she has reached.">—</span>
 </header>
 
 <div class="tv-wrap">
   <div>
     <div class="tv-card">
       <h2>
-        <span>The exact text going into Unity</span>
+        <span class="tv-tip"
+          title="A PACED, SAMPLED reading pane — not the whole record. The counts below are complete; this is not."
+          data-tip="The literal strings being written into her weights, drained at a readable pace.&#10;&#10;⛔ THIS PANE IS PACED AND THEREFORE INCOMPLETE. Teaching publishes far faster than anyone can read, so items queue and drain at the rate set here; the server ships a window and the ring holds 400 rows.&#10;&#10;The ANALYTICS below are complete counts. This pane is not, and the note under it always says how many were dropped. To read everything a cell taught, use “Everything a cell ever taught”.">The exact text going into Unity</span>
         <span class="tv-controls">
-          <button id="tvPause" aria-pressed="false">pause</button>
-          <button id="tvStep">step</button>
-          <button id="tvClear">clear</button>
-          <label class="tv-sub">rate <input id="tvRate" type="range" min="1" max="20" value="4" /></label>
+          <button id="tvPause" aria-pressed="false" class="tv-tip"
+            title="Stop draining the queue. Items keep arriving and keep counting."
+            data-tip="Freeze the reading pane so a line can be read properly.&#10;&#10;⚠ Pausing stops the DRAIN, not the teaching. Items keep arriving and keep being counted; the queue depth in the note below shows the backlog building.">pause</button>
+          <button id="tvStep" class="tv-tip"
+            title="Drain exactly one queued item."
+            data-tip="Drain exactly one queued item, then stop again.&#10;&#10;For stepping through a burst line by line when something looks wrong.">step</button>
+          <button id="tvClear" class="tv-tip"
+            title="Clear the pane only. Nothing is unlearned and no count is reset."
+            data-tip="Empty the reading pane.&#10;&#10;⚠ This clears the DISPLAY only. Nothing is unlearned, no counter is reset, and the server-side ring is untouched.">clear</button>
+          <label class="tv-sub tv-tip"
+            title="How fast queued items are drained into the pane."
+            data-tip="How many queued items are drawn per second.&#10;&#10;Lower to actually read the text; raise to work through a backlog. This changes only how fast you SEE items — never how fast she is taught.">rate <input id="tvRate" type="range" min="1" max="20" value="4" /></label>
           <span class="tv-sub" id="tvRateLbl">4/s</span>
         </span>
       </h2>
@@ -100,19 +151,29 @@
     </div>
 
     <div class="tv-card" style="margin-top:14px">
-      <h2><span>Training analytics</span><span class="tv-sub" id="tvCells">—</span></h2>
+      <h2><span class="tv-tip"
+          title="COMPLETE counts — every item, not the paced sample above."
+          data-tip="Complete counts of everything the teach bus has published.&#10;&#10;⭐ Unlike the reading pane above, these are NOT sampled — every item is counted even when it was never drawn. That difference is the point of the page: a sampled view of a poisoned corpus can miss the poison, so the numbers are always whole.&#10;&#10;⚠ They accumulate across restarts, so a rate over the whole walk stays computable; “this boot” is labelled where it applies.">Training analytics</span><span class="tv-sub tv-tip" id="tvCells"
+          title="How many distinct cells have taught anything."
+          data-tip="How many distinct subject/grade cells have published at least one item.">—</span></h2>
       <div class="tv-body">
         <div class="tv-reg" id="tvRegisters"></div>
         <div style="margin-top:13px">
-          <div class="tv-sub" style="margin-bottom:6px">Items taught by lane</div>
+          <div class="tv-sub tv-tip" style="margin-bottom:6px"
+            title="Which KIND of teaching — definitions, sentences, structure, rehearsal."
+            data-tip="Which kind of teaching the items were, not what they said.&#10;&#10;A lane is a teach path: word definitions, sentence lists, sentence structure, rehearsal of earlier grades, and so on.&#10;&#10;⭐ The mix is diagnostic. A cell that is all definitions and no sentences is anchoring vocabulary it never then uses; the reverse is prose binding on basins that were never anchored.">Items taught by lane</div>
           <div class="tv-bars" id="tvLanes"></div>
         </div>
         <div style="margin-top:13px">
-          <div class="tv-sub" style="margin-bottom:6px">Where the content came from</div>
+          <div class="tv-sub tv-tip" style="margin-bottom:6px"
+            title="The FILE each item came from — the answer to 'where did she get that?'"
+            data-tip="The source file each item came from, e.g. corpora/academic/science/grade5.json.&#10;&#10;⭐ This is the answer to “where did she get that?”, and before this existed it could not be answered at all.&#10;&#10;⚠ A source appearing at a grade it does not belong to is corpus bleed — a wrong-band textbook reaching a cell it should not.">Where the content came from</div>
           <div class="tv-bars" id="tvSources"></div>
         </div>
         <div style="margin-top:13px">
-          <div class="tv-sub" style="margin-bottom:6px">Words taught per cell (this boot)</div>
+          <div class="tv-sub tv-tip" style="margin-bottom:6px"
+            title="Volume per cell SINCE THIS BOOT — not her lifetime total."
+            data-tip="Words taught per cell since this process started.&#10;&#10;⚠ THIS BOOT ONLY. A restart resets it, so a low bar on a freshly-restarted server means “not taught yet this boot”, never “never taught”.&#10;&#10;⚠ Volume is not depth. A large bar says a lot of text went in, not that any of it was understood — the gates are what measure that.">Words taught per cell (this boot)</div>
           <div class="tv-bars" id="tvCellBars"></div>
         </div>
       </div>
@@ -121,7 +182,11 @@
 
   <div>
     <div class="tv-card">
-      <h2><span>Her mind's eye</span><span class="tv-sub" id="tvEyeLbl">—</span></h2>
+      <h2><span class="tv-tip tip-l"
+        title="The image she is holding, reconstructed from her own field C — not a thumbnail of a file."
+        data-tip="What she is holding in her mind's eye right now, reconstructed by running the inverse CDF 9/7 transform over her own field C.&#10;&#10;⭐ It is NOT a thumbnail of a source file. Seeing, imagining and consciousness are the same equational substrate here, so this is a read of her actual state.&#10;&#10;⚠ Blank is a real answer — it means she is holding no image, not that the panel is broken.">Her mind's eye</span><span class="tv-sub tv-tip tip-l" id="tvEyeLbl"
+        title="What the current frame is bound to, and how old it is."
+        data-tip="What this frame is labelled with and how long ago it was banked.&#10;&#10;⛔ An unlabelled camera frame binds to NOTHING and never becomes this snapshot — a frame that fused with whatever word was current once became her memory of that word.">—</span></h2>
       <div class="tv-body">
         <canvas id="tvEye" width="256" height="256"></canvas>
         <div class="tv-note" id="tvEyeNote">
@@ -131,13 +196,75 @@
     </div>
 
     <div class="tv-card" style="margin-top:14px">
-      <h2><span>Flags, issues &amp; warnings</span><span class="tv-sub" id="tvFlagCount">0</span></h2>
+      <h2><span class="tv-tip tip-l"
+        title="Problems the teach lane raised about its own content."
+        data-tip="Problems the teach lane raised about what it was handed — markup that survived the cleaner, a source with no licence recorded, a cell whose corpus is empty.&#10;&#10;⚠ “No flags raised” means nothing was DETECTED. It is not proof the corpus is clean — only the checks that exist can fire.">Flags, issues &amp; warnings</span><span class="tv-sub" id="tvFlagCount">0</span></h2>
       <div class="tv-body" id="tvFlags"><div class="tv-note">No flags raised.</div></div>
     </div>
 
     <div class="tv-card" style="margin-top:14px">
-      <h2><span>Corpus coverage</span></h2>
+      <h2><span class="tv-tip tip-l"
+        title="How much real material each cell actually holds — and against what bar."
+        data-tip="How much real curriculum material each cell holds, and how many hold none.&#10;&#10;⛔ “Fed” means NOT STARVED, not finished. Where the floors were chosen rather than derived, the panel says so beneath the number — a bare numerator against an underived bar is how an instrument starts lying.&#10;&#10;The exam-word sweep beneath it is an UPPER BOUND: it runs against the corpus, not her trained weights, so a hit is a hard finding and a miss only means “not provable from the corpus”.">Corpus coverage</span></h2>
       <div class="tv-body" id="tvCoverage"><div class="tv-note">—</div></div>
+    </div>
+
+    <!-- ⭐⭐ THE INSTRUMENT DECK. The operator's ask: *"graphes and dials and bar
+         grpahs like equalizersser and traing line graphases all high tech and
+         futuristic looking in line with the rest of the project"*.
+         ⚠ Every needle and every bar is drawn from a published field. Nothing
+         here is decorative motion — a dial with no data reads "no signal" and
+         says so, because a gauge that idles at a plausible value is the exact
+         instrument-that-lies shape this page exists to catch. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2><span class="tv-tip tip-l"
+        title="Live gauges, an equalizer of teach lanes, and the throughput trace."
+        data-tip="The live instrument deck.&#10;&#10;DIALS read the rates and set points the brain publishes right now.&#10;THE EQUALIZER is one column per teach lane, scaled to the busiest lane, so the SHAPE of the teaching is readable at a glance.&#10;THE TRACE is throughput over the last few minutes, sampled once per poll.&#10;&#10;⛔ The trace is a CLIENT-SIDE history — it starts empty on load and is lost on refresh, because the server publishes an instant, not a series.">Instruments</span><span class="tv-sub" id="tvInstrNote">—</span></h2>
+      <div class="tv-body">
+        <div id="tvDials" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px"></div>
+        <div style="margin-top:13px">
+          <div class="tv-sub tv-tip" style="margin-bottom:6px"
+            title="One column per teach lane, scaled to the busiest."
+            data-tip="An equalizer over the teach lanes — one column per lane, height scaled to the busiest lane.&#10;&#10;⭐ Read the SHAPE, not the heights: a single tall column means one lane is doing all the teaching, and a flat row means the mix is even.">Lane equalizer</div>
+          <canvas id="tvEq" height="120" style="width:100%;height:120px;display:block;background:#05070a;border:1px solid var(--tv-line);border-radius:6px"></canvas>
+        </div>
+        <div style="margin-top:13px">
+          <div class="tv-sub tv-tip" style="margin-bottom:6px"
+            title="Items taught per second, sampled once per poll since this page loaded."
+            data-tip="Throughput — items taught per second, one sample per 2s poll.&#10;&#10;⛔ CLIENT-SIDE AND EPHEMERAL. It begins empty when the page loads and is lost on refresh; the server publishes a running total, not a series. A flat line at zero on a stopped walk is correct.">Throughput trace</div>
+          <canvas id="tvTrace" height="110" style="width:100%;height:110px;display:block;background:#05070a;border:1px solid var(--tv-line);border-radius:6px"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⭐⭐ THE KNOBS. Every value that governs how her weights are written,
+         published where the person operating this brain can actually read it.
+         ⛔ These were reachable only from a shell on the box, and there is no
+         shell — so the settings deciding how she learns could not be READ, let
+         alone turned. ⚠ This card renders even when the teach bus is silent,
+         which is deliberate: with the walk stopped the knobs are exactly what
+         you want to inspect, and a panel that vanishes when nothing is being
+         taught would be useless at the only moment it matters. -->
+    <div class="tv-card" style="margin-top:14px">
+      <h2>
+        <span class="tv-tip tip-l"
+          title="Every knob governing how her weights are written — live value, default, and whether a write could take effect."
+          data-tip="Every knob that governs how her weights are written: learning rate, dose, rep compression, saturation thresholds, firing set points, consolidation bounds.&#10;&#10;⛔ These are read from the process environment, which on the box means the service unit, which means a shell — so until now the settings deciding how she learns could not even be READ from here.&#10;&#10;⚠ READ-ONLY today, deliberately. A knob captured once at boot cannot honour a write: the value would read back correctly and change nothing. Drawing a control for that would be a lie, so no control is drawn until every effect class is proven.">Training knobs</span>
+        <span class="tv-sub tv-tip tip-l" id="tvKnobSummary"
+          title="How many knobs exist, how many the environment overrides, how many are frozen at boot."
+          data-tip="Totals for the list below.&#10;&#10;“overridden” — set explicitly in the environment; everything else is running the default read out of the code.&#10;“boot-frozen” — captured when the process started; a write cannot take effect until a restart.&#10;“effect unproven” — the read site is recorded but its scope has not been verified, so no promise is made either way.">—</span>
+      </h2>
+      <div class="tv-body">
+        <div class="tv-controls">
+          <label class="tv-sub tv-tip"
+            title="Show only knobs explicitly set in the environment."
+            data-tip="Hide every knob running its default and show only the ones the environment sets.&#10;&#10;⭐ This is the fastest way to see how this deployment differs from the code's own defaults."><input type="checkbox" id="tvKnobOnlySet" /> only overridden</label>
+          <label class="tv-sub tv-tip tip-l"
+            title="Show the description and the effect-class evidence for each knob."
+            data-tip="Show what each knob does, plus the evidence behind its effect class — the read site and why it was classified live, boot-frozen or unproven.&#10;&#10;⚠ The evidence line matters as much as the value: it is what lets a claim about this panel be checked instead of believed."><input type="checkbox" id="tvKnobDetail" checked /> show what each one does</label>
+        </div>
+        <div id="tvKnobs" style="margin-top:9px"><div class="tv-note">—</div></div>
+      </div>
     </div>
 
     <!-- ⭐ ALL OF IT, NOT A SAMPLE. The pane above is a paced 400-row window;
@@ -264,6 +391,16 @@ async function poll() {
   }
   const st = (j.state || j) || {};
   const tv = st.teachView;
+
+  /* ⭐ KNOBS FIRST, AND ABOVE THE TEACH-BUS GUARD ON PURPOSE. The bus is silent
+     whenever the walk is stopped, and that is precisely when these values want
+     reading. Rendering them below the `return` would hide them at the only
+     moment they matter. */
+  renderKnobs(st.knobs);
+  /* Instruments render on the same terms and for the same reason — a stopped
+     walk is exactly when the dials and the knob values want reading, so they
+     must not sit below the teach-bus guard. */
+  renderInstruments(st, tv);
 
   if (!tv) {
     /* ⛔ HONEST EMPTY STATE. "No data" here does NOT mean she is learning
@@ -533,6 +670,330 @@ $('tvLedgerPrev').onclick = () => {
   if (ledCursors.length > 1) ledCursors.pop();
   loadLedgerPage();
 };
+
+/* ────────────────────────────────────────────────────────────────────────────
+   THE KNOBS
+
+   ⛔ THE FIELD THAT MATTERS MOST HERE IS `effect`, NOT THE VALUE. A knob read
+   once at module scope was frozen when the process started: writing it later
+   updates the environment, reads back correctly, and changes nothing about the
+   training. So this panel labels every knob with whether a write could ever
+   take effect, and `???` — not yet verified — renders as itself rather than
+   being guessed into one of the other two. **A control that promises a write
+   will work when it cannot is worse than no control.**
+
+   ⚠ Read-only today, and the copy says so rather than drawing a slider that
+   does nothing. The write lane needs every effect class proven first.
+   ──────────────────────────────────────────────────────────────────────────── */
+/* ⛔ QUOTES MUST BE ESCAPED HERE AND THE FIRST VERSION DID NOT DO IT. This text
+   goes into `data-tip="…"` and `title="…"`, so ONE double quote inside a knob
+   description closes the attribute early and injects the rest of the sentence
+   as markup. It is real text from real code comments, not a hypothetical — the
+   render harness caught it before this shipped. Single quotes go too, so the
+   helper is safe in either attribute style. */
+function knobEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* The last payload, kept so a filter toggle re-renders instantly instead of
+   waiting up to 2s for the next poll. `renderKnobs(null)` means "same data,
+   redraw" and is how the checkboxes call it. */
+let lastKnobs = null;
+
+function renderKnobs(k) {
+  if (k) lastKnobs = k;
+  k = lastKnobs;
+  const host = $('tvKnobs');
+  if (!host) return;
+  /* ⛔ HONEST EMPTY STATE, same rule as the teach bus above. A missing block
+     means the server did not publish one — it does NOT mean there are no
+     knobs, and saying "none" here would be a lie of exactly the kind this
+     panel exists to stop. */
+  if (!k || !Array.isArray(k.groups)) {
+    $('tvKnobSummary').textContent = 'not published';
+    host.innerHTML = '<div class="tv-note">⛔ <b>The brain published no knob block.</b> '
+      + 'That means this server predates the registry — <b>not</b> that it has no knobs.</div>';
+    return;
+  }
+
+  const onlySet = $('tvKnobOnlySet').checked;
+  const detail = $('tvKnobDetail').checked;
+
+  const undescribed = Math.max(0, (k.total | 0) - (k.described | 0));
+  $('tvKnobSummary').textContent =
+    `${k.total} knobs · ${k.overridden} overridden · ${k.boot} boot-frozen`
+    + (undescribed ? ` · ${undescribed} undocumented` : '');
+
+  let html = '';
+  /* The standing warning goes ABOVE the list, because a reader who scrolls a
+     long table and acts on row 3 must have seen it.
+     ⛔ IT PRINTS THIS PANEL'S OWN INCOMPLETENESS. 193 rows look authoritative;
+     saying how many carry a real description, and how many effect classes are
+     unverified, is the difference between an instrument and a wall of numbers
+     that implies more certainty than it has. */
+  html += `<div class="tv-note">Read-only — ${knobEsc(k.writeNote)}. `
+    + `<b>${k.overridden}</b> of ${k.total} are set in the environment; the rest are running their defaults.`
+    + (k.boot ? ` <b>${k.boot}</b> were captured at boot and cannot change without a restart.` : '')
+    + (k.unproven ? ` <b>${k.unproven}</b> have not had their read site verified and are marked <code>???</code> rather than guessed.` : '')
+    + `<br>Descriptions: <b>${k.described}</b> of ${k.total} carry one`
+    + (k.discovered ? ` (${k.total - k.discovered} written here, the rest taken from the comment at the read site or from the admin-controls table)` : '')
+    + (undescribed ? ` — <b>${undescribed}</b> have none anywhere and say so rather than inventing one.` : '.')
+    + `</div>`;
+
+  for (const g of k.groups) {
+    const rows = (g.knobs || []).filter((x) => !onlySet || x.overridden);
+    if (!rows.length) continue;
+    html += `<div style="margin-top:11px"><b>${knobEsc(g.name)}</b></div>`;
+    for (const x of rows) {
+      const badge = x.effect === 'live' ? '<span class="tv-dot ok"></span>live'
+        : x.effect === 'boot' ? '<span class="tv-dot warn"></span>boot-frozen'
+        : '<span class="tv-dot warn"></span>effect unproven';
+      /* ⭐ EVERY KNOB CARRIES ITS OWN TOOLTIP, so the list is operable with the
+         descriptions collapsed. The bubble holds what it does, its default, its
+         effect class AND the evidence for that class — the last of which is the
+         part that lets the panel be checked rather than believed. */
+      const effectLine = x.effect === 'live'
+        ? 'LIVE — re-read on every use, so a write would take effect on the next call.'
+        : x.effect === 'boot'
+          ? 'BOOT-FROZEN — captured at module load. A write updates the environment, reads back correctly, and changes NOTHING until a restart.'
+          : 'EFFECT UNPROVEN — the read site is recorded but its scope has not been verified. Not guessed into a class it may not belong to.';
+      const tip = `${x.what}\n\nDefault: ${x.dflt}\nNow: ${x.effective}${x.overridden ? ' (set in the environment)' : ' (default — not set)'}\n\n${effectLine}\nRead site: ${x.site}\nEvidence: ${x.proof}`;
+      html += `<div class="tv-tip tip-l" data-tip="${knobEsc(tip)}" title="${knobEsc(x.what)}"`
+        + ` style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);border-left:0">`
+        + `<div><code>${knobEsc(x.key)}</code> = <b>${knobEsc(x.effective)}</b>`
+        + (x.overridden
+          ? ` <span class="tv-sub">(set in the environment; default ${knobEsc(x.dflt)})</span>`
+          : ` <span class="tv-sub">(default — not set)</span>`)
+        + `</div>`
+        + `<div class="tv-sub">${badge} · <code>${knobEsc(x.site)}</code></div>`
+        + (detail
+          ? `<div class="tv-note" style="margin-top:3px">${knobEsc(x.what)}`
+            + `<br><span class="tv-sub">effect class evidence: ${knobEsc(x.proof)}</span></div>`
+          : '')
+        + `</div>`;
+    }
+  }
+  host.innerHTML = html || '<div class="tv-note">Nothing matches the current filter.</div>';
+}
+
+$('tvKnobOnlySet').onchange = () => renderKnobs(null);
+$('tvKnobDetail').onchange = () => renderKnobs(null);
+
+/* ────────────────────────────────────────────────────────────────────────────
+   THE INSTRUMENT DECK — dials, a lane equalizer, and a throughput trace.
+
+   ⛔ THE RULE EVERY INSTRUMENT HERE OBEYS: a gauge with no data reads NO SIGNAL
+   and says so. It does not idle at a plausible-looking value, and it does not
+   animate to look alive. A dial that shows a rate it has not measured is the
+   same defect as a dashboard field reporting health it cannot know, and this
+   page exists to catch that class — it must not commit it.
+
+   ⚠ Canvas rather than DOM: these redraw every 2s and one of them is a moving
+   series. Backing them with elements would put layout work on the same loop
+   the feed drains on, for a picture.
+   ──────────────────────────────────────────────────────────────────────────── */
+const TV_C = {
+  accent: '#4fd6ff', pink: '#ff79c6', good: '#49d67f',
+  warn: '#ffc861', dim: '#6b7c90', line: '#1c2430', ink: '#c9d6e4',
+};
+
+/* Canvases are sized in CSS and must be given a real backing-store size, or
+   they render soft on any display with a device pixel ratio above 1. */
+function fitCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 300, h = cv.clientHeight || 100;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+
+/* A 240° radial gauge. `frac` null means NO SIGNAL — the arc is drawn empty and
+   the readout says so rather than parking the needle at zero, which would be
+   indistinguishable from a real measured zero. */
+function drawDial(cv, label, value, frac, colour, sub) {
+  const { ctx, w, h } = fitCanvas(cv);
+  const cx = w / 2, cy = h * 0.60, r = Math.min(w, h) * 0.36;
+  const A0 = Math.PI * 0.75, A1 = Math.PI * 2.25;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = TV_C.line; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(cx, cy, r, A0, A1); ctx.stroke();
+  if (frac != null && isFinite(frac)) {
+    const f = Math.max(0, Math.min(1, frac));
+    const g = ctx.createLinearGradient(cx - r, 0, cx + r, 0);
+    g.addColorStop(0, colour); g.addColorStop(1, TV_C.pink);
+    ctx.strokeStyle = g; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(cx, cy, r, A0, A0 + (A1 - A0) * f); ctx.stroke();
+    // The needle, so a value near the ends is still readable at a glance.
+    const a = A0 + (A1 - A0) * f;
+    ctx.strokeStyle = TV_C.ink; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * (r - 3), cy + Math.sin(a) * (r - 3)); ctx.stroke();
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = frac == null ? TV_C.dim : TV_C.ink;
+  ctx.font = '600 15px ui-monospace,Menlo,Consolas,monospace';
+  ctx.fillText(frac == null ? '—' : String(value), cx, cy + 4);
+  ctx.fillStyle = TV_C.dim; ctx.font = '9.5px ui-monospace,Menlo,Consolas,monospace';
+  ctx.fillText(String(label).toUpperCase().slice(0, 18), cx, h - 12);
+  if (sub) ctx.fillText(String(sub).slice(0, 22), cx, h - 3);
+}
+
+/* Build the dial row. ⚠ Each entry names the FIELD it reads; a dial whose field
+   is absent renders as no-signal instead of being dropped, because a missing
+   instrument is itself information. */
+function renderDials(st, tv) {
+  const host = $('tvDials');
+  if (!host) return;
+  const cur = st.consciousness || {};
+  const specs = [
+    {
+      id: 'firing', label: 'firing', tip: 'Share of neurons that fired on the last tick, against the homeostatic target the drive is steered toward.\n\nDrifting far from target for long means the drive loop is not holding — not that she is thinking harder.',
+      val: cur.firingPct != null ? cur.firingPct.toFixed(2) + '%' : null,
+      frac: cur.firingPct != null ? Math.min(1, cur.firingPct / 15) : null, c: TV_C.accent,
+      sub: 'target 7.5%',
+    },
+    {
+      id: 'phi', label: 'phi', tip: 'The integration proxy — Shannon entropy over a sample of spikes.\n\n⚠ A PROXY, not a measurement of consciousness. It says how distributed her activity is, nothing more.',
+      val: cur.phi != null ? Number(cur.phi).toFixed(3) : null,
+      frac: cur.phi != null ? Math.min(1, cur.phi) : null, c: TV_C.pink, sub: 'integration proxy',
+    },
+    {
+      id: 'lanes', label: 'lanes', tip: 'How many distinct teach lanes have published this boot.\n\nOne lane doing everything is a narrower education than the mix suggests.',
+      val: tv ? String(Object.keys(tv.byLane || {}).length) : null,
+      frac: tv ? Math.min(1, Object.keys(tv.byLane || {}).length / 8) : null, c: TV_C.good, sub: 'distinct',
+    },
+    {
+      id: 'cells', label: 'cells', tip: 'Distinct subject/grade cells that have taught something this boot, against the 213 the walk runs.\n\n⚠ This boot only — a restart resets it.',
+      val: tv ? String(tv.cells || 0) : null,
+      frac: tv ? Math.min(1, (tv.cells || 0) / 213) : null, c: TV_C.accent, sub: 'of 213 walked',
+    },
+    {
+      id: 'knobs', label: 'knobs set', tip: 'How many training knobs the environment overrides, against the total in the registry.\n\nThe rest are running the defaults read out of the code.',
+      val: st.knobs ? `${st.knobs.overridden}/${st.knobs.total}` : null,
+      frac: st.knobs ? st.knobs.overridden / Math.max(1, st.knobs.total) : null, c: TV_C.warn,
+      sub: st.knobs ? `${st.knobs.boot} boot-frozen` : '',
+    },
+    {
+      id: 'disk', label: 'disk used', tip: 'Share of the box volume in use.\n\nThe visual store grows with everything she sees, so this is the tripwire for the save floor — deferred saves are the symptom that matters.',
+      val: st.disk && st.disk.usedPct != null ? st.disk.usedPct + '%' : null,
+      frac: st.disk && st.disk.usedPct != null ? st.disk.usedPct / 100 : null, c: TV_C.good,
+      sub: st.disk && st.disk.saveDeferrals ? `${st.disk.saveDeferrals} saves deferred` : 'save floor ok',
+    },
+  ];
+  /* Rebuild only when the set of dials changes — redrawing canvases every poll
+     is cheap, replacing DOM every poll is not. */
+  if (host.dataset.built !== String(specs.length)) {
+    host.innerHTML = specs.map((s) =>
+      `<div class="tv-tip tip-l" data-tip="${knobEsc(s.tip)}" title="${knobEsc(s.label)}"`
+      + ` style="background:#0a0e14;border:1px solid var(--tv-line);border-radius:6px;padding:4px">`
+      + `<canvas id="tvDial_${s.id}" height="96" style="width:100%;height:96px;display:block"></canvas></div>`).join('');
+    host.dataset.built = String(specs.length);
+  }
+  let noSignal = 0;
+  for (const s of specs) {
+    const cv = $('tvDial_' + s.id);
+    if (cv) drawDial(cv, s.label, s.val, s.frac, s.c, s.sub);
+    if (s.frac == null) noSignal++;
+  }
+  /* ⛔ Say how many dials have no data. Six gauges reading "—" with no
+     explanation looks like a broken panel; named, it is a true statement about
+     what the brain is currently publishing. */
+  $('tvInstrNote').textContent = noSignal
+    ? `${specs.length - noSignal}/${specs.length} reading · ${noSignal} no signal`
+    : `${specs.length}/${specs.length} reading`;
+}
+
+/* The lane equalizer. Columns are scaled to the busiest lane, so the picture is
+   about SHAPE — one tall column means one lane is doing all the teaching. */
+function renderEq(tv) {
+  const cv = $('tvEq'); if (!cv) return;
+  const { ctx, w, h } = fitCanvas(cv);
+  const lanes = Object.entries((tv && tv.byLane) || {}).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (!lanes.length) {
+    ctx.fillStyle = TV_C.dim; ctx.font = '11px ui-monospace,Menlo,Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('no lane has published this boot', w / 2, h / 2);
+    return;
+  }
+  const max = Math.max(...lanes.map((l) => l[1])) || 1;
+  const pad = 8, bw = (w - pad * 2) / lanes.length;
+  lanes.forEach(([name, n], i) => {
+    const x = pad + i * bw, bh = Math.max(2, (h - 34) * (n / max));
+    // Segmented like a real equalizer rather than one solid bar — the segments
+    // make relative heights readable without reading the numbers.
+    const seg = 5, gap = 2;
+    for (let y = 0; y < bh; y += seg + gap) {
+      const t = y / Math.max(1, h - 34);
+      ctx.fillStyle = t > 0.75 ? TV_C.pink : t > 0.45 ? TV_C.accent : TV_C.good;
+      ctx.globalAlpha = 0.35 + 0.65 * (y / Math.max(1, bh));
+      ctx.fillRect(x + 3, h - 22 - y - seg, Math.max(3, bw - 8), seg);
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = TV_C.dim; ctx.font = '8.5px ui-monospace,Menlo,Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(name).slice(0, 9), x + bw / 2, h - 11);
+    ctx.fillStyle = TV_C.ink;
+    ctx.fillText(fmt(n), x + bw / 2, h - 2);
+  });
+}
+
+/* Throughput trace. ⛔ CLIENT-SIDE: the server publishes a running total, not a
+   series, so this history begins empty on load and is lost on refresh. Said in
+   the tooltip rather than left for someone to discover. */
+const traceHist = [];
+let traceLastTotal = null, traceLastAt = null;
+function renderTrace(tv) {
+  const cv = $('tvTrace'); if (!cv) return;
+  const now = Date.now();
+  if (tv && typeof tv.total === 'number') {
+    if (traceLastTotal != null && traceLastAt != null && now > traceLastAt) {
+      const rate = (tv.total - traceLastTotal) / ((now - traceLastAt) / 1000);
+      traceHist.push(Math.max(0, rate));
+      if (traceHist.length > 150) traceHist.shift();
+    }
+    traceLastTotal = tv.total; traceLastAt = now;
+  }
+  const { ctx, w, h } = fitCanvas(cv);
+  // Grid first, so it sits behind the trace.
+  ctx.strokeStyle = TV_C.line; ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+  if (traceHist.length < 2) {
+    ctx.fillStyle = TV_C.dim; ctx.font = '11px ui-monospace,Menlo,Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('collecting — the trace starts empty on every load', w / 2, h / 2);
+    return;
+  }
+  const max = Math.max(...traceHist, 0.001);
+  const dx = w / Math.max(1, traceHist.length - 1);
+  const yOf = (v) => h - 6 - (h - 20) * (v / max);
+  // Filled area under the line, then the line — the console look used elsewhere.
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, 'rgba(79,214,255,.34)'); g.addColorStop(1, 'rgba(79,214,255,0)');
+  ctx.beginPath(); ctx.moveTo(0, h);
+  traceHist.forEach((v, i) => ctx.lineTo(i * dx, yOf(v)));
+  ctx.lineTo((traceHist.length - 1) * dx, h); ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath();
+  traceHist.forEach((v, i) => (i ? ctx.lineTo(i * dx, yOf(v)) : ctx.moveTo(0, yOf(v))));
+  ctx.strokeStyle = TV_C.accent; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.fillStyle = TV_C.dim; ctx.font = '9.5px ui-monospace,Menlo,Consolas,monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`peak ${max.toFixed(1)}/s · now ${traceHist[traceHist.length - 1].toFixed(1)}/s · ${traceHist.length} samples`, 6, 11);
+}
+
+function renderInstruments(st, tv) {
+  try { renderDials(st, tv); renderEq(tv); renderTrace(tv); }
+  catch (e) { /* an instrument must never take the page down */ }
+}
 
 poll(); pollEye(); loadLedgerCells();
 setInterval(poll, 2000);
