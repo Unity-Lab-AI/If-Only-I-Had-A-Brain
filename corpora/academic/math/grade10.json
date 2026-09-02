@@ -2517,16 +2517,16 @@
     },
     {
       "theme": "algebra-ii-introduction",
-      "story": "this particular product is different, however, because it was developed using a 3d printer. as a result, it can be printed much like you print words on a sheet of paper. this makes producing the limb less expensive and faster than conventional methods. biomedical engineers are working to develop organs that may one day save lives. scientists at nasa are designing ways to use 3d printers to build on the moon or mars. already, animals are benefitting from 3d-printed parts, including a tortoise shell and a dog leg. builders have even constructed entire buildings using a 3d printer. the technology and use of 3d printers depends on the ability to understand the language of algebra. engineers must be able to translate observations and needs in the natural world to complex mathematical commands that can provide directions to a printer. in this chapter, you will review the language of algebra and take your first steps toward working with algebraic concepts.",
+      "story": "at the same time, available resources of fertile soil for growing plants is dwindling. one possible solution-grow plants without soil. botanists around the world are expanding the potential of hydroponics, which is the process of growing plants without soil. to provide the plants with the nutrients they need, the botanists keep careful growth records. some growth is described by the types of functions you will explore in this chapter-exponential and logarithmic. you will evaluate and graph these functions, and solve equations using them.",
       "source": "openstax/algebra-intermediate-book",
       "licence": "CC-BY 3",
       "figures": [
         {
-          "src": "../resources/CNX_IntAlg_Figure_01_00_001_img.jpg",
-          "alt": "A photo of a prosthetic hand created by a 3D printer.",
-          "caption": "This hand may change someone&#x2019;s life. Amazingly, it was created using a special kind of printer known as a 3D printer. (credit: U.S. Food and Drug Administration/Wikimedia Commons)",
-          "context": "\") for years, doctors and engineers have worked to make artificial limbs, such as this hand for people who need them. this particular product is different, however, because it was developed using a 3d printer.",
-          "url": "https://raw.githubusercontent.com/philschatz/algebra-intermediate-book/master/resources/CNX_IntAlg_Figure_01_00_001_img.jpg"
+          "src": "../resources/CNX_IntAlg_Figure_10_00_001_img.jpg",
+          "alt": "A photo of rows of vegetables growing in water in a greenhouse.",
+          "caption": "Hydroponic systems allow botanists to grow crops without land. (credit: &#x201C;Izhamwong&#x201D;/Wikimedia Commons)",
+          "context": "\") as the world population continues to grow, food supplies are becoming less able to meet the increasing demand. at the same time, available resources of fertile soil for growing plants is dwindling.",
+          "url": "https://raw.githubusercontent.com/philschatz/algebra-intermediate-book/master/resources/CNX_IntAlg_Figure_10_00_001_img.jpg"
         }
       ]
     },

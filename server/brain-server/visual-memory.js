@@ -2064,7 +2064,15 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       if (b.length < 4) return null;
       if (b[0] === 0xFF && b[1] === 0xD8) {                                      // JPEG
         const jpeg = this._jpegDec || (this._jpegDec = require('jpeg-js'));
-        const r = jpeg.decode(b, { useTArray: true, maxMemoryUsageInMB: 512 });
+        // ⛔ THE 512 MB CAP SILENTLY REFUSED THE LARGEST FIGURES IN THE CORPUS.
+        // Wikimedia serves archival masters — 2.2 MP mean, many far larger — and
+        // jpeg-js counts its own working set generously, so a real illustration
+        // came back as `decode failed: maxMemoryUsageInMB limit exceeded` and was
+        // recorded as undecodable. That reads as a broken file rather than a
+        // ceiling we chose. Measured: 11 of 30 corpus figures refused at 512.
+        // Env-tunable so a small box can put it back without editing code.
+        const jpegCapMb = Number(process.env.DREAM_JPEG_MAX_MB) > 0 ? Number(process.env.DREAM_JPEG_MAX_MB) : 2048;
+        const r = jpeg.decode(b, { useTArray: true, maxMemoryUsageInMB: jpegCapMb });
         if (!r || !r.data) return null;
         return { w: r.width, h: r.height, data: new Uint8ClampedArray(r.data.buffer, r.data.byteOffset, r.data.length) };
       }
