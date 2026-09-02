@@ -59,9 +59,95 @@
     },
     {
       "theme": "general-biology-atoms-isotopes-ions-and-molecules-the-building-blocks",
-      "story": "matter is any substance that occupies space and has mass. elements are unique forms of matter with specific chemical and physical properties that cannot be broken down into smaller substances by ordinary chemical reactions. there are 118 elements, but only 92 occur naturally. the remaining elements are synthesized in laboratories and are unstable. each element is designated by its chemical symbol, which is a single capital letter or, when the first letter is already \"taken\" by another element, a combination of two letters. some elements follow the english term for the element, such as c for carbon and ca for calcium. other elements' chemical symbols derive from their latin names; for example, the symbol for sodium is na, referring to natrium, the latin word for sodium. the four elements common to all living organisms are oxygen (o), carbon (c), hydrogen (h), and nitrogen (n). for example, the atmosphere is rich in nitrogen and oxygen but contains little carbon and hydrogen, while the earth's crust, although it contains oxygen and a small amount of hydrogen, has little nitrogen and carbon.",
+      "story": "matter is any substance that occupies space and has mass. elements are unique forms of matter with specific chemical and physical properties that cannot be broken down into smaller substances by ordinary chemical reactions. there are 118 elements, but only 92 occur naturally. the remaining elements are synthesized in laboratories and are unstable. each element is designated by its chemical symbol, which is a single capital letter or, when the first letter is already \"taken\" by another element, a combination of two letters. some elements follow the english term for the element, such as c for carbon and ca for calcium. other elements' chemical symbols derive from their latin names; for example, the symbol for sodium is na, referring to natrium, the latin word for sodium. the four elements common to all living organisms are oxygen (o), carbon (c), hydrogen (h), and nitrogen (n). for example, the atmosphere is rich in nitrogen and oxygen but contains little carbon and hydrogen, while the earth's crust, although it contains oxygen and a small amount of hydrogen, has little nitrogen and carbon. in spite of their differences in abundance, all elements and the chemical reactions between them obey the same chemical and physical laws regardless of whether they are a part of the living or non-living world.",
       "source": "openstax/biology-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_02_01_01.jpg",
+          "alt": "This illustration shows that, like planets orbiting the sun, electrons orbit the nucleus of an atom. The nucleus contains two neutrally charged neutrons, and two positively charged protons represented by spheres. A single, circular orbital surrounding the nucleus contains two negatively charged electrons on opposite sides.",
+          "caption": "Elements, such as helium, depicted here, are made up of atoms. Atoms are made up of protons and neutrons located within the nucleus, with electrons in orbitals surrounding the nucleus.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_02_01_02.png",
+          "alt": "Carbon is indicated by its atomic symbol, a capital C. Carbon has the atomic number six and two stable isotopes, carbon-12 and carbon-13.",
+          "caption": "Carbon has an atomic number of six, and two stable isotopes with mass numbers of twelve and thirteen, respectively. Its relative atomic mass is 12.011",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_02.png"
+        },
+        {
+          "src": "../resources/Figure_02_01_03.jpg",
+          "alt": "Photo shows scientists unearthing a mammoth skeleton.",
+          "caption": "The age of carbon-containing remains less than about 50,000 years old, such as this pygmy mammoth, can be determined using carbon dating. (credit: Bill Faulkner, NPS)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_03.jpg"
+        },
+        {
+          "src": "../resources/atoms_isotopes.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/atoms_isotopes.png"
+        },
+        {
+          "src": "../resources/Figure_02_01_04.jpg",
+          "alt": "The periodic table consists of eighteen groups and seven periods. Two additional rows of elements, known as the lanthanides and actinides, are placed beneath the main table. The lanthanides include elements 57 through 71 and belong in period seven between groups three and four. The actinides include elements 89 through 98 and belong in period eight between the same groups. These elements are placed separately to make the table more compact. For each element, the name, atomic symbol, atomic number, and atomic mass are provided. The atomic number is a whole number that represents the number of protons. The atomic mass, which is the average mass of different isotopes, is estimated to two decimal places. For example, hydrogen has the atomic symbol H, the atomic number 1, and an atomic mass of 1.01. The atomic mass is always larger that the atomic number. For most small elements, the atomic mass is approximately double the atomic number as the number of protons and neutrons is about equal. The elements are divided into three categories: metals, nonmetals and metalloids. These form a diagonal line from period two, group thirteen to period seven, group sixteen. All elements to the left of the metalloids are metals, and all elements to the right are nonmetals.",
+          "caption": "The periodic table shows the atomic mass and atomic number of each element. The atomic number appears above the symbol for the element and the approximate atomic mass appears below it.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_04.jpg"
+        },
+        {
+          "src": "../resources/Figure_02_01_05.png",
+          "alt": "Three concentric circles around the nucleus of a hydrogen atom represent principal shells. These are named 1n, 2n, and 3n in order of increasing distance from the nucleus. An electron orbits in the shell closest to the nucleus, 1n.",
+          "caption": "The Bohr model was developed by Niels Bohrs in 1913. In this model, electrons exist within principal shells. An electron normally exists in the lowest energy shell available, which is the one closest to the nucleus. Energy from a photon of light can bump it up to a higher energy shell, but this situation is unstable, and the electron quickly decays back to the ground state. In the process, a photon of light is released.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_05.png"
+        },
+        {
+          "src": "../resources/Figure_02_01_06.png",
+          "alt": "Bohr diagrams of elements from groups 1, 14, 17 and 18, and periods 1, 2 and 3 are shown. Period 1, in which the 1n shell is filling, contains hydrogen and helium. Hydrogen, in group 1, has one valence electron. Helium, in group 18, has two valence electrons. The 1n shell holds a maximum of two electrons, so the shell is full and the electron configuration is stable. Period 2, in which the 2n shell is filling, contains lithium, carbon, fluorine, and neon. Lithium, in group 1, has 1 valence electron. Carbon, in group 14, has 4 valence electrons. Fluorine, in group 17, has 7 valence electrons. Neon, in group 18, has 8 valence electrons, a full octet. Period 3, in which the 3n shell is filling, contains sodium, silicon, chlorine, and argon. Sodium, in group 1, has 1 valence electron. Silicon, in group 14, has 4 valence electrons. Chlorine, in group 17, has 7 valence electrons. Argon, in group 18, has 8 valence electrons, a full octet.",
+          "caption": "Bohr diagrams indicate how many electrons fill each principal shell. Group 18 elements (helium, neon, and argon are shown) have a full outer, or valence, shell. A full valence shell is the most stable electron configuration. Elements in other groups have partially filled valence shells and gain or lose electrons to achieve a stable electron configuration.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_06.png"
+        },
+        {
+          "src": "../resources/Figure_02_01_07.jpg",
+          "alt": "Illustration shows 1ns, 2ns and 2np subshells. The 1ns subshell and 2ns subshells are both spheres, but the 2ns sphere is larger than the 1ns sphere. The 2np subshell is made up of three dumbbells that radiate out from the center of the atom.",
+          "caption": "The s subshells are shaped like spheres. Both the 1n and 2n principal shells have an s orbital, but the size of the sphere is larger in the 2n orbital. Each sphere is a single orbital. p subshells are made up of three dumbbell-shaped orbitals. Principal shell 2n has a p subshell, but shell 1 does not.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_07.jpg"
+        },
+        {
+          "src": "../resources/orbitals.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/orbitals.png"
+        },
+        {
+          "src": "../resources/Figure_02_01_08.jpg",
+          "alt": "In the first image, an oxygen atom is shown with six valence electrons. Four of these valence electrons form pairs at the top and right sides of the valence shell. The other two electrons are alone on the bottom and left sides. A hydrogen atom sits next to each the lone electron of the oxygen. Each hydrogen has only one valence electron. An arrow indicates that a reaction takes place. After the reaction, in the second image, each unpaired electron in the oxygen joins an electron from one of the hydrogen atoms so that the valence rings are now connected together. The bond that forms between oxygen and hydrogen can also be represented by a dash.",
+          "caption": "Two or more atoms may bond with each other to form a molecule. When two hydrogens and an oxygen share electrons via covalent bonds, a water molecule is formed.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_08.jpg"
+        },
+        {
+          "src": "../resources/Figure_02_01_09.jpg",
+          "alt": "Two oxygen atoms are shown side-by-side. Each has six valence electrons, two that are paired and two that are unpaired. An arrow indicates that a reaction takes place. After the reaction, the four unpaired electrons join to form a double bond. This double bond can also be depicted by an equal sign between two Os.",
+          "caption": "The oxygen atoms in an O2 molecule are joined by a double bond.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_09.jpg"
+        },
+        {
+          "src": "../resources/Figure_02_01_10.jpg",
+          "alt": "A sodium and a chlorine atom sit side by side. The sodium atom has one valence electron, and the chlorine atom has seven. Six of chlorine&#x2019;s electrons form pairs at the top, bottom and right sides of the valence shell. The seventh electron sits alone on the left side. The sodium atom transfers its valence electron to chlorine&#x2019;s valence shell, where it pairs with the unpaired left electron. An arrow indicates a reaction takes place. After the reaction takes place, the sodium becomes a cation with a charge of plus one and an empty valence shell, while the chlorine becomes an anion with a charge of minus one and a full valence shell containing eight electrons.",
+          "caption": "In the formation of an ionic compound, metals lose electrons and nonmetals gain electrons to achieve an octet.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_10.jpg"
+        },
+        {
+          "src": "../resources/ionic_covalent.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/ionic_covalent.png"
+        },
+        {
+          "src": "../resources/Figure_02_01_11.jpg",
+          "alt": "Table compares water, methane and carbon dioxide molecules. In water, oxygen has a stronger pull on electrons than hydrogen resulting in a polar covalent O-H bond. Likewise in carbon dioxide the oxygen has a stronger pull on electrons than carbon and the bond is polar covalent. However, water has a bent shape because two lone pairs of electrons push the hydrogen atoms together so the molecule is polar. By contrast carbon dioxide has two double bonds that repel each other, resulting in a linear shape. The polar bonds in carbon dioxide cancel each other out, resulting in a nonpolar molecule. In methane, the bond between carbon and hydrogen is nonpolar and the molecule is a symmetrical tetrahedron with hydrogens spaced as far apart as possible on the three-dimensional sphere. Since methane is symmetrical with nonpolar bonds, it is a nonpolar molecule.",
+          "caption": "Whether a molecule is polar or nonpolar depends both on bond type and molecular shape. Both water and carbon dioxide have polar covalent bonds, but carbon dioxide is linear, so the partial charges on the molecule cancel each other out.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_02_01_11.jpg"
+        }
+      ]
     },
     {
       "theme": "general-biology-synthesis-of-biological-macromolecules",
@@ -197,9 +283,65 @@
     },
     {
       "theme": "general-biology-bacterial-diseases-in-humans",
-      "story": "the true cause of these diseases was not understood at the time, and some people thought that diseases were a spiritual punishment. over time, people came to realize that staying apart from afflicted persons, and disposing of the corpses and personal belongings of victims of illness, reduced their own chances of getting sick. epidemiologists study how diseases affect a population. an epidemic is a disease that occurs in an unusually high number of individuals in a population at the same time. a pandemic is a widespread, usually worldwide, epidemic. an endemic disease is a disease that is constantly present, usually at low incidence, in a population. a number of significant pandemics caused by bacteria have been documented over several hundred years. some of the most memorable pandemics led to the decline of cities and nations. in the 21 st century, infectious diseases remain among the leading causes of death worldwide, despite advances made in medical research and treatments in recent decades.",
+      "story": "the true cause of these diseases was not understood at the time, and some people thought that diseases were a spiritual punishment. over time, people came to realize that staying apart from afflicted persons, and disposing of the corpses and personal belongings of victims of illness, reduced their own chances of getting sick. epidemiologists study how diseases affect a population. an epidemic is a disease that occurs in an unusually high number of individuals in a population at the same time. a pandemic is a widespread, usually worldwide, epidemic. an endemic disease is a disease that is constantly present, usually at low incidence, in a population. there are records about infectious diseases as far back as 3000 b.c. a number of significant pandemics caused by bacteria have been documented over several hundred years. some of the most memorable pandemics led to the decline of cities and nations. in the 21 st century, infectious diseases remain among the leading causes of death worldwide, despite advances made in medical research and treatments in recent decades.",
       "source": "openstax/biology-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_22_04_01.jpg",
+          "alt": "Micrograph shows pink rod-shaped bacteria.",
+          "caption": "Salmonella enterica serovar Typhi, the causative agent of Typhoid fever, is a Gram-negative, rod-shaped gamma protobacterium. Typhoid fever, which is spread through feces, causes intestinal hemorrhage, high fever, delirium and dehydration. Today, between 16 and 33 million cases of this re-emerging disease occur annually, resulting in over 200,000 deaths. Carriers of the disease can be asymptomatic. In a famous case in the early 1900s, a cook named Mary Mallon unknowingly spread the disease to over fifty people, three of whom died. Other Salmonella serotypes cause food poisoning. (credit: modification of work by NCI, CDC)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_22_04_02.jpg",
+          "alt": "Illustration A shows two men loading a dead body onto a cart. Another body lies in the street. Label beneath the illustration says, &#x201C;Plague in 1665.&#x201D; Micrograph B shows rod-shaped bacteria. Photo C shows a man with black gangrene on his fingers, arm, nose and lips.",
+          "caption": "The (a) Great Plague of London killed an estimated 200,000 people, or about twenty percent of the city&#x2019;s population. The causative agent, the (b) bacterium Yersinia pestis, is a Gram-negative, rod-shaped bacterium from the class Gamma Proteobacteria. The disease is transmitted through the bite of an infected flea, which is infected by a rodent. Symptoms include swollen lymph nodes, fever, seizure, vomiting of blood, and (c) gangrene. (credit b: Rocky Mountain Laboratories, NIAID, NIH; scale-bar data from Matt Russell; credit c: Textbook of Military Medicine, Washington, D.C., U.S. Dept. of the Army, Office of the Surgeon General, Borden Institute)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_02.jpg"
+        },
+        {
+          "src": "../resources/black_death.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/black_death.png"
+        },
+        {
+          "src": "../resources/Figure_22_04_03.jpg",
+          "alt": "Emerging or re-emerging bacterial diseases are shown on a world map. Multidrug-resistant tuberculosis is emerging in North America, Europe, and Asia. Vancomycin-resistant Staphylococcus aureus and E. coli O157:H7 are emerging in North America and East Asia. Lyme disease is spreading in North America. Cholera is emerging in Africa and South America. Diptheria and typhoid fever are re-emerging in Asia.",
+          "caption": "The map shows regions where bacterial diseases are emerging or reemerging. (credit: modification of work by NIH)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_03.jpg"
+        },
+        {
+          "src": "../resources/Figure_22_04_04.jpg",
+          "alt": "Part A shows the red, bullseye-shaped rash of a person infected with Borrelia. Part B shows a micrograph of Borrelia, which look like tiny corkscrews. Part C shows the life cycle of the bacteria, which begins when Borrelia infect a tick egg. The egg hatches into larva, which feeds on a mouse, then into a nymph, which also feeds on a mouse. The nymph feeds again, this time on a deer, or sometimes a human.",
+          "caption": "Lyme disease often, but not always, results in (a) a characteristic bullseye rash. The disease is caused by a (b) Gram-negative spirochete bacterium of the genus Borrelia. The bacteria (c) infect ticks, which in turns infect mice. Deer are the preferred secondary host, but the ticks also may feed on humans. Untreated, the disease causes chronic disorders in the nervous system, eyes, joints, and heart. The disease is named after Lyme, Connecticut, where an outbreak occurred in 1995 and has subsequently spread. The disease is not new, however. Genetic evidence suggests that &#xD6;tzi the Iceman, a 5,300-year-old mummy found in the Alps, was infected with Borrelia. (credit a: James Gathany, CDC; credit b: CDC; scale-bar data from Matt Russell)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_04.jpg"
+        },
+        {
+          "src": "../resources/antibiotics.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/antibiotics.png"
+        },
+        {
+          "src": "../resources/Figure_22_04_05.jpg",
+          "alt": "The micrograph shows clusters of round bacteria clinging to a surface. Each bacterium is about 0.4 microns across.",
+          "caption": "This scanning electron micrograph shows methicillin-resistant Staphylococcus aureus bacteria, commonly known as MRSA. S. aureus is not always pathogenic, but can cause diseases such as food poisoning and skin and respiratory infections. (credit: modification of work by Janice Haney Carr; scale-bar data from Matt Russell)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_05.jpg"
+        },
+        {
+          "src": "../resources/Figure_22_04_06f.jpg",
+          "alt": "Photo A shows round green seeds with stems sprouting from them. Sketch B shows normal, disk-shaped red blood cells on the left. On the right, many of the red blood cells are sickle-shaped.",
+          "caption": "(a) Vegetable sprouts grown at an organic farm were the cause of an (b) E. coli outbreak that killed 32 people and sickened 3,800 in Germany in 2011. The strain responsible, E. coli O104:H4, produces Shiga toxin, a substance that inhibits protein synthesis in the host cell. The toxin (c) destroys red blood cells resulting in bloody diarrhea. Deformed red blood cells clog the capillaries of the kidney, which can lead to kidney failure, as happened to 845 patients in the 2011 outbreak. Kidney failure is usually reversible, but some patients experience kidney problems years later. (credit c: NIDDK, NIH)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_06f.jpg"
+        },
+        {
+          "src": "../resources/Figure_22_04_07.jpg",
+          "alt": "This photo shows syringes, adhesive bandages, and alcohol swabs.",
+          "caption": "Vaccinations can slow the spread of communicable diseases. (credit: modification of work by Daniel Paquet)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_22_04_07.jpg"
+        }
+      ]
     },
     {
       "theme": "general-biology-characteristics-of-protists",
@@ -251,9 +393,41 @@
     },
     {
       "theme": "general-biology-birds",
-      "story": "while vertebrates like bats fly without feathers, birds rely on feathers and wings, along with other modifications of body structure and physiology, for flight. birds are endothermic, and because they fly, they require large amounts of energy, necessitating a high metabolic rate. like mammals, which are also endothermic, birds have an insulating covering that keeps heat in the body: feathers. specialized feathers called down feathers are especially insulating, trapping air in spaces between each feather to decrease the rate of heat loss. certain parts of a bird's body are covered in down feathers, and the base of other feathers have a downy portion, whereas newly hatched birds are covered in down. the feathers on a wing are flexible, so the collective feathers move and separate as air moves through them, reducing the drag on the wing. flight feathers are asymmetrical, which affects airflow over them and provides some of the lifting and thrusting force required for flight ( ). two types of flight feathers are found on the wings, primary feathers and secondary feathers. primary feathers are located at the tip of the wing and provide thrust.",
+      "story": "while vertebrates like bats fly without feathers, birds rely on feathers and wings, along with other modifications of body structure and physiology, for flight. birds are endothermic, and because they fly, they require large amounts of energy, necessitating a high metabolic rate. like mammals, which are also endothermic, birds have an insulating covering that keeps heat in the body: feathers. specialized feathers called down feathers are especially insulating, trapping air in spaces between each feather to decrease the rate of heat loss. certain parts of a bird's body are covered in down feathers, and the base of other feathers have a downy portion, whereas newly hatched birds are covered in down. feathers not only act as insulation but also allow for flight, enabling the lift and thrust necessary to become airborne. the feathers on a wing are flexible, so the collective feathers move and separate as air moves through them, reducing the drag on the wing. flight feathers are asymmetrical, which affects airflow over them and provides some of the lifting and thrusting force required for flight ( ). two types of flight feathers are found on the wings, primary feathers and secondary feathers. primary feathers are located at the tip of the wing and provide thrust.",
       "source": "openstax/biology-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_29_05_01.jpg",
+          "alt": "The illustration shows a bird&#x2019;s wing, which has two layers of flight feathers, the long primary feathers and the shorter secondary feathers, which overlay the primary feathers.",
+          "caption": "Primary feathers are located at the wing tip and provide thrust; secondary feathers are located close to the body and provide lift.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_29_05_01.jpg"
+        },
+        {
+          "src": "../resources/Figure_29_05_02.jpg",
+          "alt": "The illustration shows a hollow bone with structural supports providing reinforcement.",
+          "caption": "Many birds have hollow, pneumatic bones, which make flight easier.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_29_05_02.jpg"
+        },
+        {
+          "src": "../resources/Figure_29_05_03f.jpg",
+          "alt": "The illustration shows the direction of airflow in both inhalation and exhalation in birds. During inhalation, air passes from the beak down the trachea to the posterior air sac located behind the lungs. From the posterior air sac, air enters the lungs, and the anterior air sac in front of the lungs. Air from both air sacs also enters hollows in bones. During exhalation air from hollows in the bones enters the air sacs, then the lungs, then the trachea, where it exits through the beaks.",
+          "caption": "Avian respiration is an efficient system of gas exchange with air flowing unidirectionally. During inhalation, air passes from the trachea into posterior air sacs, then through the lungs to anterior air sacs. The air sacs are connected to the hollow interior of bones. During exhalation, air from air sacs passes into the lungs and out the trachea. (credit: modification of work by L. Shyamal)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_29_05_03f.jpg"
+        },
+        {
+          "src": "../resources/Figure_29_05_04ab.jpg",
+          "alt": "Part a shows a bird on the ground, and another coasting toward the ground. Part b shows a fossilized bird, with feathers visible.",
+          "caption": "(a) Archaeopteryx lived in the late Jurassic Period around 150 million years ago. It had teeth like a dinosaur, but had (b) flight feathers like modern birds, which can be seen in this fossil.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_29_05_04ab.jpg"
+        },
+        {
+          "src": "../resources/Figure_29_05_05.jpg",
+          "alt": "The photo shows a bird sitting on a branch.",
+          "caption": "Shanweiniao cooperorum was a species of Enantiornithes that did not survive past the Cretaceous period. (credit: Nobu Tamura)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_29_05_05.jpg"
+        }
+      ]
     },
     {
       "theme": "general-biology-stems",
@@ -293,9 +467,89 @@
     },
     {
       "theme": "general-biology-how-neurons-communicate",
-      "story": "while humans use words and body language to communicate, neurons use electrical and chemical signals. just like a person in a committee, one neuron usually receives and synthesizes messages from multiple other neurons before \"making the decision\" to send the message on to other neurons. for the nervous system to function, neurons must be able to send and receive signals. to understand how neurons communicate, one must first understand the basis of the baseline or 'resting' membrane charge. the lipid bilayer membrane that surrounds a neuron is impermeable to charged molecules or ions. to enter or exit the neuron, ions must pass through special proteins called ion channels that span the membrane. some ion channels need to be activated in order to open and allow ions to pass into or out of the cell. these ion channels are sensitive to the environment and can change their shape accordingly. ion channels that change their structure in response to voltage changes are called voltage-gated ion channels.",
+      "story": "while humans use words and body language to communicate, neurons use electrical and chemical signals. just like a person in a committee, one neuron usually receives and synthesizes messages from multiple other neurons before \"making the decision\" to send the message on to other neurons. for the nervous system to function, neurons must be able to send and receive signals. to understand how neurons communicate, one must first understand the basis of the baseline or 'resting' membrane charge. the lipid bilayer membrane that surrounds a neuron is impermeable to charged molecules or ions. to enter or exit the neuron, ions must pass through special proteins called ion channels that span the membrane. some ion channels need to be activated in order to open and allow ions to pass into or out of the cell. these ion channels are sensitive to the environment and can change their shape accordingly. ion channels that change their structure in response to voltage changes are called voltage-gated ion channels. voltage-gated ion channels regulate the relative concentrations of different ions inside and outside the cell.",
       "source": "openstax/biology-book",
-      "licence": "CC-BY 3"
+      "licence": "CC-BY 3",
+      "figures": [
+        {
+          "src": "../resources/Figure_35_02_01.jpg",
+          "alt": "The first image shows a voltage-gated sodium channel that is closed at the resting potential. In response to a nerve impulse the channel opens, allowing sodium to enter the cell. After the impulse the channel enters an inactive state. The channel closes by a different mechanism and, for a brief period does not reopen in response to a new nerve impulse.",
+          "caption": "Voltage-gated ion channels open in response to changes in membrane voltage. After activation, they become inactivated for a brief period and will no longer open in response to a signal.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_01.jpg"
+        },
+        {
+          "src": "../resources/resting_neuron.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/resting_neuron.png"
+        },
+        {
+          "src": "../resources/Figure_35_02_02.jpg",
+          "alt": "The resting membrane potential of minus seventy volts is maintained by a sodium/potassium transporter that transports sodium ions out of the cell and potassium ions in. Voltage gated sodium and potassium channels are closed. In response to a nerve impulse, some sodium channels open, allowing sodium ions to enter the cell. The membrane starts to depolarize; in other words, the charge across the membrane lessens. If the membrane potential increases to the threshold of excitation, all the sodium channels open. At the peak action potential, potassium channels open and potassium ions leave the cell. The membrane eventually becomes hyperpolarized.",
+          "caption": "The (a) resting membrane potential is a result of different concentrations of Na+ and K+ ions inside and outside the cell. A nerve impulse causes Na+ to enter the cell, resulting in (b) depolarization. At the peak action potential, K+ channels open and the cell becomes (c) hyperpolarized.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_02.jpg"
+        },
+        {
+          "src": "../resources/Figure_35_02_03.png",
+          "alt": "Graph plots membrane potential in millivolts versus time. The membrane remains at the resting potential of -70 millivolts until a nerve impulse occurs in step 1. Some sodium channels open, and the potential begins to rapidly climb past the threshold of excitation of -55 millivolts, at which point all the sodium channels open. At the peak action potential, the potential begins to rapidly drop as potassium channels open and sodium channels close. As a result, the membrane repolarizes past the resting membrane potential and becomes hyperpolarized. The membrane potential then gradually returns to normal.",
+          "caption": "The formation of an action potential can be divided into five steps: (1) A stimulus from a sensory cell or another neuron causes the target cell to depolarize toward the threshold potential. (2) If the threshold of excitation is reached, all Na+ channels open and the membrane depolarizes. (3) At the peak action potential, K+ channels open and K+ begins to leave the cell. At the same time, Na+ channels close. (4) The membrane becomes hyperpolarized as K+ ions continue to leave the cell. The hyperpolarized membrane is in a refractory period and cannot fire. (5) The K+ channels close and the Na+/K+ transporter restores the resting potential.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_03.png"
+        },
+        {
+          "src": "../resources/Figure_35_02_04.png",
+          "alt": "The action potential travels from the soma down the axon to the axon terminal. The action potential is initiated when a signal from the soma causes the soma-end of the axon membrane to depolarize. The depolarization spreads down the axon. Meanwhile, the membrane at the start of the axon repolarizes. Because potassium channels are open, the membrane cannot depolarize again. The action potential continues to spread down the axon this way.",
+          "caption": "The action potential is conducted down the axon as the axon membrane depolarizes, then repolarizes.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_04.png"
+        },
+        {
+          "src": "../resources/action_potential.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/action_potential.png"
+        },
+        {
+          "src": "../resources/Figure_35_02_05.jpg",
+          "alt": "Illustration shows an axon covered in three bands of myelin sheath. Between the sheath coverings the axon is exposed. The uncovered parts of the axon are called nodes of Ranvier. In the illustration, the left node of Ranvier is depolarized such that the membrane potential is positive inside and negative outside. The right membrane of the right node is at the resting potential, negative inside and positive outside. An arrow indicates that the depolarization jumps from the left node to the right, so that the right node becomes depolarized.",
+          "caption": "Nodes of Ranvier are gaps in myelin coverage along axons. Nodes contain voltage-gated K+ and Na+ channels. Action potentials travel down the axon by jumping from one node to the next.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_05.jpg"
+        },
+        {
+          "src": "../resources/Figure_35_02_06.jpg",
+          "alt": "The axon terminal is spherical. A section is sliced off, revealing small blue and orange vesicles just inside.",
+          "caption": "This pseudocolored image taken with a scanning electron microscope shows an axon terminal that was broken open to reveal synaptic vesicles (blue and orange) inside the neuron. (credit: modification of work by Tina Carvalho, NIH-NIGMS; scale-bar data from Matt Russell)",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_06.jpg"
+        },
+        {
+          "src": "../resources/Figure_35_02_07.jpg",
+          "alt": "Illustration shows a narrow axon of a presynaptic cell widening into a bulb-like axon terminal. A narrow synaptic cleft separates the axon terminal of the presynaptic cell from the postsynaptic cell. In step 1, an action potential arrives at the axon terminal. In step 2, the action potential causes voltage-gated calcium channels in the axon terminal open, allowing calcium to enter. In step 3, calcium influx causes neurotransmitter-containing synaptic vesicles to fuse with the plasma membrane. Contents of the vesicles are released into the synaptic cleft by exocytosis. In step 4, neurotransmitter diffuses across the synaptic cleft and binds ligand-gated ion channels on the postsynaptic membrane, causing the channels to open. In step 5, the open channels cause ion movement into or out of the cell, resulting in a localized change in membrane potential. In step 6, reuptake by the presynaptic neuron, enzymatic degradation and diffusion reduce neurotransmitter levels, terminating the signal.",
+          "caption": "Communication at chemical synapses requires release of neurotransmitters. When the presynaptic membrane is depolarized, voltage-gated Ca2+ channels open and allow Ca2+ to enter the cell. The calcium entry causes synaptic vesicles to fuse with the membrane and release neurotransmitter molecules into the synaptic cleft. The neurotransmitter diffuses across the synaptic cleft and binds to ligand-gated ion channels in the postsynaptic membrane, resulting in a localized depolarization or hyperpolarization of the postsynaptic neuron.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_07.jpg"
+        },
+        {
+          "src": "../resources/Figure_35_02_08.jpg",
+          "alt": "Illustration shows the location of the axon hillock, which is the area connecting the neuron body to the axon. A graph shows the summation of membrane potentials at the axon hillock, plotted as membrane potential in millivolts versus time. Initially, the membrane potential at the axon hillock is -70 millivolts. A series of EPSPs and IPSPs cause the potential to rise and fall. Eventually, the potential increases to the threshold of excitation. At this point the nerve fires, resulting in a sharp increase in membrane potential, followed by a rapid decrease. The hillock becomes hyperpolarizes such that the membrane potential is lower than the resting potential. The hillock then gradually returns to the resting potential.",
+          "caption": "A single neuron can receive both excitatory and inhibitory inputs from multiple neurons, resulting in local membrane depolarization (EPSP input) and hyperpolarization (IPSP input). All these inputs are added together at the axon hillock. If the EPSPs are strong enough to overcome the IPSPs and reach the threshold of excitation, the neuron will fire.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_08.jpg"
+        },
+        {
+          "src": "../resources/Figure_35_02_09.jpg",
+          "alt": "Illustration shows a person in a wheelchair, facing a computer screen. An arrow indicates that neural signals travel from the brain of the paralyzed person to the computer.",
+          "caption": "With brain-computer interface technology, neural signals from a paralyzed patient are collected, decoded, and then fed to a tool, such as a computer, a wheelchair, or a robotic arm.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_09.jpg"
+        },
+        {
+          "src": "../resources/paralyzation.png",
+          "alt": "QR Code representing a URL",
+          "caption": "",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/paralyzation.png"
+        },
+        {
+          "src": "../resources/Figure_35_02_10.jpg",
+          "alt": "Illustration shows the mechanism of LTP and LTD. Normally, the NMDA receptor in the postsynaptic neuron is activated by glutamate binding, but only after depolarization removes an inhibitory magnesium ion. Once the magnesium is removed, calcium can enter the cell. In response to an increase in intracellular calcium, AMPA receptors are inserted into the plasma membrane, which amplifies the signal resulting in LTP. LDP occurs when low-frequency stimulation results in the activation of a different calcium-signaling cascade that causes AMPA receptors to be removed from the plasma membrane. As a result, the nerve cell becomes less responsive to glutamate.",
+          "caption": "Calcium entry through postsynaptic NMDA receptors can initiate two different forms of synaptic plasticity: long-term potentiation (LTP) and long-term depression (LTD). LTP arises when a single synapse is repeatedly stimulated. This stimulation causes a calcium- and CaMKII-dependent cellular cascade, which results in the insertion of more AMPA receptors into the postsynaptic membrane. The next time glutamate is released from the presynaptic cell, it will bind to both NMDA and the newly inserted AMPA receptors, thus depolarizing the membrane more efficiently. LTD occurs when few glutamate molecules bind to NMDA receptors at a synapse (due to a low firing rate of the presynaptic neuron). The calcium that does flow through NMDA receptors initiates a different calcineurin and protein phosphatase 1-dependent cascade, which results in the endocytosis of AMPA receptors. This makes the postsynaptic neuron less responsive to glutamate released from the presynaptic neuron.",
+          "url": "https://raw.githubusercontent.com/philschatz/biology-book/master/resources/Figure_35_02_10.jpg"
+        }
+      ]
     },
     {
       "theme": "general-biology-vision",
