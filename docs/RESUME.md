@@ -1,6 +1,38 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 SECOND BATCH (LATEST — PICK UP HERE) — VERIFYING A FINISHED JOB FOUND THE BUG, AND THE CORPUS LEARNED TO SPEAK
+> ## ⭐⭐⭐ 2026-09-02 THIRD + FOURTH BATCH (LATEST — PICK UP HERE) — SHAKESPEARE JOINS THE CORPUS, THE LADDER REACHES PhD, AND THE BOARD IS FULLY MIGRATED
+>
+> ### Read in this order: this block → `docs/TODO.md` (`CORPUSBRACKET.1`, `NOFALLBACK.5/.6/.7` are the live successors) → the batches below.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                      33 open · 9 in-progress · 0 closed rows left on the board
+> ledger                     every closed row byte-verified in FINALIZED before removal
+> corpus                     244,230 sentences · speech lane 40 entries · ? 0.752% · ! 0.711%
+> reading ladder             pre-K -> PhD, 34 works, every Gutenberg id title-verified
+> walk                       frozen ON PURPOSE — the training is still being BUILT
+> donor pod i03ihi54kccu0l   EXITED on purpose. restart = start-pod, NEVER terminate.
+> git                        develop / main on BOTH remotes, tree clean
+> ```
+>
+> ### ⛔ GEE CAUGHT A REAL GAP: FOUR ROWS WERE CLOSED ON THE BOARD AND NEVER REACHED THE LEDGER
+> *"you havent finalized finished todo items in a while.. are ther and that need to be properly migrated"* — **yes, four.** `ORACLEB.1` and `NOFALLBACK.1/.2/.3`, closed in a prior session. ⚠ **`ORACLEB.1` had been flipped to `[x]` with NO verdict written anywhere** — answered by a different row deleting the thing it asked about, and nobody wrote that down. Its retroactive verdict says plainly that its instruction (*"measure first, then decide, then re-price"*) was **OVERTAKEN by a standing ruling, not satisfied**. **All 11 closed rows are now byte-verified in the ledger and removed from the board; 32 fences balanced; the fenced pseudo-row that must never be removed is still there.**
+>
+> ### ⭐ SHAKESPEARE, AND THE DISPATCH RULE THAT NEARLY WRECKED THREE NOVELS
+> The plays contributed nothing to the speech lane because the extractor finds quotes and drama marks speakers. `dramaSpeech()` runs **before** `normalizeBody` — the newline join that makes verse read as sentences is exactly what destroys a play's only structure. **Hamlet 0 → 2,026 lines.** ⛔ **The first dispatch rule was a raw COUNT of cues and sent Treasure Island, Little Women and Huckleberry Finn down the drama path** (ALL-CAPS chapter headings clear a count) — Treasure Island then produced 37 lines with zero questions. **Caught by reading run output; never committed.** Dispatch is now cue **density**: plays 71.6–78.8%, novels 0.0–2.5%.
+>
+> ### ⛔⛔ AND MY OWN SPEECH LANE WAS FABRICATING SENTENCES
+> A cell entry is one `story` string that every consumer splits on `(?<=[.!?])\s+`, so an unterminated line **fuses to the next**: `good morning` + `what is it?` reads back as one sentence neither character said. ⭐ **The bug announced itself as GOOD NEWS** — stored files measured 98-100% terminated while the extractor reported 37%. Fragments are dropped now, never repaired, because repairing means inventing a terminator. ⚠ **Honest consequence: the corpus rate reads 1.463% and greetings 19, BELOW the 1.526% / 29 reported earlier — those were inflated by fusions.**
+>
+> ### ⭐ THE READING LADDER REACHES PhD, AND ID VERIFICATION EARNED ITS KEEP IMMEDIATELY
+> college3 Johnson + Wordsworth · college4 Arnold + Coleridge · grad Aristotle + Longinus · phd Nietzsche + Frazer. **Id 55111, guessed for Eliot's *The Sacred Wood*, actually resolves to *Dix-sept histoires de marins* by Claude Farrère.** Unchecked, a PhD English year reads French maritime fiction. **A wrong id does not fail; it teaches the wrong book.**
+>
+> ### ⏳ NEXT
+> **`CORPUSBRACKET.1`** (643/233,767 bracket sentences still shipped, sequence with the wiki top-up) · **`NOFALLBACK.5`** (gate re-price, never measured) · **`.6`** (browser visitor brain, a PUBLIC-page change) · **`.7`** (chat async/sync emission fork) · **THE FRESH WALK IS LAST, `REGRESSION.1` last of all.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 SECOND BATCH — VERIFYING A FINISHED JOB FOUND THE BUG, AND THE CORPUS LEARNED TO SPEAK
 >
 > ### Read in this order: this block → `docs/TODO.md` (`DIALOGUE.3`, `CORPUSBRACKET.1`, `NOFALLBACK.5/.6/.7` — all filed by these two batches) → the `NOFALLBACK.4` block below.
 >

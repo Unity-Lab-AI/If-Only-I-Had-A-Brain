@@ -5,6 +5,107 @@
 
 ---
 
+## 2026-09-02 (FOURTH BATCH) — `LITGRADE.1` — THE LAST FOUR ELA YEARS GET THEIR READING, AND THE VERIFICATION RULE CAUGHT A WRONG BOOK ON THE FIRST PASS
+
+- [x] `LITGRADE.1` — **EXTEND THE TITLE TABLE THROUGH `college3` / `college4` / `grad` / `phd`.** ⛔ **Every Gutenberg ID must be VERIFIED to resolve to its intended title before it is committed** — a wrong ID silently ingests the wrong book, and this corpus has already been burned once by a fetch that returned a translator's preface instead of the work (`CURVEBUILD.9`). ⚠ **Level-appropriate, not just longer:** upper-college and graduate ELA is criticism, theory and dense prose rather than more novels, so the picks should reflect what that year actually reads. ⭐ **Low urgency, stated plainly:** these are the four grades where she is LEAST likely to need dialogue exposure, since form is trained at K by `_teachConcreteSentences`. **The reason to do it is course fidelity — an ELA year with no assigned reading is not an ELA year — not sentence form.**
+
+> ✅ **DONE — eight works across the four years, and the ladder is criticism and theory rather than more novels, as the row asked.**
+>
+> ```
+>   college3   Preface to Shakespeare (Johnson) · Lyrical Ballads 1798 (Wordsworth)
+>   college4   Culture and Anarchy (Arnold)     · Biographia Literaria (Coleridge)
+>   grad       The Poetics (Aristotle)          · On the Sublime (Longinus)
+>   phd        The Birth of Tragedy (Nietzsche) · The Golden Bough (Frazer)
+> ```
+> Cells now read: college3 12 entries / 44,072 words · college4 12 / 28,295 · grad 11 / 37,852 · phd 12 / 58,711.
+>
+> ⛔⛔ **THE VERIFICATION RULE EARNED ITS KEEP ON THE FIRST PASS, WHICH IS THE PART WORTH KEEPING.** Every id was checked against Gutenberg's own `Title:` header before being written down. **Id 55111 — guessed for T.S. Eliot's *The Sacred Wood* — actually resolves to *Dix-sept histoires de marins* by Claude Farrère**, a French sea-story collection. Unchecked, that ingests silently as English literary criticism and a PhD ELA year reads French maritime fiction. **A wrong id does not fail; it teaches the wrong book.** Rejected, and the incident is written into the ladder comment beside the ids so the next person adding one sees why the check exists.
+
+---
+
+- [x] `DIALOGUE.4` — **TWO DEFECTS IN MY OWN SPEECH LANE, FOUND WHILE INGESTING THE CRITICISM TEXTS.** Filed and closed in the same batch because both were found by reading the run output of `LITGRADE.1` rather than by planning: **(a) a quoted span was being taken as ONE line and dropped if it exceeded the sentence cap**, which threw away exactly the speech worth having — a character's paragraph-long speech, and every epic speech in Homer; **(b) unterminated lines were being STORED, and a cell's `story` is one joined string that every consumer splits on `(?<=[.!?])\s+`, so an unterminated line fuses to whatever follows it.**
+
+> ✅ **DONE — and (b) is the more serious of the two, because it was manufacturing sentences.**
+>
+> **(a) Spans are split into sentences before filtering.** The Odyssey's speech lane went from `? 14 · ! 1 · . 157` available to `? 187 · ! 1 · . 1,360`; the Iliad from 488 lines to `? 316 · ! 726 · . 1,351`. Long speeches were not being rejected for quality — they were being rejected for length, by a cap meant for sentences and applied to paragraphs.
+>
+> ⛔ **(b) THE STORAGE STEP WAS FABRICATING SENTENCES.** `good morning` + `what is it?` joined with a space reads back as the single sentence `good morning what is it?` — one neither character said. ⭐ **Found by measuring the stored files and getting 98-100% terminated back from entries the extractor had reported at 37-40% terminated. The good number was the bug:** the fragments had not been fixed, they had been fused. Unterminated lines are now dropped at the write site — **not repaired**, because repairing means inventing a terminator and inventing terminal punctuation is the one thing this lane is forbidden to do. Verified after the fix: **0 unterminated lines stored** across all 40 speech entries.
+>
+> ⚠ **AND THE HONEST CONSEQUENCE FOR THE HEADLINE NUMBER:** the corpus interrogative + exclamative rate reads **1.463%**, slightly BELOW the 1.526% reported one batch earlier, and greeting openers read **19** rather than 29. **The earlier figures were inflated by the fused fragments** — some of those fusions ended in `?` and counted. The lower number is the true one, and it is stated here rather than quietly left to look like a regression.
+
+---
+
+## 2026-09-02 (MIGRATION) — THE FOUR ROWS THAT WERE CLOSED ON THE BOARD AND NEVER REACHED THE LEDGER
+
+> ⛔ **Caught by Gee, not by me:** *"you havent finalized finished todo items in a while.. are ther and that need to be properly migrated"*. Audited fence-aware and **by string match on the row body, not by task tag** (a matching tag proves nothing — that lesson is already in `§FINALIZED BEFORE DELETE`). **11 closed rows on the board; 7 were in the ledger, 4 were not.** Those four are preserved verbatim below before a single line is removed from `docs/TODO.md`.
+>
+> ⚠ **AND ONE OF THEM WAS CLOSED WITH NO VERDICT AT ALL.** `ORACLEB.1` sits at `[x]` with no ✅ banner anywhere — it was answered by a different row deleting the thing it was about, and nobody wrote that down. **A row that goes `[x]` in silence is the same defect class as one that never gets migrated:** the record says "handled" and contains no account of what happened.
+
+### `ORACLEB.1` — verbatim
+
+- [x] `ORACLEB.1` — ⛔⛔ **GEE'S CALL, AND IT IS A BIGGER ONE THAN `DORMANT8.5` BY A LARGE MARGIN: there is a second dictionary oracle, it is LIVE on the emission path, and this project's own public pages label it a FALLBACK in those exact words.** `html/brain-equations.html` documents *"**Path B — dictionary oracle (FALLBACK).** When `emitWordDirect` returns `null` (signal below floor, novel intent), per-subject persona-first dictionary cosine scan over every word the curriculum has taught. If a known word strongly matches the current intent vector, emit its spelling directly"* — it lives in `js/brain/cluster/emit.js`, is **a different function from the one deleted in `NEWBORNMUTE`**, and is untouched. ⚠ **IT IS INSTRUMENTED, WHICH MEANS THE ANSWER IS MEASURABLE RATHER THAN ARGUABLE:** `cluster._oracleHits` against `cluster._matrixHits`, surfaced on the `CELL ALIVE` heartbeat as `oracleRatio` — *"If `oracleRatio > 0.95` across a full phase"* is already written into `curriculum.js` as a warning condition. ⛔ **DO NOT quote the historical `oracleRatio 89.7%` from `docs/NOW.md` as current** — it predates the unified `word_motor` band and the whole corpus rebuild; **the number must be re-read live before any decision is taken on it.** ⭐ **The shape of the question:** if the ratio is still high, then most of what she says is the dictionary matching an intent vector rather than her trained matrix emitting — which is the same defect class as the lane just removed, only much larger and load-bearing on every gate probe and exam answer that has ever passed. ⛔ **NOT REMOVED UNILATERALLY, deliberately:** unlike the newborn bootstrap this one carries real traffic, several probes pass it explicit `excludeWords` / `restrictToVocab` / `excludePersona` options that only make sense if it answers, and cutting it blind could take the gate battery with it. **Measure first (`oracleRatio` live, per subject and per phase), then decide, then re-price.**
+
+> ✅ **VERDICT WRITTEN 2026-09-02, RETROACTIVELY, BECAUSE IT WAS NEVER WRITTEN.** `ORACLEB.1` was **answered by `NOFALLBACK.1` deleting the oracle it asks about** — the second dictionary oracle is gone, along with both call sites and the two cosine scorers that fed it.
+>
+> ⛔ **AND ITS CENTRAL INSTRUCTION WAS OVERTAKEN, NOT SATISFIED.** The row says *"measure first, then decide, then re-price"*, and that is **not what happened**: Gee's standing ruling — *"NO FALLBACKS!!!!"*, whole stack — settled it without the measurement, and the row's own framing (asking him a fourth time about an instance of a rule he had already stated) is the exact pattern he corrected. **The removal was right; the process the row prescribed was superseded by a decision, and saying otherwise would dress a ruling up as a measurement.**
+>
+> ⚠ **The measurement it asked for STILL HAS NOT HAPPENED and is carried forward as `NOFALLBACK.5`** — the gate pass rate without the oracle has never been read. The historical `89.7%` remains not-current and must not be quoted. **The one number that does exist** is the captured run in `NOFALLBACK.1`: `oracleHits=425` vs `matrixHits=4`, **99.1% of emissions were the dictionary** — which is stronger evidence than the row expected to find and points the same way.
+
+### `NOFALLBACK.1` / `.2` / `.3` — the shared verdict block, verbatim
+
+> ✅ **NOFALLBACK.1 / .2 / .3 DONE 2026-09-01 — the last retrieval lanes in the cognition path are gone. 504 lines deleted from the two emission files (376 + 128), 514 with the curriculum edits — counted from `git show --numstat`, not remembered.**
+>
+> **`.1` THE PATH B ORACLE IS DELETED** — `_dictionaryOracleEmit` (311 lines) plus **both** call sites: the gate/probe emission path and `emitWordDirect`. ⭐ **Its own comment was the confession:** it existed to *"sidestep sem_to_motor basin collapse for gate probes"* — **a workaround that hides the fault it works around stops anyone ever fixing the fault**, and it did exactly that on the one path every gate probe travels.
+>
+> **`.2` ALREADY DONE** — the newborn retrieval bootstrap went with `NEWBORNMUTE`; verified there is no `_hasTrained` / `_retrievalAllowed` left. **And the two orphaned cosine scorers went too (130 lines)**: they were spared one day earlier *only* because a live mirror still ran in `emit.js`. That mirror is now deleted, so nothing anywhere ranks dictionary entries to answer for her.
+>
+> **`.3` THE PUBLIC PAGES NO LONGER DESCRIBE IT AS LIVE** — `brain-equations.html` (the Path B block and the *"what this sums into"* claim), `unity-guide.html` (Path B, and Path C which called itself a *"fallback"*), and the two `dashboard.html` tooltips. ⛔ **A page describing a deleted mechanism is how the mechanism comes back** — the `_speakPollinations` lesson, one week old.
+
+- [x] `NOFALLBACK.1` — ⛔⛔ **KILL THE PATH B DICTIONARY ORACLE — `_dictionaryOracleEmit` (`js/brain/cluster/emit.js`).** It is the LARGEST surviving fallback in the cognition path and it is documented as one on a public page: *"When `emitWordDirect` returns `null` (signal below floor, novel intent), per-subject persona-first dictionary cosine scan… if a known word strongly matches the current intent vector, emit its spelling directly."* **That is capability-degradation by definition — it fires precisely when her trained matrix produces nothing, and it emits a word she did not generate.** ⚠ **The instrumentation already admits the scale of it:** `_oracleHits` vs `_matrixHits`, and a captured run recorded `oracleHits=425, matrixHits=4` — **99.1% of emissions were the dictionary, not her.** ⛔ **The accepted consequence is the same one every other removal took: when her matrix has nothing, she is SILENT and the silence is counted.** Remove the lane, remove its call sites, keep the counters so `oracle` reading anything other than 0 is a regression detector.
+
+- [x] `NOFALLBACK.2` — ⛔ **KILL THE NEWBORN RETRIEVAL BOOTSTRAP that `DORMANT8.5` left alive.** `_retrievalAllowed = !_hasTrained` still lets a cortex with zero passed cells speak dictionary-retrieved words. **Gee already answered this** — *"SO WHAT WOULD BE THE POINT OF HAVING UNITY SPEAK WHEN SHE ONLY KNOWS VOCAB???"* — and I removed the trained-brain half while leaving the newborn half standing. **Finish it.**
+
+- [x] `NOFALLBACK.3` — **THE DOCS THAT DESCRIBE THE REMOVED LANES AS LIVE.** `html/brain-equations.html` and `html/unity-guide.html` both narrate Path B as a current emission path, and `oracleRatio` is described in `docs/NOW.md` / `docs/SETUP.md` as a heartbeat field to watch. ⛔ **A public page describing a deleted mechanism is how the mechanism comes back** — the `_speakPollinations` comment lesson, one week old.
+
+> ⚠ **ONE CORRECTION TO `.3` MADE ON 2026-09-02, WHILE SWEEPING FOR SOMETHING ELSE:** the public pages were *not* fully corrected on 2026-09-01. `html/brain-equations.html` still described a **"three-path priority cascade"** whose third element was *"the slowest most-flexible substrate as final fallback"* — the deleted oracle, narrated as live, in both the section tooltip and its prose. **Fixed in the `NOFALLBACK.4` commit.** The lesson `.3` itself states is the one that caught it: a page describing a deleted mechanism is how the mechanism comes back, and a doc pass that stops at the obvious paragraph leaves the tooltip.
+
+---
+
+## 2026-09-02 (THIRD BATCH) — `DIALOGUE.3` — SHAKESPEARE JOINS THE SPEECH LANE, AND THE FIRST DISPATCH RULE NEARLY WRECKED THREE NOVELS
+
+- [x] `DIALOGUE.3` — ⛔ **THE PLAYS CONTRIBUTE NOTHING TO THE SPEECH LANE, AND THEY ARE THE WORKS THAT ARE NOTHING BUT SPEECH.** Filed as the successor to `PERSONAVOICE.1` so a working dialogue lane is not read as a complete one. **Measured on the live run:** Romeo and Juliet **1** usable spoken line, Hamlet **0**, Macbeth 17, Julius Caesar 18 — against Great Expectations' 1,074 and Pride and Prejudice's 702. **The cause is not the plays, it is the extractor:** it finds speech by quotation marks, and drama does not quote — it marks the speaker with a name line and gives the rest of the page to the character. ⭐ So the four texts in the ladder with the HIGHEST density of real conversational form are the four contributing least, and a reader would conclude Shakespeare has no dialogue. **The fix is a second extractor shape for drama** — speaker-line detection (an ALL-CAPS or capitalised name followed by a period/colon, then speech to the next such line), which the existing all-caps heading filter currently discards as a heading. ⚠ **Verse line breaks are already joined by `normalizeBody`, so the drama text arrives as continuous prose — that join has to be reckoned with before the speaker-line shape can be found.**
+
+> ✅ **DONE — and the row's own warning about `normalizeBody` was the load-bearing part.**
+>
+> `dramaSpeech()` runs on the text **before** normalisation. The newline join that makes verse read as sentences instead of one fragment per printed line is right for the prose lane and destroys the only structure drama has: **the speaker cue IS a line break.** Blocks are split on blank lines, a block whose first line is a short ALL-CAPS name is a speech, and `ACT`/`SCENE`/`PROLOGUE`/`DRAMATIS` are excluded as structure while `CHORUS` is kept, because the Chorus actually speaks in Romeo and Juliet.
+>
+> ### WHAT THE PLAYS NOW CONTRIBUTE (available lines, before the per-book cap)
+> ```
+>   Hamlet              0  ->  2,026     ? 371   ! 140
+>   Romeo and Juliet    1  ->  1,773     ? 319   ! 176
+>   Julius Caesar      18  ->  1,382     ? 247   ! 149
+>   Macbeth            17  ->  1,044     ? 204   ! 128
+> ```
+> Corpus-wide: combined interrogative + exclamative **1.471% → 1.526%**, greeting/farewell openers **25 → 29**, speech sentences 5,892 → 6,392. Sampled and read: *"who's there?"* · *"o, farewell, honest soldier, who hath reliev'd you?"* · *"must i remember?"* · *"o, answer me!"* · *"farewell, ophelia, and remember well what i have said to you."*
+>
+> ### ⛔⛔ THE PART WORTH KEEPING: THE FIRST DISPATCH RULE WAS WRONG, AND IT WOULD HAVE DAMAGED THREE GOOD BOOKS
+>
+> I first dispatched on a raw **count** of speaker cues (≥20). That sent **Treasure Island, Little Women and Huckleberry Finn** down the drama path — novels whose ALL-CAPS chapter headings match the cue shape well enough to clear a count. The wrong reader then produced **Treasure Island: 37 lines, zero questions, zero terminators. Little Women: one line.** Both had been contributing real dialogue through the quoted reader.
+>
+> ⭐ **Caught by reading the run output, not by anything failing — and it never reached a commit.** The run printed `[drama]` next to three novels, which is the only reason it was visible at all; a silent dispatch would have shipped.
+>
+> **The witness is cue DENSITY, and the measurement is not close:**
+> ```
+>   Hamlet 78.8%   Julius Caesar 77.6%   Romeo and Juliet 75.5%   Macbeth 72.3%
+>   Treasure Island 2.5%   Huckleberry Finn 1.9%   Little Women 1.2%
+>   Pride and Prejudice 0.2%   Tom Sawyer 0.0%
+> ```
+> **A play is mostly speaker cues because a play is mostly speech.** The 25% threshold sits in a gap thirty times wider than the noise on either side of it, and the mode plus its density now print on every book's line so a future misdispatch is visible in the log rather than in the corpus.
+>
+> ⚠ **This is form DISPATCH, not a fallback ladder** — the reader is chosen by looking at the text, not by trying one and settling for the other when it disappoints. Running the wrong reader over either form returns nothing, so "try and see" would be indistinguishable from a capability fallback and is not what this does.
+
+---
+
 ## 2026-09-02 (SECOND BATCH) — `PERSONAVOICE.5` VERIFIED CLOSED, `PERSONAVOICE.7` FOUND AND FIXED, `LEDGERLIE.2` MADE LAW
 
 ### ⭐⭐ THE HEADLINE: VERIFYING A CLOSED-LOOKING JOB FOUND A LIVE BUG IN ITS CONSUMER
