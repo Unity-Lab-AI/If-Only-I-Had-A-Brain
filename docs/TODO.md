@@ -1942,6 +1942,54 @@ Gee, verbatim, in the order he said it:
   - ⚠ **Known permanent classes already observed and named, so the classifier starts from evidence:** non-Wikimedia SVGs (no rasteriser in the path), GIFs (no decoder — jpeg/png/webp only), and dead `raw.githubusercontent.com` paths from re-organised book repos.
   - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
 
+## TEACHKNOB — the training knobs exist and the operator cannot reach one of them — filed 2026-09-02
+
+Gee, verbatim:
+
+> *"okay what about the teach view and all the nobs for adjusting how the traing in the weights and the brain saturate and without poisonits self and with out just replaceing old teachings with current teachings"*
+
+> *"knobs!!!!"*
+
+- [ ] `TEACHKNOB.1` — ⛔⛔ **31 TRAINING / WEIGHT / SATURATION KNOBS EXIST. ZERO ARE ON THE DASHBOARD. HE HAS NO SHELL. HE CANNOT SEE OR TURN A SINGLE ONE.**
+  - **Measured, not estimated:** `217` distinct `DREAM_*` env knobs across `js/` + `server/`; **31** of them govern training, weights, saturation or consolidation. `grep DREAM_ html/dashboard.html` returns **4**, and **none of the four are training knobs** (`DREAM_GW_IGNITION`, `DREAM_KEEP_STATE`, `DREAM_RECOMB_COHERENCE_MIN`, `DREAM_SELF_FRAME_MAX_UNITS`).
+  - ⛔ **THIS IS THE SAME DEFECT CLASS AS EVERY OTHER FINDING TODAY, one level up: built, correct, and unreachable by the person who needs it.** The knobs are read from `process.env` at boot, which on that box means the systemd unit — and `feedback_box_deploy_dashboard_only` plus his own words are unambiguous: **dashboard buttons only, no SSH.** A knob that can only be turned by someone with a shell does not exist for this operator.
+  - **The 31, grouped by what they actually govern:**
+  ```
+    LEARNING RATE / DOSE
+      DREAM_CONTENT_LR            0.0468   the content-lane Oja rate (clamped 0<lr<=0.5)
+      DREAM_SM_LR_SCALE           0.5      sem->motor rate scale
+      DREAM_STRUCTURE_DOSE        1.0      structure-pass rep multiplier (was cut to 0.4, REVERTED)
+      DREAM_SENTENCE_TRANSITION_REPS  24
+      DREAM_RECOMB_REPS · DREAM_ART_WEIGHT_REPS · DREAM_VM_RELATE_REPS
+    REP COMPRESSION (dose vs lr trade)
+      DREAM_REP_COMPRESS  · _FLOOR 4 · _LR_CEIL 0.60 · _MIN_DOSE
+    SATURATION DETECTION  (feeds the consolidation replay VETO)
+      DREAM_SAT_MEANCOS  0.7   DREAM_SAT_MEANABS 0.6   DREAM_SAT_RATIO 1.5   DREAM_SAT_SAMPLE 1000
+    FIRING / DRIVE
+      DREAM_FIRING_TARGET_PCT 7.5   DREAM_PSI_GAIN_SCALE 2.0   DREAM_ANNEAL_TEMP   DREAM_NOISE_GATE
+    CONSOLIDATION / REPLAY
+      DREAM_CONSOLIDATION_MAX_MS · _FORCE_MS · _FORCE_MAX_MS 120s · _GPU_REPLAY_MAX
+      DREAM_CONSOLIDATION_MAX_REPLAY_NNZ · DREAM_CONSOLIDATION_DISABLE
+    BOUNDS
+      DREAM_PHASE_BUDGET_MS · DREAM_BRAIN_BUDGET_MB · DREAM_BC_RECTIFY_DECAY
+  ```
+  - **What to build:** a **read-only knob panel first** — every one of the 31 with its live value, its default, and whether it is currently overridden. ⭐ **Read-only is the honest first step and is most of the value**: today he cannot even answer *"what is `DREAM_CONTENT_LR` actually set to on the box right now?"*, and a wrong belief about a live value is worse than no panel.
+  - ⚠ **WRITE support is a SEPARATE and much heavier decision, deliberately not bundled.** Several of these are read ONCE at boot (`DREAM_CONTENT_LR` is captured into a local at `curriculum.js:24188`), so a live write would change nothing while appearing to work — **the exact instrument-that-lies shape this board is full of.** Any writable knob must state whether it takes effect live, at next cell, or only at next boot.
+  - ⛔ **AND THE RE-PRICE LAW BINDS ANY WRITABLE KNOB.** `DREAM_STRUCTURE_DOSE` was cut to `0.4` and reverted with the reasoning written down — *"a dose multiplier was never waste, it was less teaching"*. A dashboard that lets a dose be lowered without recomputing `corpus × reps × scale × visits` is a LAW violation with a UI.
+
+- [ ] `TEACHKNOB.2` — ⛔⛔ **"WITHOUT JUST REPLACING OLD TEACHINGS WITH CURRENT TEACHINGS" — THIS IS THE REAL ONE, AND 8 OF HER 9 COURSES HAVE NO REHEARSAL AT ALL.**
+  - **What protects old learning today, verified at the code:**
+    1. ⭐ **Oja is self-normalising** — `Δw = η·post·(pre − post·w)` converges instead of growing without bound. ⚠ **But the same `−η·post²·w` term IS the forgetting mechanism**: firing on new material decays the old weights. Oja bounds the damage; it does not prevent it.
+    2. ⭐ **Saturation detection with a replay VETO** — `checkSemMotorHealth()` (`cluster.js:2615`), 4 env knobs, **8 consumers** across consolidation, curriculum, chat, state and the server. It catches the end state where every weight looks like every other (*"everything means everything"*) and **stops consolidation making it worse**.
+    3. ⭐ **CLS consolidation/replay** — Squire/McClelland: Tier 1 episodic → Tier 2 schemas → Tier 3, `replay_lr = base × (1 + emotional_weight) × log(1 + frequency)`, with `_gpuReplayCursor` as a **fair-share** bound so the tail gets replayed instead of always the same head. ⚠ **This is MEMORY consolidation, not CURRICULUM rehearsal** — it replays episodes and schemas, never grade-2 maths.
+    4. ⭐ **A real spaced-repetition refresh — for ELA only.** Every post-K ELA cell re-teaches alphabet sequence (30 reps), ordinal (10) and letter naming (10), explicitly *"tops the basin up per Oja convergence x·(1−(1−lr)ⁿ) rather than relearning"*.
+  - ⛔ **THE GAP: that refresh covers ELA alphabet mechanics and NOTHING ELSE.** `math`, `science`, `social`, `art`, `music`, `pe`, `health` and `life` get **no re-presentation of earlier grades at any point in the walk.** When grade 10 trains, nothing anywhere refreshes grade 3 — so the Oja decay on those weights is **unopposed**.
+  - **That is precisely the thing he named.** For 8 of 9 courses the walk really is "current teaching replaces old teaching", and the only reason ELA is different is that one operator ask on 2026-09-01 produced one refresh block.
+  - **What to build:** generalise the ELA fundamentals-refresh idiom into a **per-subject rehearsal** at the `_cellRunner` chokepoint — each cell tops up a bounded sample of its own subject's earlier-grade anchors before teaching new material. ⭐ **The idiom is already proven and already priced**: the ELA refresh measured *"~102 → ~254 bounded one-hot ojaUpdate calls per cell — under 1% of a cell"*. ⛔ **Fix it at the chokepoint, not per subject** — `feedback_fix_the_chokepoint_not_the_instance`, twice-corrected on this board already.
+  - ⚠ **RE-PRICE BEFORE IT SHIPS.** Rehearsal is teaching ADDED across 213 cells, and the walk's finiteness is currently held by the consolidation gate alone (~24 days with it, ~100 without). **This must be costed against that number before a single rep is added.**
+
+- [ ] `TEACHKNOB.3` — **THE TEACH VIEW IS TWO-THIRDS DONE AND HE ASKED FOR THE MISSING THIRD.** `TEACHVIEW.10` part ② shipped (the ledger, `server/teach-ledger.js` — *everything a cell ever taught*, paged, with `total` beside `returned`). ⏳ **`TEACHVIEW.8` (retention + export) and `TEACHVIEW.9` remain open**, and `.9` is his verbatim ask: *"i want to know everything and seee everything in bars graphs, charts readouts of whats being sent stati…"*. ⚠ **`TEACHKNOB.1`'s panel belongs beside it, not in a separate screen** — what she is being taught and the knobs that shape how it lands are one question.
+
 ## HEARING — she must HEAR, not read a transcript — filed 2026-09-02
 
 Gee, verbatim:
