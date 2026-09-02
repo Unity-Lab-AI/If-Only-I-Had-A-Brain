@@ -87,10 +87,17 @@ const sentCapFor = (g) => SENT_CAP_BY_BAND[BAND_OF_GRADE.get(String(g || '').toL
 //
 // ⚠ THE GRADES ARE THE ROSTER'S OWN, not invented here: `courseNameFor('math',
 // g)` gives Algebra II at grade10, Pre-Calculus at grade11, AP Calculus at
-// grade12, so the three mirrors that exist land where the course names already
-// say they belong. ⛔ **There is no OpenStax mirror for Math 1-5, Algebra I or
-// Geometry**, so those cells still have no textbook; that gap is real and is on
-// the board rather than papered over by putting a calculus book in grade 8.
+// grade12, so the mirrors that exist land where the course names already say
+// they belong. ⛔ **There is no OpenStax mirror for Math 1-5, Algebra I or
+// Geometry**, so those cells have no textbook FROM THIS HOST; that gap is real
+// and is on the board rather than papered over by putting a calculus book in
+// grade 8.
+//
+// ✅ **AND IT IS CLOSED FROM ELSEWHERE, 2026-09-02** — Illustrative Mathematics
+// supplies Algebra I and Geometry, and its K-5 teacher guide (via Kendall Hunt)
+// supplies Math K-5. Every one of those cells now clears its band floor. **The
+// statement above stays because it is still true OF THIS HOST, and reading a
+// per-host gap as a per-corpus gap is what kept the primary grades unfed.**
 const BOOK_MAP = [
   { repo: 'biology-concepts-book', subject: 'science', grade: 'grade9',    label: 'Biology' },
   { repo: 'chemistry-book',        subject: 'science', grade: 'grade10',   label: 'Chemistry' },
@@ -121,6 +128,24 @@ const BOOK_MAP = [
   { repo: 'algebra-intermediate-book',  subject: 'math', grade: 'grade10',  label: 'Algebra II' },
   { repo: 'algebra-trigonometry-book',  subject: 'math', grade: 'grade11',  label: 'Pre-Calculus' },
   { repo: 'calculus-book',              subject: 'math', grade: 'grade12',  label: 'AP Calculus' },
+  // ⛔⛔ "PHILSCHATZ CARRIES 11 *-BOOK REPOS AND EXACTLY THREE ARE MATHS" WAS
+  // WRONG, AND IT WAS WRITTEN AS A CHECKED FACT (corrected 2026-09-02).
+  // The org carries **22** `*-book` repos and **five** are maths: the three
+  // above plus `precalculus-book` and `statistics-book`. The undercount is why
+  // this table stopped at AP Calculus and every degree-level maths cell was
+  // reported EMPTY — a wrong inventory reads exactly like an exhausted source.
+  //
+  // ⚠ MAPPED AGAINST THE ROSTER'S OWN COURSE NAME, NOT BY SUBJECT KEYWORD.
+  // `courseNameFor('math','college3')` is **"Differential Equations and
+  // Statistics"**, so Introductory Statistics lands there and covers half that
+  // course. It is deliberately NOT put at college1 ("Calculus II and
+  // Multivariable"), which statistics is not.
+  //
+  // ⚠ `precalculus-book` is NOT added: grade11 is Pre-Calculus and already has
+  // `algebra-trigonometry-book` mapped to it. A second book on the same course
+  // is worth having, but it is a top-up for a fed cell, not a fix for an empty
+  // one, and the empty cells come first.
+  { repo: 'statistics-book',            subject: 'math', grade: 'college3', label: 'Statistics' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
