@@ -1778,7 +1778,9 @@ Asked via `AskUserQuestion` with each option priced against measured numbers. Al
   - **Net effect:** every browser session loads an 11-file voice bank 30 s in, permanently, **for a function nothing can reach.** Not a correctness break — piper is the live path and works — but it is dead weight and a standing invitation for a future reader to "restore" a fallback the LAW forbids.
   - **How to rectify:** delete `_speakVox`, `_ensureVoxRef` and the `_voxPreloadTimer`, and decide `vox-bank/`'s fate explicitly. ⚠ **The comments at `:362-363` and `:701-706` argue it was KEPT ON PURPOSE** as a working equational artifact while its neighbours were deleted — so this is a decision to confirm with Gee, not a cleanup to perform unilaterally. **Either it gets a caller or it goes; what it may not do is stay callerless while its bank loads every session.**
 
-- [ ] `REGFIND.5` — ⚠ **BAD CODE (MILD): THE VOICE LOG CLAIMS "EQUATION UNITY ONE" EVEN WHEN THE EQUATIONAL ROUND-TRIP WAS SKIPPED.**
+- [x] `REGFIND.5` — ✅ **FIXED 2026-09-02.** The log now says which lane actually ran: `🎙 Equation Unity One` only when the CDF 9/7 round-trip succeeded, and otherwise `🎙 raw piper PCM — transform SKIPPED (Nx, <reason>) — … is NOT equational this utterance`, carrying a running count (`_voxEquationalSkips`) and the last reason. ⭐ **The BEHAVIOUR is unchanged and deliberately so** — the catch exists so *"a codec edge never silences her"*. **Only the report was wrong**, and the round-trip is the project's claim about her voice, so a line that cannot distinguish it is an instrument that lies. Client-side; bundle rebuilt.
+
+  **Original filing:** ⚠ **BAD CODE (MILD): THE VOICE LOG CLAIMS "EQUATION UNITY ONE" EVEN WHEN THE EQUATIONAL ROUND-TRIP WAS SKIPPED.**
   - **What it does:** `_speakPiper` wraps the CDF 9/7 encode/reconstruct in `try { … } catch { /* keep raw piper pcm */ }` (`voice.js:261-265`), then unconditionally logs `🎙 Equation Unity One (live sentence lane)`.
   - **Why the state is bad:** if the transform throws, she speaks **raw piper PCM** — which is correct behaviour and deliberately chosen so *"a codec edge never silences her"* — but **the log still asserts the equational lane ran.** An operator reading that line cannot tell an equational utterance from a raw one, and the equational round-trip IS the project's claim about her voice.
   - **How to rectify:** count the skip and say so — a counter plus a distinct log suffix (`… (raw PCM — transform skipped)`), or a `state.voice.equationalSkips` field. **The behaviour is right; only the report is wrong.** Same family as every other instrument-that-lies row on this board.
@@ -1929,7 +1931,21 @@ Gee, verbatim:
 
 > *"and one thing the Unity vision \"focus tracker\" never moves anymore to follow what she sees.. it use to work and she would look at the changes and motion on the unity vision cam viewer but it died of regression. so add fixing this too so Unity can follow the motion taking place in the casmera.. ie focus on a persona mouth moving or focus on the environment to study it and learn"*
 
-- [ ] `FOCUSDEAD.1` — ⛔ **THE RAF DRIVER RETURNS WITHOUT RE-ARMING, SO ONE INACTIVE FRAME KILLS THE FOCUS TRACKER PERMANENTLY.** `js/brain/remote-brain.js:613`:
+- [x] `FOCUSDEAD.1` — ✅ **FIXED 2026-09-02 — STOPPING AND PAUSING ARE NO LONGER THE SAME CODE PATH.** ⭐ **The defect was sharper than the original filing:** `_visionRafId` was assigned in two places and passed to `cancelAnimationFrame` in **NONE**, so the bare `return` was *simultaneously the only way to stop the loop and the only way to break it.*
+  - **STOP** is now an explicit `_visionLoopStopped` flag plus a real `stopVisionLoop()` that cancels the frame AND the park timer. **PAUSE** — cortex momentarily inactive (camera warming, permission re-prompt, backgrounded tab) — **parks on a 500 ms timer and re-arms itself**, because every one of those is temporary and none should be fatal.
+  - ⚠ **`stopVisionLoop()` was given a REAL caller rather than shipped orphaned** — `connectCamera` calls it on entry, so a second connect can no longer stack a second RAF loop driving the same cortex forever. **Adding a method nothing calls would have been the exact defect class this review is auditing.**
+  - ⭐ **Proven against the REAL shipped closure** (DOM + RAF stubbed, `connectCamera` invoked unchanged — not a re-typed copy of its shape):
+  ```
+    cortex INACTIVE           0 frames driven · parked 1 (it re-armed)
+    cortex comes alive       10 frames driven — RESUMED  ← the old loop was already dead here
+    stopVisionLoop()          0 frames after · RAF queue drained
+    connectCamera twice       1 frame from 1 pump (single loop, no stacking)
+  ```
+  - ⭐ **AND THE INSTRUMENT THAT WOULD HAVE CAUGHT IT SHIPPED WITH THE FIX.** `processFrame()` now counts at the chokepoint every driver must pass, published through `getState()`: **`frames`** (flat ⟹ a DRIVER problem), **`framesRefused`** (driven, but no video/context), **`lastFrameAgeMs`**. Gaze is computed client-side and never reaches server state, which is precisely why *"it never moves"* was unfalsifiable for months. ⚠ `processFrame` errors are now counted and log 1st-then-every-300th instead of once per frame.
+  - ⚠ **CLIENT-SIDE — lands on a PAGE RELOAD, not an Update press.** Bundle rebuilt and all four new symbols verified present.
+  - ⛔ **THIS IS A CONFIRMED-DEFECT FIX, NOT A PROVEN CAUSE.** `_active` only flips on `init`/`destroy`, so the old bug was latent on the ordinary path — `FOCUSDEAD.2`'s live check still decides whether this was Gee's actual regression. **The counters now make that answerable in one read.**
+
+  **Original filing:** ⛔ **THE RAF DRIVER RETURNS WITHOUT RE-ARMING, SO ONE INACTIVE FRAME KILLS THE FOCUS TRACKER PERMANENTLY.** `js/brain/remote-brain.js:613`:
   ```js
     const tick = () => {
       if (!this.visualCortex || !this.visualCortex.isActive()) return;   // ⛔ no reschedule

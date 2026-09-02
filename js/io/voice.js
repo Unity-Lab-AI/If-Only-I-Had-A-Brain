@@ -258,12 +258,26 @@ class VoiceIO {
     // if the transform hiccups, so a codec edge never silences her.
     let pcm = out.pcm;
     let sr = out.sampleRate;
+    // ⚠ REGFIND.5 — THE LOG USED TO CLAIM THE EQUATIONAL LANE UNCONDITIONALLY.
+    // The catch below is correct and deliberate — "a codec edge never silences
+    // her" — but the line underneath asserted `Equation Unity One` whether the
+    // round-trip ran or was skipped, so an operator could not tell an
+    // equational utterance from raw piper PCM. The round-trip IS the project's
+    // claim about her voice; a log that cannot distinguish it is an instrument
+    // that lies. Counted, and said out loud in the line itself.
+    let equational = false;
     try {
       const rec = perceiveAudio(pcm, sr);
       const recon = reconstructAudio(rec);
-      if (recon && recon.length) { pcm = recon; sr = rec.sampleRate || sr; }
-    } catch { /* keep raw piper pcm */ }
-    console.log(`[VoiceIO] 🎙 Equation Unity One (live sentence lane) — "${String(text).slice(0, 40)}" synthesized in-browser`);
+      if (recon && recon.length) { pcm = recon; sr = rec.sampleRate || sr; equational = true; }
+    } catch (e) {
+      this._voxEquationalSkips = (this._voxEquationalSkips | 0) + 1;
+      this._voxLastSkipReason = (e && e.message) || 'transform returned nothing';
+    }
+    if (!equational && !this._voxLastSkipReason) this._voxLastSkipReason = 'transform returned nothing';
+    console.log(equational
+      ? `[VoiceIO] 🎙 Equation Unity One (live sentence lane) — "${String(text).slice(0, 40)}" synthesized in-browser`
+      : `[VoiceIO] 🎙 raw piper PCM — transform SKIPPED (${this._voxEquationalSkips | 0}x, ${this._voxLastSkipReason}) — "${String(text).slice(0, 40)}" is NOT equational this utterance`);
     await this._playPcm(pcm, sr, rate || 1.0);
     return true;
   }
