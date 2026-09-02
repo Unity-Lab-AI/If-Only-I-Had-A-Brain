@@ -1083,7 +1083,7 @@ Gee (verbatim, same message): *"use ask me questioion for whats needs my input"*
 
 ⚠ **AND THE SECOND HALF OF HIS MESSAGE IS THE CORRECTION TO HOW I ASK:** when something genuinely IS his call, use `AskUserQuestion` — a real fork with real options — instead of burying a question in prose he has to dig out of a status report.
 
-> ✅ **NOFALLBACK.1 / .2 / .3 DONE 2026-09-01 — the last retrieval lanes in the cognition path are gone. 502 lines deleted.**
+> ✅ **NOFALLBACK.1 / .2 / .3 DONE 2026-09-01 — the last retrieval lanes in the cognition path are gone. 504 lines deleted from the two emission files (376 + 128), 514 with the curriculum edits — counted from `git show --numstat`, not remembered.**
 >
 > **`.1` THE PATH B ORACLE IS DELETED** — `_dictionaryOracleEmit` (311 lines) plus **both** call sites: the gate/probe emission path and `emitWordDirect`. ⭐ **Its own comment was the confession:** it existed to *"sidestep sem_to_motor basin collapse for gate probes"* — **a workaround that hides the fault it works around stops anyone ever fixing the fault**, and it did exactly that on the one path every gate probe travels.
 >
