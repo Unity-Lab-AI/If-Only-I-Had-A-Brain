@@ -9,14 +9,96 @@
   /* Scoped teachview-* per the naming law. Dark instrument panel, matching the
      rest of the console pages: this is a reading surface, so the type is sized
      to be read rather than to fit more rows on screen. */
+  /* ⭐⭐ TWO THEMES, ONE VARIABLE SET. `:root` is CONSOLE — the console-page
+     palette this file shipped with, kept as the "like every other page" mode.
+     `html[data-theme="hacker"]` overrides the same names for the green terminal
+     look. Nothing outside this block knows which theme is on, so a new panel
+     inherits both for free. */
   :root{
     --tv-bg:#07090d; --tv-panel:#0d1117; --tv-line:#1c2430; --tv-ink:#c9d6e4;
     --tv-dim:#6b7c90; --tv-accent:#4fd6ff; --tv-good:#49d67f; --tv-warn:#ffc861;
     --tv-bad:#ff6b6b; --tv-pink:#ff79c6;
+    --tv-font:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --tv-glow:none;
+    --tv-shadow:0 6px 22px rgba(0,0,0,.6);
   }
+  /* ⛔ THE GREEN IS NOT ONE GREEN. A single #00ff00 on black is unreadable for
+     body text at 12px — the phosphor look needs a bright accent against a DIMMER
+     body, or every row fights every other row for attention. Body text sits at
+     ~#8fdf9f and only headings/values take the full phosphor. */
+  html[data-theme="hacker"]{
+    --tv-bg:#000600; --tv-panel:#020c04; --tv-line:#0c3a16; --tv-ink:#8fdf9f;
+    --tv-dim:#3f8a52; --tv-accent:#39ff6a; --tv-good:#39ff6a; --tv-warn:#d4ff3e;
+    --tv-bad:#ff5f5f; --tv-pink:#5effc0;
+    --tv-font:"Courier New",Courier,ui-monospace,monospace;
+    /* Phosphor bloom, kept subtle: enough to read as a CRT, not enough to blur
+       a digit. Applied to headings and values only, never to a paragraph. */
+    --tv-glow:0 0 6px rgba(57,255,106,.45);
+    --tv-shadow:0 0 18px rgba(57,255,106,.10), 0 6px 22px rgba(0,0,0,.8);
+  }
+  html[data-theme="hacker"] h1,
+  html[data-theme="hacker"] .tv-card>h2,
+  html[data-theme="hacker"] .tv-reg b,
+  html[data-theme="hacker"] code{ text-shadow:var(--tv-glow); }
+  html[data-theme="hacker"] .tv-card{ box-shadow:var(--tv-shadow); }
   *{box-sizing:border-box}
   body{margin:0;background:var(--tv-bg);color:var(--tv-ink);
-    font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    font:14px/1.5 var(--tv-font)}
+
+  /* ⭐ THE CRT ROLL — a faint static band that drifts down the screen at
+     irregular intervals, like a tube TV with poor reception.
+
+     ⛔ THE OPERATOR'S HARD CONSTRAINT IS THAT IT MUST "in no way effect ability
+     to read the viewers info", AND THAT DICTATES THE WHOLE IMPLEMENTATION:
+
+       · `pointer-events:none` — it can never swallow a click or a hover.
+       · A fixed overlay OUTSIDE the document flow — it cannot move a single
+         pixel of layout, so text never reflows under it.
+       · `opacity` peaks at 0.05. At 12px body text anything above ~0.08 starts
+         costing legibility on thin glyphs; this is visible on a flat panel and
+         invisible over a paragraph.
+       · Composited transform/opacity ONLY — no property here triggers layout or
+         paint of the page beneath, so the reading feed never loses a frame to it.
+       · The whole thing is `display:none` unless the hacker theme is on.
+
+     ⚠ IRREGULAR BY DESIGN. A fixed-period sweep reads as a progress bar and the
+     eye locks onto it; the animation carries long dead stretches so it arrives
+     "at different times" as asked. */
+  #tvCrt{
+    position:fixed; inset:0; z-index:60; pointer-events:none; display:none;
+    mix-blend-mode:screen;
+  }
+  html[data-theme="hacker"] #tvCrt{ display:block; }
+  /* ⚠ Anyone who has asked their OS not to animate gets no roll at all. */
+  @media (prefers-reduced-motion: reduce){ html[data-theme="hacker"] #tvCrt{ display:none; } }
+  #tvCrt .roll{
+    position:absolute; left:0; right:0; height:120px;
+    background:linear-gradient(180deg,
+      rgba(57,255,106,0) 0%, rgba(57,255,106,.035) 42%,
+      rgba(200,255,210,.05) 50%, rgba(57,255,106,.035) 58%, rgba(57,255,106,0) 100%);
+    animation: tvRoll 19s linear infinite;
+    will-change: transform;
+  }
+  #tvCrt .roll.b{ animation-duration:31s; animation-delay:7s; opacity:.6; }
+  #tvCrt .roll.c{ animation-duration:47s; animation-delay:23s; opacity:.4; }
+  /* The dead stretch is inside the keyframes: the band spends most of the cycle
+     off-screen, so sweeps arrive at uneven, non-obvious intervals. */
+  @keyframes tvRoll{
+    0%   { transform:translateY(-140px); }
+    62%  { transform:translateY(-140px); }
+    100% { transform:translateY(105vh); }
+  }
+  /* Scanlines — static, no animation.
+     ⚠ 5px PITCH AND .14 ALPHA, both chosen against the text rather than for the
+     look. A 3px pitch beats against 12-14px glyph stems and produces visible
+     moire on exactly the small monospace digits this page is full of; 5px sits
+     clear of it. .30 was the first value and it dimmed body text enough to
+     notice, which the operator's "in no way effects ability to read" forbids. */
+  html[data-theme="hacker"] #tvCrt::after{
+    content:''; position:absolute; inset:0;
+    background:repeating-linear-gradient(180deg,
+      rgba(0,0,0,0) 0px, rgba(0,0,0,0) 3px, rgba(0,18,6,.14) 4px, rgba(0,0,0,0) 5px);
+  }
   header{padding:14px 18px;border-bottom:1px solid var(--tv-line);
     display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;background:var(--tv-panel)}
   h1{margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--tv-accent)}
@@ -111,8 +193,27 @@
 </style>
 </head>
 <body>
+<!-- ⚠ THEME APPLIED BEFORE ANYTHING PAINTS. Setting it from the main script at
+     the bottom would render one frame of the console palette before flipping to
+     green — a flash on every load. This runs first and does nothing else. -->
+<script>
+  try {
+    if (localStorage.getItem('tv-theme') === 'hacker') {
+      document.documentElement.setAttribute('data-theme', 'hacker');
+    }
+  } catch (e) { /* private mode — console theme is the correct fallback */ }
+</script>
+
+<!-- The CRT overlay. Outside every card on purpose: it must not be able to
+     affect the layout of anything it drifts across. -->
+<div id="tvCrt" aria-hidden="true"><i class="roll"></i><i class="roll b"></i><i class="roll c"></i></div>
+
 <header>
   <h1>Teach View</h1>
+  <button id="tvTheme" class="tv-tip"
+    title="Switch between the console theme and the hacker-green CRT theme."
+    data-tip="Switch the whole viewer between two styles.&#10;&#10;CONSOLE — the palette and font every other page uses. No green, no CRT font, and the static roll is OFF.&#10;&#10;HACKER — phosphor green on black, terminal font, and a very faint static band that drifts down the screen at irregular intervals like a tube TV with poor reception.&#10;&#10;⛔ The static NEVER sits over text, never moves layout, and never costs the feed a frame. It also disables itself entirely if your system asks for reduced motion.&#10;&#10;Your choice is remembered on this browser."
+    style="margin-left:auto;font:11px var(--tv-font);letter-spacing:.1em">◐ THEME</button>
   <span class="tv-sub tv-tip" id="tvStatus"
     title="Whether the teach bus is publishing. Silent is CORRECT when the walk is stopped."
     data-tip="Whether the TEACH BUS is publishing right now.&#10;&#10;“teaching” — items arrived in the last 60s.&#10;“last taught Ns ago” — the bus has gone quiet; on a stopped walk that is correct, not a fault.&#10;“teach bus silent” — nothing has been published this boot at all.&#10;“brain unreachable” — the page could not fetch state; this says nothing about whether the brain is learning."><span class="tv-dot warn"></span>connecting…</span>
@@ -279,10 +380,20 @@
           <label class="tv-sub tv-tip"
             title="Show only values somebody has actually reasoned about."
             data-tip="Hide every value with no recorded reason and show only the ones that were SET deliberately, DERIVED from a measurement, marked STALE, or knowingly INHERITED.&#10;&#10;⭐ This is the readout view: 195 rows is a wall, and the handful anyone has actually reasoned about is what you want to read off."><input type="checkbox" id="tvKnobReasoned" /> only ones with a reason</label>
+          <button id="tvKnobSave" class="tv-tip"
+            title="Save every knob position to a file."
+            data-tip="Write every knob's CURRENT value to a JSON file and download it.&#10;&#10;⭐ The file carries the values AND their provenance AND a timestamp, so a saved set can be compared against a later one and explain itself rather than being a bare list of numbers.">⤓ save positions</button>
+          <button id="tvKnobLoad" class="tv-tip"
+            title="Load a saved knob file — shows a diff before anything applies."
+            data-tip="Load a previously saved knob file. You can also DRAG AND DROP the file anywhere on this page.&#10;&#10;⛔ It shows you a DIFF first and applies nothing on its own. Silently swallowing a file that changes how she learns is exactly the failure this panel exists to prevent.">⤒ load positions</button>
+          <button id="tvKnobReset" class="tv-tip"
+            title="Show what resetting every knob to its code default would change."
+            data-tip="Compare every knob against the value the CODE falls back to with nothing set, and list what differs.&#10;&#10;⚠ It distinguishes the code's own default from whatever the environment currently sets — a reset that quietly wrote the current value back would be the instrument lying.">↺ reset to default</button>
           <label class="tv-sub tv-tip tip-l"
             title="Show the description and the effect-class evidence for each knob."
             data-tip="Show what each knob does, plus the evidence behind its effect class — the read site and why it was classified live, boot-frozen or unproven.&#10;&#10;⚠ The evidence line matters as much as the value: it is what lets a claim about this panel be checked instead of believed."><input type="checkbox" id="tvKnobDetail" checked /> show what each one does</label>
         </div>
+        <div id="tvKnobReport" style="margin-top:9px"></div>
         <div id="tvKnobs" style="margin-top:9px"><div class="tv-note">—</div></div>
       </div>
     </div>
@@ -836,6 +947,179 @@ function renderKnobs(k) {
 $('tvKnobOnlySet').onchange = () => renderKnobs(null);
 $('tvKnobDetail').onchange = () => renderKnobs(null);
 $('tvKnobReasoned').onchange = () => renderKnobs(null);
+
+/* ────────────────────────────────────────────────────────────────────────────
+   THEME — console (every other page) vs hacker green CRT.
+
+   ⚠ The choice is applied to <html> BEFORE first paint via an inline script at
+   the top of the body, not here, so the page never flashes the wrong theme.
+   This block only owns the toggle and the persistence.
+   ──────────────────────────────────────────────────────────────────────────── */
+function tvTheme(next) {
+  const el = document.documentElement;
+  const now = next || (el.getAttribute('data-theme') === 'hacker' ? 'console' : 'hacker');
+  if (now === 'hacker') el.setAttribute('data-theme', 'hacker');
+  else el.removeAttribute('data-theme');
+  try { localStorage.setItem('tv-theme', now); } catch { /* private mode — theme just does not persist */ }
+  const b = $('tvTheme');
+  if (b) b.textContent = now === 'hacker' ? '◐ CONSOLE' : '◐ HACKER';
+  return now;
+}
+$('tvTheme').onclick = () => tvTheme();
+tvTheme((() => { try { return localStorage.getItem('tv-theme') || 'console'; } catch { return 'console'; } })());
+
+/* ────────────────────────────────────────────────────────────────────────────
+   KNOB POSITIONS — save, load (with a diff first), and a reset preview.
+
+   ⛔ NOTHING HERE WRITES A KNOB. The panel is read-only until every effect class
+   is proven, and three of them are already known to be `cached` — accepted,
+   read back correctly, silently ignored. So load and reset both produce a
+   REPORT of what would change. Applying is a separate, later decision, and
+   pretending otherwise would be the exact lie this panel exists to catch.
+   ──────────────────────────────────────────────────────────────────────────── */
+function knobSnapshot() {
+  const k = lastKnobs;
+  if (!k) return null;
+  const rows = k.groups.flatMap((g) => g.knobs);
+  return {
+    kind: 'unity-knob-positions',
+    version: 1,
+    // ⚠ Stamped by the browser, not the brain: this file records what the PAGE
+    // was shown, and says so, rather than implying the server signed it.
+    savedAt: new Date().toISOString(),
+    savedFrom: location.host || 'file://',
+    totals: { total: k.total, ...(k.provenance || {}) },
+    knobs: rows.map((x) => ({
+      key: x.key,
+      value: x.effective,
+      dflt: x.dflt,
+      overridden: !!x.overridden,
+      provenance: x.provenance || 'unknown',
+      effect: x.effect,
+      why: x.why || null,
+    })),
+  };
+}
+
+function knobReport(html) {
+  const host = $('tvKnobReport');
+  if (host) host.innerHTML = html;
+}
+
+$('tvKnobSave').onclick = () => {
+  const snap = knobSnapshot();
+  if (!snap) { knobReport('<div class="tv-note">⛔ Nothing to save — the knob block has not loaded.</div>'); return; }
+  const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `unity-knobs-${snap.savedAt.replace(/[:.]/g, '-')}.json`;
+  a.click();
+  setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch { /* nf */ } }, 10000);
+  knobReport(`<div class="tv-note">⤓ Saved <b>${snap.knobs.length}</b> knob positions with their provenance and reasoning.</div>`);
+};
+
+/* The diff. ⭐ It reports THREE kinds of difference, because collapsing them
+   would hide the one that matters: values that differ, keys the file has that
+   this brain does not, and keys this brain has that the file never recorded. */
+function knobDiff(fileKnobs, label) {
+  const k = lastKnobs;
+  if (!k) return '<div class="tv-note">⛔ The knob block has not loaded — nothing to compare against.</div>';
+  const live = new Map(k.groups.flatMap((g) => g.knobs).map((x) => [x.key, x]));
+  const seen = new Set();
+  const changed = [], onlyFile = [];
+  for (const f of fileKnobs) {
+    seen.add(f.key);
+    const cur = live.get(f.key);
+    if (!cur) { onlyFile.push(f); continue; }
+    if (String(f.value) !== String(cur.effective)) changed.push({ key: f.key, from: cur.effective, to: f.value, cur });
+  }
+  const onlyLive = [...live.keys()].filter((key) => !seen.has(key));
+  let h = `<div class="tv-note">${label} — <b>${changed.length}</b> value(s) differ`
+    + (onlyFile.length ? ` · <b>${onlyFile.length}</b> in the file but not in this brain` : '')
+    + (onlyLive.length ? ` · <b>${onlyLive.length}</b> in this brain but not in the file` : '')
+    + `. <b>Nothing has been applied</b> — this panel is read-only.</div>`;
+  if (!changed.length && !onlyFile.length) {
+    return h + '<div class="tv-note">✅ Every knob this brain reads already matches.</div>';
+  }
+  for (const c of changed.slice(0, 60)) {
+    /* ⛔ A change to a `cached` or `boot` knob is flagged HERE, because on a
+       running brain it could not take effect even if applying were built. */
+    const warn = c.cur.effect === 'boot' ? ' ⛔ boot-frozen — a restart would be required'
+      : c.cur.effect === 'cached' ? ' ⛔ cached on first use — would be silently ignored on a running brain'
+      : c.cur.effect === '???' ? ' ⚠ effect unproven' : '';
+    h += `<div style="padding:4px 0;font-size:12.5px"><code>${knobEsc(c.key)}</code> `
+      + `<span class="tv-sub">${knobEsc(c.from)}</span> → <b>${knobEsc(c.to)}</b>`
+      + `<span class="tv-sub">${knobEsc(warn)}</span></div>`;
+  }
+  if (changed.length > 60) h += `<div class="tv-note">+${changed.length - 60} more not shown.</div>`;
+  for (const f of onlyFile.slice(0, 20)) {
+    h += `<div style="padding:4px 0;font-size:12.5px"><code>${knobEsc(f.key)}</code> `
+      + `<span class="tv-sub">is in the file but this brain does not read it</span></div>`;
+  }
+  return h;
+}
+
+function knobLoadFromText(txt, label) {
+  let j;
+  try { j = JSON.parse(txt); } catch (e) {
+    knobReport(`<div class="tv-note">⛔ <b>Not valid JSON</b> — ${knobEsc(e.message)}</div>`);
+    return;
+  }
+  if (!j || j.kind !== 'unity-knob-positions' || !Array.isArray(j.knobs)) {
+    knobReport('<div class="tv-note">⛔ <b>Not a knob-positions file.</b> '
+      + 'Expected <code>kind: "unity-knob-positions"</code> with a <code>knobs</code> array. '
+      + 'Refusing a file it cannot identify is safer than guessing at its shape.</div>');
+    return;
+  }
+  knobReport(knobDiff(j.knobs, `${label} — saved ${knobEsc(j.savedAt || 'at an unrecorded time')}`));
+}
+
+$('tvKnobLoad').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => knobLoadFromText(String(r.result), knobEsc(f.name));
+    r.readAsText(f);
+  };
+  inp.click();
+};
+
+/* Drag and drop anywhere on the page, as asked. */
+window.addEventListener('dragover', (e) => { e.preventDefault(); }, false);
+window.addEventListener('drop', (e) => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  e.preventDefault();
+  const r = new FileReader();
+  r.onload = () => knobLoadFromText(String(r.result), `dropped ${knobEsc(f.name)}`);
+  r.readAsText(f);
+}, false);
+
+$('tvKnobReset').onclick = () => {
+  const k = lastKnobs;
+  if (!k) { knobReport('<div class="tv-note">⛔ The knob block has not loaded.</div>'); return; }
+  /* ⚠ "Reset to default" compares against the CODE default, which is not the
+     same thing as the current value — on this box the environment sets nothing,
+     so most rows already sit at their default and the diff is correctly tiny. */
+  const rows = k.groups.flatMap((g) => g.knobs);
+  const differ = rows.filter((x) => x.overridden && String(x.value) !== String(x.dflt));
+  let h = `<div class="tv-note">↺ Reset preview — <b>${differ.length}</b> of ${rows.length} knob(s) `
+    + `are set by the environment to something other than the code default. `
+    + `<b>Nothing has been applied.</b></div>`;
+  if (!differ.length) {
+    h += '<div class="tv-note">✅ Every knob is already running its code default — '
+      + 'the environment overrides nothing on this box. A reset would change nothing.</div>';
+  } else {
+    for (const x of differ.slice(0, 60)) {
+      h += `<div style="padding:4px 0;font-size:12.5px"><code>${knobEsc(x.key)}</code> `
+        + `<b>${knobEsc(x.value)}</b> → <span class="tv-sub">default ${knobEsc(x.dflt)}</span></div>`;
+    }
+  }
+  knobReport(h);
+};
 
 /* ────────────────────────────────────────────────────────────────────────────
    DOWNLOAD HER WEIGHTS

@@ -2166,6 +2166,32 @@ Gee, verbatim:
   - ⚠⚠ **DO NOT READ 12,830 AS AN IMPROVEMENT ON THE BOARD'S 42,521.** That figure was produced by a different predicate, and **two contamination counts taken with different regexes are not comparable.** Mine may be narrower. **The honest statement is that by THIS predicate it is 12,830; whether the corpus got cleaner is a question only one predicate run twice can answer.**
   - ⛔ **AND THE 4 EMPTY MATHS CELLS ARE STILL EMPTY** (`MATHGAP.1`) — not wrong material, but absent material, and it is the same question one step over.
 
+## KNOBUI — the readout becomes an instrument: provenance, presets, and a theme — filed 2026-09-02
+
+Gee, verbatim:
+
+> *"okay u need to find the 186 in totalit that you dont know their reason... and we need a reset to defaulkt and a save knob positions to a file and be able to load back in a nob position via a upladed file ie like a drag and drop intop the trainerviewer. and all kinds of other shit like this.. and i want it to be hacker green theme and hacker fonts with option to switch the whole viewer style back to what is now, but make it more in theme with the dashboard and brain page with button to switch between styles maybe even add a very faing static line trickle down the screen at different times like an oll tube tv with poor reception but in no way effects ability to read the viewers info but the normal style and fonts like every other page turns that off and turns off the hacker green and hacker font"*
+
+- [ ] `KNOBUI.1` — **FIND THE REASON FOR ALL 186 KNOBS THAT HAVE NONE.** *"u need to find the 186 in totalit that you dont know their reason"*. ⭐ **The count is exact and comes from the panel's own tally**: 195 total, 9 with a recorded reason, **186 reading `no recorded reason`**. ⛔ **This is a READING job, not a scan** — three automated classifiers have already lied about these knobs (brace-depth, column-0, and my own hand-registry carrying two `cached` values as `live`). **Each row gets its site read and its reason written, or it keeps saying it has none.** ⚠ Bounded by honesty, not by effort: a knob whose reason genuinely cannot be established stays `unknown` rather than receiving a plausible sentence.
+
+- [ ] `KNOBUI.2` — **RESET TO DEFAULT.** *"we need a reset to defaulkt"*. ⚠ Must distinguish **the code's own default** from **whatever the environment currently sets** — the panel already knows both, and a reset that quietly wrote the current value back would be the instrument lying again.
+
+- [ ] `KNOBUI.3` — **SAVE KNOB POSITIONS TO A FILE.** *"a save knob positions to a file"*. ⭐ The file wants to carry the VALUES and the PROVENANCE and the timestamp, so a saved set can be compared against a later one and explain itself.
+
+- [ ] `KNOBUI.4` — **LOAD KNOB POSITIONS BACK IN FROM AN UPLOADED FILE, BY DRAG AND DROP.** *"be able to load back in a nob position via a upladed file ie like a drag and drop intop the trainerviewer"*. ⛔ **A loaded set must show a DIFF before it applies anything** — silently swallowing a file that changes how she learns is exactly the class of failure this panel exists to prevent.
+
+- [ ] `KNOBUI.5` — **"AND ALL KINDS OF OTHER SHIT LIKE THIS"** — his words, kept as its own row rather than folded into the four above, because it is an explicit instruction to keep extending the instrument and not a decoration on the others.
+
+- [ ] `KNOBUI.6` — **HACKER GREEN THEME AND HACKER FONTS.** *"i want it to be hacker green theme and hacker fonts"*.
+
+- [ ] `KNOBUI.7` — **A BUTTON TO SWITCH THE WHOLE VIEWER STYLE BACK TO WHAT IT IS NOW.** *"with option to switch the whole viewer style back to what is now"* / *"button to switch between styles"*.
+
+- [ ] `KNOBUI.8` — **MAKE THE NORMAL STYLE MORE IN THEME WITH THE DASHBOARD AND BRAIN PAGE.** *"but make it more in theme with the dashboard and brain page"*.
+
+- [ ] `KNOBUI.9` — **A VERY FAINT STATIC LINE TRICKLING DOWN THE SCREEN AT DIFFERENT TIMES, LIKE AN OLD TUBE TV WITH POOR RECEPTION.** *"maybe even add a very faing static line trickle down the screen at different times like an oll tube tv with poor reception"*. ⛔ **HARD CONSTRAINT, his words:** *"but in no way effects ability to read the viewers info"* — the effect never sits over text, never animates layout, and never costs a frame the feed needs.
+
+- [ ] `KNOBUI.10` — **THE NORMAL STYLE TURNS ALL THREE OFF.** *"the normal style and fonts like every other page turns that off and turns off the hacker green and hacker font"* — normal mode kills **the static**, **the green**, and **the hacker font** together.
+
 ## WRONGREPO — I committed brain work into the live field-data repo and deleted 23,782 files — 2026-09-02
 
 - [x] `WRONGREPO.1` — ⛔⛔⛔ **FOUL, MINE, CAUGHT BY A HOOK RATHER THAN BY ME. Two brain-repo commits landed in `UnityAILab/BrainWaves` and removed 23,782 field files from a repository a live job was writing to. Pushed to `origin/main` before it was noticed.**
