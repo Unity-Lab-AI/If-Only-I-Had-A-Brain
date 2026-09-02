@@ -5,6 +5,68 @@
 
 ---
 
+## 2026-09-02 (FIFTEENTH BATCH) — THE GENERATED PHONICS QUESTIONS REACH THE LIVE EXAM, AND ONE FILED GAP TURNS OUT NOT TO EXIST
+
+Filed under `PHONBANK.2` (*"STILL OWED: wiring the generated set into `EXAM_BANKS`"*) and closing part ② of `PHONBANK.1`, whose originating words from Gee were:
+
+> *"wher is the rest of the alphabet and the other phonics of letters every letter has more than one,, and isnt this old corpus shit still?"*
+
+Picked up under his standing instruction for this session: *"okay while you monitor all that and manage all of that in the mean time go ahead and work on any outstanding doable todo items working them off that u can"* — chosen because it is the only open board item that does not write `corpora/`, which the running field job reads at the start of every batch.
+
+### What shipped
+
+`corpora/phonics/exam-questions.json` was a file nothing read. Four files now carry it into the held-out exam:
+
+| file | what it does |
+|---|---|
+| `server/life-curriculum.js` | `phonicsExamQuestions()` — reads and caches the generated rows; missing file is a data absence, a missing `questions` array says so |
+| `server/brain-server.js` | the cluster bridge, attached beside `academicStoryFigures` |
+| `js/brain/student-question-banks.js` | `injectGeneratedExamQuestions()` + `_examInjectReport` — the merge |
+| `js/brain/curriculum.js` | the call, placed immediately BEFORE the held-out integrity check |
+
+```
+  offered 110 · added 110 · refused 0 train-overlap · 0 duplicate · 0 empty
+  ela/kindergarten                190 -> 300
+  held-out overlap after inject   0
+  malformed rows                  0/110
+  rows with a methodology probe   110/110   (inherited from the K.RF.3a template)
+  re-inject the same rows         added 0, refused 110 duplicate, bank stays 300
+```
+
+### ⛔⛔ The merge had to live in the bank module, and that is the whole design
+
+Held-out validity there is a property of the **export**: a load-time loop strips any exam question the training side also shows (37 collisions across four K cells the first time it ran). **Code that pushed onto `EXAM_BANKS[cell]` would run AFTER that loop and walk straight past it** — re-opening exactly the contamination the guarantee was written to end, and the runtime overlap check would then report the breach as a mystery defect rather than as the authoring collision it is. The injector re-applies the same rule to every row it admits.
+
+### ⚠ It had to be idempotent, which is why refusals are counted by reason
+
+A boot that injected twice would double the bank and halve every per-standard rate **while every log line still read healthy**. A question text already banked is refused. `rejectedTrainOverlap` / `rejectedDuplicate` / `rejectedEmpty` are separate counters because *"refused 110"* cannot distinguish a working held-out filter from a second injection landing on itself. Proven by running the injection twice.
+
+### ⛔⛔ THE FINDING WORTH MORE THAN THE FEATURE — PART ① OF `PHONBANK.1` IS RETRACTED
+
+The row read: *"letters WITHOUT a letter-sound exam question: 5/26 — b n q r t"*. **Re-measured off the live export, all five answer** — `b` and `n` two questions each, `q` one, `r` and `t` three.
+
+⚠ **My own before/after reads `26/26 → 26/26`, and I nearly credited this wiring with fixing it.** The mechanism the row named is real and still runs — the sanitize removes 20 questions from this cell — but ⭐ **what it takes from `b` and `n` is the letter-NAMING question (`name this letter: B`), not the letter-SOUND one**, and the train bank deliberately holds `q`/`r`/`t` out (its own comment: *"Exam tests t/n/r/b. Train all others"*). **The original count conflated naming with sounding.**
+
+⛔ **Recorded rather than quietly dropped, because a live row claiming a gap that does not exist sends the next reader hunting for it.** ⚠ And my first attempt to check it had an escaping bug that made the regex search for a literal backslash and report `0` for all five — the wrong answer that agreed with the row. **A check that confirms what you expect is the one to re-run.**
+
+### ✅ Part ② is closed, and it was always the bigger half
+
+`0/26 → 9/26` letters carry more than one sound in the held-out exam — `a c g i o s u x y` — plus the digraphs: hard/soft `c`, hard/soft `g`, long/short vowels, `s`-as-/z/. ⛔ **No phoneme is spelled out anywhere in them**; the two forms are SAME-OR-DIFFERENT and WHICH-ONE, and the answer to the second is an example WORD.
+
+### ⭐ The pre-taught LAW checked by running it, not by asserting it
+
+Of **152 quoted strings** across the 110 questions, **9 are absent from her K + grade-1 vocabulary and all 9 are attested graphemes** from `gpc.json` — zero unexplained words. A grapheme is the SUBJECT of a phonics question, not vocabulary the question presumes. This is the same class as the earlier `buh / fff / vib` false alarm: strings correctly absent from prose.
+
+### Verification
+
+`node --check` on all four files · ESM link verified with `import()` through `pathToFileURL` (not `node --check`, which cannot see it) · injector harnessed against the **production modules and the real corpus file**, twice, for idempotency · bundle rebuilt (974.5 kb).
+
+### ⏳ Still owed
+
+**Only the 12-cell → 213-cell scope.** The injector creates a cell that has no bank and reports `createdCell` when it does, so the machinery for the other 201 exists; content checked against each band's own vocabulary does not. Fanning these rows to other grades is refused on purpose.
+
+---
+
 ## 2026-09-02 (FOURTEENTH BATCH) — THE DAY THE PICTURES BECAME EQUATIONS
 
 Sixteen rows, migrated byte-for-byte from `docs/TODO.md` and verified EQUAL before one was removed.

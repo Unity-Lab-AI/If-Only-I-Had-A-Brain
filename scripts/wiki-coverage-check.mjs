@@ -165,10 +165,18 @@ for (const p of pages) {
 console.log('\n  LINE COUNTS IN TABLES');
 console.log(`    checked            ${countChecked}   (${countApprox} written as ~N, deliberately unchecked)`);
 console.log(`    wrong              ${countWrong.length}`);
-for (const w of countWrong.slice(0, 25)) {
+// ⚠ `--list` says "print every uncovered path" and this section ignored it — the
+// slice was unconditional, so a run asking for everything still hid 24 of 49
+// drifts behind "… and N more" and there was no flag that would show them. An
+// instrument that truncates its own finding while advertising completeness is
+// the defect class this whole file exists to catch.
+const _countShow = LIST_ALL ? countWrong : countWrong.slice(0, 25);
+for (const w of _countShow) {
   console.log(`      · ${w.rel} — page says ${w.shown.toLocaleString()}, wc -l says ${w.real.toLocaleString()}  [${w.pageRel}]`);
 }
-if (countWrong.length > 25) console.log(`      · … and ${countWrong.length - 25} more`);
+if (countWrong.length > _countShow.length) {
+  console.log(`      · … and ${countWrong.length - _countShow.length} more (--list for all)`);
+}
 
 // ── second check: wikilinks, orphans, index drift ─────────────────────────
 //

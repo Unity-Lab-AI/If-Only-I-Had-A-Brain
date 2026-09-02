@@ -6,14 +6,23 @@
 >
 > ### ⛔ STATE RIGHT NOW — A LONG JOB IS RUNNING. DO NOT START ANYTHING THAT WRITES `corpora/`
 > ```
-> board          31 open · 22 in-progress   (19 completed rows migrated out today)
-> git            29 commits on feature/board-triage-0902, NOT cascaded
-> RUNNING        the figure-field job — batch 5 of ~26
->                6,273 waves produced · 5,924 pushed to Forgejo · local 15 GB
->                log: .scratch/bw.log      rate ~2.8/s, ETA ~2.5 h
+> board          30 open · 22 in-progress   (19 rows migrated out, then PHONBANK closed)
+> git            feature/board-triage-0902, NOT cascaded
+>                30 ahead of develop · 31 ahead of main   ⚠ BOTH are true; a bare
+>                "N commits" is a count against an unstated target
+> RUNNING        the figure-field job — batch 7 of ~26
+>                8,316 confirmed in delivered.txt, batch 6 (+2,392) pushed
+>                log: .scratch/bw.log      rate ~3.0/s, ETA ~2 h
 > walk           frozen ON PURPOSE — training still being BUILT
 > donor pod      i03ihi54kccu0l EXITED on purpose. restart = start-pod, NEVER terminate
 > ```
+> ### ⭐ SHIPPED SINCE THE BLOCK BELOW WAS WRITTEN — the phonics wiring (`PHONBANK.2`)
+> The generated set was a file nothing read. `phonicsExamQuestions()` → cluster bridge → **`injectGeneratedExamQuestions()` inside `student-question-banks.js`** → called in `curriculum.js` immediately BEFORE the held-out check, so the check validates the injected rows. **`ela/kindergarten` 190 → 300, 110 of 110 admitted, overlap still 0.**
+> - ⛔ **The merge belongs in the bank module, not at the call site** — held-out validity there is a property of the export, and a push would run after the load-time strip and walk past it.
+> - ⚠ **Refusals are counted BY REASON because it must be idempotent** — a second injection doubles the bank while every log line still reads healthy. Run twice: `added 0, rejectedDuplicate 110`.
+> - ✅ **Letters carrying more than one sound in the held-out exam: `0/26` → `9/26`** plus digraphs. No phoneme is spelled out anywhere.
+> - ⛔⛔ **`PHONBANK.1` part ① RETRACTED — "b n q r t have no letter-sound question" is not true today** (all five answer; the sanitize takes their *naming* question, and the train bank holds three of them out). **My before/after is `26/26 → 26/26` and I nearly claimed the fix.** ⚠ My first check had an escaping bug that agreed with the row — **a check that confirms what you expect is the one to re-run.**
+> - ⏳ **Still owed there: only the 12-cell → 213-cell scope.** The injector creates a missing cell and reports `createdCell`; content checked against each band's vocabulary is what does not exist.
 > ⛔ **The running loop reads `corpora/academic` at the start of every batch.** Changing the corpus mid-flight changes the figure list it is walking. The two owed re-ingests (`MATHLEAK.1`, `CELLRACE.2`) are deferred for exactly this reason.
 >
 > ### ⛔⛔ THE FINDING THAT MATTERS MOST: BUILDING A LANE IS NOT RUNNING IT
@@ -40,7 +49,9 @@
 > - **BrainWaves stays PUBLIC**, decided with the facts in hand after I demonstrated by anonymous fetch that a public Forgejo repo needs no login to download. It holds NC and ND material; the README states that plainly rather than implying otherwise.
 >
 > ### ⏳ NEXT
-> **Let the field job finish (~2.5 h), then run the two deferred re-ingests** — `MATHLEAK.1` (22,859 LaTeX-bearing sentences; the cleaner is built, the corpus is not yet clean) and `CELLRACE.2`'s confirming pass, now that academic can finally replace its own entries · **retry sweep for the ~19% of figures that fail per batch** (dead URLs, non-Wikimedia SVGs, GIFs — failures are not ledgered so a re-run picks them up) · **wire the 110 generated phonics questions into `EXAM_BANKS`** and the 12-cell → 213-cell scope · **4 empty maths cells** · **cascade the 29 commits** · **`REGRESSION.1` is last by construction.**
+> **Let the field job finish (~2.5 h), then run the two deferred re-ingests** — `MATHLEAK.1` (22,859 LaTeX-bearing sentences; the cleaner is built, the corpus is not yet clean) and `CELLRACE.2`'s confirming pass, now that academic can finally replace its own entries · **retry sweep for the ~19% of figures that fail per batch** (dead URLs, non-Wikimedia SVGs, GIFs — failures are not ledgered so a re-run picks them up) · ✅ **the 110 generated phonics questions ARE wired** (2026-09-02) — what remains of that item is the 12-cell → 213-cell scope alone · **4 empty maths cells** · **cascade the branch** (30 ahead of develop, 31 of main) · **`REGRESSION.1` is last by construction.**
+>
+> ⚠ **Every remaining board item writes `corpora/`, which the running job reads at the start of every batch** — that is why the phonics wiring was the one picked up. Nothing else is unblocked until the job ends.
 
 ---
 

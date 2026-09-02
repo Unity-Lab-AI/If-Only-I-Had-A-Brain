@@ -185,9 +185,45 @@ function academicStoryFigures(subject, grade) {
   return out;
 }
 
+// ─── Generated exam questions ────────────────────────────────────────────────
+//
+// `corpora/phonics/exam-questions.json` is DERIVED, not authored: the generator
+// reads the grapheme-phoneme rules (`corpora/phonics/gpc.json`, scraped and then
+// dictionary-checked) and emits only questions answerable from the rules
+// themselves. It exists because the hand-written bank taught no letter more than
+// one sound — no hard/soft c, no hard/soft g, no long/short vowels — while the
+// rules carry every one of those as data.
+//
+// ⚠ Loaded here for the same reason the story corpora are: the bank module is
+// browser-bundled and has no filesystem, so the rows travel over the cluster
+// bridge instead of being an import.
+//
+// ⛔ SHAPE IS CHECKED, NOT ASSUMED. A file whose `questions` key is missing or is
+// not an array returns [] and says so — the alternative is handing a non-array
+// to the injector and having it silently admit nothing.
+let _phonicsExamCache;
+function phonicsExamQuestions() {
+  if (_phonicsExamCache !== undefined) return _phonicsExamCache;
+  const file = path.join(CORPORA, 'phonics', 'exam-questions.json');
+  let rows = [];
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (parsed && Array.isArray(parsed.questions)) rows = parsed.questions;
+    else console.warn('[phonics-exam] exam-questions.json has no "questions" array — no generated questions will be offered');
+  } catch (e) {
+    // ENOENT = the generator has not been run in this checkout, which is a data
+    // absence and not a failure; anything else is worth a line.
+    if (!(e && e.code === 'ENOENT')) console.error(`[phonics-exam] failed to load exam-questions.json: ${e.message}`);
+    rows = [];
+  }
+  _phonicsExamCache = rows;
+  return rows;
+}
+
 module.exports = {
   loadStories, storySentences, storyExperiences, clearCache, CORPORA,
   loadLifeStories, lifeStorySentences, lifeStoryExperiences,
   loadCodingStories, codingStorySentences,
   loadAcademicStories, academicStorySentences, academicStoryFigures, figureAddress,
+  phonicsExamQuestions,
 };

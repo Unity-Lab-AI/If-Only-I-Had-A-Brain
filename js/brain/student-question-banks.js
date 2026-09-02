@@ -2029,6 +2029,103 @@ for (const cellKey of Object.keys(EXAM_BANKS)) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// GENERATED QUESTIONS ENTER THROUGH HERE, AND ONLY THROUGH HERE.
+//
+// This file is browser-bundled and has no filesystem, so a bank DERIVED from
+// a corpus file (`corpora/phonics/exam-questions.json`, generated from the
+// grapheme-phoneme rules rather than typed) cannot be an import. The server
+// reads the file and hands the rows in — the same bridge `academicStorySentences`
+// uses, for the same reason.
+//
+// ⛔⛔ IT MUST BE THIS FUNCTION AND NOT A PUSH AT THE CALL SITE. The held-out
+// guarantee above is a property of the EXPORT: a question the training side
+// shows can never leave here as held-out. Code that appended straight to
+// `EXAM_BANKS[cell]` would run AFTER that loop and walk right past it, which is
+// exactly the contamination the 2026-08-18 block was written to end — and the
+// runtime overlap check would then report the breach as a mystery defect
+// instead of as the authoring collision it is. Injection therefore re-applies
+// the same rule to every row it admits.
+//
+// ⚠ AND IT MUST BE IDEMPOTENT. A boot that ran this twice would double the
+// bank and inflate every per-standard denominator, so a question text already
+// present is refused rather than appended. Refusals are counted by REASON,
+// because "rejected 40" cannot distinguish a working held-out filter from a
+// second injection landing on itself.
+// ═══════════════════════════════════════════════════════════════════════
+export const _examInjectReport = { totalAdded: 0, totalRejected: 0, cells: {} };
+
+/**
+ * Merge generated exam rows into a cell's held-out bank.
+ *
+ * @param {string} cellKey        e.g. 'ela/kindergarten'
+ * @param {Array}  raw            rows in the authored `{q,a,variants,standard,
+ *                                difficulty,source}` shape — the same shape the
+ *                                hand-written arrays in this file use, so they
+ *                                pass through `toProbeShape` unchanged and pick
+ *                                up their per-standard methodology probe.
+ * @returns {{cellKey,offered,added,rejectedTrainOverlap,rejectedDuplicate,
+ *            rejectedEmpty,createdCell}}
+ */
+export function injectGeneratedExamQuestions(cellKey, raw) {
+  const key = String(cellKey || '').trim();
+  const entries = Array.isArray(raw) ? raw : [];
+  const out = {
+    cellKey: key,
+    offered: entries.length,
+    added: 0,
+    rejectedTrainOverlap: 0,
+    rejectedDuplicate: 0,
+    rejectedEmpty: 0,
+    createdCell: false,
+  };
+  if (!key || entries.length === 0) return out;
+
+  // A cell with no authored bank is created rather than refused — 201 of the
+  // 213 cells the walk runs have no bank at all, and generated content is how
+  // that gets fixed. `createdCell` is reported so a MISTYPED key surfaces as a
+  // new cell appearing instead of as silence.
+  if (!Array.isArray(EXAM_BANKS[key])) {
+    EXAM_BANKS[key] = [];
+    out.createdCell = true;
+  }
+
+  const norm = (s) => String(s || '').trim().toLowerCase();
+  const trainSeen = new Set((TRAIN_BANKS[key] || []).map((t) => norm(t.question || t.q)));
+  const examSeen = new Set(EXAM_BANKS[key].map((e) => norm(e.question || e.q)));
+
+  for (const shaped of toProbeShape(entries)) {
+    const q = norm(shaped.question);
+    if (!q) { out.rejectedEmpty += 1; continue; }
+    if (trainSeen.has(q)) { out.rejectedTrainOverlap += 1; continue; }
+    // `examSeen` grows as rows are admitted, so a duplicate INSIDE the offered
+    // set is caught too, not just a collision with what was already banked.
+    if (examSeen.has(q)) { out.rejectedDuplicate += 1; continue; }
+    examSeen.add(q);
+    EXAM_BANKS[key].push(shaped);
+    out.added += 1;
+  }
+
+  const rejected = out.rejectedTrainOverlap + out.rejectedDuplicate + out.rejectedEmpty;
+  _examInjectReport.totalAdded += out.added;
+  _examInjectReport.totalRejected += rejected;
+  // Accumulated per cell, because a second injection into the same cell is the
+  // case worth SEEING — its rows land in `rejectedDuplicate` and the cell's
+  // `size` does not move.
+  const prior = _examInjectReport.cells[key] || {
+    offered: 0, added: 0, rejectedTrainOverlap: 0, rejectedDuplicate: 0, rejectedEmpty: 0,
+  };
+  _examInjectReport.cells[key] = {
+    offered: prior.offered + out.offered,
+    added: prior.added + out.added,
+    rejectedTrainOverlap: prior.rejectedTrainOverlap + out.rejectedTrainOverlap,
+    rejectedDuplicate: prior.rejectedDuplicate + out.rejectedDuplicate,
+    rejectedEmpty: prior.rejectedEmpty + out.rejectedEmpty,
+    size: EXAM_BANKS[key].length,
+  };
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Vocabulary-coverage check — EVERY word in an exam question must be a
 // word Unity has been TAUGHT. A question using an untrained word is
 // unanswerable regardless of learning — the brain literally cannot

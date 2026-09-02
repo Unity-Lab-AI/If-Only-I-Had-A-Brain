@@ -303,6 +303,7 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 │   │   │   ├── pre-K.js             All pre-K cell runners + helpers via PREK_MIXIN
 │   │   │   └── kindergarten.js      All six K cell runners + six K gates + 32 K-specific teach helpers via K_MIXIN (~4,800 lines)
 │   │   ├── student-question-banks.js Held-out exam banks per cell + train-vs-exam overlap audit
+│   │   │                             + the one door generated question sets enter through
 │   │   ├── letter-input.js          Letter inventory (a-z + 0-9 + basic punct)
 │   │   ├── component-synth.js       Equational component synthesis (cosine-match user request vs templates)
 │   │   ├── visual-cortex.js         V1 → V4 → IT vision pipeline

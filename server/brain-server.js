@@ -3764,6 +3764,13 @@ class ServerBrain {
       // cell's pictures the same way it asks for its text.
       this.cortexCluster.academicStoryFigures = (subject, grade) =>
         lifeCurriculum.academicStoryFigures(subject, grade);
+      // The generated phonics exam rows — derived from the grapheme-phoneme
+      // rules rather than typed. Same bridge, same reason: the question-bank
+      // module is browser-bundled and cannot read a file. The curriculum guards
+      // on this being a function, so the browser build simply never sees it and
+      // keeps the authored bank exactly as written.
+      this.cortexCluster.phonicsExamQuestions = () =>
+        lifeCurriculum.phonicsExamQuestions();
       // TEXTFIG.3 — the percept bridge. The curriculum runs in both the browser
       // and this process; only this one has a mind-space worker, so the
       // capability is ATTACHED here and the curriculum guards on its presence.

@@ -40,7 +40,7 @@
 
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
-import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
 // sci/soc/art/life) are normalized via `subjects.js`. Keep them
@@ -29351,6 +29351,41 @@ export class Curriculum {
       console.warn('[Brain] fractal-equation audit failed:', err?.message || err);
     }
 
+    // ⭐⭐ THE GENERATED PHONICS QUESTIONS JOIN THE BANK HERE, BEFORE THE CHECK
+    // BELOW RUNS — so the integrity check verifies the rows that were injected,
+    // not just the rows that were authored. Injecting after it would leave the
+    // newest questions as the only ones nothing ever validated.
+    //
+    // ⛔ WHY THIS EXISTS: measured off the live banks, `21/26` letters had a
+    // letter-sound question, **0/26** were taught a second sound, and the only
+    // long/short question in 307 was about a rectangle. A reader who learns one
+    // sound per letter cannot decode English and the gate would still pass her.
+    // The rules carry `c → /s/ /ʃ/ /k/`, `g → /dʒ/ /ɡ/`, `ch → /tʃ/ /k/ /ʃ/`,
+    // `th → /θ/ /ð/` as DATA, so the questions are generated from them rather
+    // than typed — no phoneme is ever spelled out as an approximation.
+    //
+    // ⚠ THE TARGET CELL IS DELIBERATE AND NARROW. Every generated row carries
+    // the K standard for letter-sound correspondence, and the generator filtered
+    // its example words to vocabulary she has at this band, so the K ELA cell is
+    // where they are answerable. The separate and much larger problem — that
+    // most cells the walk runs have no bank at all — is not solved by fanning
+    // these rows out to grades whose vocabulary they were never checked against.
+    try {
+      const _pqSrc = this.cluster && this.cluster.phonicsExamQuestions;
+      if (typeof _pqSrc === 'function') {
+        const rows = _pqSrc() || [];
+        if (rows.length) {
+          const r = injectGeneratedExamQuestions('ela/kindergarten', rows);
+          const _multi = new Set(rows.map((q) => String(q && q.standard || ''))).size;
+          this._hb(`[Curriculum] Generated phonics questions: ${r.added} of ${r.offered} added to ${r.cellKey} (${_multi} standard(s)) · refused ${r.rejectedTrainOverlap} as training duplicates, ${r.rejectedDuplicate} as already banked, ${r.rejectedEmpty} as empty · bank now ${(EXAM_BANKS[r.cellKey] || []).length}`);
+        }
+      }
+    } catch (err) {
+      // A bad generated file must not take the walk down with it — the authored
+      // bank is still a valid held-out set on its own.
+      console.warn('[Curriculum] generated-question injection failed:', err?.message || err);
+    }
+
     // Held-out eval integrity check — the exam banks must be disjoint
     // from anything the teaching side exposes the brain to. Non-empty
     // overlap means a gate pass could be memorization, not learning.
@@ -29381,7 +29416,11 @@ export class Curriculum {
           .map(([k, v]) => `${k} ${v.removed} (${v.before}→${v.after})`).join(', ');
         console.warn(`[Curriculum] Held-out sanitize removed ${_san.totalRemoved} duplicate question(s) from the EXAM banks at load: ${_detail}. These were authored into BOTH the training exposure and the held-out bank; EXAM loses the duplicate so teaching coverage is never reduced. Fix the authoring to reclaim the questions.`);
       }
-      this._hb(`[Curriculum] Held-out eval check: ${totalExam} exam questions across ${Object.keys(EXAM_BANKS).length} cells · runtime overlap=${totalOverlap} (0 = valid held-out) · removed at source load=${_san.totalRemoved}`);
+      // ⚠ `injected` is printed beside `removed` because the total above is no
+      // longer explainable by the authored arrays alone — a reader who cannot
+      // see both numbers cannot tell a grown bank from a doubled one.
+      const _inj = _examInjectReport || { totalAdded: 0, totalRejected: 0 };
+      this._hb(`[Curriculum] Held-out eval check: ${totalExam} exam questions across ${Object.keys(EXAM_BANKS).length} cells · runtime overlap=${totalOverlap} (0 = valid held-out) · removed at source load=${_san.totalRemoved} · injected from generated sets=${_inj.totalAdded} (refused ${_inj.totalRejected})`);
     } catch (err) {
       console.warn('[Curriculum] Held-out eval check failed:', err?.message || err);
     }
