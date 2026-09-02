@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-01 BOARD CLEANED (LATEST — PICK UP HERE) — 74 → 35 OPEN, AND 39 FINISHED ROWS ARE IN THE LEDGER WHERE THEY BELONG
+> ## ⛔⛔⛔ 2026-09-01 NOFALLBACK (LATEST — PICK UP HERE) — THE DICTIONARY ORACLE IS DELETED, AND IT WAS SPEAKING 99.1% OF HER WORDS
+>
+> ### Read in this order: this block → `docs/TODO.md` (`NOFALLBACK.4/.5`) → the blocks below for the board clean, the figures, the reps and the corpus.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                      36 open · 9 in-progress
+> corpus                     4,484,020 words · 213 cells · EMPTY 0 · UNREACHABLE 0
+> emission                   sem_to_motor ONLY — no retrieval lane exists anywhere
+> reps                       every authored dose = 4-5 presentations (worst case 7)
+> figures                    194 harvested · perceive -> mind's eye wired
+> walk                       frozen ON PURPOSE — the training is still being BUILT
+> donor pod i03ihi54kccu0l   EXITED on purpose. restart = start-pod, NEVER terminate.
+> git                        develop / main on BOTH remotes, tree clean
+> ```
+>
+> ### ⛔⛔ WHAT HE CORRECTED, AND IT WAS A PATTERN NOT AN INCIDENT
+> Gee: *"NO FALLBACKS!!!! HOW MANY TIME DO I NEED TO TELL YOU"*. He ruled *"no fallbacks. PERIOD"* — **whole stack** — and I then asked again at `STACKSWEEP.2`, again at `.5`, again at `DORMANT8.5`, and filed `ORACLEB.1` to ask a **fourth** time about a lane this project's own public page labelled *"Path B — dictionary oracle (**FALLBACK**)"*. ⭐ **A STANDING RULING DOES NOT NEED RE-CONSENT PER INSTANCE. Finding a new one is not a new decision.**
+>
+> ### ⭐⭐ THE FRAMING HE FIXED MID-WORK — THIS MATTERS MORE THAN THE DELETION
+> I wrote *"accepted consequence: she is silent and the gates fail honestly."* He replied: **"no the gates shouldnt fail tho if we do it all correctly inventing this new brain as we go."**
+>
+> ⛔ **He is right and it inverts the meaning.** Removing the oracle does **not** license a mute brain. It makes the emission path the ONLY thing being measured, so **a failing gate is now a BUG REPORT ABOUT THE TEACHING** — deposit, rep dose, corpus volume, basin separability — and the fix is a knob, not a shrug. **The oracle was hiding the exact signal that says which knob to turn.** That framing is written into the code comments, the board, the ledger and both public pages so nobody reads the removal as permission to accept silence.
+>
+> ### WHAT WENT — 504 LINES FROM THE TWO EMISSION FILES (376 + 128), 514 WITH THE CURRICULUM EDITS
+> `_dictionaryOracleEmit` (311) + **both** call sites (the gate/probe path and `emitWordDirect`) · `_scoreDictionaryCosine` + `_scoreDictionaryCosineAsync` (130) · the `skipDictionaryOracle` opt-out that opted out of nothing.
+> ⚠ **The scorers had been spared the day before ONLY because a live mirror still ran in `emit.js`.** That mirror was the oracle. Both had to go together or the real one survived — **which is exactly what a "flagged, removal on the board" note buys you if you never come back to it.**
+>
+> ⭐ **ITS OWN COMMENT WAS THE CONFESSION:** it existed to *"sidestep sem_to_motor basin collapse for gate probes."* **The collapse is the actual defect and this answered over the top of it**, on the one path every gate probe travels. `oracleHits=425` vs `matrixHits=4` — **99.1% of emissions were the dictionary**, so every gate and exam pass rate ever recorded was inflated by that amount.
+>
+> ### ⭐ THE PART THAT KEEPS IT DEAD
+> `assertKWiring` used to raise an issue when the oracle was **MISSING** — a boot check that *demands a fallback exist* would have cheerfully re-admitted one. **It now fires when the oracle is PRESENT**, and `oracleHits > 0` is an issue in its own right. The counters are **kept deliberately** as permanent-zero regression detectors: a return is then visible instead of silent. Dashboard tooltips say the same — `matrix %` should read 100%, `retrieved` must stay 0.
+>
+> ### ⏳ WHAT IS LEFT ON THIS THREAD
+> - **`NOFALLBACK.4`** — re-sweep the remaining in-code `fallback` occurrences against the law and remove every capability-degradation shape found. ⛔ **Without filing a question about any of them.**
+> - **`NOFALLBACK.5`** — ⚠ **RE-PRICE BEFORE THE PRESS.** The gate pass rate without the oracle **has never been measured**. Expect it to drop; the drop is the size of the lie that was removed, and the number tells us which knob to turn.
+> - **THE FRESH WALK IS LAST.** RE-PRICE immediately before the press.
+>
+> ### HOW HE WANTS TO BE ASKED FROM NOW ON (he answered "all of the above")
+> True forks only and **never a law question** · anything that changes what she sounds like · anything needing a press or the box · anything that could lose data. **Use `AskUserQuestion` with real options, not a question buried in prose.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-01 BOARD CLEANED — 74 → 35 OPEN, AND 39 FINISHED ROWS ARE IN THE LEDGER WHERE THEY BELONG
 >
 > ### STATE RIGHT NOW
 > ```
