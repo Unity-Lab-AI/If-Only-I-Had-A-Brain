@@ -106,6 +106,41 @@ const BOOKS = [
     linkRe: /href="((?:\.\.\/)?pages\/[0-9]+-[a-z0-9\-]+\.html)"/gi,
     subject: 'major', grade: 'college1',       // Computer Science Major
   },
+  // ⛔⛔ THE THREE ND BOOKS — ADMITTED 2026-09-02 ON THE OPERATOR'S RULING, AND
+  // THEY ARE THE ONLY GOOD SOURCES FOR THE TWO COURSES THAT HAD NONE.
+  //
+  // Gee: *"yeah we arent distributing we are reading it but we have to store a
+  // copy of it to 'read' it"* — and on the box that is literally the case:
+  // `deploy.yml` excludes `corpora` from the public pages web root, so the
+  // corpus lands in the BACKEND directory and is served to nobody. It is
+  // training material she reads, not a page anyone can fetch.
+  //
+  // ⚠ Recorded as ND per entry, with the source URL, so the corpus never
+  // misrepresents what these are.
+  {
+    label: 'Introduction to Theoretical Computer Science',
+    base: 'https://introtcs.org/public/',
+    index: 'index.html',
+    licenceUrl: 'https://introtcs.org/public/index.html',
+    linkRe: /href="(lec_[0-9a-z_]+\.html)"/gi,
+    subject: 'cstheory', grade: 'college3',    // Theory of Computation
+  },
+  {
+    label: 'Dive Into Systems',
+    base: 'https://diveintosystems.org/book/',
+    index: 'index.html',
+    licenceUrl: 'https://diveintosystems.org/book/copyright.html',
+    linkRe: /href="([A-Za-z0-9\-_]+\/[a-z0-9_]+\.html)"/gi,
+    subject: 'cssystems', grade: 'college2',   // Computer Architecture
+  },
+  {
+    label: 'An Introduction to Computer Networks',
+    base: 'https://intronetworks.cs.luc.edu/current2/html/',
+    index: '',
+    licenceUrl: 'https://intronetworks.cs.luc.edu/current2/html/preface.html',
+    linkRe: /href="([a-z][a-zA-Z0-9_]*\.html)"/gi,
+    subject: 'cssystems', grade: 'college4',   // Networks and Compilers
+  },
   {
     label: 'Problem Solving with Algorithms and Data Structures',
     base: 'https://runestone.academy/ns/books/published/pythonds3/',
@@ -160,14 +195,55 @@ async function licenceOf(book) {
   if (!html) return null;
   const txt = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ')
     .replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ');
-  // Both spellings: the prose name and the licence-URL slug.
+  // ⛔⛔ THE SLUG WINS, AND THE PROSE IS ONLY A FALLBACK — REVERSED 2026-09-02
+  // AFTER IT WROTE A NON-LICENCE INTO THE CORPUS.
+  //
+  // The prose pattern captures whatever follows the words "Creative Commons",
+  // and one book's page reads *"…under the Creative Commons license described
+  // below"*. That produced the recorded licence string **"CC license described
+  // below"** — a sentence fragment sitting in the field that is supposed to say
+  // what may be done with the text, on a book that is actually CC BY-NC-ND.
+  //
+  // ⭐ The licence-URL slug is machine-readable and unambiguous; the prose is a
+  // human sentence that may or may not name the licence. Preferring the sentence
+  // over the identifier was backwards. The prose is still used when there is no
+  // slug, but only if it actually names a licence component — otherwise this
+  // reports that it could not read one, which is a true answer.
   const slug = /creativecommons\.org\/licenses\/([a-z\-]+)/i.exec(html);
   const prose = /Creative Commons\s+([A-Za-z\- ]{0,60})/i.exec(txt);
-  const id = prose ? `CC ${prose[1].replace(/\s+/g, ' ').trim()}` : (slug ? `CC-${slug[1].toUpperCase()}` : null);
+  const proseNamesALicence = prose && /attribution|zero|public domain|share ?alike|noncommercial|noderiv/i.test(prose[1]);
+  const id = slug
+    ? `CC-${slug[1].toUpperCase()}`
+    : (proseNamesALicence ? `CC ${prose[1].replace(/\s+/g, ' ').trim()}` : null);
   if (!id) return { id: null, ok: false, why: 'no Creative Commons statement found at the licence source' };
-  if (/NoDeriv/i.test(id) || /\bnd\b/i.test(slug ? slug[1] : '')) {
-    return { id, ok: false, why: 'NoDerivatives — this corpus publishes an adaptation' };
-  }
+  // ⛔⛔ NoDerivatives — ADMITTED UNDER AN EXPLICIT OPERATOR RULING, AND LABELLED
+  // AS WHAT IT IS RATHER THAN RELABELLED (2026-09-02).
+  //
+  // Gee: *"yeah we are only reading it in educational purposes but we have to
+  // have a copy to read it this is fair use for education and experimentations
+  // open source non profit non commercial"*.
+  //
+  // ⭐ HE IS RIGHT ABOUT THE PART I HAD FRAMED WRONGLY. **ND does not restrict
+  // reading, and it does not restrict copying** — CC BY-NC-ND expressly permits
+  // reproducing the work in any medium. The only act it withholds is
+  // DISTRIBUTING an adapted version. My earlier note said these books were
+  // "unusable", which overstated the licence.
+  //
+  // ⚠ WHAT IS ACTUALLY EXPOSED, STATED PLAINLY RATHER THAN ARGUED AWAY: the
+  // corpus is 189 tracked files that reach the training box only by being pushed
+  // to `main`, and one of this project's two remotes is PUBLIC. So the cleaned,
+  // segmented text IS published. The fully-compliant alternative — keeping ND
+  // cells out of git entirely — was checked and is closed in practice: a
+  // gitignored cell never reaches the box, and hand-delivering it over SSH is
+  // against this project's own deploy rule.
+  //
+  // The call is the operator's, on his project, for a non-commercial educational
+  // experiment over books that are free to read and whose market this does not
+  // displace. ⛔ **What this code must NOT do is launder the label.** The entry
+  // keeps its true licence string and its source URL, so anyone reading the
+  // corpus can see exactly which works are ND and on what basis they are here.
+  const isND = /NoDeriv/i.test(id) || /(^|-)nd(-|$)/i.test(slug ? slug[1] : '');
+  if (isND) return { id, ok: true, nd: true, why: 'NoDerivatives — admitted under the operator ruling above; recorded as ND, not relabelled' };
   return { id, ok: true };
 }
 
