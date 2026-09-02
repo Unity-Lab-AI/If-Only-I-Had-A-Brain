@@ -1714,14 +1714,25 @@ export class LanguageCortex {
     // And it is never silent about itself again — every retrieval is counted,
     // so "how much of her speech is actually hers" is a field read instead of
     // an argument.
+    // ⛔⛔ `DREAM_DICT_FALLBACK` IS DELETED (2026-09-01, "no fallbacks. PERIOD").
+    // It re-enabled dictionary retrieval for a TRAINED brain, and the warning
+    // printed right below used to end with the reason it had to go: "but then
+    // her words are not hers." An escape hatch whose own documentation says it
+    // makes her speak borrowed words is the crutch this comment block spends
+    // twenty lines rejecting. For a trained brain, empty now means EMPTY with
+    // no way to switch that off.
+    //
+    // ⏳ The `!_hasTrained` bootstrap survives THIS pass because it is a
+    // genuinely open question for Gee, not an oversight: removing it makes a
+    // fresh walk silent from boot until the first cell passes. Tracked on the
+    // board under DORMANT8.5.
     const _hasTrained = !!(cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0);
-    const _retrievalAllowed = !_hasTrained
-      || (typeof process !== 'undefined' && process.env && process.env.DREAM_DICT_FALLBACK === '1');
+    const _retrievalAllowed = !_hasTrained;
     if (words.length === 0 && _hasTrained && !_retrievalAllowed) {
       this._honestSilenceCount = (this._honestSilenceCount || 0) + 1;
       if (!this._honestSilenceWarned) {
         this._honestSilenceWarned = true;
-        console.warn('[LanguageCortex] her trained emission produced NOTHING and the dictionary fallback is OFF for a trained brain (OWNWORDS.2) — this is real silence, not a bug. Set DREAM_DICT_FALLBACK=1 to restore retrieval, but then her words are not hers.');
+        console.warn('[LanguageCortex] her trained emission produced NOTHING and dictionary retrieval is OFF for a trained brain (OWNWORDS.2) — this is real silence, not a bug. There is no switch to restore it: retrieved words are not hers.');
       }
       // Honest silence is the empty string, same as the two silent
       // returns below. `_renderSentence` on an empty word list returns
@@ -2596,10 +2607,13 @@ export class LanguageCortex {
           // `generate()` fired precisely when this came back empty, so the
           // moments her own matrix produced nothing were the moments
           // something else spoke for her. As of the OWNWORDS.2 fix the claim
-          // is true again for a TRAINED brain: retrieval now only bootstraps
-          // a cortex with zero passed cells, and `DREAM_DICT_FALLBACK=1` is
-          // the only way to put it back. A comment asserting an absence has
-          // to be re-checked whenever the thing it denies could return.
+          // is true again for a TRAINED brain: retrieval only bootstraps a
+          // cortex with zero passed cells. ⭐ And as of 2026-09-01 there is no
+          // longer ANY way to put it back — `DREAM_DICT_FALLBACK` was deleted
+          // under "no fallbacks. PERIOD", so for a trained brain this comment
+          // is now unconditionally true rather than true-unless-a-flag-is-set.
+          // A comment asserting an absence has to be re-checked whenever the
+          // thing it denies could return.
           preEmittedWords = composedWordsAsync;
         } catch (err) {
           // Await path failed — let generate() fall back to sync emission.

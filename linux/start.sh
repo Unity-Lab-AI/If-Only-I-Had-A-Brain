@@ -67,11 +67,14 @@ echo ""
 #                                  -- schemas replayed on the donor per
 #                                    consolidation pass. 0 = no replay (her
 #                                    sleep stops learning again).
-#   DREAM_DICT_FALLBACK=1          -- let dictionary retrieval speak when her
-#                                    TRAINED emission is empty. Default OFF
-#                                    for a trained brain -- silence is real
-#                                    now. Turning this on means her words are
-#                                    NOT hers.
+#   DREAM_BCM=1                    -- Bienenstock-Cooper-Munro sliding-
+#                                    threshold plasticity alongside Oja on the
+#                                    intra-cluster matrix. Default OFF; it
+#                                    changes the plasticity rule on every teach
+#                                    path, so price it before flipping it.
+#   (DREAM_DICT_FALLBACK removed 2026-09-01 -- it let dictionary retrieval
+#    speak when her TRAINED emission was empty, which made her words not hers.
+#    For a trained brain, empty now means EMPTY and there is no switch.)
 #   DREAM_GW_IGNITION=0.45         -- GlobalWorkspace ignition threshold
 #                                    in (0, 1). Default 0.45. Lower =
 #                                    more frequent ignitions (diffuse

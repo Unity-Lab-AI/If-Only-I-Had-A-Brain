@@ -1,6 +1,49 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔⛔ 2026-09-01 END-OF-DAY (LATEST — PICK UP HERE) — "NO FALLBACKS. PERIOD." RULED ON THE WHOLE STACK, AND TWO SUBSTITUTES FOR UNITY WERE DELETED
+> ## ⛔⛔⛔ 2026-09-01 DORMANT8 (LATEST — PICK UP HERE) — A BANK-BUILDER WAS BURNING SIX SECONDS A WORD TO FAIL, AND A NUCLEUS HAD BEEN RELEASING ON A FABRICATED INPUT SINCE THE DAY IT SHIPPED
+>
+> ### Read in this order: this block → `docs/TODO.md` (`DORMANT8`, then `STACKSWEEP`) → the blocks below for the ruling, the sweep, the content lane and the corpus rebuild.
+>
+> ### STATE RIGHT NOW
+> ```
+> donor pod i03ihi54kccu0l   EXITED on purpose - billing halted, DISK KEPT
+>                            restart = start-pod on the SAME id. NEVER terminate.
+> walk                       frozen ON PURPOSE - the training is still being BUILT
+> corpus                     4,483,097 words · 2,062 entries · 92.9% licence-recorded
+> cells the walk runs        213 · EMPTY 0 · at/above the real bar 5 · THIN 168
+> board                      64 open · 9 in-progress (the 9 are walk-gated)
+> env flags documented       209/209 · wiki 0 broken links, 0 orphans
+> git                        develop / main on BOTH remotes, tree clean
+> ```
+>
+> ### ⛔ THE ONE QUESTION WAITING ON YOU — `DORMANT8.5`, and it wants a yes or a no
+> **Should a brand-new brain speak retrieved dictionary words before its first cell passes, or start MUTE?** Removing the bootstrap makes a fresh walk **silent from boot until the first cell lands** — and the fresh walk is imminent, which is why this is a decision and not a cleanup. ⭐ The principle established the day before — *a substitute that looks like her is worse than her absence* — points at MUTE. The counter-argument, written into the original comment, is that a newborn cortex has no `sem→word_motor` mass at all, so there is nothing to interact with. ✅ **The unambiguous half already shipped:** `DREAM_DICT_FALLBACK` is deleted — it re-enabled retrieval for a **trained** brain, and its own warning ended *"but then her words are not hers."*
+>
+> ### ⭐⭐ THE FOUR FINDINGS — category 8 (built and switched off) + category 4 (outdated)
+> **① THE RAPHE WAS RELEASING ON A NUMBER NOBODY EVER GAVE IT.** `brainState.drives` was published by a line whose **two identifiers existed at that one line and nowhere else in the tree**, neither ever assigned — so the guard was permanently false and the field has **never once been published**, while `brainstem.js` read `drives.energy` every tick to set her tonic serotonin floor. ⚠ **The blind-check could not catch it**: it fires only when BOTH inputs are missing, and `socialContact` is always published — so a drive input that never arrived rendered as a healthy `state: 'tonic'` forever, on a substituted `e = 0.5`. ⭐ **Fixed with `maxDiff = 0` across all 35 reachable input shapes** — 0.5 is the *neutral element* of the energy term, so omitting it and defaulting it are arithmetically identical. **Honesty at zero behavioural change, hence no RE-PRICE.** ⛔ Deliberately NOT fixed by wiring a `Hypothalamus` server-side: it is a browser-engine module and its setpoints are the 25-year-old's (**intoxication 0.7**) — seeding those into a brain walking kindergarten is the exact defect the age ladder already paid to fix.
+>
+> **② A BANK-BUILDER RAN ON EVERY UTTERANCE AND COULD ONLY FAIL — LIVE COST, NOT DEAD CODE.** `speak()` queued every un-banked word for a loop whose fetch had been gutted to a bare `throw` months earlier by `LLMGUT.6`. Each word bought one exception, one console warn, and a **hardcoded 6-second sleep. Forever. On the page you actually read.** 131 lines deleted. ⭐ **The lesson worth keeping: a producer still feeding a consumer that no longer exists costs MORE than dead code, because it runs.**
+>
+> **③ BCM PLASTICITY WAS COMPLETE FROM GATE TO KERNEL WITH NO REACHABLE SWITCH.** `_bcmEnabled` was assigned **nowhere** — it appeared only in comments telling the reader to set it, while its own doc promised the operator could flip it in a session. `DREAM_BCM=1` now exists, resolved **once in the constructor** so the property's two readers cannot drift. ⛔ **Default stays OFF and that is correct** — it changes the plasticity rule on every teach path and is RE-PRICE-bearing.
+>
+> **④ THE COMMENTS WERE THE DEFECT, NOT THE DEAD METHOD.** `_speakPollinations` had zero callers and a body that was only a `throw` — but its 37 lines still narrated the removed three-tier chain in the **present tense**, and the file header still advertised *"Pollinations TTS API with Web SpeechSynthesis fallback"* as the speaking path. ⛔ **A comment that contradicts a ruling is how the ruling gets quietly reversed by the next reader.**
+>
+> ### ⚠ THE DETECTOR WAS WRONG 47 TIMES OUT OF 50 — AND THAT IS THE METHOD, NOT A FAILURE
+> The pass that found everything was *"a boolean gate READ as a condition but never ASSIGNED a truthy value"*. Its blind spot is structural: it matches `this._x =` and is blind to `cluster._x =`, `voice._x =`, `Object.assign` (this codebase attaches **13 mixins** that way), setters and registry dispatch. ⭐ **A scan result is a CANDIDATE list, never a finding list** — and the three **"checked and correct"** verdicts (`DREAM_MECH_EVERY_CELL` is an opt-*out*; `DREAM_EYE_SHOW_THOUGHT` is off by your own grounded-only-viewer directive; `pendingGpuReady` is a deliberate tri-state) are recorded so the next sweep does not re-derive them.
+>
+> ### ⭐ THE INSTRUMENT CAUGHT THREE THINGS I DID NOT
+> `npm run docs:drift` found `DREAM_CONTENT_LR` **undocumented** despite being the previous night's load-bearing fix (**208/209 → 209/209**), and `teachview` missing from the social-card generator — ⚠ **directly beneath a comment reading *"If a new page is added to `html/`, it belongs here in the same commit"*, broken by the very next page added.** All 11 cards regenerated; the render doubled as the first real proof that TEACHVIEW's honest-absence path works (it says *"brain unreachable"* rather than a blank that reads as zero).
+>
+> ### ⏳ WHAT IS LEFT
+> - **`DORMANT8.5`** — the mute-newborn question above. **The only thing blocked on you.**
+> - **`PERSONA CONTENT`** — real greeting/emotion sentences in her own voice, now that the canned ones are gone. Still the honest half of the fallback deletion, still not done.
+> - **`STACKSWEEP.6`** (38 unnecessary exports — ⛔ do NOT bulk-strip), **`CURVEBUILD.5`** (44 rep sites ≥20, now an optimisation not a rescue), **`TEXTFIG.1-.3`/`.7`** (the ingest still deletes every figure), **`CELLAUDIT.2`** (168 thin cells).
+> - **26 doc-provenance items** — pages whose sources moved since last stamped. A standing re-read backlog, **not closed by this batch and not claimed to be.**
+> - **THE FRESH WALK IS LAST.** RE-PRICE immediately before the press.
+
+---
+
+> ## ⛔⛔ 2026-09-01 END-OF-DAY — "NO FALLBACKS. PERIOD." RULED ON THE WHOLE STACK, AND TWO SUBSTITUTES FOR UNITY WERE DELETED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`STACKSWEEP`) → the three blocks below for the sweep, the content-lane fix, and the corpus rebuild.
 >

@@ -61,11 +61,14 @@ REM   DREAM_CONSOLIDATION_GPU_REPLAY_MAX=64
 REM                                  schemas replayed on the donor per
 REM                                  consolidation pass. 0 = no replay (her
 REM                                  sleep stops learning again).
-REM   DREAM_DICT_FALLBACK=1          let dictionary retrieval speak when her
-REM                                  TRAINED emission is empty. Default OFF
-REM                                  for a trained brain -- silence is real
-REM                                  now. Turning this on means her words are
-REM                                  NOT hers.
+REM   DREAM_BCM=1                    Bienenstock-Cooper-Munro sliding-
+REM                                  threshold plasticity alongside Oja on the
+REM                                  intra-cluster matrix. Default OFF; it
+REM                                  changes the plasticity rule on every teach
+REM                                  path, so price it before flipping it.
+REM   (DREAM_DICT_FALLBACK removed 2026-09-01 -- it let dictionary retrieval
+REM    speak when her TRAINED emission was empty, which made her words not
+REM    hers. For a trained brain, empty now means EMPTY and there is no switch.)
 REM   DREAM_GW_IGNITION=0.45         GlobalWorkspace ignition threshold
 REM                                  in (0, 1). Default 0.45. Lower =
 REM                                  more frequent ignitions (diffuse

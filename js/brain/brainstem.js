@@ -373,18 +373,46 @@ export class GlandLayer {
     const raphe = this.nuclei.raphe;
     const social = brainState?.socialContact;
     const energy = brainState?.drives?.energy;
-    if (typeof social !== 'number' && typeof energy !== 'number') {
+    const haveSocial = typeof social === 'number';
+    const haveEnergy = typeof energy === 'number';
+    if (!haveSocial && !haveEnergy) {
       raphe.blindTicks++; this.counters.blind++;
       out.raphe = { state: 'blind', reason: 'no_affiliative_or_drive_input' };
     } else {
       // Affiliation and rest raise the floor; sustained defence lowers it.
-      const s = typeof social === 'number' ? social : 0;
-      const e = typeof energy === 'number' ? energy : 0.5;
-      const target = Math.max(0.15, Math.min(0.85, 0.45 + 0.25 * s + 0.15 * (e - 0.5) * 2));
+      //
+      // ⛔⛔ EACH TERM IS INCLUDED ONLY WHEN ITS INPUT IS REAL, and the output
+      // NAMES which ones were live. This nucleus used to read
+      //     const e = typeof energy === 'number' ? energy : 0.5;
+      // which is the exact thing `_tickEndocrine`'s own governing comment
+      // forbids — "absent readouts are OMITTED, never defaulted … handing it a
+      // plausible 0 would make it release confidently off a fabricated
+      // measurement". ⚠ AND THE BLIND CHECK COULD NOT CATCH IT, because it
+      // requires BOTH inputs missing while `socialContact` is always published:
+      // so a drive input that has NEVER ONCE ARRIVED in this server's history
+      // rendered as a healthy `state: 'tonic'` every tick.
+      //
+      // ⭐ THE NUMBERS DO NOT MOVE. 0.5 is the neutral element of the energy
+      // term — 0.15 × (0.5 − 0.5) × 2 = 0 — so omitting the term and
+      // defaulting it to 0.5 are arithmetically identical. This buys honesty
+      // at zero behavioural change, which is why it needs no RE-PRICE.
+      const s = haveSocial ? social : 0;
+      let target = 0.45 + 0.25 * s;
+      if (haveEnergy) target += 0.15 * (energy - 0.5) * 2;
+      target = Math.max(0.15, Math.min(0.85, target));
       raphe._lastDrive = target;
       const moved = this.endocrine.setTonicSetpoint('serotonin', target);
       raphe.quietTicks++;
-      out.raphe = { state: 'tonic', target, moved };
+      if (!haveSocial || !haveEnergy) raphe.partialTicks = (raphe.partialTicks | 0) + 1;
+      out.raphe = {
+        state: 'tonic',
+        target,
+        moved,
+        // Which inputs the floor was actually built from. A reader can now
+        // tell "serotonin is resting low" from "serotonin has one of its two
+        // senses", which was previously indistinguishable.
+        inputs: { social: haveSocial, energy: haveEnergy },
+      };
     }
 
     // ── SON — oxytocin on affiliative contact. Bonding chemistry is what
