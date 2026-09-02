@@ -880,6 +880,55 @@ const SERVER_STATE_MIXIN = {
       // "shall be one unified system of the brain for memory not
       // some side processes".
       memoryStats: _lap('memoryStats', () => this._getMemoryStats()),
+      // ⭐ REGFIND.8 — THE BOX'S DISK, VISIBLE. The operator has no shell on
+      // this machine, so "is it filling up?" was unanswerable from outside.
+      // ⛔ IT NEEDED NO NEW CAPABILITY: `fs.statfsSync` has been running here
+      // since the save guard shipped (`brain-server.js:7589`) to enforce
+      // `DREAM_SAVE_MIN_FREE_DISK_MB`. This publishes the number that call
+      // already produces — the read is the same, only the reporting is new.
+      //
+      // ⚠ WHY THIS MATTERS MORE THAN IT LOOKS: when the volume runs low the
+      // weights save DEFERS rather than fails, so a filling disk does not
+      // announce itself as a disk problem — it announces itself as her
+      // training quietly not being saved. `saveDeferrals` climbing while
+      // `freeMB` falls is that failure, stated in two numbers.
+      //
+      // ⚠ CACHED 30s ON PURPOSE. This object is rebuilt on every broadcast;
+      // a syscall per broadcast is a cost the dashboard does not need, and
+      // free disk does not move meaningfully inside half a minute.
+      // ⛔ The visual store is measured by STATTING ITS OWN FILES, never by
+      // walking a directory — `fields/` alone holds tens of thousands of
+      // entries and a recursive size walk on the state path would be a new
+      // performance bug shipped to fix a reporting one.
+      disk: _lap('disk', () => {
+        const now = Date.now();
+        if (this._diskSnap && now - this._diskSnap.at < 30000) return this._diskSnap.v;
+        let v = null;
+        try {
+          if (typeof fs.statfsSync === 'function') {
+            const st = fs.statfsSync(__dirname);
+            const bs = Number(st.bsize) || 0;
+            const totalMB = Math.floor((Number(st.blocks) * bs) / 1048576);
+            const freeMB = Math.floor((Number(st.bavail) * bs) / 1048576);
+            let storeMB = 0;
+            for (const f of ['visual-memory-v8.db', 'visual-memory-v8.db-wal', 'episodic-memory.db']) {
+              try { storeMB += fs.statSync(path.join(__dirname, '..', f)).size / 1048576; } catch { /* absent */ }
+            }
+            v = {
+              freeMB, totalMB,
+              usedPct: totalMB > 0 ? +(100 * (1 - freeMB / totalMB)).toFixed(1) : null,
+              visualStoreMB: +storeMB.toFixed(1),
+              // The floor the save guard actually enforces, so the number and
+              // the threshold it is judged against are read together.
+              saveFloorMB: process.env.DREAM_SAVE_MIN_FREE_DISK_MB !== undefined
+                ? Number(process.env.DREAM_SAVE_MIN_FREE_DISK_MB) : 8192,
+              saveDeferrals: this._diskGuardSkips || 0,
+            };
+          }
+        } catch { v = null; }   // a stat failure must never break the payload
+        this._diskSnap = { at: now, v };
+        return v;
+      }),
       //Phase 6 — Display/Visibility snapshot for dashboard.
       // Bounded payload: aggregates only, no per-neuron / per-column
       // enumeration, no unbounded lists. Counts + small fixed-size
