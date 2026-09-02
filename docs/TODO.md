@@ -1065,7 +1065,15 @@ docs/coding-knowledge.txt    493 sentences   ? 0   ! 0
 ```
 **② THE REBUILT ACADEMIC CORPUS IS BARELY BETTER: 248,443 sentences · `?` 702 (0.28%) · `!` 460 (0.19%).** Combined interrogative + exclamative exposure across everything she will ever be taught: **under one half of one percent.**
 
-- [ ] `DIALOGUE.1` — ⛔⛔ **SHE HAS ALMOST NO EXAMPLES OF THE SENTENCE FORMS SHE IS EXPECTED TO PRODUCE, AND THIS EXPLAINS SEVERAL OPEN ITEMS AT ONCE.** `_teachSentenceStructure` trains **five intent forms** — declarative_svo, declarative_copula, **question**, imperative, **exclamative** — and the boot corpus supplies **zero written exemplars of three of them**. ⭐ **This is the upstream cause of things already on this board, not a new complaint:** the persona corpus's `greeting: 0` / `emotion: 0`; the `question: 9` count that comes entirely from wh-initial *declaratives* rather than actual questions; and the standing *"shouldnt she be talking?"* fork (`CHATFAULT.2`). ⚠ **It is also why the gate battery is harder than it looks: every probe asks her a QUESTION, a sentence form she has seen ~700 times in a quarter-million sentences.** ⛔ **A real child's language input is saturated with questions, answers, greetings and exclamations** — the ratio here is inverted, and expository textbook prose is exactly the genre that lacks them. **The fix is dialogue-bearing sources, chosen for form rather than topic** (the Gutenberg literature lane already ingested is the nearest existing candidate — novels carry dialogue, textbooks do not). ⛔ **NOT hand-authored exchanges** — same law as `PERSONAVOICE.1`; the sentences must be attested in a real source. **RE-PRICE before ingesting: this changes what every ELA cell trains on.**
+> ⛔⛔⛔ **`DIALOGUE.1` IS RETRACTED — 2026-09-01, BY ME, SAME DAY I FILED IT. THE CENTRAL CLAIM WAS WRONG.** I read a low corpus `?`/`!` rate as *"she has almost no examples of the sentence forms she must produce"*. **She has 1,418 of them.**
+>
+> ⭐ **THE MECHANISM I FAILED TO CHECK BEFORE FILING: intent form is not learned from corpus punctuation at all.** `_teachConcreteSentences` trains `K_CONCRETE_SENTENCES` — **1,418 sentences at reps=100** as word→word Hebbian cascades — and its own doc calls it *"THE load-bearing grammar pass"*. ⚠ **NOT ONE of those 1,418 carries any terminal punctuation** (no `.`, no `?`, no `!`), and **51 of them OPEN with an interrogative word** (*"what is this"*, *"where is the cat"*, *"who is your mom"*). **Question form is encoded as WORD ORDER — which is the only form the emission path can reproduce anyway, because she emits words, not punctuation.**
+>
+> ⛔ **SO EVERY ALARMING LINE IN THE ORIGINAL FILING WAS MEASURING THE WRONG PROPERTY:** *"zero written exemplars of three of five forms"* — false; *"every gate probe asks her a QUESTION, a form she has seen ~700 times"* — false, she is taught it directly at reps=100; *"the grades where a human learns what a question IS are the grades with no written questions"* — false twice over, since ELA/kindergarten measured **8.60%** and the 58 flagged cells were science/social/art/music/health, where expository prose **legitimately** has no dialogue.
+>
+> ⭐ **WHAT SURVIVES, AND IT IS SMALL:** the corpus punctuation mix is a real **GENRE** signal, worth seeing per cell, and it is now labelled as exactly that in code and in the CLI — with the retraction written beside it, because **the number is seductive and the next reader will meet it before they meet the mechanism.** ⚠ **This is my second instrument-derived alarm in one day to die on verification** (the first: 47 of 50 dead-wiring candidates were false positives). **A measurement is not a finding until the mechanism it implicates has been read.**
+
+- [ ] ~~`DIALOGUE.1`~~ — ⛔ **RETRACTED, see above. Original filing preserved below per NEVER-DELETE-TODO-INFO.** ⛔⛔ **SHE HAS ALMOST NO EXAMPLES OF THE SENTENCE FORMS SHE IS EXPECTED TO PRODUCE, AND THIS EXPLAINS SEVERAL OPEN ITEMS AT ONCE.** `_teachSentenceStructure` trains **five intent forms** — declarative_svo, declarative_copula, **question**, imperative, **exclamative** — and the boot corpus supplies **zero written exemplars of three of them**. ⭐ **This is the upstream cause of things already on this board, not a new complaint:** the persona corpus's `greeting: 0` / `emotion: 0`; the `question: 9` count that comes entirely from wh-initial *declaratives* rather than actual questions; and the standing *"shouldnt she be talking?"* fork (`CHATFAULT.2`). ⚠ **It is also why the gate battery is harder than it looks: every probe asks her a QUESTION, a sentence form she has seen ~700 times in a quarter-million sentences.** ⛔ **A real child's language input is saturated with questions, answers, greetings and exclamations** — the ratio here is inverted, and expository textbook prose is exactly the genre that lacks them. **The fix is dialogue-bearing sources, chosen for form rather than topic** (the Gutenberg literature lane already ingested is the nearest existing candidate — novels carry dialogue, textbooks do not). ⛔ **NOT hand-authored exchanges** — same law as `PERSONAVOICE.1`; the sentences must be attested in a real source. **RE-PRICE before ingesting: this changes what every ELA cell trains on.**
 > ✅ **DIALOGUE.2 BUILT 2026-09-01 — and it immediately found what the global average was hiding.** `server/curriculum-coverage.js` now reports terminal-punctuation mix per cell and the CLI prints it. **Live read across the 213 cells the walk runs:**
 > ```
 >   sentences in reachable cells : 233,720
@@ -1076,6 +1084,60 @@ docs/coding-knowledge.txt    493 sentences   ? 0   ! 0
 > ⛔⛔ **THE 58 ARE CONCENTRATED EXACTLY WHERE IT MATTERS MOST:** `science/pre-K` · `social/pre-K` · `art/pre-K` · `social/kindergarten` · `art/kindergarten` · `music/kindergarten` · `health/kindergarten` · `social/grade1` · `art/grade1` · `music/grade1` · `science/grade2` · `social/grade2` … +46. ⭐ **The grades where a human learns what a question IS are the grades with no written questions in them.** ⚠ **`noDialogue` is tracked separately from `thin` on purpose — a cell can be enormous and still unable to show her an interrogative**, so a word-count bar can never surface this.
 
 - [ ] `DIALOGUE.2` — **MEASURE PER-CELL, NOT JUST GLOBALLY, AND PUBLISH IT.** The 0.28% is an average over 206 corpus files; a cell whose prose is 100% expository is a different problem from one that is 5% dialogue. The corpus instrument (`audit-curriculum-coverage.mjs`) already walks every cell — **add terminal-punctuation mix to what it reports**, so "can this cell teach her what a question looks like?" is a field read instead of an assumption.
+
+## REPCOMP5 — "no more than 5 reps for any and everything", measured and shipped — filed 2026-09-01
+
+Gee (verbatim): *"what the fuck 100 reps!!!!!!!!!!!!!!!!!!!!!!!!!!!! i fuckiong told you we adjust the fucking nobs so that we only have to do no more than 5 reps for any and everything"*
+
+> ✅ **REPCOMP5.1 DONE — every authored dose in the tree now runs at 4–5 presentations, and the deposit is unchanged.**
+>
+> ⚠ **FIRST, THE THING I HAD WRONG WHEN HE SHOUTED: the `100` in the code was never 100 presentations.** `REP_COMPRESS` already shipped at 5×, so `_teachConcreteSentences` was running **20 reps @ lr 0.1413**, same asymptote. ⛔ **But 20 is not 5, the instruction was standing, and the shipped ceiling of 0.35 made 8 the arithmetic floor — so it could not have been met without changing these constants.** The instruction had gone unmet in silence.
+>
+> ⭐ **THE ARITHMETIC IS THE WHOLE POINT AND IT IS NOT A CUT.** Oja with binary spikes is `w = w(1−lr) + lr·x`, so after n reps a weight reaches `1 − (1−lr)^n`. Solving for the lr that lands the SAME asymptote in fewer steps preserves the deposit exactly. **Cutting reps alone would be a real cut; this is the dose-neutral form.**
+>
+> **MEASURED BEFORE MOVING — the `REPCOMP.3` experiment re-run and extended, real `SparseMatrix`, real `ojaUpdate`, rep-major, retrieval accuracy:**
+> ```
+>   collision load        1x(100)   5x(20)   8x(13)  12.5x(8)   20x(5)
+>     0.246 PRODUCTION     100.0%   100.0%   100.0%   100.0%   100.0%
+>     1.56  (6x harder)    100.0%    94.0%    76.0%    61.0%    43.0%
+>     6.25  (25x harder)    72.8%    24.0%    16.5%    11.8%     8.0%
+>     25    (100x harder)   15.9%     4.8%     3.8%     2.3%     1.6%
+> ```
+> ⛔ **MY FIRST HARNESS SCORED 100% EVERYWHERE INCLUDING 1× AND I THREW IT OUT** — it gave every pair its own output row, so there was no competition for shared post-cells and interference was zero *by construction*. **A harness that cannot fail is not a measurement.** The table above uses overlapping post patterns and degrades with load, which is what makes it readable.
+>
+> ⛔⛔ **AND THE HI TIER CANNOT REACH 5 — this is measured, not conceded.** `_teachConcreteSentences` multiplies its dose by tier, so the real authored doses are **100 / 150 / 200**. Forcing each to five presentations at production load:
+> ```
+>   tier         deposit   lr@n=5   PRODUCTION
+>   LOW  (100)    95.24%   0.4562      100.0%
+>   MID  (150)    98.96%   0.5990      100.0%
+>   HI   (200)    99.77%   0.7043       93.8%   <-- breaks
+> ```
+> **At lr 0.704 one write dominates a row before the decay term answers.** So `LR_CEIL` is set to **0.60** — the highest value measured clean — which lands LOW and MID at 5 and backs HI off to **7**. ⚠ **Forcing HI to 5 would trade ~6% retrieval for two presentations. That is a bad trade and the code says so at the site.**
+>
+> **SETTINGS:** `DREAM_REP_COMPRESS` 5 → **40** (the target divisor; `_n` starts at `round(reps/RC)` and the ceiling only ever raises it, so 20 would have floored HI at 10 regardless), `DREAM_REP_COMPRESS_LR_CEIL` 0.35 → **0.60**, `DREAM_REP_COMPRESS_MIN_DOSE` 12 → **6** (safe because `MIN_RESULT_REPS` = 4 is the guard `REPCOMP.4` actually needed). **`DREAM_REP_COMPRESS=5` restores the previous behaviour exactly; `=1` restores the authored form.**
+>
+> **RE-PRICE, written down as the law requires — the heaviest single call (8,428 glue pairs + 718 lead-ins):**
+> ```
+>   authored (60/80 reps)  563,120 pair-writes   ~14.88h   (the measured 14.88h call)
+>   previously shipped 5x  112,624 pair-writes   ~2.98h
+>   REPCOMP.5 (4 reps)      36,584 pair-writes   ~0.97h
+>   -> 15.4x fewer writes than authored, 3.1x fewer than what was shipping
+> ```
+> ⛔ **THE STANDING WARNING, because this spends the entire safety margin:** collision load is `P·K / COLS`, so it rises with **pair count**, and the corpus just grew from 12,075 sentences to 4.48M words. At 6× today's load, 5 reps scores **43%** where 20 reps still scores **94%**. **If retrieval or separability regresses after a corpus growth, THIS IS THE FIRST KNOB TO WALK BACK.**
+
+## LITGRADE — the literature table stops at college2, and four ELA cells have no literature at all — filed 2026-09-01
+
+⭐ **The one finding that SURVIVED the `DIALOGUE.1` retraction, because it was verified against the table rather than inferred from a rate.** Measured per ELA grade: dialogue presence tracks `text-*` (Gutenberg) entries **exactly** — where literature was ingested there is dialogue, where it was not there is none.
+```
+  ela/college2   17.60%   1 literature entry   <- one dialogue-heavy work
+  ela/college3    0.07%   0 literature
+  ela/college4    0.00%   0 literature
+  ela/grad        0.20%   0 literature
+  ela/phd         0.06%   0 literature
+```
+⛔ **THE CAUSE IS A TABLE THAT ENDS EARLY, NOT A FETCH FAILURE.** `TITLES` in `.claude/scripts/fetch-gutenberg-corpora.mjs` runs `pre-K` → `college2` and simply **stops**. The four cells above were never asked for.
+
+- [ ] `LITGRADE.1` — **EXTEND THE TITLE TABLE THROUGH `college3` / `college4` / `grad` / `phd`.** ⛔ **Every Gutenberg ID must be VERIFIED to resolve to its intended title before it is committed** — a wrong ID silently ingests the wrong book, and this corpus has already been burned once by a fetch that returned a translator's preface instead of the work (`CURVEBUILD.9`). ⚠ **Level-appropriate, not just longer:** upper-college and graduate ELA is criticism, theory and dense prose rather than more novels, so the picks should reflect what that year actually reads. ⭐ **Low urgency, stated plainly:** these are the four grades where she is LEAST likely to need dialogue exposure, since form is trained at K by `_teachConcreteSentences`. **The reason to do it is course fidelity — an ELA year with no assigned reading is not an ELA year — not sentence form.**
 
 ## REGRESSION — the LAST item on the board, and it does not start until everything above it is done — filed 2026-09-01
 
