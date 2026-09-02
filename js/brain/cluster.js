@@ -699,6 +699,26 @@ export class NeuronCluster {
     this._lastPredictionError = 0; // scalar mean abs error
     this._predictionErrorHistory = []; // ring buffer for diagnostic
 
+    // BCM sliding-threshold plasticity (Bienenstock-Cooper-Munro) — OFF by
+    // default, and that default is correct: it changes the plasticity rule on
+    // every teach path, which is a RE-PRICE-bearing change nobody has priced.
+    //
+    // ⛔ WHAT WAS BROKEN UNTIL 2026-09-01: the whole feature was built and
+    // reachable end to end — the gate in `_teachAssociationPairs`, the update
+    // in `intraSynapsesBcm`, the kernel in `SparseMatrix.bcmUpdate` — but
+    // `_bcmEnabled` was ASSIGNED NOWHERE IN THE TREE. It appeared only inside
+    // comments instructing the reader to set it. Its own doc promised
+    // "operator can flip the flag in a session to test whether BCM improves
+    // Oja's sep-probe numbers", and there was no session, env flag or control
+    // that could do so. A finished experiment with no way to run it.
+    //
+    // ⭐ Resolved HERE rather than at either gate on purpose: two separate
+    // sites read this property (`curriculum.js` decides whether to call,
+    // `hebbian.js` guards the body), so a lazy resolve at one of them would
+    // leave the other to drift. One assignment, both readers agree.
+    // A runtime `cluster._bcmEnabled = true` still overrides, unchanged.
+    this._bcmEnabled = (typeof process !== 'undefined' && !!process.env && process.env.DREAM_BCM === '1');
+
     // microcolumns/six-layer lamination/hub neurons first-pass cluster-wide assignment
     // REMOVED. Earlier code at this location ran before regions
     // populated, then  per-region pass at line ~700 OVERWROTE

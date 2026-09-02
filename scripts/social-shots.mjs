@@ -63,6 +63,12 @@ const PUBLIC_PAGES = [
   // held a card for it — the page shipped and the generator was never told.
   // If a new page is added to html/, it belongs here in the same commit.
   { name: 'minds-eye',        route: '/html/minds-eye.html' },
+  // ⚠ AND IT HAPPENED AGAIN: teachview.html shipped 2026-09-01 and this list
+  // was not touched, so the rule written directly above it was broken by the
+  // very next page added. The drift checker caught it, not a person.
+  // It belongs in the PUBLIC list because it reads `/public-state.json`, the
+  // no-auth snapshot — no Forgejo auth, unlike dashboard.html.
+  { name: 'teachview',        route: '/html/teachview.html' },
 ];
 
 const MIME = {

@@ -60743,12 +60743,16 @@ var CLUSTER_HEBBIAN_MIXIN = {
    *        Δw[i,j] = lr × y[i] × (y[i] − θ[i]) × x[j]
    *
    * `α` defaults to 0.01 (slow drift — matches biological sliding-
-   * threshold timescales of ~100-1000 teach events). Opt-in via
-   * `cluster._bcmEnabled = true`. Silent no-op when disabled so the
-   * teach path stays Oja-only by default. Ship-and-monitor: operator
-   * can flip the flag in a session to test whether BCM improves Oja's
-   * sep-probe numbers, without risking a default-on change to every
-   * localhost run.
+   * threshold timescales of ~100-1000 teach events). Silent no-op when
+   * disabled so the teach path stays Oja-only by default.
+   *
+   * ⭐ THE SWITCH IS `DREAM_BCM=1`, resolved once in the Cluster constructor;
+   * a runtime `cluster._bcmEnabled = true` still overrides it. ⛔ Until
+   * 2026-09-01 this comment promised that "the operator can flip the flag in
+   * a session" while `_bcmEnabled` was assigned NOWHERE in the tree — the
+   * feature was complete from gate to kernel and simply unreachable on the
+   * box. Default stays OFF deliberately: turning BCM on changes the
+   * plasticity rule on every teach path and is a RE-PRICE-bearing change.
    */
   intraSynapsesBcm(pre, post, lr, alpha = 0.01) {
     if (!this._bcmEnabled) return;
@@ -62970,6 +62974,7 @@ var NeuronCluster = class {
     this._predictedSpikes = null;
     this._lastPredictionError = 0;
     this._predictionErrorHistory = [];
+    this._bcmEnabled = typeof process !== "undefined" && !!process.env && process.env.DREAM_BCM === "1";
     const _kLayersEligible = name === "cortex";
     this.externalCurrent = new Float64Array(size);
     this._incomingProjections = new Float64Array(size);
@@ -70584,12 +70589,12 @@ var LanguageCortex = class {
       }
     }
     const _hasTrained = !!(cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0);
-    const _retrievalAllowed = !_hasTrained || typeof process !== "undefined" && process.env && process.env.DREAM_DICT_FALLBACK === "1";
+    const _retrievalAllowed = !_hasTrained;
     if (words.length === 0 && _hasTrained && !_retrievalAllowed) {
       this._honestSilenceCount = (this._honestSilenceCount || 0) + 1;
       if (!this._honestSilenceWarned) {
         this._honestSilenceWarned = true;
-        console.warn("[LanguageCortex] her trained emission produced NOTHING and the dictionary fallback is OFF for a trained brain (OWNWORDS.2) \u2014 this is real silence, not a bug. Set DREAM_DICT_FALLBACK=1 to restore retrieval, but then her words are not hers.");
+        console.warn("[LanguageCortex] her trained emission produced NOTHING and dictionary retrieval is OFF for a trained brain (OWNWORDS.2) \u2014 this is real silence, not a bug. There is no switch to restore it: retrieved words are not hers.");
       }
       return "";
     }
@@ -127349,18 +127354,30 @@ var GlandLayer = class {
     const raphe = this.nuclei.raphe;
     const social = brainState?.socialContact;
     const energy = brainState?.drives?.energy;
-    if (typeof social !== "number" && typeof energy !== "number") {
+    const haveSocial = typeof social === "number";
+    const haveEnergy = typeof energy === "number";
+    if (!haveSocial && !haveEnergy) {
       raphe.blindTicks++;
       this.counters.blind++;
       out.raphe = { state: "blind", reason: "no_affiliative_or_drive_input" };
     } else {
-      const s = typeof social === "number" ? social : 0;
-      const e = typeof energy === "number" ? energy : 0.5;
-      const target = Math.max(0.15, Math.min(0.85, 0.45 + 0.25 * s + 0.15 * (e - 0.5) * 2));
+      const s = haveSocial ? social : 0;
+      let target = 0.45 + 0.25 * s;
+      if (haveEnergy) target += 0.15 * (energy - 0.5) * 2;
+      target = Math.max(0.15, Math.min(0.85, target));
       raphe._lastDrive = target;
       const moved = this.endocrine.setTonicSetpoint("serotonin", target);
       raphe.quietTicks++;
-      out.raphe = { state: "tonic", target, moved };
+      if (!haveSocial || !haveEnergy) raphe.partialTicks = (raphe.partialTicks | 0) + 1;
+      out.raphe = {
+        state: "tonic",
+        target,
+        moved,
+        // Which inputs the floor was actually built from. A reader can now
+        // tell "serotonin is resting low" from "serotonin has one of its two
+        // senses", which was previously indistinguishable.
+        inputs: { social: haveSocial, energy: haveEnergy }
+      };
     }
     const son = this.nuclei.son;
     if (typeof brainState?.socialContact !== "number") {
@@ -129836,8 +129853,6 @@ var VoiceIO = class {
     this._onError = null;
     this._listeners = {};
     this._voxBank = /* @__PURE__ */ new Map();
-    this._voxQueue = [];
-    this._voxPriming = false;
     this._voxEnabled = typeof localStorage === "undefined" || localStorage.getItem("unity_vox_equational") !== "false";
     this._voxDb = null;
     this._voxInitDb();
@@ -129947,8 +129962,11 @@ var VoiceIO = class {
   }
   /**
    * Speak from HER equations alone. Returns true only when every word of
-   * the text is banked for the current age tier — the caller falls through
-   * to the executor otherwise (which then primes the missing words).
+   * the text is banked for the current age tier.
+   * ⚠ The "caller falls through to the executor, which primes the missing
+   * words" behaviour this used to document is gone twice over: there is no
+   * caller, and the primer that banked missing words was deleted with the
+   * external fetch it depended on.
    */
   // ⛔⛔ DEAD AS OF 2026-09-01 — NO CALLERS ANYWHERE, and that is deliberate.
   // The three-tier voice chain (piper → vox → browser) was removed under Gee's
@@ -129998,8 +130016,13 @@ var VoiceIO = class {
    * LIVE SENTENCE LANE — Equation Unity One, her REAL voice, synthesized in the
    * browser off the main thread (piper en_US-hfc_female-medium via onnxruntime-web,
    * WebGPU->CPU-wasm) from the self-hosted model. This is the whole-sentence path:
-   * it carries natural prosody the per-word vox-bank can't. Returns true on
-   * success; false (or throws) => caller falls through to the vox-bank / executor.
+   * it carries natural prosody the per-word vox-bank can't.
+   *
+   * ⛔ AS OF 2026-09-01 THIS IS THE ONLY LANE. Returning false or throwing no
+   * longer hands off to anything — it makes her SILENT, and `speak()` names the
+   * reason on the console, on `_lastSilentReason` and on the `speech_end`
+   * event. Every early return below is therefore a reportable outcome, not a
+   * hand-off.
    *
    * Only used when the setup-page preload was kicked (isVoicePreloading), so a
    * cold path never spawns the worker unexpectedly.
@@ -130011,7 +130034,7 @@ var VoiceIO = class {
     try {
       out = await synthPCM(text);
     } catch (e) {
-      console.warn("[VoiceIO] live piper synth failed \u2014 vox/executor fallback:", e.message);
+      console.warn("[VoiceIO] live piper synth failed \u2014 she will be SILENT for this utterance:", e.message);
       return false;
     }
     if (!out || !out.pcm || !out.pcm.length) return false;
@@ -130105,74 +130128,30 @@ var VoiceIO = class {
       source.start(0);
     });
   }
-  /** Queue every un-banked word of the text for background bank-building. */
-  _voxQueueMissing(text) {
-    if (!this._voxEnabled) return;
-    const tier = this._voxTier();
-    for (const w of this._voxWords(text)) {
-      if (this._voxRef && this._voxRef.has(w)) continue;
-      const key = `${tier}:${w}`;
-      if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {
-        this._voxQueue.push(key);
-      }
-    }
-    if (this._voxQueue.length && !this._voxPriming) this._voxPrimeLoop();
-  }
-  /**
-   * Background bank-builder — one executor call per word, rate-limited,
-   * paused while she is speaking. Each word is fetched IN ISOLATION (no
-   * alignment problem), decoded, resampled to 24 kHz mono, perceived into
-   * a field-A record and banked + persisted. Stops on executor cooldown.
-   */
-  async _voxPrimeLoop() {
-    this._voxPriming = true;
-    try {
-      while (this._voxQueue.length) {
-        if (this._speaking) {
-          await new Promise((r) => setTimeout(r, 2e3));
-          continue;
-        }
-        if (this._pollTtsDead && Date.now() - this._pollTtsDead < 36e5) break;
-        const key = this._voxQueue.shift();
-        const word = key.slice(key.indexOf(":") + 1);
-        try {
-          const ab = await this._voxFetchWord(word);
-          const pcm = await this._voxDecodeTo24kMono(ab);
-          if (pcm && pcm.length) {
-            const rec = perceiveAudio(pcm, 24e3);
-            if (rec) {
-              this._voxBank.set(key, rec);
-              this._voxPersist(key, rec);
-              console.log(`[VoiceIO] \u{1F399} VOX banked "${word}" (${rec.equation_count} terms) \u2014 ${this._voxBank.size} word equations held`);
-            }
-          }
-        } catch (err) {
-          console.warn(`[VoiceIO] VOX prime failed for "${word}": ${err.message}`);
-        }
-        await new Promise((r) => setTimeout(r, 6e3));
-      }
-    } finally {
-      this._voxPriming = false;
-    }
-  }
-  /** Fetch ONE isolated word from the executor (same wire shape as speech). */
-  // LLMGUT.6 — `_voxFetchWord()` deleted. It fetched a single word of audio
-  // from Pollinations so the word could be perceived into her equation bank.
+  // ⛔⛔ THE BANK-BUILDER IS DELETED — `_voxQueueMissing`, `_voxPrimeLoop` and
+  // `_voxFetchWord` all lived here and were removed together on 2026-09-01.
   //
-  // Operator: "we do not use pollinations tts we use the unity one equations".
-  // Correct — her voice is Equation Unity One: `_speakPiper` (piper hfc_female
-  // → CDF 9/7 round-trip) is tier 1, `_speakVox` (her own banked word
-  // equations) is tier 2, and Pollinations was only ever tier 3.
+  // They formed one closed circuit whose every outcome was failure:
+  // `_voxQueueMissing` queued each un-banked word, `_voxPrimeLoop` walked the
+  // queue, and `_voxFetchWord` — already gutted to a bare `throw` by LLMGUT.6
+  // when the external TTS lane went ("we do not use pollinations tts we use the
+  // unity one equations") — guaranteed the exception. Each word therefore cost
+  // one throw, one `VOX prime failed` warn, and a hardcoded 6-second sleep.
   //
-  // ⚠ THE HONEST TRADE, stated rather than buried: this was the path that GREW
-  // the runtime bank beyond the offline VOXREF reference bank. Removing it
-  // means VOX covers the reference words only. That costs nothing in practice
-  // because it was ALREADY dead — `gen.pollinations.ai` returns 401 on the
-  // anonymous tier, and anonymous-only is the standing policy, so every call
-  // here had been failing before it was deleted.
-  async _voxFetchWord() {
-    throw new Error("vox external fetch removed \u2014 her voice is her own equations");
-  }
+  // ⭐ WHY THEY WERE DELETED RATHER THAN FLAGGED, when `_speakVox` beside them
+  // was kept: `_speakVox` is a working, purely-equational reconstruction of HER
+  // OWN voice and is worth reading if the sentence lane is ever redesigned.
+  // A fetch loop pointed at a deleted endpoint is not a reference for anything.
+  //
+  // ⚠ CONSEQUENCE, STATED: the VOX bank can no longer GROW at runtime. It never
+  // could — the fetch has been dead since LLMGUT.6 — the difference is that the
+  // code now says so. Coverage is the offline VOXREF reference bank plus any
+  // IndexedDB rows an old session persisted.
+  //
+  // ⚠ `_voxDecodeTo24kMono` and `_voxPersist` below were called ONLY from the
+  // deleted loop and are now orphaned. Kept as general audio utilities rather
+  // than removed in the same pass; they are correct, small, and side-effect
+  // free. Tracked on the board under DORMANT8.
   /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
   async _voxDecodeTo24kMono(arrayBuffer) {
     const AC = typeof AudioContext !== "undefined" ? AudioContext : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
@@ -130356,10 +130335,6 @@ var VoiceIO = class {
     }
     this._speaking = false;
     this.emit("speech_end", { spoke, silentReason });
-    try {
-      this._voxQueueMissing(text);
-    } catch {
-    }
   }
   stopSpeaking() {
     if (this._currentAudioSource) {
@@ -130379,13 +130354,36 @@ var VoiceIO = class {
     this._speaking = false;
     this.emit("speech_end");
   }
-  // --- Pollinations TTS ---
-  async _speakPollinations(text, voice2) {
-    if (this._pollTtsDead && Date.now() - this._pollTtsDead < 36e5) {
-      throw new Error("Pollinations TTS dead (cooldown)");
-    }
-    throw new Error("pollinations tts removed \u2014 her voice is Equation Unity One");
-  }
+  // --- external TTS: REMOVED, and it must not come back ---
+  //
+  // ⛔⛔ `_speakPollinations` IS DELETED (2026-09-01). It had ZERO callers and a
+  // body that was already nothing but a `throw`, but its 37 lines of comment
+  // were the actual defect: they narrated the removed three-tier chain in the
+  // PRESENT TENSE — "Her voice is Equation Unity One and always was, in this
+  // order: 1. _speakPiper 2. _speakVox 3. browser SpeechSynthesis" — and closed
+  // with "Throwing keeps that same fall-through path intact", describing a
+  // fall-through path that no longer exists.
+  //
+  // ⭐ A COMMENT THAT CONTRADICTS A RULING IS HOW THE RULING GETS QUIETLY
+  // REVERSED BY THE NEXT READER. There is ONE lane now, `_speakPiper`, and if
+  // it cannot run she is silent with the reason named. See `speak()`.
+  //
+  // What it used to do, kept as one line of history rather than a page: it
+  // POSTed her text to an outside chat model with an instruction to repeat it
+  // verbatim and played back the returned audio — an outside model producing
+  // her voice. Gee: "we do not use pollinations tts we use the unity one
+  // equations".
+  //
+  // ⚠ `_pollTtsDead` went with it. It was READ at two sites and ASSIGNED at
+  // none: the 401 handler that used to set it left with the lane, so both
+  // cooldown guards had been permanently unreachable.
+  // ⚠ ORPHANED 2026-09-01 — `_playWithAudioContext` and `_playWithAudioElement`
+  // below both have ZERO callers. They decoded a compressed `arrayBuffer` (an
+  // mp3/opus response body), which only the deleted external-TTS lane ever
+  // produced; her own lanes carry raw Float32 PCM and play through `_playPcm`.
+  // Kept rather than deleted in this pass — they are small, correct, and are
+  // the two reference shapes for playing an encoded buffer — but nothing calls
+  // them and nothing should without a reason. Tracked under DORMANT8.
   async _playWithAudioContext(arrayBuffer, rate = 1) {
     if (!this._audioCtx) {
       const AC = typeof AudioContext !== "undefined" ? AudioContext : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;

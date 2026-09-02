@@ -611,6 +611,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 | `DREAM_WINDOW_MAX_MS` | ⚠ | lever | Cap on a dream window |
 | `DREAM_DEFINITION_CACHE_FILE` | ✅ `server/definition-cache.json` (`''` opts out) | lever | Persistent dictionary-definition cache. After 2-3 cold runs it approaches full coverage and the prefetch completes with no API hits |
 | `DREAM_DEF_CACHE_CAP` | ⚠ | lever | Entry cap on that cache |
+| `DREAM_CONTENT_LR` | ✅ `0.0468` | **lever, load-bearing** | Learning rate for the CONTENT lane (`_teachSentenceList` — the lane that teaches meaning from prose). ⛔ It used to inherit `cluster.learningRate` = `0.001`, which at 3 reps deposits **0.30%** of a pattern, while the grammar lane beside it deposits **51.90%** — the two lanes were **173× apart** and the one carrying her actual subject knowledge was the weak one. The default is derived, not chosen: Oja gives deposit = `1 − (1 − lr)^n`, so matching a median word's exposure to a real target across the rebuilt corpus lands at `0.0468` ≈ **24.99%** per median word, at zero wall-clock cost. Raise only against a recomputed deposit figure |
 
 ### Consolidation & sleep
 
@@ -626,7 +627,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 
 | Env | Default | Kind | What it does |
 |---|---|---|---|
-| `DREAM_DICT_FALLBACK` | ✅ unset | **escape hatch** | ⛔ `'1'` restores dictionary RETRIEVAL when the trained matrix produces nothing. Off by default on purpose: a retrieved word is the dictionary speaking, not her. Leaving it off is what makes honest silence honest |
+| ~~`DREAM_DICT_FALLBACK`~~ | ⛔ **DELETED 2026-09-01** | — | It restored dictionary RETRIEVAL when a TRAINED matrix produced nothing. Removed under *"no fallbacks. PERIOD"*: the flag's own warning ended *"but then her words are not hers"*, which is the definition of the thing the law forbids. **For a trained brain, empty now means EMPTY and there is no switch.** The newborn bootstrap (zero passed cells) is untouched and is a separate open question |
 | `DREAM_CHAT_MAX_WORDS` | ✅ `10` | lever | Hard ceiling on a chat reply's length |
 | `DREAM_THOUGHT_CONCEPT_GAP_MS` | ✅ `600000` | lever | Per-concept cooldown on the inner voice's trained-read thoughts (definition-bound thought / association recall on the k-vocab-recent seed slot) — keeps her concept thoughts rotating instead of dwelling on one word |
 | `DREAM_CHAT_QPROBE_TIMEOUT_MS` | ✅ input-scaled: `45000` + 1000/word past 8, cap `90000` | lever | Hard budget on the chat question lane — a question-like message runs the gate battery's own probe (same teach-geometry injection + trained-pathway reads the exam uses) before the compose lane; past the budget the probe is aborted and compose runs exactly as before. The 45 s floor is the battery's own per-question budget (a flat 20 s was measured dying at 22.2 s on a ~40%-service mid-teach loop); setting the env overrides the scaling flat |
@@ -669,6 +670,7 @@ Each shapes how the cortex is WIRED, so each is applied at construction. ⛔ Cha
 | `DREAM_ANNEAL_TEMP` | ⚠ | lever | Annealing temperature schedule |
 | `DREAM_PSI_GAIN_SCALE` | ⚠ | lever | Scales the Ψ consciousness term's global gain contribution |
 | `DREAM_SM_LR_SCALE` / `DREAM_SM_WMAX` | ⚠ | levers | Sparse-matrix learning-rate scale and weight clamp. ⛔ `wMax` clamps have been lost in a binary save/load round-trip before, leaving projections at ±Infinity — that is one of the two bugs the unconditional fresh-start wipe exists to prevent |
+| `DREAM_BCM` | ✅ off | **lever, NEW 2026-09-01** | Bienenstock-Cooper-Munro sliding-threshold plasticity on the intra-cluster matrix, alongside Oja. ⭐ **The feature was complete from gate to kernel since it shipped and simply had NO SWITCH** — `_bcmEnabled` was assigned nowhere in the tree while its own doc promised the operator could flip it in a session. Resolved once in the Cluster constructor, so both readers (the call gate in the teach path and the guard in the update) agree; a runtime `cluster._bcmEnabled = true` still overrides. ⛔ Default stays OFF: turning it on changes the plasticity rule on **every** teach path and is a RE-PRICE-bearing change nobody has priced |
 
 ### Language cortex
 
