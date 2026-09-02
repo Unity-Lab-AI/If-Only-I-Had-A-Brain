@@ -12,7 +12,7 @@
  * No external dependencies. No network synthesis. No browser SpeechSynthesis.
  */
 
-import { perceiveAudio, reconstructAudio, concatAudio } from '../brain/mindspace/audio.js';
+import { perceiveAudio, reconstructAudio } from '../brain/mindspace/audio.js';
 import { synthPCM, isVoicePreloading } from './voice-piper.js';
 
 class VoiceIO {
@@ -35,39 +35,39 @@ class VoiceIO {
     // --- event emitter ---
     this._listeners = {};
 
-    // --- VOX — her equational voice bank (word → field-A record) ---
-    // ⛔⛔ THE BANK IS READ-ONLY AS OF 2026-09-01 AND NO LONGER GROWS.
-    // It used to grow from a TTS executor that perceived each spoken word into
-    // a 1-D CDF 9/7 field-A. LLMGUT.6 deleted that fetch ("we do not use
-    // pollinations tts we use the unity one equations"), and the 2026-09-01
-    // "no fallbacks. PERIOD" ruling then orphaned `_speakVox`, the only thing
-    // that ever READ the bank. What survives is the offline VOXREF reference
-    // bank plus whatever an old session persisted to IndexedDB — held because
-    // it is a real recording of HER voice as equations, not because anything
-    // currently plays it.
-    this._voxBank = new Map();          // key `${tier}:${word}` → field-A rec
-    // ⚠ `_voxQueue` / `_voxPriming` were removed with the bank-builder — they
-    // were the queue and the re-entrancy latch for a loop that no longer
-    // exists, and state nothing reads is its own small lie.
-    this._voxEnabled = (typeof localStorage === 'undefined')
-      || localStorage.getItem('unity_vox_equational') !== 'false';
-    this._voxDb = null;
-    this._voxInitDb();
-    // VOXREF — the reference-voice equation bank (built offline from the
-    // operator-approved free neural reference; she picked the EQUATIONS over
-    // the original in the blind A/B). Preloaded chunked.
-    // ⚠ It is no longer consulted by `speak()` — its only reader was
-    // `_speakVox`, which the no-fallbacks ruling orphaned. Kept loaded because
-    // the bank IS her voice in equation form and is the reference for any
-    // future redesign of word-level reconstruction.
-    this._voxRef = new Map();
-    // VOXREF.6 — DEFERRED preload (operator: the freezes "started when we
-    // added the Unity One voice"). The eager constructor-time load parsed
-    // the whole multi-MB equation bank on the page's main thread right at
-    // boot — parse jank + a GC mountain exactly when the page is heaviest.
-    // Lazy: the first speak triggers the load; an idle prefetch 30s after
-    // boot warms a quiet page before she talks.
-    this._voxPreloadTimer = setTimeout(() => { this._ensureVoxRef(); }, 30000);
+    // ⛔⛔ THE ENTIRE VOX WORD-BANK LANE WAS DELETED 2026-09-02, ON GEE'S CALL.
+    //
+    // `_speakVox` was tier 2 of the three-tier voice chain (piper → vox →
+    // browser). The 2026-09-01 *"no fallbacks. PERIOD"* ruling removed the
+    // chain and orphaned it: **zero callers**, while `_ensureVoxRef` still
+    // loaded an 11-file, ~61 MB equation bank on a 30-second timer in every
+    // session to serve a function nothing could reach.
+    //
+    // ⚠ It was KEPT and flagged for a day on the argument that it is a
+    // working, purely-equational reconstruction of her own voice and worth
+    // reading if the sentence lane is ever redesigned. Gee's decision was to
+    // delete it, and the reasoning that wins is the LAW's: her own canon calls
+    // per-word concat a FALLBACK — sentence-level Equation Unity One carries
+    // the quality — so a dormant second lane is a standing invitation for a
+    // future reader to "restore" exactly what the ruling forbade.
+    //
+    // Deleted together, because they were one circuit: `_speakVox`,
+    // `_ensureVoxRef`, `_voxPreloadRef`, `_voxPreloadTimer`, `_voxTier`,
+    // `_voxWords`, `_voxBank`, `_voxRef`, `_voxEnabled`, `_voxInitDb`,
+    // `_voxPersist`, `_voxDb`, plus `vox-bank/` (12 files, ~61 MB) and
+    // `scripts/vox-build-bank.mjs`. The `concatAudio` import went with them —
+    // `_speakVox` was its only consumer here.
+    //
+    // ⭐ ONE PIECE SURVIVED ON PURPOSE: the decoder, now `_decodeTo24kMono`.
+    // It is the AUDIO FRONT END, not vox debris — any compressed audio to
+    // 24 kHz mono Float32, which is the shape `perceiveAudio` consumes. That
+    // makes it what HEARING needs, and deleting it in this sweep would have
+    // meant writing it again for the microphone lane.
+    //
+    // ⭐ THE HISTORY IS NOT LOST: git holds it, and `docs/FINALIZED.md`
+    // §VOXREF.1/.2/.3 records how word-level reconstruction was built. A
+    // deleted lane with a written record beats a dormant one with a comment.
+    //
     // AUDIO UNLOCK — browsers keep a gesture-less AudioContext SUSPENDED
     // (autoplay policy): her speech composed but played into a suspended
     // context = silence with the toggle on. Any first click/key/touch on
@@ -76,40 +76,6 @@ class VoiceIO {
 
     // --- init recognition if available ---
     this._initRecognition();
-  }
-
-  // ── VOX — equational voice bank ─────────────────────────────────────────
-
-  _voxTier() {
-    const a = this._age || 25;
-    return a < 11 ? 'k' : a < 14 ? 'mid' : a < 18 ? 'teen' : a < 23 ? 'college' : 'adult';
-  }
-
-  /** VOXREF — preload the reference-voice equation bank (chunked JSON,
-   *  sequential + cache-friendly). Missing bank (404) degrades silently to
-   *  the executor/browser fallback chain, unchanged. */
-  async _voxPreloadRef() {
-    if (typeof fetch === 'undefined') return;
-    try {
-      const man = await (await fetch('/vox-bank/manifest.json', { cache: 'force-cache' })).json();
-      if (!man || !Array.isArray(man.chunks)) return;
-      console.log(`[VoiceIO] 🎙 VOX reference bank: ${man.words} words / ${man.chunks.length} chunks (${man.reference}) — loading…`);
-      for (const c of man.chunks) {
-        try {
-          const chunk = await (await fetch('/vox-bank/' + c.file, { cache: 'force-cache' })).json();
-          for (const [w, rec] of Object.entries(chunk)) this._voxRef.set(w, rec);
-        } catch { /* one chunk failing doesn't stop the rest */ }
-        await new Promise((r) => setTimeout(r, 60));   // breather between multi-MB parses — spread the jank, no freeze wall
-      }
-      console.log(`[VoiceIO] 🎙 VOX reference bank READY — ${this._voxRef.size} word equations held. Her voice is local + equational; the executor is not needed.`);
-    } catch { /* bank not deployed — fallback chain unchanged */ }
-  }
-
-  /** Lazy single-flight bank load — first speak (or the 30s idle timer)
-   *  starts it; every later caller shares the same promise. */
-  _ensureVoxRef() {
-    if (!this._voxPreloadPromise) this._voxPreloadPromise = this._voxPreloadRef().catch(() => {});
-    return this._voxPreloadPromise;
   }
 
   /** One unlock for the tab: browsers suspend a gesture-less AudioContext
@@ -134,95 +100,6 @@ class VoiceIO {
     for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
       document.addEventListener(ev, unlock, { passive: true });
     }
-  }
-
-  _voxWords(text) {
-    return String(text || '').toLowerCase().split(/[^a-z']+/)
-      .filter(w => w.length >= 1 && w.length <= 24).slice(0, 64);
-  }
-
-  _voxInitDb() {
-    try {
-      if (typeof indexedDB === 'undefined') return;
-      const req = indexedDB.open('unity-vox', 1);
-      req.onupgradeneeded = () => { req.result.createObjectStore('bank'); };
-      req.onsuccess = () => {
-        this._voxDb = req.result;
-        // hydrate the in-memory bank from disk
-        try {
-          const tx = this._voxDb.transaction('bank', 'readonly');
-          const store = tx.objectStore('bank');
-          const cur = store.openCursor();
-          let n = 0;
-          cur.onsuccess = () => {
-            const c = cur.result;
-            if (c) { this._voxBank.set(c.key, c.value); n++; c.continue(); }
-            else if (n > 0) console.log(`[VoiceIO] VOX bank hydrated — ${n} word equation(s) from IndexedDB`);
-          };
-        } catch { /* hydrate best-effort */ }
-      };
-      req.onerror = () => { /* no persistence — in-memory bank still works */ };
-    } catch { /* environments without IndexedDB */ }
-  }
-
-  _voxPersist(key, rec) {
-    try {
-      if (!this._voxDb) return;
-      const tx = this._voxDb.transaction('bank', 'readwrite');
-      tx.objectStore('bank').put(rec, key);
-    } catch { /* persistence best-effort */ }
-  }
-
-  /**
-   * Speak from HER equations alone. Returns true only when every word of
-   * the text is banked for the current age tier.
-   * ⚠ The "caller falls through to the executor, which primes the missing
-   * words" behaviour this used to document is gone twice over: there is no
-   * caller, and the primer that banked missing words was deleted with the
-   * external fetch it depended on.
-   */
-  // ⛔⛔ DEAD AS OF 2026-09-01 — NO CALLERS ANYWHERE, and that is deliberate.
-  // The three-tier voice chain (piper → vox → browser) was removed under Gee's
-  // "no fallbacks. PERIOD" ruling, and this was tier 2. ⭐ Her own canon calls
-  // this lane a fallback in as many words — sentence-level Equation Unity One
-  // carries the quality, per-word bank concat is the substitute — so removing
-  // the chain necessarily orphaned it.
-  // ⚠ LEFT IN PLACE RATHER THAN DELETED, and flagged instead: it is a large,
-  // working, purely-equational implementation of HER OWN voice (no foreign
-  // synthesis, no network), and if the sentence lane is ever redesigned this is
-  // the reference for how word-level reconstruction was done. ⛔ It must NOT be
-  // re-wired as a fallback tier. Tracked on the board under STACKSWEEP.
-  async _speakVox(text, rate) {
-    if (!this._voxEnabled) return false;
-    this._ensureVoxRef();   // lazy bank load — the first utterance may fall through while it warms
-    const tier = this._voxTier();
-    const toks = this._voxWords(text);
-    if (!toks.length) return false;
-    const recs = [];
-    // Greedy longest-first tiling: banked PHRASE units ("i am", "this is")
-    // carry natural in-sentence prosody, so prefer a 3-gram over a 2-gram
-    // over isolated words — sentences flow instead of stepping word by word.
-    const _lookup = (key) => this._voxBank.get(`${tier}:${key}`) || (this._voxRef && this._voxRef.get(key)) || null;
-    let _ti = 0;
-    while (_ti < toks.length) {
-      let hit = null, span = 0;
-      for (let n = Math.min(3, toks.length - _ti); n >= 1; n--) {
-        const key = toks.slice(_ti, _ti + n).join(' ');
-        const rec = _lookup(key);
-        if (rec) { hit = rec; span = n; break; }
-      }
-      if (!hit) return false;
-      recs.push(hit);
-      _ti += span;
-    }
-    const pcms = recs.map(r => reconstructAudio(r)).filter(Boolean);
-    if (pcms.length !== recs.length) return false;
-    const sr = recs[0].sampleRate || 24000;
-    const pcm = concatAudio(pcms, sr, 70);   // wider crossfade — smoother joins between units
-    if (!pcm || !pcm.length) return false;
-    console.log(`[VoiceIO] 🎙 VOX equational speech — ${toks.length} word(s) from her own bank, zero executor`);
-    await this._playPcm(pcm, sr, rate || 1.0);
-    return true;
   }
 
   /**
@@ -271,13 +148,13 @@ class VoiceIO {
       const recon = reconstructAudio(rec);
       if (recon && recon.length) { pcm = recon; sr = rec.sampleRate || sr; equational = true; }
     } catch (e) {
-      this._voxEquationalSkips = (this._voxEquationalSkips | 0) + 1;
-      this._voxLastSkipReason = (e && e.message) || 'transform returned nothing';
+      this._equationalSkips = (this._equationalSkips | 0) + 1;
+      this._lastEquationalSkipReason = (e && e.message) || 'transform returned nothing';
     }
-    if (!equational && !this._voxLastSkipReason) this._voxLastSkipReason = 'transform returned nothing';
+    if (!equational && !this._lastEquationalSkipReason) this._lastEquationalSkipReason = 'transform returned nothing';
     console.log(equational
       ? `[VoiceIO] 🎙 Equation Unity One (live sentence lane) — "${String(text).slice(0, 40)}" synthesized in-browser`
-      : `[VoiceIO] 🎙 raw piper PCM — transform SKIPPED (${this._voxEquationalSkips | 0}x, ${this._voxLastSkipReason}) — "${String(text).slice(0, 40)}" is NOT equational this utterance`);
+      : `[VoiceIO] 🎙 raw piper PCM — transform SKIPPED (${this._equationalSkips | 0}x, ${this._lastEquationalSkipReason}) — "${String(text).slice(0, 40)}" is NOT equational this utterance`);
     await this._playPcm(pcm, sr, rate || 1.0);
     return true;
   }
@@ -373,29 +250,33 @@ class VoiceIO {
   // unity one equations") — guaranteed the exception. Each word therefore cost
   // one throw, one `VOX prime failed` warn, and a hardcoded 6-second sleep.
   //
-  // ⭐ WHY THEY WERE DELETED RATHER THAN FLAGGED, when `_speakVox` beside them
-  // was kept: `_speakVox` is a working, purely-equational reconstruction of HER
-  // OWN voice and is worth reading if the sentence lane is ever redesigned.
-  // A fetch loop pointed at a deleted endpoint is not a reference for anything.
+  // ⚠ `_speakVox` and the whole word-bank lane went too, on 2026-09-02 — see
+  // the constructor. `_voxPersist` and its IndexedDB store went with them.
   //
-  // ⚠ CONSEQUENCE, STATED: the VOX bank can no longer GROW at runtime. It never
-  // could — the fetch has been dead since LLMGUT.6 — the difference is that the
-  // code now says so. Coverage is the offline VOXREF reference bank plus any
-  // IndexedDB rows an old session persisted.
-  //
-  // ⚠ `_voxDecodeTo24kMono` and `_voxPersist` below were called ONLY from the
-  // deleted loop and are now orphaned. Kept as general audio utilities rather
-  // than removed in the same pass; they are correct, small, and side-effect
-  // free. Tracked on the board under DORMANT8.
+  // ⭐⭐ `_decodeTo24kMono` BELOW SURVIVED THAT DELETION ON PURPOSE, and the
+  // reason matters: it is not vox-bank debris, it is the AUDIO FRONT END. It
+  // decodes any compressed audio to 24 kHz mono Float32 — exactly the shape
+  // `perceiveAudio` (CDF 9/7) consumes — which makes it the primitive HEARING
+  // needs, not the primitive speaking needed. Deleting it as part of the vox
+  // sweep would have meant writing it again for the microphone lane.
+  // ⚠ Renamed off the `_vox` prefix in the same pass, because a name that
+  // says "voice bank" on the one piece that outlived the voice bank is how
+  // the next reader deletes it by mistake.
 
-  /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
-  async _voxDecodeTo24kMono(arrayBuffer) {
+  /**
+   * Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext.
+   *
+   * ⭐ THE HEARING FRONT END. Her ears are equational the same way her eyes
+   * are: audio becomes PCM at a known rate, then `perceiveAudio` turns it into
+   * a CDF 9/7 record. This is step one of that path.
+   */
+  async _decodeTo24kMono(arrayBuffer) {
     const AC = typeof AudioContext !== 'undefined'
       ? AudioContext
       : typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null;
     if (!AC) throw new Error('No AudioContext');
-    if (!this._voxDecodeCtx) this._voxDecodeCtx = new AC();
-    const decoded = await this._voxDecodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    if (!this._decodeCtx) this._decodeCtx = new AC();
+    const decoded = await this._decodeCtx.decodeAudioData(arrayBuffer.slice(0));
     const frames = Math.ceil(decoded.duration * 24000);
     const off = new OfflineAudioContext(1, Math.max(1, frames), 24000);
     const src = off.createBufferSource();
