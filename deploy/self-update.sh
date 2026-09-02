@@ -166,6 +166,7 @@ rsync -a --delete \
   --exclude 'server/.last-breadcrumb.json' \
   --exclude '.loop-freeze.json' \
   --exclude 'server/.loop-freeze.json' \
+  --exclude 'fields' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 
@@ -179,6 +180,59 @@ printf '{"sha":"%s","short":"%s","branch":"%s","deployedAt":"%s"}\n' \
 
 # Re-install deps if package.json changed (best-effort, non-fatal).
 ( cd "$BACKEND_DIR/server" && npm install --omit=dev >> "$LOG" 2>&1 ) || log "npm install skipped/failed (non-fatal)"
+
+# ── WAVESEE.3 — THE WAVELET FIELDS COME DOWN ON EVERY PRESS ───────────────────
+#
+# Operator: *"we will jsut put all the wavlets in the main brain repo wher they
+# belong so when update freshwalk is read it will pull it all properly and run
+# it and she can see the wavelts and train on them"* and *"we will fix it so
+# that it over writes the old copies.. it has 500MB/s dl speeds so itls only
+# take 3 minutes"*. He also has NO server access — only the dashboard buttons —
+# so this is the ONLY place the fetch can live.
+#
+# ⛔ THEY ARE NOT IN THIS REPO ON PURPOSE. `If-Only-I-Had-A-Brain` pushes to a
+# PUBLIC GitHub remote as well as Forgejo; ~133 GB of LFS cannot go there, and
+# putting the fields in this tree would also drag them through the shallow clone
+# above on every press. `BrainWaves` is Forgejo-ONLY, which is what makes it the
+# right home — the operator's "i dont care about github we will use forgjo".
+#
+# ⛔⛔ `git clone --depth 1` IS NOT LFS-AWARE. `*.field.json` is an LFS filter,
+# so without `git lfs pull` every file on disk is a ~130-byte POINTER STUB —
+# a real file, so a naive existence check reports a healthy cache while she
+# perceives nothing. `server/figure-field-store.js` refuses stubs and counts
+# them separately for exactly this reason; this side must still fetch properly.
+#
+# ⚠ `fields` is on the rsync --delete EXCLUDE list above, or the next press
+# would delete everything this step just downloaded.
+#
+# Non-fatal by construction: a field miss costs a live fetch + transform, which
+# is the behaviour that shipped before this existed. It must never block a boot.
+FIELDS_REMOTE="${UAL_FIELDS_REMOTE:-git@git.unityailab.com:UnityAILab/BrainWaves.git}"
+FIELDS_DIR="${UAL_FIELDS_DIR:-$BACKEND_DIR/fields}"
+if [ "${UAL_SKIP_FIELDS:-0}" = "1" ]; then
+  log "field sync SKIPPED (UAL_SKIP_FIELDS=1) — every figure will be fetched and transformed live."
+elif ! command -v git-lfs >/dev/null 2>&1 && ! git lfs version >/dev/null 2>&1; then
+  log "WARN — git-lfs NOT INSTALLED on this box. Skipping the field sync rather than filling the disk with pointer stubs; she will transform every figure live. Install git-lfs to enable the fast path."
+else
+  FTMP="$(mktemp -d)"
+  log "field sync — pulling wavelet fields from ${FIELDS_REMOTE} (overwrites in place)"
+  if git clone --depth 1 --branch main --filter=blob:none "$FIELDS_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1 \
+     && ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 ); then
+    mkdir -p "$FIELDS_DIR"
+    # --delete so a field removed upstream disappears here too; this directory
+    # is OURS and holds nothing else, so a full mirror is the honest sync.
+    if rsync -a --delete "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
+      _fcount="$(find "$FIELDS_DIR" -name '*.field.json' 2>/dev/null | wc -l | tr -d ' ')"
+      _fsize="$(du -sh "$FIELDS_DIR" 2>/dev/null | cut -f1)"
+      log "field sync OK — ${_fcount} wavelet fields (${_fsize}) at ${FIELDS_DIR}; she reads these instead of re-transforming."
+    else
+      log "WARN — field rsync failed; keeping whatever was already on disk (live transform covers the rest)."
+    fi
+  else
+    log "WARN — field clone/lfs-pull failed; keeping whatever was already on disk (live transform covers the rest)."
+  fi
+  rm -rf "$FTMP"
+fi
 
 # SAVESTART vs FRESH WALK. In fresh-walk mode (default) we write .force-fresh
 # so the brain-server's autoClearStaleState wipes trained state at boot

@@ -1872,7 +1872,17 @@ Gee, verbatim, in the order he said it:
 
 **Where the `rec` comes from.** Today it is always `fetch(fig.url)` → decode → transform. That is the single step to be replaced, and **nothing downstream changes** — which is exactly what makes this a percept SOURCE and not a new lane.
 
-- [ ] `WAVESEE.1` — **THE CONSUMER: a local wavelet field becomes a percept source, ranked ahead of the network.**
+- [x] `WAVESEE.1` — ✅ **SHIPPED 2026-09-02 — `server/figure-field-store.js` + the fast path in `_perceiveTextbookFigure`.** Proven against real data and through the production wiring, not the module alone:
+  ```
+    url -> figKey -> file -> rec            126 of 126 fields on disk loaded, 0 stub, 0 malformed
+    chanVal(Y) on a base64 field            Int16Array len 10,204 — matches channel `keep` EXACTLY
+    _recDetail on a loaded rec              10,270  (clears the 200 floor)
+    LFS pointer stub                        REFUSED, counted as `stub` and NOT as `miss`
+    sample rec                              2272x1704 cdf97/YCbCr, Y.keep 3,221,597 coefficients
+  ```
+  ⭐ **The base64-vs-BLOB trap was already closed at the choke point** — `chanVal`/`chanHasVal` (`transform.js:35/42`) read `val_bin` OR `val_b64`, and `_recDetail` handles both since BLOBSTORE. **No second decoder was written, which is what keeps a field from drifting away from a live percept.** ⚠ A miss is ordinary (~a fifth of figures have no field) and falls through to the network path unchanged.
+
+  **Original filing:** **THE CONSUMER: a local wavelet field becomes a percept source, ranked ahead of the network.**
   - New CJS module `server/figure-field-store.js` owning **three things and nothing else**: `figKey(url)`, `bare(key)`, `shardName(key)`, plus `loadField(url)` returning the parsed field or `null`.
   - `figKey` is **djb2 over the URL** — `h=5381; h=((h*33)^c)>>>0; 'fig:'+h.toString(36)` — and the file lives at `fields/<first-two-chars>/<bare>.field.json`.
   - ⛔ **THE `fig:` PREFIX MUST NEVER REACH A FILENAME.** A colon is an NTFS alternate-data-stream separator; `fig:abc.field.json` silently creates a stream hanging off a file called `fig`. The producer already paid for this once.
@@ -1881,16 +1891,71 @@ Gee, verbatim, in the order he said it:
 
 - [ ] `WAVESEE.2` — ⛔ **THE KEY RULE MUST HAVE ONE OWNER, AND TODAY IT WILL HAVE TWO.** `perceive-corpus-figures.mjs` holds `figKey`/`bare`/`shardName` and **must not be edited while the field job is running** — the batch loop respawns `node` every batch, so an edit lands mid-run. **The new module is written first with a duplicate, clearly marked; the producer is pointed at it the moment the run ends.** Two copies of a hash rule is how two writers drift apart, and this board already carries three instances of exactly that.
 
-- [ ] `WAVESEE.3` — **DELIVERY: the press must fetch the fields. No human step exists.**
+- [x] `WAVESEE.3` — ✅ **SHIPPED 2026-09-02 — the press pulls the whole tree; there is no human step and none was invented.** `deploy/self-update.sh` gained a field sync after the npm install: shallow `--filter=blob:none` clone of `BrainWaves` from Forgejo, **`git lfs pull`**, then `rsync -a --delete` into `$BACKEND_DIR/fields`. ⚠ **`--exclude 'fields'` was added to the overlay rsync FIRST** — without it the very next press deletes everything the press just downloaded. **Non-fatal at every step:** a clone, lfs-pull or rsync failure keeps whatever is already on disk and she falls back to live transforms. ⛔ **`git-lfs` absent ⟹ the sync is SKIPPED with a warning rather than run** — a plain clone would fill the disk with pointer stubs, which read as a healthy store. `bash -n` clean.
+
+  **Original filing:** **DELIVERY: the press must fetch the fields. No human step exists.**
   - `deploy/self-update.sh` gains a fields sync that runs on every Update / Fresh-walk press: clone-or-pull `BrainWaves` from **Forgejo** into a path on the box and overwrite in place, per Gee's *"it over writes the old copies"*.
   - ⛔⛔ **`git clone --depth 1` IS NOT LFS-AWARE.** `*.field.json` is an LFS filter in `BrainWaves/.gitattributes`, so a plain clone yields **4 KB pointer stubs**, not fields — and `JSON.parse` on a stub does not throw usefully, it yields an object with no `rec`. **The sync must run `git lfs pull` (or fetch `/media/`, never `/raw/`), and the consumer must REFUSE a row with no `rec.channels` rather than bank it.** This is the `/raw/`-vs-`/media/` trap one layer down.
   - ⚠ **The fields directory must be added to the `rsync --delete` EXCLUDE list** in `self-update.sh` beside `visual-memory*.db*` and `brain-weights*`, or **the very next press deletes every field it just downloaded.** That exclude list's own comment states the rule: *"anything the server writes under `__dirname` belongs in this list, or a deploy eats it."*
   - **Config:** `DREAM_FIGURE_FIELDS_DIR` (path) and a documented off-switch that says so out loud when it is off.
 
-- [ ] `WAVESEE.4` — **PROVE IT, and say which proofs are static and which are live.**
+- [~] `WAVESEE.4` — ⭐ **STATIC HALF DONE, LIVE HALF OWED AND NAMED.** The four static proofs all pass (see `WAVESEE.1`). The instrument shipped too: **`state.ownArt.fields`** publishes `hit / miss / stub / malformed` as **separate counters by reason**, plus `enabled`, `root`, `mb` and `lastErr` with its age — because one number cannot distinguish a working store from a silently-dead one, and `stub` is a DELIVERY failure that must never read as a cache miss. ⏳ **Still owed and only answerable after a press:** `hit` climbing while `figTransformed` stays flat, and `stub` at 0.
+
+  **Original filing:** **PROVE IT, and say which proofs are static and which are live.**
   - **Static, runnable now:** key parity — for N real corpus figure URLs, `figKey(url)` must resolve to a file that exists in `BrainWaves/fields/`; a loaded field must produce a `rec` whose `channels.Y.keep` matches the producer's ledger; `_recDetail` on a loaded rec must clear the 200 floor.
   - ⛔ **THE BLOB-VS-BASE64 TRAP, which has bitten this exact pair before:** the live store is BLOB-from-birth (v8) while a field file carries `val_b64`/`pos_b64` **base64 inside JSON**. `_recDetail` once read only `val_b64` and restored memories scored 0 with recall silently refusing. **The loaded field must pass through the same `chanVal`/`chanHasVal` choke point in `transform.js` that every other rec uses — not a second decoder.**
   - **Live, only after a press:** `state.ownArt.lookups` figure counters climbing, `figGrounded` rising, and the drain reporting hits-from-field vs fetched-live as **separate counters** — because one number cannot distinguish a working cache from a silently-dead one.
 
 - [ ] `WAVESEE.5` — ⚠ **THE 133 GB STORE IS NOT SOLVED BY ANY OF THIS, AND I CLAIMED OTHERWISE ONCE.** She banks a ~4.22 MB rec per figure whether it came from a field or from the network. `REGFIND.8` stands on its own and needs its own decision. **Recorded here so the two are never again treated as one fix.**
+
+- [ ] `WAVESEE.6` — ⛔ **NAME THE FIGURES THAT ERRORED, SAY WHY EACH ONE DID, AND RE-DOWNLOAD ONLY THOSE ON A SECOND PASS.** Gee, verbatim:
+
+  > *"and also add to the todo we have to figure out which figures errored and figure out why and redowload only the failed figures correctly the 2nd pass"*
+
+  - **The size of it, measured rather than guessed:** the job runs `--limit 1500` per pass and banks a mean of **1,203** — so **~297 per pass, ~19.8%, fail.** Across 32,296 figures that is roughly **6,400 figures she will never see.**
+  - ⛔⛔ **THE FAILURES ARE NOT WRITTEN DOWN ANYWHERE, WHICH IS THE ACTUAL DEFECT.** The ledger records DELIVERED fields only, and the batch loop greps the child's output down to `resume source|DONE in|nothing to do` — so **every failure reason is discarded at the pipe.** A re-run therefore retries the whole miss set blindly and re-fails the permanent ones forever. ⚠ **"Not ledgered so a re-run picks them up" is only half true**: it picks them up, and it has no way to stop picking up a URL that 404s every time.
+  - ⭐ **THE STAGE COUNTERS ALREADY EXIST IN THE WORKER — they are simply never persisted.** `perceive-corpus-figures.mjs` distinguishes `httpFail`, `decodeFail`, `transformFail`, `uploadFail` and the SVG/GIF refusals. **The fix is to write them out, not to invent them.**
+  - **What the second pass needs, in order:**
+    1. A **failures ledger** — one JSONL row per failed figure: `{ key, url, stage, status, message, at, attempts }`. Written as it happens, never at the end, so a killed run keeps what it learned.
+    2. A **classification** into PERMANENT vs TRANSIENT — 404/410/DNS-dead and "no decoder for this media type" are permanent; 429/5xx/timeout/abort are transient. ⛔ **Retrying a permanent failure forever is the same waste as never retrying a transient one**, and one bucket cannot express both.
+    3. A **retry pass that reads only that ledger**, honours the classification, and uses the fixed User-Agent (the Wikimedia refusal was an identity rejection, not a rate limit — 0/6 vs 6/6 measured).
+    4. ⭐ **A verdict per permanent failure**, so the corpus can be corrected at the source rather than the figure being silently absent forever.
+  - ⚠ **Known permanent classes already observed and named, so the classifier starts from evidence:** non-Wikimedia SVGs (no rasteriser in the path), GIFs (no decoder — jpeg/png/webp only), and dead `raw.githubusercontent.com` paths from re-organised book repos.
+  - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
+
+## FOCUSDEAD — the vision focus tracker stopped following motion — filed 2026-09-02
+
+Gee, verbatim:
+
+> *"and one thing the Unity vision \"focus tracker\" never moves anymore to follow what she sees.. it use to work and she would look at the changes and motion on the unity vision cam viewer but it died of regression. so add fixing this too so Unity can follow the motion taking place in the casmera.. ie focus on a persona mouth moving or focus on the environment to study it and learn"*
+
+- [ ] `FOCUSDEAD.1` — ⛔ **THE RAF DRIVER RETURNS WITHOUT RE-ARMING, SO ONE INACTIVE FRAME KILLS THE FOCUS TRACKER PERMANENTLY.** `js/brain/remote-brain.js:613`:
+  ```js
+    const tick = () => {
+      if (!this.visualCortex || !this.visualCortex.isActive()) return;   // ⛔ no reschedule
+      try { … this.visualCortex.processFrame(); }
+      catch (err) { … }
+      this._visionRafId = requestAnimationFrame(tick);   // re-arms ONLY on the success path
+    };
+  ```
+  **Nothing anywhere else restarts this loop.** The comment states the intent — *"the loop self-cancels when the cortex goes inactive (disconnect or destroy)"* — which is right for a real destroy and wrong for anything transient, because there is no path back.
+  - ⚠ **CONFIRMED AS A DEFECT, NOT CONFIRMED AS THE CAUSE, AND THE DIFFERENCE MATTERS.** `_active` is set true in `init()` and false only in `destroy()` (`visual-cortex.js:187/201`), so it does **not** flap frame to frame. That makes this **latent** on the ordinary path. ⛔ **I am not filing a root cause I have not proven** — that is the exact error this review keeps catching.
+  - **How to rectify regardless:** re-arm before the guard, or drive from a `setInterval` that survives an inactive stretch and resumes — a loop whose only exit is permanent must not be gated on a transient condition.
+
+- [ ] `FOCUSDEAD.2` — **WHAT IS VERIFIED WORKING, so the live hunt starts from evidence rather than from scratch.** The whole chain reads intact statically:
+  ```
+    app.js:3240        startEyeIris(#eye-iris, brain.visualCortex)
+    app.js:3502        gaze = visualCortex.getState()  → gazeX/gazeY, lerped 0.06/frame
+    visual-cortex.js   getState() returns gazeX, gazeY, gazeTarget, motionEnergy, maxSalience
+    :450 _computeGaze  salience centroid → smooth pursuit (0.12 + attentionLock*0.15)
+                       → micro-saccades → attention-lock centre clamp
+    :361 _computeMotion per-pixel frame-delta map, so MOVING regions beat static edges
+    :254/:260          processFrame() calls _computeMotion() then _computeGaze()
+  ```
+  ⭐ **The motion-following Gee describes is already the designed behaviour** — `visual-cortex.js:127` states it outright: *"Whoever is actually talking to Unity is the thing that's moving — she should look at them."* **This is a lane that stopped running, not a feature that was never built.**
+  - ⛔ **THE REMAINING CANDIDATES, none eliminated, and they need a LIVE read because gaze is computed CLIENT-side and never published in server state:** ① `connectCamera` never runs on the deployed path, so `init()` never fires and the RAF is never started (the whole driver sits inside `if (typeof this.visualCortex.init === 'function')`); ② the loop started and died once via `FOCUSDEAD.1`; ③ `processFrame()` throws every frame and the `catch` only `console.warn`s, so the widget freezes while the console fills.
+  - **The one-line live check:** open the page with the camera on and read `brain.visualCortex.getState()` twice a second apart. `gazeX`/`gazeY` identical ⟹ `processFrame` is not running (① or ②); moving ⟹ the cortex is fine and the widget is the problem.
+  - ⚠ **CLIENT-SIDE — this lands on a PAGE RELOAD, not on an Update press.** Do not bundle its verification with a press.
+
+- [ ] `FOCUSDEAD.3` — ⚠ **THE SERVER-SIDE DETECTORS THAT DEPEND ON THIS ARE DARK TOO, AND NOBODY WOULD NOTICE.** `js/ui/brain-event-detectors.js:421/436` — `motionDetected` reads `visualCortex.motionEnergy` and `gazeShift` reads `visualCortex.gazeTarget` **out of server state**, while the visual cortex runs in the BROWSER on the RemoteBrain path. `brain-3d.js:2343` already says as much: *"motionDetected, gazeShift, heardOwnVoice) still won't fire"*. **Two detectors that can never fire are the same defect class as an instrument nobody reads** — either the client publishes gaze upward, or the detectors are honestly marked client-only.
 
