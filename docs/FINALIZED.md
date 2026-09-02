@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-09-02 (THIRD BATCH) — `DIALOGUE.3` — SHAKESPEARE JOINS THE SPEECH LANE, AND THE FIRST DISPATCH RULE NEARLY WRECKED THREE NOVELS
+
+- [x] `DIALOGUE.3` — ⛔ **THE PLAYS CONTRIBUTE NOTHING TO THE SPEECH LANE, AND THEY ARE THE WORKS THAT ARE NOTHING BUT SPEECH.** Filed as the successor to `PERSONAVOICE.1` so a working dialogue lane is not read as a complete one. **Measured on the live run:** Romeo and Juliet **1** usable spoken line, Hamlet **0**, Macbeth 17, Julius Caesar 18 — against Great Expectations' 1,074 and Pride and Prejudice's 702. **The cause is not the plays, it is the extractor:** it finds speech by quotation marks, and drama does not quote — it marks the speaker with a name line and gives the rest of the page to the character. ⭐ So the four texts in the ladder with the HIGHEST density of real conversational form are the four contributing least, and a reader would conclude Shakespeare has no dialogue. **The fix is a second extractor shape for drama** — speaker-line detection (an ALL-CAPS or capitalised name followed by a period/colon, then speech to the next such line), which the existing all-caps heading filter currently discards as a heading. ⚠ **Verse line breaks are already joined by `normalizeBody`, so the drama text arrives as continuous prose — that join has to be reckoned with before the speaker-line shape can be found.**
+
+> ✅ **DONE — and the row's own warning about `normalizeBody` was the load-bearing part.**
+>
+> `dramaSpeech()` runs on the text **before** normalisation. The newline join that makes verse read as sentences instead of one fragment per printed line is right for the prose lane and destroys the only structure drama has: **the speaker cue IS a line break.** Blocks are split on blank lines, a block whose first line is a short ALL-CAPS name is a speech, and `ACT`/`SCENE`/`PROLOGUE`/`DRAMATIS` are excluded as structure while `CHORUS` is kept, because the Chorus actually speaks in Romeo and Juliet.
+>
+> ### WHAT THE PLAYS NOW CONTRIBUTE (available lines, before the per-book cap)
+> ```
+>   Hamlet              0  ->  2,026     ? 371   ! 140
+>   Romeo and Juliet    1  ->  1,773     ? 319   ! 176
+>   Julius Caesar      18  ->  1,382     ? 247   ! 149
+>   Macbeth            17  ->  1,044     ? 204   ! 128
+> ```
+> Corpus-wide: combined interrogative + exclamative **1.471% → 1.526%**, greeting/farewell openers **25 → 29**, speech sentences 5,892 → 6,392. Sampled and read: *"who's there?"* · *"o, farewell, honest soldier, who hath reliev'd you?"* · *"must i remember?"* · *"o, answer me!"* · *"farewell, ophelia, and remember well what i have said to you."*
+>
+> ### ⛔⛔ THE PART WORTH KEEPING: THE FIRST DISPATCH RULE WAS WRONG, AND IT WOULD HAVE DAMAGED THREE GOOD BOOKS
+>
+> I first dispatched on a raw **count** of speaker cues (≥20). That sent **Treasure Island, Little Women and Huckleberry Finn** down the drama path — novels whose ALL-CAPS chapter headings match the cue shape well enough to clear a count. The wrong reader then produced **Treasure Island: 37 lines, zero questions, zero terminators. Little Women: one line.** Both had been contributing real dialogue through the quoted reader.
+>
+> ⭐ **Caught by reading the run output, not by anything failing — and it never reached a commit.** The run printed `[drama]` next to three novels, which is the only reason it was visible at all; a silent dispatch would have shipped.
+>
+> **The witness is cue DENSITY, and the measurement is not close:**
+> ```
+>   Hamlet 78.8%   Julius Caesar 77.6%   Romeo and Juliet 75.5%   Macbeth 72.3%
+>   Treasure Island 2.5%   Huckleberry Finn 1.9%   Little Women 1.2%
+>   Pride and Prejudice 0.2%   Tom Sawyer 0.0%
+> ```
+> **A play is mostly speaker cues because a play is mostly speech.** The 25% threshold sits in a gap thirty times wider than the noise on either side of it, and the mode plus its density now print on every book's line so a future misdispatch is visible in the log rather than in the corpus.
+>
+> ⚠ **This is form DISPATCH, not a fallback ladder** — the reader is chosen by looking at the text, not by trying one and settling for the other when it disappoints. Running the wrong reader over either form returns nothing, so "try and see" would be indistinguishable from a capability fallback and is not what this does.
+
+---
+
 ## 2026-09-02 (SECOND BATCH) — `PERSONAVOICE.5` VERIFIED CLOSED, `PERSONAVOICE.7` FOUND AND FIXED, `LEDGERLIE.2` MADE LAW
 
 ### ⭐⭐ THE HEADLINE: VERIFYING A CLOSED-LOOKING JOB FOUND A LIVE BUG IN ITS CONSUMER
