@@ -153,10 +153,45 @@ const academicStorySentences = (subject, grade) => storySentences(`academic/${su
 // the coverage auditor asks THIS function rather than re-deriving the rule — a
 // second copy is exactly how 6,899 figures came to be invisible to the walk
 // while every count said they were present.
+// ⛔⛔ AND THE FORMAT RULE LIVES HERE TOO, FOR THE SAME REASON THE ADDRESS RULE
+// DOES. A figure in a format nothing in the perceive path can decode is not a
+// figure this brain can see, and letting it through means the background queue
+// re-fetches and re-fails it on every visit, forever, while the counts call it
+// "available". **Unreachable and undecodable are the same kind of absent.**
+//
+// ⛔ GIF IS REFUSED ON THE OPERATOR'S RULING, AND HIS REASON IS THE RIGHT ONE:
+// *"Unity doesnt have ability to watch gifs i dont think and we havent created a
+// converter for gifs"*. ⚠ **They are NOT site furniture — that was checked
+// before they were dropped.** 149 of the 181 are cited by exactly one theme
+// (furniture has the opposite signature and the harvester's chrome filter had
+// already removed it), 178 of 181 are Wikipedia article images, and they include
+// the quicksort and merge-sort animations, midpoint Riemann sums, De Morgan
+// gates, ionic bonding and the 1812 campaign map.
+// ⭐ **The decisive argument is that she has no temporal percept path at all.**
+// These are animated *because the motion is the lesson*, so a first-frame decode
+// would bank a half-sorted array with the teaching stripped out — a misleading
+// percept rather than a useful one. **Refusing them is more honest than
+// half-seeing them.**
+//
+// ⚠ PDF / DJVU / STL are refused as simply not being images. ⭐ Note they are
+// the one recoverable group: MediaWiki renders those to `lossy-page1-….jpg`, so
+// a rendition request WOULD work where a direct fetch cannot. Recorded because a
+// later reader will otherwise assume they were judged the same way as GIF.
+//
+// ⚠ SVG, WEBP and TIFF are deliberately NOT here. They partially succeed today
+// (648, 6 and 12 respectively already banked), so refusing them would throw away
+// figures the pipeline can already read.
+const UNDECODABLE_FIGURE_EXT = /\.(gif|pdf|djvu|stl)(\?|#|$)/i;
+
 function figureAddress(f) {
   if (!f) return '';
   const href = typeof f.url === 'string' && f.url ? f.url : (typeof f.src === 'string' ? f.src : '');
-  return /^https?:\/\//i.test(href) ? href : '';
+  if (!/^https?:\/\//i.test(href)) return '';
+  // Tested against the PATH, not the whole URL — a query string routinely
+  // carries `utm_source=…` and other text that would otherwise match.
+  const path = href.split('?')[0].split('#')[0];
+  if (UNDECODABLE_FIGURE_EXT.test(`${path}?`)) return '';
+  return href;
 }
 
 // ⭐⭐ FIGPAIR.1 — THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS

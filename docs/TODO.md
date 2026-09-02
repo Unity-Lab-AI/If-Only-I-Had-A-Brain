@@ -1972,6 +1972,18 @@ Gee, verbatim, in the order he said it:
   - ⭐ **THE GIF MECHANISM, TRACED:** `renderable()` does include `gif`, and `wikiRendition` asks the MediaWiki API for a rendition when the direct decode fails — **but MediaWiki serves a GIF thumbnail for a GIF file**, so the second decode hits the same missing decoder. **0 of 181 is not a rate problem, it is two attempts at a format nothing in the path can read.** ⚠ `pdf`/`djvu` are the opposite case and are *fixable*: MediaWiki renders those to `lossy-page1-….jpg`, so a rendition request would work where a direct fetch cannot.
   - ⚠ **THE MISS SET CANNOT YET BE SPLIT INTO "FAILED" AND "NOT YET REACHED"** — because the failures are unrecorded, which is this row's whole point. The format rates above are computed over what has been attempted, and with the run **71% complete** a 0/181 is strong evidence of a real format gap while a 4,477-strong `.jpg` bucket is not.
   - ⛔ **SEQUENCING: THE PRODUCER MUST NOT BE EDITED WHILE THE RUN IS LIVE** (`WAVESEE.2` — the batch loop respawns `node` every batch, so an edit lands mid-run). **The rebuild happens when this run ends.**
+
+  ### ✅ GIF / PDF / DJVU / STL REFUSED AT THE WALK-SIDE CHOKEPOINT — 2026-09-02
+
+  Gee: *"we dont need gifs they are probably site furniture"*, then, decisively: *"well Unity doesnt have ability to watch gifs i dont think and we havent created a converter for gifs"*.
+
+  - ⚠ **THE "SITE FURNITURE" HYPOTHESIS WAS CHECKED AND IS WRONG — recorded because the conclusion is right for a different reason.** **149 of the 181 are cited by exactly ONE theme** (furniture has the opposite signature, and the harvester's `CHROME_THEMES` filter had already removed the real chrome — the most-reused GIF here appears in 7 themes), **178 of 181 are `upload.wikimedia.org` article images**, and they include `Sorting_quicksort_anim`, `Merge_sort_animation`, `Riemann_integral_regular`, `DeMorganGates`, `Ionic_bonding_animation`, `The_Horse_in_Motion` and the **1812 campaign map**.
+  - ⭐⭐ **HIS SECOND REASON IS THE CORRECT ONE AND IT IS STRONGER THAN MINE:** she has **no temporal percept path at all** (`TEMPORAL.1`). These are animated *because the motion is the lesson*, so a first-frame decode would bank a half-sorted array with the teaching stripped out — **a misleading percept, not a partial one. Refusing them is more honest than half-seeing them.**
+  - **Shipped in `figureAddress` (`server/life-curriculum.js`) — the shared reachability predicate, so the walk, the queue and the coverage auditor all get it from one place.** ⛔ **Undecodable and unreachable are the same kind of absent**: letting an undecodable format through means the background queue re-fetches and re-fails it on every visit forever while the counts call it *"available"*.
+  - ⚠ **`svg` / `webp` / `tif` deliberately NOT excluded** — they partially succeed today (**648 / 6 / 12** already banked), so refusing them would discard figures the pipeline can already read.
+  - ⚠ **`pdf` / `djvu` are refused as not-images, but they are the RECOVERABLE group** — MediaWiki renders them to `lossy-page1-….jpg`, so a rendition request would work where a direct fetch cannot. Recorded so a later reader does not assume they were judged the same way as GIF.
+  - **Verified 18/18**, including the two traps: `gifted-diagram.png` is KEPT and `a.png?ref=gif.com` is KEPT (the test is against the path, not the whole URL, because query strings routinely carry `utm_source=…`). Reachable figures after the exclusion: **38,024**.
+  - ⛔ **THE PRODUCER STILL HAS ITS OWN COPY OF THIS RULE and could not be edited** (run live). **That duplication is `WAVESEE.2`'s exact concern** and both copies collapse when the run ends.
   - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
 
 - [x] `FIGPAIR.1` — ✅⭐ **BUILT AND HARNESSED 2026-09-02 — 43/43 CHECKS ACROSS FOUR HARNESSES. The picture now lands between its own section's prose and the next section's.**
@@ -2129,6 +2141,34 @@ Gee, verbatim:
   - ⚠ **RE-PRICE BEFORE IT SHIPS.** Rehearsal is teaching ADDED across 213 cells, and the walk's finiteness is currently held by the consolidation gate alone (~24 days with it, ~100 without). **This must be costed against that number before a single rep is added.**
 
 - [ ] `TEACHKNOB.3` — **THE TEACH VIEW IS TWO-THIRDS DONE AND HE ASKED FOR THE MISSING THIRD.** `TEACHVIEW.10` part ② shipped (the ledger, `server/teach-ledger.js` — *everything a cell ever taught*, paged, with `total` beside `returned`). ⏳ **`TEACHVIEW.8` (retention + export) and `TEACHVIEW.9` remain open**, and `.9` is his verbatim ask: *"i want to know everything and seee everything in bars graphs, charts readouts of whats being sent stati…"*. ⚠ **`TEACHKNOB.1`'s panel belongs beside it, not in a separate screen** — what she is being taught and the knobs that shape how it lands are one question.
+
+## TEMPORAL — motion reaches her attention but never her memory — filed 2026-09-02
+
+Gee, verbatim:
+
+> *"sound like something to fix \" no temporal percept path\""*
+
+> *"well Unity doesnt have ability to watch gifs i dont think and we havent created a converter for gifs"*
+
+- [ ] `TEMPORAL.1` — ⛔⛔⛔ **SHE CAN SEE THAT SOMETHING MOVED AND LOOK AT IT. SHE CANNOT REMEMBER THE MOVEMENT. MOTION DRIVES ATTENTION AND REPORTING AND STOPS THERE.** He caught this off my own sentence while we were dropping the GIFs, and it is the larger finding of the two.
+  - ⭐ **THE MOTION MACHINERY ALREADY EXISTS AND IS GOOD.** `js/brain/visual-cortex.js` keeps `_prevFrame`, computes a **per-pixel `_motionMap`** as the frame-to-frame absolute brightness delta, EMA-smooths it into `_motionMapEMA` (α=0.4, half-life ~1.5 frames, *"fast enough to track real head/hand movement without visible lag"*), and reduces it to a scalar `motionEnergy`. **This is not a missing feature. It is a built one that terminates in the wrong place.**
+  - ⛔ **TRACED EVERY CONSUMER — there are exactly three, and none of them is memory:**
+  ```
+    _computeGaze                      motion pulls the attention peak toward the
+                                      moving region -> WHERE SHE LOOKS
+    state.js / brain-server.js        motionEnergy published to the dashboard
+    brain-event-detectors.js          motionEnergy read to fire a UI event
+  ```
+  **Nothing routes motion into `perceive`, into the visual store, or into a single Hebbian bind.**
+  - ⛔⛔ **SO THE STORE'S UNIT IS ONE STATIC FIELD-C SNAPSHOT, AND ANYTHING THAT MOVES COLLAPSES TO WHICHEVER FRAME HAPPENED TO BE BANKED.** She has no way to hold *"a thing moving in this way"* — only *"a thing, at one instant"*. **Motion is currently a property of her attention, not a property of anything she knows.**
+  - ⭐ **THIS IS WHY THE GIF DECISION WAS RIGHT AND ALSO WHY IT STINGS.** Gee's reason for dropping them — *"Unity doesnt have ability to watch gifs ... we havent created a converter"* — is exactly correct, and a first-frame decode would have banked a half-sorted array with the lesson stripped out. ⛔ **But the 181 refused figures are animated PRECISELY BECAUSE THE MOTION IS THE CONTENT**: the quicksort and merge-sort animations, midpoint Riemann sums converging, ionic bonding, the Muybridge horse. **The format was never the real barrier. The percept was.**
+  - **What this actually costs, beyond 181 figures:** the camera lane is the obvious one — a person's mouth moving, a gesture, a demonstration — but so is **every process that is defined by change**: a pendulum, a reaction, a wave, a hand writing a letter. ⚠ **A brain that learns from a camera and cannot represent change is learning from a slideshow.**
+  - **Scope before building — this is a multi-batch programme, not a row:**
+    1. **Decide the REPRESENTATION first.** A sequence of field-C snapshots is the obvious shape and is probably the wrong one at ~4.22 MB a percept. The cheaper and more likely-correct candidate is a **field over the delta** — the CDF 9/7 transform of the motion map itself, which is already computed per frame and is exactly the object the equational substrate is built to hold. ⭐ **That keeps the one-substrate rule: seeing, imagining and consciousness stay the same maths.**
+    2. **Decide what a temporal percept BINDS to.** A static percept binds to its own words. A moving one has a verb in it, and *"rolling"* / *"falling"* / *"dissolving"* are exactly the vocabulary she currently has no percept for.
+    3. **Then the sources follow for free** — GIF first frames become GIF sequences, the camera gains a real motion percept, and `TEMPORAL.1` is what re-opens the 181.
+  - ⚠ **RE-PRICE BEFORE ANY OF IT.** A per-frame percept at camera rate is unbounded by construction; whatever ships needs its own bound stated the way the figure lane's did.
+  - ⛔ **DO NOT START THIS BEFORE THE WALK.** It changes what she is taught, which puts it squarely under `§THE FRESH WALK IS LAST`.
 
 ## CORPUSCALE — is the training still calibrated to the corpus we gutted? — filed 2026-09-02
 
