@@ -108475,9 +108475,71 @@ var Curriculum = class _Curriculum {
         } catch (e) {
           if (this._hb) this._hb(`[Curriculum] _trainAcademicStories(${subject}/${grade}) non-fatal: ${e?.message || e}`);
         }
+        try {
+          await this._perceiveCellFigures(subject, grade);
+        } catch (e) {
+          if (this._hb) this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) non-fatal: ${e?.message || e}`);
+        }
       }
       return await raw(ctx);
     };
+  }
+  /**
+   * TEXTFIG.3 / .6 / .7 — perceive this cell's textbook figures.
+   *
+   * Every OpenStax figure is a LABELLED PERCEPT: a diagram, the human alt text
+   * that describes it, and a caption tying it to the prose just taught. This
+   * walks them through the same perceive → bind → mind's-eye path a looked-up
+   * reference uses, so a figure lands as a grounded frame rather than as a
+   * decoration.
+   *
+   * ⛔ THE COST BOUND IS PART OF THE FEATURE, NOT A GUARD BOLTED ON AFTERWARDS
+   * (`TEXTFIG.6`). Each figure is a network fetch, a decode, and a `perceive()`
+   * on the SAME substrate the walk is using to teach — so an unbounded loop
+   * over a 94-figure cell would put ~94 sequential image decodes inside a cell
+   * pass, on the lane whose wall-clock this project has spent weeks reducing.
+   *
+   * `DREAM_TEXTFIG_PER_CELL` (default 6) caps how many are taken per visit, and
+   * they are taken in order, so a re-visited cell resumes past what it already
+   * holds (`_perceiveTextbookFigure` returns early on an already-held key).
+   * `=0` disables the lane entirely.
+   *
+   * ⚠ Server-side only by construction: the browser build has no `mindSpace`
+   * worker and no figure accessor, and both guards below fail closed rather
+   * than throwing into the teach path.
+   */
+  async _perceiveCellFigures(subject, grade) {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.academicStoryFigures !== "function") return { perceived: 0, skipped: "no figure accessor" };
+    if (typeof cluster.perceiveTextbookFigure !== "function") return { perceived: 0, skipped: "no percept bridge" };
+    const capRaw = typeof process !== "undefined" && process.env && process.env.DREAM_TEXTFIG_PER_CELL;
+    const cap = capRaw === void 0 || capRaw === "" ? 6 : Math.max(0, Number(capRaw) || 0);
+    if (cap === 0) return { perceived: 0, skipped: "disabled" };
+    let figs = [];
+    try {
+      figs = cluster.academicStoryFigures(subject, grade) || [];
+    } catch {
+      figs = [];
+    }
+    if (!figs.length) return { perceived: 0 };
+    let perceived = 0, tried = 0;
+    for (const fig of figs) {
+      if (perceived >= cap) break;
+      tried++;
+      if (tried > cap * 4) break;
+      try {
+        const rec = await cluster.perceiveTextbookFigure(fig, {
+          key: `${fig.theme || subject}-${tried}`,
+          theme: fig.theme || `${subject}/${grade}`
+        });
+        if (rec) perceived++;
+      } catch {
+      }
+    }
+    if (perceived > 0) {
+      this._hb(`[Curriculum] _perceiveCellFigures(${subject}/${grade}) \u2014 ${perceived} textbook figure(s) perceived and shown (${figs.length} in this cell, cap ${cap}/visit).`);
+    }
+    return { perceived, available: figs.length };
   }
   /**
    * Raw (subject, grade) → runner dispatch. Throws/falls back on unknown

@@ -126,9 +126,36 @@ const codingStorySentences = (grade) => storySentences('coding', grade);
 const loadAcademicStories    = (subject, grade) => loadStories(`academic/${subject}`, grade);
 const academicStorySentences = (subject, grade) => storySentences(`academic/${subject}`, grade);
 
+// TEXTFIG.3 — the figures a cell owns, flattened with the theme that owns them.
+//
+// ⛔ Deliberately NOT folded into `storyExperiences`: that shape is consumed by
+// the teach path, which walks `sentences`, and adding an image array to it would
+// put binary-bearing metadata on the hot text lane for every caller that never
+// asked for it. A separate accessor keeps the prose path exactly as it was.
+//
+// ⚠ Reads through the SAME `loadStories` cache, so asking for figures costs no
+// extra disk read on a cell whose prose has already been loaded.
+function academicStoryFigures(subject, grade) {
+  const data = loadStories(`academic/${subject}`, grade);
+  const out = [];
+  for (const exp of ((data && data.experiences) || [])) {
+    if (!exp || !Array.isArray(exp.figures)) continue;
+    for (const f of exp.figures) {
+      if (!f || !f.url) continue;
+      out.push({
+        url: f.url,
+        alt: typeof f.alt === 'string' ? f.alt : '',
+        caption: typeof f.caption === 'string' ? f.caption : '',
+        theme: typeof exp.theme === 'string' ? exp.theme : '',
+      });
+    }
+  }
+  return out;
+}
+
 module.exports = {
   loadStories, storySentences, storyExperiences, clearCache, CORPORA,
   loadLifeStories, lifeStorySentences, lifeStoryExperiences,
   loadCodingStories, codingStorySentences,
-  loadAcademicStories, academicStorySentences,
+  loadAcademicStories, academicStorySentences, academicStoryFigures,
 };
