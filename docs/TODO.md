@@ -1946,6 +1946,28 @@ Gee, verbatim, in the order he said it:
   - ⚠ **Known permanent classes already observed and named, so the classifier starts from evidence:** non-Wikimedia SVGs (no rasteriser in the path), GIFs (no decoder — jpeg/png/webp only), and dead `raw.githubusercontent.com` paths from re-organised book repos.
   - **Blocked until the first pass ends** — it needs the complete miss set, and it must not compete with the running job for CPU or network.
 
+- [ ] `FIGPAIR.1` — ⛔⛔⛔ **THE FIGURE MUST LAND WHILE SHE IS READING THE PAGE IT IS ON. THE CORPUS KNOWS THAT AND THE TRAINING BOUNDARY THROWS IT AWAY.** Gee, verbatim:
+
+  > *"that is not fucking correct we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS IN THE TEXT BOOKS AND STORY BNOOKS WEHRE THE IMAGES ARE ON THAT PAGE OF TEXT SHE IS READING/being trined on in that moment. it would be stupid to just feed her a shit tone of images on a fucking timer with no fucking relation to the actual text from the book that is goes hand in hand with the figure wavelets"*
+
+  - ⭐ **HE IS RIGHT, AND THE DATA IS ALREADY SHAPED HIS WAY.** Read off `corpora/academic/science/grade5.json`: **8 experiences**, and one of them carries `theme: "cell-biology-"`, an **8,142-character story, AND its own 5 figures** — each figure holding the `context` prose it sits inside. **The section and its pictures are stored together.**
+  - ⛔ **THREE ACCESSORS DESTROY THAT PAIRING, and the walk only ever sees the wreckage:**
+  ```
+    academicStorySentences()  flattens ALL 8 experiences into one sentence array — sections gone
+    academicStoryFigures()    flattens ALL figures across experiences — the owning section gone
+    storyExperiences()        the ONE accessor that PRESERVES sections drops `figures` entirely
+                              (life-curriculum.js:105 — theme, story, sentences. no figures.)
+    and there is no `academicStoryExperiences` wired at all
+  ```
+  - ⛔ **WHAT IS ACTUALLY LOST — and it is NOT the caption binding.** The queued row carries its own `alt`/`caption`/`context`, so a drained figure still binds to ITS OWN words (the CAMPOISON rule holds, and that was worth building). **What is lost is CO-ACTIVATION.** Hebbian learning is *fires together, wires together*: if the cell diagram arrives while she is being taught weather, the diagram never co-activates with the cell-biology prose it illustrates. **The picture keeps its caption and loses its lesson.**
+  - ⭐⭐ **THE REASON THE TIMER EXISTED IS GONE AS OF TODAY, WHICH IS WHY THIS IS NOW FIXABLE.** The drain was chosen (over inline) because perceiving one figure cost **~7.7 s** — fetch, decode, full CDF 9/7 — so inline was capped at `DREAM_TEXTFIG_PER_CELL = 6` and `math/grade10` needed **462 cell visits** to finish 2,769 figures. **With the `WAVESEE.1` field consumer a figure is a ~50 ms local read**: that same cell becomes **~138 seconds**. ⛔ **The cap and the timer were both consequences of a cost that no longer exists.**
+  - **What to build:**
+    1. `academicStoryExperiences(subject, grade)` — the section-level accessor, **carrying `figures` this time**. ⚠ `storyExperiences` deliberately excluded figures to keep binary-bearing metadata off the hot text lane; the fix is a **separate accessor**, not widening the one the prose path uses.
+    2. `_trainAcademicStories` walks **section by section**: teach that section's sentences, then perceive that section's figures, **then** move on. The picture lands while its own page is still the active state.
+    3. ⭐ **Keep the queue as the TAIL, not the mechanism.** Anything that fails or has no field still falls to the background drain — so a dead URL costs a late percept instead of blocking the lesson. **The drain becomes the safety net it should always have been, not the primary path.**
+  - ⚠ **RE-PRICE BEFORE IT SHIPS, and the number to beat is real:** perceiving a whole cell's figures inline is affordable ONLY on the field path. If the fields are missing the cost reverts to ~7.7 s each and `math/grade10` becomes ~5.9 hours in a single cell pass. **The inline path must therefore be gated on a field HIT and fall through to the queue on a miss** — never the reverse.
+  - ⚠ **This supersedes the delivery half of `FIGSEE.1`, not its binding half.** That row's link-travels-with-the-row design is what keeps a deferred figure safe, and it stays.
+
 - [ ] `WAVESEE.7` — ⛔⛔ **THREE COPIES OF THE SAME 133 GB, ALL ON ONE 500 GB VOLUME. GEE CAUGHT THIS, NOT ME.** His words: *"and u are putting the waves in the right repo right brainwaves is going to be deleted so we dont end up with three copies... or wait can it still work keeping it in brainwave repo"*.
   - ✅ **ANSWER TO THE QUESTION HE ASKED: yes, keeping them in `BrainWaves` works, and that repo must NOT be deleted** — it is the source `deploy/self-update.sh` pulls from on every press. Forgejo-only by design, because this repo also pushes to a PUBLIC GitHub remote.
   - ⛔ **BUT THE THREE COPIES ARE REAL, and they share a disk:** `brain-server.js:7596` says it outright — *"this box also hosts Forgejo"*.
