@@ -114,11 +114,61 @@ function harvestFigures(md) {
   return figs;
 }
 
+// `TEXTFIG.5` — the prose a table carries, without the data it tabulates.
+// Takes the `summary="..."` attribute and the `<caption>` text; drops every
+// cell. ⚠ Returns a sentence-terminated string or empty — the segmenter below
+// splits on terminal punctuation, so a caption without a full stop would fuse
+// with the next paragraph and corrupt both.
+function tableCaptionProse(block) {
+  if (!block) return '';
+  const decode = (x) => String(x || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // ⚠ SUMMARY WINS, AND THE CAPTION IS NOT APPENDED TO IT. Measured on a real
+  // chapter: the summary is a whole sentence ("Table showing Young's modulus Y,
+  // Shear modulus S, and bulk modulus B for a variety of materials"), while the
+  // caption is a TITLE plus its footnote marker ("Elastic Moduli 1").
+  // Concatenating them produced "…materials.. Elastic Moduli 1." — a doubled
+  // full stop and a sentence fragment glued to a good sentence.
+  const sum = /<table[^>]*\ssummary="([^"]+)"/i.exec(block);
+  let s = sum ? decode(sum[1]) : '';
+  if (!s) {
+    const cap = /<caption[^>]*>([\s\S]*?)<\/caption>/i.exec(block);
+    s = cap ? decode(cap[1]) : '';
+    // A bare title is not prose. Require enough words that it reads as a claim
+    // rather than a heading, and strip a trailing footnote digit.
+    s = s.replace(/\s+\d+$/, '');
+    if (s.split(/\s+/).length < 5) return '';
+  }
+  if (!s) return '';
+  if (!/[.!?]$/.test(s)) s += '.';
+  return s;
+}
+
 function cleanOpenStax(md, cap) {
   if (!md) return [];
   let t = String(md);
   t = t.replace(/^---[\s\S]*?---/m, ' ');                 // YAML frontmatter
-  t = t.replace(/<table[\s\S]*?<\/table>/gi, ' ');        // tables — data, not prose
+  // `TEXTFIG.5` — TABLES: THE BODY STAYS OUT, THE CAPTION COMES IN.
+  //
+  // Measured on a real chapter before deciding. An OpenStax table body is
+  // numeric data — a row reads `Aluminum | 70 | 25 | 75` — so row-to-prose
+  // would bank "aluminum 70 25 75", binding a material to three meaningless
+  // integers. ⛔ That is number salad of exactly the class the LaTeX and
+  // brace filters below already exist to reject, so converting rows would be
+  // manufacturing the very input those guards were written to stop.
+  //
+  // ⭐ But the caption and the `summary` attribute are AUTHORED PROSE that
+  // name the concepts the table is about — "Table showing Young's modulus Y,
+  // Shear modulus S, and bulk modulus B for a variety of materials." That is a
+  // figure's alt text by another name, and it was being deleted with the data.
+  //
+  // Replaced rather than stripped, so the caption lands in the sentence stream
+  // and faces every quality filter below on equal terms with body prose.
+  t = t.replace(/<table[\s\S]*?<\/table>/gi, (block) => ' ' + tableCaptionProse(block) + ' ');
   t = t.replace(/<div[^>]*>|<\/div>/gi, ' ');             // block wrappers
   t = t.replace(/<[^>]+>/g, ' ');                         // any remaining html
   t = t.replace(/\{:[^}]*\}/g, ' ');                      // {: data-type="term"} spans
