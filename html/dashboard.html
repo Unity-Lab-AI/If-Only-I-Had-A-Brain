@@ -1685,7 +1685,12 @@
       // WHAT the unified cortex is doing right now. One source of
       // truth: the same cortexCluster that plasticity writes to.
       renderBrainEvents(s.brainEvents || []);
-      try { renderProfiling(s.profiling || null); } catch (err) { /* profiling render is non-fatal */ }
+      // ⚠ `disk` is passed EXPLICITLY, not read off a global. An earlier draft
+      // of this reached for a `window.__lastState` that does not exist, which
+      // renders "not reported" forever and looks exactly like a box whose
+      // statfsSync is unavailable — a silent wrong answer, which is the whole
+      // failure class this panel was added to end.
+      try { renderProfiling(s.profiling || null, s.disk || null); } catch (err) { /* profiling render is non-fatal */ }
       // Current-training card — subject + grade + description + phase
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
@@ -2762,7 +2767,7 @@
     // sub-cards + the per-client health table. All-defensive: any missing field
     // renders a muted "—" rather than throwing. Bounded: client list already
     // capped server-side at 24; the table is scroll-bounded in CSS.
-    function renderProfiling(p) {
+    function renderProfiling(p, disk) {
       const $ = id => document.getElementById(id);
       const host = $('d-prof-host'), thru = $('d-prof-throughput'), net = $('d-prof-network'), cl = $('d-prof-clients');
       if (!host || !thru || !net || !cl) return;
@@ -2789,7 +2794,25 @@
           row('V8 heap', `${num(pr.heapUsedMB)}/${num(pr.heapLimitMB)} MB (${num(pr.heapUsedPct)}%)`) + bar(pr.heapUsedPct || 0) +
           row('ext / arrbuf', `${num(pr.externalMB)} / ${num(pr.arrayBuffersMB)} MB`) +
           row('ctx switches', `${num(pr.voluntaryCtxSwitches)} vol · ${num(pr.involuntaryCtxSwitches)} invol`) +
-          row('proc uptime', fmtDur(pr.uptimeS));
+          row('proc uptime', fmtDur(pr.uptimeS)) +
+          // ⭐ THE BOX'S DISK. The operator has no shell here, so "is it filling
+          // up?" had no answer from outside — while the volume also hosts
+          // Forgejo and her visual store grows with every figure she perceives.
+          // ⛔ A LOW DISK DOES NOT LOOK LIKE A DISK PROBLEM: the weights save
+          // DEFERS below the floor rather than failing, so it surfaces as her
+          // training quietly not being saved. `save deferrals` is that failure
+          // counted; anything above 0 means it is already happening.
+          (() => {
+            const d = disk;
+            if (!d) return row('disk', '<span class="muted">not reported (statfsSync unavailable)</span>');
+            return row('disk free', `${num(d.freeMB)}/${num(d.totalMB)} MB (${num(d.usedPct, 1)}% used)`)
+              + bar(d.usedPct || 0, 80, 92)
+              + row('visual store', `${num(d.visualStoreMB, 1)} MB`)
+              + row('save floor', `${num(d.saveFloorMB)} MB`
+                  + (d.saveDeferrals > 0
+                    ? ` · <b style="color:#ef4444;">${num(d.saveDeferrals)} SAVE DEFERRALS</b>`
+                    : ' · <span class="muted">0 deferrals</span>'));
+          })();
       }
 
       // ── Throughput / Speed ──
