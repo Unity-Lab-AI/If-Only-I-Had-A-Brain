@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-02 (FOURTH BATCH) — `LITGRADE.1` — THE LAST FOUR ELA YEARS GET THEIR READING, AND THE VERIFICATION RULE CAUGHT A WRONG BOOK ON THE FIRST PASS
+
+- [x] `LITGRADE.1` — **EXTEND THE TITLE TABLE THROUGH `college3` / `college4` / `grad` / `phd`.** ⛔ **Every Gutenberg ID must be VERIFIED to resolve to its intended title before it is committed** — a wrong ID silently ingests the wrong book, and this corpus has already been burned once by a fetch that returned a translator's preface instead of the work (`CURVEBUILD.9`). ⚠ **Level-appropriate, not just longer:** upper-college and graduate ELA is criticism, theory and dense prose rather than more novels, so the picks should reflect what that year actually reads. ⭐ **Low urgency, stated plainly:** these are the four grades where she is LEAST likely to need dialogue exposure, since form is trained at K by `_teachConcreteSentences`. **The reason to do it is course fidelity — an ELA year with no assigned reading is not an ELA year — not sentence form.**
+
+> ✅ **DONE — eight works across the four years, and the ladder is criticism and theory rather than more novels, as the row asked.**
+>
+> ```
+>   college3   Preface to Shakespeare (Johnson) · Lyrical Ballads 1798 (Wordsworth)
+>   college4   Culture and Anarchy (Arnold)     · Biographia Literaria (Coleridge)
+>   grad       The Poetics (Aristotle)          · On the Sublime (Longinus)
+>   phd        The Birth of Tragedy (Nietzsche) · The Golden Bough (Frazer)
+> ```
+> Cells now read: college3 12 entries / 44,072 words · college4 12 / 28,295 · grad 11 / 37,852 · phd 12 / 58,711.
+>
+> ⛔⛔ **THE VERIFICATION RULE EARNED ITS KEEP ON THE FIRST PASS, WHICH IS THE PART WORTH KEEPING.** Every id was checked against Gutenberg's own `Title:` header before being written down. **Id 55111 — guessed for T.S. Eliot's *The Sacred Wood* — actually resolves to *Dix-sept histoires de marins* by Claude Farrère**, a French sea-story collection. Unchecked, that ingests silently as English literary criticism and a PhD ELA year reads French maritime fiction. **A wrong id does not fail; it teaches the wrong book.** Rejected, and the incident is written into the ladder comment beside the ids so the next person adding one sees why the check exists.
+
+---
+
+- [x] `DIALOGUE.4` — **TWO DEFECTS IN MY OWN SPEECH LANE, FOUND WHILE INGESTING THE CRITICISM TEXTS.** Filed and closed in the same batch because both were found by reading the run output of `LITGRADE.1` rather than by planning: **(a) a quoted span was being taken as ONE line and dropped if it exceeded the sentence cap**, which threw away exactly the speech worth having — a character's paragraph-long speech, and every epic speech in Homer; **(b) unterminated lines were being STORED, and a cell's `story` is one joined string that every consumer splits on `(?<=[.!?])\s+`, so an unterminated line fuses to whatever follows it.**
+
+> ✅ **DONE — and (b) is the more serious of the two, because it was manufacturing sentences.**
+>
+> **(a) Spans are split into sentences before filtering.** The Odyssey's speech lane went from `? 14 · ! 1 · . 157` available to `? 187 · ! 1 · . 1,360`; the Iliad from 488 lines to `? 316 · ! 726 · . 1,351`. Long speeches were not being rejected for quality — they were being rejected for length, by a cap meant for sentences and applied to paragraphs.
+>
+> ⛔ **(b) THE STORAGE STEP WAS FABRICATING SENTENCES.** `good morning` + `what is it?` joined with a space reads back as the single sentence `good morning what is it?` — one neither character said. ⭐ **Found by measuring the stored files and getting 98-100% terminated back from entries the extractor had reported at 37-40% terminated. The good number was the bug:** the fragments had not been fixed, they had been fused. Unterminated lines are now dropped at the write site — **not repaired**, because repairing means inventing a terminator and inventing terminal punctuation is the one thing this lane is forbidden to do. Verified after the fix: **0 unterminated lines stored** across all 40 speech entries.
+>
+> ⚠ **AND THE HONEST CONSEQUENCE FOR THE HEADLINE NUMBER:** the corpus interrogative + exclamative rate reads **1.463%**, slightly BELOW the 1.526% reported one batch earlier, and greeting openers read **19** rather than 29. **The earlier figures were inflated by the fused fragments** — some of those fusions ended in `?` and counted. The lower number is the true one, and it is stated here rather than quietly left to look like a regression.
+
+---
+
 ## 2026-09-02 (MIGRATION) — THE FOUR ROWS THAT WERE CLOSED ON THE BOARD AND NEVER REACHED THE LEDGER
 
 > ⛔ **Caught by Gee, not by me:** *"you havent finalized finished todo items in a while.. are ther and that need to be properly migrated"*. Audited fence-aware and **by string match on the row body, not by task tag** (a matching tag proves nothing — that lesson is already in `§FINALIZED BEFORE DELETE`). **11 closed rows on the board; 7 were in the ledger, 4 were not.** Those four are preserved verbatim below before a single line is removed from `docs/TODO.md`.
