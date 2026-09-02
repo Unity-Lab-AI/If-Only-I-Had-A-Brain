@@ -70501,9 +70501,10 @@ var LanguageCortex = class {
    * @param {NeuronCluster} opts.cortexCluster — live cortex reference (required)
    * @param {number} [opts.predictionError] — passed to `sentenceType()`
    * @param {number} [opts.motorConfidence] — passed to `sentenceType()`
-   * @param {Array}  [opts._precomputedScores] — hand-off from `generateAsync`
-   *   so the dictionary-cosine scoring loop can run async without
-   *   blocking the event loop (T14.26 chat-freeze fix).
+   * ⚠ `opts._precomputedScores` was removed 2026-09-01. It handed dictionary-
+   *   cosine scores from `generateAsync` into the retrieval lane so that loop
+   *   could run without blocking the event loop; both the hand-off and the
+   *   lane it fed are gone.
    */
   generate(dictionary, arousal, coherence, opts = {}) {
     if (!opts.cortexCluster || typeof opts.cortexCluster.generateSentence !== "function") {
@@ -70588,47 +70589,13 @@ var LanguageCortex = class {
         }
       }
     }
-    const _hasTrained = !!(cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.length > 0);
-    const _retrievalAllowed = !_hasTrained;
-    if (words.length === 0 && _hasTrained && !_retrievalAllowed) {
+    if (words.length === 0) {
       this._honestSilenceCount = (this._honestSilenceCount || 0) + 1;
       if (!this._honestSilenceWarned) {
         this._honestSilenceWarned = true;
-        console.warn("[LanguageCortex] her trained emission produced NOTHING and dictionary retrieval is OFF for a trained brain (OWNWORDS.2) \u2014 this is real silence, not a bug. There is no switch to restore it: retrieved words are not hers.");
+        console.warn("[LanguageCortex] her trained emission produced NOTHING, and there is no retrieval lane to cover for it (any more) \u2014 this is real silence, not a bug. A newborn brain stays silent until her first cell lands.");
       }
       return "";
-    }
-    if (words.length === 0) {
-      this._dictRetrievalCount = (this._dictRetrievalCount || 0) + 1;
-      let scored = opts._precomputedScores || null;
-      const target = intentSeed || (typeof cluster.getSemanticReadout === "function" ? cluster.getSemanticReadout(sharedEmbeddings) : null);
-      if (!scored && dictionary && dictionary._words && dictionary._words.size > 0 && target && target.length > 0) {
-        try {
-          const isChatPath = !opts._internalThought;
-          scored = this._scoreDictionaryCosine(dictionary, target, this._recentOutputWords, {
-            boostPersona: isChatPath
-          });
-        } catch (err) {
-          scored = null;
-        }
-      }
-      if (scored && scored.length > 0) {
-        let targetLen = Math.max(3, Math.min(8, Math.floor(3 + (arousal || 0.5) * 4)));
-        const capArg = cluster && typeof cluster.getTrainedCapability === "function" ? cluster : cluster && cluster.grades && typeof cluster.grades === "object" ? cluster.grades : "pre-K";
-        const gradeCap = this._gradeWordCap(capArg);
-        if (gradeCap === 0) {
-          return "";
-        }
-        targetLen = Math.min(targetLen, gradeCap);
-        const topK = scored.slice(0, 12);
-        const picks = [];
-        for (let i = 0; i < targetLen && topK.length > 0; i++) {
-          const idx = Math.floor(Math.random() * Math.min(5, topK.length));
-          picks.push(topK[idx].word);
-          topK.splice(idx, 1);
-        }
-        words = picks;
-      }
     }
     if (words.length === 0) return "";
     let _maxEmitWords = 12;
@@ -70709,6 +70676,12 @@ var LanguageCortex = class {
    * `Curriculum.runSubjectGrade` as each gate passes and persisted
    * via T14.16 BrainPersistence.
    */
+  // ⛔ ORPHANED 2026-09-01 — ZERO CALLERS. Its single call site was inside the
+  // deleted retrieval block, where it capped how many RETRIEVED words could be
+  // strung together. ⚠ It never governed her trained emission — that lane has
+  // its own clamp (`_maxEmitWords` / `DREAM_CHAT_MAX_WORDS`) — so a public page
+  // describing this as "the trained-state cap" on her speech was already
+  // narrower than it read. `html/brain-equations.html` corrected the same day.
   _gradeWordCap(gradesOrCluster) {
     const FLOOR = 5;
     if (gradesOrCluster && typeof gradesOrCluster.getTrainedCapability === "function") {
@@ -70773,6 +70746,15 @@ var LanguageCortex = class {
    * (_scoreDictionaryCosineAsync) can share exactly one body and only
    * diverge on the yield-point check.
    */
+  // ⛔ ORPHANED 2026-09-01 — ZERO CALLERS. This and `_scoreDictionaryCosineAsync`
+  // below existed solely to rank dictionary entries for the retrieval lane in
+  // `generate()`, and that lane is deleted for every brain in every state.
+  // ⚠ DO NOT re-wire either as an emission path. ⛔ And do not treat them as the
+  // reference implementation of persona-boosted cosine ranking: a LIVE mirror of
+  // that logic runs in `js/brain/cluster/emit.js` (the Path B dictionary oracle),
+  // so keeping these is duplicated logic that will drift. They are flagged here
+  // rather than deleted in the same pass that removed their caller; removal is
+  // on the board.
   _scoreDictionaryCosine(dictionary, target, recentWords, opts = {}) {
     const boostPersona = opts.boostPersona === true;
     const freqBoost = typeof opts.freqBoost === "number" ? opts.freqBoost : 5e-3;
@@ -70889,7 +70871,6 @@ var LanguageCortex = class {
    * generate(). Those are not on the freeze-critical path.
    */
   async generateAsync(dictionary, arousal, coherence, opts = {}) {
-    let precomputedScores = null;
     let preEmittedWords = null;
     const cluster = opts.cortexCluster;
     try {
@@ -71147,34 +71128,9 @@ var LanguageCortex = class {
           preEmittedWords = null;
         }
       }
-      if (!curriculumDone && dictionary && dictionary._words && dictionary._words.size > 0) {
-        let target = null;
-        try {
-          if (typeof cluster.getSemanticReadout === "function") {
-            target = cluster.getSemanticReadout(sharedEmbeddings);
-          }
-        } catch {
-        }
-        if (target && target.length > 0) {
-          try {
-            const isChatPath = !opts._internalThought;
-            precomputedScores = await this._scoreDictionaryCosineAsync(
-              dictionary,
-              target,
-              this._recentOutputWords,
-              {
-                boostPersona: isChatPath
-              }
-            );
-          } catch (err) {
-            precomputedScores = null;
-          }
-        }
-      }
     }
     return this.generate(dictionary, arousal, coherence, {
       ...opts,
-      _precomputedScores: precomputedScores,
       _preEmittedWords: preEmittedWords
     });
   }
