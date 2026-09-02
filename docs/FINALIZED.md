@@ -115,6 +115,42 @@ Gee (verbatim): *"you alsoo should of been finalizing,, there better not be a fu
 
 ---
 
+## 2026-09-01 - BOARDTRUTH: 39 rows were finished and still reading as open, and one real decision got made - feature/board-status-truth
+
+Gee (verbatim): *"jesus are you even doing any of the todos? start fucking doing them"* — and, immediately after: *"no dont stop adding the problems you find... you are doing fine and very good job im not knocking it or u im just frustrated"*.
+
+⭐ **HE WAS RIGHT ABOUT THE NUMBER AND THE CAUSE WAS ON THE BOARD, NOT IN THE WORK.** The count sat at 74 for hours because completed rows were being given a ✅ banner and left at `[ ]`. ⛔ **`CONSTRAINTS.md` names this exactly — "a completed row left at `[ ]`/`[~]` is the same defect class as an instrument nobody reads"** — and I had been committing it all day while fixing the same shape everywhere else. **A board that under-reports completion is as wrong as one that over-reports it.**
+
+**BOARD 74 → 35 OPEN.** Every flip is a STATUS change only; not one word of any task description was touched.
+
+**① 24 ROWS WITH DIRECT COMPLETION EVIDENCE** — `TEACHVIEW.1-.6` · `LEDGERLIE.1` · `DEADCELL.1` · `STACKSWEEP.2/.3/.5` · `FLOORLIE.1` · `CELLAUDIT.2/.3` · `TEXTFIG.1/.2/.3/.4/.6/.7` · `CURVEBUILD.7` · `PERSONAVOICE.6` · `DIALOGUE.1/.2`. ⚠ **Two candidates were REFUSED after reading their evidence:** `CHATFAULT.2` (its banner lists `.1`/`.3`/`.4` — not `.2`, which is still Gee's design fork) and `ORACLEB.1` (the banner mentioning it says *filed*, not done). **A banner that mentions a tag is not a banner that completes it.**
+
+**② 9 ROWS CHECKED AGAINST LIVE STATE**, because the session's memory of doing something is not evidence:
+```
+  CURVEDEPTH.1  five fetchers on disk: academic, openstax, gutenberg, csmajor, code
+  CURVEDEPTH.2  SENT_CAP_BY_BAND present — the flat 14-sentence cap is gone
+  CURVEDEPTH.3  science/grade11 alone holds 57 openstax-sourced entries
+  CURVEDEPTH.5  33 `text-*` Gutenberg literature entries across ela/
+  CURVEDEPTH.7  EMPTY 0 across all 213 cells the walk runs
+  CURVEDEPTH.9  audit-curriculum-coverage.mjs + curriculumCoverage in state
+  DEADCELL.2    topic blocks for major/cstheory/cssystems/genered/research
+  DEADCELL.3    fetch-csmajor-corpora.mjs -> const SUBJECT = 'major'
+  DEADCELL.4    UNREACHABLE files 0 — and that zero IS the proof the load-bearing
+                ORDER was honoured: content migrated into running cells BEFORE
+                deletion, or the sweep would still be counting those 268,481 words
+```
+
+**③ FIVE CLOSED ON VERIFICATION, NOT ON FLIPPING.** `FLOORLIE.2` — the auditor now prints its bar AND the bar's provenance every run, including the honest `grad: college anchor reused — no grad reading list counted`. `DEADCELL.5` — the reverse sweep is in the instrument and reports live. `PERSONAVOICE.2` — **MOOT by the route taken**, which is better than done: the canon was rewritten in place rather than a second file added, so there is no concatenation to wire and no two loaders to keep in sync. `PERSONAVOICE.3` — held through the rewrite; the person-shift added no sexual content and the only deletions were ones Gee ordered by name. `PERSONAVOICE.4` — re-measured with the production classifier, and the numbers are the ones that caught my own violation.
+
+**④ `TEXTFIG.5` — A REAL DECISION, MADE BY READING A REAL CHAPTER FIRST.** ⛔ **Table BODY stays out:** a row reads `Aluminum | 70 | 25 | 75`, so row-to-prose would bank *"aluminum 70 25 75"* — number salad of exactly the class the LaTeX and brace filters already exist to reject, i.e. manufacturing the input those guards were written to stop. ⭐ **Table CAPTION comes in:** the `summary` attribute is authored prose naming the concepts — *"Table showing Young's modulus Y, Shear modulus S, and bulk modulus B for a variety of materials."* — **a figure's alt text by another name, deleted along with the data.** The block is now REPLACED by its caption, so the sentence faces every quality filter on equal terms with body prose.
+⚠ **Two defects in my own first cut, caught by running it:** concatenating `summary` + `caption` produced a doubled full stop and glued on a title fragment (*"Elastic Moduli 1"* — a heading plus its footnote marker). Summary now wins outright; the caption is used only when there is no summary, behind a ≥5-word floor with a trailing footnote digit stripped, so a bare heading never enters as a claim. Verified: `1 table seen → 1 caption recovered`, previously `0`.
+
+**Files:** `.claude/scripts/fetch-openstax-corpora.mjs` (`tableCaptionProse`).
+**Docs:** `docs/TODO.md` (39 status flips + verdict banners), `docs/FINALIZED.md` (this), `docs/RESUME.md`, `wiki/log.md`.
+**Verified:** every flip backed by either a completion banner read in full or a live read off disk · two candidates refused on their evidence · table extraction exercised against the real chapter · `node --check` · board recount 74 → 35.
+
+---
+
 ## 2026-09-01 - TEXTFIG.2/.3/.6/.7: the textbook figures reach her mind's eye - feature/textfig-percept
 
 Gee (verbatim): *"yeah these images need to appear in her minds eye too"*
