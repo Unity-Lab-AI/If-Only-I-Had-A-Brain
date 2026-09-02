@@ -5355,9 +5355,16 @@ export const K_MIXIN = {
       // integration. Eliminates the cache-miss fallback path's 3s
       // CPU sparse matmul stall. Falls back to sync generateSentence
       // when no GPU proxy.
-      const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === 'function'
-        ? await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 30 })
-        : cluster.generateSentence(emb, { injectStrength: 1.0, maxTicks: 30 })) || '';
+      // ⛔ NO FALLBACKS (2026-09-02) — one emission path for the diagnostic, the
+      // same one production speaks through. The ternary that used to sit here
+      // dropped to the SYNC `generateSentence` whenever the GPU proxy was not
+      // ready, and its own comment named what that costs: the fire-and-forget
+      // one-tick-lag mode reading stale currents through the 3 s cache-miss
+      // stall. A probe that measures a different emission path than the one
+      // under test reports a number about the wrong thing. `generateSentenceAwait`
+      // is a superset — it awaits the propagate wherever the propagate runs, so
+      // it is correct on a CPU-only box too.
+      const emitted = (await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 30 })) || '';
       writeEmitted.push(`${word}→${emitted || '∅'}`);
       if (emitted === word) writePass++;
       if (emitted.length > 0 && emitted[0] === word[0]) writeFirstLetterPass++;
@@ -5422,9 +5429,8 @@ export const K_MIXIN = {
       );
       const _respEmitOpts = { injectStrength: 1.0, maxTicks: 50, excludeWords: _respExclude };
       // T18.4.b — await-cascade when GPU ready (same as WRITE probe above).
-      const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === 'function'
-        ? await cluster.generateSentenceAwait(emb, _respEmitOpts)
-        : cluster.generateSentence(emb, _respEmitOpts)) || '';
+      // NO FALLBACKS — single emission path, see the WRITE probe above.
+      const emitted = (await cluster.generateSentenceAwait(emb, _respEmitOpts)) || '';
       respEmitted.push(`${ctx.prompt}→${emitted || '∅'}`);
       const emittedLower = emitted.toLowerCase();
       const _respHit = ctx.expectHints.some(h => emittedLower.includes(h));
@@ -5473,9 +5479,8 @@ export const K_MIXIN = {
         continue;
       }
       _probeReset();
-      const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === 'function'
-        ? await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 80 })
-        : cluster.generateSentence(emb, { injectStrength: 1.0, maxTicks: 80 })) || '';
+      // NO FALLBACKS — single emission path, see the WRITE probe above.
+      const emitted = (await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 80 })) || '';
       twoWordEmitted.push(`${p.phrase}→${emitted || '∅'}`);
       const emittedLower = emitted.toLowerCase();
       const emittedWords = emittedLower.split(/\s+/).filter(Boolean);
@@ -5530,9 +5535,8 @@ export const K_MIXIN = {
         continue;
       }
       _probeReset();
-      const emitted = (cluster._gpuProxyReady && typeof cluster.generateSentenceAwait === 'function'
-        ? await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 200 })
-        : cluster.generateSentence(emb, { injectStrength: 1.0, maxTicks: 200 })) || '';
+      // NO FALLBACKS — single emission path, see the WRITE probe above.
+      const emitted = (await cluster.generateSentenceAwait(emb, { injectStrength: 1.0, maxTicks: 200 })) || '';
       const words = emitted.toLowerCase().split(/\s+/).filter(Boolean);
       freeWritingEmitted.push(`${prompt}→${emitted || '∅'} (${words.length}w)`);
       if (words.length > 0) freeWritingNonEmpty++;
@@ -8849,9 +8853,13 @@ export const K_MIXIN = {
     const bandSize = bandEnd - bandStart;
     // SPEAK.1 — teach writes to the SAME frozen band emit argmaxes (vocab-growth-
     // invariant). Single unified authority: wordBucketCellSizeFor().
-    const bucketSize = (typeof cluster.wordBucketCellSizeFor === 'function')
-      ? cluster.wordBucketCellSizeFor()
-      : Math.max(1, Math.floor(bandSize / words.length));
+    // ⛔ NO FALLBACKS (2026-09-02). The alternative arm here computed
+    // `bandSize / words.length` — a vocabulary-size-dependent geometry for a
+    // TEACH write whose whole contract is landing on the same frozen cells the
+    // emission argmaxes. Teach and emit disagreeing about band layout does not
+    // throw; it deposits in one place and listens in another. One authority now,
+    // with nothing behind it.
+    const bucketSize = cluster.wordBucketCellSizeFor();
 
     // iter21-A leak fix: REUSE buffers across iterations instead of
     // allocating new Float64Arrays per word × per rep. Operator caught

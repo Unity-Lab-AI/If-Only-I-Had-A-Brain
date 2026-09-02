@@ -411,16 +411,17 @@ export class SensoryProcessor {
           this._embeddings.refineFromContext(words[i], contextEmbed, 0.005);
         }
       }
-    } else {
-      // Fallback: Hash text into language area — each character activates specific neurons
-      for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i);
-        const neuronIdx = LANGUAGE_START + ((code * 31 + i * 7) % languageSize);
-        this.cortexCurrent[neuronIdx] += 8.0;
-        if (neuronIdx > LANGUAGE_START) this.cortexCurrent[neuronIdx - 1] += 3.0;
-        if (neuronIdx < LANGUAGE_END - 1) this.cortexCurrent[neuronIdx + 1] += 3.0;
-      }
     }
+    // ⛔ NO FALLBACKS (2026-09-02). An `else` arm here hashed each CHARACTER of
+    // the text to a neuron index and drove Wernicke's with it whenever the
+    // embedding table was not loaded. It is worth naming what that actually
+    // injected: character-code arithmetic, so two words with no relationship
+    // could excite adjacent neurons while a word and its synonym excite opposite
+    // ends of the band — meaningless structure entering the cortex through the
+    // input that is supposed to carry meaning, and doing it at 8.0 current, more
+    // than the real path's per-word 3.0. With the table now mandatory on the
+    // brain (see embeddings.js `loadPreTrained`) the branch is also unreachable.
+    // No embeddings, no text input — she does not hear noise instead.
 
     // Text also goes to hippocampus for memory formation
     // Use sentence embedding for semantic memory when available
@@ -430,13 +431,10 @@ export class SensoryProcessor {
         const embedIdx = i % 50;
         this.hippoCurrent[i] += sentenceEmbed[embedIdx] * 5.0;
       }
-    } else {
-      for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i);
-        const hippoIdx = (code * 13 + i * 11) % 200;
-        this.hippoCurrent[hippoIdx] += 5.0;
-      }
     }
+    // NO FALLBACKS — the character-hash twin of the branch above went with it.
+    // A hippocampal memory keyed by character codes indexes the SPELLING of what
+    // she heard; recall against it would return sentences that merely look alike.
 
     // Social input excites amygdala (someone is talking to us)
     for (let i = 0; i < 30; i++) {

@@ -1055,8 +1055,12 @@ export class LanguageCortex {
       det: detScore + uDet,
       qword: qwordScore + uQword,
     };
-    // NOUN FALLBACK — if nothing else matched confidently, assume content
-    // word = noun. Content words are the unmarked default in English.
+    // NOUN PRIOR — if nothing else matched confidently, weight toward content
+    // word = noun. Content words are the unmarked default in English. (Named a
+    // "fallback" until 2026-09-02, which it is not: it is a prior inside one
+    // scoring distribution, not a second mechanism standing in for a failed
+    // first. The vocabulary matters here — `fallback` is a banned shape in this
+    // codebase and mislabelling a prior as one hides the real ones.)
     let rawSum = 0;
     for (const k in raw) rawSum += raw[k];
     if (rawSum < 0.25) raw.noun += 0.4;
@@ -1678,21 +1682,15 @@ export class LanguageCortex {
       }
     }
 
-    // Dictionary-cosine path. Runs pre-curriculum ALWAYS, and
-    // post-curriculum only as a fallback if the motor emission
-    // returned empty. Lightweight version of the deleted T13
-    // slot scorer: iterate dictionary entries, cosine-score
-    // against the cortex semantic target, softmax-sample top-K.
-    // Just enough to give Unity a voice from cold boot.
-
-    // T14.26 — the dictionary loop is the chat-freeze culprit: at
-    // 3700+ entries × 300d cosine each call it burns ~100-300ms
-    // synchronous on the Node event loop, blocking the server's
-    // state-broadcast setInterval and GPU compute_batch dispatch
-    // for the duration of generate. `_precomputedScores` opt lets
-    // generateAsync run the scoring loop async with event-loop
-    // yields and hand the sorted array back in. When the opt is
-    // present we skip the sync loop entirely.
+    // ⚠ THE TWO PARAGRAPHS THAT USED TO OPEN THIS BLOCK WERE DELETED 2026-09-02:
+    // they described the dictionary-cosine path as a live mechanism — "runs
+    // pre-curriculum ALWAYS, post-curriculum only as a fallback if the motor
+    // emission returned empty", plus the `_precomputedScores` async-scoring opt
+    // that fed it. Every word of that has been false since 2026-09-01, and a
+    // comment describing a deleted mechanism as current is precisely how the
+    // mechanism comes back (the `_speakPollinations` lesson, then the oracle
+    // mirror that survived a day because only one of its two halves was cut).
+    // The record of WHY it went is below and stays.
     // ── OWNWORDS.2 (2026-08-25) — THE SILENCE IS REAL NOW ──────────────────
     //
     // Everything below this point is DICTIONARY-COSINE RETRIEVAL: score ~3,700
@@ -2194,13 +2192,19 @@ export class LanguageCortex {
       // gets GPU-resolved currents per tick instead of the 3s cache-
       // miss fallback.
 
-      // Falls through to the sync path (generate() calls
-      // cluster.generateSentence) when GPU proxy isn't ready, when
-      // generateSentenceAwait isn't available (older cluster build),
-      // or when curriculum hasn't shaped the cortex yet.
-      if (curriculumDone
-          && cluster._gpuProxyReady
-          && typeof cluster.generateSentenceAwait === 'function') {
+      // ⛔ NO FALLBACKS (2026-09-02) — the `typeof generateSentenceAwait ===
+      // 'function'` conjunct was removed from this condition. It read "older
+      // cluster build", and there is no such thing: the method is defined on the
+      // emission mixin every cortex in this repo carries, so the check could
+      // only ever be true. A version guard against a version that cannot exist
+      // is a fallback with no other side — it just made the condition look
+      // conditional.
+      // ⚠ WHAT IS DELIBERATELY LEFT: `curriculumDone && _gpuProxyReady` still
+      // routes to the sync `generateSentence` path underneath. Those two are the
+      // SAME motor emission with a different await discipline — the sync one
+      // reads one-tick-lag currents — and collapsing them is an emission-path
+      // change, not a sweep edit. Filed rather than half-done.
+      if (curriculumDone && cluster._gpuProxyReady) {
         // Compute the same intentSeed generate() would use: prefer the
         // caller-supplied user input embedding if present, otherwise
         // fall back to the cluster's semantic readout.
@@ -2891,11 +2895,16 @@ export class LanguageCortex {
     // `_sentenceFormSchemas[intent][t][fineType]` at every slot position.
     // Schema spans the full sentence — no slot cap.
 
-    // T14.12 (2026-04-14) — parseSentence deleted. Intent classification
-    // now comes from a lightweight inline fallback — the heuristic
-    // mirrors what `cluster.readInput` does for input classification.
-    // Once T14.17 curriculum trains `intentReadout()`, this fallback
-    // becomes unreached and the cortex-resident intent wins.
+    // Intent label for the observation below. ⚠ CORRECTED 2026-09-02: this used
+    // to be described as "a lightweight inline fallback" that "becomes unreached
+    // once curriculum trains intentReadout() and the cortex-resident intent
+    // wins". Neither half was true — nothing here has ever consulted
+    // `intentReadout()`, so there was no first path for this to be a fallback
+    // FROM, and it does not become unreached by anything. What it actually is:
+    // a training-time ANNOTATION of a corpus sentence, read off punctuation and
+    // opener, used to file the sentence-form schema under an intent. It labels
+    // teaching material; it is not a capability she exercises, and it is not a
+    // stand-in for one.
     let sentenceIntent = 'unknown';
     const lower = String(sentence || '').toLowerCase().trim();
     if (lower.endsWith('?')) sentenceIntent = 'question';

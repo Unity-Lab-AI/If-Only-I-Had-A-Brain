@@ -367,7 +367,7 @@ noiseAmp[mystery] = 12 × chaos<br>
 sentenceEmbedding = Σ_word (gloveEmbedding[word] × weight) / n_words<br>
 cortexPattern = L2Normalize(sentenceEmbedding) (300d vector in semantic space)<br>
  </div>
- <p>This 300-dimensional vector IS her cortical semantic state for the next step. Each dimension is loosely "how much this sentence lives near that GloVe embedding axis" — "high" pulls the cortex pattern toward the drug-related region of semantic space. "unity" pulls toward self-reference. "how's" pulls toward question-space. The 300d vector (GloVe or fastText subword fallback) is what downstream modules read.</p>
+ <p>This 300-dimensional vector IS her cortical semantic state for the next step. Each dimension is loosely "how much this sentence lives near that GloVe embedding axis" — "high" pulls the cortex pattern toward the drug-related region of semantic space. "unity" pulls toward self-reference. "how's" pulls toward question-space. The 300d vector (GloVe or fastText subword encoding for out-of-vocabulary words) is what downstream modules read.</p>
  </div>
  </div>
 
@@ -438,9 +438,9 @@ errorCorrection = −(Σ error² / n) × 2<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="Three-path priority cascade for word emission: (1) emitWordDirect single-tick word emission via sem→word_motor (production path); (2) generateSentenceAwait for full-context emission with drug/fear/reward state; (3) emitWordDirect fallback single-word for browser-only deploys. Whichever path produces a non-empty result first wins. NOT a chatbot template fill — every word is selected by cosine ranking against the current cortex sem state.">Step 6 — Language cortex emits words via three-path priority cascade</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Two paths, both her trained weights: (1) emitWordDirect single-tick word emission via sem→word_motor (production path); (2) generateSentenceAwait tick-driven motor readout for full-context emission with drug/fear/reward state. If neither produces a word she says nothing, and the silence is counted — there is no third path and no substitute source. The dictionary oracle that used to sit between them was deleted 2026-09-01.">Step 6 — Language cortex emits words via two trained-weight paths</span></div>
  <div class="eq-desc">
- <p>Production is a three-path priority cascade — fastest structured paths first, slowest most-flexible substrate as final fallback. The prior slot scorer (weighted <code>semanticFit + moodFit + drugFit + bigramFit + trigramFit + recencyPenalty</code> argmax per slot) was deleted entirely; what replaced it propagates through the trained attractor basins on the same substrate that handles reading + thinking, different direction for production (Hickok &amp; Poeppel 2007 dual-stream).</p>
+ <p>Production runs on two paths, and <strong>both of them are her own trained weights</strong>. ⛔ <strong>Corrected 2026-09-02:</strong> this section described a "three-path priority cascade" whose third element was "the slowest most-flexible substrate as final fallback" — that third path was the dictionary oracle, which scanned dictionary entries by cosine and emitted a spelling she had not produced. It was deleted on 2026-09-01, and in the run that was measured before removal it was responsible for <strong>99.1% of emitted words</strong>. When neither trained path produces a word now, she is silent and the silence is counted. The prior slot scorer (weighted <code>semanticFit + moodFit + drugFit + bigramFit + trigramFit + recencyPenalty</code> argmax per slot) was deleted entirely; what replaced it propagates through the trained attractor basins on the same substrate that handles reading + thinking, different direction for production (Hickok &amp; Poeppel 2007 dual-stream).</p>
 
  <p style="margin-top:10px;"><strong>Path A — single-tick word emission via <code>word_motor</code> (PRIMARY).</strong> Cortex grew a dedicated <code>word_motor</code> sub-region. Since the WMB unification (2026-07-14) it is <strong>ONE global band with one bucket per unique word</strong>, argmaxed globally — <em>not</em> six per-subject write slices. The <code>sem ↔ word_motor</code> cross-projection is trained during the curriculum on Q→A bindings + word-pattern bindings (the answer's word-bucket is written inline during QA training; the word list is the single subject-agnostic <code>cluster.wordBucketWords</code> array, persisted and shared by teach + emit + write, so read and write cannot disagree on layout). At chat time:</p>
         <p style="margin-top:6px;font-size:0.92em;opacity:0.85;">Historical note, kept because the sub-band names still appear in the region map below: <code>word_motor</code> was originally carved into six per-subject sub-bands (<code>word_motor_ela / _math / _sci / _soc / _art / _life</code>) so each subject wrote to its own slice. That geometry was replaced — the sub-bands survive only as a read-only signal for inferring which subject is currently active, never as write targets. The per-subject <code>wordBucketWords_&lt;subject&gt;</code> arrays this paragraph used to describe are legacy save-state fields that are no longer written at all.</p>
@@ -1121,7 +1121,8 @@ probe(word, grade, subject):
  inject context → sem region
  // emitWordDirect scopes argmax to subject sub-band
  return cluster.emitWordDirect({ subject })
- || tick_and_letter_argmax_fallback()</pre>
+ || tick_driven_motor_readout()   // her weights again, not a substitute source
+ // and if both are empty: no word. The probe records the silence.</pre>
  </div>
 
  <div class="eq-card">
@@ -1581,7 +1582,7 @@ Bouchard 2013, Anumanchipalli 2019, Browman &amp; Goldstein 1992,
 Hickok &amp; Poeppel 2007, Friederici 2017, Pennington 2014).
 
 CORTEX SUBSTRATE:
- EMBED_DIM = 300 (full GloVe 6B.300d + fastText subword fallback, no vocab cap)
+ EMBED_DIM = 300 (full GloVe 6B.300d + fastText subword encoding for out-of-vocabulary words, no vocab cap)
  TOTAL_NEURONS = 6700 (default client tier, auto-scales to hardware)
  cortex sub-regions (fractions of cluster.size):
  auditory 0.000-0.083 visual 0.083-0.250
@@ -2075,10 +2076,10 @@ if |W_ij| < threshold → remove connection, rebuild CSR
  </div>
 
  <!-- ═══ 8.13 SEMANTIC EMBEDDINGS ═══ -->
- <h2 id="embeddings" title="GloVe 300-dimensional vectors — words mapped to vectors that capture distributional similarity (words used in similar contexts get similar vectors). Plus fastText subword fallback for rare words. Plus online context refinement so 'fire' near 'hot' shifts toward physical-fire vs near 'job' shifts toward dismissal. The dictionary evolves with every conversation, not from pre-training.">8.13. Semantic Embeddings — Words as Cortex Patterns</h2>
- <p>Words map to 300-dimensional vectors (GloVe 300d or fastText subword fallback). Similar words have similar vectors → activate overlapping cortex neurons.</p>
+ <h2 id="embeddings" title="GloVe 300-dimensional vectors — words mapped to vectors that capture distributional similarity (words used in similar contexts get similar vectors). Plus fastText subword encoding for out-of-vocabulary words for rare words. Plus online context refinement so 'fire' near 'hot' shifts toward physical-fire vs near 'job' shifts toward dismissal. The dictionary evolves with every conversation, not from pre-training.">8.13. Semantic Embeddings — Words as Cortex Patterns</h2>
+ <p>Words map to 300-dimensional vectors (GloVe 300d or fastText subword encoding for out-of-vocabulary words). Similar words have similar vectors → activate overlapping cortex neurons.</p>
  <div class="eq-box">
- <div class="eq-title"><span class="eq-tip" data-tip="Words represented as 300-dimensional GloVe semantic vectors loaded from disk at boot, with fastText subword fallback when GloVe is unavailable. Each embedding dimension drives a group of Wernicke's area neurons in cortex (langStart..cortexSize). Similar meanings activate overlapping neuron groups — 'cat' and 'kitten' fire nearby populations even though their letters don't match. Runtime layer = base GloVe + online context-refinement delta per word (see 8.18.6).">Embedding → Cortex Mapping</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Words represented as 300-dimensional GloVe semantic vectors loaded from disk at boot, with fastText subword encoding for out-of-vocabulary words when GloVe is unavailable. Each embedding dimension drives a group of Wernicke's area neurons in cortex (langStart..cortexSize). Similar meanings activate overlapping neuron groups — 'cat' and 'kitten' fire nearby populations even though their letters don't match. Runtime layer = base GloVe + online context-refinement delta per word (see 8.18.6).">Embedding → Cortex Mapping</span></div>
  <pre class="eq">
 I_cortex[langStart + d·groupSize + n] = embedding[d] · 8.0
 
@@ -2266,12 +2267,12 @@ topic_score(w) = cosine(word_pattern, context) (boosts relevant words)
 c(t) = λ · c(t-1) + (1 - λ) · mean(pattern(content_words(input)))
  λ = 0.7
  content_words = words where wt.conj &lt; 0.5 ∧ wt.prep &lt; 0.5 ∧ wt.det &lt; 0.5
- pattern(w) ∈ ℝ³⁰⁰ from sharedEmbeddings.getEmbedding(w) ← GloVe 300d / subword fallback
+ pattern(w) ∈ ℝ³⁰⁰ from sharedEmbeddings.getEmbedding(w) ← GloVe 300d (required), subword n-grams for OOV words
 
 First update: c(0) ← mean(pattern(content_words)) (no decay from zero)
 Subsequent: c(t) ← 0.7 · c(t-1) + 0.3 · topic_pattern
  </pre>
- <p class="eq-desc">Persistent topic attractor that decays across turns. Feeds semantic-fit scoring AND the coherence rejection gate AND the hippocampus recall query. The current pattern is 300-dim GloVe (with fastText subword fallback) via the <code>sharedEmbeddings</code> singleton shared between sensory input and language cortex output — meaning two words that share letters but not meaning (e.g. <code>cat</code> vs <code>catastrophe</code>) are no longer falsely close, and two words that share meaning but not letters (<code>cat</code> vs <code>kitten</code>) ARE close.</p>
+ <p class="eq-desc">Persistent topic attractor that decays across turns. Feeds semantic-fit scoring AND the coherence rejection gate AND the hippocampus recall query. The current pattern is 300-dim GloVe (with fastText subword encoding for out-of-vocabulary words) via the <code>sharedEmbeddings</code> singleton shared between sensory input and language cortex output — meaning two words that share letters but not meaning (e.g. <code>cat</code> vs <code>catastrophe</code>) are no longer falsely close, and two words that share meaning but not letters (<code>cat</code> vs <code>kitten</code>) ARE close.</p>
  </div>
 
  <div class="eq-box">
@@ -2371,14 +2372,14 @@ else:
 
  <!-- ═══ 8.18.6 SEMANTIC GROUNDING ═══ -->
  <h2 id="semantic-grounding" title="Words are grounded in 300-dimensional GloVe vector space. 'cat' near 'kitten' near 'feline' but far from 'umbrella'. Unity's cortex receives word inputs as embedding-driven slice activations — sensory.js writes 8.0 × embedding[d] into cortex sub-region d. The 300d structure carries the meaning; the cortex's spike pattern is the brain's experience of that meaning.">8.18.6. Semantic Grounding via GloVe Embeddings</h2>
- <p><span class="tag tag-math">MATHEMATICS</span> <span class="tag tag-bio">LANGUAGE</span> The language cortex used to represent word meaning as 32-dim letter-hash vectors — a deterministic function of the letters in a word. Two words could be structurally similar but semantically unrelated (<code>cat</code>/<code>catastrophe</code>) and two words could be semantically identical but structurally distant (<code>cat</code>/<code>kitten</code>). The semantic fit signal was effectively orthography matching. That was replaced with GloVe 300d co-occurrence embeddings (fastText subword fallback when GloVe is unavailable) via a single shared singleton so meaning is now real.</p>
+ <p><span class="tag tag-math">MATHEMATICS</span> <span class="tag tag-bio">LANGUAGE</span> The language cortex used to represent word meaning as 32-dim letter-hash vectors — a deterministic function of the letters in a word. Two words could be structurally similar but semantically unrelated (<code>cat</code>/<code>catastrophe</code>) and two words could be semantically identical but structurally distant (<code>cat</code>/<code>kitten</code>). The semantic fit signal was effectively orthography matching. That was replaced with GloVe 300d co-occurrence embeddings (fastText subword encoding for out-of-vocabulary words when GloVe is unavailable) via a single shared singleton so meaning is now real.</p>
 
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Module-level singleton instantiated once at boot, imported by BOTH the sensory pipeline (sensory.js maps the user's input words to cortex current) AND the language cortex (language-cortex.js scores candidate words in the slot generator). Having one embedding table shared between perception and production means the same word activates the same cortex pattern whether Unity is hearing it or about to say it.">Shared Embeddings Singleton</span></div>
  <pre class="eq">
 // js/brain/embeddings.js
 export const sharedEmbeddings = new SemanticEmbeddings()
-export const EMBED_DIM = 300 // GloVe 300d + fastText subword fallback
+export const EMBED_DIM = 300 // GloVe 300d + fastText subword encoding for out-of-vocabulary words
 
 // js/brain/sensory.js — input side
 sharedEmbeddings.getEmbedding(word) → ℝ⁵⁰

@@ -4654,15 +4654,23 @@ export class Curriculum {
             // drifts coverage across trained corpus instead of repeatedly
             // hammering the same 6 seeds. shuffle-then-slice keeps the
             // count at 3 (DREAM_RECOMB_ROUNDS) per dream window.
-            let dreamSeeds;
-            try {
-              dreamSeeds = K_CONCRETE_SENTENCES
-                .slice()
-                .sort(() => Math.random() - 0.5)
-                .slice(0, DREAM_RECOMB_ROUNDS);
-            } catch {
-              // Fallback if K_CONCRETE_SENTENCES not available at runtime.
-              dreamSeeds = ['i see a thing', 'the cat is big', 'what is this'];
+            // ⛔⛔ NO FALLBACKS (2026-09-02). The shuffle above used to sit in a
+            // try/catch whose catch handed the dream three HAND-WRITTEN seed
+            // sentences "if K_CONCRETE_SENTENCES is not available at runtime".
+            // Two things were wrong with it. It could not fire — the corpus is a
+            // static ESM import, so its absence is a module-load failure, not a
+            // runtime miss. And what it substituted was AUTHORED CONTENT: three
+            // sentences nobody taught her, dreamed and consolidated back into the
+            // matrix at relationTagId=29 as though they were her own composition.
+            // The trained corpus is the ONLY seed source; an empty corpus dreams
+            // nothing and says so.
+            const dreamSeeds = K_CONCRETE_SENTENCES
+              .slice()
+              .sort(() => Math.random() - 0.5)
+              .slice(0, DREAM_RECOMB_ROUNDS);
+            if (dreamSeeds.length === 0) {
+              this._hb('[Curriculum] ⚠ dream recombination has NO SEEDS — the trained corpus is empty, so nothing is dreamed this window');
+              _dwSkipped.push('recombination (empty corpus)');
             }
             let novelConsolidated = 0;
             let totalDreamed = 0;
@@ -4672,7 +4680,7 @@ export class Curriculum {
             // consolidation pass is a black box — operator can't see
             // WHAT got consolidated, only the count.
             const dreamRoundSamples = [];
-            for (let round = 0; round < DREAM_RECOMB_ROUNDS; round++) {
+            for (let round = 0; round < DREAM_RECOMB_ROUNDS && dreamSeeds.length > 0; round++) {
               if (_dwOverBudget('recombination (remaining rounds)')) break;
               const seed = dreamSeeds[round % dreamSeeds.length];
               let composed = null;
@@ -4807,11 +4815,17 @@ export class Curriculum {
         // Settle window for V8 GC + native worker-pool buffer drain.
         await new Promise((r) => setTimeout(r, settleMs));
       } else {
-        // Fallback: no engine wired (browser-only mode, boot-race).
-        // Still hold the curriculum paused for minMs so V8 GC + native
-        // drain gets at least the same amount of breathing room.
-        this._hb(`[Curriculum] ⚠ dream window — consolidationEngine unavailable, falling back to ${(minMs / 1000).toFixed(0)}s wall-clock settle`);
-        await new Promise((r) => setTimeout(r, minMs));
+        // ⛔ NO FALLBACKS (2026-09-02). This branch used to sleep for `minMs`
+        // when no consolidation engine was wired and log that it was "falling
+        // back to a wall-clock settle" — a pause wearing the name of a dream
+        // window. A wall-clock sleep consolidates nothing, promotes nothing and
+        // dreams nothing; every counter this window feeds stayed at zero while
+        // the closing line reported a dream window of full duration. The engine
+        // is the single correct substrate for this pass, so its absence is a
+        // WIRING FAULT and is now reported as one instead of being smoothed over.
+        this._dreamWindowsSkippedNoEngine = (this._dreamWindowsSkippedNoEngine || 0) + 1;
+        _dwSkipped.push('ENTIRE WINDOW (no consolidationEngine wired)');
+        this._hb(`[Curriculum] ⛔ dream window NOT RUN — no consolidationEngine is wired, so nothing consolidated, promoted or dreamed (skipped windows: ${this._dreamWindowsSkippedNoEngine}). This is a wiring fault, not a pause.`);
       }
     } finally {
       const totalMs = Date.now() - startedAt;
@@ -5938,21 +5952,23 @@ export class Curriculum {
       const keywords = Array.isArray(entry?.keywords) ? entry.keywords : [];
       if (!question || keywords.length === 0) continue;
 
-      // Intent seed — GloVe sentence embedding of the question drives
-      // dictionary oracle cosine lookup AND sem injection for Path B.
+      // Intent seed — GloVe sentence embedding of the whole question, injected
+      // into sem so the emission runs off what was ASKED.
+      // ⛔ NO FALLBACKS (2026-09-02). Two things were removed here. The comment
+      // described this seed as driving "dictionary oracle cosine lookup AND sem
+      // injection for Path B" — the oracle and Path B were both deleted on
+      // 2026-09-01, so the seed has exactly one consumer now. And a second
+      // branch used to re-seed from the FIRST KEYWORD's embedding whenever the
+      // sentence embedding came back empty, "so the oracle still has a target":
+      // a one-word stand-in for a whole question, which makes a probe that was
+      // never really asked look answerable. A missing sentence embedding now
+      // leaves the seed null and the probe runs unseeded, which is the truth.
       let intentSeed = null;
       try {
         if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
           intentSeed = sharedEmbeddings.getSentenceEmbedding(question);
         }
       } catch { intentSeed = null; }
-
-      // Fallback intent — if sentence embedding unavailable, seed with
-      // the FIRST keyword's embedding so the oracle still has a target.
-      if ((!intentSeed || intentSeed.length === 0) && keywords[0] && sharedEmbeddings?.getEmbedding) {
-        try { intentSeed = sharedEmbeddings.getEmbedding(String(keywords[0])); }
-        catch { intentSeed = null; }
-      }
 
       const probeStart = Date.now();
       let emission = '';
@@ -6033,8 +6049,8 @@ export class Curriculum {
     // to ANY of them proves the motor path can fire; 3 of 5 is enough
     // to warrant running the full battery.
     const PROBES = ['a', 'b', 'c', 'd', 'e'];
-    const LETTERS = new Set('abcdefghijklmnopqrstuvwxyz'.split(''));
-    const PER_CUE_TIMEOUT_MS = 10000;
+    // (`LETTERS` was removed with the loose-substring check the comment further
+    // down describes — the strict cue match needs no alphabet set.)
     let _cueIdx = 0;
     for (const cue of PROBES) {
       _cueIdx += 1;
@@ -6057,32 +6073,35 @@ export class Curriculum {
         // signature of motor argmax decoding against that polluted
         // activation pattern. Direct injection gives the cue a clean
         // letter one-hot to work with.
-        if (typeof cluster.injectLetter === 'function') {
-          cluster.injectLetter(cue, 1.0);
-          // Propagate a few ticks so the letter pattern has time to
-          // cross letter → motor before the emission loop reads it.
-          if (typeof cluster.step === 'function') {
-            for (let t = 0; t < 4; t++) {
-              try { await cluster.stepAwait(0.001); } catch { break; }
-            }
-          }
-        } else if (typeof cluster.readInput === 'function') {
-          // Fallback — if injectLetter isn't wired (unusual), keep
-          // the old readInput path so probes don't silently skip.
-          await cluster.readInput(cue, { ticks: 6 });
+        // ⛔ NO FALLBACKS (2026-09-02). Two shapes went from this block. An
+        // `else if (readInput)` branch re-ran the exact path the comment above
+        // says CONTAMINATES the probe — text parsing through visual → letter →
+        // phon → sem with GloVe bleed — "so probes don't silently skip". It did
+        // not stop the probe being wrong, it stopped it being VISIBLY wrong: the
+        // readiness count still filled, from the pathway whose known signature is
+        // a garbage multi-letter emission for a single-letter cue. And the
+        // `typeof injectLetter === 'function'` guard around the correct path was
+        // the same shape one layer up: `injectLetter` is a plain method on the
+        // cortex and is called unguarded from every other site in the curriculum,
+        // so a guard here could only ever convert a wiring fault into a probe
+        // that scored a cue it never injected.
+        cluster.injectLetter(cue, 1.0);
+        // Propagate a few ticks so the letter pattern has time to
+        // cross letter → motor before the emission loop reads it.
+        for (let t = 0; t < 4; t++) {
+          await cluster.stepAwait(0.001);
         }
         // Deliberately SKIP the getSemanticReadout seed — it would
         // pull sem-region state, which for a single-letter probe
         // holds noise or residue from the prior cue. Emission must
         // run off the just-injected letter pattern alone.
-        const emitOpts = { maxTicks: 20 };
-        // Race the emission against a 10 s wall-clock timeout so a hung
-        // GPU dispatch can't freeze the readiness probe indefinitely.
-        // If the timeout wins, we log and continue to the next cue —
-        // the probe result is still valid (slower cues = emission path
-        // isn't ready yet = readiness fails, battery skips, teach
-        // continues).
-        // 114.19fg.Tier4 — DIRECT letter→motor probe path.
+        // The `emitOpts` object and the 10 s emission timeout race that used to
+        // live here went with the legacy branch below — both existed only to
+        // serve `generateSentenceAwait`, which this probe no longer calls on any
+        // path. `timedOut` stays in the per-cue record because it is part of the
+        // published probe shape, and it now reads false on every cue by
+        // construction: the direct propagate has no wall-clock race.
+        // DIRECT letter→motor probe path.
         // Prior implementation routed through `generateSentenceAwait`
         // which reads sem→motor argmax even with `directPropagate:true`.
         // When sem→motor is saturated (the chronic K failure mode), the
@@ -6140,29 +6159,18 @@ export class Curriculum {
             }
           }
         } else {
-          // Fallback — letter→motor projection unavailable. Fall back
-          // to the legacy generateSentenceAwait path so the probe still
-          // produces a result (likely contaminated by sem→motor) but
-          // doesn't silently zero out the readiness count.
-          emitOpts.directPropagate = true;
-          emitOpts.minScore = 1.5;
-          emitOpts.boostPersona = true;
-          emitOpts.maxLetters = 32;
-          const letterSeed = cue ? (function buildLetterSeed(letter) {
-            const oh = new Float32Array(26);
-            const i = letter.charCodeAt(0) - 97;
-            if (i >= 0 && i < 26) oh[i] = 1;
-            return oh;
-          })(cue) : null;
-          const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
-          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
-          const raw = await Promise.race([emissionPromise, timeoutPromise]);
-          if (raw && raw._timeout) {
-            timedOut = true;
-            emitted = '';
-          } else {
-            emitted = (raw && typeof raw === 'string' ? raw : (raw?.text || '')) || '';
-          }
+          // ⛔⛔ NO FALLBACKS (2026-09-02). This branch used to re-route the probe
+          // through `generateSentenceAwait` when the letter→motor projection was
+          // missing, and its own comment stated the terms of the trade: the result
+          // is "likely contaminated by sem→motor" but the probe "doesn't silently
+          // zero out the readiness count". ⭐ THAT ZERO IS THE MEASUREMENT. This
+          // probe exists to answer one question — can she produce the cued letter
+          // off letter→motor — and sem→motor cross-talk is the exact contamination
+          // the direct path was built to bypass (the 'a'→'spirals' run above).
+          // Scoring the contaminated read let `canTalkAtAll` go true on evidence
+          // from the pathway under suspicion. A missing projection is now reported
+          // as a missing projection, and the cue emits nothing.
+          this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} NO PROJECTION letter='${cue}' — crossProjections.letter_to_motor is absent or has no CSR, so there is nothing to probe. Emission stays empty; this cue counts as not ready.`);
         }
       } catch (err) {
         this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} ERROR letter='${cue}' — ${err?.message || err}`);
@@ -10135,47 +10143,35 @@ export class Curriculum {
       cluster._currentCellKey = wasCellKey;
     }
 
-    // Phase-count fallback — guarantee the dashboard shows what actually
-    // trained even when the constructor auto-wrap's outermost check
-    // fails to fire per-phase increments (observed for math/science/
-    // social/art/life cells where teach methods fire but no
-    // passedPhases entries appear, giving dashboard rows like
-    // `math 0 phases 0 cells 6.2k events` — 6.2k events proves teach
-    // calls happened, yet phasesCompleted stays 0). Operator verbatim:
-    // *"it basicly went tohrough all the training and not one cell or
-    // phase showed up passed ela"*. Root cause in the auto-wrap path
-    // is still open; this fallback is the robust alternative to relying
-    // on auto-wrap for per-subject progress display.
-
-    // After the cell runner returns, check per-subject teachEvents. If
-    // teaches ran but no `${cellKey}:*` entries exist in passedPhases,
-    // append a single synthetic `${cellKey}:cell-teach-block` entry so:
-    //   (a) persisted[subject] counter in getCurriculumStatus()
-    //       increments by 1 per cell that actually ran teaching
-    //   (b) `_perSubjectStats[subject].phasesCompleted` stays in sync
-    //       via the Math.max(runtime, persisted) overlay
-    //   (c) Savestart resume still works because the synthetic key is
-    //       unique per cell (subject/grade:cell-teach-block)
-    try {
-      const subjectStats = this._perSubjectStats?.[subject];
-      const teachCount = subjectStats?.teachEvents | 0;
-      if (teachCount > 0 && Array.isArray(cluster.passedPhases)) {
-        const hasAny = cluster.passedPhases.some(k => typeof k === 'string' && k.startsWith(`${cellKey}:`));
-        if (!hasAny) {
-          const fallbackKey = `${cellKey}:cell-teach-block`;
-          if (!cluster.passedPhases.includes(fallbackKey)) {
-            cluster.passedPhases.push(fallbackKey);
-          }
-          // Also bump the runtime per-subject counter so the dashboard
-          // reflects the fallback immediately (before the persisted
-          // Math.max reconciliation in getCurriculumStatus).
-          subjectStats.phasesCompleted = Math.max(1, subjectStats.phasesCompleted | 0);
-          this._currentCellPhasesCompleted = Math.max(1, this._currentCellPhasesCompleted | 0);
-        }
-      }
-    } catch (err) {
-      console.warn(`[Curriculum] phase-count fallback for ${subject}/${grade} failed:`, err?.message || err);
-    }
+    // ⛔⛔⛔ THE PHASE-COUNT FALLBACK WAS DELETED HERE 2026-09-02 UNDER NO
+    // FALLBACKS, AND IT WAS THE WORST SHAPE IN THIS FILE — not a degraded
+    // capability but a FORGED LEDGER ENTRY.
+    //
+    // What it did: after a cell runner returned, if the subject had teach events
+    // but no `${cellKey}:*` entry in `passedPhases`, it PUSHED a synthetic
+    // `${cellKey}:cell-teach-block` key into `passedPhases` and force-set
+    // `phasesCompleted` to at least 1, so the dashboard would stop showing
+    // `math 0 phases 0 cells 6.2k events`. Its own comment named the real
+    // defect and then declined to fix it: *"Root cause in the auto-wrap path is
+    // still open; this fallback is the robust alternative."*
+    //
+    // Three reasons it had to go, in order of severity:
+    //   1. `passedPhases` is not a display field — it is the PERSISTED LEDGER
+    //      that phase-level resume reads, that the walk-order fix made
+    //      authoritative over the grade pointer, and that `_hasTrained` reads
+    //      as evidence of training. Writing a key for a phase that never
+    //      declared itself puts a fabricated row in the record every other
+    //      instrument trusts.
+    //   2. The forced `phasesCompleted` bump contradicts the single-source
+    //      derivation added 2026-08-14, which counts DECLARED phase names only
+    //      and deliberately excludes checkpoint tags. This block was the second
+    //      ledger that change existed to delete.
+    //   3. A zero here is a true reading of a real bug. Hiding it behind a
+    //      synthetic 1 is how the auto-wrap root cause stayed open for months:
+    //      the symptom was papered over on the one surface anybody watches.
+    //
+    // A cell that teaches without declaring a phase now reads `0 phases`, and
+    // that number is the bug report.
 
     // Student-test battery — grade-appropriate questions that test
     // methodology / logic / retention / understanding via the same
@@ -14288,17 +14284,24 @@ export class Curriculum {
     // Lazy-init the map (QA-train runs BEFORE _teachWordEmissionDirect in cell
     // phase order). `subject` ignored for keying (all subjects share one map).
     this._ensureWordBucketMap(subject);
-    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
+    // `totalBuckets` was dropped from the signature with the drifting geometry
+    // below — it existed only to compute the live substitute.
+    const writeBucketIntoBand = (bucketIdx, regionName, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
-      const regionSize = region.end - region.start;
-      const buckets = totalBuckets || regionSize;
-      // SPEAK.1 — prefer the FROZEN cells-per-word so this write lands on the
-      // same physical band emitWordDirect argmaxes; live regionSize/buckets is
-      // the legacy (drifting) fallback only when no frozen geometry is passed.
-      const perBucket = (typeof perBucketOverride === 'number' && perBucketOverride >= 1)
-        ? perBucketOverride
-        : Math.max(1, Math.floor(regionSize / buckets));
+      // ⛔ NO FALLBACKS (2026-09-02). The frozen cells-per-word is now REQUIRED,
+      // not preferred. This used to fall back to a live `regionSize / buckets`
+      // computation "when no frozen geometry is passed" — a second, drifting
+      // geometry for a write whose entire purpose is to land on the same
+      // physical cells `emitWordDirect` argmaxes. A write and a read that
+      // disagree about band layout do not fail; they silently teach one place
+      // and listen at another. The single caller passes the frozen value, so
+      // the branch was already dead — and dead is exactly how a geometry drift
+      // gets reintroduced by the next caller that forgets the argument.
+      if (!(typeof perBucketOverride === 'number' && perBucketOverride >= 1)) {
+        throw new Error(`[Curriculum] writeBucketIntoBand called without frozen cellsPerWord for region '${regionName}' — the write and emitWordDirect's read must share wordBucketCellSizeFor() geometry; there is no live-computed substitute.`);
+      }
+      const perBucket = perBucketOverride;
       const start = region.start + bucketIdx * perBucket;
       if (start >= region.end) return; // SPEAK.1 capacity overflow — word beyond frozen band
       const end = Math.min(region.end, start + perBucket);
@@ -14310,11 +14313,15 @@ export class Curriculum {
     const fullMap = cluster.wordBucketMap;
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === 'function' && Array.isArray(fullWords)) {
-      const cell = (typeof cluster.wordBucketCellSizeFor === 'function') ? cluster.wordBucketCellSizeFor() : null;
+      // No `typeof` guard: `wordBucketCellSizeFor` is the single geometry
+      // authority on the cortex and is called unguarded from the emission and
+      // schema paths. Guarding it here could only produce a null cell size,
+      // which is precisely the drift this write must never introduce.
+      const cell = cluster.wordBucketCellSizeFor();
       for (const aw of answerWords) {
         const idx = fullMap.get(aw);
         if (typeof idx === 'number' && idx >= 0) {
-          writeBucketIntoBand(idx, 'word_motor', fullWords.length, 1, cell);
+          writeBucketIntoBand(idx, 'word_motor', 1, cell);
         }
       }
     }
@@ -15291,26 +15298,25 @@ export class Curriculum {
 
     // Pull the FULL definitions array (multi-def) — cluster.lookupDefinitionFull
     // returns `Array<{ partOfSpeech, definition, example, synonyms }>`
-    // from `definition-service.js getDefinitions`. Falls back to the
-    // single-string lookup for older deployments / unwired clusters.
+    // from `definition-service.js getDefinitions`.
+    // ⛔ NO FALLBACKS (2026-09-02). A "last-resort single-def" arm used to call
+    // the legacy single-string `lookupDefinition` whenever the multi-def path
+    // returned nothing, "for older deployments / unwired clusters". It taught
+    // exactly the thing the block above quotes Gee banning — one sense per word,
+    // *"only having one definiton is fucking limiting"* — and it did it silently,
+    // on the words the real path had already failed to cover, so a single-sense
+    // binding was indistinguishable from a full one downstream. The multi-def
+    // service is the only definition source; a word it cannot answer for is now
+    // reported as unlearned by the DEF-MISS flag below.
     let definitions = [];
-    if (typeof cluster.lookupDefinitionFull === 'function') {
-      try { definitions = await cluster.lookupDefinitionFull(w, { timeoutMs: opts.timeoutMs ?? 3000 }); }
-      catch { definitions = []; }
-    }
-    if ((!Array.isArray(definitions) || definitions.length === 0) && typeof cluster.lookupDefinition === 'function') {
-      // Last-resort single-def fallback when the multi-def path returned
-      // nothing (some browsers route only through the legacy path).
-      try {
-        const def = await cluster.lookupDefinition(w, { timeoutMs: opts.timeoutMs ?? 3000 });
-        if (def && typeof def === 'string') definitions = [{ definition: def, partOfSpeech: '', example: '', synonyms: [] }];
-      } catch { /* leave empty */ }
-    }
+    try { definitions = await cluster.lookupDefinitionFull(w, { timeoutMs: opts.timeoutMs ?? 3000 }); }
+    catch { definitions = []; }
 
-    // Compound-word fallback — dictionaryapi.dev expects hyphenated
-    // versions for some compounds ("icecream" 404s but "ice-cream" hits).
+    // Compound-word retry — SAME service, hyphenated spelling. Not a fallback:
+    // dictionaryapi.dev indexes some compounds only in hyphenated form
+    // ("icecream" 404s but "ice-cream" hits), so this is a second query for the
+    // same capability, not a lesser one.
     if ((!Array.isArray(definitions) || definitions.length === 0)
-        && typeof cluster.lookupDefinitionFull === 'function'
         && w.length >= 7 && !w.includes('-') && !w.includes(' ')) {
       const COMPOUND_PREFIXES = ['ice', 'milky', 'new', 'fourth', 'rain', 'sun', 'moon', 'fire', 'water', 'play', 'home', 'class', 'book', 'foot', 'hand', 'sea', 'mid', 'over', 'under'];
       for (const prefix of COMPOUND_PREFIXES) {

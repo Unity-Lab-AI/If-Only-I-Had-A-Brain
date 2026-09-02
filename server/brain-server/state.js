@@ -1083,12 +1083,17 @@ const SERVER_STATE_MIXIN = {
             // are not trained yet — which is a training fact worth seeing, not a
             // bug to hide. Gate and probe lanes never ask by design, so this
             // counts conversation only.
-            // OWNWORDS.2 — how much of her speech is actually HERS. `retrieved`
-            // counts dictionary-cosine fallbacks (not her weights; only legal
-            // on an untrained cortex now) and `honestSilence` counts the times
-            // a TRAINED brain produced nothing and was allowed to say nothing.
-            // Before this, the fallback fired invisibly whenever her matrix came
-            // up empty, so the two were indistinguishable from the outside.
+            // OWNWORDS.2 — how much of her speech is actually HERS.
+            // ⛔ FIELD MEANING CORRECTED 2026-09-02: `retrieved` used to be
+            // described as counting dictionary-cosine retrieval "only legal on
+            // an untrained cortex now". There is no cortex where it is legal —
+            // the retrieval lane was deleted for EVERY brain in every state on
+            // 2026-09-01. The counter is kept deliberately as a permanent-zero
+            // REGRESSION DETECTOR: any value other than 0 means a retrieval path
+            // has come back, and it is visible instead of silent.
+            // `honestSilence` counts the times her matrix produced nothing and
+            // she was allowed to say nothing — the number that used to be hidden
+            // because something else spoke in exactly those moments.
             words: {
               retrieved: (() => { try { return (this.cortexCluster?.innerVoice?.languageCortex?._dictRetrievalCount) | 0; } catch { return 0; } })(),
               honestSilence: (() => { try { return (this.cortexCluster?.innerVoice?.languageCortex?._honestSilenceCount) | 0; } catch { return 0; } })(),

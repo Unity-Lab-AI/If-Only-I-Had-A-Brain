@@ -177,7 +177,7 @@ last-verified: "4bc99291 2026-08-31"
 ### AI & Machine Learning
 - Reinforcement learning (temporal difference, Q-learning)
 - Neural network architectures (recurrent, attractor, transformer-like attention)
-- GloVe semantic embedding grounding (300d co-occurrence + fastText-style subword fallback, online refinement)
+- GloVe semantic embedding grounding (300d co-occurrence + fastText-style subword encoding for out-of-vocabulary words, online refinement)
 - Equational language generation (slot scorer over learned dictionary + type n-grams + cortex-pattern semantic fit)
 - Persona-to-parameter mapping (personality as math)
 - **Sensory-only AI** (image gen, vision describer, TTS/STT) — cognition is 100% equational, no text-AI
@@ -344,7 +344,7 @@ last-verified: "4bc99291 2026-08-31"
 | AI intent classification | AI/ML | Intermediate | **DONE** — removed AI call, embedding-based BG routing in `sensory.js` |
 | Simulated senses | CompNeuro | Advanced | **DONE** — touch/smell/taste derived from brain state in viz |
 | Sparse connectivity (CSR) | CompNeuro | Expert | **DONE** — `js/brain/sparse-matrix.js` (O(nnz) ops, pruning, synaptogenesis) |
-| Semantic embeddings | AI/ML | Advanced | **DONE** — `js/brain/embeddings.js` (GloVe 300d + fastText-style subword fallback, online context learning) |
+| Semantic embeddings | AI/ML | Advanced | **DONE** — `js/brain/embeddings.js` (GloVe 300d + fastText-style subword encoding for out-of-vocabulary words, online context learning) |
 | Dictionary system | CompNeuro | Advanced | **DONE** — `js/brain/dictionary.js` (learned word→cortex patterns, bigram sentences) |
 | Multi-def Hebbian learning | CompNeuro | Expert | **DONE 2026-05-07** — `js/brain/curriculum.js _teachWordDefinition` iterates ALL definitions returned by `cluster.lookupDefinitionFull(w)` (live dictionaryapi.dev API via `server/definition-service.js`), splits each meaning into words, fires `_teachAssociationPairs` per definition with `relationTagId:23` so polysemous words get distinct Hebbian sub-pattern in sem space. Hybrid binding: chunked upfront seed with dream-window interleave at K-start (300 words/chunk, `_dreamWindow` between chunks), inline-from-teach in `_teachWordEmissionDirect`, dream-cycle trickle (25 words/cycle). Single-def fallback for words returning one definition. Per memory `feedback_multi_definitions_per_word.md` per Gee 2026-05-07. |
 | Real Kuramoto coherence | CompNeuro | Expert | **DONE 2026-05-07** — `server/brain-server.js _computeKuramotoCoherence` reads `cluster.getPhases()` (cortex theta-gamma per-tick deterministic) plus per-cluster activity-coupled phases (firingRate scales coupling — silent clusters drift, active clusters phase-lock). Order parameter `r = |Σ exp(i·θ_k)| / N` per band. Combined gamma-weighted (0.6·γ + 0.4·θ). GlobalWorkspace ignition spike (Dehaene-Changeux 2011), drug-dissociation drop (LSD/ketamine), dream-cycle drop. EMA smoothing 0.9. Replaces Ornstein-Uhlenbeck random walk that pretended to be Kuramoto. |

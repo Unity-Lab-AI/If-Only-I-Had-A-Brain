@@ -1,6 +1,41 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔⛔ 2026-09-01 NOFALLBACK (LATEST — PICK UP HERE) — THE DICTIONARY ORACLE IS DELETED, AND IT WAS SPEAKING 99.1% OF HER WORDS
+> ## ⛔⛔⛔ 2026-09-02 NOFALLBACK.4 (LATEST — PICK UP HERE) — THE SWEEP FOUND THE MEANING SUBSTRATE RUNNING ON SPELLING
+>
+> ### Read in this order: this block → `docs/TODO.md` (`NOFALLBACK.5`, then `.6` / `.7` which this sweep filed) → the 2026-09-01 block below for the oracle removal this continues.
+>
+> ### STATE RIGHT NOW
+> ```
+> board                      37 open · 9 in-progress  (NOFALLBACK.4 closed, .6 and .7 filed)
+> sweep                      386 in-code `fallback` occurrences read (board said 177) · 0 questions filed
+> GloVe                      REQUIRED — a failed load now throws and boot STOPS
+> emission                   sem_to_motor only · no retrieval, no oracle, no third path
+> reps                       every authored dose = 4-5 presentations
+> walk                       frozen ON PURPOSE — the training is still being BUILT
+> donor pod i03ihi54kccu0l   EXITED on purpose. restart = start-pod, NEVER terminate.
+> git                        feature/nofallback-sweep -> develop -> main, BOTH remotes
+> ```
+>
+> ### ⛔⛔ THE FINDING THAT MATTERS — IT WAS NOT AN EMISSION PATH
+> `embeddings.js` caught **every** GloVe load failure — including the server path's own `throw` for a missing file — logged *"GloVe is an optional upgrade, not a requirement"* and carried on. With no table, **every word in the system** is encoded by fastText subword n-grams. Those carry **spelling**, not meaning: `cat`/`car` land near each other, `cat`/`kitten` do not. **A walk trained through that geometry deposits real weight against arbitrary positions and looks completely normal from outside.**
+>
+> ⭐ **AND IT SWALLOWED THE BOOT GUARD WRITTEN FOR IT THE SAME HOUR** — the fatal check added in `brain-server.js` could never have fired, because the rethrow it depended on was eaten one layer down. **A guard behind a swallow is decoration.** Both halves shipped together.
+>
+> ### ⚠ GEE ASKED MID-SWEEP: *"didnt we rip glove out???"* — NO, AND THE FILE WAS THE REASON TO ASK
+> One doc block said the table was assumed present in production, another said it was optional. Both were in `embeddings.js`. **GloVe is a static word→vector table — sensory encoding, the same class as a dictionary definition, not a model that speaks.** The text-AI purge removed everything that could PRODUCE TEXT (transformer backend, chat fetches, the describer) and later the retrieval lane and the oracle. `corpora/glove.6B.300d.txt` is 1.04 GB on disk and is streamed at boot. Every doc that called it optional is corrected in the same commit, including the deploy script that printed *"Continuing (fallback works)"*.
+>
+> ### WHAT ELSE WENT (full table with the reason for each: `FINALIZED.md` §2026-09-02)
+> A **forged `passedPhases` ledger entry** · two readiness probes that re-ran the contaminated path they exist to bypass · **three copies** of a second band geometry under comments calling the other the "single authority" · hand-written dream seeds consolidated as her own composition · a wall-clock sleep wearing a dream window's name · a single-def teach path Gee banned three lines above it · a spontaneous-image subject drawn at random directly under the guard forbidding canned subjects · character-hash text input at higher current than the real path.
+>
+> ### ⏳ WHAT IS LEFT ON THIS THREAD
+> - **`NOFALLBACK.5`** — the gate pass rate without the oracle has still never been measured. RE-PRICE before the press.
+> - **`NOFALLBACK.6`** (filed today) — the browser visitor brain. A PUBLIC-page change, so it lands on its own.
+> - **`NOFALLBACK.7`** (filed today) — chat's async/sync emission fork. An emission-path change with a measurement, not a cleanup.
+> - **THE FRESH WALK IS LAST. `REGRESSION.1` is last of all.**
+
+---
+
+> ## ⛔⛔⛔ 2026-09-01 NOFALLBACK — THE DICTIONARY ORACLE IS DELETED, AND IT WAS SPEAKING 99.1% OF HER WORDS
 >
 > ### Read in this order: this block → `docs/TODO.md` (`NOFALLBACK.4/.5`) → the blocks below for the board clean, the figures, the reps and the corpus.
 >
