@@ -3,8 +3,10 @@
 // via Object.assign at cluster.js entry-point bottom.
 //
 // Methods in this mixin:
-//   _dictionaryOracleEmit(intentSeed, opts)   — legacy dictionary-cosine
-//                                                emission fallback path
+//   (_dictionaryOracleEmit was here — DELETED 2026-09-01 under NO FALLBACKS.
+//    It emitted a dictionary word by cosine when the trained matrix produced
+//    nothing, and carried 99.1% of emissions in a captured run. Emission is
+//    sem→word_motor or it is silence.)
 //   generateSentence(intentSeed, opts)         — synchronous-API sentence
 //                                                generator (older path)
 //   emitWordDirect(opts)                       — single-word emission via
@@ -89,317 +91,22 @@ export const CLUSTER_EMIT_MIXIN = {
     return set.size;
   },
 
-  _dictionaryOracleEmit(intentSeed, opts = {}) {
-    if (opts.skipDictionaryOracle === true) return null;
-
-    // GATEPURE — ⛔ THE ORACLE IS CLOSED WHILE A GATE IS BEING ANSWERED.
-    //
-    // A gate exists to measure what SHE produced. If the dictionary can
-    // answer for her, the gate is partly measuring the dictionary, and the
-    // pass rate is inflated by exactly the amount the oracle was carrying.
-    //
-    // ⚠ THIS IS THE CHOKEPOINT, and it is here rather than at the 17 call
-    // sites for one reason: a flag on the cluster closes paths that do not
-    // exist yet. `skipDictionaryOracle` has been an opt-out since it was
-    // written and NO CALLER ANYWHERE EVER SET IT — an opt-out nobody opts
-    // into is not a safeguard, it is a comment. This refuses by default for
-    // the one lane where the oracle is not merely unhelpful but invalidating.
-    //
-    // ⚠ Deliberately NOT keyed on `_probeGateActive`: that is a cell-wide
-    // GPU-ownership flag which stays true through entire cells of TEACHING,
-    // and gating on it would silence the oracle during teaching too.
-    // `_gateEmissionActive` is scoped to a single probe emission and cleared
-    // unconditionally, including on the error paths.
-    //
-    // ⭐ EXPECT PASS RATES TO DROP, and read that as the truth arriving
-    // rather than a regression. `state.voice.matrixDrivenPct` and the
-    // `oracleHits`/`matrixHits` pair show exactly how much was being carried,
-    // so the size of the drop is attributable instead of mysterious.
-    if (this._gateEmissionActive === true) {
-      this._oracleRefusedInGate = (this._oracleRefusedInGate | 0) + 1;
-      return null;
-    }
-    const dictionary = opts.dictionary || this.dictionary;
-    if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
-    if (!intentSeed || intentSeed.length === 0) return null;
-
-    // Exclude-list filter — when the caller passes `opts.excludeWords`
-    // as a Set of lowercased words, those words are skipped during
-    // the cosine scan. Used by the K-STUDENT probe to prevent the
-    // oracle from echoing question-wrapper words ("read", "this",
-    // "word", "name", "letter", "blend", "sounds", "tell", "say")
-    // back as the answer. Without this filter, the sentence-embedding
-    // intent seed for a question like "blend these sounds: d-o-g"
-    // would lock onto "sounds" because that wrapper word dominates
-    // the GloVe average. The trained sem→motor matrix wanted "dog";
-    // the oracle was overruling it with the question's own vocabulary.
-    const excludeWords = opts.excludeWords instanceof Set
-      ? opts.excludeWords
-      : null;
-    // Persona-exclude filter — when true, dictionary entries marked
-    // `isPersona: true` (loaded via `loadPersona` from the persona
-    // corpus) are skipped during the cosine scan. Used by test probes
-    // (K-STUDENT, methodology) so persona-flavored vocabulary
-    // ("fuck", "cock", explicit terms) doesn't bleed into K-grade
-    // exam answers when the trained matrix is overloaded and the
-    // oracle is the primary answer path. Default false; live chat
-    // doesn't pass this so persona words stay available there.
-    const excludePersona = opts.excludePersona === true;
-    // Persona-boost flag — chat path (live user input or popup) sets
-    // boostPersona=true so persona-marked dictionary entries (Unity's
-    // actual voice corpus, loaded via loadPersona with isPersona=true)
-    // get an additive cosine boost. Operator caught iter6/iter7
-    // verbatim 2026-04-26: chat replied with family-cluster terms
-    // ("Aunt", "Stepmom", "Brother", "Mom") for greetings/identity
-    // questions because raw cosine + frequency dominated and persona
-    // corpus words got overwhelmed by Common-Crawl high-frequency
-    // family vocabulary. Adding boost here in the cluster oracle path
-    // (mirror of the language-cortex.js _scoreDictionaryCosine boost)
-    // closes the gap — the SAME persona-mark signal already exists on
-    // entries from the loadPersona corpus, just wasn't being read in
-    // this oracle scan.
-    const boostPersona = opts.boostPersona === true;
-    // iter11-Z fix — bump default 0.10 → 0.30 because chat-test
-    // produced "hi" → "Layered!" / "who are you?" → "Layered!" with
-    // boostPersona ON. The +0.10 boost wasn't winning over K-vocab
-    // cosine on greeting/identity inputs (where K-vocab has structural
-    // higher cosine on noun-heavy GloVe vs persona corpus that's
-    // first-person sentences). +0.30 forces persona corpus to dominate
-    // when the boost is requested, preserving K-vocab when boost is
-    // off (test probes still see clean K-grade answers).
-    const personaBoost = typeof opts.personaBoost === 'number' ? opts.personaBoost : 0.30;
-    // Restrict-to-vocab filter — when caller passes `opts.restrictToVocab`
-    // as a Set of lowercased words, the oracle ONLY considers entries
-    // whose word is in that set. Used by test probes (K-STUDENT,
-    // methodology) to constrain the answer pool to a curriculum-
-    // appropriate vocabulary (letters + letter names + K-grade
-    // content words) so the oracle can't answer a kindergarten
-    // question with a random rare word like "diningroom" or
-    // "anymore" by accidental cosine similarity. Live chat path
-    // doesn't pass this — full dictionary stays available there.
-    const restrictToVocab = opts.restrictToVocab instanceof Set
-      ? opts.restrictToVocab
-      : null;
-    // #13 corpus-bleed FIX B — the LIVE grade allow-set (setEmissionAllowedVocab:
-    // union pre-K→current grade, populated by the curriculum) now ALSO gates the
-    // dictionary oracle, not just emitWordDirect's argmax. Without it the oracle
-    // scanned the FULL dictionary on the live chat path (the "full dictionary
-    // stays available" comments above) so persona / dev / consciousness-corpus
-    // words bound by LATER-stage training could win an EARLY-grade emission — the
-    // corpus bleed. Now an out-of-grade word is skipped in BOTH oracle scans.
-    // NO MUTE RISK: if no grade-cleared word clears minScore the oracle returns
-    // null and the (also grade-gated) trained matrix drives emission — she still
-    // speaks, only her cleared vocabulary. Bypass with opts.skipGradeGate (test
-    // probes / methodology that intentionally scan the full dictionary).
-    const gradeAllow = (opts.skipGradeGate !== true && this._emissionAllowedVocab instanceof Set)
-      ? this._emissionAllowedVocab : null;
-
-    let intentNormSq = 0;
-    for (let i = 0; i < intentSeed.length; i++) intentNormSq += intentSeed[i] * intentSeed[i];
-    if (intentNormSq <= 0) {
-      this._matrixHits = (this._matrixHits || 0) + 1;
-      return null;
-    }
-
-    // iter13 T13.15 — Retrieval-augmented oracle with hippocampal
-    // schemas as a THIRD candidate pool (alongside persona-first +
-    // K-vocab full-dictionary scan). When chat path passes the
-    // resolved Tier 2 schemas via opts.contextSchemas (or via
-    // cluster._hippocampusContextSchemas set by processAndRespond
-    // T13.13 retrieval), the oracle compares the intent seed to each
-    // schema's concept_embedding. If the best-matching schema scores
-    // higher than persona AND K-vocab paths, return the schema's
-    // anchor word (first word of label, e.g. "halloween-favorite-
-    // holiday-schema" → "halloween"). This gives consolidation-
-    // bound knowledge a direct return path: "what is your favorite
-    // holiday?" → schema "halloween-anchor" wins → emits "halloween"
-    // even when matrix can't produce a strong sem→motor signal.
-    let schemaCandidate = null;
-    let schemaCandidateScore = -Infinity;
-    const contextSchemas = opts.contextSchemas
-      || this._hippocampusContextSchemas
-      || null;
-    if (Array.isArray(contextSchemas) && contextSchemas.length > 0) {
-      for (const ranked of contextSchemas) {
-        const schema = ranked && ranked.schema ? ranked.schema : ranked;
-        if (!schema || !schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
-        const ceLen = Math.min(intentSeed.length, schema.conceptEmbedding.length);
-        let dot = 0, normSchema = 0;
-        for (let i = 0; i < ceLen; i++) {
-          dot += intentSeed[i] * schema.conceptEmbedding[i];
-          normSchema += schema.conceptEmbedding[i] * schema.conceptEmbedding[i];
-        }
-        const denom = Math.sqrt(intentNormSq * normSchema);
-        if (denom <= 0) continue;
-        let score = dot / denom;
-        // Tier 3 schemas get a +0.05 boost — identity-bound concepts
-        // should win tiebreakers vs Tier 2 candidates of equal cosine.
-        if (schema.promotedToTier3) score += 0.05;
-        if (score > schemaCandidateScore) {
-          schemaCandidateScore = score;
-          // Extract anchor word from label: first dash-separated word.
-          // Falls back to "schema-id" first word if no dash.
-          const label = String(schema.label || '');
-          const anchor = label.split(/[-_\s]+/)[0] || label;
-          schemaCandidate = { anchor: anchor.toLowerCase(), label, schema };
-        }
-      }
-    }
-
-    // iter11-Z Phase B.2 — Persona-first oracle pass.
-    // When chat path requests boostPersona, scan ONLY persona-marked
-    // entries FIRST. Persona corpus is ~300 sentences worth of vocab
-    // vs ~50,000 K + Common-Crawl entries — without first-pass
-    // dominance, K-vocab + freqBoost still drowns persona on
-    // greeting/identity inputs because K-vocab basin is structurally
-    // larger. Two-pass approach: if persona returns a match above
-    // `personaFirstMinScore` (default 0.05 — generous since persona
-    // is sparse), short-circuit and return the persona word. Else
-    // fall through to the full-dictionary scan with boost still on
-    // so persona STILL gets +0.30 in the merged ranking.
-
-    // This closes operator's chat-test failure: "hi" → "Layered!" /
-    // "who are you?" → "Layered!" — Layered is sci-K vocab that
-    // happened to cosine-match the empty greeting intent better than
-    // any persona corpus word + boost combination. Persona-first
-    // forces persona to win the tiebreaker on identity/greeting
-    // inputs where persona has actual matching content.
-    if (boostPersona) {
-      const personaFirstMinScore = typeof opts.personaFirstMinScore === 'number' ? opts.personaFirstMinScore : 0.05;
-      let personaBestWord = '';
-      let personaBestScore = -Infinity;
-      for (const [word, entry] of dictionary._words) {
-        if (!entry || !entry.pattern) continue;
-        if (entry.isPersona !== true) continue;
-        // Single-letter dictionary entries (letters registered as words
-        // by older builds) are not speech — only "i" and "a" are real
-        // one-letter English words. Without this skip a stray letter
-        // entry can cosine-win and ship as the whole chat reply.
-        if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-        if (excludeWords && excludeWords.has(word)) continue;
-        if (restrictToVocab && !restrictToVocab.has(word)) continue;
-        if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates persona-first too
-        const pattern = entry.pattern;
-        let normSq = entry.normSquared;
-        if (normSq === undefined) {
-          normSq = 0;
-          for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
-          entry.normSquared = normSq;
-        }
-        if (normSq <= 0) continue;
-        const denom = Math.sqrt(intentNormSq * normSq);
-        if (denom <= 0) continue;
-        let dot = 0;
-        const n = Math.min(intentSeed.length, pattern.length);
-        for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
-        const score = dot / denom;
-        if (score > personaBestScore) { personaBestScore = score; personaBestWord = word; }
-      }
-      if (personaBestWord && personaBestScore > personaFirstMinScore) {
-        const maxLetters = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-        const cleanEmit = personaBestWord.replace(/[^a-z0-9 .,']/g, '').slice(0, maxLetters);
-        this._oracleHits = (this._oracleHits || 0) + 1;
-        return { cleanEmit, bestWord: personaBestWord, bestScore: personaBestScore + personaBoost };
-      }
-      // No persona match strong enough — fall through to full-dictionary
-      // scan below. Persona entries still get +personaBoost added to
-      // their cosine in the merged ranking, so they can still win the
-      // tiebreaker on the second pass against weaker K-vocab matches.
-    }
-
-    let bestWord = '';
-    let bestScore = -Infinity;
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) continue;
-      // Same single-letter skip as the persona-first pass — letters
-      // registered as dictionary words must never win an oracle reply.
-      if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-      if (excludeWords && excludeWords.has(word)) continue;
-      if (excludePersona && entry.isPersona === true) continue;
-      if (restrictToVocab && !restrictToVocab.has(word)) continue;
-      if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates the full-dict oracle scan (blocks later-stage corpus bleed)
-      const pattern = entry.pattern;
-      let normSq = entry.normSquared;
-      if (normSq === undefined) {
-        normSq = 0;
-        for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
-        entry.normSquared = normSq;
-      }
-      if (normSq <= 0) continue;
-      const denom = Math.sqrt(intentNormSq * normSq);
-      if (denom <= 0) continue;
-      let dot = 0;
-      const n = Math.min(intentSeed.length, pattern.length);
-      for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
-      let score = dot / denom;
-      if (boostPersona && entry.isPersona === true) score += personaBoost;
-      if (score > bestScore) { bestScore = score; bestWord = word; }
-    }
-
-    // Oracle confidence threshold.
-    //
-    // 114.19fg.Tier6 — bumped default 0.05 → 0.20. Prior 0.05 was too
-    // permissive for live chat: any positive cosine ≥ 0.05 returned
-    // a dictionary word, so oracle won 99.1% of emissions in the
-    // captured 2026-05-09 run (oracleHits=425, matrixHits=4 across
-    // ELA-K life-K life). That violated the equational-brain
-    // architectural rule (oracle is sensory-I/O, not cognition);
-    // Unity was functioning as a dictionary lookup not a brain. New
-    // 0.20 default means oracle only wins on genuine semantic match
-    // (~0.20 corresponds to "obviously related word" in 300d GloVe).
-    // Below 0.20, oracle stays silent and the trained matrix path
-    // drives emission via tick-based motor argmax — gives the brain's
-    // own learned weights priority over distributional-semantic
-    // lookup. Test probes still override to 0.5 for stricter matches.
-    // intentSilenceBranch callers (chat path with TRULY silent matrix,
-    // last-resort emission) override down to 0.05 to keep some
-    // response when matrix is fully zero.
-    const minScore = typeof opts.minScore === 'number' ? opts.minScore : 0.20;
-
-    // iter13 T13.15 — Schema-vs-dictionary tiebreaker. After both
-    // persona-first AND full-dict scans complete, compare the best
-    // schema candidate (from contextSchemas pre-retrieved by chat
-    // path) against the dictionary winner. If schema scores higher
-    // AND clears minScore, return the schema's anchor word — gives
-    // consolidated memory a direct path to the chat output that
-    // bypasses K-vocab dominance for known-concept questions.
-    if (schemaCandidate && schemaCandidateScore > bestScore && schemaCandidateScore > minScore) {
-      const maxLetters = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-      const cleanEmit = schemaCandidate.anchor.replace(/[^a-z0-9 .,']/g, '').slice(0, maxLetters);
-      if (cleanEmit) {
-        this._oracleHits = (this._oracleHits || 0) + 1;
-        // Increment retrieval_count on the chosen schema (counter for
-        // Tier 3 promotion gate). Wrapped in try in case schema is
-        // missing the registerRetrieval method on a stale instance.
-        try {
-          if (schemaCandidate.schema && typeof schemaCandidate.schema.registerRetrieval === 'function') {
-            schemaCandidate.schema.registerRetrieval();
-          }
-        } catch { /* counter bump is best-effort */ }
-        return {
-          cleanEmit,
-          bestWord: schemaCandidate.anchor,
-          bestScore: schemaCandidateScore,
-          source: 'hippocampal-schema',
-          schemaLabel: schemaCandidate.label,
-        };
-      }
-    }
-
-    if (!bestWord || bestScore <= minScore) {
-      this._matrixHits = (this._matrixHits || 0) + 1;
-      return null;
-    }
-
-    const maxLetters = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-    // dictionary._words keys are lowercased at registration
-    // (`dictionary.js:128` `clean = word.toLowerCase()...`), so the
-    // toLowerCase() that used to live here was defending against an
-    // invariant that already holds upstream — Problems.md Nitpick.
-    const cleanEmit = bestWord.replace(/[^a-z0-9 .,']/g, '').slice(0, maxLetters);
-    this._oracleHits = (this._oracleHits || 0) + 1;
-    return { cleanEmit, bestWord, bestScore };
-  },
+  // DELETED 2026-09-01 - NO FALLBACKS. _dictionaryOracleEmit was here.
+  //
+  // 311 lines removed. It scanned every dictionary entry for the highest
+  // cosine to the intent seed and returned that entry SPELLING, bypassing
+  // the motor loop entirely. Two call sites fed it: the gate/probe emission
+  // path and emitWordDirect. Both are gone; see the notes at those sites.
+  //
+  // It carried 99.1 percent of emissions in a captured run - oracleHits=425
+  // against matrixHits=4 - and this project own public page labelled it
+  // Path B, dictionary oracle, FALLBACK.
+  //
+  // DO NOT RE-ADD IT IN ANY FORM. If emission comes back empty the defect is
+  // in the TRAINING - deposit, dose, corpus volume, basin separability - and
+  // this lane whole function was to make that invisible by answering over
+  // the top of it. The gates are not supposed to fail; a failing gate now
+  // names a knob to turn instead of being papered over.
 
   generateSentence(intentSeed = null, opts = {}) {
     // GATESTEP (2026-08-18) - bio-scale refusal: raw synchronous cluster steps
@@ -2183,35 +1890,46 @@ export const CLUSTER_EMIT_MIXIN = {
       return await this._emitDirectPropagate(intentSeed, opts);
     }
 
-    // ── DICTIONARY ORACLE PATH (mirrors _emitDirectPropagate) ─────
-    // Every other emission probe (WRITE, RESP, TWO-WORD, FREE-RESPONSE,
-    // K-STUDENT battery) comes through here, not through the direct-
-    // propagate path. Without the oracle wired in on this path,
-    // those probes fight the OVERLOADED sem_to_motor basin and emit
-    // garbage letters. Mirror the direct-propagate oracle: if we have
-    // a dictionary + intent seed, find the dictionary entry with
-    // highest cosine to the intent and return its spelling directly.
-    // Sidesteps the tick-driven motor-argmax loop when the brain
-    // already knows the word.
-
-    // Opt-out via `opts.skipDictionaryOracle === true`. Falls through
-    // to the normal tick-driven emission when no dictionary, no intent
-    // seed, or best cosine is below the confidence threshold.
-    const oracleHit = this._dictionaryOracleEmit(intentSeed, opts);
-    if (oracleHit) {
-      this._lastEmissionDiag = {
-        ticksRun: oracleHit.cleanEmit.length,
-        maxMotorBucket: oracleHit.bestScore,
-        argmaxFlickers: 0,
-        committedLetters: oracleHit.cleanEmit.length,
-        gpuReadPath: false,
-        mode: 'dictionary-oracle',
-        bestWord: oracleHit.bestWord,
-        bestScore: Number(oracleHit.bestScore.toFixed(3)),
-      };
-      return oracleHit.cleanEmit;
-    }
-
+    // ⛔⛔⛔ THE DICTIONARY ORACLE PATH IS DELETED — 2026-09-01, NO FALLBACKS.
+    //
+    // What stood here scanned the dictionary for the entry with the highest
+    // cosine to the intent seed and RETURNED ITS SPELLING, bypassing the
+    // tick-driven motor loop entirely. Its own comment admitted the shape:
+    // "without the oracle wired in on this path, those probes fight the
+    // OVERLOADED sem_to_motor basin and emit garbage letters."
+    //
+    // ⛔ That is capability-degradation in its textbook form — it fired
+    // PRECISELY when her trained matrix could not produce a word, and emitted
+    // one she had not generated. The instrumentation had been admitting the
+    // scale for months: a captured run recorded oracleHits=425 against
+    // matrixHits=4 — 99.1% of emissions were the dictionary, not her.
+    //
+    // ⚠ THE PROBES THIS "PROTECTED" WERE THE REASON TO REMOVE IT, NOT TO KEEP
+    // IT. Every gate probe and exam battery came through this path, so their
+    // pass rates were inflated by exactly the amount the oracle was carrying —
+    // the board's own words. A gate that passes on a dictionary lookup is not
+    // measuring the brain.
+    //
+    // ⭐⭐ AND THE GATES ARE NOT SUPPOSED TO FAIL. This is the part that matters
+    // and it is easy to get backwards.
+    //
+    // Removing the oracle does not mean accepting a mute brain — it means the
+    // emission path is now the ONLY thing being measured, so a gate that fails
+    // is a BUG REPORT ABOUT THE TEACHING, not an acceptable outcome. Gee:
+    // "the gates shouldnt fail tho if we do it all correctly inventing this new
+    // brain as we go."
+    //
+    // ⛔ So a failing probe from here on is read as: sem→word_motor is not
+    // depositing enough margin for an argmax to resolve, and the fix is in the
+    // TRAINING — the learning rate, the rep dose, the corpus volume, the
+    // separability of the basins — not in a lane that answers for her. This
+    // brain has thousands of adjustable constants and the whole point of them
+    // is that a single well-shaped pass can carry what a hundred sloppy ones
+    // could not.
+    //
+    // ⚠ The oracle was hiding exactly this signal. With it gone, every gate
+    // number finally describes her matrix, which is the only way to know which
+    // knob to turn.
     const injectStrength = opts.injectStrength ?? 0.6;
     // Accept both `maxTicks` and `maxEmissionTicks` — earlier call sites
     // used `maxEmissionTicks` which silently fell through to the 2000
@@ -2466,40 +2184,24 @@ export const CLUSTER_EMIT_MIXIN = {
     const semToMotor = this.crossProjections?.sem_to_motor;
     const letterToMotor = this.crossProjections?.letter_to_motor;
 
-    // ── DICTIONARY ORACLE PATH ──────────────────────────────────────
-    // Before falling through to matrix argmax (which collapses into
-    // shared attractors at biological scale), check if the brain has a
-    // dictionary and an intent seed. If so, find the dictionary word
-    // whose learned GloVe pattern has highest cosine similarity to the
-    // intent seed AND emit its full spelling directly. This uses the
-    // dictionary the way it's documented — a semantic oracle that
-    // remembers every word it's learned, with the correct spelling
-    // attached. Sidesteps sem_to_motor basin collapse for gate probes.
-
-    // Opt-out via `opts.skipDictionaryOracle === true`. Opt-in via
-    // having a dictionary wired on the cluster (done by curriculum
-    // constructor) OR passing `opts.dictionary`. Fallthrough to matrix
-    // argmax when no dictionary or intent seed is available (chat path
-    // via languageCortex.generate still uses dictionary separately).
-    // Dictionary oracle — single source helper at `_dictionaryOracleEmit`.
-    // The closure-scoped `maxLetters` is forwarded as `opts.maxLetters`
-    // so the helper picks up the same cap this caller resolved.
-    const oracleHit = this._dictionaryOracleEmit(intentSeed, { ...opts, maxLetters });
-    if (oracleHit) {
-      this._motorEmissionTicks = oracleHit.cleanEmit.length;
-      this._lastEmissionDiag = {
-        ticksRun: oracleHit.cleanEmit.length,
-        maxMotorBucket: oracleHit.bestScore,
-        argmaxFlickers: 0,
-        committedLetters: oracleHit.cleanEmit.length,
-        gpuReadPath: false,
-        mode: 'dictionary-oracle',
-        bestWord: oracleHit.bestWord,
-        bestScore: Number(oracleHit.bestScore.toFixed(3)),
-      };
-      return oracleHit.cleanEmit;
-    }
-
+    // ⛔⛔⛔ THE SECOND DICTIONARY ORACLE CALL IS DELETED — 2026-09-01.
+    //
+    // Same lane, same law. What stood here said it plainly: "before falling
+    // through to matrix argmax (which collapses into shared attractors at
+    // biological scale), find the dictionary word whose learned GloVe pattern
+    // has highest cosine to the intent seed AND emit its full spelling
+    // directly … sidesteps sem_to_motor basin collapse for gate probes."
+    //
+    // ⭐ READ THAT AGAIN: it existed to SIDESTEP A COLLAPSED BASIN. The basin
+    // collapse is the actual defect, and this lane made it invisible by
+    // answering over the top of it — for years, on the exact path every gate
+    // probe travels. **A workaround that hides the fault it works around stops
+    // anyone ever fixing the fault.**
+    //
+    // ⚠ The honest consequence is a diagnostic, not a regression: emissions
+    // now come from `sem_to_motor` or not at all, so if probes come back empty
+    // the fix is in the training — the deposit, the dose, the corpus volume,
+    // the separability of the basins — and the numbers finally point at it.
     // Helper: bucket-reduce a motor-sized output into invSize buckets
     // then argmax. Matches the convention `encodeLetter` + the gate
     // TALK probe use.

@@ -1985,134 +1985,19 @@ export class LanguageCortex {
    * (_scoreDictionaryCosineAsync) can share exactly one body and only
    * diverge on the yield-point check.
    */
-  // ⛔ ORPHANED 2026-09-01 — ZERO CALLERS. This and `_scoreDictionaryCosineAsync`
-  // below existed solely to rank dictionary entries for the retrieval lane in
-  // `generate()`, and that lane is deleted for every brain in every state.
-  // ⚠ DO NOT re-wire either as an emission path. ⛔ And do not treat them as the
-  // reference implementation of persona-boosted cosine ranking: a LIVE mirror of
-  // that logic runs in `js/brain/cluster/emit.js` (the Path B dictionary oracle),
-  // so keeping these is duplicated logic that will drift. They are flagged here
-  // rather than deleted in the same pass that removed their caller; removal is
-  // on the board.
-  _scoreDictionaryCosine(dictionary, target, recentWords, opts = {}) {
-    const boostPersona = opts.boostPersona === true;
-    // Frequency boost: was 0.02 — too high. Common baseline-corpus
-    // words like "mom"/"dad"/"sister" have 30+ frequency in K vocab,
-    // so log(31) × 0.02 = 0.069 boost dominated cosine differences
-    // of 0.01-0.05 between actual semantic neighbors. Result: chat
-    // path produced family terms for every greeting/identity input
-    // (operator caught iter6 post-FORCE-ADVANCE: "hi" → "Aunt", "who
-    // are you" → "Sister"). 0.005 puts boost in 0.01-0.02 range
-    // where it's a tiebreaker rather than a dominator.
-    const freqBoost = typeof opts.freqBoost === 'number' ? opts.freqBoost : 0.005;
-    // Persona-corpus boost: when chat path passes boostPersona=true,
-    // persona-marked entries (Unity's actual voice corpus) get an
-    // additive boost so Unity speaks in HER words instead of
-    // generic Common-Crawl vocabulary. K-STUDENT path keeps this
-    // off (or excludePersona=true). iter11-Z fix — default bumped
-    // 0.10 → 0.30 to match cluster._dictionaryOracleEmit. Chat-test
-    // produced "hi" → "Layered!" with +0.10 boost ON because K-vocab
-    // cosine on noun-heavy GloVe still won. +0.30 ensures persona
-    // corpus dominates when boost is requested.
-    const personaBoost = typeof opts.personaBoost === 'number' ? opts.personaBoost : 0.30;
-    const scored = [];
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) continue;
-      // Single-letter entries (letters registered as dictionary words by
-      // older builds) never rank as speech — only i/a are real words.
-      if (word.length === 1 && word !== 'i' && word !== 'a') continue;
-      if (recentWords && recentWords.includes(word)) continue;
-      let dot = 0, nt = 0, nw = 0;
-      const len = Math.min(target.length, entry.pattern.length);
-      for (let i = 0; i < len; i++) {
-        dot += target[i] * entry.pattern[i];
-        nt += target[i] * target[i];
-        nw += entry.pattern[i] * entry.pattern[i];
-      }
-      const denom = Math.sqrt(nt) * Math.sqrt(nw);
-      const cos = denom > 0 ? dot / denom : 0;
-      let score = cos + Math.log(1 + (entry.frequency || 1)) * freqBoost;
-      if (boostPersona && entry.isPersona) score += personaBoost;
-      scored.push({ word, score });
-    }
-    scored.sort((a, b) => b.score - a.score);
-    return scored;
-  }
-
-  /**
-   * T14.26 — Async version of the dictionary-cosine scorer that yields
-   * to the host event loop every YIELD_EVERY entries. Required fix for
-   * the 3D brain visualization freezing when the user sends a message
-   * or Unity speaks:
-   *
-   * Symptom: when the user sends a message to Unity or she speaks,
-   * the 3D brain visualization freezes until generate() returns.
-   *
-   * Root cause: server's brain-server.js processAndRespond calls
-   * languageCortex.generate() synchronously. At 3700+ dictionary entries
-   * × 300d cosine per call that burns 100-300ms of pure Node event-loop
-   * time. While it runs, setInterval STATE_BROADCAST can't fire, so no
-   * `state` message hits the WebSocket, so the client's RemoteBrain
-   * never calls _applyState, so brain.state.spikes stays frozen at the
-   * snapshot captured before processAndRespond began, so the 3D viz
-   * RAF loop (which re-randomizes spike flickers from visualRate each
-   * frame) has no new visualRate values → the whole 3D brain
-   * visualization freezes until generate() returns.
-   *
-   * Fix: every YIELD_EVERY (= 500) dictionary entries we await a
-   * setImmediate (Node) / setTimeout(0) (browser) which releases
-   * control back to the host event loop. In Node that lets the
-   * STATE_BROADCAST setInterval fire AND compute_batch dispatch happen
-   * during the scoring work, so the 3D viz keeps animating for the
-   * full duration of Unity's response generation. In the browser it
-   * does the same for RAF callbacks.
-   *
-   * Yield frequency chosen to keep per-yield overhead <1% (a
-   * setImmediate round-trip is ~0.1ms, YIELD_EVERY=500 gives one yield
-   * per ~2-4ms of scoring work, which is ~3-5% overhead and still
-   * leaves the broadcast ample opportunity to fire every 100ms).
-   */
-  async _scoreDictionaryCosineAsync(dictionary, target, recentWords, opts = {}) {
-    const YIELD_EVERY = 500;
-    const boostPersona = opts.boostPersona === true;
-    const freqBoost = typeof opts.freqBoost === 'number' ? opts.freqBoost : 0.005;
-    // iter11-Z fix — async path personaBoost default bumped 0.10 → 0.30 (mirrors sync path + cluster.js).
-    const personaBoost = typeof opts.personaBoost === 'number' ? opts.personaBoost : 0.30;
-    const scored = [];
-    let i = 0;
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) { i++; continue; }
-      // Same single-letter skip as the sync scorer — letters registered
-      // as dictionary words never rank as speech (only i/a are words).
-      if (word.length === 1 && word !== 'i' && word !== 'a') { i++; continue; }
-      if (recentWords && recentWords.includes(word)) { i++; continue; }
-      let dot = 0, nt = 0, nw = 0;
-      const len = Math.min(target.length, entry.pattern.length);
-      for (let j = 0; j < len; j++) {
-        dot += target[j] * entry.pattern[j];
-        nt += target[j] * target[j];
-        nw += entry.pattern[j] * entry.pattern[j];
-      }
-      const denom = Math.sqrt(nt) * Math.sqrt(nw);
-      const cos = denom > 0 ? dot / denom : 0;
-      let score = cos + Math.log(1 + (entry.frequency || 1)) * freqBoost;
-      if (boostPersona && entry.isPersona) score += personaBoost;
-      scored.push({ word, score });
-      i++;
-      if ((i & (YIELD_EVERY - 1)) === 0) {
-        // Node (setImmediate) yields cleanly to I/O + setInterval callbacks.
-        // Browser (setTimeout 0) yields to RAF + microtask queue.
-        // Guard in case of missing globals (shouldn't happen in either host).
-        if (typeof setImmediate === 'function') {
-          await new Promise((r) => setImmediate(r));
-        } else if (typeof setTimeout === 'function') {
-          await new Promise((r) => setTimeout(r, 0));
-        }
-      }
-    }
-    scored.sort((a, b) => b.score - a.score);
-    return scored;
-  }
+  // DELETED 2026-09-01 - NO FALLBACKS. _scoreDictionaryCosine and
+  // _scoreDictionaryCosineAsync were here, 130 lines between them.
+  //
+  // They existed solely to rank dictionary entries for the retrieval lane in
+  // generate, which was deleted for every brain in every state. They were
+  // kept one more day only because a LIVE mirror of the same persona-boosted
+  // cosine ranking still ran in js/brain/cluster/emit.js as the Path B
+  // dictionary oracle - so deleting these alone would have left the real one
+  // standing.
+  //
+  // That oracle is now deleted too, so nothing anywhere ranks dictionary
+  // entries to answer for her. DO NOT RE-ADD EITHER. Emission is her trained
+  // sem_to_motor matrix or it is silence.
 
   /**
    * T14.26 — Async-yielding version of generate(). Does the exact same
