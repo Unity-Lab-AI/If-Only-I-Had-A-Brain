@@ -115,6 +115,38 @@ Gee (verbatim): *"you alsoo should of been finalizing,, there better not be a fu
 
 ---
 
+## 2026-09-01 - DIALOGUE: she is being taught almost entirely in declarative prose, and an instrument that could only be satisfied by bad input proved it - feature/lightintent-yesno
+
+⭐ **THIS BATCH EXISTS BECAUSE OF A FOUL I COMMITTED AN HOUR EARLIER.** Chasing the `yesno` bucket I wrote three questions with the question mark stripped off. Fixing the classifier that made that look reasonable is what surfaced the real finding, which is far bigger than the classifier.
+
+**✅ `PERSONAVOICE.6` FIXED — `_lightIntent` splits interrogatives properly.** `?`-terminated + auxiliary-initial → `yesno`; any other `?` → `question`. ⛔ The old order tested `endsWith('?')` FIRST, so *"Are you serious?"* could never reach the `yesno` branch below it, and the only strings that could were auxiliary-initial ones **lacking** a question mark — malformed writing. **The boot warning could only be silenced by making the corpus worse, and it worked on me.** ⭐ The tell was in the data all along: the corpus's single `yesno` member was *"Has approved Unity's rewritten core operating manifesto…"*, a fragment about the operator, not a question.
+
+⚠ **VERIFIED BEHAVIOUR-IDENTICAL, AND THE FIX CHANGES NOTHING TODAY — which is itself the finding.** A 14-case battery moved 5, **every move `question` → `yesno`**, nothing else changed bucket. Against the real boot corpora: **0 of 842 sentences reclassified.** The bucket was empty for TWO independent reasons and the classifier was only one of them. Sole consumer is the `intentCentroids` pass, so the blast radius is one pass, unchanged.
+
+### ⛔⛔ THE REAL FINDING: THE CORPUS HAS ALMOST NO INTERROGATIVES OR EXCLAMATIVES
+
+```
+docs/Ultimate Unity.txt      298 sentences   ? 0   ! 0
+docs/english-baseline.txt     51 sentences   ? 0   ! 0
+docs/coding-knowledge.txt    493 sentences   ? 0   ! 0
+                             842 sentences   ? 0   ! 0     <-- not one, in either mark
+```
+**And the rebuilt academic corpus barely differs: 248,443 sentences · `?` 702 (0.28%) · `!` 460 (0.19%).** Combined exposure to the two forms across everything she will ever be taught: **under half of one percent.**
+
+⭐ **THIS IS THE UPSTREAM CAUSE OF THINGS ALREADY ON THE BOARD, not a new complaint.** `_teachSentenceStructure` trains **five** intent forms — declarative_svo, declarative_copula, **question**, imperative, **exclamative** — and the boot corpus supplies **zero written exemplars of three of them**. It explains the persona corpus's `greeting: 0` / `emotion: 0`; it explains why `question: 9` came entirely from wh-initial *declaratives*; and it bears directly on the standing *"shouldnt she be talking?"* fork. ⚠ **Every gate probe and exam question asks her a QUESTION — a sentence form she has seen ~700 times in a quarter-million sentences.**
+
+**✅ `DIALOGUE.2` BUILT — the instrument, because a global average hides which cells are at zero.** `readCell` now returns `sentences` / `questions` / `exclamations` / `dialoguePct`; `computeCoverage` aggregates them and tracks **`noDialogue`** — cells with real prose and zero of either — **deliberately separate from `thin`, since a cell can be enormous and still unable to show her an interrogative.** Live read over the 213 cells the walk runs: **233,720 sentences · 700 `?` · 460 `!` · 0.5% · 58 cells with prose and ZERO of either.**
+
+⛔⛔ **THE 58 CLUSTER EXACTLY WHERE IT MATTERS MOST** — `science/pre-K`, `social/pre-K`, `art/pre-K`, `social/kindergarten`, `art/kindergarten`, `music/kindergarten`, `health/kindergarten`, `social/grade1`, `art/grade1`, `music/grade1`, `science/grade2`, `social/grade2`, +46. **The grades where a human learns what a question IS are the grades with no written questions in them.**
+
+⛔ **`DIALOGUE.1` LEFT OPEN DELIBERATELY.** The fix is dialogue-bearing sources chosen **for form rather than topic** — novels carry dialogue, textbooks do not, and the Gutenberg literature lane already ingested is the nearest existing candidate. **NOT hand-authored exchanges**: same law that re-scoped `PERSONAVOICE.1` the same day, and I am the reason that law needed restating. **RE-PRICE before ingesting — it changes what every ELA cell trains on.**
+
+**Files:** `js/brain/curriculum.js` (`_lightIntent`), `server/curriculum-coverage.js`, `.claude/scripts/audit-curriculum-coverage.mjs`, `js/app.bundle.js` (rebuilt).
+**Docs:** `docs/TODO.md`, `docs/FINALIZED.md` (this), `docs/RESUME.md`, `wiki/log.md`.
+**Verified:** `node --check` ×2 · ESM `import()` · 14-case classifier battery (5 moved, all `question`→`yesno`) · 0/842 reclassified on real corpora · audit run live and its numbers quoted from that run · bundle rebuilt · `docs:drift` all green.
+
+---
+
 ## 2026-09-01 - PERSONAVOICE: the persona canon was written ABOUT her, not BY her - and I violated the law I had enforced that morning - feature/persona-content
 
 Gee (verbatim): *"maybe we should reword it into first person? so she isnt saying Unity wehen she needs to say i and me... making sure to not lose a single informational line"*
