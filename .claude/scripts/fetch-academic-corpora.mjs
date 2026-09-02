@@ -157,17 +157,37 @@ const TOPICS = {
     // ⛔ pre-K WAS EMPTY. A 4-year-old's social world is the people in the
     // house, the street outside it, and the first rules about other children.
     'pre-K': ['Family', 'Mother', 'Father', 'Child', 'Friendship', 'Home', 'Neighbourhood', 'Toy', 'Game', 'Birthday', 'Sharing', 'Emotion'],
-    kindergarten: ['Family', 'Community', 'School', 'Friendship', 'Social norm'],
+    // ⛔ THE THINNEST CELL IN THE CORPUS HAD THE SHORTEST LIST: 5 topics against a
+    // 7,300-word band floor, and 939 words on disk. See the note on `ela` above
+    // for why these additions are unverified and why that is bounded.
+    kindergarten: ['Family', 'Community', 'School', 'Friendship', 'Social norm',
+      'Home', 'Neighbourhood', 'Teacher', 'Police officer', 'Firefighter',
+      'Physician', 'Nurse', 'Farmer', 'Holiday', 'Birthday', 'Calendar',
+      'Flag', 'Map'],
     // Grade 1 — neighborhood + belonging
-    grade1: ['Neighborhood', 'Community', 'Map', 'Holiday', 'Family'],
+    grade1: ['Neighborhood', 'Community', 'Map', 'Holiday', 'Family',
+      'School', 'Law', 'Mayor', 'City', 'Town', 'Farm', 'Retail', 'Money',
+      'Transport', 'Employment', 'Flag of the United States', 'Independence Day (United States)',
+      'Thanksgiving'],
     // Grade 2 — community, maps, the wider world
-    grade2: ['Community', 'Map', 'Continent', 'Country', 'Citizen', 'Transport'],
+    grade2: ['Community', 'Map', 'Continent', 'Country', 'Citizen', 'Transport',
+      'Ocean', 'Mountain', 'River', 'Desert', 'Globe', 'Compass', 'Culture',
+      'Tradition', 'Language', 'City', 'Village', 'Neighbourhood'],
     // Grade 3 — local government + geography
-    grade3: ['Community', 'Geography', 'Map', 'Government', 'Native Americans in the United States', 'Continent'],
+    grade3: ['Community', 'Geography', 'Map', 'Government', 'Native Americans in the United States', 'Continent',
+      'Climate', 'Natural resource', 'Agriculture', 'Trade', 'Local government',
+      'Election', 'Immigration', 'Landform', 'Latitude', 'Longitude', 'Economy', 'Culture'],
     // Grade 4 — US states + regions + exploration
-    grade4: ['United States', 'State (polity)', 'Geography', 'Region', 'Exploration', 'Native Americans in the United States'],
+    grade4: ['United States', 'State (polity)', 'Geography', 'Region', 'Exploration', 'Native Americans in the United States',
+      'Great Plains', 'Appalachian Mountains', 'Mississippi River', 'Rocky Mountains',
+      'Great Lakes', 'Westward expansion', 'Louisiana Purchase', 'Oregon Trail',
+      'Capital city', 'Natural resource', 'Climate', 'Industry'],
     // Grade 5 — early US history (bridge to G6 ancient civ)
-    grade5: ['United States', 'American Revolution', 'Thirteen Colonies', 'Christopher Columbus', 'Exploration', 'Colonialism'],
+    grade5: ['United States', 'American Revolution', 'Thirteen Colonies', 'Christopher Columbus', 'Exploration', 'Colonialism',
+      'Declaration of Independence', 'United States Constitution', 'George Washington',
+      'Benjamin Franklin', 'Thomas Jefferson', 'Boston Tea Party', 'Slavery in the United States',
+      'Pilgrims (Plymouth Colony)', 'Jamestown, Virginia', 'Bill of Rights',
+      'American Civil War', 'Abraham Lincoln'],
     // Grade 6 — Ancient Civilizations / World Geography
     grade6: ['Ancient Egypt', 'Ancient Greece', 'Ancient Rome', 'Mesopotamia', 'Geography', 'Continent', 'Civilization', 'River', 'Ancient China', 'Ancient India', 'Maya civilization', 'Inca Empire', 'Aztecs', 'Pharaoh', 'Pyramid', 'Empire'],
     // Grade 7 — Medieval to Early Modern World History
@@ -254,17 +274,45 @@ const TOPICS = {
     // A 4-year-old's language is names, sounds, songs and being read to.
     'pre-K': ['Alphabet', 'Letter (alphabet)', 'Word', 'Name', 'Sound', 'Song', 'Nursery rhyme', 'Story', 'Book', 'Picture book', 'Fairy tale', 'Speech'],
     // Kindergarten — letters, sounds, first stories
-    kindergarten: ['Alphabet', 'Letter (alphabet)', 'Word', 'Rhyme', 'Story', 'Vowel'],
+    // ⛔⛔ THE ELEMENTARY LISTS WERE THE BINDING CONSTRAINT, NOT THE SENTENCE CAP.
+    // Removing the per-source cap multiplied what each topic yields; it could not
+    // add topics. Measured across the 173 prose cells the walk owes: **min 5,
+    // median 8, max 20 topics, 1,690 total** — and the SMALLEST lists sat on the
+    // THINNEST cells, so the two shortages compounded exactly where a real year
+    // is hardest to fill. `social/kindergarten` held 5 topics against a 7,300-word
+    // band floor and 939 words on disk.
+    //
+    // ⚠ These additions are UNVERIFIED against the live API and that is a
+    // deliberate, bounded risk rather than an oversight: both wiki ingests are
+    // running and returning 429, so a title check right now could not tell "no
+    // such article" from "throttled" — the exact confusion this file's backoff
+    // ladder exists to prevent. **A wrong title fails LOUDLY**, as
+    // `no-such-page` in `SKIP_REASONS` with the topic named, so it is visible on
+    // the next run rather than silent.
+    kindergarten: ['Alphabet', 'Letter (alphabet)', 'Word', 'Rhyme', 'Story', 'Vowel',
+      'Consonant', 'Syllable', 'Book', 'Reading', 'Writing', 'Nursery rhyme',
+      'Fairy tale', 'Poem', 'Song', 'Name', 'Picture book', 'Speech'],
     // Grade 1 — words to sentences
-    grade1: ['Sentence (linguistics)', 'Noun', 'Verb', 'Story', 'Vowel', 'Consonant'],
+    grade1: ['Sentence (linguistics)', 'Noun', 'Verb', 'Story', 'Vowel', 'Consonant',
+      'Word', 'Adjective', 'Punctuation', 'Question', 'Reading', 'Writing',
+      'Alphabet', 'Syllable', 'Rhyme', 'Book', 'Poetry', 'Spelling'],
     // Grade 2 — parts of speech + paragraphs
-    grade2: ['Sentence (linguistics)', 'Noun', 'Verb', 'Adjective', 'Paragraph', 'Punctuation'],
+    grade2: ['Sentence (linguistics)', 'Noun', 'Verb', 'Adjective', 'Paragraph', 'Punctuation',
+      'Pronoun', 'Plural', 'Synonym', 'Opposite (semantics)', 'Dictionary', 'Reading comprehension',
+      'Fiction', 'Nonfiction', 'Fable', 'Poetry', 'Capitalization', 'Spelling'],
     // Grade 3 — grammar + fiction/nonfiction
-    grade3: ['Paragraph', 'Grammar', 'Noun', 'Verb', 'Adjective', 'Adverb', 'Fiction', 'Nonfiction'],
+    grade3: ['Paragraph', 'Grammar', 'Noun', 'Verb', 'Adjective', 'Adverb', 'Fiction', 'Nonfiction',
+      'Preposition and postposition', 'Conjunction (grammar)', 'Simile', 'Metaphor',
+      'Prefix', 'Suffix', 'Biography', 'Folklore', 'Poetry', 'Dictionary'],
     // Grade 4 — composition + figurative language
-    grade4: ['Essay', 'Grammar', 'Metaphor', 'Simile', 'Paragraph', 'Fiction', 'Poetry'],
+    grade4: ['Essay', 'Grammar', 'Metaphor', 'Simile', 'Paragraph', 'Fiction', 'Poetry',
+      'Narrative', 'Plot (narrative)', 'Character (arts)', 'Setting (narrative)',
+      'Theme (narrative)', 'Idiom', 'Homophone', 'Persuasion', 'Bibliography',
+      'Adverb', 'Punctuation'],
     // Grade 5 — theme + narrative craft (bridge to G6+ lit)
-    grade5: ['Essay', 'Theme (narrative)', 'Metaphor', 'Narrative', 'Poetry', 'Grammar', 'Figure of speech'],
+    grade5: ['Essay', 'Theme (narrative)', 'Metaphor', 'Narrative', 'Poetry', 'Grammar', 'Figure of speech',
+      'Narration', 'Genre', 'Novel', 'Short story', 'Drama', 'Autobiography',
+      'Alliteration', 'Personification', 'Hyperbole', 'Symbolism', 'Simile'],
     // Grade 9 — English I (intro lit + craft)
     // CORPUSGAP (2026-08-31) — G6-G8 is "Middle ELA" in the scope-sequence and
     // the map jumped G5 -> G9, so the three middle-school years trained on no
