@@ -52,13 +52,25 @@ const OUT = path.join(ROOT, 'corpora', 'academic');
 // corpus to grow as words^0.796 (model fit within 0.1% across a 15x subsample
 // sweep). So 100x the content costs ~39x on the expensive lane, not 100x, and
 // the dedup ratio IMPROVES as the corpus grows (73.8% -> 42.6% measured).
+// ⛔⛔⛔ THE PER-SOURCE CAP IS GONE — 2026-09-02, ON GEE'S INSTRUCTION.
+//
+// Gee: *"all the corpus needs to be complete!!!!!! not the same fucking horse
+// shit you have been doing to me for a year"*, after catching every book in a
+// new ingest yielding an identical 1,200 sentences — the signature of a cap, not
+// of the sources.
+//
+// The band ladder below (60 / 120 / 240 / 400 / 600 / 800) was a smaller version
+// of `MAX_SENT_PER_TOPIC = 14`: the API returns the FULL article every time, and
+// the cap threw away everything past the Nth sentence AFTER downloading it.
+// **A source is now taken whole.** The thing that says when a CELL is finished
+// is the band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`, which is a
+// statement about the cell — not a knife applied to each article on the way in.
+//
+// `Infinity` rather than a large number, deliberately: a large number is a cap
+// somebody will hit and never notice.
 const SENT_CAP_BY_BAND = {
-  early:   60,    // pre-K .. grade2  — short, concrete, Simple-English prose
-  middle: 120,    // grade3 .. grade5
-  upper:  240,    // grade6 .. grade8
-  high:   400,    // grade9 .. grade12
-  college: 600,   // college1 .. college4 — including her CS major
-  grad:    800,   // grad, phd — the research literature
+  early: Infinity, middle: Infinity, upper: Infinity,
+  high: Infinity, college: Infinity, grad: Infinity,
 };
 const BAND_OF_GRADE = new Map([
   ['pre-k', 'early'], ['prek', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
@@ -719,6 +731,185 @@ async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_B
   return { sents: [], host: null, reason: lastReason };
 }
 
+// ⭐⭐ THE PICTURES, AND THE ARTICLE PROSE THEY SIT INSIDE.
+//
+// This lane reached more cells than any other and harvested no images at all —
+// so the cells with the LEAST prose also had the FEWEST pictures, which is
+// backwards from what a thin cell needs. The three book lanes each grew a figure
+// harvest; this is the same shape for the encyclopedia.
+//
+// ⛔ TWO REQUESTS, NOT EIGHT, AND THE CHOICE IS LOAD-BEARING. The obvious build
+// is `page/media-list` for captions plus one `action=parse&section=N` per
+// section an image sits in — that is 8+ requests per article on an API this
+// ingest has already been throttled off four separate times, and the throttle
+// is the in-cell BURST, not the gap between cells. `action=parse&prop=text`
+// returns the WHOLE article as HTML in ONE request, with every `<img>` inline
+// and every `<figcaption>` beside it, so the context can be cut positionally —
+// the same window technique the Saylor lane uses — for the same one request.
+// The second request prices the licences for every file at once.
+//
+// ⛔⛔ LICENCE IS PER FILE, NOT PER ARTICLE, AND THAT IS NOT A TECHNICALITY. A
+// CC-BY-SA article can legitimately carry a non-free image under fair use, and
+// fair use is a doctrine about a specific use — it does not travel into a corpus
+// this project publishes. Every file's own `LicenseShortName` is read, and
+// anything that is not a public-domain or CC mark is refused. ⚠ ND is refused
+// here for the same reason the book lanes refuse it: this corpus publishes an
+// adaptation.
+const WIKI_FIG_PER_ARTICLE = 12;
+
+function wikiFigContext(html, index, cap) {
+  const strip = (x) => String(x)
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ');
+  const W = 1600;
+  // The head segment of `before` is the one the window cut can have truncated
+  // mid-sentence while still ending it at a full stop — discarded for the same
+  // reason as in the book lanes, where a harness caught exactly that fragment.
+  const before = clean(strip(html.slice(Math.max(0, index - W), index)), cap).slice(1);
+  const after = clean(strip(html.slice(index, index + W)), cap);
+  return [...before.slice(-2), ...after.slice(0, 2)].join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
+// Commons file name out of an upload URL:
+//   //upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Name.jpg/330px-Name.jpg
+//   //upload.wikimedia.org/wikipedia/commons/a/ab/Name.jpg
+function wikiFileName(src) {
+  const m = /\/wikipedia\/[a-z]+\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/i.exec(String(src || ''));
+  if (!m) return '';
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
+
+// A licence mark this corpus may publish an adaptation of. Public domain and CC
+// marks pass; ND is refused; anything unrecognised — including every fair-use
+// tag — is refused rather than guessed at, because a guessed licence passes the
+// "licence recorded" check while being unverified, which is worse than none.
+function wikiLicenceOk(short) {
+  const s = String(short || '').trim();
+  if (!s) return null;
+  if (/\bND\b|NoDeriv/i.test(s)) return null;
+  if (/^(public domain|pd(-|$)|cc0)/i.test(s)) return { id: s, ok: true };
+  if (/^cc[ -]?by/i.test(s)) return { id: s, ok: true };
+  return null;
+}
+
+// ⛔⛔⛔ THIS FUNCTION SHIPPED THE EXACT BUG THIS INGEST WAS BUILT TO STOP, AND A
+// HARNESS CAUGHT IT BEFORE IT RAN. The first cut swallowed every non-ok body and
+// returned an empty array, so a **429 throttle read as "this article has no
+// pictures"** — indistinguishable from the truth, permanent once merged, and
+// invisible in the log. That is the same defect that already cost this lane 147
+// topics in one run, that had Wikibooks calling rate-limiting "not a book", and
+// that this file's own `fetchExtract` carries a four-step backoff ladder to
+// avoid. Writing it a fourth time in the function that harvests the pictures is
+// the reason the ladder is duplicated here rather than assumed.
+//
+// The reason is RETURNED, not logged and dropped: the caller prints it, so
+// "no figures" and "throttled" can never again render as the same line.
+async function fetchFigures(title, host, cap) {
+  if (!host) return { figures: [], reason: 'no-host' };
+  let lastKind = 'no-content';
+  const BACKOFF = [1500, 6000, 18000, 48000];
+  const get = async (url) => {
+    for (let attempt = 0; attempt <= BACKOFF.length; attempt++) {
+      let status = 0, text = '';
+      try {
+        const r = await fetch(url, { headers: { 'User-Agent': UA } });
+        status = r.status;
+        // Read as TEXT first. The throttle reply is not JSON, and parsing it as
+        // JSON is what made the throttle invisible for four ingest passes.
+        text = await r.text();
+      } catch { lastKind = 'network'; return null; }
+      const kind = classifyBody(status, text);
+      if (kind === 'throttled' || kind === 'server') {
+        lastKind = kind;
+        if (attempt < BACKOFF.length) { await sleep(BACKOFF[attempt]); continue; }
+        return null;
+      }
+      if (kind !== 'ok') { lastKind = kind; return null; }
+      try { return JSON.parse(text); } catch { lastKind = 'non-json'; return null; }
+    }
+    return null;
+  };
+
+  const parsed = await get(`https://${host}/w/api.php?format=json&action=parse&prop=text&redirects=1&page=${encodeURIComponent(title)}`);
+  const html = parsed?.parse?.text?.['*'];
+  if (!html) return { figures: [], reason: parsed ? 'no-html' : lastKind };
+
+  const found = [];
+  const seenFile = new Set();
+  for (const m of String(html).matchAll(/<img\b([^>]*)>/gi)) {
+    if (found.length >= WIKI_FIG_PER_ARTICLE) break;
+    const attrs = m[1];
+    const src = (/\bsrc="([^"]+)"/i.exec(attrs) || [])[1] || '';
+    const file = wikiFileName(src);
+    if (!file) continue;                                  // icons, maths renders, sprites
+    if (/\.svg$/i.test(file) && /icon|logo|symbol|arrow|edit/i.test(file)) continue;
+    if (seenFile.has(file)) continue;
+    seenFile.add(file);
+    const alt = ((/\balt="([^"]*)"/i.exec(attrs) || [])[1] || '').replace(/\s+/g, ' ').trim();
+    // The caption is the <figcaption> of the enclosing <figure>, which follows
+    // the image in every current MediaWiki skin.
+    const after = String(html).slice(m.index, m.index + 900);
+    const capM = /<figcaption[^>]*>([\s\S]{0,400}?)<\/figcaption>/i.exec(after);
+    // ⚠ NUMERIC entities before named ones, and both before the named-entity
+    // sweep replaces things with a space. Caught by reading a real caption:
+    // "Mount Fuji, an active stratovolcano in Japan that last erupted in
+    // 1707&#8211;08" shipped with the raw entity in it, because the sweep only
+    // knew `&[a-z]+;`. A raw entity is not a word and would train as one.
+    const caption = capM
+      ? capM[1].replace(/<[^>]+>/g, ' ')
+        .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+        .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+        .replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&')
+        .replace(/&[a-z]+;/gi, ' ')
+        .replace(/[‘’‚‛′]/g, "'").replace(/[“”„‟″]/g, '"')
+        .replace(/[‐-―−]/g, '-').replace(/[…]/g, '...')
+        .replace(/\s+/g, ' ').trim()
+      : '';
+    const context = wikiFigContext(html, m.index, cap);
+    // Same refusal every figure lane makes: an image with no words to bind to is
+    // the `CAMPOISON` defect, where an unlabelled frame fuses with whatever word
+    // happens to be current and becomes a false memory.
+    if (!alt && !caption && context.length < 40) continue;
+    found.push({ file, alt, caption, context });
+  }
+  if (!found.length) return { figures: [], reason: 'no-labelled-images' };
+
+  // ONE licence request for every file this article contributed.
+  const titles = found.map((f) => `File:${f.file}`).join('|');
+  const info = await get(`https://${host}/w/api.php?format=json&action=query&prop=imageinfo&iiprop=url|extmetadata&titles=${encodeURIComponent(titles)}`);
+  if (!info) return { figures: [], reason: `licence-lookup-${lastKind}` };
+  const pages = info?.query?.pages || {};
+  const byName = new Map();
+  for (const k of Object.keys(pages)) {
+    const p = pages[k];
+    const ii = (p.imageinfo || [])[0];
+    if (!ii) continue;
+    const name = String(p.title || '').replace(/^File:/i, '');
+    byName.set(name.replace(/_/g, ' '), ii);
+  }
+
+  const out = [];
+  for (const f of found) {
+    const ii = byName.get(f.file.replace(/_/g, ' '));
+    if (!ii || !ii.url) continue;                          // no file record — refuse
+    const lic = wikiLicenceOk(ii.extmetadata?.LicenseShortName?.value);
+    if (!lic) continue;                                    // unverified or ND — refuse
+    out.push({ src: ii.url, alt: f.alt, caption: f.caption, context: f.context, licence: lic.id });
+  }
+  // ⚠ `all-refused` is a real and different outcome from `no-labelled-images`:
+  // it means the article HAS captioned pictures and every one of them failed the
+  // licence test. Collapsing the two would hide a licence posture that is too
+  // tight behind a claim that the article is illustration-free.
+  return { figures: out, reason: out.length ? 'ok' : 'all-refused' };
+}
+
 // FC.9 — `--replace` (or FETCH_REPLACE=1) makes a re-ingest SWAP content
 // instead of the default merge-keep-longer. Needed because Simple-Wiki
 // extracts are shorter than full-Wiki, so the monotonic keep-longer merge
@@ -784,13 +975,31 @@ async function buildCell(subject, grade, titles) {
       // at arXiv/PMC), so a blanket file-level claim would be a guess the
       // moment a second source lands. TEACHVIEW's "source licence not recorded
       // on an entry" flag reads this field.
-      experiences.push({
+      const entry = {
         theme: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         story: sents.join(' '),
         source: got.host,
         licence: 'CC-BY-SA-3.0',
-      });
-      process.stdout.write(`  ${subject}/${grade}: ${title} (${sents.length}/${CAP})\n`);
+      };
+      // The pictures ride the entry that owns their article, so a percept binds
+      // under the SAME theme its prose trained under — and each one carries the
+      // article text it sits inside, which is what makes the reference between
+      // the words and the image a match rather than an inference.
+      //
+      // ⛔ Attached only when non-empty. An empty array on every entry would read
+      // as "images were looked for and none exist", which is a different claim
+      // from "this ran before the figure lane existed" — and the second is true
+      // of every cell ingested before today.
+      let figs = [], figWhy = 'threw';
+      try { const g = await fetchFigures(title, got.host, CAP); figs = g.figures; figWhy = g.reason; }
+      catch { figs = []; figWhy = 'threw'; }
+      if (figs.length) entry.figures = figs;
+      // ⛔ The reason is PRINTED whenever no picture came back, never suppressed.
+      // "0 figures" and "throttled off the API" must not render as the same line;
+      // that equivalence is the single most expensive bug in this file's history.
+      const figNote = figs.length ? `, ${figs.length} fig` : (figWhy === 'ok' ? '' : `, no fig (${figWhy})`);
+      experiences.push(entry);
+      process.stdout.write(`  ${subject}/${grade}: ${title} (${sents.length}/${CAP}${figNote})\n`);
     } else {
       // Name the blocker. "no usable content" was one label over five distinct
       // causes, and it hid a throttle that cost 147 topics in a single run.
@@ -820,7 +1029,21 @@ async function buildCell(subject, grade, titles) {
     const old = byTheme.get(e.theme);
     // Default: keep the longer story (monotonic coverage for a flaky source).
     // --replace (FC.9): newly-fetched simpler content always wins.
-    if (REPLACE || !old || e.story.length > old.story.length) byTheme.set(e.theme, e);
+    if (REPLACE || !old || e.story.length > old.story.length) { byTheme.set(e.theme, e); continue; }
+    // ⛔⛔ THE KEEP-LONGER RULE WOULD HAVE THROWN AWAY EVERY PICTURE. The old
+    // entry wins whenever its story is at least as long — which is the normal
+    // case on a re-fetch of the same article — and the winner is the entry from
+    // BEFORE this lane harvested images, so the figures would be discarded on
+    // exactly the runs that exist to add them. This is the same trap `--reclean`
+    // was written for: an improvement that only reaches future downloads never
+    // arrives, because the merge prefers the older, longer, worse entry.
+    //
+    // The story is still the old one — that rule is untouched and still
+    // monotonic. Only the figures are adopted, and only onto an entry that has
+    // none, so a cell that already holds pictures is never disturbed.
+    if (e.figures && e.figures.length && !(old.figures && old.figures.length)) {
+      byTheme.set(e.theme, { ...old, figures: e.figures });
+    }
   }
   const merged = [...byTheme.values()];
   const doc = {
@@ -829,7 +1052,19 @@ async function buildCell(subject, grade, titles) {
     note: `Hybrid academic-depth corpus for ${subject}/${grade}. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.`,
     experiences: merged,
   };
-  fs.writeFileSync(outPath, JSON.stringify(doc, null, 2), 'utf8');
+  // ⛔⛔ ATOMIC, BECAUSE TWO INGESTS SHARE THESE FILES. This lane and the
+  // Wikibooks lane overlap on twelve subjects and both do read → merge → write
+  // with no lock, so an interleaving can lose one of them entirely. A rename is
+  // atomic on both platforms, which turns a torn or lost write into a clean
+  // last-writer-wins — the shape the merge is already built for, since every
+  // ingest's themes are deterministic and a re-run restores what it lost.
+  //
+  // ⚠ It does NOT make the read-modify-write a transaction. The remaining race
+  // is one whole entry, not a corrupt file, and that is the difference between a
+  // shortfall a re-run fixes and a cell nobody can parse.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(doc, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   const n = merged.reduce((a, e) => a + e.story.split(/(?<=[.!?])\s+/).length, 0);
   return n;
 }

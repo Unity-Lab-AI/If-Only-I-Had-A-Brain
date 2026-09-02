@@ -41,7 +41,13 @@ const SENT_MIN = 30, SENT_MAX = 240;
 // 16 gap-words those four books demonstrably contain, because stride-sampling 30
 // sentences out of a whole book misses specific vocabulary. The cap, not the
 // source, was the binding constraint on the SECOND pass.
-const SENT_CAP_BY_BAND = { early: 400, middle: 400, upper: 240, high: 400, college: 600, grad: 800 };
+// ⛔⛔⛔ NO CAP — 2026-09-02, on Gee's instruction that *"all the corpus needs to
+// be complete"*. Everything above this line about 60 vs 400 was an argument
+// about WHICH ceiling, when the ceiling itself was the defect: a 400-sentence
+// cap on Great Expectations downloads a 183,000-word novel and keeps ~8,000
+// words of it. **She reads the book.** What says when a CELL is finished is the
+// band floor in `docs/CURRICULUM-GAP.md §THE TARGET LADDER`.
+const SENT_CAP_BY_BAND = { early: Infinity, middle: Infinity, upper: Infinity, high: Infinity, college: Infinity, grad: Infinity };
 const BAND_OF_GRADE = new Map([
   ['pre-k', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
   ['grade3', 'middle'], ['grade4', 'middle'], ['grade5', 'middle'],
@@ -83,20 +89,40 @@ const LADDER = {
   // life-canon lane, not to a fetched corpus. And `buh`/`duh`/`sss`/`kuh` are
   // PHONEME SOUNDS taught by the phonics lane; their absence from prose is
   // correct, not a defect.
-  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader']],
-  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales']],
-  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"]],
-  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"]],
-  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"]],
-  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan']],
-  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild']],
-  grade6:  [[120, 'Treasure Island'], [514, 'Little Women']],
-  grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild']],
-  grade8:  [[76, 'Adventures of Huckleberry Finn']],
-  grade9:  [[1513, 'Romeo and Juliet'], [1727, 'The Odyssey']],
-  grade10: [[1522, 'Julius Caesar'], [84, 'Frankenstein'], [1400, 'Great Expectations']],
-  grade11: [[64317, 'The Great Gatsby'], [2701, 'Moby Dick']],
-  grade12: [[1524, 'Hamlet'], [1533, 'Macbeth'], [16328, 'Beowulf'], [2383, 'The Canterbury Tales']],
+  // ⭐⭐ THE READING TEXTBOOK, NOT JUST READING MATERIAL — added 2026-09-02.
+  //
+  // Gee: *"we need to replace it with the real equivents that are full and
+  // complete ie textbooks and reading teachings for all of the learning the
+  // alphabet phones letters alphabet numbers all of it"*.
+  //
+  // Story anthologies are what a child READS; they are not what teaches a child
+  // to read. The McGuffey Eclectic series IS the instructional sequence —
+  // letters, letter sounds, blends, first words, first sentences, then graded
+  // reading — and it is the canonical American one, public domain and whole.
+  // ⛔ Every id below was verified against Gutenberg's own `Title:` header
+  // before it was written here, per the rule `LITGRADE.1` earned: of eight ids
+  // guessed from memory in the first pass, two resolved to *The Illustrated War
+  // News* and a *Pony Rider Boys* novel.
+  'pre-K':   [[19993, "Childhood's Favorites and Fairy Stories"], [7841, 'A Primary Reader'], [23483, "Dame Wonder's Picture Alphabet"]],
+  kindergarten: [[25545, "Children's Literature"], [17034, 'English Fairy Tales'], [14642, "McGuffey's Eclectic Primer"]],
+  // ⭐⭐ A YEAR'S READING, NOT A TOKEN TWO BOOKS — expanded 2026-09-02.
+  // Gee: *"what about all the books like wizard of oz and shit that all the
+  // lower grades and uper grades get to read"*. Removing the sentence cap made
+  // each book whole and left THE LIST as the cap: two titles is not a year.
+  // ⛔ All 23 additions verified against Gutenberg's own `Title:` header in one
+  // batch before being written here.
+  grade1:  [[19993, "Childhood's Favorites and Fairy Stories"], [25545, "Children's Literature"], [14640, "McGuffey's First Eclectic Reader"], [14838, 'The Tale of Peter Rabbit']],
+  grade2:  [[17034, 'English Fairy Tales'], [21, "Aesop's Fables"], [14668, "McGuffey's Second Eclectic Reader"], [15456, "McGuffey's Eclectic Spelling Book"], [2781, 'Just So Stories']],
+  grade3:  [[11, "Alice's Adventures in Wonderland"], [21, "Aesop's Fables"], [14766, "McGuffey's Third Eclectic Reader"], [500, 'The Adventures of Pinocchio'], [236, 'The Jungle Book']],
+  grade4:  [[55, 'The Wonderful Wizard of Oz'], [16, 'Peter Pan'], [14880, "McGuffey's Fourth Eclectic Reader"], [289, 'The Wind in the Willows'], [1448, 'Heidi']],
+  grade5:  [[74, 'The Adventures of Tom Sawyer'], [215, 'The Call of the Wild'], [15040, "McGuffey's Fifth Eclectic Reader"], [45, 'Anne of Green Gables'], [271, 'Black Beauty'], [113, 'The Secret Garden']],
+  grade6:  [[120, 'Treasure Island'], [514, 'Little Women'], [16751, "McGuffey's Sixth Eclectic Reader"], [521, 'Robinson Crusoe'], [103, 'Around the World in Eighty Days']],
+  grade7:  [[46, 'A Christmas Carol'], [215, 'The Call of the Wild'], [910, 'White Fang'], [421, 'Kidnapped'], [35, 'The Time Machine']],
+  grade8:  [[76, 'Adventures of Huckleberry Finn'], [829, "Gulliver's Travels"], [164, 'Twenty Thousand Leagues under the Sea'], [1661, 'The Adventures of Sherlock Holmes']],
+  grade9:  [[1513, 'Romeo and Juliet'], [1727, 'The Odyssey'], [43, 'The Strange Case of Dr Jekyll and Mr Hyde']],
+  grade10: [[1522, 'Julius Caesar'], [84, 'Frankenstein'], [1400, 'Great Expectations'], [1260, 'Jane Eyre']],
+  grade11: [[64317, 'The Great Gatsby'], [2701, 'Moby Dick'], [768, 'Wuthering Heights'], [98, 'A Tale of Two Cities']],
+  grade12: [[1524, 'Hamlet'], [1533, 'Macbeth'], [16328, 'Beowulf'], [2383, 'The Canterbury Tales'], [33, 'The Scarlet Letter'], [2554, 'Crime and Punishment']],
   college1: [[1342, 'Pride and Prejudice'], [345, 'Dracula']],
   college2: [[6130, 'The Iliad']],
   // ⭐⭐ UPPER COLLEGE AND POSTGRADUATE ARE CRITICISM AND THEORY, NOT MORE NOVELS.
@@ -343,17 +369,19 @@ function speechFrom(txt, cap) {
   return { ...dialogueLines(txt, cap), mode: 'quoted', density };
 }
 
-function cleanProse(txt, cap) {
-  if (!txt) return [];
-  const t = normalizeBody(txt);
-  // ⛔ COLLECT THE WHOLE WORK FIRST, THEN SAMPLE ACROSS IT — never take the
-  // first N. Taking the first N gave the TRANSLATOR'S PREFACE of the Odyssey
-  // instead of the poem: Gutenberg's START marker sits before the title page,
-  // preface and contents, so "the beginning of the file" is not "the beginning
-  // of the work". Sampling across the body also means a grade reads a whole
-  // book rather than its opening pages. Caught by reading the output.
+// The per-sentence acceptance rules, lifted out of `cleanProse` so the
+// illustration lane can apply the SAME bar to the prose it captures around a
+// plate. Two copies of these tests would drift, and the whole point of a
+// figure's context is that it is the same strings as the cell's story — which
+// only holds while one filter produces both.
+//
+// ⚠ Takes ALREADY-NORMALISED text. `cleanProse` normalises a whole Gutenberg
+// file through `normalizeBody` (which hunts the START/END boilerplate markers);
+// a 1,400-character window has no markers, so the illustration lane does its own
+// tag strip and hands the result straight here.
+function proseSentences(t) {
   const all = [];
-  for (let s of t.split(/(?<=[.!?])\s+/)) {
+  for (let s of String(t).split(/(?<=[.!?])\s+/)) {
     s = s.trim();
     if (s.length < SENT_MIN || s.length > SENT_MAX) continue;
     if (/[^\x20-\x7e]/.test(s)) continue;
@@ -372,6 +400,18 @@ function cleanProse(txt, cap) {
     if (/[\[\]]/.test(s)) continue;
     all.push(s.toLowerCase());
   }
+  return all;
+}
+
+function cleanProse(txt, cap) {
+  if (!txt) return [];
+  // ⛔ COLLECT THE WHOLE WORK FIRST, THEN SAMPLE ACROSS IT — never take the
+  // first N. Taking the first N gave the TRANSLATOR'S PREFACE of the Odyssey
+  // instead of the poem: Gutenberg's START marker sits before the title page,
+  // preface and contents, so "the beginning of the file" is not "the beginning
+  // of the work". Sampling across the body also means a grade reads a whole
+  // book rather than its opening pages. Caught by reading the output.
+  const all = proseSentences(normalizeBody(txt));
   // Drop a leading slice as residual front matter, then stride-sample the rest.
   const head = Math.floor(all.length * 0.08);
   const body = all.slice(head);
@@ -380,6 +420,110 @@ function cleanProse(txt, cap) {
   const out = [];
   for (let i = 0; i < cap; i++) out.push(body[Math.floor(i * stride)]);
   return out;
+}
+
+// ⭐⭐ THE ILLUSTRATIONS — because a children's book is half pictures.
+//
+// Gee: *"all the books like wizard of oz and shit that all the lower grades and
+// uper grades get to read and view images of"*. The plain-text edition this
+// ingest reads has none by construction; Gutenberg's `-images.html` edition
+// carries the original plates, and they go down the same road her own eyes use —
+// fetch, downsample, forward CDF 9/7, bank as a percept under the theme the
+// book's prose trained under.
+//
+// ⚠ AVAILABILITY IS PER EDITION AND PATCHY, MEASURED RATHER THAN ASSUMED:
+// Childhood's Favorites carries 33 plates, Dame Wonder's Picture Alphabet 9,
+// while the cached Alice and Peter Pan editions carry one and none. **A book
+// with no plates contributes none** — that is a fact about the edition, not a
+// failure, and it is reported as a count rather than silently.
+//
+// ⛔ Same refusal rule as the textbook figure lanes: an image with NO words
+// attached is skipped. A percept with nothing to bind to is the `CAMPOISON`
+// defect, where an unlabelled frame fused with whatever word was current and
+// became a false memory.
+//
+// ⭐⭐ AND EVERY PLATE CARRIES THE PASSAGE IT ILLUSTRATES (`context`). A plate's
+// own caption is typically a line of dialogue or a chapter reference — "Reading
+// Jane's Letters. Chap 34." — which names where the picture sits and says
+// nothing about what is in it. The narrative around the plate is what makes the
+// picture mean something, and in an illustrated edition the artist put the plate
+// exactly where that passage is. Captured through `proseSentences`, the same
+// filter the book's own corpus sentences pass, so the two are the same strings.
+const CONTEXT_CHARS = 1600;   // raw HTML taken either side of the plate
+const CONTEXT_SENTS = 2;      // whole sentences kept on each side
+
+// ⚠ Cut from raw HTML, so both ends can land mid-sentence. The TRAILING cut is
+// handled by `proseSentences`, which drops any segment not ending in terminal
+// punctuation. ⛔ The LEADING cut is not — a window beginning mid-sentence can
+// still end that fragment at a full stop, giving half a sentence that wears a
+// terminator and passes every filter (caught by a harness on a real page). The
+// head segment of `before` is therefore always discarded.
+function plateContext(html, index) {
+  const strip = (x) => String(x)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\[[^\[\]]*\]/g, ' ')
+    .replace(/_+/g, ' ')
+    .replace(/[‘’‚‛′]/g, "'")
+    .replace(/[“”„‟″]/g, '"')
+    .replace(/[‐-―−]/g, '-')
+    .replace(/[…]/g, '...')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ');
+  const before = proseSentences(strip(html.slice(Math.max(0, index - CONTEXT_CHARS), index))).slice(1);
+  const after = proseSentences(strip(html.slice(index, index + CONTEXT_CHARS)));
+  return [...before.slice(-CONTEXT_SENTS), ...after.slice(0, CONTEXT_SENTS)]
+    .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
+async function fetchIllustrations(id) {
+  const base = `https://www.gutenberg.org/cache/epub/${id}/`;
+  let html = '';
+  try {
+    const r = await fetch(`${base}pg${id}-images.html`, { headers: { 'User-Agent': UA } });
+    if (!r.ok) return [];
+    html = await r.text();
+  } catch { return []; }
+  const figs = [];
+  const seen = new Set();
+  for (const m of html.matchAll(/<img\b([^>]*)>/gi)) {
+    const attrs = m[1];
+    const src = (/\bsrc="([^"]+)"/i.exec(attrs) || [])[1] || '';
+    if (!src || /^data:/i.test(src)) continue;
+    const alt = ((/\balt="([^"]*)"/i.exec(attrs) || [])[1] || '').replace(/\s+/g, ' ').trim();
+    const title = ((/\btitle="([^"]*)"/i.exec(attrs) || [])[1] || '').replace(/\s+/g, ' ').trim();
+    // The caption in these editions is usually the following <p class="caption">
+    // or a <figcaption>; take whichever appears first after the image.
+    const after = html.slice(m.index, m.index + 600);
+    const capM = /<(?:figcaption|p[^>]*class="[^"]*caption[^"]*")[^>]*>([\s\S]{0,240}?)<\//i.exec(after);
+    const caption = capM ? capM[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    const words = (alt || title || caption).replace(/[^a-z ]/gi, '').trim();
+    const context = plateContext(html, m.index);
+    // ⛔⛔ A PLACEHOLDER IS NOT A LABEL, AND IT PASSED THE WORD-COUNT TEST FOR
+    // AS LONG AS THIS LANE HAS EXISTED. Measured in the shipped corpus: **376
+    // figures, 2.6%, whose entire textual anchor is one placeholder word** —
+    // overwhelmingly `alt="[Illustration]"` with no caption, which is what a
+    // transcriber types where a picture goes. Binding a plate to the word
+    // "illustration" is precisely the `CAMPOISON` defect: a percept fused to a
+    // word that says nothing about what is in it.
+    //
+    // ⭐ The plate is not discarded for it, because it now arrives with the
+    // PASSAGE it illustrates. The requirement was always "words to bind to" and
+    // the placeholder test simply makes that requirement honest — a real label
+    // OR real surrounding prose, and a plate carrying neither is refused.
+    const placeholder = /^(illustration|image|figure|photo|picture|graphic|logo|decoration)(\s+\d+)?$/i
+      .test(words.replace(/\s+/g, ' ').trim());
+    if (words.length < 3) continue;                       // no words to bind to
+    if (placeholder && context.length < 40) continue;     // nor any in the prose
+    let abs;
+    try { abs = new URL(src, base).href; } catch { continue; }
+    if (seen.has(abs)) continue;
+    seen.add(abs);
+    figs.push({ src: abs, alt: alt || title, caption, context });
+  }
+  return figs;
 }
 
 async function fetchBook(id) {
@@ -403,9 +547,11 @@ async function buildGrade(grade, books) {
   const cap = sentCapFor(grade);
   console.log(`[gutenberg] ela/${grade} (cap ${cap}) — ${books.length} work(s)`);
   const experiences = [];
-  // Split the grade's budget across its works so a year reads all of its
-  // assigned texts rather than the first one at full depth.
-  const per = Math.max(20, Math.floor(cap / books.length));
+  // ⛔ THERE IS NO BUDGET TO SPLIT ANY MORE (2026-09-02). This line divided a
+  // grade's sentence budget between its assigned works, which meant a year with
+  // four books read a quarter of each. A real school year reads all four of
+  // them, whole. `per` stays `Infinity` so both readers below take everything.
+  const per = Infinity;
   for (const [id, title] of books) {
     const txt = await fetchBook(id);
     if (!txt) { console.log(`  ${title} — UNAVAILABLE (id ${id})`); continue; }
@@ -421,13 +567,19 @@ async function buildGrade(grade, books) {
     // ⭐ Namespacing keeps BOTH: she reads the play AND what is written about
     // it, which is what a real English class does.
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    experiences.push({
+    const plates = await fetchIllustrations(id);
+    const entry = {
       theme: `text-${slug}`,
       story: sents.join(' '),
       source: `gutenberg/${id}`,
       licence: 'public-domain',
-    });
-    console.log(`  ${title} — ${sents.length} sentences`);
+    };
+    // Absent rather than empty when a book has no plates: an empty array reads
+    // as "looked and found nothing", which is a different claim from "this
+    // edition is text only".
+    if (plates.length) entry.figures = plates;
+    experiences.push(entry);
+    console.log(`  ${title} — ${sents.length} sentences, ${plates.length} illustrations`);
     // ⭐ THE SPEECH IN THE SAME BOOK, AS ITS OWN ENTRY. Kept separate from the
     // narration entry on purpose: the merge is per theme, so a book's dialogue
     // can grow or shrink without displacing its prose, and the corpus auditor
@@ -501,12 +653,18 @@ async function buildGrade(grade, books) {
     if (!old || sameSource || e.story.length > old.story.length) byTheme.set(e.theme, e);
   }
   const merged = [...byTheme.values()];
-  fs.writeFileSync(outPath, JSON.stringify({
+  // ⛔ ATOMIC — these cell files are shared by every ingest, and two of them have
+  // already been caught running at the same time over the same twelve subjects.
+  // A rename cannot leave a half-written file behind; it degrades a lost update
+  // into last-writer-wins, which a deterministic re-run repairs.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify({
     version: 1, grade, subject: 'ela',
     source: 'hybrid: Project Gutenberg public-domain literature + OpenStax (CC-BY) + Wikipedia (CC-BY-SA), cleaned + sentence-segmented',
     note: `Hybrid academic-depth corpus for ela/${grade}. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.`,
     experiences: merged,
   }, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   const n = experiences.reduce((a, e) => a + e.story.split(/(?<=[.!?])\s+/).length, 0);
   console.log(`  -> ela/${grade}.json (cell now ${merged.length} entries)`);
   return n;

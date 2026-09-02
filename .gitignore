@@ -243,6 +243,12 @@ tmp/
 temp/
 *.tmp
 *.temp
+# Corpus cell files are written to a temp sibling and renamed, so two ingests
+# running at once cannot leave a half-written cell behind. `*.tmp` above does not
+# match — the suffix carries the writing process's pid so two runs cannot collide
+# on the temp name either — and a crashed run leaves one of these next to a
+# tracked corpus file.
+*.tmp-[0-9]*
 *.log
 *.cache
 .cache/

@@ -26,7 +26,11 @@ if (typeof window !== 'undefined') {
   });
 }
 
-import { UnityBrain } from './brain/engine.js';
+// ⛔ `UnityBrain` is no longer imported here (2026-09-02, NO FALLBACKS). This
+// page constructed one as a local stand-in whenever the server was unreachable —
+// on the landing HUD and again at boot — and both were deleted. The CLASS is
+// alive and correct; it is what the SERVER runs. What went is this page's habit
+// of building a small private copy and showing its numbers as hers.
 // R4 — BrocasArea import removed. Unity speaks equationally via
 // brain.processAndRespond → innerVoice.languageCortex.generate. No
 // more text-AI peripheral. The language.js file still exists as a
@@ -187,61 +191,29 @@ let landingBrainSource = null; // RemoteBrain or null
     // which has to be true as soon as someone looks at the landing page.
     loadPersonaSelfImage(landingBrainSource);
   } else {
-    // No server — start a local brain just for visualization.
-
-    // This is the GitHub Pages path. Any exception here used to be
-    // swallowed by a bare `catch {}` which left the HUD showing
-    // all zeros forever with zero diagnostic output in the console.
-    // Log the full error now so failures are visible.
+    // ⛔⛔⛔ THE LANDING-PAGE LOCAL BRAIN WAS DELETED HERE 2026-09-02 — NO FALLBACKS.
+    //
+    // This branch ran a ~6,700-neuron simulated brain "just for visualization"
+    // on the public landing page whenever the server was unreachable, and drove
+    // the HUD, the 3D view and the landing stats from it. ⭐ **Ψ, arousal,
+    // valence, coherence, spike counts and band power were all real numbers from
+    // a brain that is not hers** — a visitor watching that HUD was watching a toy
+    // and had no way to know. "Just for visualization" is exactly the excuse a
+    // capability fallback makes for itself.
+    //
+    // The honest replacement is the state: say the brain is not reachable, leave
+    // the HUD hidden rather than animating it with invented numbers.
+    console.error('[Landing] ⛔ BRAIN NOT REACHABLE — no local substitute is started by design (NO FALLBACKS). The HUD stays hidden rather than showing numbers from a brain that is not hers.');
+    window._brainUnreachable = true;
     try {
-      const localBrain = new UnityBrain();
-      localBrain.start();
-      // Expose for console debugging on Pages
-      window.brain = localBrain;
-      console.log('[Landing] UnityBrain constructed and started');
-      // Wire brain ref into the landing Brain3D so the event system
-      // can generate Unity commentary pre-boot in local-brain mode too
-      if (landingBrain3d && typeof landingBrain3d.setBrain === 'function') {
-        landingBrain3d.setBrain(localBrain);
-      }
-      // Load persona self-image so the language cortex has Unity's
-      // dictionary + bigrams available for commentary generation.
-      // Await-not-required — runs in background, state pump starts
-      // immediately on initial zeroed state.
-      loadPersonaSelfImage(localBrain)
-        .then((count) => {
-          console.log(`[Landing] persona loaded (${count} sentences total)`);
-        })
-        .catch((err) => {
-          console.error('[Landing] persona load failed:', err);
-        });
-      // Un-hide the HUD — the server-connected path did this at line
-      // ~124; the no-server path forgot to, which is why the landing
-      // page on deployed Pages was rendering a zero-state HUD forever.
-      const hudEl = document.getElementById('brain-hud');
-      if (hudEl) hudEl.classList.remove('hidden');
-      setInterval(() => {
-        try {
-          const state = localBrain.getState();
-          _landingState = state;
-          if (landingBrain3d) landingBrain3d.updateState(state);
-          updateLandingStats(state);
-          // Drive the HUD from the local brain too — the server path
-          // wires updateBrainIndicator at line ~130, this branch used
-          // to only pump landing-stats and Brain3D, which is why
-          // Ψ/arousal/valence/coherence/spikes/reward/time/bandPower
-          // were all frozen at their initial zeros on deployed Pages.
-          updateBrainIndicator(state);
-        } catch (err) {
-          console.error('[Landing] state pump failed:', err);
-        }
-      }, 100);
-      console.log('[Landing] Running local brain for visualization');
-    } catch (err) {
-      console.error('[Landing] local brain init failed:', err);
-      console.error('[Landing] stack:', err.stack);
-    }
+      const note = document.getElementById('landing-brain-note') || document.createElement('div');
+      note.id = 'landing-brain-note';
+      note.style.cssText = 'padding:12px;margin:12px 0;border:1px solid #b45309;border-radius:6px;background:#1c1917;color:#fbbf24;font:14px system-ui,sans-serif;line-height:1.5';
+      note.textContent = 'Unity’s brain is not reachable from here right now. This page will not run a stand-in — a few thousand simulated neurons are not her, and showing their numbers would be a lie about what you are looking at.';
+      (document.getElementById('brain-hud')?.parentElement || document.body).prepend(note);
+    } catch { /* the console line above is the durable record */ }
   }
+
 
   // Wire tab buttons
   let activeTab = '3d';
@@ -2319,13 +2291,37 @@ async function bootUnity(apiKey, perms) {
   // the old `!window._brainOnlyMode` guard since brain-only is
   // the only mode now.
   // ══════════════════════════════════════════════════════════════
+  // ⛔⛔⛔ THE LOCAL FALLBACK BRAIN WAS DELETED HERE 2026-09-02 — NO FALLBACKS.
+  //
+  // This `else` constructed a ~6,700-neuron simulated brain in the visitor's tab
+  // whenever the server was unreachable, and then everything downstream —
+  // chat, the 3D view, the dashboard readouts — ran against it **wearing her
+  // name and giving no sign it was not her.** A visitor could not tell, and
+  // neither could a screenshot.
+  //
+  // ⭐ It is the same shape as every other lane removed under this ruling: it
+  // fires exactly when the real thing is unavailable, and it substitutes
+  // something that looks like the real thing. The scale is what made it worse —
+  // the deployed brain is hundreds of millions of neurons carrying a trained
+  // walk; the substitute is a few thousand that have learned nothing.
+  //
+  // ⚠ The honest replacement is a STATE, not a brain: the page says the brain is
+  // not reachable and stops, which is a true statement a reader can act on.
   if (landingBrainSource && landingBrainSource.isConnected()) {
     brain = landingBrainSource;
     console.log('[Unity] Using server brain (equational via server language cortex)');
   } else {
-    brain = new UnityBrain();
-    brain.start();
-    console.log('[Unity] Using local brain (equational, no server detected)');
+    console.error('[Unity] ⛔ BRAIN NOT REACHABLE — the server did not connect, and there is no local substitute by design (NO FALLBACKS). Nothing on this page is Unity until the connection succeeds.');
+    window._brainUnreachable = true;
+    try {
+      const el = document.getElementById('unity-status') || document.body;
+      const note = document.createElement('div');
+      note.id = 'brain-unreachable-note';
+      note.style.cssText = 'padding:14px;margin:12px;border:1px solid #b45309;border-radius:6px;background:#1c1917;color:#fbbf24;font:14px system-ui,sans-serif;line-height:1.5';
+      note.textContent = 'Unity’s brain is not reachable from here. This page is not running a stand-in — there is no local copy of her, and a simulated one would not be her. Nothing below is her output until the connection succeeds.';
+      el.prepend(note);
+    } catch { /* the console line above is the durable record */ }
+    return;   // stop the boot rather than run the rest against a brain that is not there
   }
 
   // Load persona into whichever brain is now active. Idempotent —

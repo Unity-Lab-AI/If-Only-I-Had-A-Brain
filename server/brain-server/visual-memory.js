@@ -1555,7 +1555,22 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // figure is worth more than a generated one: the description is authored by
     // the same people who drew the diagram, so the label is trustworthy in a
     // way a prompt echo never is.
-    const phrase = [fig.alt, fig.caption].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().slice(0, 400) || null;
+    //
+    // ⭐⭐ AND THE CORPUS PROSE THE PICTURE SITS INSIDE, which is the part that
+    // makes the reference between text and image correct rather than
+    // approximate. A caption is the picture's OWN words — for thousands of
+    // figures it is nothing but a numbered title ("Figure 1.1 World Exports,
+    // 1948-2008"), which binds a diagram to a number and a date. The ingest now
+    // captures the surrounding body prose through the very cleaner that produced
+    // the cell's sentences, so these are the SAME STRINGS the cell trained on
+    // and the tie between the two is a match, not an inference.
+    //
+    // ⚠ ORDER IS DELIBERATE: label first, context second. The label is the more
+    // specific evidence about what is IN the frame, and the length bound cuts
+    // from the tail — so a bound that bites keeps the picture's own words and
+    // loses the outer edge of its context, never the reverse.
+    const phrase = [fig.alt, fig.caption, fig.context].filter(Boolean)
+      .join(' ').replace(/\s+/g, ' ').trim().slice(0, 900) || null;
 
     try {
       const store = this._vmStore();
@@ -1570,6 +1585,24 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       this._vmSaveSoon();
       st.figGrounded = (st.figGrounded | 0) + 1;
       st.lastFigKey = key; st.lastFigAt = now;
+
+      // ⛔⛔ THE WORDS WERE STORED AND NEVER TAUGHT. Everything above banks the
+      // percept and writes the phrase onto the record — and nothing bound one to
+      // the other, so a diagram's own caption and the prose it illustrates sat in
+      // the store as a string nobody learned. The look lane has done this since
+      // it shipped (`_queuePhraseTeach`); the figure lane simply never called it,
+      // which made "the picture arrives with its text" true of the DATA and false
+      // of the brain.
+      //
+      // ⚠ NO TRUST GATE HERE, and that difference is the point. The look lane
+      // gates on `_anyTrustedBind` because a generated render is one unconfirmed
+      // guess whose wording she may yet reject. A textbook figure is authored,
+      // captioned by the people who drew it, and licensed — the same provenance
+      // that lets this lane skip LOOKTWICE — so its words are evidence on
+      // arrival. Queued, never awaited, and bounded by the queue's own caps.
+      try {
+        if (phrase && typeof this._queuePhraseTeach === 'function') this._queuePhraseTeach(phrase);
+      } catch { /* non-fatal — perceiving a figure must never fail on its teach */ }
 
       // ⭐ TEXTFIG.7 — SHE SEES IT. Gee: "yeah these images need to appear in
       // her minds eye too". Same publish the look lane uses, so a figure is a

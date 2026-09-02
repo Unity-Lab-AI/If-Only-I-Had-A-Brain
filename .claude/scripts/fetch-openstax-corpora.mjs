@@ -48,8 +48,14 @@ const SENT_MIN = 30, SENT_MAX = 240;
 // Same grade-banded ceiling as the wiki ingest — a real year is a different
 // size at every grade, and one flat number applied to twenty different years is
 // exactly the defect that kept the whole corpus at 14 sentences per topic.
+// ⛔⛔⛔ NO CAP — 2026-09-02, on Gee's instruction that *"all the corpus needs to
+// be complete"*. The comment above is right about flat numbers and was still
+// describing a ceiling; a grade-banded ceiling is a smaller version of the same
+// knife. **A textbook is taken whole.** The band floor in
+// `docs/CURRICULUM-GAP.md §THE TARGET LADDER` says when a CELL is full; nothing
+// says how much of a book she is allowed to read.
 const SENT_CAP_BY_BAND = {
-  early: 60, middle: 120, upper: 240, high: 400, college: 600, grad: 800,
+  early: Infinity, middle: Infinity, upper: Infinity, high: Infinity, college: Infinity, grad: Infinity,
 };
 const BAND_OF_GRADE = new Map([
   ['pre-k', 'early'], ['kindergarten', 'early'], ['grade1', 'early'], ['grade2', 'early'],
@@ -80,7 +86,21 @@ const BOOK_MAP = [
   { repo: 'biology-book',          subject: 'science', grade: 'college1',  label: 'General Biology' },
   { repo: 'microbiology-book',     subject: 'science', grade: 'college2',  label: 'Microbiology' },
   { repo: 'economics-book',        subject: 'economics', grade: 'grade11', label: 'Macroeconomics' },
-  { repo: 'economics-book',        subject: 'economics', grade: 'college1', label: 'Principles of Economics' },
+  // ⛔⛔ `genered`, NOT `economics` — AND THE THIRD TIME THIS EXACT MISTAKE WAS
+  // MADE. **`economics` RETIRES AT grade12.** Above that the roster runs
+  // `major` / `genered` / `cstheory` / `cssystems` / `research`, so an
+  // `economics/college1` file is a cell the walk never opens. The research lane
+  // and the Saylor lane were each corrected for this; **this table never was**,
+  // and `corpora/academic/economics/college1.json` has been sitting on disk with
+  // **342,056 words the walk cannot read** ever since — found by teaching the
+  // coverage auditor to count figures, which is not what it was looking for.
+  //
+  // ⚠ AND THE MISS WAS DOUBLE-BLIND: the Saylor lane skips college1 entirely
+  // with the comment *"college1 is OpenStax's ceiling and already fed"* — true
+  // of this table, false of the walk. **One lane deferring to another lane's
+  // dead cell is how a gap survives two corrections.** `genered` matches
+  // Saylor's own `COLLEGE_HOME` for economics, so the two agree now.
+  { repo: 'economics-book',        subject: 'genered',   grade: 'college1', label: 'Principles of Economics' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -99,6 +119,36 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ⚠ Alt text and caption are kept SEPARATE from `story` on purpose. They are
 // not body prose — folding them in would inflate the word count with material
 // that reads like a caption, and the corpus bar is measured in prose words.
+//
+// ⭐⭐ AND THE PICTURE COMES WITH THE PROSE IT SITS INSIDE. A caption is the
+// picture's OWN words, written to be read while looking at the picture — for
+// thousands of figures the whole textual anchor is a line like "Figure 1.1 World
+// Exports, 1948-2008", which binds a percept to a number and a date rather than
+// to the subject it illustrates. `context` is the surrounding BODY prose, run
+// through the very cleaner that produced this cell's sentences, so the figure's
+// context and the cell's story are the SAME STRINGS and the tie between them is
+// a match rather than an inference.
+const CONTEXT_CHARS = 1400;   // raw source taken either side of the image
+const CONTEXT_SENTS = 2;      // whole sentences kept on each side
+
+// ⚠ The window is cut from RAW source, so both ends can land mid-sentence. The
+// TRAILING cut is already handled: the cleaner drops any segment that does not
+// end in terminal punctuation, so a cut tail is discarded rather than fused onto
+// its neighbour — the fabrication defect that made the speech lane invent
+// sentences nobody said.
+//
+// ⛔ THE LEADING CUT IS NOT, AND A HARNESS ON A REAL PAGE CAUGHT IT: a window
+// beginning mid-sentence can still end that fragment at a full stop, producing
+// half a sentence that wears a terminator and passes every filter. The head
+// segment of `before` is therefore always discarded — it is the ONE segment the
+// cut can have truncated invisibly.
+function figureContext(raw, index, clean) {
+  const before = clean(String(raw).slice(Math.max(0, index - CONTEXT_CHARS), index), Infinity).slice(1);
+  const after = clean(String(raw).slice(index, index + CONTEXT_CHARS), Infinity);
+  return [...before.slice(-CONTEXT_SENTS), ...after.slice(0, CONTEXT_SENTS)]
+    .join(' ').replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
 function harvestFigures(md) {
   const figs = [];
   if (!md) return figs;
@@ -114,7 +164,7 @@ function harvestFigures(md) {
     // it would be an image with no label, which is the camera-frame defect
     // (`CAMPOISON`) all over again. Skip rather than bank an unlabelled image.
     if (!alt && !caption) continue;
-    figs.push({ src, alt, caption });
+    figs.push({ src, alt, caption, context: figureContext(md, m.index, cleanOpenStax) });
   }
   return figs;
 }
@@ -290,24 +340,21 @@ async function buildBook({ repo, subject, grade, label }) {
   const mds = files.filter((f) => f.type === 'file' && f.name.endsWith('.md'));
   if (!mds.length) { console.log('  SKIPPED — no chapter files'); return 0; }
 
-  // ⛔ SPREAD THE BUDGET ACROSS THE WHOLE BOOK, never front-load it. Taking the
-  // cap from the first chapters would teach her chapter 1 in depth and leave
-  // the other 250 sections untaught — the same "one number, wrong shape" error
-  // as the flat sentence cap, one level up.
-  const perChapter = Math.max(3, Math.ceil(cap / Math.min(mds.length, 60)));
-  const stride = Math.max(1, Math.floor(mds.length / Math.min(mds.length, 60)));
-  const picked = [];
-  for (let i = 0; i < mds.length && picked.length < 60; i += stride) picked.push(mds[i]);
+  // ⛔⛔ EVERY CHAPTER, WHOLE — 2026-09-02. This block used to stride-sample **60
+  // of the book's chapters** and give each a slice of a global cap, so a
+  // 283-chapter physics textbook shipped ~60 partial chapters and 223 were never
+  // downloaded at all. The comment above was right that front-loading is wrong
+  // and still left most of the book on the server. Gee: *"all the corpus needs
+  // to be complete"*.
+  const picked = mds;
 
   const experiences = [];
   let taken = 0;
   let figuresFound = 0;
   for (const f of picked) {
-    if (taken >= cap) break;
     const md = await raw(`https://raw.githubusercontent.com/${OWNER}/${repo}/master/contents/${f.name}`);
     const title = (/^title:\s*"?([^"\n]+)"?/m.exec(md || '') || [, f.name.replace(/\.md$/, '')])[1].trim();
-    const room = Math.min(perChapter, cap - taken);
-    const sents = cleanOpenStax(md, room);
+    const sents = cleanOpenStax(md, Infinity);
     if (sents.length >= 3) {
       // `TEXTFIG.1` — figures ride the entry that owns their chapter, so a
       // percept can be bound to the SAME theme its prose trained under. Paths
@@ -360,7 +407,13 @@ async function buildBook({ repo, subject, grade, label }) {
     note: `Hybrid academic-depth corpus for ${subject}/${grade}. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.`,
     experiences: merged,
   };
-  fs.writeFileSync(outPath, JSON.stringify(doc, null, 2), 'utf8');
+  // ⛔ ATOMIC — these cell files are shared by every ingest, and two of them have
+  // already been caught running at the same time over the same twelve subjects.
+  // A rename cannot leave a half-written file behind; it degrades a lost update
+  // into last-writer-wins, which a deterministic re-run repairs.
+  const tmp = `${outPath}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(doc, null, 2), 'utf8');
+  fs.renameSync(tmp, outPath);
   console.log(`  ${experiences.length} chapters, ${taken} sentences -> ${subject}/${grade}.json (cell now ${merged.length} entries)`);
   return taken;
 }

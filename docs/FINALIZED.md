@@ -5,6 +5,74 @@
 
 ---
 
+## 2026-09-02 (SEVENTH BATCH) — `FIGTEXT.1` / `FIGTEXT.2` / `CELLRACE.1` — THE PICTURES ARRIVE WITH THEIR TEXT, AND HALF OF THEM HAD NEVER BEEN REACHABLE AT ALL
+
+Gee (verbatim): *"wtf u have to be getting the images with the text information of the corpus to be able to correctly reference the text to all the corpus images"*
+
+- [x] `FIGTEXT.1` — ⛔ **A FIGURE IS HARVESTED WITH ITS OWN CAPTION AND NOTHING ELSE, SO NOTHING TIES IT TO THE CORPUS PROSE IT ILLUSTRATES.** Measured across all 174 cells: **14,374 figures, every one carrying exactly four fields — `src`, `alt`, `caption`, sometimes `url`. Zero carry a single word of the surrounding corpus text.** A figure rides the ENTRY that owns its chapter, and an entry's `story` can be hundreds of thousands of words, so "which prose does this diagram illustrate?" has no answer anywhere in the data. ⭐ **Why the caption is not enough:** `alt` + `caption` are the picture's own words, authored to be read while looking at the picture. **8,185 have alt, 12,028 have a caption, and only 5,839 have both** — so for thousands of figures the entire textual anchor is one line like *"Figure 1.1 World Exports, 1948–2008"*, which binds a percept to a number and a date rather than to the economics she was just taught. ⛔ **This is the `CAMPOISON` failure one step upstream** — that defect was an image fusing with whatever word happened to be current; this is an image with a label so thin that the word it fuses with is nearly arbitrary. **The fix is at the HARVEST, not at the consumer**: each `<img>` is taken together with the prose it sits inside, cleaned by the same cleaner that produced the cell's sentences, so the figure's context text and the cell's story text are **the same strings** and the reference between them is a match, not a guess.
+
+- [x] `FIGTEXT.2` — **6,899 OF THE 14,374 FIGURES HAVE NEVER BEEN REACHABLE BY THE WALK, AND THE CAUSE IS A PRODUCER/CONSUMER NAME MISMATCH.** Found while measuring `FIGTEXT.1`. `academicStoryFigures()` skips any figure without `url` (`if (!f || !f.url) continue;`) — but the Saylor and Gutenberg harvesters write their fully-resolved absolute address to **`src`**, and only the OpenStax harvester writes `url`. **Every Saylor figure (5,650) and every Gutenberg illustration (1,249) is therefore invisible**, while holding a perfectly good `https://…` address the whole time. ⛔ **The data was never wrong; the reader was** — so this needs no re-fetch, only the accessor fixed at its one chokepoint. ⚠ **And it means the "14,374 figures" number reported to Gee at the end of the corpus war overstated what the walk can actually see by 92% — the reachable count was 7,475.** Same defect class as `meanVoltage` reading null for seven clusters while being computed every tick.
+
+- [x] `CELLRACE.1` — ⛔⛔ **TWO INGESTS ARE WRITING THE SAME CELL FILES RIGHT NOW WITH NO LOCKING, AND THE MERGE IS READ-MODIFY-WRITE.** Found by listing the live processes rather than by reasoning: `fetch-academic-corpora.mjs` and `fetch-wikibooks-corpora.mjs` are both running, and both `writeCell` implementations read the existing `corpora/academic/<subject>/<grade>.json`, merge one entry by theme, and write the whole file back. **Their subject sets overlap on twelve subjects** — art, social, health, music, pe, language, science, cs, civics, research, economics, psychology — so any interleaving where both read the same cell before either writes **silently discards the other's entry.** ⚠ **The RESUME block warned about exactly this pairing** (*"wait for Wikibooks, they write the same cells"*) and the Wikipedia pass was started anyway. ⭐ **The damage is repairable and that is worth stating plainly: themes are deterministic per ingest, so re-running the loser restores whatever it lost** — which is the argument for letting both finish rather than killing hours of throttled crawl on a hazard that has a known repair. **The fix for future runs is an atomic write** (write to a temp sibling, then rename) **plus a per-cell lock**; a rename is atomic on both platforms and turns a lost update into a last-writer-wins, which the merge is already designed for.
+
+> ### ✅ VERDICT — `FIGTEXT.2` IS THE ONE THAT CHANGED A NUMBER, AND IT CHANGED IT BY 92%
+>
+> ⛔⛔ **THE ADDRESS LIVED UNDER TWO FIELD NAMES AND THE READER KNEW ONE.** Three harvesters write figures. OpenStax resolves the image path against its book repo and stores it as **`url`**; Saylor and Gutenberg resolve theirs with `new URL(src, pageUrl).href` — an equally absolute, equally correct `https://` address — and store it as **`src`**. `academicStoryFigures()` required `url`. **So 6,899 figures were harvested, committed, counted and reported, and the walk could not see one of them.**
+>
+> **Fixed at the chokepoint, one place, no re-fetch:** the accessor reads either spelling and gates on the address being absolute, which is the requirement that actually matters — a relative `src` is a page-local path meaning nothing to a fetch from this process. **Measured before and after over all 174 cells: `7,475 → 14,374` reachable.**
+>
+> ⚠ **AND THE HONEST CORRECTION THAT COMES WITH IT:** the "14,374 figures" figure quoted at the close of the corpus war was a count of rows on disk, not of pictures she could ever be shown. **For the whole of that session the true reachable number was 7,475.** Reading both spellings is not a fallback — it is one field under two names, and neither name means anything weaker than the other.
+>
+> ### ⭐⭐ `FIGTEXT.1` — WHAT "THE IMAGES WITH THE TEXT INFORMATION OF THE CORPUS" ACTUALLY REQUIRED
+>
+> **Every figure now carries `context`: the corpus prose it sits inside, cut positionally from the source around the image and run through THE SAME CLEANER that produced that cell's sentences.** That last clause is the whole design — it means the figure's context and the cell's story are literally the same strings, so the reference between the words and the picture is a match rather than an inference.
+>
+> Built on all three lanes that harvest figures, each with its own cleaner because the sources are markdown, HTML and a Gutenberg text edition and one shared function could not clean all three. **The Gutenberg lane needed a refactor to get there** — its `cleanProse` drops the first 8% of a work as residual front matter and then stride-samples, which is right for a whole book and destroys a 1,600-character window, so the per-sentence acceptance rules were lifted out into `proseSentences()` and both callers now share exactly one filter. **Two copies would drift, and the entire value of `context` depends on them not drifting.**
+>
+> **Verified live against real pages, through the shipped functions sliced verbatim out of the scripts rather than retyped:**
+> ```
+> SAYLOR   international-trade s04    3 figures   3/3 with context
+> OPENSTAX biology m44425.md          7 figures   7/7 with context
+> WIKIPEDIA Photosynthesis           11 figures  11/11 with context, 11/11 licensed
+> WIKIPEDIA Volcano (simple)          6 figures   5/6 with context,  6/6 licensed
+> ```
+> The Saylor case is the one that shows why the row existed: **every one of those three figures has EMPTY alt text and a caption that is a numbered title** — *"Figure 1.2 World Exports, 1970–2008 (Percentage of World GDP)"*. Alone, that binds a diagram to a figure number and a date. With context it now also carries *"world exports grew from just over 10 percent of the gdp in 1970 to over 30 percent by 2008. thus trade is not only rising rapidly in absolute terms; it is becoming relatively more important too."*
+>
+> ⛔ **THE HARNESS EARNED ITS KEEP TWICE, AND BOTH FINDINGS WERE MINE.**
+>
+> **① THE WINDOW CUT A SENTENCE IN HALF AND THE HALF PASSED EVERY FILTER.** The first Saylor context read `dollars)" shows the overall annual exports measured in billions of u.s.` — a fragment. Every cleaner in this project refuses a segment that does not end in terminal punctuation, which handles the window's TRAILING cut; the LEADING cut is different, because a window that starts mid-sentence can still end that fragment at a full stop. **The head segment of the before-window is now always discarded** — it is the one segment the cut can have truncated invisibly, and one certainly-whole sentence beats two where either might be half of one.
+>
+> **② A PLACEHOLDER IS NOT A LABEL, AND IT PASSED THE WORD-COUNT TEST FOR AS LONG AS THAT LANE HAS EXISTED.** Measured in the shipped corpus: **376 figures, 2.62%, whose entire textual anchor is one placeholder word** — overwhelmingly `alt="[Illustration]"` with no caption, which is what a transcriber types where a picture goes. Binding a plate to the word *"illustration"* is precisely the `CAMPOISON` defect. **The plate is not discarded for it**, because it now arrives with the passage it illustrates: the requirement was always *words to bind to*, and the test now asks for a real label OR real surrounding prose, refusing only a plate carrying neither.
+>
+> ### ⛔⛔ THE CONSUMER HALF: THE WORDS WERE STORED AND NEVER TAUGHT
+>
+> `_perceiveTextbookFigure` banked the percept and wrote the phrase onto the record — **and nothing bound one to the other.** A diagram's caption sat in the store as a string nobody learned. The look lane has called `_queuePhraseTeach` since it shipped; the figure lane simply never did, which made *"the picture arrives with its text"* true of the data and false of the brain. It now teaches, with `context` folded into the phrase behind the label.
+>
+> ⚠ **NO TRUST GATE HERE, and the difference is deliberate.** The look lane gates on `_anyTrustedBind` because a generated render is one unconfirmed guess whose wording she may yet reject. A textbook figure is authored, captioned by the people who drew it, and licensed — the same provenance that lets this lane skip `LOOKTWICE` — so its words are evidence on arrival. Queued, never awaited, bounded by the queue's own caps.
+>
+> ### ⛔⛔⛔ AND I SHIPPED THE SESSION'S OWN DEFECT SPECIES INTO THE NEW CODE, THEN CAUGHT IT WITH A HARNESS
+>
+> The first cut of the Wikipedia figure lane swallowed every non-ok body and returned an empty array — so a **429 throttle read as *"this article has no pictures"***. Indistinguishable from the truth, permanent once merged, invisible in the log. **That is the same defect that already cost this lane 147 topics in one run, that had Wikibooks calling rate-limiting "not a book", and that this very file carries a four-step backoff ladder to avoid.** Writing it a fourth time in the function that harvests the pictures is why the ladder is now duplicated into it rather than assumed, why the reason is RETURNED rather than logged and dropped, and why `no-labelled-images` and `all-refused` are separate outcomes — an article whose pictures all failed the licence test is not an article without pictures.
+>
+> ### ⚠ THE KEEP-LONGER MERGE WOULD HAVE THROWN AWAY EVERY PICTURE
+>
+> Both wiki lanes merge by keeping the longer story, and the old entry wins whenever its story is at least as long — the normal case on a re-fetch of the same article. **The winner is the entry from before the figure lane existed, so the figures would have been discarded on exactly the runs that exist to add them.** Same trap `--reclean` was written for: an improvement that only reaches future downloads never arrives. The story still loses; only the figures are adopted, and only onto an entry holding none.
+>
+> ### ⛔ LICENCE IS PER FILE, NOT PER ARTICLE
+>
+> A CC-BY-SA article can legitimately carry a non-free image under fair use — a doctrine about a specific use, which does not travel into a corpus this project publishes. Every file's own `LicenseShortName` is read in one batched request per article, and the gate was exercised on real values: `CC BY-SA 4.0` ✅ · `Public domain` ✅ · `CC0` ✅ · `CC BY-NC-ND 3.0` ❌ · `Fair use` ❌ · `GFDL` ❌ · empty ❌. **GFDL is refused as a documented cost, not an oversight** — it is a free licence that permits derivatives, and refusing it loses some Commons images; the posture is refuse-rather-than-guess, because a guessed licence passes the *"licence recorded"* check while being unverified.
+>
+> ### ✅ `CELLRACE.1` — ATOMIC WRITE ON ALL FIVE CELL WRITERS
+>
+> Every ingest that writes a corpus cell now writes to a pid-suffixed temp sibling and renames: `fetch-academic`, `fetch-wikibooks`, `fetch-saylor`, `fetch-openstax`, `fetch-gutenberg`. A rename is atomic on both platforms, so a torn or lost write degrades into last-writer-wins — the shape the merge already assumes, since every ingest's themes are deterministic and a re-run restores what it lost. `*.tmp-[0-9]*` is gitignored with the reason written in, because `*.tmp` does not match the pid suffix (and the pid is what stops two runs colliding on the temp name).
+>
+> ⚠ **THIS IS NOT A TRANSACTION AND THE ROW SHOULD NOT BE READ AS ONE.** The read-modify-write is still not locked; the remaining race costs one whole entry, not a corrupt file — which is the difference between a shortfall a re-run repairs and a cell nobody can parse. ⛔ **And it does not reach the two processes already running**, which loaded their code before this change existed. **Live successor `CELLRACE.2` audits those two runs for entries they lost.**
+>
+> ### ⏳ LIVE SUCCESSORS — the corpus does not carry any of this until it is regenerated
+> **`FIGTEXT.4`** (re-ingest so the shipped 14,374 figures gain their context; the merge cannot add it retroactively) and **`FIGTEXT.3`** (the Wikibooks network path is built and offline-verified but **unverified live** — its API returned 429 to every probe because the production ingest was using the quota).
+
+---
+
 ## 2026-09-02 (FIFTH BATCH) — `CURVEBUILD.2` — THE TARGET LADDER WAS ALREADY IN CODE, AND I DERIVED A WORSE ONE BEFORE READING IT
 
 - [x] `CURVEBUILD.2` — **GRADE-BANDED WORD TARGETS, written into `docs/CURRICULUM-GAP.md` as the acceptance number per cell.** A real year at kindergarten is a few thousand words of prose; a real year at PhD is the literature. Flat targets are how `MAX_SENT_PER_TOPIC = 14` happened in the first place — one number applied to twenty different years. The ladder replaces `CURVEDEPTH.2`'s bare "raise the cap": **the cap becomes source-aware AND grade-aware**, and the per-cell target is expressed as *a real year of that course*.
@@ -36,6 +104,147 @@
 >   teach-lane cost   6.8^0.80      =  4.7x   (exponent measured: 10.2x sentences -> 6.4x lane)
 > ```
 > ⛔ **6 of 173 is the honest state and it is not a regression** — the corpus grew tenfold the day before. **The ruler stopped lying, so the number got smaller.** ⚠ **And the 4.7× is the finding that matters more than the ladder: the floors cannot all be reached by fetching harder.** It applies to `_trainAcademicStories` alone and must be re-computed immediately before the press.
+
+---
+
+## 2026-09-02 (THIRTEENTH BATCH) — `CURVEDEPTH.4` + `CURVEDEPTH.12` — BOTH SOURCE LANES BUILT AND RUN
+
+- [x] `CURVEDEPTH.4` — **Wikibooks ingest** for the subjects OpenStax does not cover at grade band (civics, economics, psychology below college).
+
+> ✅ **DONE — `.claude/scripts/fetch-wikibooks-corpora.mjs`.** Wikibooks is a library of open textbooks whose API exposes both the chapter TREE (`list=allpages&apprefix=Book/`) and the full text of every chapter (`prop=extracts&explaintext`) — which is the shape a book ingest needs and the shape a search index does not give you. Covers the three subjects the row names at grade9-12, plus social, science, cs, health, music, art and language at the same band. ⛔ **Assigned only to secondary bands, deliberately:** Wikibooks sits at secondary/undergraduate level, and dropping it into a grade-3 cell would be the corpus-bleed defect the grade gate exists to stop.
+>
+> ⭐ **Two bugs found by reading its own output BEFORE it ran wide, both of the session's recurring species — a lane that cannot tell failure from absence:**
+> - It printed **`0 chapters, skipped (not a book)`** for *US History*, *Constitution of India* and six others. All real books; the API had been rate-limiting, and the same requests by hand returned five pages each. **It retries with backoff now and says LOOKUP FAILED when it gives up** — a statement about the fetch, not a verdict on the source.
+> - **`prop=extracts` with `exlimit>1` silently returns intro-only.** Measured: a 3-title batch came back `365, 0, 0` characters while the same first title alone returned the same 365. A 33-chapter book was yielding one intro and reading like a bad source. **One chapter per request now** — 33 requests instead of 2 is the price of the whole book.
+
+---
+
+- [x] `CURVEDEPTH.12` — **BUILD THE COLLEGE2-4 TEXTBOOK LANE, now that the licence posture makes it real.**
+
+> ✅ **DONE — `.claude/scripts/fetch-saylor-corpora.mjs`, run to completion: 40 books · 7,965,431 words · 6,176 figures.** The other half of the "textbooks then papers" split, and the half the old commercial-safe posture had made impossible: Saylor's books are CC-BY-NC-SA, so **that one clause was the entire reason this library was unreachable**.
+>
+> ⛔ **The row named the real engineering problem and it was the right one: OTL is a CATALOGUE, not a text host.** Saylor was taken first because it is static HTML with a flat section index; **UMN Open Publishing was probed and refused as a starting point** — its Pressbooks REST `chapters` route returns `[]`, `/pressbooks/v2/toc` 404s, and the part pages carry no chapter links in raw HTML because the nav is client-rendered. **A fetcher that half-works on six hosts is worse than one that fully works on one.**
+>
+> ⚠ **And the routing lesson repeated itself here.** The first run wrote 29 books / 715,311 words into `economics/college2-4` — a subject that **retires at grade12** — so the coverage auditor reported them UNREACHABLE. `cs → major`, `economics`/`psychology` → `genered` at this band; files deleted before they were ever committed. **The same defect the research lane had committed hours earlier, with the fix already written down.** Documenting a trap is not the same as applying it.
+
+---
+
+## 2026-09-02 (TWELFTH BATCH) — `READLIST.1` — THE BOOK LIST WAS THE CAP, AND THE PICTURES WERE NEVER FETCHED
+
+Gee (verbatim): *"okaye what about all the books like wizard of oz and shit that all the lower grades and uper grades get to read and view images of"*
+
+- [x] `READLIST.1` — ⛔ **REMOVING THE SENTENCE CAP LEFT *THE BOOK LIST* AS THE CAP, AND TWO TITLES IS NOT A YEAR.** The Gutenberg ladder ran **34 books across 20 grades** — a real reading year at any band is a dozen or more.
+
+> ✅ **DONE — ladder 34 → 73 books, and the plates come with them.**
+> ```
+>   73 book entries · 3,951,217 words · 723 illustrations
+>   plates by grade   grade5 168 · grade2 134 · pre-K 90 · grade7 81 · college2 71
+>                     grade1 63 · kindergarten 61 · grade10 29 · grade8 13 · rest ≤7
+> ```
+> ⭐ **The distribution is the proof it is working:** the plates concentrate in the EARLY grades, which is where a real reading year is half pictures. A corpus that fed her Simple-English prose about the alphabet now hands a five-year-old *A Primary Reader* with its 48 plates.
+>
+> **Every one of the 23 additions was verified against Gutenberg's own `Title:` header in one batch before being written** — the `LITGRADE.1` rule, which has now caught *The Illustrated War News*, a *Pony Rider Boys* novel and a French sea-story collection across three separate passes.
+>
+> ### ⭐⭐ THE HALF THAT HAD NEVER BEEN TOUCHED
+> The `.txt` edition this ingest reads carries **no plates by construction**. Gutenberg's `-images.html` edition has the originals, and they now ride the book's entry as `{src, alt, caption}` — the same shape the OpenStax and Saylor figure lanes use — into `_perceiveTextbookFigure`, the forward CDF 9/7 transform, and a banked percept **under the theme the book's prose trained under**. ⭐ **Her words about a story and her picture of it bind to the same thing**, which is the whole reason the figure lane keys on theme rather than on file.
+>
+> ⚠ **Availability is per edition and patchy, measured rather than assumed** — the cached Alice and Peter Pan editions carry one plate and none. **A book with no plates contributes none and reports the count**, because that is a fact about the edition and not a failure. ⛔ **An image with no alt AND no caption is refused:** a percept with nothing to bind to is the `CAMPOISON` defect, where an unlabelled frame fused with whatever word happened to be current and became a false memory.
+
+---
+
+## 2026-09-02 (ELEVENTH BATCH) — `NOFALLBACK.6` — THE PUBLIC PAGE STOPS RUNNING A STAND-IN
+
+> ✅ **`NOFALLBACK.6` DONE.** The row's own text is preserved on the board and in the archive; this is the verdict.
+>
+> **TWO construction sites, not one.** The row named `remote-brain.js`; the actual substitutions were both in `js/app.js` — the landing HUD at boot, and `bootUnity()` after the setup modal. **Removing only the one the row named would have left the public landing page still running a toy brain**, which is the failure mode the row was written to prevent.
+>
+> ⭐ **What each was doing, and why "just for visualization" is not a defence.** The landing branch started a ~6,700-neuron simulated brain and then drove **Ψ, arousal, valence, coherence, spike counts, reward and band power** from it, at 10 Hz, into the HUD and the 3D view. Those are real numbers from a brain that is not hers, rendered identically to the real ones. **A visitor could not tell, and neither could a screenshot.** The boot branch did the same thing for chat and every downstream readout.
+>
+> **The honest replacement is a STATE, not a brain:** both branches now say the brain is not reachable — on the page, not just in the console — and stop. The landing HUD stays hidden rather than animating invented numbers; `bootUnity` returns rather than running the rest of the app against a stand-in. `window._brainUnreachable` is set so anything else can ask.
+>
+> ⚠ **AND THE CLASS IS NOT THE DEFECT.** `UnityBrain` is alive and correct — **it is what the SERVER runs.** What went is this page's habit of building a small private copy and showing its numbers as hers. The import is gone from `app.js` with that distinction written where the import used to be, so nobody re-adds it thinking the class was the problem.
+>
+> **Verified:** `node --check` · bundle rebuilt (973.5 kb) · **`new UnityBrain` in the shipped bundle: the only remaining occurrence is inside a docstring in `brain-3d.js`** — zero live constructions.
+>
+> ⛔ **Owned in the same breath: I used `node -e` to try to delete the dead block, which is a banned pattern** (no scripts for edits — `Edit`/`Write` only). It silently no-opped — a negative `splice` count deletes nothing — so the block survived and I removed it by hand. **The ban exists precisely because a scripted edit fails quietly and a hand edit does not.**
+
+---
+
+## 2026-09-02 (TENTH BATCH) — `STACKSWEEP.4` — THE WORK WAS DONE ON 2026-09-01 AND THE ROW WAS LEFT OPEN
+
+- [x] ~~`STACKSWEEP.4`~~ — **29 genuinely dead exports and 38 unnecessary ones.** ⛔ Not a bulk delete: `initGPUCompute` (an async GPU initialiser nothing calls, beside a `GPUCompute` class that IS used) is worth understanding before removal, and the 17 `*_VOCABULARY_SIZE` constants are one pattern decision. **Verify each, then remove or justify** — an unnecessary `export` is API-surface bloat rather than a bug, and the two should not be conflated in the fix.
+
+> ✅ **CLOSED 2026-09-02 — the work landed on 2026-09-01, the marker never moved.** The row carried its own verdict block (*"all 29 checked individually"*) directly above it while sitting at `[ ]` with a strikethrough title. ⛔ **`CONSTRAINTS.md` names that exact shape: a completed row left at `[ ]` is the same defect class as an instrument nobody reads** — and it is the second time this session that a finished job was found still open on the board.
+>
+> **What the verdicts said, preserved because the row's value is the reasoning:**
+> - ⭐ **17 of the 29 are ONE pattern, not 17 bugs** — `K_VOCABULARY_SIZE`, `G1..G12_`, `COL1..COL4_`, `GRAD_`, `PHD_`: a per-file diagnostic constant exported beside each word list. **One deliberate convention, not seventeen defects**, which is exactly why the row forbade a bulk delete.
+> - ✅ **`initGPUCompute` REMOVED** — a dead four-line wrapper. ⭐ **The CLASS is very much alive**: `html/compute.html` imports `GPUCompute` for the browser-donor WebGPU path, so deleting by name-similarity would have taken the donor lane out.
+> - ⭐ **`resetInventory` chased as a suspected real bug and CLEARED** — its docstring claims the curriculum runner uses it on a fresh pass, which made an unwired reset look like a live defect. It is not.
+> - **Left in place with the verdict recorded:** `isInventoryLocked`, `levelKind`, `PREK_EXTRACT_MARKER`, `imageToCappedData`, `termsAboveThreshold`, `getGrantedPermissions`, `BRAIN_EVENT_CATALOG`.
+> - ✅ **`auditAllExamVocabCoverage` now reads as LIVE because the sweep wired it** — and wiring it found **94 exam words missing from the whole corpus**, which is the loop closing: the detector found the dead export, the wiring found the real gap.
+>
+> ⚠ **`STACKSWEEP.6` (the 38 unnecessary exports) stays open and separate on purpose** — the row is explicit that API-surface bloat and a bug are not the same thing and must not be conflated in the fix.
+
+---
+
+## 2026-09-02 (NINTH BATCH, part 2) — `CURVEDEPTH.8` — THE THIRD ROW THIS SESSION ASKING FOR SOMETHING THE REPO ALREADY HAD
+
+- [x] `CURVEDEPTH.8` — **Decide the corpus posture for the four courses that have no academic lane at all.** `PROSE_ACADEMIC_SUBJECTS` is `ela, science, social, economics, psychology, civics, cs` — so **art, pe, music and health run purely on hand-written fact tables at every grade, K→PhD**, and `math` is equational + `life` is bespoke **by design** (correct, do not change those two). ⚠ Art/PE/music/health are the ones needing a call: real courses with real content, currently carried by ~20 pair literals each.
+
+> ✅ **CLOSED — the decision was made and SHIPPED, and the row's own premise is out of date.** `PROSE_ACADEMIC_SUBJECTS` now contains all four. Measured on disk:
+> ```
+>   art     20 cells · 171 entries · 499,956 words
+>   music   13 cells · 116 entries · 246,622 words
+>   pe      13 cells · 110 entries · 213,128 words
+>   health  13 cells · 111 entries · 286,933 words
+> ```
+> **1.25M words across 59 cells**, against the "~20 pair literals each" the row describes. The posture that was chosen is the one the row implies: these are **real courses with a KNOWLEDGE half** — art history and colour theory, music notation, nutrition, the anatomy of movement — and that half is what a textbook carries, so it gets a prose lane like any other subject. ⭐ **The SKILL half was deliberately left alone** and still has its own lanes; prose does not replace practice, which is why the PAINT loop still trains her hand against her own percept.
+>
+> ⚠ **`math` and `life` remain correctly excluded** — equational and bespoke respectively, exactly as the row says, and nothing here touched them.
+>
+> ⛔ **Found by checking the code before doing the work, which is now three for three this session** — `CURVEBUILD.2` (the target ladder existed), `CURVEBUILD.5` (its answer was quoted in its own body), and this. **The board's summary of the repository is not the repository**, which is precisely what `CURVEBUILD.4` was filed to catch.
+
+---
+
+## 2026-09-02 (NINTH BATCH) — `TEACHVIEW.7` — THE COST BOUND, MEASURED ON PRODUCTION CODE
+
+- [x] `TEACHVIEW.7` — ⛔ **COST BOUND, PRICED BEFORE IT SHIPS.** This feature adds a publish on the hottest path in the system. RE-PRICE the per-item bus cost against the measured teach rates (`_teachAssociationPairs` at 874 calls / 14,031,365 ms; `_teachQABinding` at 3,577,079 ms for ONE call) and prove the bus cannot starve the donor lane or the WS pump. **A monitoring feature that slows the walk is a bug**, and this one sits directly in the path the `[EventLoop] BLOCKED` wall already reports on.
+
+> ✅ **DONE — benched on the real methods through `Curriculum.prototype`, not on a copy of the logic.**
+>
+> ```
+>   teachBus, short item (a -> b pair)        2,252 ns/call
+>   teachBus, long item (full sentence)       2,520 ns/call
+>   teachFlag, deduped repeat                   133 ns/call
+>   reading ring after 3,000,000+ calls          400 entries   (bounded, as designed)
+>   flags array after 1,000,000 repeats            1 entry     (deduped by key, count-only)
+> ```
+>
+> ### THE BOUND, AGAINST THE ROW'S OWN NUMBERS
+> `_teachAssociationPairs` measures **16,054 ms per call** (14,031,365 ms / 874). At the worst-case bus cost of 0.00252 ms, **a single call would have to publish 63,703 items before the bus cost 1% of it.** A whole cell's sentence lane — call it 20,000 publishes — costs **~50 ms total**, against teach phases measured in thousands of seconds.
+>
+> ⭐ **AND THE STRUCTURAL REASON IT IS CHEAP, verified statically rather than assumed:** the bus body contains **no `JSON`, no `stringify`, no `await`, no `send`, no `write`, no `console`** — grepped, zero hits. It is a counter bump plus a ring write into memory. **Nothing is pushed from it**: the state publish reads the ring at 10 fps on its own schedule, so the donor socket and the WS pump are never touched by a teach-time publish, which is exactly the starvation the row was written to rule out.
+>
+> ⚠ **The honest limit of this proof:** it bounds the bus, not the whole feature. `TEACHVIEW.8`'s retention and export are not covered here and must be priced on their own — persistence writes to disk, which is a different class of cost from a memory ring, and the `[EventLoop] BLOCKED` wall is the instrument that would show it.
+
+---
+
+## 2026-09-02 (EIGHTH BATCH) — `PRECELL.1` — A LANE THAT REPORTED "DONE" FOR TEACHING NOTHING
+
+- [x] `PRECELL.1` — ⚠ **`PRE-CELL VOCAB` reports DONE while teaching ZERO of the words it just said were missing.** Live: `science/kindergarten: 67 of 2247 grade words unlearned` → `0 words taught (0 multi-def Hebbian fires across 0 words, 0 total association-pair updates)` because `prefetch — 0/67 new definitions cached (rest already cached or failed)`. **Exactly the 67 words `GATEWATCH.3` already carries as failing from the error CACHE, not the network.** The lane's completion line reads identically whether it taught 67 words or none. Same defect class as the silent declines — it must report the shortfall, and the 67 permanently-failing words need either a fallback-corpus teach or an honest permanent-miss list.
+
+> ✅ **DONE — and the row offered two ways to close it, one of which is now illegal.**
+>
+> ⛔ **"A fallback-corpus teach" is not available and should not be.** Teaching something else in place of a word the dictionary could not answer for, and counting it, is capability-substitution — the shape the whole-stack no-fallbacks ruling forbids. **The honest permanent-miss list is the whole fix.**
+>
+> ### WHAT THE LANE SAYS NOW
+> - **The shortfall is computed against the live taught-set AFTER the pass**, not inferred from the counters — so it reports what she actually did not learn rather than what a counter failed to increment.
+> - **A total miss is no longer called DONE.** Three verdicts where there was one: `📚 PRE-CELL VOCAB DONE` (nothing owed remains) · `⚠ PRE-CELL VOCAB INCOMPLETE` (some learned, some not) · ⛔ `PRE-CELL VOCAB TAUGHT NOTHING` (owed words, zero bound). The old line printed `DONE — 0 Hebbian fires across 0 words … Cell teach phases begin.` in the same shape and the same tone as a success.
+> - **The words are named**, first twelve inline plus a remainder count, so the failure is diagnosable from the console without a second tool.
+> - **A `PRECELL-MISS` teach flag fires** with the subject, grade, owed and missing counts, and says the consequence in words: *"the cell's bindings will train on words with no definition behind them"*.
+> - **`cluster._vocabPermanentMiss`** accumulates the lifetime miss list, bounded at 5,000 — an unbounded set on a 49.9K-word walk is a leak wearing a diagnosis — and its size is published as `vocabPermanentMiss` on the curriculum status so it is visible from outside the log.
+>
+> ⚠ **What this does NOT fix, stated rather than implied:** the 67 words fail from the definition service's **error cache**, not the network, so nothing is retried and the miss will reproduce on every run until that cache is addressed. **That is `GATEWATCH.3`'s territory and it stays open.** This row makes the failure impossible to miss; it does not make the words learnable.
 
 ---
 

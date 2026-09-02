@@ -36,7 +36,12 @@ const UA = 'UnityBrainCurriculum/1.0 (educational research; openly-licensed cont
 const BASE = 'https://opendatastructures.org/ods-python';
 
 const SENT_MIN = 30, SENT_MAX = 240;
-const SENT_CAP_BY_BAND = { early: 60, middle: 120, upper: 240, high: 400, college: 600, grad: 800 };
+// ⛔⛔⛔ NO CAP — 2026-09-02, on Gee's instruction that *"all the corpus needs to
+// be complete"*. This ladder (60 / 120 / 240 / 400 / 600 / 800) discarded most
+// of every section AFTER fetching it, which is `MAX_SENT_PER_TOPIC = 14` with a
+// bigger number. What bounds a CELL is the band floor in
+// `docs/CURRICULUM-GAP.md §THE TARGET LADDER`; nothing bounds a SOURCE.
+const SENT_CAP_BY_BAND = { early: Infinity, middle: Infinity, upper: Infinity, high: Infinity, college: Infinity, grad: Infinity };
 const BAND_OF_GRADE = new Map([
   ['grade9', 'high'], ['grade10', 'high'], ['grade11', 'high'], ['grade12', 'high'],
   ['college1', 'college'], ['college2', 'college'], ['college3', 'college'], ['college4', 'college'],
