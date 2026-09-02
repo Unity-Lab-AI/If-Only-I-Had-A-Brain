@@ -1948,7 +1948,34 @@ Gee, verbatim:
 
 > *"now remember she need to be able to hear too when talked too not just a TTS wrapper on a text chain"*
 
-- [ ] `HEARING.1` — ⛔⛔ **INCOMING SPEECH NEVER BECOMES A PERCEPT. HER EARS AND HER WORDS ARE TWO SEPARATE SYSTEMS THAT NEVER MEET.** Discovery, read at the code rather than assumed:
+- [x] `HEARING.1` — ✅ **SHIPPED 2026-09-02 — SHE HEARS.** The sound she takes in is now perceived into equations and **bound to the words it carried**, which is the same four steps a picture takes.
+  ```
+    js/io/hearing.js        NEW — 20s rolling PCM ring off the SAME mic source
+    voice.js _perceiveHeard transcript reaches BACK for its own sound
+    app.js                  voice.on('heard_percept') → brain.receiveSensoryInput('heard')
+    brain-server.js         case 'heard'  → _ingestHeard
+    visual-memory.js        _ingestHeard  → store `heard:<phrase>` + _queuePhraseTeach
+    state.js                state.ownArt.heard — received/banked/taught/rejected
+  ```
+  - ⭐⭐ **THE LANE WAS ALMOST ENTIRELY BUILT ALREADY, AND ONE PIECE HAD NEVER BEEN CALLED.** `perceiveAudio` existed; the tonotopic cortex existed; `_queuePhraseTeach` existed. And **`describeAudio` — the octave-band percept reader — had ZERO CONSUMERS since the day it was written.** `_perceiveHeard` is its first caller ever. **What was missing was never the ear or the maths. It was the PCM.**
+  - ⛔ **WHY A ROLLING BUFFER AND NOT "RECORD WHEN SPEECH STARTS":** `SpeechRecognition` never hands back the audio it recognised, and it reports a phrase **only after it has finished**. Any design that begins recording on a speech event has already missed the utterance. The tap holds the last 20 s always; the transcript reaches back for its window. **The recogniser NAMES the sound; it never sources it.**
+  - **Proven on real signal through the production functions:**
+  ```
+    perceiveAudio     2 chunks · 14,173 terms from 36,000 samples (39.4%, sparse)
+    record size       55.7 KB   vs 0.69 MB for the same PCM as JSON — 12x smaller
+    describeAudio     32 bins, 12 non-zero, L2 norm 1.0000 (normalised, as documented)
+    round-trip        relative L2 error 0.0142  against an AUDIO_TOL of 0.02
+    discrimination    cosine(low-formant, high-formant) = 0.1414 — DISTINGUISHABLE
+    silence           percept L2 0.0000 — silence does not look like sound
+  ```
+  - ⚠ **I SAID "A FEW KB" WHEN DESIGNING THIS AND THE MEASURED FIGURE IS 55.7 KB.** Still 12× smaller than the waveform and still the right call for the socket, **but the estimate was wrong by an order of magnitude and the measured number is the one that goes in the record.**
+  - ⛔ **PERCEIVED CLIENT-SIDE ON PURPOSE.** Raw PCM for one utterance is ~72,000 floats — most of a megabyte as JSON, on the same socket the walk teaches over. `perceiveAudio` is pure and runs fine in the browser. **The equation travels, never the waveform.**
+  - ⛔ **`heard:` IS NAMESPACED FOR THE SAME REASON `fig:` IS.** Keyed by words alone, a spoken sentence would overwrite what a WORD LOOKS LIKE in the same store — the CAMPOISON defect, where an unlabelled frame became her memory of a word.
+  - ⚠ **NOT A CLAIM OF SPEECH RECOGNITION, AND THIS MATTERS.** She does not transcribe; the transcript still comes from the browser. **What changed is that the sound is no longer discarded and her words are anchored to a percept she actually took in** — the difference between hearing and reading. Claiming more would be the same overclaim as calling the old three-tier chain equational.
+  - ⚠ **ScriptProcessorNode chosen over AudioWorklet deliberately:** a worklet needs a separately-served module file, and **a 404 on it fails SILENTLY into "she has no ears"** — the exact class of failure this lane exists to end. The node is one memcpy per callback, routed through a **zero-gain** node so the callbacks stay alive without putting the microphone into the speakers.
+  - ⚠ **STATIC — no microphone has been spoken into.** The chain is verified function-by-function on synthetic signal; the live verdict is `state.ownArt.heard.received` climbing when someone talks to her.
+
+  **Original filing:** ⛔⛔ **INCOMING SPEECH NEVER BECOMES A PERCEPT. HER EARS AND HER WORDS ARE TWO SEPARATE SYSTEMS THAT NEVER MEET.** Discovery, read at the code rather than assumed:
   - ⭐ **She genuinely HAS ears, and they work.** `js/brain/sensory.js:246 _processAudio()` is a real tonotopic auditory cortex: 50 neurons, FFT bins mapped **non-linearly with cortical magnification across the speech band (300–3000 Hz)**, driving `cortexCurrent`, `salience`, and an amygdala **startle** response above 0.3 energy. **She feels sound.**
   - ⭐ **And the equational audio front end exists too** — `js/brain/mindspace/audio.js:42 perceiveAudio(pcm, sampleRate)` turns PCM into a CDF 9/7 record, the exact machinery her VOICE round-trips through.
   - ⛔ **But the WORDS arrive by a completely different road.** `js/io/voice.js:346` — `rec.onresult` → `result[0].transcript` → `_onResult(payload)` → the text chain. **The browser's SpeechRecognition hears; she does not.** The transcript bypasses `_processAudio`, bypasses `perceiveAudio`, and bypasses her cortex entirely.
@@ -1961,6 +1988,18 @@ Gee, verbatim:
     4. **Bind** the transcript to that percept with `_queuePhraseTeach`, so hearing moves her weights the way seeing does. ⚠ **The transcript is still the word source** — that is honest and fine; the point is the audio is no longer thrown away, and the words are now *anchored to a percept she actually took in*.
   - ⚠ **WHAT THIS IS NOT: a claim that she does speech recognition.** She does not, and inventing that is out of scope. **The deliverable is that the sound is perceived and bound, not that the transcript is replaced.** Saying otherwise would be the same overclaim as calling the old three-tier chain equational.
   - ⚠ **Depends on the microphone lane being live at all** — `_analyser`/`_audioData` are only populated when the mic is connected, which is the same class of question `FOCUSDEAD.2` asks about the camera. **Check that before building on top of it.**
+
+- [x] `HEARING.2` — ✅ **THE OLD TTS IS GUTTED 2026-09-02.** Gee: *"and make sure u gut the old tts it used that we dont need anymore"* / *"or stt i mean i think idk really"*.
+  - ⭐ **The two were separated before anything was cut, because one is dead and one is load-bearing.** **TTS (output) — all dead, all removed:** `_pollinationsVoice`, `setVoice`, `_voiceOverride`, `setApiKey`, `_apiKey`, the `voice`/`pitch`/`style` hints in `_agePreset`, `_playWithAudioContext`, `_playWithAudioElement`, `_currentAudioElement`, and `_speakBrowser`. ⛔ **STT (input) — KEPT, and he would want it kept:** `SpeechRecognition` is her **only source of words**, and `HEARING.1` is built on top of it. Gutting it would have left her unable to know what was said at all.
+  - ⛔ **`_apiKey` WAS THE WORST SHAPE OF ORPHAN — WRITTEN TWICE, READ NEVER, with a LIVE caller.** `app.js:2271` called `voice.setApiKey(effectiveKey)` every boot into a field nothing consumed. **A live call site makes dead state look wired**, which is why it survived every previous sweep. Her voice is local — piper in a worker, then the CDF 9/7 round-trip — and has needed no key since the network lane went. The Pollinations key is **images-only** and still flows through `js/ai/pollinations.js`, untouched.
+  - ⭐ **`_speakBrowser` was the one that most needed to go**, and its own comment said so: tier 3 hunted for a *"Samantha"* or *"Microsoft Zira"* to stand in for her. **A listener could not tell which tier produced a sentence, so "Unity spoke" meant three different things and the page never said which.** ⚠ **It had been kept-and-flagged so the warning had somewhere to live — but keeping a dead lane to house a warning is how the warning outlives the reason for it.** The note survives in a comment; the code does not.
+  - ⭐ **`speechSynthesis.cancel()` STAYS, and not by oversight:** this page is not the only thing that can queue a browser utterance, and an extension or stray call speaking over her is exactly the confusion the single-lane ruling exists to prevent. `cancel()` on an empty queue is a no-op.
+  - ⚠ **`_agePreset` returned four fields and only `rate` was ever read.** Returning three dead fields beside one live one is how a reader concludes the voice is configurable when it is not.
+  ```
+    js/io/voice.js    741 → 720 lines (860 before today's two passes)
+    bundle            SpeechSynthesisUtterance 0 · _speakBrowser( 0 · _playWithAudioElement( 0
+    remaining setApiKey( in bundle: 7 — ALL storage/pollinations image-side, verified
+  ```
 
 ## FOCUSDEAD — the vision focus tracker stopped following motion — filed 2026-09-02
 

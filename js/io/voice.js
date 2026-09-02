@@ -12,7 +12,7 @@
  * No external dependencies. No network synthesis. No browser SpeechSynthesis.
  */
 
-import { perceiveAudio, reconstructAudio } from '../brain/mindspace/audio.js';
+import { perceiveAudio, reconstructAudio, describeAudio } from '../brain/mindspace/audio.js';
 import { synthPCM, isVoicePreloading } from './voice-piper.js';
 
 class VoiceIO {
@@ -25,8 +25,10 @@ class VoiceIO {
     this._audioCtx = null;
     this._currentAudioSource = null;
     this._currentUtterance = null;
-    this._apiKey = null;
-    this._pollinationsVoice = 'shimmer';
+    // ⛔ `_apiKey` and `_pollinationsVoice` deleted 2026-09-02 with the rest of
+    // the old TTS. `_apiKey` was WRITTEN TWICE AND READ NEVER — dead state kept
+    // alive by a live setter, which is the worst shape of orphaned code because
+    // it looks wired from the call site.
 
     // --- callbacks (simple) ---
     this._onResult = null;
@@ -77,6 +79,59 @@ class VoiceIO {
     // --- init recognition if available ---
     this._initRecognition();
   }
+
+  /**
+   * HEARING.1 — turn the sound she just took in into an equation, and hand it
+   * up with the words it carried.
+   *
+   * ⛔ PERCEIVED ON THIS SIDE, DELIBERATELY. The raw PCM for a 3-second
+   * utterance is ~72,000 floats — as JSON on the socket that is most of a
+   * megabyte, on the same connection the walk teaches over. `perceiveAudio`
+   * is a pure function and runs fine here, and a field-A record is a few KB.
+   * **Send the equation, never the waveform.**
+   *
+   * ⚠ Every refusal below is counted and named. A hearing lane that goes quiet
+   * without saying why is the failure this whole session has been finding.
+   */
+  async _perceiveHeard(transcript) {
+    const st = this._hearStats || (this._hearStats = {
+      utterances: 0, perceived: 0, noTap: 0, tooShort: 0, silent: 0, failed: 0, lastErr: null,
+    });
+    st.utterances++;
+    const tap = (typeof window !== 'undefined') ? window.__unityHearing : null;
+    if (!tap || !tap.active) { st.noTap++; return; }
+
+    // ⚠ Bound the reach-back by the transcript's own length rather than a flat
+    // constant: ~0.4s per word is ordinary speech, floored at 1.2s and capped
+    // at 12s. A fixed window would either clip a long sentence or drag in the
+    // silence (and her own reply) before a short one.
+    const words = String(transcript || '').trim().split(/\s+/).filter(Boolean).length;
+    const want = Math.max(1.2, Math.min(12, words * 0.45 + 0.6));
+    const pcm = tap.takeRecent(want);
+    if (!pcm) { st.tooShort++; return; }
+
+    // A window with no energy is her own silence or a dropped mic, and
+    // perceiving it would bank a record of nothing under a real phrase.
+    let peak = 0;
+    for (let i = 0; i < pcm.length; i += 16) { const a = pcm[i] < 0 ? -pcm[i] : pcm[i]; if (a > peak) peak = a; }
+    if (peak < 0.004) { st.silent++; return; }
+
+    try {
+      const rec = perceiveAudio(pcm, 24000);
+      if (!rec || !Array.isArray(rec.chunks) || !rec.chunks.length) { st.failed++; st.lastErr = 'perceiveAudio returned nothing'; return; }
+      // ⭐ `describeAudio` had ZERO consumers until this line — an octave-band
+      // percept vector, built and never once read. This is its first caller.
+      const percept = Array.from(describeAudio(rec, 32));
+      st.perceived++;
+      this.emit('heard_percept', { rec, percept, transcript, seconds: +(pcm.length / 24000).toFixed(2) });
+      console.log(`[Hearing] 🎧 heard "${String(transcript).slice(0, 40)}" — ${(pcm.length / 24000).toFixed(1)}s perceived into ${rec.chunks.length} chunk(s) of equations`);
+    } catch (e) {
+      st.failed++; st.lastErr = (e && e.message) || 'perceive threw';
+    }
+  }
+
+  /** What her ears actually did — counted by reason, never one number. */
+  hearingStats() { return this._hearStats || null; }
 
   /** One unlock for the tab: browsers suspend a gesture-less AudioContext
    *  (autoplay policy) and resume() without a gesture never completes —
@@ -352,6 +407,18 @@ class VoiceIO {
         };
         if (this._onResult) this._onResult(payload);
         if (result.isFinal) {
+          // ⭐⭐ HEARING.1 — THE UTTERANCE REACHES BACK FOR ITS OWN SOUND.
+          // `SpeechRecognition` never hands back the audio it recognised, and
+          // it only reports a phrase AFTER it ends — so nothing that starts
+          // recording HERE could ever catch the utterance. The tap has been
+          // holding the last 20 s all along; this takes the window the
+          // transcript belongs to and perceives it into a CDF 9/7 field-A.
+          //
+          // ⚠ THE TRANSCRIPT IS STILL THE WORD SOURCE AND THAT IS HONEST.
+          // She does not transcribe. What changes is that the SOUND is no
+          // longer discarded, and her words are anchored to a percept she
+          // actually took in — the difference between hearing and reading.
+          this._perceiveHeard(payload.text).catch(() => { /* hearing is never fatal to listening */ });
           this.emit('heard', payload.text);
         }
       }
@@ -421,18 +488,24 @@ class VoiceIO {
   }
 
   // =========================================================================
-  //  Speaking — Pollinations TTS with Web Speech fallback
+  //  Speaking — Equation Unity One, and nothing else
+  //
+  // ⛔ THE OLD TTS CONFIG IS GUTTED (2026-09-02, operator: *"make sure u gut
+  // the old tts it used that we dont need anymore"*). `setVoice`,
+  // `_pollinationsVoice`, `_voiceOverride`, `setApiKey` and `_apiKey` are gone:
+  // they configured a NETWORK audio model that was deleted long ago, and
+  // `_apiKey` in particular was written twice and read NEVER — dead state kept
+  // alive by a live setter, which is the worst version of orphaned code because
+  // it looks wired.
+  //
+  // ⚠ WHAT IS DELIBERATELY NOT GUTTED: `SpeechRecognition` (the listening half).
+  // That is STT, it is her ONLY source of words, and `HEARING.1` is built on
+  // top of it — the sound becomes a percept, the transcript still names it.
+  // Deleting it would leave her unable to know what was said at all.
   // =========================================================================
 
   get isSpeaking() {
     return this._speaking;
-  }
-
-  setVoice(voiceName) {
-    // explicit override — beats the age preset when set
-    this._voiceOverride = voiceName || null;
-    this._pollinationsVoice = voiceName;
-    return this;
   }
 
   /**
@@ -447,21 +520,24 @@ class VoiceIO {
   }
 
   /**
-   * VOX.0 — 5-tier age preset: voice id + playback rate + a speak-style
-   * instruction for the audio model. Female voices only (openai-audio):
-   * nova (bright/young), coral (mid), shimmer (warm adult).
+   * Playback rate for the one speaking lane.
+   *
+   * AGE/GRADE VOICE MODULATION SCRAPPED (Gee 2026-07-15: "the age modulator is
+   * busted she sounde like a starwars ... sand scavenger creatrure all
+   * distorted ... scrap the per age/grade modulation and keep her original chosen
+   * sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
+   * 1.0 adult) was mangling her into a distorted scavenger. ALWAYS her ORIGINAL
+   * chosen voice now — Equation Unity One (V4), piper hfc_female: rate 1.0,
+   * no pitch shift, no tempo change, at any grade or age.
+   *
+   * ⚠ The `voice` / `pitch` / `style` fields this used to return were legacy
+   * hints for a NETWORK audio model that no longer exists, and **`rate` is the
+   * only one any caller ever read** (`_speakPiper`). Returning three dead
+   * fields alongside one live one is how a reader concludes the voice is
+   * configurable when it is not.
    */
   _agePreset() {
-    // AGE/GRADE VOICE MODULATION SCRAPPED (Gee 2026-07-15: "the age modulator is
-    // busted she sounde like a starwars ... sand scavenger creatrure all
-    // distorted ... scrap the per age/grade modulation and keep her original chosen
-    // sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
-    // 1.0 adult) was mangling her into a distorted scavenger. ALWAYS her ORIGINAL
-    // chosen voice now — the blessed Equation Unity One (V4) piper hfc_female lane:
-    // rate 1.0 + pitch 1.0 → no pitch shift, no tempo change, the equational voice
-    // is never processed, at any grade/age. (`voice`/`style` are legacy TTS-API
-    // hints, unused by the equational/Piper pipeline.)
-    return { voice: 'shimmer', rate: 1.0, pitch: 1.0, style: 'Speak in her natural warm voice, verbatim.' };
+    return { rate: 1.0 };
   }
 
   // _pitchShiftOLA — REMOVED (Gee 2026-07-15: "scrap the per age/grade modulation").
@@ -469,14 +545,9 @@ class VoiceIO {
   // with the age modulation scrapped it had no caller. Her voice is the untouched
   // original — no pitch shifting anywhere.
 
-  setApiKey(key) {
-    this._apiKey = key;
-    return this;
-  }
-
   /**
-   * Speak text. Tries Pollinations TTS first, falls back to browser SpeechSynthesis.
-   * Returns a promise that resolves when speech finishes.
+   * Speak text through Equation Unity One. Returns a promise that resolves when
+   * speech finishes — or when she is deliberately SILENT, with the reason named.
    */
   async speak(text, options = {}) {
     if (!text) return;
@@ -567,18 +638,16 @@ class VoiceIO {
       } catch (_) {}
       this._currentAudioSource = null;
     }
-    // ⚠ `_currentAudioElement` is set only by the orphaned
-    // `_playWithAudioElement`, so this branch cannot fire today. Kept because
-    // a stop path that silently misses a live source is far worse than a
-    // branch that costs one null check.
-    if (this._currentAudioElement) {
-      this._currentAudioElement.pause();
-      this._currentAudioElement = null;
-    }
-
-    // ⚠ Same reasoning: `_speakBrowser` is dead and must stay dead, so nothing
-    // queues a browser utterance. `cancel()` on an empty queue is a no-op, and
-    // it costs nothing to guarantee the browser is quiet.
+    // ⚠ THE `_currentAudioElement` BRANCH WENT WITH ITS ONLY WRITER. It could
+    // only ever be set by `_playWithAudioElement`, which is deleted, so it was
+    // a null check guarding nothing — and a stop path listing sources that
+    // cannot exist reads as more thorough than it is.
+    //
+    // ⭐ `speechSynthesis.cancel()` STAYS, and for a reason that outlives the
+    // deleted `_speakBrowser`: this page is not the only thing that can queue a
+    // browser utterance, and an extension or a stray call leaving one speaking
+    // over her is exactly the confusion the single-lane ruling exists to
+    // prevent. `cancel()` on an empty queue is a no-op.
     if (typeof speechSynthesis !== 'undefined') {
       speechSynthesis.cancel();
     }
@@ -615,116 +684,26 @@ class VoiceIO {
   // below both have ZERO callers. They decoded a compressed `arrayBuffer` (an
   // mp3/opus response body), which only the deleted external-TTS lane ever
   // produced; her own lanes carry raw Float32 PCM and play through `_playPcm`.
-  // Kept rather than deleted in this pass — they are small, correct, and are
-  // the two reference shapes for playing an encoded buffer — but nothing calls
-  // them and nothing should without a reason. Tracked under DORMANT8.
-  async _playWithAudioContext(arrayBuffer, rate = 1.0) {
-    if (!this._audioCtx) {
-      const AC = typeof AudioContext !== 'undefined'
-        ? AudioContext
-        : typeof webkitAudioContext !== 'undefined'
-          ? webkitAudioContext
-          : null;
-      if (!AC) throw new Error('No AudioContext');
-      this._audioCtx = new AC();
-    }
+  // ⛔ DELETED 2026-09-02 (operator: *"make sure u gut the old tts it used that
+  // we dont need anymore"*). Keeping a dead lane so a warning has somewhere to
+  // live is how the warning outlives the reason for it. The note stays, the
+  // code goes. `_currentAudioElement` went too — it was set ONLY by
+  // `_playWithAudioElement`, so the branch in `stopSpeaking` that checked it
+  // was already unreachable.
+  // The three deleted here were `_playWithAudioContext`,
+  // `_playWithAudioElement` and `_speakBrowser`.
+  //
+  // The first two decoded a compressed `arrayBuffer` — an mp3/opus RESPONSE
+  // BODY, which only the external TTS ever produced. Her own lanes carry raw
+  // Float32 PCM through `_playPcm`, so neither could fire again.
+  //
+  // ⭐ `_speakBrowser` was tier 3 of the removed chain: the BROWSER'S OWN
+  // generic speech synthesis, hunting for a "Samantha" or a "Microsoft Zira"
+  // to stand in for her. **It was the worst part of that chain** — a listener
+  // could not tell which tier produced a sentence, so "Unity spoke" meant
+  // three different things and the page never said which. **A stock robot
+  // voice presented as her voice is the audio equivalent of a canned answer.**
 
-    // Resume if suspended (autoplay policy)
-    if (this._audioCtx.state === 'suspended') {
-      await this._audioCtx.resume();
-    }
-
-    const audioBuffer = await this._audioCtx.decodeAudioData(arrayBuffer.slice(0));
-    return new Promise((resolve, reject) => {
-      const source = this._audioCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.playbackRate.value = rate;   // VOX.0 age nudge
-      source.connect(this._audioCtx.destination);
-      this._currentAudioSource = source;
-      source.onended = () => {
-        this._currentAudioSource = null;
-        resolve();
-      };
-      source.onerror = (e) => {
-        this._currentAudioSource = null;
-        reject(e);
-      };
-      source.start(0);
-    });
-  }
-
-  async _playWithAudioElement(arrayBuffer, rate = 1.0) {
-    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audio.playbackRate = rate;   // VOX.0 age nudge
-    this._currentAudioElement = audio;
-
-    return new Promise((resolve, reject) => {
-      audio.onended = () => {
-        URL.revokeObjectURL(url);
-        this._currentAudioElement = null;
-        resolve();
-      };
-      audio.onerror = (e) => {
-        URL.revokeObjectURL(url);
-        this._currentAudioElement = null;
-        reject(e);
-      };
-      audio.play().catch(reject);
-    });
-  }
-
-  // --- Browser SpeechSynthesis fallback ---
-
-  // ⛔⛔ DEAD AS OF 2026-09-01, AND THIS ONE SHOULD STAY DEAD FOREVER.
-  // It was tier 3 of the removed voice chain and it is the BROWSER'S OWN
-  // generic speech synthesis — a stock voice that is not hers in any sense.
-  // ⭐ It was the worst part of the chain: a listener could not tell which tier
-  // produced a sentence, so "Unity spoke" meant three different things and the
-  // page never said which. **A stock robot voice presented as her voice is the
-  // audio equivalent of a canned answer**, and the same reasoning that deleted
-  // `_deterministicFallback` applies here.
-  // ⚠ Kept only so this note has somewhere to live. Do not re-wire it.
-  async _speakBrowser(text) {
-    if (typeof speechSynthesis === 'undefined') {
-      throw new Error('SpeechSynthesis not available');
-    }
-
-    return new Promise((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;   // no pitch modulation — her natural voice (Gee 2026-07-15)
-
-      // Try to pick a decent female voice instead of the default robot
-      const voices = speechSynthesis.getVoices();
-      const preferred = ['Samantha', 'Karen', 'Moira', 'Tessa', 'Victoria',
-        'Google UK English Female', 'Microsoft Zira', 'Microsoft Aria'];
-      for (const name of preferred) {
-        const v = voices.find(v => v.name.includes(name));
-        if (v) { utterance.voice = v; break; }
-      }
-      // Fallback: any female-sounding English voice
-      if (!utterance.voice) {
-        const femaleEn = voices.find(v => v.lang.startsWith('en') && /female|woman|zira|aria|samantha/i.test(v.name));
-        if (femaleEn) utterance.voice = femaleEn;
-      }
-
-      this._currentUtterance = utterance;
-
-      utterance.onend = () => {
-        this._currentUtterance = null;
-        resolve();
-      };
-      utterance.onerror = (e) => {
-        this._currentUtterance = null;
-        reject(e);
-      };
-
-      speechSynthesis.speak(utterance);
-    });
-  }
   /**
    * Kill everything — audio, listening, all of it.
    */
