@@ -39,6 +39,40 @@
 
 ---
 
+## 2026-09-02 (SEVENTH BATCH) — `LICENCE.1` — THE POSTURE CHANGED AND THE AXIS MOVED WITH IT
+
+Gee (verbatim): *"we will use what ever has educational rights this is not a cvommercial use its a non profit educational experiment"*
+
+- [x] `LICENCE.1` — **RE-SET THE CORPUS LICENCE POSTURE ON GEE'S RULING: educational rights, non-profit, non-commercial experiment.** The standing posture was *"commercial-safe: CC-BY / CC-BY-SA only, CC-BY-NC excluded"*, written into `docs/CURRICULUM-GAP.md`, `docs/TODO.md`, `wiki/modules/corpora.md` and **enforced in code** by `licenceOf()` in the OpenStax ingest. **Every one of those has to move together, and the code one is the only one that actually refuses a download.**
+
+> ✅ **DONE — and the important part is that the axis moved rather than simply loosened.**
+>
+> ⭐ **NC IS IN.** A NonCommercial clause restricts commercial use, and there is none here. That single clause was the whole reason LibreTexts, MIT OCW and most of the Open Textbook Library were unreachable.
+>
+> ⚠ **ND IS STILL OUT, AND IT IS NOT THE COMMERCE AXIS.** This corpus does not merely read a book — it cleans, excerpts and sentence-segments it into a file that is **published in a public repository**. That is distributing an **adaptation**, which NoDerivatives forbids however non-commercial the intent. ⛔ **So the refusal in `licenceOf()` did not disappear; it moved from `NonCommercial` to `NoDeriv`**, and it now returns a reason string instead of a bare false. **SA is accepted with its obligation carried onward, and attribution rides every entry already.**
+>
+> ### WHAT IT UNLOCKS — measured the same hour, 250 of the Open Textbook Library's 2,005 books
+> ```
+>   derivatives permitted (incl. NC)   220 / 250 = 88%      was 27% commercial-safe
+>   NoDerivatives (still refused)       30 / 250
+>   usable AND in a needed subject     170 / 250  -> ~1,363 books  (was ~184)
+>   newly reachable   Business 51 · Mathematics 46 · Computer Science 24
+>                     Social Sciences 23 · Economics 14 · Psychology 9
+>                     Political Science 8 · Sociology 5
+>   hosts   saylordotorg 42 · openstax 26 · open.lib.umn.edu 16 · libretexts 20
+> ```
+> ⭐ **7.4× more usable books, and the newly-reachable subjects are precisely the gaps** — economics, psychology, political science and sociology are the thinnest bands above college1 in the ledger's own table.
+>
+> **Changed together, in one commit:** `licenceOf()` (the only enforcing site) · the OpenStax ingest header · `docs/CURRICULUM-GAP.md` (new §LICENCE POSTURE with the clause table) · `docs/TODO.md`'s posture paragraph, marked SUPERSEDED with its old text kept · `wiki/modules/corpora.md`, same treatment. ⚠ **The old sentences are struck through in place rather than deleted, so the change is legible to anyone who read the previous rule.**
+
+---
+
+- [x] `CURVEDEPTH.11` — ⚠ **THE TEXTBOOK HALF OF THE COLLEGE→PhD DECISION IS THINNER THAN IT LOOKED, AND THE NUMBERS ARE NOW MEASURED.** Filed as the successor to `CURVEDEPTH.6` so a half-built decision is not read as a finished one. **Probed before building: 250 of Open Textbook Library's 2,005 books, through its JSON API.** ⛔ **Only 27% (67/250) carry a commercial-safe licence** — CC-BY / CC-BY-SA / GFDL; the rest are **CC-BY-NC-\***, which this project's licence posture excludes — **and only 23 of 250 are both licence-safe AND in a subject this corpus needs**, extrapolating to **~184 usable books catalogue-wide**.
+
+> ✅ **CLOSED THE SAME DAY IT WAS FILED — THE OBSTACLE WAS THE POSTURE, AND GEE DISSOLVED IT.** The row exists because 73% of the Open Textbook Library is CC-BY-NC-*. Under `LICENCE.1` that is no longer an obstacle at all: **usable books go ~184 → ~1,363**, and the subjects it unlocks are the exact ones the row worried the textbook lane could not cover. ⚠ **DOAJ is no longer needed as a cover for college2-4** — his original "textbooks then papers" split now stands on its own evidence. **The build is re-filed as `CURVEDEPTH.12`; only the licence question closed here.**
+
+---
+
 ## 2026-09-02 (SIXTH BATCH) — `CURVEDEPTH.6` ANSWERED BY GEE AND HALF-BUILT THE SAME HOUR, AND THE AUDITOR CAUGHT ME PUTTING 465,704 WORDS WHERE NOTHING READS THEM
 
 - [x] `CURVEDEPTH.6` — ⛔ **THE ONE GENUINELY OPEN QUESTION, AND IT IS GEE'S: the college→PhD source.** His words, twice: *"we had to find a real fucking PHD equivelent informational database to teach her college"*. **OpenStax stops at intro undergrad** — it cannot carry college2→PhD. Candidates that are real, open-licensed and machine-fetchable: **arXiv** (full-text, CC-BY on many), **PubMed Central Open Access subset** (CC-BY), **DOAJ** (open-access journals), **OpenStax→beyond via OERTX/Open Textbook Library**. ⚠ This is a sourcing decision with licensing consequences, not an engineering pick. **Name it and the ingest is mechanical.**
