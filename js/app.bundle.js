@@ -60967,148 +60967,22 @@ var CLUSTER_EMIT_MIXIN = {
     this._emissionAllowedVocab = set.size > 0 ? set : null;
     return set.size;
   },
-  _dictionaryOracleEmit(intentSeed, opts = {}) {
-    if (opts.skipDictionaryOracle === true) return null;
-    if (this._gateEmissionActive === true) {
-      this._oracleRefusedInGate = (this._oracleRefusedInGate | 0) + 1;
-      return null;
-    }
-    const dictionary = opts.dictionary || this.dictionary;
-    if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
-    if (!intentSeed || intentSeed.length === 0) return null;
-    const excludeWords = opts.excludeWords instanceof Set ? opts.excludeWords : null;
-    const excludePersona = opts.excludePersona === true;
-    const boostPersona = opts.boostPersona === true;
-    const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
-    const restrictToVocab = opts.restrictToVocab instanceof Set ? opts.restrictToVocab : null;
-    const gradeAllow = opts.skipGradeGate !== true && this._emissionAllowedVocab instanceof Set ? this._emissionAllowedVocab : null;
-    let intentNormSq = 0;
-    for (let i = 0; i < intentSeed.length; i++) intentNormSq += intentSeed[i] * intentSeed[i];
-    if (intentNormSq <= 0) {
-      this._matrixHits = (this._matrixHits || 0) + 1;
-      return null;
-    }
-    let schemaCandidate = null;
-    let schemaCandidateScore = -Infinity;
-    const contextSchemas = opts.contextSchemas || this._hippocampusContextSchemas || null;
-    if (Array.isArray(contextSchemas) && contextSchemas.length > 0) {
-      for (const ranked of contextSchemas) {
-        const schema = ranked && ranked.schema ? ranked.schema : ranked;
-        if (!schema || !schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
-        const ceLen = Math.min(intentSeed.length, schema.conceptEmbedding.length);
-        let dot = 0, normSchema = 0;
-        for (let i = 0; i < ceLen; i++) {
-          dot += intentSeed[i] * schema.conceptEmbedding[i];
-          normSchema += schema.conceptEmbedding[i] * schema.conceptEmbedding[i];
-        }
-        const denom = Math.sqrt(intentNormSq * normSchema);
-        if (denom <= 0) continue;
-        let score = dot / denom;
-        if (schema.promotedToTier3) score += 0.05;
-        if (score > schemaCandidateScore) {
-          schemaCandidateScore = score;
-          const label = String(schema.label || "");
-          const anchor = label.split(/[-_\s]+/)[0] || label;
-          schemaCandidate = { anchor: anchor.toLowerCase(), label, schema };
-        }
-      }
-    }
-    if (boostPersona) {
-      const personaFirstMinScore = typeof opts.personaFirstMinScore === "number" ? opts.personaFirstMinScore : 0.05;
-      let personaBestWord = "";
-      let personaBestScore = -Infinity;
-      for (const [word, entry] of dictionary._words) {
-        if (!entry || !entry.pattern) continue;
-        if (entry.isPersona !== true) continue;
-        if (word.length === 1 && word !== "i" && word !== "a") continue;
-        if (excludeWords && excludeWords.has(word)) continue;
-        if (restrictToVocab && !restrictToVocab.has(word)) continue;
-        if (gradeAllow && !gradeAllow.has(word)) continue;
-        const pattern = entry.pattern;
-        let normSq = entry.normSquared;
-        if (normSq === void 0) {
-          normSq = 0;
-          for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
-          entry.normSquared = normSq;
-        }
-        if (normSq <= 0) continue;
-        const denom = Math.sqrt(intentNormSq * normSq);
-        if (denom <= 0) continue;
-        let dot = 0;
-        const n = Math.min(intentSeed.length, pattern.length);
-        for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
-        const score = dot / denom;
-        if (score > personaBestScore) {
-          personaBestScore = score;
-          personaBestWord = word;
-        }
-      }
-      if (personaBestWord && personaBestScore > personaFirstMinScore) {
-        const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-        const cleanEmit2 = personaBestWord.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
-        this._oracleHits = (this._oracleHits || 0) + 1;
-        return { cleanEmit: cleanEmit2, bestWord: personaBestWord, bestScore: personaBestScore + personaBoost };
-      }
-    }
-    let bestWord = "";
-    let bestScore = -Infinity;
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) continue;
-      if (word.length === 1 && word !== "i" && word !== "a") continue;
-      if (excludeWords && excludeWords.has(word)) continue;
-      if (excludePersona && entry.isPersona === true) continue;
-      if (restrictToVocab && !restrictToVocab.has(word)) continue;
-      if (gradeAllow && !gradeAllow.has(word)) continue;
-      const pattern = entry.pattern;
-      let normSq = entry.normSquared;
-      if (normSq === void 0) {
-        normSq = 0;
-        for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
-        entry.normSquared = normSq;
-      }
-      if (normSq <= 0) continue;
-      const denom = Math.sqrt(intentNormSq * normSq);
-      if (denom <= 0) continue;
-      let dot = 0;
-      const n = Math.min(intentSeed.length, pattern.length);
-      for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
-      let score = dot / denom;
-      if (boostPersona && entry.isPersona === true) score += personaBoost;
-      if (score > bestScore) {
-        bestScore = score;
-        bestWord = word;
-      }
-    }
-    const minScore = typeof opts.minScore === "number" ? opts.minScore : 0.2;
-    if (schemaCandidate && schemaCandidateScore > bestScore && schemaCandidateScore > minScore) {
-      const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-      const cleanEmit2 = schemaCandidate.anchor.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
-      if (cleanEmit2) {
-        this._oracleHits = (this._oracleHits || 0) + 1;
-        try {
-          if (schemaCandidate.schema && typeof schemaCandidate.schema.registerRetrieval === "function") {
-            schemaCandidate.schema.registerRetrieval();
-          }
-        } catch {
-        }
-        return {
-          cleanEmit: cleanEmit2,
-          bestWord: schemaCandidate.anchor,
-          bestScore: schemaCandidateScore,
-          source: "hippocampal-schema",
-          schemaLabel: schemaCandidate.label
-        };
-      }
-    }
-    if (!bestWord || bestScore <= minScore) {
-      this._matrixHits = (this._matrixHits || 0) + 1;
-      return null;
-    }
-    const maxLetters = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-    const cleanEmit = bestWord.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters);
-    this._oracleHits = (this._oracleHits || 0) + 1;
-    return { cleanEmit, bestWord, bestScore };
-  },
+  // DELETED 2026-09-01 - NO FALLBACKS. _dictionaryOracleEmit was here.
+  //
+  // 311 lines removed. It scanned every dictionary entry for the highest
+  // cosine to the intent seed and returned that entry SPELLING, bypassing
+  // the motor loop entirely. Two call sites fed it: the gate/probe emission
+  // path and emitWordDirect. Both are gone; see the notes at those sites.
+  //
+  // It carried 99.1 percent of emissions in a captured run - oracleHits=425
+  // against matrixHits=4 - and this project own public page labelled it
+  // Path B, dictionary oracle, FALLBACK.
+  //
+  // DO NOT RE-ADD IT IN ANY FORM. If emission comes back empty the defect is
+  // in the TRAINING - deposit, dose, corpus volume, basin separability - and
+  // this lane whole function was to make that invisible by answering over
+  // the top of it. The gates are not supposed to fail; a failing gate now
+  // names a knob to turn instead of being papered over.
   generateSentence(intentSeed = null, opts = {}) {
     if (this.size > 2e6) {
       if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
@@ -62161,20 +62035,6 @@ var CLUSTER_EMIT_MIXIN = {
     if (opts.directPropagate === true) {
       return await this._emitDirectPropagate(intentSeed, opts);
     }
-    const oracleHit = this._dictionaryOracleEmit(intentSeed, opts);
-    if (oracleHit) {
-      this._lastEmissionDiag = {
-        ticksRun: oracleHit.cleanEmit.length,
-        maxMotorBucket: oracleHit.bestScore,
-        argmaxFlickers: 0,
-        committedLetters: oracleHit.cleanEmit.length,
-        gpuReadPath: false,
-        mode: "dictionary-oracle",
-        bestWord: oracleHit.bestWord,
-        bestScore: Number(oracleHit.bestScore.toFixed(3))
-      };
-      return oracleHit.cleanEmit;
-    }
     const injectStrength = opts.injectStrength ?? 0.6;
     const maxTicks = opts.maxTicks ?? opts.maxEmissionTicks ?? this.MAX_EMISSION_TICKS;
     const suppressNoise = opts.suppressNoise === true;
@@ -62340,21 +62200,6 @@ var CLUSTER_EMIT_MIXIN = {
     const TERMINATORS = /* @__PURE__ */ new Set([" ", ".", ",", "'"]);
     const semToMotor = this.crossProjections?.sem_to_motor;
     const letterToMotor = this.crossProjections?.letter_to_motor;
-    const oracleHit = this._dictionaryOracleEmit(intentSeed, { ...opts, maxLetters });
-    if (oracleHit) {
-      this._motorEmissionTicks = oracleHit.cleanEmit.length;
-      this._lastEmissionDiag = {
-        ticksRun: oracleHit.cleanEmit.length,
-        maxMotorBucket: oracleHit.bestScore,
-        argmaxFlickers: 0,
-        committedLetters: oracleHit.cleanEmit.length,
-        gpuReadPath: false,
-        mode: "dictionary-oracle",
-        bestWord: oracleHit.bestWord,
-        bestScore: Number(oracleHit.bestScore.toFixed(3))
-      };
-      return oracleHit.cleanEmit;
-    }
     const motorSize = motorRegion.end - motorRegion.start;
     const bucketSize = Math.max(1, Math.floor(motorSize / invSize));
     const isAlphaIdx = (b) => /^[a-z]$/.test(inv[b]);
@@ -70746,117 +70591,19 @@ var LanguageCortex = class {
    * (_scoreDictionaryCosineAsync) can share exactly one body and only
    * diverge on the yield-point check.
    */
-  // ⛔ ORPHANED 2026-09-01 — ZERO CALLERS. This and `_scoreDictionaryCosineAsync`
-  // below existed solely to rank dictionary entries for the retrieval lane in
-  // `generate()`, and that lane is deleted for every brain in every state.
-  // ⚠ DO NOT re-wire either as an emission path. ⛔ And do not treat them as the
-  // reference implementation of persona-boosted cosine ranking: a LIVE mirror of
-  // that logic runs in `js/brain/cluster/emit.js` (the Path B dictionary oracle),
-  // so keeping these is duplicated logic that will drift. They are flagged here
-  // rather than deleted in the same pass that removed their caller; removal is
-  // on the board.
-  _scoreDictionaryCosine(dictionary, target, recentWords, opts = {}) {
-    const boostPersona = opts.boostPersona === true;
-    const freqBoost = typeof opts.freqBoost === "number" ? opts.freqBoost : 5e-3;
-    const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
-    const scored = [];
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) continue;
-      if (word.length === 1 && word !== "i" && word !== "a") continue;
-      if (recentWords && recentWords.includes(word)) continue;
-      let dot = 0, nt = 0, nw = 0;
-      const len = Math.min(target.length, entry.pattern.length);
-      for (let i = 0; i < len; i++) {
-        dot += target[i] * entry.pattern[i];
-        nt += target[i] * target[i];
-        nw += entry.pattern[i] * entry.pattern[i];
-      }
-      const denom = Math.sqrt(nt) * Math.sqrt(nw);
-      const cos = denom > 0 ? dot / denom : 0;
-      let score = cos + Math.log(1 + (entry.frequency || 1)) * freqBoost;
-      if (boostPersona && entry.isPersona) score += personaBoost;
-      scored.push({ word, score });
-    }
-    scored.sort((a, b) => b.score - a.score);
-    return scored;
-  }
-  /**
-   * T14.26 — Async version of the dictionary-cosine scorer that yields
-   * to the host event loop every YIELD_EVERY entries. Required fix for
-   * the 3D brain visualization freezing when the user sends a message
-   * or Unity speaks:
-   *
-   * Symptom: when the user sends a message to Unity or she speaks,
-   * the 3D brain visualization freezes until generate() returns.
-   *
-   * Root cause: server's brain-server.js processAndRespond calls
-   * languageCortex.generate() synchronously. At 3700+ dictionary entries
-   * × 300d cosine per call that burns 100-300ms of pure Node event-loop
-   * time. While it runs, setInterval STATE_BROADCAST can't fire, so no
-   * `state` message hits the WebSocket, so the client's RemoteBrain
-   * never calls _applyState, so brain.state.spikes stays frozen at the
-   * snapshot captured before processAndRespond began, so the 3D viz
-   * RAF loop (which re-randomizes spike flickers from visualRate each
-   * frame) has no new visualRate values → the whole 3D brain
-   * visualization freezes until generate() returns.
-   *
-   * Fix: every YIELD_EVERY (= 500) dictionary entries we await a
-   * setImmediate (Node) / setTimeout(0) (browser) which releases
-   * control back to the host event loop. In Node that lets the
-   * STATE_BROADCAST setInterval fire AND compute_batch dispatch happen
-   * during the scoring work, so the 3D viz keeps animating for the
-   * full duration of Unity's response generation. In the browser it
-   * does the same for RAF callbacks.
-   *
-   * Yield frequency chosen to keep per-yield overhead <1% (a
-   * setImmediate round-trip is ~0.1ms, YIELD_EVERY=500 gives one yield
-   * per ~2-4ms of scoring work, which is ~3-5% overhead and still
-   * leaves the broadcast ample opportunity to fire every 100ms).
-   */
-  async _scoreDictionaryCosineAsync(dictionary, target, recentWords, opts = {}) {
-    const YIELD_EVERY = 500;
-    const boostPersona = opts.boostPersona === true;
-    const freqBoost = typeof opts.freqBoost === "number" ? opts.freqBoost : 5e-3;
-    const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
-    const scored = [];
-    let i = 0;
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) {
-        i++;
-        continue;
-      }
-      if (word.length === 1 && word !== "i" && word !== "a") {
-        i++;
-        continue;
-      }
-      if (recentWords && recentWords.includes(word)) {
-        i++;
-        continue;
-      }
-      let dot = 0, nt = 0, nw = 0;
-      const len = Math.min(target.length, entry.pattern.length);
-      for (let j = 0; j < len; j++) {
-        dot += target[j] * entry.pattern[j];
-        nt += target[j] * target[j];
-        nw += entry.pattern[j] * entry.pattern[j];
-      }
-      const denom = Math.sqrt(nt) * Math.sqrt(nw);
-      const cos = denom > 0 ? dot / denom : 0;
-      let score = cos + Math.log(1 + (entry.frequency || 1)) * freqBoost;
-      if (boostPersona && entry.isPersona) score += personaBoost;
-      scored.push({ word, score });
-      i++;
-      if ((i & YIELD_EVERY - 1) === 0) {
-        if (typeof setImmediate === "function") {
-          await new Promise((r) => setImmediate(r));
-        } else if (typeof setTimeout === "function") {
-          await new Promise((r) => setTimeout(r, 0));
-        }
-      }
-    }
-    scored.sort((a, b) => b.score - a.score);
-    return scored;
-  }
+  // DELETED 2026-09-01 - NO FALLBACKS. _scoreDictionaryCosine and
+  // _scoreDictionaryCosineAsync were here, 130 lines between them.
+  //
+  // They existed solely to rank dictionary entries for the retrieval lane in
+  // generate, which was deleted for every brain in every state. They were
+  // kept one more day only because a LIVE mirror of the same persona-boosted
+  // cosine ranking still ran in js/brain/cluster/emit.js as the Path B
+  // dictionary oracle - so deleting these alone would have left the real one
+  // standing.
+  //
+  // That oracle is now deleted too, so nothing anywhere ranks dictionary
+  // entries to answer for her. DO NOT RE-ADD EITHER. Emission is her trained
+  // sem_to_motor matrix or it is silence.
   /**
    * T14.26 — Async-yielding version of generate(). Does the exact same
    * work as generate() except that the dictionary-cosine fallback loop
@@ -105892,13 +105639,17 @@ var Curriculum = class _Curriculum {
       issues.push("\u2717 cluster.synapses (intra-cluster recurrent matrix) undefined");
     }
     if (typeof cluster._dictionaryOracleEmit === "function") {
-      checks.push("\u2713 dictionary oracle helper wired (_dictionaryOracleEmit)");
+      issues.push("\u2717 dictionary oracle helper IS BACK (_dictionaryOracleEmit) \u2014 deleted 2026-09-01 under NO FALLBACKS; emission must come from sem_to_motor or be silent");
     } else {
-      issues.push("\u2717 dictionary oracle helper NOT wired");
+      checks.push("\u2713 dictionary oracle absent (deleted \u2014 emission is matrix-only)");
     }
     const oracleHits = cluster._oracleHits | 0;
     const matrixHits = cluster._matrixHits | 0;
-    checks.push(`\u2713 research-honesty counters present (oracle=${oracleHits} matrix=${matrixHits} at boot)`);
+    if (oracleHits > 0) {
+      issues.push(`\u2717 oracle emissions counted (${oracleHits}) \u2014 a dictionary-retrieval lane is live again; every emission must be hers`);
+    } else {
+      checks.push(`\u2713 research-honesty counters present (oracle=${oracleHits} matrix=${matrixHits} at boot; oracle must stay 0)`);
+    }
     const dispatchers = [];
     if (typeof cluster._crossRegionHebbian === "function") dispatchers.push("Oja");
     if (typeof cluster._crossRegionAntiHebbian === "function") dispatchers.push("anti-Hebbian");
@@ -117817,8 +117568,7 @@ var Curriculum = class _Curriculum {
       emissionPath = "emitWordDirect";
       try {
         emitted = await cluster.emitWordDirectDonor({
-          subject: this._currentGateSubject,
-          skipDictionaryOracle: true
+          subject: this._currentGateSubject
         }) || "";
       } catch (err) {
         emitted = "";

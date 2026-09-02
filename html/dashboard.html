@@ -1920,11 +1920,11 @@
             else {
               const pct = (v.matrixDrivenPct == null) ? '—' : `${v.matrixDrivenPct}%`;
               const w = v.words || {};
-              $d.innerHTML = `<span title="Share of emissions that came from her trained weights rather than the dictionary oracle.">matrix ${pct}</span>`
+              $d.innerHTML = `<span title="Share of emissions that came from her trained weights. Since the dictionary oracle was deleted (2026-09-01) this should read 100% — anything less means a retrieval lane came back.">matrix ${pct}</span>`
                 + ` · <span title="How many word_motor buckets have ever fired. Zero means the emission band has never produced a word.">${num(v.wordMotorEverFired)} buckets fired</span>`
-                + ` · <span title="Dictionary-cosine fallbacks. A retrieved word is the DICTIONARY speaking, not her — only legal on an untrained cortex now.">${num(w.retrieved)} retrieved</span>`
+                + ` · <span title="Dictionary-retrieved words. The lane is DELETED — this is now a regression detector and must stay 0. Any other value means something is answering for her again.">${num(w.retrieved)} retrieved</span>`
                 + ` · <span title="Times a TRAINED brain produced nothing and was allowed to stay quiet. Honest silence is a correct output, not a failure.">${num(w.honestSilence)} honest silence</span>`
-                + (v.oracleRefusedInGate ? ` · <span style="color:#f59e0b" title="Times the dictionary oracle was REFUSED inside a gate probe, because a gate must measure what SHE produced. This is exactly how often the dictionary would otherwise have answered a test question for her — so if pass rates dropped, this number is the size of the drop's cause. Truth arriving, not a regression.">${num(v.oracleRefusedInGate)} oracle refused in gate</span>` : '');
+                + (v.oracleRefusedInGate ? ` · <span style="color:#f59e0b" title="Historical: times the dictionary oracle was REFUSED inside a gate probe, back when the oracle still existed. The oracle was DELETED on 2026-09-01, so this counter now only carries pre-deletion history and should not grow. It remains readable because it measures exactly how often the dictionary used to answer a test question for her — the size of the inflation that has now been removed from every gate number.">${num(v.oracleRefusedInGate)} oracle refused in gate</span>` : '');
             }
           }
           if ($r) {

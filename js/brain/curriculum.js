@@ -5409,17 +5409,29 @@ export class Curriculum {
       issues.push('✗ cluster.synapses (intra-cluster recurrent matrix) undefined');
     }
 
-    // 7. Dictionary oracle path wired.
+    // 7. ⛔ THE DICTIONARY ORACLE MUST BE ABSENT — check INVERTED 2026-09-01.
+    //
+    // This used to assert the oracle helper WAS wired and raise an issue when
+    // it was missing. Under the no-fallbacks law that is backwards: the lane is
+    // deleted, and its RETURN is the regression. A boot check that demands a
+    // fallback exist is a boot check that will happily re-admit one.
     if (typeof cluster._dictionaryOracleEmit === 'function') {
-      checks.push('✓ dictionary oracle helper wired (_dictionaryOracleEmit)');
+      issues.push('✗ dictionary oracle helper IS BACK (_dictionaryOracleEmit) — deleted 2026-09-01 under NO FALLBACKS; emission must come from sem_to_motor or be silent');
     } else {
-      issues.push('✗ dictionary oracle helper NOT wired');
+      checks.push('✓ dictionary oracle absent (deleted — emission is matrix-only)');
     }
 
-    // 8. Research-honesty counters initialized.
+    // 8. Research-honesty counters — now a REGRESSION DETECTOR.
+    // ⭐ `oracle` is expected to stay 0 forever. Anything else means a
+    // retrieval lane came back, and the counter is deliberately kept rather
+    // than removed so that return is visible instead of silent.
     const oracleHits = (cluster._oracleHits | 0);
     const matrixHits = (cluster._matrixHits | 0);
-    checks.push(`✓ research-honesty counters present (oracle=${oracleHits} matrix=${matrixHits} at boot)`);
+    if (oracleHits > 0) {
+      issues.push(`✗ oracle emissions counted (${oracleHits}) — a dictionary-retrieval lane is live again; every emission must be hers`);
+    } else {
+      checks.push(`✓ research-honesty counters present (oracle=${oracleHits} matrix=${matrixHits} at boot; oracle must stay 0)`);
+    }
 
     // 9. Cross-region plasticity dispatchers on the cluster itself.
     const dispatchers = [];
@@ -21041,13 +21053,14 @@ export class Curriculum {
       emissionPath = 'emitWordDirect';
       try {
         // iter22-D — pass active gate subject for sub-band scoping.
-        // GATEPURE — `skipDictionaryOracle` passed explicitly as well as via
-        // the cluster flag. Belt and braces on purpose: the flag closes every
-        // path including ones added later that nobody remembers to update,
-        // and the explicit opt is what a reader of THIS line will see.
+        // ⭐ GATEPURE IS NOW THE DEFAULT EVERYWHERE, NOT AN OPT-OUT HERE.
+        // This used to pass `skipDictionaryOracle: true` to keep the gate
+        // honest while the rest of the brain still had a dictionary lane to
+        // fall back to. That lane is deleted (2026-09-01), so every emission
+        // path is already what this flag was asking for and the opt is gone
+        // rather than left as a no-op that implies a choice still exists.
         emitted = (await cluster.emitWordDirectDonor({
           subject: this._currentGateSubject,
-          skipDictionaryOracle: true,
         })) || '';
       } catch (err) {
         emitted = '';
