@@ -543,6 +543,18 @@ function clean(extract, maxSent) {
     .normalize('NFD').replace(/[̀-ͯ]/g, '')     // é → e, ü → u
     .replace(/===?[^=]+===?/g, ' ')        // section headers
     .replace(/\[[0-9]+\]/g, ' ')           // ref markers
+    // ⛔ THE OTHER BRACKETS, HANDLED 2026-09-02 — and they split into two kinds,
+    // which is why one rule for both would be wrong.
+    //   • APPARATUS gets DELETED: "[citation needed]", "[sic]", "[copyright 1894]",
+    //     "[edit]" — reference furniture that is not prose.
+    //   • EDITORIAL CLARIFICATION gets UNWRAPPED, keeping the words: encyclopedia
+    //     quotations insert them to make a quote parse — "formulated by [alfred]
+    //     pollard", "the end [of life] is a sort of action". Deleting those loses
+    //     real content; keeping the brackets teaches her a punctuation mark that
+    //     means nothing in her own sentences. Unwrapping keeps the meaning and
+    //     drops the furniture.
+    .replace(/\[\s*(?:citation needed|sic|edit|clarification needed|copyright[^\]]*|according to whom[^\]]*)\s*\]/gi, ' ')
+    .replace(/\[([^\[\]]{1,60})\]/g, '$1')
     .replace(/\([^)]*\)/g, ' ')            // parentheticals (often dates/pron)
     .replace(/\s+/g, ' ');
   const out = [];
