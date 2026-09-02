@@ -10162,7 +10162,9 @@ var MindSpaceGPU = class {
       side = Math.max(96, Math.round(maxSide * (0.6 + 0.4 * ratio)));
     }
     if (!opts.side) side = Math.min(side, maxSide);
-    const W = side, H = side;
+    const _iar = !opts.side && Number(opts.aspect) > 0 && Number.isFinite(Number(opts.aspect)) ? Number(opts.aspect) : 1;
+    const W = _iar >= 1 ? side : Math.max(16, Math.round(side * _iar));
+    const H = _iar >= 1 ? Math.max(16, Math.round(side / _iar)) : side;
     const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
     const rec = equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-denovo" };
@@ -10181,8 +10183,11 @@ var MindSpaceGPU = class {
   // image she can then re-see, morph, or remember. No fractalize, hard side cap.
   sketch(strokes, opts = {}) {
     const _sketchCeil = typeof process !== "undefined" && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0 ? Math.min(Number(process.env.DREAM_MINDSEYE_MAX_SIDE), MAX_LINE) : MAX_LINE;
-    const side = Math.max(16, Math.min(opts.maxSide ?? 96, _sketchCeil));
-    const W = side, H = side, N = W * H;
+    const side = Math.max(16, Math.min(opts.maxSide ?? 512, _sketchCeil));
+    const _ar = Number(opts.aspect) > 0 && Number.isFinite(Number(opts.aspect)) ? Number(opts.aspect) : 1;
+    const W = _ar >= 1 ? side : Math.max(16, Math.round(side * _ar));
+    const H = _ar >= 1 ? Math.max(16, Math.round(side / _ar)) : side;
+    const N = W * H;
     const data = new Uint8ClampedArray(N * 4);
     const bg = moodTint(opts.mood);
     const paper = [26, 25, 29];

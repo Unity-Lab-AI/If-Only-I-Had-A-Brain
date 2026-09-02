@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college3",
   "subject": "major",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
-  "note": "Hybrid academic-depth corpus for major/college3. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "source": "hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented",
+  "note": "Upper-undergraduate textbook corpus for major/college3. Trained via curriculum._trainAcademicStories. A college year is a course with a book.",
   "experiences": [
     {
       "theme": "ods-skiplists",
@@ -488,657 +488,788 @@
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/a35062cbfd1e582f2c6d5ffc97975aff.jpg",
           "alt": "",
-          "caption": "Figure 1.1 Mental Map of Los Angeles A"
+          "caption": "Figure 1.1 Mental Map of Los Angeles A",
+          "context": "in this respect, not only are mental maps unique, but also the way in which such maps are drawn or represented on the page is unique too. to reinforce these points, consider the series of mental maps of los angeles provided in figure 1.1 \"mental map of los angeles a\" . which places or features are illustrated on the map? from what you know about los angeles, what is included or excluded on the maps?"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/4529b22a1e29017d67c9c50a2effaeaa.jpg",
           "alt": "",
-          "caption": "Figure 1.2 Mental Map of Los Angeles B"
+          "caption": "Figure 1.2 Mental Map of Los Angeles B",
+          "context": "in this respect, not only are mental maps unique, but also the way in which such maps are drawn or represented on the page is unique too. to reinforce these points, consider the series of mental maps of los angeles provided in figure 1.1 \"mental map of los angeles a\" . which places or features are illustrated on the map? from what you know about los angeles, what is included or excluded on the maps?"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/3bfe8169b09512ca832a66ca68942b1e.jpg",
           "alt": "",
-          "caption": "Figure 1.3 Mental Map of Los Angeles C"
+          "caption": "Figure 1.3 Mental Map of Los Angeles C",
+          "context": "in this respect, not only are mental maps unique, but also the way in which such maps are drawn or represented on the page is unique too. to reinforce these points, consider the series of mental maps of los angeles provided in figure 1.1 \"mental map of los angeles a\" . take a moment to look at each map and compare the maps with the following questions in mind: what similarities are there on each map? which places or features are illustrated on the map?"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/860b7f665b5a2d240bd4f2e55977a763.jpg",
           "alt": "",
-          "caption": "Figure 1.4 Constellation of Global Positioning System (GPS) Satellites"
+          "caption": "Figure 1.4 Constellation of Global Positioning System (GPS) Satellites",
+          "context": "all gps units use the geographic coordinate system (gcs) to report location. originally developed by the united states department of defense for military purposes, there are now a wide range of commercial and scientific uses of a gps. location can also be defined in relative terms. relative location refers to defining and describing places in relation to other known locations."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/918a97915f8dee01e2e91666157bb48c.jpg",
           "alt": "",
-          "caption": "Figure 1.5 The Three Norths: True, Magnetic, and Grid"
+          "caption": "Figure 1.5 The Three Norths: True, Magnetic, and Grid",
+          "context": "note that magnetic north falls somewhere in northern canada and is not geographically coincident with true north or the north pole. grid north simply refers to the northward direction that the grid lines of latitude and longitude on a map, called a graticule, point to. source: http://kenai.fws.gov/overview/notebook/2004/sept/3sep2004.htm distance complementing the concepts of location and direction is distance. distance the amount of separation between locations."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/9da56a48db3e44e705bdfdb75811562b.jpg",
           "alt": "",
-          "caption": "Figure 1.6 Metro Map from London"
+          "caption": "Figure 1.6 Metro Map from London",
+          "context": "certain rules also govern how we can travel along the network (e.g., transferring lines is possible only at a few key stops; we can travel only one direction on a particular line). such maps may be of little use when traveling around a city by car or foot, but they show the local transportation network and how locations are linked together in an effective and efficient manner. this movement and, in particular, destination-oriented travel are generally referred to as navigation the destination-oriented travel through space. how we navigate through space is a complex process that blends together our various motor skills; technology; mental maps; and awareness of locations, distances, direction"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/8cd72c672c034b8d34078a1df63188f3.jpg",
           "alt": "",
-          "caption": "Figure 1.7 Metro Map from Moscow"
+          "caption": "Figure 1.7 Metro Map from Moscow",
+          "context": "certain rules also govern how we can travel along the network (e.g., transferring lines is possible only at a few key stops; we can travel only one direction on a particular line). such maps may be of little use when traveling around a city by car or foot, but they show the local transportation network and how locations are linked together in an effective and efficient manner. navigation transportation maps like those discussed previously illustrate how we move through the environments where we live, work, and play. this movement and, in particular, destination-oriented travel are generally referred to as navigation the destination-oriented travel through space."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_05/f2619b76bb0d1d0f74b0e8d80ba33496.jpg",
           "alt": "",
-          "caption": "Figure 1.8 A GIS as a Layered Cake"
+          "caption": "Figure 1.8 A GIS as a Layered Cake",
+          "context": "one popular way to describe and to visualize a gis is picturing it as a cake with many layers. each layer of the cake represents a different geographic theme, such as water features, buildings, and roads, and each layer is stacked one on top of another (see figure 1.8 \"a gis as a layered cake\" ). as hardware, a gis consists of a computer, memory, storage devices, scanners, printers, global positioning system (gps) units, and other physical components. if the computer is situated on a network, the network can also be considered an integral component of the gis because it enables us to share data and information that the gis uses as inputs and creates as outputs."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/988b53e0d072738904822cdf337ddfba.jpg",
           "alt": "",
-          "caption": "Figure 2.1 USGS Topographic Map of Boulder, CO"
+          "caption": "Figure 2.1 USGS Topographic Map of Boulder, CO",
+          "context": "moreover, reference maps generally represent geographic reality accurately. examples of some common types of reference maps include topographic maps such as those created by the united states geological survey (usgs; see http://topomaps.usgs.gov ) and image maps obtained from satellites or aircraft that are available through online mapping services. for instance, local governments need accurate reference maps for land use, zoning, and tax purposes. national governments need accurate reference maps for political, infrastructure, and military purposes."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/0f2fdaabd316f863a6b75e6954cbf69d.jpg",
           "alt": "",
-          "caption": "Figure 2.2 Image Map of Palm Island, Dubai, from NASA"
+          "caption": "Figure 2.2 Image Map of Palm Island, Dubai, from NASA",
+          "context": "moreover, reference maps generally represent geographic reality accurately. examples of some common types of reference maps include topographic maps such as those created by the united states geological survey (usgs; see http://topomaps.usgs.gov ) and image maps obtained from satellites or aircraft that are available through online mapping services. the accuracy of a given reference map is indeed critical to many users. for instance, local governments need accurate reference maps for land use, zoning, and tax purposes."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/d196d1268e5699aeda1e86debbea0d2c.jpg",
           "alt": "",
-          "caption": "Figure 2.3 World Life Expectancies"
+          "caption": "Figure 2.3 World Life Expectancies",
+          "context": "such things are often abstract concepts such as life expectancy around the world, per capita gross domestic product (gdp) in europe, or literacy rates across india. one of the strengths of mapping, and in particular of thematic mapping, is that it can make such abstract and invisible concepts visible and comparable on a map. in other words, thematic maps often contain and combine geographical reference information, and conversely, reference maps may contain thematic information. what is more, when used in conjunction, thematic and reference maps often complement each other."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/6a5d66cd6a436c584dd0091a79aa0e56.jpg",
           "alt": "",
-          "caption": "Figure 2.4 European GDP"
+          "caption": "Figure 2.4 European GDP",
+          "context": "such things are often abstract concepts such as life expectancy around the world, per capita gross domestic product (gdp) in europe, or literacy rates across india. one of the strengths of mapping, and in particular of thematic mapping, is that it can make such abstract and invisible concepts visible and comparable on a map. in other words, thematic maps often contain and combine geographical reference information, and conversely, reference maps may contain thematic information. what is more, when used in conjunction, thematic and reference maps often complement each other."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/5396c5daaf1c7ba257fea14a6042e318.jpg",
           "alt": "",
-          "caption": "Figure 2.5 Indian Literacy Rates"
+          "caption": "Figure 2.5 Indian Literacy Rates",
+          "context": "such things are often abstract concepts such as life expectancy around the world, per capita gross domestic product (gdp) in europe, or literacy rates across india. one of the strengths of mapping, and in particular of thematic mapping, is that it can make such abstract and invisible concepts visible and comparable on a map. it is important to note that reference and thematic maps are not mutually exclusive. in other words, thematic maps often contain and combine geographical reference information, and conversely, reference maps may contain thematic information."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/8fefe25edddf4ae6440978e0b2b6c051.jpg",
           "alt": "",
-          "caption": "Figure 2.6 Map Overlay Process"
+          "caption": "Figure 2.6 Map Overlay Process",
+          "context": "the reference map of emergency rooms directly on top of the population maps to see whether or not access is uniform across neighborhood types. clearly, there are other factors to consider when looking at emergency room access (e.g., access to transport), but through such map overlays, underserved neighborhoods can be identified. when presented in hardcopy format, both reference and thematic maps are static or fixed representations of reality. such permanence on the page suggests that geography and the things that we map are also in many ways fixed or constant."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/c60ee7705fe9641570b19d070dab1291.jpg",
           "alt": "",
-          "caption": "Figure 2.7 Google Maps on an iPhone"
+          "caption": "Figure 2.7 Google Maps on an iPhone",
+          "context": "unlike a hardcopy map that has features and elements users cannot modify or change, dynamic maps encourage and sometimes require user interaction. such interaction can include changing the scale or visible area by zooming in or zooming out, selecting which features or layers to include or to remove from a map (e.g., roads, imagery), or even starting and stopping a map animation. just as dynamic maps will continue to evolve and require more user interaction in the future, map users will demand more interactive map features and controls. as this democratization of maps and mapping continues, the geographic awareness and map appreciation of map users will also increase."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/b043772fd68926df2ec85d91b31447c6.jpg",
           "alt": "",
-          "caption": "Figure 2.8 Polar Ice Cap"
+          "caption": "Figure 2.8 Polar Ice Cap",
+          "context": "unlike a hardcopy map that has features and elements users cannot modify or change, dynamic maps encourage and sometimes require user interaction. such interaction can include changing the scale or visible area by zooming in or zooming out, selecting which features or layers to include or to remove from a map (e.g., roads, imagery), or even starting and stopping a map animation. to see the animation, go to http://svs.gsfc.nasa.gov/goto?3464 . just as dynamic maps will continue to evolve and require more user interaction in the future, map users will demand more interactive map features and controls."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/91302d9e3ef560ae47c25d02a32a629a.jpg",
           "alt": "",
-          "caption": "Figure 2.9 Map Scale from a United States Geological Survey (USGS) Topographic Map"
+          "caption": "Figure 2.9 Map Scale from a United States Geological Survey (USGS) Topographic Map",
+          "context": "map scale can also be portrayed graphically with what is called a scale bar. scale bars are usually used on reference maps and allow map users to approximate distances between locations and features on a map, as well as to get an overall idea of the scale of the map. the representative fraction (rf) describes scale as a simple ratio. the numerator, which is always set to one (i.e., 1), denotes map distance and the denominator denotes ground or \"real-world\" distance."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/11a481ddad3c88286544391d041cf800.jpg",
           "alt": "",
-          "caption": "Figure 2.10 The Concept of Map “Projection”"
+          "caption": "Figure 2.10 The Concept of Map “Projection”",
+          "context": "on the globe are outlines of the continents and the lines of longitude and latitude called the graticule. when we turn the light bulb on, the outline of the continents and the graticule will be \"projected\" as shadows on the wall, ceiling, or any other nearby surface. within the realm of maps and mapping, there are three surfaces used for map projections (i.e., surfaces on which we project the shadows of the graticule). these surfaces are the plane, the cylinder, and the cone."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/8c5c63aacfa3743ed4962745a77d782c.jpg",
           "alt": "",
-          "caption": "Figure 2.11 Map Projection Surfaces"
+          "caption": "Figure 2.11 Map Projection Surfaces",
+          "context": "referring again to the previous example of a light bulb in the center of a globe, note that during the projection process, we can situate each surface in any number of ways. for example, surfaces can be tangential to the globe along the equator or poles, they can pass through or intersect the surface, and they can be oriented at any number of angles. in fact, naming conventions for many map projections include the surface as well as its orientation. for example, as the name suggests, \"planar\" projections use the plane, \"cylindrical\" projections use cylinders, and \"conic\" projections use the cone."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/61748a6fa28035cd1ba4762ad2d53208.jpg",
           "alt": "",
-          "caption": "Figure 2.12 Deforestation in the Amazon: 2001"
+          "caption": "Figure 2.12 Deforestation in the Amazon: 2001",
+          "context": "such questions are not trivial in the context of mapping and giss. in fact, consistent and precise definitions of features like forests or swamps increase the reliability and efficiency of maps, mapping, and analysis with giss. such entities include but are not restricted to fire hydrants, caves, roads, rivers, lakes, hills, valleys, oceans, and the occasional barn. moreover, such features have a form, and more precisely, a geometric form."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/dcdb2abd87b9a8ff967d5c17c22ae682.jpg",
           "alt": "",
-          "caption": "Figure 2.13 Deforestation in the Amazon: 2009"
+          "caption": "Figure 2.13 Deforestation in the Amazon: 2009",
+          "context": "such questions are not trivial in the context of mapping and giss. in fact, consistent and precise definitions of features like forests or swamps increase the reliability and efficiency of maps, mapping, and analysis with giss. within the realm of maps, cartography, and giss, the world is made up of various features or entities. such entities include but are not restricted to fire hydrants, caves, roads, rivers, lakes, hills, valleys, oceans, and the occasional barn."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/0f78a04d3a6510af27a4a5f7301d5e88.jpg",
           "alt": "",
-          "caption": "Figure 2.14 Geographic Features as Points, Lines, and Polygons"
+          "caption": "Figure 2.14 Geographic Features as Points, Lines, and Polygons",
+          "context": "the important thing to note is that the definition of a point is analogous to a location that is defined by longitude and latitude. furthermore, since lines and polygons are made up of points, location information (i.e., x and y , or longitude and latitude, coordinates) is intrinsic to points, lines, and polygons. both simple and complex maps can be made using these three relatively simple geometric objects. additionally, by changing the graphical characteristics of each object, an infinite number of mapping possibilities emerge."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/29749565676da05d382cb32b048ac289.jpg",
           "alt": "",
-          "caption": "Figure 2.15 Variations in the Graphical Parameters of Points, Lines, and Polygons"
+          "caption": "Figure 2.15 Variations in the Graphical Parameters of Points, Lines, and Polygons",
+          "context": "such changes can be made to the respective size, shape, color, and patterns of points, lines, and polygons. for instance, different sized points can be used to reflect variations in population size, line color or line size (i.e., thickness) can be used to denote volume or the amount of interaction between locations, and different colors and shapes can be used to reflect different values of interest. annotation is used to identify particular geographic features, such as cities, states, bodies of water, or other points of interest. like the graphical elements, text can be varied according to size, orientation, or color."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/f745b9110960ba11559bfc21158837d0.jpg",
           "alt": "",
-          "caption": "Figure 2.16"
+          "caption": "Figure 2.16",
+          "context": "such changes can be made to the respective size, shape, color, and patterns of points, lines, and polygons. for instance, different sized points can be used to reflect variations in population size, line color or line size (i.e., thickness) can be used to denote volume or the amount of interaction between locations, and different colors and shapes can be used to reflect different values of interest. complementing the graphical elements described previously is annotation or text. annotation is used to identify particular geographic features, such as cities, states, bodies of water, or other points of interest."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_06/cc4363833342a2ab0928fd579cbd6daf.jpg",
           "alt": "",
-          "caption": "Figure 2.17 The Inauguration of Barack Obama from Space"
+          "caption": "Figure 2.17 The Inauguration of Barack Obama from Space",
+          "context": "image maps now provide geographic context for nightly news stories around the world, serve as a backdrop to local real estate searches and driving directions, and are also used for research purposes . the popularity and widespread use of such images speaks not only to recent technological advances and innovations but also, perhaps more important, to the geographer in us all."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/787854a1d949ad08b383189fd5e92635.jpg",
           "alt": "",
-          "caption": "Figure 4.1 Digital Picture with Zoomed Inset Showing Pixilation of Raster Image"
+          "caption": "Figure 4.1 Digital Picture with Zoomed Inset Showing Pixilation of Raster Image",
+          "context": "if you zoom deeply into the image, you will notice that it is composed of an array of tiny square pixels (or picture elements). each of these uniquely colored pixels, when viewed as a whole, combines to form a coherent image ( figure 4.1 \"digital picture with zoomed inset showing pixilation of raster image\" ). furthermore, all liquid crystal display (lcd) computer monitors are based on raster technology as they are composed of a set number of rows and columns of pixels. notably, the foundation of this technology predates computers and digital cameras by nearly a century."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/5d9cc55bb52ba310ee9c81cc1bd5b8a6.jpg",
           "alt": "",
-          "caption": "Figure 4.2 Pointillist Artwork"
+          "caption": "Figure 4.2 Pointillist Artwork",
+          "context": "the neoimpressionist artist, georges seurat, developed a painting technique referred to as \"pointillism\" in the 1880s, which similarly relies on the amassing of small, monochromatic \"dots\" of ink that combine to form a larger image ( figure 4.2 \"pointillist artwork\" ). if you are as generous as the author, you may indeed think of your raster dataset creations as sublime works of art. the raster data model consists of rows and columns of equally sized pixels interconnected to form a planar surface. these pixels are used as building blocks for creating points, lines, areas, networks, and surfaces ( chapter 2 \"map anatomy\" , figure 2.6 \"map overlay process\" illustrates how a land parcel can be "
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/00422de47b6d09c35c398db0ed103ea7.jpg",
           "alt": "",
-          "caption": "Figure 4.3 Common Raster Graphics Used in GIS Applications: Aerial Photograph (left) and USGS DEM (right)"
+          "caption": "Figure 4.3 Common Raster Graphics Used in GIS Applications: Aerial Photograph (left) and USGS DEM (right)",
+          "context": "accordingly, the vast majority of available raster gis data are built on the square pixel ( figure 4.3 \"common raster graphics used in gis applications: aerial photograph (left) and usgs dem (right)\" ). these squares are typically reformed into rectangles of various dimensions if the data model is transformed from one projection to another (e.g., from state plane coordinates to utm coordinates). geological survey, earth resources observation and science (eros) center, sioux falls, sd. because of the reliance on a uniform series of square pixels, the raster data model is referred to as a grid-based system."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/4f569d2d42f91bf0048bc723c900f886.jpg",
           "alt": "",
-          "caption": "Figure 4.4 Land-Use/Land-Cover Raster Image"
+          "caption": "Figure 4.4 Land-Use/Land-Cover Raster Image",
+          "context": "as a corollary, the minimum width for any line feature must necessarily be one cell regardless of the actual width of the feature. if it is not, the feature will not be represented in the image and will therefore be assumed to be absent. geological survey, earth resources observation and science (eros) center, sioux falls, sd. several methods exist for encoding raster data from scratch."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/4f157f6b392921b128e220ee56d2eb72.jpg",
           "alt": "",
-          "caption": "Figure 4.5 Cell-by-Cell Encoding of Raster Data"
+          "caption": "Figure 4.5 Cell-by-Cell Encoding of Raster Data",
+          "context": "this method divides a raster into a hierarchy of quadrants that are subdivided based on similarly valued pixels ( figure 4.7 \"quad-tree encoding of raster data\" ). the division of the raster stops when a quadrant is made entirely from cells of the same value. first, the technology required to create raster graphics is inexpensive and ubiquitous. nearly everyone currently owns some sort of raster image generator, namely a digital camera, and few cellular phones are sold today that don't include such functionality."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/0a23e0d88f270aeb4cf11fde3b7b4cdf.jpg",
           "alt": "",
-          "caption": "Figure 4.6 Run-Length Encoding of Raster Data"
+          "caption": "Figure 4.6 Run-Length Encoding of Raster Data",
+          "context": "this method divides a raster into a hierarchy of quadrants that are subdivided based on similarly valued pixels ( figure 4.7 \"quad-tree encoding of raster data\" ). the division of the raster stops when a quadrant is made entirely from cells of the same value. first, the technology required to create raster graphics is inexpensive and ubiquitous. nearly everyone currently owns some sort of raster image generator, namely a digital camera, and few cellular phones are sold today that don't include such functionality."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/4ef2103c1582b29f8a7c37c8e10006c9.jpg",
           "alt": "",
-          "caption": "Figure 4.7 Quad-Tree Encoding of Raster Data"
+          "caption": "Figure 4.7 Quad-Tree Encoding of Raster Data",
+          "context": "this method divides a raster into a hierarchy of quadrants that are subdivided based on similarly valued pixels ( figure 4.7 \"quad-tree encoding of raster data\" ). the division of the raster stops when a quadrant is made entirely from cells of the same value. advantages/disadvantages of the raster model the use of a raster data model confers many advantages. first, the technology required to create raster graphics is inexpensive and ubiquitous."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/5e0adb92da29fb258470bfeb5265cc55.jpg",
           "alt": "",
-          "caption": "Figure 4.8 Points, Lines, and Polygons"
+          "caption": "Figure 4.8 Points, Lines, and Polygons",
+          "context": "specifically, a point is a stand-alone feature, while a node is a topological junction representing a common x, y coordinate pair between intersecting lines and/or polygons. vertices are defined as each bend along a line or polygon feature that is not the intersection of lines or polygons. points can be spatially linked to form more complex features. lines a one-dimensional object composed of multiple, explicitly connected points."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/fd51ce72c52575f2f4ce5d8b281c79ad.jpg",
           "alt": "",
-          "caption": "Figure 4.9 Spaghetti Data Model"
+          "caption": "Figure 4.9 Spaghetti Data Model",
+          "context": "in other words, each polygon must be uniquely defined by its own set of x, y coordinate pairs, even if the adjacent polygons share the exact same boundary information. this creates some redundancies within the data model and therefore reduces efficiency. despite the location designations associated with each line, or strand of spaghetti, spatial relationships are not explicitly encoded within the spaghetti model; rather, they are implied by their location. this results in a lack of topological information, which is problematic if the user attempts to make measurements or analysis."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/27c9bf496eaa44e9ad78ae34bb6b2d37.jpg",
           "alt": "",
-          "caption": "Figure 4.10 Arc-Node Topology"
+          "caption": "Figure 4.10 Arc-Node Topology",
+          "context": "in figure 4.10 \"arc-node topology\" , arcs 1, 2, and 3 all intersect because they share node 11. therefore, the computer can determine that it is possible to move along arc 1 and turn onto arc 3, while it is not possible to move from arc 1 to arc 5, as they do not share a common node. the second basic topological precept is area definition the topological property stating that line segments connect to surround an area and define a polygon. area definition states that an arc that connects to surround an area defines a polygon, also called polygon-arc topology."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/b50c0b3b34b539df30b11820df0b8ec7.jpg",
           "alt": "",
-          "caption": "Figure 4.11 Polygon-Arc Topology"
+          "caption": "Figure 4.11 Polygon-Arc Topology",
+          "context": "this results in a reduction in the amount of data stored and ensures that adjacent polygon boundaries do not overlap. in the figure 4.11 \"polygon-arc topology\" , the polygon-arc topology makes it clear that polygon f is made up of arcs 8, 9, and 10. contiguity the topological property of identifying adjacent polygons by recording the left and right side of each line segment. , the third topological precept, is based on the concept that polygons that share a boundary are deemed adjacent."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/de65d1872768b0767f0f81f5c1606292.jpg",
           "alt": "",
-          "caption": "Figure 4.12 Polygon Topology"
+          "caption": "Figure 4.12 Polygon Topology",
+          "context": "the \"universe polygon\" is an essential component of polygon topology that represents the external area located outside of the study area. polygon a, the universe polygon, is to the left of arcs 1, 2, and 3. topology allows the computer to rapidly determine and analyze the spatial relationships of all its included features. in addition, topological information is important because it allows for efficient error detection within a vector dataset."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/3ba85e9e19d4d0bd2507b634cc52de46.jpg",
           "alt": "",
-          "caption": "Figure 4.13 Common Topological Errors"
+          "caption": "Figure 4.13 Common Topological Errors",
+          "context": "the result of overshoots and undershoots is a \"dangling node\" at the end of the line. dangling nodes aren't always an error, however, as they occur in the case of dead-end streets on a road map. many types of spatial analysis require the degree of organization offered by topologically explicit data models. topology also allows for sophisticated neighborhood analysis such as determining adjacency, clustering, nearest neighbors, and so forth."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/35c6cf67d10d13cb5e9b0eb2884a1393.jpg",
           "alt": "",
-          "caption": "Figure 4.14 Satellites Orbiting the Earth"
+          "caption": "Figure 4.14 Satellites Orbiting the Earth",
+          "context": "currently, more than 3,000 satellites have been sent to space, with over 2,500 of them originating from russia and the united states. these satellites maintain different altitudes, inclinations, eccentricities, synchronies, and orbital centers, allowing them to image a wide variety of surface features and processes ( figure 4.14 \"satellites orbiting the earth\" ). active satellites remote sensors that detect reflected responses from objects that are irradiated from artificially generated energy sources. make use of remote sensors that detect reflected responses from objects that are irradiated from artificially generated energy sources."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/a03026495ee4ddac1b132ce739c5121f.jpg",
           "alt": "",
-          "caption": "Figure 4.15 Curvature Error Due to Lenticular Properties of Camera"
+          "caption": "Figure 4.15 Curvature Error Due to Lenticular Properties of Camera",
+          "context": "care must be taken with aerial photographs as the sensors used to take the images are similar to cameras in their use of lenses. these lenses add a curvature to the images, which becomes more pronounced as one moves away from the center of the photo ( figure 4.15 \"curvature error due to lenticular properties of camera\" ). another source of potential error in an aerial photograph is relief displacement. this error arises from the three-dimensional aspect of terrain features and is seen as apparent leaning away of vertical objects from the center point of an aerial photograph."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_08/1a48b67a443a2e0f7d72c572d1b3f014.jpg",
           "alt": "",
-          "caption": "Figure 4.16 Orthophoto"
+          "caption": "Figure 4.16 Orthophoto",
+          "context": "included with these photos is an additional 50 to 300-meter edge around the photo that allows users to mosaic many doqqs into a single, continuous image. these doqqs are ideal for use in a gis as background display information, for data editing, and for heads-up digitizing. geological survey, earth resources observation and science (eros) center, sioux falls, sd. key takeaways satellite imagery is a common tool for gis mapping applications as this data becomes increasingly available due to ongoing technological advances."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/235c4f5547eb83cace72d104f01045a7.jpg",
           "alt": "",
-          "caption": "Figure 5.1 Double Precision Floating-Point (64-Bit Value), as Stored in a Computer"
+          "caption": "Figure 5.1 Double Precision Floating-Point (64-Bit Value), as Stored in a Computer",
+          "context": "value essentially stores two 32-bit values as a single value. double precision floats, then, can represent a value with up to 11 bits to the left of the decimal point and values with up to 52 bits to the right of the decimal (approximately 16 decimal digits) ( figure 5.1 \"double precision floating-point (64-bit value), as stored in a computer\" ). boolean, date, and binary values are less complex. boolean a data type whose values can be either true or false (1 or 0)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/b0ae56dc7f4865ce3d43d25b1fdddfd5.jpg",
           "alt": "",
-          "caption": "Figure 5.2 GPS Unit (left) and Total Station (right)"
+          "caption": "Figure 5.2 GPS Unit (left) and Total Station (right)",
+          "context": "total stations are specialized, primary data capture instruments that combine a theodolite (or transit), which measures horizontal and vertical angles, with a tool to measure the slope distance from the unit to an observed point. use of a total station allows field crews to quickly and accurately derive the topography for a particular landscape. in the case of gps, handheld units access positional data from satellites and log the information for subsequent retrieval. a network of twenty-four navigation satellites is situated around the globe and provides precise coordinate information for any point on the earth's surface ( figure 5.3 \"earth imaging satellite capturing primary data\" )."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/deb120f58f182d0d059c960b2124e0f1.jpg",
           "alt": "",
-          "caption": "Figure 5.3 Earth Imaging Satellite Capturing Primary Data"
+          "caption": "Figure 5.3 Earth Imaging Satellite Capturing Primary Data",
+          "context": "on the other hand, validation is required for remotely sensed data to ensure that the sensor is not only operating correctly but properly calibrated to collect the desired information. satellites and aerial cameras provide the most ubiquitous sources of direct-capture raster data ( chapter 4 \"data models for gis\" , section 4.3.1 \"satellite imagery\" ). secondary data capture secondary data capture an indirect data acquisition methodology that utilizes the vast amount of existing data available in both digital and hard-copy formats. is an indirect methodology that utilizes the vast amount of existing geospatial data available in both digital and hard-copy formats."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/55c0b673c52549a35738a84e53455af6.jpg",
           "alt": "",
-          "caption": "Figure 5.4 Flat Database"
+          "caption": "Figure 5.4 Flat Database",
+          "context": "modern geographic information system (gis) software typically employs a fourth model referred to as a relational database a database model that relates information across multiple tables according to primary and foreign keys. \"a relational model of data for large shared data banks.\" communications of the association for computing machinery 13 (6): 377-87. is a collection of tables that are connected in such a way that that data can be accessed without reorganization of the tables."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/1f4d498ae71d7a64aea2000c02e4e35e.jpg",
           "alt": "",
-          "caption": "Figure 5.5 Hierarchical Database"
+          "caption": "Figure 5.5 Hierarchical Database",
+          "context": "modern geographic information system (gis) software typically employs a fourth model referred to as a relational database a database model that relates information across multiple tables according to primary and foreign keys. \"a relational model of data for large shared data banks.\" communications of the association for computing machinery 13 (6): 377-87. is a collection of tables that are connected in such a way that that data can be accessed without reorganization of the tables."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/0e0922d77005444e9fafb582969b22db.jpg",
           "alt": "",
-          "caption": "Figure 5.6 Network Database"
+          "caption": "Figure 5.6 Network Database",
+          "context": "modern geographic information system (gis) software typically employs a fourth model referred to as a relational database a database model that relates information across multiple tables according to primary and foreign keys. \"a relational model of data for large shared data banks.\" communications of the association for computing machinery 13 (6): 377-87. relational database management systems a relational database management system (rdbms) a software package that records information in such a way that data can be accessed without reorganization of the tables. is a collection of tables that are connected in such a way that that data can be accessed without reorganization of the tables."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/f0d4e4e87647df1ae1fd9aa2f014dd37.jpg",
           "alt": "",
-          "caption": "Figure 5.7 First Normal Form Violation (above) and Fix (below)"
+          "caption": "Figure 5.7 First Normal Form Violation (above) and Fix (below)",
+          "context": "every cell contains one and only one value. all values in a column pertain to the same subject. the second normal form the second stage in the normalization of a relational database in which all nonkey attributes are made dependent on the primary key. states that any column that is not a primary key must be dependent on the primary key."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/87e5eaa1edb6b5bb67449ada92d257eb.jpg",
           "alt": "",
-          "caption": "Figure 5.8 Second Normal Form Violation (above) and Fix (below)"
+          "caption": "Figure 5.8 Second Normal Form Violation (above) and Fix (below)",
+          "context": "this reduces redundancy by eliminating the potential for multiple primary keys throughout multiple tables. this step often involves the creation of new tables to maintain normalization. the third normal form the third stage in the normalization of a relational database in which all nonprimary keys are made mutually exclusive. states that all nonprimary keys must depend on the primary key, while the primary key remains independent of all nonprimary keys."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/9e2d343faf95760d529919d21df85d1e.jpg",
           "alt": "",
-          "caption": "Figure 5.9 Third Normal Form Violation (above) and Fix (below)"
+          "caption": "Figure 5.9 Third Normal Form Violation (above) and Fix (below)",
+          "context": "\"a simple guide to five formal forms in relational database theory.\" communications of the association for computing and machinery . who quipped that all nonprimary keys \"must provide a fact about the key, the whole key, and nothing but the key.\" echoing this quote is the rejoinder: \"so help me codd\" (personal communication with foresman 1989). joins and relates an additional advantage of an rdbms is that it allows attribute data in separate tables to be linked in a post hoc fashion. the two operations commonly used to accomplish this are the join and relate."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/b2a94a8bbbd3280daaba9db3eaf7f1f6.jpg",
           "alt": "",
-          "caption": "Figure 5.10 Triangulated Irregular Network (TIN)"
+          "caption": "Figure 5.10 Triangulated Irregular Network (TIN)",
+          "context": "these arcs are then aggregated into triangles from which information on elevation, slope, aspect, and surface area can be derived across the entire extent of the model's space. note that term \"irregular\" in the name of the data model refers to the fact that the vertices are typically laid out in a scattered fashion. the use of tins confers certain advantages over raster-based elevation models (see section 5.3.2 \"raster file formats\" ). first, linear topographic features are very accurately represented relative to their raster counterpart."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/cb3d15cf149441b470f762c1c9f2c872.jpg",
           "alt": "",
-          "caption": "Figure 5.11 Digital Surface Model (left) and Digital Terrain Model (right)"
+          "caption": "Figure 5.11 Digital Surface Model (left) and Digital Terrain Model (right)",
+          "context": "when they represent a simple, bare-earth model and as digital surface models (dsms) usgs dems that include the heights of landscape features such as buildings and trees. when they include the heights of landscape features such as buildings and trees ( figure 5.11 \"digital surface model (left) and digital terrain model (right)\" ). usgs dems can be classified into one of four levels of quality (labeled 1 to 4) depending on its source data and resolution. this source data can be 1:24,000-; 1:63,360-; or 1:250,000-scale topographic quadrangles."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/9e04f31e2fda79cd0d34ce34397feb98.jpg",
           "alt": "",
-          "caption": "Figure 5.12 Accuracy and Precision"
+          "caption": "Figure 5.12 Accuracy and Precision",
+          "context": "a watch may be correct to 1/1000 th of a second (precise) but may be 30 minutes slow (not accurate). as you can see in figure 5.12 \"accuracy and precision\" , the blue darts are both precise and accurate, while the red darts are precise but inaccurate. several types of error can arise when accuracy and/or precision requirements are not met during data capture and creation. positional accuracy the probability of a feature being within +/- units of either its true location on earth (absolute positional accuracy) or its location in relation to other mapped features (relative positional accuracy)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/cf59b54e71835320c585a005e006f647.jpg",
           "alt": "",
-          "caption": "Figure 5.13 Relation between Positional Error and Scale"
+          "caption": "Figure 5.13 Relation between Positional Error and Scale",
+          "context": "similarly, the vertical accuracy of no more than 10 percent of elevations on a contour map shall be in error of more than one-half the contour interval. any map that does not meet these horizontal and vertical accuracy standards will be deemed unacceptable for publication. positional errors arise via multiple sources. the process of digitizing paper maps commonly introduces such inaccuracies."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/23c208c33bad5874ec62cba9f50b1591.jpg",
           "alt": "",
-          "caption": "Figure 5.14 Potential Digitization Error"
+          "caption": "Figure 5.14 Potential Digitization Error",
+          "context": "this statistic measures the deviation between the actual (true) and estimated (digitized) locations of the control points. by applying an rms error calculation to the dataset, one could determine the accuracy of the digitized map and thus determine its suitability for inclusion in a given study. positional errors can also arise when features to be mapped are inherently vague. take the example of a wetland ( figure 5.15 \"defining a wetland boundary\" )."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_09/ec887b5db1da5c39a622f288593fd942.jpg",
           "alt": "",
-          "caption": "Figure 5.15 Defining a Wetland Boundary"
+          "caption": "Figure 5.15 Defining a Wetland Boundary",
+          "context": "for example, the definition of a wetland boundary for the riverine wetlands in the eastern united states, where water is abundant, is often useless when delineating similar types of wetlands in the desert southwest united states. indeed, the complexity and confusion associated with the conception of what a \"wetland\" is may result in difficulties defining the feature in the field, which subsequently leads to positional accuracy errors in the gis database. in addition to positional accuracy, attribute accuracy the difference between information as recorded in an attribute table and the real-world features they represent. attribute errors can occur when an incorrect value is recorded within the"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/c8856aafcf4a16552327a45c740c14dd.jpg",
           "alt": "",
-          "caption": "Figure 6.1 Histogram Showing the Frequency Distribution of Exam Scores"
+          "caption": "Figure 6.1 Histogram Showing the Frequency Distribution of Exam Scores",
+          "context": "third, when possible, use classes that cover an equal range of values (freund and perles 2006). with these guidelines in mind, the exam score array shown earlier can be visualized with the following histogram ( figure 6.1 \"histogram showing the frequency distribution of exam scores\" ). as you can see from the histogram, certain descriptive observations can be readily made. most students received a c on the exam (70-79)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/fb08dee61b34f3a6760c953160ef281e.jpg",
           "alt": "",
-          "caption": "Figure 6.2"
+          "caption": "Figure 6.2",
+          "context": "as you may guess, some of the differences will be positive, and some will be negative, resulting in the sum of differences equaling zero. as we are more interested in the magnitude of differences (or deviations) from the mean, one method to overcome this \"zeroing\" property is to square each deviation, thus removing the negative values from the output ( figure 6.2 ). we then divide the sum of squares by either n - 1 (in the case of working with a sample) or n (in the case of working with a population). as the exam scores given here represent the entire population of the class, we will employ figure 6.3 \"variance\" , which results in a variance of s 2 = 116.4."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/521fc07f833f62fed5f4759cf8fd7c25.jpg",
           "alt": "",
-          "caption": "Figure 6.3 Variance"
+          "caption": "Figure 6.3 Variance",
+          "context": "if we wanted to use these exam scores to extrapolate information about the larger student body, we would be working with a sample of the population. in that case, we would divide the sum of squares by n - 1. standard deviation a measure of the dispersion of a set of data from its mean. , the final measure of dispersion discussed here, is the most commonly used measure of dispersion."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/ccf7e9b60c4bf86233664c238c3483ef.jpg",
           "alt": "",
-          "caption": "Figure 6.4 Standard Deviation"
+          "caption": "Figure 6.4 Standard Deviation",
+          "context": "to compensate for the squaring of each difference from the mean performed during the variance calculation, standard deviation takes the square root of the variance. as determined from figure 6.4 \"standard deviation\" , our exam score example results in a standard deviation of s = sqrt(116.4) = 10.8. calculating the standard deviation allows us to make some notable inferences about the dispersion of our dataset. a small standard deviation suggests the values in the dataset are clustered around the mean, while a large standard deviation suggests the values are scattered widely around the mean."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/e8b3fa38d26678631d8c8c2c7822011b.jpg",
           "alt": "",
-          "caption": "Figure 6.5 Histograms of Normally Curved, Positively Skewed, and Negatively Skewed Datasets"
+          "caption": "Figure 6.5 Histograms of Normally Curved, Positively Skewed, and Negatively Skewed Datasets",
+          "context": "in our example, the mean is 78, and the standard deviation is 10.8. key takeaways the measure of distribution for a given variable is a summary of the frequency of values over the range of the dataset and is commonly shown using a histogram. measures of central tendency attempt to provide insights into \"typical\" value for a dataset."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/e0fe0a05ac22294241978243657ad15f.jpg",
           "alt": "",
-          "caption": "Figure 6.6 Personal Addresses in “ExampleTable” Attribute Table"
+          "caption": "Figure 6.6 Personal Addresses in “ExampleTable” Attribute Table",
+          "context": "while the select and from clauses are both mandatory statements in an sql query, the where is an optional clause used to limit the output set. the order by and having are optional clauses used to present the information in an interpretable manner. the following is a series of sql expressions and results when applied to figure 6.6 \"personal addresses in \"exampletable\" attribute table\" ."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/84ea86f47f2ebf999e9ea90e87cb8b8c.jpg",
           "alt": "",
-          "caption": "Figure 6.6 Personal Addresses in “ExampleTable” Attribute Table"
+          "caption": "Figure 6.6 Personal Addresses in “ExampleTable” Attribute Table",
+          "context": "the order by and having are optional clauses used to present the information in an interpretable manner. these operators can be relational, arithmetic, or boolean and will typically appear inside of conditional statements in the where clause. a relational operator a construct that tests a relation between two entities."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/f295ebb0a4bdbb24e1e7b12f6f09fe58.jpg",
           "alt": "",
-          "caption": "Figure 6.6 Personal Addresses in “ExampleTable” Attribute Table"
+          "caption": "Figure 6.6 Personal Addresses in “ExampleTable” Attribute Table",
+          "context": "in addition to clauses, sql allows for the inclusion of specific operators to further delimit the result of query. these operators can be relational, arithmetic, or boolean and will typically appear inside of conditional statements in the where clause."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/f29eee3abd014546748ecf5a5a598b1b.jpg",
           "alt": "",
-          "caption": "Figure 6.7 Venn Diagram of SQL Operators"
+          "caption": "Figure 6.7 Venn Diagram of SQL Operators",
+          "context": "put into the language of probability, the and connector is used to represent an intersection, or represents a union, and not represents a complement. keep in mind that sql is a very exacting language and minor inconsistencies in the statement, such as additional spaces, can result in a failed query. used together, these operators combine to provide the gis user with powerful and flexible search and query options. with this in mind, can you determine the output set of the following sql query as it is applied to figure 6.1 \"histogram showing the frequency distribution of exam scores\" ?"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/0b2fbb5a504bc4af7b28def08865c012.jpg",
           "alt": "",
-          "caption": "Figure 6.7 Venn Diagram of SQL Operators"
+          "caption": "Figure 6.7 Venn Diagram of SQL Operators",
+          "context": "keep in mind that sql is a very exacting language and minor inconsistencies in the statement, such as additional spaces, can result in a failed query. with this in mind, can you determine the output set of the following sql query as it is applied to figure 6.1 \"histogram showing the frequency distribution of exam scores\" ? query by geography query by geography, also known as a \"spatial query,\" allows one to highlight particular features by examining their position relative to other features. for example, a gis provides robust tools that allow for the determination of the number of schools within 10 miles of a home."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/7a0a60095f2f1d6fff13793fe5ee1d7e.jpg",
           "alt": "",
-          "caption": "Figure 6.8"
+          "caption": "Figure 6.8",
+          "context": "this oft-used spatial query technique selects all features in the target layer that share a common locale with the source layer. the \"intersect\" query allows points, lines, or polygon layers to be used as both the source and target layers ( figure 6.8 ). the highlighted blue and yellow features are selected because they intersect the red features. this technique requires the user to specify some distance value, which is then used to buffer ( chapter 7 \"geospatial analysis i: vector operations\" , section 7.2 \"multiple layer analysis\" ) the source layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/9b3e5ff24812a99e9258433b2aa95897.jpg",
           "alt": "",
-          "caption": "Figure 6.9"
+          "caption": "Figure 6.9",
+          "context": "all features that intersect this buffer are highlighted in the target layer. the \"are within a distance of\" query allows points, lines, or polygon layers to be used for both the source and target layers ( figure 6.9 ). the highlighted blue and yellow features are selected because they are within the selected distance of the red features; tan areas represent buffers around the various features. this spatial query technique returns those features that are entirely within the source layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/fda78d9b8a0a10435047510dbdffc1b0.jpg",
           "alt": "",
-          "caption": "Figure 6.10"
+          "caption": "Figure 6.10",
+          "context": "features with coincident boundaries are not selected by this query type. the \"completely contain\" query allows for points, lines, or polygons as the source layer, but only polygons can be used as a target layer ( figure 6.10 ). the highlighted blue and yellow features are selected because they completely contain the red features. this query selects those features in the target layer whose entire spatial extent occurs within the geometry of the source layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/d17f218d182a354e38a64a0a90981abb.jpg",
           "alt": "",
-          "caption": "Figure 6.11"
+          "caption": "Figure 6.11",
+          "context": "this query selects those features in the target layer whose entire spatial extent occurs within the geometry of the source layer. the \"are completely within\" query allows for points, lines, or polygons as the target layer, but only polygons can be used as a source layer ( figure 6.11 ). the highlighted blue and yellow features are selected because they are completely within the red features. this technique selects target features whose center, or centroid, is located within the boundary of the source feature dataset."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/febda1bfc18bd42532873ed546bb43ba.jpg",
           "alt": "",
-          "caption": "Figure 6.12"
+          "caption": "Figure 6.12",
+          "context": "this technique selects target features whose center, or centroid, is located within the boundary of the source feature dataset. the \"have their center in\" query allows points, lines, or polygon layers to be used as both the source and target layers ( figure 6.12 ). the highlighted blue and yellow features are selected because they have their centers in the red features. this spatial query selects target features whose boundary geometries share a minimum of two adjacent vertices with the source layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/6c65cad889f14c080ec6bd140042d536.jpg",
           "alt": "",
-          "caption": "Figure 6.13"
+          "caption": "Figure 6.13",
+          "context": "this spatial query selects target features whose boundary geometries share a minimum of two adjacent vertices with the source layer. the \"share a line segment\" query allows for line or polygon layers to be used for either of the source and target layers ( figure 6.13 ). the highlighted blue and yellow features are selected because they share a line segment with the red features. this methodology is similar to the intersect spatial query; however, it selects line and polygon features that share a common boundary with target layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/1eea122af6a0514477053c9fd1e4ae09.jpg",
           "alt": "",
-          "caption": "Figure 6.14"
+          "caption": "Figure 6.14",
+          "context": "this methodology is similar to the intersect spatial query; however, it selects line and polygon features that share a common boundary with target layer. the \"touch the boundary of\" query allows for line or polygon layers to be used as both the source and target layers ( figure 6.14 ). the highlighted blue and yellow features are selected because they touch the boundary of the red features. this spatial query returns features that have the exact same geographic location."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/5d759c185697124c78c237c38e36f30d.jpg",
           "alt": "",
-          "caption": "Figure 6.15"
+          "caption": "Figure 6.15",
+          "context": "this spatial query returns features that have the exact same geographic location. the \"are identical to\" query can be used on points, lines, or polygons, but the target layer type must be the same as the source layer type ( figure 6.15 ). the highlighted blue and yellow features are selected because they are identical to the red features. this selection criteria returns features that share a single vertex but not an entire line segment."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/bc4348930205b5d1b86977f9ba505860.jpg",
           "alt": "",
-          "caption": "Figure 6.16"
+          "caption": "Figure 6.16",
+          "context": "this selection criteria returns features that share a single vertex but not an entire line segment. the \"are crossed by the outline of\" query allows for line or polygon layers to be used as both source and target layers ( figure 6.16 ). the highlighted blue and yellow features are selected because they are crossed by the outline of the red features. this method is similar to the completely contain spatial query; however, features in the target layer will be selected even if the boundaries overlap."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/b9fb88c22ae4490c609a22997f05f550.jpg",
           "alt": "",
-          "caption": "Figure 6.17"
+          "caption": "Figure 6.17",
+          "context": "this method is similar to the completely contain spatial query; however, features in the target layer will be selected even if the boundaries overlap. the \"contain\" query allows for point, line, or polygon features in the target layer when points are used as a source; when line and polygon target layers with a line source; and when only polygon target layers with a polygon source ( figure 6.17 ). the highlighted blue and yellow features are selected because they contain the red features. this method is similar to the are completely within spatial query; however, features in the target layer will be selected even if the boundaries overlap."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/ebbcab4d654e600bc258816adbb8863b.jpg",
           "alt": "",
-          "caption": "Figure 6.18"
+          "caption": "Figure 6.18",
+          "context": "this method is similar to the are completely within spatial query; however, features in the target layer will be selected even if the boundaries overlap. the \"are contained by\" query allows for point, line, or polygon features in the target layer when polygons are used as a source; when point and line target layers with a line source; and when only point target layers with a point source ( figure 6.18 ). the highlighted blue and yellow features are selected because they are contained by the red features. key takeaways the three basic methods for searching and querying attribute data are selection, query by attribute, and query by geography."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/c669418ef56bdfb2a286dbf3387e3517.jpg",
           "alt": "",
-          "caption": "Figure 6.19 Equal Interval Classification for 1997 US County Population Data"
+          "caption": "Figure 6.19 Equal Interval Classification for 1997 US County Population Data",
+          "context": "the primary disadvantage is that certain datasets will end up with most of the data values falling into only one or two classes, while few to no values will occupy the other classes. as you can see in figure 6.19 \"equal interval classification for 1997 us county population data\" , almost all the counties are assigned to the first (yellow) bin. the quantile a choropleth mapping technique that classifies data into a predefined number of categories with an equal number of units in each category. classification method places equal numbers of observations into each class."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/88d9d2d38addce5f58137b0f15066d2d.jpg",
           "alt": "",
-          "caption": "Figure 6.20 Quantiles"
+          "caption": "Figure 6.20 Quantiles",
+          "context": "the primary disadvantage of the quantile classification methodology is that features placed within the same class can have wildly differing values, particularly if the data are not evenly distributed across its range. in addition, the opposite can also happen whereby values with small range differences can be placed into different classes, suggesting a wider difference in the dataset than actually exists. the natural breaks (or jenks) a choropleth mapping technique that places class breaks in gaps between clusters of values. classification method utilizes an algorithm to group values in classes that are separated by distinct break points."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/4f17a636f3d63f632710e0f6570840eb.jpg",
           "alt": "",
-          "caption": "Figure 6.21 Natural Breaks"
+          "caption": "Figure 6.21 Natural Breaks",
+          "context": "a second disadvantage is the fact that it can be difficult to compare two or more maps created with the natural breaks classification method because the class ranges are so very specific to each dataset. in these cases, datasets that may not be overly disparate may appear so in the output graphic. finally, the standard deviation classification method forms each class by adding and subtracting the standard deviation from the mean of the dataset. the method is best suited to be used with data that conforms to a normal distribution."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_10/a5bfcd571c5fd7f006c647bdf306251e.jpg",
           "alt": "",
-          "caption": "Figure 6.22 Standard Deviation"
+          "caption": "Figure 6.22 Standard Deviation",
+          "context": "in the county population example, the mean is 85,108, and the standard deviation is 277,080. therefore, as can be seen in the legend of figure 6.22 \"standard deviation\" , the central class contains values within a 0.5 standard deviation of the mean, while the upper and lower classes contain values that are 0.5 or more standard deviations above or below the mean, respectively. in conclusion, there are several viable data classification methodologies that can be applied to choropleth maps. although other methods are available (e.g., equal area, optimal), those outlined here represent the most commonly used and widely available."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/5c7eb6fc4bcbfc5117d778f0aabfded6.jpg",
           "alt": "",
-          "caption": "Figure 7.1 Buffers around Red Point, Line, and Polygon Features"
+          "caption": "Figure 7.1 Buffers around Red Point, Line, and Polygon Features",
+          "context": "in this case, he or she could create a 1,000-foot buffer around all polygons labeled as \"delhi sands\" on a soil formations dataset. in either case, the use of buffers provides a quick-and-easy tool for determining which areas are to be maintained as preserved habitat for the endangered fly. several buffering options are available to refine the output. for example, the buffer tool will typically buffer only selected features."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/a8bd893771b4d7034dfa8bd8b171aff4.jpg",
           "alt": "",
-          "caption": "Figure 7.2 Additional Buffer Options around Red Features: (a) Variable Width Buffers, (b) Multiple Ring Buffers, (c) Doughnut Buffer, (d) Setback Buffer, (e) Nondissolved Buffer, (f) Dissolved Buffer"
+          "caption": "Figure 7.2 Additional Buffer Options around Red Features: (a) Variable Width Buffers, (b) Multiple Ring Buffers, (c) Doughnut Buffer, (d) Setback Buffer, (e) Nondissolved Buffer, (f) Dissolved Buffer",
+          "context": "linear features can be buffered on both sides of the line, only on the left, or only on the right. linear features can also be buffered so that the end points of the line are rounded (ending in a half-circle) or flat (ending in a rectangle). geoprocessing operations \"geoprocessing\" is a loaded term in the field of gis. the term can (and should) be widely applied to any attempt to manipulate gis data."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/8a76c2bc3a77bf08103a204b1fdeab45.jpg",
           "alt": "",
-          "caption": "Figure 7.3 Single Layer Geoprocessing Functions"
+          "caption": "Figure 7.3 Single Layer Geoprocessing Functions",
+          "context": "this operation is particularly useful when polygons are found to be unintentionally overlapping. merge will conveniently combine these features into a single entity. key takeaways buffers are frequently used to create zones of a specified width around points, lines, and polygons. vector buffering options include constant or variable widths, multiple rings, doughnuts, setbacks, and dissolve."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/ca6ce94cdd2e09a1da8aa6ec22336835.jpg",
           "alt": "",
-          "caption": "Figure 7.4 A Map Overlay Combining Information from Point, Line, and Polygon Vector Layers, as Well as Raster Layers"
+          "caption": "Figure 7.4 A Map Overlay Combining Information from Point, Line, and Polygon Vector Layers, as Well as Raster Layers",
+          "context": "is the process of taking two or more different thematic maps of the same area and placing them on top of one another to form a new map ( figure 7.4 \"a map overlay combining information from point, line, and polygon vector layers, as well as raster layers\" ). inherent in this process, the overlay function combines not only the spatial features of the dataset but also the attribute information as well. a common example used to illustrate the overlay process is, \"where is the best place to put a mall?\" imagine you are a corporate bigwig and are tasked with determining where your company's next shopping mall will be placed. with a gis at your command, answering such spatial questions begins with"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/1dd9c04b6b148c4bd6dc535145b7544f.jpg",
           "alt": "",
-          "caption": "Figure 7.5 Point-in-Polygon Overlay"
+          "caption": "Figure 7.5 Point-in-Polygon Overlay",
+          "context": "a quick scan of this output layer and its attribute table would allow you to determine where the species was found in the park and to review the vegetation communities in which it occurred. this process would enable park employees to make informed management decisions regarding which onsite habitats to protect to ensure continued site utilization by the species. as its name suggests, the polygon-on-point overlay an overlay technique that creates a polygon layer from those input polygons that overlay features in a point layer. operation is the opposite of the point-in-polygon operation."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/b9b97b4d9cf6ed6d9231ccfac8d416d6.jpg",
           "alt": "",
-          "caption": "Figure 7.6 Polygon-on-Point Overlay"
+          "caption": "Figure 7.6 Polygon-on-Point Overlay",
+          "context": "in this case, the polygon layer is the input, while the point layer is the overlay. the polygon features that overlay these points are selected and subsequently preserved in the output layer. a line-on-line overlay an overlay technique in which output from this operation is a point(s) located at the intersection(s) of the two linear datasets. operation requires line features for both the input and overlay layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/a7d9044cd95bc542ea768ec4440f9c48.jpg",
           "alt": "",
-          "caption": "Figure 7.7 Line-on-Line Overlay"
+          "caption": "Figure 7.7 Line-on-Line Overlay",
+          "context": "the resulting point dataset contains all the locales of the railroad crossings over a town's road network. the attribute table for this railroad crossing point dataset would contain information on both the railroad and the road over which it passed. the line-in-polygon overlay an overlay technique in which each line that has any part of its extent within the overlay polygon layer will be included in an output line layer. operation is similar to the point-in-polygon overlay, with that obvious exception that a line input layer is used instead of a point input layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/658385fa154bc3b53910232e9b01c315.jpg",
           "alt": "",
-          "caption": "Figure 7.8 Line-in-Polygon Overlay"
+          "caption": "Figure 7.8 Line-in-Polygon Overlay",
+          "context": "for example, a line-in-polygon overlay can take an input layer of interstate line segments and a polygon overlay representing city boundaries and produce a linear output layer of highway segments that fall within the city boundary. the attribute table for the output interstate line segment will contain information on the interstate name as well as the city through which they pass. the polygon-on-line overlay an overlay technique in which polygon features that overlay lines are selected and subsequently preserved in an output layer. operation is the opposite of the line-in-polygon operation."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/781186d729462d0de721a359aa8a575f.jpg",
           "alt": "",
-          "caption": "Figure 7.9 Polygon-on-Line Overlay"
+          "caption": "Figure 7.9 Polygon-on-Line Overlay",
+          "context": "the polygon features that overlay these lines are selected and subsequently preserved in the output layer. for example, given a layer containing the path of a series of telephone poles/wires and a polygon map contain city parcels, a polygon-on-line overlay operation would allow a land assessor to select those parcels containing overhead telephone wires. finally, the polygon-in-polygon overlay an overlay technique in which a polygon input and overlay layers are combined to create an output polygon layer with the extent of the overlay. operation employs a polygon input and a polygon overlay."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/91696b4a667fc02835eb956573e1d231.jpg",
           "alt": "",
-          "caption": "Figure 7.10 Polygon-in-Polygon Overlay"
+          "caption": "Figure 7.10 Polygon-in-Polygon Overlay",
+          "context": "for example, you may choose an input polygon layer of soil types with an overlay of agricultural fields within a given county. the output polygon layer would contain information on both the location of agricultural fields and soil types throughout the county. the overlay operations discussed previously assume that the user desires the overlain layers to be combined. overlay methods can be more complex than that and therefore employ the basic boolean operators: and, or, and xor (see section 6.1.2 \"measures of central tendency\" )."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/a33268f6ff028c24152080d0aa3f2aad.jpg",
           "alt": "",
-          "caption": "Figure 7.11 Vector Overlay Methods"
+          "caption": "Figure 7.11 Vector Overlay Methods",
+          "context": "the input layer can be points, lines, or polygons. the identity layer must be a polygon dataset. other multilayer geoprocessing options in addition to the aforementioned vector overlay methods, other common multiple layer geoprocessing options are available to the user. these included the clip, erase, and split tools."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_11/e09aef7ee2f8ba233b824e955ad2405e.jpg",
           "alt": "",
-          "caption": "Figure 7.12 Slivers"
+          "caption": "Figure 7.12 Slivers",
+          "context": "too strict a setting will not snap shared boundaries, while too lenient a setting will snap unintended, neighboring boundaries together (wang and donaghy 1995). \"a study of the impact of automated editing on polygon overlay analysis accuracy.\" computers and geosciences 21: 1177-85. a second potential source of error associated with the overlay process is error propagation. error propagation when inaccuracies are present in the original input and overlay layers and are carried through to an output layer."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/633731ca27e67f01d674b6d1aaaf19bc.jpg",
           "alt": "",
-          "caption": "Figure 8.1 Raster Reclassification"
+          "caption": "Figure 8.1 Raster Reclassification",
+          "context": "this simplification allows for fewer unique values and cheaper storage requirements. in addition, these reclassified layers are often used as inputs in secondary analyses, such as those discussed later in this section. as described in chapter 7 \"geospatial analysis i: vector operations\" , buffering is the process of creating an output dataset that contains a zone (or zones) of a specified width around an input feature. in the case of raster datasets, these input features are given as a grid cell or a group of grid cells containing a uniform value (e.g., buffer all cells whose value = 1)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/fa316a8fe9620e67b50a5eaafa9e69ea.jpg",
           "alt": "",
-          "caption": "Figure 8.2 Raster Buffer around a Target Cell(s)"
+          "caption": "Figure 8.2 Raster Buffer around a Target Cell(s)",
+          "context": "whereas buffering vector data results in a precise area of influence at a specified distance from the target feature, raster buffers tend to be approximations representing those cells that are within the specified distance range of the target ( figure 8.2 \"raster buffer around a target cell(s)\" ). these cells could also be further classified to represent multiple ring buffers by including values of \"3,\" \"4,\" \"5,\" and so forth, to represent concentric distances around the target cell(s). multiple layer analysis a raster dataset can also be clipped similar to a vector dataset ( figure 8.3 \"clipping a raster to a vector polygon layer\" ). here, the input raster is overlain by a vector polygon cl"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/2a68ec6d5c214c2518a936e4abf14619.jpg",
           "alt": "",
-          "caption": "Figure 8.3 Clipping a Raster to a Vector Polygon Layer"
+          "caption": "Figure 8.3 Clipping a Raster to a Vector Polygon Layer",
+          "context": "here, the input raster is overlain by a vector polygon clip layer. the raster clip process results in a single raster that is identical to the input raster but shares the extent of the polygon clip layer. raster overlays are relatively simple compared to their vector counterparts and require much less computational power (burroughs 1983). geographical information systems for natural resources assessment ."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/095c6533afae0ad16c99688a3d0d489e.jpg",
           "alt": "",
-          "caption": "Figure 8.4 Mathematical Raster Overlay"
+          "caption": "Figure 8.4 Mathematical Raster Overlay",
+          "context": "as you can imagine, there are many uses for such functionality. in particular, raster overlay is often used in risk assessment studies where various layers are combined to produce an outcome map showing areas of high risk/reward. two input raster layers are overlain to produce an output raster with summed cell values. the boolean raster overlay pixel or grid cell values in each map are combined using boolean operators to produce a new value in the composite map."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/5c8eb19a2a34fdbc58167eb4a3085eb5.jpg",
           "alt": "",
-          "caption": "Figure 8.5 Local Operation on a Raster Dataset"
+          "caption": "Figure 8.5 Local Operation on a Raster Dataset",
+          "context": "these local analyses can become somewhat more complicated however, as the number of input rasters increase. for example, the universal soil loss equation (usle) applies a local mathematical formula to several overlying rasters including rainfall intensity, erodibility of the soil, slope, cultivation type, and vegetation type to determine the average soil loss (in tons) in a grid cell. neighborhood operations tobler's first law of geography states that \"everything is related to everything else, but near things are more related than distant things.\" neighborhood operations operations performed on a central, target cell and surrounding cells. represent a group of frequently used spatial analysi"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/a2ecd0ed753a32f3e5b2f3c5482edc65.jpg",
           "alt": "",
-          "caption": "Figure 8.6 Common Neighborhood Types around Target Cell “x”: (a) 3 by 3, (b) Circle, (c) Annulus, (d) Wedge"
+          "caption": "Figure 8.6 Common Neighborhood Types around Target Cell “x”: (a) 3 by 3, (b) Circle, (c) Annulus, (d) Wedge",
+          "context": "additionally, the moving window need not be a simple rectangle. other shapes used to calculate neighborhood statistics include the annulus, wedge, and circle ( figure 8.6 \"common neighborhood types around target cell \"x\": (a) 3 by 3, (b) circle, (c) annulus, (d) wedge\" ). neighborhood operations are commonly used for data simplification on raster datasets. an analysis that averages neighborhood values would result in a smoothed output raster with dampened highs and lows as the influence of the outlying data values are reduced by the averaging process."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/6770c44b59bc1b4b7875605be3ac21b0.jpg",
           "alt": "",
-          "caption": "Figure 8.7 Zonal Operation on a Raster Dataset"
+          "caption": "Figure 8.7 Zonal Operation on a Raster Dataset",
+          "context": "given a single input raster, zonal operations measure the geometry of each zone in the raster, such as area, perimeter, thickness, and centroid. given two rasters in a zonal operation, one input raster and one zonal raster, a zonal operation produces an output raster, which summarizes the cell values in the input raster for each zone in the zonal raster ( figure 8.7 \"zonal operation on a raster dataset\" ). zonal operations and analyses are valuable in fields of study such as landscape ecology where the geometry and spatial arrangement of habitat patches can significantly affect the type and number of species that can reside in them. similarly, zonal analyses can effectively quantify the narr"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/447c218b38b82720781a8a1461dc881b.jpg",
           "alt": "",
-          "caption": "Figure 8.8 Global Operation on a Raster Dataset"
+          "caption": "Figure 8.8 Global Operation on a Raster Dataset",
+          "context": "typical global operations include determining basic statistical values for the raster as a whole. for example, the minimum, maximum, average, range, and so forth can be quickly calculated over the entire extent of the input raster and subsequently be output to a raster in which every cell contains that calculated value ( figure 8.8 \"global operation on a raster dataset\" ). key takeaways local raster operations examine only a single target cell during analysis. neighborhood raster operations examine the relationship of a target cell proximal surrounding cells."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/285839ececec2893430139135ecc195d.jpg",
           "alt": "",
-          "caption": "Figure 8.9 Positive and Negative Spatial Autocorrelation"
+          "caption": "Figure 8.9 Positive and Negative Spatial Autocorrelation",
+          "context": "interpolation is used to estimate the value of a variable at an unsampled location from measurements made at nearby or neighboring locales. forms the backbone of many spatial analyses ( figure 8.9 \"positive and negative spatial autocorrelation\" ). creating surfaces the ability to create a surface is a valuable tool in a gis. the creation of raster surfaces, however, often starts with the creation of a vector surface."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/989baf2713da73eca8c861361a3501cd.jpg",
           "alt": "",
-          "caption": "Figure 8.10 A Vector Surface Created Using Thiessen Polygons"
+          "caption": "Figure 8.10 A Vector Surface Created Using Thiessen Polygons",
+          "context": "a common example of thiessen polygons is the creation of a rainfall surface from an array of rain gauge point locations. employing some basic reclassification techniques, these thiessen polygons can be easily converted to equivalent raster representations. while the creation of thiessen polygons results in a polygon layer whereby each polygon, or raster zone, maintains a single value, interpolation a potentially complex statistical technique that estimates the value of all unknown points between the known points. is a potentially complex statistical technique that estimates the value of all unknown points between the known points."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/9394e80abcb38028f30d04cbce13ef82.jpg",
           "alt": "",
-          "caption": "Figure 8.11 Contour Lines Derived from a DEM"
+          "caption": "Figure 8.11 Contour Lines Derived from a DEM",
+          "context": "in this example, the contour interval, defined as the vertical distance between each contour line, is 100 feet. the contour interval is determined by the user during the creating of the surface. key takeaways spatial interpolation is used to estimate those unknown values found between known data points. spatial autocorrelation is positive when mapped features are clustered and is negative when mapped features are uniformly distributed."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/7f414b33f524d1a95bbfaebc30c4a2fe.jpg",
           "alt": "",
-          "caption": "Figure 8.12 (a) Slope, (b) Aspect, and (c and d) Hillshade Maps"
+          "caption": "Figure 8.12 (a) Slope, (b) Aspect, and (c and d) Hillshade Maps",
+          "context": "as you can see in part (c) of figure 8.12 \"(a) slope, (b) aspect, and (c and d) hillshade maps\" , hillshade representations are an effective way to visualize the three-dimensional nature of land elevations on a two-dimensional monitor or paper map. hillshade maps can also be used effectively as a baseline map when overlain with a semitransparent layer, such as a false-color digital elevation model (dem; part (d) of figure 8.12 \"(a) slope, (b) aspect, and (c and d) hillshade maps\" ). geological survey, earth resources observation and science (eros) center, sioux falls, sd. viewshed analysis the processing of determining the areas visible from a specific location."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_12/b39df9b7fbe4e7b81c1333441ba4a842.jpg",
           "alt": "",
-          "caption": "Figure 8.13 (a) Viewshed and (b) Watershed Maps"
+          "caption": "Figure 8.13 (a) Viewshed and (b) Watershed Maps",
+          "context": "introduction to geographic information systems . such analyses are invaluable for watershed management and hydrologic modeling. geological survey, earth resources observation and science (eros) center, sioux falls, sd. exercises how are slope and aspect maps utilized in the creation of a hillshade map?"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/98166f227ca482785d6029864ca10b13.jpg",
           "alt": "",
-          "caption": "Figure 9.1 Value"
+          "caption": "Figure 9.1 Value",
+          "context": "monochrome colors are groups of colors with the same hue but with incremental variations in value. as seen in figure 9.1 \"value\" , variations in value will typically lead the viewer's eye from dark areas to light areas. full saturation results in pure colors, while low saturation colors approach gray. variations in saturation yield different shades and tints."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/6d026a4f32c1aec1a05a2f7f1b7aaef4.jpg",
           "alt": "",
-          "caption": "Figure 9.2 Use of Color to Provide Meaning"
+          "caption": "Figure 9.2 Use of Color to Provide Meaning",
+          "context": "even more than the others, the color black purports surprisingly strong positive and negative connotations. black conveys mystery, elegance, and sophistication (e.g., a black-tie affair, in the black), while also conveying loss, evil, and negativity (e.g., blackout, black-hearted, black cloud, blacklist). in this map, red counties are those that voted for the republican party in the 2004 presidential election, while blue counties voted democrat. these colors are typically used to designate the democratic and republican parties."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/569c41d9be635bdb76fefb1527a079e0.jpg",
           "alt": "",
-          "caption": "Figure 9.3 Use of Color to Provide Emphasis"
+          "caption": "Figure 9.3 Use of Color to Provide Emphasis",
+          "context": "these colors will often jump off the page and are usually the first to attract the reader's eye, particularly if they are counterbalanced with cool colors, such as blues and greens (see section 9.1.3 \"color choices\" for more on warm and cool colors). in addition, the use of a hue with high saturation will stand out starkly against similar hues of low saturation. color use is also important for creating a map with pleasing aesthetics ( figure 9.4 \"use of color to provide aesthetics\" ). certainly, one of the most challenging aspects of map creation is developing an effective color palette."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/57a2abe6298168113c26dfbf85c2eba2.jpg",
           "alt": "",
-          "caption": "Figure 9.4 Use of Color to Provide Aesthetics"
+          "caption": "Figure 9.4 Use of Color to Provide Aesthetics",
+          "context": "although somewhat particular to individual viewers, we all have an innate understanding of when colors in a graphic/art are aesthetically pleasing and when they are not. for example, color use is considered harmonious when colors from opposite sides of the color wheel are used ( section 9.1.3 \"color choices\" ), whereas equitable use of several major hues can create an unbalanced image. the fourth use of color is abstraction ( figure 9.5 \"use of color to provide abstraction\" ). color abstraction is an effective way to illustrate quantitative and qualitative data, particularly for thematic products such as choropleth maps."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/a75fefd81f02345384e7bbf98c6ad180.jpg",
           "alt": "",
-          "caption": "Figure 9.5 Use of Color to Provide Abstraction"
+          "caption": "Figure 9.5 Use of Color to Provide Abstraction",
+          "context": "color abstraction is an effective way to illustrate quantitative and qualitative data, particularly for thematic products such as choropleth maps. here, colors are used solely to denote different values for a variable and may not have any particular rhyme or reason. opposite abstraction, color can also be used to represent reality ( figure 9.6 ). maps showing elevation (e.g., digital elevation models or dems) are often given false colors that approximate reality."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/30bda6f3e02c16470db67487adaaeeb0.jpg",
           "alt": "",
-          "caption": "Figure 9.6"
+          "caption": "Figure 9.6",
+          "context": "watercourses and water bodies are colored blue. unless there is a specific reason not to, natural phenomena represented on maps should always be colored to approximate their actual color to increase interpretability and to decrease confusion. greens, blues, and browns are used to imitate real-world phenomena. color models color models are systems that allow for the creation of a range of colors from a short list of primary colors."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/f7adf578074a03c6e5a2ff2ad865e6ad.jpg",
           "alt": "",
-          "caption": "Figure 9.7 Additive Color Models: (a) RGB, (b) HSL, and (c) HSV"
+          "caption": "Figure 9.7 Additive Color Models: (a) RGB, (b) HSL, and (c) HSV",
+          "context": "for example, the rgb color model does not define \"absolute\" color spaces, which connotes that these hues may look differently when viewed on different displays. also, the rgb hues are not evenly spaced along the color spectrum, meaning combinations of the hues is less than exact. in contrast to an additive model, subtractive color models color models that involve the mixing of paints, dyes, or inks on a white page to create full color ranges. involve the mixing of paints, dyes, or inks to create full color ranges."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/aad5b5501f81ec7ec9148b8b3f9f2dbc.jpg",
           "alt": "",
-          "caption": "Figure 9.8 Subtractive Color Model: CMYK"
+          "caption": "Figure 9.8 Subtractive Color Model: CMYK",
+          "context": "one last note, you will also want to be selective in your use of file formats for these color models. the jpeg and gif graphic file formats are the best choice for rgb images, while the eps and tiff graphic file formats are preferred with printed cmyk images. color choices effective color usage requires a modicum of knowledge about the color wheel. invented by sir isaac newton in 1706, the color wheel a visual representation of colors arranged according to their chromatic relationships."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/7886eb1229fbec291089b9ca7028e1a8.jpg",
           "alt": "",
-          "caption": "Figure 9.9 Color Wheel"
+          "caption": "Figure 9.9 Color Wheel",
+          "context": "furthermore, complementary colors are those placed opposite each on the wheel, while analogous colors are located proximal to each other. complementary colors emphasize differences. colors can be further referred to as warm or cool ( figure 9.10 \"warm (orange) and cool (blue) colors\" ). warm colors the yellows and reds of the color spectrum associated with fire, heat, sun, and warmer temperatures."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/4ad310da24941db23bef65450471dba6.jpg",
           "alt": "",
-          "caption": "Figure 9.10 Warm (Orange) and Cool (Blue) Colors"
+          "caption": "Figure 9.10 Warm (Orange) and Cool (Blue) Colors",
+          "context": "cool colors appear small, recede, and calm the viewer. as you might guess, it is important that you apply warm colors to the map features of primary interest, while using cool colors on the secondary, background, and/or contextual features. note that the warm color stands out, while the cool color recedes. in light of the plethora of color schemes and options available, it is wise to follow some basic color usage guidelines."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/0ceaf7f984e4a9503c9d8c22089a7e86.jpg",
           "alt": "",
-          "caption": "Figure 9.11"
+          "caption": "Figure 9.11",
+          "context": "also, the number of coincident colors that can be distinguished by humans is around seven, so be careful not to abuse the color palette in your maps. if the data being mapped has a zero point, a dichromatic scale ( figure 9.11 ) provides a natural breaking point with increasing color values on each end of the scale representing increasing data values. a dichromatic scale is essentially two monochromatic scales joined by a low color value in the center. in addition, darker colors result in more important or pronounced graphic features (assuming the background is not overly dark)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/fc1293cfd7fdd47096fd48ca757211f2.jpg",
           "alt": "",
-          "caption": "Figure 9.12 Visual Variables"
+          "caption": "Figure 9.12 Visual Variables",
+          "context": "changes to symbol size and texture are most effectively used in conjunction with ordinal, interval, and ratio data. changes to symbol pattern and shape are preferred in conjunction with nominal data. variations in the size of symbols are powerful indicators of feature importance. intuitively, larger symbols are assumed to be more important than smaller symbols."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/b2618fcbbc66006c2f649dafaa088348.jpg",
           "alt": "",
-          "caption": "Figure 9.13 Pictograms"
+          "caption": "Figure 9.13 Pictograms",
+          "context": "the darker the symbol, the more it stands out among lighter features. variations in the lightness/darkness of a symbol are most effective when applied to ordinal data, are moderately effective when applied to numerical data, and are ineffective when applied to nominal data. keep in mind that there are many other visual variables that can be employed in a map, depending on the cartographic software used. regardless of the chosen symbology, it is important to maintain a logical relationship between the symbol and the data."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/44f101b856e9bf8b714286b27adad9be.jpg",
           "alt": "",
-          "caption": "Figure 9.14 Mathematical versus Perceptual Scaling"
+          "caption": "Figure 9.14 Mathematical versus Perceptual Scaling",
+          "context": "if one value is twice as large as another, it will be represented with a symbol twice as large as the other. perceptual scaling overcomes the underestimation of large symbols by making these symbols much larger than their actual value would indicate ( figure 9.14 \"mathematical versus perceptual scaling\" ). a disadvantage of proportional symbolization is that the symbol size can appear variable depending on the surrounding symbols. this is best shown via the ebbinghaus illusion (also known as titchener circles)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/e8f1a7ab54756798c9c1a28d85be68a7.jpg",
           "alt": "",
-          "caption": "Figure 9.15 Ebbinghaus Illusion"
+          "caption": "Figure 9.15 Ebbinghaus Illusion",
+          "context": "as you can see in figure 9.15 \"ebbinghaus illusion\" , the central circles are both the same size but appear different due to the visual influence of the surrounding circles. if you are creating a graphic with many different symbols, this illusion can wreak havoc on the interpretability of your map. key takeaways vector points, lines, and polygons can be symbolized in a variety of ways. symbol variables include size, texture, pattern, and shape."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/0c71cd48743695df3cb5ca49fd858393.jpg",
           "alt": "",
-          "caption": "Figure 9.16 A US Map Showing Various Map Elements"
+          "caption": "Figure 9.16 A US Map Showing Various Map Elements",
+          "context": "since modern gis packages allow users to add and remove these graphic elements with little effort, care must be taken to avoid the inclination to employ these components with as little forethought as it takes to create them. the following sections provide further guidance on composing these elements on the page to honor and balance the mapped area. typography and label placement type is found throughout all the elements of a map. type is similar to map symbols in many senses."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_13/9931a61730d7d9b185e4376fe5b4ff29.jpg",
           "alt": "",
-          "caption": "Figure 9.17 Typographic Effects"
+          "caption": "Figure 9.17 Typographic Effects",
+          "context": "other common typographic effects include masks, callouts, shadows, and halos ( figure 9.17 \"typographic effects\" ). all of these effects serve to increase the visibility and importance of the text to which they are applied. in addition to the general typographic guidelines discussed earlier, there are specific typographic suggestions for feature labels text on a map that describes and defines mapped features. obviously, labels must be placed proximal to their symbols so they are directly and readily associated with the features they describe."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/e4b1b27dc026e9135452627300b43d89.jpg",
           "alt": "",
-          "caption": "Figure 10.1"
+          "caption": "Figure 10.1",
+          "context": "some readers may equate management with the posting of cliched artwork that lines the walls of corporate headquarters across the nation ( figure 10.1 ). in reality, proper project management is a complex task that requires a broad knowledge base and a variety of skills. management is more than posting vapid, buzzword-laden artwork such as this in the office place. this section guides the reader through the basic tenets of this text."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/8ccfc61654c1f72a0e77e1b96ebc9077.jpg",
           "alt": "",
-          "caption": "Figure 10.2 Gantt Chart"
+          "caption": "Figure 10.2 Gantt Chart",
+          "context": "gantt charts will typically represent the estimated task completion time in one color and the actual time to completion in a second color ( figure 10.2 \"gantt chart\" ). this color coding allows project members to rapidly assess the project progress and identify areas of concern in a timely fashion. pert (program evaluation and review technique) charts are similar to gantt charts in that they are both used to coordinate task completion for a given project ( figure 10.3 \"pert chart\" ). pert charts focus more on the events of a project than on the start and completion dates as seen with the gantt charts."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/b904a5f308c2bf3fb5fd07f3a9760041.jpg",
           "alt": "",
-          "caption": "Figure 10.3 PERT Chart"
+          "caption": "Figure 10.3 PERT Chart",
+          "context": "after estimating the best- and worst-case scenario regarding the time to finish all tasks, the critical path outlines the sequence of events that results in the longest potential duration for the project. delays to any of the critical path tasks will result in a net delay to project completion and therefore must be closely monitored by the project manager. there are some advantages and disadvantages to both the gantt and pert chart types. gantt charts are preferred when working with small, linear projects (with less than thirty or so tasks, each of which occurs sequentially)."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/c73715695a8d08e5fd21c144fc0212bb.jpg",
           "alt": "",
-          "caption": "Figure 10.4 CAD Drawing of a Conceptual Land Development Project"
+          "caption": "Figure 10.4 CAD Drawing of a Conceptual Land Development Project",
+          "context": "an error of inches, in either the vertical or horizontal dimension, could result in a need for a major plan redesign that may cost the client an inordinate amount of time and money. too many of these types of errors, and you and your engineer may soon be looking for a new job. therefore, local coordinate systems are typically employed by the civil engineer whereby the origin coordinate (the 0, 0 point) is based off of some nearby landmark such as a manhole, fire hydrant, stake, or some other survey control point. while this is acceptable for engineers, the gis user typically is concerned not only with local phenomena but also with tying the project into a larger world."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/0825f3ddc12811658f2e7790babe434d.jpg",
           "alt": "",
-          "caption": "Figure 10.5 Project Site Tiled into an Output Series"
+          "caption": "Figure 10.5 Project Site Tiled into an Output Series",
+          "context": "a map series is essentially a multipage document created by dividing the overall data frame into unique tiles based on a user-defined index grid a polygon outline showing the location and extent of each map in the series. while these maps can certainly be created without the use of a map series generator, this functionality greatly assists in the organization and display of project's whose extents cannot be represented within a single map. geological survey, earth resources observation and science (eros) center, sioux falls, sd. geological survey, earth resources observation and science (eros) center, sioux falls, sd."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/be20e99971a73518290a6edf3dd41a8c.jpg",
           "alt": "",
-          "caption": "Figure 10.6 Output from a Map Series"
+          "caption": "Figure 10.6 Output from a Map Series",
+          "context": "while these maps can certainly be created without the use of a map series generator, this functionality greatly assists in the organization and display of project's whose extents cannot be represented within a single map. geological survey, earth resources observation and science (eros) center, sioux falls, sd. geological survey, earth resources observation and science (eros) center, sioux falls, sd. grid-to-ground transformations project managers must be mindful of the transition from in-program mapped units to real-world locations."
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/cc9baecaab6caf8cd8a1375460c61add.jpg",
           "alt": "",
-          "caption": "Figure 10.7 Grid-to-Ground Transformation"
+          "caption": "Figure 10.7 Grid-to-Ground Transformation",
+          "context": "scale error refers to the phenomenon whereby points measured on the three-dimensional earth (i.e., ground measurement) must first be translated onto the coordinate system's ellipsoid (i.e., mean sea level), and then must be translated to the two-dimensional grid plane ( figure 10.7 \"grid-to-ground transformation\" ). basically, scale error is associated with the move from three to two dimensions and is remedied by applying a scale factor (sf) to any measurements made to the dataset. in addition to scale error, elevation error becomes increasingly pronounced as the project site's elevation begins to rise. consider figure 10.8 \"grid versus ground measurements\" , where a line measured as 1,000 f"
         },
         {
           "src": "https://saylordotorg.github.io/text_essentials-of-geographic-information-systems/section_14/83b70be02d7399463ad53e44cd0d4e4e.jpg",
           "alt": "",
-          "caption": "Figure 10.8 Grid versus Ground Measurements"
+          "caption": "Figure 10.8 Grid versus Ground Measurements",
+          "context": "each such transition requires compensation, referred to as the elevation factor (ef). the sf and ef are often combined into a single combination factor (cf) that is automatically applied to any measurements taken from the gis. in addition to ef and sf errors, care must be taken when surveying areas greater than 5 miles in length. at these distances, slight errors will begin to compound and may create noticeable discrepancies."
         }
       ]
     }

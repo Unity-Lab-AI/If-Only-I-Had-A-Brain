@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "grade12",
   "subject": "economics",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
-  "note": "Hybrid academic-depth corpus for economics/grade12. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "source": "hybrid: Wikibooks open textbooks + prior sources, cleaned + sentence-segmented",
+  "note": "Textbook corpus for economics/grade12. Trained via curriculum._trainAcademicStories. A course is a book, not an article about the subject.",
   "experiences": [
     {
       "theme": "international-trade",

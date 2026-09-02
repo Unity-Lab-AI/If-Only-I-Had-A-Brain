@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college2",
   "subject": "social",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
-  "note": "Hybrid academic-depth corpus for social/college2. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "source": "hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented",
+  "note": "Upper-undergraduate textbook corpus for social/college2. Trained via curriculum._trainAcademicStories. A college year is a course with a book.",
   "experiences": [
     {
       "theme": "social-psychology",
@@ -449,117 +449,140 @@
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_04/1a5eb2a5ea8fa81c6804b0a9e97f177c.jpg",
           "alt": "",
-          "caption": "Figure 1.7 Continuum of Sociological Research Types and Goals"
+          "caption": "Figure 1.7 Continuum of Sociological Research Types and Goals",
+          "context": "while there are no easy answers here, it is worth taking some time to think about your position on this issue. your perspective on the purpose of sociology will shape the questions you ask in your research and may even shape how you attempt to answer those questions. one final consideration that social scientists must be aware of is the difference between qualitative and quantitative methods. qualitative methods ways of collecting data that yield results such as words or pictures."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_05/c4f8d419ae94c34fb28fd1dd0a77acef.jpg",
           "alt": "",
-          "caption": "Figure 2.5 Inductive Research"
+          "caption": "Figure 2.5 Inductive Research",
+          "context": "thus when researchers take an inductive approach, they start with a set of observations and then they move from those particular experiences to a more general set of propositions about those experiences. in other words, they move from data to theory, or from the specific to the general. there are many good examples of inductive research, but we'll look at just a few here. one fascinating recent study in which the researchers took an inductive approach was katherine allen, christine kaestle, and abbie goldberg's study (2011) allen, k."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_05/dde2e65b46259bbe3fc2d0e9bde423ee.jpg",
           "alt": "",
-          "caption": "Figure 2.6 Deductive Research"
+          "caption": "Figure 2.6 Deductive Research",
+          "context": "a deductive approach to research is the one that people typically associate with scientific investigation. the researcher studies what others have done, reads existing theories of whatever phenomenon he or she is studying, and then tests hypotheses that emerge from those theories. while not all researchers follow a deductive approach, as you have seen in the preceding discussion, many do, and there are a number of excellent recent examples of deductive research. we'll take a look at a couple of those next."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_05/25b0354fd2b01a4872f0a3c5c6faa08c.jpg",
           "alt": "",
-          "caption": "Figure 2.7 Predicting the Effects of Arrest on Future Spouse Battery"
+          "caption": "Figure 2.7 Predicting the Effects of Arrest on Future Spouse Battery",
+          "context": "deterrence theory predicts that arresting an accused spouse batterer will reduce future incidents of violence. conversely, labeling theory predicts that arresting accused spouse batterers will increase future incidents. sherman and berk found, after conducting an experiment with the help of local police in one city, that arrest did in fact deter future incidents of violence, thus supporting their hypothesis that deterrence theory would better predict the effect of arrest. after conducting this research, they and other researchers went on to conduct similar experiments the researchers did what's called replication."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_05/c66e9b4bc3f1b3cc5a53c21181a7c1e8.jpg",
           "alt": "",
-          "caption": "Figure 2.8 Predicting the Effects of Arrest on Future Spouse Battery: A New Theory"
+          "caption": "Figure 2.8 Predicting the Effects of Arrest on Future Spouse Battery: A New Theory",
+          "context": "the new studies revealed that arrest seemed to have a deterrent effect for those who were married and employed but that it led to increased offenses for those who were unmarried and unemployed. researchers thus turned to control theory, which predicts that having some stake in conformity through the social ties provided by marriage and employment, as the better explanation. what the sherman and berk research, along with the follow-up studies, shows us is that we might start with a deductive approach to research, but then, if confronted by new data that we must make sense of, we may move to an inductive approach. russell schutt depicts this process quite nicely in his text, and i've adapted h"
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_06/58aebbb6d2b99f5bd2999bd9550b41f9.jpg",
           "alt": "",
-          "caption": "Figure 3.6 Sample Informed Consent Form"
+          "caption": "Figure 3.6 Sample Informed Consent Form",
+          "context": "in other cases, subjects are simply provided a copy of the consent form and researchers are responsible for making sure that subjects have read and understand the form before proceeding with any kind of data collection. note that this consent form describes a risk that may be unique to the particular method of data collection being employed: focus groups. one last point to consider when preparing to obtain informed consent is that not all potential research subjects are considered equally competent or legally allowed to consent to participate in research. these subjects are sometimes referred to as members of vulnerable populations subjects who may be at risk of experiencing undue influence "
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_07/12d31bb7ffc4701120793acc55186feb.jpg",
           "alt": "",
-          "caption": "Figure 4.6 Blocking the Shot"
+          "caption": "Figure 4.6 Blocking the Shot",
+          "context": "needless to say, my friend never got a shot worthy of selling to pay for her trip. she did, however, get several of shots of my gigantic melon (my mother didn't call me pumpkin head for nothing), with brad, angelina, and the kids usually blurred in the background. the point is that as a sociological researcher, your job is like that of the paparazzi. just as the paparazzi don't get paid unless they point their camera in the right direction and focus in on their subjects in exactly the right way, you will not hit the sociological jackpot unless you aim your sociological lens in the right direction and clearly focus your research question."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_07/e77e030f9f47e5dba5170f9d588b7d94.jpg",
           "alt": "",
-          "caption": "Figure 4.7 The Least-Blurry Photo My Friend Was Able to Get"
+          "caption": "Figure 4.7 The Least-Blurry Photo My Friend Was Able to Get",
+          "context": "needless to say, my friend never got a shot worthy of selling to pay for her trip. she did, however, get several of shots of my gigantic melon (my mother didn't call me pumpkin head for nothing), with brad, angelina, and the kids usually blurred in the background. so why am i sharing this story and these terribly unflattering photos? the point is that as a sociological researcher, your job is like that of the paparazzi."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_08/afbc2a0e5a19d1a409c060d28eddc3c6.jpg",
           "alt": "",
-          "caption": "Figure 5.8 Hypothesis Describing the Expected Relationship Between Sex and Sexual Harassment"
+          "caption": "Figure 5.8 Hypothesis Describing the Expected Relationship Between Sex and Sexual Harassment",
+          "context": "thus as age (your independent variable) moves in one direction (up), support for marijuana legalization (your dependent variable) moves in another direction (down). if writing hypotheses feels tricky, it is sometimes helpful to draw them out. a statement that bold implies that a relationship has been shown to exist with absolute certainty and that there is no chance that there are conditions under which the hypothesis would not bear out. instead, researchers tend to say that their hypotheses have been supported (or not)."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_08/63d4b9591506bebb6c7a71a0b697232f.jpg",
           "alt": "",
-          "caption": "Figure 5.9 Hypothesis Describing the Expected Direction of Relationship Between Age and Support for Marijuana Legalization"
+          "caption": "Figure 5.9 Hypothesis Describing the Expected Direction of Relationship Between Age and Support for Marijuana Legalization",
+          "context": "thus as age (your independent variable) moves in one direction (up), support for marijuana legalization (your dependent variable) moves in another direction (down). if writing hypotheses feels tricky, it is sometimes helpful to draw them out. note that you will almost never hear researchers say that they have proven their hypotheses. a statement that bold implies that a relationship has been shown to exist with absolute certainty and that there is no chance that there are conditions under which the hypothesis would not bear out."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_09/f808a80055e6548a592fe6aa11c88df5.jpg",
           "alt": "",
-          "caption": "Figure 6.1"
+          "caption": "Figure 6.1",
+          "context": "as it turns out, it's not easy guesstimating precise measures. that cake was the lumpiest, most lopsided cake i've ever seen. measurement is important in baking and in research. just as measurement is critical to successful baking, it is as important to successfully pulling off a social scientific research project."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_09/5401a696f2aeff61f3dc6168e722d12e.jpg",
           "alt": "",
-          "caption": "Figure 6.7 The Process of Measurement"
+          "caption": "Figure 6.7 The Process of Measurement",
+          "context": "here, the researcher moves from a broader level of focus to a more narrow focus. the example provided in italics in the figure indicates what this process might look like for a researcher interested in studying the socialization of boys into their roles as men. one point not yet mentioned is that while the measurement process often works as outlined in figure 6.7 \"the process of measurement\" , it doesn't necessarily always have to work out that way. what if your interest is in discovering how people define the same concept differently?"
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_09/3676f32f3cac12c47638978f34c77f14.jpg",
           "alt": "",
-          "caption": "Figure 6.12 Example of an Index Measuring Financial Security"
+          "caption": "Figure 6.12 Example of an Index Measuring Financial Security",
+          "context": "that index can be found in figure 6.12 \"example of an index measuring financial security\" . on their own, none of the questions in the index is likely to provide as accurate a representation of financial security as the collection of all the questions together. in sum, indexes and typologies are tools that researchers use to condense large amounts of information, to simplify complex concepts, and most generally, to make sense of the concepts that they study. key takeaways in social science, our variables can be one of four different levels of measurement: nominal, ordinal, interval, or ratio."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_10/ffba99f3272c4ab03383a3c484d2e046.jpg",
           "alt": "",
-          "caption": "Figure 7.5 Formula for Determining Selection Interval for Systematic Sample"
+          "caption": "Figure 7.5 Formula for Determining Selection Interval for Systematic Sample",
+          "context": "to arrive at 4, simply divide the total number of population elements by your desired sample size. this process is represented in figure 7.5 \"formula for determining selection interval for systematic sample\" . to determine where on your list of population elements to begin selecting the names of the 25 men you will interview, select a random number between 1 and k , and begin there. if we randomly select 3 as our starting point, we'd begin by selecting the third fraternity member on the list and then select every fourth member from there."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_11/2694597bea5ed1f00c02368257ec6b39.jpg",
           "alt": "",
-          "caption": "Figure 8.8 Filter Question"
+          "caption": "Figure 8.8 Filter Question",
+          "context": "this is just the sort of instance when a filter question would be appropriate. you may pose the question as it is presented in figure 8.8 \"filter question\" . there are some ways of asking questions that are bound to confuse a good many survey respondents. survey researchers should take great care to avoid these kinds of questions."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_11/c57718ef9c463dca7faf33f261d7025a.jpg",
           "alt": "",
-          "caption": "Figure 8.9 Double-Barreled Question"
+          "caption": "Figure 8.9 Double-Barreled Question",
+          "context": "there's a specific term for this sort of question; it is called a double-barreled question a question that is posed as a single question but in fact asks more than one question. using our example of the transition to college, figure 8.9 \"double-barreled question\" shows a double-barreled question. do you see what makes the question double-barreled? how would someone respond if they felt their college classes were more demanding but also more boring than their high school classes?"
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_11/4b340789a53478f843595b2239a5ee78.jpg",
           "alt": "",
-          "caption": "Figure 8.10 Double-Barreled Response Options"
+          "caption": "Figure 8.10 Double-Barreled Response Options",
+          "context": "if, for example, a survey includes closed-ended questions asking respondents to report on their involvement in extracurricular activities during college, an open-ended question could ask respondents why they participated in those activities or what they gained from their participation. in section 8.4.1 \"asking effective questions\" we discussed double-barreled questions, but response options can also be double barreled, and this should be avoided. other things to avoid when it comes to response options include fence-sitting and floating. fence-sitters respondents who present themselves as neutral when in truth they have an opinion."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_11/591c044333936630a33246adcf0af5f7.jpg",
           "alt": "",
-          "caption": "Figure 8.11 Survey Questions Utilizing Matrix Format"
+          "caption": "Figure 8.11 Survey Questions Utilizing Matrix Format",
+          "context": "not only will this save you some space in your survey but it will also help respondents progress through your survey more easily. a sample matrix can be seen in figure 8.11 \"survey questions utilizing matrix format\" . designing questionnaires in addition to constructing quality questions and posing clear response options, you'll also need to think about how to present your written questions and response options to survey respondents. questions are presented on a questionnaire the document (either hard copy or online) that contains survey questions on which respondents read and mark their responses."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_11/286961179d9fd30b87b61de1ce6ad78a.jpg",
           "alt": "",
-          "caption": "Figure 8.12 Distribution of Responses and Median Value on Workers’ Financial Security"
+          "caption": "Figure 8.12 Distribution of Responses and Median Value on Workers’ Financial Security",
+          "context": "to find the middle point, we simply divide the number of valid cases by two. the number of valid cases, 180, divided by 2 is 90, so we're looking for the 90th value on our distribution to discover the median. as you can see, we can learn a lot about our respondents simply by conducting univariate analysis of measures on our survey. we can learn even more, of course, when we begin to examine relationships among variables."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_12/b90dfc16235496145e914542351b9a8e.jpg",
           "alt": "",
-          "caption": "Figure 9.4 Interview Guide Displaying Topics Rather Than Questions"
+          "caption": "Figure 9.4 Interview Guide Displaying Topics Rather Than Questions",
+          "context": "instead, i had an outline of topics that i hoped to cover, listed in an order that i thought it might make sense to cover them, noted on a sheet of paper. that guide can be seen in figure 9.4 \"interview guide displaying topics rather than questions\" . in my interviews with child-free adults, the interview guide contained questions rather than brief topics. one reason i took this approach is that this was a topic with which i had less familiarity than workplace sexual harassment."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_12/eb1e984f31bd6e7b7189c65fb24f9baa.jpg",
           "alt": "",
-          "caption": "Figure 9.5 Interview Guide Displaying Questions Rather Than Topics"
+          "caption": "Figure 9.5 Interview Guide Displaying Questions Rather Than Topics",
+          "context": "to help ward off that possibility, i wrote down specific question wording in my interview guide. the interview guide i used for the child-free project is displayed in figure 9.5 \"interview guide displaying questions rather than topics\" . as you might have guessed, interview guides do not appear out of thin air. they are the result of thoughtful and careful work on the part of a researcher."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_13/9f6caf32e910106b1721f3408784f2c5.jpg",
           "alt": "",
-          "caption": "Figure 10.2"
+          "caption": "Figure 10.2",
+          "context": "in this text, we'll use two main terms: field research and participant observation . you might think of field research as an umbrella term that includes the myriad activities that field researchers engage in when they collect data: they participate, they observe, they usually interview some of the people they observe, and they typically analyze documents or artifacts created by the people they observe. field research typically involves a combination of participant observation, interviewing, and document or artifact analysis. this chapter focuses primarily on participant observation."
         },
         {
           "src": "https://saylordotorg.github.io/text_principles-of-sociological-inquiry-qualitative-and-quantitative-methods/section_14/b440ad850de1db0c01f050808c60afd6.jpg",
           "alt": "",
-          "caption": "Figure 11.4"
+          "caption": "Figure 11.4",
+          "context": "though the glass surrounding the exhibit prevents ideal picture taking, i hope the photos in figure 11.4 give you an idea of what i saw. might the organizational scheme used in this kitchen, or the appliances that are either present or missing from it, shape the answers to the questions i pose above about human behaviors and interactions? a visit to chef julia child's kitchen at the national museum of american history inspired the author to think about how kitchens, kitchen utensils, and kitchen appliances have changed over time. one challenge with analyzing physical traces and material artifacts is that you generally don't have access to the people who left the traces or created the artifac"
         }
       ]
     }

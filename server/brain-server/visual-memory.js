@@ -88,6 +88,30 @@ const VM_DB = path.join(__dirname, '..', 'visual-memory-v10.db');
 // the RAM bound on the hot in-memory Map (~10KB/entry ⟹ 25k ≈ 250MB beside the
 // brain on a shared box). DREAM_VM_CAP raises it whenever more RAM is available.
 const VM_CAP = Number(process.env.DREAM_VM_CAP) > 0 ? Number(process.env.DREAM_VM_CAP) : 25000;
+
+// ⛔⛔ CRYSTAL — NOTHING SHE PERCEIVES IS SCALED DOWN, FILTERED OR SOFTENED
+// BEFORE THE TRANSFORM. Default 0 = full resolution, no resampling at all.
+//
+// This used to be 320 with nearest-neighbour resampling, and the reason that is
+// wrong is worth keeping because the counter-argument is nearly right: a wavelet
+// record IS resolution-independent — a coefficient is (scale, position,
+// magnitude) and reconstructs onto any canvas, so nothing DOWNSTREAM needs a
+// pixel size. But the ANALYSIS is discrete. Downsampling before
+// `equationalizeImageData` means the fine-scale subbands carrying a one-pixel
+// axis-label stroke are never created, and resolution-independence cannot
+// evaluate a coefficient that does not exist. **Render-at-any-size and
+// capture-all-detail are different properties, and only the second one a
+// pre-transform downsample destroys.** Measured on a real 1600x1181 figure:
+// 320px kept 27,204 coefficients, full resolution kept 184,981.
+//
+// Safe on the teach lane because `perceive` is PROXIED — it runs on the donor
+// GPU or the mind-space worker thread, never the main event loop, so the ~1.9s
+// full-resolution transform is worker time and not a loop block.
+//
+// ⚠ Kept as an OPT-IN for a constrained box, and when it engages it SAYS SO
+// once per minute. A percept quietly degraded is exactly the class of silent
+// loss this file already carries scars from.
+const REF_MAXSIDE = Number(process.env.DREAM_REF_MAXSIDE) > 0 ? Number(process.env.DREAM_REF_MAXSIDE) : 0;
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'of', 'in', 'on', 'at', 'to', 'is',
@@ -1529,7 +1553,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       st.lastErr = `figure undecodable (${buf ? buf.length : 0} bytes)`; st.lastErrAt = now;
       return null;
     }
-    const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+    const small = this._perceptSource(img, 'corpus figure');
     let rec;
     try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); }
     catch (e) {
@@ -1891,9 +1915,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       if (!img) return this._vmLookFail(key, 'decodeFails', `unknown/undecodable image (${buf ? buf.length : 0} bytes)`);
       // NOLIMIT — a reference is what she LEARNS the appearance from, so 128px was
       // throwing away the detail her shape-schema is built out of. 320 default
-      // (env-tunable), which is still a downsample of a 256-1024px render but keeps
-      // the contours and part proportions that OWNART reads.
-      const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+      // ⛔ WAS a 320px nearest-neighbour downsample "which keeps the contours and
+      // part proportions that OWNART reads" — a claim about what survives, made
+      // without measuring what does not. It is now full resolution by default,
+      // the same door the corpus figures go through.
+      const small = this._perceptSource(img, 'reference look-up');
       let rec;
       // perceive was the ONLY post-budget stage with a fully bare catch — a dead
       // mind-space worker killed every look with zero evidence. It names itself now.
@@ -1928,7 +1954,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
             const buf2 = Buffer.from(await r2.arrayBuffer());
             const img2 = this._decodeImageToRGBA(buf2);
             if (img2) {
-              const small2 = this._downsampleRGBA(img2, Number(process.env.DREAM_REF_MAXSIDE) || 320);
+              const small2 = this._perceptSource(img2, 'look-up second seed');
               rec2 = await this.mindSpace.perceive({ width: small2.w, height: small2.h, data: small2.data });
               if (rec2 && rec2.channels) { const _d2 = await this.mindSpace.describe(rec2); if (_d2) percept2 = Array.from(_d2); }
             }
@@ -2048,6 +2074,26 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (!p || !p.data) return null;
         return { w: p.width, h: p.height, data: new Uint8ClampedArray(p.data.buffer, p.data.byteOffset, p.data.length) };
       }
+      // WEBP — `RIFF....WEBP`. In-repo VP8 decoder, no native build and no new
+      // dependency, so a webp figure reaches the CDF 9/7 transform through the
+      // same RGBA door a jpeg or png does. Everything downstream is unchanged:
+      // the coefficient stage was always format-blind, it was only ever missing
+      // pixels. Before this, every figure PubMed Central serves for a modern
+      // article decoded to null and was recorded as a perception failure
+      // indistinguishable from a dead link.
+      if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46
+          && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) {
+        const { decodeWebP } = this._webpDec || (this._webpDec = require('../webp-decode.js'));
+        const img = decodeWebP(b);
+        // A refusal NAMES ITSELF rather than joining the silent-null pile —
+        // "I do not decode the lossless variant" and "this file is corrupt" are
+        // different facts and the counters must be able to tell them apart.
+        if (!img && decodeWebP.lastReason && (!this._vmWebpErrAt || Date.now() - this._vmWebpErrAt > 60000)) {
+          this._vmWebpErrAt = Date.now();
+          console.warn(`[VisualMemory] webp decode declined: ${decodeWebP.lastReason}`);
+        }
+        return img;
+      }
     } catch (e) {
       if (!this._vmDecodeErrAt || Date.now() - this._vmDecodeErrAt > 60000) { this._vmDecodeErrAt = Date.now(); console.warn(`[VisualMemory] image decode failed: ${e?.message || e}`); }
     }
@@ -2057,6 +2103,20 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
   // Nearest-neighbor downsample of an RGBA image to a bounded max side (aspect
   // kept). A reference only needs ~128px for a clean traced percept; smaller =
   // faster perceive + cleaner contours.
+  // CRYSTAL — the ONE door every percept goes through, so "crystal clear" is a
+  // property of the choke point rather than a promise repeated at three call
+  // sites that can drift apart. Returns the image UNTOUCHED unless an operator
+  // has explicitly opted into a ceiling, and never returns a degraded percept
+  // silently.
+  _perceptSource(img, why) {
+    if (!REF_MAXSIDE || Math.max(img.w, img.h) <= REF_MAXSIDE) return img;
+    if (!this._vmScaleWarnAt || Date.now() - this._vmScaleWarnAt > 60000) {
+      this._vmScaleWarnAt = Date.now();
+      console.warn(`[VisualMemory] DREAM_REF_MAXSIDE=${REF_MAXSIDE} is DEGRADING what she perceives: ${why} ${img.w}x${img.h} resampled down. Fine detail is lost at analysis time and cannot be recovered from the record.`);
+    }
+    return this._downsampleRGBA(img, REF_MAXSIDE);
+  },
+
   _downsampleRGBA(img, maxSide) {
     const sw = img.w, sh = img.h;
     const scale = Math.min(1, maxSide / Math.max(sw, sh));

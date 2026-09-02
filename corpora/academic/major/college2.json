@@ -2,8 +2,8 @@
   "version": 1,
   "grade": "college2",
   "subject": "major",
-  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
-  "note": "Hybrid academic-depth corpus for major/college2. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "source": "hybrid: Saylor Academy open textbooks + prior sources, cleaned + sentence-segmented",
+  "note": "Upper-undergraduate textbook corpus for major/college2. Trained via curriculum._trainAcademicStories. A college year is a course with a book.",
   "experiences": [
     {
       "theme": "ods-introduction-to-data-structures",
@@ -469,222 +469,266 @@
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/9190508fc6d4892efc1cc9b2fc8f9faf.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": "it is not that the uml style diagram is better-just that you should be prepared to see it. the following table lists some of the symbols that you might encounter in a process flow diagram."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/583806371568a03d5c2e0e4c2fb2f02f.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": "it is not that the uml style diagram is better-just that you should be prepared to see it. the following table lists some of the symbols that you might encounter in a process flow diagram."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/c947a8d0678369aa4d677d2374e94de8.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": ""
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/ce0e738af416a8c6cab4a3e520ef672a.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": ""
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/8becb40053a5ce04ab0b459a37d70fd5.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": ""
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/ab9e2d63c35a88ab80325dc218c5cdf7.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": ""
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/0e1dfbd4237205a65b3cc7fe32e14e15.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": ""
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/bf4823b4d4b557b75aac5c0aac9ac4b3.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": "represents ownership or assignment of a group of actions artifact an object involved in the system, such as a server or database key takeaways a business process can be diagrammed by showing actors in swim lanes taking actions. communication or message passing among the actors is represented by arrows."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/6eecf521265a4172e8459a59181baf0b.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": "an object involved in the system, such as a server or database key takeaways a business process can be diagrammed by showing actors in swim lanes taking actions. communication or message passing among the actors is represented by arrows."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/5dba3d6bc29fe9f8c304d73c16d945be.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": "communication or message passing among the actors is represented by arrows. questions and exercises diagram the as-is and to-be processes before and after online dating. universal modeling language (uml) style as-is process flow for recording grades. many commercials on tv are really advertisements for improved business processes."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_06/fbf52f201186a13216a1ac19c8ba8870.png",
           "alt": "",
-          "caption": "Table 2.1"
+          "caption": "Table 2.1",
+          "context": "deliverable electronic submission: save your file as a powerpoint presentation. paper submission: create a printout by printing the slides directly out of powerpoint. sample to-be deliverable for the ibm rfid trucking commercial."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/4eb6b96c1645e24d716ba77b97674081.png",
           "alt": "",
-          "caption": "Table 4.1 Apps"
+          "caption": "Table 4.1 Apps",
+          "context": "what market segment does each app target? would it be a good or a bad idea to go after multiple segments? the market segments are defined at the points of overlap. a niche market is defined where multiple variables overlap."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/4145beb944fc856144c3e5bb9e39ea6d.png",
           "alt": "",
-          "caption": "Table 4.1 Apps"
+          "caption": "Table 4.1 Apps",
+          "context": "once a persona, say fred, is created then designers can debate what fred would like based on agreed upon characteristics of fred. of course fred is no substitute for testing an app with real users, but he does help get you off the ground and moving in the right direction. fred age 27, earns $60k and just recently moved to the east side of cleveland. fred lives in a 1 bedroom apartment with his dog, ajax."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/eee73eb78fee1aa3fc2f5e3a0c119a56.png",
           "alt": "",
-          "caption": "Table 4.1 Apps"
+          "caption": "Table 4.1 Apps",
+          "context": "this biking trail app will enable fred to identify areas to go mountain biking, and because it is 'animal friendly', it can also show him maps of areas he can ride with ajax off leash and the location of areas where they can both stop to rest and get some water. which of the restaurant ads below would appeal to fred? key takeaways identify your users using market segmentation and target marketing. design the system according to the needs of the users-don't make users change their behavior to fit your app."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/a3ca8550b9937cadaa6a1a25e966a953.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "behind the scenes, the campaign actually considered a variety of designs before deciding on the now famous obama \"o.\" so powerful was the logo that its designer, sol sender, rose to fame in the design world. the logo was designed to convey hope and change, the sun rising on a new day. obama logo: the winner and the runners up as designed by sol sender. source: sol sender vsa partners key takeaways the fonts, colors, and graphics in an icon convey specific messages and should be carefully chosen."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/4b39e2df8b71d147750e3d9b1ca458df.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "finally, you are asked to describe a fictional persona in the target market. having a persona helps you make decisions in the design of the app. analyzing the problem and describing the marketability of the hi mom app. this app is designed to ease mom's worries while giving the student more free time."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/40a305bcb978a3ca16ff80998fc01963.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "this app is designed to ease mom's worries while giving the student more free time. you should make your own original example. define requirements with process flows after analyzing the business problem, you need to set requirements for the design of your app. we will envision requirements using process flow diagrams."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/2d876a2cfad279afca092c503e1636ed.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "if you are migrating an existing computerized process to the iphone, they may be fairly similar. however, if you are comparing a non-computerized process to one that uses an iphone, then they are likely to be quite different. continuing the analysis (as-is) and setting the requirements (to-be) for the hi mom app. you should make your own original process flows to match your app."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/a09afed0967a3b0058090285aef69775.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "continuing the analysis (as-is) and setting the requirements (to-be) for the hi mom app. you should make your own original process flows to match your app. design your app according to plan now that we have discussed target markets, laws of branding, icon design, and process flows, you are ready to design your iphone app. your app should have a close relationship with your process flows."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/afd4130e91f5cba413fb4a58d3032b6c.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "fortunately, the iphone interface is highly standardized, which means you have fewer decisions to make about the placement and style of interface elements. this allows you to focus more on the content of your app. the status bar should appear at the very top of the screen and display important information about the device itself. the status bar displays information such as the current time, battery level, network provider, and network strength."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/5328c96ac09eaf86763ecd27f9c94a80.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "the tab bar always appears at the bottom of the screen and should appear on every screen of your app. the tab bar allows the user to switch modes or views very easily. multiple screenshots from the hi mom app. you should make your own original screen shots using the mockapp template and library."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/fd466bfe17b7e50a999184a08aa8337c.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "because powerpoint supports hyperlinks among slides, you can even simulate buttons that navigate among screens in your app. in this manner, you can create a photo realistic mockup. the mockapp template and library are depicted here opened simultaneously in overlapping windows. the library consists of a series of powerpoint slides each having an array of iphone screen elements."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/e8443a6d958d9c7a75353d6fe2adc8b7.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "deliverables electronic submission: submit a powerpoint file containing your responses. paper submission: print out your responses. a sample student write-up for the l1 exercise. you translate is an app that does translation."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/4c3ee8a36956f9e8e3d4a8ff103a32c1.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "deliverables electronic submission: submit your powerpoint file. paper submission: create a color printout by printing directly from powerpoint. sample student process flows for the you translate app. you should make your own original process flows to match your app."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_08/69c1139807fd6410f80146773e3a3d64.png",
           "alt": "",
-          "caption": "Table 4.3 Other Camera Apps"
+          "caption": "Table 4.3 Other Camera Apps",
+          "context": "deliverables electronic submission: save and submit your powerpoint file. paper submission: create a color printout by printing directly from powerpoint. sample screen shots for the you translate app. you should make your own original screen shots using the mockapp template and library."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/b5af53eeb1cf384d398a6314d1962250.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "the normal way to print is portrait or vertical orientation. and by scaling the page to the width of the paper. formatting a spreadsheet makes an enormous difference as to its professionalism. proper formatting also makes the data much more readable."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/0f2afdb2f10c4031d6ad2edf92d6a899.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "so \"apple_commission\" is ok and so is \"applecommission.\" however, \"apple commission\" as two words with a space in between will not work. by the way, capitalizing the first letter of each word and eliminating the spaces between words (e.g., priceperunit) is called camelback notation variable names created by capitalizing the first letter of each word and eliminating the spaces between words. in a well designed spreadsheet the only place that numbers should be updated is in the assumptions area. every other cell references the assumptions area using formulas."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/6c64344d4b272b2ca5d6ee6710a851fe.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "what is even more frightening is that the numbers do not look obviously wrong. so in addition to being more readable, naming cells in the assumptions area also protects us against errors when copying formulas. above each cell in the assumptions area gets a unique name. for example, b7 is called applecommission (with no spaces allowed in the name)."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/c98270b74999bb0802879b563b00bcd4.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "for example, the formula in b13 references the yearlyincrease field. such formulas may be copied down the column without fear that the formula will improperly change when copied. perform a sensitivity analysis to hedge your bets any time you make assumptions, you have to allow for the possibility that you might be wrong. since you are dealing with real money, some of which is probably yours or a relative's, you need to know the extent of your exposure should things not work out as planned."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/99332451a7c162c55c70196273bf2ccf.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "your exposure can be analyzed in a sensitivity analysis using a data table. questions and exercises without using the built in data table function, how could you still construct a table that would perform a sensitivity analysis. make sure that the upper left corner of the data table is a simple formula that copies the value that you want to see varied in the data table. setup start excel and properly title your spreadsheet."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/f6855bc9f64e963f36f905638180c6ce.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "both printouts should use landscape orientation, which you will find under page layout page setup orientation landscape. choose page layout scale to fit height: 1 page; width: 1 page. please save the forecast revenues/costs spreadsheet; you will be updating it later. l2 assignment: more expenses sensitivity analysis to make the problem more realistic, we bring in additional fixed costs."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_11/31357c287a1ce0a9384bd5c854e10b5a.png",
           "alt": "",
-          "caption": "Table 7.1"
+          "caption": "Table 7.1",
+          "context": "both printouts should use landscape orientation, which you will find under page layout page setup orientation landscape. choose page layout scale to fit height: 1 page; width: 1 page. add assumptions and columns as necessary to accommodate additional costs of maintenance, incorporation, and advertising."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/66ba72417c126ceaecca5f98dcc44b0a.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "summary as i have shown, my belief _____ is reinforced by points a, b, and c. in summary, cost savings, employee morale, and community support, encourages allocation of $50k to investigate sustainable business practices. powerpoint as a report writer traditionally students are taught to write reports using a word processor such as microsoft word. the emphasis in the reports is on grammar and composition."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/170f3af9d91dcd6661cce6c3c34c137c.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "the term deck is used whether the slides are primarily designed for a presentation or primarily designed to be read. however, to be clear about which we mean, we will use the term schematic report to describe a deck intended to be read rather than projected. distributing handouts to the audience is only helpful if the slides are readable. here they are not, nor would they be readable projected on the screen."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/bfb48b1a07257102109446422f4b3645.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "our recommendation is that the writer create all content in microsoft word and then flow the content into powerpoint. in fact that is how we created the slides below. 11 point (above) is good for a written report. 16 point (following) looks like the font in a children's book."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/8c02aa94e22ebcf5023e434cfe20d519.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "11 point (above) is good for a written report. 16 point (following) looks like the font in a children's book. there is a third, more controversial, disadvantage of powerpoint. edward tufte argues that powerpoint encourages the pitching of ideas rather than dispassionate reflection."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/f08a530c14832be048bdaf27e310ca1e.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "we believe that our rewrite would not have been similarly misunderstood. tufte, edward, the cognitive style of powerpoint , graphics press, may 2003. the original boeing slide (above) and the authors' rewrite to clarify the material below. lead off with your conclusion and then give evidence."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/194dafb2fd60a4a07bc957708d00f5db.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "the original boeing slide (above) and the authors' rewrite to clarify the material below. lead off with your conclusion and then give evidence. key takeaways reports should use a font size around 11 point. disadvantages of powerpoint include oversimplification of ideas, inconsistent font sizes, and a tendency to pitch rather than discuss ideas."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/fa576df06fba6c487ceafdbee1885a5d.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "until microsoft provides the transformation utility, we will have to create the presentation from the schematic ourselves. the easiest way to do this is by beginning with the schematic and then stripping it down to the graphics and key text, then enlarging those and arranging them on the screen. page from schematic report (above), which matches the presentation slide (below). the key sentence from the schematic slide becomes the title of the presentation slide."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/b60b286a181217e4fd1a504f5229971a.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "the key sentence from the schematic slide becomes the title of the presentation slide. note that even the text in the artwork has been enlarged. writing an executive summary every schematic report leads off with an executive summary. an executive summary usually occupies one page and summarizes the key facts, issues, and conclusions of the report."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/7b6baf87c2bfc8c9a66fdcf19d7ef5ea.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "you still need to do the due diligence to make your case. when deciding what to include simply ask yourself, would a manager need to know this to make a decision? an executive summary should highlight the key facts, issues, and conclusions of the report. the example above is pretty good, but it is missing the issues-what barriers are present that would prevent the proposed solution?"
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/9ad66a27422fde743a05605844c55111.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "no matter which layout is chosen the heading and body text styles remain the same. note how this name gives away the intention of presenting rather than reading the pitchbook. the pitchbook template includes a slide with instructions on how to customize the template. templates, themes, layouts, masters every deck is based on a theme."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/0673c0e4ac35745d46d2d775b1b46545.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "for a written report done in powerpoint it is important to have uniform font sizes on each page. questions and exercises why does powerpoint have a slide master in addition to the individual layout masters? slide master (top) with layout masters below it. l3 assignment: create a schematic report setup start ms powerpoint."
         },
         {
           "src": "https://saylordotorg.github.io/text_business-information-systems-design-an-app-for-that/section_15/18e2b419e816f410b67c0d56a38b583b.png",
           "alt": "",
-          "caption": "Table 11.1"
+          "caption": "Table 11.1",
+          "context": "deliverables electronic submission: post your powerpoint file. paper submission: create a printout of each slide of your report. note that the colors have been changed to match the brand."
         }
       ]
     }
