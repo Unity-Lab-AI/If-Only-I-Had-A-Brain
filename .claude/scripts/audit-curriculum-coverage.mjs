@@ -123,6 +123,27 @@ if (process.argv.includes('--json')) {
   if (r.unreachableFiles) console.log(`\n  ⛔ UNREACHABLE: ${r.unreachableList.join('  ')}${more(r.unreachableMore)}`);
   if (r.thin) console.log(`\n  ⚠ THIN: ${r.thinList.join('  ')}${more(r.thinMore)}`);
 
+  // ⛔ THE PICTURES. This auditor was blind to them for its whole life, and that
+  // blindness hid a real defect: 6,899 of 14,374 figures were unreachable by the
+  // walk while every count reported them present. The raw count was never the
+  // problem — the absence of a REACHABLE count was.
+  const figs = r.figures || 0;
+  const reach = r.figuresReachable || 0;
+  console.log(`\n  FIGURES (the pictures beside the prose):`);
+  console.log(`     rows on disk in reachable cells : ${figs.toLocaleString()}`);
+  console.log(`     REACHABLE by the walk           : ${reach.toLocaleString()}${figs && reach < figs ? `  ⛔ ${(figs - reach).toLocaleString()} have no fetchable address` : ''}`);
+  console.log(`     carrying corpus context         : ${(r.figuresContext || 0).toLocaleString()}${reach ? `  (${((r.figuresContext || 0) / reach * 100).toFixed(1)}% of reachable)` : ''}`);
+  console.log(`     with a real label (not a placeholder) : ${(r.figuresLabelled || 0).toLocaleString()}`);
+  console.log(`     cells with prose but NO reachable picture : ${r.noFigures || 0}`);
+  if (r.noFigures) console.log(`     · ${r.noFiguresList.join('  ')}${more(r.noFiguresMore)}`);
+  console.log(`     ⚠ A cell with no picture is not automatically a defect —`);
+  console.log(`        a literature cell legitimately has none. This is the`);
+  console.log(`        number that says WHERE the pictures are not.`);
+  console.log(`     ⚠ "carrying corpus context" is the anchoring column. A`);
+  console.log(`        caption like "Figure 1.1 World Exports, 1948-2008" binds`);
+  console.log(`        a diagram to a number and a date; context is the prose`);
+  console.log(`        the picture actually sits inside.`);
+
   // DIALOGUE.2 — terminal-punctuation mix. ⚠ A GENRE signal, not a teaching
   // gap: see the retraction note in server/curriculum-coverage.js readCell().
   console.log(`\n  PROSE GENRE (terminal-punctuation mix — NOT an intent-form gap):`);

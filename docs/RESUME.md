@@ -36,8 +36,19 @@
 > ### ⚠ VERIFIED vs NOT
 > **Live, through the shipped functions sliced verbatim out of the scripts:** Saylor 3/3 · OpenStax 7/7 · Wikipedia 11/11 · Wikipedia (simple) 5/6, all licensed. **NOT live: the Wikibooks network path** — its API returned **429 to every probe** while the production ingest held the quota, so only its parsing, context window, file-name derivation and licence gate were checked. `FIGTEXT.3` is deliberately left open for it.
 >
+> ### ⭐⭐ THEN THE AUDITOR WAS TAUGHT TO COUNT PICTURES, AND FOUND TWO THINGS IT WAS NOT LOOKING FOR
+> The coverage auditor measured prose depth and was **structurally blind to images** — which is why 6,899 unreachable figures could hide. It now reports **rows on disk · REACHABLE · carrying context · with a real label**, with reachability **imported** from the walk's own predicate rather than re-derived. First run:
+> ```
+>   13,953 rows · 13,953 reachable · 0 (0.0%) carrying context  ← the honest reading
+>   31 of 174 cells hold any picture at all
+>   college 8,852 · high 4,270 · upper 734 · middle 170 · early 348
+> ```
+> **`FIGTEXT.5` — the pictures are distributed backwards from a real education.** A five-year-old's schooling is mostly pictures and a PhD's is mostly text; this corpus has it the other way round. The entire early band is 348 Gutenberg plates in ELA, so pre-K/kindergarten/grade1/grade2 science, social and art hold **zero**. **Measure this band table after the re-ingest, not the raw total.**
+>
+> **`FIGTEXT.6` — `economics/college1` holds 342,056 words the walk never reads, and it is the same routing mistake for the THIRD time.** `economics` retires at grade12; the research and Saylor lanes were each corrected during the corpus war and **the OpenStax book map never was.** ⚠ **Double-blind:** Saylor skips college1 with the comment *"college1 is OpenStax's ceiling and already fed"* — true of the table, false of the walk. **One lane deferring to another lane's dead cell is how a gap survives two corrections.** Map fixed to `genered`; **the stale file is deliberately NOT deleted until a re-ingest populates the real cell**, because deleting first just loses the book.
+>
 > ### ⏳ NEXT
-> **`FIGTEXT.4`** (re-ingest — sequence it with any other re-fetch, and not while another ingest writes the same subjects) · **`CELLRACE.2`** (audit the concurrent pair) · **`FIGTEXT.3`** (run Wikibooks when the quota is free) · **the purge/gut still does not exist** · ⚠ **CASCADE `feature/college-textbook-lane` — now ~12 commits and still not on develop/main.**
+> **`FIGTEXT.4`** (re-ingest — sequence it with any other re-fetch, and not while another ingest writes the same subjects; it also lands `FIGTEXT.6`'s `genered/college1`) · **`CELLRACE.2`** (audit the concurrent pair) · **`FIGTEXT.3`** (run Wikibooks when the quota is free) · **`FIGTEXT.5`** (re-measure the band table after) · **the purge/gut still does not exist** · ⚠ **CASCADE `feature/college-textbook-lane` — now ~13 commits and still not on develop/main.**
 >
 > ### ⚠ OWNED FOULS
 > Built a scratch harness with a heredoc and edited it with `sed -i` — both banned patterns; rewritten with `Write` the moment I noticed.

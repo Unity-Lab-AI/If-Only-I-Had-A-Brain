@@ -148,15 +148,25 @@ const academicStorySentences = (subject, grade) => storySentences(`academic/${su
 // ⚠ The absoluteness check is the real gate. A relative `src` is a page-local
 // path that means nothing to a fetch from this process, so it is refused rather
 // than passed on to fail later at the network.
+// ⭐ THE REACHABILITY RULE, IN ONE PLACE, BECAUSE IT HAS ALREADY DRIFTED ONCE.
+// Returns the fetchable address of a figure, or `''` if it has none. Exported so
+// the coverage auditor asks THIS function rather than re-deriving the rule — a
+// second copy is exactly how 6,899 figures came to be invisible to the walk
+// while every count said they were present.
+function figureAddress(f) {
+  if (!f) return '';
+  const href = typeof f.url === 'string' && f.url ? f.url : (typeof f.src === 'string' ? f.src : '');
+  return /^https?:\/\//i.test(href) ? href : '';
+}
+
 function academicStoryFigures(subject, grade) {
   const data = loadStories(`academic/${subject}`, grade);
   const out = [];
   for (const exp of ((data && data.experiences) || [])) {
     if (!exp || !Array.isArray(exp.figures)) continue;
     for (const f of exp.figures) {
-      if (!f) continue;
-      const href = typeof f.url === 'string' && f.url ? f.url : (typeof f.src === 'string' ? f.src : '');
-      if (!/^https?:\/\//i.test(href)) continue;
+      const href = figureAddress(f);
+      if (!href) continue;
       out.push({
         url: href,
         alt: typeof f.alt === 'string' ? f.alt : '',
@@ -179,5 +189,5 @@ module.exports = {
   loadStories, storySentences, storyExperiences, clearCache, CORPORA,
   loadLifeStories, lifeStorySentences, lifeStoryExperiences,
   loadCodingStories, codingStorySentences,
-  loadAcademicStories, academicStorySentences, academicStoryFigures,
+  loadAcademicStories, academicStorySentences, academicStoryFigures, figureAddress,
 };

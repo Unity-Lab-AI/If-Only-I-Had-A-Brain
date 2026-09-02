@@ -29,6 +29,11 @@
 // directory. Matching the directory is the whole point of a convention.
 const fs = require('fs');
 const path = require('path');
+// ⭐ The figure-reachability rule is IMPORTED, never re-derived. `figureAddress`
+// is the same predicate `academicStoryFigures` gates on, so this auditor and the
+// walk can never disagree about which pictures exist — the disagreement that let
+// 6,899 figures be counted as present while the walk could not see one of them.
+const { figureAddress } = require('./life-curriculum.js');
 
 // The ONLY legitimate absences. Math is taught equationally — a maths prose
 // corpus is the thing the grade-completion gate exists to forbid — and the
@@ -135,10 +140,40 @@ function readCell(corpusRoot, subject, grade) {
     // question marks. It stays because genre mix is a real property worth
     // seeing per cell — but it must never again be read as an intent-form gap.
     let sentences = 0, questions = 0, exclamations = 0;
+    // ⛔⛔ THE FIGURE COLUMNS EXIST BECAUSE THIS AUDITOR WAS BLIND TO PICTURES
+    // FOR ITS WHOLE LIFE, AND THAT BLINDNESS HID A REAL DEFECT FOR A DAY.
+    //
+    // It measured prose depth per cell and said nothing about the images beside
+    // that prose, so **6,899 of 14,374 figures — every Saylor diagram and every
+    // Gutenberg plate — were unreachable by the walk while every count reported
+    // them present.** An instrument that cannot see a thing cannot report it
+    // missing; the raw count was never the problem, the absence of a REACHABLE
+    // count was.
+    //
+    // ⚠ `figuresContext` is the second column and it is not decoration. A figure
+    // with no words to bind to is the `CAMPOISON` defect, and a caption that is
+    // only a numbered title ("Figure 1.1 World Exports, 1948-2008") is barely
+    // better — it binds a diagram to a number and a date. Context is the corpus
+    // prose the picture sits inside, and a cell rich in figures that carry none
+    // of it is a cell whose pictures are weakly anchored, which a raw figure
+    // count would render as a healthy number.
+    let figures = 0, figuresReachable = 0, figuresContext = 0, figuresLabelled = 0;
     for (const e of experiences) {
       const story = String(e.story || '');
       words += story.split(/\s+/).length;
       if (e.licence) licensed++;
+      for (const f of (Array.isArray(e.figures) ? e.figures : [])) {
+        figures++;
+        if (figureAddress(f)) figuresReachable++;
+        if (typeof f.context === 'string' && f.context.trim().length >= 40) figuresContext++;
+        const label = `${(f && f.alt) || ''} ${(f && f.caption) || ''}`.replace(/[^a-z ]/gi, ' ').trim();
+        // A placeholder is not a label — `[Illustration]` is what a transcriber
+        // types where a picture goes, and binding a plate to the word
+        // "illustration" says nothing about what is in it.
+        const placeholder = /^(illustration|image|figure|photo|picture|graphic|logo|decoration)(\s+\d+)?$/i
+          .test(label.replace(/\s+/g, ' '));
+        if (label.length >= 3 && !placeholder) figuresLabelled++;
+      }
       for (const s of story.split(/(?<=[.!?])\s+/)) {
         const t = s.trim();
         if (!t) continue;
@@ -153,6 +188,7 @@ function readCell(corpusRoot, subject, grade) {
     return {
       words, entries: experiences.length, licensed,
       sentences, questions, exclamations, dialoguePct,
+      figures, figuresReachable, figuresContext, figuresLabelled,
     };
   } catch { return null; }
 }
@@ -173,9 +209,10 @@ function computeCoverage(curriculumModule, corpusRoot) {
   const passed = new Set();
   for (const g of GRADE_ORDER) for (const s of subjectsForGrade(g)) passed.add(`${s}/${g}`);
 
-  const run = [], missingLane = [], empty = [], thin = [], noDialogue = [];
+  const run = [], missingLane = [], empty = [], thin = [], noDialogue = [], noFigures = [];
   let okCount = 0, reachableWords = 0, entries = 0, licensed = 0;
   let sentences = 0, questions = 0, exclamations = 0;
+  let figures = 0, figuresReachable = 0, figuresContext = 0, figuresLabelled = 0;
   for (const grade of GRADE_ORDER) {
     for (const subject of subjectsOwedAt(grade, passed)) {
       run.push(`${subject}/${grade}`);
@@ -187,6 +224,12 @@ function computeCoverage(curriculumModule, corpusRoot) {
       if (!c || c.entries === 0) { empty.push(`${subject}/${grade}`); continue; }
       reachableWords += c.words; entries += c.entries; licensed += c.licensed;
       sentences += c.sentences; questions += c.questions; exclamations += c.exclamations;
+      figures += c.figures; figuresReachable += c.figuresReachable;
+      figuresContext += c.figuresContext; figuresLabelled += c.figuresLabelled;
+      // A cell the walk runs that can show her nothing. ⚠ Deliberately counted
+      // over cells with REAL PROSE only — an empty cell is already reported as
+      // empty, and counting it twice would inflate this into meaninglessness.
+      if (c.figuresReachable === 0) noFigures.push(`${subject}/${grade}`);
       // DIALOGUE.2 — cells whose prose carries no interrogative or exclamative
       // punctuation at all. ⚠ This is a GENRE signal, not a defect count:
       // expository writing legitimately has none, and intent form is taught
@@ -259,6 +302,23 @@ function computeCoverage(curriculumModule, corpusRoot) {
     noDialogue: noDialogue.length,
     noDialogueList: noDialogue.slice(0, CAP),
     noDialogueMore: Math.max(0, noDialogue.length - CAP),
+    // ⛔ THE FIGURE COLUMNS. `figures` is the raw row count and is the number
+    // that lied for a day; `figuresReachable` is the one the walk can act on,
+    // computed with the walk's OWN predicate rather than a copy of it.
+    figures,
+    figuresReachable,
+    // Pictures whose only anchor is their own label — no corpus prose captured
+    // around them. A high `figures` with a low `figuresContext` is a cell full
+    // of diagrams bound to figure numbers instead of to the subject.
+    figuresContext,
+    // Pictures with a real label, placeholders like `[Illustration]` excluded.
+    figuresLabelled,
+    // Cells the walk runs, holding real prose, that can show her no picture at
+    // all. ⚠ Not a defect on its own — a literature cell legitimately has none —
+    // but it is the number that says where the pictures are NOT.
+    noFigures: noFigures.length,
+    noFiguresList: noFigures.slice(0, CAP),
+    noFiguresMore: Math.max(0, noFigures.length - CAP),
     // ⚠ Lists are TRUNCATED for display and say so; the counts above are not.
     // A truncated list that looks complete is how a dashboard starts lying.
     emptyList: empty.slice(0, CAP),

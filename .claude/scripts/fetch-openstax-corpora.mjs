@@ -86,7 +86,21 @@ const BOOK_MAP = [
   { repo: 'biology-book',          subject: 'science', grade: 'college1',  label: 'General Biology' },
   { repo: 'microbiology-book',     subject: 'science', grade: 'college2',  label: 'Microbiology' },
   { repo: 'economics-book',        subject: 'economics', grade: 'grade11', label: 'Macroeconomics' },
-  { repo: 'economics-book',        subject: 'economics', grade: 'college1', label: 'Principles of Economics' },
+  // ⛔⛔ `genered`, NOT `economics` — AND THE THIRD TIME THIS EXACT MISTAKE WAS
+  // MADE. **`economics` RETIRES AT grade12.** Above that the roster runs
+  // `major` / `genered` / `cstheory` / `cssystems` / `research`, so an
+  // `economics/college1` file is a cell the walk never opens. The research lane
+  // and the Saylor lane were each corrected for this; **this table never was**,
+  // and `corpora/academic/economics/college1.json` has been sitting on disk with
+  // **342,056 words the walk cannot read** ever since — found by teaching the
+  // coverage auditor to count figures, which is not what it was looking for.
+  //
+  // ⚠ AND THE MISS WAS DOUBLE-BLIND: the Saylor lane skips college1 entirely
+  // with the comment *"college1 is OpenStax's ceiling and already fed"* — true
+  // of this table, false of the walk. **One lane deferring to another lane's
+  // dead cell is how a gap survives two corrections.** `genered` matches
+  // Saylor's own `COLLEGE_HOME` for economics, so the two agree now.
+  { repo: 'economics-book',        subject: 'genered',   grade: 'college1', label: 'Principles of Economics' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
