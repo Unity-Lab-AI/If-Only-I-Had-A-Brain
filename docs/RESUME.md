@@ -1,5 +1,35 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-09-01 BOARD CLEANED (LATEST — PICK UP HERE) — 74 → 35 OPEN, AND 39 FINISHED ROWS ARE IN THE LEDGER WHERE THEY BELONG
+>
+> ### STATE RIGHT NOW
+> ```
+> board                      35 open · 9 in-progress · TODO 240,230 -> 196,828 bytes
+> corpus                     4,484,020 words · 213 cells · EMPTY 0 · UNREACHABLE 0
+> reps                       every authored dose now 4-5 presentations (worst case 7)
+> figures                    194 harvested · lane wired to her mind's eye
+> walk                       frozen ON PURPOSE — training still being BUILT
+> donor pod i03ihi54kccu0l   EXITED on purpose. restart = start-pod, NEVER terminate.
+> git                        develop / main on BOTH remotes, tree clean
+> ```
+>
+> ### ⛔ WHY THE COUNT WAS STUCK AT 74 — IT WAS THE BOARD, NOT THE WORK
+> Completed rows were getting a ✅ banner and being left at `[ ]`. `CONSTRAINTS.md` names that exact defect — *"a completed row left at `[ ]` is the same defect class as an instrument nobody reads"* — and it was being committed all day while the same shape was fixed everywhere else. **A board that under-reports completion is as wrong as one that over-reports it.**
+>
+> ### ⭐ THE MIGRATION, DONE BY THE LAW
+> **39 completed rows** are now preserved byte-for-byte in `docs/FINALIZED.md §BEGIN VERBATIM TODO ARCHIVE 2026-09-01 (SECOND PASS)` and replaced on the board by pointers. **Verified BEFORE a single line was removed: rows 39/39 · banner lines 82/82 · continuation lines 16/16.**
+>
+> ⚠ **ONE PSEUDO-ROW WAS DEDUCTED AND IT WOULD HAVE CORRUPTED THE DOCUMENT.** A naive `- [x]` scan finds **40**; one of them lives **inside a fenced code block**, quoted as the example of a ledger entry that lied. Removing it would have deleted lines out of the middle of a fence. **The extractor is fence-aware because of it, and the post-removal check confirms that pseudo-row is still present and all 32 fence lines are balanced.**
+>
+> ### ⏳ WHAT IS ACTUALLY LEFT (35)
+> - **Walk-gated (9 in-progress + `GATEWATCH.*`, `PHASEBAR.1`, `REPLAYGATE.1`, `PRECELL.1`, `CHATPIN.1`)** — these need a RUNNING walk to read a verdict. Nothing can close them at a desk.
+> - **Gee's call:** `CHATFAULT.2` (should she answer before she can?), `DORMANT8.5` residue, **`ORACLEB.1`** — ⛔ the second dictionary oracle, LIVE in `emitWordDirect`, which this project's own public page labels *"Path B — dictionary oracle (FALLBACK)"*. **Measure `oracleRatio` live before judging it; the historical 89.7% is stale.**
+> - **Buildable now:** `CURVEBUILD.5/.6/.8/.9/.11`, `CURVEDEPTH.4/.6/.8/.10`, `LITGRADE.1` (the Gutenberg title table stops at `college2`), `PERSONAVOICE.1/.5`, `STACKSWEEP.1/.4/.6`, `TEACHVIEW.7/.8`, `TEXTFIG.4`, `LEDGERLIE.2`, `CORPUSGAP.7`.
+> - ⛔ **`REGRESSION.1` IS LAST BY CONSTRUCTION** — a full regression review of everything this stretch broke, and it does not start until every row above it is closed.
+> - **THE FRESH WALK IS LAST.** RE-PRICE immediately before the press.
+
+
+
 > ## ⛔⛔⛔ 2026-09-01 NEWBORNMUTE (LATEST — PICK UP HERE) — THE RETRIEVAL LANE IS GONE FOR EVERY BRAIN, AND IT EXPOSED A SECOND ORACLE THAT IS BIGGER THAN THE ONE REMOVED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`ORACLEB`, then `REGRESSION` which is the LAST item) → the blocks below.
