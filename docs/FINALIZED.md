@@ -39,6 +39,29 @@
 
 ---
 
+## 2026-09-02 (TWELFTH BATCH) — `READLIST.1` — THE BOOK LIST WAS THE CAP, AND THE PICTURES WERE NEVER FETCHED
+
+Gee (verbatim): *"okaye what about all the books like wizard of oz and shit that all the lower grades and uper grades get to read and view images of"*
+
+- [x] `READLIST.1` — ⛔ **REMOVING THE SENTENCE CAP LEFT *THE BOOK LIST* AS THE CAP, AND TWO TITLES IS NOT A YEAR.** The Gutenberg ladder ran **34 books across 20 grades** — a real reading year at any band is a dozen or more.
+
+> ✅ **DONE — ladder 34 → 73 books, and the plates come with them.**
+> ```
+>   73 book entries · 3,951,217 words · 723 illustrations
+>   plates by grade   grade5 168 · grade2 134 · pre-K 90 · grade7 81 · college2 71
+>                     grade1 63 · kindergarten 61 · grade10 29 · grade8 13 · rest ≤7
+> ```
+> ⭐ **The distribution is the proof it is working:** the plates concentrate in the EARLY grades, which is where a real reading year is half pictures. A corpus that fed her Simple-English prose about the alphabet now hands a five-year-old *A Primary Reader* with its 48 plates.
+>
+> **Every one of the 23 additions was verified against Gutenberg's own `Title:` header in one batch before being written** — the `LITGRADE.1` rule, which has now caught *The Illustrated War News*, a *Pony Rider Boys* novel and a French sea-story collection across three separate passes.
+>
+> ### ⭐⭐ THE HALF THAT HAD NEVER BEEN TOUCHED
+> The `.txt` edition this ingest reads carries **no plates by construction**. Gutenberg's `-images.html` edition has the originals, and they now ride the book's entry as `{src, alt, caption}` — the same shape the OpenStax and Saylor figure lanes use — into `_perceiveTextbookFigure`, the forward CDF 9/7 transform, and a banked percept **under the theme the book's prose trained under**. ⭐ **Her words about a story and her picture of it bind to the same thing**, which is the whole reason the figure lane keys on theme rather than on file.
+>
+> ⚠ **Availability is per edition and patchy, measured rather than assumed** — the cached Alice and Peter Pan editions carry one plate and none. **A book with no plates contributes none and reports the count**, because that is a fact about the edition and not a failure. ⛔ **An image with no alt AND no caption is refused:** a percept with nothing to bind to is the `CAMPOISON` defect, where an unlabelled frame fused with whatever word happened to be current and became a false memory.
+
+---
+
 ## 2026-09-02 (ELEVENTH BATCH) — `NOFALLBACK.6` — THE PUBLIC PAGE STOPS RUNNING A STAND-IN
 
 > ✅ **`NOFALLBACK.6` DONE.** The row's own text is preserved on the board and in the archive; this is the verdict.
