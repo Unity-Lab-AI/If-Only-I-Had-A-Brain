@@ -41,6 +41,14 @@
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
 import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, _examInjectReport, injectGeneratedExamQuestions, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+// ⭐ Self-pricing rep compression — the collision load is COUNTED from real
+// patterns rather than computed, because the closed form's K and COLS are
+// ambiguous against the live tiled encoding by six orders of magnitude.
+// Aliased on import so the long names read clearly at the single call site.
+import {
+  measureCollisionLoad as _repMeasureCollisionLoad,
+  safeCompressionFor as _repSafeCompressionFor,
+} from './rep-compression.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
 // sci/soc/art/life) are normalized via `subjects.js`. Keep them
@@ -17487,7 +17495,9 @@ export class Curriculum {
     //   required lr would exceed the ceiling the compression is REDUCED rather
     //   than the lr clamped — clamping would silently deliver LESS training
     //   than authored, i.e. the exact cut this is designed not to be.
-    const REP_COMPRESS = Math.max(1, Number(
+    // ⚠ `let`, not `const`: the self-pricing block below may replace it with a
+    // MEASURED factor when `DREAM_REP_AUTOPRICE=1`.
+    let REP_COMPRESS = Math.max(1, Number(
       // ⭐⭐ `REPCOMP.3` — THE NUMBER IS 5, AND IT WAS MEASURED, NOT CHOSEN.
       //   Gee: "you need to find out what the compress number needs to be".
       //
@@ -17625,6 +17635,95 @@ export class Curriculum {
     const MIN_RESULT_REPS = Math.max(1, Number(
       (typeof process !== 'undefined' && process.env && process.env.DREAM_REP_COMPRESS_FLOOR) || 4,
     ) || 4);
+    // ⭐⭐⭐ SELF-PRICING — MEASURE THIS CALL'S OWN COLLISION LOAD AND LET THE
+    // MEASUREMENT CHOOSE THE COMPRESSION, instead of carrying a constant chosen
+    // against a corpus an eleventh of today's size.
+    //
+    // Operator: *"did you set all the knobs for what we need so we dont have to
+    // do but like 1-3 reps for everything"*.
+    //
+    // ⛔ THE ANSWER COULD NOT BE A NUMBER TYPED IN HERE. `REP_COMPRESS = 40` was
+    // measured, but the sweep that measured it wrote its own expiry into the
+    // comment above — *"the compression that is free today is the first thing
+    // that breaks when the pair count climbs"* — and the academic corpus has
+    // gone 4.48M → 50.2M words since, **11.2×**. At 6× the sweep's load, 5
+    // presentations score 43% where 20 still score 94%.
+    //
+    // ⛔⛔ AND THE SWEEP'S OWN "PRODUCTION" ROW MAY NEVER HAVE DESCRIBED THIS
+    // ENCODING. Its 0.246 is `7,250 × 8² / 1,885,340` — 8 active cells drawn
+    // from 1.88M, an extremely sparse code. The live encoder is `semWTA` at
+    // `semTopK = 8` over a ~300-dim embedding, tiled so each surviving dim
+    // writes a whole group of cells ATOMICALLY. **A tile group is one feature,
+    // not 6,284**, so the live geometry is 8 dims of ~300, which is nothing like
+    // 8 cells of 1.88M. What makes it work is noted a few lines above: *"the
+    // survivors are mostly identity-hash dims (5 of 5) plus 3 strongest GloVe
+    // dims — mostly disjoint between similar words"*. **That near-orthogonality
+    // is measurable and is NOT derivable from the sweep's frame.**
+    //
+    // ⭐ So the load is COUNTED, not computed: `measureCollisionLoad` walks the
+    // real top-K dim sets and counts how many patterns share each one. It
+    // reproduces the sweep's published 0.246 under the sweep's own geometry
+    // (0.2469) and catches skew the closed form is blind to — one shared hot
+    // cell moves the counted load from 0.25 to 7,249 while `P·K²/COLS` does not
+    // move at all.
+    //
+    // ⚠ SAMPLED, AND SCALED BACK UP. Collecting every pattern would cost a
+    // second pass over the pairs; a bounded sample is measured and multiplied by
+    // `pairs/sample`, which is exact for the uniform case (load ∝ P) and an
+    // approximation under skew — stated rather than hidden.
+    //
+    // ⚠⚠ DEFAULT OFF, BECAUSE THE FIRST LIVE READING IS THE THING THAT SETTLES
+    // WHETHER 0.246 EVER APPLIED. Enabling it to steer before that number has
+    // been SEEN would be choosing a rep count from a table whose production row
+    // is in doubt — the same mistake one level down. `DREAM_REP_AUTOPRICE=1`
+    // arms it; unarmed it still measures and still publishes, so one press
+    // produces the evidence.
+    let _autoPrice = null;
+    try {
+      const _armed = (typeof process !== 'undefined' && process.env
+        && process.env.DREAM_REP_AUTOPRICE === '1');
+      const _semRegionEarly = cluster.regions && cluster.regions.sem;
+      if (_semRegionEarly && pairs.length >= 8 && typeof this._topKEmbedding === 'function') {
+        const _k = opts.semTopK ?? 8;
+        const _sampleN = Math.min(pairs.length, 512);
+        const _stride = Math.max(1, Math.floor(pairs.length / _sampleN));
+        const _sets = [];
+        for (let i = 0; i < pairs.length && _sets.length < _sampleN; i += _stride) {
+          const _w = Array.isArray(pairs[i]) ? pairs[i][0] : null;
+          if (!_w) continue;
+          const _e = this._dictionaryPatternFor(_w);
+          if (!_e || !_e.length) continue;
+          const _t = this._topKEmbedding(_e, _k);
+          const _idx = [];
+          for (let d = 0; d < _t.length; d++) if (_t[d] !== 0) _idx.push(d);
+          if (_idx.length) _sets.push(_idx);
+        }
+        if (_sets.length >= 8) {
+          const _m = _repMeasureCollisionLoad(_sets);
+          // load ∝ P, so a sample of n scales by pairs/n.
+          const _scaled = _m.load * (pairs.length / _sets.length);
+          const _verdict = _repSafeCompressionFor(_scaled, 0.95);
+          _autoPrice = {
+            sampled: _sets.length, pairs: pairs.length,
+            sampleLoad: _m.load, load: _scaled,
+            meanActiveDims: _m.meanActive, maxSharers: _m.maxSharers,
+            distinctDims: _m.cellsTouched,
+            factor: _verdict.factor, reps: _verdict.reps,
+            expectedRetrieval: _verdict.expectedRetrieval,
+            reason: _verdict.reason, armed: _armed,
+          };
+          // Published for the knob panel and the teach view — the number that
+          // did not exist before today.
+          if (cluster) cluster._repCompressionVerdict = _autoPrice;
+          this._hb(`[Curriculum][${opts.label || 'ASSOC'}] REPPRICE — measured collision load ${_scaled.toFixed(3)} over ${pairs.length} pairs (sampled ${_sets.length}, ${_m.meanActive.toFixed(1)} active dims each, ${_m.cellsTouched} distinct, max ${_m.maxSharers} patterns on one dim). The sweep supports ${_verdict.factor}× → ${_verdict.reps} reps at ${(100 * _verdict.expectedRetrieval).toFixed(1)}% retrieval. ${_armed ? 'ARMED — steering compression.' : 'NOT armed (DREAM_REP_AUTOPRICE=1 to steer); the hand-set ' + REP_COMPRESS + '× stands.'} ⚠ The sweep\'s 0.246 "production" row used 8 cells of 1,885,340; this brain uses 8 dims of ~300, so compare before trusting.`);
+          if (_armed) REP_COMPRESS = Math.max(1, _verdict.factor);
+        }
+      }
+    } catch (e) {
+      // Pricing must never be able to stop a teach.
+      if (this._hb) this._hb(`[Curriculum] REPPRICE non-fatal: ${e?.message || e}`);
+    }
+
     if (REP_COMPRESS > 1 && reps >= MIN_REPS_TO_COMPRESS && lr > 0 && lr < 1) {
       const _target = 1 - Math.pow(1 - lr, reps);      // what the authored dose reaches
       // `REPCOMP.4` — the result floor. Never fewer than MIN_RESULT_REPS

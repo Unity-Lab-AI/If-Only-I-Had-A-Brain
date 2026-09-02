@@ -2138,6 +2138,44 @@ Gee, verbatim:
   **Three times as much of the prose anchored for the SAME 60 lookups and the same wall-clock.** ⚠ **Frequency ordering does not need a RE-PRICE** — the cost is identical, only the selection changes. **Raising the cap does, and must be argued separately.**
   - ⚠ **The rotating window itself must stay.** It was built to fix a real bug (`slice(0, CAP)` stranded every word past the first 60 once 60 undefinable ones collected at the head) and a miss-list was rejected for a good reason that still holds. **Frequency ordering is a change to the ORDER of the rotation, not a return to a fixed head.**
 
+- [ ] `CORPUSCALE.2` — ⛔⛔⛔ **"1-3 REPS FOR EVERYTHING" CANNOT BE SET, AND THE REASON IS THAT THE CORPUS GREW 11.2× SINCE THE SWEEP THAT SET THE CURRENT VALUE.** Gee, verbatim: *"sop did you set all the knobs for what we need so we dont have to do but like 1-3 reps for everything"*.
+  - ⭐ **FIRST, THE GOOD NEWS HE MAY NOT HAVE: THE COMPRESSION ALREADY HAPPENED.** Nothing in the compressible teach lane runs 20 or 100 reps. `DREAM_REP_COMPRESS=40` already turns the authored **100 / 150 / 200** rep doses into **5 / 5 / 7 presentations** — a 20-30× reduction — **with the Oja asymptote preserved exactly**, because compression trades reps for rate (`1 − (1 − lr)^n` is held constant, not cut). **The big win is banked. He is asking to go from 5 to 3, not from 100 to 3.**
+  - ⛔ **1 REP IS FORBIDDEN BY `MIN_RESULT_REPS = 4`, AND THE REASON IS MEASURED, NOT CAUTIOUS.** From the code: *"at n=1 there is no interleaved reinforcement left at all — a pair writes once and every later pair's interference lands on it with no chance to re-assert. The whole reason rep-major ordering works is that each pair gets to come back."* ⚠ **This floor was added AFTER a live boot compressed a 4-rep dose to 1** — the arithmetic was right and the regime was one the sweep never measured.
+  - ⛔⛔ **AND 3 REPS NEEDS A RATE FAR PAST THE ONE THAT WAS MEASURED CLEAN.** Required `lr` to hold the same deposit:
+  ```
+    tier  authored  target      n=7      n=5      n=4      n=3      n=2      n=1
+    LOW      100    99.17%    0.4958   0.6166!  0.6983!  0.7976!  0.9090!  0.9917!
+    MID      150    99.92%    0.6420!  0.7626!  0.8343!  0.9090!  0.9725!  0.9992!
+    HI       200    99.99%    0.7458!  0.8530!  0.9090!  0.9590!  0.9917!  0.9999!
+                                        ! = above the measured-clean ceiling 0.60
+  ```
+  **The ceiling is 0.60 because 0.7043 was MEASURED and it broke at PRODUCTION load — 93.8% retrieval, not a stress-test figure.** Every n=3 cell above needs **0.80-0.96**.
+  - ⛔⛔⛔ **THE PART THAT MATTERS MOST: THE SAFETY MARGIN HAS ALREADY BEEN SPENT SINCE THAT MEASUREMENT.** The sweep's own warning, written into the code: *"collision load is `P·K / COLS`, so it rises with PAIR COUNT, and the corpus just grew from 12,075 sentences to 4.48M words … the compression that is free today is the first thing that breaks when the pair count climbs. If retrieval/separability regresses after a corpus growth, THIS IS THE FIRST KNOB TO WALK BACK."*
+  ```
+    corpus when the sweep set REP_COMPRESS=40 :  4,480,000 words
+    corpus now (academic prose alone)         : 50,235,085 words / 2,542,395 sentences
+    growth                                    : 11.2x
+  ```
+  **And the sweep's own rep table across load:**
+  ```
+    collision load      1x(100r)  5x(20r)  8x(13r)  12.5x(8r)  20x(5r)
+      0.246 PRODUCTION   100.0%   100.0%   100.0%    100.0%    100.0%
+      1.56  (6x harder)  100.0%    94.0%    76.0%     61.0%     43.0%   <- 5 reps at 43%
+      6.25  (25x harder)  72.8%    24.0%    16.5%     11.8%      8.0%
+  ```
+  ⚠ **So the honest reading is that the request points the wrong way.** At 6× load the current 5-rep setting scores **43%** where 20 reps still scores 94%, and the corpus has grown **11.2×**. **The open question is not "can we go to 3" — it is "is 5 still safe", and nobody has measured it since the growth.**
+  - ⛔ **I WILL NOT HAND-SET THESE BLIND, AND THAT IS THE FINDING, NOT A REFUSAL.** Picking a number against a sweep run on a corpus a eleventh the size is exactly how `DREAM_STRUCTURE_DOSE` got cut to 0.4 and reverted. **A value chosen without a measurement is a guess wearing a number.**
+  - ✅⭐⭐ **BUILT 2026-09-02 ON GEE'S PICK ("Self-pricing compression"). `js/brain/rep-compression.js` + the pricing block in `_teachAssociationPairs`. 22/22 across two harnesses.**
+    - ⛔⛔ **AND BUILDING IT FOUND THAT THE FORMULA CANNOT BE USED ON THIS BRAIN UNAIDED.** The live encoder is `_writeTiledPattern`: after `semTopK=8` winner-take-all, **8 feature dims survive**, and each tiles across `floor(regionSize/featLength)` ≈ **6,284 cells**. So `K` is either **8 dims** or **50,272 cells**, and `COLS` either **1.88M cells** or **~300 dims** — **readings that differ by ~39,000,000×.** ⚠ Every cell in a tile group carries the identical value and is written together, so **a group is one feature, not 6,284** — but the sweep's harness ran a real SparseMatrix and which geometry it corresponds to **is not something its comment settles.**
+    - ⭐ **SO THE LOAD IS COUNTED, NOT COMPUTED.** `measureCollisionLoad` walks the real top-K dim sets and counts how many patterns share each one — no `K`, no `COLS`, no interpretation. **It reproduces the sweep's published `0.246` under the sweep's own geometry (counted `0.2469`)** and tracks the closed form across four geometries.
+    - ⭐⭐ **AND IT CATCHES WHAT THE FORMULA IS BLIND TO: SKEW.** One shared hot cell moves the counted load **0.25 → 7,249** while `P·K²/COLS` does not move at all — and the verdict changes with it, from 20× down to 1×.
+    - ⛔ **TWO ERRORS IN MY OWN INSTRUMENTS, BOTH CAUGHT BEFORE SHIPPING.** ① The first validation harness used an LCG whose multiply **overflows 2^53 in JS**, collapsing to a short cycle — 58,000 writes landed on 16,340 distinct cells and the "measurement" was 14.6× wrong. Replaced with xorshift32 and sanity-checked against the birthday expectation (189,643 distinct vs 189,757 predicted). ② My counter first returned the **per-CELL** quantity, which is what the sweep's PROSE describes (*"other patterns sharing a given pre cell"*) — but its **published formula is the per-PATTERN one**, and they differ **by exactly K (7.97×)**. **The formula and the table were measured together, so per-pattern is what indexes the table**; matching the prose would have understated load 8× and green-lit a compression the sweep never supported.
+    - ⛔ **ONE MORE FORMULA DEFECT, IN THE EXISTING CODE:** the defining comment says `P·K²/COLS` and reproduces `0.246`; **a later comment in the same file abbreviates it to `P·K/COLS`**, which gives `0.0308` — understating the load by a factor of K.
+    - ⚠⚠ **IT SHIPS DEFAULT OFF (`DREAM_REP_AUTOPRICE=1` arms it), AND THAT IS THE FINDING, NOT TIMIDITY.** A synthetic model of the live encoding (2,000 pairs, 8 dims of 300) measures a load of **431** — far off the top of the sweep's table, whose highest row is **25**. **If the real reading is anything like that, the sweep's "production 0.246" never described this encoding at all**, and steering a rep count from that table would be the same mistake one level down. **Unarmed it still measures and still publishes to `cluster._repCompressionVerdict` and the log, so ONE PRESS produces the number that has never existed.**
+    - ⏳ **What the press must show:** a `REPPRICE` line per teach call carrying the measured load, the mean active dims, and the compression the sweep supports at that load — then compare it against `0.246` before arming anything.
+  - ⭐⭐ **WHAT TO BUILD INSTEAD — MAKE THE COMPRESSION SELF-PRICING.** `P·K / COLS` is computable from the live matrices at runtime, and the sweep already produced the accuracy-vs-load table. **The brain can measure its OWN collision load and pick the compression the sweep says is safe at that load**, instead of carrying a constant chosen against an 11×-smaller corpus. ⭐ **That also answers the question permanently**: if the load turns out low, it lands on fewer reps by itself and Gee gets what he asked for **with evidence**; if it turns out high, it walks the compression back before retrieval regresses instead of after.
+  - ⚠ **RE-PRICE NOTE:** self-pricing may RAISE reps, which is added wall clock. That is the correct direction for a bound whose safety margin was measured away, and it must be priced when it ships.
+
 ## HEARING — she must HEAR, not read a transcript — filed 2026-09-02
 
 Gee, verbatim:

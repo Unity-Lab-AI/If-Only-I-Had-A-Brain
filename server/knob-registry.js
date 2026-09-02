@@ -88,6 +88,12 @@ const KNOBS = [
 
   // ── rep compression ───────────────────────────────────────────────────────
   {
+    key: 'DREAM_REP_AUTOPRICE', group: 'Rep compression (dose vs rate)', dflt: 'off ("1" arms it)',
+    effect: 'live', site: 'js/brain/curriculum.js — _teachAssociationPairs pricing block',
+    proof: 'read inside the method on every call',
+    what: 'Lets the compression factor price ITSELF from the brain\'s own measured collision load instead of the hand-set DREAM_REP_COMPRESS. ⛔ The hand-set 40 was measured when the corpus held 4.48M words and the academic prose alone now holds 50.2M — 11.2x — and the sweep that produced it wrote its own expiry: "the compression that is free today is the first thing that breaks when the pair count climbs". ⚠ DEFAULT OFF ON PURPOSE: the sweep\'s "production" row is 8 active cells drawn from 1,885,340, while the live encoder is semWTA top-8 over a ~300-dim embedding tiled in atomic groups — those are not the same geometry, so the first LIVE reading is what settles whether 0.246 ever applied here. Unarmed it still measures and still publishes, so one press produces the evidence; armed, it steers.',
+  },
+  {
     key: 'DREAM_REP_COMPRESS', group: 'Rep compression (dose vs rate)', dflt: '40',
     effect: 'live', site: 'js/brain/curriculum.js:17573',
     proof: 'read inside the teach method on every call',
