@@ -7630,12 +7630,50 @@ export class Curriculum {
     return centroids.filter(c => c.sentences.length > 0);
   }
 
+  /**
+   * Surface-heuristic intent for a sentence. Sole consumer is the
+   * `intentCentroids` pass in `_calibrateIdentityLock`.
+   *
+   * ⛔⛔ THE `yesno` BUCKET WAS UNREACHABLE BY CORRECT ENGLISH UNTIL 2026-09-01,
+   * and the boot audit warned about it anyway.
+   *
+   * The old order tested `endsWith('?')` FIRST and returned `question`, so
+   * "Are you serious?" — a textbook yes/no question — could never reach the
+   * `yesno` branch below it. The ONLY strings that could were ones starting
+   * with an auxiliary and lacking a question mark: malformed writing.
+   *
+   * ⚠ So `[IDENTITY] persona corpus has no 'yesno' sentences — that dimension
+   * is unprotected against drift` could only be silenced by making the corpus
+   * WORSE. That is not hypothetical: it is exactly what happened — three
+   * questions were hand-written with the question mark stripped off to reach
+   * this bucket. An instrument that can only be satisfied by bad input will
+   * eventually be satisfied by bad input.
+   *
+   * ⭐ The tell was in the data the whole time: the persona corpus's single
+   * `yesno` member was "Has approved Unity's rewritten core operating
+   * manifesto…" — a sentence fragment about the operator, not a question.
+   *
+   * The fix splits interrogatives properly and is otherwise BEHAVIOUR-
+   * IDENTICAL: a question mark still wins over everything, and the only
+   * sentences that change bucket are `?`-terminated ones beginning with an
+   * auxiliary, which move `question` → `yesno` where they always belonged.
+   */
   _lightIntent(sentence) {
     const lower = String(sentence || '').toLowerCase().trim();
-    if (lower.endsWith('?')) return 'question';
+    // Auxiliary-initial interrogative = yes/no question; any other
+    // interrogative = wh-question or tag. Punctuation still decides that it
+    // IS a question; the opening word decides which KIND.
+    if (lower.endsWith('?')) {
+      return /^(is|are|was|were|do|does|did|can|could|will|would|should|has|have|had|am)\b/.test(lower)
+        ? 'yesno'
+        : 'question';
+    }
     if (lower.endsWith('!')) return 'emotion';
     if (/^(hi|hey|hello|sup|yo|good (morning|evening|afternoon))\b/.test(lower)) return 'greeting';
     if (/^(what|who|where|when|why|how|which|whose)\b/.test(lower)) return 'question';
+    // Unpunctuated auxiliary-initial lines stay `yesno` — this is the branch
+    // that used to be the bucket's only reachable path, kept so nothing that
+    // previously classified here silently moves.
     if (/^(is|are|was|were|do|does|did|can|could|will|would|should|has|have|had|am)\b/.test(lower)) return 'yesno';
     if (/^(go|come|take|give|stop|start|do|make|get|put|tell|show|run|open|close|fuck|shut|move)\b/.test(lower)) return 'command';
     return 'statement';

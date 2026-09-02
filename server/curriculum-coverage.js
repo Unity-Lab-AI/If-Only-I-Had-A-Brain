@@ -112,11 +112,39 @@ function readCell(corpusRoot, subject, grade) {
     const j = JSON.parse(raw);
     const experiences = j.experiences || [];
     let words = 0, licensed = 0;
+    // DIALOGUE.2 — terminal-punctuation mix, per cell.
+    //
+    // ⛔ A word count cannot answer "can this cell teach her what a QUESTION
+    // looks like?", and that turned out to matter: measured 2026-09-01, the
+    // three boot corpora hold 842 sentences with ZERO question marks and ZERO
+    // exclamation marks between them, and the whole rebuilt academic corpus is
+    // 248,443 sentences at 0.28% `?` and 0.19% `!`.
+    //
+    // `_teachSentenceStructure` trains FIVE intent forms — declarative_svo,
+    // declarative_copula, question, imperative, exclamative — so a cell of pure
+    // expository prose supplies exemplars for two of them and none for the
+    // rest. Reported per cell because a 0.28% AVERAGE hides which cells are at
+    // zero, and expository textbook prose is exactly the genre that has none.
+    let sentences = 0, questions = 0, exclamations = 0;
     for (const e of experiences) {
-      words += String(e.story || '').split(/\s+/).length;
+      const story = String(e.story || '');
+      words += story.split(/\s+/).length;
       if (e.licence) licensed++;
+      for (const s of story.split(/(?<=[.!?])\s+/)) {
+        const t = s.trim();
+        if (!t) continue;
+        sentences++;
+        if (t.endsWith('?')) questions++;
+        else if (t.endsWith('!')) exclamations++;
+      }
     }
-    return { words, entries: experiences.length, licensed };
+    const dialoguePct = sentences > 0
+      ? ((questions + exclamations) / sentences) * 100
+      : 0;
+    return {
+      words, entries: experiences.length, licensed,
+      sentences, questions, exclamations, dialoguePct,
+    };
   } catch { return null; }
 }
 
@@ -136,8 +164,9 @@ function computeCoverage(curriculumModule, corpusRoot) {
   const passed = new Set();
   for (const g of GRADE_ORDER) for (const s of subjectsForGrade(g)) passed.add(`${s}/${g}`);
 
-  const run = [], missingLane = [], empty = [], thin = [];
+  const run = [], missingLane = [], empty = [], thin = [], noDialogue = [];
   let okCount = 0, reachableWords = 0, entries = 0, licensed = 0;
+  let sentences = 0, questions = 0, exclamations = 0;
   for (const grade of GRADE_ORDER) {
     for (const subject of subjectsOwedAt(grade, passed)) {
       run.push(`${subject}/${grade}`);
@@ -148,6 +177,14 @@ function computeCoverage(curriculumModule, corpusRoot) {
       const c = readCell(corpusRoot, subject, grade);
       if (!c || c.entries === 0) { empty.push(`${subject}/${grade}`); continue; }
       reachableWords += c.words; entries += c.entries; licensed += c.licensed;
+      sentences += c.sentences; questions += c.questions; exclamations += c.exclamations;
+      // DIALOGUE.2 — a cell with prose but NO interrogative or exclamative
+      // sentence cannot teach two of the five intent forms the curriculum
+      // trains. Tracked separately from `thin`: this cell may be enormous and
+      // still unable to show her what a question looks like.
+      if (c.sentences > 0 && (c.questions + c.exclamations) === 0) {
+        noDialogue.push(`${subject}/${grade}`);
+      }
       const floor = FLOOR[BAND[grade]] ?? 5000;
       if (c.words < floor) thin.push(`${subject}/${grade}:${c.words}/${floor}`);
       else okCount++;
@@ -199,6 +236,19 @@ function computeCoverage(curriculumModule, corpusRoot) {
     avgWordsPerProseCell: (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length)
       ? Math.round(reachableWords / (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length))
       : 0,
+    // ⛔ DIALOGUE.2 — the sentence-FORM mix, because a word count cannot say
+    // whether a cell can teach her what a question looks like. Measured
+    // 2026-09-01: the three boot corpora hold 842 sentences with ZERO `?` and
+    // ZERO `!`, and the whole academic corpus runs 0.28% / 0.19%.
+    sentences,
+    questions,
+    exclamations,
+    dialoguePct: sentences ? Math.round(((questions + exclamations) / sentences) * 1000) / 10 : 0,
+    // Cells with real prose that still cannot show her an interrogative or an
+    // exclamative — distinct from `thin`, since a huge cell can be one of these.
+    noDialogue: noDialogue.length,
+    noDialogueList: noDialogue.slice(0, CAP),
+    noDialogueMore: Math.max(0, noDialogue.length - CAP),
     // ⚠ Lists are TRUNCATED for display and say so; the counts above are not.
     // A truncated list that looks complete is how a dashboard starts lying.
     emptyList: empty.slice(0, CAP),

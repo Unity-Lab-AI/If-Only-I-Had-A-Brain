@@ -122,6 +122,20 @@ if (process.argv.includes('--json')) {
   if (r.empty) console.log(`\n  ⛔ EMPTY: ${r.emptyList.join('  ')}${more(r.emptyMore)}`);
   if (r.unreachableFiles) console.log(`\n  ⛔ UNREACHABLE: ${r.unreachableList.join('  ')}${more(r.unreachableMore)}`);
   if (r.thin) console.log(`\n  ⚠ THIN: ${r.thinList.join('  ')}${more(r.thinMore)}`);
+
+  // DIALOGUE.2 — the sentence-FORM mix. A word count cannot say whether a cell
+  // can show her what a question looks like, and expository textbook prose is
+  // exactly the genre that never does.
+  console.log(`\n  SENTENCE FORMS (can these cells teach her a question at all?):`);
+  console.log(`     sentences in reachable cells : ${(r.sentences || 0).toLocaleString()}`);
+  console.log(`     ending in '?'                : ${(r.questions || 0).toLocaleString()}`);
+  console.log(`     ending in '!'                : ${(r.exclamations || 0).toLocaleString()}`);
+  console.log(`     interrogative + exclamative  : ${r.dialoguePct || 0}%`);
+  console.log(`     cells with prose but ZERO of either : ${r.noDialogue || 0}`);
+  if (r.noDialogue) console.log(`     ⛔ NO DIALOGUE: ${r.noDialogueList.join('  ')}${more(r.noDialogueMore)}`);
+  console.log(`     ⚠ _teachSentenceStructure trains FIVE intent forms; a cell of pure`);
+  console.log(`        expository prose supplies exemplars for two and none for question`);
+  console.log(`        or exclamative. Every gate probe asks her a QUESTION.`);
   // ⛔ THE BAR, PRINTED. `ok` counts cells clearing floors nobody derived, so
   // the output says what clearing them is actually worth. A bare numerator is
   // how an instrument starts lying — the same reason the dashboard ships
