@@ -520,8 +520,19 @@ async function buildBook({ repo, subject, grade, label, chapters }) {
   const dir = path.join(OUT, subject);
   fs.mkdirSync(dir, { recursive: true });
   const outPath = path.join(dir, `${grade}.json`);
-  // Same keep-longer union as the wiki ingest — a re-run can only ADD coverage,
-  // and the two sources merge by theme instead of overwriting each other.
+  // Keep-longer union across DIFFERENT sources — a re-run can only ADD coverage,
+  // and two sources merge by theme instead of overwriting each other.
+  //
+  // ⛔⛔ SAME SOURCE WINS OUTRIGHT, AND WITHOUT THIS CLAUSE A REPAIR RUN IS A
+  // GUARANTEED NO-OP. Keep-longer alone compares a re-fetch of the SAME book
+  // against itself: the story text is identical, so `>` is false, the OLD entry
+  // is kept, and every improvement that does not lengthen the prose — a figure's
+  // `context`, a corrected licence, a new field entirely — can never land. That
+  // is not hypothetical: **8 OpenStax books held 7,055 figures with no `context`
+  // key at all**, and re-running this fetcher against them rewrote the cells,
+  // logged success, and changed nothing. `fetch-saylor-corpora.mjs` and
+  // `fetch-research-corpora.mjs` both already carry this clause; this file was
+  // the one that did not, and the board had already recorded the trap by name.
   const byTheme = new Map();
   let prevDoc = null;
   try {
@@ -530,7 +541,8 @@ async function buildBook({ repo, subject, grade, label, chapters }) {
   } catch { /* fresh cell */ }
   for (const e of experiences) {
     const old = byTheme.get(e.theme);
-    if (!old || e.story.length > old.story.length) byTheme.set(e.theme, e);
+    const sameSource = old && old.source === e.source;
+    if (!old || sameSource || e.story.length > old.story.length) byTheme.set(e.theme, e);
   }
   const merged = [...byTheme.values()];
   const doc = {
