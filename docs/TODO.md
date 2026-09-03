@@ -2195,6 +2195,36 @@ Gee, verbatim:
 
 - [ ] `KNOBUI.1` — **FIND THE REASON FOR ALL 186 KNOBS THAT HAVE NONE.** *"u need to find the 186 in totalit that you dont know their reason"*. ⭐ **The count is exact and comes from the panel's own tally**: 195 total, 9 with a recorded reason, **186 reading `no recorded reason`**. ⛔ **This is a READING job, not a scan** — three automated classifiers have already lied about these knobs (brace-depth, column-0, and my own hand-registry carrying two `cached` values as `live`). **Each row gets its site read and its reason written, or it keeps saying it has none.** ⚠ Bounded by honesty, not by effort: a knob whose reason genuinely cannot be established stays `unknown` rather than receiving a plausible sentence.
 
+### ⛔ ISSUES FOUND WHILE READING THE 186 — filed 2026-09-02 on Gee's instruction *"write issues you find to the todo and continue"*
+
+- [x] `KNOBFIND.1` — ✅ **FIXED — THE BOOT LOG ANNOUNCED A GRADE CAP THAT DOES NOT EXIST, CITING A REVOKED LAW AS ITS AUTHORITY.** Two doc comments and the runtime line all read *"defaults to 'kindergarten' per Pre-K + K ONLY LAW"*, while `_resolveMaxGradeIdx` has defaulted to **`'phd'`** throughout with its own inline comment saying the scope was revoked. ⛔ **The behaviour was always right; the only broken thing was the one surface that reports the cap** — and to anyone scanning a boot log it read as *"the walk stops at K."* Corrected in all three places.
+
+- [x] `KNOBFIND.2` — ✅ **FIXED — A `parseInt` RADIX WAS BEING RECORDED AS A KNOB'S DEFAULT, IN BOTH THE PANEL AND THE DOCS.** The read site is `parseInt(x, 10)`, and both my discovery parser and `docs/ADMIN-CONTROLS.md` captured that **10** as the value.
+  ```
+    DREAM_SENTENCE_TRANSITION_REPS   documented 10   actually      24
+    DREAM_LANG_CORTEX                documented 10   actually 100,000   <- 4 orders of magnitude
+  ```
+  ⛔ **Both doc rows carried the `✅` that this file defines as "the default was read out of the code."** Fixed at the parser rather than per row.
+
+- [x] `KNOBFIND.3` — ✅ **FIXED — TWO MORE PARSER BUGS OF THE SAME FAMILY, FOUND BY AUDITING EVERY NUMERIC DEFAULT IN `ADMIN-CONTROLS.md` AGAINST ITS READ SITE.**
+  - ⛔ **Numeric separators truncated the value.** `|| 1_800_000` parsed as **1** — a 1.8-million-fold error — because the digit class stopped at the first underscore. **Here the DOC was right and my panel was wrong.**
+  - ⛔ **The first `|| N` on the line was taken regardless of whose it was.** On `(this._communityDonorCount || 0) >= (Number(process.env.DREAM_..._MIN_DONORS) || 1)` it attributed **the 0 belonging to a different expression** to the knob. The parser now searches after the knob's own position.
+  - ⚠ **AND THE AUDIT SCRIPT ITSELF LIED FIRST**, which is why it was not trusted on its first run: stripping non-digits concatenated prose numbers, turning `` `1800000` (30 min) `` into **180000030** and producing a page of false mismatches. Rewritten to take the first leading numeric token. **Four instruments wrong in one sitting, every one caught by checking rather than believing.**
+
+- [x] `KNOBFIND.4` — ✅ **FIXED — THREE GENUINE WRONG DEFAULTS IN `docs/ADMIN-CONTROLS.md`**, surviving after the parser bugs were excluded:
+  ```
+    DREAM_VM_RELATE_MAX_QUEUE        doc 200   code  24    8x
+    DREAM_PERCEPT_GROUND_MAX_QUEUE   doc 200   code  16   13x
+    DREAM_DRAW_CANVAS                doc 512   code 1024   2x
+  ```
+  ⛔ **`DREAM_DRAW_CANVAS` is the worst of the three** — the doc was still carrying **the exact stale value the re-price existed to replace**, on the row that documents the best-measured knob in the codebase. ⚠ The percept-queue row also described the wrong over-cap behaviour (*defer* when the code **drops and counts**), so that was corrected too. **43 of 46 comparable defaults now agree; the 3 that did not were all doc-side.**
+
+- [ ] `KNOBFIND.5` — ⚠ **TWO VALUES ARE SELF-ADMITTEDLY UNPRICED IN THEIR OWN SOURCE, AND SHOULD BE PRICED.** These are not guesses on my part — the code says it:
+  - **`DREAM_CHAT_COHERENCE_FLOOR` (0.10)** — *"Env-tunable; calibrate on the live walk."* A placeholder awaiting a walk that has not happened. It decides when an emission is refused and degraded to a single honest word, so it directly governs whether she speaks or stays quiet.
+  - **`DREAM_RANGE_MAX_RUNS` (16)** — *"WHICH ONE IS TRUE IS UNKNOWN, and `rangesRunsOkMax` cannot say — it is a MAX, and a max cannot price a cap"*, noting that is the **third** time that shape has bitten. ⭐ **Both want measuring at the fresh-walk press, alongside the rep-compression sweep.**
+
+- [ ] `KNOBFIND.6` — ⚠ **THE FOUR SATURATION THRESHOLDS ARE ALL INHERITED, AWAITING DATA THAT WAS NEVER GATHERED.** `DREAM_SAT_MEANCOS` 0.7 · `DREAM_SAT_MEANABS` 0.6 · `DREAM_SAT_RATIO` 1.5 · `DREAM_SAT_SAMPLE` 1000. Their own block states the position plainly: *"conservative defaults match prior hardcoded values; env vars only deviate when empirical 20hr-test data justifies a shift."* ⛔ **They feed the consolidation replay VETO**, so they decide when the brain stops reinforcing — an unexamined threshold on a lane that important is worth a measurement, not an accusation.
+
 - [ ] `KNOBUI.2` — **RESET TO DEFAULT.** *"we need a reset to defaulkt"*. ⚠ Must distinguish **the code's own default** from **whatever the environment currently sets** — the panel already knows both, and a reset that quietly wrote the current value back would be the instrument lying again.
 
 - [ ] `KNOBUI.3` — **SAVE KNOB POSITIONS TO A FILE.** *"a save knob positions to a file"*. ⭐ The file wants to carry the VALUES and the PROVENANCE and the timestamp, so a saved set can be compared against a later one and explain itself.

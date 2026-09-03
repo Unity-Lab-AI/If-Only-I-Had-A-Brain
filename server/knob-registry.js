@@ -508,11 +508,24 @@ function commentAbove(lines, idx) {
  * lying instrument it was built to catch**, and this one lied about two rows
  * until the values were read by hand against their source.
  */
-function defaultBeside(line) {
-  const cleaned = String(line).replace(/parseInt\(([^)]*),\s*\d+\s*\)/g, 'parseInt($1)');
-  const m = cleaned.match(/(?:\|\||\?\?)\s*([0-9]*\.?[0-9]+)/)
-    || cleaned.match(/:\s*([0-9]*\.?[0-9]+)\s*[;,)]/);
-  return m ? m[1] : null;
+function defaultBeside(line, key) {
+  let src = String(line);
+  // ⛔ SEARCH AFTER THE KNOB'S OWN POSITION, NOT FROM THE START OF THE LINE.
+  // `(this._communityDonorCount || 0) >= (Number(process.env.DREAM_..._MIN_DONORS) || 1)`
+  // has TWO `||` defaults on one line, and taking the first attributed the
+  // **0 belonging to a different expression** to this knob. Its real default is 1.
+  if (key) {
+    const at = src.indexOf(key);
+    if (at >= 0) src = src.slice(at + key.length);
+  }
+  const cleaned = src.replace(/parseInt\(([^)]*),\s*\d+\s*\)/g, 'parseInt($1)');
+  // ⛔ NUMERIC SEPARATORS COUNT AS PART OF THE NUMBER. `1_800_000` was being read
+  // as **1** — a 1.8-million-fold error — because the digit class stopped at the
+  // first underscore. Found by auditing this registry against the admin-controls
+  // table, where the DOC was right and this parser was wrong.
+  const m = cleaned.match(/(?:\|\||\?\?)\s*([0-9][0-9_]*\.?[0-9]*)/)
+    || cleaned.match(/:\s*([0-9][0-9_]*\.?[0-9]*)\s*[;,)]/);
+  return m ? m[1].replace(/_/g, '') : null;
 }
 
 /**
@@ -620,7 +633,7 @@ function discover() {
         found.set(key, {
           key,
           group: groupFor(key),
-          dflt: defaultBeside(ln) || (doc && doc.dflt) || '—',
+          dflt: defaultBeside(ln, key) || (doc && doc.dflt) || '—',
           effect: '???',
           site: `${rel}:${i + 1}`,
           proof: 'discovered by scanning the running source; read-site scope not verified',
