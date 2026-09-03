@@ -10283,14 +10283,25 @@ var MindSpaceGPU = class {
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-sketch" };
     return rec;
   }
-  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster stamp.
-  // Converts each character's 5x7 bitmap (FONT5X7 — single source of truth shared
-  // with the glyph raster) into line strokes for sketch(): horizontal + vertical
-  // runs of lit cells become line segments, isolated single cells become points.
-  // NO WOBBLE / NO JITTER (Gee 2026-07-15: "NO FUCKING WOBBLE ... wobble = dumbing
-  // her down"). Her handwriting is her CLEAN trained hand — crisp + legible, never
-  // an artificial tremor faking imperfect/child writing. j() is a hard 0 and
-  // opts.wobble is ignored by design (her line quality is her trained state, period).
+  // Letters as STROKES rather than a raster stamp. Converts each character's 5x7
+  // bitmap (FONT5X7 — single source of truth shared with the glyph raster) into
+  // line strokes for sketch(): horizontal + vertical runs of lit cells become
+  // line segments, isolated single cells become points.
+  //
+  // ⛔⛔ THESE ARE TYPESET LETTERFORMS, NOT HANDWRITING, AND THIS COMMENT USED TO
+  // SAY THE OPPOSITE. It read *"her own hand"* and *"her CLEAN trained hand"*,
+  // which asserted a trained capability that does not exist anywhere: the shapes
+  // come from a constant bitmap font, so they are **identical at every grade**
+  // and no part of the curriculum teaches a letter as a shape. Drawing them as
+  // strokes instead of blitting pixels changes how they RENDER, not who made them.
+  //
+  // NO WOBBLE / NO JITTER stays, and the reason survives the correction intact:
+  // an artificial tremor faking imperfect writing would be dumbing her down, and
+  // it would now also be dressing a caption up as a skill. `j()` is a hard 0 and
+  // `opts.wobble` is ignored by design.
+  //
+  // ⭐ The end state — letters acquired as schemas the way every other shape is —
+  // is filed as curriculum work. Until it ships, nothing here may call this hers.
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
     const t = String(text || "").toUpperCase().slice(0, 16);

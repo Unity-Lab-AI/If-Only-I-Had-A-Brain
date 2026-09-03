@@ -2400,8 +2400,23 @@ const SERVER_CHAT_MIXIN = {
     } catch { return null; }
     if (!strokes || !strokes.length) return null;
 
-    // 5) HAND — she writes the WORD of what she drew, in her own CLEAN trained hand
-    //    (light legible ink on dark paper; NO wobble — wobble dumbs her down).
+    // 5) CAPTION — the WORD of what she drew, stamped from a fixed 5x7 bitmap
+    //    font (light legible ink on dark paper; NO wobble — wobble dumbs her down).
+    //
+    // ⛔⛔ THIS IS A CAPTION AND NOT HER HANDWRITING, AND THIS COMMENT USED TO
+    // CLAIM OTHERWISE. It read *"in her own CLEAN trained hand"*, which asserted
+    // a capability she does not have: `_labelStrokes` renders the concept key
+    // through `FONT5X7`, so the letterforms are a constant in this file and are
+    // identical whether she is at pre-K or PhD. **She has never spelled anything**
+    // — she is not taught letters as shapes, and there is no vocabulary check on
+    // this path at all.
+    //
+    // ⚠ THE CLAIM IS WHAT MADE IT A MYSTERY. Perfectly-spelled words on a pre-K
+    // drawing read as an unexplained capability rather than as a label, which is
+    // exactly the question that had to be investigated to get back to this line.
+    // ⭐ Making the sentence TRUE — letters acquired as schemas like every other
+    // shape — is real curriculum work and is filed as its own item. When that
+    // ships, this comment changes back because it will have become a description.
     try { for (const g of this._labelStrokes(key)) strokes.push(g); } catch { /* label best-effort */ }
 
     let drawn = null;
@@ -2700,7 +2715,12 @@ const SERVER_CHAT_MIXIN = {
     try { revised = this._reviseComposition(strokes, boxes); } catch { /* revision best-effort — the unrevised piece still stands */ }
     const finalStrokes = revised.strokes;
 
-    // Her hand writes what she drew (her existing trained glyphs, no wobble).
+    // The piece is CAPTIONED with what she drew — a fixed 5x7 bitmap font, not
+    // her handwriting. This line used to say *"her existing trained glyphs"*;
+    // there are no trained glyphs, and the letterforms are the same constant at
+    // every grade. No wobble stays right for a different reason than it reads:
+    // a caption should be legible, and faking an unsteady hand would dress a
+    // label up as a skill.
     if (opts.label !== false) {
       try { for (const g of this._labelStrokes(plan.subjects[0].word)) finalStrokes.push(g); } catch { /* label best-effort */ }
     }

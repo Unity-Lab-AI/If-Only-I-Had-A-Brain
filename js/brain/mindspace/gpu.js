@@ -765,14 +765,25 @@ export class MindSpaceGPU {
     return rec;
   }
 
-  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster stamp.
-  // Converts each character's 5x7 bitmap (FONT5X7 — single source of truth shared
-  // with the glyph raster) into line strokes for sketch(): horizontal + vertical
-  // runs of lit cells become line segments, isolated single cells become points.
-  // NO WOBBLE / NO JITTER (Gee 2026-07-15: "NO FUCKING WOBBLE ... wobble = dumbing
-  // her down"). Her handwriting is her CLEAN trained hand — crisp + legible, never
-  // an artificial tremor faking imperfect/child writing. j() is a hard 0 and
-  // opts.wobble is ignored by design (her line quality is her trained state, period).
+  // Letters as STROKES rather than a raster stamp. Converts each character's 5x7
+  // bitmap (FONT5X7 — single source of truth shared with the glyph raster) into
+  // line strokes for sketch(): horizontal + vertical runs of lit cells become
+  // line segments, isolated single cells become points.
+  //
+  // ⛔⛔ THESE ARE TYPESET LETTERFORMS, NOT HANDWRITING, AND THIS COMMENT USED TO
+  // SAY THE OPPOSITE. It read *"her own hand"* and *"her CLEAN trained hand"*,
+  // which asserted a trained capability that does not exist anywhere: the shapes
+  // come from a constant bitmap font, so they are **identical at every grade**
+  // and no part of the curriculum teaches a letter as a shape. Drawing them as
+  // strokes instead of blitting pixels changes how they RENDER, not who made them.
+  //
+  // NO WOBBLE / NO JITTER stays, and the reason survives the correction intact:
+  // an artificial tremor faking imperfect writing would be dumbing her down, and
+  // it would now also be dressing a caption up as a skill. `j()` is a hard 0 and
+  // `opts.wobble` is ignored by design.
+  //
+  // ⭐ The end state — letters acquired as schemas the way every other shape is —
+  // is filed as curriculum work. Until it ships, nothing here may call this hers.
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
     const t = String(text || '').toUpperCase().slice(0, 16);
@@ -786,7 +797,8 @@ export class MindSpaceGPU {
     // not 1px pencil lines. A dark SILHOUETTE pass backs every glyph (thicker
     // copy underneath) and an optional HIGHLIGHT chip (filled band) sits behind
     // the whole word so it pops over any image content. Per-letter colours
-    // (dazzle), italic slant, underline — all NO wobble, clean trained hand.
+    // (dazzle), italic slant, underline — all NO wobble. Styling a caption is
+    // typography; none of it makes the letterforms hers.
     const baseRgb = opts.rgb || [222, 220, 226];
     const colors = (Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : null;
     const slant = Math.max(-0.5, Math.min(0.5, opts.slant || 0));

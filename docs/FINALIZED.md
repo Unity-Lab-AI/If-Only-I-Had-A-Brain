@@ -37,6 +37,29 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `SPELLTRUTH.4` — THE CODE STOPS CLAIMING A CAPABILITY SHE DOES NOT HAVE, AND THE PUBLIC PAGE STOPS FIRST
+
+Gee's answer to the three-way, verbatim: **"1 & 3"** — the honesty fix now, the curriculum-scale fix as the end state. ⛔ **Option ② was NOT chosen: there is to be no vocabulary gate on the caption.**
+
+**Six sites across four trees, and they were not all the same size of wrong.**
+
+| where | said | now |
+|---|---|---|
+| `server/brain-server/chat.js` ×2 | *"in her own CLEAN trained hand"* · *"her existing trained glyphs"* | caption, from a fixed 5x7 bitmap font |
+| `js/brain/mindspace/gpu.js` ×2 (+ the rebuilt bundle) | *"letters as PENCIL STROKES (her own hand)"* · *"clean trained hand"* | typeset letterforms; drawing them as strokes changes how they RENDER, not who made them |
+| `docs/SENSORY.md` ×2 | *"her trained glyph hand"* · *"wobbly kid handwriting"* | typeset caption; **both errors kept in place, struck rather than deleted** |
+| ⭐ `html/unity-guide.html` | *"signs it with the word in her own trained handwriting"* | *"the caption is typeset, not handwritten … **She has not been taught to write.**"* |
+
+⭐⭐ **THE PUBLIC PAGE WAS THE ONE THAT MATTERED.** Everything else was a comment a developer reads; that sentence was the project telling readers she could do something she cannot. It now says the drawing is genuinely hers and **the label under it is a label**, and names the work still ahead rather than leaving the gap implied.
+
+⛔ **`SENSORY.md` WAS WRONG TWICE OVER, WHICH IS WHY IT IS CORRECTED IN PLACE RATHER THAN REWRITTEN.** *"jittered pencil strokes so her writing is wobbly kid handwriting"* — ① the jitter had **already been removed** as dumbing-down (`j()` is a hard 0 and `opts.wobble` is ignored), and ② it was never handwriting. **A doc that is stale AND wrong in different directions is the one a reader trusts hardest**, because the specific detail reads as evidence someone checked.
+
+⚠ **THE `NO WOBBLE` RULE SURVIVES THE CORRECTION AND ITS REASON GREW.** It stays banned because faking an unsteady hand is dumbing her down — and now also because it would dress a caption up as a skill.
+
+⚠ **OWNED — MY TAG-BALANCE CHECK ON THE PUBLIC PAGE LIED, THE FOURTH INSTRUMENT TO DO SO TODAY.** It reported `strong 187/188 UNBALANCED` and pointed at a real line. The regex was `/<strong>/` and the page uses `<strong style="…">`, so every attributed tag counted as a close with no open. Re-checked allowing attributes: **188/188, and every other tag balanced too.** The page was fine; the checker was not.
+
+---
+
 ## 2026-09-03 — `CORPUSBUFFER` — THE BOOKS ARRIVE WHILE SHE TRAINS, AND THE BOX NEVER HOLDS TWO CORPORA
 
 Gee (verbatim):
