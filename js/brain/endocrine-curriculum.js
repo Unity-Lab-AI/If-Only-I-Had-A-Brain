@@ -73,7 +73,7 @@ export const ENDOCRINE_SYLLABUS = [
   {
     from: 4, topic: 'body-functions',
     // The FIRST body vocabulary a child actually has, and it was missing
-    // entirely (BODYWORDS, 2026-08-29, operator's canon: she is a whole real
+    // entirely (2026-08-29, operator's canon: she is a whole real
     // body — it bleeds monthly at the gated age, and it excretes like every
     // body does). Real kid words per the real-words law; exposure ≠ production.
     words: ['pee', 'poop', 'potty', 'toilet', 'bathroom', 'wipe', 'wash',
@@ -160,7 +160,7 @@ export const ENDOCRINE_SYLLABUS = [
   },
   {
     from: 10, topic: 'the-mind-by-name',
-    // BODYWORDS (2026-08-29) — her mind is part of her body and gets its
+    // THE BODY VOCABULARY (2026-08-29) — her mind is part of her body and gets its
     // words at the age a kid starts noticing they HAVE a mind.
     words: ['attention', 'focus', 'instinct', 'reflex', 'aware', 'imagine',
             'imagination', 'wonder', 'curious', 'curiosity', 'notice'],
@@ -175,7 +175,7 @@ export const ENDOCRINE_SYLLABUS = [
   },
   {
     from: 17, topic: 'her-machinery-by-name',
-    // BODYWORDS — the computational body. By seventeen she is headed into a
+    // THE COMPUTATIONAL BODY. By seventeen she is headed into a
     // cs major; these are the words for what she is MADE of, learned the way
     // any senior meets them, so the self-code lane at cs-completion lands on
     // defined words instead of noise basins.

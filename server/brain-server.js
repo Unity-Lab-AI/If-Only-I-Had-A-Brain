@@ -5984,6 +5984,33 @@ class ServerBrain {
       this.cortexCluster.ensureIntraTopology('boot complete — restore path never delivered');
     }
 
+    // ── REHYDRATE THE DERIVED-MEMORY CACHE ────────────────────────────────
+    //
+    // ⛔ THE OTHER HALF OF THE CONSISTENCY CONTRACT, AND THE HALF THAT DID NOT
+    // EXIST. `deriveMemoryGap` caches an answer so the same gap can never return
+    // a different one — but the cache is an in-memory Map, so a commit with no
+    // read-back means every restart silently reopens every gap and she can
+    // contradict yesterday's answer **while the code asserts she cannot**.
+    //
+    // ⚠ IT RUNS HERE because it needs BOTH halves alive: the episodic DB (opened
+    // in the constructor) and the cortex cluster (built during language init).
+    // Placed after either one alone it would no-op, and a no-op restore looks
+    // exactly like nobody having derived anything yet.
+    if (this.cortexCluster && typeof this.cortexCluster.loadDerivedMemories === 'function'
+        && typeof this.recallDerivedMemories === 'function') {
+      try {
+        const rows = this.recallDerivedMemories();
+        const r = this.cortexCluster.loadDerivedMemories(rows);
+        // Reported even at zero — "0 restored" on a fresh brain is correct and
+        // says the lane ran, which a silent boot cannot.
+        console.log(`[Brain] derived-memory cache: ${r.loaded} restored`
+          + (r.refused ? `, ${r.refused} REFUSED by the sensitive-topic gate on the way in` : '')
+          + ` (from ${rows.length} episode(s))`);
+      } catch (e) {
+        console.warn('[Brain] derived-memory rehydrate failed:', e && e.message);
+      }
+    }
+
     // Deploy identity — the "did the new code even land?" signal. Resolve
     // ONCE at boot, in priority order:
     //   1. server/deployed-build.json — written by deploy/self-update.sh from
@@ -9552,6 +9579,54 @@ const httpServer = http.createServer((req, res) => {
       // missing readout reads as "not run", and "not run" gets mistaken for fine.
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, verdict: 'BENCH FAILED', error: (e && e.message) || String(e) }));
+    }
+    return;
+  }
+
+  // ── OPERATOR CORRECTION OF A DERIVED MEMORY ───────────────────────────────
+  //
+  // The third contract of the derivation lane, and the last one that had no way
+  // in. When she reasons her way to an answer for an untrained concept, the
+  // operator must be able to say "no, it is this" and have that stick — over
+  // the derivation AND over any later re-derivation, across restarts.
+  //
+  // ⛔ THE COMMIT IS THE POINT. A correction held only in memory survives until
+  // the next restart and then the wrong answer comes back, which is worse than
+  // not offering the correction at all, because the operator saw it take.
+  // `?value=` omitted FORGETS the derivation instead, so the next ask derives
+  // fresh — a distinct and deliberately reachable outcome from overwriting it.
+  if (req.url && req.url.split('?')[0] === '/derived-memory' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/derived-memory')) return;
+    try {
+      const q = (new URL(req.url, 'http://x')).searchParams;
+      const concept = (q.get('concept') || '').trim();
+      const value = q.get('value');
+      const cl = this.cortexCluster;
+      if (!concept || !cl || typeof cl.correctDerivedMemory !== 'function') {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: concept ? 'the cluster has no correction lane' : 'concept is required' }));
+        return;
+      }
+      const forget = value === null || value === '';
+      cl.correctDerivedMemory(concept, forget ? null : value, {
+        commit: (k, a) => {
+          if (typeof this.storeEpisode === 'function') this.storeEpisode('operator', 'derived-memory-corrected', k, a);
+        },
+      });
+      const held = cl._derivedMemories && cl._derivedMemories.get(String(concept).toLowerCase().trim());
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify({
+        ok: true,
+        concept,
+        action: forget ? 'forgotten — the next ask derives fresh' : 'corrected',
+        // Reported rather than assumed: a correction that did not persist is a
+        // correction that will be gone after the next restart.
+        persisted: forget ? null : !!(held && held.persisted),
+        answer: held ? held.answer : null,
+      }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: (e && e.message) || String(e) }));
     }
     return;
   }

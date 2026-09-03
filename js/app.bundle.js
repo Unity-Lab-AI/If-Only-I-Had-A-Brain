@@ -8138,7 +8138,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
    * category: motor events show channel distributions, arousal
    * events show arousal deltas, Ψ events show Ψ numbers, etc.
    */
-  // ⛔ MYSTPCT.1 — returns null for ABSENT, a number for MEASURED. It used to
+  // ⛔ ABSENT vs ZERO — returns null for ABSENT, a number for MEASURED. It used to
   // return 0 for both, so a cluster missing from the payload and a cluster
   // sitting genuinely silent rendered identically — and the reader had no way
   // to tell "not in this broadcast" from "not firing".
@@ -10111,7 +10111,7 @@ var MindSpaceGPU = class {
   morph(recA, recB, t) {
     return morphField(recA, recB, t);
   }
-  // DRAW-ENGINE (Gee 2026-07-15) — field C → her hand's strokes. The faithful
+  // DRAW ENGINE (operator, 2026-07-15) — field C → her hand's strokes. The faithful
   // trace (CDF 9/7 inverse → Sobel edges → edge-follow polylines → simplify →
   // field-colored strokes) that lets her draw the THING she looked at, not a
   // shape-per-word stamp. Cheap CPU (tiny plane) — always CPU, like describe().
@@ -10129,7 +10129,7 @@ var MindSpaceGPU = class {
   }
   // composeFields delegate REMOVED (2026-07-16) — the collage compositor is gone;
   // imagination now field-renders ONE unified looked-up scene (see chat.js).
-  // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
+  // ── DE-NOVO IMAGINATION — cortex state → field C, no camera/file ────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
   // This is imagination FROM her own mind: the thought literally becomes an internal image she
@@ -10283,14 +10283,25 @@ var MindSpaceGPU = class {
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-sketch" };
     return rec;
   }
-  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster stamp.
-  // Converts each character's 5x7 bitmap (FONT5X7 — single source of truth shared
-  // with the glyph raster) into line strokes for sketch(): horizontal + vertical
-  // runs of lit cells become line segments, isolated single cells become points.
-  // NO WOBBLE / NO JITTER (Gee 2026-07-15: "NO FUCKING WOBBLE ... wobble = dumbing
-  // her down"). Her handwriting is her CLEAN trained hand — crisp + legible, never
-  // an artificial tremor faking imperfect/child writing. j() is a hard 0 and
-  // opts.wobble is ignored by design (her line quality is her trained state, period).
+  // Letters as STROKES rather than a raster stamp. Converts each character's 5x7
+  // bitmap (FONT5X7 — single source of truth shared with the glyph raster) into
+  // line strokes for sketch(): horizontal + vertical runs of lit cells become
+  // line segments, isolated single cells become points.
+  //
+  // ⛔⛔ THESE ARE TYPESET LETTERFORMS, NOT HANDWRITING, AND THIS COMMENT USED TO
+  // SAY THE OPPOSITE. It read *"her own hand"* and *"her CLEAN trained hand"*,
+  // which asserted a trained capability that does not exist anywhere: the shapes
+  // come from a constant bitmap font, so they are **identical at every grade**
+  // and no part of the curriculum teaches a letter as a shape. Drawing them as
+  // strokes instead of blitting pixels changes how they RENDER, not who made them.
+  //
+  // NO WOBBLE / NO JITTER stays, and the reason survives the correction intact:
+  // an artificial tremor faking imperfect writing would be dumbing her down, and
+  // it would now also be dressing a caption up as a skill. `j()` is a hard 0 and
+  // `opts.wobble` is ignored by design.
+  //
+  // ⭐ The end state — letters acquired as schemas the way every other shape is —
+  // is filed as curriculum work. Until it ships, nothing here may call this hers.
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
     const t = String(text || "").toUpperCase().slice(0, 16);
@@ -16345,8 +16356,18 @@ var CLUSTER_EMIT_MIXIN = {
    *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets the operator
    *      overwrite a derived memory; the corrected value sticks (consistency).
    *
-   * Hebbian-commit + episodic-store of the derivation are follow-on wiring
-   * (need the episodic API); this is the derivation + gate + cache core.
+   * ⭐ THE EPISODIC COMMIT IS WIRED AS OF 2026-09-03 AND IS NOT OPTIONAL. This
+   * comment used to read *"follow-on wiring (need the episodic API)"* and the
+   * whole feature then sat with ZERO CALLERS for months — the deferral outlived
+   * its reason, because the episodic API exists.
+   *
+   * ⛔⛔ WHY IT CANNOT BE DEFERRED AGAIN: contract (1) is CONSISTENCY, and the
+   * cache backing it is an in-memory Map. Without a commit, every derived answer
+   * is re-derived from scratch on the next boot — so she would contradict
+   * herself across restarts **while the code claimed she could not**, which is
+   * worse than the feature being off. A caller passes `opts.commit`, and a call
+   * without one is answered but marked `persisted:false` so the gap is visible
+   * rather than assumed.
    *
    * @param {string} concept — the gap concept (e.g. a name/fact chat lacks)
    * @param {object} [opts] — passed to composeSentence (temperature etc.)
@@ -16377,9 +16398,55 @@ var CLUSTER_EMIT_MIXIN = {
     if (!answer) {
       return { derived: false, concept: key, reason: "no-derivation (honest gap)" };
     }
-    const result = { derived: true, concept: key, answer, hedge: true };
+    const result = { derived: true, concept: key, answer, hedge: true, persisted: false };
     this._derivedMemories.set(key, result);
+    if (typeof opts.commit === "function") {
+      try {
+        opts.commit(key, answer);
+        result.persisted = true;
+      } catch {
+        result.persisted = false;
+      }
+    }
     return result;
+  },
+  /**
+   * Rehydrate the derivation cache from episodic memory at boot. This is the
+   * other half of contract (1): the commit writes, and nothing read it back
+   * until this existed, so a restart silently reopened every gap.
+   *
+   * ⚠ ROWS ARE TRUSTED ONLY FOR SHAPE, NOT FOR CONTENT. Each is re-checked
+   * against the sensitive-topic gate on the way in — the boundary list can grow
+   * after an answer was already stored, and a memory laid down under an older
+   * gate must not walk back through a newer one.
+   *
+   * @param {Array<{concept:string, answer:string, corrected?:boolean}>} rows
+   * @returns {{loaded:number, refused:number}}
+   */
+  loadDerivedMemories(rows) {
+    if (!this._derivedMemories) this._derivedMemories = /* @__PURE__ */ new Map();
+    let loaded = 0, refused = 0;
+    for (const r of Array.isArray(rows) ? rows : []) {
+      const key = String(r && r.concept || "").toLowerCase().trim();
+      const answer = r && r.answer ? String(r.answer) : "";
+      if (!key || !answer) continue;
+      if (this._isSensitiveGapTopic(key)) {
+        refused++;
+        continue;
+      }
+      const held = this._derivedMemories.get(key);
+      if (held && held.corrected && !(r && r.corrected)) continue;
+      this._derivedMemories.set(key, {
+        derived: true,
+        concept: key,
+        answer,
+        hedge: !(r && r.corrected),
+        corrected: !!(r && r.corrected),
+        persisted: true
+      });
+      loaded++;
+    }
+    return { loaded, refused };
   },
   /**
    * I.21 sensitive-topic gate. Concepts matching the content-boundary
@@ -16411,7 +16478,7 @@ var CLUSTER_EMIT_MIXIN = {
    * the cached derivation so the corrected value sticks (consistency). Pass
    * value=null to forget a derivation (forces a fresh derive next time).
    */
-  correctDerivedMemory(concept, value) {
+  correctDerivedMemory(concept, value, opts = {}) {
     const key = String(concept || "").toLowerCase().trim();
     if (!key) return false;
     if (!this._derivedMemories) this._derivedMemories = /* @__PURE__ */ new Map();
@@ -16419,7 +16486,15 @@ var CLUSTER_EMIT_MIXIN = {
       this._derivedMemories.delete(key);
       return true;
     }
-    this._derivedMemories.set(key, { derived: true, concept: key, answer: String(value), hedge: false, corrected: true });
+    this._derivedMemories.set(key, { derived: true, concept: key, answer: String(value), hedge: false, corrected: true, persisted: false });
+    if (typeof opts.commit === "function") {
+      try {
+        opts.commit(key, String(value));
+        const h = this._derivedMemories.get(key);
+        if (h) h.persisted = true;
+      } catch {
+      }
+    }
     return true;
   },
   async generateSentenceAwait(intentSeed = null, opts = {}) {

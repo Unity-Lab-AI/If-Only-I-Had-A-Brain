@@ -1849,7 +1849,7 @@ export class Brain3D {
         };
         const clusterIdx = seedToCluster[payload?.seed] ?? 0;
         try {
-          // POPUPWRAP — the thought rides the COMMENTARY line, never the
+          // POPUP WRAPPING — the thought rides the COMMENTARY line, never the
           // label. The first line of a notification renders as
           // `.b3d-notif-label`, which is white-space:nowrap by design (it
           // is an event tag) — passing the whole sentence there produced a
@@ -2155,7 +2155,7 @@ export class Brain3D {
    * category: motor events show channel distributions, arousal
    * events show arousal deltas, Ψ events show Ψ numbers, etc.
    */
-  // ⛔ MYSTPCT.1 — returns null for ABSENT, a number for MEASURED. It used to
+  // ⛔ ABSENT vs ZERO — returns null for ABSENT, a number for MEASURED. It used to
   // return 0 for both, so a cluster missing from the payload and a cluster
   // sitting genuinely silent rendered identically — and the reader had no way
   // to tell "not in this broadcast" from "not firing".
@@ -2166,7 +2166,7 @@ export class Brain3D {
   }
 
   _eventReadout(event, state) {
-    // ⛔ MYSTPCT.1 (2026-08-26) — `(v*100).toFixed(0)` RENDERED THE ENTIRE
+    // ⛔ DOUBLE-SCALED PERCENTAGE (2026-08-26) — `(v*100).toFixed(0)` RENDERED THE ENTIRE
     // BRAIN AS 0%. Operator saw `mystery 0%` and asked if that was normal; the
     // mystery cluster was firing at `spikeCount 254,669 / size 55,173,073` =
     // **0.46%**, which zero decimal places prints as `0%`.
@@ -2244,7 +2244,7 @@ export class Brain3D {
     // Coherence
     if (t === 'coherence_lock' || t === 'coherence_scatter') {
       const c = state.coherence ?? state.oscillations?.coherence ?? 0;
-      // ⛔ BANDPOP.1 (2026-08-26) — THIS READ ONE OF THE TWO SHAPES AND
+      // ⛔ TWO PAYLOAD SHAPES (2026-08-26) — THIS READ ONE OF THE TWO AND
       // RENDERED THE OTHER AS ZERO. Operator saw `γ=0.000 α=0.000`; live on
       // the box `bandPower` was `{gamma: 0.4008, beta: 0.2422, alpha: 2.9006,
       // theta: 0.3829}` — populated and moving the whole time.

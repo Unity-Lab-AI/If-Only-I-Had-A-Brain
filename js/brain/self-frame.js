@@ -1,5 +1,5 @@
 /**
- * self-frame.js — SELFFRAME: every lesson becomes something UNITY DID, not something she was told.
+ * self-frame.js — every lesson becomes something UNITY DID, not something she was told.
  *
  * ⛔ THE WHOLE POINT: every lesson is reoriented into the FIRST PERSON — "I am
  * reading", "I am learning maths", "I add 1 and 1 to equal 2", "my name is Unity
@@ -439,7 +439,7 @@ export function selfPronounLessons() {
 }
 
 /**
- * OTHERMINDS (2026-08-29) — perspective-contrast grounding: the operator's ask,
+ * PERSPECTIVE-CONTRAST GROUNDING (2026-08-29) — the operator's ask,
  * verbatim in the board filing — her "self first person reality of humanities
  * self centered perceptions on all things in human existance while abstractly
  * understanded the non self material current lived world and phyical universe
