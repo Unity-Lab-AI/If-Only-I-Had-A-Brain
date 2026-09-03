@@ -28,7 +28,7 @@ export function isTrusted() { return TRUSTED; }
 function b64bytes(s) { const bin = atob(s), n = bin.length, u = new Uint8Array(n); for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i); return u; }
 function b64u32(s) { const b = b64bytes(s); return new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2); }
 function b64i16(s) { const b = b64bytes(s); return new Int16Array(b.buffer, b.byteOffset, b.byteLength >> 1); }
-// BLOBSTORE — channel accessors: the server's resident store holds channel
+// CHANNEL ACCESSORS — the server's resident store holds channel
 // payloads as BINARY views (val_bin/pos_bin, Buffers = Uint8Array subclass)
 // instead of base64 strings; fresh recs still carry b64. ONE choke point
 // reads either form so every consumer above stays payload-agnostic.

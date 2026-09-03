@@ -75,7 +75,7 @@ const UNIT = process.env.UAL_BRAIN_UNIT || 'unity-brain';
 const HELPER = process.env.UAL_CTL_HELPER
   || path.join(__dirname, '..', 'deploy', 'brain-ctl-helper.sh');
 
-// ── LOCALCTL — the same control plane, on a machine with no systemd ──────────
+// ── LOCAL MODE — the same control plane, on a machine with no systemd ──────────
 //
 // This service was written for the box: every verb ends in `systemctl` via the
 // root helper. Locally there is no systemd, no sudo and no unit — so the
@@ -229,7 +229,7 @@ const ACTIONS = Object.freeze({
 function runHelper(action) {
   const argv = ACTIONS[action];
   if (!argv) return Promise.reject(new Error(`refusing unknown action: ${action}`));
-  // LOCALCTL — same closed verb set, different mechanism. The allowlist check
+  // LOCAL MODE — same closed verb set, different mechanism. The allowlist check
   // above still runs first, so local mode cannot execute anything the box
   // could not; it only substitutes the launcher for systemctl.
   if (LOCAL_MODE) {
@@ -260,7 +260,7 @@ function runHelper(action) {
 }
 
 function systemctlShow(unit) {
-  // LOCALCTL — there is no unit. Synthesize the same SHAPE the callers expect
+  // LOCAL MODE — there is no unit. Synthesize the same SHAPE the callers expect
   // from what IS knowable locally: whether the brain's port is answering.
   // ⚠ Fields that genuinely cannot be known locally are reported as such
   // rather than guessed — a fabricated `ActiveState: active` would be exactly
@@ -326,7 +326,7 @@ function probeBrainPort(timeoutMs = 2000) {
 }
 
 function journal(lines = 60) {
-  // LOCALCTL — no journald. The brain's own console ring is reachable over its
+  // LOCAL MODE — no journald. The brain's own console ring is reachable over its
   // HTTP tunnel, but that requires the brain to be UP, and the times you most
   // want logs are the times it is not. So: say plainly that there is no local
   // journal and point at where the output actually goes (the launcher window),
@@ -727,7 +727,7 @@ async function doUpdate(keep, confirmToken) {
     };
   }
 
-  // ── LOCALCTL — the local equivalent of self-update.sh ───────────────────
+  // ── LOCAL MODE — the local equivalent of self-update.sh ───────────────────
   // The box overlays a git archive and restarts the unit. Locally the repo IS
   // the source, so "update" means: pull, then relaunch through the launcher
   // the operator actually uses. The WIPE interlock above still applies — local
@@ -882,7 +882,7 @@ const server = http.createServer(async (req, res) => {
   const url = (req.url || '/').split('?')[0].replace(/^\/ctl(?=\/|$)/, '') || '/';
   const method = req.method || 'GET';
 
-  // ── CTLCORS — the reason every local button was dead ────────────────────
+  // ── CROSS-ORIGIN — the reason every local button was dead ───────────────
   //
   // On the box, nginx proxies `/ctl/` on the SAME ORIGIN as the dashboard, so
   // the browser never does a cross-origin check and none of this is needed.

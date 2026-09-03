@@ -716,6 +716,44 @@ const SERVER_MEMORY_MIXIN = {
     return this._stmtRecallByUser.all(userId, limit);
   },
 
+  /**
+   * Every derived-memory episode, oldest first, so the cluster's derivation
+   * cache can be rebuilt at boot.
+   *
+   * ⛔⛔ WITHOUT THIS THE CONSISTENCY CONTRACT IS A CLAIM, NOT A PROPERTY.
+   * `deriveMemoryGap` caches an answer so the same gap never returns a different
+   * one — but the cache is an in-memory Map, so before this existed every
+   * restart silently reopened every gap and she could contradict yesterday's
+   * answer while the code asserted she could not.
+   *
+   * ⚠ OLDEST FIRST IS LOAD-BEARING. The loader lets a later row supersede an
+   * earlier one for the same concept, which is only the right precedence if they
+   * arrive in the order they happened. `type` is indexed (`idx_episodes_type`),
+   * so this is a cheap read at boot rather than a scan.
+   */
+  recallDerivedMemories(limit = 2000) {
+    try {
+      // ⚠ `_episodicDB`, with the underscore. Reading `this.episodicDB` here
+      // returns undefined, the guard takes the early exit, and the loader gets
+      // an empty array FOREVER — a durable cache that silently never restores,
+      // which looks exactly like nobody having derived anything yet.
+      if (!this._episodicDB) return [];
+      const rows = this._episodicDB.prepare(
+        'SELECT input_text, response_text, type FROM episodes WHERE type IN (?, ?) ORDER BY id ASC LIMIT ?',
+      ).all('derived-memory', 'derived-memory-corrected', limit);
+      return rows.map((r) => ({
+        concept: r.input_text,
+        answer: r.response_text,
+        corrected: r.type === 'derived-memory-corrected',
+      }));
+    } catch {
+      // A missing table or an older schema is not a fault worth failing boot
+      // over — she simply starts with an empty derivation cache, which is the
+      // pre-existing behaviour rather than a regression.
+      return [];
+    }
+  },
+
   // ─── ENDO-LIFE.1 — encoding the chemistry a memory was laid down under ───
   //
   // ⭐ Why this belongs on the episode and not in a separate table: adrenergic

@@ -37,6 +37,65 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `REGFIND.9` — THE DERIVATION LANE HAS CALLERS FOR THE FIRST TIME, AND THE CONTRACT IT ADVERTISED IS NOW TRUE
+
+Gee's choice, 2026-09-03: **"Wire it, with the episodic commit."**
+
+**WHAT WAS WRONG.** `deriveMemoryGap` interpolates an answer from adjacent trained weights when a concept falls outside her training, hedged so it reads as thinking aloud. It shipped with three contracts, all implemented, and **`deriveMemoryGap` had one hit in the entire repository — its own declaration.** So on any untrained concept she went blank: **no path between "trained answer" and "nothing"**, which is not how a mind behaves.
+
+**WHERE IT WIRES, AND THE SITE IS THE WHOLE ARGUMENT.** The `motor_unstable` branch of the reply path — literally *she has training, and this input produced no stable sequence*. ⛔ **The `pre_training` branch deliberately does NOT derive:** interpolating against adjacent trained weights requires adjacent trained weights, and on a zero-training brain it would be inventing, which is the one thing this lane must never do.
+
+**⛔⛔ THE COMMIT IS THE FEATURE, NOT A FOLLOW-UP.** Contract (1) is CONSISTENCY, and the cache behind it is an in-memory `Map`. The original comment said the episodic store was *"follow-on wiring (need the episodic API)"* — **the API arrived, the note did not, and the whole feature sat dead for months.** Without the commit she would re-derive after every restart and **contradict herself while the code asserted she could not**, which is worse than the feature being off. So: derivation commits an episode, **and boot rehydrates the cache from those episodes** — the read-back half that had never existed.
+
+**⛔ AND THE HARNESS FOUND A HOLE THE WIRING HAD LEFT: nothing wrote a corrected row.** The read-back query supported `derived-memory-corrected`, and `correctDerivedMemory` only touched the Map — so an operator correction survived until the next restart and then **the wrong answer came back**, having visibly "taken". ⭐ **A reader for a record nobody creates is a dead branch wearing the look of a feature.** Corrections commit now, and `POST /derived-memory` (loopback-gated) makes contract (3) reachable at all for the first time; omitting `value` FORGETS instead of overwriting, so "derive it again" is its own outcome.
+
+**MEASURED — 17/17 on the production mixins plus the real SQL against a real sqlite file:**
+
+```
+  a gap derives and is hedged                      · the derivation COMMITS
+  same gap → same answer in-process                · a cached hit does not re-derive (1x)
+  sensitive topic REFUSES                          · a refusal never reaches the composer (0x)
+  no derivation = honest gap, not invention        · no commit = answered but persisted:false
+  rehydrate loads 3, REFUSES 1 on the way in       · a correction outranks a later plain derive
+  a corrected memory is not hedged                 · a refused row never became a memory
+  SQL returns only derivation rows, OLDEST FIRST   · the corrected row is flagged
+  ⭐ after a RESTART the same gap gives the same answer
+  ⭐ reading the wrong handle yields nothing        (the bug below, pinned as a check)
+```
+
+⚠ **OWNED — I WROTE `this.episodicDB` AND THE HANDLE IS `this._episodicDB`.** The guard would have taken its early exit, the loader would have received an empty array **forever**, and a durable cache that silently never restores **looks exactly like nobody having derived anything yet.** Caught by grepping the handle rather than trusting the name, and the harness now pins it as a check.
+
+⚠ **THE SENSITIVE-TOPIC GATE IS RE-APPLIED ON THE WAY IN, not only on the way out.** The boundary list can grow after an answer was stored, and a memory laid down under an older gate must not walk back through a newer one.
+
+⚠ **NOT PROVEN ON A LIVE BRAIN.** Every method is exercised on the real mixins and the real SQL, but the reply-path branch itself needs a running walk — **the press is the proof**, and the console prints `derived-gap (concept=… persisted=…)` for exactly that reason.
+
+⚠ **`_SENSITIVE_GAP_TERMS` IS STILL A HAND-WRITTEN LIST**, which the no-word-lists law would normally refuse. Left as-is deliberately: it is a **content boundary**, not a classifier, and the exemption for content tables covers it. ⛔ But `'first time'` is broad enough to refuse innocent gaps, and that is a real cost — recorded rather than quietly accepted.
+
+---
+
+## 2026-09-03 — `SPELLTRUTH.4` — THE CODE STOPS CLAIMING A CAPABILITY SHE DOES NOT HAVE, AND THE PUBLIC PAGE STOPS FIRST
+
+Gee's answer to the three-way, verbatim: **"1 & 3"** — the honesty fix now, the curriculum-scale fix as the end state. ⛔ **Option ② was NOT chosen: there is to be no vocabulary gate on the caption.**
+
+**Six sites across four trees, and they were not all the same size of wrong.**
+
+| where | said | now |
+|---|---|---|
+| `server/brain-server/chat.js` ×2 | *"in her own CLEAN trained hand"* · *"her existing trained glyphs"* | caption, from a fixed 5x7 bitmap font |
+| `js/brain/mindspace/gpu.js` ×2 (+ the rebuilt bundle) | *"letters as PENCIL STROKES (her own hand)"* · *"clean trained hand"* | typeset letterforms; drawing them as strokes changes how they RENDER, not who made them |
+| `docs/SENSORY.md` ×2 | *"her trained glyph hand"* · *"wobbly kid handwriting"* | typeset caption; **both errors kept in place, struck rather than deleted** |
+| ⭐ `html/unity-guide.html` | *"signs it with the word in her own trained handwriting"* | *"the caption is typeset, not handwritten … **She has not been taught to write.**"* |
+
+⭐⭐ **THE PUBLIC PAGE WAS THE ONE THAT MATTERED.** Everything else was a comment a developer reads; that sentence was the project telling readers she could do something she cannot. It now says the drawing is genuinely hers and **the label under it is a label**, and names the work still ahead rather than leaving the gap implied.
+
+⛔ **`SENSORY.md` WAS WRONG TWICE OVER, WHICH IS WHY IT IS CORRECTED IN PLACE RATHER THAN REWRITTEN.** *"jittered pencil strokes so her writing is wobbly kid handwriting"* — ① the jitter had **already been removed** as dumbing-down (`j()` is a hard 0 and `opts.wobble` is ignored), and ② it was never handwriting. **A doc that is stale AND wrong in different directions is the one a reader trusts hardest**, because the specific detail reads as evidence someone checked.
+
+⚠ **THE `NO WOBBLE` RULE SURVIVES THE CORRECTION AND ITS REASON GREW.** It stays banned because faking an unsteady hand is dumbing her down — and now also because it would dress a caption up as a skill.
+
+⚠ **OWNED — MY TAG-BALANCE CHECK ON THE PUBLIC PAGE LIED, THE FOURTH INSTRUMENT TO DO SO TODAY.** It reported `strong 187/188 UNBALANCED` and pointed at a real line. The regex was `/<strong>/` and the page uses `<strong style="…">`, so every attributed tag counted as a close with no open. Re-checked allowing attributes: **188/188, and every other tag balanced too.** The page was fine; the checker was not.
+
+---
+
 ## 2026-09-03 — `CORPUSBUFFER` — THE BOOKS ARRIVE WHILE SHE TRAINS, AND THE BOX NEVER HOLDS TWO CORPORA
 
 Gee (verbatim):

@@ -137,6 +137,27 @@ for (const f of files) {
   lines.forEach((l, i) => {
     const c = l.trim();
     if (!(c.startsWith('//') || c.startsWith('*') || c.startsWith('/*'))) return;
+    // ⛔⛔ AN EDUCATION-STANDARD CODE IS DOMAIN CONTENT, NOT A TICKET, AND THIS
+    // DETECTOR CANNOT TELL THEM APART WITHOUT BEING TOLD. `K.NBT.1` is the
+    // Common Core code for kindergarten base-ten, and `NBT` is ALSO a ticket
+    // stem in this project — so a curriculum file naming the standard it
+    // implements was being reported as a LAW violation, and the only way to
+    // "fix" it would have been to delete the one identifier that says which
+    // standard the code satisfies.
+    //
+    // The shape is what separates them: a standard is anchored to a GRADE
+    // (`K.` or a digit) or is a known strand prefix, and it is exactly the
+    // reference a curriculum comment is supposed to carry.
+    //   Common Core maths  K.NBT.1 · 1.OA.3 · 5.NF.2
+    //   Common Core ELA    RF.K.1 · L.1.2 · RL.3.4 · W.2.1 · SL.K.3
+    //   NGSS science       K-LS1-1 · 3-PS2-1 · MS-ESS1-4
+    // ⚠ Deliberately narrow. It requires the grade anchor, so a bare ticket
+    // like `NBT.1` is still caught — the exemption is for the standard's SHAPE,
+    // never for the stem, and widening it would blind the detector to a whole
+    // namespace.
+    if (/\b(?:[K1-9]|1[0-2])\.[A-Z]{1,4}\.[0-9]+[a-z]?\b/.test(c)
+      || /\b(?:RF|RL|RI|SL|W|L)\.[K0-9]+\.[0-9]+[a-z]?\b/.test(c)
+      || /\b(?:K|[1-5]|MS|HS)-[A-Z]{2,4}[0-9]?-[0-9]+\b/.test(c)) return;
     if (RE.test(c)) { t++; hits.push([i + 1, l]); return; }
     if (RISKY.test(c)) { r++; hits.push([i + 1, l]); return; }
     if (/\bGee\b/.test(c)) { q++; hits.push([i + 1, l]); }
