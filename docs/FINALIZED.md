@@ -5,6 +5,134 @@
 
 ---
 
+## 2026-09-03 — `FIELDSIZE.3` — GZIP FOR NEW FIELDS, AND THE DELIVERED HALF WAS UN-APPROVED BY A MEASUREMENT AFTER IT HAD ALREADY BEEN APPROVED
+
+Gee, verbatim, and this question is the reason half of this row did not ship:
+
+> *"and make sure we dont have like 50 histories or something all caroing 150G each or caches and shit like that on forgjo for these figure waveltes saved there"*
+
+**THE ANSWER IS GOOD, AND IT WAS CHECKED RATHER THAN ASSUMED.**
+
+```
+  BrainWaves          1 branch · 0 tags · 41 commits
+  LFS objects  HEAD   26,360
+  LFS objects  ALL    26,361      <- exactly ONE orphan
+  LFS bytes    ALL    114.1 GB    <- identical to HEAD
+```
+
+**No duplicate histories, no stale caches, no second copy of anything.** LFS is content-addressed, so re-committing identical bytes can never make a second object — which is precisely why the repo has stayed at one copy across 41 commits of batch pushes.
+
+⛔⛔ **AND THAT IS WHY THE APPROVED PLAN WAS CUT IN HALF.** Gee had chosen *"gzip everything, new and delivered"* on a measurement showing 51% on a real field. Asking his duplication question against the actual repo produced the fact that had been missing: **recompressing 26,359 delivered fields creates 26,359 BRAND-NEW LFS objects while the originals stay referenced in history.** The set would have gone **114 GB → ~171 GB**, up rather than down, and only a Forgejo admin LFS garbage-collect on the box would ever have reclaimed it — plus a 114 GB download here to do the recompressing, which is the download he had just said he would not wait for. **Re-asked with the number, and the answer became new-fields-only.**
+
+⭐ **Gzipping NEW fields is free by the same property that made the delivered half expensive:** those objects never existed, so nothing is orphaned.
+
+**WHAT SHIPPED**
+
+- Producer writes `*.field.json.gz`. The reader accepts **both encodings and prefers `.gz`** — it has to, because any resumed pass straddles the change and a reader that knew one name would report the other as `miss` and silently re-transform live.
+- **`truncated` is its own counter, separate from `malformed`.** A `.gz` that will not inflate means the SYNC was interrupted; a field that inflates and carries no channels means the FIELD is bad. **Same symptom, different repair, so they are never summed.**
+- Resume, `delivered.txt`'s regex, the index row and the package upload all follow the new name, and **both encodings count as present** — otherwise a resumed pass re-fetches and re-transforms all 26,359.
+- **Verified through the production reader:** uncompressed HIT 9,150,245 B · gzipped HIT 4,849,933 B (**47%**) · `rec` **byte-identical** · corrupt archive refused and counted as `truncated`.
+
+⚠ **OWNED: the local migration converted 121 TRACKED fields as well as the new ones**, which is the exact orphaning this row had just refused to do at scale. Restored to their delivered `.json` form and verified at **0 modified tracked files** before anything was committed.
+
+---
+
+## 2026-09-03 — `FIELDSIZE.2` — THE DATA REPO'S 26,000 PENDING DELETIONS ARE CORRECT, AND ONE ORDINARY COMMIT WOULD HAVE ACTED ON THEM
+
+The producer writes a field, uploads it, and deletes the local copy immediately — which is exactly what Gee asked for: *"only ever have one copy on the box and one in forgejo"*. The consequence nobody had written down is that **`git status` in that repository reports ~26,000 pending `D` entries**, because the tree tracks 26,359 fields and the working copy holds a few hundred.
+
+⛔ **`git commit -a` there would delete 114 GB of wavelet fields and look like a completely ordinary commit while doing it.** Nothing prevented that, and the deletions look so much like a mistake that the natural reflex — "clean this up" — is the destructive move.
+
+**Closed as a banner at the top of that repository's own `README.md`**, which is the one place a person is standing when they are about to run the dangerous command. It states that the deletions are not real, that nothing is lost, that `git checkout -- fields/` is a 114 GB download and almost never wanted, and the rule: **stage paths explicitly, never `-a`, never `git add -A` at the root.**
+
+⚠ **A DOC AND NOT A HOOK, WHICH IS THE HONEST SCOPE.** That repository is not this project's tree and nothing here executes inside it, so there is no hook point that would fire. **The failure mode is a human reflex, so the fix belongs where the human is looking** — and a guard that cannot run is worse than a sentence that gets read.
+
+---
+
+## 2026-09-03 — `FIELDPULL` — THE 114 GB DOWNLOAD WAS NEVER REQUIRED, AND TWO BUGS STOOD BETWEEN THAT FACT AND USING IT
+
+Gee: *"im not waiting 72 hrs or what ever for shit to download so what can be done to not download so much and finish everything up"*.
+
+⭐⭐ **THE FIELDS ARE NOT A PREREQUISITE FOR THE PRESS AND NEVER WERE**, and `deploy/self-update.sh` says so in its own words — the books are the fatal gate (*"the half the walk cannot run without"*), the fields are marked **Non-fatal** because *"live transform covers the rest."* Books are ~400 MB. Fields are ~114 GB. **They had one switch between them.**
+
+- ⛔ **`UAL_SKIP_FIELDS` IS MIS-NAMED AND THE NAME IS THE TRAP.** It reads as "skip the fields" and it gates the **entire data sync, books included** — so a press setting it to dodge a 114 GB download would arrive with no books and land on the books gate. Kept for compatibility, and it now says what it really does in its own log line.
+- ⭐ **`UAL_FIELDS=0` is the honest lever:** books yes, field blobs no. It restricts **the LFS fetch itself** (`git lfs pull -I 'corpora/**'`), because the clone is `--filter=blob:none` and therefore cheap whatever the repo holds — **it is the LFS pull that is the 114 GB**, so skipping only the rsync afterwards would still have paid for every byte.
+- ⛔ **AND THE SKIP PATH DOES NOT RSYNC, WHICH IS THE WHOLE SAFETY OF IT.** With the blobs unfetched the source tree is pointers or absent, and the existing `rsync -a --delete` would have **deleted every field already on the box** — turning "skip a download" into "destroy the store."
+- ⚠ **A THIRD BUG, FOUND WHILE EDITING THE SAME BLOCK:** the post-sync count globs `*.field.json`, which after the gzip change matches nothing. **A completely healthy sync would have reported `0 wavelet fields`** — an instrument announcing an outage that is not happening. Both encodings are counted now.
+
+---
+
+## 2026-09-03 — `SPELLTRUTH.3` — THE REFERENCE IMAGES CARRY TEXT-SHAPED MARKS AND NOT ONE READABLE WORD, AND NOTHING COULD READ ONE IF THEY DID
+
+Gee chose this before choosing a fix: **"Measure producer ③ first, then decide."** Three questions were asked separately, because they are not the same question and only one of them was ever in doubt.
+
+**① DO THE LOOKED-UP REFERENCES CONTAIN LEGIBLE WORDS? — NO. NOT ONE.**
+
+Five concepts were chosen precisely because they are the highest-text-likelihood subjects available — a banknote, a shop interior, a map, a clock face, an institution — run through the **production** `_referenceImagePrompt` on the real mixin, the production URL shape, at the production 512px, on a pinned seed. Every one produced **pseudo-text**: strokes at the right scale, spacing and rhythm to read as writing from across a room, resolving to nothing at all up close. The banknote is dense with lettering-shaped marks and spells nothing. The shop's package labels are colour blurs. The map's cartouches are squiggles. The clock's numerals are decorative strokes.
+
+⭐ **This is a property of the generator, not luck.** Diffusion models render the TEXTURE of text without the glyphs, and the corpus of subjects most likely to defeat that is exactly the five that were tried.
+
+**② DOES ANY OF IT SURVIVE THE TRANSFORM INTO THE BANKED FIELD? — YES, ESSENTIALLY PERFECTLY, AND THAT MATTERS EVEN THOUGH ① CAME BACK CLEAN.**
+
+Each reference was pushed through the real `equationalizeImageData` and reconstructed with the real `reconstructImageData`. **458,616 → 512,185 coefficients kept** against a 512x512x3 budget, and the reconstruction is visually indistinguishable from the source. ⛔ **The transform is NOT a filter.** Anything legible that ever DID arrive would land in the field intact, so ① is the only thing standing between a generated word and her visual memory — and ① is a property of a third-party model that can change under us without warning.
+
+**③ DOES ANYTHING DOWNSTREAM READ THEM? — NO. THERE IS NO SUCH CODE.**
+
+No OCR, no glyph decoder, no character classifier, no text-recognition path of any kind exists in `server/` or `js/brain/`. A word baked into a reference cannot become vocabulary because **nothing in the brain can turn pixels into letters.**
+
+**⭐⭐ WHAT THIS DOES TO THE CHOICE IN `SPELLTRUTH.2`, WHICH IS THE POINT OF HAVING MEASURED IT.**
+
+The row's own warning was: *"if generated images carry words, gating her caption fixes half the picture and the other half keeps arriving from outside."* **That is now disproven.** No words arrive from outside, and nothing could read them if they did. **The caption is the ONLY source of correctly-spelled text anywhere in her mind's eye** — so option ② is a complete fix rather than half of one, and option ① is honest rather than a fig leaf over a second leak. **Nothing about the option set is blocked on evidence any more.**
+
+⚠ **THE LIMITS OF THIS MEASUREMENT, STATED SO NOBODY OVERREADS IT.** Five concepts, one pinned seed each. It is strong evidence about a *generator's behaviour* and it is **not** a guarantee about every image she will ever fetch. ⭐ The durable protection is ③, not ①: **the absence of a text decoder is structural**, and it holds no matter what the generator does next.
+
+⚠ **A SIDE-FINDING, NOT ACTED ON:** the prompt tail is `"<word>, color photograph of the object, …"`, and for a place-or-institution noun that framing misses — the institution word returned an abstract vessel, semantically nothing. The tail was rewritten to `of the object` to stop the previous *portrait* bleed that turned every subject into a person, so this is the same defect swung the other way. **Filed as an observation on the record; the prompt is not being changed on one word.**
+
+---
+
+## 2026-09-03 — `FIELDSIZE.1` — THE FIELD RUN WAS 8.2x OVERSIZED AND NO INSTRUMENT HAD EVER MEASURED A FIELD
+
+Gee, verbatim, on being shown the 537 GB projection:
+
+> *"we were oinly downloading 100G of coeffients not 500G we can never store two copies of that one in forgejo and once when update freshwalk pulls the forgjo"*
+
+**The comparison IS the finding, and it is the one nobody had ever made:**
+
+```
+  already delivered   26,359 fields   114.1 GB   mean  4.43 MB     <- "100G"
+  the stopped run        503 fields    17.9 GB   mean 36.40 MB     <- 8.2x
+  largest single field                           511.8 MB
+  projected onto 14,731                ~537 GB                     <- "500G"
+
+  AFTER THE FIX, measured on a 53-field even spread
+                          53 fields     0.24 GB   mean  4.69 MB     <- parity, 6% apart
+  25 of those 53 were larger than the bound and were bounded
+```
+
+⛔⛔ **THE CAUSE WAS IN THE URL, IN PLAIN TEXT, AND SAID `utm_content=original`.** The corpus records each figure's ORIGINAL address — **33,041 of its 59,473 citations are `upload.wikimedia` originals and exactly 11 are thumbnails** — and the raster path handed that straight to `grab()` with no width bound anywhere. Measured on the stopped run's output: renditions of **8880x5520**, **7376x7401**, **5390x3096**, **4961x3508**. The 7376x7401 is 54.6 megapixels and produced the 511.8 MB field by itself.
+
+⭐⭐ **THE 1600px CONTRACT ALREADY EXISTED AND ONLY VECTORS WERE EVER HELD TO IT.** `wikiRendition()` asks the MediaWiki API for `iiurlwidth=1600`, and its own comment explains that width as measured rather than stylistic — but it was reached **only when a direct decode had already failed**, which only ever happens to an SVG. **Every photograph, scan and plate in the corpus bypassed the bound the file was written to enforce.**
+
+⭐ **WHY THE FIRST 26,359 LOOKED FINE — AND THIS IS THE GENERAL LESSON.** They are the figures whose recorded URL already pointed somewhere sane. **The 14,731 left over are the residue**, so the leftovers are systematically the giant un-thumbnailable plates, and the regression could only ever become visible on the retry run. **A mean taken over the easy half of a corpus is not a mean.**
+
+⛔⛔ **AND THE REAL DEFECT IS THAT NOTHING EVER COMPARED A FIELD TO A FIELD.** The producer reported coefficients and megabytes-so-far and **never once measured a written field against the ones already banked** — so a pass running at 8.2x the corpus norm read exactly like a healthy pass for 300 figures. The progress line now carries `mean X MB/field vs 4.43 banked`, a bounded-count, and a one-shot divergence warn that names the projected total in GB. **A mean is only a fact beside the mean it has to match.**
+
+**WHAT SHIPPED**
+
+- **The rendition is asked for FIRST, before a byte of image is downloaded** — so a 54-megapixel original is never pulled down at all. ⭐ This is a bandwidth fix as much as a size fix: **throughput went 0.13/s → 1.11/s, and the ETA 32h → ~3.6h.** The API is on `<wiki>/w/api.php`, a different host from `upload.wikimedia.org`, so it does not spend the rate budget the image fetches are already competing for.
+- **A rendition that will not serve no longer condemns a figure whose own address works** — the recorded URL is tried second and the abandoned reason travels into the failure ledger.
+- **A post-decode backstop bound**, because **26,421 of the 59,473 citations are not on Wikimedia at all** and have no rendition API to ask. Without it one un-thumbnailable plate is still free to write a half-gigabyte field.
+- **479 oversized untracked fields deleted, 23.80 GB reclaimed**, selected by **the field's own recorded dimensions rather than a timestamp guess**, and separated from the 18 oversized fields that are already committed to LFS and are grandfathered.
+- **Three stale claims corrected in the same commit** — the file header, the DONE summary and `index.json`'s own `note` all said *"FULL resolution"*, which the bound makes false. **A summary that overstates what was analysed is the same defect class as the mean that was never taken.**
+
+⛔ **WHAT WAS EXPLICITLY NOT DONE: dropping below the corpus norm.** `visual-memory.js` carries a measured argument against pre-transform downsampling — at 320px a real 1600x1181 figure keeps **27,204 coefficients against 184,981**, because the fine subbands that carry a one-pixel axis-label stroke are never created. **This restores the norm; it does not go under it.** The 8880px renditions were not a better percept and were not even reproducible — they were whichever address the ingest happened to record.
+
+⚠ **THE HONEST TOTAL IS NOT 100 GB AND IS NOT CLAIMED TO BE.** At the measured 4.69 MB the remaining 14,467 come to **~68 GB**, so the completed set lands near **182 GB — one copy in Forgejo, one on the box.** That is **3.0x smaller than the path the run was on** and still 1.6x the old baseline, **because the figure count itself is growing 26,359 → 41,765 (+58%)**. If 182 GB is too much the next lever is encoding, not resolution: a real field gzips **10.95 MB → 5.36 MB (51%)** with byte-identical coefficients.
+
+⚠ **OWNED: `FIELD_MAXSIDE` WAS DECLARED INSIDE THE WORKER BRANCH** and the main thread's progress line reads it, so the first real run died on `FIELD_MAXSIDE is not defined`. **This file's own header already records that trap** — it is its own worker entry point, so anything both halves use must resolve in both — and `node --check` passed both times. **Only running it found it, twice now.**
+
+---
+
 ## 2026-09-03 — `CURVEBUILD.6` — THE TOPIC LISTS WERE THE BINDING CONSTRAINT, AND EXPANDING THEM CLEARED THE ENTIRE EARLY BAND
 
 The previous pass proved the constraint by experiment rather than argument: re-fetching the SAME topic list returned the same articles (**sentences −12**) while only the picture count moved (**+3,513 figures**). So this pass added TOPICS, not depth.

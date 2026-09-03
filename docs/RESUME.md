@@ -1,6 +1,63 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-03 EVENING (LATEST — PICK UP HERE) ONE DATA REPO, THE BOARD DOWN TO 48, AND TWO JOBS STILL RUNNING
+> ## ⭐⭐⭐ 2026-09-03 NIGHT (LATEST — PICK UP HERE) THE 114 GB DOWNLOAD WAS NEVER REQUIRED, AND THE PRESS IS GATED ON CURRICULUM, NOT DATA
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ NOTHING IS RUNNING. Both jobs from the previous block are finished or deliberately stopped.
+>
+> ### ⛔ STATE
+> ```
+> branch    feature/fieldsize-0903 — NOT cascaded
+> board     25 open (2 of them are decisions sitting with Gee, not work)
+> coverage  213 cells · 120 OK · 73 THIN · 0 EMPTY · 57,007,198 words · 6,937 entries
+> figures   58,570 reachable · 0 cells with zero figures
+> fields    26,359 delivered · 114.1 GB in Forgejo · ~1,300 new ones on disk, gzipped, unpushed
+> ```
+>
+> ### ⭐⭐ THE HEADLINE, AND IT CHANGES WHAT "READY TO PRESS" MEANS
+>
+> Gee: *"im not waiting 72 hrs or what ever for shit to download"*. **He does not have to.** `deploy/self-update.sh` says it in its own words — the **books are the fatal gate** (~400 MB, the walk cannot run without them), the **fields are Non-fatal** because *"live transform covers the rest"*. Two bugs stood between that fact and using it:
+> - ⛔ **`UAL_SKIP_FIELDS` is MIS-NAMED and gates the WHOLE sync, books included** — a press using it to dodge the download would have arrived with no books.
+> - ⭐ **`UAL_FIELDS=0` is the new honest lever:** books yes, field blobs no. It restricts **the LFS fetch** (`git lfs pull -I 'corpora/**'`), because the clone is already `--filter=blob:none` — **it is the LFS pull that is the 114 GB**, so skipping only the rsync would still have paid for every byte. And the skip path does **not** rsync: with blobs unfetched, the existing `--delete` mirror would have **deleted every field already on the box**.
+> - ⚠ A third bug found in the same block: the post-sync count globbed `*.field.json`, so after the gzip change **a healthy sync would have reported `0 wavelet fields`**.
+>
+> ### ⛔⛔ THE FIELD RUN WAS 8.2x OVERSIZED AND NO INSTRUMENT HAD EVER MEASURED A FIELD
+> ```
+>   delivered   26,359 fields  114.1 GB  mean  4.43 MB
+>   the run        503 fields   17.9 GB  mean 36.40 MB   <- 8.2x, one field at 511.8 MB
+>   projected                  ~537 GB
+> ```
+> The cause was in the URL and said `utm_content=original`. **33,041 of the corpus's 59,473 citations are Wikimedia ORIGINALS and exactly 11 are thumbnails**, and the raster path had no width bound at all — 8880x5520, 7376x7401, 5390x3096. The 1600px contract existed in `wikiRendition()` but was reached **only after a decode failed**, which only happens to vectors. **Now asked for BEFORE the download** (0.13/s → 1.11/s), with a post-decode backstop for the 26,421 citations on hosts with no rendition API. **479 oversized fields deleted, 23.80 GB reclaimed**, chosen by their own recorded dimensions.
+> ⭐ **The real defect: nothing ever compared a field to a field.** The progress line now carries `mean X MB/field vs 4.43 banked` — **and that instrument caught my own projection being wrong three hours after I built it** (I said 182 GB off a 53-field sample; the true mean settled near 9 MB).
+>
+> ### ⭐ FORGEJO IS CLEAN — CHECKED, NOT ASSUMED
+> Gee: *"make sure we dont have like 50 histories or something all caroing 150G each"*. **1 branch · 0 tags · 41 commits · 114.1 GB across ALL history, identical to HEAD, one orphan object.** LFS is content-addressed, so re-committing identical bytes never duplicates.
+> ⛔⛔ **AND THAT MEASUREMENT UN-APPROVED HALF AN ALREADY-APPROVED PLAN.** Gee had chosen *"gzip everything, new and delivered"*. Recompressing the delivered set would create **26,359 brand-new LFS objects while the originals stayed referenced** — **114 → ~171 GB, up not down**, reclaimable only by an admin LFS GC. **Re-asked with the number; the answer became new-fields-only.** Gzip for new fields is free because those objects never existed.
+>
+> ### ⛔ WHAT ACTUALLY GATES THE PRESS: CURRICULUM, BY GEE'S OWN LAW
+> The fresh walk is last because anything that changes **what she is taught** must land first. **7 rows:** `PHONBANK.1` (201 of 213 cells have no exam bank) · `CURVEDEPTH.10` · `CURVEDEPTH.12`/`.13` · `CURVEBUILD.3` · `MATHGAP.1` · `NOFALLBACK.5`.
+> ⚠ **`CORPUSCALE.2` IS NOT ONE OF THEM AND I MIS-TRIAGED IT FIRST** — it is **built and ships default-off**, and one press produces the number that has never existed. It is a press-rider.
+> **7 more cannot be done before a press at all:** `GATEWATCH.1/.2/.3`, `CHATPIN.1`, `FOCUSDEAD.2`, `NOFALLBACK.7`, and `TVBENCH.1` — which by Gee's own correction *runs FROM a press, live during training*.
+>
+> ### ⭐ SPELLTRUTH.3 — THE MEASUREMENT GEE ASKED FOR, ANSWERED
+> ① **Not one readable word** across the five highest-text-likelihood concepts through the production prompt/URL/transform — the generator renders the TEXTURE of text without glyphs. ② **It would survive if it arrived** — 458k-512k coefficients kept, reconstruction indistinguishable; **the transform is not a filter**. ③ **No OCR, no glyph decoder, no character classifier exists** in `server/` or `js/brain/`.
+> ⭐⭐ **This retracts the caveat on `SPELLTRUTH.2` option ②** — the caption is the ONLY source of correctly-spelled text in her mind's eye, so gating it is a whole fix, not half of one. **The choice is now purely about what the mind's eye is FOR, and it is Gee's.**
+>
+> ### ⛔ WAITING ON GEE — NOT BLOCKED ON WORK
+> - **`SPELLTRUTH.2`** — unblocked, three options, evidence in.
+> - **`REGFIND.9`** — changes what she says.
+> - **The field set's fate.** `UAL_FIELDS=0` means the box downloads none of it, so **finishing the remaining 14,378 only pays off if the box ever pulls them.** Left where it is rather than spending 4.6 h growing something the press will skip. The producer is fixed and resumable whenever that changes.
+>
+> ### ⚠ OWNED
+> - **I told Gee 182 GB and it was ~251.** A 53-field sample against a residue that is uniformly giant plates. My own divergence warn is what corrected me.
+> - **`FIELD_MAXSIDE` declared inside the worker branch** while the main thread reports it — killed the first real run. **The trap this file's own header already records**, and `node --check` passed both times.
+> - **The gzip migration converted 121 TRACKED fields**, the exact orphaning the row had just refused to do at scale. Restored, verified **0 modified**.
+> - **`git add -A` swept up `fetch-libretexts-corpora.mjs`**, which is untracked by instruction. Amended out; still on disk, still untracked.
+>
+> ---
+>
+> ## ⭐⭐ 2026-09-03 EVENING — ONE DATA REPO, THE BOARD DOWN TO 48, AND TWO JOBS STILL RUNNING
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >

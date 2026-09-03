@@ -16,9 +16,17 @@
 // Harnessing the production wiring rather than reimplementing it is deliberate:
 // a stand-in proves the stand-in works.
 //
-// ⭐ FULL RESOLUTION. No downsample anywhere in here. The 320px cap that used to
-// sit in front of the transform destroyed the fine subbands that carry a
-// one-pixel axis label, and those cannot be recovered later from the record.
+// ⭐ SOURCE RESOLUTION, BOUNDED AT 1600px ON THE LONG SIDE — and the two halves
+// of that sentence come from opposite mistakes, so neither may be dropped.
+// **The floor:** the 320px cap that used to sit in front of the transform
+// destroyed the fine subbands that carry a one-pixel axis label, and those cannot
+// be recovered later from the record — measured, 27,204 coefficients against
+// 184,981 on the same figure. Nothing here analyses below the corpus norm.
+// **The ceiling:** this header once read "no downsample anywhere", and with the
+// corpus recording ORIGINAL addresses that meant transforming 54-megapixel plates
+// whole — a 36.4 MB mean against the 4.43 MB of the fields already delivered, and
+// one field of 511.8 MB. 1600px IS the norm; it is the width the rendition API
+// was already being asked for, and it is now asked for BEFORE the download.
 //
 // RESUMABLE AND IDEMPOTENT: the row key is `fig:` + a hash OF THE URL, so a
 // re-run skips what is already stored and no figure is ever counted twice. Kill
@@ -35,6 +43,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 import { Worker, isMainThread, parentPort, workerData, threadId } from 'worker_threads';
 // ⭐ The failure ledger lives in its own module because this file could not be
@@ -74,6 +83,17 @@ import {
   figKey, bareKey as bare, shardName, isUndecodableFigure,
 } from '../../js/brain/figure-identity.cjs';
 
+// ⛔⛔ THE LONGEST SIDE ANY FIGURE IS ANALYSED AT, AND IT BELONGS TO BOTH HALVES
+// OF THIS FILE — the worker enforces it, the main thread's progress line reports
+// it. Declaring it inside the worker branch threw `FIELD_MAXSIDE is not defined`
+// from the report on the first real run, which is the same trap the note below
+// records and `node --check` cannot see either time.
+//
+// 1600 is the corpus norm, not a new opinion: it is the width the rendition API
+// was already being asked for, and the band the 26,359 delivered fields sit in at
+// a 4.43 MB mean. `FIG_FIELD_MAXSIDE` overrides for a one-off.
+const FIELD_MAXSIDE = Number(process.env.FIG_FIELD_MAXSIDE) > 0 ? Number(process.env.FIG_FIELD_MAXSIDE) : 1600;
+
 // ⛔ THE IMPORT ABOVE IS AT MODULE SCOPE FOR A REASON THAT COST A RUN. `bare` and
 // `shardName` once lived inside the `isMainThread` branch, so every worker threw
 // a ReferenceError that the surrounding catch filed as `transformFail` — 115 of
@@ -101,7 +121,7 @@ const FORGEJO_HOST = process.env.FORGEJO_HOST || 'https://git.unityailab.com';
 const PKG_OWNER = process.env.FORGEJO_PKG_OWNER || 'UnityAILab';
 const PKG_NAME = process.env.FORGEJO_PKG_NAME || 'brainwaves';
 const PKG_VER = process.env.FORGEJO_PKG_VERSION || 'v1';
-const pkgUrlFor = (key) => `${FORGEJO_HOST}/api/packages/${PKG_OWNER}/generic/${PKG_NAME}/${PKG_VER}/${bare(key)}.field.json`;
+const pkgUrlFor = (key) => `${FORGEJO_HOST}/api/packages/${PKG_OWNER}/generic/${PKG_NAME}/${PKG_VER}/${bare(key)}.field.json.gz`;
 
 // The token lives in `.claude/.env` (gitignored) so it never reaches a
 // transcript, a commit or a log line.
@@ -304,7 +324,17 @@ if (isMainThread) {
   // binary trap this project already recorded: a path that is valid on one
   // platform and means something else entirely on another.
   const shardOf = shardName;
-  const fileFor = (key) => path.join(FIELDS, shardOf(key), `${bare(key)}.field.json`);
+  // ⛔ BOTH ENCODINGS COUNT AS PRESENT. The resume check asks the disk whether a
+  // field already exists, and after the move to gzip an uncompressed field from
+  // an earlier pass is still a delivered field — a check that knew only one name
+  // would silently re-fetch and re-transform every one of them.
+  const fileForAny = (key) => {
+    const stem = path.join(FIELDS, shardOf(key), bare(key));
+    for (const p of [`${stem}.field.json.gz`, `${stem}.field.json`]) {
+      try { if (fs.statSync(p).size > 0) return p; } catch { /* next */ }
+    }
+    return null;
+  };
 
   // ⛔ UPLOAD MODE CHANGES WHAT "ALREADY DONE" MEANS. When fields are deleted
   // locally after upload, the disk cannot be the record of what exists — so an
@@ -368,7 +398,11 @@ if (isMainThread) {
       });
       const keys = [];
       for (const line of out.split('\n')) {
-        const m = line.trim().match(/([^/\\]+)\.field\.json$/);
+        // ⛔ BOTH ENCODINGS, for the same reason the disk check takes both: this
+        // list is the AUTHORITY on what the repository holds, and after the gzip
+        // move it holds a mix. A regex anchored to the old name would report every
+        // delivered `.gz` as absent and regenerate the entire set.
+        const m = line.trim().match(/([^/\\]+)\.field\.json(?:\.gz)?$/);
         if (m) keys.push(m[1]);
       }
       if (!keys.length) return 0;
@@ -400,7 +434,7 @@ if (isMainThread) {
   }
   for (const f of all) {
     if (have.has(f.key)) continue;
-    try { if (fs.statSync(fileFor(f.key)).size > 0) have.add(f.key); } catch { /* absent */ }
+    if (fileForAny(f.key)) have.add(f.key);
   }
   let todo = all.filter((f) => !have.has(f.key));
 
@@ -465,7 +499,15 @@ if (isMainThread) {
   console.log(`[figures] writing one field per figure under ${FIELDS}`);
   if (!todo.length) { console.log('[figures] nothing to do.'); process.exit(0); }
 
-  const stats = { ok: 0, httpFail: 0, decodeFail: 0, transformFail: 0, tinyDrop: 0, uploadFail: 0, bytes: 0, coeffs: 0, px: 0 };
+  const stats = { ok: 0, httpFail: 0, decodeFail: 0, transformFail: 0, tinyDrop: 0, uploadFail: 0, bytes: 0, coeffs: 0, px: 0, bounded: 0 };
+  // ⭐⭐ THE BASELINE IS MEASURED, NOT ASSUMED. Read off the delivery repository's
+  // own LFS pointers on 2026-09-03 — `git lfs ls-files -s` over `fields/` —
+  // **26,359 fields, 114.1 GB, mean 4.43 MB**. This is the number a new pass has
+  // to look like, and having it written down is the only reason a 36.4 MB pass
+  // was recognisable as wrong rather than as "big figures".
+  const BANKED_FIELDS = 26359;
+  const BANKED_MEAN_MB = 4.43;
+  let divergenceWarned = false;
   // Append-only, flushed per batch. This ledger is the ONLY record of what has
   // been delivered once the local field is deleted, so it is written before the
   // counters are believed and never rewritten in place.
@@ -483,6 +525,7 @@ if (isMainThread) {
   const report = () => {
     const el = (Date.now() - t0) / 1000;
     const rate = stats.ok / Math.max(1, el);
+    const mean = stats.bytes / Math.max(1, stats.ok) / 1048576;
     const left = todo.length - done;
     const eta = rate > 0 ? left / rate : 0;
     const h = Math.floor(eta / 3600), m = Math.round((eta % 3600) / 60);
@@ -497,7 +540,24 @@ if (isMainThread) {
         ? `  |  fail ${failLedger.counts.permanent} permanent / ${failLedger.counts.transient} transient`
         : '')
       + `  |  ${(stats.bytes / 1048576).toFixed(0)} MB stored  ${(stats.coeffs / 1e6).toFixed(1)}M coefficients`
+      // ⛔⛔ THE INSTRUMENT THAT DID NOT EXIST, AND WHOSE ABSENCE COST A 537 GB
+      // PROJECTION. This producer reported coefficients and megabytes-so-far and
+      // NEVER once compared a field it wrote against the fields already banked —
+      // so a pass writing at 8.2x the corpus norm read exactly like a healthy one
+      // for 300 figures. **A mean is only a fact beside the mean it has to match.**
+      + `  |  mean ${mean.toFixed(2)} MB/field vs ${BANKED_MEAN_MB} banked`
+      + (stats.bounded ? `  |  ${stats.bounded} bounded to ${FIELD_MAXSIDE}px` : '')
       + `  |  ${rate.toFixed(2)}/s  ETA ${h}h${String(m).padStart(2, '0')}m`);
+    // ⚠ SAID ONCE AND LOUDLY, not every hundred rows — a warning that repeats
+    // forever is read as decoration, and this one is asking for a decision.
+    if (!divergenceWarned && stats.ok >= 25 && mean > BANKED_MEAN_MB * 2) {
+      divergenceWarned = true;
+      console.warn(`[figures] ⛔ SIZE DIVERGENCE — this pass averages ${mean.toFixed(2)} MB/field against `
+        + `${BANKED_MEAN_MB} MB across the ${BANKED_FIELDS.toLocaleString()} already delivered. `
+        + `At this rate the ${todo.length.toLocaleString()} in this pass come to `
+        + `${(mean * todo.length / 1024).toFixed(0)} GB, and every one of them has to live twice — `
+        + 'once in Forgejo and once on the box. Stop and find the cause before the run fills the data repo.');
+    }
   };
 
   const spawn = () => {
@@ -549,7 +609,8 @@ if (isMainThread) {
         // The worker owns the write; this side keeps counters and the index.
         stats.ok++; stats.bytes += msg.bytes;
         stats.coeffs += msg.coeffs; stats.px += msg.px;
-        const row = { key: msg.key, file: `fields/${shardOf(msg.key)}/${bare(msg.key)}.field.json`, url: msg.url, w: msg.w, h: msg.h, coeffs: msg.coeffs, citations: msg.citations };
+        if (msg.bounded) stats.bounded++;
+        const row = { key: msg.key, file: `fields/${shardOf(msg.key)}/${bare(msg.key)}.field.json.gz`, url: msg.url, w: msg.w, h: msg.h, coeffs: msg.coeffs, citations: msg.citations };
         row.bytes = msg.bytes;
         if (UPLOAD) row.pkg = pkgUrlFor(msg.key);
         // Written before the counters are trusted: this line is the ONLY proof
@@ -577,7 +638,7 @@ if (isMainThread) {
         for (const r of indexRows) merged.set(r.key, r);
         fs.writeFileSync(idxPath, `${JSON.stringify({
           version: 1,
-          note: 'Corpus figure wavelet fields. One CDF 9/7 field per figure, at FULL source resolution. '
+          note: `Corpus figure wavelet fields. One CDF 9/7 field per figure, at source resolution bounded to ${FIELD_MAXSIDE}px on the long side. `
             + 'key = djb2 hash of the figure url (derivable from the corpus, never enumerated); file = path within this tree. '
             + 'Each field file carries its own alt, caption and the corpus prose that references it, plus every citation of it.',
           model: 'cdf97_wavelet_native_quantized',
@@ -585,8 +646,14 @@ if (isMainThread) {
           fields: [...merged.values()].sort((a, b) => (a.key < b.key ? -1 : 1)),
         }, null, 1)}\n`, 'utf8');
         const el = (Date.now() - t0) / 1000;
-        console.log(`[figures] DONE in ${(el / 3600).toFixed(2)} h — ${stats.ok.toLocaleString()} figures perceived at FULL resolution, `
-          + `${(stats.coeffs / 1e6).toFixed(1)}M wavelet coefficients, ${(stats.bytes / 1073741824).toFixed(2)} GB of fields.`);
+        // ⛔ THIS LINE USED TO SAY "at FULL resolution" UNCONDITIONALLY, and as of
+        // the 1600px bound that is sometimes false. A summary that overstates what
+        // was analysed is the same defect class as the mean that was never taken —
+        // it is the sentence a later reader trusts instead of measuring.
+        console.log(`[figures] DONE in ${(el / 3600).toFixed(2)} h — ${stats.ok.toLocaleString()} figures perceived at source resolution `
+          + `up to ${FIELD_MAXSIDE}px on the long side (${stats.bounded.toLocaleString()} were larger and were bounded), `
+          + `${(stats.coeffs / 1e6).toFixed(1)}M wavelet coefficients, ${(stats.bytes / 1073741824).toFixed(2)} GB of fields, `
+          + `mean ${(stats.bytes / Math.max(1, stats.ok) / 1048576).toFixed(2)} MB/field.`);
         console.log(`[figures] index: ${merged.size.toLocaleString()} fields listed in ${idxPath}`);
 
         // ⭐⭐ THE PASS REPORTS ITS OWN DELTA, AND THAT IS THE WHOLE FIX.
@@ -646,7 +713,7 @@ if (isMainThread) {
   };
   for (let i = 0; i < CONC; i++) spawn();
 } else {
-  // ── worker: fetch -> decode -> CDF 9/7, at full resolution ─────────────────
+  // ── worker: ask for a bounded rendition -> fetch -> decode -> bound -> CDF 9/7 ──
   const { createRequire } = await import('module');
   const { pathToFileURL } = await import('url');
   const require1 = createRequire(import.meta.url);
@@ -738,7 +805,30 @@ if (isMainThread) {
   // request came back snapped to 3840px, on the `thumb.wikimedia.org` host,
   // which no hand-built URL would have found). Only consulted when the direct
   // decode fails, so the raster path pays nothing for it.
-  const renderable = (u) => /\.(svg|gif|tif|tiff)(\?|$)/i.test(String(u).split('?')[0] + (u.includes('?') ? '?' : ''));
+  // ⛔⛔ THE 1600px CONTRACT NOW BINDS RASTERS TOO, AND FOR THIS WHOLE CORPUS IT
+  // NEVER DID. The rendition below was consulted ONLY after a decode had already
+  // failed — which only ever happens to a vector — so every photograph, scan and
+  // plate was fetched at whatever address the corpus recorded, and the corpus
+  // records the ORIGINAL (33,041 of its 59,473 citations are `upload.wikimedia`
+  // originals; exactly 11 are thumbnails). Measured over the first 503 fields of
+  // the retry pass: renditions of 8880x5520, 7376x7401, 5390x3096, and a mean of
+  // 36.4 MB against the 4.43 MB mean of the fields already banked — 8.2x, which
+  // projects 537 GB onto a set that holds 114 GB today.
+  //
+  // ⚠ THIS IS NOT THE PRE-TRANSFORM DOWNSAMPLE THE PERCEPT PATH ARGUES AGAINST,
+  // and the difference is the whole justification. That argument is about
+  // analysing BELOW the corpus norm — at 320px a 1600x1181 figure keeps 27,204
+  // coefficients against 184,981, because the fine subbands carrying a one-pixel
+  // axis-label stroke are never created. This restores the norm every other field
+  // in the set was made at. The 8880px renditions are not a better percept; they
+  // are not even reproducible, being whichever address the ingest happened to
+  // record for that one figure.
+  //
+  // ⛔ THE CONSTANT ITSELF LIVES AT MODULE SCOPE, one screen up, for the reason
+  // this file already records in its own header: **this script is its own worker
+  // entry point**, so anything both halves read has to resolve in both. Declaring
+  // it here put it out of reach of the main thread's progress line, and
+  // `node --check` cannot see that — only running it can.
   const wikiRendition = async (u) => {
     const clean = String(u).split('?')[0];
     const m = clean.match(/^https:\/\/upload\.wikimedia\.org\/wikipedia\/(commons|[a-z-]{2,12})\/[0-9a-f]\/[0-9a-f]{2}\/(.+)$/i);
@@ -771,7 +861,27 @@ if (isMainThread) {
   parentPort.on('message', async (job) => {
     if (job === null) { process.exit(0); }
     try {
-      const got = await grab(job.url);
+      // ⭐⭐ THE BOUND IS ASKED FOR BEFORE A BYTE OF IMAGE IS DOWNLOADED, and that
+      // ordering is what makes this a bandwidth fix as well as a size fix — a
+      // 54-megapixel original is never pulled down at all, and the download is
+      // what makes this pass take days rather than hours.
+      // ⚠ The API lives on `<wiki>/w/api.php`, a DIFFERENT host from
+      // `upload.wikimedia.org`, so asking it does not spend the rate budget the
+      // image fetches are already competing for.
+      let renditionTried = false, renditionErr = null;
+      let fetchUrl = job.url;
+      const renditionUrl = await wikiRendition(job.url);
+      if (renditionUrl && renditionUrl !== job.url) { renditionTried = true; fetchUrl = renditionUrl; }
+
+      let got = await grab(fetchUrl);
+      // ⛔ A RENDITION THAT WILL NOT SERVE MUST NOT CONDEMN A FIGURE WHOSE OWN
+      // ADDRESS STILL WORKS. The recorded URL is tried second, and the reason the
+      // rendition was abandoned travels into the ledger instead of vanishing.
+      if (renditionTried && !(got && got.buf && got.buf.length >= 64)) {
+        renditionErr = (got && got.message) || 'rendition fetch returned no body';
+        fetchUrl = job.url;
+        got = await grab(job.url);
+      }
       const buf = got && got.buf;
       if (!buf || buf.length < 64) {
         // ⭐ THE URL, THE STATUS AND THE MESSAGE TRAVEL WITH THE FAILURE. Without
@@ -786,27 +896,15 @@ if (isMainThread) {
         return;
       }
 
-      let img = host._decodeImageToRGBA(buf);
-      // ⛔⛔ THE SECOND CALL SITE OF `grab`, AND CHANGING ITS RETURN SHAPE BROKE
-      // IT SILENTLY. When `grab` started returning `{buf, status, message}`
-      // instead of a bare Buffer, this line still read `b2.length` — which is
-      // `undefined` on an object, so the guard was always false and **EVERY
-      // vector rendition failed without a word.** All 28 decode failures in the
-      // first ledger the new code ever wrote were SVGs, which is what exposed it.
+      // ⛔⛔ CHANGING `grab`'s RETURN SHAPE ONCE BROKE THE VECTOR PATH SILENTLY.
+      // When it started returning `{buf, status, message}` instead of a bare
+      // Buffer, the rendition branch still read `.length` on the object — which
+      // is `undefined`, so the guard was always false and **EVERY vector
+      // rendition failed without a word.** All 28 decode failures in the first
+      // ledger the new code ever wrote were SVGs, which is what exposed it.
       // ⭐ A changed return shape must be chased to every caller, and a harness
       // that only exercises the happy path will not find the one that was missed.
-      let renditionTried = false, renditionUrl = null, renditionErr = null;
-      if (!img && renderable(job.url)) {
-        renditionTried = true;
-        renditionUrl = await wikiRendition(job.url);
-        if (renditionUrl) {
-          const got2 = await grab(renditionUrl);
-          if (got2 && got2.buf && got2.buf.length > 64) img = host._decodeImageToRGBA(got2.buf);
-          else renditionErr = (got2 && got2.message) || 'rendition fetch returned no body';
-        } else {
-          renditionErr = 'the wiki API offered no rendition for this file';
-        }
-      }
+      let img = host._decodeImageToRGBA(buf);
       if (!img) {
         // ⚠ NAME WHICH PATH FAILED. "decoder returned nothing" told the ledger
         // nothing it could classify, so 28 vector failures all landed in the
@@ -816,13 +914,31 @@ if (isMainThread) {
           ? (renditionErr
             ? `no decoder for this format, and the rendition path failed: ${renditionErr}`
             : 'no decoder for this format, and its rendition did not decode either')
-          : 'decoder returned nothing';
+          : (renditionUrl
+            ? 'decoder returned nothing, and the API offered only this same address'
+            : 'decoder returned nothing, and this host offers no rendition API to fall back on');
         parentPort.postMessage({ err: 1, stage: 'decode', key: job.key, url: job.url, msg: why });
         return;
       }
       // A plate under 32px on a side is a spacer or an icon, not an illustration
       // — transforming it wastes the pass and stores a percept of nothing.
       if (Math.max(img.w, img.h) < 32) { parentPort.postMessage({ err: 1, stage: 'tiny', key: job.key, url: job.url, msg: `too small: ${img.w}x${img.h}` }); return; }
+
+      // ⛔⛔ THE BACKSTOP, AND IT IS NOT REDUNDANT WITH THE RENDITION ABOVE.
+      // **26,421 of the corpus's 59,473 figure citations are not on Wikimedia at
+      // all** and have no rendition API to ask; the API can also simply decline to
+      // thumbnail a file it holds. Without a bound applied to the decoded pixels,
+      // one un-thumbnailable plate is still free to write a half-gigabyte field —
+      // which is exactly what the 511.8 MB outlier in the stopped run was.
+      // ⚠ Reported, never silent. A percept quietly degraded is the defect class
+      // the perception path already carries scars from, so every bound travels to
+      // the counter and the largest ones are named on screen.
+      let bounded = null;
+      if (Math.max(img.w, img.h) > FIELD_MAXSIDE) {
+        const before = `${img.w}x${img.h}`;
+        img = host._downsampleRGBA(img, FIELD_MAXSIDE);
+        bounded = { from: before, to: `${img.w}x${img.h}` };
+      }
 
       const rec = equationalizeImageData({ width: img.w, height: img.h, data: img.data });
       if (!rec || !rec.channels) { parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: 'transform produced no channels' }); return; }
@@ -862,10 +978,20 @@ if (isMainThread) {
       // leave a truncated file that the resume check counts as complete.
       const b = bare(job.key);
       const dir = path.join(workerData.FIELDS, b.slice(0, 2).padEnd(2, '0'));
-      const p = path.join(dir, `${b}.field.json`);
+      // ⛔⛔ GZIPPED ON DISK, AND IT COSTS HER NOTHING. A field is a JSON skeleton
+      // wrapping base64 payloads — the shape that compresses — and git LFS stores
+      // objects verbatim, so nothing was doing this. Measured on a real field:
+      // **10,952,378 B -> 5,364,645 B, 51%, byte-identical coefficients.**
+      // At the measured ~9 MB a field the completed set projects to ~251 GB, and
+      // it has to exist TWICE — once in Forgejo, once on the box. This is the only
+      // remaining lever that does not touch what she perceives.
+      // ⚠ The reader in `server/figure-field-store.js` accepts BOTH encodings and
+      // prefers `.gz`; it has to, because any resumed run straddles this change.
+      const p = path.join(dir, `${b}.field.json.gz`);
+      const packed = zlib.gzipSync(Buffer.from(entry, 'utf8'));
       fs.mkdirSync(dir, { recursive: true });
       const tmp = `${p}.tmp-${process.pid}-${threadId}`;
-      fs.writeFileSync(tmp, entry, 'utf8');
+      fs.writeFileSync(tmp, packed);
       fs.renameSync(tmp, p);
 
       // ⭐ UPLOAD THEN DELETE, so the local disk holds a working set and never the
@@ -876,10 +1002,16 @@ if (isMainThread) {
         let up = null;
         for (let attempt = 0; attempt < 4; attempt++) {
           try {
-            const r = await fetch(workerData.PKGBASE + b + '.field.json', {
+            // ⚠ The uploaded artefact is the SAME bytes that were written to
+            // disk, name and encoding included. Sending the uncompressed JSON
+            // under a `.gz` name — or the reverse — would put a package in the
+            // registry that the reader derives the wrong address for, and the
+            // whole design rests on that address being derivable rather than
+            // listed anywhere.
+            const r = await fetch(`${workerData.PKGBASE + b}.field.json.gz`, {
               method: 'PUT',
-              headers: { Authorization: `token ${workerData.TOKEN}`, 'Content-Type': 'application/json' },
-              body: entry,
+              headers: { Authorization: `token ${workerData.TOKEN}`, 'Content-Type': 'application/gzip' },
+              body: packed,
               signal: AbortSignal.timeout(180000),
             });
             // 201 created, 200 ok. 409 means this exact filename is already in
@@ -892,13 +1024,17 @@ if (isMainThread) {
         }
         if (up && up > 0) {
           try { fs.unlinkSync(p); } catch { /* the sweep will get it */ }
-          parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, uploaded: up });
+          parentPort.postMessage({ key: job.key, bytes: packed.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, uploaded: up, bounded });
         } else {
           parentPort.postMessage({ err: 1, stage: 'upload', key: job.key, url: job.url, msg: `PUT ${up || 'failed'}` });
         }
         return;
       }
-      parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length });
+      // ⚠ `bytes` is the ON-DISK size, which after gzip is no longer the size of
+      // the JSON. Every projection in this file's progress line and every mean it
+      // compares against the banked set is a statement about what has to be
+      // stored and synced, so the compressed length is the honest one.
+      parentPort.postMessage({ key: job.key, bytes: packed.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, bounded });
     } catch (e) {
       parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: e && e.message });
     }
