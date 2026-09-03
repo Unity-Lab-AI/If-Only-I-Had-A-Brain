@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Unity AI Lab — the sensory half of the drug scheduler
 //
-// ⚠ This block used to cite `docs/T15-pharmacology-research.md`, which does
+// ⚠ This block used to cite a pharmacology-research document that does
 // not exist in the tree — a pointer to a file no reader can open. The seven
 // triggers and their decay windows are therefore documented HERE, beside the
 // code that implements them. Each trigger's matcher reads sensory channel

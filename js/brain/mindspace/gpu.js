@@ -1,7 +1,8 @@
 /**
  * mindspace/gpu.js — Unity's mind-space transforms on the GPU (WebGPU / WGSL).
  *
- * GPU-direct (Gee: "works on the GPUs"). Consciousness, imaging (perceive) and imagining
+ * GPU-direct, on the operator's requirement that it "works on the GPUs".
+ * Consciousness, imaging (perceive) and imagining
  * (reconstruct/generate) are ONE process over the shared field C — this runs that process's
  * heavy math on the GPU, matching the brain's WebGPU stack (js/brain/gpu-compute.js).
  *
@@ -244,7 +245,7 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
     if (COLOR_WORDS[w]) { tint = COLOR_WORDS[w]; break; }
   }
   const named = !!tint;
-  // SEE.4 — SHE PICKS THE FIELD'S COLORS (kills the flat-green wash). The old
+  // SHE PICKS THE FIELD'S COLORS (kills the flat-green wash). The old
   // path textured every abstract thought in a SINGLE moodTint, and her usual
   // valence sits on the hue wheel's green band — so every de-novo field read
   // as the same "green textured graphic equation". Now (same crayon logic as
@@ -509,7 +510,7 @@ export class MindSpaceGPU {
   // leaving the equational domain. Returns null on canvas/pad dim mismatch.
   morph(recA, recB, t) { return CPU.morphField(recA, recB, t); }
 
-  // DRAW-ENGINE (Gee 2026-07-15) — field C → her hand's strokes. The faithful
+  // DRAW ENGINE (operator, 2026-07-15) — field C → her hand's strokes. The faithful
   // trace (CDF 9/7 inverse → Sobel edges → edge-follow polylines → simplify →
   // field-colored strokes) that lets her draw the THING she looked at, not a
   // shape-per-word stamp. Cheap CPU (tiny plane) — always CPU, like describe().
@@ -520,7 +521,7 @@ export class MindSpaceGPU {
   // composeFields delegate REMOVED (2026-07-16) — the collage compositor is gone;
   // imagination now field-renders ONE unified looked-up scene (see chat.js).
 
-  // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
+  // ── DE-NOVO IMAGINATION — cortex state → field C, no camera/file ────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
   // This is imagination FROM her own mind: the thought literally becomes an internal image she
@@ -553,13 +554,13 @@ export class MindSpaceGPU {
     const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
     // Image side: scales with how much the thought is worth, hard-bounded so the transform stays
     // loop-safe regardless of state length or grant (a 96² plane padded is still tiny for CDF 9/7).
-    // NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye
-    // are not limited"*). The 192 hard ceiling was a POSTURE, not an engine bound:
+    // NO ARBITRARY LIMIT (operator, 2026-08-20: the equations for images in her
+    // mind's eye are not limited). The 192 hard ceiling was a POSTURE, not an engine bound:
     // the only real bound is MAX_LINE (2048), above which the transform falls to
     // CPU by design. Ceiling raised to MAX_LINE so nothing in her imagination is
     // clipped by a number someone picked defensively; the DEFAULT rises 128→512
     // (a de-novo field is a real image now, not a thumbnail) and the governor still
-    // modulates WITHIN the band — that is her judgment about spend, which Gee's own
+    // modulates WITHIN the band — that is her judgment about spend, which the operator's own
     // directive keeps ("morals not a cap"). DREAM_MINDSEYE_MAX_SIDE moves the
     // ceiling for a smaller box.
     const _ceil = (typeof process !== 'undefined' && process.env && Number(process.env.DREAM_MINDSEYE_MAX_SIDE) > 0)
@@ -629,12 +630,12 @@ export class MindSpaceGPU {
   // equational substrate as perception/imagination, so what she draws is a real
   // image she can then re-see, morph, or remember. No fractalize, hard side cap.
   sketch(strokes, opts = {}) {
-    // DRAW.8 — hard cap raised 96 → 512 so the drawing composer can grow the
+    // hard cap raised 96 → 512 so the drawing composer can grow the
     // canvas with her grade (K=96 … adult=512). The 96 cap was a safety
     // POSTURE, not an engine limit — MAX_LINE is 2048 and the CPU CDF 9/7 on
     // a padded 512² plane is still milliseconds. Callers pass the grade-gated
     // side (server chat.js _drawCanvasSide); no-fractalize invariant intact.
-    // NOLIMIT (Gee 2026-08-20) — her CANVAS is not capped at 512 either. Same
+    // NO ARBITRARY LIMIT (operator, 2026-08-20) — her CANVAS is not capped at 512 either. Same
     // reasoning as the imagine plane: MAX_LINE is the only real bound (oversized
     // planes route to CPU), and a drawing she cares about should be able to use the
     // whole page. Default unchanged (96) so casual callers are unaffected.
@@ -662,7 +663,7 @@ export class MindSpaceGPU {
     const H = _ar >= 1 ? Math.max(16, Math.round(side / _ar)) : side;
     const N = W * H;
     const data = new Uint8ClampedArray(N * 4);
-    // DRAW.3 — background is PAPER (her dark sketchbook page), not a mood
+    // background is PAPER (her dark sketchbook page), not a mood
     // wash. The old bg painted moodTint*0.12 AND the default ink was the
     // same moodTint lightened — with her valence parked mid-low the hue sat
     // at ~0.27 so every sketch rendered green-on-green ("green screen").
@@ -673,7 +674,7 @@ export class MindSpaceGPU {
     const paper = [26, 25, 29];
     for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(paper[0] * 0.9 + bg[0] * 0.1); data[o + 1] = Math.round(paper[1] * 0.9 + bg[1] * 0.1); data[o + 2] = Math.round(paper[2] * 0.9 + bg[2] * 0.1); data[o + 3] = 255; }
     const ink = opts.rgb || [Math.round(bg[0] * 0.4 + 255 * 0.6), Math.round(bg[1] * 0.4 + 255 * 0.6), Math.round(bg[2] * 0.4 + 255 * 0.6)];
-    // ARTSTYLE (2026-08-21) — per-stroke ALPHA. Every primitive accepts `a`
+    // ART STYLES (2026-08-21) — per-stroke ALPHA. Every primitive accepts `a`
     // (0..1, default 1 = opaque, exactly the old behavior): the pixel blends
     // toward the stroke color instead of overwriting. This is the one primitive
     // the style engine could not compose from the others — watercolor washes,
@@ -693,7 +694,7 @@ export class MindSpaceGPU {
       data[o + 3] = 255;
     };
     const dot = (x, y, r, rgb, a) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb, a); };
-    // stroke.w = normalized thickness (label bold/silhouette — Gee: "not just
+    // stroke.w = normalized thickness (label bold/silhouette — operator: "not just
     // pencil style text"). Painted as discs along the sampled line so thick
     // strokes are FILLED, not 1px pencil. w absent → 1px exactly as before.
     const wRad = (w) => (typeof w === 'number' && w > 0) ? Math.max(1, Math.round(w * (W - 1) * 0.5)) : 0;
@@ -712,7 +713,7 @@ export class MindSpaceGPU {
       else if (s.type === 'point') dot(s.x, s.y, Math.max(wRad(s.w), Math.max(0, Math.min(4, s.r ?? 1))), rgb, s.a);
       else if (s.type === 'poly' && Array.isArray(s.pts)) { for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb, s.w, s.a); }
       else if (s.type === 'fill' && Array.isArray(s.pts) && s.pts.length >= 3) {
-        // PAINT.1 (2026-08-21) — TRUE even-odd scanline polygon fill, part of
+        // TRUE even-odd scanline polygon fill (2026-08-21), part of
         // giving her hand a full toolkit (shapes, fills, line weights, colors)
         // instead of hairlines only. The old branch filled the BBOX, which
         // was exact only for the axis-aligned cells traceColorFill emits — every
@@ -740,7 +741,7 @@ export class MindSpaceGPU {
         }
       }
       else if (s.type === 'blob') {
-        // PAINT.1 — filled (optionally rotated) ELLIPSE mass: cx/cy centre,
+        // filled (optionally rotated) ELLIPSE mass: cx/cy centre,
         // rx/ry radii, ang rotation, all normalized. The big soft shape every
         // real drawing STARTS with — a body, a head, any large mass — laid down
         // before any outline or detail goes on top. This is the primitive that
@@ -791,7 +792,7 @@ export class MindSpaceGPU {
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
     const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));   // glyph height in canvas units
-    // STYLE (Gee 2026-07-16: "bold and sillouetted and highlighted and all that
+    // STYLE (operator, 2026-07-16: "bold and sillouetted and highlighted and all that
     // kind of stuff ... not just pencil style text"). Strokes carry a real
     // THICKNESS `w` (normalized) so the rasterizers paint filled BOLD letters,
     // not 1px pencil lines. A dark SILHOUETTE pass backs every glyph (thicker

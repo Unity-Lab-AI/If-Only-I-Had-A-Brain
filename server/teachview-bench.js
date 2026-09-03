@@ -28,10 +28,10 @@
 // ⛔ 2. LIVE, "QUIET" AND "DEAD" LOOK IDENTICAL. A lane with nothing to do and a
 //    lane that is broken both read zero. So a bare count is never a verdict —
 //    every check that can be fooled by stillness carries a FRESHNESS axis: an
-//    age, a last-advance value, or a denominator. This is `MIRRORID` (a stalled
-//    card showing a rate it earned minutes ago) and `TEACHMIRROR` (a saturated
-//    card reading red `idle` because the counter watched the wrong lane) turned
-//    into a rule.
+//    age, a last-advance value, or a denominator. This is the stalled-mirror
+//    defect (a card showing a rate it earned minutes ago) and the wrong-lane
+//    counter (a saturated card reading red `idle` because the counter watched
+//    the wrong lane) turned into a rule.
 //
 // ⛔ 3. IT HAS TO BE ABLE TO FAIL. A sweep that always prints green is the
 //    defect it exists to catch. `selfTest()` plants faults in a synthetic
