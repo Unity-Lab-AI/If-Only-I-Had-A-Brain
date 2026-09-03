@@ -66,6 +66,9 @@
  *
  *   set        chosen deliberately, with the reasoning recorded on the row
  *   derived    the value came from a measurement or a computation, not a guess
+ *   config     ⭐ NOT A MAGNITUDE — a switch, a path, or an on/off. There is
+ *              nothing to derive, and calling these "underived" would pad the
+ *              unexplained count with rows that can never be explained further.
  *   inherited  it works and nobody has re-derived it — honest, not an accusation
  *   stale      ⛔ it WAS derived, and the thing it was derived against changed
  *
@@ -303,6 +306,51 @@ const KNOBS = [
     what: 'Reps when a drawing outcome is written back as weight.',
   },
 ];
+
+/**
+ * ⭐⭐ THE PROVENANCE TABLE — the answer to *"find the 186 in totalit that you
+ * dont know their reason"*.
+ *
+ * Discovery finds a knob and lifts the comment sitting above its read site, but
+ * that comment almost always explains **what the knob does**, not **why its
+ * value is that number**. Those are different questions and the second one is
+ * the operator's.
+ *
+ * ⛔ EVERY ROW HERE WAS PRODUCED BY READING THE READ SITE. No scan wrote any of
+ * it — three automated classifiers have already lied about these knobs in a
+ * single day (brace-depth scope, column-0 scope, and a hand-registry carrying
+ * two `cached` values as `live`). A regex over the comment text was written as a
+ * TRIAGE to decide reading order and was deliberately not used to conclude
+ * anything.
+ *
+ * ⚠ `inherited` IS NOT A CRITICISM. It means the value works and nobody has
+ * re-derived it. Several rows below are self-admittedly unpriced in their own
+ * source comments, and quoting that admission is more useful than inventing a
+ * derivation for them.
+ */
+const PROVENANCE = {
+  // ── consolidation ─────────────────────────────────────────────────────────
+  DREAM_CONSOLIDATION_FORCE_MAX_MS: { p: 'derived', why: 'DERIVED from a live reading, not chosen. The comment carries it: a forced pass yields between stages and "the live log shows only ~250-340ms loop blocks DURING the 48s pass", so a longer wall buys more yielding work rather than a longer pin. Widened to 120s so the once-per-2h emergency pass finishes Tier-3 promotion instead of aborting at ~48.5s against the routine 45s cap. Its own RE-PRICE note is recorded: this WIDENS a bound rather than removing a gate, so walk-finiteness pricing is untouched.' },
+  DREAM_CONSOLIDATION_MAX_MS: { p: 'derived', why: 'DERIVED from a real failure. 45s is "the original 153s-runaway guard" — the cap exists because a pass was measured running 153 seconds and monopolising the event loop. Routine passes keep it unchanged while forced passes get 120s, because the runaway risk is in the frequent lane, not the twice-a-day one.' },
+  DREAM_CONSOLIDATION_MAX_REPLAY_NNZ: { p: 'inherited', why: 'The GUARD is well reasoned — both the synchronous hebbianUpdate and the preSem build allocate hundreds of MB at biological scale and must be skipped together to keep the loop free. The NUMBER, 5,000,000 non-zeros, is not derived anywhere. It is a plausible ceiling nobody has priced.' },
+  DREAM_CONSOLIDATION_GPU_REPLAY_MAX: { p: 'inherited', why: 'The FAIRNESS mechanism beside it is derived and important — `_gpuReplayCursor` exists because a fixed budget always spends itself on whichever schemas come first in store order, so the tail would never replay at all, "a silent truncation that would look exactly like working consolidation". The cap VALUE itself is not derived.' },
+  DREAM_CONSOLIDATION_DISABLE: { p: 'config', why: 'A kill-switch, not a magnitude. It exists because the MAX_MS deadline cannot preempt synchronous work, so at 306M neurons a CPU replay monopolises the loop for 30-400s and stalls the public donor handshake. Off by default; this is the full stop, and the size guard in _replaySchema is the narrower everyday fix.' },
+  DREAM_CONSOLIDATION_FORCE_MS: { p: 'inherited', why: 'The 2h interval between forced passes is not derived in the source. It reads as a round operational choice rather than a measured one.' },
+
+  // ── definitions ───────────────────────────────────────────────────────────
+  DREAM_DEF_CACHE_CAP: { p: 'derived', why: 'DERIVED from an observed overflow. The cap was 10,000 and "the K walk alone filled 9,906 of the old 10,000 slots" — one conversation past that and her oldest definitions began evicting AND vanishing from the disk cache on the next flush. Raised to ~100k against a size check: tens of MB of JSON, trivial next to the 158MB weight saves. The governing rule is quoted in the comment: her vocabulary grows without limits by LAW, so the definition ledger must too.' },
+  DREAM_DEFINITION_CACHE_FILE: { p: 'config', why: 'A file path, not a tuned value. Empty string opts out. The rationale for HAVING it is recorded and sound: after 2-3 cold runs the cache approaches full vocabulary coverage and per-word lookups hit it instantly, so subsequent boots put zero rate-limit pressure on the dictionary API.' },
+  DREAM_VOCAB_RETEACH_MS: { p: 'inherited', why: 'The WINDOW\'s existence is a LAW consequence and is well argued — a word counted as taught forever is spaced repetition removed, and the comment names that as a law violation, "cutting shit out of her". The window LENGTH is not derived.' },
+
+  // ── emission / chat ───────────────────────────────────────────────────────
+  DREAM_CHAT_COHERENCE_FLOOR: { p: 'inherited', why: '⚠ SELF-ADMITTEDLY UNCALIBRATED. Its own comment says "Env-tunable; calibrate on the live walk" — so 0.10 is a placeholder awaiting a walk that has not happened. The MECHANISM is deliberate: below-floor emission is refused and degraded to a single honest word rather than shipping salad, and gate/probe paths never pass through it.' },
+  DREAM_ANNEAL_TEMP: { p: 'config', why: 'An opt-OUT switch, on by default. The annealing it controls is bounded by construction — the factor only ever REDUCES the caller\'s temperature, never raises it — so deterministic gate probes at temperature 0 stay 0 and fully-consolidated exploratory callers fall through to greedy argmax.' },
+  DREAM_BC_COMPOUND_COH_MIN: { p: 'inherited', why: 'A 0.2 cosine floor between the top two candidate words. Not derived; a round threshold.' },
+
+  // ── hebbian / ranges ──────────────────────────────────────────────────────
+  DREAM_SM_LR_SCALE: { p: 'inherited', why: 'A round halving (0.5) applied as saturation prevention on the sem→motor and sem→word_motor rates, with 1.0 restoring undamped behaviour. Scoped deliberately — letter_to_phon, letter_to_motor and motor_to_sem comprehension are untouched. The scope is reasoned; the 0.5 is not derived.' },
+  DREAM_RANGE_MAX_RUNS: { p: 'inherited', why: '⚠ SELF-ADMITTEDLY UNPRICED, and unusually honest about it. Its own comment states "WHICH ONE IS TRUE IS UNKNOWN, and rangesRunsOkMax cannot say — it is a MAX, and a max cannot price a cap", noting that is the third time that shape has bitten. The cap of 16 stands because the alternatives were never measured.' },
+};
 
 // ─── Discovery ───────────────────────────────────────────────────────────────
 //
@@ -563,9 +611,12 @@ function knobState() {
       // `why` carries the reasoning so the readout explains itself instead of
       // being a wall of numbers. A discovered knob gets `unknown` — absence of a
       // recorded reason is itself the answer, and is not dressed up as one.
-      provenance: k.provenance || 'unknown',
+      // ⚠ A hand-written entry's own provenance wins; otherwise the PROVENANCE
+      // table supplies it for a discovered knob. Absence of both is `unknown`,
+      // and that is a real answer rather than a gap dressed up as one.
+      provenance: k.provenance || (PROVENANCE[k.key] && PROVENANCE[k.key].p) || 'unknown',
       setOn: k.setOn || null,
-      why: k.why ? plain(k.why) : null,
+      why: plain(k.why || (PROVENANCE[k.key] && PROVENANCE[k.key].why) || '') || null,
       // ⛔ MARKDOWN IS STRIPPED AT THIS ONE EXIT, NOT AT EACH SOURCE. The three
       // description sources — hand-written entries, read-site comments and the
       // admin-controls table — are all written in the same emphatic markdown,
@@ -582,8 +633,17 @@ function knobState() {
 
   // Provenance tallies, so the page can lead with "how many of these numbers
   // does anyone have a reason for" rather than only "how many exist".
-  const prov = { set: 0, derived: 0, inherited: 0, stale: 0, unknown: 0 };
-  for (const k of all) prov[k.provenance || 'unknown'] = (prov[k.provenance || 'unknown'] | 0) + 1;
+  //
+  // ⛔ COUNTED OFF THE RESOLVED ROWS, NOT THE RAW ENTRIES. The first version
+  // read `k.provenance` straight from the source entry, which is undefined for
+  // every discovered knob — so the PROVENANCE table populated the rows while the
+  // headline still reported "186 with no recorded reason". **A summary computed
+  // from different data than the rows it summarises is the instrument lying
+  // about its own contents**, which is precisely what this panel exists to catch.
+  const prov = { set: 0, derived: 0, config: 0, inherited: 0, stale: 0, unknown: 0 };
+  for (const g of groups.values()) {
+    for (const row of g) prov[row.provenance] = (prov[row.provenance] | 0) + 1;
+  }
 
   return {
     total: all.length,
