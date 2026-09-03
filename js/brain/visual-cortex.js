@@ -64,13 +64,13 @@ const EDGE_KERNELS = [
 
 export class VisualCortex {
   constructor() {
-    // T14.10 (2026-04-14) — letter-template cache. Each unique character
+    // Letter-template cache (2026-04-14). Each unique character
     // passed through `renderLetterTemplate` gets a deterministic
     // Float64Array pseudo-visual-template computed from its unicode
     // codepoint via a stable trig hash. Text-only Unity uses this as
     // a synthetic "visual" signature per letter so the cortex visual
     // region develops distinct activation basins per character during
-    // T14.5 curriculum exposure. Voice/camera Unity will eventually
+    // curriculum exposure. Voice/camera Unity will eventually
     // replace this with real bitmap rendering from canvas, but the
     // cache interface and the downstream cluster.readText contract
     // stay the same — just the template source changes. Templates are
@@ -130,14 +130,14 @@ export class VisualCortex {
     // to Unity is the thing that's moving — she should look at them.
     this._motionMap = new Float32Array(V1_COUNT);
 
-    // T14.25 — EMA-smoothed motion map. Raw _motionMap is per-frame
+    // EMA-smoothed motion map. Raw _motionMap is per-frame
     // noise-prone (compression artifacts, camera grain, brief lighting
     // flicker). EMA(0.4) cleans it without dragging the response to
     // real movement (half-life ~2 frames at 60fps). Used by the face-
     // tracking saccade centroid instead of raw _motionMap.
     this._motionMapEMA = new Float32Array(V1_COUNT);
 
-    // T14.25 — skin-tone map for face tracking. HSV-based heuristic:
+    // skin-tone map for face tracking. HSV-based heuristic:
     // a pixel scores 1.0 when its RGB falls inside the human skin HSV
     // box, 0 otherwise. Not ML, not perfect, but robust enough to
     // bias the saccade centroid toward the user's face+hands instead
@@ -226,7 +226,7 @@ export class VisualCortex {
    */
   processFrame() {
     if (!this._active || !this._video || !this._ctx) {
-      // FOCUSDEAD — counted, because "she isn't looking at anything" and "the
+      // counted, because "she isn't looking at anything" and "the
       // driver stopped calling me" are different failures and they looked
       // identical for months. A refusal here means the cortex was asked and
       // could not run; a flat `frames` means nothing asked at all.
@@ -234,7 +234,7 @@ export class VisualCortex {
       return { currents: new Float32Array(100), salience: 0, gaze: { x: 0.5, y: 0.5 }, colors: this.colors };
     }
 
-    // ⭐ FOCUSDEAD — THE ONLY HONEST WITNESS THAT THE EYE IS BEING DRIVEN.
+    // ⭐ THE ONLY HONEST WITNESS THAT THE EYE IS BEING DRIVEN.
     // Gaze is computed CLIENT-side and never published in server state, so
     // when the focus tracker froze there was no way to tell a dead driver from
     // a working driver whose gaze happened not to move. This counter sits at
@@ -268,7 +268,7 @@ export class VisualCortex {
     // ── Motion detection ──
     this._computeMotion();
 
-    // ── T14.25: Skin-tone map for face tracking ──
+    // ── Skin-tone map for face tracking ──
     this._computeSkinMap(pixels);
 
     // ── Salience + motion + skin → Face-tracking Gaze ──
@@ -378,7 +378,7 @@ export class VisualCortex {
     for (let i = 0; i < V1_COUNT; i++) {
       const delta = Math.abs(this._currentFrame[i] - this._prevFrame[i]);
       this._motionMap[i] = delta;
-      // T14.25 — EMA smoothing so a single-frame lighting flicker
+      // EMA smoothing so a single-frame lighting flicker
       // doesn't spike the saccade. α=0.4 gives half-life ~1.5 frames,
       // smooth enough to kill noise but fast enough to track real
       // head/hand movement without visible lag.
@@ -388,7 +388,7 @@ export class VisualCortex {
     this.motionEnergy = totalDiff / V1_COUNT;
   }
 
-  // ── T14.25: Skin-tone map (HSV-based face detection heuristic) ───
+  // ── Skin-tone map (HSV-based face detection heuristic) ───
   //
   // Per-pixel binary skin mask via RGB→HSV conversion and a human-skin
   // HSV box (H in [0°, 50°] OR [340°, 360°], S in [0.2, 0.7], V in
@@ -432,7 +432,7 @@ export class VisualCortex {
     }
   }
 
-  // ── T14.25: Face+motion-tracking saccade via weighted centroid ───
+  // ── Face+motion-tracking saccade via weighted centroid ───
   //
   // Gaze lands on the weighted CENTROID of an effective attention map
   // (not the peak — peaks are single noisy pixels and jitter). The
@@ -580,7 +580,7 @@ export class VisualCortex {
   /**
    * MS.I3 — IMAGINE into the mind-space. Imagination is vision without a camera: she recalls
    * a remembered field C and ABSTRACTS it (a single-field thought-op; the two-image
-   * morph-toward-another-memory was removed per MEYE.3 — a composite of two seen frames
+   * morph-toward-another-memory was removed deliberately — a composite of two seen frames
    * is a static superposition, not imagination), reads the percept out, and that percept
    * drives the visual region exactly like a perceived frame — she SEES what she imagines.
    * Returns the percept vector (Float32Array) or null if nothing's remembered yet. Pure +
@@ -593,9 +593,9 @@ export class VisualCortex {
     const recs = this._recentRecs;
     const a = recs[recs.length - 1];                 // anchor on the most recent memory
     let imagined = a;
-    // MEYE.3 (Gee 2026-07-10) — NO two-image morph overlay in imagine-time
+    // (operator, 2026-07-10) — NO two-image morph overlay in imagine-time
     // recall. Blending two REMEMBERED field-Cs is a static superposition of
-    // seen frames, not imagination (Gee: "this is noise pollution" /
+    // seen frames, not imagination (operator: "this is noise pollution" /
     // "MINDS EYE = UNITYS IMAGINATION ... not a map of her neurons"). Her
     // imagination transforms her OWN single recalled field (abstract/dream,
     // a within-field thought-op) or dreams DE-NOVO from her thought/concept
@@ -624,7 +624,7 @@ export class VisualCortex {
   }
 
   /**
-   * UVM-INT.3 — DE-NOVO imagination from internal mind-state (no camera/file).
+   * DE-NOVO imagination from internal mind-state (no camera/file).
    * `imagine()` recalls REMEMBERED field-Cs, so it returns null when the memory
    * ring is empty (headless/server Unity, or before she's ever seen anything).
    * This folds a cortex activation vector straight into a field C via the
@@ -712,7 +712,7 @@ export class VisualCortex {
   isActive() { return this._active; }
 
   /**
-   * T14.10 — Render a deterministic visual template for a letter.
+   * Render a deterministic visual template for a letter.
    *
    * Text-only Unity doesn't have a camera rendering typed characters,
    * so the visual template has to come from somewhere. This method
@@ -724,7 +724,7 @@ export class VisualCortex {
    *
    * Called from `cluster.readText(text, { visualCortex })` which drives
    * the cortex visual sub-region with each character's template before
-   * injecting the letter one-hot. Over T14.5 curriculum exposure the
+   * injecting the letter one-hot. Over curriculum exposure the
    * cortex visual↔letter cross-projection learns that a given template
    * should activate the corresponding letter one-hot — matching how
    * biological visual cortex learns letter identity in early reading.
@@ -793,7 +793,7 @@ export class VisualCortex {
       motionEnergy: this.motionEnergy,
       colors: this.colors,
       maxSalience: this._maxSalience(),
-      // FOCUSDEAD — read these two BEFORE concluding anything about the gaze.
+      // read these two BEFORE concluding anything about the gaze.
       // `frames` flat ⟹ nothing is calling processFrame (a driver problem);
       // `frames` climbing while gaze sits still ⟹ the salience competition is
       // the problem. `framesRefused` climbing means the cortex is being driven
