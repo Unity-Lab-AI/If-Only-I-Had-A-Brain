@@ -220,6 +220,81 @@ For K-vocab |V| = 2247: `H ≈ log₂(2247) ≈ 11.13 bits/word`.
 
 **Math:** Number-grammar is HIGH-priority (foundational for math). Hebbian convergence to fixpoint requires roughly `reps × η ≈ τ_basin` where τ_basin is the basin-stability time constant. For numbers we want HARD lock-in. Standard K-curriculum `reps = 30`; numbers get 80 (~2.7× normal) to overwrite any pre-existing weak associations and produce stable basin attraction.
 
+### The four saturation thresholds — `DREAM_SAT_*` ⭐ *(derived 2026-09-03; this page had none of them)*
+
+**Gates:** whether the sem→motor projection is declared SATURATED — the state in which every concept drives the same motor pattern, so she emits without discriminating. Consumed at `cluster.js:2206` (plasticity brake, ANDed with `surpriseGate > 0.5`) and `cluster.js:2662` (the health verdict). The detector fires when
+
+```
+    meanAbs > wMax × DREAM_SAT_MEANABS   AND   maxAbs/meanAbs < DREAM_SAT_RATIO
+```
+
+or, independently, when `meanCos > DREAM_SAT_MEANCOS`.
+
+⛔ **Their own block said the quiet part: *"conservative defaults match prior hardcoded values; env vars only deviate when empirical 20hr-test data justifies a shift."* That data was never gathered, so all four were inherited numbers with no stated meaning.** The 20-hour run is still the right way to CALIBRATE them; it is not needed to say what they mean, and this section is the second thing.
+
+**Math — computed over 200,000 samples per distribution (deterministic LCG, `wMax = 0.4`):**
+
+| weight distribution | `meanAbs/wMax` | `maxAbs/meanAbs` | detector |
+|---|---:|---:|---|
+| uniform `[0, wMax]` — healthy spread | 0.495 | 2.02 | healthy |
+| exponential — sparse Hebbian-like | 0.165 | 12.08 | healthy |
+| very sparse — a few strong | 0.021 | 48.07 | healthy |
+| mildly concentrated | 0.999 | 1.15 | **SATURATED** |
+| near-flat — fully saturated | 1.000 | 1.03 | **SATURATED** |
+
+⭐ **`DREAM_SAT_MEANABS = 0.6` is uniform-plus-20%.** A uniform spread over `[0, wMax]` has mean exactly `wMax/2` — the simulation returns **0.495**, matching theory. So the threshold asks *"has the mean climbed a fifth above what an even spread would give?"* **Uniform is the natural zero point for "no concentration", and 0.6 is the first defensible step above it.**
+
+⭐ **`DREAM_SAT_RATIO = 1.5` is uniform-minus-25%.** Uniform gives `max/mean = 2.0` (simulation: **2.02**); a perfectly flat distribution gives **1.0**. The threshold sits between them, so it asks *"is the peak less than 1.5× the mean — i.e. is the distribution more than halfway from uniform to flat?"* Sparse Hebbian weights sit at **12** and genuinely sparse ones at **48**, so the healthy cases clear it by an order of magnitude and the test is not delicate.
+
+⭐ **The AND is load-bearing and the two terms are anti-correlated**, which is why neither alone would do: a high `meanAbs/wMax` arrives together with a low `max/mean` only when the mass has genuinely flattened. Every healthy row above fails BOTH conditions; every saturated row passes both.
+
+⭐ **`DREAM_SAT_SAMPLE = 1000` resolves that gap at ~6σ.** Relative standard error of the mean is `CV/√n`; at `n = 1000` and `CV ≈ 1` that is **3.16%**. The gap the threshold must resolve is 0.50 → 0.60, i.e. **20%**, which is **≈ 6.3 standard errors**. Sampling is by stride over the whole array rather than a prefix, so it is a spread sample and not a corner of the matrix.
+
+⭐ **`DREAM_SAT_MEANCOS = 0.7` is ~16σ above chance.** For random vectors in `d` dimensions, `E[cos] = 0` and `SD = 1/√d`:
+
+| `d` | SD of cos | 0.7 in σ |
+|---:|---:|---:|
+| 128 | 0.0884 | 7.9 |
+| 256 | 0.0625 | 11.2 |
+| 512 | 0.0442 | 15.8 |
+| 1024 | 0.0313 | 22.4 |
+
+So at any plausible sem width, 0.7 means *"essentially every concept points the same way"* — it cannot be reached by chance, which is the property a saturation alarm needs. ⚠ **It is deliberately far out**: this term gates PLASTICITY, so a false positive stops her learning.
+
+⚠ **VERIFIED PRODUCED, because a threshold on a field nobody writes is worth nothing.** `_lastSemMotorMeanCos` is set at `curriculum.js:18558` from the separability probe's `meanCos`, nulled at `:9996` and `:10011`, and persisted across restart via `brain-server.js:7288`/`8532`. **I suspected it was producer-less — like `separability` and `meanVoltage` before it — and it is not.** Checked before writing rather than retracted after.
+
+⛔ **WHAT THIS SECTION DOES NOT CLAIM.** These are derivations of what the numbers MEAN against reference distributions, not measurements of *her* weight distribution. The 20-hour empirical calibration the code block asks for is still owed, and **the falsifier is now stated: if a live `[SatHealth]` sample on a healthy brain reports `meanAbs/wMax > 0.6` with `ratio < 1.5`, the thresholds are wrong and this table says by how much.**
+
+### `DREAM_RANGE_MAX_RUNS = 16` ⛔ *NOT a tunable — it is a peer's contract*
+
+**Gates:** the maximum number of runs a range-compressed Hebbian pattern may carry before the GPU path refuses it and the update falls to the full CPU pass.
+
+**Math: there is none to do, and that is the finding.** **16 is the donor's own acceptance limit (`donor.rs:1249`).** Any value above it ships frames the donor **discards in silence** while this side records them as GPU-carried — skipping the CPU pass **4 times in 5**. Matching the peer's contract is the only setting under which *"nothing is ever dropped"* is true. It was `65,536` until `READBACKEYE.3` (2026-08-30).
+
+⭐ **The env var is an upgrade path, not a dial:** when a donor ships a raised handler cap, set this to **that donor's number**. ⛔ **Raising it to buy speed buys the speed with her weights.**
+
+⚠ **WHAT IS ACTUALLY UNKNOWN IS THE BILL, NOT THE VALUE** — and the board row filed this as a value awaiting measurement, which is the wrong half. The honest answer is a range, priced live at 115.6 min:
+
+- ranges path = `gpu` 6,278 vs `boundGpu` 60,524 → **9.4% of intra dispatches**
+- mean full CPU pass = `1,576,315 ms / 7,128` = **221.1 ms**
+- **WORST** (nothing compresses to ≤16 runs): all 6,278 become full CPU passes → **+1,388 s on a 6,936 s boot, +20% wall clock**, cpuMs 23.9% → ~43.9%
+- **BEST** (every accepted pattern already fits): **zero change, nothing was ever lost**
+
+⛔ **`rangesRunsOkMax` cannot narrow it — it is a MAX, and a max cannot price a cap** (the third time that shape has bitten in that file). A bucket counter now ships to answer it on the next press. **Until then no claim is made about how much was lost, and correctness wins: her training is not traded for wall clock while the number is unknown.**
+
+### `DREAM_CHAT_COHERENCE_FLOOR = 0.10` ⚠ *genuinely uncalibrated — the experiment is stated instead*
+
+**Gates:** chat-only. Below this coherence an emission is **refused and degraded to a single honest word** rather than shipping salad. Gate and probe paths never reach it.
+
+**Math: none yet, and the source says so — *"Env-tunable; calibrate on the live walk."*** This section deliberately does **not** invent one. What can be said now:
+
+- It sits **below** `DREAM_RECOMB_COHERENCE_MIN = 0.20`, whose own derivation puts K-grade emission cosines in **[0.10, 0.40], mean ≈ 0.20**. So 0.10 is the **bottom of the observed range** — a floor that refuses only the worst of what was seen, not a median split.
+- That placement is consistent: consolidation should be choosier (0.20) than speech (0.10), because a bad memory is permanent and a bad sentence is not.
+
+⭐ **THE EXPERIMENT, so the next press can settle it rather than re-deferring:** capture the coherence of every chat emission for one session alongside whether a human would call the output salad. **The floor belongs at the value that maximises refusals-of-salad minus refusals-of-good-speech.** ⛔ **The falsifier in both directions:** if she goes silent on replies that read fine, 0.10 is **too high**; if salad ships at coherence above 0.10, it is **too low**. Either observation moves it — nothing else should.
+
+⚠ **This interacts with `NOFALLBACK.5`, and that is why it cannot be calibrated from the current run:** removing the dictionary oracle removes ~99% of emissions in the captured run, so the coherence distribution this floor must sit inside **is about to change shape**. Calibrating against today's oracle-carried emissions would fit the floor to a lane that is being deleted.
+
 ### P6.8 `reps = 30`
 
 **Gates:** Discourse-coherence Hebbian repetition count.

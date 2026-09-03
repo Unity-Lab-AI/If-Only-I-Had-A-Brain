@@ -176,10 +176,37 @@ const KNOBS = [
     what: 'Minimum retained dose under compression.',
   },
 
+  // ⭐ HAND-DECLARED BECAUSE DISCOVERY CANNOT SEE AN EFFECT CLASS. Both of these
+  // were found by the runtime scanner, which recovers the key and the default
+  // but not whether a write takes effect — so both published `effect: '???'`
+  // while their scopes had in fact been read (2026-09-03, deriving them for
+  // `docs/THRESHOLD-DERIVATION.md`). A knob whose behaviour is known and
+  // unrecorded is the same defect as one nobody explained.
+  {
+    key: 'DREAM_RANGE_MAX_RUNS', group: 'GPU dispatch', dflt: '16',
+    provenance: 'derived',
+    effect: 'boot', site: 'js/brain/cluster/hebbian.js:132',
+    proof: 'module-scope `const RANGE_MAX_RUNS = Math.max(1, … || 16)` — evaluated once at import, so a write on a running brain is ignored',
+    what: '⛔ NOT A TUNING DIAL — it is the DONOR\'S acceptance limit (donor.rs:1249). Above 16 the donor silently DISCARDS the frame while this side records it as GPU-carried, skipping the CPU pass 4 times in 5. Raise it only to match a donor that has raised its own handler cap.',
+  },
+  {
+    key: 'DREAM_CHAT_COHERENCE_FLOOR', group: 'Saturation & coherence', dflt: '0.10',
+    provenance: 'inherited',
+    effect: 'live', site: 'js/brain/language-cortex.js:2335',
+    proof: 're-read from `process.env` inside the emission function on every call — a write takes effect on the next reply, no restart',
+    what: 'Chat-only. Below this coherence an emission is refused and degraded to a single honest word rather than shipping salad; gate and probe paths never reach it. ⚠ Genuinely uncalibrated — its own comment says "calibrate on the live walk". It sits at the BOTTOM of the observed K-grade emission range [0.10, 0.40], and below consolidation\'s 0.20, which is coherent: a bad memory is permanent, a bad sentence is not.',
+  },
   // ── saturation detection ──────────────────────────────────────────────────
   {
     key: 'DREAM_SAT_MEANCOS', group: 'Saturation & coherence', dflt: '0.7',
-    provenance: 'inherited', setOn: null,
+    provenance: 'derived', setOn: null,
+    // ⭐ DERIVED 2026-09-03. For random vectors in d dimensions E[cos] = 0 with
+    // SD = 1/√d, so 0.7 is ~16σ above chance at d=512 — unreachable by
+    // accident, which is the property this needs because the term GATES
+    // PLASTICITY and a false positive stops her learning. ⚠ Verified produced
+    // before being priced: `_lastSemMotorMeanCos` is written at
+    // curriculum.js:18558 from the separability probe, not a dead field.
+    // Full working: docs/THRESHOLD-DERIVATION.md.
     why: '⚠ NOT DERIVED, and its own comment admits it: "conservative defaults match prior hardcoded values; env vars only deviate when empirical 20hr-test data justifies a shift." So 0.7 is the number it always was, carried forward. That data has never been gathered. It is not wrong — it is unexamined, and this row exists so it is not mistaken for a measured value. The same is true of the other three SAT_ thresholds.',
     effect: 'boot', site: 'js/brain/cluster.js:241',
     proof: 'module-scope `const SATURATION_MEANCOS = (() => …)()` — frozen at import',
@@ -187,21 +214,27 @@ const KNOBS = [
   },
   {
     key: 'DREAM_SAT_MEANABS', group: 'Saturation & coherence', dflt: '0.6',
+    provenance: 'derived',
+    why: 'DERIVED 2026-09-03: a uniform spread over [0,wMax] has mean exactly wMax/2 (simulation returns 0.495 over 200,000 samples), so 0.6 is uniform-plus-20% — "has the mean climbed a fifth above what an even spread would give?" Uniform is the natural zero point for "no concentration". docs/THRESHOLD-DERIVATION.md.',
     effect: 'boot', site: 'js/brain/cluster.js:246',
     proof: 'module-scope const IIFE — frozen at import',
-    what: 'Mean-absolute-weight ratio threshold in the same health check.',
+    what: 'Mean-absolute weight as a fraction of wMax, above which the projection reads as concentrated. ANDed with DREAM_SAT_RATIO.',
   },
   {
     key: 'DREAM_SAT_RATIO', group: 'Saturation & coherence', dflt: '1.5',
-    effect: '???', site: 'js/brain/cluster.js (saturation block)',
-    proof: 'scope not yet read',
-    what: 'Ratio threshold in the saturation verdict.',
+    provenance: 'derived',
+    why: 'DERIVED 2026-09-03 over 200,000 samples per reference distribution: uniform [0,wMax] gives max/mean = 2.02 and a perfectly flat distribution gives 1.0, so 1.5 asks "is this more than halfway from uniform to flat?" Sparse Hebbian weights measure 12 and genuinely sparse ones 48, so healthy cases clear it by an order of magnitude. docs/THRESHOLD-DERIVATION.md.',
+    effect: 'boot', site: 'js/brain/cluster.js:252',
+    proof: 'module-scope `const SATURATION_FANOUT_RATIO = (() => …)()` — frozen at import; scope read 2026-09-03',
+    what: 'Peak-to-mean ratio below which the sem→motor weights read as flattened. ANDed with DREAM_SAT_MEANABS, and the AND is load-bearing: the two terms are anti-correlated, so every healthy reference distribution fails both and every saturated one passes both.',
   },
   {
     key: 'DREAM_SAT_SAMPLE', group: 'Saturation & coherence', dflt: '1000',
-    effect: '???', site: 'js/brain/cluster.js (saturation block)',
-    proof: 'scope not yet read',
-    what: 'How many rows the health check samples. A larger sample is a more trustworthy verdict and a slower one.',
+    provenance: 'derived',
+    why: 'DERIVED 2026-09-03: relative standard error of the mean is CV/√n = 3.16% at n=1000, against the 0.50→0.60 gap the threshold must resolve (20%) — about 6.3 standard errors. Sampling strides the whole array rather than taking a prefix, so it is a spread sample. docs/THRESHOLD-DERIVATION.md.',
+    effect: 'boot', site: 'js/brain/cluster.js:258',
+    proof: 'module-scope `const SATURATION_SAMPLE_SIZE = (() => …)()` — frozen at import; scope read 2026-09-03',
+    what: 'How many weights the health check samples. A larger sample is a more trustworthy verdict and a slower one; 1000 resolves the gap at ~6σ.',
   },
 
   // ── firing and drive ──────────────────────────────────────────────────────
@@ -535,9 +568,9 @@ const PROVENANCE = {
   DREAM_BCM: { p: 'config', why: 'An enable switch, off by default. ⭐ The reasoning recorded here is architectural rather than numeric, and it is a good rule: it resolves ONCE into a property because two separate sites read it (one decides whether to call, the other guards the body), and "a lazy resolve at one of them would leave the other to drift". One assignment, both readers agree.' },
   DREAM_INNERVOICE_FORCE_CPU: { p: 'config', why: 'A debug override forcing the CPU path, unset by default. ⚠ It REQUIRES the GPU proxy to be meaningful: with no writeCurrentSlice there is nowhere else for the pattern to go, so the CPU write stays authoritative and is never skipped. Small and browser instances are unaffected.' },
   DREAM_TICK_BREATHE_MS: { p: 'inherited', why: 'A yield interval so the loop "just stops going deaf while she uses it". The need is reasoned; the interval is not derived.' },
-  DREAM_SAT_MEANABS: { p: 'inherited', why: 'Same provenance as the other saturation thresholds: the block\'s comment states these are "conservative defaults match prior hardcoded values; env vars only deviate when empirical 20hr-test data justifies a shift". That data has never been gathered, so 0.6 is the number it always was.' },
-  DREAM_SAT_RATIO: { p: 'inherited', why: 'Carried forward with the other saturation thresholds, awaiting the empirical 20-hour data its own block says would justify moving it. 1.5 is unexamined rather than wrong.' },
-  DREAM_SAT_SAMPLE: { p: 'inherited', why: 'How many matrix rows the saturation health check samples. 1000 is not derived — and the trade it sits on is real: a larger sample is a more trustworthy verdict and a slower one.' },
+  DREAM_SAT_MEANABS: { p: 'derived', why: 'DERIVED 2026-09-03 over 200,000 samples per reference distribution: a uniform spread over [0,wMax] has mean exactly wMax/2 (measured 0.495), so 0.6 is uniform-plus-20% — "has the mean climbed a fifth above an even spread?" docs/THRESHOLD-DERIVATION.md.' },
+  DREAM_SAT_RATIO: { p: 'derived', why: 'DERIVED 2026-09-03: uniform gives max/mean = 2.0 (measured 2.02) and perfectly flat gives 1.0, so 1.5 asks "more than halfway from uniform to flat?" Sparse Hebbian weights measure 12 and genuinely sparse ones 48 — healthy cases clear it by an order of magnitude. ANDed with MEANABS, and the AND is load-bearing because the two terms are anti-correlated. docs/THRESHOLD-DERIVATION.md.' },
+  DREAM_SAT_SAMPLE: { p: 'derived', why: 'DERIVED 2026-09-03: relative standard error of the mean is CV/√n = 3.16% at n=1000, against a 20% gap to resolve — about 6.3 standard errors. The trade is still real (a larger sample is more trustworthy and slower); 1000 is where it lands. docs/THRESHOLD-DERIVATION.md.' },
 
   // ── vision, art, the mind's eye ───────────────────────────────────────────
   DREAM_JPEG_MAX_MB: { p: 'derived', why: 'MEASURED against the real corpus: "11 of 30 corpus figures refused at 512". Wikimedia serves archival masters averaging 2.2 MP with many far larger, and jpeg-js counts its own working set generously, so a real illustration came back as "decode failed: maxMemoryUsageInMB limit exceeded" and was recorded as UNDECODABLE — reading as a broken file when it was a ceiling we chose. Raised to 2048 and left env-tunable so a small box can put it back without editing code.' },
@@ -559,7 +592,7 @@ const PROVENANCE = {
 
   // ── hebbian / ranges ──────────────────────────────────────────────────────
   DREAM_SM_LR_SCALE: { p: 'inherited', why: 'A round halving (0.5) applied as saturation prevention on the sem→motor and sem→word_motor rates, with 1.0 restoring undamped behaviour. Scoped deliberately — letter_to_phon, letter_to_motor and motor_to_sem comprehension are untouched. The scope is reasoned; the 0.5 is not derived.' },
-  DREAM_RANGE_MAX_RUNS: { p: 'inherited', why: '⚠ SELF-ADMITTEDLY UNPRICED, and unusually honest about it. Its own comment states "WHICH ONE IS TRUE IS UNKNOWN, and rangesRunsOkMax cannot say — it is a MAX, and a max cannot price a cap", noting that is the third time that shape has bitten. The cap of 16 stands because the alternatives were never measured.' },
+  DREAM_RANGE_MAX_RUNS: { p: 'derived', why: '⛔ NOT A TUNABLE — it is a PEER CONTRACT, and this entry said otherwise until 2026-09-03. 16 is the donor\'s own acceptance limit (donor.rs:1249); any higher value ships frames the donor DISCARDS IN SILENCE while this side records them as GPU-carried, skipping the CPU pass 4 times in 5. The env var is an upgrade path for a donor with a raised handler cap, not a dial — raising it to buy speed buys the speed with her weights. ⚠ What IS unpriced is the BILL, not the value: worst case +20% wall clock (all 6,278 range dispatches falling to a 221.1 ms CPU pass on a 6,936 s boot), best case zero. rangesRunsOkMax cannot narrow it because a max cannot price a cap; a bucket counter now ships to answer it. Derivation: docs/THRESHOLD-DERIVATION.md.' },
 };
 
 // ─── Discovery ───────────────────────────────────────────────────────────────

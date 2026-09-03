@@ -5,6 +5,52 @@
 
 ---
 
+## 2026-09-03 — `KNOBFIND.5` + `KNOBFIND.6` — SIX THRESHOLDS DERIVED, AND ONE OF THEM WAS NEVER A TUNABLE
+
+The standing rule is that every named threshold carries a written derivation. **None of these six appeared in `docs/THRESHOLD-DERIVATION.md` at all.**
+
+### The four saturation thresholds — derived over 200,000 samples per reference distribution
+
+The detector fires when `meanAbs > wMax × 0.6` **AND** `maxAbs/meanAbs < 1.5`, or independently when `meanCos > 0.7`.
+
+| weight distribution | `meanAbs/wMax` | `maxAbs/meanAbs` | detector |
+|---|---:|---:|---|
+| uniform `[0, wMax]` | 0.495 | 2.02 | healthy |
+| exponential — sparse Hebbian-like | 0.165 | 12.08 | healthy |
+| very sparse — a few strong | 0.021 | 48.07 | healthy |
+| mildly concentrated | 0.999 | 1.15 | **SATURATED** |
+| near-flat | 1.000 | 1.03 | **SATURATED** |
+
+- **`MEANABS 0.6` is uniform-plus-20%** — uniform has mean exactly `wMax/2` (measured 0.495), so the threshold asks whether the mean has climbed a fifth above an even spread.
+- **`RATIO 1.5` is uniform-minus-25%** — uniform gives 2.0, perfectly flat gives 1.0. Healthy sparse weights measure **12** and **48**, clearing it by an order of magnitude.
+- **The AND is load-bearing**: the terms are anti-correlated, so every healthy row fails both and every saturated row passes both.
+- **`SAMPLE 1000` resolves the 0.50→0.60 gap at ~6σ** (`CV/√n` = 3.16% against a 20% gap), striding the whole array rather than a prefix.
+- **`MEANCOS 0.7` is ~16σ above chance** at d=512 (`SD = 1/√d`) — unreachable by accident, which is right for a term that **gates plasticity**, where a false positive stops her learning.
+
+⚠ **Verified produced before being priced.** I suspected `_lastSemMotorMeanCos` was another producer-less field like `separability` and `meanVoltage`. **It is not** — `curriculum.js:18558` writes it from the separability probe. Checked rather than retracted.
+
+⛔ **Not claimed:** these derive what the numbers MEAN against reference distributions, not a measurement of her weights. **The falsifier is now written down** — a live `[SatHealth]` sample on a healthy brain reading `meanAbs/wMax > 0.6` with `ratio < 1.5` proves them wrong, and the table says by how much.
+
+### `DREAM_RANGE_MAX_RUNS` — filed as needing calibration; it is a peer's contract
+
+⛔ **16 is the donor's own acceptance limit (`donor.rs:1249`).** Above it, frames are **discarded in silence by the donor** while this side records them as GPU-carried, skipping the CPU pass 4 times in 5. **The value is determined, not open** — the env var exists to match a donor with a raised handler cap.
+
+⚠ **What is actually unpriced is the BILL, which is the other half of the row's own quote:** worst case **+1,388 s on a 6,936 s boot (+20% wall clock)**, best case **zero, with nothing ever lost**. `rangesRunsOkMax` cannot narrow it — *a max cannot price a cap* — and the bucket counter that will answer it already ships.
+
+### `DREAM_CHAT_COHERENCE_FLOOR` — genuinely uncalibrated, and no derivation was invented
+
+Its own comment says *"calibrate on the live walk"*. What can be said: it sits at the **bottom of the observed K-grade emission range [0.10, 0.40]** and below consolidation's 0.20 — coherent, because a bad memory is permanent and a bad sentence is not. **The experiment and a two-way falsifier are recorded** instead of a fabricated number.
+
+⛔ **And a reason it cannot be calibrated from the current run, which the row did not know:** `NOFALLBACK.5` removes the dictionary oracle, which carries ~99% of emissions in the captured run. **The distribution this floor must sit inside is about to change shape.**
+
+### Fallout: the knob panel's effect column
+
+Fixing two `effect: '???'` rows whose scopes I had just read surfaced that **171 of 205 knobs have no effect class** — filed as `KNOBEFFECT.1`. Provenance is complete (0 knobs without a recorded reason); **effect, which answers "if I change it does anything happen?", is mostly blank** — and its `cached` class is silent when wrong.
+
+**Verified:** `node --check` · registry loads · **205 knobs published, unchanged, no duplicates** (the merge dedupes, so hand-declaring a discovered key is safe) · 5 of the 6 now publish `derived`, the sixth correctly stays `inherited` because it genuinely is · 0 knobs without a recorded reason.
+
+---
+
 ## 2026-09-03 — `PHASEBAR.1` (denominator half) — THE BAR STOPS COUNTING WORK THE GRADE FORBIDS
 
 The within-phase progress bar sat at `{name: _teachLanguageMechanics, done: 0, total: 14, frac: 0}` across two live samples 417 s apart while `cellSubPhases` moved 105,072 → 108,275. The `total: 14` half is now fixed.
