@@ -476,6 +476,19 @@ const SCAN_ROOTS = ['js', 'server'];
 // `process.env.X`, `process.env['X']`, and the optional-chaining variants.
 const ENV_RE = /process(?:\?)?\.env(?:\?)?(?:\.([A-Z0-9_]+)|\[\s*['"]([A-Z0-9_]+)['"]\s*\])/g;
 
+// ⛔⛔ AND THE HELPER FORM, WHICH THE PANEL MISSED ENTIRELY UNTIL 2026-09-02.
+// A knob read as `_envNum('DREAM_BC_RECTIFY_DECAY', 0.5)` never writes
+// `process.env.` on that line, so the direct pattern above cannot see it — and
+// **13 knobs were invisible to a panel whose whole claim is that it shows all of
+// them.** Among them the sem→motor RECTIFICATION strengths, which are what
+// corrects a collapsed emission matrix, and the two K-gate thresholds.
+//
+// ⚠ Found because the operator asked about attenuation code and one of the knobs
+// on the board's own list of 31 could not be found in the panel. **A registry
+// that silently omits an access pattern is the same defect class as a counter
+// that double-counts** — it reports a complete set and holds a partial one.
+const HELPER_RE = /[A-Za-z_$][\w$]*\(\s*['"](DREAM_[A-Z0-9_]+)['"]\s*(?:,|\))/g;
+
 let _discovered = null;
 
 /** The comment block immediately above a line, as the closest thing to an
@@ -618,8 +631,15 @@ function discover() {
     const rel = path.relative(root, f).replace(/\\/g, '/');
     lines.forEach((ln, i) => {
       ENV_RE.lastIndex = 0;
-      for (const m of ln.matchAll(ENV_RE)) {
-        const key = m[1] || m[2];
+      HELPER_RE.lastIndex = 0;
+      // ⚠ Both patterns feed one loop, so a knob read either way lands with the
+      // identical description, default and site handling. A second loop would
+      // have been a second place for the rules to drift apart.
+      const hits = [
+        ...[...ln.matchAll(ENV_RE)].map((m) => m[1] || m[2]),
+        ...[...ln.matchAll(HELPER_RE)].map((m) => m[1]),
+      ];
+      for (const key of hits) {
         if (!key || !key.startsWith('DREAM_')) continue;
         if (found.has(key)) continue;                 // first read site wins
         // ⚠ DESCRIPTION PRECEDENCE, most-authored first: the comment sitting
