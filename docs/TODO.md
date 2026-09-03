@@ -3202,3 +3202,34 @@ Gee (verbatim):
   - ⚠ **NOT DONE UNILATERALLY.** It re-encodes the entire delivered set, and it lands on the same repo as `BRAINWAVES.2`, which Gee has just decided to leave alone. **One decision about that repo's history per day is enough.**
   - ⛔ **What is still NOT on the table: going under the 1600px norm.** Resolution was ruled out on measured grounds in `FIELDSIZE.1` and nothing here reopens it.
 
+---
+
+## CORPUSBUFFER — corpus download buttons in the trainer viewer, auto-buffer and manual, one copy on the box — filed 2026-09-03
+
+Gee (verbatim):
+
+> *"okay that is good lets have buttons in the trainer virewr for download of couprus like buffer on auto and manual download but a max of one complete copy on the box"*
+
+> *"not counting forgejo"*
+
+- [x] `CORPUSBUFFER.1` — ✅ **CLOSED 2026-09-03 — full ledger entry at `docs/FINALIZED.md §2026-09-03 CORPUSBUFFER`.** A `buffer` control plus a live readout on the teach view, backed by loopback-gated `POST /corpus-buffer`. The readout **never says "off" while work is outstanding** — a disarmed buffer with files still owed is a different state from a finished one, and collapsing those two is how a half-delivered corpus reads as complete.
+
+  **Original filing:** **BUTTONS IN THE TRAINER VIEWER FOR DOWNLOAD OF CORPUS.** The teach viewer is the surface Gee actually has — he has no server access, only the page — so the corpus pull stops being a thing that happens only inside a press and becomes something he can see and drive.
+
+- [x] `CORPUSBUFFER.2` — ✅ **CLOSED 2026-09-03 — `server/corpus-sync.js`, a paced background lane (4 files / 5 s, both knobs) with a single-flight guard.** It is a **toggle**, as asked. ⭐ **Only files that actually DIFFER are fetched** — compared by git blob id computed locally — so re-arming a complete box costs one tree read and no download; **proven by the re-plan owing 0 of 5.**
+
+  **Original filing:** **"BUFFER ON AUTO".** A background lane that keeps the corpus filling in ahead of the walk instead of demanding the whole 395 MB before anything starts, and it is a **toggle** — auto on, auto off — because *"on auto"* names a mode, not a one-shot.
+
+- [x] `CORPUSBUFFER.3` — ⛔ **WITHDRAWN BY GEE THE SAME DAY, BEFORE ANY CODE WAS WRITTEN. Verbatim: *"okay no manual then"*.** The row stays because the original ask stays on the record — **auto-buffer is the whole feature now, and there is no manual pull button.** ⚠ If a later reader finds a manual control in the viewer, it is a regression against this line, not a leftover.
+
+  **Original filing:** **"AND MANUAL DOWNLOAD".** A button that pulls now, on demand, whatever auto is doing. Distinct from the toggle above and filed as its own item because he named it as its own thing.
+
+- [x] `CORPUSBUFFER.4` — ✅ **CLOSED 2026-09-03 — MEASURED AT `1.000x`, NOT ASSERTED.** 11/11 on the production module against a local stand-in repo: the box ends holding **653,747 B against 653,747 B of source**, peak scratch **0.1 MB against a 0.62 MB corpus**, **no scaffold surviving any batch** and **no half-written file** anywhere. Held by construction — nothing is ever checked out, each cell streams straight into its final path, and the blobless scaffold is destroyed in a `finally` after every batch. ⚠ **The press path still holds two copies transiently and that is unchanged and known** — it is the bulk sync, this lane is the one that runs during training. ⚠ **Not yet proven against the live Forgejo remote; the first arm on the box is the real proof.**
+
+  **Original filing:** ⛔⛔ **"A MAX OF ONE COMPLETE COPY ON THE BOX", AND HE CLARIFIED THE BOUNDARY HIMSELF: *"not counting forgejo"*.** So the invariant is about the BOX only — Forgejo holding its own copy is the design and always was (*"only ever have one copy on the box and one in forgejo"*).
+  - ⛔⛔ **AND THE CURRENT PRESS PATH VIOLATES THIS TODAY.** `deploy/self-update.sh` does `git clone --depth 1` into `$FTMP/bw` and then `rsync -a --delete` into `$CORPORA_DIR` — so **while the sync runs the box holds the temp clone AND the live corpus: two complete copies**, plus the clone's `.git`. At 395 MB that is ~800 MB-1.2 GB where the invariant allows 395 MB.
+  - ⭐ **THE CORPUS IS NOT LFS, WHICH IS WHAT MAKES THE ONE-COPY DESIGN POSSIBLE.** `.gitattributes` in the data repo marks only `*.field.json` and `corpora/glove.6B.300d.txt` as LFS. The **193 corpus JSON files are ordinary git objects**, so they can be fetched INDIVIDUALLY over the Forgejo API straight into their final path — no clone, no temp tree, no second copy at any instant, by construction rather than by cleanup.
+  - ⚠ **A partial file is not a copy, but a partial file IS a corruption risk.** Each file must land atomically (temp-name-then-rename inside the same directory), which costs one FILE of transient duplication, never one CORPUS.
+
+- **Acceptance:** the viewer shows the two controls and a real progress readout; a manual pull and an auto buffer both work from the page; and at **no instant** does the box hold two complete corpora — measured, not asserted.
+
