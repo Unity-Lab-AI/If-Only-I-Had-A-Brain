@@ -176,6 +176,41 @@ const KNOBS = [
     what: 'Minimum retained dose under compression.',
   },
 
+  // ══ KNOBEFFECT.1 — effect classes, batch 1: `server/brain-server.js` ═══════
+  //
+  // ⛔ CLASSIFIED BY READING EACH SITE, NOT BY A SCOPE DETECTOR. Two detectors
+  // have already produced confident wrong answers on exactly this question — a
+  // brace-depth one that called module-scope constants `live`, and a column-0
+  // one that **scored 6/6 against hand-read truth and was still wrong**, calling
+  // 107 of 192 boot-frozen when three of four spot-checks were live. A pattern
+  // was used to LOCATE the sites; the verdict on each came from reading it.
+  //
+  // ⚠ AND THE LOCATOR VISIBLY FAILED TWICE while producing this batch, which is
+  // why that distinction is not pedantry: it reported `(top level)` for two
+  // sites sitting at indent 6 and 10. **Those two are NOT in this batch** — an
+  // unclassified knob is honest, a wrongly-classified one is the defect.
+  //
+  // The rule applied: read at module scope ⟹ `boot` (a write on a running brain
+  // is ignored); re-read inside a function that runs repeatedly ⟹ `live`.
+  { key: 'DREAM_CHECKPOINT_SLOTS', effect: 'boot', site: 'server/brain-server.js:1145', proof: 'column-0 `const CHECKPOINT_SLOTS = …` — a top-level statement, evaluated once at import' },
+  { key: 'DREAM_TICK_MS', effect: 'boot', site: 'server/brain-server.js:1932', proof: 'column-0 `const BRAIN_TICK_MS = _envPositive(…)` — top-level, once at import' },
+  { key: 'DREAM_SUBSTEPS', effect: 'boot', site: 'server/brain-server.js:1933', proof: 'column-0 `const SUBSTEPS = …` — top-level, once at import' },
+  { key: 'DREAM_SUBSTEPS_MAX', effect: 'boot', site: 'server/brain-server.js:1979', proof: 'column-0 `const SUBSTEPS_MAX = …` — top-level, once at import' },
+  { key: 'DREAM_SUBSTEPS_TARGET_MS', effect: 'boot', site: 'server/brain-server.js:1980', proof: 'column-0 `const SUBSTEPS_TARGET_MS = …` — top-level, once at import' },
+  { key: 'DREAM_DF7_REBROADCAST_MS', effect: 'boot', site: 'server/brain-server.js:8991', proof: 'column-0 `const REPLICA_REBROADCAST_MS = …` — top-level, once at import' },
+  { key: 'DREAM_DF7_REBALANCE_MS', effect: 'boot', site: 'server/brain-server.js:9019', proof: 'column-0 `const PRIMARY_REBALANCE_MS = …` — top-level, once at import' },
+  { key: 'DREAM_LOOP_LAG_WARN_MS', effect: 'boot', site: 'server/brain-server.js:12676', proof: 'column-0 `const _LAG_WARN_MS = …` — top-level, once at import' },
+  { key: 'DREAM_CPU_PROFILE', effect: 'boot', site: 'server/brain-server.js:12754', proof: 'column-0 `if (process.env.DREAM_CPU_PROFILE !== \'0\')` — a top-level branch, taken once at import' },
+  { key: 'DREAM_POLLINATIONS_KEY', effect: 'live', site: 'server/brain-server.js:176', proof: 'read in the `return` of `function _pollinationsImageKey()`, which runs per image request — context read 2026-09-03' },
+  { key: 'DREAM_WALK_TICK_MS', effect: 'live', site: 'server/brain-server.js:5325', proof: 'first line of `async _walkHeartbeat(…)`, which runs every walk tick — context read 2026-09-03' },
+  { key: 'DREAM_CPU_PROFILE_EVERY_MS', effect: 'live', site: 'server/brain-server.js:12888', proof: 'read inside the repeating `setTimeout` callback, so each cycle re-reads it — context read 2026-09-03' },
+  { key: 'DREAM_PARITY_MIN_GAP_MS', effect: 'live', site: 'server/brain-server.js:9257', proof: 'inside the `?parity=` request branch — re-read per request' },
+  { key: 'DREAM_UPDATE_STALE_MS', effect: 'live', site: 'server/brain-server.js:9880', proof: 'inside the `/update` request branch — re-read per request' },
+  { key: 'DREAM_SELF_UPDATE_CMD', effect: 'live', site: 'server/brain-server.js:9889', proof: 'inside the `/update` request branch — re-read per request' },
+  { key: 'DREAM_MIN_DONOR_VERSION', effect: 'live', site: 'server/brain-server.js:11130', proof: 'inside the `ws.on(\'pong\')` handler — re-read on every donor pong' },
+  { key: 'DREAM_RECOMMENDED_DONOR_VERSION', effect: 'live', site: 'server/brain-server.js:11131', proof: 'inside the `ws.on(\'pong\')` handler — re-read on every donor pong' },
+  { key: 'DREAM_LOOP_LAG_SUMMARY_UNDER_MS', effect: 'live', site: 'server/brain-server.js:13097', proof: 'inside the lag-report branch, which runs per lag event' },
+
   // ⭐ HAND-DECLARED BECAUSE DISCOVERY CANNOT SEE AN EFFECT CLASS. Both of these
   // were found by the runtime scanner, which recovers the key and the default
   // but not whether a write takes effect — so both published `effect: '???'`
@@ -862,10 +897,36 @@ function knobState() {
   // running source, so the hand-written `site` is overridden with it whenever
   // discovery found one. Hand-written entries now record only the FILE; the
   // line is always resolved fresh and can never rot again.
+  // ⛔⛔ A HAND ENTRY OVERRIDES ONLY THE FIELDS IT DEFINES — IT DOES NOT REPLACE
+  // THE DISCOVERED ROW. This used to spread the hand entry wholesale, so an
+  // entry written to supply ONE missing field silently dropped every field it
+  // did not repeat.
+  //
+  // ⚠ CAUGHT BY MEASURING RIGHT AFTER DOING IT (2026-09-03). Adding 18 sparse
+  // `{key, effect, site, proof}` rows to record effect classes left those knobs
+  // with **no group, no default and no description** — they gained one field and
+  // lost three, landing in an unnamed group on the panel. **A net worsening,
+  // shipped as an improvement**, which is the exact shape this registry exists
+  // to expose in other people's code.
+  //
+  // Discovery is the BASE (it knows the live default and read site by scanning
+  // the running source); the hand entry is a sparse overlay on top. That also
+  // keeps the original property: the hand-written `site` never rots, because
+  // discovery's freshly-resolved line wins over a recorded one.
   const _disc = (() => { try { return discover(); } catch { return new Map(); } })();
   const all = [...KNOBS].map((k) => {
     const d = _disc.get(k.key);
-    return d && d.site ? { ...k, site: d.site } : k;
+    if (!d) return k;
+    const merged = { ...d };
+    for (const [f, v] of Object.entries(k)) {
+      if (v !== undefined && v !== null && v !== '') merged[f] = v;
+    }
+    // Discovery resolves the line fresh, so its site always wins.
+    if (d.site) merged.site = d.site;
+    // ⚠ `discovered` must go FALSE once a human has described it, or the
+    // `described` completeness count silently keeps counting it as unread.
+    merged.discovered = false;
+    return merged;
   });
   const byKey = new Set(KNOBS.map((k) => k.key));
   let discoveredCount = 0;
