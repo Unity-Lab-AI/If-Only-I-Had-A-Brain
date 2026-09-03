@@ -363,7 +363,7 @@ export function morphField(recA, recB, t) {
   return { ...recA, channels, equation_count: total, fidelity: { ...(recA.fidelity || {}), source: 'mindspace-morph' } };
 }
 
-// ── traceField(rec, opts) — field C → HER HAND'S STROKES (DRAW-ENGINE, Gee 2026-07-15) ───────
+// ── traceField(rec, opts) — field C → HER HAND'S STROKES (the draw engine) ───────
 // The faithful inverse of sketch(): takes a REAL field C (a thing she has SEEN /
 // imagined / recombined) and traces its salient contours into stroke primitives
 // her hand can draw. This REPLACES the old shape-per-word stamp + the 24-point
@@ -378,7 +378,7 @@ export function morphField(recA, recB, t) {
 // normalized [0,1] for sketch(). Bounded working grid (a DRAWING is coarse, not a
 // photo edge map) — loop-safe on the no-GPU box.
 //
-// REFERENCE-NOT-FACT (Gee): this is a TRACE — her interpretation of what she saw,
+// REFERENCE, NOT FACT: this is a TRACE — her interpretation of what she saw,
 // coarsened + budgeted + re-colorable by the caller (her goth palette) — never a
 // pixel-perfect photostat of the reference image.
 function _rdp(pts, eps) {                       // Douglas-Peucker polyline simplify
@@ -499,7 +499,7 @@ function _fieldToGrid(rec, target) {
   return { gw, gh, Y, Cb, Cr };
 }
 
-// ── traceLineArt(rec, opts) — CLEAN INK CONTOURS (DRAW-ENGINE v2, Gee 2026-07-15) ──
+// ── traceLineArt(rec, opts) — CLEAN INK CONTOURS (draw engine, second form) ──
 // The old traceField sprayed short fragments across the canvas (thick Sobel edges
 // + scanline seeding split every contour) and the caller rainbow-recolored each
 // one → "a jumbled pile of multicolored yarn". This is the fixed line-art tracer:
@@ -588,7 +588,7 @@ export function traceLineArt(rec, opts = {}) {
 // "She colours it in": coarse blocks averaged from the reference, each filled in
 // the block's ACTUAL colour (an orange subject stays orange), background paper left
 // bare. Emits type:'fill' strokes (sketch bbox-fills them). ONE of many styles
-// (Gee) — a poster / cut-paper look, distinct from the line-art sketch.
+// — a poster / cut-paper look, distinct from the line-art sketch.
 export function traceColorFill(rec, opts = {}) {
   const grid = _fieldToGrid(rec, opts.traceSide || 64);
   if (!grid) return [];
@@ -637,8 +637,11 @@ export function stylizeField(rec, opts = {}) {
     data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * g * 255)));
     data[o + 3] = 255;
   }
-  // She writes the WORD of what she drew on the field render too (Gee: "she writes
-  // words ... on almost every image"). The caller passes her CLEAN hand's glyph
+  // A word is composited onto the field render too — it appears on almost every
+  // image. ⚠ See the caption-provenance finding: the letterforms come from a
+  // bitmap font and the spelling from the concept key, so this is a CAPTION and
+  // not her handwriting, whatever the surrounding comments once claimed. The
+  // caller passes the glyph
   // line-strokes ([0,1] coords); rasterize them straight onto the RGBA (crisp, no
   // wobble) before equationalizing so the label rides in the drawn field C.
   const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
@@ -667,9 +670,9 @@ export function stylizeField(rec, opts = {}) {
   return equationalizeImageData({ width: gw, height: gh, data });
 }
 
-// composeFields — REMOVED (Gee 2026-07-16: imagined combos looked like "two older
-// pics put cookie cutter like into one image ... instead of correctly makeing new
-// images"). Pasting each part's field into its own region IS a collage by
+// composeFields — REMOVED. Imagined combinations came out looking like two older
+// pictures cookie-cut into one frame instead of a genuinely new image.
+// Pasting each part's field into its own region IS a collage by
 // construction. Superseded: _drawImagined now grounds ONE unified reference of the
 // combined concept (its own "a+b" key) and field-renders it — a genuinely new image.
 
