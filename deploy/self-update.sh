@@ -231,15 +231,41 @@ DATA_REMOTE="${UAL_FIELDS_REMOTE:-git@git.unityailab.com:UnityAILab/BrainWaves.g
 FIELDS_DIR="${UAL_FIELDS_DIR:-$BACKEND_DIR/fields}"
 CORPORA_DIR="${UAL_CORPORA_DIR:-$BACKEND_DIR/corpora}"
 _corpus_ok=0
+# ⛔⛔ THE TWO HALVES OF THIS SYNC ARE NOT THE SAME SIZE AND MUST NOT SHARE A
+# SWITCH. The books are ~400 MB and the walk CANNOT RUN without them; the fields
+# are ~114 GB today and are explicitly non-fatal — a missing field means she
+# transforms that figure live, which is the correct path and always was.
+#
+# `UAL_SKIP_FIELDS` is named for the fields and gates the WHOLE block, so setting
+# it to skip a 114 GB download also silently skips the books. It is kept for
+# compatibility and still means "skip everything", but the honest lever is below.
+#
+# `UAL_FIELDS=0` pulls the books and SKIPS THE FIELD BLOBS — a press that costs
+# minutes instead of hours, at the price of live-transforming figures during the
+# walk. Default stays 1 so nothing changes for a box that wants them.
+_want_fields="${UAL_FIELDS:-1}"
 if [ "${UAL_SKIP_FIELDS:-0}" = "1" ]; then
-  log "data sync SKIPPED (UAL_SKIP_FIELDS=1) — using whatever books and fields are already on the box."
+  log "data sync SKIPPED ENTIRELY (UAL_SKIP_FIELDS=1) — using whatever books and fields are already on the box. NOTE: this skips the BOOKS too; use UAL_FIELDS=0 if you only meant to skip the 114 GB of field blobs."
 elif ! command -v git-lfs >/dev/null 2>&1 && ! git lfs version >/dev/null 2>&1; then
   log "WARN — git-lfs NOT INSTALLED on this box. Skipping the data sync rather than filling the disk with pointer stubs. Install git-lfs to enable it."
 else
   FTMP="$(mktemp -d)"
-  log "data sync — pulling books + wavelet fields from ${DATA_REMOTE} (overwrites in place)"
+  if [ "$_want_fields" = "1" ]; then
+    log "data sync — pulling books + wavelet fields from ${DATA_REMOTE} (overwrites in place)"
+  else
+    log "data sync — pulling BOOKS ONLY from ${DATA_REMOTE} (UAL_FIELDS=0). Field blobs are skipped; she will transform each figure live, which is slower per figure and costs no download."
+  fi
+  # ⛔ `git lfs pull` IS THE 114 GB, NOT THE CLONE. The clone is
+  # `--filter=blob:none` and therefore cheap whatever is in the repo; it is the
+  # LFS fetch that pulls the field payloads. Restricting it with `-I` is what
+  # actually saves the download — skipping the rsync afterwards would still have
+  # paid for every byte.
+  _lfs_pull() {
+    if [ "$_want_fields" = "1" ]; then ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 );
+    else ( cd "$FTMP/bw" && git lfs pull -I 'corpora/**' >> "$LOG" 2>&1 ); fi
+  }
   if git clone --depth 1 --branch main --filter=blob:none "$DATA_REMOTE" "$FTMP/bw" >> "$LOG" 2>&1 \
-     && ( cd "$FTMP/bw" && git lfs pull >> "$LOG" 2>&1 ); then
+     && _lfs_pull; then
     mkdir -p "$FIELDS_DIR" "$CORPORA_DIR"
     # THE BOOKS FIRST — this is the half the walk cannot run without.
     # --delete so a cell removed upstream disappears here too; this directory is
@@ -253,8 +279,18 @@ else
       log "WARN — corpus rsync failed or the data repo has no corpora/; falling back to whatever is already on the box."
     fi
     # THE FIELDS SECOND — her precomputed view of every picture. Non-fatal.
-    if rsync -a --delete "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
-      _fcount="$(find "$FIELDS_DIR" -name '*.field.json' 2>/dev/null | wc -l | tr -d ' ')"
+    # ⛔ NO `--delete` WHEN THE FIELDS WERE NOT FETCHED. With UAL_FIELDS=0 the
+    # source directory is a tree of un-smudged pointers or absent entirely, and a
+    # mirroring rsync would DELETE every field already on the box — turning "skip
+    # a download" into "destroy the store". The skip path does not rsync at all.
+    if [ "$_want_fields" != "1" ]; then
+      _fkept="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
+      log "field sync SKIPPED (UAL_FIELDS=0) — ${_fkept} fields already on the box are LEFT UNTOUCHED; every figure without one is transformed live."
+    elif rsync -a --delete "$FTMP/bw/fields/" "$FIELDS_DIR/" >> "$LOG" 2>&1; then
+      # ⚠ BOTH ENCODINGS COUNTED. Fields are written gzipped now, and a glob
+      # anchored to the old name reported a healthy sync as zero fields — the
+      # instrument saying nothing is there while everything is.
+      _fcount="$(find "$FIELDS_DIR" \( -name '*.field.json' -o -name '*.field.json.gz' \) 2>/dev/null | wc -l | tr -d ' ')"
       _fsize="$(du -sh "$FIELDS_DIR" 2>/dev/null | cut -f1)"
       log "field sync OK — ${_fcount} wavelet fields (${_fsize}) at ${FIELDS_DIR}; she reads these instead of re-transforming."
     else
