@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-09-02 (SEVENTEENTH BATCH) — THIRTEEN ROWS WERE FINISHED AND THE BOARD SAID OTHERWISE, AND IT COST A WRONG RECOMMENDATION THE SAME HOUR
+
+Asked *"so what all is left to do in the todo thats actionable?"*, answered off the checkboxes, and named **the storage math as the top priority**. Then went to do it and found it was already finished — the verdict was written **inside the row's own body** while the box stayed `[ ]`.
+
+⛔ **That is the exact defect this project keeps paying for, and I walked into it an hour after describing it.** A completed row left at `[ ]` is the same class as an instrument nobody reads: it does not merely fail to inform, it **actively misdirects**, and the misdirection is trusted precisely because it looks like a record.
+
+### Closed after verifying against the code, not the row text
+
+| row | evidence |
+|---|---|
+| `REGFIND.2` | `visual-memory.js:1767` calls `loadField(fig.url)` — the consumer it says does not exist |
+| `REGFIND.8` | `✅ CLOSED — THE BOX IS 1 TB` was already in its body |
+| `WAVESEE.5` | its only content was *"needs its own decision"*; the decision was given |
+| `WAVESEE.7` | `✅ RESOLVED` in its body, **and its last owed item was done** — see below |
+| `KNOBUI.1` | 186 unexplained → 0, closed in `d30fd999` |
+| `KNOBUI.2/.3/.4` | `#tvKnobReset` / `#tvKnobSave` / `#tvKnobLoad` + window `drop`, all live |
+| `KNOBUI.6/.7/.8/.9/.10` | `html[data-theme="hacker"]`, `#tvTheme`, `#tvCrt`, verified in the page |
+
+`KNOBUI.5` stays **open by design** — *"and all kinds of other shit like this"* is a standing instruction to keep extending the instrument, not a task with a finish line.
+
+**Board: 55 open → 42.** Thirteen rows, none of which needed a line of code.
+
+### The one thing in the cluster that WAS still owed, and it was the root cause
+
+`WAVESEE.7` ended: *"AND THE COMMENT THAT STARTED IT MUST BE CORRECTED — `visual-memory.js:144` still tells the next reader the disk is 500 GB."* It has been. The comment now states the box is **1 TB**, records that the old figure **was never a measurement**, carries the corrected three-copy arithmetic (~400 GB fields ×3 + ~16 GB weights + ~1 GB corpus ≈ **420 GB of 1,000**), and ends *"`state.disk` publishes the live figures now; read those, never this sentence."*
+
+⭐ **A wrong constant in a code comment propagated into two board rows and one operator acceptance.** It was never data — just a sentence — and everything downstream inherited it as fact.
+
+⚠ **And the acceptance was given twice against wrong numbers and survives both** — first against 133 GB when the real figure was ~400, then against 500 GB of disk when the real figure is 1,000. **Two errors in opposite directions is luck, not verification.** What makes it safe is the 1 TB reading, not the earlier reasoning.
+
+### The stale-checkbox hunt, and my third lying instrument of the day
+
+A sweep for other rows whose bodies self-report closed flagged **nine**. All nine were false positives: a fixed 35-line window ran past the row's end and caught `✅` markers belonging to the **next** row or section header. Bounded at row edges it flagged one, and that one was a `###` header the boundary rule missed.
+
+⛔ **Third detector of the day to produce a confident wrong answer** — after the brace-depth scope classifier and the column-0 classifier that scored 6/6 and was still wrong. **The failure mode is always the same: a window or a heuristic that cannot see where the thing it is measuring actually ends.** The honest result after fixing it: **zero remaining stale checkboxes.**
+
+**Verified:** every closed row checked against the file that implements it — `visual-memory.js:1767`, `state.js:739`, `visual-memory.js:146`, and `html/teachview.html` for all nine knob-panel rows including the three that carry hard constraints (reset must distinguish code-default from environment · load must diff before applying · the static must never impair reading). All three constraints are met in the code, not merely intended.
+
+---
+
 ## 2026-09-02 (SIXTEENTH BATCH) — `WAVESEE.2` + `REGFIND.1` — THE RULE HAD FIVE OWNERS, AND THE FILE THE PRODUCER TRUSTS MOST WAS 121 ROWS STALE
 
 Closing steps 5 and 6 of the sequence Gee approved with *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*, and picked up on *"get to it"*.
