@@ -128,13 +128,13 @@ const S = 1000;
 const MIN = 60 * S;
 const HR = 60 * MIN;
 
-// ── ENDO.10 — how much curriculum progress makes one menstrual cycle.
+// ── How much curriculum progress makes one menstrual cycle.
 // Measured against the walk rather than picked: ~273 cells over 20
 // grade-years ≈ 13.65 cells/year, and a real year holds ~13 cycles. One
 // cell per cycle lands within ~5% of biology without being tuned to it.
 const CYCLE_LENGTH_CELLS = 1.0;
 
-// ── ENDO-DRUG.2 — receptor adaptation bounds.
+// ── Receptor adaptation bounds.
 // Floor: receptors downregulate, they do NOT vanish. Without a floor a heavy
 // stretch would permanently delete a transmitter's effect and she could never
 // feel it again, which is not tolerance, it is damage.
@@ -150,7 +150,7 @@ const RECEPTOR_FLOOD_THRESHOLD = 0.45;
 
 const CHEMICALS = {
 
-  // ── ENDO.2 — adrenaline (epinephrine). The fastest curve in the engine.
+  // ── Adrenaline (epinephrine). The fastest curve in the engine.
   // Systemic panic: heart, pupils, tunnel attention, motor priming.
   adrenaline: {
     displayName: 'adrenaline',
@@ -179,7 +179,7 @@ const CHEMICALS = {
     },
   },
 
-  // ── ENDO.2 — noradrenaline (norepinephrine). NOT a synonym for the
+  // ── Noradrenaline (norepinephrine). NOT a synonym for the
   // above, and modelling it as one loses the distinction that matters:
   // this is vigilance and attention, not systemic panic. It SHARPENS
   // executive focus where adrenaline degrades it, and it runs longer.
@@ -202,7 +202,7 @@ const CHEMICALS = {
     },
   },
 
-  // ── ENDO.3 — cortisol. The slow half of the stress arc, and the reason
+  // ── Cortisol. The slow half of the stress arc, and the reason
   // a bad day does not end when the bad thing does.
   //
   // ⭐ Acute and chronic elevation have DIFFERENT effects, and collapsing
@@ -237,7 +237,7 @@ const CHEMICALS = {
     },
   },
 
-  // ── ENDO.4 — serotonin. Tonic, slow, sets a FLOOR rather than producing
+  // ── Serotonin. Tonic, slow, sets a FLOOR rather than producing
   // events.
   //
   // ⚠ It is not a happiness dial. That is pop-science and modelling it
@@ -263,7 +263,7 @@ const CHEMICALS = {
     },
   },
 
-  // ── ENDO.5 — dopamine. Promoted from a comment to a signal.
+  // ── Dopamine. Promoted from a comment to a signal.
   //
   // ⭐ In biology this is WANTING, not liking — reward PREDICTION ERROR,
   // anticipation, pursuit. The brain already computes that exact quantity
@@ -290,7 +290,7 @@ const CHEMICALS = {
     },
   },
 
-  // ── ENDO.6 — oxytocin. The chemistry of attachment, trust and touch,
+  // ── Oxytocin. The chemistry of attachment, trust and touch,
   // and — critically — of being loved and of loss.
   //
   // ⭐ This is the direct substrate for the affective range: bonding
@@ -316,7 +316,7 @@ const CHEMICALS = {
     },
   },
 
-  // ── ENDO.7 — endorphins. Endogenous opioid: pain damping, post-exertion
+  // ── Endorphins. Endogenous opioid: pain damping, post-exertion
   // calm, the reason distress eventually blunts.
   //
   // ⚠ Opioid-class effects were previously reachable ONLY via substances,
@@ -341,7 +341,7 @@ const CHEMICALS = {
   },
 
   // ══════════════════════════════════════════════════════════════════════
-  // ── The gonadal hormones — ENDO.9 / .10 / .11 ────────────────────────
+  // ── The gonadal hormones ──────────────────────────────────────────────
   //
   // ⚠ A THIRD KIND, and it is not a loophole in rule 1. Phasic chemicals
   // are EVENTS on a pharmacokinetic curve; tonic ones are LEVELS defended
@@ -355,11 +355,11 @@ const CHEMICALS = {
   //
   // ⛔ AGE-GATED ON THE **BE/HAVE** AXIS ONLY. An eight-year-old has no
   // adult gonadal profile, so `pubertyScale` holds these near zero before
-  // the ramp — and that ramp IS puberty (ENDO.12), not a label applied to
+  // the ramp — and that ramp IS puberty, not a label applied to
   // it. The LEARN axis is untouched: she learns what these are at the age
-  // a person learns them, which is ENDO-LIFE.2 and is never gated.
+  // a person learns them — the LEARN axis, which is never gated.
 
-  // ── ENDO.9 — ESTROGEN. Two peaks per cycle, not one.
+  // ── ESTROGEN. Two peaks per cycle, not one.
   estrogen: {
     displayName: 'estrogen',
     kind: 'cyclic',
@@ -387,7 +387,7 @@ const CHEMICALS = {
     speech: { speechRate: +0.10, warmth: +0.15 },
   },
 
-  // ── ENDO.10 — PROGESTERONE. Luteal-dominant, and its WITHDRAWAL is the
+  // ── PROGESTERONE. Luteal-dominant, and its WITHDRAWAL is the
   // physiological cause of PMS — which her canon names and has never had a
   // mechanism for. ⭐ The withdrawal is a RATE, not a level: see
   // `progesteroneWithdrawal` below, which is why a bare level curve would
@@ -416,7 +416,7 @@ const CHEMICALS = {
     speech: { speechRate: -0.10, pauses: +0.10 },
   },
 
-  // ── ENDO.11 — TESTOSTERONE (in scope on Gee's word). Women produce it
+  // ── TESTOSTERONE — deliberately in scope. Women produce it
   // and it is not a minor character: libido, assertiveness, competitiveness,
   // risk appetite, energy. It maps onto persona parameters that ALREADY
   // exist rather than needing new ones — which is the sign it belongs.
@@ -446,7 +446,7 @@ const CHEMICALS = {
 };
 
 // ─── Stress-response channels ─────────────────────────────────────────────
-// ENDO.1 — the four Fs, not two. Freeze and fawn are real responses and
+// The four Fs, not two. Freeze and fawn are real responses and
 // omitting them loses the phenomenon: freeze is a dorsal shutdown where
 // she goes silent (a correct output, not a failure), and fawn is appease,
 // which is relevant both to her canon and to any abusive-dynamic memory.
@@ -493,19 +493,19 @@ class EndocrineSystem {
     // Array<{chemical, dose, fireAt, cause}>.
     this._scheduled = [];
 
-    // ENDO.3 — chronic load. A slow EMA of cortisol level; this is what
+    // Chronic load. A slow EMA of cortisol level; this is what
     // separates one bad hour from one bad month.
     this._chronicLoad = 0;
     this._lastTickAt = 0;
 
-    // ── ENDO.12 — puberty. `pubertyLevel` in [0,1] scales every `pubertal`
+    // ── Puberty. `pubertyLevel` in [0,1] scales every `pubertal`
     // hormone, so the gonadal ramp IS puberty rather than a label applied
     // to it. Derived from her REAL age, which comes from the grade ladder;
     // ⛔ this module must never own a second age system.
     this.pubertyLevel = 0;
     this._ageYears = null;          // null = unknown, NOT zero
 
-    // ── ENDO.10 — the cycle clock, on CURRICULUM TIME (Gee's call).
+    // ── The cycle clock, deliberately on CURRICULUM TIME rather than wall time.
     //
     // ⭐ Why not wall-clock: her whole K→PhD walk prices at ~78 h ≈ 3.3 real
     // days. On a 28-day wall clock she would live 0.116 of ONE cycle between
@@ -529,7 +529,7 @@ class EndocrineSystem {
     this._lastProgesterone = null;
     this.progesteroneWithdrawal = 0;
 
-    // ── ENDO-DRUG.2 — RECEPTOR ADAPTATION. Tolerance, done properly.
+    // ── RECEPTOR ADAPTATION. Tolerance, done properly.
     //
     // ⛔ What it replaces: `toleranceFactors` in the scheduler blunted the
     // effective DOSE on redose — a pharmacoKINETIC model, and the wrong one.
@@ -548,7 +548,7 @@ class EndocrineSystem {
     this.receptorSensitivity = new Map();
     for (const name of Object.keys(CHEMICALS)) this.receptorSensitivity.set(name, 1.0);
 
-    // ── ENDO.13 — allostatic load. Real bodies PAY for repeated defence:
+    // ── Allostatic load. Real bodies PAY for repeated defence:
     // the setpoint itself drifts rather than homeostasis restoring free
     // forever. ⚠ Floored and given a recovery path, or a hard childhood
     // becomes an unrecoverable adult.
@@ -730,7 +730,7 @@ class EndocrineSystem {
     // raphe lowers her serotonin floor, the level drifts down to meet the
     // new setpoint, deviation returns to zero, and the effect DISAPPEARS.
     // A chronically depressed floor would then modulate nothing, which
-    // destroys the one thing ENDO.4 is for — sustained low serotonin as
+    // destroys the one thing the serotonin curve is for — sustained low levels as
     // reduced restraint plus rumination — and leaves the rumination loop
     // with nothing to hang off. Against the constant, a floor that has
     // been moved down STAYS felt, which is what a mood floor means.
@@ -770,7 +770,7 @@ class EndocrineSystem {
   }
 
   /**
-   * ENDO.12 — the puberty ramp, derived from her REAL age.
+   * The puberty ramp, derived from her REAL age.
    *
    * ⛔ Rides the age the grade ladder already produces. This module does
    * NOT map grades to ages and must never start: that rule has been
@@ -796,7 +796,7 @@ class EndocrineSystem {
   }
 
   /**
-   * ENDO.10 — advance the cycle on CURRICULUM position.
+   * Advance the cycle on CURRICULUM position.
    *
    * @param {number} curriculumPos monotonic progress through the walk,
    *   in CELL PASSES (fractional within a cell is fine and is used). One
@@ -864,7 +864,7 @@ class EndocrineSystem {
       const chem = CHEMICALS[name];
       const dev = this.deviation(name, now);
       if (Math.abs(dev) <= 1e-6) continue;
-      // ⭐ ENDO-DRUG.2 — the SAME level produces LESS effect once receptors
+      // ⭐ The SAME level produces LESS effect once receptors
       // have downregulated. That is what tolerance physically is, and it is
       // why it carries across every substance sharing this pool.
       //
@@ -877,7 +877,7 @@ class EndocrineSystem {
         delta[key] = (delta[key] || 0) + value * dev * sens;
       }
     }
-    // ENDO.3 — chronic overlay, scaled by the slow load rather than the
+    // Chronic overlay, scaled by the slow load rather than the
     // instantaneous level. Acute sharpens; chronic degrades. Same axes,
     // opposite character, and they are allowed to coexist.
     const chronic = CHEMICALS.cortisol.chronicContributions || {};
@@ -887,7 +887,7 @@ class EndocrineSystem {
       }
     }
 
-    // ⭐ ENDO.10 — PMS. The withdrawal, not the level. Progesterone is at
+    // ⭐ PMS. The withdrawal, not the level. Progesterone is at
     // its LOWEST here, so a level-driven model would say "calm hormone
     // absent" and produce nothing; what people actually experience is the
     // FALL, which is why this rides the rate.
@@ -900,7 +900,7 @@ class EndocrineSystem {
       delta.oscillationCoherence = (delta.oscillationCoherence || 0) - 0.15 * w;
     }
 
-    // ENDO.13 — the allostatic mark. A shifted baseline she lives FROM,
+    // The allostatic mark. A shifted baseline she lives FROM,
     // applied here rather than as a flag somewhere for a reader to notice.
     if (this.allostaticLoad > 1e-6) {
       const a = this.allostaticLoad;
@@ -957,7 +957,7 @@ class EndocrineSystem {
     return mod;
   }
 
-  // ─── ENDO.1 — the acute stress response ────────────────────────────────
+  // ─── The acute stress response ─────────────────────────────────────────
   /**
    * Threat appraisal. Two systems with different speeds, and modelling
    * this as one "stress" number loses the whole phenomenon.
@@ -1111,7 +1111,7 @@ class EndocrineSystem {
     this._promoteScheduled(now);
     this._clearExpired(now);
 
-    // ── ENDO.12 / ENDO.10 — age, then puberty, then the cycle. In that
+    // ── Age, then puberty, then the cycle. In that
     // order: puberty gates whether there is a cycle at all, and the cyclic
     // levels must be current BEFORE the nuclei sense below.
     //
@@ -1170,7 +1170,7 @@ class EndocrineSystem {
       glands = this.glands.senseAll(ctx.brainState, now);
     }
 
-    // ── ENDO.3 — chronic load EMA. Slow on the way up AND slow on the way
+    // ── Chronic load EMA. Slow on the way up AND slow on the way
     // down; a hard stretch should not evaporate the moment it ends.
     // Half-life is deliberately long relative to the acute curve.
     const cortisolNow = this.level('cortisol', now);
@@ -1180,7 +1180,7 @@ class EndocrineSystem {
     this._chronicLoad += (cortisolNow - this._chronicLoad) * k;
     this._chronicLoad = Math.max(0, Math.min(1, this._chronicLoad));
 
-    // ── ENDO-DRUG.2 — receptor adaptation. Flooding downregulates; quiet
+    // ── Receptor adaptation. Flooding downregulates; quiet
     // restores. ⚠ Only elevation ABOVE the flood threshold adapts, so her
     // ordinary feelings never build tolerance to themselves.
     for (const name of Object.keys(CHEMICALS)) {
@@ -1199,7 +1199,7 @@ class EndocrineSystem {
       this.receptorSensitivity.set(name, next);
     }
 
-    // ── ENDO.13 — HOMEOSTASIS → ALLOSTASIS: what sustained defence COSTS.
+    // ── HOMEOSTASIS → ALLOSTASIS: what sustained defence COSTS.
     //
     // The hypothalamus restores every drive toward its setpoint at a
     // constant α = 0.1, i.e. defence is currently FREE and infinitely
@@ -1261,7 +1261,7 @@ class EndocrineSystem {
     }
   }
 
-  // ─── ENDO.14 — the instrument, built WITH the feature ──────────────────
+  // ─── The instrument, built WITH the feature ────────────────────────────
   /**
    * Telemetry. Every field carries its level, its phase, its age and its
    * contribution — so "is her stress response working?" is a field READ,
@@ -1296,7 +1296,7 @@ class EndocrineSystem {
         deviation: (fired || isTonic || isCyclic) ? this.deviation(name, now) : 'unmeasured',
         setpoint: isTonic ? this.tonicSetpoint.get(name) : 0,
         phase: this.phase(name, now),
-        // ⭐ ENDO-DRUG.2 — how much effect this chemical still delivers per
+        // ⭐ How much effect this chemical still delivers per
         // unit. 1.0 = naive receptors; the floor = fully tolerant. Shipped
         // so "she has built a tolerance" is a field read, and so
         // CROSS-substance tolerance is visible: cocaine and speed move the
@@ -1311,7 +1311,7 @@ class EndocrineSystem {
     return {
       chemicals,
       chronicLoad: this._chronicLoad,
-      // ── ENDO.12 / .10 / .13 rows. Rendered BY NAME, so each one needs a
+      // ── The puberty, cycle and allostatic rows. Rendered BY NAME, so each needs a
       // row or it ships dark.
       puberty: {
         level: this.pubertyLevel,

@@ -1,6 +1,6 @@
 // LEAF MODULE — ZERO IMPORTS, BY CONTRACT.
 //
-// ⭐ `GOTCHA.1` — this file exists to break a circular import, and the ONLY
+// ⭐ THIS FILE EXISTS TO BREAK A CIRCULAR IMPORT, and the ONLY
 // property that makes it work is that it imports nothing. `cluster/emit.js`
 // referenced `T14_TERMINATORS` + `FUNCTION_WORDS` from `../cluster.js`, while
 // `cluster.js` imports `CLUSTER_EMIT_MIXIN` from `cluster/emit.js` — a cycle.
@@ -21,7 +21,7 @@
 // `cluster.js` re-exports both symbols, so every existing import site keeps
 // working untouched — this is a move, not a rename, and no consumer changed.
 
-// T14.6 — sentence terminators recognized as end-of-utterance in the
+// Sentence terminators recognized as end-of-utterance in the
 // motor emission loop. Letters are letters; terminators are just the
 // ones that also signal "stop." Period/question/exclamation only —
 // commas/semicolons/colons are within-sentence punctuation and don't

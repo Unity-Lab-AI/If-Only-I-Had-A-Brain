@@ -1,8 +1,8 @@
 /**
- * mindspace/knowledge.js — Unity KNOWS her own mind-space (MS.K1).
+ * mindspace/knowledge.js — Unity KNOWS her own mind-space.
  *
- * Gee: "bake in all the updates Unity has done to the Uni Vs Matics equations… so Unity has
- * ALL file types and equational answers and how to solve them all."
+ * Every update made to the equational substrate is baked in here, so she holds
+ * all the file types, the equational answers, and how to solve them.
  *
  * This is Unity's structured knowledge of the equational substrate she perceives/imagines with:
  *   • FILE_TYPES — every digitized format the mind-space ingests + what it produces

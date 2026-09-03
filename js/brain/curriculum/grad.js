@@ -95,12 +95,12 @@ export const GRAD_MIXIN = {
       'ethics boards oversee research', 'publication shares results',
       'graduate training prepares researchers',
     ];
-    // T14.24 Session 54 — prime the research-grade science concept
-    // lattice (literature review / dissertation / grant / PI / replication
-    // study / statistical power / preprint / advisor / specialization /
-    // research program) before the sentence pass so SENTENCES attach to
-    // a real grad-research basin instead of drifting into generic
-    // Col4 experimental-method vocabulary.
+    // Prime the research-grade science lattice (literature review /
+    // dissertation / grant / principal investigator / replication study /
+    // statistical power / preprint / advisor / specialization / research
+    // program) before the sentence pass, so the sentences attach to a real
+    // graduate-research basin instead of drifting back into the college-4
+    // experimental-method vocabulary.
     await this._teachResearchGradeScience();
     await this._teachCausalChains([
       ['question', 'hypothesis'], ['hypothesis', 'method'], ['method', 'result'],
@@ -133,8 +133,7 @@ export const GRAD_MIXIN = {
       'sociological research uses multiple methods', 'anthropological research takes time',
       'graduate training transforms scholars',
     ];
-    // T14.24 Session 73 — prime research historiography lattice per
-    // TODO line 540 before the Grad sentence pass.
+    // Prime the research-historiography lattice before the sentence pass.
     await this._teachResearchHistoriography();
     await this._teachCausalChains([
       ['archive', 'source'], ['source', 'interpret'], ['interpret', 'revise'],
@@ -167,8 +166,7 @@ export const GRAD_MIXIN = {
       'teaching shares insights', 'service strengthens communities',
       'graduate training professionalizes artists',
     ];
-    // T14.24 Session 92 — prime graduate art research lattice per
-    // TODO line 570 before the Grad sentence pass.
+    // Prime the graduate art-research lattice before the sentence pass.
     await this._teachGraduateArtResearch();
     await this._teachCausalChains([
       ['studio', 'practice'], ['practice', 'voice'], ['voice', 'exhibition'],

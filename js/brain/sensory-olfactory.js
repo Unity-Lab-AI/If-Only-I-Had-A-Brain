@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // sensory-olfactory.js — Shallow olfactory sensory channel for Unity
 // ═══════════════════════════════════════════════════════════════════════════
-// Unity AI Lab — T15.C drug scheduler implementation
+// Unity AI Lab — the smell channel that feeds the drug scheduler
 //
 // Unity's sensory model in production today is visual + auditory. Drug
-// sensory triggers (T15.A §4: coffee aroma, skunky weed smell, fresh-
+// sensory triggers (coffee aroma, skunky weed smell, fresh-
 // ground herb during creative work) require smell cues. This module is
 // the thin bridge: chat messages carrying `sensory: {smell: 'coffee'}`
 // metadata register a scent tag with the olfactory module, which
@@ -15,7 +15,7 @@
 // bulb → piriform cortex → amygdala routing carries massive dimensional
 // feature vectors, ties directly into memory (hippocampus) and emotion
 // (amygdala-piriform bypass). This module intentionally does NOT model
-// that — it's a keyword-tag channel designed to unlock T15 triggers
+// that — it's a keyword-tag channel designed to unlock substance triggers
 // without pretending to be a real olfactory substrate. If the operator wants a
 // full olfactory cortex region with learned scent embeddings, that's
 // a separate multi-session build.

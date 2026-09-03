@@ -99,11 +99,10 @@ export const COL4_MIXIN = {
       'conflicts of interest must be disclosed', 'retraction corrects errors',
       'science is self correcting',
     ];
-    // T14.24 Session 53 — prime the dedicated research-methods concept
-    // lattice (method / hypothesis / controls / blinding / significance /
-    // reproducibility / peer review / ethics) before the sentence pass so
-    // SENTENCES attach to a real methodological basin instead of drifting
-    // into generic sci vocabulary.
+    // Prime the research-methods lattice (method / hypothesis / controls /
+    // blinding / significance / reproducibility / peer review / ethics) before
+    // the sentence pass, so the sentences attach to a real methodological basin
+    // instead of drifting into generic science vocabulary.
     await this._teachScienceResearchMethods();
     await this._teachCausalChains([
       ['hypothesis', 'experiment'], ['experiment', 'data'], ['data', 'analysis'],
@@ -136,8 +135,7 @@ export const COL4_MIXIN = {
       'validity is measuring what we claim', 'reliability is consistency',
       'generalizability applies beyond the sample',
     ];
-    // T14.24 Session 72 — prime social science research methods
-    // lattice per TODO line 537 before the Col4 sentence pass.
+    // Prime the social-science research-methods lattice before the sentence pass.
     await this._teachSocialScienceResearchMethods();
     await this._teachCausalChains([
       ['hypothesis', 'test'], ['test', 'data'], ['data', 'conclude'],
@@ -171,8 +169,7 @@ export const COL4_MIXIN = {
       'copyright protects creations', 'fair use allows some borrowing',
       'the art world is global',
     ];
-    // T14.24 Session 91 — prime art research methods + portfolio
-    // lattice per TODO line 567 before the Col4 sentence pass.
+    // Prime the art research-methods + portfolio lattice before the sentence pass.
     await this._teachArtResearchMethods();
     await this._teachCausalChains([
       ['archive', 'attribution'], ['style', 'period'], ['technique', 'artist'],

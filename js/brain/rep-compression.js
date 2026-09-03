@@ -38,7 +38,7 @@
  * Rows are collision loads; columns are compression factors with the rep count
  * they produced from a 100-rep authored dose. Values are retrieval accuracy.
  *
- * ⚠ The 8× column at load 0.246 is taken from the earlier REPCOMP.3 run, which
+ * ⚠ The 8× column at load 0.246 is taken from an earlier measurement run, which
  * scored it 99.0% at 1.6× production. The later re-run is HARSHER by
  * construction (*"it scores 8× at 76% where that reported 95.5%"*), so where the
  * two disagree the harsher number is kept. **Reading the ordering as the signal

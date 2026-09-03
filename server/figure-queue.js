@@ -31,11 +31,11 @@
 // **nothing about it reads ambient state**, which is why a figure perceived an
 // hour after its prose binds identically to one perceived inline.
 //
-// ⚠ That is not an accident of this design, it is the `CAMPOISON` fix holding:
-// an unlabelled frame that fuses with "whatever word is current" is precisely
-// the defect that made a webcam placeholder become her memory of a word. A
-// deferred lane would re-open it instantly if the binding were resolved at
-// perception time instead of travelling with the row.
+// ⚠ That is not an accident of this design, it is the unlabelled-frame rule
+// holding: a frame that fuses with "whatever word is current" is precisely the
+// defect that made a webcam placeholder become her memory of a word. A deferred
+// lane would re-open it instantly if the binding were resolved at perception
+// time instead of travelling with the row.
 'use strict';
 
 const path = require('path');

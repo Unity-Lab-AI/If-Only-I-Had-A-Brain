@@ -5,6 +5,73 @@
 
 ---
 
+## 2026-09-03 — `CURVEBUILD.6` — THE TOPIC LISTS WERE THE BINDING CONSTRAINT, AND EXPANDING THEM CLEARED THE ENTIRE EARLY BAND
+
+The previous pass proved the constraint by experiment rather than argument: re-fetching the SAME topic list returned the same articles (**sentences −12**) while only the picture count moved (**+3,513 figures**). So this pass added TOPICS, not depth.
+
+**Topic lists 1,872 → 4,424 entries (+2,551) across 118 of 173 cells.** Re-measured through the reader — her intake, not bytes on disk:
+
+```
+  cells at/above their band floor   74  ->  119     (+45)
+  cells THIN                       115  ->   70     (-45)
+  cells EMPTY                        4  ->    4     (all four are math/*, no wiki lane by design)
+  reachable corpus words    50,035,781  ->  56,615,176   (+6,579,395)
+  entries                        4,115  ->   6,726       (+2,611)
+  figures on disk               42,016  ->  58,378       (+16,362)
+  figures REACHABLE             41,627  ->  57,574       (+15,947)
+```
+
+⭐ **THE WHOLE EARLY BAND CLEARED.** Every pre-K / kindergarten / grade1 / grade2 cell that was thin now sits at or above floor — the band the operator ruling named as the priority. What remains thin is middle-band and above, where floors run 29,000 → 330,000 words.
+
+⭐⭐ **EVERY TITLE WAS VERIFIED AGAINST THE LIVE API BEFORE IT WAS WRITTEN IN, AND THAT IS WHY 2,551 TOPICS COST SIX SKIPS.** The verification found **three distinct failure classes**, and only the first is the one anybody checks for:
+
+- **MISSING** — the article does not exist. Loud, easy, already handled.
+- **REDIRECT TO A DIFFERENT SUBJECT** — silent. `Team dynamics` resolves to **a Japanese motorsport team**. `Checks and balances` resolves to `Separation of powers`, which was **already in the same cell** — so one article would have been banked **twice under two themes**, inflating that cell with its own prose. The entry `theme` is derived from the ASKED title, so two aliases of one article are two entries; canonical targets are now used throughout, which closes the hole by construction.
+- **DISAMBIGUATION PAGE** — exists, resolves, returns prose, teaches nothing. **32 of them, and several were already shipped in the old lists:** `Texture` in `art/grade1`, plus `Balance`, `Doctor`, `Depression`, `Loop`, `Flexibility`, `Strength`.
+
+⛔ **A duplicate was hiding in plain sight:** `pe/grade10` listed `Physical therapy` **twice**. The merge dedupes by theme so nothing was corrupted — the cell simply had 9 topics while the list read as 10, and every run spent an API call on nothing.
+
+### ⛔⛔ THE SIX SKIPS EXPOSED TWO REAL FETCHER BUGS, AND BOTH MADE THE INSTRUMENT LIE
+
+They compounded on the same topic, which is why neither had been noticed.
+
+**① THE SKIP REASON NAMED THE LAST HOST TRIED, NOT THE DECISIVE ONE.** A topic is asked of `en.wikipedia.org` then `simple.wikipedia.org`; `lastReason` was a plain assignment, so the host that does NOT carry the article always won. **`Pumping lemma` reported `no-such-page` while existing on en.wikipedia with a 708-character extract** — it had merely failed the 3-sentence floor there, and simple-wiki's `missing` overwrote the truthful `too-few-sentences`. **The instrument was telling a reader to delete a title that exists.** A reason may now only get MORE specific, never less.
+
+**② THE THROTTLE DETECTOR READ THE ARTICLE INSTEAD OF THE ERROR, MAKING SOME ARTICLES PERMANENTLY UNFETCHABLE.** `classifyBody` pattern-matched `too many requests|rate ?limit|retry.after` against the response body **unconditionally**. `Sampling (signal processing)` returned **HTTP 200 and a valid 17,992-byte JSON payload** containing the words *"Slew rate limit error"* — so it was classified `throttled`, retried through the full ~48 s backoff ladder, and failed forever. **Every signal-processing, networking or API article that discusses rate limiting was unreachable, and no retry could ever change it.** The sniff exists for a documented reason — a Wikimedia throttle reply is not JSON, and parsing it as JSON once made a throttle invisible for four ingest passes — so the fix asks the right question instead of deleting the check: **a body that parses as JSON and carries a `query` object is an API answer, whatever words are inside it.** Throttle detection is preserved intact.
+
+⭐ **Both fixes were proven by re-running the failing topic**, not by reading the diff: the reason first became the honest `throttled`, and then the topic fetched at 72 sentences.
+
+**The other four skips were pre-existing titles — all stubs that pass an existence check:** `Germ` (1,506 chars → `Pathogen`), `Dental care` (492 → `Oral hygiene`), `Alcohol` (the CHEMISTRY page, 1,654 → `Alcohol (drug)`), `Relationship` (1,307, and its cell already carried `Interpersonal relationship`).
+
+⚠ **NOT CLAIMED: the corpus is not finished.** 70 cells remain THIN and 4 remain EMPTY. `CURVEBUILD.2`'s re-price stands — **the college and grad floors cannot all be reached by fetching Wikipedia harder**, and closing them is the textbook lane's job.
+
+⚠ **`--replace` WAS NOT USED, deliberately.** It replaces the whole CELL, not the fetcher's own entries, and doing so on a re-run cost **323,434 sentences** of research prose on 2026-09-03. Every run here was `--only-missing`.
+
+---
+
+## 2026-09-03 — `SPELLTRUTH.1` — SHE HAS NEVER SPELLED ANYTHING, AND THE CODE SAYS OTHERWISE IN THREE PLACES
+
+Gee (verbatim): *"her spelling on her images in the minds eye is not her spelling.. i mean how can she be spelling perfectly before she has even learned he words? or learned to spell or speak. so an investigation needs conducted"*
+
+**An investigation, and the answer is flat: she isn't spelling. It is a caption.** The word is a string the drawing lane already holds, stamped through a hardcoded 5×7 bitmap font.
+
+**Every glyph producer, read at the code:**
+
+| Producer | Letterforms from | Spelling from | Verdict |
+|---|---|---|---|
+| `glyphStrokes()` (`js/brain/mindspace/gpu.js:777`) via `_labelStrokes(key)` (`chat.js:4189`) | `FONT5X7`, a hand-written bitmap table at `gpu.js:131` | the **concept key**, `String(key).slice(0, 14)` — a corpus word already correctly spelled | ⛔ **NOT HERS** |
+| `renderThoughtPlane()` via `symbolGlyphText()` (`gpu.js:220`) | same `FONT5X7` | filtered to **numbers, math symbols and SINGLE letters only**; a word contributes a colour tint and no glyphs | ⭐ **HONEST — it already refuses to spell** |
+| the looked-up reference image, posterized through `stylizeField` | the generator | ⚠ **UNMEASURED** — `eye-style.js` carries no anti-text steering | ⚠ **UNKNOWN, and labelled so** |
+| `html/minds-eye.html` | browser fonts | page chrome only — status line, counters | ✅ **not on the image** |
+
+⛔⛔ **THE SHARPEST FINDING IS THAT THE CODE CLAIMS THE OPPOSITE, IN COMMENTS, IN THREE PLACES** — *"she writes the WORD of what she drew, in her own CLEAN trained hand"*, *"letters as PENCIL STROKES (her own hand), not a raster stamp"*, *"her existing trained glyphs"*. The rasterizer does genuinely draw the strokes, but it converts a FONT BITMAP into line segments: **the shapes are given and the spelling is given.** A comment claiming a capability the code does not have is the same defect class as an instrument reporting a number it never measured — and here it is what made the output look like evidence of literacy.
+
+⛔ **There is no gate of any kind.** `opts.label` is never set to `false` at any call site, and `chat.js` contains **no vocabulary check at all**. A pre-K drawing gets the same perfectly-spelled 14-character caption a PhD drawing gets.
+
+⚠ **The fix is a decision, not an obvious repair, and it was NOT taken unilaterally** — spawned as `SPELLTRUTH.2` with three defensible options (keep the caption but stop calling it hers · gate it on taught words · make the letterforms genuinely learned). **Adding wobble or deliberate mis-spelling is ruled out**: it satisfies the visual complaint, leaves the provenance defect untouched, and is banned outright.
+
+---
+
 ## 2026-09-03 — `CURVEBUILD.11` — THE DEEPENING PASS RAN, AND IT PROVED THE CONSTRAINT IS THE TOPIC LIST
 
 175 cells, all 18 subjects, **~2.44M cleaned sentences written**. Skips named rather than swallowed: `no-such-page 12 · no-content 11 · too-few-sentences 1`.

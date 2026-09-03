@@ -1,6 +1,52 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-03 (LATE) THE INGEST IS DONE AND COMMITTED, THE TITLE LIST IS CLEAN, AND I DESTROYED 323,434 SENTENCES AND CAUGHT IT (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-03 (LATEST — PICK UP HERE) THE TOPIC LISTS WERE THE CONSTRAINT, THE EARLY BAND IS CLEARED, AND TWO INSTRUMENTS WERE LYING
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> corpus     topic lists 1,872 -> 4,424 entries (+2,551) across 118 of 173 cells
+> coverage   119 cells at/above floor (was 74) · 70 THIN (was 115) · 4 EMPTY (all math/*)
+> words      56,615,176 reachable as-taught (was 50,035,781)
+> figures    57,574 reachable (was 41,627)
+> ingest     FINISHED. Nothing is running. 6 skips in 2,551 topics, all six resolved.
+> CODELEAK   93 -> 30 files carrying a task number in a comment (63 cleared by hand)
+> ```
+>
+> ### ⛔⛔ THE TWO THINGS THAT WILL BITE YOU, BOTH INSTRUMENTS THAT REPORTED A CLEAN LIE
+>
+> **① A TITLE THAT EXISTS IS NOT A TITLE THAT TEACHES.** Verifying 1,220 candidate article titles against the live API found three failure classes and **only the first is the one anybody checks for**:
+> - **MISSING** — loud, easy.
+> - **REDIRECT TO A DIFFERENT SUBJECT** — silent. `Team dynamics` resolves to **a Japanese motorsport team**. `Checks and balances` resolves to `Separation of powers`, *already in the same cell*, so one article gets banked **twice under two themes** — the entry `theme` comes from the ASKED title, so two aliases are two entries and the cell inflates with its own prose.
+> - **DISAMBIGUATION PAGE** — exists, resolves, returns prose, teaches nothing. **32 found, several already shipped** (`Texture` in `art/grade1`, `Balance`, `Doctor`, `Depression`, `Loop`).
+>
+> **② MY OWN DETECTORS LIED FOUR TIMES BEFORE ONE WORKED, AND THREE OF THE FOUR ERRED *CLEAN*.** Counting the task-number LAW violations: a broad ALLCAPS pattern said **9,905** (it was matching this codebase's own shouted emphasis); a namespace pattern said **0 tickets** (`'\\\\b'` through a shell became a JS *backspace character*, and a heredoc ate the backslashes the same way); a hand-picked "also an English word" exception list said **2,747** (the list had 8 entries and English has more — `// a self she couldn't SPEAK` got filed as a violation). **The truth is 2,370.** ⭐ What finally works: **derive both halves and self-test.** The ticket namespace comes from `TODO.md` + `FINALIZED.md` (409 stems); whether a stem is also an English word is answered by **the corpus she is taught from** (379,406 distinct words → 55 stems are ordinary English and count only with a `.N` suffix); and the scanner **refuses to run if its own self-test fails**.
+>
+> ### ⭐⭐ TWO REAL FETCHER BUGS, FOUND BY SIX SKIPS, BOTH FIXED AND BOTH PROVEN BY RE-RUNNING
+>
+> - **The skip reason named the LAST HOST TRIED, not the decisive one.** `Pumping lemma` reported `no-such-page` **while existing on en.wikipedia with a 708-character extract** — it failed the sentence floor there, then simple-wiki's `missing` overwrote the truthful reason. **It was telling a reader to delete a title that exists.**
+> - **The throttle detector read the ARTICLE instead of the ERROR.** `classifyBody` matched `rate ?limit` against the response body unconditionally, so `Sampling (signal processing)` — **HTTP 200, valid 17,992-byte JSON, containing *"Slew rate limit error"*** — was `throttled` forever, burning the ~48 s backoff ladder on a request that had already succeeded. **Every article discussing rate limiting was unreachable.** Fix: a body that parses as JSON and carries a `query` object is an API answer whatever words are inside it; the throttle check itself is preserved.
+>
+> ### ⛔ SHE HAS NEVER SPELLED ANYTHING (`SPELLTRUTH.1`, filed by Gee this session and answered)
+>
+> The perfectly-spelled words on her drawings are **a caption**: a hardcoded 5×7 bitmap font (`FONT5X7`) stamping the concept key the drawing lane already holds. **The code claims the opposite in three comments** — *"her own CLEAN trained hand"*, *"her existing trained glyphs"* — and there is **no vocabulary gate anywhere in `chat.js`**. ⚠ The fix is a decision with three defensible answers and was deliberately NOT taken unilaterally → `SPELLTRUTH.2`. **Adding wobble or deliberate mis-spelling is ruled out** — it fixes the look and leaves the provenance defect.
+>
+> ### ⚠ OWNED THIS SESSION
+> - Started a `sed -i` on `global-workspace.js` — the banned scripts-edit-files pattern. **Caught and reverted inside the same command**; verified no diff and no stray `.bak`, then did it by hand.
+> - Verified a per-grade curriculum file by direct `import()` and got `Cannot access 'G1_MIXIN' before initialization`. **I suspected my own edit first, stashed it, re-tested, and the error was pre-existing** — a circular-import TDZ the production entry never hits. **Verify those files through `curriculum.js`, never by direct import.**
+>
+> ### NEXT
+> - **Cascade this branch** — `feature/figpair-0902` is not merged.
+> - **`CODELEAK.1`: 30 files left**, concentrated in `curriculum.js`, `brain-server.js`, `chat.js`, `gpu.js`, `cluster.js`, `kindergarten.js`. The method is proven and mechanical; **the unit of progress is a WHOLE FILE**, because a half-swept file still violates the LAW.
+> - **`SPELLTRUTH.2` needs Gee's call** between the three options.
+> - **The 70 THIN cells are the textbook lane's job**, not another topic-list pass — `CURVEBUILD.2`'s re-price says the college and grad floors cannot be reached by fetching Wikipedia harder.
+> - ⛔ **Never `--replace`.** It replaces the whole CELL, not your fetcher's entries; it cost 323,434 sentences earlier today. Every run this session was `--only-missing`.
+
+---
+
+> ## ⭐⭐ 2026-09-03 (LATE) THE INGEST IS DONE AND COMMITTED, THE TITLE LIST IS CLEAN, AND I DESTROYED 323,434 SENTENCES AND CAUGHT IT
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >

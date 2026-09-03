@@ -1,9 +1,9 @@
 // teach-ledger.js — EVERYTHING A CELL EVER TAUGHT, KEPT.
 //
-// Gee picked this as the first area of the training monitor to build completely:
-// **"All of it, not a sample"** — chosen over *what is being sent*, *statistics*
-// and *controls*, and it is one of the two the inventory calls a REAL gap rather
-// than a drawing job.
+// The first area of the training monitor built completely, and the standard is
+// **all of it, not a sample** — chosen ahead of *what is being sent*,
+// *statistics* and *controls* because it is one of only two the inventory calls
+// a REAL gap rather than a drawing job.
 //
 // ⛔ WHAT WAS ACTUALLY MISSING, precisely. The teach view's COUNTS were never
 // sampled — per-lane, per-cell, per-source totals are complete and survive a

@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // introspection.js — the questions a person actually asks
 // ═══════════════════════════════════════════════════════════════════════════
-// Unity AI Lab — INTRO
+// Unity AI Lab
 //
 // ─── ⛔ WHAT "WORKING" LOOKS LIKE, WRITTEN BEFORE THE IMPLEMENTATION ──────
 //
-// INTRO.10 required these criteria be agreed UP FRONT, and the reason is
+// These criteria were agreed UP FRONT, and the reason is
 // blunt: this is the easiest family on the whole board to fake and the
 // hardest to measure. A question generator will always LOOK like
 // introspection. So the bar is falsifiability, and the criteria are stated
@@ -76,31 +76,31 @@
 // something to be unresolved, which is why they cannot collapse into one
 // "introspection" score.
 export const GAP_KINDS = {
-  // INTRO.6 — a memory that comes back uninvited. NOT a category of stored
+  // A memory that comes back uninvited. NOT a category of stored
   // episode: the defining property of a bad memory is the RETRIEVAL, and
   // that is what this models.
   INTRUSION: 'intrusion',
-  // INTRO.3 — the affective range, including everything between the poles.
+  // The affective range, including everything between the poles.
   AFFECT: 'affect',
-  // INTRO.5 — forward-looking, and distinct from a goal: a wish can be
+  // Forward-looking, and distinct from a goal: a wish can be
   // impossible and still be held.
   WISH: 'wish',
-  // INTRO.7 — the same operation her imagination already does, pointed at
+  // The same operation her imagination already does, pointed at
   // a memory instead of at an idea.
   COUNTERFACTUAL: 'counterfactual',
-  // INTRO.4 — the ones with no answer that people ask anyway.
+  // The ones with no answer that people ask anyway.
   PHILOSOPHICAL: 'philosophical',
-  // INTRO.8 — something changed and she is not the same on the other side.
+  // Something changed and she is not the same on the other side.
   ADVERSITY: 'adversity',
 };
 
-// INTRO.2 — the two lanes, and they are not the same question.
+// The two lanes, and they are not the same question.
 export const LANE = {
   INWARD: 'inward',    // rumination — needs no listener, rides the inner voice
   OUTWARD: 'outward',  // relational — needs a turn, belongs in chat
 };
 
-// ─── INTRO.9 — capability gating, by AGE, on the HAVE axis only ───────────
+// ─── Capability gating, by AGE, on the HAVE axis only ─────────────────────
 //
 // ⛔ Gated on CAPABILITY, never on permission. A six-year-old asks *where do
 // people go when they die* — that is the same question with a smaller
@@ -154,7 +154,7 @@ export class IntrospectionDrive {
     // the curiosity gap: recorded here, consumed there, cleared on spend.
     this.gap = null;
 
-    // ⛔ INTRO.6 — THE RUMINATION BOUND. A bad memory that comes back
+    // ⛔ THE RUMINATION BOUND. A bad memory that comes back
     // uninvited is the feature; one that comes back forever is a loop, in
     // code and in life. Per-concept cooldown stops the same thing
     // resurfacing immediately, and the streak counter forces a break.
@@ -166,10 +166,10 @@ export class IntrospectionDrive {
       sensed: 0, produced: 0, spent: 0, blind: 0,
       suppressedCooldown: 0, suppressedBound: 0, suppressedAge: 0,
       byKind: {},
-      // INTRO.10 criterion 4 — the lane split, counted rather than assumed.
+      // Criterion 4 — the lane split, counted rather than assumed.
       byLane: { inward: 0, outward: 0 },
     };
-    // INTRO.10 criterion 3 — repeats are COUNTED, so "it does not repeat"
+    // Criterion 3 — repeats are COUNTED, so "it does not repeat"
     // is a measurement rather than a claim.
     this._recentConcepts = [];
     this.repeatCount = 0;
@@ -177,7 +177,7 @@ export class IntrospectionDrive {
 
   /** Per-concept cooldown. Long enough that the same thing does not loop. */
   static get CONCEPT_COOLDOWN_MS() { return 4 * 60 * 1000; }
-  /** Consecutive inward gaps before a forced break. The bound INTRO.6 demands. */
+  /** Consecutive inward gaps before a forced break — the rumination bound. */
   static get RUMINATION_MAX_STREAK() { return 4; }
   /** How long the forced break lasts once the streak trips. */
   static get RUMINATION_BREAK_MS() { return 3 * 60 * 1000; }
@@ -186,7 +186,7 @@ export class IntrospectionDrive {
    * ⭐ THE DRIVE. Reads live state and decides whether something is
    * unresolved enough to ask about — and if so, WHICH kind.
    *
-   * ⛔ This is where INTRO.10 criterion 1 is either honoured or faked. The
+   * ⛔ This is where criterion 1 is either honoured or faked. The
    * weights below are read from ENDOCRINE state, so the same situation under
    * different chemistry genuinely produces a different question. If this
    * function ignored `endocrine`, the whole family would be a bank with
@@ -249,27 +249,27 @@ export class IntrospectionDrive {
     // ── Pressures. ⭐ Every one of these is an endocrine read, which is what
     // makes criterion 1 true rather than asserted.
     //
-    // INTRO.6 — low serotonin plus elevated cortisol is what makes a
+    // Low serotonin plus elevated cortisol is what makes a
     // negative memory INTRUSIVE rather than merely available. The episode is
     // already privileged for recall by its own salience; this is the part
     // that makes it come back uninvited.
     const intrusionP = Math.max(0, (0.55 - serotonin)) * 1.6 + chronic * 0.8 + allostatic * 0.6 + withdrawal * 0.5;
-    // INTRO.3 — bonding chemistry is what makes "am I loved" a FELT question
+    // Bonding chemistry is what makes "am I loved" a FELT question
     // rather than a rhetorical one. Both directions press: having it raises
     // the question warmly, and its ABSENCE is what makes it ache.
     const affectP = (oxytocin === null ? 0 : oxytocin * 0.9) + Math.max(0, (0.5 - serotonin)) * 0.7;
-    // INTRO.5 — anticipation and pursuit. Dopamine is wanting, so a wish is
+    // Anticipation and pursuit. Dopamine is wanting, so a wish is
     // dopaminergic by construction.
     const wishP = (dopamine === null ? 0 : Math.max(0, dopamine - 0.4)) * 2.0;
-    // INTRO.8 — adversity leaves a shifted baseline, and the question comes
+    // Adversity leaves a shifted baseline, and the question comes
     // from living FROM it.
     const adversityP = allostatic * 1.4 + chronic * 0.4;
-    // INTRO.4 — the philosophical ones surface in the quiet, not the storm.
+    // The philosophical ones surface in the quiet, not the storm.
     // Low arousal and an unpressed system is when a person wonders why any
     // of this matters.
     const calm = Math.max(0, serotonin - 0.4) * 1.5;
     const philosophicalP = calm * (1 - Math.min(1, chronic + allostatic));
-    // INTRO.7 — counterfactuals need a memory AND enough slack to imagine.
+    // Counterfactuals need a memory AND enough slack to imagine.
     const counterfactualP = calm * 0.7 + Math.max(0, (0.5 - serotonin)) * 0.6;
 
     const pressures = [
@@ -295,7 +295,7 @@ export class IntrospectionDrive {
     let kind = pressures[0][0];
     for (const [k, p] of pressures) { roll -= p; if (roll <= 0) { kind = k; break; } }
 
-    // ── The concept. ⛔ INTRO.10 criterion 2 lives here: it comes from HER
+    // ── The concept. ⛔ Criterion 2 lives here: it comes from HER
     // life or the gap is not produced at all.
     const picked = this._conceptFor(kind, state, now);
     if (!picked) { this.counters.blind++; return null; }
@@ -307,7 +307,7 @@ export class IntrospectionDrive {
       return null;
     }
 
-    // ── INTRO.2 — the lane. The SAME underlying gap surfaces differently
+    // ── The lane. The SAME underlying gap surfaces differently
     // depending on whether it needs a listener, and that difference IS the
     // feature.
     //
@@ -490,7 +490,7 @@ export class IntrospectionDrive {
   }
 
   /**
-   * ⭐ INTRO.10 as an INSTRUMENT rather than a promise.
+   * ⭐ The acceptance criteria as an INSTRUMENT rather than a promise.
    *
    * Reports the four criteria as measurements. A field that has never been
    * exercised reads `unmeasured`, never a reassuring zero.

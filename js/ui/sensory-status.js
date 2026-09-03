@@ -1,5 +1,5 @@
 /**
- * sensory-status.js — R13 user-facing sensory backend notices
+ * sensory-status.js — user-facing sensory backend notices
  *
  * Renders toast notifications + a small HUD corner for Unity's sensory
  * AI providers (image gen, vision describer, TTS). Subscribes to the
@@ -7,7 +7,7 @@
  * every state change: autodetect-complete, backend-dead, backend-failed,
  * paused, all-failed.
  *
- * Why this exists: pre-R13 the 4-level provider priority failed silently.
+ * Why this exists: the 4-level provider priority used to fail silently.
  * Users had no idea if their local A1111/Ollama was alive, if Pollinations
  * was rate-limited, or if vision had died. Now every transition surfaces
  * a visible toast with color coding and the HUD stays in sync.

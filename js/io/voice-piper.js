@@ -11,8 +11,8 @@
 // The worker does all the heavy lifting (phonemize + VITS inference) on the
 // visitor's machine — no server, no external API. This module is just the courier.
 
-// CACHE-BUSTED (Gee 2026-07-17, donor still dropping on chat AFTER the wasm-only
-// voice fix deployed): the un-busted URL let browsers serve the OLD cached worker
+// CACHE-BUSTED — the donor was STILL dropping on chat after the wasm-only voice
+// fix deployed. The un-busted URL let browsers serve the OLD cached worker
 // bundle — the one whose TTS grabbed WebGPU — so the fix never executed in the
 // visitor's tab. On a machine where the NATIVE donor binary shares the same
 // physical GPU, that stale worker's WebGPU grab pressure-killed the donor's

@@ -1,9 +1,9 @@
-// eye-style.js — STYLEBLEED (2026-08-29): the ONE owner of every code-authored
-// image-steering string, so the drawability gate can refuse self-contamination
-// by PROVENANCE instead of by an opinion list.
+// eye-style.js — the ONE owner of every code-authored image-steering string, so
+// the drawability gate can refuse self-contamination by PROVENANCE instead of by
+// an opinion list.
 //
-// The defect this closes, operator's words on the board (§MINDMOTION/STYLEBLEED):
-// the eye kept looking up subjects like "color" and "crisp" — words that are
+// THE DEFECT THIS CLOSES: the eye kept looking up subjects like "color" and
+// "crisp" — words that are
 // WordNet-honestly concrete (coloring material; a potato crisp) but that only
 // ever reached the subject lane FROM HER OWN STYLE TAILS ("vibrant saturated
 // color, crisp sharp focus"). The generator handed such a subject plus the
@@ -13,13 +13,13 @@
 // ⛔ NOT a word-list classifier (that law stands): nothing here judges what a
 // word IS. The strings below are the literal prompt text the builders were
 // already using — byte-identical, because two of them carry operator-judged
-// A/B verdicts (PROMPTBLEED: "thats the fix! B's are all 100% better") that a
+// A/B verdicts — one variant judged unanimously better than the other — that a
 // rewording would silently discard. The gate derives "these words are my own
 // style vocabulary" from the SAME strings the builders consume, so the two
 // can never drift apart.
 
 const EYE_STYLE = {
-  // mood tail (MOODPOP, chat.js) — crisp/saturated, never fog
+  // mood tail (chat.js) — crisp/saturated, never fog
   moodBase: 'vibrant saturated color, crisp sharp focus',
   moodDark: 'bold dramatic contrast',
   moodBright: 'bright playful energy',
@@ -30,7 +30,7 @@ const EYE_STYLE = {
   chatTail: 'crisp sharp focus, rich color, ultra detailed',
   // unified-scene tail (chat.js)
   sceneTail: 'realistic photograph, true to life, natural lighting, full color, richly detailed, plain uncluttered background',
-  // reference-look framing (visual-memory.js — PROMPTBLEED-verified text)
+  // reference-look framing (visual-memory.js — A/B-verified text, do not reword)
   photoPerson: 'color photograph',
   photoObject: 'color photograph of the object',
   refTail: ', full color, richly detailed, plain background',

@@ -12,13 +12,13 @@
 
 import { SparseMatrix } from './sparse-matrix.js';
 import { sharedEmbeddings } from './embeddings.js';
-// T14.16 — letter inventory persistence. Pulls from the T14.1 module
+// Letter inventory persistence. Pulls from the letter-input module
 // so reloads restore the same inventory-insertion order the cortex
 // weights were trained against.
 import { serializeInventory as _t14SerializeInventory, loadInventory as _t14LoadInventory } from './letter-input.js';
 
-// T14.16 — shallow helpers for serializing nested Maps. The learned
-// language statistics on NeuronCluster (T14.13) use Map-of-Maps shapes
+// Shallow helpers for serializing nested Maps. The learned
+// language statistics on NeuronCluster use Map-of-Maps shapes
 // that JSON.stringify can't handle directly.
 function mapOfMapsToJson(m) {
   if (!(m instanceof Map)) return null;
@@ -69,13 +69,12 @@ const STORAGE_KEY = 'unity_brain_state';
 // memory centroids from v2 have the wrong shape and wrong values
 // (letter-hash vs GloVe). Old v2 state gets rejected on load and
 // the brain boots fresh with semantic patterns from the start.
-// T14.16 (2026-04-14) — schema bumped to v4 to persist T14 learned
-// language state on the cortex cluster: T14.1 letter inventory,
-// T14.13 fineTypeTransitions / sentenceFormSchemas / sentenceFormTotals
-// / intentResponseMap, T14.16.5 identity-lock thresholds. Old v3 saves
-// have none of these fields and will be rejected on load so the brain
-// boots clean with curriculum re-run instead of hydrating into an
-// inconsistent state that mixes T13 schema with T14 code.
+// 2026-04-14 — schema bumped to v4 to persist the learned language state on
+// the cortex cluster: the letter inventory, fineTypeTransitions /
+// sentenceFormSchemas / sentenceFormTotals / intentResponseMap, and the
+// identity-lock thresholds. Old v3 saves have none of these fields and are
+// rejected on load, so the brain boots clean and re-runs the curriculum
+// instead of hydrating into a state that mixes an old schema with new code.
 //
 // VERSION 5 — bumped to invalidate older pre-equational-rebuild saves.
 // The equational rebuild shipped 39 new teaching methods + 98
@@ -109,7 +108,7 @@ export class BrainPersistence {
         savedAt: new Date().toISOString(),
         time: brain.time,
         frameCount: brain.frameCount,
-        // T15 — legacy drugState string kept for back-compat older saves,
+        // Legacy drugState string kept for back-compat with older saves,
         // but drugScheduler.serialize() is the authoritative record now.
         drugState: brain._drugStateLabel ? brain._drugStateLabel() : (brain.drugState || 'sober'),
         drugScheduler: brain.drugScheduler && typeof brain.drugScheduler.serialize === 'function'
@@ -169,9 +168,9 @@ export class BrainPersistence {
           : null,
       };
 
-      // T14.16 — persist T14-era language state on the cortex cluster.
-      // Letter inventory (T14.1), learned language-statistics Maps (T14.13),
-      // and identity-lock calibrated thresholds (T14.16.5) all live on
+      // Persist the learned language state on the cortex cluster.
+      // The letter inventory, the learned language-statistics Maps,
+      // and the identity-lock calibrated thresholds all live on
       // `brain.clusters.cortex` and survive a reload via this block.
       try {
         const cortex = brain.clusters?.cortex;
@@ -193,9 +192,9 @@ export class BrainPersistence {
               HEALTH_VOCAB_MIN: cortex.HEALTH_VOCAB_MIN ?? null,
               HEALTH_WM_VARIANCE_MIN: cortex.HEALTH_WM_VARIANCE_MIN ?? null,
             },
-            // T14.24 Session 1 — multi-subject curriculum grade state.
+            // Multi-subject curriculum grade state.
             // grades = per-subject {ela, math, science, social, art}.
-            // grade = legacy ELA mirror kept for pre-T14.24 callers.
+            // grade = legacy ELA mirror kept for older callers.
             // passedCells = flat list of "subject/grade" keys that have
             // cleared their gate at least once.
             // Session 17 — probeHistory tracks per-cell pass/fail counts
@@ -468,7 +467,7 @@ export class BrainPersistence {
       failed.visualMemory = err?.message || String(err);
     }
 
-    // T14.16 — restore T14 language state onto the cortex cluster
+    // Restore the learned language state onto the cortex cluster
     try {
       if (state.t14Language) {
         const cortex = brain.clusters?.cortex;
@@ -496,7 +495,7 @@ export class BrainPersistence {
             if (th.HEALTH_VOCAB_MIN != null) cortex.HEALTH_VOCAB_MIN = th.HEALTH_VOCAB_MIN;
             if (th.HEALTH_WM_VARIANCE_MIN != null) cortex.HEALTH_WM_VARIANCE_MIN = th.HEALTH_WM_VARIANCE_MIN;
           }
-          // T14.24 Session 1 — restore multi-subject curriculum state.
+          // Restore multi-subject curriculum state.
           if (state.t14Language.curriculum) {
             const c = state.t14Language.curriculum;
             if (c.grades && typeof c.grades === 'object') {
@@ -510,14 +509,14 @@ export class BrainPersistence {
               };
             }
             if (Array.isArray(c.passedCells)) cortex.passedCells = [...c.passedCells];
-            // T14.24 Session 17 — restore continuous self-testing state
+            // Restore continuous self-testing state
             if (c.probeHistory && typeof c.probeHistory === 'object') {
               cortex.probeHistory = { ...c.probeHistory };
             }
           }
           // After restoring cluster state, re-run setCluster on the
           // LanguageCortex wrapper so its local Maps re-point at the
-          // freshly-restored cluster Maps by identity (T14.13 bridge).
+          // freshly-restored cluster Maps by identity.
           if (typeof brain.innerVoice?.languageCortex?.setCluster === 'function') {
             brain.innerVoice.languageCortex.setCluster(cortex);
           }
@@ -529,7 +528,7 @@ export class BrainPersistence {
     }
 
     // Restore metadata
-    // T15 — if the scheduler can be rehydrated, do that. Otherwise fall
+    // If the scheduler can be rehydrated, do that. Otherwise fall
     // back to the legacy drugState string (treated as decorative — no
     // fake ingestion events created to preserve the old static label).
     try {
@@ -540,8 +539,8 @@ export class BrainPersistence {
         }
         restored.drugScheduler = 'ok';
       } else if (state.drugState && !brain.drugScheduler) {
-        // Legacy save from pre-T15. Just keep the string field if brain has
-        // no scheduler (shouldn't happen post-T15 but defensive).
+        // A save from before the scheduler existed. Keep the string field if
+        // the brain has no scheduler — shouldn't happen now, but defensive.
         brain.drugState = state.drugState;
         restored.drugState = 'legacy';
       }

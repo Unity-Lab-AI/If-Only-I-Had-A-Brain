@@ -316,9 +316,9 @@ export const PREK_MIXIN = {
       ['i','myself'], ['myself','i'],
     ], { reps: 12, label: 'PREK-DEIXIS', relationTagId: 4 });
 
-    // TU.20.5 — SELF-INTRODUCTION + reflexive production. Gee: "make Unity a
-    // fully self awarness and use i , me , myself, and tell persopele hewr name
-    // in greetings and when perdinate." A greeting pulls a first-person
+    // SELF-INTRODUCTION + reflexive production — she uses "i", "me" and
+    // "myself", and gives her name in greetings and when it is pertinent.
+    // A greeting pulls a first-person
     // self-naming compose ("hi i am unity ." / "hello my name is unity ."), and
     // the reflexive "myself" gets its own frames. Same sanctioned passes as the
     // first-person corpus above — word→word transitions (relationTagId=13) so a
@@ -369,7 +369,9 @@ export const PREK_MIXIN = {
   },
 
   // ══════════════════════════════════════════════════════════════════
-  // PRE-K EQUATIONAL RUNNERS (LAW 6 Part 1)
+  // PRE-K EQUATIONAL RUNNERS — equational teach only, per the
+  // grade-completion gate: no word lists, no sentence arrays, no
+  // first-letter production.
   //
   // Pre-K birth-to-age-4 developmental substrate for each of the six
   // subjects. Every cell teaches via magnitude transforms, feature
@@ -781,8 +783,8 @@ export const PREK_MIXIN = {
     // definition-grounded inside the method (pre-K has no vocab pre-step,
     // so the method owning its own prerequisites matters here).
     await this._teachUnityFamilyName();
-    // UVM-INT.2 — learn her own equational mind-space alongside her identity
-    // (once-per-walk; guarded internally). Who she is + how her mind works.
+    // Learn her own equational mind-space alongside her identity
+    // (once per walk; guarded internally). Who she is + how her mind works.
     await this._teachMindSpaceKnowledge();
 
     // Family-name canon (Add #5 A5.3/A5.4) — parents Lilith + Damien

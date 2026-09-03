@@ -1,5 +1,5 @@
-// server/self-code-inventory.js — SELFCODE.2 (2026-08-29): the DRIFT-PROOF
-// half of the self-code lane. SELFCODE.1's mechanism table is authored content
+// server/self-code-inventory.js — the DRIFT-PROOF half of the self-code lane.
+// Its sibling's mechanism table is authored content
 // and will age as files change; this module reads her ACTUAL source tree at
 // call time (fs — server-only, attached onto the cluster the same way
 // life-curriculum.js attaches story loaders, so browser-bundled curriculum

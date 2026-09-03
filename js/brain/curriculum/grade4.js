@@ -307,9 +307,8 @@ export const G4_MIXIN = {
       'speed is how fast something moves', 'direction is which way it moves',
       'an object at rest stays at rest', 'an object in motion stays in motion',
     ];
-    // T14.24 Session 43 — TODO-aligned physics relationship features.
-    // TODO Sci-G4 spec: "_teachForceMotion() uses physics relationship
-    // features (F=ma as magnitude chain)". Session 41 built this as a
+    // FORCE AND MOTION TAUGHT AS PHYSICS RELATIONSHIP FEATURES — F = ma carried
+    // as a magnitude chain, not as a sentence about force. Built as a
     // 6-concept list (force/mass/acceleration/velocity/friction/gravity)
     // fed through _conceptTeach with distinct feature vectors. Runs as
     // a PRE-pass before the sentence walk so the cortex sees both the
@@ -489,9 +488,9 @@ export const G4_MIXIN = {
       'the guitar has six strings', 'the drums keep time',
       'music reads from left to right', 'the staff has five lines',
     ];
-    // T14.24 Session 79 — prime instrument recognition lattice per
-    // TODO line 557 before the melody/pitch sentence pass. Sentences
-    // reference piano/guitar/drums so the basins need to exist first.
+    // Prime the instrument-recognition lattice before the melody/pitch sentence
+    // pass — the sentences name piano, guitar and drums, so those basins have
+    // to exist first or the sentence binds a relation to nothing.
     await this._teachInstruments();
     // ── Art-G4: instrument classification by family ──
     //   features: [string, wind, percussion, keyboard, brass, pitched, polyphonic, melodic]

@@ -362,6 +362,25 @@ Band medians: early **180,815** · middle **86,940** · upper **111,097** · hig
 ```
 ⛔ **1.63× applies to `_trainAcademicStories` alone, not to the whole walk** — vocabulary, phonics, math, gates and life run unchanged. **This is the number to re-check immediately before the press**, per `§RE-PRICE THE WALK BEFORE REMOVING A GATE`; it is recorded here so a later cap raise cannot be argued as free.
 
+### 2026-09-03 RE-MEASURE — the topic-list expansion, and why the two totals above do not line up
+
+The per-cell topic lists were expanded **1,872 → 4,424 entries (+2,551) across 118 of 173 cells**, and the corpus was re-measured through the reader:
+
+```
+  cells at/above their band floor    74  ->  119     (+45)
+  cells THIN                        115  ->   70     (-45)
+  cells EMPTY                         4  ->    4     (all four are math/*)
+  reachable words           50,035,781  ->  56,615,176   (+6,579,395)
+  entries                        4,115  ->   6,726       (+2,611)
+  figures REACHABLE             41,627  ->  57,574       (+15,947)
+```
+
+⭐ **The whole early band cleared** — every pre-K / kindergarten / grade1 / grade2 cell now sits at or above floor. What remains thin is middle-band and above, where the floors run 29,000 → 330,000.
+
+⚠⚠ **DO NOT RECONCILE THE `4.66M` IN THE RE-PRICE BLOCK ABOVE WITH THE `56.6M` HERE — THEY COUNT DIFFERENT THINGS, AND THE DIFFERENCE IS NOT A STALE NUMBER.** The RE-PRICE baseline was taken over the wiki-article lane it was pricing; the coverage total counts **every reachable entry in every cell**, including the textbook, literature and open-access research lanes that landed later. **The growth factor above is therefore still the honest input to the teach-lane cost, and the total here is the honest answer to "how much does she read".** Quoting either one as the other is how a re-price gets argued as free.
+
+⛔ **The floors still cannot all be reached by fetching Wikipedia harder.** The 70 thin cells are concentrated where a band floor is a real book's worth of words; closing them is the textbook lane's job, not another topic-list pass.
+
 ---
 
 ## ACCEPTANCE — what "done" means for a cell

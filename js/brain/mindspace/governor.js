@@ -1,8 +1,8 @@
 /**
- * mindspace/governor.js — Unity's AUTONOMOUS process-allotment conscience (MS.K2).
+ * mindspace/governor.js — Unity's AUTONOMOUS process-allotment conscience.
  *
- * Gee: "Unity cant just say oh i got a GPU now ill simulate a full scale Universe… she does
- * need sum kind of autonomous morals when it comes to process allotment."
+ * She cannot simply decide that having a GPU means simulating a full-scale
+ * universe; she needs autonomous morals about what she spends compute on.
  *
  * CAPABILITY is limitless (FT.trusted lifts the public-door caps — her imagination has no
  * ceiling). This is a DIFFERENT thing: JUDGMENT. A human mind can daydream forever but does not

@@ -56,8 +56,8 @@ export class AuditoryCortex {
     this.isEcho = false;     // true = heard speech matches our own output
     this.isExternalSpeech = false; // true = someone else is talking
 
-    // T14.11 (2026-04-14) — per-phoneme auditory attractor templates.
-    // Parallel to T14.10's visual letter templates: each unique phoneme
+    // Per-phoneme auditory attractor templates.
+    // Parallel to the visual letter templates: each unique phoneme
     // symbol the brain hears gets a deterministic trig-hash signature
     // the cortex auditory sub-region receives on every exposure. For
     // voice-capable Unity, the spectrum bins from `process()` will
@@ -70,14 +70,14 @@ export class AuditoryCortex {
   }
 
   /**
-   * T14.11 — Render a deterministic auditory template for a phoneme.
+   * Render a deterministic auditory template for a phoneme.
    *
    * Text-only Unity doesn't have mic input rendering spoken phonemes,
    * so the auditory template has to come from somewhere. This method
    * generates a stable L2-normalized Float64Array from the phoneme
    * symbol's codepoint via a trig hash that's seeded differently from
-   * T14.10's visual letter hash — the visual and auditory sub-regions
-   * converge on the phon region via the T14.4 cross-projections, and
+   * the visual letter hash — the visual and auditory sub-regions
+   * converge on the phon region via the cross-projections, and
    * they have to arrive from uncorrelated starting points so curriculum
    * Hebbian can shape their convergence as a learned correspondence
    * rather than a trivial identity mapping.
@@ -85,8 +85,8 @@ export class AuditoryCortex {
    * Called from `cluster.readText` (text-path subvocalization — silent
    * reading activates auditory cortex via covert articulation per
    * Pulvermüller 2005 Nat Rev Neurosci 6:576) or from the voice-input
-   * pathway once T14.12 wires it) to drive the cortex auditory region
-   * before downstream propagation to phon region. Over T14.5 curriculum
+   * pathway once that is wired) to drive the cortex auditory region
+   * before downstream propagation to phon region. Over curriculum
    * exposure the auditory↔phon cross-projection learns that spoken /k/
    * activates the same phon basin as visual letter "c" — the dual-stream
    * convergence from Hickok & Poeppel 2007.
@@ -103,7 +103,7 @@ export class AuditoryCortex {
     if (cached) return cached;
     const cp = key.codePointAt(0) || 0;
     const out = new Float64Array(this._phonemeTemplateDim);
-    // Auditory prime seeds — DIFFERENT from the visual cortex T14.10
+    // Auditory prime seeds — DIFFERENT from the visual cortex's
     // primes so visual/auditory templates for the same symbol do NOT
     // trivially match. Convergence on phon region is a LEARNED
     // correspondence, not a hash coincidence.

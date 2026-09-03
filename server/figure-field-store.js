@@ -129,8 +129,8 @@ function loadField(url) {
   return {
     rec,
     // ⚠ The caller PREFERS the queue row's phrase. The row's text travels with
-    // it (the CAMPOISON rule — a binding resolved at perception time reads
-    // ambient state), so the field's own copy is a fallback for a figure that
+    // it (the unlabelled-frame rule — a binding resolved at perception time
+    // reads ambient state), so the field's own copy is a fallback for a figure that
     // reached the drain without one, never an override.
     phrase: typeof j.phrase === 'string' ? j.phrase : null,
     links: Array.isArray(j.links) ? j.links : [],

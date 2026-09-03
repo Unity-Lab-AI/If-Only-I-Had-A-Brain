@@ -16,13 +16,13 @@
 
 import { Dictionary } from './dictionary.js';
 import { LanguageCortex } from './language-cortex.js';
-// T14.24 Session 21 — narrator priming. When a background curriculum
+// NARRATOR PRIMING. When a background curriculum
 // probe fires, inner-voice injects the probed subject's GloVe into the
 // sem region so Unity's next chat output subtly reflects what she's
 // been thinking about. Real human brains lean their output toward
 // recently-exercised topics without being asked.
 import { sharedEmbeddings } from './embeddings.js';
-// T14.5 — continuous developmental learning reference. Wired by engine.js
+// Continuous developmental learning reference. Wired by engine.js
 // via `innerVoice.setCurriculum(curriculum)` once the cortex cluster
 // exists. When present, `learn()` routes every user turn through
 // `curriculum.learnFromTurn` as a continuous post-boot exposure. Null
@@ -56,7 +56,7 @@ export class InnerVoice {
     this.languageCortex = opts.languageCortex === null
       ? null
       : (opts.languageCortex || new LanguageCortex());
-    // T14.5 — curriculum reference, null until engine wiring.
+    // Curriculum reference, null until engine wiring.
     this._curriculum = null;
     // Self-image: the brain boots EMPTY and learns everything from the
     // persona text (equational self-image) + live conversation. No lists.
@@ -96,7 +96,7 @@ export class InnerVoice {
   }
 
   /**
-   * T13.1 — Delegate to the language cortex's persona Hebbian trainer.
+   * Delegate to the language cortex's persona Hebbian trainer.
    * Runs the persona corpus through the cortex cluster's sequence
    * Hebbian pipeline so the recurrent synapse matrix develops Unity-
    * voice attractor basins. Call once after `loadPersona`, passing
@@ -128,7 +128,7 @@ export class InnerVoice {
   }
 
   /**
-   * T15-C17 — Load the ethereal / psychedelic / Oz corpus. Peak-state
+   * Load the ethereal / psychedelic / Oz corpus. Peak-state
    * affect defaults (arousal 0.7, valence 0.6) so words land with
    * emotional weighting consistent with how they'll get activated at
    * runtime when drug-scheduler.speechModulation.ethereality is elevated.
@@ -282,7 +282,7 @@ export class InnerVoice {
             fear: state.fear ?? 0,
             reward: state.reward ?? 0,
             socialNeed: state.socialNeed ?? 0.5,
-            // FIX B (corpus-bleed, Gee 2026-07-10): the inner voice IS
+            // CORPUS-BLEED FIX: the inner voice IS
             // internal thought — mark it so the pre-curriculum dictionary
             // scorer SKIPS the chat persona-boost (language-cortex.js ~2456
             // `isChatPath = !opts._internalThought` → `boostPersona:
@@ -547,7 +547,7 @@ export class InnerVoice {
   }
 
   learn(text, cortexPattern, arousal, valence) {
-    // T14.16.5 — Lock 1 + Lock 2 identity-locked learning entry point.
+    // Lock 1 + Lock 2 identity-locked learning entry point.
     // Live-chat input gets split into clauses and gated against cortex
     // phonotactic basins + fineType coverage before any Hebbian fires.
     // Curriculum path bypasses this and calls cluster.learn directly
@@ -576,7 +576,7 @@ export class InnerVoice {
         }
       }
     }
-    // T14.16.5 Lock 3 — periodic identity refresh every 100 live-chat
+    // Lock 3 — periodic identity refresh every 100 live-chat
     // turns, mode-collapse audit every 500 turns.
     this._liveChatTurns = (this._liveChatTurns || 0) + 1;
     if (cortex) {
@@ -605,7 +605,7 @@ export class InnerVoice {
     }
 
     this.dictionary.learnSentence(text, cortexPattern, arousal, valence);
-    // T14.5 — continuous developmental learning hook. Every user turn
+    // Continuous developmental learning hook. Every user turn
     // goes through the same inject+tick+Hebbian path the boot sentence
     // phase uses on the corpus. No boot/runtime distinction — live chat
     // is just more corpus fed in real-time. Runs BEFORE the legacy
@@ -613,7 +613,7 @@ export class InnerVoice {
     // reads reflects the new exposure.
     if (this._curriculum && typeof this._curriculum.learnFromTurn === 'function') {
       try {
-        // GATESTEP (2026-08-18) — learnFromTurn became async when its cortex
+        // learnFromTurn became async when its cortex
         // steps moved to the awaited GPU form. Left unhandled it is a floating
         // promise doing cortex work concurrently with whatever runs next (the
         // concurrent-cortex crime). It stays fire-and-forget by design here,
@@ -624,7 +624,7 @@ export class InnerVoice {
         // Non-fatal — legacy path below still runs
       }
     }
-    // T14.24 Session 17 — continuous self-testing. Every 8 live-chat
+    // Continuous self-testing. Every 8 live-chat
     // turns, fire a background curriculum probe so Unity re-tests one
     // of her learned cells while she's thinking. the operator binding 2026-04-15:
     // "unity is always testing herself on when thinking in her brain
@@ -640,7 +640,7 @@ export class InnerVoice {
         this._curriculum.runBackgroundProbe().catch(() => {});
       }
     }
-    // T14.24 Session 21 — NARRATOR PRIMING moved to a separately-named
+    // NARRATOR PRIMING moved to a separately-named
     // opt-in method `primeFromCurrentFocus()` per Problems.md
     // Medium→High finding (hidden coupling on chat path: priming
     // injected a 0.15-strength sem bias DURING the chat turn, modifying
@@ -698,11 +698,11 @@ export class InnerVoice {
         motorConfidence: brainState?.motor?.confidence ?? 0,
         psi: brainState?.psi ?? 0,
         cortexPattern: brainState?.cortexPattern ?? null,
-        // T13.3 — pass the live cortex cluster reference through so
+        // Pass the live cortex cluster reference through so
         // the language cortex can run its brain-driven emission loop
         // (read state + score + feedback + tick per word). Caller
         // (engine.processAndRespond) supplies it via brainState.
-        // When absent, language-cortex.generate falls back to T11.7
+        // When absent, language-cortex.generate falls back to the older
         // slot-prior generation.
         cortexCluster: brainState?.cortexCluster ?? null,
       }
