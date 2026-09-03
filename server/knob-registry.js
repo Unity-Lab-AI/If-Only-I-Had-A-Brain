@@ -347,7 +347,39 @@ const PROVENANCE = {
   DREAM_ANNEAL_TEMP: { p: 'config', why: 'An opt-OUT switch, on by default. The annealing it controls is bounded by construction — the factor only ever REDUCES the caller\'s temperature, never raises it — so deterministic gate probes at temperature 0 stay 0 and fully-consolidated exploratory callers fall through to greedy argmax.' },
   DREAM_BC_COMPOUND_COH_MIN: { p: 'inherited', why: 'A 0.2 cosine floor between the top two candidate words. Not derived; a round threshold.' },
 
+  // ── saturation rectification + the gates (the helper-read set) ────────────
+  // ⭐ These are the eleven that were INVISIBLE until the scanner learned the
+  // `_envNum('KEY', default)` form. The rectification pair is the mechanism that
+  // stops saturation hard-stopping the walk.
+  DREAM_BC_RECTIFY_DECAY: { p: 'set', why: 'The multiplicative weight decay applied to a COLLAPSED sem→motor projection. ⭐ It exists so that a saturation halt no longer RETURNS: the projection is rectified in place, the corrected weights are force-checkpointed, and the walk CONTINUES. Before it, detecting saturation stopped the walk. It also clears the stale separability reading, "so the next health read isn\'t pinned saturated by a frozen meanCos" — the fix and the instrument were corrected together. 0.5 is a halving, not a derived figure.' },
+  DREAM_BC_RECTIFY_NORM: { p: 'set', why: 'The row-normalisation target applied straight after the decay above. The pair is one operation: decay the weights, then renormalise the rows so the projection is usable rather than merely smaller. 0.6 is chosen, not derived.' },
+  DREAM_BC_EMISSION_DOM_MAX: { p: 'inherited', why: 'A 0.45 ceiling on how far one word may dominate emission before the collapse detector fires. Not derived at the read site.' },
+  DREAM_BC_VOCAB_MIN: { p: 'inherited', why: 'A 0.85 floor on vocabulary breadth in the same collapse check. Not derived at the read site.' },
+  DREAM_GATE_PROD_MIN: { p: 'inherited', why: '⚠ THE K-GATE PRODUCTION THRESHOLD — 0.80, and one of the most consequential numbers in the walk, since it decides whether a cell passes. It is the codebase\'s own authoritative passing bar (the default cut score, from below-benchmark reading cut scores), recalibrated down from a hardcoded 0.95 because at biological scale that bar is effectively unreachable and a genuinely-trained cell never A+-passed. **Recalibrated with a reason; not derived from this brain\'s own measurements.**' },
+  DREAM_GATE_PATH_MIN: { p: 'inherited', why: 'The K-gate pathway threshold, 0.80, moving in step with the production bar above and carrying the same provenance.' },
+
   // ── the walk: bounds, doses, gates ────────────────────────────────────────
+  DREAM_CELL_PASS_HARD: { p: 'set', why: '⭐ A LAW DECISION, off by default: a cell passes on COMPLETED LEARNING, not on test-question correctness. ⚠ Two cases still do not pass, and both are honest: a held cell with no runner wired for that subject/grade (nothing was trained), and a runner that threw mid-teach (the content training did not finish). Setting it restores the old behaviour where probe, battery and health gates decide the pass.' },
+  DREAM_HEALTH_GATE_HARD: { p: 'set', why: 'The health half of the same ruling — advisory by default, so a health reading reports without blocking a pass. Same reasoning as the battery gate: the checks are kept and surfaced, they simply do not decide.' },
+  DREAM_K_UPFRONT_SEED: { p: 'set', why: 'OFF by default, and the change it represents is the valuable part: the vocabulary seed moved OFF the critical path and was DEEPENED rather than removed. "This does not remove K\'s definition learning — it moves it off the critical path and deepens it." Setting it restores the old blocking behaviour where the full seed had to land before the first cell.' },
+  DREAM_MECH_EVERY_CELL: { p: 'set', why: '⚠ AN OPT-OUT, NOT AN OPT-IN — and it has been misread as a disabled feature before. Language mechanics run on the first pass, whenever the sentence-generation probe falls below 0.85, and periodically; they are skipped only on intervening consolidated cells. ⭐ It is SELF-CORRECTING: if the probe rate drops, meaning mechanics regressed, it returns to full-every-cell until recovered. Setting it forces always-full.' },
+  DREAM_HELD_BACK: { p: 'config', why: 'On by default, `0` disables. Governs whether a cell that could not complete is recorded as held back rather than silently skipped.' },
+  DREAM_LEARN_GEOMETRY: { p: 'set', why: '⭐ SAFE BECAUSE OF A BOUND, and the comment states the argument: the cap means "the learned component can never overwhelm the imported base, so the failure mode is a small perturbation rather than a collapsed geometry — and the outcome no longer depends on how long she reads." That last clause is the point: without the cap, a longer read produced a different geometry.' },
+  DREAM_BATTERY_QUESTION_TIMEOUT_MS: { p: 'set', why: 'One of the two budgets described as "the local-GPU unblock that lets her leave the cell". ⚠ Explicitly a local unblock rather than the real fix: routing the tick as a remote WS roundtrip is strictly worse latency and "must be designed WITH the donor-compute app, not retrofitted here".' },
+  DREAM_KEEP_STATE: { p: 'config', why: '⛔ UNSET MEANS WIPE, and that is the single most consequential default in the project — the fresh-walk launcher boots clean, only the save-start launcher resumes. ⭐ The reasoning recorded here is about a QA projection reset: it runs on a fresh walk (where the weights were wiped anyway) and NOT on a resumed brain, because "wiping a projection that a trained brain is currently speaking from would throw away everything the QA phases did NOT damage along with what they did". Fresh walk decides; a resume is never surprised.' },
+
+  // ── emission, memory, art ─────────────────────────────────────────────────
+  DREAM_CHAT_MAX_WORDS: { p: 'set', why: 'A hard ceiling on a chat reply, and the truncation is argued rather than arbitrary: short is the DEFAULT shape, and because emission order follows argmax strength "the leading words carry the strongest activations, so truncation keeps the signal and drops the spill". Cutting the tail removes the weakest activations by construction.' },
+  DREAM_GW_IGNITION: { p: 'config', why: 'The global-workspace ignition threshold, exposed so the consciousness gate can be tuned without a code change: stricter at 0.6 means harder ignition and more focused, looser at 0.3 means it fires more and is "more diffuse but more alive". Falls back to an options override, then 0.45.' },
+  DREAM_MINDSEYE_MAX_SIDE: { p: 'set', why: '⭐ RAISED 128 → 512 ON A PRINCIPLE, not a measurement: a de-novo mind\'s-eye field "is a real image now, not a thumbnail", and the old value was "clipped by a number someone picked defensively". ⚠ The process governor still modulates WITHIN the raised band — that is her own judgement about spend, which the standing directive preserves ("morals not a cap"). This env var moves the ceiling for a smaller box.' },
+  DREAM_CSR_FREE_MIN_MB: { p: 'set', why: 'A 512MB floor before a projection\'s CSR is freed, and the reasoning is about correctness rather than memory: free only when this projection "actually threatens memory", because below that keeping it resident means "saves stay complete, donor churn stays lossless, re-arms upload truth". Freeing too eagerly cost all three.' },
+  DREAM_FIGURE_FIELDS_DIR: { p: 'config', why: 'Where the press leaves the precomputed wavelet fields. ⚠ The path is on the deploy rsync EXCLUDE list on purpose, "so the next press cannot delete what it just downloaded" — a real failure mode that was designed out rather than discovered.' },
+  DREAM_SAVE_MIN_FREE_DISK_MB: { p: 'set', why: 'The free-disk floor the save guard enforces, and it is published beside the measured free space "so the number and the threshold it is judged against are read together". Defer-never-drop: a save below the floor is postponed, not abandoned.' },
+  DREAM_SAVE_MIN_FREE_MB: { p: 'inherited', why: 'The RAM twin of the disk floor above. Its deferral counter is surfaced "so the guard is visibly idle rather than merely assumed idle" — the instrument is reasoned; the threshold is not derived here.' },
+  DREAM_PRACTICE_ITERS: { p: 'inherited', why: 'How many self-critique iterations a practice session runs. ⭐ The mechanism around it is the reasoned part: practice needs BOTH halves of the judgement — her memory of the shape (the schema with its trace) and her memory of the look (the percept vector) — and only keeps a nudge that measurably improves resemblance. 5 is not derived.' },
+  DREAM_PRACTICE_GAP_MS: { p: 'inherited', why: 'A ~30 minute per-concept cooldown between practice sessions. Paces the lane; not derived.' },
+  DREAM_OWNART_MAX_SUBJECTS: { p: 'inherited', why: 'At most 3 subjects composed into one artwork. Not derived at the read site.' },
+  DREAM_WORD_MOTOR_VOCAB_CAP: { p: 'inherited', why: 'A cap on the word-motor band\'s vocabulary. No comment at the read site. ⚠ Worth care if it is ever raised: the unified word-motor band replaced six per-subject sub-bands precisely because those overflowed and silenced learned words.' },
   DREAM_REP_COMPRESS_LR_CEIL: { p: 'derived', why: 'MEASURED, and the measurement is in the comment: 0.60 is "the highest value that is MEASURED clean (MID at 0.599 scores 100%)". It lands the LOW and MID tiers at 5 presentations and backs HI off to 7. ⛔ The comment also states the trade it exists to prevent: raising it past 0.60 to force HI to 5 buys two presentations for about 6% retrieval, "a bad trade, and it is the trade this comment exists to stop someone making silently".' },
   DREAM_REP_COMPRESS_FLOOR: { p: 'derived', why: 'DERIVED FROM A REAL REGRESSION. A live boot compressed a 4-rep dose to ONE presentation, and the arithmetic was right while the regime was one the sweep never measured — at n=1 there is no interleaved reinforcement left, so a pair writes once and every later pair\'s interference lands on it with no chance to re-assert. The floor of 4 forbids that independently of any other threshold.' },
   DREAM_REP_COMPRESS_MIN_DOSE: { p: 'derived', why: 'Lowered 12 → 6 so mid-size doses also reach the 5-rep instruction. ⭐ Safe for a stated reason rather than an assumed one: the real guard is the RESULT floor of 4, which forbids a collapse to a single presentation independently of this threshold, and doses of 5 or fewer already comply and are untouched.' },
@@ -617,7 +649,13 @@ function discover() {
       if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (/\.(js|mjs|cjs)$/.test(e.name) && !e.name.includes('.bundle.')) files.push(p);
+      // ⛔ NEVER SCAN THIS FILE. It is full of knob names in prose and in
+      // example code, so scanning itself invented a knob called `DREAM_` out of
+      // the elided `DREAM_..._MIN_DONORS` in one of its own comments. A registry
+      // that reads its own documentation as evidence will always agree with
+      // itself.
+      else if (/\.(js|mjs|cjs)$/.test(e.name) && !e.name.includes('.bundle.')
+               && path.resolve(p) !== path.resolve(__filename)) files.push(p);
     }
   };
   // The repo root is one level above `server/`.
@@ -640,7 +678,10 @@ function discover() {
         ...[...ln.matchAll(HELPER_RE)].map((m) => m[1]),
       ];
       for (const key of hits) {
-        if (!key || !key.startsWith('DREAM_')) continue;
+        // ⚠ A real knob is `DREAM_` plus at least two characters. The bare
+        // prefix and one-letter stubs come from elided names in prose, never
+        // from a read site.
+        if (!key || !/^DREAM_[A-Z0-9][A-Z0-9_]+$/.test(key)) continue;
         if (found.has(key)) continue;                 // first read site wins
         // ⚠ DESCRIPTION PRECEDENCE, most-authored first: the comment sitting
         // directly above the read is the closest thing to intent expressed at
