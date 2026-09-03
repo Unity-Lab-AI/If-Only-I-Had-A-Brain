@@ -3461,6 +3461,38 @@ async function requestPermissions(opts = {}) {
   }
   return result;
 }
+function getGrantedPermissions() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        mic: parsed.mic || false,
+        camera: parsed.camera || false,
+        timestamp: parsed.timestamp || null
+      };
+    }
+  } catch (err) {
+    console.warn("Could not read permission state from localStorage:", err.message);
+  }
+  return { mic: false, camera: false, timestamp: null };
+}
+async function queryLivePermissions() {
+  const out = { mic: "unknown", camera: "unknown" };
+  const perms = typeof navigator !== "undefined" && navigator.permissions;
+  if (!perms || typeof perms.query !== "function") return out;
+  const ask = async (name) => {
+    try {
+      const st = await perms.query({ name });
+      return st && st.state || "unknown";
+    } catch {
+      return "unknown";
+    }
+  };
+  out.mic = await ask("microphone");
+  out.camera = await ask("camera");
+  return out;
+}
 
 // ../js/storage.js
 var PREFIX = "unity_brain_";
@@ -22287,9 +22319,17 @@ async function handleStart() {
   const permResults = document.getElementById("perm-results");
   permResults.style.display = "block";
   const channels = window.unityChannels || { userMic: true, unityVision: true, unitySpeech: true };
-  micStatus.textContent = channels.userMic ? "asking..." : "off";
+  const live = await queryLivePermissions();
+  const seen = getGrantedPermissions();
+  const label = (want, state) => {
+    if (!want) return "off";
+    if (state === "granted") return "granted (remembered)";
+    if (state === "denied") return "blocked in browser settings";
+    return seen.mic || seen.camera ? "asking again..." : "asking...";
+  };
+  micStatus.textContent = label(channels.userMic, live.mic);
   micStatus.className = "status pending";
-  camStatus.textContent = channels.unityVision ? "asking..." : "off";
+  camStatus.textContent = label(channels.unityVision, live.camera);
   camStatus.className = "status pending";
   const perms = await requestPermissions({
     requestMic: channels.userMic,

@@ -39,7 +39,7 @@ import { AIProviders } from './brain/peripherals/ai-providers.js';
 import { PollinationsAI } from './ai/pollinations.js';
 import { VoiceIO } from './io/voice.js';
 import { preloadVoice, isVoicePreloading } from './io/voice-piper.js';
-import { requestPermissions } from './io/permissions.js';
+import { requestPermissions, getGrantedPermissions, queryLivePermissions } from './io/permissions.js';
 import { UserStorage } from './storage.js';
 import { Sandbox } from './ui/sandbox.js';
 import { ChatPanel } from './ui/chat-panel.js';
@@ -2205,8 +2205,32 @@ async function handleStart() {
   // for channels the user disabled so they don't get asked for mic
   // access when they already unchecked the mic box.
   const channels = window.unityChannels || { userMic: true, unityVision: true, unitySpeech: true };
-  micStatus.textContent = channels.userMic ? 'asking...' : 'off'; micStatus.className = 'status pending';
-  camStatus.textContent = channels.unityVision ? 'asking...' : 'off'; camStatus.className = 'status pending';
+
+  // ⛔⛔ THE PERMISSION STORE WAS WRITE-ONLY — `requestPermissions` recorded every
+  // grant and NOTHING ever read it back, so a returning visitor was told
+  // "asking..." for a channel the browser had already settled.
+  //
+  // ⚠ THE OBVIOUS FIX IS THE WRONG ONE. Reading the localStorage record and
+  // showing it would report a state we cannot observe: a user who revokes
+  // microphone access in browser settings would still be shown a remembered
+  // "granted", which is a green light over a dead channel. So the LIVE
+  // Permissions API is the source here, and the stored record is used only for
+  // the one thing it can honestly answer — whether this visitor has ever
+  // granted before, which is what separates a first prompt from a re-prompt.
+  //
+  // ⚠ `unknown` is NOT `denied`. Safari has historically not implemented these
+  // descriptors, so an unanswerable query keeps the neutral "asking..." rather
+  // than claiming a refusal the browser never gave.
+  const live = await queryLivePermissions();
+  const seen = getGrantedPermissions();
+  const label = (want, state) => {
+    if (!want) return 'off';
+    if (state === 'granted') return 'granted (remembered)';
+    if (state === 'denied') return 'blocked in browser settings';
+    return seen.mic || seen.camera ? 'asking again...' : 'asking...';
+  };
+  micStatus.textContent = label(channels.userMic, live.mic); micStatus.className = 'status pending';
+  camStatus.textContent = label(channels.unityVision, live.camera); camStatus.className = 'status pending';
 
   const perms = await requestPermissions({
     requestMic: channels.userMic,
