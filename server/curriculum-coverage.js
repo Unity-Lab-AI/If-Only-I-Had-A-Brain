@@ -34,6 +34,20 @@ const path = require('path');
 // walk can never disagree about which pictures exist — the disagreement that let
 // 6,899 figures be counted as present while the walk could not see one of them.
 const { figureAddress } = require('./life-curriculum.js');
+// ⛔⛔ THE AUDITOR MUST COUNT WHAT SHE IS TAUGHT, NOT WHAT IS ON DISK — and
+// those stopped being the same thing on 2026-09-03, when markup cleaning moved
+// to the corpus READER. Measured across the live corpus the moment they
+// diverged: **2,542,469 sentences / 50,236,557 words on disk against
+// 2,533,754 / 50,003,400 as taught — 8,715 sentences and 233,157 words the
+// reader repairs or drops before she ever sees them.**
+//
+// 0.46% is small and the CONSEQUENCE is not: this module decides whether a cell
+// clears its band floor, so a cell sitting just above the line on disk can be
+// under it as taught, and the verdict would say `OK` for content she is never
+// given. **An auditor measuring a different artefact than the consumer is the
+// producer/consumer divergence this project keeps paying for**, and it would
+// have been introduced BY the fix that cleaned the corpus.
+const { storyToSentences } = require('../js/brain/text-cleaning.cjs');
 
 // The ONLY legitimate absences. Math is taught equationally — a maths prose
 // corpus is the thing the grade-completion gate exists to forbid — and the
@@ -170,8 +184,12 @@ function readCell(corpusRoot, subject, grade) {
     // count would render as a healthy number.
     let figures = 0, figuresReachable = 0, figuresContext = 0, figuresLabelled = 0;
     for (const e of experiences) {
-      const story = String(e.story || '');
-      words += story.split(/\s+/).length;
+      // ⭐ CLEANED FIRST, THROUGH THE SAME CHOKEPOINT THE READER USES, so this
+      // count and the walk's intake are the same number by construction rather
+      // than by two implementations agreeing today.
+      const taught = storyToSentences(String(e.story || ''));
+      const story = taught.join(' ');
+      words += story ? story.split(/\s+/).length : 0;
       if (e.licence) licensed++;
       for (const f of (Array.isArray(e.figures) ? e.figures : [])) {
         figures++;
@@ -185,13 +203,14 @@ function readCell(corpusRoot, subject, grade) {
           .test(label.replace(/\s+/g, ' '));
         if (label.length >= 3 && !placeholder) figuresLabelled++;
       }
-      for (const s of story.split(/(?<=[.!?])\s+/)) {
-        const t = s.trim();
-        if (!t) continue;
-        sentences++;
+      // ⚠ The split is no longer re-implemented here — `storyToSentences` above
+      // already applied the reader's own terminator rule, so a fourth copy of it
+      // cannot drift away from the three that matter.
+      for (const t of taught) {
         if (t.endsWith('?')) questions++;
         else if (t.endsWith('!')) exclamations++;
       }
+      sentences += taught.length;
     }
     const dialoguePct = sentences > 0
       ? ((questions + exclamations) / sentences) * 100

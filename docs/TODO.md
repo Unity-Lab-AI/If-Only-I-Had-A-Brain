@@ -958,7 +958,22 @@ Gee (verbatim): *"thats alot of fucking issues!!!!! i hope u are fully handling 
   - ⚠ **NOTHING FROM THAT RUN IS RECORDED AS A RESULT**, because a broken detector's output is not weaker evidence — it is no evidence, and filing it would have cost the next reader a day disproving 421 phantoms.
   - ⭐ **This is the seventh instrument in one session to need checking before being believed**, after the scope classifier, the 6/6 column classifier, the digit-concatenating doc audit, the sitemap "shards" miscount, the guard-block parser, and the bracket-debris classifier that called `[sic]` contamination. **The rate is the finding: assume a freshly-written detector is wrong until a known-good case proves otherwise.**
 
-  ⏳ **Remaining categories: 1-6 and 8-12.** Category 6 wants a rebuild that is **tested against a known-positive and a known-negative FIRST** — `meanVoltage` must come back "read" and a genuinely orphaned field must come back "unread" — before a single verdict is written down.
+  ### ✅ CATEGORY 11 — DUPLICATED LOGIC THAT WILL DRIFT — **ONE REAL FINDING, FIXED 2026-09-03**
+
+  **Method, and this time the detector was tested before it was trusted:** probed for the sentence-terminator rule `(?<=[.!?])`, whose reader-side copies were collapsed from 3 to 1 earlier the same day — **27 occurrences across 15 files**, so the instrument demonstrably sees what it is looking for.
+
+  ⛔⛔ **THE FINDING, AND IT WAS MINE FROM EARLIER TODAY: `server/curriculum-coverage.js` RE-IMPLEMENTED THE READER'S SPLIT AND THEREFORE COUNTED A DIFFERENT CORPUS THAN THE WALK IS TAUGHT.** Moving markup cleaning to the reader made the auditor's numbers describe **bytes on disk** while the walk receives something else. Measured at the moment they diverged:
+  ```
+    on disk (auditor)   2,542,469 sentences   50,236,557 words
+    as taught (reader)  2,533,754 sentences   50,003,400 words
+    divergence              8,715 sentences      233,157 words   (0.46%)
+  ```
+  - ⭐ **0.46% is small and the CONSEQUENCE is not.** This module decides whether a cell clears its band floor, so **a cell sitting just above the line on disk can be under it as taught** — and the verdict would read `OK` for content she is never given. **An auditor measuring a different artefact than the consumer is the producer/consumer divergence this project keeps paying for**, and it would have been introduced *by* the fix that cleaned the corpus.
+  - **Fixed at the chokepoint:** the auditor now runs each story through `storyToSentences` — the reader's own helper — before counting, and the fourth copy of the terminator split is gone with it. **Verified: 2,533,753 / 50,003,374 on both sides, divergence 0 and 0.**
+  - ⚠ **The three splits in `curriculum.js` are a DIFFERENT rule and were left alone** — `/(?<=[.!?])\s+|\n\s*\n/` is paragraph-aware. They are triplicated among themselves and are a candidate for a later pass, **but folding them into the reader's rule would silently change what a paragraph boundary means.** Named, not touched.
+  - ⚠ **The fetchers' copies are also left alone by design:** each is a standalone tool that must keep working if the brain tree moves, and they clean at WRITE time. The reader is the chokepoint for what she is TAUGHT; that is a different job.
+
+  ⏳ **Remaining categories: 1-5, 6, 8-10, 12.** Category 6 wants a rebuild that is **tested against a known-positive and a known-negative FIRST** — `meanVoltage` must come back "read" and a genuinely orphaned field must come back "unread" — before a single verdict is written down.
 
   **THE CATEGORIES — his list, plus the `ectx12` he asked me to fill from what this codebase has actually done:**
   1. **BUILT BUT NOT WIRED** — a real implementation nothing calls. *Precedent: the five college tracks; `separability` with no producer.*
