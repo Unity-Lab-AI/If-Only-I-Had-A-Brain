@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-03 — `KNOBEFFECT.1/.2/.3` + `CRYSTAL.1` + `CORPUSBRACKET.1`
+
+### `KNOBEFFECT.1/.2/.3` — every knob has an effect class, a category and a fixed place
+
+Gee: *"every nob needs its effect class and proper orgainaization and catorigzations"*. **`effect: '???'` 171 → 0.** `live 162 · boot 40 · cached 3`, across five reading passes over twelve files.
+
+⛔⛔ **`cluster.js` is why no detector would have worked** — three scopes at nearly identical indents: a module-scope IIFE reading at indent 4, nine constructor reads at indent 6, and method reads at 6-14. **Only the enclosing construct decides, and it was read for each.**
+
+⭐⭐ **The finding that matters: a CONSTRUCTOR read is `boot`, and calling it `live` would have been the dangerous answer.** The value is captured at construction, so on a running brain a write is accepted, reads back correctly, and changes nothing. **The nine cortical-microstructure switches are all of this kind — they shape the brain that gets BUILT, never the one running.** `DREAM_INNERVOICE_FORCE_CPU` was nearly mis-filed with them (same file, same indent) — the constructor closes at `:1362` and its read is at `:1564`.
+
+**Categories: 17 → 10** on the axis of what a knob governs. `Other` — which held the brain's own tick interval — was **renamed** `UNSORTED — no category read yet` rather than kept, then emptied by reading. `Watchdogs, bounds & safety` fell **56 → 21** as batches moved knobs to the lane they actually govern; the wholesale map was a holding pen and it emptied itself.
+
+**Order:** the comment claimed *"groups sorted by size"* and **no group sort existed**. Size would have been wrong anyway — a size-ordered list rearranges itself as knobs are added.
+
+⚠ **Two regressions I introduced, both caught by the checks:** sparse hand entries **replaced** the discovered row (18 knobs lost group, default and description), and a second entry for the same knob **published twice** (210 knobs, 5 duplicates). **Both fixed at the merge, not per-entry**, so a batch can add one property without repeating the rest.
+
+### `CRYSTAL.1` — the fix had shipped and the box was never ticked
+
+`DREAM_REF_MAXSIDE` defaults to **0** — no downsample — and the three sites the row named collapsed into one door, `_perceptSource(img, why)`, whose own comment gives the reason: *"so 'crystal clear' is a property of the choke point rather than a promise repeated at three call sites that can drift apart."* Grep confirms all three callers route through it and nothing calls `_downsampleRGBA` directly. Opting into a ceiling logs that it **is DEGRADING what she perceives**. ⚠ The resampler is still nearest-neighbour, now unreachable by default — recorded, not claimed fixed.
+
+### `CORPUSBRACKET.1` — the debris is gone, and the remainder must be left alone
+
+Measured through the real reader: **4 sentences in 2,533,680** carry a wiki marker (1 numeric citation · 2 `[citation needed]` · 1 `[edit]`), against the 569 + 23 this row measured when filed. The 2026-09-02 re-ingests regenerated those cells.
+
+⛔⛔ **The 1,125 sentences that still carry brackets are NOT debris** — *"destroyed by [bias]"*, *"[since 1925]"*, *"some [researchers] suggest"*. Editorial brackets in quotations are ordinary English, and the shared cleaner refuses them on purpose.
+
+⚠ **My own debris detector was wrong and reading caught it:** all 8 it flagged were **`[sic]`** — correct scholarly usage. **A classifier that cannot tell `[sic]` from `[edit]` would have deleted real prose**, the same shape as the currency guard that once discarded 9,307 economics sentences because `$10,000` looked like maths. **Measure the marker, never the punctuation.**
+
+---
+
 ## 2026-09-03 — `KNOBFIND.5` + `KNOBFIND.6` — SIX THRESHOLDS DERIVED, AND ONE OF THEM WAS NEVER A TUNABLE
 
 The standing rule is that every named threshold carries a written derivation. **None of these six appeared in `docs/THRESHOLD-DERIVATION.md` at all.**
