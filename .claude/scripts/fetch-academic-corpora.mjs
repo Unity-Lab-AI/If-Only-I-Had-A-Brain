@@ -217,16 +217,16 @@ const TOPICS = {
       'Capital city', 'Natural resource', 'Climate', 'Industry'],
     // Grade 5 — early US history (bridge to G6 ancient civ)
     grade5: ['United States', 'American Revolution', 'Thirteen Colonies', 'Christopher Columbus', 'Exploration', 'Colonialism',
-      'Declaration of Independence', 'United States Constitution', 'George Washington',
+      'United States Declaration of Independence', 'United States Constitution', 'George Washington',
       'Benjamin Franklin', 'Thomas Jefferson', 'Boston Tea Party', 'Slavery in the United States',
-      'Pilgrims (Plymouth Colony)', 'Jamestown, Virginia', 'Bill of Rights',
+      'Pilgrims (Plymouth Colony)', 'Jamestown, Virginia', 'United States Bill of Rights',
       'American Civil War', 'Abraham Lincoln'],
     // Grade 6 — Ancient Civilizations / World Geography
     grade6: ['Ancient Egypt', 'Ancient Greece', 'Ancient Rome', 'Mesopotamia', 'Geography', 'Continent', 'Civilization', 'River', 'Ancient China', 'Ancient India', 'Maya civilization', 'Inca Empire', 'Aztecs', 'Pharaoh', 'Pyramid', 'Empire'],
     // Grade 7 — Medieval to Early Modern World History
     grade7: ['Middle Ages', 'Renaissance', 'Roman Empire', 'Age of Discovery', 'Black Death', 'Feudalism', 'Crusades', 'Byzantine Empire', 'Mongol Empire', 'Ottoman Empire', 'Reformation', 'Trade route', 'Knight', 'Castle'],
     // Grade 8 — US History to 1900
-    grade8: ['American Revolution', 'United States Constitution', 'American Civil War', 'Declaration of Independence', 'Industrial Revolution', 'Reconstruction era', 'Thirteen Colonies', 'George Washington', 'Abraham Lincoln', 'Slavery', 'Manifest destiny', 'Westward expansion'],
+    grade8: ['American Revolution', 'United States Constitution', 'American Civil War', 'United States Declaration of Independence', 'Industrial Revolution', 'Reconstruction era', 'Thirteen Colonies', 'George Washington', 'Abraham Lincoln', 'Slavery', 'Manifest destiny', 'Westward expansion'],
     // Grade 9 — Civics & Geography
     grade9: ['Government', 'Democracy', 'United States Constitution', 'Separation of powers', 'Citizenship', 'Election', 'Federalism', 'United States Bill of Rights', 'Supreme Court of the United States', 'United States Congress', 'Branches of government'],
     // Grade 10 — Modern World History
@@ -515,7 +515,12 @@ const TOPICS = {
     // `no-such-page` in `SKIP_REASONS`.
     'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square',
       'Triangle', 'Paint', 'Pencil', 'Brush', 'Scissors', 'Glue', 'Chalk', 'Rainbow', 'Clay', 'Doll'],
-    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern',
+    // ⛔ `Line (art)` was here and DOES NOT EXIST — verified against the live
+    // MediaWiki API 2026-09-03, the only `missing` title in 386 elementary
+    // topics. A non-existent title fetches nothing and reports nothing, so the
+    // art/kindergarten cell was quietly one topic thinner than its list claimed.
+    // `Line art` is the real article and is the same subject.
+    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line art', 'Clay', 'Collage', 'Pattern',
       'Paper', 'Crayon', 'Paint', 'Scissors', 'Rectangle', 'Circle', 'Triangle', 'Square', 'Craft', 'Picture book'],
     grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait',
       'Color', 'Watercolor painting', 'Paintbrush', 'Canvas', 'Pattern', 'Clay', 'Origami', 'Mask', 'Puppet', 'Statue'],
