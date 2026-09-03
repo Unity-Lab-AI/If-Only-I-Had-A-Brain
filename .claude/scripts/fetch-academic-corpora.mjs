@@ -555,11 +555,11 @@ const TOPICS = {
     grade5: ['Physical fitness', 'Cardiovascular fitness', 'Flexibility', 'Team sport', 'Tennis', 'Athletics (sport)', 'Nutrition', 'Hydration'],
     grade6: ['Exercise physiology', 'Muscle', 'Skeletal muscle', 'Cardiovascular system', 'Aerobic exercise', 'Anaerobic exercise', 'Sport', 'Olympic Games', 'Injury', 'Warming up'],
     grade7: ['Physical fitness', 'Strength training', 'Endurance training', 'Sports injury', 'First aid', 'Basketball', 'Soccer', 'Athletics (sport)', 'Teamwork', 'Sportsmanship'],
-    grade8: ['Exercise physiology', 'Metabolism', 'Nutrition', 'Body mass index', 'Muscle contraction', 'Oxygen', 'Sport psychology', 'Training', 'Stretching', 'Rest'],
+    grade8: ['Exercise physiology', 'Metabolism', 'Nutrition', 'Body mass index', 'Muscle contraction', 'Oxygen', 'Sport psychology', 'Training', 'Stretching', 'Sleep'],
     grade9: ['Physical education', 'Kinesiology', 'Anatomy', 'Human musculoskeletal system', 'Cardiorespiratory fitness', 'Weight training', 'Sports medicine', 'Doping in sport', 'Nutrition', 'Hydration'],
-    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Rehabilitation', 'Physical therapy', 'Fitness', 'Endurance'],
+    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Physical therapy', 'Physical therapy', 'Fitness', 'Endurance'],
     grade11: ['Sports psychology', 'Motivation', 'Goal setting', 'Team dynamics', 'Coaching', 'Sports nutrition', 'Recovery', 'Overtraining', 'Sleep', 'Stress management'],
-    grade12: ['Physical fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Wellness', 'Yoga', 'Pilates', 'Recreation'],
+    grade12: ['Physical fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Well-being', 'Yoga', 'Pilates', 'Recreation'],
   },
 
   // MUSIC — kindergarten to grade12. Knowledge half: notation, theory, the
@@ -575,7 +575,7 @@ const TOPICS = {
     grade7: ['Music history', 'Baroque music', 'Classical period (music)', 'Romantic music', 'Jazz', 'Blues', 'Improvisation', 'Musical instrument', 'Rhythm', 'Syncopation'],
     grade8: ['Popular music', 'Rock music', 'Jazz', 'Blues', 'Hip hop music', 'Electronic music', 'Recording studio', 'Sound recording and reproduction', 'Music genre', 'Songwriting'],
     grade9: ['Music theory', 'Harmony', 'Counterpoint', 'Chord progression', 'Music notation', 'Ear training', 'Composition (music)', 'Music genre', 'Rock music', 'Punk rock'],
-    grade10: ['Music history', 'Twentieth-century music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert'],
+    grade10: ['Music history', 'Contemporary classical music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert'],
     grade11: ['Music production', 'Digital audio workstation', 'Synthesizer', 'Sampling (music)', 'Audio mixing (recorded music)', 'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Timbre'],
     grade12: ['Musicology', 'Ethnomusicology', 'Music criticism', 'Music and emotion', 'Psychoacoustics', 'Music therapy', 'Subculture', 'Goth subculture', 'Gothic rock', 'Alternative rock'],
   },
@@ -597,7 +597,7 @@ const TOPICS = {
     grade9: ['Health', 'Public health', 'Nutrition', 'Human sexuality', 'Sexual health', 'Contraception', 'Consent', 'Mental health', 'Suicide prevention', 'Drug', 'Addiction', 'First aid'],
     grade10: ['Human anatomy', 'Physiology', 'Immune system', 'Infectious disease', 'Chronic condition', 'Epidemiology', 'Vaccination', 'Public health', 'Health care', 'Preventive healthcare'],
     grade11: ['Mental health', 'Psychiatry', 'Therapy', 'Cognitive behavioral therapy', 'Substance use disorder', 'Harm reduction', 'Sexual health', 'Relationship', 'Domestic violence', 'Self-care'],
-    grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Wellness', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy'],
+    grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Well-being', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy'],
   },
 
   // LANGUAGE — foreign language, grade3 to grade12. Spanish is the default
