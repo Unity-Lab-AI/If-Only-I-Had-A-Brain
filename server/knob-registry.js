@@ -1374,11 +1374,24 @@ function knobState() {
     overridden,
     boot,
     unproven,
-    // ⛔ Writes are NOT implemented, and the panel says so rather than drawing a
-    // control that would not work. A `boot` knob could never honour one anyway,
-    // and an unproven knob must not be offered one on a guess.
-    writable: false,
-    writeNote: 'read-only — a write lane needs every effect class proven first, and a boot-frozen knob must refuse rather than accept',
+    // ⛔⛔ THIS FLAG WAS HARDCODED `false` AND WENT STALE THE DAY ITS OWN
+    // PRECONDITION WAS MET. Its note read *"a write lane needs every effect
+    // class proven first, and a boot-frozen knob must refuse rather than
+    // accept"* — and BOTH of those became true: `unproven` reached 0 when every
+    // knob got a classified effect, and `POST /knob` refuses a boot knob with a
+    // 409 that names why. The lane shipped, worked, and the panel kept
+    // announcing itself read-only.
+    //
+    // ⭐ SO IT IS DERIVED NOW, NOT ASSERTED. A capability flag that a human has
+    // to remember to flip is a field that will go stale again; this one is
+    // computed from the same numbers the panel already publishes, so it cannot
+    // disagree with them. **Found by the teach-view bench before that bench had
+    // ever run against a live brain** — which is the entire argument for having
+    // one.
+    writable: unproven === 0,
+    writeNote: unproven === 0
+      ? 'writable — every effect class is proven, and a boot-frozen knob is refused with a 409 rather than accepted and silently ignored'
+      : `read-only — ${unproven} knob(s) still have no proven effect class, and an unproven knob must not be offered a control on a guess`,
     // ⭐ Published in `GROUP_ORDER`, so a group's position is a fact about what
     // it governs rather than about how many knobs it currently holds. A name not
     // in the list sorts last rather than being dropped — an unknown category
