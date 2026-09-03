@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-09-03 — `PHASEBAR.1` (denominator half) — THE BAR STOPS COUNTING WORK THE GRADE FORBIDS
+
+The within-phase progress bar sat at `{name: _teachLanguageMechanics, done: 0, total: 14, frac: 0}` across two live samples 417 s apart while `cellSubPhases` moved 105,072 → 108,275. The `total: 14` half is now fixed.
+
+**What was wrong.** The denominator was derived exactly — every distinct `this._teach*(` in the method's own source, 14 of them — and it described a whole that does not exist at kindergarten, where **eleven sit behind `atLeast(g1)` or higher and can never run.** `3/14` was an arithmetically correct fraction of the wrong whole: a bar with a 21% ceiling and nothing saying so.
+
+**The fix.** `_phaseReachableTotal(name)` counts only units the current grade can reach. Unit→gate comes from the same source text the units do — resolve `const gN = ORDER.indexOf('gradeN')`, then attribute each call to the innermost enclosing `if (atLeast(gN))` block.
+
+```
+  kindergarten  3      grade5   9      grade9   13
+  grade1        6      grade6   9      grade10  13
+  grade2        7      grade7  10      grade11  14
+  grade3        8      grade8  10      grade12  14
+  grade4        8                      lexical total: 14
+```
+
+**13/13 grades correct**, and the parsed distribution matches the source read by eye: UNGATED 3 · grade1 3 · grade2 1 · grade3 1 · grade5 1 · grade7 1 · grade9 3 · grade11 1.
+
+⭐ **Blast radius measured rather than asserted: 253 tracked phases, exactly ONE carries a grade gate, exactly one total changes.** The other 252 are byte-identical, because a phase with no gates keeps the lexical count — the correct answer for it, not a degradation.
+
+⚠ A unit whose guard names a grade outside `GRADE_ORDER` is **counted, not dropped** — an unresolvable guard must not silently shrink the whole, which is this same defect pointed the other way. Unknown grade falls back to the lexical total.
+
+⛔⛔ **My own throwaway parser got this wrong first, which is why the harness exists.** A quick depth-tracking probe reported **8 ungated units and found only g1 and g9**, missing g2/g3/g5/g7/g11 — a confident wrong answer contradicting the row's own static trace. The source read by eye was the arbiter. **Fifth instrument this session to need checking before being believed**, after the scope classifier, the 6/6-scoring column classifier, the digit-concatenating doc audit, and the sitemap counter that reported "29,535 shards, 0 pages".
+
+⛔ **The `done: 0` half is NOT claimed and stays open.** Two candidate mechanisms were already disproved by reading; the surviving explanation is that credit is granted on EXIT and `_teachConcreteSentences` is priced in its own comment at **14.9 hours in a single call**. Fixing the denominator does not move `done`. **Read `cellSubPhases`, not `frac`, until that half lands.**
+
+**Verified:** `node --check` · real `import()` of the module · a live `Curriculum` instance harnessed at 13 grades · an all-phase sweep proving 252 of 253 totals unchanged.
+
+---
+
 ## 2026-09-02 (NINETEENTH BATCH) — `CURVEDEPTH.14` — THE BIGGER HOST EXISTS, AND TWO OF THIS BOARD'S RECORDED FACTS ABOUT HOSTS WERE STALE
 
 The ruling was *"FIND A BIGGER HOST FIRST, before writing any more fetchers … probe licence AND reachability per host before a line of fetcher is written."* This is that probe. **No fetcher was written.**

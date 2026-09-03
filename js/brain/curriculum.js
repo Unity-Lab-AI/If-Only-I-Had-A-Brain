@@ -2983,6 +2983,51 @@ export class Curriculum {
     // `_teachLanguageMechanics` band ladder — instead of sitting at 0% for the
     // phase's entire duration and then jumping 4%. Derived and exact, and it
     // works for every phase in every grade with no per-runner wiring.
+    // ⛔⛔ THE DENOMINATOR COUNTED WORK THE GRADE FORBIDS, so the bar had a
+    // ceiling it could never reach and nothing said so.
+    //
+    // The ELA mechanics phase declares 14 nested units, and the count above is
+    // derived exactly — but ELEVEN of them sit behind a grade guard. At
+    // kindergarten only THREE can run, so a bar reporting `3/14` was showing
+    // 21% for a phase that had finished everything it was allowed to do. The
+    // reading was not noise; it was a correct fraction of the wrong whole.
+    //
+    // ⭐ A DERIVED DENOMINATOR IS ONLY HONEST IF IT IS DERIVED UNDER THE
+    // CONDITIONS THE NUMERATOR RUNS IN. The gates are read from the same source
+    // text the units are, so the two halves of the fraction now describe the
+    // same run.
+    //
+    // The shape being parsed, verbatim from the mechanics ladder:
+    //     const g1 = ORDER.indexOf('grade1');      ← binds a local to a grade
+    //     if (atLeast(g1)) { … this._teachMorphology(…) … }
+    //     if (atLeast(g2) && typeof this._teachPhrases === 'function') { … }
+    // so a unit's gate is the innermost `atLeast(<local>)` block containing it.
+    const _gateOf = (src) => {
+      // local name → grade name, e.g. `g5` → `grade5`
+      const vars = new Map(
+        [...src.matchAll(/\b(\w+)\s*=\s*ORDER\.indexOf\(\s*['"]([^'"]+)['"]\s*\)/g)]
+          .map((m) => [m[1], m[2]]),
+      );
+      const gates = new Map();
+      const stack = [];
+      let depth = 0;
+      for (const line of src.split('\n')) {
+        // Units on THIS line belong to the guards already open, never to a
+        // guard opening on the same line — `if (atLeast(g2) && typeof
+        // this._teachPhrases === 'function')` names its own unit in the
+        // condition, and crediting that to its own gate would be circular.
+        for (const m of line.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g)) {
+          if (!gates.has(m[1])) gates.set(m[1], stack.length ? stack[stack.length - 1].grade : null);
+        }
+        const opened = /\batLeast\(\s*(\w+)\s*\)/.exec(line);
+        let delta = 0;
+        for (const ch of line) { if (ch === '{') delta++; else if (ch === '}') delta--; }
+        if (opened && delta > 0) stack.push({ grade: vars.get(opened[1]) || null, depth });
+        depth += delta;
+        while (stack.length && depth <= stack[stack.length - 1].depth) stack.pop();
+      }
+      return gates;
+    };
     if (!this._teachNestedTotal) this._teachNestedTotal = {};
     for (const _n of TRACKED) {
       try {
@@ -2996,10 +3041,17 @@ export class Curriculum {
         // declared nested unit from a deep primitive at credit time.
         if (!this._teachNestedSet) this._teachNestedSet = {};
         this._teachNestedSet[_n] = _nested;
+        // unit → the grade it first becomes reachable at, or null for ungated.
+        if (!this._teachNestedGate) this._teachNestedGate = {};
+        const _g = _gateOf(_src);
+        _g.delete(_n);
+        this._teachNestedGate[_n] = _g;
       } catch {
         this._teachNestedTotal[_n] = 0;
         if (!this._teachNestedSet) this._teachNestedSet = {};
         this._teachNestedSet[_n] = null;
+        if (!this._teachNestedGate) this._teachNestedGate = {};
+        this._teachNestedGate[_n] = null;
       }
     }
     // LATCH-PROOF PHASE STACK (2026-08-14). The prior implementation decided
@@ -3099,7 +3151,11 @@ export class Curriculum {
           // Start a fresh within-phase work tally for this phase.
           this._phaseWorkName = name;
           this._phaseWorkSeen = new Set();
-          this._phaseWorkTotal = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+          // ⭐ THE TOTAL IS THE UNITS THIS GRADE CAN ACTUALLY REACH, not every
+          // unit the method lexically names. `_phaseReachableTotal` falls back
+          // to the lexical count only when there are no gates to read, which is
+          // the correct answer for a phase that has none.
+          this._phaseWorkTotal = this._phaseReachableTotal(name);
           // PHONPROG.1a — clear any self-published cursor from the PREVIOUS
           // phase. A stale exact-looking percentage outliving its phase is the
           // same lying-instrument shape this fix exists to remove.
@@ -3384,6 +3440,37 @@ export class Curriculum {
    * broadcast so the dashboard has the full training picture in one
    * poll. Null fields when Unity isn't mid-cell.
    */
+  /**
+   * How many of a phase's nested work units the CURRENT grade can actually
+   * reach — the honest denominator for the within-phase progress bar.
+   *
+   * ⛔ WHY IT IS NOT JUST THE LEXICAL COUNT. The ELA mechanics phase names 14
+   * nested units and eleven sit behind a grade guard, so at kindergarten only
+   * three can ever run. Reporting `3/14` was arithmetically exact and described
+   * a whole that does not exist at that grade — a bar pinned at a 21% ceiling
+   * with nothing saying why.
+   *
+   * ⚠ FALLS BACK TO THE LEXICAL COUNT ONLY WHEN THERE ARE NO GATES TO READ,
+   * which is the correct answer for a phase that has none — not a degradation.
+   * A unit whose gate names a grade outside `GRADE_ORDER` is COUNTED rather
+   * than dropped: an unresolvable guard must not silently shrink the whole.
+   */
+  _phaseReachableTotal(name) {
+    const lexical = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+    const gates = this._teachNestedGate && this._teachNestedGate[name];
+    if (!gates || !gates.size) return lexical;
+    const grade = this.cluster?._currentCellKey ? String(this.cluster._currentCellKey).split('/').pop() : null;
+    const gi = grade ? GRADE_ORDER.indexOf(grade) : -1;
+    if (gi < 0) return lexical;           // unknown grade → no basis to exclude anything
+    let n = 0;
+    for (const [, g] of gates) {
+      if (!g) { n++; continue; }           // ungated — runs at every grade
+      const ref = GRADE_ORDER.indexOf(g);
+      if (ref < 0 || gi >= ref) n++;      // unresolvable guard counts, per the note above
+    }
+    return n;
+  }
+
   getCurriculumStatus() {
     const cluster = this.cluster;
     const perSubject = {};
