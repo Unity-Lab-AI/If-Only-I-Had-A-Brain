@@ -176,6 +176,106 @@ const KNOBS = [
     what: 'Minimum retained dose under compression.',
   },
 
+  // ══ KNOBEFFECT.1 — batch 3: `server/brain-server/gpu.js`, all 30 ══════════
+  //
+  // Same shape as batch 2 and for the same structural reason: `gpu.js` is a
+  // mixin body, every read sits at indent ≥ 4 inside a method, and there is no
+  // module scope for a value to freeze into. **Screened for the `cached` guard
+  // — 0 of 30 matched**, so none memoise into a `this._x`.
+  //
+  // ⚠ Every one lands in `GPU & donor` and that is the honest answer rather
+  // than a lazy one: this file IS the donor lane — dispatch, upload pacing,
+  // fan-out, VRAM floors and readback gaps. A knob here governs where and how
+  // fast her weights move between CPU and GPU, which is one subject.
+  { key: 'DREAM_BATCH_STALL_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_MIRROR_CAP_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_BACKED_PENALTY', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_FANOUT', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_READ_FRESH_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_WORK_FLOOR', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_FLOOD_COOLDOWN_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_MIN_VRAM_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_INFLIGHT', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_REGISTRY_WAIT_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_SYNC_DURING_TEACH', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_MIN_BIND_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_REBROADCAST_DUTY', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_UPLOAD_WAIT_DONOR_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_SPARSE_CHUNK_NNZ', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_SPARSE_UPLOAD_TIMEOUT_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_UPLOAD_MIN_MBPS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_UPLOAD_PACE_LOWATER_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_SYNC_PACE_MAX_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_SYNC_TEACH_PACE_MAX_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_SYNC_TEACH_PACE_MIN_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_WS_SOFT_SHED_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_GATE_GPU_PROBES', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_LINK_CAP_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_RESYNC_TEACH_THROTTLE_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_PATTERN_LANE_CAP_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_PATTERN_TEACH_THROTTLE_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DELTA_COLIDX', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_READBACK_MIN_GAP_MS', effect: 'live', group: 'GPU & donor' },
+
+  // ══ KNOBEFFECT.1 — batch 2: `js/brain/curriculum.js`, all 33 ══════════════
+  //
+  // ⭐ ALL 33 ARE `live`, AND THE UNIFORMITY IS A FACT ABOUT THE FILE RATHER
+  // THAN AN ASSUMPTION: `curriculum.js` is a class body, so every one of these
+  // reads sits at indent ≥ 4 inside a method — there is no module scope for a
+  // value to freeze into. Verified three enclosing methods by reading
+  // (`getCurriculumStatus()` runs per state broadcast, `_resolveMaxGradeIdx()`
+  // per walk resolution, `runCompleteCurriculum()` per walk) rather than
+  // asserting the shape from indentation, which is the heuristic that produced
+  // two wrong classifiers before.
+  //
+  // ⚠ THE `cached` SHAPE WAS SCREENED FOR, NOT ASSUMED ABSENT. One site
+  // (`DREAM_SELF_FRAME_LIGHT_MAX_UNITS`) matched an `undefined` guard and was
+  // read: the guard tests the ENV STRING inside an IIFE, not a memo field, so
+  // it re-evaluates every time. **`cached` and `live` are identical in source
+  // and only the guard's SUBJECT tells them apart** — that is exactly why this
+  // was checked per-site instead of pattern-matched away.
+  //
+  // ⛔ `live` HERE MEANS THE READ RE-RUNS, NOT THAT A KNOB IS USEFUL TO TURN
+  // MID-WALK. Several of these methods run once per cell or once per boot; the
+  // class says a write WILL be seen the next time that path runs, which is the
+  // question the panel is answering.
+  { key: 'DREAM_SELF_FRAME', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_SELF_FRAME_MAX_UNITS', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_SELF_FRAME_LIGHT_MAX_UNITS', effect: 'live', group: 'Curriculum, gates & schedule', proof: 'IIFE in an object literal; the `!== undefined` tests the env STRING, not a memo — re-evaluated per call' },
+  { key: 'DREAM_UPLOAD_GRACE_MIN', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_TRICKLE_BATCH', effect: 'live', group: 'Teaching dose & repetition' },
+  { key: 'DREAM_PRECELL_VOCAB', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_BATTERY_QUESTION_TIMEOUT_MS', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_BATTERY_DEADLINE_MS', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_BC_EMISSION_DOM_MAX', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_BC_VOCAB_MIN', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_BC_RECTIFY_DECAY', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_BC_RECTIFY_NORM', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_BATTERY_GATE_HARD', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_CELL_PASS_HARD', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_HEALTH_GATE_HARD', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_MAX_GRADE', effect: 'live', group: 'Curriculum, gates & schedule', proof: 'read in `_resolveMaxGradeIdx()`, called per walk resolution — context read 2026-09-03' },
+  { key: 'DREAM_GRADE_MAJOR_ROUNDS', effect: 'live', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_SPEAKLOOP', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_SPEAKLOOP_TEACH_ROUNDS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_SPEAKLOOP_TEACH_MAX_MS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_SPEAKLOOP_MAX_FAILS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_SPEAKLOOP_DRILL_ROUNDS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_SPEAKLOOP_DRILL_MAX_MS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_PER_WORD_TEACH_TIMEOUT_MS', effect: 'live', group: 'Teaching dose & repetition' },
+  { key: 'DREAM_REL_USE_TTL_MS', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_REL_USE_FLAT_TTL_MS', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_REL_USE_MIN_MARGIN', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_SENTENCE_TRANSITION_REPS', effect: 'live', group: 'Teaching dose & repetition' },
+  { key: 'DREAM_NO_AUTO_GPU', effect: 'live', group: 'GPU & donor', proof: 'read in `async runCompleteCurriculum(…)` — context read 2026-09-03' },
+  // These three already carry a group from the UNSORTED pass; only the effect
+  // class is new, and the fold overlays it without repeating the rest.
+  { key: 'DREAM_K_UPFRONT_SEED', effect: 'live' },
+  { key: 'DREAM_HELD_BACK', effect: 'live' },
+  { key: 'DREAM_MECH_EVERY_CELL', effect: 'live' },
+  { key: 'DREAM_LEARN_GEOMETRY', effect: 'live' },
+
   // ══ KNOBEFFECT.3 — emptying the UNSORTED pen ══════════════════════════════
   //
   // ⭐ ALL 17 PLACED BY READING what each one governs, not by keyword. The pen
