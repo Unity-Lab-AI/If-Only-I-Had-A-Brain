@@ -1870,6 +1870,27 @@ Asked via `AskUserQuestion` with each option priced against measured numbers. Al
   - **Acceptance:** `BrainWaves` carries a field for every reachable corpus figure, the count on its side matches the auditor's `figuresReachable`, and a press logs a field-sync count rather than a miss rate.
   - ⭐ **The producer/consumer pair was checked and it is COHERENT, contrary to my first reading.** `perceive-corpus-figures.mjs` writes local `fields/<shard>/<key>.field.json` under `--out` (default `server/corpus-figures.db`), which is exactly the layout `deploy/self-update.sh` rsyncs out of a `BrainWaves` clone and `figure-field-store.js` reads. ⚠ **The generic-package-registry constants at lines 84-104 of the producer are RESIDUE of the abandoned delivery decision** — nothing consumes them, `deploy/self-update.sh` never touches `/api/packages`, and the `write:package` blocker quoted above is describing a route that no longer carries anything. **Delete the residue or the next reader will re-derive the same false blocker I did.**
 
+- [~] `ONEREPO.1` — ⛔⛔⛔ **ONE REPO FOR THE CORPUS AND THE FIELDS. THE PRESS PULLS IT. SHE TRAINS FROM IT DIRECTLY.**
+
+  Gee (verbatim): *"we need to makes suure there is only one repo with all the corpus and fields, PERIOD! Then when it auto downloads it to the server when pressing update freshwalk the server then trains Unity on it as the books and information that trains her via pgase cell grade course ciriculim corpus.... directly"*
+
+  - ⛔ **HE IS DESCRIBING A SPLIT THAT IS REAL AND THAT I DID NOT NAME. Two repos feed one brain today**, read out of `deploy/self-update.sh`:
+    ```
+      clone If-Only-I-Had-A-Brain --depth 1  ->  rsync  ->  carries corpora/  (1.4 GB, 227 files)
+      clone BrainWaves --filter=blob:none + git lfs pull  ->  rsync fields/  ->  26,359 fields
+    ```
+    **`corpora` is not on the rsync exclude list, so the code clone is what puts the books on the box; `fields` IS excluded, and comes from the other repo.** Two sources, two clone paths, two ways to be stale — and they already ARE stale against each other.
+  - **THE TARGET REPO IS `BrainWaves`, and the reason is a constraint, not a preference:** the fields are ~100-700 GB of Git LFS and `If-Only-I-Had-A-Brain` pushes to a **PUBLIC GitHub remote**, which cannot host that. BrainWaves is Forgejo-only, already holds **both** `corpora/` (227 files) and `fields/` (26,359), and is the repo `deploy/self-update.sh` already knows how to clone with LFS.
+  - ⛔⛔ **SEQUENCE MATTERS AND THE OBVIOUS ORDER IS THE BROKEN ONE.** Removing `corpora/` from the brain repo first would leave the press with no books at all until the new path works. **Additive first, destructive last:**
+    1. **Sync today's corpus into `BrainWaves/corpora/`** so the single repo is actually current. Additive, reversible, no press impact.
+    2. **Finish the fields** — 14,624 owed of 41,100 distinct.
+    3. **Change `deploy/self-update.sh`** to take `corpora/` from BrainWaves as well as `fields/`, and add `corpora` to the code-clone rsync exclude so the code overlay can never overwrite the data. **Verify on a press before step 4.**
+    4. **Only then remove `corpora/` from the brain repo** so there is genuinely one copy — his "PERIOD".
+  - ⚠ **STATED CONSEQUENCE OF STEP 4, so it is chosen and not discovered:** the brain repo stops being self-contained. A clone of it — including the PUBLIC one — will no longer carry the books, and local work that reads `corpora/` needs the data repo alongside. **That is the direct cost of "only one repo", and it is the right trade only if it is made knowingly.**
+  - ⚠ **AND THE FIELD SET MAY NOT PHYSICALLY FIT, WHICH IS A REAL ANSWER AND NOT AN EXCUSE.** Measured this session: **19 fields = 960 MB, i.e. ~50 MB each**, against the board's earlier measured mean of **~7 MB**. 14,624 owed therefore prices anywhere from **~102 GB to ~730 GB**, and free disk here is **187 GB**. ⛔ **19 is far too small a sample to pick a number from** — this row's own history records *"four of my own numbers were wrong before one was right, all from sampling bias"* — so the run must be **batched: compute → push to LFS → delete locally → repeat**, and the mean re-measured once a real batch has landed.
+  - ⚠ **The smoke test also measured a poor hit rate: 50 attempted → 19 ok, 23 HTTP fail, 8 decode fail (29 transient, 2 permanent).** A full run will not produce 14,624 fields; it will produce however many survive, and the failure ledger is what says which.
+  - **Acceptance:** one repo carries corpus + fields, both current; `deploy/self-update.sh` pulls both from it; the brain repo no longer ships `corpora/`; and a press logs a corpus sync AND a field sync from the same source.
+
 - [ ] `BRAINWAVES.2` — ⛔⛔ **1.19 GB OF WAVELET FIELD BLOBS ARE IN *THIS* REPO'S HISTORY, AND THIS REPO PUSHES TO A PUBLIC GITHUB REMOTE.** Found 2026-09-03 while answering *"is this 100%???"* — GitHub warned on my push and I followed the warning instead of ignoring it.
   ```
     field blobs in history      68
