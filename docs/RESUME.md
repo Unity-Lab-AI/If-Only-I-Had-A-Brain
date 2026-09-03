@@ -1,6 +1,78 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-03 (LATEST — PICK UP HERE) THE TOPIC LISTS WERE THE CONSTRAINT, THE EARLY BAND IS CLEARED, AND TWO INSTRUMENTS WERE LYING
+> ## ⭐⭐⭐ 2026-09-03 EVENING (LATEST — PICK UP HERE) ONE DATA REPO, THE BOARD DOWN TO 48, AND TWO JOBS STILL RUNNING
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔⛔ TWO BACKGROUND JOBS ARE RUNNING RIGHT NOW. DO NOT ASSUME THEY FINISHED.
+> ```
+> ① the wavelet FIELD job   node .claude/scripts/perceive-corpus-figures.mjs
+>    -> writes into ../BrainWaves/fields   log: .scratch/fieldrun.log
+>    last read: 200/14,731 · ok 191 · httpFail 0 · 7.6 GB · ETA ~30 h
+>
+> ② the MATHS corpus fetch  fetch-academic-corpora.mjs --only-missing math <cell>
+>    six cells: pre-K grade9 college2 college4 grad phd
+>    two had finished at the last read (+590, +7,945 sentences); one still live
+> ```
+> ⚠ **Check both before believing any corpus or figure number below.** `powershell "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\""` and grep the command lines.
+>
+> ### ⛔ STATE
+> ```
+> branch    feature/board-clear-2 — NOT cascaded (everything before it IS on main, both remotes)
+> board     48 open (was ~55 this morning)
+> coverage  213 cells · 120 OK · 70 THIN · 3 EMPTY · 56,699,748 words · 6,791 entries
+> figures   57,574 reachable · 0 cells with zero figures
+> corpus    lives in UnityAILab/BrainWaves. NOT tracked in this repo any more.
+> ```
+>
+> ### ⭐⭐ THE STRUCTURAL CHANGE OF THE DAY — ONE DATA REPO
+>
+> Gee: *"we need to makes suure there is only one repo with all the corpus and fields, PERIOD!"*
+>
+> **Two repos were feeding one brain and I had never named it.** `deploy/self-update.sh` cloned the code repo (which carried `corpora/`, 393 MB, because it was simply not on the rsync exclude list) *and* cloned BrainWaves for `fields/`. Two sources, two ways to drift — and they already had.
+> - **`BrainWaves` is now the single data repo**: corpus + fields, both pulled by the press. `corpora` joined `fields` on the overlay exclude list.
+> - **`corpora/` is untracked here and gitignored.** ⚠ **A clone of this repo — including the public one — no longer carries the books.** Local work needs the data repo alongside; `cp -r ../BrainWaves/corpora/. ./corpora/`.
+> - ⛔ **THE BOOKS GATE:** fields are non-fatal (a miss = live transform), **books are not**. If the sync cannot leave books on the box the press **ABORTS before `.force-fresh` is written**, so a failed data sync costs neither the weights nor the running code.
+> - ⭐ **A bonus the split had hidden:** `glove.6B.300d.txt` is gitignored here and LFS-tracked there, so **before this change a press delivered no embeddings at all**.
+>
+> ### ⛔⛔ THE TWO FETCHER BUGS — BOTH MADE AN INSTRUMENT LIE, BOTH FIXED, BOTH PROVEN BY RE-RUNNING
+>
+> - **The skip reason named the LAST HOST TRIED.** `Pumping lemma` reported `no-such-page` **while existing on en.wikipedia with a 708-char extract** — it failed the sentence floor there and simple-wiki's `missing` overwrote the truthful reason. **It was telling a reader to delete a title that exists.**
+> - **The throttle detector read the ARTICLE instead of the ERROR.** `classifyBody` matched `rate ?limit` against the response body, so `Sampling (signal processing)` — **HTTP 200, valid 17,992-byte JSON, containing *"Slew rate limit error"*** — was `throttled` forever. **Every article that discusses rate limiting was unfetchable.**
+>
+> ### ⭐ THE FIELD JOB WAS AT 18% YIELD AND IS NOW AT 98%
+> At concurrency 14 Wikimedia returned **294 rate-limit responses in the first 303 attempts**, and yield DECAYED (36/100 → 62/300 → 72/400) — a throttle being fed. Two causes: the retry ladder was 800ms/1.6s/2.4s and **ignored `Retry-After` entirely**, so every 429'd figure spent three more requests inside the same window; and concurrency was sized to the CPU when every transform is preceded by a download from **one host**. Now `Retry-After` is honoured, 429s get 5s/15s/45s/90s, and concurrency defaults to `min(4, cores-2)`.
+> ⚠ **Rate has since fallen 0.24 → 0.13/s and the ETA rose 17 h → 30 h.** Yield is still 95%+ — it is fetching *bigger* figures (7.6 GB for 200), not failing. **Watch it; do not assume it is fine.**
+>
+> ### ⭐ BUILT: THE TEACH-VIEW BENCH (`TVBENCH.1`)
+> `server/teachview-bench.js` + `GET /teach-bench` + a **`bench` button** on the teach view. ⛔ **I filed this row backwards first** — "runnable with no press and no running brain" — and Gee corrected it: **it runs FROM A PRESS, LIVE DURING TRAINING.** An offline bench would have printed green over a stopped brain.
+> - Six surfaces, each returning a reason not a number. **GREY does not pass.**
+> - **It found a defect before it ever ran live:** `knobState()` published `writable: false` **hardcoded**, while both preconditions in its own note had been met. The lane shipped, worked, and the panel kept saying read-only. **Now derived from `unproven === 0`.**
+> - `selfTest()` plants **nine real faults** and asserts red on each. **10/10.**
+> - ⏳ **NOT run against a live brain.** The live proof is a press.
+>
+> ### ROWS CLOSED THIS SESSION
+> `CURVEBUILD.6` · `SPELLTRUTH.1` · `FIGTEXT.5` · `CELLRACE.2` · `ONEREPO.1` (¾) · `FIGCAP.1` · `OPENSTAX.1` · `PHONBANK.2` · `STACKSWEEP.8` · plus four rows that were **finished and still sitting at `[~]`** (`WEBPEYE.1`, `FIGSEE.1`, `TEACHVIEW.10`, `CELLAUDIT.1`) — each audited for an unresolved warning before flipping.
+>
+> ### ⛔ WAITING ON GEE — NOT BLOCKED ON WORK
+> - **`SPELLTRUTH.2`** — she has never spelled anything; the captions are a 5×7 bitmap font stamping the concept key, and **three code comments claim otherwise**. Three options filed; **wobble/mis-spelling is ruled out.**
+> - **`BRAINWAVES.2`** — **68 field blobs, 1,189.6 MB, in THIS repo's history**, on a public remote, against `self-update.sh`'s own design note. No secret in them; the cost is size. **Every remedy rewrites published history**, so it is his call.
+>
+> ### NEXT
+> - **Cascade `feature/board-clear-2`** once the maths fetch lands.
+> - **`CODELEAK.1`** — ~21 files left, method proven, `.claude/scripts/audit-task-number-leak.cjs --lines N` drives it.
+> - **`DOCSWEEP2.1`** — filed with the last sweep's own tree list; **280 commits since**. ⛔ The one-repo move makes any page saying "clone this repo and run" **actively wrong**.
+> - **`PHONBANK.1` part ③** — 201 of 213 cells still have no exam bank.
+> - ⛔ **Never `--replace`** on the corpus fetcher. It replaces the whole CELL, not your entries; it cost 323,434 sentences earlier today. `--only-missing`, always.
+>
+> ### ⚠ OWNED
+> - Flipped one status marker with `perl -0pi` — the **banned** scripts-edit-files pattern. Correct edit, wrong method.
+> - Merging the untracking commit **deleted the local `corpora/` working copy** (develop still tracked it). No data lost, restored from the data repo — but untracked-and-ignored only protects files that were **never** tracked.
+> - My first bench write-lane check read `writable` as a count when it is a boolean, and reported GREY. **Writing a check against the shape I assumed is the error class the bench hunts.**
+
+---
+
+> ## ⭐⭐ 2026-09-03 THE TOPIC LISTS WERE THE CONSTRAINT, THE EARLY BAND IS CLEARED, AND TWO INSTRUMENTS WERE LYING
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
