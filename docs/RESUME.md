@@ -1,6 +1,61 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 THE FIGURE GOES ON ITS OWN PAGE, THE KNOBS ARE UNREACHABLE, AND 8 OF 9 COURSES NEVER REHEARSE (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 (LATE) THE DOWNLOAD IS STOPPED ON PURPOSE, ALL 205 KNOBS HAVE A REASON, AND FOUR OF MY OWN INSTRUMENTS LIED (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 @ d30fd999 — NOT cascaded yet
+> board      56 open · 24 in-progress · 21 closed-in-place awaiting migration
+> figures    26,457 / 32,296 (81.9%) — STOPPED DELIBERATELY, nothing running
+> walk       frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⛔⛔ THE FIGURE RUN WAS STOPPED, AND THE CURVE IS WHY — NOT IMPATIENCE
+> Gee approved it: *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*. Yield per `--limit 1500` pass: **911 → 854 → 860 → 862 → 788 → 692 → 617 → 553 → 539 → 405 → 331 → 270 → 207 → 156 → 121 → 98**, success **61% → 6.5%**, a clean **×0.81 geometric decay** — my projection said ×0.81 and the last two passes measured ×0.78.
+> ```
+>   ~675 further figures before it yields <1/pass · ~25 passes · ~4 hours
+>   asymptote ~26,900 of 32,296 · ~5,400 (17%) NEVER deliverable by that design
+> ```
+> ⭐ **Stopped CLEANLY** — only the outer loop was killed, so the in-flight batch generated, committed and pushed before exiting. Zero processes left. ⛔ **The 5,400 are DEAD, not slow** (404s, undecodable formats, moved repos) and **every pass re-attempted every one of them**, because failures were recorded nowhere. **That curve IS the cost of the missing ledger, drawn out over hours.**
+>
+> ### ⭐⭐ THE REBUILD IS HALF IN — `.claude/scripts/figure-failure-ledger.mjs`
+> Failure ledger written **as it happens** (the run gets KILLED — that is how it normally ends), permanent-vs-transient classification, retry selector with an attempt cap, and the live permanent/transient split now printed **while a run goes** rather than in hindsight.
+> ⚠ **The classifier leans one way ON PURPOSE: when in doubt, TRANSIENT.** A wrongly-transient row costs one retry; a wrongly-permanent row loses that figure forever with nothing left to re-examine it.
+> ⏳ **Still owed:** the retry pass itself · collapse the duplicated `figKey` and format rule (`WAVESEE.2`) · fix the progress counter (`REGFIND.1`).
+>
+> ### ⛔⛔⛔ FOUR OF MY OWN INSTRUMENTS LIED IN ONE SESSION — CHECK BEFORE TRUSTING ANY OF THEM
+> 1. **A brace-depth scope classifier** called two module-scope constants `live`.
+> 2. **A column-0 classifier that scored 6/6** against hand-read truth and was *still* wrong — it called **107 of 192** boot-frozen; spot-checking four found three were live. **The 6/6 was luck.**
+> 3. **A doc-vs-code audit** that concatenated every digit in a prose cell, turning `` `1800000` (30 min) `` into **180000030**.
+> 4. **The knob registry scanned ITSELF** and invented a knob called `DREAM_` from an elided name in its own comment.
+> ⭐ **And a harness assertion I nearly dismissed found a real bug:** a torn last line in the ledger doesn't just lose itself — **the next append glues onto it**, so every restart silently swallowed its own first recorded failure.
+>
+> ### ⭐ ALL 205 KNOBS NOW CARRY A REASON — 186 unexplained → **0**
+> ```
+>   set 71 · derived 29 · config 43 · inherited 61 · stale 1 · unknown 0
+> ```
+> ⚠ **The count grew 193 → 206 → 205 because the scanner had MISSED A WHOLE ACCESS PATTERN** — `_envNum('KEY', default)` never writes `process.env.`, hiding **11 knobs including the sem→motor RECTIFICATION pair** (what stops saturation hard-stopping the walk) and **both K-gate thresholds at 0.80.** **Gee's question found it; the panel could not.**
+> ⭐ **A third effect class exists and is the dangerous one:** `cached` — read once behind an `if undefined` guard, **identical to `live` in source**, and on a running brain a write is accepted, reads back correctly and is **silently ignored.** `DREAM_FIRING_TARGET_PCT` and `DREAM_NOISE_GATE` were both mislabelled `live`.
+> ⛔ **`DREAM_REP_COMPRESS = 40` is the one STALE value.** Measured against a corpus **11.2× smaller**; live collision load measures **1,542–7,471** against a sweep that called **0.246** "production" and whose table stops at **25**. **This brain runs 60–300× beyond anything anyone measured.** Sweep it at the press.
+>
+> ### ⭐ ALSO SHIPPED
+> **The vocabulary cap is GONE** (60 → unlimited; my reason for keeping it was wrong twice — 5.5× on the word count, 20× on concurrency; real cost **19.8 h once, ever**) · **8 of 9 courses now rehearse earlier grades** (+0.225% of the prose lane) · **`FIGPAIR.1`** — the figure lands on the page it belongs to · **knob save / drag-drop load with a diff / reset preview** · **hacker-green CRT theme** with a legibility-bounded static roll · **download-weights buttons** · **`TEMPORAL.1` designed** (time is already implemented — `ojaUpdate(state_t, state_t+1)` — and has never been pointed at vision).
+>
+> ### ⛔⛔ TWO FOULS OF MINE, BOTH REAL
+> **① I committed brain work into the LIVE field repo and deleted 23,782 files from it, pushed.** Cause: `cd .../BrainWaves` chained with `git add -A && git commit` in one command. **Recovered** (`git restore --source --staged`, no LFS re-download, origin verified back at 24,330) and the generator was never disrupted. ⛔ **Rule: never chain `cd <other repo>` with a commit.** ⚠ **It was caught by the WIKI STALENESS hook** — an unrelated instrument — and **walked straight past the Git Flow guard, which only watches this directory.**
+> **② `import()` EXECUTES a module.** I used it as a "does this load" check all session; on the producer it **started a real run for two minutes.** No harm — but it also exposed that **my own `grab()` change had silently broken every SVG rendition** an hour earlier.
+>
+> ### ⏳ NEXT
+> **Finish the retry pass** and the two duplicated rules, **then `MATHLEAK.1`'s re-ingest and `MATHGAP.1`'s ingest half** (both were only ever blocked because the generator re-read `corpora/` every batch) · **`CORPUSCALE.2`** the collision-load sweep · **`KNOBFIND.5/.6`** the values that want measuring not describing · **`TEACHVIEW.9`** the rest of the monitor.
+> ⛔ **`TEMPORAL.1` and `CURVEBUILD.3` wait for the fresh walk** — both change what she is taught.
+>
+> ⚠ **STANDING BOUND: almost everything here is a STATIC read or a harness. Nothing has been seen on a running brain.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 THE FIGURE GOES ON ITS OWN PAGE, THE KNOBS ARE UNREACHABLE, AND 8 OF 9 COURSES NEVER REHEARSE (superseded — the top block is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
