@@ -3025,3 +3025,23 @@ Gee (verbatim):
   - ⛔ **WHAT IS RULED OUT ALREADY, so nobody proposes it:** adding wobble, tremor, or deliberate mis-spelling to make the text *look* age-appropriate. That satisfies the visual complaint, leaves the provenance defect untouched, and is banned outright — *"NO FUCKING WOBBLE … wobble = dumbing her down"*.
   - ⚠ **Producer ③ from the `SPELLTRUTH.1` table is still unmeasured** — whether looked-up reference images bake real text into her field. **Measure that before choosing**, because if generated images carry words, gating her caption fixes half the picture and the other half keeps arriving from outside.
 
+## TVBENCH — the teach viewer needs a full sweep bench and a readout that says whether it works — filed 2026-09-03
+
+Gee (verbatim):
+
+> *"the teacherviewer needsd a full sweep bench that you can perfectly work yourself easily have a bennchmarking for all of it so a bench readout and all of that to know if shit is working or not"*
+
+- [ ] `TVBENCH.1` — ⛔⛔ **A FULL SWEEP BENCH OVER THE WHOLE TEACH VIEWER, RUNNABLE BY ME WITHOUT A LIVE BRAIN, ENDING IN ONE READOUT THAT SAYS WORKING OR NOT WORKING.** *"so a bench readout and all of that to know if shit is working or not"* is the acceptance test: the output must answer that question directly, not hand back numbers a reader has to interpret.
+  - ⛔ **WHY THIS IS NEEDED, AND IT IS THE PATTERN OF THE WHOLE DAY:** every teach-viewer surface has been verified by ME READING IT ONCE and then trusted forever. This session alone found a knob panel publishing `effect: '???'` for 171 of 205 rows, a ledger that lied, a lane reporting DONE on zero, a skip reason naming the wrong host, and a throttle detector reading the article instead of the error. **Each was a surface somebody had already looked at.** A bench that runs on demand is the difference between "it looked right in April" and "it is right now".
+  - ⛔⛔ **"THAT YOU CAN PERFECTLY WORK YOURSELF EASILY" IS A HARD CONSTRAINT, NOT A CONVENIENCE.** It must run from the command line, with **no press, no running brain, and no dashboard clicking** — because the surfaces it checks are exactly the ones that are unavailable when the brain is down, and a bench I cannot run is a bench that never runs. Same standard as `audit-curriculum-coverage.mjs` and `audit-task-number-leak.cjs`: read-only, self-testing, one command.
+  - **WHAT "ALL OF IT" COVERS — every teach-viewer surface, each with a verdict rather than a number:**
+    - **The knob registry** — all knobs carry an `effect` class, a group, a default and a recorded reason; **0 in `UNSORTED`**; no duplicates; and the `boot`/`live`/`cached` split still matches the source sites it claims.
+    - **The write lane** — `POST /knob` accepts a `live` knob, **refuses a `boot` knob with a 409 and a reason**, and re-derives its confirmation through the registry instead of echoing the request.
+    - **The teach ledger** — rows are being written, timestamps advance, and a quiet lane reads as quiet rather than as healthy.
+    - **The corpus feed** — what the viewer claims she is being taught matches what `curriculum-coverage` says is reachable. **These are two instruments over one fact and they must not disagree.**
+    - **The figure lane** — field-store hit / miss / **stub** counts, because an LFS pointer stub is a real file and a naive check reports a healthy cache while she perceives nothing.
+    - **Every published field the page renders** — each one has a producer, and a field nothing produces is reported as dark rather than as zero.
+  - ⛔ **THE BENCH MUST BE ABLE TO FAIL.** A sweep that always prints green is the defect it exists to catch. It needs a **self-test that deliberately breaks a check and confirms the readout goes red**, exactly like the task-number auditor refusing to run when its own matcher is wrong — otherwise the first honest-looking PASS gets believed forever.
+  - ⚠ **NOT a browser test and NOT a screenshot diff.** The question is whether the DATA behind the page is real and current, not whether pixels moved. A page can render perfectly from a field nobody writes.
+  - **Acceptance:** one command, no brain required, prints a per-surface verdict and one overall **WORKING / NOT WORKING** line, exits non-zero when anything is dark, and proves it can go red on a planted fault.
+
