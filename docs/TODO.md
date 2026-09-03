@@ -2257,7 +2257,21 @@ Gee, verbatim:
 
 > *"and rememnber we have all the knobs in the teachview so with the knobs that you will know how to set and asjust perfectly for what we need you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain after we get the wavlets downladed and all todos done"*
 
-- [ ] `TEACHKNOB.4` — ⛔⛔⛔ **THE KNOBS GO IN THE TEACH VIEW, AND I AM THE ONE WHO TURNS THEM DURING THE TEST. THIS RE-SCOPES `TEACHKNOB.1` — READ-ONLY IS NO LONGER SUFFICIENT.** Gee, verbatim: *"and rememnber we have all the knobs in the teachview so with the knobs that you will know how to set and asjust perfectly for what we need you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain after we get the wavlets downladed and all todos done"*.
+- [x] `TEACHKNOB.4` — ✅⭐⭐ **THE WRITE LANE IS BUILT 2026-09-03, AND IT REFUSES RATHER THAN LIES.** `POST /knob` behind the same `requireLoopback` every privileged route uses, plus a per-row field in the teach view.
+  - ⭐⭐ **THE EFFECT CLASS IS THE GATE — which is exactly why `KNOBEFFECT.1` had to land first.** This row's hard requirement was *"a write must not be able to lie"*, and that was unenforceable while 171 knobs had no verified class. Now:
+  ```
+    live    162   applied — takes effect on the next read
+    cached    3   applied WITH the caveat that its one read may already have happened
+    boot     40   REFUSED, 409, with the restart requirement named
+    ???       0   REFUSED — kept as a branch so a newly-discovered knob is not writable before it is read
+  ```
+  - ⛔ **THE 40 REFUSALS ARE THE POINT.** Writing `DREAM_SMALL_WORLD` or `DREAM_LAMINATION` on a running brain sets the environment, reads back correctly, and **changes nothing** — those nine microstructure switches shape the brain that gets BUILT. A lane that accepted them would be **a lie with a green tick on it.** The row shows *why* a knob cannot be turned instead of a disabled box with no reason.
+  - ⭐ **THE CONFIRMATION IS RE-DERIVED, NOT ECHOED.** After a write the server re-reads the knob **through the registry** — the same path the panel renders — and returns that. Echoing the submitted value would prove only that an assignment happened. **Verified live: `DREAM_FIGDRAIN_MS` "—" → `2500` (`overridden: true`) → unset → "—".**
+  - ⚠ **A `cached` write is applied and reported HONESTLY**: whether it lands depends on whether its single first-use read has already happened, which this lane cannot know from outside. It says so rather than showing a tick.
+  - **Gate verified against the real registry, 10 cases:** the four sampled boot knobs refused, the three live ones applied, both known `cached` traps (`DREAM_FIRING_TARGET_PCT`, `DREAM_NOISE_GATE`) applied-with-caveat, an unknown key 404s. `node --check` on the server; the teach view's inline JS parses and its script tags balance.
+  - ⚠ **The panel's banner no longer says "Read-only"** — it now states how many of the 205 accept a write and how many are refused, so the page describes what it can actually do.
+
+  **Original filing:** ⛔⛔⛔ **THE KNOBS GO IN THE TEACH VIEW, AND I AM THE ONE WHO TURNS THEM DURING THE TEST. THIS RE-SCOPES `TEACHKNOB.1` — READ-ONLY IS NO LONGER SUFFICIENT.** Gee, verbatim: *"and rememnber we have all the knobs in the teachview so with the knobs that you will know how to set and asjust perfectly for what we need you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain after we get the wavlets downladed and all todos done"*.
   - ⭐ **THREE THINGS ARE SETTLED BY THIS AND EACH CHANGES A DECISION ALREADY MADE:**
     1. **WHERE:** the knobs live **in the teach view**, not on a separate screen. `TEACHKNOB.3` already argued that — *"what she is being taught and the knobs that shape how it lands are one question"* — and this is the ruling that makes it binding rather than my opinion.
     2. **WHO:** **I set them, I monitor them, I keep them proper.** ⛔ `TEACHKNOB.1` ruled *"a read-only knob panel first"* on the reasoning that Gee needed visibility and could not get it. **That reasoning is now only half the requirement.** A panel I can read but not turn leaves me exactly where he was — able to name the value and unable to change it.

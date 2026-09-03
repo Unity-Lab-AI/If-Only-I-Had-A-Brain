@@ -872,7 +872,10 @@ function renderKnobs(k) {
      saying how many carry a real description, and how many effect classes are
      unverified, is the difference between an instrument and a wall of numbers
      that implies more certainty than it has. */
-  html += `<div class="tv-note">Read-only — ${knobEsc(k.writeNote)}. `
+  html += `<div class="tv-note">Settable where it can honestly land — `
+    + `<b>${(k.groups || []).reduce((a, g) => a + g.knobs.filter((x) => x.effect === 'live' || x.effect === 'cached').length, 0)}</b>`
+    + ` of ${k.total} accept a write on the running brain; `
+    + `<b>${k.boot | 0}</b> are boot-frozen and are REFUSED rather than accepted-and-ignored. `
     + `<b>${k.overridden}</b> of ${k.total} are set in the environment; the rest are running their defaults.`
     + (k.boot ? ` <b>${k.boot}</b> were captured at boot and cannot change without a restart.` : '')
     + (k.unproven ? ` <b>${k.unproven}</b> have not had their read site verified and are marked <code>???</code> rather than guessed.` : '')
@@ -933,6 +936,28 @@ function renderKnobs(k) {
           : ` <span class="tv-sub">(default — not set)</span>`)
         + `</div>`
         + `<div class="tv-sub">${provBadge}${provBadge ? ' · ' : ''}${badge} · <code>${knobEsc(x.site)}</code></div>`
+        /* ⛔⛔ THE WRITE CONTROL IS OFFERED ONLY WHERE A WRITE CAN HONESTLY
+           LAND, and that is the whole design. 40 of these are boot-frozen: a
+           field on one of those would accept a number, echo it back, and change
+           nothing on the running brain — a lie with a green tick. The row shows
+           WHY it cannot be turned instead of a disabled box with no reason.
+           ⚠ `cached` DOES get a field, because a write before its one read still
+           lands — and it carries the caveat rather than a promise. */
+        + (x.effect === 'live' || x.effect === 'cached'
+          ? `<div style="margin-top:4px">`
+            + `<input class="tv-knob-in" data-key="${knobEsc(x.key)}" value="${knobEsc(x.overridden ? x.effective : '')}"`
+            + ` placeholder="${knobEsc(x.dflt)}" spellcheck="false"`
+            + ` style="width:150px;font:11.5px var(--tv-font);background:var(--tv-bg);color:var(--tv-ink);`
+            + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 5px">`
+            + ` <button class="tv-knob-set" data-key="${knobEsc(x.key)}"`
+            + ` style="font:11px var(--tv-font);background:var(--tv-panel);color:var(--tv-accent);`
+            + `border:1px solid var(--tv-line);border-radius:3px;padding:2px 8px;cursor:pointer">set</button>`
+            + ` <span class="tv-knob-msg" data-key="${knobEsc(x.key)}" class="tv-sub"></span>`
+            + `</div>`
+          : `<div class="tv-sub" style="margin-top:3px;color:var(--tv-warn)">`
+            + `⛔ not settable while running — ${x.effect === 'boot'
+              ? 'captured at boot; set it in the launcher and restart'
+              : 'no verified effect class, so no write could be honest'}</div>`)
         + (detail
           ? `<div class="tv-note" style="margin-top:3px">${knobEsc(x.what)}`
             + (x.why ? `<br><span style="color:var(--tv-accent)">WHY THIS VALUE:</span> ${knobEsc(x.why)}` : '')
@@ -942,6 +967,42 @@ function renderKnobs(k) {
     }
   }
   host.innerHTML = html || '<div class="tv-note">Nothing matches the current filter.</div>';
+
+  /* ⛔⛔ THE WRITE PATH REPORTS WHAT THE SERVER SAID, NOT WHAT IT WAS ASKED FOR.
+     A field that echoes its own input on success is the shape this whole panel
+     exists to avoid: the row below prints the value the SERVER read back after
+     the write, so a knob that did not move says so. A refusal prints the
+     server's reason verbatim rather than a generic failure. */
+  for (const btn of host.querySelectorAll('.tv-knob-set')) {
+    btn.onclick = async () => {
+      const key = btn.getAttribute('data-key');
+      const input = host.querySelector(`.tv-knob-in[data-key="${key}"]`);
+      const msg = host.querySelector(`.tv-knob-msg[data-key="${key}"]`);
+      if (!input || !msg) return;
+      msg.textContent = ' …';
+      msg.style.color = 'var(--tv-dim)';
+      try {
+        const r = await fetch('/knob', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, value: input.value }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.ok) {
+          msg.style.color = 'var(--tv-bad)';
+          msg.textContent = ` ⛔ ${j.why || ('HTTP ' + r.status)}`;
+          return;
+        }
+        msg.style.color = j.caveat ? 'var(--tv-warn)' : 'var(--tv-good)';
+        /* `after` comes from re-deriving the knob through the registry, so this
+           line is evidence the BRAIN sees the value, not that a POST succeeded. */
+        msg.textContent = ` ✓ now ${j.after}${j.caveat ? ' — ' + j.caveat : ''}`;
+      } catch (e) {
+        msg.style.color = 'var(--tv-bad)';
+        msg.textContent = ` ⛔ ${(e && e.message) || 'request failed'}`;
+      }
+    };
+  }
 }
 
 $('tvKnobOnlySet').onchange = () => renderKnobs(null);

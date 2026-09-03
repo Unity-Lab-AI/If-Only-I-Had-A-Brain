@@ -9488,6 +9488,81 @@ const httpServer = http.createServer((req, res) => {
   // route uses — which behind the reverse proxy means the Forgejo-vouched
   // identity, not merely localhost. These files ARE the brain; they do not go
   // out over an unauthenticated lane.
+  // ⛔⛔⛔ THE KNOB WRITE LANE, AND ITS WHOLE DESIGN IS THAT A WRITE CANNOT LIE.
+  //
+  // The panel was read-only, which left the reader exactly where the operator
+  // was before it existed: able to NAME a value and unable to change it. This
+  // is the other half.
+  //
+  // ⛔ THE HARD PART IS NOT THE UI. Of the 205 knobs, **40 are `boot`** —
+  // captured once at import or at cluster construction — so writing one on a
+  // running brain sets `process.env`, reads back correctly, and **changes
+  // nothing whatsoever**. A lane that accepted those would be a lie with a
+  // green tick on it, and the nine cortical-microstructure switches
+  // (`DREAM_SMALL_WORLD`, `DREAM_LAMINATION`, `DREAM_HUBS`, …) are exactly that
+  // class: they shape the brain that gets BUILT, never the one running.
+  //
+  // ⭐ SO THE EFFECT CLASS IS THE GATE, not a decoration next to the field:
+  //   live    → applied, takes effect on the next read
+  //   cached   → applied, but REFUSED if the value has already been latched
+  //   boot     → REFUSED outright, with the restart requirement named
+  //   ???      → REFUSED; an unclassified knob is one nobody has proven is safe
+  // ⚠ `???` is currently ZERO, and the refusal stays anyway — it is the branch
+  // that keeps a newly-discovered knob from being writable before it is read.
+  if (req.url && req.url.split('?')[0] === '/knob' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/knob')) return;
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      const reply = (code, obj) => {
+        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(obj));
+      };
+      let key, value;
+      try { ({ key, value } = JSON.parse(body || '{}')); } catch { return reply(400, { ok: false, why: 'body is not JSON' }); }
+      if (typeof key !== 'string' || !/^DREAM_[A-Z0-9_]+$/.test(key)) {
+        return reply(400, { ok: false, why: 'key must be a DREAM_* name' });
+      }
+      let rows;
+      try { rows = require('./knob-registry.js').knobState().groups.flatMap((g) => g.knobs); }
+      catch (e) { return reply(500, { ok: false, why: `registry unavailable: ${e && e.message}` }); }
+      const knob = rows.find((r) => r.key === key);
+      // ⛔ NOT IN THE REGISTRY MEANS NOT WRITABLE. The registry is the list of
+      // knobs whose read site someone has actually located; a key outside it is
+      // one nobody can say anything true about.
+      if (!knob) return reply(404, { ok: false, why: `${key} is not a known knob — the registry has no read site for it` });
+      if (knob.effect === 'boot') {
+        return reply(409, {
+          ok: false, key, effect: 'boot', requiresRestart: true,
+          why: `${key} is captured once at boot (${knob.proof || knob.site || 'module scope'}). `
+             + 'Setting it now would read back correctly and change nothing. Set it in the launcher and restart.',
+        });
+      }
+      if (knob.effect === '???') {
+        return reply(409, { ok: false, key, effect: '???', why: `${key} has no verified effect class, so no write can be honest about what it does` });
+      }
+      const before = Object.prototype.hasOwnProperty.call(process.env, key) ? process.env[key] : null;
+      if (value === null || value === undefined || value === '') delete process.env[key];
+      else process.env[key] = String(value);
+      // ⚠ READ BACK FROM THE REGISTRY, NOT FROM `process.env`. Echoing the value
+      // just written proves only that an assignment happened; re-deriving it
+      // through the same path the panel reads is what proves the BRAIN sees it.
+      let after = null;
+      try { after = (require('./knob-registry.js').knobState().groups.flatMap((g) => g.knobs).find((r) => r.key === key) || {}).effective; }
+      catch { /* the write stands; the confirmation is best-effort */ }
+      return reply(200, {
+        ok: true, key, effect: knob.effect, before, after,
+        // ⚠ A `cached` knob is applied and reported HONESTLY: whether it lands
+        // depends on whether its one read has already happened, and this lane
+        // cannot know that from outside. Saying so beats a green tick.
+        caveat: knob.effect === 'cached'
+          ? 'cached: read once behind a first-use guard. If that read has already happened this boot, the value is stored and will NOT take effect until restart.'
+          : null,
+      });
+    });
+    return;
+  }
+
   if (req.url === '/weights/list' && req.method === 'GET') {
     if (!requireLoopback(req, res, '/weights/list')) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
