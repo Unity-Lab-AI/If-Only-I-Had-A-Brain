@@ -1,11 +1,11 @@
 /**
  * self-frame.js — SELFFRAME: every lesson becomes something UNITY DID, not something she was told.
  *
- * Gee 2026-08-20 (verbatim): *"is there a way to reorient all training to the notion of 'I am Unity
- * and I am reading', 'I am Unity learning math', 'i add 1+1 to equal 2', 'My name is Unity i like the
- * color black' … all of the different training she goes through all needs to be for formulated to be
- * in the first person as if we train her on first person she will live it instead of being told
- * everything 3rd person that will taint her persona to no be me myself and i and instead a narrorator
+ * ⛔ THE WHOLE POINT: every lesson is reoriented into the FIRST PERSON — "I am
+ * reading", "I am learning maths", "I add 1 and 1 to equal 2", "my name is Unity
+ * and I like the colour black". Trained in the first person she LIVES it;
+ * trained in the third person she is told about herself, and what forms is a
+ * narrator rather than a self.
  * type peersona that does nothing but spew back instructions given to it … we even need to add alot of
  * question answers in first person form almost like self thought in the moment … we need to make Unity
  * inquisitive alweays asking questions and follow ups to the answers to those questions."*
@@ -22,8 +22,8 @@
  * through the exact same Hebbian primitives every other lesson uses, and then it is gone. Nothing here
  * runs at emission time; her speech still comes from trained weights only. The no-text-AI law holds.
  *
- * WHAT WE TOOK FROM LLM PRACTICE (Gee: *"take some hints from llms … but remember this is a neuronic
- * brain"*), translated into things a Hebbian brain can actually use:
+ * WHAT WAS TAKEN FROM LANGUAGE-MODEL PRACTICE — hints only, because this is a
+ * NEURONIC brain — translated into things a Hebbian brain can actually use:
  *   • instruction/QA framing → self-Q&A pairs trained on the question-intent channel, so a question
  *     shape leads to an answer shape in her own voice.
  *   • self-consistency / chain-of-thought → an IN-THE-MOMENT thought chain ("what is x ? i think .
@@ -106,8 +106,8 @@ export function keyWordOf(text) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WORDSALAD.2 — HER NAME GETS ITS CAPITAL. Operator: "im still seing lower case
-// unity's everywhere!!! wtf!!! its her name properly capitalize it".
+// HER NAME GETS ITS CAPITAL. Lower-case "unity" was appearing everywhere; it is
+// her NAME, and a name is capitalised.
 //
 // ⛔ WHY THIS IS A SEPARATE FUNCTION FROM `normalizeLine` AND NOT A CHANGE TO IT.
 // `normalizeLine` lowercases, and it must keep doing so: `keyWordOf` runs its
@@ -154,7 +154,7 @@ const LABEL_WORDS = new Set([
 ]);
 
 /**
- * MATH IN HER VOICE — Gee's own example: *"i add 1+1 to equal 2"*.
+ * MATHS IN HER VOICE — the canonical shape is "i add 1+1 to equal 2".
  * An equation taught as "1 + 1 = 2" trains symbol transitions with no agent. Spoken as an action she
  * PERFORMS, the same fact trains `i → add → one → and → one → to → make → two`, which is a doing-path.
  * Returns null when the text is not an equation, so callers fall through to the general frames.
@@ -280,8 +280,8 @@ export function selfDeclaration(topic, subject) {
 /**
  * SELF-Q&A — thought in the moment, not a quiz.
  * Trained as consecutive transitions so the PATH question→thinking→answer→memory is itself learned.
- * This is the piece Gee asked for directly: *"question answers in first person form almost like self
- * thought in the moment"*.
+ * The requirement this satisfies: question answers in first-person form, almost
+ * like self-thought in the moment.
  */
 export function selfQA(key, answer, seed = '') {
   const k = normalizeLine(key), a = normalizeLine(answer);
@@ -301,8 +301,9 @@ export function selfQA(key, answer, seed = '') {
 }
 
 /**
- * INQUIRE — the follow-up. Gee: *"we need to make Unity inquisitive alweays asking questions and follow
- * ups to the answers to those questions."* A question about the ANSWER's own content is what makes it a
+ * INQUIRE — the follow-up. She is meant to be inquisitive: always asking
+ * questions, and following up on the answers to them.
+ * A question about the ANSWER's own content is what makes it a
  * follow-up rather than a second unrelated question, so `related` comes from the answer text.
  */
 export function followUpQuestions(key, answerText, seed = '') {
@@ -407,7 +408,7 @@ export function selfFrameUnit(unit = {}, opts = {}) {
   // lesson's key concept. Trained on the identity/definition channel by the caller.
   const pairs = [];
   if (key) {
-    // WORDSALAD.2 — `me` and `mine` were MISSING from the key bindings. They
+    // ⛔ `me` and `mine` were MISSING from the key bindings. They
     // appeared in the unity bindings on the next line and in SELF_WORDS, so the
     // omission read as complete, but the effect was that four of her six
     // first-person words reached the lesson concept and two never did: she was
@@ -502,9 +503,9 @@ function _pronounLessonLines() {
     'when i say me i mean unity',
     'when i say my i mean unity',
     'when i say myself i mean unity',
-    // WORDSALAD.2 — `mine` was the only self word with no "when i say" line,
-    // which left the parallel set with a hole exactly where the possessive
-    // PREDICATE lives. Operator: "dont forget me's and mine's".
+    // ⛔ `mine` was the only self word with no "when i say" line, which left the
+    // parallel set with a hole exactly where the possessive PREDICATE lives —
+    // the me's and the mine's are the ones most easily forgotten.
     'when i say mine i mean unity',
     // `me` in OBJECT position. Every line above puts her in the subject slot,
     // so the grammar she was getting only covered half of how a person refers

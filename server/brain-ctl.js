@@ -7,7 +7,7 @@
  * `/restart`, `/savererun`, `/update`). That is a control plane hosted by the
  * very thing it controls, so it has one unavoidable dead zone: once the brain
  * is stopped, there is nothing left listening to start it again. On 2026-08-25
- * Gee pressed "Stop Brain", the brain exited 42 (a deliberate halt systemd is
+ * "Stop Brain" was pressed, the brain exited 42 (a deliberate halt systemd is
  * configured NOT to fight), and the box sat at 502 until someone with SSH
  * access ran one command. The operator who owns the brain had no way back in.
  *
@@ -145,9 +145,9 @@ function spawnLauncher(script) {
  * Is the working tree dirty? Used to REFUSE a pull rather than risk the
  * operator's files.
  *
- * ⛔ Gee: "make sure this will never over write shit in the directory i dont
- * want a savesatart to fucking wipe my .clkaude and shit". This is the guard
- * for that. `git pull --ff-only` already refuses to clobber modified tracked
+ * ⛔ A SAVESTART MUST NEVER OVERWRITE ANYTHING IN THE OPERATOR'S DIRECTORY —
+ * the workflow tree above all. This is the guard for that.
+ * `git pull --ff-only` already refuses to clobber modified tracked
  * files, and `.claude/` is gitignored so a pull cannot see it at all — but
  * "git would probably refuse" is not a safety argument. We check first and
  * SKIP the pull entirely when anything is uncommitted, then still do the

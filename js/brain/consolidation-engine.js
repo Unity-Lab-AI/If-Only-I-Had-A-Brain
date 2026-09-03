@@ -78,7 +78,7 @@ export class ConsolidationEngine {
     if (process.env.DREAM_CONSOLIDATION_DISABLE === '1') {
       return { skipped: 'disabled-by-env (DREAM_CONSOLIDATION_DISABLE=1)' };
     }
-    // WORDSALAD.5 — reset the per-pass GPU replay budget and remember where the
+    // Reset the per-pass GPU replay budget and remember where the
     // last pass ran out. `_gpuReplayCursor` is what makes the bound FAIR: without
     // it a pass always spends its budget on whichever schemas come first in the
     // store's iteration order, and the tail would never be replayed at all — a
@@ -115,19 +115,19 @@ export class ConsolidationEngine {
     // I.8 — also enforce a wall-clock cap. Operator-tunable via
     // `DREAM_CONSOLIDATION_MAX_MS` env var — default 45s for a routine pass,
     // and DREAM_CONSOLIDATION_FORCE_MAX_MS (default 120s) when opts.forced,
-    // per CONSTARVE.1 below. (This line said "default 30s" until 2026-08-27,
+    // per the forced-pass note below. (This line said "default 30s" until 2026-08-27,
     // thirty lines above the code that sets 45000/120000.) When a pass
     // exceeds the cap, abort gracefully at the next phase boundary;
     // the next pass resumes work from a fresh candidate batch. Without
     // the cap, observed durations of 153s+ stole the GPU exclusively
     // for minutes during active K-cell teaching.
-    // TU.28.3 — default raised 30000 -> 45000: live-box passes were
+    // Default raised 30000 -> 45000: live-box passes were
     // DEADLINE-ABORTing at 30.5-32.1s EVERY pass — the budget sat just
     // under the real pass cost, so the tail stages (including Tier-3
     // promotion) were cut on every single pass ("0 promoted" chronically).
     // 45s finishes the pass; the env knob is unchanged for ops tuning,
     // and the cap still guards against the original 153s+ runaway passes.
-    // CONSTARVE.1 (2026-08-21) — a FORCED pass gets a longer wall than a routine
+    // A FORCED pass gets a longer wall than a routine
     // one. Live, inside a multi-hour K cell: mid-walk passes are idle-only by
     // design and the walk is never idle, so consolidation starved the full 2-hour
     // emergency valve — and when the starvation guard finally forced a pass, it
@@ -293,7 +293,7 @@ export class ConsolidationEngine {
         // against saturated basins reinforces the lock-in instead of
         // strengthening real schema patterns.
         if (!saturationVeto) {
-          // WORDSALAD.5 — per-pass GPU replay budget. Each schema that the
+          // Per-pass GPU replay budget. Each schema that the
           // donor carries costs one sparse dispatch (~205ms RTT measured on the
           // pod, KI-23), so an unbounded pass over a large schema store would
           // swamp the 300s consolidation interval. The budget bounds the pass;
@@ -398,7 +398,7 @@ export class ConsolidationEngine {
       stats.error = err.message;
     } finally {
       this._inFlight = false;
-      // WORDSALAD.5 — advance the rotation and REPORT IT. If this pass spent its
+      // Advance the rotation and REPORT IT. If this pass spent its
       // whole budget there is more store than budget, so the next pass starts
       // where this one stopped; if it got all the way through, the cursor wraps.
       // The counts are logged rather than kept silent because "consolidation ran"
@@ -535,7 +535,7 @@ export class ConsolidationEngine {
       : 5_000_000;
     const _synNnz = (this.cluster.synapses && this.cluster.synapses.nnz) || 0;
     const _skipCpuReplay = _maxReplayNnz > 0 && _synNnz > _maxReplayNnz;
-    // ── WORDSALAD.5 (REPLAYOFF) — THE GPU ROUTE THE GUARD WAS WAITING FOR ─────
+    // ── THE GPU ROUTE THE GUARD WAS WAITING FOR ───────────────────────────────
     //
     // The guard above is CORRECT and stays: a synchronous CPU `hebbianUpdate` at
     // this nnz blocks the event loop for 30-400s. What was wrong is that its own
@@ -600,7 +600,7 @@ export class ConsolidationEngine {
       _spindleActive = false;
     };
 
-    // WORDSALAD.5 — the GPU replay: ONE masked bound-Hebbian dispatch carrying
+    // The GPU replay: ONE masked bound-Hebbian dispatch carrying
     // all REPLAYS_PER_SCHEMA reps, against the schema's own active sem rows.
     // The sleep-spindle gain is folded into the learning rate here because the
     // CPU path gets its burst via `cluster.gainMultiplier`, which a device-side
@@ -667,7 +667,7 @@ export class ConsolidationEngine {
     return { replays, writes };
   }
 
-  // WORDSALAD.5 (REPLAYOFF) — the SPARSE twin of `_buildRegionPattern`.
+  // The SPARSE twin of `_buildRegionPattern`.
   // The dense builder allocates `new Float64Array(cluster.size)` — hundreds of
   // megabytes at biological scale, and one of the two reasons the CPU replay was
   // guarded off in the first place. The pattern it builds is a pure tiling, so

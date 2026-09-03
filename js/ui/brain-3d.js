@@ -1,9 +1,9 @@
-// T13.7.5 — direct import of the sharedEmbeddings module singleton.
-// Pre-fix this file tried `brain._sharedEmbeddings` which never existed,
-// so cortexPattern in _generateEventCommentary was always null. After the
-// T13.7 deletion of slot-prior fallback in language-cortex.generate, that
-// null cortex path made every commentary call return empty string —
-// silencing all of Unity's brain event popups.
+// Direct import of the sharedEmbeddings module singleton.
+// This file used to reach for `brain._sharedEmbeddings`, a field that never
+// existed, so cortexPattern in _generateEventCommentary was always null. Once
+// the slot-prior fallback was deleted from language-cortex.generate, that null
+// cortex path made every commentary call return an empty string — silencing
+// all of her brain-event popups.
 import { sharedEmbeddings as __sharedEmbeddings } from '../brain/embeddings.js';
 
 /**
@@ -879,7 +879,7 @@ export class Brain3D {
     this._canvas = null;
     this._animId = null;
 
-    // T14.22.2 — loud error logging so init failures surface in the
+    // Loud error logging so init failures surface in the
     // browser console without the operator having to hunt through
     // console.warn buffers. the operator reported "3D brain completely missing
     // from view" and we needed visibility on exactly which init stage
@@ -951,7 +951,7 @@ export class Brain3D {
       this._lastRealNeurons = realNeurons;
       this._scaled = true;
 
-      // T18.7.a — per-cluster peg at MAX_RENDER_NEURONS_PER_CLUSTER.
+      // Per-cluster peg at MAX_RENDER_NEURONS_PER_CLUSTER.
       // the operator verbatim 2026-04-18: "it should already peg at 20K per
       // brain cluster(regionS)". Every cluster/region independently
       // renders up to 20K points (clamped to real cluster size so
@@ -984,7 +984,7 @@ export class Brain3D {
       // Rebuild neuron positions and GL buffers
       this._glow = new Float32Array(TOTAL);
       this._vis = new Float32Array(TOTAL).fill(1);
-      // T18.7.a — resize Rulkov oscillator state on scale change. Prior
+      // Resize Rulkov oscillator state on scale change. Prior
       // code left `_rulkovX`/`_rulkovY` sized to the initial TOTAL=1000
       // from the constructor, so every render neuron past index 1000
       // was reading undefined from the Rulkov buffers (triggering the
@@ -1312,7 +1312,7 @@ export class Brain3D {
 .b3d-met b{font-weight:600}
 .b3d-psi{color:#c084fc;font-weight:600}
 .b3d-coh{color:#00e5ff;font-weight:600}
-/* T14.24 Session 47 — intelligence level display. Gradient matches
+/* Intelligence level display. Gradient matches
    the curriculum band: cyan (pre-K/elementary), green (middle), gold
    (high school), pink (college), magenta (grad/PhD). Tooltip shows
    the full per-subject grade breakdown on hover. */
@@ -2061,11 +2061,11 @@ export class Brain3D {
 
     try {
       // Get the live cortex semantic readout (50d GloVe space).
-      // T13.7.5 — use the directly-imported sharedEmbeddings singleton, not
-      // a fictitious `brain._sharedEmbeddings` field. Also grab the cortex
-      // cluster reference so we can hand it into generate() opts below —
-      // T13.7 deleted the slot-prior fallback, so every generate() call
-      // needs opts.cortexCluster or it returns '' with a warning.
+      // Use the directly-imported sharedEmbeddings singleton, not a fictitious
+      // `brain._sharedEmbeddings` field. Also grab the cortex cluster reference
+      // so it can be handed into generate() opts below — the slot-prior
+      // fallback is gone, so every generate() call needs opts.cortexCluster or
+      // it returns '' with a warning.
       const cortex = brain.clusters?.cortex;
       let cortexPattern = null;
       if (cortex && typeof cortex.getSemanticReadout === 'function') {
@@ -2110,7 +2110,7 @@ export class Brain3D {
           reward: state.reward ?? 0,
           drugState: state.drugState || 'sober',
           cortexPattern,
-          // T13.7.5 — generate() now requires a live cortex cluster
+          // generate() requires a live cortex cluster
           // reference for the brain-driven emission loop. Without
           // this, the call returns '' and warns once. The cortex var
           // is resolved above from brain.clusters.cortex.
@@ -2339,7 +2339,7 @@ export class Brain3D {
     // Fix: synthesize the nested shape from flat fields AND from
     // cluster-level activity data (spikeCount / firingRate / size)
     // for every detector path the server can reasonably derive.
-    // ⭐ CORRECTED 2026-09-02 (FOCUSDEAD.3). This used to read: "colorSurge,
+    // ⭐ CORRECTED 2026-09-02. This used to read: "colorSurge,
     // motionDetected, gazeShift, heardOwnVoice still won't fire on server-brain
     // mode because the server doesn't run a visual cortex — that's fine, those
     // 4 detectors are visual-pipeline-only by design."
