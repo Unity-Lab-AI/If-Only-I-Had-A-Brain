@@ -258,10 +258,21 @@ if (isMainThread) {
   }
   const LIMIT = Number(arg('--limit', 0)) || 0;
   // Each figure is a network fetch followed by a heavy single-threaded CDF 9/7
-  // transform, so the two overlap and the transform is what saturates. Use the
-  // machine minus two threads for the OS and whatever else is running.
-  // ⚠ The old cap of 8 was arbitrary and left half a 16-thread box idle.
-  const CONC = Number(arg('--concurrency', 0)) || Math.max(2, (os.cpus().length || 4) - 2);
+  // transform, so the two overlap and the transform is what saturates.
+  //
+  // ⛔⛔ THE CPU IS NOT THE BINDING CONSTRAINT AND SIZING TO IT THROTTLED THE RUN.
+  // "cores minus two" was chosen because the transform saturates a thread — true,
+  // and irrelevant, because every transform is preceded by a full-resolution
+  // download from ONE host. At 14 workers Wikimedia returned **294 rate-limit
+  // responses in the first 303 attempts** and the yield decayed as the run went
+  // on (36/100 → 62/300 → 72/400), which is a throttle being fed rather than
+  // waited out.
+  //
+  // ⭐ 4 is the network-polite default, and the ceiling is deliberately the
+  // SMALLER of that and the core count — so a big box does not get faster at
+  // being refused. `--concurrency N` still overrides for a host that tolerates
+  // more, and the 429 back-off above is the belt to this brace.
+  const CONC = Number(arg('--concurrency', 0)) || Math.min(4, Math.max(2, (os.cpus().length || 4) - 2));
 
   // ⛔⛔ ONE FILE PER FIELD, NOT ONE DATABASE — because the brain must be able to
   // pull ONE figure without downloading the set.
@@ -657,9 +668,32 @@ if (isMainThread) {
   // ⚠ The internal 3-attempt retry ALSO hid an attempt count. A figure that
   // failed here had already been tried three times, and the ledger needs to know
   // that before it decides whether a fourth is worth anything.
+  // ⛔⛔ A 429 IS NOT A FAILURE, IT IS AN INSTRUCTION — AND TREATING IT AS A
+  // FAILURE MADE THE RUN HAMMER THE THROTTLE IT WAS ALREADY IN.
+  //
+  // Measured live 2026-09-03 at concurrency 14: **400 figures attempted, 72 ok,
+  // 327 HTTP failures — and 294 of the first 303 were `HTTP 429 — rate limited`.**
+  // The ladder below used to be a flat 800/1600/2400 ms, so every rate-limited
+  // figure spent THREE more requests inside the same throttle window, deepened
+  // it, and was then written off as "transient" for some future run to redo.
+  // Yield fell as the run went on — 36/100, then 62/300, then 72/400 — which is
+  // the signature of a throttle being fed rather than waited out.
+  //
+  // ⭐ Wikimedia SAYS how long to wait. `Retry-After` is honoured when present,
+  // and a 429 without one gets a real exponential back-off instead of the
+  // sub-second one that was never going to clear anything. A 429 also gets more
+  // attempts than an ordinary error, because it is the one status that is
+  // explicitly promising success later.
+  //
+  // ⚠ This is the same lesson as the corpus fetcher's User-Agent, from the other
+  // side: there the throttle was self-inflicted and invisible, here it is real
+  // and was being answered with impatience. The UA on this script is already
+  // correct — politeness of identity does not buy politeness of rate.
+  const RATE_LIMIT_BACKOFF_MS = [5000, 15000, 45000, 90000];
   const grab = async (url) => {
     let lastStatus = 0, lastMsg = '';
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let rateLimited = 0;
+    for (let attempt = 0; attempt < 3 + RATE_LIMIT_BACKOFF_MS.length; attempt++) {
       try {
         const r = await fetch(url, { headers: UAH, signal: AbortSignal.timeout(45000) });
         if (r.ok) return { buf: Buffer.from(await r.arrayBuffer()) };
@@ -667,12 +701,27 @@ if (isMainThread) {
         // A fact about the file rather than a transient — stop immediately and
         // say so, so the ledger can mark it permanent and never come back.
         if (r.status === 404 || r.status === 410) return { status: r.status, message: `HTTP ${r.status}`, tries: attempt + 1 };
+        if (r.status === 429 || r.status === 503) {
+          // Honour the server's own number when it gives one; `Retry-After` is
+          // seconds or an HTTP-date, and only the seconds form is worth acting on
+          // inside a worker that must not stall for minutes on a bad date parse.
+          const ra = Number(r.headers.get('retry-after'));
+          const wait = Number.isFinite(ra) && ra > 0
+            ? Math.min(ra * 1000, 120000)
+            : RATE_LIMIT_BACKOFF_MS[Math.min(rateLimited, RATE_LIMIT_BACKOFF_MS.length - 1)];
+          rateLimited++;
+          if (rateLimited > RATE_LIMIT_BACKOFF_MS.length) {
+            return { status: 429, message: `HTTP 429 — rate limited, gave up after ${rateLimited} waits`, tries: attempt + 1 };
+          }
+          await new Promise((res) => setTimeout(res, wait));
+          continue;
+        }
       } catch (e) {
         lastMsg = (e && e.message) || 'fetch threw';
       }
       await new Promise((res) => setTimeout(res, 800 * (attempt + 1)));
     }
-    return { status: lastStatus, message: lastMsg || 'no response after 3 attempts', tries: 3 };
+    return { status: lastStatus, message: lastMsg || 'no response after repeated attempts', tries: 3 };
   };
 
   // ⛔⛔ A VECTOR HAS NO PIXELS UNTIL SOMETHING CHOOSES A SIZE, so an SVG cannot
