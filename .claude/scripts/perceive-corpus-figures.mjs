@@ -43,6 +43,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 import { Worker, isMainThread, parentPort, workerData, threadId } from 'worker_threads';
 // ⭐ The failure ledger lives in its own module because this file could not be
@@ -120,7 +121,7 @@ const FORGEJO_HOST = process.env.FORGEJO_HOST || 'https://git.unityailab.com';
 const PKG_OWNER = process.env.FORGEJO_PKG_OWNER || 'UnityAILab';
 const PKG_NAME = process.env.FORGEJO_PKG_NAME || 'brainwaves';
 const PKG_VER = process.env.FORGEJO_PKG_VERSION || 'v1';
-const pkgUrlFor = (key) => `${FORGEJO_HOST}/api/packages/${PKG_OWNER}/generic/${PKG_NAME}/${PKG_VER}/${bare(key)}.field.json`;
+const pkgUrlFor = (key) => `${FORGEJO_HOST}/api/packages/${PKG_OWNER}/generic/${PKG_NAME}/${PKG_VER}/${bare(key)}.field.json.gz`;
 
 // The token lives in `.claude/.env` (gitignored) so it never reaches a
 // transcript, a commit or a log line.
@@ -323,7 +324,17 @@ if (isMainThread) {
   // binary trap this project already recorded: a path that is valid on one
   // platform and means something else entirely on another.
   const shardOf = shardName;
-  const fileFor = (key) => path.join(FIELDS, shardOf(key), `${bare(key)}.field.json`);
+  // ⛔ BOTH ENCODINGS COUNT AS PRESENT. The resume check asks the disk whether a
+  // field already exists, and after the move to gzip an uncompressed field from
+  // an earlier pass is still a delivered field — a check that knew only one name
+  // would silently re-fetch and re-transform every one of them.
+  const fileForAny = (key) => {
+    const stem = path.join(FIELDS, shardOf(key), bare(key));
+    for (const p of [`${stem}.field.json.gz`, `${stem}.field.json`]) {
+      try { if (fs.statSync(p).size > 0) return p; } catch { /* next */ }
+    }
+    return null;
+  };
 
   // ⛔ UPLOAD MODE CHANGES WHAT "ALREADY DONE" MEANS. When fields are deleted
   // locally after upload, the disk cannot be the record of what exists — so an
@@ -387,7 +398,11 @@ if (isMainThread) {
       });
       const keys = [];
       for (const line of out.split('\n')) {
-        const m = line.trim().match(/([^/\\]+)\.field\.json$/);
+        // ⛔ BOTH ENCODINGS, for the same reason the disk check takes both: this
+        // list is the AUTHORITY on what the repository holds, and after the gzip
+        // move it holds a mix. A regex anchored to the old name would report every
+        // delivered `.gz` as absent and regenerate the entire set.
+        const m = line.trim().match(/([^/\\]+)\.field\.json(?:\.gz)?$/);
         if (m) keys.push(m[1]);
       }
       if (!keys.length) return 0;
@@ -419,7 +434,7 @@ if (isMainThread) {
   }
   for (const f of all) {
     if (have.has(f.key)) continue;
-    try { if (fs.statSync(fileFor(f.key)).size > 0) have.add(f.key); } catch { /* absent */ }
+    if (fileForAny(f.key)) have.add(f.key);
   }
   let todo = all.filter((f) => !have.has(f.key));
 
@@ -595,7 +610,7 @@ if (isMainThread) {
         stats.ok++; stats.bytes += msg.bytes;
         stats.coeffs += msg.coeffs; stats.px += msg.px;
         if (msg.bounded) stats.bounded++;
-        const row = { key: msg.key, file: `fields/${shardOf(msg.key)}/${bare(msg.key)}.field.json`, url: msg.url, w: msg.w, h: msg.h, coeffs: msg.coeffs, citations: msg.citations };
+        const row = { key: msg.key, file: `fields/${shardOf(msg.key)}/${bare(msg.key)}.field.json.gz`, url: msg.url, w: msg.w, h: msg.h, coeffs: msg.coeffs, citations: msg.citations };
         row.bytes = msg.bytes;
         if (UPLOAD) row.pkg = pkgUrlFor(msg.key);
         // Written before the counters are trusted: this line is the ONLY proof
@@ -963,10 +978,20 @@ if (isMainThread) {
       // leave a truncated file that the resume check counts as complete.
       const b = bare(job.key);
       const dir = path.join(workerData.FIELDS, b.slice(0, 2).padEnd(2, '0'));
-      const p = path.join(dir, `${b}.field.json`);
+      // ⛔⛔ GZIPPED ON DISK, AND IT COSTS HER NOTHING. A field is a JSON skeleton
+      // wrapping base64 payloads — the shape that compresses — and git LFS stores
+      // objects verbatim, so nothing was doing this. Measured on a real field:
+      // **10,952,378 B -> 5,364,645 B, 51%, byte-identical coefficients.**
+      // At the measured ~9 MB a field the completed set projects to ~251 GB, and
+      // it has to exist TWICE — once in Forgejo, once on the box. This is the only
+      // remaining lever that does not touch what she perceives.
+      // ⚠ The reader in `server/figure-field-store.js` accepts BOTH encodings and
+      // prefers `.gz`; it has to, because any resumed run straddles this change.
+      const p = path.join(dir, `${b}.field.json.gz`);
+      const packed = zlib.gzipSync(Buffer.from(entry, 'utf8'));
       fs.mkdirSync(dir, { recursive: true });
       const tmp = `${p}.tmp-${process.pid}-${threadId}`;
-      fs.writeFileSync(tmp, entry, 'utf8');
+      fs.writeFileSync(tmp, packed);
       fs.renameSync(tmp, p);
 
       // ⭐ UPLOAD THEN DELETE, so the local disk holds a working set and never the
@@ -977,10 +1002,16 @@ if (isMainThread) {
         let up = null;
         for (let attempt = 0; attempt < 4; attempt++) {
           try {
-            const r = await fetch(workerData.PKGBASE + b + '.field.json', {
+            // ⚠ The uploaded artefact is the SAME bytes that were written to
+            // disk, name and encoding included. Sending the uncompressed JSON
+            // under a `.gz` name — or the reverse — would put a package in the
+            // registry that the reader derives the wrong address for, and the
+            // whole design rests on that address being derivable rather than
+            // listed anywhere.
+            const r = await fetch(`${workerData.PKGBASE + b}.field.json.gz`, {
               method: 'PUT',
-              headers: { Authorization: `token ${workerData.TOKEN}`, 'Content-Type': 'application/json' },
-              body: entry,
+              headers: { Authorization: `token ${workerData.TOKEN}`, 'Content-Type': 'application/gzip' },
+              body: packed,
               signal: AbortSignal.timeout(180000),
             });
             // 201 created, 200 ok. 409 means this exact filename is already in
@@ -993,13 +1024,17 @@ if (isMainThread) {
         }
         if (up && up > 0) {
           try { fs.unlinkSync(p); } catch { /* the sweep will get it */ }
-          parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, uploaded: up, bounded });
+          parentPort.postMessage({ key: job.key, bytes: packed.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, uploaded: up, bounded });
         } else {
           parentPort.postMessage({ err: 1, stage: 'upload', key: job.key, url: job.url, msg: `PUT ${up || 'failed'}` });
         }
         return;
       }
-      parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, bounded });
+      // ⚠ `bytes` is the ON-DISK size, which after gzip is no longer the size of
+      // the JSON. Every projection in this file's progress line and every mean it
+      // compares against the banked set is a statement about what has to be
+      // stored and synced, so the compressed length is the honest one.
+      parentPort.postMessage({ key: job.key, bytes: packed.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, bounded });
     } catch (e) {
       parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: e && e.message });
     }

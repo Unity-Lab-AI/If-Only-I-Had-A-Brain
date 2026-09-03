@@ -5,6 +5,79 @@
 
 ---
 
+## 2026-09-03 — `FIELDSIZE.3` — GZIP FOR NEW FIELDS, AND THE DELIVERED HALF WAS UN-APPROVED BY A MEASUREMENT AFTER IT HAD ALREADY BEEN APPROVED
+
+Gee, verbatim, and this question is the reason half of this row did not ship:
+
+> *"and make sure we dont have like 50 histories or something all caroing 150G each or caches and shit like that on forgjo for these figure waveltes saved there"*
+
+**THE ANSWER IS GOOD, AND IT WAS CHECKED RATHER THAN ASSUMED.**
+
+```
+  BrainWaves          1 branch · 0 tags · 41 commits
+  LFS objects  HEAD   26,360
+  LFS objects  ALL    26,361      <- exactly ONE orphan
+  LFS bytes    ALL    114.1 GB    <- identical to HEAD
+```
+
+**No duplicate histories, no stale caches, no second copy of anything.** LFS is content-addressed, so re-committing identical bytes can never make a second object — which is precisely why the repo has stayed at one copy across 41 commits of batch pushes.
+
+⛔⛔ **AND THAT IS WHY THE APPROVED PLAN WAS CUT IN HALF.** Gee had chosen *"gzip everything, new and delivered"* on a measurement showing 51% on a real field. Asking his duplication question against the actual repo produced the fact that had been missing: **recompressing 26,359 delivered fields creates 26,359 BRAND-NEW LFS objects while the originals stay referenced in history.** The set would have gone **114 GB → ~171 GB**, up rather than down, and only a Forgejo admin LFS garbage-collect on the box would ever have reclaimed it — plus a 114 GB download here to do the recompressing, which is the download he had just said he would not wait for. **Re-asked with the number, and the answer became new-fields-only.**
+
+⭐ **Gzipping NEW fields is free by the same property that made the delivered half expensive:** those objects never existed, so nothing is orphaned.
+
+**WHAT SHIPPED**
+
+- Producer writes `*.field.json.gz`. The reader accepts **both encodings and prefers `.gz`** — it has to, because any resumed pass straddles the change and a reader that knew one name would report the other as `miss` and silently re-transform live.
+- **`truncated` is its own counter, separate from `malformed`.** A `.gz` that will not inflate means the SYNC was interrupted; a field that inflates and carries no channels means the FIELD is bad. **Same symptom, different repair, so they are never summed.**
+- Resume, `delivered.txt`'s regex, the index row and the package upload all follow the new name, and **both encodings count as present** — otherwise a resumed pass re-fetches and re-transforms all 26,359.
+- **Verified through the production reader:** uncompressed HIT 9,150,245 B · gzipped HIT 4,849,933 B (**47%**) · `rec` **byte-identical** · corrupt archive refused and counted as `truncated`.
+
+⚠ **OWNED: the local migration converted 121 TRACKED fields as well as the new ones**, which is the exact orphaning this row had just refused to do at scale. Restored to their delivered `.json` form and verified at **0 modified tracked files** before anything was committed.
+
+---
+
+## 2026-09-03 — `FIELDPULL` — THE 114 GB DOWNLOAD WAS NEVER REQUIRED, AND TWO BUGS STOOD BETWEEN THAT FACT AND USING IT
+
+Gee: *"im not waiting 72 hrs or what ever for shit to download so what can be done to not download so much and finish everything up"*.
+
+⭐⭐ **THE FIELDS ARE NOT A PREREQUISITE FOR THE PRESS AND NEVER WERE**, and `deploy/self-update.sh` says so in its own words — the books are the fatal gate (*"the half the walk cannot run without"*), the fields are marked **Non-fatal** because *"live transform covers the rest."* Books are ~400 MB. Fields are ~114 GB. **They had one switch between them.**
+
+- ⛔ **`UAL_SKIP_FIELDS` IS MIS-NAMED AND THE NAME IS THE TRAP.** It reads as "skip the fields" and it gates the **entire data sync, books included** — so a press setting it to dodge a 114 GB download would arrive with no books and land on the books gate. Kept for compatibility, and it now says what it really does in its own log line.
+- ⭐ **`UAL_FIELDS=0` is the honest lever:** books yes, field blobs no. It restricts **the LFS fetch itself** (`git lfs pull -I 'corpora/**'`), because the clone is `--filter=blob:none` and therefore cheap whatever the repo holds — **it is the LFS pull that is the 114 GB**, so skipping only the rsync afterwards would still have paid for every byte.
+- ⛔ **AND THE SKIP PATH DOES NOT RSYNC, WHICH IS THE WHOLE SAFETY OF IT.** With the blobs unfetched the source tree is pointers or absent, and the existing `rsync -a --delete` would have **deleted every field already on the box** — turning "skip a download" into "destroy the store."
+- ⚠ **A THIRD BUG, FOUND WHILE EDITING THE SAME BLOCK:** the post-sync count globs `*.field.json`, which after the gzip change matches nothing. **A completely healthy sync would have reported `0 wavelet fields`** — an instrument announcing an outage that is not happening. Both encodings are counted now.
+
+---
+
+## 2026-09-03 — `SPELLTRUTH.3` — THE REFERENCE IMAGES CARRY TEXT-SHAPED MARKS AND NOT ONE READABLE WORD, AND NOTHING COULD READ ONE IF THEY DID
+
+Gee chose this before choosing a fix: **"Measure producer ③ first, then decide."** Three questions were asked separately, because they are not the same question and only one of them was ever in doubt.
+
+**① DO THE LOOKED-UP REFERENCES CONTAIN LEGIBLE WORDS? — NO. NOT ONE.**
+
+Five concepts were chosen precisely because they are the highest-text-likelihood subjects available — a banknote, a shop interior, a map, a clock face, an institution — run through the **production** `_referenceImagePrompt` on the real mixin, the production URL shape, at the production 512px, on a pinned seed. Every one produced **pseudo-text**: strokes at the right scale, spacing and rhythm to read as writing from across a room, resolving to nothing at all up close. The banknote is dense with lettering-shaped marks and spells nothing. The shop's package labels are colour blurs. The map's cartouches are squiggles. The clock's numerals are decorative strokes.
+
+⭐ **This is a property of the generator, not luck.** Diffusion models render the TEXTURE of text without the glyphs, and the corpus of subjects most likely to defeat that is exactly the five that were tried.
+
+**② DOES ANY OF IT SURVIVE THE TRANSFORM INTO THE BANKED FIELD? — YES, ESSENTIALLY PERFECTLY, AND THAT MATTERS EVEN THOUGH ① CAME BACK CLEAN.**
+
+Each reference was pushed through the real `equationalizeImageData` and reconstructed with the real `reconstructImageData`. **458,616 → 512,185 coefficients kept** against a 512x512x3 budget, and the reconstruction is visually indistinguishable from the source. ⛔ **The transform is NOT a filter.** Anything legible that ever DID arrive would land in the field intact, so ① is the only thing standing between a generated word and her visual memory — and ① is a property of a third-party model that can change under us without warning.
+
+**③ DOES ANYTHING DOWNSTREAM READ THEM? — NO. THERE IS NO SUCH CODE.**
+
+No OCR, no glyph decoder, no character classifier, no text-recognition path of any kind exists in `server/` or `js/brain/`. A word baked into a reference cannot become vocabulary because **nothing in the brain can turn pixels into letters.**
+
+**⭐⭐ WHAT THIS DOES TO THE CHOICE IN `SPELLTRUTH.2`, WHICH IS THE POINT OF HAVING MEASURED IT.**
+
+The row's own warning was: *"if generated images carry words, gating her caption fixes half the picture and the other half keeps arriving from outside."* **That is now disproven.** No words arrive from outside, and nothing could read them if they did. **The caption is the ONLY source of correctly-spelled text anywhere in her mind's eye** — so option ② is a complete fix rather than half of one, and option ① is honest rather than a fig leaf over a second leak. **Nothing about the option set is blocked on evidence any more.**
+
+⚠ **THE LIMITS OF THIS MEASUREMENT, STATED SO NOBODY OVERREADS IT.** Five concepts, one pinned seed each. It is strong evidence about a *generator's behaviour* and it is **not** a guarantee about every image she will ever fetch. ⭐ The durable protection is ③, not ①: **the absence of a text decoder is structural**, and it holds no matter what the generator does next.
+
+⚠ **A SIDE-FINDING, NOT ACTED ON:** the prompt tail is `"<word>, color photograph of the object, …"`, and for a place-or-institution noun that framing misses — the institution word returned an abstract vessel, semantically nothing. The tail was rewritten to `of the object` to stop the previous *portrait* bleed that turned every subject into a person, so this is the same defect swung the other way. **Filed as an observation on the record; the prompt is not being changed on one word.**
+
+---
+
 ## 2026-09-03 — `FIELDSIZE.1` — THE FIELD RUN WAS 8.2x OVERSIZED AND NO INSTRUMENT HAD EVER MEASURED A FIELD
 
 Gee, verbatim, on being shown the 537 GB projection:
