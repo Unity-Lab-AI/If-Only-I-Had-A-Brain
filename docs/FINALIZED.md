@@ -37,6 +37,18 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `FIELDSIZE.2` — THE DATA REPO'S 26,000 PENDING DELETIONS ARE CORRECT, AND ONE ORDINARY COMMIT WOULD HAVE ACTED ON THEM
+
+The producer writes a field, uploads it, and deletes the local copy immediately — which is exactly what Gee asked for: *"only ever have one copy on the box and one in forgejo"*. The consequence nobody had written down is that **`git status` in that repository reports ~26,000 pending `D` entries**, because the tree tracks 26,359 fields and the working copy holds a few hundred.
+
+⛔ **`git commit -a` there would delete 114 GB of wavelet fields and look like a completely ordinary commit while doing it.** Nothing prevented that, and the deletions look so much like a mistake that the natural reflex — "clean this up" — is the destructive move.
+
+**Closed as a banner at the top of that repository's own `README.md`**, which is the one place a person is standing when they are about to run the dangerous command. It states that the deletions are not real, that nothing is lost, that `git checkout -- fields/` is a 114 GB download and almost never wanted, and the rule: **stage paths explicitly, never `-a`, never `git add -A` at the root.**
+
+⚠ **A DOC AND NOT A HOOK, WHICH IS THE HONEST SCOPE.** That repository is not this project's tree and nothing here executes inside it, so there is no hook point that would fire. **The failure mode is a human reflex, so the fix belongs where the human is looking** — and a guard that cannot run is worse than a sentence that gets read.
+
+---
+
 ## 2026-09-03 — `FIELDPULL` — THE 114 GB DOWNLOAD WAS NEVER REQUIRED, AND TWO BUGS STOOD BETWEEN THAT FACT AND USING IT
 
 Gee: *"im not waiting 72 hrs or what ever for shit to download so what can be done to not download so much and finish everything up"*.
