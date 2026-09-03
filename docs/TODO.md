@@ -1973,6 +1973,27 @@ Gee, verbatim, in the order he said it:
   - ⚠ **THE MISS SET CANNOT YET BE SPLIT INTO "FAILED" AND "NOT YET REACHED"** — because the failures are unrecorded, which is this row's whole point. The format rates above are computed over what has been attempted, and with the run **71% complete** a 0/181 is strong evidence of a real format gap while a 4,477-strong `.jpg` bucket is not.
   - ⛔ **SEQUENCING: THE PRODUCER MUST NOT BE EDITED WHILE THE RUN IS LIVE** (`WAVESEE.2` — the batch loop respawns `node` every batch, so an edit lands mid-run). **The rebuild happens when this run ends.**
 
+  ### ✅ APPROVED 2026-09-02 — STOP AFTER TWO MORE PASSES, THEN REBUILD
+
+  Gee: *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*.
+
+  - ⛔⛔ **THE RUN WILL NOT FINISH, AND THE CURVE SAYS SO — this is the evidence the decision rests on.** Every pass requests `--limit 1500`; the delivered yield reads **911 → 854 → 860 → 862 → 788 → 692 → 617 → 553 → 539 → 405 → 331 → 270 → 207 → 156**, a success rate falling **61% → 10.4%**. The last six ratios average **×0.813 per pass** — a clean geometric decay, not a slowdown.
+  ```
+    further figures before it yields <1/pass   ~675
+    passes needed to collect them              ~25   (~4 hours at ~10 min each)
+    it asymptotes at                        ~26,913 of 32,296
+    NEVER delivered                          ~5,383   (17%)
+  ```
+  - ⭐ **The trade is what settles it: ~4 hours to gain ~675 figures (2% of the set), and it still never reaches the last 17% at any price with this design.** Those 5,383 are not slow, they are **dead** — 404s, formats nothing in the path can decode, moved repos — and because failures are recorded nowhere **every pass re-attempts every one of them forever.** ⛔ **This curve IS the cost of the missing failure ledger, drawn out over hours.**
+  - **The approved sequence, start to finish:**
+    1. **Let two more passes complete**, then stop the loop.
+    2. **Build the failure ledger** — one row per failed figure with `{key, url, stage, status, message, at, attempts}`, written as it happens so a killed run keeps what it learned.
+    3. **Classify permanent vs transient** — 404/410/dead-DNS and "no decoder for this media type" are permanent; 429/5xx/timeout/abort are transient.
+    4. **Retry ONLY the transient set**, reading the ledger rather than the whole miss list.
+    5. **Collapse the duplicated `figKey`** (`WAVESEE.2`) and the duplicated format rule in the same edit — the producer still carries its own copy of both, and that duplication is what this row has been warning about.
+    6. **Fix the progress counter** (`REGFIND.1`) while the loop is stopped.
+  - ⭐ **It also unblocks the corpus work** — `MATHLEAK.1`'s re-ingest and `MATHGAP.1`'s ingest half are waiting purely because the generator re-reads `corpora/academic` on every batch.
+
   ### ✅ GIF / PDF / DJVU / STL REFUSED AT THE WALK-SIDE CHOKEPOINT — 2026-09-02
 
   Gee: *"we dont need gifs they are probably site furniture"*, then, decisively: *"well Unity doesnt have ability to watch gifs i dont think and we havent created a converter for gifs"*.
