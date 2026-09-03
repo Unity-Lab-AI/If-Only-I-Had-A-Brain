@@ -5,6 +5,59 @@
 
 ---
 
+## 2026-09-02 (EIGHTEENTH BATCH) — `MATHLEAK.1` + `COURSEGUT.1` — THE CHOKEPOINT WAS THE READER, AND THE RE-INGEST WAS NEVER NEEDED
+
+Picked up on *"yes that sounds like the plan"* — corpus cleanliness before corpus content, both pre-walk-mandatory.
+
+### The claim that was wrong
+
+`clean-math.mjs` opened with *"ONE MODULE, FOUR CALLERS. Four private copies of this rule would drift — fix the chokepoint."* It was one module. **It was not the chokepoint.**
+
+```
+  scripts that write corpora/     13
+  scripts that imported it         4
+```
+
+The nine that never called it include **`openstax`** — one of the three worst offenders at **3,950** contaminated sentences — and **`openmathbooks`**, a *maths* source. ⛔ **A rule applied by four of thirteen producers is a convention, not a chokepoint**, and 26,119 contaminated sentences on disk are the proof.
+
+**Thirteen writers converge on ONE reader.** The rule now runs in `server/life-curriculum.js`, so a source that never heard of the cleaner is covered — and so is the fourteenth fetcher nobody has written yet. Three call sites held the identical split expression and none of them cleaned; all three route through one `storyToSentences` helper now.
+
+### The re-ingest this row waited on is not needed, and skipping it is the better answer
+
+Proven before deciding rather than assumed: **18,503 sentences carrying `$` followed by a digit are present and intact on disk.** The buggy currency guard that once discarded 9,307 saylor sentences therefore never wrote this corpus — **the text is RAW, not damaged**, so cleaning at read loses nothing a re-download would recover.
+
+⭐ **And it keeps the raw text.** A better cleaner can be re-applied later; **rewriting the corpus is a one-way door.** The row filed this as a network job deferred behind the figure generator. It was neither.
+
+```
+  sentences seen         2,542,395
+  repaired in place         17,404     (matches the row's projection exactly)
+  dropped as stubs           8,715     (likewise)
+  taught after cleaning  2,533,680
+  STILL CONTAMINATED             0
+```
+
+### Two more contamination paths, neither of them filed by any row
+
+⛔ **The figure prose, where a comment claimed the work was already done.** `academicStoryFigures` said its `context` was *"cleaned by the same cleaner that produced the cell's sentences"*. It was cleaned by the **fetcher**, so only four sources' worth was. Measured: **1,515 of 33,962 contexts and 356 of 19,259 captions carried markup.** ⚠ **That prose BINDS TO A PERCEPT** — markup there teaches a symbol as the meaning of a picture, the same defect arriving through her eyes instead of her ears. After `cleanProse` at both figure sites: **38,024 figures, 0 carrying markup.**
+
+⛔ **The episode.** `storyExperiences` returned a `story` string that `curriculum.js:16245` banks **verbatim as an episode**, and `:16188` derives the memory's emotional colouring from. Cleaning the sentence list alone would have put the markup back through a second door. **The story is now rebuilt from the cleaned sentences** — two cleanings of one text agree until they do not.
+
+### Cost, and the counter that keeps it honest
+
+`414 ms for all 2,542,395 sentences` — **0.16 µs each, ~2.2 ms per cell** against ~26 min of cell work. **98.97% leave on the cheap-exit regex** having paid a single test, which is the only reason read-time cleaning is viable.
+
+⚠ `cleaningStats` is exported deliberately. Cleaning at read means **the corpus on disk and the corpus she is taught are no longer the same thing**, so a word count taken off the files would overstate what she read. A filter nobody can see the output of is indistinguishable from one silently eating content.
+
+### Honouring the row's own warning about its numbers
+
+`COURSEGUT.1` said *"two contamination counts taken with different regexes are not comparable"*. **My 26,119 is not an improvement on its 12,830 — it is a wider predicate**, counting every sentence the cleaner would touch including the 8,715 it drops. **The comparable statement is one predicate run twice: by `stripLeakedMarkup`, before = 26,119, after = 0.**
+
+The cleaner body moved to `js/brain/text-cleaning.cjs` — it could not stay under `.claude/scripts/`, which is workflow tooling the brain must not depend on. `clean-math.mjs` is a re-export, so the four fetchers still clean at write time against one definition.
+
+**Verified:** `node --check` ×2 · real `require()`/`import()` of all three modules · the full corpus through the **real reader** (189 cells) · figure prose through the **real accessor** · cost measured, not estimated. `MATHGAP.1` named as the live successor for the four empty maths cells — absent material, not dirty material.
+
+---
+
 ## 2026-09-02 (SEVENTEENTH BATCH) — THIRTEEN ROWS WERE FINISHED AND THE BOARD SAID OTHERWISE, AND IT COST A WRONG RECOMMENDATION THE SAME HOUR
 
 Asked *"so what all is left to do in the todo thats actionable?"*, answered off the checkboxes, and named **the storage math as the top priority**. Then went to do it and found it was already finished — the verdict was written **inside the row's own body** while the box stayed `[ ]`.

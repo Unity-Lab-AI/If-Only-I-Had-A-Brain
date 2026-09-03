@@ -81,7 +81,7 @@ function storySentences(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    for (const s of exp.story.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean)) out.push(properCaseStory(s));
+    for (const s of storyToSentences(exp.story, properCaseStory)) out.push(s);
   }
   return out;
 }
@@ -100,11 +100,20 @@ function storyExperiences(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    const sentences = exp.story.split(/(?<=[.!?])\s+/).map((x) => properCaseStory(x.trim())).filter(Boolean);
+    const sentences = storyToSentences(exp.story, properCaseStory);
     if (!sentences.length) continue;
     out.push({
       theme: typeof exp.theme === 'string' ? exp.theme : '',
-      story: properCaseStory(exp.story),
+      // ⛔ THE STORY IS REBUILT FROM THE CLEANED SENTENCES, NOT CLEANED SEPARATELY.
+      // This field is not decoration: it is banked verbatim as an EPISODE and it
+      // is what the memory's emotional colouring is derived from, so cleaning the
+      // sentence list and leaving this raw would have put the markup straight
+      // back into her episodic memory through a second door.
+      //
+      // ⚠ Derived rather than independently cleaned, because two cleanings of the
+      // same text are two things that agree until they do not — and the episode
+      // must be the same prose the sentence trainer saw.
+      story: sentences.join(' '),
       sentences,
     });
   }
@@ -193,6 +202,13 @@ const academicStorySentences = (subject, grade) => storySentences(`academic/${su
 // Both now read from one module, so the next format decided here is decided
 // everywhere. **Two copies that happen to agree are not one copy.**
 const { figureAddress } = require('../js/brain/figure-identity.cjs');
+// ⛔⛔ CLEANED HERE BECAUSE THIS FILE IS THE CHOKEPOINT AND THE FETCHERS ARE NOT.
+// Thirteen scripts write `corpora/`; four of them imported the markup cleaner.
+// The nine that did not include `openstax` (3,950 contaminated sentences by
+// measurement) and `openmathbooks`, a MATHS source. Every one of the thirteen
+// converges HERE, so the rule applied at this door covers all of them — and the
+// fourteenth fetcher nobody has written yet.
+const { storyToSentences, cleanProse, cleaningStats } = require('../js/brain/text-cleaning.cjs');
 
 // ⭐⭐ FIGPAIR.1 — THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS
 // THEM. Operator: *"WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT
@@ -221,7 +237,7 @@ function academicStoryExperiences(subject, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    const sentences = exp.story.split(/(?<=[.!?])\s+/).map((x) => properCaseStory(x.trim())).filter(Boolean);
+    const sentences = storyToSentences(exp.story, properCaseStory);
     if (!sentences.length) continue;
     const theme = typeof exp.theme === 'string' ? exp.theme : '';
     const figures = [];
@@ -231,8 +247,13 @@ function academicStoryExperiences(subject, grade) {
       figures.push({
         url: href,
         alt: typeof f.alt === 'string' ? f.alt : '',
-        caption: typeof f.caption === 'string' ? f.caption : '',
-        context: typeof f.context === 'string' ? f.context : '',
+        // ⛔ CAPTION AND CONTEXT ARE PROSE AND ARE CLEANED LIKE PROSE. They are
+        // what BINDS to the percept, so markup here teaches a symbol as the
+        // meaning of a picture. Measured before this line existed: 1,515 of
+        // 33,962 contexts and 356 of 19,259 captions carried markup, while the
+        // accessor's own comment claimed they were already clean.
+        caption: cleanProse(f.caption),
+        context: cleanProse(f.context),
         theme,
       });
     }
@@ -252,14 +273,20 @@ function academicStoryFigures(subject, grade) {
       out.push({
         url: href,
         alt: typeof f.alt === 'string' ? f.alt : '',
-        caption: typeof f.caption === 'string' ? f.caption : '',
+        caption: cleanProse(f.caption),
         // The corpus prose this picture sits inside, cleaned by the same cleaner
         // that produced the cell's sentences — so the figure's context and the
         // cell's story are the SAME STRINGS and the tie between them is a match
         // rather than an inference. Absent on figures harvested before this
         // field existed; the percept lane treats that as less anchoring, never
         // as a reason to bind the picture to whatever word is current.
-        context: typeof f.context === 'string' ? f.context : '',
+        //
+        // ⛔ THAT SENTENCE WAS AN ASPIRATION UNTIL 2026-09-02. The cleaning was
+        // done by the FETCHER, and only four of the thirteen fetchers ran one —
+        // so 1,515 contexts and 356 captions reached here carrying markup while
+        // this comment said they could not. **Now it is true**: the same
+        // `cleanProse` runs at this door, whatever wrote the file.
+        context: cleanProse(f.context),
         theme: typeof exp.theme === 'string' ? exp.theme : '',
       });
     }
@@ -309,4 +336,10 @@ module.exports = {
   loadAcademicStories, academicStorySentences, academicStoryFigures,
   academicStoryExperiences, figureAddress,
   phonicsExamQuestions,
+  // ⛔ EXPORTED SO THE FILTER CAN BE AUDITED. Cleaning at read time means the
+  // corpus on disk and the corpus she is taught are no longer the same thing,
+  // and a word count taken off the files would quietly overstate what she read.
+  // A filter nobody can see the output of is indistinguishable from one that is
+  // silently eating content.
+  cleaningStats,
 };

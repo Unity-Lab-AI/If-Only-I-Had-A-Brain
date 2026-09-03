@@ -7,7 +7,8 @@
 > ### ⛔ STATE RIGHT NOW
 > ```
 > branch     feature/figpair-0902 — NOT cascaded yet
-> board      42 open · 24 in-progress · 36 closed-in-place awaiting migration
+> board      41 open · 23 in-progress · 38 closed-in-place awaiting migration
+> corpus     0 contaminated sentences reach her — cleaned at the READER, disk unchanged
 > figures    26,458 / 31,383 (84.3%) — STOPPED DELIBERATELY, nothing running
 > walk       frozen ON PURPOSE — training still being BUILT
 > ```
