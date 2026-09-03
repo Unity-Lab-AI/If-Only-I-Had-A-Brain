@@ -325,15 +325,18 @@ Gee (verbatim): *"and something im seeing is the current traing card doesnt have
 > **Original filing:**
 - [~] ⏳ **`PHASEBAR.1` — DENOMINATOR HALF FIXED 2026-09-03; the `done: 0` half stays open and is NOT claimed.**
   - ✅ **THE BAR NO LONGER COUNTS WORK THE GRADE FORBIDS.** `_phaseReachableTotal(name)` replaces the raw lexical count at the phase-entry site. Unit→gate is read from the same source text the units are, by resolving `const gN = ORDER.indexOf('gradeN')` and then attributing each `this._teach*(` call to the innermost enclosing `if (atLeast(gN))` block.
-  - **Verified against the ladder the source implies — 13/13 grades:**
+  - **Verified against the ladder the source implies — 20/20 grades, the WHOLE of `GRADE_ORDER`:**
   ```
-    kindergarten  3      grade5   9      grade9   13
-    grade1        6      grade6   9      grade10  13
-    grade2        7      grade7  10      grade11  14
-    grade3        8      grade8  10      grade12  14
-    grade4        8                      (lexical total: 14)
+    pre-K         3      grade4   8      grade9   13     college1  14
+    kindergarten  3      grade5   9      grade10  13     college2  14
+    grade1        6      grade6   9      grade11  14     college3  14
+    grade2        7      grade7  10      grade12  14     college4  14
+    grade3        8      grade8  10                      grad      14
+                                                         phd       14
   ```
+  - ⛔⛔ **THIS FIRST READ "13/13 GRADES" AND THAT WAS THE SAME DEFECT THE ROW IS ABOUT, IN THE SENTENCE REPORTING THE FIX.** `GRADE_ORDER` holds **20** grades; my harness covered kindergarten→grade12 and silently omitted **pre-K, all four college years, `grad` and `phd`** — **seven grades, and ELA is taught at college**, so those cells really do run this phase. **`13/13` reads as complete because the denominator was my SAMPLE, not the population** — exactly the "correct fraction of the wrong whole" this fix exists to remove. ⭐ **Caught by Gee, not by me.** Re-run over all twenty: **20/20, no behaviour change** — the code was right at every grade; only the evidence for it was partial.
   Parsed gate distribution matches the source read by eye exactly: **UNGATED 3 · grade1 3 · grade2 1 · grade3 1 · grade5 1 · grade7 1 · grade9 3 · grade11 1.**
+  - ⚠ **AND THE BLAST-RADIUS SWEEP CARRIES THE SAME CAVEAT, STATED RATHER THAN LEFT IMPLIED:** it was run at ONE grade (kindergarten). It proves 252 of 253 phases are unaffected *there*; since only one phase has a gate at all, that generalises — but the sweep itself sampled one grade, and saying so is the point.
   - ⭐ **BLAST RADIUS MEASURED, NOT ASSUMED: 253 tracked phases, exactly ONE carries a grade gate, and exactly one total changes** (`_teachLanguageMechanics` 14 → 3 at kindergarten). The other 252 are byte-identical. A phase with no gates keeps the lexical count, which is the correct answer for it rather than a degradation.
   - ⚠ **A unit whose guard names a grade outside `GRADE_ORDER` is COUNTED, not dropped** — an unresolvable guard must never silently shrink the whole, which would be the same defect in the other direction. Unknown grade falls back to the lexical total, verified.
   - ⛔⛔ **MY OWN THROWAWAY PARSER GOT THIS WRONG FIRST, AND THAT IS THE REASON THE HARNESS EXISTS.** A quick depth-tracking probe reported **8 ungated units and found only the g1 and g9 gates**, missing g2/g3/g5/g7/g11 entirely — a confident wrong answer that contradicted this row's own static trace. **The source read by eye was the arbiter, and the shipped parser is verified against it at thirteen grades.** Fifth instrument of this session to need checking before being believed.

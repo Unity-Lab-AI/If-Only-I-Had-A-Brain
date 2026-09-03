@@ -14,14 +14,17 @@ The within-phase progress bar sat at `{name: _teachLanguageMechanics, done: 0, t
 **The fix.** `_phaseReachableTotal(name)` counts only units the current grade can reach. Unit→gate comes from the same source text the units do — resolve `const gN = ORDER.indexOf('gradeN')`, then attribute each call to the innermost enclosing `if (atLeast(gN))` block.
 
 ```
-  kindergarten  3      grade5   9      grade9   13
-  grade1        6      grade6   9      grade10  13
-  grade2        7      grade7  10      grade11  14
-  grade3        8      grade8  10      grade12  14
-  grade4        8                      lexical total: 14
+  pre-K         3      grade4   8      grade9   13     college1  14
+  kindergarten  3      grade5   9      grade10  13     college2  14
+  grade1        6      grade6   9      grade11  14     college3  14
+  grade2        7      grade7  10      grade12  14     college4  14
+  grade3        8      grade8  10                      grad      14
+                                                       phd       14
 ```
 
-**13/13 grades correct**, and the parsed distribution matches the source read by eye: UNGATED 3 · grade1 3 · grade2 1 · grade3 1 · grade5 1 · grade7 1 · grade9 3 · grade11 1.
+**20/20 grades correct** — the whole of `GRADE_ORDER` — and the parsed distribution matches the source read by eye: UNGATED 3 · grade1 3 · grade2 1 · grade3 1 · grade5 1 · grade7 1 · grade9 3 · grade11 1.
+
+⛔⛔ **THIS ENTRY FIRST SAID "13/13 GRADES CORRECT", AND THAT IS THIS ROW'S OWN DEFECT COMMITTED IN THE SENTENCE REPORTING ITS FIX.** `GRADE_ORDER` holds **20** grades. The harness ran kindergarten→grade12 and silently omitted **pre-K, college1-4, grad and phd — seven grades, and ELA is taught at college**, so those cells genuinely run this phase. **`13/13` reads as complete because the denominator was the SAMPLE, not the population** — the identical "correct fraction of the wrong whole" shape as the `3/14` bar. ⭐ **Caught by Gee reading the number, not by any check of mine.** Re-run across all twenty: **20/20, no behaviour change.** The code was right at every grade; only the evidence was partial, and a partial proof reported as a whole one is the more dangerous of the two.
 
 ⭐ **Blast radius measured rather than asserted: 253 tracked phases, exactly ONE carries a grade gate, exactly one total changes.** The other 252 are byte-identical, because a phase with no gates keeps the lexical count — the correct answer for it, not a degradation.
 
@@ -31,7 +34,7 @@ The within-phase progress bar sat at `{name: _teachLanguageMechanics, done: 0, t
 
 ⛔ **The `done: 0` half is NOT claimed and stays open.** Two candidate mechanisms were already disproved by reading; the surviving explanation is that credit is granted on EXIT and `_teachConcreteSentences` is priced in its own comment at **14.9 hours in a single call**. Fixing the denominator does not move `done`. **Read `cellSubPhases`, not `frac`, until that half lands.**
 
-**Verified:** `node --check` · real `import()` of the module · a live `Curriculum` instance harnessed at 13 grades · an all-phase sweep proving 252 of 253 totals unchanged.
+**Verified:** `node --check` · real `import()` of the module · a live `Curriculum` instance harnessed at **all 20 grades** · an all-phase sweep proving 252 of 253 totals unchanged. ⚠ **That sweep was run at ONE grade (kindergarten)** — it generalises only because exactly one phase carries a gate at all, and saying so beats leaving it implied.
 
 ---
 
