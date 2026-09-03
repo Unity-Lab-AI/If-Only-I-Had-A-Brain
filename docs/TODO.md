@@ -3045,3 +3045,28 @@ Gee (verbatim):
   - ⚠ **NOT a browser test and NOT a screenshot diff.** The question is whether the DATA behind the page is real and current, not whether pixels moved. A page can render perfectly from a field nobody writes.
   - **Acceptance:** one command, no brain required, prints a per-surface verdict and one overall **WORKING / NOT WORKING** line, exits non-zero when anything is dark, and proves it can go red on a planted fault.
 
+## DOCSWEEP2 — the second full doc sweep: every tree, everything changed since 2026-08-31 — filed 2026-09-03
+
+Gee (verbatim):
+
+> *"Add to the todo a Full Doc sweep update write and review of every thing needing updated in all the same full list of pages, htmls, docs,workflow docs, ectect we have done since last full and complete doc sweep, u can check finalized for the last one for getting files, pages, and htmls needed to be updated and like equations pages and laymens pages ect ect, all of it completeelky, add this to the todo item"*
+
+- [ ] `DOCSWEEP2.1` — ⛔⛔ **THE SECOND FULL SWEEP. THE LAST ONE WAS 2026-08-31 (`docs/FINALIZED.md` §THE FULL DOC SWEEP: all eight trees, named one at a time) AND THERE HAVE BEEN 280 COMMITS SINCE.** His instruction says to take the file list from that entry, and it is the right list because it is the one that was already proven complete — *"in all the same full list of pages, htmls, docs,workflow docs, ectect"*.
+  - ⛔ **THE TREES, FROM THE LAST SWEEP'S OWN RECORD — name every one or say why it is unaffected:**
+    - **`docs/*.md`** — the ~33-page tree. Last time 11 were edited. **`EQUATIONS.md` and `HOW-IT-WORKS.md` are called out in his words** (*"like equations pages and laymens pages"*): the equations page carries the maths, the layman page is the plain-English one, and both rot silently because nobody reads them while working.
+    - **`html/*.html`** — all 10 public pages, ⛔ **INCLUDING `title=` TOOLTIPS AND IN-PAGE COPY.** The last sweep found **two of its four real defects INSIDE tooltip attributes**, and one page whose body had been corrected while its own tooltip still contradicted it. Tooltips rot exactly like prose.
+    - **`README.md`** (root — the public front door; last sweep found the most expensive wrong claim there), **`.claude/*.md`** (the workflow docs he names explicitly), **`deploy/*.md`**.
+    - **`wiki/**`** — ⚠ **gitignored, so local-only**, and the last sweep's hardest lesson lives here: flagging pages `stale` was rejected outright (*"instead of fucking marking them stale and calling it quits"*). A page that cannot be verified must be verified, not relabelled.
+    - **The board and the ledger** — `docs/TODO.md`, `docs/FINALIZED.md`, `docs/RESUME.md`, `docs/NOW.md`.
+  - ⭐ **START FROM THE MECHANICAL WORKLIST, NOT FROM MEMORY: `npm run docs:drift`.** The last sweep's `DOCSWEEP.5` closed with the finding that this check **already existed** and its drift list *"was the worklist for this entire sweep"* — after that row had asserted no such mechanism existed. **Run it first.** ⚠ It covers `docs/*.md` + `deploy/*.md` + `README.md` only: **`html/*.html` and `.claude/*.md` have NO staleness mechanism at all**, so those two trees are hand-walked or they are skipped.
+  - **WHAT THIS SWEEP HAS TO CARRY — the substantive changes since 2026-08-31, so no page is updated against a vague sense of "stuff happened":**
+    - **The corpus and the data repo.** Topic lists 1,872 → 4,424; coverage 74 → 119 cells at floor; 56.6M reachable words; 57,574 reachable figures. ⛔⛔ **And the structural one: the books and the fields now live in ONE data repo, `corpora/` is no longer tracked in this repository, and the press pulls both from there.** Any page describing where the corpus lives, or telling a reader to clone this repo and run, is now WRONG.
+    - **The walk's own numbers** — band floors, cell counts, what "done" means for a cell.
+    - **The knob panel** — effect classes, the 10 categories, the `POST /knob` write lane that refuses `boot` knobs with a 409.
+    - **The figure lane** — the field store, LFS pointer stubs, live-transform fallback.
+    - **`SPELLTRUTH`** — ⛔ the mind's-eye captions are a font stamp, not her spelling, and **three code comments plus any page that repeats them are wrong.** Any doc claiming she writes the word in her own trained hand needs correcting.
+    - **The instrument failures** — the skip reason that named the wrong host, the throttle detector that read the article, and the four detectors that miscounted the task-number leak. These belong in the wiki's `instruments-that-lie`, which is the page that exists for exactly this.
+  - ⛔ **EVERY EDIT BY HAND WITH `Edit`/`Write`, IN EACH DOC'S OWN FORMAT.** No heredocs, no `sed -i`, no `node -e` — the last two sweeps each committed that foul and flagged it. And per §MATCH DOC FORMAT: edit in place within a page's existing structure; **do not prepend a wall of text onto a page with its own rhythm.**
+  - ⛔ **"COMPLETEELKY" IS THE ACCEPTANCE TEST, AND THE FAILURE MODE IS NAMED IN THE LAW:** *"the wiki is ONE tree, not the answer"* — the docs collapsed to "the wiki" twice in one night once. **Name every tree with a verdict, including the ones that turn out to be unaffected, and write the unaffected verdict INTO the page rather than silently skipping it.**
+  - **Acceptance:** every tree above has a written verdict; `npm run docs:drift` improves and its remaining drift is explained; no page still describes the corpus as living in this repository; and the ledger entry lists each tree by name.
+
