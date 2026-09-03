@@ -169,8 +169,8 @@ export const G7_MIXIN = {
       'the brain is an organ', 'the heart is an organ',
       'systems are groups of organs',
     ];
-    // T14.24 Session 44 — TODO-aligned cell biology + genetics intro.
-    // TODO Sci-G7 spec (line 443): "_teachCells(), _teachGeneticsIntro()".
+    // CELL BIOLOGY + AN INTRODUCTION TO GENETICS — the two courses this science
+    // year carries, each primed as a concept lattice before the sentence walk.
 
     // _teachCells — 7 organelle concepts (cell, nucleus, mitochondria,
     //   membrane, cytoplasm, ribosome, chloroplast) each with a
@@ -186,7 +186,7 @@ export const G7_MIXIN = {
 
     // Both run BEFORE the sentence walk so the concept basins form
     // first, then the sentences reinforce them via natural-language
-    // relationships + T14.7 type transitions + T14.8 sentence schemas.
+    // relationships, word-type transitions and sentence-form schemas.
     await this._teachCells();
     await this._teachGeneticsIntro();
     // ── Sci-G7: cell biology causal chains ──
@@ -223,8 +223,7 @@ export const G7_MIXIN = {
       'magellan sailed around the world', 'trade routes connected continents',
       'the silk road linked east and west', 'new ideas spread widely',
     ];
-    // T14.24 Session 63 — prime medieval period sequence walks per
-    // TODO line 516 before the medieval sentence pass.
+    // Prime the medieval-period sequence walks before the medieval sentence pass.
     await this._teachMedievalPeriod();
     await this._teachCausalChains([
       ['feudalism', 'lord'], ['plague', 'death'], ['death', 'labor'],
@@ -258,8 +257,8 @@ export const G7_MIXIN = {
       'decrescendo releases the tension', 'tempo changes create excitement',
       'music tells stories without words', 'every performance is unique',
     ];
-    // T14.24 Session 82 — prime music composition forms + composers
-    // lattice per TODO line 561 before the composition sentence pass.
+    // Prime the composition-forms + composers lattice before the composition
+    // sentence pass.
     await this._teachMusicComposition();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
     const _af = await this._autoFinal(SENTENCES);

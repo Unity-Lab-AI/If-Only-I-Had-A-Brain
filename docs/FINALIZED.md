@@ -5,6 +5,420 @@
 
 ---
 
+## 2026-09-03 — `CURVEBUILD.6` — THE TOPIC LISTS WERE THE BINDING CONSTRAINT, AND EXPANDING THEM CLEARED THE ENTIRE EARLY BAND
+
+The previous pass proved the constraint by experiment rather than argument: re-fetching the SAME topic list returned the same articles (**sentences −12**) while only the picture count moved (**+3,513 figures**). So this pass added TOPICS, not depth.
+
+**Topic lists 1,872 → 4,424 entries (+2,551) across 118 of 173 cells.** Re-measured through the reader — her intake, not bytes on disk:
+
+```
+  cells at/above their band floor   74  ->  119     (+45)
+  cells THIN                       115  ->   70     (-45)
+  cells EMPTY                        4  ->    4     (all four are math/*, no wiki lane by design)
+  reachable corpus words    50,035,781  ->  56,615,176   (+6,579,395)
+  entries                        4,115  ->   6,726       (+2,611)
+  figures on disk               42,016  ->  58,378       (+16,362)
+  figures REACHABLE             41,627  ->  57,574       (+15,947)
+```
+
+⭐ **THE WHOLE EARLY BAND CLEARED.** Every pre-K / kindergarten / grade1 / grade2 cell that was thin now sits at or above floor — the band the operator ruling named as the priority. What remains thin is middle-band and above, where floors run 29,000 → 330,000 words.
+
+⭐⭐ **EVERY TITLE WAS VERIFIED AGAINST THE LIVE API BEFORE IT WAS WRITTEN IN, AND THAT IS WHY 2,551 TOPICS COST SIX SKIPS.** The verification found **three distinct failure classes**, and only the first is the one anybody checks for:
+
+- **MISSING** — the article does not exist. Loud, easy, already handled.
+- **REDIRECT TO A DIFFERENT SUBJECT** — silent. `Team dynamics` resolves to **a Japanese motorsport team**. `Checks and balances` resolves to `Separation of powers`, which was **already in the same cell** — so one article would have been banked **twice under two themes**, inflating that cell with its own prose. The entry `theme` is derived from the ASKED title, so two aliases of one article are two entries; canonical targets are now used throughout, which closes the hole by construction.
+- **DISAMBIGUATION PAGE** — exists, resolves, returns prose, teaches nothing. **32 of them, and several were already shipped in the old lists:** `Texture` in `art/grade1`, plus `Balance`, `Doctor`, `Depression`, `Loop`, `Flexibility`, `Strength`.
+
+⛔ **A duplicate was hiding in plain sight:** `pe/grade10` listed `Physical therapy` **twice**. The merge dedupes by theme so nothing was corrupted — the cell simply had 9 topics while the list read as 10, and every run spent an API call on nothing.
+
+### ⛔⛔ THE SIX SKIPS EXPOSED TWO REAL FETCHER BUGS, AND BOTH MADE THE INSTRUMENT LIE
+
+They compounded on the same topic, which is why neither had been noticed.
+
+**① THE SKIP REASON NAMED THE LAST HOST TRIED, NOT THE DECISIVE ONE.** A topic is asked of `en.wikipedia.org` then `simple.wikipedia.org`; `lastReason` was a plain assignment, so the host that does NOT carry the article always won. **`Pumping lemma` reported `no-such-page` while existing on en.wikipedia with a 708-character extract** — it had merely failed the 3-sentence floor there, and simple-wiki's `missing` overwrote the truthful `too-few-sentences`. **The instrument was telling a reader to delete a title that exists.** A reason may now only get MORE specific, never less.
+
+**② THE THROTTLE DETECTOR READ THE ARTICLE INSTEAD OF THE ERROR, MAKING SOME ARTICLES PERMANENTLY UNFETCHABLE.** `classifyBody` pattern-matched `too many requests|rate ?limit|retry.after` against the response body **unconditionally**. `Sampling (signal processing)` returned **HTTP 200 and a valid 17,992-byte JSON payload** containing the words *"Slew rate limit error"* — so it was classified `throttled`, retried through the full ~48 s backoff ladder, and failed forever. **Every signal-processing, networking or API article that discusses rate limiting was unreachable, and no retry could ever change it.** The sniff exists for a documented reason — a Wikimedia throttle reply is not JSON, and parsing it as JSON once made a throttle invisible for four ingest passes — so the fix asks the right question instead of deleting the check: **a body that parses as JSON and carries a `query` object is an API answer, whatever words are inside it.** Throttle detection is preserved intact.
+
+⭐ **Both fixes were proven by re-running the failing topic**, not by reading the diff: the reason first became the honest `throttled`, and then the topic fetched at 72 sentences.
+
+**The other four skips were pre-existing titles — all stubs that pass an existence check:** `Germ` (1,506 chars → `Pathogen`), `Dental care` (492 → `Oral hygiene`), `Alcohol` (the CHEMISTRY page, 1,654 → `Alcohol (drug)`), `Relationship` (1,307, and its cell already carried `Interpersonal relationship`).
+
+⚠ **NOT CLAIMED: the corpus is not finished.** 70 cells remain THIN and 4 remain EMPTY. `CURVEBUILD.2`'s re-price stands — **the college and grad floors cannot all be reached by fetching Wikipedia harder**, and closing them is the textbook lane's job.
+
+⚠ **`--replace` WAS NOT USED, deliberately.** It replaces the whole CELL, not the fetcher's own entries, and doing so on a re-run cost **323,434 sentences** of research prose on 2026-09-03. Every run here was `--only-missing`.
+
+---
+
+## 2026-09-03 — `SPELLTRUTH.1` — SHE HAS NEVER SPELLED ANYTHING, AND THE CODE SAYS OTHERWISE IN THREE PLACES
+
+Gee (verbatim): *"her spelling on her images in the minds eye is not her spelling.. i mean how can she be spelling perfectly before she has even learned he words? or learned to spell or speak. so an investigation needs conducted"*
+
+**An investigation, and the answer is flat: she isn't spelling. It is a caption.** The word is a string the drawing lane already holds, stamped through a hardcoded 5×7 bitmap font.
+
+**Every glyph producer, read at the code:**
+
+| Producer | Letterforms from | Spelling from | Verdict |
+|---|---|---|---|
+| `glyphStrokes()` (`js/brain/mindspace/gpu.js:777`) via `_labelStrokes(key)` (`chat.js:4189`) | `FONT5X7`, a hand-written bitmap table at `gpu.js:131` | the **concept key**, `String(key).slice(0, 14)` — a corpus word already correctly spelled | ⛔ **NOT HERS** |
+| `renderThoughtPlane()` via `symbolGlyphText()` (`gpu.js:220`) | same `FONT5X7` | filtered to **numbers, math symbols and SINGLE letters only**; a word contributes a colour tint and no glyphs | ⭐ **HONEST — it already refuses to spell** |
+| the looked-up reference image, posterized through `stylizeField` | the generator | ⚠ **UNMEASURED** — `eye-style.js` carries no anti-text steering | ⚠ **UNKNOWN, and labelled so** |
+| `html/minds-eye.html` | browser fonts | page chrome only — status line, counters | ✅ **not on the image** |
+
+⛔⛔ **THE SHARPEST FINDING IS THAT THE CODE CLAIMS THE OPPOSITE, IN COMMENTS, IN THREE PLACES** — *"she writes the WORD of what she drew, in her own CLEAN trained hand"*, *"letters as PENCIL STROKES (her own hand), not a raster stamp"*, *"her existing trained glyphs"*. The rasterizer does genuinely draw the strokes, but it converts a FONT BITMAP into line segments: **the shapes are given and the spelling is given.** A comment claiming a capability the code does not have is the same defect class as an instrument reporting a number it never measured — and here it is what made the output look like evidence of literacy.
+
+⛔ **There is no gate of any kind.** `opts.label` is never set to `false` at any call site, and `chat.js` contains **no vocabulary check at all**. A pre-K drawing gets the same perfectly-spelled 14-character caption a PhD drawing gets.
+
+⚠ **The fix is a decision, not an obvious repair, and it was NOT taken unilaterally** — spawned as `SPELLTRUTH.2` with three defensible options (keep the caption but stop calling it hers · gate it on taught words · make the letterforms genuinely learned). **Adding wobble or deliberate mis-spelling is ruled out**: it satisfies the visual complaint, leaves the provenance defect untouched, and is banned outright.
+
+---
+
+## 2026-09-03 — `CURVEBUILD.11` — THE DEEPENING PASS RAN, AND IT PROVED THE CONSTRAINT IS THE TOPIC LIST
+
+175 cells, all 18 subjects, **~2.44M cleaned sentences written**. Skips named rather than swallowed: `no-such-page 12 · no-content 11 · too-few-sentences 1`.
+
+⭐ **Far faster than the row predicted.** Its ~4.4 min/cell estimate was taken under the throttle later root-caused as the **User-Agent**, not rate.
+
+⛔⛔ **AND PROSE DID NOT DEEPEN.** Measured through the same accessor before and after:
+
+```
+  sentences before   2,533,753
+  sentences after    2,533,741     (−12)
+  figures  before       38,024
+  figures  after        41,537     (+3,513)
+```
+
+⭐ **That is `CURVEBUILD.6` confirmed by experiment rather than a failed run.** That row states *"the topic lists are now the binding constraint, and they are still 6-20 entries."* A re-fetch of the SAME list returns the same articles, so removing the per-topic cap buys nothing once every topic is already read whole. **The pass proved the constraint is the LIST, not the depth per entry** — and a run that had merely *looked* successful would have buried that.
+
+⚠ **The real gain is 3,513 figures**, which matters for the picture lanes and for `FIGTEXT.5`.
+
+⏳ **Consequence for the next move: `CURVEBUILD.6` (more topics), NOT another deepening pass.** Re-running this would cost hours and return the same prose.
+
+---
+
+## 2026-09-03 — `TEACHKNOB.4` — THE KNOB WRITE LANE, AND IT REFUSES RATHER THAN LIES
+
+Gee's ruling, verbatim: *"you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain"*. `TEACHKNOB.1` had ruled *"a read-only knob panel first"*; this row re-scoped that, because a panel I can read but not turn leaves me exactly where the operator was before it existed — able to name a value and unable to change it.
+
+**Shipped:** `POST /knob` behind the same `requireLoopback` every privileged route uses, plus a per-row field in the teach view.
+
+⭐⭐ **THE EFFECT CLASS IS THE GATE — which is why `KNOBEFFECT.1` had to land first.** The row's hard requirement was *"a write must not be able to lie"*, and that was unenforceable while 171 knobs had no verified class.
+
+```
+  live    162   applied — takes effect on the next read
+  cached    3   applied WITH the caveat that its one read may already have run
+  boot     40   REFUSED, 409, with the restart requirement named
+  ???       0   REFUSED — kept as a branch so a newly-discovered knob is not
+                writable before someone has read its site
+```
+
+⛔ **THE 40 REFUSALS ARE THE POINT.** Writing `DREAM_SMALL_WORLD` or `DREAM_LAMINATION` on a running brain sets the environment, reads back correctly, and **changes nothing** — those nine microstructure switches shape the brain that gets BUILT. A lane that accepted them would be **a lie with a green tick on it.** The row shows *why* a knob cannot be turned rather than a disabled box with no reason.
+
+⭐ **THE CONFIRMATION IS RE-DERIVED, NOT ECHOED.** After a write the server re-reads the knob **through the registry** — the same path the panel renders — and returns that. Echoing the submitted value would prove only that an assignment happened. **Verified live: `DREAM_FIGDRAIN_MS` "—" → `2500` (`overridden: true`) → unset → "—".**
+
+⚠ **A `cached` write is applied and reported honestly.** Whether it lands depends on whether its single first-use read has already happened, which this lane cannot know from outside — so it says so instead of showing a tick.
+
+⚠ **The panel's banner no longer says "Read-only"** — it states how many of the 205 accept a write and how many are refused, so the page describes what it can actually do.
+
+**Verified:** gate exercised against the real registry on 10 cases (4 boot refused, 3 live applied, both known `cached` traps caveated, unknown key 404s) · `node --check` on the server · the teach view's inline JS parses and its script tags balance.
+
+---
+
+## 2026-09-03 — `KNOBEFFECT.1/.2/.3` + `CRYSTAL.1` + `CORPUSBRACKET.1`
+
+### `KNOBEFFECT.1/.2/.3` — every knob has an effect class, a category and a fixed place
+
+Gee: *"every nob needs its effect class and proper orgainaization and catorigzations"*. **`effect: '???'` 171 → 0.** `live 162 · boot 40 · cached 3`, across five reading passes over twelve files.
+
+⛔⛔ **`cluster.js` is why no detector would have worked** — three scopes at nearly identical indents: a module-scope IIFE reading at indent 4, nine constructor reads at indent 6, and method reads at 6-14. **Only the enclosing construct decides, and it was read for each.**
+
+⭐⭐ **The finding that matters: a CONSTRUCTOR read is `boot`, and calling it `live` would have been the dangerous answer.** The value is captured at construction, so on a running brain a write is accepted, reads back correctly, and changes nothing. **The nine cortical-microstructure switches are all of this kind — they shape the brain that gets BUILT, never the one running.** `DREAM_INNERVOICE_FORCE_CPU` was nearly mis-filed with them (same file, same indent) — the constructor closes at `:1362` and its read is at `:1564`.
+
+**Categories: 17 → 10** on the axis of what a knob governs. `Other` — which held the brain's own tick interval — was **renamed** `UNSORTED — no category read yet` rather than kept, then emptied by reading. `Watchdogs, bounds & safety` fell **56 → 21** as batches moved knobs to the lane they actually govern; the wholesale map was a holding pen and it emptied itself.
+
+**Order:** the comment claimed *"groups sorted by size"* and **no group sort existed**. Size would have been wrong anyway — a size-ordered list rearranges itself as knobs are added.
+
+⚠ **Two regressions I introduced, both caught by the checks:** sparse hand entries **replaced** the discovered row (18 knobs lost group, default and description), and a second entry for the same knob **published twice** (210 knobs, 5 duplicates). **Both fixed at the merge, not per-entry**, so a batch can add one property without repeating the rest.
+
+### `CRYSTAL.1` — the fix had shipped and the box was never ticked
+
+`DREAM_REF_MAXSIDE` defaults to **0** — no downsample — and the three sites the row named collapsed into one door, `_perceptSource(img, why)`, whose own comment gives the reason: *"so 'crystal clear' is a property of the choke point rather than a promise repeated at three call sites that can drift apart."* Grep confirms all three callers route through it and nothing calls `_downsampleRGBA` directly. Opting into a ceiling logs that it **is DEGRADING what she perceives**. ⚠ The resampler is still nearest-neighbour, now unreachable by default — recorded, not claimed fixed.
+
+### `CORPUSBRACKET.1` — the debris is gone, and the remainder must be left alone
+
+Measured through the real reader: **4 sentences in 2,533,680** carry a wiki marker (1 numeric citation · 2 `[citation needed]` · 1 `[edit]`), against the 569 + 23 this row measured when filed. The 2026-09-02 re-ingests regenerated those cells.
+
+⛔⛔ **The 1,125 sentences that still carry brackets are NOT debris** — *"destroyed by [bias]"*, *"[since 1925]"*, *"some [researchers] suggest"*. Editorial brackets in quotations are ordinary English, and the shared cleaner refuses them on purpose.
+
+⚠ **My own debris detector was wrong and reading caught it:** all 8 it flagged were **`[sic]`** — correct scholarly usage. **A classifier that cannot tell `[sic]` from `[edit]` would have deleted real prose**, the same shape as the currency guard that once discarded 9,307 economics sentences because `$10,000` looked like maths. **Measure the marker, never the punctuation.**
+
+---
+
+## 2026-09-03 — `KNOBFIND.5` + `KNOBFIND.6` — SIX THRESHOLDS DERIVED, AND ONE OF THEM WAS NEVER A TUNABLE
+
+The standing rule is that every named threshold carries a written derivation. **None of these six appeared in `docs/THRESHOLD-DERIVATION.md` at all.**
+
+### The four saturation thresholds — derived over 200,000 samples per reference distribution
+
+The detector fires when `meanAbs > wMax × 0.6` **AND** `maxAbs/meanAbs < 1.5`, or independently when `meanCos > 0.7`.
+
+| weight distribution | `meanAbs/wMax` | `maxAbs/meanAbs` | detector |
+|---|---:|---:|---|
+| uniform `[0, wMax]` | 0.495 | 2.02 | healthy |
+| exponential — sparse Hebbian-like | 0.165 | 12.08 | healthy |
+| very sparse — a few strong | 0.021 | 48.07 | healthy |
+| mildly concentrated | 0.999 | 1.15 | **SATURATED** |
+| near-flat | 1.000 | 1.03 | **SATURATED** |
+
+- **`MEANABS 0.6` is uniform-plus-20%** — uniform has mean exactly `wMax/2` (measured 0.495), so the threshold asks whether the mean has climbed a fifth above an even spread.
+- **`RATIO 1.5` is uniform-minus-25%** — uniform gives 2.0, perfectly flat gives 1.0. Healthy sparse weights measure **12** and **48**, clearing it by an order of magnitude.
+- **The AND is load-bearing**: the terms are anti-correlated, so every healthy row fails both and every saturated row passes both.
+- **`SAMPLE 1000` resolves the 0.50→0.60 gap at ~6σ** (`CV/√n` = 3.16% against a 20% gap), striding the whole array rather than a prefix.
+- **`MEANCOS 0.7` is ~16σ above chance** at d=512 (`SD = 1/√d`) — unreachable by accident, which is right for a term that **gates plasticity**, where a false positive stops her learning.
+
+⚠ **Verified produced before being priced.** I suspected `_lastSemMotorMeanCos` was another producer-less field like `separability` and `meanVoltage`. **It is not** — `curriculum.js:18558` writes it from the separability probe. Checked rather than retracted.
+
+⛔ **Not claimed:** these derive what the numbers MEAN against reference distributions, not a measurement of her weights. **The falsifier is now written down** — a live `[SatHealth]` sample on a healthy brain reading `meanAbs/wMax > 0.6` with `ratio < 1.5` proves them wrong, and the table says by how much.
+
+### `DREAM_RANGE_MAX_RUNS` — filed as needing calibration; it is a peer's contract
+
+⛔ **16 is the donor's own acceptance limit (`donor.rs:1249`).** Above it, frames are **discarded in silence by the donor** while this side records them as GPU-carried, skipping the CPU pass 4 times in 5. **The value is determined, not open** — the env var exists to match a donor with a raised handler cap.
+
+⚠ **What is actually unpriced is the BILL, which is the other half of the row's own quote:** worst case **+1,388 s on a 6,936 s boot (+20% wall clock)**, best case **zero, with nothing ever lost**. `rangesRunsOkMax` cannot narrow it — *a max cannot price a cap* — and the bucket counter that will answer it already ships.
+
+### `DREAM_CHAT_COHERENCE_FLOOR` — genuinely uncalibrated, and no derivation was invented
+
+Its own comment says *"calibrate on the live walk"*. What can be said: it sits at the **bottom of the observed K-grade emission range [0.10, 0.40]** and below consolidation's 0.20 — coherent, because a bad memory is permanent and a bad sentence is not. **The experiment and a two-way falsifier are recorded** instead of a fabricated number.
+
+⛔ **And a reason it cannot be calibrated from the current run, which the row did not know:** `NOFALLBACK.5` removes the dictionary oracle, which carries ~99% of emissions in the captured run. **The distribution this floor must sit inside is about to change shape.**
+
+### Fallout: the knob panel's effect column
+
+Fixing two `effect: '???'` rows whose scopes I had just read surfaced that **171 of 205 knobs have no effect class** — filed as `KNOBEFFECT.1`. Provenance is complete (0 knobs without a recorded reason); **effect, which answers "if I change it does anything happen?", is mostly blank** — and its `cached` class is silent when wrong.
+
+**Verified:** `node --check` · registry loads · **205 knobs published, unchanged, no duplicates** (the merge dedupes, so hand-declaring a discovered key is safe) · 5 of the 6 now publish `derived`, the sixth correctly stays `inherited` because it genuinely is · 0 knobs without a recorded reason.
+
+---
+
+## 2026-09-03 — `PHASEBAR.1` (denominator half) — THE BAR STOPS COUNTING WORK THE GRADE FORBIDS
+
+The within-phase progress bar sat at `{name: _teachLanguageMechanics, done: 0, total: 14, frac: 0}` across two live samples 417 s apart while `cellSubPhases` moved 105,072 → 108,275. The `total: 14` half is now fixed.
+
+**What was wrong.** The denominator was derived exactly — every distinct `this._teach*(` in the method's own source, 14 of them — and it described a whole that does not exist at kindergarten, where **eleven sit behind `atLeast(g1)` or higher and can never run.** `3/14` was an arithmetically correct fraction of the wrong whole: a bar with a 21% ceiling and nothing saying so.
+
+**The fix.** `_phaseReachableTotal(name)` counts only units the current grade can reach. Unit→gate comes from the same source text the units do — resolve `const gN = ORDER.indexOf('gradeN')`, then attribute each call to the innermost enclosing `if (atLeast(gN))` block.
+
+```
+  pre-K         3      grade4   8      grade9   13     college1  14
+  kindergarten  3      grade5   9      grade10  13     college2  14
+  grade1        6      grade6   9      grade11  14     college3  14
+  grade2        7      grade7  10      grade12  14     college4  14
+  grade3        8      grade8  10                      grad      14
+                                                       phd       14
+```
+
+**20/20 grades correct** — the whole of `GRADE_ORDER` — and the parsed distribution matches the source read by eye: UNGATED 3 · grade1 3 · grade2 1 · grade3 1 · grade5 1 · grade7 1 · grade9 3 · grade11 1.
+
+⛔⛔ **THIS ENTRY FIRST SAID "13/13 GRADES CORRECT", AND THAT IS THIS ROW'S OWN DEFECT COMMITTED IN THE SENTENCE REPORTING ITS FIX.** `GRADE_ORDER` holds **20** grades. The harness ran kindergarten→grade12 and silently omitted **pre-K, college1-4, grad and phd — seven grades, and ELA is taught at college**, so those cells genuinely run this phase. **`13/13` reads as complete because the denominator was the SAMPLE, not the population** — the identical "correct fraction of the wrong whole" shape as the `3/14` bar. ⭐ **Caught by Gee reading the number, not by any check of mine.** Re-run across all twenty: **20/20, no behaviour change.** The code was right at every grade; only the evidence was partial, and a partial proof reported as a whole one is the more dangerous of the two.
+
+⭐ **Blast radius measured rather than asserted: 253 tracked phases, exactly ONE carries a grade gate, exactly one total changes.** The other 252 are byte-identical, because a phase with no gates keeps the lexical count — the correct answer for it, not a degradation.
+
+⚠ A unit whose guard names a grade outside `GRADE_ORDER` is **counted, not dropped** — an unresolvable guard must not silently shrink the whole, which is this same defect pointed the other way. Unknown grade falls back to the lexical total.
+
+⛔⛔ **My own throwaway parser got this wrong first, which is why the harness exists.** A quick depth-tracking probe reported **8 ungated units and found only g1 and g9**, missing g2/g3/g5/g7/g11 — a confident wrong answer contradicting the row's own static trace. The source read by eye was the arbiter. **Fifth instrument this session to need checking before being believed**, after the scope classifier, the 6/6-scoring column classifier, the digit-concatenating doc audit, and the sitemap counter that reported "29,535 shards, 0 pages".
+
+### The `done: 0` half — closed the same day, and it was never a bug
+
+Credit is granted on EXIT, deliberately, so an unfinished unit is never counted as done — and `_teachConcreteSentences` is priced in its own comment at **14.9 hours in a single call**. **`done: 0` was correct.** The defect was that correct-and-working looked identical to dead.
+
+⛔ **The fix is NOT to credit early.** Crediting on entry would make the number move by lying about completion — exactly the failure this instrument exists to prevent, and the tempting "fix".
+
+⭐ `phaseWork` now carries **`inflight` + `inflightMs`**: which unit is running and how long it has held. *"work 0/3 · running `_teachConcreteSentences` (4.0h)"* answers "is she stuck?" — **a fraction cannot.** Reported alongside `done`, never folded into it.
+
+⚠ The marker retires with its own phase, and a sibling finishing cannot clear the long unit actually holding the phase — both guard against the stale-tag defect that has already made an age climb across whole eras and name the wrong culprit.
+
+⛔⛔ **It would have shipped as an instrument nobody reads.** The dashboard rendered `work ${done}/${total}` and stopped, so the new fields would have reached the browser with nothing drawing them — the same shape as the endocrine `lastError` that arrived under a comment promising it would be visible. `dashboard.html` renders the tail now, and an older backend without the fields renders exactly as before.
+
+⚠ **The publish path was not where I guessed:** `status.phaseWork`, not `status.liveness.phaseWork`. My first read-back probe looked in the wrong place and reported `undefined` — **the enclosing function decides the path, not the assignment's indentation**, already recorded in this ledger from the `state.readback` → `state.profiling.readback` mismatch.
+
+**Verified for this half:** 6/6 in-flight semantics (entry marks · sibling exit does NOT clear · own exit clears and credits · teardown clears) · payload read back through the REAL `getCurriculumStatus()` · 6/6 on the exact renderer expression, including the backward-compatible case.
+
+**Verified:** `node --check` · real `import()` of the module · a live `Curriculum` instance harnessed at **all 20 grades** · an all-phase sweep proving 252 of 253 totals unchanged. ⚠ **That sweep was run at ONE grade (kindergarten)** — it generalises only because exactly one phase carries a gate at all, and saying so beats leaving it implied.
+
+---
+
+## 2026-09-02 (NINETEENTH BATCH) — `CURVEDEPTH.14` — THE BIGGER HOST EXISTS, AND TWO OF THIS BOARD'S RECORDED FACTS ABOUT HOSTS WERE STALE
+
+The ruling was *"FIND A BIGGER HOST FIRST, before writing any more fetchers … probe licence AND reachability per host before a line of fetcher is written."* This is that probe. **No fetcher was written.**
+
+### LibreTexts — ≥295,534 pages, and the libraries map onto the starved courses one for one
+
+```
+  human      75,004   art 20 · language 10 · music 13
+  socialsci  74,685   social 17 · psychology 4
+  bio        33,679   science
+  biz        33,332   economics 3
+  med        29,535   health 13 · pe 13
+  eng        24,459   cs 8 · cstheory 4 · cssystems 4
+  phys       19,582   science
+  k12         5,258   the early bands
+             -------
+            295,534   (chem, math, stats not yet counted)
+```
+
+`TEXTBOOK.1` says 131 of 174 cells have no textbook and names the gap by course. `human` alone is 75,004 pages against the 43 art/language/music cells that have no book at all.
+
+### Four things only a probe could establish
+
+1. ⛔ **The MindTouch API 403s while `sitemap.xml` returns 200.** Probing the landing page says *"200, host is fine"* — and a fetcher built on that would have been aimed at a locked door.
+2. ⚠ **Two sitemap shapes, and one assumption gets zero from the other half.** `human`/`socialsci` serve `<sitemapindex>`; the other six serve flat page lists. **My own counter assumed the index shape and reported `med` as "29,535 shards, 0 pages"** — the right number wearing the wrong noun.
+3. ⛔ **Licence is per page, and most pages state none inline.** 12 real book pages sampled: **3 CC-BY 4.0 · 2 CC-BY-NC-SA 4.0 · 7 no CC link.** A fetcher must resolve licence per book and skip what it cannot verify.
+4. **Prose arrives inside page chrome** — 34,363 chars on the sample page including CSS and nav, so an extractor is required.
+
+### Two control results that correct this board
+
+⭐ **`open.umn.edu` does not 403 this client.** `CURVEDEPTH.14` states it *"403s this client outright and is not to be worked around by forging a browser User-Agent."* It returned **200, 83,826 bytes, "All Textbooks — Open Textbook Library."** The recorded refusal was **inherited rather than re-checked** — the same failure shape as the 500 GB disk constant that propagated into two rows and an operator decision. ⚠ `pressbooks.pub` was **not** re-tested; its claim stands unverified rather than corrected.
+
+⚠ **The known-GOOD control timed out.** Gutenberg — the host this corpus already uses — aborted on timeout during the probe. **A timeout is not evidence a host is dead**, and a probe that treated it as one would have retired a working source. Controls in both directions are why that is visible instead of believed.
+
+**Also probed, recorded so nobody repeats them:** OAPEN's REST API **works** and returns real titles with CC-BY / NC / SA / ND metadata — a genuine second option for the college band · Siyavula **alive** (my first 404 was my own wrong path) · DOAB **403** · SmartHistory **403** · CK-12 **403** · BCcampus 200 · CORE 200.
+
+**Unblocked, not started:** `TEXTBOOK.1`'s ingest, moved to in-progress with the host question answered and the licence gate named as its precondition.
+
+---
+
+## 2026-09-02 (EIGHTEENTH BATCH) — `MATHLEAK.1` + `COURSEGUT.1` — THE CHOKEPOINT WAS THE READER, AND THE RE-INGEST WAS NEVER NEEDED
+
+Picked up on *"yes that sounds like the plan"* — corpus cleanliness before corpus content, both pre-walk-mandatory.
+
+### The claim that was wrong
+
+`clean-math.mjs` opened with *"ONE MODULE, FOUR CALLERS. Four private copies of this rule would drift — fix the chokepoint."* It was one module. **It was not the chokepoint.**
+
+```
+  scripts that write corpora/     13
+  scripts that imported it         4
+```
+
+The nine that never called it include **`openstax`** — one of the three worst offenders at **3,950** contaminated sentences — and **`openmathbooks`**, a *maths* source. ⛔ **A rule applied by four of thirteen producers is a convention, not a chokepoint**, and 26,119 contaminated sentences on disk are the proof.
+
+**Thirteen writers converge on ONE reader.** The rule now runs in `server/life-curriculum.js`, so a source that never heard of the cleaner is covered — and so is the fourteenth fetcher nobody has written yet. Three call sites held the identical split expression and none of them cleaned; all three route through one `storyToSentences` helper now.
+
+### The re-ingest this row waited on is not needed, and skipping it is the better answer
+
+Proven before deciding rather than assumed: **18,503 sentences carrying `$` followed by a digit are present and intact on disk.** The buggy currency guard that once discarded 9,307 saylor sentences therefore never wrote this corpus — **the text is RAW, not damaged**, so cleaning at read loses nothing a re-download would recover.
+
+⭐ **And it keeps the raw text.** A better cleaner can be re-applied later; **rewriting the corpus is a one-way door.** The row filed this as a network job deferred behind the figure generator. It was neither.
+
+```
+  sentences seen         2,542,395
+  repaired in place         17,404     (matches the row's projection exactly)
+  dropped as stubs           8,715     (likewise)
+  taught after cleaning  2,533,680
+  STILL CONTAMINATED             0
+```
+
+### Two more contamination paths, neither of them filed by any row
+
+⛔ **The figure prose, where a comment claimed the work was already done.** `academicStoryFigures` said its `context` was *"cleaned by the same cleaner that produced the cell's sentences"*. It was cleaned by the **fetcher**, so only four sources' worth was. Measured: **1,515 of 33,962 contexts and 356 of 19,259 captions carried markup.** ⚠ **That prose BINDS TO A PERCEPT** — markup there teaches a symbol as the meaning of a picture, the same defect arriving through her eyes instead of her ears. After `cleanProse` at both figure sites: **38,024 figures, 0 carrying markup.**
+
+⛔ **The episode.** `storyExperiences` returned a `story` string that `curriculum.js:16245` banks **verbatim as an episode**, and `:16188` derives the memory's emotional colouring from. Cleaning the sentence list alone would have put the markup back through a second door. **The story is now rebuilt from the cleaned sentences** — two cleanings of one text agree until they do not.
+
+### Cost, and the counter that keeps it honest
+
+`414 ms for all 2,542,395 sentences` — **0.16 µs each, ~2.2 ms per cell** against ~26 min of cell work. **98.97% leave on the cheap-exit regex** having paid a single test, which is the only reason read-time cleaning is viable.
+
+⚠ `cleaningStats` is exported deliberately. Cleaning at read means **the corpus on disk and the corpus she is taught are no longer the same thing**, so a word count taken off the files would overstate what she read. A filter nobody can see the output of is indistinguishable from one silently eating content.
+
+### Honouring the row's own warning about its numbers
+
+`COURSEGUT.1` said *"two contamination counts taken with different regexes are not comparable"*. **My 26,119 is not an improvement on its 12,830 — it is a wider predicate**, counting every sentence the cleaner would touch including the 8,715 it drops. **The comparable statement is one predicate run twice: by `stripLeakedMarkup`, before = 26,119, after = 0.**
+
+The cleaner body moved to `js/brain/text-cleaning.cjs` — it could not stay under `.claude/scripts/`, which is workflow tooling the brain must not depend on. `clean-math.mjs` is a re-export, so the four fetchers still clean at write time against one definition.
+
+**Verified:** `node --check` ×2 · real `require()`/`import()` of all three modules · the full corpus through the **real reader** (189 cells) · figure prose through the **real accessor** · cost measured, not estimated. `MATHGAP.1` named as the live successor for the four empty maths cells — absent material, not dirty material.
+
+---
+
+## 2026-09-02 (SEVENTEENTH BATCH) — THIRTEEN ROWS WERE FINISHED AND THE BOARD SAID OTHERWISE, AND IT COST A WRONG RECOMMENDATION THE SAME HOUR
+
+Asked *"so what all is left to do in the todo thats actionable?"*, answered off the checkboxes, and named **the storage math as the top priority**. Then went to do it and found it was already finished — the verdict was written **inside the row's own body** while the box stayed `[ ]`.
+
+⛔ **That is the exact defect this project keeps paying for, and I walked into it an hour after describing it.** A completed row left at `[ ]` is the same class as an instrument nobody reads: it does not merely fail to inform, it **actively misdirects**, and the misdirection is trusted precisely because it looks like a record.
+
+### Closed after verifying against the code, not the row text
+
+| row | evidence |
+|---|---|
+| `REGFIND.2` | `visual-memory.js:1767` calls `loadField(fig.url)` — the consumer it says does not exist |
+| `REGFIND.8` | `✅ CLOSED — THE BOX IS 1 TB` was already in its body |
+| `WAVESEE.5` | its only content was *"needs its own decision"*; the decision was given |
+| `WAVESEE.7` | `✅ RESOLVED` in its body, **and its last owed item was done** — see below |
+| `KNOBUI.1` | 186 unexplained → 0, closed in `d30fd999` |
+| `KNOBUI.2/.3/.4` | `#tvKnobReset` / `#tvKnobSave` / `#tvKnobLoad` + window `drop`, all live |
+| `KNOBUI.6/.7/.8/.9/.10` | `html[data-theme="hacker"]`, `#tvTheme`, `#tvCrt`, verified in the page |
+
+`KNOBUI.5` stays **open by design** — *"and all kinds of other shit like this"* is a standing instruction to keep extending the instrument, not a task with a finish line.
+
+**Board: 55 open → 42.** Thirteen rows, none of which needed a line of code.
+
+### The one thing in the cluster that WAS still owed, and it was the root cause
+
+`WAVESEE.7` ended: *"AND THE COMMENT THAT STARTED IT MUST BE CORRECTED — `visual-memory.js:144` still tells the next reader the disk is 500 GB."* It has been. The comment now states the box is **1 TB**, records that the old figure **was never a measurement**, carries the corrected three-copy arithmetic (~400 GB fields ×3 + ~16 GB weights + ~1 GB corpus ≈ **420 GB of 1,000**), and ends *"`state.disk` publishes the live figures now; read those, never this sentence."*
+
+⭐ **A wrong constant in a code comment propagated into two board rows and one operator acceptance.** It was never data — just a sentence — and everything downstream inherited it as fact.
+
+⚠ **And the acceptance was given twice against wrong numbers and survives both** — first against 133 GB when the real figure was ~400, then against 500 GB of disk when the real figure is 1,000. **Two errors in opposite directions is luck, not verification.** What makes it safe is the 1 TB reading, not the earlier reasoning.
+
+### The stale-checkbox hunt, and my third lying instrument of the day
+
+A sweep for other rows whose bodies self-report closed flagged **nine**. All nine were false positives: a fixed 35-line window ran past the row's end and caught `✅` markers belonging to the **next** row or section header. Bounded at row edges it flagged one, and that one was a `###` header the boundary rule missed.
+
+⛔ **Third detector of the day to produce a confident wrong answer** — after the brace-depth scope classifier and the column-0 classifier that scored 6/6 and was still wrong. **The failure mode is always the same: a window or a heuristic that cannot see where the thing it is measuring actually ends.** The honest result after fixing it: **zero remaining stale checkboxes.**
+
+**Verified:** every closed row checked against the file that implements it — `visual-memory.js:1767`, `state.js:739`, `visual-memory.js:146`, and `html/teachview.html` for all nine knob-panel rows including the three that carry hard constraints (reset must distinguish code-default from environment · load must diff before applying · the static must never impair reading). All three constraints are met in the code, not merely intended.
+
+---
+
+## 2026-09-02 (SIXTEENTH BATCH) — `WAVESEE.2` + `REGFIND.1` — THE RULE HAD FIVE OWNERS, AND THE FILE THE PRODUCER TRUSTS MOST WAS 121 ROWS STALE
+
+Closing steps 5 and 6 of the sequence Gee approved with *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*, and picked up on *"get to it"*.
+
+### `WAVESEE.2` — one owner for the figure's address
+
+The row warned that the key rule was about to have **two** copies. It had **five**:
+
+| file | form | returns |
+|---|---|---|
+| `js/brain/curriculum.js` (`figKeyOf`) | `(h<<5)+h ^ c` | bare |
+| `server/figure-queue.js` | `(h<<5)+h ^ c` | bare |
+| `server/figure-field-store.js` | `h*33 ^ c` | `fig:` prefixed |
+| `.claude/scripts/perceive-corpus-figures.mjs` | `h*33 ^ c` | `fig:` prefixed |
+| `.claude/scripts/gen-figure-links.mjs` | `h*33 ^ c` | bare |
+
+All five now resolve to `js/brain/figure-identity.cjs`, which also owns `bareKey`, `shardName`, the undecodable-format rule and `figureAddress`.
+
+- ⭐ **The two arithmetic forms were proven equivalent by RUNNING them** over every URL the corpus holds — **38,318 compared, 0 disagreements** — and then by the stronger check that **all 26,238 delivered field filenames still re-derive from the corpus, 0 orphans.** Congruence mod 2³² was the argument; the measurement was the evidence.
+- ⛔⛔ **The row was aimed at the wrong rule. The hash copies agreed; THE FORMAT RULE DID NOT.** The reachability gate held `gif|pdf|djvu|stl`, the failure classifier held `gif|pdf|djvu|stl|webm|mp4|svgz` — so one could call an address permanently dead while the other handed the same address to the perception lane as live. **A list is not congruent to another list.** Merged to the union *after* measuring that the corpus holds zero webm/mp4/svgz, so the merge provably changes no outcome today.
+- ⭐ **A real saving fell out:** the producer refuses undecodable formats **before opening a socket** — **193 distinct figures (294 citations), 0 of which ever produced a field across 15 passes**, each costing a fetch and, for the animated ones, a MediaWiki rendition round-trip, on *every* pass.
+- ⚠ **Caught in my own edit before it shipped:** a bare `export … from` re-export forwards a name to importers **without creating a local binding**, and `curriculum.js` calls `figKeyOf` itself twice. `node --check` and the bundle both pass; it throws at the first figure. Every touched module was then **really loaded**, not syntax-checked.
+- ⛔ **The chosen home is a `.cjs` inside `js/brain/`, and the reason is a constraint, not a preference.** The consumers span CommonJS server files on the teach path and the ESM curriculum the repo's own invariant calls browser-bundled. No Node version is pinned anywhere in `deploy/` or CI, so `require(esm)` — unflagged only since 22.12 — is a floor this refactor has no business introducing on the teach path. A CJS module with no Node APIs is requireable and importable everywhere with no build step.
+
+### `REGFIND.1` — the counter, the stop test, and a third defect nobody had filed
+
+- **The counter** now reports the pass's own delta (`stats.ok`, incremented once per field produced) instead of `find … | wc -l`. It cannot double-count by construction, and it is written to `pass-summary.json`. **The ad-hoc shell loop that held the bug is gone**, so re-typing it cannot re-introduce it.
+- **The stop test** now says *"STOP: this pass produced nothing new"* and names the next move, instead of running one iteration past completion on a stale count.
+- ⛔⛔ **The third defect, found while fixing the first two, was worse than either: the resume AUTHORITY was stale.** `delivered.txt` is the file the producer trusts above all else to decide what is done, and it was written by the shell pipeline — so it froze when that pipeline stopped. It listed **26,238** keys while the repository tracked **26,359**. A resume would have re-fetched, re-decoded and re-transformed **121 already-delivered figures**, silently, reporting it as progress. The producer now regenerates it from `git ls-files` at startup — **confirmed live, `26,238 → 26,359` on the first run.** ⚠ Read-only by design; nothing stages, commits or deletes in that tree.
+- ⭐ **The gap the row left explicitly unexplained now reconciles to the file.** 219 keys in `uploaded.jsonl` absent from `delivered.txt`, **0 the other way**; `git status` splits it as **98 untracked + 121 tracked-and-present = 219 on disk**, against **26,238 deleted-but-tracked** matching `delivered.txt` to the row. The ledger records a field when it is **written**, the repository when it is **committed**.
+- ⛔ **A number I reported was wrong and is corrected:** I stated the run stopped at **26,457 of 32,296 (81.9%)**. `26,457` is the *ledger* count the code explicitly distrusts, and `32,296` counts the **913 figures the pipeline deliberately never collects** (89 site furniture, 631 unanchored, 193 undecodable). Measured with production code: **26,458 held of 31,383 teachable — 84.3%, 4,925 remaining.**
+
+### Step 4 is built and deliberately not claimed
+
+`--retry` sources its list from the ledger's retryable set alone, caps attempts, and reports the permanent and given-up sets rather than dropping them. ⛔ **`failures.jsonl` does not exist** — the ledger was wired in *after* the run stopped, so the 15 passes that produced the decay curve recorded none of their reasons and nothing can recover them. The mode refuses to pretend: *"the failure ledger is EMPTY, which is not the same as 'nothing failed'"*. `WAVESEE.6` stays **open** with that named as its remaining work.
+
+**Verified:** `node --check` ×6 · real `require()`/`import()` of all 6 touched modules · 38,318-URL hash equivalence · 26,238-filename re-derivation · classifier on 10 cases including `a.jpg?v=2.gif` correctly not read as a GIF · a live 3-figure production pass writing `pass-summary.json` · `--retry` run against the real delivery tree.
+
+---
+
 ## 2026-09-02 (FIFTEENTH BATCH) — THE GENERATED PHONICS QUESTIONS REACH THE LIVE EXAM, AND ONE FILED GAP TURNS OUT NOT TO EXIST
 
 Filed under `PHONBANK.2` (*"STILL OWED: wiring the generated set into `EXAM_BANKS`"*) and closing part ② of `PHONBANK.1`, whose originating words from Gee were:

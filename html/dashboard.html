@@ -3379,8 +3379,25 @@
         const phaseTail = c.outermostPhase
           ? ` &middot; <span style="color:#e9d5ff;">${c.outermostPhase.name}</span> (+${((c.outermostPhase.elapsedMs || 0) / 60000).toFixed(1)}m)`
           : ` &middot; <span style="color:#fbbf24;">no declared phase in flight</span>`;
+        // WITHIN-PHASE WORK. `done` is credited on EXIT, and one unit of the
+        // ELA mechanics phase is priced at ~15 hours in a single call — so
+        // `work 0/3` is accurate and reads exactly like a dead bar. The unit
+        // in flight and how long it has held are what answer "is she stuck?",
+        // and no fraction can express that.
+        //
+        // The age is only shown once it is large enough to mean something: a
+        // few seconds on every unit would be noise, hours on one is the story.
+        // Absent block => an older backend, so the tail simply does not render.
+        const inflightTail = (pw && pw.inflight)
+          ? ` &middot; <span style="color:#a7f3d0;">running ${pw.inflight}</span>`
+            + ((pw.inflightMs | 0) > 60000
+              ? ` <span style="color:#fbbf24;">(${(pw.inflightMs / 3600000) >= 1
+                  ? `${(pw.inflightMs / 3600000).toFixed(1)}h`
+                  : `${(pw.inflightMs / 60000).toFixed(0)}m`})</span>`
+              : '')
+          : '';
         const workTail = pw
-          ? ` &middot; <span style="color:#fcd34d;">work ${pw.done}/${pw.total}</span>`
+          ? ` &middot; <span style="color:#fcd34d;">work ${pw.done}/${pw.total}</span>${inflightTail}`
           : '';
         const vp = c.vocabProgress;
         const vocabTail = (vp && vp.total > 0)

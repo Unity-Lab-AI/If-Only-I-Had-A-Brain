@@ -10,8 +10,8 @@
 export const G5_MIXIN = {
   async runElaG5Real(ctx) {
     // Cohesive multi-sentence "paragraphs" as concatenated sentences
-    // that share topic. Topic persistence via T14.9 working memory is
-    // what makes this a Grade-5 capability rather than G3 SVO.
+    // that share topic. Topic persistence through working memory is what makes
+    // this a grade-5 capability rather than the grade-3 single-clause pass.
     const SENTENCES = [
       'the dog was hungry', 'he found food', 'he ate it all', 'he was happy',
       'the cat sat on the mat', 'she saw a bird', 'she chased it', 'the bird flew away',
@@ -242,8 +242,8 @@ export const G5_MIXIN = {
       'density is mass per volume', 'water has high density',
       'air has low density', 'rocks are dense',
     ];
-    // T14.24 Session 43 — TODO-aligned atoms/molecules + element→atomic
-    // number binding. Two-phase: abstract concept features for
+    // ATOMS AND MOLECULES, plus the element → atomic-number binding.
+    // Two phases: abstract concept features for
     // atom/proton/electron/neutron/molecule/element/compound, then
     // element-name↔atomic-number-magnitude binding for hydrogen
     // through neon (z=1..10). The magnitude feature's ordinal cosine
@@ -284,8 +284,7 @@ export const G5_MIXIN = {
       'the founders wrote the bill of rights', 'rights protect the people',
       'freedom of speech is a right', 'freedom of religion is a right',
     ];
-    // T14.24 Session 61 — prime colonial US temporal sequence per
-    // TODO line 508 before the colonial sentence pass.
+    // Prime the colonial-US temporal sequence before the colonial sentence pass.
     await this._teachColonialUS();
 
     // ── EQUATIONAL REASONING: American Revolution as inference chain ──
@@ -328,8 +327,8 @@ export const G5_MIXIN = {
       'warm colors come forward', 'cool colors go back',
       'an artist chooses what to show', 'good composition feels right',
     ];
-    // T14.24 Session 80 — prime visual composition principles
-    // lattice per TODO line 561 before the composition sentence pass.
+    // Prime the visual-composition principles lattice before the composition
+    // sentence pass.
     await this._teachVisualComposition();
     await this._teachCausalChains([
       ['contrast', 'attention'], ['emphasis', 'focus'], ['balance', 'harmony'],

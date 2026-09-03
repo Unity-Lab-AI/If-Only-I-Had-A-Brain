@@ -1,10 +1,10 @@
 // figure-queue.js — EVERY ILLUSTRATION GETS SEEN, AND EACH ONE KEEPS ITS TEXT.
 //
-// Gee: *"we need to make sure we use all illistrations and figures in all corpus
-// so Unity can see them and they are converted in topo coeffient wavelets as we
-// do it"*, *"all illistrastions shall always be direclty connected and trained to
-// the text that refrences them"*, and on the design fork: **option 1 — the
-// background lane — *"but they have to link to thhe text corrctly"*.**
+// The requirement, in three parts: EVERY illustration in every corpus is
+// converted to wavelet coefficients and seen; each one stays directly connected
+// to the text that references it; and the chosen design is the background lane
+// rather than an inline one — on the condition that the link to the text
+// survives the deferral, which is what the carried row below guarantees.
 //
 // ⛔ THE MEASUREMENT THAT FORCED THIS. Figures were perceived INLINE in the cell
 // pass, bounded to `DREAM_TEXTFIG_PER_CELL` (6) per visit. With 37,592 figures
@@ -31,11 +31,11 @@
 // **nothing about it reads ambient state**, which is why a figure perceived an
 // hour after its prose binds identically to one perceived inline.
 //
-// ⚠ That is not an accident of this design, it is the `CAMPOISON` fix holding:
-// an unlabelled frame that fuses with "whatever word is current" is precisely
-// the defect that made a webcam placeholder become her memory of a word. A
-// deferred lane would re-open it instantly if the binding were resolved at
-// perception time instead of travelling with the row.
+// ⚠ That is not an accident of this design, it is the unlabelled-frame rule
+// holding: a frame that fuses with "whatever word is current" is precisely the
+// defect that made a webcam placeholder become her memory of a word. A deferred
+// lane would re-open it instantly if the binding were resolved at perception
+// time instead of travelling with the row.
 'use strict';
 
 const path = require('path');
@@ -45,12 +45,12 @@ const DB_FILE = path.join(__dirname, 'figure-queue.db');
 // A stable identity for a figure, from its own address. ⛔ Not its position in
 // any list — an index re-points at a different picture the moment a cell is
 // re-ingested, which is the bug the figure key already carried once today.
-function figKey(url) {
-  const s = String(url || '');
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) ^ s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
+//
+// ⭐ ONE OWNER. This rule used to be written out here in full, in a second
+// arithmetic form than the producer's, and in three other files besides. The
+// forms were proven to agree over every URL in the corpus before they were
+// merged — but two copies agreeing today is not one copy.
+const { figKeyOf: figKey } = require('../js/brain/figure-identity.cjs');
 
 class FigureQueue {
   constructor() {

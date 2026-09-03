@@ -14,7 +14,7 @@
 //   - pollinations       — default image gen + TTS
 //   - imageBackends[]    — your own image gen servers (custom or local)
 //   - visionBackends[]   — IGNORED, kept as an empty array only so older code
-//                          reading it doesn't hit `undefined` (LLMGUT.6). The
+//                          reading it doesn't hit `undefined`. The
 //                          VLM describer is gone; her sight is her own
 //                          equational mind's eye.
 // ═══════════════════════════════════════════════════════════════

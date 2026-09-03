@@ -7,7 +7,7 @@
 //   text --espeak--> phoneme ids   (vendored piper_phonemize wasm)
 //        --VITS onnx--> 22050Hz PCM (onnxruntime-web, CPU-wasm ONLY — the GPU belongs to the donor brain)
 //
-// Voice = en_US-hfc_female-medium = "Equation Unity One" V4 (the sound Gee approved).
+// Voice = en_US-hfc_female-medium = "Equation Unity One" V4 — the approved sound.
 // Every asset is served from OUR origin under /voice-engine/*; the 63MB model is
 // fetched ONCE (at the setup-page preload) and cached in OPFS, so per-response
 // synthesis is entirely offline + local to the visitor's machine.
@@ -73,8 +73,8 @@ async function fetchWithProgress(url, onProgress) {
 // Load the model + config once. Config is small (fetched fresh from our origin);
 // the 63MB model is OPFS-cached. Session is CPU-WASM ONLY — never WebGPU.
 //
-// DONOR-DROP FIX (Gee 2026-07-17: "every time i talk to Unity the doner drops",
-// confirmed reproducible): the visitor's browser tab IS the compute donor — its
+// DONOR-DROP FIX — the donor dropped on EVERY chat message, reproducibly.
+// The cause: the visitor's browser tab IS the compute donor — its
 // WebGPU device holds gigabytes of resident brain buffers. TTS grabbing
 // 'webgpu' FIRST spun a SECOND GPU session in the same browser on every reply
 // → VRAM/device pressure → device-lost on the DONOR device → the donor died

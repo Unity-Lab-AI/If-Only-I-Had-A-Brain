@@ -47,14 +47,14 @@ const LOCAL_IMAGE_BACKENDS = [
   { name: 'ComfyUI',        url: 'http://localhost:8188',  probe: '/system_stats',             kind: 'comfy' },
   { name: 'InvokeAI',       url: 'http://localhost:9090',  probe: '/api/v1/app/version',       kind: 'invokeai' },
   { name: 'LocalAI',        url: 'http://localhost:8081',  probe: '/v1/models',                kind: 'openai' },
-  // R15 — removed stale `Ollama (SD)` entry on :11434 here. Ollama
+  // A stale `Ollama (SD)` entry on :11434 was removed here. Ollama
   // doesn't actually serve Stable Diffusion; that was a copy-paste
   // error from an earlier commit. Ollama lives on the VISION side
   // (LOCAL_VISION_BACKENDS below) where llava/moondream/bakllava
   // actually run.
 ];
 
-// ── LLMGUT.6 (2026-08-25) — THE VLM DESCRIBER IS GONE ────────────────────────
+// ── THE VLM DESCRIBER IS GONE ────────────────────────────────────────────────
 //
 // `LOCAL_VISION_BACKENDS` (Ollama/llava, LM Studio, LocalAI, llama.cpp, Jan),
 // `VISION_MODEL_HINTS`, `autoDetectVision()`, `describeImage()` and both
@@ -74,7 +74,7 @@ const LOCAL_IMAGE_BACKENDS = [
 //     audio lane). ⚠ That lane POSTs to `/v1/chat/completions`, which LOOKS
 //     like an LLM artifact and is NOT: Pollinations retired
 //     `/v1/audio/speech`, so TTS rides the chat endpoint with
-//     `modalities: ['text','audio']` and returns base64 AUDIO (see VOX.0).
+//     `modalities: ['text','audio']` and returns base64 AUDIO.
 //     It is a sensory-OUTPUT executor, which the no-text-AI law explicitly
 //     permits. Gutting it would take her voice.
 //   • HER IMAGE GENERATION — `generateImage()` below and the server's
@@ -90,7 +90,7 @@ const LOCAL_IMAGE_BACKENDS = [
 // Pollinations vision model id once the first probe completes.
 const SHARED_DEAD_BACKENDS = new Map(); // url → timestamp
 
-// LLMGUT.6 — `SHARED_POLL_VISION_MODEL`, `SHARED_POLL_VISION_PROBE`,
+// `SHARED_POLL_VISION_MODEL`, `SHARED_POLL_VISION_PROBE`,
 // `POLL_VISION_PREFERENCE` and `resolvePollinationsVisionModel()` deleted.
 // They existed only to pick which multimodal LLM (openai-large / claude /
 // gemini / qwen-vision / mistral) would describe her camera frames, by probing
@@ -114,17 +114,17 @@ export class SensoryAIProviders {
     // iterates this list between the custom and Pollinations fallbacks.
     this._localImageBackends = [];
 
-    // R13 — auto-detected + env.js-configured VLM backends for vision
+    // Auto-detected + env.js-configured VLM backends for vision
     // describer. describeImage() iterates this list before falling
     // back to Pollinations multimodal.
     this._localVisionBackends = [];
 
-    // R13 — consecutive failure counter on vision describer; after 3
+    // Consecutive failure counter on the vision describer; after 3
     // hits we pause vision for 30s to avoid hammering a dead endpoint.
     this._visionFailCount = 0;
     this._visionPausedUntil = 0;
 
-    // R13 — event emitter for sensory status changes. App.js subscribes
+    // Event emitter for sensory status changes. App.js subscribes
     // to render toasts. Not a full EventTarget, just a callback list
     // to keep the peripheral layer framework-free.
     this._statusListeners = [];
@@ -181,7 +181,7 @@ export class SensoryAIProviders {
   }
 
   /**
-   * R13 — subscribe to sensory status events. Fires when a backend is
+   * Subscribe to sensory status events. Fires when a backend is
    * registered, marked dead, recovered, or when a request falls through
    * the priority chain. Payload: {kind, event, backend, reason}.
    */
@@ -200,7 +200,7 @@ export class SensoryAIProviders {
   }
 
   /**
-   * R13 — return a snapshot of every registered backend for the status
+   * Return a snapshot of every registered backend for the status
    * HUD. Groups by kind (image/vision) with state dots.
    */
   getStatus() {
@@ -287,7 +287,7 @@ export class SensoryAIProviders {
     return this._localImageBackends;
   }
 
-  // LLMGUT.6 — `autoDetectVision()` deleted. It probed localhost for Ollama /
+  // `autoDetectVision()` deleted. It probed localhost for Ollama /
   // LM Studio / LocalAI / llama.cpp / Jan and registered whichever
   // vision-language model was loaded, so an external LLM could act as her eyes.
   // Zero call sites; her sight is the equational mind's eye.
@@ -334,7 +334,7 @@ export class SensoryAIProviders {
       console.log(`[SensoryAI] Loaded ${imageBackends.length} image backend(s) from env.js`);
     }
 
-    // R13 — env.js-configured vision backends
+    // env.js-configured vision backends
     const visionBackends = Array.isArray(envKeys.visionBackends) ? envKeys.visionBackends : [];
     for (const b of visionBackends) {
       if (b.url) {
@@ -438,7 +438,7 @@ export class SensoryAIProviders {
     return this._pollinations.generateImage(prompt, opts);
   }
 
-  // LLMGUT.6 — `describeImage()` deleted. It sent a webcam frame plus the
+  // `describeImage()` deleted. It sent a webcam frame plus the
   // prompt "Describe what you see through a webcam… 1 sentence" to a local VLM
   // or to Pollinations and returned the model's sentence AS HER SIGHT. That is
   // an external text model doing her perceiving, which is the exact thing the
@@ -456,7 +456,7 @@ export class SensoryAIProviders {
    * @param {string} text
    * @param {string} voice — voice name (default 'shimmer')
    */
-  // LLMGUT.6 — this was a one-line passthrough to `PollinationsAI.speak()`,
+  // This was a one-line passthrough to `PollinationsAI.speak()`,
   // which is deleted. It had no callers: her voice is Equation Unity One
   // (js/io/voice.js — piper hfc_female → CDF 9/7, then her own banked word
   // equations). Kept as a null-returning stub so a stray caller gets "no
@@ -477,22 +477,22 @@ export class SensoryAIProviders {
 
   // ── Private ────────────────────────────────────────────────────
 
-  // LLMGUT.6 — `_customDescribeImage()` deleted. It POSTed a camera frame to
+  // `_customDescribeImage()` deleted. It POSTed a camera frame to
   // Ollama's `/api/chat` (llava/moondream/bakllava) or to an OpenAI-compatible
   // `/v1/chat/completions` with multimodal content, and returned the model's
   // words as her perception. Unreachable once `describeImage()` went.
 
   /**
-   * R13 — Pollinations multimodal fallback. Same call the old
+   * Pollinations multimodal fallback. Same call the old
    * app.js:1022 inline handler used, now centralized.
    *
-   * R15 — the Pollinations multimodal model is now overridable via
+   * The Pollinations multimodal model is overridable via
    * `this._pollinationsVisionModel`, which app.js sets at boot time
    * from `localStorage.pollinations_vision_model` (written when the
    * user saves the Pollinations vision backend in the setup modal).
    * Defaults to `'openai'` (Pollinations' GPT-4o multimodal endpoint).
    */
-  // LLMGUT.6 — `_pollinationsDescribeImage()` deleted (body removed below).
+  // `_pollinationsDescribeImage()` deleted (body removed below).
   // It POSTed the frame to `gen.pollinations.ai/v1/chat/completions` with a
   // multimodal message and returned GPT-4o's sentence as her sight. ⚠ Note the
   // contrast with `js/io/voice.js`, which posts to the SAME URL and is KEPT:

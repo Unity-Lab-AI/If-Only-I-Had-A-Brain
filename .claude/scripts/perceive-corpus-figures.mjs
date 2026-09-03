@@ -37,6 +37,12 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { Worker, isMainThread, parentPort, workerData, threadId } from 'worker_threads';
+// ⭐ The failure ledger lives in its own module because this file could not be
+// edited while it was running — its batch loop respawns `node` every batch, so
+// an edit would have landed mid-run. It was written and harnessed standalone
+// first, then wired in here once the run was stopped.
+import { execFileSync } from 'child_process';
+import { FailureLedger, retrySet } from './figure-failure-ledger.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -54,26 +60,26 @@ if (typeof globalThis.ImageData === 'undefined') {
   };
 }
 
-// djb2 over the URL. The key is derived from the figure's IDENTITY, never from
-// its position in a file — a list index into a corpus that gets re-ingested
-// silently re-points at different content, which is a defect this project has
-// already paid for once.
-function figKey(url) {
-  let h = 5381;
-  const s = String(url || '');
-  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return `fig:${h.toString(36)}`;
-}
+// ⭐ THE KEY RULE AND THE FORMAT RULE COME FROM THE REPOSITORY, NOT FROM HERE.
+// Both used to be written out in this file, and both had copies elsewhere — five
+// of the key rule, two of the format rule, and the two format copies did not
+// hold the same list. They could not be merged while this producer was running,
+// because its batch loop respawns `node` every batch and an edit would have
+// landed mid-run. The run has ended, so the duplicates are gone.
+//
+// ⚠ Importing rather than copying is what makes the field on disk and the field
+// the brain looks for provably the same address. A field produced under one copy
+// of the hash and read under another is simply invisible, with no error anywhere.
+import {
+  figKey, bareKey as bare, shardName, isUndecodableFigure,
+} from '../../js/brain/figure-identity.cjs';
 
-// ⛔ MODULE SCOPE, because BOTH the main thread and the workers need it — and
-// when it lived inside the `isMainThread` branch every worker threw a
-// ReferenceError that the surrounding catch filed as `transformFail`. 115 of 120
-// figures "failed to transform" when the transform was never reached.
-// The `fig:` prefix must never reach a filename: a colon is illegal on Windows
-// and NTFS reads it as an alternate-data-stream separator, so `fig:abc.field.json`
-// silently produced a stream hanging off a file named `fig`.
-const bare = (key) => String(key).replace(/^fig:/, '');
-const shardName = (key) => bare(key).slice(0, 2).padEnd(2, '0');
+// ⛔ THE IMPORT ABOVE IS AT MODULE SCOPE FOR A REASON THAT COST A RUN. `bare` and
+// `shardName` once lived inside the `isMainThread` branch, so every worker threw
+// a ReferenceError that the surrounding catch filed as `transformFail` — 115 of
+// 120 figures "failed to transform" when the transform was never reached. This
+// file is its own worker entry point, so anything both halves use must be
+// resolvable in both.
 
 // ── Forgejo generic package registry ─────────────────────────────────────────
 // ⛔⛔ WHY NOT GIT, MEASURED: a field averages ~7 MB and there are 31,572 of
@@ -126,6 +132,13 @@ function readToken() {
 // version would have dropped.
 function collectFigures() {
   const byKey = new Map();
+  // ⛔⛔ REFUSED BEFORE A SOCKET IS OPENED, WHICH IS THE POINT. These formats have
+  // no decoder anywhere in the path, so every pass this producer ever made spent
+  // a fetch — and for the animated ones a MediaWiki rendition round-trip on top
+  // — to learn the same thing again. Measured: 193 distinct figures, **0 of which
+  // ever produced a field** across 15 passes. That is pure contribution to the
+  // decay curve, and it is removed by asking the rule instead of the network.
+  let undecodable = 0;
   const root = path.join(ROOT, 'corpora', 'academic');
   for (const sub of fs.readdirSync(root)) {
     const sd = path.join(root, sub);
@@ -139,6 +152,7 @@ function collectFigures() {
         for (const g of (e.figures || [])) {
           const url = g.url || g.src;
           if (!url || !/^https?:/i.test(url)) continue;
+          if (isUndecodableFigure(url)) { undecodable++; continue; }
           const key = figKey(url);
           const link = {
             subject: sub, grade,
@@ -202,6 +216,12 @@ function collectFigures() {
     console.log(`[figures] skipped ${unanchored.length.toLocaleString()} figures with NO anchor text `
       + '(no caption, no in-text reference, no substantive alt) — an illustration bound to nothing teaches nothing');
   }
+  // Named, never silent: a figure this pass will not even attempt has to say so,
+  // or the next reader counts it as a failure the retry pass should chase.
+  if (undecodable) {
+    console.log(`[figures] refused ${undecodable.toLocaleString()} figure citations up front — no decoder for the format `
+      + '(a fetch could only ever confirm that again)');
+  }
   return kept;
 }
 
@@ -261,6 +281,10 @@ if (isMainThread) {
     process.exit(2);
   }
   const LEDGER = path.join(OUT, 'uploaded.jsonl');
+  // The two ledgers are twins and neither is optional: one records what was
+  // produced, the other records what refused to be. Only the first existed for
+  // the run that decayed, which is why nothing could ever stop retrying a 404.
+  const FAILURES = path.join(OUT, 'failures.jsonl');
 
   const all = collectFigures();
   // ⛔⛔ THE LEDGER IS ALWAYS THE RECORD, NOT THE DISK — because the delivery
@@ -283,12 +307,50 @@ if (isMainThread) {
   // so it lists exactly what the repository really holds. Written-but-not-pushed
   // is then correctly treated as NOT done and simply regenerated.
   const DELIVERED = path.join(OUT, 'delivered.txt');
+  // ⛔⛔ THE AUTHORITY IS REFRESHED HERE, BECAUSE A STALE AUTHORITY IS WORSE THAN
+  // NO AUTHORITY. `delivered.txt` used to be written by the shell pipeline that
+  // drove this producer, so it was only ever as current as the last batch that
+  // pipeline completed — and when that pipeline was stopped the file froze.
+  //
+  // Measured at the moment this was written: the file listed **26,238** keys
+  // while the repository actually tracked **26,359**, so a resume would have
+  // re-fetched, re-decoded and re-transformed **121 figures that were already
+  // delivered** — silently, and reported as progress. That is the same defect
+  // class as the counter this pass also fixes: an instrument describing a
+  // previous state of the world while being read as the current one.
+  //
+  // ⚠ READ-ONLY. `git ls-files` only lists the index; nothing here stages,
+  // commits, moves or deletes anything in the delivery repository. That
+  // restraint is deliberate — a chained git write against that tree has already
+  // cost this project 23,782 deleted files once.
+  const refreshDelivered = () => {
+    try {
+      const out = execFileSync('git', ['-C', OUT, 'ls-files', 'fields'], {
+        encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+      });
+      const keys = [];
+      for (const line of out.split('\n')) {
+        const m = line.trim().match(/([^/\\]+)\.field\.json$/);
+        if (m) keys.push(m[1]);
+      }
+      if (!keys.length) return 0;
+      fs.writeFileSync(DELIVERED, `${keys.join('\n')}\n`, 'utf8');
+      return keys.length;
+    } catch {
+      // Not a git tree, or git is absent. The existing file still stands; it is
+      // simply not refreshed, and the line below reports whatever it holds.
+      return 0;
+    }
+  };
+  const refreshed = refreshDelivered();
+
   let authoritative = false;
   try {
     const txt = fs.readFileSync(DELIVERED, 'utf8');
     for (const line of txt.split('\n')) { const k = line.trim(); if (k) have.add(`fig:${k}`); }
     authoritative = true;
-    console.log(`[figures] resume source: delivered.txt — ${have.size.toLocaleString()} fields confirmed IN the repository`);
+    console.log(`[figures] resume source: delivered.txt — ${have.size.toLocaleString()} fields confirmed IN the repository`
+      + (refreshed ? ' (regenerated from the index just now)' : ' (NOT refreshed — the delivery tree is not a git checkout here)'));
   } catch { /* no pipeline yet */ }
   if (!authoritative) {
     try {
@@ -303,6 +365,50 @@ if (isMainThread) {
     try { if (fs.statSync(fileFor(f.key)).size > 0) have.add(f.key); } catch { /* absent */ }
   }
   let todo = all.filter((f) => !have.has(f.key));
+
+  // ⭐⭐ `--retry` — THE PASS THIS WHOLE REBUILD EXISTS FOR. Operator: *"we have to
+  // figure out which figures errored and figure out why and redownload only the
+  // failed figures correctly the 2nd pass"*.
+  //
+  // ⛔ WHAT THE DEFAULT PASS DOES WRONG WITHOUT IT: the todo list is "every
+  // figure not yet delivered", which includes every figure that has already
+  // failed permanently. That set only grows, so each pass spends proportionally
+  // more of itself on URLs that cannot work — the measured 911 → 98 decay, a
+  // success rate falling 61% → 8% while the run reported itself healthy.
+  //
+  // In this mode the list is the ledger's RETRYABLE set and nothing else:
+  // permanent failures are never attempted, and a transient one that has already
+  // been tried `maxAttempts` times is given up on — because "transient" is a
+  // hypothesis, and without a cap a permanently-flaky host reproduces the exact
+  // decay curve this mode exists to end, just more slowly.
+  //
+  // ⚠ THE COUNTS ARE PRINTED EVEN WHEN THEY ARE ZERO, and especially then. A
+  // retry pass over an empty ledger must say the ledger is empty, not report
+  // "nothing to do" — those read identically and mean opposite things.
+  const RETRY = argv.includes('--retry');
+  if (RETRY) {
+    const sel = retrySet(FAILURES, { maxAttempts: Number(arg('--max-attempts', 3)) || 3 });
+    console.log(`[figures] retry mode — ${sel.summary}`);
+    if (!sel.total) {
+      console.log('[figures] the failure ledger is EMPTY, which is not the same as "nothing failed".');
+      console.log('[figures] it is written as failures happen, so it only holds passes that ran WITH it wired in.');
+      console.log(`[figures] run a normal pass first; it will write ${FAILURES}.`);
+      process.exit(0);
+    }
+    const wanted = new Set(sel.retry.map((r) => r.key));
+    const byKey = new Map(all.map((f) => [f.key, f]));
+    // ⚠ A ledger row whose key is no longer in the corpus is REPORTED, not
+    // silently dropped: it means the corpus was re-ingested since the failure,
+    // and a figure that quietly vanishes between the record and the retry is
+    // exactly the kind of gap nobody goes looking for.
+    const missing = [...wanted].filter((k) => !byKey.has(k));
+    todo = [...wanted].filter((k) => byKey.has(k)).map((k) => byKey.get(k));
+    if (missing.length) {
+      console.log(`[figures] ${missing.length} ledger rows name figures no longer in the corpus — re-ingested since they failed; skipped.`);
+    }
+    console.log(`[figures] retrying ${todo.length.toLocaleString()} figures; `
+      + `${sel.permanent.length.toLocaleString()} permanent and ${sel.givenUp.length.toLocaleString()} given-up are NOT being attempted.`);
+  }
   // ⛔ `--limit` TAKES AN EVEN SPREAD, NOT THE FIRST N — because the first N is a
   // biased sample and it produced two wrong answers in a row. The list is in
   // corpus order, so `ap/` leads and every one of its figures is a large
@@ -326,6 +432,12 @@ if (isMainThread) {
   // been delivered once the local field is deleted, so it is written before the
   // counters are believed and never rewritten in place.
   const ledgerFd = fs.openSync(LEDGER, 'a');
+  // ⭐⭐ THE FAILURE LEDGER — the twin of the line above, and the thing whose
+  // absence turned a 32,296-figure run into a four-hour grind that stopped at
+  // 26,457. `uploaded.jsonl` records SUCCESSES; without a failure record every
+  // pass re-attempted every dead URL from every previous pass, and the delivered
+  // yield fell 911 → 98 per pass while the run kept reporting itself healthy.
+  const failLedger = new FailureLedger(FAILURES);
   const t0 = Date.now();
   let next = 0, done = 0, live = CONC;
   const indexRows = [];
@@ -339,6 +451,13 @@ if (isMainThread) {
     console.log(`[figures] ${done.toLocaleString()}/${todo.length.toLocaleString()}  ok ${stats.ok.toLocaleString()}`
       + `  httpFail ${stats.httpFail}  decodeFail ${stats.decodeFail}  transformFail ${stats.transformFail}  tooSmall ${stats.tinyDrop}`
       + (UPLOAD ? `  uploadFail ${stats.uploadFail}` : '')
+      // ⭐ THE SPLIT THAT DECIDES WHETHER ANOTHER PASS IS WORTH RUNNING, on
+      // screen WHILE it runs rather than only in hindsight. A rising permanent
+      // count with a flat transient count means the tail is dead and the next
+      // pass will yield nothing — which is exactly the curve nobody could see.
+      + (failLedger.counts.total
+        ? `  |  fail ${failLedger.counts.permanent} permanent / ${failLedger.counts.transient} transient`
+        : '')
       + `  |  ${(stats.bytes / 1048576).toFixed(0)} MB stored  ${(stats.coeffs / 1e6).toFixed(1)}M coefficients`
       + `  |  ${rate.toFixed(2)}/s  ETA ${h}h${String(m).padStart(2, '0')}m`);
   };
@@ -358,6 +477,22 @@ if (isMainThread) {
       if (msg === 'ready') { feed(); return; }
       done++;
       if (msg.err) {
+        // ⭐⭐ EVERY FAILURE IS WRITTEN DOWN, WITH ITS REASON, AS IT HAPPENS.
+        //
+        // ⛔ This is the line whose absence cost four hours. The counters below
+        // are aggregates, they go to stdout, and the batch loop greps stdout down
+        // to three patterns — so every REASON died at the pipe and every pass
+        // re-attempted every dead URL from every previous pass. The delivered
+        // yield fell 911 → 98 per pass while the run "worked".
+        //
+        // ⚠ Non-fatal by construction: a ledger that could break the producer
+        // would be worse than no ledger.
+        try {
+          failLedger.record({
+            key: msg.key, url: msg.url, stage: msg.stage,
+            status: msg.status, message: msg.msg,
+          });
+        } catch { /* the ledger must never be able to stop the run */ }
         if (msg.stage === 'http') stats.httpFail++;
         else if (msg.stage === 'decode') stats.decodeFail++;
         else if (msg.stage === 'tiny') stats.tinyDrop++;
@@ -415,6 +550,59 @@ if (isMainThread) {
         console.log(`[figures] DONE in ${(el / 3600).toFixed(2)} h — ${stats.ok.toLocaleString()} figures perceived at FULL resolution, `
           + `${(stats.coeffs / 1e6).toFixed(1)}M wavelet coefficients, ${(stats.bytes / 1073741824).toFixed(2)} GB of fields.`);
         console.log(`[figures] index: ${merged.size.toLocaleString()} fields listed in ${idxPath}`);
+
+        // ⭐⭐ THE PASS REPORTS ITS OWN DELTA, AND THAT IS THE WHOLE FIX.
+        //
+        // ⛔ THE DEFECT THIS REPLACES: the shell loop driving this producer
+        // measured progress as `find fields -name '*.field.json' | wc -l` — a
+        // count of a DIRECTORY, taken BEFORE the previous batch's already-pushed
+        // files were removed. So every batch line reported this batch plus the
+        // previous one. Verified against the repository rather than inferred:
+        //
+        //     batch 1  logged +1219   real +1219   (no predecessor — the only honest line)
+        //     batch 2  logged +2445   real +1226   1226 + 1219 = 2445
+        //     batch 3  logged +2423   real +1197   1197 + 1226 = 2423
+        //     batch 8  logged +2371   real +1176   1176 + 1195 = 2371
+        //
+        // The data was never wrong — only the instrument — but the same variable
+        // was ALSO the loop's stop condition, so the loop ran one iteration past
+        // completion, and the ETA reported off it was wrong by roughly double for
+        // an entire day.
+        //
+        // ⭐ The number below cannot have that bug, because it is not a count of
+        // anything on disk: `stats.ok` is incremented once per field this process
+        // actually produced. A caller reads THIS instead of counting files, so
+        // there is no directory for a future loop to miscount.
+        const remaining = Math.max(0, all.length - (have.size + stats.ok));
+        const summary = {
+          at: new Date().toISOString(),
+          mode: RETRY ? 'retry' : 'sweep',
+          attempted: todo.length,
+          written: stats.ok,               // the honest delta — this pass only
+          corpusTotal: all.length,
+          alreadyHeldAtStart: have.size,
+          remainingAfterThisPass: remaining,
+          failures: {
+            permanent: failLedger.counts.permanent,
+            transient: failLedger.counts.transient,
+            unknown: failLedger.counts.unknown,
+            byStage: {
+              http: stats.httpFail, decode: stats.decodeFail, transform: stats.transformFail, tooSmall: stats.tinyDrop,
+            },
+          },
+        };
+        try { fs.writeFileSync(path.join(OUT, 'pass-summary.json'), `${JSON.stringify(summary, null, 1)}\n`, 'utf8'); } catch { /* reporting must not fail the pass */ }
+        console.log(`[figures] this pass wrote ${stats.ok.toLocaleString()} NEW fields (delta, not a directory count). `
+          + `${remaining.toLocaleString()} of ${all.length.toLocaleString()} still owed.`);
+        // ⛔ A ZERO HERE IS THE REAL STOP SIGNAL, and it is stated as one. The old
+        // loop tested a stale count, so on the pass that genuinely found nothing
+        // it kept going for one more round and only then broke.
+        if (stats.ok === 0) {
+          console.log('[figures] STOP: this pass produced nothing new. '
+            + (failLedger.counts.transient
+              ? `${failLedger.counts.transient} transient failures were recorded — \`--retry\` is the next pass, not another sweep.`
+              : 'No transient failures were recorded either, so another sweep would attempt the identical set.'));
+        }
       }
     });
   };
@@ -433,16 +621,31 @@ if (isMainThread) {
   const { equationalizeImageData } = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'mindspace', 'transform.js')).href);
 
   const UAH = { 'User-Agent': workerData.UA };
+  // ⛔⛔ RETURNS WHY IT FAILED, NOT JUST `null`. This function used to swallow
+  // the status and the exception and hand back a bare `null`, so the caller
+  // could only report "http" — and that is precisely why a run could burn four
+  // hours re-attempting dead URLs: **nothing downstream could tell a 404 from a
+  // timeout**, so nothing could ever stop retrying the 404.
+  //
+  // ⚠ The internal 3-attempt retry ALSO hid an attempt count. A figure that
+  // failed here had already been tried three times, and the ledger needs to know
+  // that before it decides whether a fourth is worth anything.
   const grab = async (url) => {
+    let lastStatus = 0, lastMsg = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const r = await fetch(url, { headers: UAH, signal: AbortSignal.timeout(45000) });
-        if (r.ok) return Buffer.from(await r.arrayBuffer());
-        if (r.status === 404 || r.status === 410) return null;   // a fact about the file, not a transient
-      } catch { /* retried */ }
+        if (r.ok) return { buf: Buffer.from(await r.arrayBuffer()) };
+        lastStatus = r.status; lastMsg = `HTTP ${r.status}`;
+        // A fact about the file rather than a transient — stop immediately and
+        // say so, so the ledger can mark it permanent and never come back.
+        if (r.status === 404 || r.status === 410) return { status: r.status, message: `HTTP ${r.status}`, tries: attempt + 1 };
+      } catch (e) {
+        lastMsg = (e && e.message) || 'fetch threw';
+      }
       await new Promise((res) => setTimeout(res, 800 * (attempt + 1)));
     }
-    return null;
+    return { status: lastStatus, message: lastMsg || 'no response after 3 attempts', tries: 3 };
   };
 
   // ⛔⛔ A VECTOR HAS NO PIXELS UNTIL SOMETHING CHOOSES A SIZE, so an SVG cannot
@@ -492,24 +695,61 @@ if (isMainThread) {
   parentPort.on('message', async (job) => {
     if (job === null) { process.exit(0); }
     try {
-      let buf = await grab(job.url);
-      if (!buf || buf.length < 64) { parentPort.postMessage({ err: 1, stage: 'http', key: job.key }); return; }
+      const got = await grab(job.url);
+      const buf = got && got.buf;
+      if (!buf || buf.length < 64) {
+        // ⭐ THE URL, THE STATUS AND THE MESSAGE TRAVEL WITH THE FAILURE. Without
+        // all three the ledger cannot classify, and a classifier that cannot
+        // separate 404 from timeout is the decay curve all over again.
+        parentPort.postMessage({
+          err: 1, stage: 'http', key: job.key, url: job.url,
+          status: (got && got.status) || 0,
+          msg: (got && got.message) || (buf ? `only ${buf.length} bytes` : 'no body'),
+          tries: (got && got.tries) || 0,
+        });
+        return;
+      }
 
       let img = host._decodeImageToRGBA(buf);
+      // ⛔⛔ THE SECOND CALL SITE OF `grab`, AND CHANGING ITS RETURN SHAPE BROKE
+      // IT SILENTLY. When `grab` started returning `{buf, status, message}`
+      // instead of a bare Buffer, this line still read `b2.length` — which is
+      // `undefined` on an object, so the guard was always false and **EVERY
+      // vector rendition failed without a word.** All 28 decode failures in the
+      // first ledger the new code ever wrote were SVGs, which is what exposed it.
+      // ⭐ A changed return shape must be chased to every caller, and a harness
+      // that only exercises the happy path will not find the one that was missed.
+      let renditionTried = false, renditionUrl = null, renditionErr = null;
       if (!img && renderable(job.url)) {
-        const alt = await wikiRendition(job.url);
-        if (alt) {
-          const b2 = await grab(alt);
-          if (b2 && b2.length > 64) img = host._decodeImageToRGBA(b2);
+        renditionTried = true;
+        renditionUrl = await wikiRendition(job.url);
+        if (renditionUrl) {
+          const got2 = await grab(renditionUrl);
+          if (got2 && got2.buf && got2.buf.length > 64) img = host._decodeImageToRGBA(got2.buf);
+          else renditionErr = (got2 && got2.message) || 'rendition fetch returned no body';
+        } else {
+          renditionErr = 'the wiki API offered no rendition for this file';
         }
       }
-      if (!img) { parentPort.postMessage({ err: 1, stage: 'decode', key: job.key }); return; }
+      if (!img) {
+        // ⚠ NAME WHICH PATH FAILED. "decoder returned nothing" told the ledger
+        // nothing it could classify, so 28 vector failures all landed in the
+        // catch-all "no stated cause — may be a truncated download" bucket and
+        // would have been retried forever.
+        const why = renditionTried
+          ? (renditionErr
+            ? `no decoder for this format, and the rendition path failed: ${renditionErr}`
+            : 'no decoder for this format, and its rendition did not decode either')
+          : 'decoder returned nothing';
+        parentPort.postMessage({ err: 1, stage: 'decode', key: job.key, url: job.url, msg: why });
+        return;
+      }
       // A plate under 32px on a side is a spacer or an icon, not an illustration
       // — transforming it wastes the pass and stores a percept of nothing.
-      if (Math.max(img.w, img.h) < 32) { parentPort.postMessage({ err: 1, stage: 'tiny', key: job.key }); return; }
+      if (Math.max(img.w, img.h) < 32) { parentPort.postMessage({ err: 1, stage: 'tiny', key: job.key, url: job.url, msg: `too small: ${img.w}x${img.h}` }); return; }
 
       const rec = equationalizeImageData({ width: img.w, height: img.h, data: img.data });
-      if (!rec || !rec.channels) { parentPort.postMessage({ err: 1, stage: 'transform', key: job.key }); return; }
+      if (!rec || !rec.channels) { parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: 'transform produced no channels' }); return; }
       rec.fidelity = { psnr_db: null, source: 'corpus-figure' };
 
       // Split exactly the way the live store does: JSON skeleton + one binary
@@ -578,13 +818,13 @@ if (isMainThread) {
           try { fs.unlinkSync(p); } catch { /* the sweep will get it */ }
           parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, uploaded: up });
         } else {
-          parentPort.postMessage({ err: 1, stage: 'upload', key: job.key, msg: `PUT ${up || 'failed'}` });
+          parentPort.postMessage({ err: 1, stage: 'upload', key: job.key, url: job.url, msg: `PUT ${up || 'failed'}` });
         }
         return;
       }
       parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length });
     } catch (e) {
-      parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, msg: e && e.message });
+      parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: e && e.message });
     }
   });
 }

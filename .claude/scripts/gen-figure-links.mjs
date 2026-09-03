@@ -26,14 +26,16 @@ const argv = process.argv.slice(2);
 const OUT = path.resolve(argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : path.join(ROOT, '..', 'BrainWaves'));
 
 // The SAME hash the fields are named with. If these two ever disagree the join
-// silently points at nothing, so it is copied verbatim rather than imported —
-// this script must keep working if the ingest script moves.
-function figKey(url) {
-  let h = 5381;
-  const s = String(url || '');
-  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
-}
+// silently points at nothing.
+//
+// ⛔ THAT RISK USED TO BE ANSWERED BY COPYING THE RULE HERE — *"copied verbatim
+// rather than imported, this script must keep working if the ingest script
+// moves"*. The reasoning was sound and the conclusion was backwards: a copy does
+// not survive the other file moving, it survives the other file CHANGING, which
+// is the failure it was supposed to prevent. **Copying to protect against drift
+// is the drift.** The rule now has one owner in the repository proper, which no
+// script can move and which the brain itself depends on.
+import { figKeyOf as figKey } from '../../js/brain/figure-identity.cjs';
 
 const root = path.join(ROOT, 'corpora', 'academic');
 const rows = [];

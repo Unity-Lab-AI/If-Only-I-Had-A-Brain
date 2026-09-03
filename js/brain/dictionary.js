@@ -38,11 +38,12 @@ const PATTERN_DIM = EMBED_DIM;
 // v3: 2026-04-13 (R2), PATTERN_DIM bumped 32→50 for semantic grounding,
 //     letter-hash word patterns replaced with GloVe embeddings. Old v2
 //     caches have the wrong pattern shape and wrong values — must drop.
-// v4: 2026-04-14 (T14.3), pattern is now 300d (EMBED_DIM matches GloVe
+// v4: 2026-04-14 — pattern is now 300d (EMBED_DIM matches GloVe
 //     6B.300d). Entry shape gains cortexSnapshot / syllables / stressPrimary
 //     from cluster.detectBoundaries + cluster.detectStress on first
 //     observation. Phonological state is NOT a standalone feature table
-//     — it's a cortex-level snapshot routed through T14.1/T14.2 primitives.
+//     — it's a cortex-level snapshot routed through the letter-input and
+//     boundary/stress primitives.
 //     Old v3 caches have 50d patterns and no snapshot/syllables — drop.
 const STORAGE_KEY = 'unity_brain_dictionary_v4';
 
@@ -50,16 +51,16 @@ export class Dictionary {
   constructor() {
     // Word entries: Map<string, WordEntry>
     //
-    // T14.3 (2026-04-14) — entry shape:
+    // Entry shape:
     //   {
     //     word:           string,
     //     pattern:        Float64Array(PATTERN_DIM)    // semantic readout
     //     arousal:        number,                       // emotional context
     //     valence:        number,
     //     frequency:      number,                       // observation count
-    //     cortexSnapshot: Uint8Array|null,              // cluster.lastSpikes copy after exposure (T14.3)
-    //     syllables:      number[]|null,                // boundary indices from cluster.detectBoundaries (T14.2/T14.3)
-    //     stressPrimary:  number|-1,                    // primary-stress syllable index from cluster.detectStress (T14.2)
+    //     cortexSnapshot: Uint8Array|null,              // cluster.lastSpikes copy after exposure
+    //     syllables:      number[]|null,                // boundary indices from cluster.detectBoundaries
+    //     stressPrimary:  number|-1,                    // primary-stress syllable index from cluster.detectStress
     //     lastSeen:       number,                       // ms timestamp of most recent observation
     //   }
     //
@@ -67,7 +68,7 @@ export class Dictionary {
     // populated on FIRST observation if a cortex cluster is wired via
     // setCluster(); subsequent observations just bump frequency + running
     // mean on pattern/arousal/valence. No standalone phoneme feature table
-    // — phonology is a cortex-level phenomenon routed through T14.1/T14.2
+    // — phonology is a cortex-level phenomenon routed through the letter-input
     // primitives on the cluster itself.
     this._words = new Map();
 
@@ -75,7 +76,7 @@ export class Dictionary {
     // bigrams['hello']['there'] = 5 means "hello" was followed by "there" 5 times
     this._bigrams = new Map();
 
-    // T14.3 — optional cortex cluster reference. When wired (via
+    // Optional cortex cluster reference. When wired (via
     // setCluster, typically from engine.js right after both the clusters
     // and innerVoice exist), learnWord streams each new word's letters
     // through cluster.detectBoundaries + cluster.detectStress on first
@@ -96,7 +97,7 @@ export class Dictionary {
   }
 
   /**
-   * T14.3 — Wire a cortex cluster for cortex-driven syllable/stress
+   * Wire a cortex cluster for cortex-driven syllable/stress
    * detection and cortex-snapshot storage. Call once during brain boot
    * after both the clusters and the Dictionary instance exist. Safe to
    * call before any words have been learned (new words pick up the
@@ -158,7 +159,7 @@ export class Dictionary {
       // Intentionally NOT recomputed per observation — the cortex evolves,
       // but re-streaming every word's letters on every observation would
       // shred live brain state during normal chat. Late-binding
-      // refinement is handled by the curriculum runner in T14.5.
+      // refinement is handled by the curriculum runner.
       return;
     }
 
@@ -185,18 +186,18 @@ export class Dictionary {
       }
     }
 
-    // T14.3 — cortex-routed phonological state. On first observation,
+    // Cortex-routed phonological state. On first observation,
     // stream the letters through the cluster to pick up syllable
     // boundaries + primary-stress index + a cortex spike snapshot from
     // the post-stream state. Skipped cleanly when no cluster is wired
     // (browser boot before engine wires it, or headless tooling).
     //
-    // T14.21 (2026-04-14) — ALSO skipped when the cluster hasn't been
+    // ALSO skipped when the cluster hasn't been
     // curriculum-calibrated yet (no `intentCentroids`). Before
     // curriculum runs, the fineType/phon/letter cross-projection
     // weights are random, so `detectStress` produces meaningless
-    // noise that just wastes per-new-word boot time. With the operator's
-    // post-T14.18 configured cortex at 10K+ neurons, each first-
+    // noise that just wastes per-new-word boot time. On a configured
+    // cortex at 10K+ neurons, each first-
     // observation detectStress call was costing ~200-500ms which
     // multiplied by ~2000 new corpus words turned `loadSelfImage` +
     // `loadBaseline` + `loadCoding` into a 15-20 minute silent boot
@@ -213,7 +214,7 @@ export class Dictionary {
       // Only letters (a-z) get streamed through the letter region — digits
       // and apostrophes get skipped so the letter-region one-hot doesn't
       // grow dimensions for non-phonological symbols during vocabulary
-      // learning. The T14.1 inventory still accepts them if they come
+      // learning. The letter inventory still accepts them if they come
       // through other paths (direct cluster.injectLetter).
       const letterOnly = clean.replace(/[^a-z]/g, '');
       if (letterOnly.length > 0) {
@@ -302,7 +303,7 @@ export class Dictionary {
   }
 
   /**
-   * T14.3 — Read syllable boundaries for a word. Returns null if the
+   * Read syllable boundaries for a word. Returns null if the
    * word hasn't been seen or hasn't been syllabified (no cluster wired
    * at first observation). Callers wanting on-demand syllabification of
    * a fresh string should call `cluster.detectBoundaries` directly.
@@ -313,7 +314,7 @@ export class Dictionary {
   }
 
   /**
-   * T14.3 — Read the stored cortex spike snapshot for a word. Returns
+   * Read the stored cortex spike snapshot for a word. Returns
    * null if the word hasn't been seen or was stored without a cluster
    * wired. The snapshot is a Uint8Array binary spike vector the same
    * length as the cortex cluster at the time of first observation, so
@@ -406,12 +407,11 @@ export class Dictionary {
     }
   }
 
-  // T14.17 (2026-04-14) — findByMood, findByPattern, generateSentence
-  // DELETED as vestigial organs. findByMood / findByPattern were
-  // pre-T14 thesaurus helpers that nothing has called since the T11
-  // slot-prior deletion. generateSentence was a bigram-chain walker
-  // that nothing has called since the T14.6 tick-driven motor emission
-  // replaced it. None of these are consumed by runtime code — grep
+  // findByMood, findByPattern and generateSentence DELETED as vestigial
+  // organs. findByMood / findByPattern were thesaurus helpers that nothing
+  // had called since the slot-prior deletion; generateSentence was a
+  // bigram-chain walker that nothing had called since the tick-driven motor
+  // emission replaced it. None were consumed by runtime code — grep
   // confirmed zero external callers. The _bigrams Map + learnBigram
   // writer + bigramCount getter stay because display stats (app.js,
   // brain-3d, brain-viz, inner-voice, brain-server) still show the
@@ -442,7 +442,7 @@ export class Dictionary {
           arousal: entry.arousal,
           valence: entry.valence,
           frequency: entry.frequency,
-          // T14.3 — persist cortex-routed phono state alongside the pattern.
+          // Persist cortex-routed phono state alongside the pattern.
           // cortexSnapshot serializes as a plain array of 0/1 bytes. It
           // will only reload correctly if the cortex cluster's SIZE matches
           // (brain-scale change invalidates snapshots; pattern still works).
@@ -478,7 +478,7 @@ export class Dictionary {
             arousal: entry.arousal,
             valence: entry.valence,
             frequency: entry.frequency,
-            // T14.3 — restore phonological state if present. Missing on
+            // Restore phonological state if present. Missing on
             // old v3 snapshots; STORAGE_KEY was bumped to v4 so those
             // stale caches are dropped by localStorage key mismatch.
             cortexSnapshot: entry.cortexSnapshot ? new Uint8Array(entry.cortexSnapshot) : null,
@@ -501,7 +501,7 @@ export class Dictionary {
     }
   }
 
-  // T14.17 (2026-04-14) — `_cosine` helper deleted along with its
+  // The `_cosine` helper was deleted along with its
   // only callers (findByPattern et al.). `sharedEmbeddings.similarity`
   // is the canonical cosine used everywhere else in the codebase.
 }

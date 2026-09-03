@@ -45,7 +45,7 @@ function loadStories(domain, grade) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WORDSALAD.2 — HER NAME AND HER "I" GET THEIR CAPITALS AT THE LOAD BOUNDARY.
+// HER NAME AND HER "I" GET THEIR CAPITALS AT THE LOAD BOUNDARY.
 //
 // The story corpora are authored lowercase (~800 stories across 20 life grades
 // plus the coding and academic domains), so every sentence read out of them
@@ -81,7 +81,7 @@ function storySentences(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    for (const s of exp.story.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean)) out.push(properCaseStory(s));
+    for (const s of storyToSentences(exp.story, properCaseStory)) out.push(s);
   }
   return out;
 }
@@ -100,11 +100,20 @@ function storyExperiences(domain, grade) {
   const out = [];
   for (const exp of data.experiences) {
     if (!exp || typeof exp.story !== 'string') continue;
-    const sentences = exp.story.split(/(?<=[.!?])\s+/).map((x) => properCaseStory(x.trim())).filter(Boolean);
+    const sentences = storyToSentences(exp.story, properCaseStory);
     if (!sentences.length) continue;
     out.push({
       theme: typeof exp.theme === 'string' ? exp.theme : '',
-      story: properCaseStory(exp.story),
+      // ⛔ THE STORY IS REBUILT FROM THE CLEANED SENTENCES, NOT CLEANED SEPARATELY.
+      // This field is not decoration: it is banked verbatim as an EPISODE and it
+      // is what the memory's emotional colouring is derived from, so cleaning the
+      // sentence list and leaving this raw would have put the markup straight
+      // back into her episodic memory through a second door.
+      //
+      // ⚠ Derived rather than independently cleaned, because two cleanings of the
+      // same text are two things that agree until they do not — and the episode
+      // must be the same prose the sentence trainer saw.
+      story: sentences.join(' '),
       sentences,
     });
   }
@@ -126,7 +135,7 @@ const codingStorySentences = (grade) => storySentences('coding', grade);
 const loadAcademicStories    = (subject, grade) => loadStories(`academic/${subject}`, grade);
 const academicStorySentences = (subject, grade) => storySentences(`academic/${subject}`, grade);
 
-// TEXTFIG.3 — the figures a cell owns, flattened with the theme that owns them.
+// The figures a cell owns, flattened with the theme that owns them.
 //
 // ⛔ Deliberately NOT folded into `storyExperiences`: that shape is consumed by
 // the teach path, which walks `sentences`, and adding an image array to it would
@@ -153,10 +162,104 @@ const academicStorySentences = (subject, grade) => storySentences(`academic/${su
 // the coverage auditor asks THIS function rather than re-deriving the rule — a
 // second copy is exactly how 6,899 figures came to be invisible to the walk
 // while every count said they were present.
-function figureAddress(f) {
-  if (!f) return '';
-  const href = typeof f.url === 'string' && f.url ? f.url : (typeof f.src === 'string' ? f.src : '');
-  return /^https?:\/\//i.test(href) ? href : '';
+// ⛔⛔ AND THE FORMAT RULE LIVES HERE TOO, FOR THE SAME REASON THE ADDRESS RULE
+// DOES. A figure in a format nothing in the perceive path can decode is not a
+// figure this brain can see, and letting it through means the background queue
+// re-fetches and re-fails it on every visit, forever, while the counts call it
+// "available". **Unreachable and undecodable are the same kind of absent.**
+//
+// ⛔ GIF IS REFUSED ON THE OPERATOR'S RULING, AND HIS REASON IS THE RIGHT ONE:
+// *"Unity doesnt have ability to watch gifs i dont think and we havent created a
+// converter for gifs"*. ⚠ **They are NOT site furniture — that was checked
+// before they were dropped.** 149 of the 181 are cited by exactly one theme
+// (furniture has the opposite signature and the harvester's chrome filter had
+// already removed it), 178 of 181 are Wikipedia article images, and they include
+// the quicksort and merge-sort animations, midpoint Riemann sums, De Morgan
+// gates, ionic bonding and the 1812 campaign map.
+// ⭐ **The decisive argument is that she has no temporal percept path at all.**
+// These are animated *because the motion is the lesson*, so a first-frame decode
+// would bank a half-sorted array with the teaching stripped out — a misleading
+// percept rather than a useful one. **Refusing them is more honest than
+// half-seeing them.**
+//
+// ⚠ PDF / DJVU / STL are refused as simply not being images. ⭐ Note they are
+// the one recoverable group: MediaWiki renders those to `lossy-page1-….jpg`, so
+// a rendition request WOULD work where a direct fetch cannot. Recorded because a
+// later reader will otherwise assume they were judged the same way as GIF.
+//
+// ⚠ SVG, WEBP and TIFF are deliberately NOT here. They partially succeed today
+// (648, 6 and 12 respectively already banked), so refusing them would throw away
+// figures the pipeline can already read.
+// ⛔⛔ THIS RULE HAD A SECOND COPY, AND UNLIKE THE HASH RULE THE TWO DID NOT
+// AGREE. The failure classifier that decides whether a fetch is worth retrying
+// held `gif|pdf|djvu|stl|webm|mp4|svgz`; this gate held only the first four. So
+// one of them would call an address permanently dead while the other handed the
+// very same address to the perception lane as a live figure.
+//
+// ⭐ The union was MEASURED before it was adopted rather than assumed safe: the
+// corpus holds **zero** webm, mp4 or svgz figures, so both lists reach the same
+// verdict on every figure that exists today and the merge changes no outcome.
+// Both now read from one module, so the next format decided here is decided
+// everywhere. **Two copies that happen to agree are not one copy.**
+const { figureAddress } = require('../js/brain/figure-identity.cjs');
+// ⛔⛔ CLEANED HERE BECAUSE THIS FILE IS THE CHOKEPOINT AND THE FETCHERS ARE NOT.
+// Thirteen scripts write `corpora/`; four of them imported the markup cleaner.
+// The nine that did not include `openstax` (3,950 contaminated sentences by
+// measurement) and `openmathbooks`, a MATHS source. Every one of the thirteen
+// converges HERE, so the rule applied at this door covers all of them — and the
+// fourteenth fetcher nobody has written yet.
+const { storyToSentences, cleanProse, cleaningStats } = require('../js/brain/text-cleaning.cjs');
+
+// ⭐⭐ THE SECTION AND ITS PICTURES, TOGETHER, THE WAY THE BOOK HAS THEM.
+// A chapter section's own figures are handed over beside its own sentences, so
+// a diagram co-activates with the page it illustrates instead of arriving off a
+// background timer.
+//
+// ⛔ THE CORPUS ALWAYS HAD THIS AND THREE ACCESSORS THREW IT AWAY.
+// `academicStorySentences` flattens every experience into one sentence array,
+// `academicStoryFigures` flattens every figure and loses which section owned it,
+// and `storyExperiences` — the one that DOES preserve sections — drops `figures`
+// on purpose. So the walk could see the prose in order, or the pictures in a
+// heap, but never a page with its own diagram on it.
+//
+// ⚠ A SEPARATE ACCESSOR, NOT A WIDER `storyExperiences`. That shape feeds the
+// prose teach path, which walks `sentences` and wants nothing else; adding
+// figure metadata to it would put binary-bearing rows on the hot text lane for
+// every caller that never asked. The comment on `academicStoryFigures` already
+// made that call once and it was right.
+//
+// ⚠ Figures are filtered through the SAME `figureAddress` predicate the flat
+// accessor uses — one rule, one place. A second copy is how 6,899 figures came
+// to be counted as present while the walk could not see one of them.
+function academicStoryExperiences(subject, grade) {
+  const data = loadStories(`academic/${subject}`, grade);
+  if (!data || !Array.isArray(data.experiences)) return [];
+  const out = [];
+  for (const exp of data.experiences) {
+    if (!exp || typeof exp.story !== 'string') continue;
+    const sentences = storyToSentences(exp.story, properCaseStory);
+    if (!sentences.length) continue;
+    const theme = typeof exp.theme === 'string' ? exp.theme : '';
+    const figures = [];
+    for (const f of (Array.isArray(exp.figures) ? exp.figures : [])) {
+      const href = figureAddress(f);
+      if (!href) continue;
+      figures.push({
+        url: href,
+        alt: typeof f.alt === 'string' ? f.alt : '',
+        // ⛔ CAPTION AND CONTEXT ARE PROSE AND ARE CLEANED LIKE PROSE. They are
+        // what BINDS to the percept, so markup here teaches a symbol as the
+        // meaning of a picture. Measured before this line existed: 1,515 of
+        // 33,962 contexts and 356 of 19,259 captions carried markup, while the
+        // accessor's own comment claimed they were already clean.
+        caption: cleanProse(f.caption),
+        context: cleanProse(f.context),
+        theme,
+      });
+    }
+    out.push({ theme, sentences, figures });
+  }
+  return out;
 }
 
 function academicStoryFigures(subject, grade) {
@@ -170,14 +273,20 @@ function academicStoryFigures(subject, grade) {
       out.push({
         url: href,
         alt: typeof f.alt === 'string' ? f.alt : '',
-        caption: typeof f.caption === 'string' ? f.caption : '',
+        caption: cleanProse(f.caption),
         // The corpus prose this picture sits inside, cleaned by the same cleaner
         // that produced the cell's sentences — so the figure's context and the
         // cell's story are the SAME STRINGS and the tie between them is a match
         // rather than an inference. Absent on figures harvested before this
         // field existed; the percept lane treats that as less anchoring, never
         // as a reason to bind the picture to whatever word is current.
-        context: typeof f.context === 'string' ? f.context : '',
+        //
+        // ⛔ THAT SENTENCE WAS AN ASPIRATION UNTIL 2026-09-02. The cleaning was
+        // done by the FETCHER, and only four of the thirteen fetchers ran one —
+        // so 1,515 contexts and 356 captions reached here carrying markup while
+        // this comment said they could not. **Now it is true**: the same
+        // `cleanProse` runs at this door, whatever wrote the file.
+        context: cleanProse(f.context),
         theme: typeof exp.theme === 'string' ? exp.theme : '',
       });
     }
@@ -224,6 +333,13 @@ module.exports = {
   loadStories, storySentences, storyExperiences, clearCache, CORPORA,
   loadLifeStories, lifeStorySentences, lifeStoryExperiences,
   loadCodingStories, codingStorySentences,
-  loadAcademicStories, academicStorySentences, academicStoryFigures, figureAddress,
+  loadAcademicStories, academicStorySentences, academicStoryFigures,
+  academicStoryExperiences, figureAddress,
   phonicsExamQuestions,
+  // ⛔ EXPORTED SO THE FILTER CAN BE AUDITED. Cleaning at read time means the
+  // corpus on disk and the corpus she is taught are no longer the same thing,
+  // and a word count taken off the files would quietly overstate what she read.
+  // A filter nobody can see the output of is indistinguishable from one that is
+  // silently eating content.
+  cleaningStats,
 };

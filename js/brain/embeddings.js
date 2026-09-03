@@ -1,7 +1,7 @@
 /**
  * embeddings.js — Semantic Word Embeddings for the Brain
  *
- * T14.0 (2026-04-14) — full GloVe 300d, no vocabulary cap, real disk loader.
+ * Full GloVe 300d, no vocabulary cap, real disk loader.
  *
  * Maps words to dense 300-dimensional vector representations. Similar words
  * have similar vectors — "calculator" and "compute" activate overlapping
@@ -20,16 +20,16 @@
  * 3. Hybrid: Pre-trained base + learned refinements.
  *
  * The embedding vector maps to cortex neurons (Wernicke's area / language
- * sub-region per T14.4). Each dimension activates a specific cortex neuron
+ * sub-region). Each dimension activates a specific cortex neuron
  * group via mapToCortex / cortexToEmbedding.
  *
- * Pre-T14.0 the dim was 50 (capped, hash fallback only). T14.0 lifted both
- * the dim and the vocabulary cap. The 50d ceiling was the structural limit
+ * The dim was once 50 (capped, hash fallback only); both the dim and the
+ * vocabulary cap were lifted. The 50d ceiling was the structural limit
  * on fine semantic discrimination between closely-related concepts — 300d
  * removes it and matches the Stanford GloVe standard vocabulary.
  */
 
-// T14.0 — full 300-dim GloVe. Was 50d in T13. The 50d ceiling was the
+// Full 300-dim GloVe; it was 50d before. The 50d ceiling was the
 // structural limit on fine semantic resolution — at 50 dimensions, many
 // close semantic neighbors (cat/kitten, sad/sorrowful, run/jog) had cosine
 // similarity too compressed to distinguish reliably. 300d is the standard
@@ -37,8 +37,8 @@
 // roughly 6× the discriminating power between fine semantic neighbors.
 const EMBED_DIM = 300;
 
-// T14.0 — local file paths and remote URLs for GloVe 300d. The server
-// reads from disk (corpora/glove.6B.300d.txt — operator must download
+// Local file paths and remote URLs for GloVe 300d. The server
+// reads from disk (corpora/glove.6B.300d.txt — must be downloaded
 // from Stanford NLP per the README); the browser falls through to the
 // server's static file path or the remote URLs as fallback.
 //
@@ -46,9 +46,9 @@ const EMBED_DIM = 300;
 // 6B tokens, 400K vocab, 300d vectors. ~1.0 GB raw text, ~480 MB if
 // loaded into Float32 in memory at full vocab. Cap is 0 (no cap) — the
 // foundation lift loads the entire vocabulary on the server. Browser-side
-// uses a corpus-word subset hosted by the server (T14.0 RemoteBrain path).
+// uses a corpus-word subset hosted by the server (the RemoteBrain path).
 const GLOVE_LOCAL_PATH = 'corpora/glove.6B.300d.txt';
-// T14.23.2 — URL order trimmed. The Stanford NLP URL is CORS-blocked
+// URL order trimmed. The Stanford NLP URL is CORS-blocked
 // from all browser origins (no Access-Control-Allow-Origin header),
 // and the HuggingFace URL returns 404 because the resolve path is
 // wrong. Both used to hang for ~90s each before erroring out, eating
@@ -200,7 +200,7 @@ export class SemanticEmbeddings {
       } else {
         // Browser path — try the configured URLs in order.
         //
-        // T14.23.2 (2026-04-14) — AbortController with a 3-second
+        // AbortController with a 3-second
         // per-URL timeout. The old code used bare `await fetch(url)`
         // with no timeout, so a CORS-blocked or hanging CDN URL
         // could hang for minutes before erroring out. At the operator's
@@ -267,8 +267,8 @@ export class SemanticEmbeddings {
 
         this._embeddings.set(word, vec);
         count++;
-        // T14.0 — no vocabulary cap. The full file loads. If memory is
-        // the constraint, the operator runs Unity on a hardware tier that
+        // No vocabulary cap. The full file loads. If memory is
+        // the constraint, she runs on a hardware tier that
         // can hold it (Phase 0 admin resource configuration handles the
         // tier picker).
       }
@@ -318,7 +318,7 @@ export class SemanticEmbeddings {
   }
 
   /**
-   * T14.0 — Returns the subset of the loaded GloVe vocabulary that
+   * Returns the subset of the loaded GloVe vocabulary that
    * matches a given word set. Used by the server to pre-compute a
    * `/api/glove-subset.json` payload for the browser to fetch instead
    * of pulling the full 480 MB file.
@@ -334,7 +334,7 @@ export class SemanticEmbeddings {
   }
 
   /**
-   * T14.0 — Browser-side bulk load of a server-provided subset.
+   * Browser-side bulk load of a server-provided subset.
    * Replaces _doLoad's path when running in a browser that's connecting
    * to a server — the server precomputes the corpus-word subset and
    * the browser fetches it as a single small JSON file.
@@ -362,7 +362,7 @@ export class SemanticEmbeddings {
    * see `loadPreTrained`.
    *
    * @param {string} word
-   * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d after T14.0)
+   * @returns {Float32Array} — EMBED_DIM-dimensional vector (300d)
    */
   getEmbedding(word) {
     word = word.toLowerCase().trim();
@@ -580,7 +580,7 @@ export class SemanticEmbeddings {
     const delta = this._refinements.get(word);
     const base = this._embeddings.get(word) || this._subwordEmbedding(word);
 
-    // ── GLOVEOWN.1 — the two properties that make this actually learn ────
+    // ── The two properties that make this actually learn ─────────────────
     // Both live HERE, at the chokepoint, so every caller gets them — the
     // browser sensory path and the server teach path alike. Both were
     // DERIVED by measurement, not chosen; the numbers are in the ledger.
@@ -659,7 +659,7 @@ export class SemanticEmbeddings {
    * usable structure even without real GloVe vectors.
    */
   _subwordEmbedding(word) {
-    // T14.24 Session 99 — fastText-style subword embedding as the
+    // fastText-style subword embedding as the
     // GloVe-free default. Previously this was a single-hash-per-word
     // function that produced fully-uncorrelated vectors for every
     // word, meaning "cat" and "cats" were as orthogonal as "cat" and

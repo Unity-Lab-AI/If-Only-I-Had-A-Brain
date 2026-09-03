@@ -34,6 +34,20 @@ const path = require('path');
 // walk can never disagree about which pictures exist — the disagreement that let
 // 6,899 figures be counted as present while the walk could not see one of them.
 const { figureAddress } = require('./life-curriculum.js');
+// ⛔⛔ THE AUDITOR MUST COUNT WHAT SHE IS TAUGHT, NOT WHAT IS ON DISK — and
+// those stopped being the same thing on 2026-09-03, when markup cleaning moved
+// to the corpus READER. Measured across the live corpus the moment they
+// diverged: **2,542,469 sentences / 50,236,557 words on disk against
+// 2,533,754 / 50,003,400 as taught — 8,715 sentences and 233,157 words the
+// reader repairs or drops before she ever sees them.**
+//
+// 0.46% is small and the CONSEQUENCE is not: this module decides whether a cell
+// clears its band floor, so a cell sitting just above the line on disk can be
+// under it as taught, and the verdict would say `OK` for content she is never
+// given. **An auditor measuring a different artefact than the consumer is the
+// producer/consumer divergence this project keeps paying for**, and it would
+// have been introduced BY the fix that cleaned the corpus.
+const { storyToSentences } = require('../js/brain/text-cleaning.cjs');
 
 // The ONLY legitimate absences. Math is taught equationally — a maths prose
 // corpus is the thing the grade-completion gate exists to forbid — and the
@@ -128,7 +142,7 @@ function readCell(corpusRoot, subject, grade) {
     const j = JSON.parse(raw);
     const experiences = j.experiences || [];
     let words = 0, licensed = 0;
-    // DIALOGUE.2 — terminal-punctuation mix, per cell.
+    // Terminal-punctuation mix, per cell.
     //
     // ⛔⛔ READ THIS BEFORE DRAWING THE CONCLUSION I DREW. When this was added
     // (2026-09-01) I read a low `?`/`!` rate as "she has no examples of the
@@ -162,7 +176,7 @@ function readCell(corpusRoot, subject, grade) {
     // count was.
     //
     // ⚠ `figuresContext` is the second column and it is not decoration. A figure
-    // with no words to bind to is the `CAMPOISON` defect, and a caption that is
+    // with no words to bind to is the unlabelled-frame defect, and a caption that is
     // only a numbered title ("Figure 1.1 World Exports, 1948-2008") is barely
     // better — it binds a diagram to a number and a date. Context is the corpus
     // prose the picture sits inside, and a cell rich in figures that carry none
@@ -170,8 +184,12 @@ function readCell(corpusRoot, subject, grade) {
     // count would render as a healthy number.
     let figures = 0, figuresReachable = 0, figuresContext = 0, figuresLabelled = 0;
     for (const e of experiences) {
-      const story = String(e.story || '');
-      words += story.split(/\s+/).length;
+      // ⭐ CLEANED FIRST, THROUGH THE SAME CHOKEPOINT THE READER USES, so this
+      // count and the walk's intake are the same number by construction rather
+      // than by two implementations agreeing today.
+      const taught = storyToSentences(String(e.story || ''));
+      const story = taught.join(' ');
+      words += story ? story.split(/\s+/).length : 0;
       if (e.licence) licensed++;
       for (const f of (Array.isArray(e.figures) ? e.figures : [])) {
         figures++;
@@ -185,13 +203,14 @@ function readCell(corpusRoot, subject, grade) {
           .test(label.replace(/\s+/g, ' '));
         if (label.length >= 3 && !placeholder) figuresLabelled++;
       }
-      for (const s of story.split(/(?<=[.!?])\s+/)) {
-        const t = s.trim();
-        if (!t) continue;
-        sentences++;
+      // ⚠ The split is no longer re-implemented here — `storyToSentences` above
+      // already applied the reader's own terminator rule, so a fourth copy of it
+      // cannot drift away from the three that matter.
+      for (const t of taught) {
         if (t.endsWith('?')) questions++;
         else if (t.endsWith('!')) exclamations++;
       }
+      sentences += taught.length;
     }
     const dialoguePct = sentences > 0
       ? ((questions + exclamations) / sentences) * 100
@@ -207,9 +226,10 @@ function readCell(corpusRoot, subject, grade) {
 /**
  * @param {object} curriculumModule — the loaded js/brain/curriculum.js exports
  * @param {string} corpusRoot — absolute path to corpora/academic
+ * @param {object} [opts] — `{ listCap }`. See the note on CAP below.
  * @returns {object} summary + the flagged cells, bounded for display
  */
-function computeCoverage(curriculumModule, corpusRoot) {
+function computeCoverage(curriculumModule, corpusRoot, opts) {
   const { GRADE_ORDER, PROSE_ACADEMIC_SUBJECTS, subjectsForGrade, subjectsOwedAt } = curriculumModule;
   if (!GRADE_ORDER || !subjectsOwedAt) return null;
 
@@ -241,7 +261,7 @@ function computeCoverage(curriculumModule, corpusRoot) {
       // over cells with REAL PROSE only — an empty cell is already reported as
       // empty, and counting it twice would inflate this into meaninglessness.
       if (c.figuresReachable === 0) noFigures.push(`${subject}/${grade}`);
-      // DIALOGUE.2 — cells whose prose carries no interrogative or exclamative
+      // Cells whose prose carries no interrogative or exclamative
       // punctuation at all. ⚠ This is a GENRE signal, not a defect count:
       // expository writing legitimately has none, and intent form is taught
       // elsewhere (see the note in `readCell`). Useful for spotting a cell that
@@ -276,7 +296,17 @@ function computeCoverage(curriculumModule, corpusRoot) {
     }
   } catch { /* corpus root unreadable — reported as zero, not as clean */ }
 
-  const CAP = 12;   // bounded per the dashboard law; the count is always exact
+  // ⛔ THE CAP IS A DISPLAY RULE, AND IT WAS ALSO SILENTLY A WORK RULE.
+  // 12 is correct for the dashboard — the bounded-panel law exists so a growing
+  // list cannot push a page over. But the CLI consumer has to ACT on these
+  // findings, and `… +103 more` is exactly the shape of a truncated list that
+  // reads as complete: the count beside it is honest, the list is not, and the
+  // 103 unnamed cells are the ones nobody works on. ⚠ `listCap` is opt-IN, so
+  // every existing caller (the server's state publish) keeps the bounded panel
+  // it was written for and nothing on the page changes.
+  const CAP = (opts && Number.isFinite(opts.listCap)) ? opts.listCap
+    : (opts && opts.listCap === Infinity) ? Infinity
+    : 12;
   return {
     cellsWalkRuns: run.length,
     needProse: run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length,
@@ -300,7 +330,7 @@ function computeCoverage(curriculumModule, corpusRoot) {
     avgWordsPerProseCell: (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length)
       ? Math.round(reachableWords / (run.length - run.filter((c) => !PROSE_ACADEMIC_SUBJECTS.has(c.split('/')[0])).length))
       : 0,
-    // ⛔ DIALOGUE.2 — the sentence-FORM mix, because a word count cannot say
+    // ⛔ The sentence-FORM mix, because a word count cannot say
     // whether a cell can teach her what a question looks like. Measured
     // 2026-09-01: the three boot corpora hold 842 sentences with ZERO `?` and
     // ZERO `!`, and the whole academic corpus runs 0.28% / 0.19%.

@@ -23,7 +23,7 @@
  *
  * KEEP: deleting this file would break 5+ documentation cross-references
  * and leave the plasticity teaching section in brain-equations.html
- * pointing at a missing file. Status audited R12.2 on 2026-04-13.
+ * pointing at a missing file. Status audited 2026-04-13.
  *
  * Manages an NxN weight matrix (flat Float64Array) and provides multiple
  * learning rules: Hebbian, STDP, and reward-modulated Hebbian.

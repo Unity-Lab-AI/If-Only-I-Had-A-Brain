@@ -1,11 +1,11 @@
 /**
- * server/loop-watchdog.js — LOOPNAME.8: eyes that are NOT on the loop.
+ * server/loop-watchdog.js — eyes that are NOT on the loop they measure.
  *
  * Everything the brain owns for diagnosis rides the main event loop: the admin
  * WebSocket, `/public-state.json`, the console ring, and the `[EventLoop] BLOCKED`
  * warn itself. That warn is a `setInterval` on the loop it is measuring, so it can
  * only ever print AFTER the block ends — a freeze that never returns leaves no
- * line at all. LOOPNAME.7 answered half of it by writing `.last-breadcrumb.json`
+ * line at all. The breadcrumb file answered half of it — `.last-breadcrumb.json`
  * synchronously on every phase change, which survives a hard freeze or an OOM
  * kill. But a breadcrumb is post-mortem: it says where she WAS, never that she is
  * stuck right now, and never for how long.
@@ -70,7 +70,7 @@ function emit(line) {
 // The phase label is a string, and marshalling strings through a SharedArrayBuffer
 // is all cost and no benefit when the main thread is already writing exactly this
 // on every phase change — synchronously, for exactly this reason. Reading
-// LOOPNAME.7's artifact reuses that work instead of duplicating it, and it is a
+// that breadcrumb reuses the work instead of duplicating it, and it is a
 // plain readFileSync from this thread, so a jammed parent loop cannot block it.
 function lastBreadcrumb() {
   try {

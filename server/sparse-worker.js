@@ -1,5 +1,5 @@
 /**
- * T18.4.e — Worker thread for sparse CSR matmul row-range.
+ * Worker thread for a sparse CSR matmul row-range.
  *
  * Runs in a Node worker_thread. Receives:
  *   - Shared CSR arrays (values, colIdx, rowPtr) via SharedArrayBuffer
@@ -92,7 +92,7 @@ function propagate(msg) {
 }
 
 /**
- * T17.2 — Hebbian update on a row-range of a sparse CSR matrix.
+ * Hebbian update on a row-range of a sparse CSR matrix.
  *
  *   ΔW_ij = η · post_i · pre_j
  *

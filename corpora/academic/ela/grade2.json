@@ -7,7 +7,7 @@
   "experiences": [
     {
       "theme": "sentence-linguistics-",
-      "story": "in linguistics and grammar, a sentence is a linguistic expression, such as the english example \"the quick brown fox jumps over the lazy dog\" . in traditional grammar, it is typically defined as a string of words that expresses a thought, or as a unit consisting of a subject and predicate. in non-functional linguistics it is typically defined as a maximal unit of syntactic structure such as a constituent. in functional linguistics, it is defined as a unit of written texts delimited by graphological features such as upper-case letters and markers such as periods, question marks, and exclamation marks. this notion contrasts with a curve, which is delimited by phonologic features such as pitch and loudness and markers such as pauses; and with a clause, which is a sequence of words that represents some process going on throughout time. a sentence can include words grouped meaningfully to express a statement, question, exclamation, request, command, or suggestion. a sentence is typically associated with a clause. a clause can either be a clause simplex or a clause complex. a clause simplex represents a single process going on through time. a clause complex represents a logical relation between two or more processes and is thus composed of two or more clause simplexes. a clause typically contains a predication structure with a subject noun phrase and a finite verb. although the subject is usually a noun phrase, other kinds of phrases work as well, and some languages allow subjects to be omitted. in the examples below, the subject of the outmost clause simplex is in italics and the subject of boiling is in square brackets. there is clause embedding in the second and third examples. [water] boils at 100 degrees celsius. it is quite interesting that [water] boils at 100 degrees celsius. the fact that [water] boils at 100 degrees celsius is quite interesting. there are two types of clauses: independent and non-independent/interdependent. an independent clause realises a speech act such as a statement, a question, a command or an offer. a non-independent clause does not realise any act. a non-independent clause is usually logically related to other non-independent clauses. together, they usually constitute a single independent clause . for that reason, non-independent clauses are also called interdependent. for instance, the non-independent clause because i have no friends is related to the non-independent clause i don't go out in i don't go out, because i have no friends. the whole clause complex is independent because it realises a statement. what is stated is the causal nexus between having no friend and not going out. when such a statement is acted out, the fact that the speaker doesn't go out is already established, therefore it cannot be stated. what is still open and under negotiation is the reason for that fact. the causal nexus is represented by the independent clause complex and not by the two interdependent clause simplexes. see also copula for the consequences of the verb to be on the theory of sentence structure. one scheme for classifying english sentences is by clause structure, the number and types of clauses in the sentence with finite verbs. a simple sentence consists of a single independent clause with no dependent clauses. a compound sentence consists of multiple independent clauses with no dependent clauses. these clauses are joined together using conjunctions, punctuation, or both. a complex sentence consists of one independent clause and at least one dependent clause. a compound-complex sentence consists of multiple independent clauses, at least one of which has at least one dependent clause. sentences can also be classified based on the speech act which they perform. for instance, the interrogative sentence \"can you pass me the salt?\" is not intended to express a question but rather to express a command. a major sentence is a regular sentence; it has a subject and a predicate, e.g. \"i have a ball.\" in this sentence, one can change the persons, e.g. \"we have a ball.\" however, a minor sentence is an irregular type of sentence that does not contain a main clause, e.g. \"mary!\", \"precisely so.\", \"next tuesday evening after it gets dark.\" other examples of minor sentences are headings, stereotyped expressions , emotional expressions , proverbs, etc. these can also include nominal sentences like \"the more, the merrier.\" these mostly omit a main verb for the sake of conciseness but may also do so in order to intensify the meaning around the nouns. sentences that comprise a single word are called word sentences, and the words themselves sentence words. the 1980s saw a renewed surge in interest in sentence length, primarily in relation to \"other syntactic phenomena\". one definition of the average sentence length of a prose passage is the ratio of the number of words to the number of sentences. the textbook mathematical linguistics, by andras kornai, suggests that in \"journalistic prose the median sentence length is above 15 words\". the average length of a sentence generally serves as a measure of sentence difficulty or complexity. in general, as the average sentence length increases, the complexity of the sentences also increases. another definition of \"sentence length\" is the number of clauses in the sentence, whereas the \"clause length\" is the number of phones in the clause. this countered the theory that \"authors may aim at an alternation of long and short sentences\". sentence length, as well as word difficulty, are both factors in the readability of a sentence; however, other factors, such as the presence of conjunctions, have been said to \"facilitate comprehension considerably\".",
+      "story": "in linguistics and grammar, a sentence is a linguistic expression, such as the english example \"the quick brown fox jumps over the lazy dog\" . in traditional grammar, it is typically defined as a string of words that expresses a thought, or as a unit consisting of a subject and predicate. in non-functional linguistics it is typically defined as a maximal unit of syntactic structure such as a constituent. in functional linguistics, it is defined as a unit of written texts delimited by graphological features such as upper-case letters and markers such as periods, question marks, and exclamation marks. this notion contrasts with a curve, which is delimited by phonologic features such as pitch and loudness and markers such as pauses; and with a clause, which is a sequence of words that represents some process going on throughout time. a sentence can include words grouped meaningfully to express a statement, question, exclamation, request, command, or suggestion. a sentence is typically associated with a clause. a clause can either be a clause simplex or a clause complex. a clause simplex represents a single process going on through time. a clause complex represents a logical relation between two or more processes and is thus composed of two or more clause simplexes. a clause typically contains a predication structure with a subject noun phrase and a finite verb. although the subject is usually a noun phrase, other kinds of phrases work as well, and some languages allow subjects to be omitted. in the examples below, the subject of the outmost clause simplex is in italics and the subject of boiling is in square brackets. there is clause embedding in the second and third examples. water boils at 100 degrees celsius. it is quite interesting that water boils at 100 degrees celsius. the fact that water boils at 100 degrees celsius is quite interesting. there are two types of clauses: independent and non-independent/interdependent. an independent clause realises a speech act such as a statement, a question, a command or an offer. a non-independent clause does not realise any act. a non-independent clause is usually logically related to other non-independent clauses. together, they usually constitute a single independent clause . for that reason, non-independent clauses are also called interdependent. for instance, the non-independent clause because i have no friends is related to the non-independent clause i don't go out in i don't go out, because i have no friends. the whole clause complex is independent because it realises a statement. what is stated is the causal nexus between having no friend and not going out. when such a statement is acted out, the fact that the speaker doesn't go out is already established, therefore it cannot be stated. what is still open and under negotiation is the reason for that fact. the causal nexus is represented by the independent clause complex and not by the two interdependent clause simplexes. see also copula for the consequences of the verb to be on the theory of sentence structure. one scheme for classifying english sentences is by clause structure, the number and types of clauses in the sentence with finite verbs. a simple sentence consists of a single independent clause with no dependent clauses. a compound sentence consists of multiple independent clauses with no dependent clauses. these clauses are joined together using conjunctions, punctuation, or both. a complex sentence consists of one independent clause and at least one dependent clause. a compound-complex sentence consists of multiple independent clauses, at least one of which has at least one dependent clause. sentences can also be classified based on the speech act which they perform. for instance, the interrogative sentence \"can you pass me the salt?\" is not intended to express a question but rather to express a command. a major sentence is a regular sentence; it has a subject and a predicate, e.g. \"i have a ball.\" in this sentence, one can change the persons, e.g. \"we have a ball.\" however, a minor sentence is an irregular type of sentence that does not contain a main clause, e.g. \"mary!\", \"precisely so.\", \"next tuesday evening after it gets dark.\" other examples of minor sentences are headings, stereotyped expressions , emotional expressions , proverbs, etc. these can also include nominal sentences like \"the more, the merrier.\" these mostly omit a main verb for the sake of conciseness but may also do so in order to intensify the meaning around the nouns. sentences that comprise a single word are called word sentences, and the words themselves sentence words. the 1980s saw a renewed surge in interest in sentence length, primarily in relation to \"other syntactic phenomena\". one definition of the average sentence length of a prose passage is the ratio of the number of words to the number of sentences. the textbook mathematical linguistics, by andras kornai, suggests that in \"journalistic prose the median sentence length is above 15 words\". the average length of a sentence generally serves as a measure of sentence difficulty or complexity. in general, as the average sentence length increases, the complexity of the sentences also increases. another definition of \"sentence length\" is the number of clauses in the sentence, whereas the \"clause length\" is the number of phones in the clause. this countered the theory that \"authors may aim at an alternation of long and short sentences\". sentence length, as well as word difficulty, are both factors in the readability of a sentence; however, other factors, such as the presence of conjunctions, have been said to \"facilitate comprehension considerably\".",
       "source": "en.wikipedia.org",
       "licence": "CC-BY-SA-3.0"
     },
@@ -59,7 +59,7 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/2/27/Full_stop.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A period or full stop",
-          "context": "because his father was away, he did not go to town . that seems to make the meanings clear. a period or full stop a period , full stop or full point , 3 4 looks like this: . a period or stop is used to end a sentence.",
+          "context": "because his father was away, he did not go to town . that seems to make the meanings clear. a period or full stop a period , full stop or full point , looks like this: . a period or stop is used to end a sentence.",
           "licence": "Public domain"
         },
         {
@@ -73,42 +73,42 @@
           "src": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Question_mark.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A question mark",
-          "context": "some people do not use oxford commas: \"cows, horses, pigs and sheep\". a question mark main article: question mark a question mark looks like this: ? question marks are used when writing a question, to make an inquiry, or to ask something.",
+          "context": "a comma that is used before the word and in a list is called an oxford comma . some people do not use oxford commas: \"cows, horses, pigs and sheep\". a question mark a question mark looks like this: ? question marks are used when writing a question, to make an inquiry, or to ask something.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/c/c7/Bang.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An exclamation mark",
-          "context": "question marks are used when writing a question, to make an inquiry, or to ask something. an exclamation mark an exclamation mark looks like this: ! an exclamation mark is used to write about a surprise or emotion , or to write the words a person shouts.",
+          "context": "an exclamation mark an exclamation mark looks like this: ! an exclamation mark is used to write about a surprise or emotion , or to write the words a person shouts.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/9/9d/Apostrophe.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "An apostrophe",
-          "context": "and also, an exclamation mark can be used with a question mark, to make a question more forceful. for example: \"what did you do that for?!\" she said angrily. an apostrophe main article: apostrophe an apostrophe looks like this: ' an apostrophe has two main uses: ownership change | change source an apostrophe can be used to show that something belongs to someone else.",
+          "context": "and also, an exclamation mark can be used with a question mark, to make a question more forceful. for example: \"what did you do that for?!\" she said angrily. an apostrophe an apostrophe looks like this: ' an apostrophe has two main uses: ownership change change source an apostrophe can be used to show that something belongs to someone else. if there is only one thing, the letter s is used after an apostrophe to show ownership.",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/3/3d/Cquote1_black.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "Left and ...",
-          "context": "among these are its , his , hers , theirs . for example: \"the bird flapped its wings,\" not \"the bird flapped it's wings.\" \"it is his bike,\" not \"it is his's bike.\" plurals do not need an apostrophe. right quotation marks quotation marks are used around the words that people have said, or direct speech .",
+          "context": "for example: \"the bird flapped its wings,\" not \"the bird flapped it's wings.\" \"it is his bike,\" not \"it is his's bike.\" plurals do not need an apostrophe. right quotation marks quotation marks are used around the words that people have said, or direct speech .",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Cquote2_black.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "right quotation marks",
-          "context": "for example: \" apples for sale,\" not \" apple's for sale.\" quotation marks change | change source left and ... right quotation marks quotation marks are used around the words that people have said, or direct speech . for example: hallie said, \"mimi, please wash the dishes .\" \"today,\" said our teacher, \"is the first day of the rest of your lives.\" example: \"after recording 'beat it', michael jackson went on to record several more hits\".",
+          "context": "for example: \" apples for sale,\" not \" apple's for sale.\" quotation marks change change source left and ... right quotation marks quotation marks are used around the words that people have said, or direct speech . for example: hallie said, \"mimi, please wash the dishes .\" \"today,\" said our teacher, \"is the first day of the rest of your lives.\" example: \"after recording 'beat it', michael jackson went on to record several more hits\".",
           "licence": "Public domain"
         },
         {
           "src": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Colon.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "A colon",
-          "context": "she said, \"hello, world.\" \"hello, world!\" she exclaimed. \"is anybody out there?\" she asked into the void. a colon main article: colon this is a colon : : colons can be used at the beginning of a list. \" this is a list of animals: birds, cats, insects, pigs, and sheep.",
+          "context": "she said, \"hello, world.\" \"hello, world!\" she exclaimed. \"is anybody out there?\" she asked into the void. a colon this is a colon : : colons can be used at the beginning of a list. \" this is a list of animals: birds, cats, insects, pigs, and sheep.",
           "licence": "Public domain"
         },
         {
@@ -1377,16 +1377,7 @@
       "theme": "synonym",
       "story": "a synonym is a word with the same meaning as another word. sick and ill child and kid baby and infant rich and wealthy make and create student and pupil car and automobile scared and frightened synonyms can be nouns, verbs, adverbs or adjectives, but both words must be of the same part of speech. that means, only a noun can be a synonym of another noun, only a verb can be a synonym of another verb, and so on. one can find sets of synonyms in a thesaurus, which is a book listing groups of related words. some words are near-synonyms, which have similar but not exactly the same meaning. the word is derived from latin from the greek word sunonumon, neuter form of the adjective sunonumos, from sun- meaning 'with' + onoma meaning 'name' in the greek language. the meaning of the word has remained unchanged for all these centuries. there is even a saying, dating to 1892, once a synonym, always a synonym. the word has been taught to generations of english-language students and is commonly known by the public. many other languages have a similar word for synonym with the same or similar spelling.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/6/6c/Wiki_letter_w.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "\"supplement to the burmese amber checklist and bibliography, 2020.\" palaeoentomology 4.1 : 057-076. \"assessing farsi.\" the companion to language assessment 4 : 1790-1798. this short article can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "opposite-semantics-",
@@ -1423,13 +1414,6 @@
       "licence": "CC-BY-SA-3.0",
       "figures": [
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/b/b4/Ambox_important.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this article has multiple issues. please help improve it or discuss these issues on the talk page .",
-          "licence": "Public domain"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/b/b1/US_Navy_021211-N-4528H-004_Partnership_in_Education_Communitee_Program.jpg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
           "caption": "",
@@ -1437,17 +1421,10 @@
           "licence": "Public domain"
         },
         {
-          "src": "https://upload.wikimedia.org/wikipedia/en/9/99/Question_book-new.svg?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "icon",
-          "caption": "",
-          "context": "so, the reader goes through the knowledge that they already have, they think about what they want to know or the knowledge they want to gain, and finally they think about what they have learnt after reading. this allows readers to reflect on the prior knowledge they have, and also to recognize what knowledge they have gained and comprehended from their reading. this section needs more citations . please help improve this section by adding citations to reliable sources .",
-          "licence": "Cc-by-sa-3.0"
-        },
-        {
           "src": "https://upload.wikimedia.org/wikipedia/commons/5/50/Running_Record_Codes.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
           "alt": "",
-          "caption": "[ 49 ] Running Record Codes",
-          "context": "unsourced material may be challenged and removed . 49 running record codes a popular assessment undertaken in numerous primary schools around the world are running records. running records are a helpful tool in regard to reading comprehension.",
+          "caption": "Running Record Codes",
+          "context": "formal assessments are district or state assessments that evaluates all students on important skills and concepts. summative assessments typically, are assessments given at the end of a unit to measure a student's learning. running record codes a popular assessment undertaken in numerous primary schools around the world are running records. running records are a helpful tool in regard to reading comprehension.",
           "licence": "CC BY-SA 4.0"
         }
       ]
@@ -1462,16 +1439,7 @@
       "theme": "nonfiction",
       "story": "non-fiction is writing about facts. although non-fiction is supposed to be truthful, sometimes it may not be. people normally assume that authors mean to be truthful, but they might make mistakes. writing is normally split into two parts: non-fiction and fiction. as well as non-fiction books, there are also pictures and films.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article about literature can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "fable",
@@ -1483,31 +1451,13 @@
       "theme": "poetry",
       "story": "poetry is written, spoken or sung language that is used in stronger or more original ways than prose is used. poetry uses the meanings of words as prose does; but it also uses the sounds of words as if they were music, especially rhymes, other repeating sounds, and rhythms . poetry arranges words and groups of words to make repetitions and parallelisms. poetry uses figures of speech, ellipses and delayed identification to suggest that there is more meaning in the language. some people believe that poetry began when language began. they think it is probably \"as old as history and older, present wherever religion is present.\" the english words \"poetry,\" \"poet,\" and \"poem\" first appeared in english in the 14th century. they come from the latin word poeta, which itself probably comes from poiein, a greek word that means \"to make.\" there are three major kinds of poetry: lyric, narrative, and dramatic. lyric poetry tends to be brief and is often about emotions. narrative poetry tells a story with a plot. dramatic poetry can be performed as a play. a poem can be as short as a few words or as long as a book. a one-line poem is called a monostich. a poem that is as long as a book is an epic. poems are often printed on the page as lines and groups of lines called stanzas. there are many different \"poetic forms\" or ways to shape a poem on the printed page or in the ear of the person who hears it. some forms are: the sonnet, haiku, the ballad, the stev, the prose poem, the ode, free verse, blank verse, limerick, and nursery rhymes.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "this short article about literature can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "capitalization",
       "story": "capitalization , or capitalisation , is a process to make one letter or more uppercase. the first letter of a sentence is capitalised in many languages, as are the first letters of proper nouns such as names of people and places. in german, however, all nouns are capitalized. there are many ways to use capitalization and they have names. \"the quick brown fox jumps over the lazy dog.\" sentence case is the standard case used in english prose and in many other languages. only the first word is capitalized, except for proper nouns and other words which are generally capitalized by a more specific rule. \"the quick brown fox jumps over the lazy dog.\" when something is written in title case , all words are capitalized, except for certain minor words, such as \"the\", \"of\" or \"and\". \"the quick brown fox jumps over the lazy dog.\" when something is written in all caps , every single letter is uppercase, with no exceptions. camel case is the practice of writing compound words or phrases so that each next word or abbreviation is capitalized. it can either start with a lowercase or uppercase letter. common examples are powerpoint or iphone.",
       "source": "simple.wikipedia.org",
-      "licence": "CC-BY-SA-3.0",
-      "figures": [
-        {
-          "src": "https://upload.wikimedia.org/wikipedia/commons/1/1d/P_literature.svg?utm_source=simple.wikipedia.org&utm_campaign=imageinfo&utm_content=original",
-          "alt": "",
-          "caption": "",
-          "context": "common examples are powerpoint or iphone . this short article about literature can be made longer. you can help wikipedia by adding to it .",
-          "licence": "CC BY-SA 3.0"
-        }
-      ]
+      "licence": "CC-BY-SA-3.0"
     },
     {
       "theme": "spelling",

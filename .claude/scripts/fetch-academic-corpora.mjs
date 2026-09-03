@@ -138,13 +138,34 @@ const TOPICS = {
     // Grade 1 — living things + sky
     grade1: ['Season', 'Rain', 'Cloud', 'Sky', 'Insect', 'Fish', 'Bird', 'Plant'],
     // Grade 2 — habitats + states of matter
-    grade2: ['Habitat', 'Life cycle', 'Magnet', 'Solid', 'Liquid', 'Gas', 'Plant', 'Animal'],
+    grade2: ['Habitat', 'Life cycle', 'Magnet', 'Solid', 'Liquid', 'Gas', 'Plant', 'Animal',
+      'Matter', 'State of matter', 'Melting', 'Freezing', 'Evaporation', 'Condensation', 'Water', 'Ice',
+      'Steam', 'Temperature', 'Thermometer', 'Force', 'Motion', 'Friction', 'Wheel', 'Lever', 'Seed', 'Root',
+      'Leaf', 'Flower', 'Insect', 'Butterfly', 'Frog', 'Bird', 'Fish', 'Mammal', 'Reptile', 'Desert',
+      'Forest', 'Ocean', 'Pond', 'Weather', 'Cloud', 'Wind', 'Soil', 'Rock (geology)', 'Sun', 'Moon', 'Star'],
     // Grade 3 — ecosystems + simple physical science
-    grade3: ['Ecosystem', 'Food chain', 'Rock (geology)', 'Soil', 'Weather', 'Energy', 'Force', 'Matter'],
+    grade3: ['Ecosystem', 'Food chain', 'Rock (geology)', 'Soil', 'Weather', 'Energy', 'Force', 'Matter',
+      'Food web', 'Autotroph', 'Herbivore', 'Carnivore', 'Omnivore', 'Decomposer', 'Habitat', 'Adaptation',
+      'Fossil', 'Erosion', 'Mineral', 'Volcano', 'Earthquake', 'Water cycle', 'Evaporation', 'Condensation',
+      'Precipitation', 'Climate', 'Temperature', 'Thermometer', 'Magnet', 'Magnetism', 'Friction', 'Gravity',
+      'Motion', 'Simple machine', 'Lever', 'Pulley', 'Wheel and axle', 'Inclined plane', 'Sound', 'Light',
+      'Shadow', 'Reflection (physics)', 'Heat', 'Electrical conductor', 'Insulator (electricity)', 'Cell (biology)'],
     // Grade 4 — energy, space, simple machines
-    grade4: ['Solar System', 'Planet', 'Electricity', 'Magnetism', 'Sound', 'Light', 'Energy', 'Ecosystem'],
+    grade4: ['Solar System', 'Planet', 'Electricity', 'Magnetism', 'Sound', 'Light', 'Energy', 'Ecosystem',
+      'Star', 'Moon', 'Earth', 'Sun', 'Orbit', 'Gravity', 'Eclipse', 'Lunar phase', 'Comet', 'Asteroid',
+      'Galaxy', 'Telescope', 'Electric current', 'Electrical network', 'Electric battery', 'Electrical conductor',
+      'Insulator (electricity)', 'Static electricity', 'Magnet', 'Compass', 'Wave', 'Frequency', 'Vibration',
+      'Echo', 'Reflection (physics)', 'Refraction', 'Prism (optics)', 'Rainbow', 'Color vision', 'Lens',
+      'Simple machine', 'Lever', 'Pulley', 'Renewable energy', 'Fossil fuel', 'Erosion', 'Weathering',
+      'Rock cycle', 'Food web', 'Adaptation'],
     // Grade 5 — cells, matter, systems (bridge to G6)
-    grade5: ['Cell (biology)', 'Matter', 'Chemical reaction', 'Water cycle', 'Ecosystem', 'Force', 'Energy', 'Solar System'],
+    grade5: ['Cell (biology)', 'Matter', 'Chemical reaction', 'Water cycle', 'Ecosystem', 'Force', 'Energy', 'Solar System',
+      'Cell nucleus', 'Cell membrane', 'Tissue (biology)', 'Organ (biology)', 'Organ system', 'Microscope',
+      'Bacteria', 'Fungus', 'Photosynthesis', 'Cellular respiration', 'Atom', 'Molecule', 'Chemical element',
+      'Mixture', 'Solution (chemistry)', 'Physical change', 'State of matter', 'Density', 'Buoyancy', 'Gravity',
+      'Motion', 'Speed', 'Acceleration', 'Simple machine', 'Energy transformation', 'Kinetic energy',
+      'Potential energy', 'Heat', 'Light', 'Sound', 'Electricity', 'Magnetism', 'Weather', 'Climate',
+      'Erosion', 'Fossil', 'Adaptation', 'Natural selection', 'Food web', 'Biome'],
     // Grade 6 — Earth & Space Science
     grade6: ['Earth', 'Plate tectonics', 'Rock (geology)', 'Weather', 'Water cycle', 'Volcano', 'Earthquake', 'Mineral', 'Erosion', 'Atmosphere of Earth', 'Solar System', 'Planet', 'Moon', 'Ocean', 'Climate', 'Fossil', 'Soil', 'Natural disaster'],
     // Grade 7 — Life Science
@@ -160,22 +181,55 @@ const TOPICS = {
     // Grade 12 — Anatomy / Physiology & Environmental Science
     grade12: ['Human body', 'Nervous system', 'Circulatory system', 'Respiratory system', 'Immune system', 'Human skeleton', 'Muscle', 'Brain', 'Ecology', 'Climate change', 'Biodiversity', 'Pollution', 'Ecosystem', 'Carbon cycle', 'Renewable energy', 'Endocrine system'],
     // College 1 — general science gen-ed (scientific method + the disciplines)
-    college1: ['Scientific method', 'Biology', 'Chemistry', 'Physics', 'Scientific theory', 'Experiment', 'Hypothesis', 'Observation'],
+    college1: ['Scientific method', 'Biology', 'Chemistry', 'Physics', 'Scientific theory', 'Experiment', 'Hypothesis', 'Observation',
+      'Science', 'Empirical evidence', 'Peer review', 'Reproducibility', 'Falsifiability', 'Measurement',
+      'Unit of measurement', 'Data analysis', 'Statistics', 'Control variable', 'Variable and attribute (research)',
+      'Sampling (statistics)', 'Correlation', 'Causality', 'Scientific modelling', 'Laboratory', 'Ethics',
+      'History of science', 'Earth science', 'Astronomy', 'Geology', 'Ecology', 'Scientific literacy',
+      'Scientific consensus'],
     // College 3 — Neuroscience begins (toward the brain-sim research)
     // CORPUSGAP (2026-08-31) — C2 was the one hole in an otherwise complete
     // science spine (18 of 19 declared). It is the bridge year: general science
     // hands off to the neuroscience track C3/C4/grad/phd already carry.
-    college2: ['Cell biology', 'Genetics', 'Organic chemistry', 'Thermodynamics', 'Electromagnetism', 'Molecular biology', 'Physiology', 'Biochemistry'],
-    college3: ['Neuroscience', 'Neuron', 'Brain', 'Nervous system', 'Cognition', 'Cerebral cortex'],
+    college2: ['Cell biology', 'Genetics', 'Organic chemistry', 'Thermodynamics', 'Electromagnetism', 'Molecular biology', 'Physiology', 'Biochemistry',
+      'Cell (biology)', 'Mitosis', 'Meiosis', 'DNA', 'RNA', 'Protein', 'Enzyme', 'Metabolism', 'Chemical bond',
+      'Molecule', 'Organic compound', 'Carbon', 'Functional group', 'Stereochemistry', 'Reaction mechanism',
+      'Entropy', 'Enthalpy', 'Heat', 'Energy', 'Electric field', 'Magnetic field', "Maxwell's equations",
+      'Gene expression', 'Homeostasis', 'Cell signaling', 'Protein folding'],
+    college3: ['Neuroscience', 'Neuron', 'Brain', 'Nervous system', 'Cognition', 'Cerebral cortex',
+      'Neurotransmitter', 'Synapse', 'Action potential', 'Membrane potential', 'Ion channel', 'Axon',
+      'Dendrite', 'Glia', 'Myelin', 'Neural circuit', 'Central nervous system', 'Peripheral nervous system',
+      'Spinal cord', 'Cerebellum', 'Hippocampus', 'Amygdala', 'Thalamus', 'Basal ganglia', 'Prefrontal cortex',
+      'Visual cortex', 'Sensory neuron', 'Motor neuron', 'Reflex', 'Neurotransmission', 'Neuroanatomy',
+      'Electroencephalography', 'Functional magnetic resonance imaging', 'Perception', 'Attention', 'Memory'],
     // College 4 — Neuroscience deepens
-    college4: ['Neuroscience', 'Cerebral cortex', 'Synapse', 'Neural network', 'Memory', 'Action potential'],
+    college4: ['Neuroscience', 'Cerebral cortex', 'Synapse', 'Neural network', 'Memory', 'Action potential',
+      'Synaptic plasticity', 'Long-term potentiation', 'Long-term depression', 'Hebbian theory',
+      'Neuroplasticity', 'Neural coding', 'Neural oscillation', 'Working memory', 'Episodic memory',
+      'Hippocampus', 'Cerebellum', 'Basal ganglia', 'Prefrontal cortex', 'Visual cortex', 'Receptive field',
+      'Neural circuit', 'Neurotransmitter', 'Dopamine', 'Serotonin', 'Acetylcholine', 'Glutamic acid', 'GABA',
+      'Reinforcement learning', 'Cognitive neuroscience', 'Computational neuroscience',
+      'Brain–computer interface'],
     // Grad — Computational neuroscience (the brain-simulation domain)
     // ⚠ WIDENED 2026-09-01: 5 topics produced 9,811 words against a 20,000
     // band floor. The cap was never the limit here — the TOPIC LIST was.
-    grad: ['Computational neuroscience', 'Neural network', 'Neuron', 'Synaptic plasticity', 'Hebbian theory', 'Neuroscience', 'Brain', 'Nervous system', 'Neurotransmitter', 'Action potential', 'Neural circuit', 'Neuroplasticity', 'Cognitive neuroscience', 'Systems neuroscience', 'Membrane potential', 'Dendrite'],
+    grad: ['Computational neuroscience', 'Neural network', 'Neuron', 'Synaptic plasticity', 'Hebbian theory', 'Neuroscience', 'Brain', 'Nervous system', 'Neurotransmitter', 'Action potential', 'Neural circuit', 'Neuroplasticity', 'Cognitive neuroscience', 'Systems neuroscience', 'Membrane potential', 'Dendrite',
+      'Hodgkin–Huxley model', 'Biological neuron model', 'Spiking neural network', 'Neural coding',
+      'Attractor network', 'Hopfield network', 'Recurrent neural network', 'Reinforcement learning',
+      'Unsupervised learning', 'Supervised learning', 'Backpropagation',
+      'Spike-timing-dependent plasticity', 'Long-term potentiation', "Oja's rule",
+      'Principal component analysis', 'Information theory', 'Entropy (information theory)',
+      'Mutual information', 'Bayesian inference', 'Predictive coding', 'Free energy principle',
+      'Dynamical system', 'Attractor', 'Bifurcation theory'],
     // PhD — Computational neuroscience research (she builds a brain)
     // ⚠ WIDENED 2026-09-01: 6 topics -> 17,371 words, under the 20,000 floor.
-    phd: ['Computational neuroscience', 'Hebbian theory', 'Spiking neural network', 'Neural coding', 'Synaptic plasticity', 'Cerebral cortex', 'Long-term potentiation', 'Neural oscillation', 'Connectome', 'Brain simulation', 'Artificial neural network', 'Unsupervised learning', 'Attractor network', 'Predictive coding', 'Consciousness', 'Integrated information theory'],
+    phd: ['Computational neuroscience', 'Hebbian theory', 'Spiking neural network', 'Neural coding', 'Synaptic plasticity', 'Cerebral cortex', 'Long-term potentiation', 'Neural oscillation', 'Connectome', 'Brain simulation', 'Artificial neural network', 'Unsupervised learning', 'Attractor network', 'Predictive coding', 'Consciousness', 'Integrated information theory',
+      'Free energy principle', 'Global workspace theory', 'Higher-order theories of consciousness',
+      'Neural correlates of consciousness', 'Binding problem', 'Bayesian approaches to brain function',
+      'Mind uploading', 'Blue Brain Project', 'Human Brain Project', 'Neuromorphic computing',
+      'Spike-timing-dependent plasticity', 'Hopfield network', 'Boltzmann machine', 'Self-organizing map',
+      'Dimensionality reduction', 'Manifold hypothesis', 'Self-organized criticality', 'Synchronization',
+      'Complex system', 'Emergence'],
   },
   social: {
     // Kindergarten — self, family, community
@@ -209,24 +263,34 @@ const TOPICS = {
     // Grade 3 — local government + geography
     grade3: ['Community', 'Geography', 'Map', 'Government', 'Native Americans in the United States', 'Continent',
       'Climate', 'Natural resource', 'Agriculture', 'Trade', 'Local government',
-      'Election', 'Immigration', 'Landform', 'Latitude', 'Longitude', 'Economy', 'Culture'],
+      'Election', 'Immigration', 'Landform', 'Latitude', 'Longitude', 'Economy', 'Culture',
+      'Neighbourhood', 'City', 'Town', 'Village', 'Suburb', 'Rural area', 'Urban area', 'Demography',
+      'Citizenship', 'Law', 'Court', 'Mayor', 'Governor', 'Tax', 'Public service', 'School', 'Library',
+      'Transport', 'Communication', 'Ocean', 'Mountain', 'River', 'Desert', 'Plain', 'Weather', 'Season',
+      'Farm', 'Factory', 'Market (economics)', 'Money', 'Goods and services', 'History'],
     // Grade 4 — US states + regions + exploration
     grade4: ['United States', 'State (polity)', 'Geography', 'Region', 'Exploration', 'Native Americans in the United States',
       'Great Plains', 'Appalachian Mountains', 'Mississippi River', 'Rocky Mountains',
       'Great Lakes', 'Westward expansion', 'Louisiana Purchase', 'Oregon Trail',
-      'Capital city', 'Natural resource', 'Climate', 'Industry'],
+      'Capital city', 'Natural resource', 'Climate', 'Industry',
+      'Colonial history of the United States', 'American Revolution', 'Thirteen Colonies',
+      'Constitution of the United States', 'American Civil War', 'Slavery in the United States',
+      'Underground Railroad', 'Transcontinental railroad', 'Gold rush', 'Homestead Acts', 'Trail of Tears',
+      'Lewis and Clark Expedition', 'Manifest destiny', 'Frontier', 'Settler', 'Territory', 'County',
+      'Desert', 'Plateau', 'Prairie', 'Coast', 'Peninsula', 'Drainage basin', 'Drought', 'Tornado',
+      'Atlantic hurricane', 'Agriculture', 'Mining', 'Manufacturing', 'Tourism', 'Transport'],
     // Grade 5 — early US history (bridge to G6 ancient civ)
     grade5: ['United States', 'American Revolution', 'Thirteen Colonies', 'Christopher Columbus', 'Exploration', 'Colonialism',
-      'Declaration of Independence', 'United States Constitution', 'George Washington',
+      'United States Declaration of Independence', 'United States Constitution', 'George Washington',
       'Benjamin Franklin', 'Thomas Jefferson', 'Boston Tea Party', 'Slavery in the United States',
-      'Pilgrims (Plymouth Colony)', 'Jamestown, Virginia', 'Bill of Rights',
+      'Pilgrims (Plymouth Colony)', 'Jamestown, Virginia', 'United States Bill of Rights',
       'American Civil War', 'Abraham Lincoln'],
     // Grade 6 — Ancient Civilizations / World Geography
     grade6: ['Ancient Egypt', 'Ancient Greece', 'Ancient Rome', 'Mesopotamia', 'Geography', 'Continent', 'Civilization', 'River', 'Ancient China', 'Ancient India', 'Maya civilization', 'Inca Empire', 'Aztecs', 'Pharaoh', 'Pyramid', 'Empire'],
     // Grade 7 — Medieval to Early Modern World History
     grade7: ['Middle Ages', 'Renaissance', 'Roman Empire', 'Age of Discovery', 'Black Death', 'Feudalism', 'Crusades', 'Byzantine Empire', 'Mongol Empire', 'Ottoman Empire', 'Reformation', 'Trade route', 'Knight', 'Castle'],
     // Grade 8 — US History to 1900
-    grade8: ['American Revolution', 'United States Constitution', 'American Civil War', 'Declaration of Independence', 'Industrial Revolution', 'Reconstruction era', 'Thirteen Colonies', 'George Washington', 'Abraham Lincoln', 'Slavery', 'Manifest destiny', 'Westward expansion'],
+    grade8: ['American Revolution', 'United States Constitution', 'American Civil War', 'United States Declaration of Independence', 'Industrial Revolution', 'Reconstruction era', 'Thirteen Colonies', 'George Washington', 'Abraham Lincoln', 'Slavery', 'Manifest destiny', 'Westward expansion'],
     // Grade 9 — Civics & Geography
     grade9: ['Government', 'Democracy', 'United States Constitution', 'Separation of powers', 'Citizenship', 'Election', 'Federalism', 'United States Bill of Rights', 'Supreme Court of the United States', 'United States Congress', 'Branches of government'],
     // Grade 10 — Modern World History
@@ -234,7 +298,13 @@ const TOPICS = {
     // Grade 11 — Modern US History
     grade11: ['Great Depression', 'World War II', 'Civil rights movement', 'Cold War', 'Vietnam War', 'New Deal', 'Progressive Era', 'World War I', 'Roaring Twenties', 'Civil Rights Act of 1964', 'Watergate scandal'],
     // Grade 12 — US Government & Economics / Globalization
-    grade12: ['Federal government of the United States', 'Supreme Court of the United States', 'United States Congress', 'President of the United States', 'Political party', 'Democracy', 'Foreign policy', 'Globalization', 'United Nations', 'Rule of law', 'Constitution'],
+    grade12: ['Federal government of the United States', 'Supreme Court of the United States', 'United States Congress', 'President of the United States', 'Political party', 'Democracy', 'Foreign policy', 'Globalization', 'United Nations', 'Rule of law', 'Constitution',
+      'Separation of powers', 'Judicial review', 'United States Bill of Rights', 'Civil liberties',
+      'Civil and political rights', 'Suffrage', 'Electoral college', 'Legislature', 'Executive (government)',
+      'Judiciary', 'Bureaucracy', 'Public policy', 'Lobbying', 'Advocacy group', 'Public opinion', 'Mass media',
+      'Propaganda', 'Diplomacy', 'Treaty', 'International law', 'NATO', 'World Trade Organization',
+      'Human rights', 'Sovereignty', 'Nationalism', 'Capitalism', 'Socialism', 'Tax',
+      'United States federal budget'],
     // ⛔ CORPUSGAP (2026-08-31) — SOCIAL IS A CORE SUBJECT AND THE MAP STOPPED
     //   AT GRADE 12. The scope-sequence's own line says the grad/PhD roster is
     //   "ela math science social art life major research" — social runs the
@@ -242,14 +312,36 @@ const TOPICS = {
     //   trained on nothing. The scope-sequence names the band: "Gen-ed social
     //   science: psychology, sociology, ethics electives".
     // College 1 — the social sciences, introduced
-    college1: ['Sociology', 'Anthropology', 'Social science', 'Political science', 'Ethics', 'Culture', 'Society', 'Psychology'],
+    college1: ['Sociology', 'Anthropology', 'Social science', 'Political science', 'Ethics', 'Culture', 'Society', 'Psychology',
+      'Social structure', 'Institution', 'Social change', 'Social movement', 'Sociological theory',
+      'Émile Durkheim', 'Max Weber', 'Karl Marx', 'Symbolic interactionism', 'Structural functionalism',
+      'Conflict theories', 'Cultural anthropology', 'Kinship', 'Ethnography', 'Archaeology',
+      'Linguistic anthropology', 'Political philosophy', 'Democracy', 'State (polity)',
+      'Power (political science)', 'Authority', 'Political legitimacy', 'Ideology', 'Social contract',
+      'Justice', 'Morality'],
     // College 2 — how groups actually work
-    college2: ['Social psychology', 'Socialization', 'Social class', 'Social norm', 'Religion', 'Family', 'Community', 'Social group'],
+    college2: ['Social psychology', 'Socialization', 'Social class', 'Social norm', 'Religion', 'Family', 'Community', 'Social group',
+      'Identity (social science)', 'Role', 'Social status', 'Deviance (sociology)', 'Social control',
+      'Conformity', 'Prejudice', 'Discrimination', 'Stereotype', 'Race (human categorization)', 'Ethnicity',
+      'Gender', 'Human sexuality', 'Social stratification', 'Social mobility', 'Education', 'Economy',
+      'Bureaucracy', 'Organization', 'Institution', 'Subculture', 'Ritual', 'Symbol', 'Language',
+      'Value (ethics)', 'Belief'],
     // College 3 — the large-scale forces
-    college3: ['Globalization', 'Urbanization', 'Human migration', 'Social inequality', 'Public health', 'Natural environment', 'Human rights', 'Poverty'],
+    college3: ['Globalization', 'Urbanization', 'Human migration', 'Social inequality', 'Public health', 'Natural environment', 'Human rights', 'Poverty',
+      'Development economics', 'Sustainable development', 'Climate change', 'Environmental sociology',
+      'Demography', 'Population growth', 'Refugee', 'Diaspora', 'Colonialism', 'Postcolonialism',
+      'Neoliberalism', 'International inequality', 'Food security', 'Water scarcity', 'Epidemic', 'Pandemic',
+      'Urban planning', 'Slum', 'Gentrification', 'Labour economics', 'Informal economy',
+      'Non-governmental organization', 'Aid', 'Development aid', 'Social justice', 'Civil society'],
     // College 4 — how social claims are actually made and checked
     // ⚠ WIDENED 2026-09-01: 8 topics -> 16,404 words, under the 20,000 floor.
-    college4: ['Social research', 'Statistics', 'Survey methodology', 'Ethnography', 'Case study', 'Qualitative research', 'Quantitative research', 'Bias', 'Sampling (statistics)', 'Correlation', 'Causality', 'Experiment', 'Observational study', 'Content analysis', 'Reliability (statistics)', 'Validity (statistics)'],
+    college4: ['Social research', 'Statistics', 'Survey methodology', 'Ethnography', 'Case study', 'Qualitative research', 'Quantitative research', 'Bias', 'Sampling (statistics)', 'Correlation', 'Causality', 'Experiment', 'Observational study', 'Content analysis', 'Reliability (statistics)', 'Validity (statistics)',
+      'Research design', 'Hypothesis', 'Operationalization', 'Measurement', 'Construct validity',
+      'Internal validity', 'External validity', 'Random assignment', 'Treatment and control groups',
+      'Confounding', 'Regression analysis', 'Descriptive statistics', 'Statistical inference',
+      'Statistical significance', 'P-value', 'Effect size', 'Confidence interval', 'Interview', 'Focus group',
+      'Participant observation', 'Grounded theory', 'Coding (social sciences)',
+      'Triangulation (social science)', 'Research ethics', 'Institutional review board'],
     // Grad — theory and the philosophy under the method
     grad: ['Social theory', 'Critical theory', 'Structuralism', 'Philosophy of science', 'Epistemology', 'Ethics', 'Sociology', 'Anthropology'],
     // PhD — the discipline looking at itself
@@ -264,7 +356,12 @@ const TOPICS = {
     // Grade 11 — Macroeconomics
     grade11: ['Macroeconomics', 'Gross domestic product', 'Inflation', 'Unemployment', 'Money', 'Tax', 'Recession', 'Economic growth', 'Fiscal policy', 'Monetary policy', 'Central bank', 'Interest rate'],
     // Grade 12 — AP / International Economics
-    grade12: ['International trade', 'Exchange rate', 'Globalization', 'Comparative advantage', 'Stock market', 'Investment', 'Economic system', 'Capitalism', 'Free market', 'Gross domestic product', 'Economic growth'],
+    grade12: ['International trade', 'Exchange rate', 'Globalization', 'Comparative advantage', 'Stock market', 'Investment', 'Economic system', 'Capitalism', 'Free market', 'Gross domestic product', 'Economic growth',
+      'Macroeconomics', 'Microeconomics', 'Supply and demand', 'Market (economics)', 'Price',
+      'Competition (economics)', 'Monopoly', 'Oligopoly', 'Inflation', 'Deflation', 'Unemployment',
+      'Business cycle', 'Recession', 'Monetary policy', 'Fiscal policy', 'Central bank', 'Federal Reserve',
+      'Interest rate', 'Money supply', 'Bond (finance)', 'Stock', 'Tariff', 'Balance of trade', 'Currency',
+      'Foreign exchange market', 'Opportunity cost', 'Scarcity', 'Market failure', 'Externality', 'Public good'],
     // ⛔ College 1 removed 2026-09-01 — `economics` RETIRES at grade12, so this
     // cell never ran. Its gen-ed economics content lives in `genered/college2`.
   },
@@ -276,16 +373,35 @@ const TOPICS = {
     // Grade 11 — Abnormal / Clinical
     grade11: ['Mental disorder', 'Major depressive disorder', 'Anxiety', 'Psychotherapy', 'Stress (biology)', 'Cognitive bias', 'Bipolar disorder', 'Schizophrenia', 'Phobia', 'Psychiatry', 'Coping'],
     // Grade 12 — AP Psychology capstone
-    grade12: ['Neuron', 'Nervous system', 'Brain', 'Cognition', 'Perception', 'Learning', 'Memory', 'Personality psychology', 'Consciousness', 'Behaviorism', 'Sigmund Freud'],
+    grade12: ['Neuron', 'Nervous system', 'Brain', 'Cognition', 'Perception', 'Learning', 'Memory', 'Personality psychology', 'Consciousness', 'Behaviorism', 'Sigmund Freud',
+      'Psychology', 'Cognitive psychology', 'Developmental psychology', 'Social psychology',
+      'Clinical psychology', 'Neuroscience', 'Synapse', 'Neurotransmitter', 'Sensory processing', 'Attention',
+      'Classical conditioning', 'Operant conditioning', 'Reinforcement', 'Long-term memory',
+      'Short-term memory', 'Forgetting', 'Language acquisition', 'Intelligence', 'Emotion', 'Motivation',
+      'Sleep', 'Dream', 'Mental disorder', 'Psychotherapy', 'Ivan Pavlov', 'B. F. Skinner', 'Jean Piaget',
+      'Carl Jung', 'Abraham Maslow', 'Cognitive bias'],
     // ⛔ College 1-2 removed 2026-09-01 — `psychology` RETIRES at grade12, so
     // neither cell ever ran. The cognitive-science thread continues in
     // `genered/college2` and, at depth, in `research/phd`.
   },
   civics: {
     // Grade 7 — Foundations of Government
-    grade7: ['Government', 'Democracy', 'Constitution', 'Law', 'Citizenship', 'Voting', 'Rights', 'Justice', 'Court', 'Election', 'Political party', 'Citizen'],
+    grade7: ['Government', 'Democracy', 'Constitution', 'Law', 'Citizenship', 'Voting', 'Rights', 'Justice', 'Court', 'Election', 'Political party', 'Citizen',
+      'Civics', 'Rule of law', 'Legislature', 'Executive (government)', 'Judiciary', 'Separation of powers',
+      'Federalism', 'Republic', 'Monarchy', 'Dictatorship', 'Suffrage', 'Referendum', 'Jury', 'Trial',
+      'Crime', 'Punishment', 'Constitution of the United States', 'Local government', 'State government',
+      'Public service', 'Tax', 'Community', 'Volunteering', 'Civil society'],
     // Grade 8 — US Constitution & Federalism
-    grade8: ['United States Constitution', 'United States Bill of Rights', 'Federalism', 'Separation of powers', 'Checks and balances', 'Constitutional amendment', 'Supreme Court of the United States', 'United States Congress', 'President of the United States'],
+    // ⛔ `Checks and balances` WAS HERE ALONGSIDE `Separation of powers` AND
+    // REDIRECTS TO IT — one article banked twice under two themes, inflating the
+    // cell with its own prose. Found by the 2026-09-03 title verification.
+    grade8: ['Constitution of the United States', 'United States Bill of Rights', 'Federalism', 'Separation of powers', 'Constitutional amendment', 'Supreme Court of the United States', 'United States Congress', 'President of the United States',
+      'Articles of Confederation', 'Constitutional Convention (United States)', 'Ratification',
+      'The Federalist Papers', 'Anti-Federalists', 'Judicial review', 'Marbury v. Madison', 'Due process',
+      'Equal Protection Clause', 'Habeas corpus', 'Freedom of speech', 'Freedom of religion',
+      'Freedom of the press', 'Right to keep and bear arms', 'United States Senate',
+      'United States House of Representatives', 'Veto', 'Impeachment', 'Cabinet of the United States',
+      'Electoral college', 'Political party', 'Election'],
     // Grade 9 — Rights & Participation
     grade9: ['Government', 'Democracy', 'Separation of powers', 'Civil and political rights', 'Election', 'Voting', 'Political party', 'Jury', 'Rule of law', 'Civil rights movement'],
     // CORPUSGAP (2026-08-31) — G10 and G11 were the hole in this band. Civics
@@ -295,9 +411,18 @@ const TOPICS = {
     // Grade 10 — Law, courts and the citizen
     grade10: ['Law', 'Court', 'Judiciary', 'Jury', 'Criminal law', 'Civil law (legal system)', 'Due process', 'Local government', 'Legislature', 'Trial', 'Lawyer', 'Prison'],
     // Grade 11 — Rights, policy and participation
-    grade11: ['Civil liberties', 'United States Bill of Rights', 'Judicial review', 'Public policy', 'Political campaign', 'Lobbying', 'Freedom of speech', 'Freedom of religion', 'Suffrage', 'Referendum', 'Interest group', 'Taxation'],
+    grade11: ['Civil liberties', 'United States Bill of Rights', 'Judicial review', 'Public policy', 'Political campaign', 'Lobbying', 'Freedom of speech', 'Freedom of religion', 'Suffrage', 'Referendum', 'Advocacy group', 'Tax',
+      'Political science', 'Democracy', 'Republicanism', 'Liberalism', 'Conservatism', 'Ideology',
+      'Public opinion', 'Mass media', 'Propaganda', 'Primary election', 'Electoral college', 'Gerrymandering',
+      'Voter turnout', 'Civil rights movement', 'Affirmative action', 'Due process', 'Equal Protection Clause',
+      'Judicial activism', 'Precedent', 'Federalism', 'Public administration', 'Regulation', 'Welfare state'],
     // Grade 12 — Government (capstone)
-    grade12: ['Federal government of the United States', 'Supreme Court of the United States', 'United States Congress', 'President of the United States', 'Judiciary', 'Rule of law', 'Constitution', 'Democracy', 'Federalism'],
+    grade12: ['Federal government of the United States', 'Supreme Court of the United States', 'United States Congress', 'President of the United States', 'Judiciary', 'Rule of law', 'Constitution', 'Democracy', 'Federalism',
+      'Separation of powers', 'Judicial review', 'Legislature', 'Executive (government)', 'Bureaucracy',
+      'Cabinet of the United States', 'United States Senate', 'United States House of Representatives',
+      'Veto', 'Impeachment', 'Electoral college', 'Political party', 'Advocacy group', 'Lobbying',
+      'Public policy', 'Foreign policy', 'Diplomacy', 'Treaty', 'International law', 'United Nations',
+      'Sovereignty', 'Civil liberties', 'Human rights'],
     // ⛔ College 1 removed 2026-09-01 — `civics` RETIRES at grade12, so this
     // cell never ran. Government/policy at college lives in `genered/college4`.
   },
@@ -367,18 +492,37 @@ const TOPICS = {
     // College 1 — Composition (academic writing)
     college1: ['Essay', 'Academic writing', 'Rhetoric', 'Argument', 'Thesis statement', 'Paragraph', 'Persuasion'],
     // College 2 — Technical writing + lit electives
-    college2: ['Technical writing', 'Literature', 'Literary criticism', 'Modernism', 'Prose', 'Style (visual arts)'],
+    college2: ['Technical writing', 'Literature', 'Literary criticism', 'Modernism', 'Prose', 'Style (visual arts)',
+      'Non-fiction', 'Essay', 'Argument', 'Persuasion', 'Audience', 'Register (sociolinguistics)',
+      'Documentation', 'Report', 'Proposal (business)', 'Editing', 'Proofreading', 'Grammar', 'Syntax',
+      'Diction', 'Tone (literature)', 'Voice (grammar)', 'Readability', 'Concision', 'Plain language',
+      'Style guide', 'Narrative', 'Novel', 'Poetry', 'Drama', 'Short story', 'Realism (arts)',
+      'Naturalism (literature)'],
     // CORPUSGAP (2026-08-31) — ELA is core and runs to PhD, but the map stopped
     // at college2. C3 -> PhD is where the writing stops being school essays and
     // becomes the scholarly register she is supposed to end up speaking in.
     // College 3 — the research paper as a form
-    college3: ['Academic writing', 'Thesis', 'Citation', 'Bibliography', 'Peer review', 'Rhetoric', 'Argumentation theory', 'Plagiarism'],
+    college3: ['Academic writing', 'Thesis', 'Citation', 'Bibliography', 'Peer review', 'Rhetoric', 'Argumentation theory', 'Plagiarism',
+      'Research', 'Primary source', 'Secondary source', 'Literature review', 'Annotated bibliography',
+      'Paraphrase', 'Quotation', 'Formal fallacy', 'Evidence', 'Proposition', 'Counterargument',
+      'Academic integrity', 'Scholarly method', 'Academic journal', 'Abstract (summary)', 'Style guide',
+      'Outline (list)', 'Drafting (writing)', 'Writing process', 'Presentation', 'Public speaking', 'Debate'],
     // College 4 — reading theory, not just texts
     // ⚠ WIDENED 2026-09-01: 8 topics produced only 8,009 words against a
     // 20,000 band floor — the thinnest reachable cell in the whole corpus.
-    college4: ['Literary theory', 'Postmodernism', 'Semiotics', 'Narratology', 'Comparative literature', 'Genre', 'Discourse', 'Structuralism', 'Deconstruction', 'Formalism (literature)', 'Marxist literary criticism', 'Feminist literary criticism', 'Psychoanalytic literary criticism', 'Reader-response criticism', 'Intertextuality', 'Hermeneutics', 'Poetics', 'Literary modernism'],
+    college4: ['Literary theory', 'Postmodernism', 'Semiotics', 'Narratology', 'Comparative literature', 'Genre', 'Discourse', 'Structuralism', 'Deconstruction', 'Formalism (literature)', 'Marxist literary criticism', 'Feminist literary criticism', 'Psychoanalytic literary criticism', 'Reader-response criticism', 'Intertextuality', 'Hermeneutics', 'Poetics', 'Literary modernism',
+      'Literary criticism', 'New Criticism', 'Russian formalism', 'New historicism', 'Postcolonial literature',
+      'Queer theory', 'Critical race theory', 'Ecocriticism', 'Author', 'Canon (fiction)', 'Close reading',
+      'Allegory', 'Irony', 'Metaphor', 'Symbol', 'Motif (narrative)', 'Narration', 'Unreliable narrator',
+      'Stream of consciousness', 'Free indirect speech', 'Modernist poetry', 'Postmodern literature',
+      'Magical realism', 'Bildungsroman'],
     // Grad — the literature review and the method section
-    grad: ['Literature review', 'Academic publishing', 'Scientific literature', 'Methodology', 'Abstract (summary)', 'Research', 'Scholarly method', 'Academic journal', 'Citation', 'Bibliography', 'Peer review', 'Systematic review', 'Meta-analysis', 'Research design', 'Qualitative research', 'Thesis'],
+    grad: ['Literature review', 'Academic publishing', 'Scientific literature', 'Methodology', 'Abstract (summary)', 'Research', 'Scholarly method', 'Academic journal', 'Citation', 'Bibliography', 'Peer review', 'Systematic review', 'Meta-analysis', 'Research design', 'Qualitative research', 'Thesis',
+      'Epistemology', 'Philosophy of science', 'Ontology', 'Grounded theory', 'Case study', 'Ethnography',
+      'Content analysis', 'Discourse analysis', 'Multimethodology', 'Sampling (statistics)',
+      'Coding (social sciences)', 'Triangulation (social science)', 'Reliability (statistics)',
+      'Validity (statistics)', 'Research ethics', 'Informed consent', 'Open access', 'Preprint',
+      'Impact factor', 'H-index', 'Academic conference', 'Scholarly communication'],
     // PhD — the dissertation and the discourse it enters
     phd: ['Doctor of Philosophy', 'Thesis', 'Peer review', 'Scholarly method', 'Epistemology', 'Hermeneutics', 'Critical theory', 'Academic publishing'],
   },
@@ -397,21 +541,52 @@ const TOPICS = {
     //   far beyond grade level" in. The college block below is the CS-DEGREE
     //   prose and stays exactly as it was; this is the school band under it.
     // Grade 5 — what a computer is, and what a program is
-    grade5: ['Computer', 'Computer program', 'Algorithm', 'Software', 'Computer hardware', 'Internet', 'Computer file', 'Programming language', 'Robot', 'Computer keyboard'],
+    grade5: ['Computer', 'Computer program', 'Algorithm', 'Software', 'Computer hardware', 'Internet', 'Computer file', 'Programming language', 'Robot', 'Computer keyboard',
+      'Computer mouse', 'Computer monitor', 'Printer (computing)', 'Operating system', 'Application software',
+      'Word processor', 'Spreadsheet', 'Web browser', 'Website', 'Email', 'Password', 'Computer virus',
+      'Digital citizen', 'Typing', 'Binary number', 'Bit', 'Byte', 'Data', 'Information', 'Sequence',
+      'Pattern recognition'],
     // Grade 6 — first programs, block coding, step-by-step thinking
-    grade6: ['Computer programming', 'Scratch (programming language)', 'Algorithm', 'Flowchart', 'Binary number', 'Debugging', 'Computer network', 'Pixel'],
+    grade6: ['Computer programming', 'Scratch (programming language)', 'Algorithm', 'Flowchart', 'Binary number', 'Debugging', 'Computer network', 'Pixel',
+      'Variable (high-level programming language)', 'Conditional (computer programming)', 'Loop (statement)',
+      'Sequence', 'Event (computing)', 'Sprite (computer graphics)', 'Animation', 'Boolean data type', 'Integer',
+      'String (computer science)', 'Software testing', 'Pseudocode', 'Internet', 'Router (computing)',
+      'IP address', 'Computational thinking', 'Abstraction (computer science)', 'Decomposition'],
     // Grade 7 — data, the web, staying safe on it
-    grade7: ['Data', 'Database', 'World Wide Web', 'HTML', 'Web page', 'Computer security', 'Internet', 'Web browser'],
+    grade7: ['Data', 'Database', 'World Wide Web', 'HTML', 'Web page', 'Computer security', 'Internet', 'Web browser',
+      'Table (database)', 'SQL', 'Spreadsheet', 'Data and information visualization', 'CSS', 'Hyperlink', 'URL',
+      'Web server', 'Client–server model', 'Internet protocol suite', 'Encryption', 'Password', 'Phishing',
+      'Malware', 'Digital footprint', 'Privacy', 'Information'],
     // Grade 8 — real language syntax + the logic under it
-    grade8: ['Python (programming language)', 'Variable (computer science)', 'Control flow', 'Subroutine', 'Data type', 'Boolean algebra', 'Logic gate', 'Computer science'],
+    grade8: ['Python (programming language)', 'Variable (high-level programming language)', 'Control flow', 'Function (computer programming)', 'Data type', 'Boolean algebra', 'Logic gate', 'Computer science',
+      'Integer', 'Floating-point arithmetic', 'String (computer science)', 'Boolean data type',
+      'List (abstract data type)', 'Conditional (computer programming)', 'Loop (statement)',
+      'Parameter (computer programming)', 'Return statement', 'Scope (computer programming)',
+      'Comment (computer programming)', 'Debugging', 'Truth table', 'Binary number'],
     // Grade 9 — structure: how programs are organised
-    grade9: ['Data structure', 'Array (data structure)', 'Sorting algorithm', 'Search algorithm', 'Recursion (computer science)', 'Object-oriented programming', 'Software engineering', 'Operating system'],
+    grade9: ['Data structure', 'Array (data structure)', 'Sorting algorithm', 'Search algorithm', 'Recursion (computer science)', 'Object-oriented programming', 'Software engineering', 'Operating system',
+      'List (abstract data type)', 'Associative array', 'Set (abstract data type)', 'Bubble sort',
+      'Insertion sort', 'Merge sort', 'Quicksort', 'Linear search', 'Binary search', 'Class (programming)',
+      'Object (computer science)', 'Method (computer programming)', 'Software development process',
+      'File system'],
     // Grade 10 — cost of a program, and the classic containers
-    grade10: ['Big O notation', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)', 'Hash table', 'Binary search algorithm', 'Computer memory', 'Algorithm'],
+    grade10: ['Big O notation', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)', 'Hash table', 'Binary search', 'Computer memory', 'Algorithm',
+      'Analysis of algorithms', 'Time complexity', 'Space complexity', 'Hash function', 'Binary search tree',
+      'Random-access memory', 'Cache (computing)', 'Pointer (computer programming)',
+      'Garbage collection (computer science)', 'Abstract data type', 'Iteration', 'Divide-and-conquer algorithm',
+      'Greedy algorithm', 'Pseudocode'],
     // Grade 11 — trees, graphs, and what the machine really does
-    grade11: ['Tree (data structure)', 'Graph theory', 'Dynamic programming', 'Computational complexity theory', 'Central processing unit', 'Compiler', 'Assembly language', 'Machine learning'],
+    grade11: ['Tree (abstract data type)', 'Graph theory', 'Dynamic programming', 'Computational complexity theory', 'Central processing unit', 'Compiler', 'Assembly language', 'Machine learning',
+      'Binary tree', 'Heap (data structure)', 'Graph (abstract data type)', 'Breadth-first search',
+      'Depth-first search', 'Dijkstra\'s algorithm', 'Memoization', 'NP-completeness',
+      'Instruction set architecture', 'Interpreter (computing)', 'Machine code', 'Artificial intelligence',
+      'Neural network', 'Concurrency (computer science)'],
     // Grade 12 — AP Computer Science A (the scope-sequence names it)
-    grade12: ['Java (programming language)', 'Object-oriented programming', 'Inheritance (object-oriented programming)', 'Polymorphism (computer science)', 'Abstraction (computer science)', 'Software design pattern', 'Unit testing', 'Version control'],
+    grade12: ['Java (programming language)', 'Object-oriented programming', 'Inheritance (object-oriented programming)', 'Polymorphism (computer science)', 'Abstraction (computer science)', 'Software design pattern', 'Unit testing', 'Version control',
+      'Class (programming)', 'Encapsulation (computer programming)', 'Interface (computing)',
+      'Model–view–controller', 'Integration testing', 'Git', 'Software documentation', 'Code refactoring',
+      'Exception handling', 'Generic programming', 'API', 'Software architecture',
+      'Agile software development', 'Debugging'],
     // ⛔⛔ THE cs COLLEGE-AND-ABOVE CELLS WERE REMOVED FROM HERE 2026-09-01 AND
     // THEIR TOPIC SPINE MOVED TO `major` (below). `cs` is RETIRED at grade12 by
     // SUBJECTS_RETIRED_AT, so cs/college1-4, cs/grad and cs/phd are cells the
@@ -433,26 +608,104 @@ const TOPICS = {
   //
   // `major` — THE CS MAJOR ITSELF, college1 → phd.
   major: {
-    college1: ['Computer science', 'Algorithm', 'Computer program', 'Programming language', 'Data type', 'Variable (computer science)', 'Control flow', 'Function (computer programming)', 'Recursion (computer science)', 'Boolean algebra', 'Binary number', 'Computer'],
-    college2: ['Data structure', 'Array (data structure)', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)', 'Hash table', 'Tree (data structure)', 'Binary search tree', 'Graph (abstract data type)', 'Sorting algorithm', 'Search algorithm', 'Big O notation', 'Object-oriented programming', 'Abstraction (computer science)'],
-    college3: ['Algorithm', 'Dynamic programming', 'Greedy algorithm', 'Graph theory', 'Computational complexity theory', 'Database', 'SQL', 'Software engineering', 'Software design pattern', 'Version control', 'Debugging', 'Application programming interface'],
-    college4: ['Machine learning', 'Artificial intelligence', 'Artificial neural network', 'Computer security', 'Cryptography', 'Compiler', 'Distributed computing', 'Software architecture', 'Functional programming', 'Concurrency (computer science)'],
+    college1: ['Computer science', 'Algorithm', 'Computer program', 'Programming language', 'Data type', 'Variable (high-level programming language)', 'Control flow', 'Function (computer programming)', 'Recursion (computer science)', 'Boolean algebra', 'Binary number', 'Computer',
+      'Compiler', 'Interpreter (computing)', 'Integrated development environment',
+      'Syntax (programming languages)', 'Semantics (programming languages)', 'Type system',
+      'Dynamic programming language', 'Array (data structure)', 'String (computer science)',
+      'Pointer (computer programming)', 'Iteration', 'Scope (computer programming)',
+      'Parameter (computer programming)', 'Software testing', 'Debugging', 'Version control', 'Git',
+      'Command-line interface', 'Operating system', 'Computer file', 'Pseudocode', 'Flowchart',
+      'Computational thinking'],
+    college2: ['Data structure', 'Array (data structure)', 'Linked list', 'Stack (abstract data type)', 'Queue (abstract data type)', 'Hash table', 'Tree (abstract data type)', 'Binary search tree', 'Graph (abstract data type)', 'Sorting algorithm', 'Search algorithm', 'Big O notation', 'Object-oriented programming', 'Abstraction (computer science)',
+      'Heap (data structure)', 'Priority queue', 'Trie', 'AVL tree', 'Red–black tree', 'B-tree',
+      'Adjacency list', 'Adjacency matrix', 'Breadth-first search', 'Depth-first search',
+      'Topological sorting', 'Merge sort', 'Quicksort', 'Heapsort', 'Binary search', 'Hash function',
+      'Hash collision', 'Amortized analysis', 'Time complexity', 'Space complexity',
+      'Recursion (computer science)', 'Divide-and-conquer algorithm', 'Iterator',
+      'Encapsulation (computer programming)', 'Inheritance (object-oriented programming)',
+      'Polymorphism (computer science)'],
+    college3: ['Algorithm', 'Dynamic programming', 'Greedy algorithm', 'Graph theory', 'Computational complexity theory', 'Database', 'SQL', 'Software engineering', 'Software design pattern', 'Version control', 'Debugging', 'API',
+      'Relational model', 'Database normalization', 'Query optimization', 'Database index',
+      'Transaction processing', 'ACID', 'Software development process', 'Agile software development',
+      'Scrum (project management)', 'Unified Modeling Language', 'Requirements analysis',
+      'Software architecture', 'Model–view–controller', 'Unit testing', 'Integration testing',
+      'Continuous integration', 'Code review', 'Code refactoring', 'Technical debt', 'REST',
+      'Web framework', 'Object–relational mapping', 'Shortest path problem', 'Minimum spanning tree',
+      'Flow network'],
+    college4: ['Machine learning', 'Artificial intelligence', 'Artificial neural network', 'Computer security', 'Cryptography', 'Compiler', 'Distributed computing', 'Software architecture', 'Functional programming', 'Concurrency (computer science)',
+      'Deep learning', 'Convolutional neural network', 'Recurrent neural network', 'Backpropagation',
+      'Gradient descent', 'Supervised learning', 'Unsupervised learning', 'Reinforcement learning',
+      'Overfitting', 'Regularization (mathematics)', 'Feature engineering', 'Natural language processing',
+      'Computer vision', 'Public-key cryptography', 'Hash function', 'Digital signature',
+      'Lexical analysis', 'Parsing', 'Code generation (compiler)', 'Optimizing compiler', 'MapReduce',
+      'Consensus (computer science)', 'Fault tolerance', 'Lambda calculus', 'Immutable object',
+      'Higher-order function'],
     grad: ['Machine learning', 'Artificial neural network', 'Deep learning', 'Supervised learning', 'Unsupervised learning', 'Reinforcement learning', 'Gradient descent', 'Backpropagation', 'Linear algebra', 'Probability', 'Statistics', 'Numerical analysis'],
     phd: ['Computational neuroscience', 'Neuron', 'Synapse', 'Action potential', 'Artificial neural network', 'Hebbian theory', 'Spiking neural network', 'Neural coding', 'Synaptic plasticity', 'Cerebral cortex', 'Neuroscience', 'Unsupervised learning'],
   },
   // `cstheory` — the theory-of-computation track, college1-4.
   cstheory: {
-    college1: ['Discrete mathematics', 'Set (mathematics)', 'Logic', 'Mathematical proof', 'Boolean algebra', 'Combinatorics', 'Mathematical induction', 'Graph theory'],
-    college2: ['Algorithm', 'Big O notation', 'Analysis of algorithms', 'Recursion (computer science)', 'Divide-and-conquer algorithm', 'Sorting algorithm', 'Time complexity', 'Space complexity'],
-    college3: ['Automata theory', 'Finite-state machine', 'Regular expression', 'Formal language', 'Context-free grammar', 'Turing machine', 'Computability theory', 'Halting problem'],
-    college4: ['Theory of computation', 'Computational complexity theory', 'NP-completeness', 'P versus NP problem', 'Cryptography', 'Information theory', 'Randomized algorithm', 'Approximation algorithm'],
+    college1: ['Discrete mathematics', 'Set (mathematics)', 'Logic', 'Mathematical proof', 'Boolean algebra', 'Combinatorics', 'Mathematical induction', 'Graph theory',
+      'Propositional logic', 'First-order logic', 'Predicate (logic)', 'Quantifier (logic)', 'Truth table',
+      'Reductio ad absurdum', 'Direct proof', 'Recurrence relation', 'Function (mathematics)',
+      'Relation (mathematics)', 'Equivalence relation', 'Partially ordered set', 'Cardinality',
+      'Countable set', 'Permutation', 'Combination', 'Binomial coefficient', 'Pigeonhole principle',
+      'Probability', 'Modular arithmetic', 'Number theory', 'Prime number', 'Greatest common divisor',
+      'Euclidean algorithm', 'Tree (graph theory)', 'Bipartite graph'],
+    college2: ['Algorithm', 'Big O notation', 'Analysis of algorithms', 'Recursion (computer science)', 'Divide-and-conquer algorithm', 'Sorting algorithm', 'Time complexity', 'Space complexity',
+      'Merge sort', 'Quicksort', 'Heapsort', 'Binary search', 'Breadth-first search', 'Depth-first search',
+      "Dijkstra's algorithm", 'Bellman–Ford algorithm', "Kruskal's algorithm", "Prim's algorithm",
+      'Dynamic programming', 'Memoization', 'Greedy algorithm', 'Backtracking', 'Amortized analysis',
+      'Master theorem (analysis of algorithms)', 'Asymptotic analysis', 'Worst-case complexity',
+      'Average-case complexity', 'Data structure', 'Heap (data structure)', 'Priority queue',
+      'Disjoint-set data structure', 'Hash function'],
+    college3: ['Automata theory', 'Finite-state machine', 'Regular expression', 'Formal language', 'Context-free grammar', 'Turing machine', 'Computability theory', 'Halting problem',
+      'Deterministic finite automaton', 'Nondeterministic finite automaton', 'Pushdown automaton',
+      'Regular language', 'Context-free language', 'Chomsky hierarchy', 'Parsing', 'LL parser', 'LR parser',
+      // ⛔ `Pumping lemma` was here and is a two-line stub pointing at the two
+      // real articles — it EXISTS, so an existence check passes it, and it
+      // yields under three clean sentences. Both real ones are named instead.
+      'Backus–Naur form', 'Lexical analysis', 'Pumping lemma for regular languages',
+      'Pumping lemma for context-free languages', 'Decidability (logic)',
+      'Computably enumerable set', 'Church–Turing thesis', 'Lambda calculus', 'Reduction (complexity)',
+      'Undecidable problem', "Rice's theorem", 'Universal Turing machine', 'Formal grammar'],
+    college4: ['Theory of computation', 'Computational complexity theory', 'NP-completeness', 'P versus NP problem', 'Cryptography', 'Information theory', 'Randomized algorithm', 'Approximation algorithm',
+      'Complexity class', 'Time complexity', 'NP (complexity)', 'Co-NP', 'PSPACE', 'Reduction (complexity)',
+      'Cook–Levin theorem', 'Boolean satisfiability problem', 'Travelling salesman problem',
+      'Knapsack problem', 'Graph coloring', 'Monte Carlo algorithm', 'Las Vegas algorithm',
+      'Public-key cryptography', 'RSA cryptosystem', 'Hash function', 'Digital signature',
+      'Zero-knowledge proof', 'Entropy (information theory)', 'Channel capacity', 'Error correction code',
+      'Kolmogorov complexity'],
   },
   // `cssystems` — the systems track, college1-4.
   cssystems: {
-    college1: ['Computer hardware', 'Central processing unit', 'Computer memory', 'Binary number', 'Logic gate', 'Computer data storage', 'Input/output', 'Bit'],
-    college2: ['Computer architecture', 'Instruction set architecture', 'Assembly language', 'CPU cache', 'Pipeline (computing)', 'Machine code', 'Interrupt', 'Register (computer)'],
-    college3: ['Operating system', 'Process (computing)', 'Thread (computing)', 'Scheduling (computing)', 'Memory management', 'Virtual memory', 'File system', 'Concurrency (computer science)', 'Deadlock'],
-    college4: ['Computer network', 'Internet protocol suite', 'Transmission Control Protocol', 'Routing', 'Distributed computing', 'Database', 'Client-server model', 'Computer security', 'Cloud computing'],
+    college1: ['Computer hardware', 'Central processing unit', 'Computer memory', 'Binary number', 'Logic gate', 'Computer data storage', 'Input/output', 'Bit',
+      "Two's complement", 'Floating-point arithmetic', 'Boolean algebra', 'Truth table', 'Combinational logic',
+      'Sequential logic', 'Flip-flop (electronics)', 'Adder (electronics)', 'Multiplexer',
+      'Arithmetic logic unit', 'Transistor', 'Integrated circuit', "Moore's law", 'Von Neumann architecture',
+      'Bus (computing)', 'Random-access memory', 'Read-only memory', 'Hard disk drive', 'Solid-state drive',
+      'Byte', 'Word (computer architecture)', 'Endianness', 'Character encoding', 'ASCII', 'Unicode'],
+    college2: ['Computer architecture', 'Instruction set architecture', 'Assembly language', 'CPU cache', 'Pipeline (computing)', 'Machine code', 'Interrupt', 'Register (computer)',
+      'Microarchitecture', 'Reduced instruction set computer', 'Complex instruction set computer',
+      'Instruction pipelining', 'Branch predictor', 'Out-of-order execution', 'Superscalar processor',
+      'Cache coherence', 'Memory hierarchy', 'Translation lookaside buffer', 'Virtual memory',
+      'Direct memory access', 'System call', 'Compiler', 'Linker (computing)', 'Loader (computing)',
+      'Calling convention', 'Stack (abstract data type)', 'X86', 'ARM architecture family',
+      'Parallel computing'],
+    college3: ['Operating system', 'Process (computing)', 'Thread (computing)', 'Scheduling (computing)', 'Memory management', 'Virtual memory', 'File system', 'Concurrency (computer science)', 'Deadlock',
+      'Kernel (operating system)', 'Context switch', 'Process management (computing)',
+      'Inter-process communication', 'Semaphore (programming)', 'Mutual exclusion', 'Race condition',
+      'Critical section', 'Memory paging', 'Page replacement algorithm', 'Memory segmentation',
+      'Device driver', 'Interrupt', 'System call', 'Journaling file system', 'Inode', 'I/O scheduling',
+      'Input/output', 'Computer multitasking', 'Real-time computing', 'Virtualization',
+      'OS-level virtualization'],
+    college4: ['Computer network', 'Internet protocol suite', 'Transmission Control Protocol', 'Routing', 'Distributed computing', 'Database', 'Client–server model', 'Computer security', 'Cloud computing',
+      'OSI model', 'Internet Protocol', 'User Datagram Protocol', 'Domain Name System', 'HTTP',
+      'Transport Layer Security', 'Firewall (computing)', 'Network switch', 'Router (computing)',
+      'Packet switching', 'Bandwidth (computing)', 'Latency (engineering)', 'Load balancing (computing)',
+      'Replication (computing)', 'Consensus (computer science)', 'CAP theorem',
+      'Shard (database architecture)', 'Relational database', 'NoSQL', 'ACID', 'Transaction processing',
+      'Public-key cryptography', 'Authentication', 'Virtual machine'],
   },
   // `genered` — general education, college1-4. Inherits the gen-ed spread the
   // retiring civics / economics / psychology college cells were holding.
@@ -509,70 +762,271 @@ const TOPICS = {
     // source — `ela` is well fed here by 31 Gutenberg books (McGuffey, Aesop,
     // Alice, Oz). It is that art/pe/music/health run on 8-topic wiki lists.
     // Expanded to ~18 apiece, the same lever that fixed ela and social.
-    // ⚠ Unverified against the live API for the same reason recorded on the `ela`
-    // block: both wiki ingests hold the quota, and a title check under a throttle
-    // cannot tell "no such article" from "refused". A wrong title fails LOUDLY as
-    // `no-such-page` in `SKIP_REASONS`.
+    //
+    // ⭐⭐ RE-EXPANDED 2026-09-03 TO A REAL SYLLABUS PER CELL (~28-40 topics),
+    // AND THIS TIME EVERY TITLE IS VERIFIED. The deepening pass proved the
+    // constraint experimentally: re-fetching the SAME list returned the same
+    // articles (sentences −12) while only the picture count moved. **More depth
+    // per topic buys nothing once each topic is read whole; only more TOPICS do.**
+    //
+    // ⛔⛔ EVERY TITLE BELOW WAS CHECKED AGAINST THE LIVE MEDIAWIKI API, AND
+    // THREE DISTINCT FAILURE CLASSES CAME BACK — the second and third are the
+    // ones no "does it exist" check would ever have caught:
+    //   • MISSING — the article does not exist. Fails loudly as `no-such-page`.
+    //   • REDIRECT TO A DIFFERENT SUBJECT — silent. Canonical targets are used
+    //     throughout now, which ALSO closes a real duplication hole: the entry
+    //     `theme` is derived from the ASKED title, so two aliases of one article
+    //     bank the same prose twice under two themes and inflate the cell.
+    //   • DISAMBIGUATION PAGE — exists, resolves, returns prose, teaches
+    //     nothing. `Texture`, `Balance`, `Doctor`, `Depression`, `Loop` and 27
+    //     others were of this kind, several already shipped in these lists.
     'pre-K': ['Color', 'Drawing', 'Painting', 'Paper', 'Crayon', 'Shape', 'Circle', 'Square',
-      'Triangle', 'Paint', 'Pencil', 'Brush', 'Scissors', 'Glue', 'Chalk', 'Rainbow', 'Clay', 'Doll'],
-    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line (art)', 'Clay', 'Collage', 'Pattern',
-      'Paper', 'Crayon', 'Paint', 'Scissors', 'Rectangle', 'Circle', 'Triangle', 'Square', 'Craft', 'Picture book'],
-    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture', 'Shape', 'Portrait',
-      'Color', 'Watercolor painting', 'Paintbrush', 'Canvas', 'Pattern', 'Clay', 'Origami', 'Mask', 'Puppet', 'Statue'],
+      'Triangle', 'Paint', 'Pencil', 'Brush', 'Scissors', 'Glue', 'Chalk', 'Rainbow', 'Clay', 'Doll',
+      'Rectangle', 'Flower', 'Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Brown', 'Black', 'White',
+      'Paintbrush', 'Colored pencil', 'Modelling clay', 'Doodle', 'Sticker', 'Coloring book', 'Star',
+      'Fingerpaint', 'Craft', 'Toy'],
+    // ⛔ `Line (art)` was here and DOES NOT EXIST — verified against the live
+    // MediaWiki API 2026-09-03, the only `missing` title in 386 elementary
+    // topics. A non-existent title fetches nothing and reports nothing, so the
+    // art/kindergarten cell was quietly one topic thinner than its list claimed.
+    // `Line art` is the real article and is the same subject.
+    kindergarten: ['Color', 'Drawing', 'Painting', 'Shape', 'Line art', 'Clay', 'Collage', 'Pattern',
+      'Paper', 'Crayon', 'Paint', 'Scissors', 'Rectangle', 'Circle', 'Triangle', 'Square', 'Craft', 'Picture book',
+      'Paper craft', 'Adhesive', 'Stencil', 'Texture (visual arts)', 'Rainbow', 'Self-portrait', 'Chalk',
+      'Colored pencil', 'Paintbrush', 'Watercolor painting', 'Handicraft', 'Puppet', 'Mask', 'Doll', 'Kite',
+      'Cartoon', 'Illustration', 'Sculpture', 'Printmaking', 'Symmetry', 'Color theory', 'Toy', 'Fingerpaint'],
+    // ⛔ `Texture` was here and is a DISAMBIGUATION PAGE — it exists, it resolves,
+    // it returns prose, and none of that prose is about texture in art.
+    grade1: ['Primary color', 'Secondary color', 'Drawing', 'Painting', 'Sculpture', 'Texture (visual arts)', 'Shape', 'Portrait',
+      'Color', 'Watercolor painting', 'Paintbrush', 'Canvas', 'Pattern', 'Clay', 'Origami', 'Mask', 'Puppet', 'Statue',
+      'Still life', 'Landscape painting', 'Collage', 'Printmaking', 'Pottery', 'Mosaic', 'Symmetry', 'Crayon',
+      'Chalk', 'Sketch (drawing)', 'Self-portrait', 'Illustration', 'Cartoon', 'Paper', 'Weaving', 'Craft'],
     grade2: ['Color wheel', 'Landscape painting', 'Still life', 'Sculpture', 'Pottery', 'Printmaking', 'Symmetry', 'Mosaic',
-      'Painting', 'Drawing', 'Weaving', 'Quilt', 'Basket', 'Mural', 'Stained glass', 'Portrait', 'Sketch (drawing)', 'Craft'],
-    grade3: ['Watercolor painting', 'Sketch (drawing)', 'Perspective (graphical)', 'Mural', 'Weaving', 'Origami', 'Colour theory', 'Portrait painting'],
-    grade4: ['Perspective (graphical)', 'Cave painting', 'Ancient Egyptian art', 'Pottery', 'Printmaking', 'Sculpture', 'Mosaic', 'Calligraphy'],
-    grade5: ['Renaissance art', 'Leonardo da Vinci', 'Michelangelo', 'Perspective (graphical)', 'Fresco', 'Sculpture', 'Composition (visual arts)', 'Shading'],
-    grade6: ['Art history', 'Ancient Greek art', 'Roman art', 'Renaissance', 'Painting', 'Sculpture', 'Architecture', 'Drawing', 'Composition (visual arts)', 'Colour theory'],
-    grade7: ['Baroque', 'Impressionism', 'Vincent van Gogh', 'Claude Monet', 'Oil painting', 'Printmaking', 'Photography', 'Graphic design', 'Typography', 'Perspective (graphical)'],
-    grade8: ['Modern art', 'Cubism', 'Pablo Picasso', 'Surrealism', 'Salvador Dali', 'Expressionism', 'Abstract art', 'Sculpture', 'Collage', 'Art criticism'],
-    grade9: ['Art history', 'Aesthetics', 'Art criticism', 'Painting', 'Drawing', 'Sculpture', 'Photography', 'Digital art', 'Composition (visual arts)', 'Colour theory', 'Design', 'Portfolio (art)'],
-    grade10: ['Romanticism', 'Realism (arts)', 'Post-Impressionism', 'Art Nouveau', 'Bauhaus', 'Architecture', 'Industrial design', 'Illustration', 'Printmaking', 'Art movement'],
-    grade11: ['Contemporary art', 'Pop art', 'Andy Warhol', 'Minimalism', 'Conceptual art', 'Performance art', 'Installation art', 'Street art', 'Photography', 'Film'],
-    grade12: ['Art theory', 'Aesthetics', 'Art criticism', 'Museum', 'Curator', 'Art market', 'Visual culture', 'Semiotics', 'Portfolio (art)', 'Art school'],
-    college1: ['Art history', 'Aesthetics', 'Visual arts', 'Drawing', 'Painting', 'Colour theory', 'Composition (visual arts)', 'Design'],
-    college2: ['Digital art', 'Computer graphics', 'Animation', 'Graphic design', 'Typography', 'User interface design', 'Illustration', 'Photography'],
-    college3: ['Art criticism', 'Art theory', 'Modernism', 'Postmodernism', 'Visual culture', 'Semiotics', 'Iconography', 'Aesthetics'],
-    college4: ['Contemporary art', 'Conceptual art', 'Installation art', 'New media art', 'Generative art', 'Art and technology', 'Exhibition', 'Portfolio (art)'],
-    grad: ['Aesthetics', 'Philosophy of art', 'Art theory', 'Visual culture', 'Semiotics', 'Creativity', 'Perception', 'Colour'],
-    phd: ['Computational creativity', 'Generative art', 'Aesthetics', 'Perception', 'Visual perception', 'Colour vision', 'Creativity', 'Cognitive science'],
+      'Painting', 'Drawing', 'Weaving', 'Quilt', 'Basket', 'Mural', 'Stained glass', 'Portrait', 'Sketch (drawing)', 'Craft',
+      'Watercolor painting', 'Clay', 'Origami', 'Portrait painting', 'Perspective (graphical)', 'Color theory',
+      'Texture (visual arts)', 'Pattern', 'Illustration', 'Cartoon', 'Comics', 'Puppet', 'Mask', 'Handicraft',
+      'Quilting', 'Embroidery', 'Tapestry', 'Statue'],
+    grade3: ['Watercolor painting', 'Sketch (drawing)', 'Perspective (graphical)', 'Mural', 'Weaving', 'Origami', 'Color theory', 'Portrait painting',
+      'Complementary colors', 'Primary color', 'Secondary color', 'Collage', 'Printmaking', 'Pottery', 'Sculpture',
+      'Still life', 'Landscape painting', 'Illustration', 'Cartoon', 'Comics', 'Mask', 'Textile', 'Quilting',
+      'Embroidery', 'Stained glass', 'Batik', 'Ceramic art', 'Papier-mâché', 'Charcoal (art)', 'Pastel', 'Color', 'Craft'],
+    grade4: ['Perspective (graphical)', 'Cave painting', 'Art of ancient Egypt', 'Pottery', 'Printmaking', 'Sculpture', 'Mosaic', 'Calligraphy',
+      'Ancient Greek art', 'Roman art', 'Chinese art', 'Japanese art', 'Islamic art', 'African art',
+      'Visual arts of the Indigenous peoples of the Americas', 'Pre-Columbian art', 'Egyptian hieroglyphs', 'Papyrus',
+      'Amphora', 'Relief', 'Statue', 'Totem pole', 'Textile', 'Illuminated manuscript', 'Tapestry', 'Fresco',
+      'Pyramid', 'Temple', 'Mask', 'Symbol', 'Prehistoric art', 'Petroglyph'],
+    grade5: ['Renaissance art', 'Leonardo da Vinci', 'Michelangelo', 'Perspective (graphical)', 'Fresco', 'Sculpture', 'Composition (visual arts)', 'Shading',
+      'Renaissance', 'Raphael', 'Donatello', 'Sandro Botticelli', 'Chiaroscuro', 'Sfumato', 'Oil painting', 'Tempera',
+      'Portrait painting', 'Landscape painting', 'Still life', 'Golden ratio', 'Vanishing point', 'Mona Lisa',
+      'The Last Supper (Leonardo)', 'David (Michelangelo)', 'Sistine Chapel ceiling', 'Anatomy', 'Patronage',
+      'Florence', 'Workshop', 'Apprenticeship'],
+    grade6: ['Art history', 'Ancient Greek art', 'Roman art', 'Renaissance', 'Painting', 'Sculpture', 'Architecture', 'Drawing', 'Composition (visual arts)', 'Color theory',
+      'Prehistoric art', 'Art of ancient Egypt', 'Byzantine art', 'Medieval art', 'Gothic art', 'Romanesque art',
+      'Mosaic', 'Illuminated manuscript', 'Cathedral', 'Column', 'Temple', 'Pottery', 'Fresco', 'Icon',
+      'Stained glass', 'Parthenon', 'Colosseum', 'Pyramid', 'Statue', 'Relief', 'Amphora', 'Roman aqueduct', 'Symmetry'],
+    grade7: ['Baroque', 'Impressionism', 'Vincent van Gogh', 'Claude Monet', 'Oil painting', 'Printmaking', 'Photography', 'Graphic design', 'Typography', 'Perspective (graphical)',
+      'Rococo', 'Neoclassicism', 'Romanticism', 'Realism (arts)', 'Post-Impressionism', 'Edgar Degas',
+      'Pierre-Auguste Renoir', 'Paul Cézanne', 'Rembrandt', 'Johannes Vermeer', 'Caravaggio', 'Chiaroscuro',
+      'Still life', 'Landscape painting', 'Portrait painting', 'Watercolor painting', 'Etching', 'Lithography',
+      'Woodcut', 'Camera obscura', 'Salon (Paris)', 'Color theory'],
+    grade8: ['Modern art', 'Cubism', 'Pablo Picasso', 'Surrealism', 'Salvador Dali', 'Expressionism', 'Abstract art', 'Sculpture', 'Collage', 'Art criticism',
+      'Fauvism', 'Dada', 'Futurism', 'Constructivism (art)', 'Bauhaus', 'Abstract expressionism', 'Jackson Pollock',
+      'Henri Matisse', 'Wassily Kandinsky', 'Marcel Duchamp', 'Frida Kahlo', 'Georgia O\'Keeffe', 'Assemblage (art)',
+      'Photomontage', 'Mixed media', 'Art movement', 'Avant-garde', 'Modernism', 'Found object', 'Manifesto',
+      'Art museum', 'Art exhibition'],
+    grade9: ['Art history', 'Aesthetics', 'Art criticism', 'Painting', 'Drawing', 'Sculpture', 'Photography', 'Digital art', 'Composition (visual arts)', 'Color theory', 'Design', 'Career portfolio',
+      'Watercolor painting', 'Oil painting', 'Acrylic paint', 'Charcoal (art)', 'Pastel', 'Printmaking', 'Etching',
+      'Lithography', 'Screen printing', 'Ceramic art', 'Collage', 'Mixed media', 'Illustration', 'Art movement',
+      'Perspective (graphical)', 'Anatomy', 'Figure drawing', 'Sketchbook', 'Visual arts', 'Line art',
+      'Contrast (vision)', 'Symmetry', 'Proportion (architecture)'],
+    grade10: ['Romanticism', 'Realism (arts)', 'Post-Impressionism', 'Art Nouveau', 'Bauhaus', 'Architecture', 'Industrial design', 'Illustration', 'Printmaking', 'Art movement',
+      'Impressionism', 'Symbolism (movement)', 'Expressionism', 'Cubism', 'Surrealism', 'Art Deco', 'De Stijl',
+      'Piet Mondrian', 'Gustav Klimt', 'Edvard Munch', 'Auguste Rodin', 'Modern architecture', 'Poster',
+      'Advertising', 'Product design', 'Furniture', 'Interior design', 'Fashion design', 'Textile', 'Typography',
+      'Graphic design', 'Logo'],
+    grade11: ['Contemporary art', 'Pop art', 'Andy Warhol', 'Minimalism', 'Conceptual art', 'Performance art', 'Installation art', 'Street art', 'Photography', 'Film',
+      'Abstract expressionism', 'Land art', 'Video art', 'Digital art', 'New media art', 'Graffiti', 'Banksy',
+      'Jean-Michel Basquiat', 'Keith Haring', 'Cindy Sherman', 'Yayoi Kusama', 'Ai Weiwei', 'Marina Abramović',
+      'Documentary photography', 'Portrait photography', 'Cinematography', 'Animation', 'Comics', 'Zine',
+      'Subculture', 'Punk subculture', 'Goth subculture'],
+    // ⛔ `Art theory` REDIRECTS TO `Aesthetics`, which is already in this cell —
+    // two themes, one article, the prose banked twice. Dropped here, in college3
+    // and in grad for the same reason.
+    grade12: ['Aesthetics', 'Art criticism', 'Museum', 'Curator', 'Art market', 'Visual culture', 'Semiotics', 'Career portfolio', 'Art school',
+      'Art gallery', 'Art exhibition', 'Art dealer', 'Auction', 'Provenance',
+      'Conservation and restoration of cultural property', 'Art forgery', 'Copyright', 'Intellectual property',
+      'Public art', 'Patronage', 'Visual arts education', 'Artist', 'Studio', 'Art therapy', 'Censorship',
+      'Iconoclasm', 'Art history', 'Modernism', 'Postmodernism', 'Cultural heritage'],
+    college1: ['Art history', 'Aesthetics', 'Visual arts', 'Drawing', 'Painting', 'Color theory', 'Composition (visual arts)', 'Design',
+      'Art criticism', 'Art movement', 'Western painting', 'Sculpture', 'Printmaking', 'Photography', 'Architecture',
+      'Perspective (graphical)', 'Anatomy', 'Figure drawing', 'Still life', 'Landscape painting', 'Portrait painting',
+      'Watercolor painting', 'Oil painting', 'Acrylic paint', 'Charcoal (art)', 'Pastel', 'Ceramic art',
+      'Textile arts', 'Modernism', 'Renaissance', 'Impressionism', 'Cubism', 'Surrealism', 'Baroque'],
+    college2: ['Digital art', 'Computer graphics', 'Animation', 'Graphic design', 'Typography', 'User interface design', 'Illustration', 'Photography',
+      '3D computer graphics', 'Rendering (computer graphics)', 'Digital painting', 'Vector graphics', 'Raster graphics',
+      'Image editing', 'Adobe Photoshop', 'Motion graphics', 'Visual effects', 'Concept art', 'Storyboard',
+      'Web design', 'Interaction design', 'User experience design', 'Computer animation', 'Texture mapping',
+      'Shading', 'Spatial anti-aliasing', 'Color space', 'RGB color model', 'CMYK color model', 'Font', 'Logo',
+      'Brand', 'Layout (computing)', 'Grid (graphic design)', 'Color theory', 'Digital imaging'],
+    college3: ['Art criticism', 'Modernism', 'Postmodernism', 'Visual culture', 'Semiotics', 'Iconography', 'Aesthetics',
+      'Formalism (art)', 'Structuralism', 'Post-structuralism', 'Deconstruction', 'Marxism', 'Feminist art movement',
+      'Psychoanalysis', 'Phenomenology (philosophy)', 'Hermeneutics', 'Critical theory', 'Frankfurt School',
+      'Walter Benjamin', 'Michel Foucault', 'Roland Barthes', 'Clement Greenberg', 'Institutional critique',
+      'Orientalism', 'Postcolonialism', 'Gaze', 'Representation (arts)', 'Avant-garde', 'Kitsch',
+      'Canon (basic principle)', 'Art world'],
+    college4: ['Contemporary art', 'Conceptual art', 'Installation art', 'New media art', 'Generative art', 'Digital art', 'Exhibition', 'Career portfolio',
+      'Performance art', 'Land art', 'Video art', 'Sound art', 'Interactive art', 'Algorithmic art', 'AI art',
+      'Bioart', 'Site-specific art', 'Curator', 'Biennale', 'Documenta', 'Art museum', 'Artist-in-residence',
+      'Grant (money)', 'Artist\'s statement', 'Critique', 'Art school', 'Multimedia', 'Interdisciplinarity'],
+    grad: ['Aesthetics', 'Philosophy of art', 'Visual culture', 'Semiotics', 'Creativity', 'Perception', 'Color',
+      'Beauty', 'Sublime (philosophy)', 'Aesthetic taste', 'Immanuel Kant', 'Critique of Judgment',
+      'Georg Wilhelm Friedrich Hegel', 'Arthur Schopenhauer', 'Friedrich Nietzsche', 'John Dewey', 'Nelson Goodman',
+      'Arthur Danto', 'Art', 'Imagination', 'Emotion', 'Symbol', 'Metaphor', 'Representation (arts)',
+      'Interpretation (philosophy)', 'Meaning (philosophy)', 'Formalism (art)', 'Mimesis', 'Catharsis',
+      'Poetics (Aristotle)', 'Visual perception', 'Gestalt psychology'],
+    phd: ['Computational creativity', 'Generative art', 'Aesthetics', 'Perception', 'Visual perception', 'Colour vision', 'Creativity', 'Cognitive science',
+      'AI art', 'Generative adversarial network', 'Neural style transfer', 'Machine learning', 'Deep learning',
+      'Convolutional neural network', 'Computer vision', 'Digital image processing', 'Pattern recognition',
+      'Gestalt psychology', 'Visual system', 'Optical illusion', 'Depth perception', 'Outline of object recognition',
+      'Attention', 'Neuroesthetics', 'Psychophysics', 'Color appearance model', 'Feature (computer vision)',
+      'Image segmentation', 'Saliency map', 'Autoencoder', 'Diffusion model'],
   },
 
   // PE — kindergarten to grade12. Knowledge half: how the body moves, the
   // rules of games, training, safety, injury.
   pe: {
-    kindergarten: ['Running', 'Jumping', 'Walking', 'Ball', 'Game', 'Balance', 'Exercise', 'Playground'],
-    grade1: ['Exercise', 'Running', 'Throwing', 'Catching', 'Balance', 'Muscle', 'Heart', 'Stretching'],
-    grade2: ['Physical fitness', 'Exercise', 'Team sport', 'Football', 'Basketball', 'Swimming', 'Muscle', 'Skeleton'],
-    grade3: ['Physical fitness', 'Aerobic exercise', 'Basketball', 'Soccer', 'Baseball', 'Gymnastics', 'Sportsmanship', 'Heart rate'],
-    grade4: ['Physical fitness', 'Endurance', 'Strength training', 'Volleyball', 'Track and field', 'Swimming', 'Muscle', 'Respiratory system'],
-    grade5: ['Physical fitness', 'Cardiovascular fitness', 'Flexibility', 'Team sport', 'Tennis', 'Athletics (sport)', 'Nutrition', 'Hydration'],
-    grade6: ['Exercise physiology', 'Muscle', 'Skeletal muscle', 'Cardiovascular system', 'Aerobic exercise', 'Anaerobic exercise', 'Sport', 'Olympic Games', 'Injury', 'Warming up'],
-    grade7: ['Physical fitness', 'Strength training', 'Endurance training', 'Sports injury', 'First aid', 'Basketball', 'Soccer', 'Athletics (sport)', 'Teamwork', 'Sportsmanship'],
-    grade8: ['Exercise physiology', 'Metabolism', 'Nutrition', 'Body mass index', 'Muscle contraction', 'Oxygen', 'Sport psychology', 'Training', 'Stretching', 'Rest'],
-    grade9: ['Physical education', 'Kinesiology', 'Anatomy', 'Human musculoskeletal system', 'Cardiorespiratory fitness', 'Weight training', 'Sports medicine', 'Doping in sport', 'Nutrition', 'Hydration'],
-    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Rehabilitation', 'Physical therapy', 'Fitness', 'Endurance'],
-    grade11: ['Sports psychology', 'Motivation', 'Goal setting', 'Team dynamics', 'Coaching', 'Sports nutrition', 'Recovery', 'Overtraining', 'Sleep', 'Stress management'],
-    grade12: ['Lifetime fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Wellness', 'Yoga', 'Pilates', 'Recreation'],
+    // ⛔ THREE REAL DEFECTS WERE SITTING IN THIS SUBJECT AND THE API FOUND ALL
+    // THREE (2026-09-03). They are worth naming because none is visible by eye:
+    //   • `pe/grade10` listed `Physical therapy` TWICE. The merge dedupes by
+    //     theme so nothing was corrupted — the cell simply had 9 topics while
+    //     the list read as 10, and one API call per run was spent on nothing.
+    //   • `Hydration`, `Balance`, `Flexibility`, `Strength`, `Recovery` and
+    //     `Posture` are DISAMBIGUATION PAGES. They fetch, they return prose,
+    //     and the prose is a list of unrelated meanings.
+    //   • `Team dynamics` resolves to **`Team Dynamics`, a Japanese motorsport
+    //     team.** A redirect landing on a different subject is the silent class:
+    //     the ingest succeeds, the cell grows, and the content is wrong.
+    kindergarten: ['Running', 'Jumping', 'Walking', 'Ball', 'Game', 'Balance (ability)', 'Exercise', 'Playground',
+      'Terrestrial locomotion', 'Crawling (human)', 'Climbing', 'Throwing', 'Kick', 'Stretching', 'Muscle',
+      'Bone', 'Heart', 'Breathing', 'Water', 'Sleep', 'Play (activity)', 'Tag (game)', 'Hide-and-seek',
+      'Hopscotch', 'Skipping rope', 'Physical fitness', 'Human body', 'Sport'],
+    grade1: ['Exercise', 'Running', 'Throwing', 'Balance (ability)', 'Muscle', 'Heart', 'Stretching',
+      'Physical fitness', 'Walking', 'Jumping', 'Climbing', 'Kick', 'Tag (game)', 'Skipping rope', 'Hopscotch',
+      'Dance', 'Gymnastics', 'Swimming', 'Bicycle', 'Playground', 'Sport', 'Sleep', 'Nutrition', 'Water',
+      'Bone', 'Lung', 'Hand–eye coordination'],
+    grade2: ['Physical fitness', 'Exercise', 'Team sport', 'Football', 'Basketball', 'Swimming', 'Muscle', 'Skeleton',
+      'Running', 'Jumping', 'Throwing', 'Balance (ability)', 'Motor coordination', 'Flexibility (anatomy)',
+      'Endurance', 'Volleyball', 'Tennis', 'Gymnastics', 'Dance', 'Bicycle', 'Skipping rope', 'Hopscotch',
+      'Sportsmanship', 'Etiquette', 'Referee', 'Nutrition', 'Heart', 'Lung'],
+    grade3: ['Physical fitness', 'Aerobic exercise', 'Basketball', 'Association football', 'Baseball', 'Gymnastics', 'Sportsmanship', 'Heart rate',
+      'Exercise', 'Endurance', 'Physical strength', 'Flexibility (anatomy)', 'Motor coordination', 'Volleyball',
+      'Tennis', 'Swimming', 'Dance', 'Track and field', 'Running', 'Jumping', 'Throwing', 'Team sport',
+      'Referee', 'Safety', 'Nutrition', 'Water', 'Muscle', 'Skeleton'],
+    grade4: ['Physical fitness', 'Endurance', 'Strength training', 'Volleyball', 'Track and field', 'Swimming', 'Muscle', 'Respiratory system',
+      'Aerobic exercise', 'Anaerobic exercise', 'Heart rate', 'Circulatory system', 'Bone', 'Joint', 'Stretching',
+      'Warming up', 'Basketball', 'Association football', 'Baseball', 'Softball', 'Badminton', 'Hockey', 'Dance',
+      'Gymnastics', 'Sportsmanship', 'Teamwork', 'Nutrition', 'Injury'],
+    grade5: ['Physical fitness', 'Cardiovascular fitness', 'Flexibility (anatomy)', 'Team sport', 'Tennis', 'Athletics (sport)', 'Nutrition', 'Dehydration',
+      'Exercise', 'Endurance', 'Strength training', 'Balance (ability)', 'Agility', 'Speed', 'Heart rate',
+      'Circulatory system', 'Respiratory system', 'Muscle', 'Skeleton', 'Basketball', 'Association football',
+      'Volleyball', 'Track and field', 'Swimming', 'Gymnastics', 'Dance', 'Teamwork', 'Goal setting', 'Sleep'],
+    grade6: ['Exercise physiology', 'Muscle', 'Skeletal muscle', 'Circulatory system', 'Aerobic exercise', 'Anaerobic exercise', 'Sport', 'Olympic Games', 'Injury', 'Warming up',
+      'Physical fitness', 'Cardiorespiratory fitness', 'Strength training', 'Flexibility (anatomy)',
+      'Body composition', 'Heart rate', 'Blood pressure', 'Nutrition', 'Dehydration', 'Basketball', 'Volleyball',
+      'Association football', 'Badminton', 'Track and field', 'Swimming', 'Gymnastics', 'Dance', 'Teamwork',
+      'Sportsmanship', 'Referee', 'First aid', 'Sleep'],
+    grade7: ['Physical fitness', 'Strength training', 'Endurance training', 'Sports injury', 'First aid', 'Basketball', 'Association football', 'Athletics (sport)', 'Teamwork', 'Sportsmanship',
+      'Exercise physiology', 'Muscle contraction', 'Skeletal muscle', 'Joint', 'Tendon', 'Ligament',
+      'Cardiovascular fitness', 'Aerobic exercise', 'Anaerobic exercise', 'Metabolism', 'Nutrition', 'Dehydration',
+      'Volleyball', 'Tennis', 'Track and field', 'Swimming', 'Gymnastics', 'Dance', 'Wrestling', 'Concussion', 'Sleep'],
+    grade8: ['Exercise physiology', 'Metabolism', 'Nutrition', 'Body mass index', 'Muscle contraction', 'Oxygen', 'Sport psychology', 'Training', 'Stretching', 'Sleep',
+      'Physical fitness', 'Strength training', 'Endurance training', 'Interval training', 'Flexibility (anatomy)',
+      'Body composition', 'Heart rate', 'VO2 max', 'Dehydration', 'Carbohydrate', 'Protein', 'Fat', 'Vitamin',
+      'Sports injury', 'First aid', 'Concussion', 'Doping in sport', 'Teamwork', 'Leadership', 'Goal setting', 'Recreation'],
+    grade9: ['Physical education', 'Kinesiology', 'Anatomy', 'Human musculoskeletal system', 'Cardiorespiratory fitness', 'Weight training', 'Sports medicine', 'Doping in sport', 'Nutrition', 'Dehydration',
+      'Exercise physiology', 'Biomechanics', 'Skeletal muscle', 'Muscle contraction', 'Circulatory system',
+      'Respiratory system', 'Aerobic exercise', 'Anaerobic exercise', 'Strength training', 'Endurance training',
+      'Flexibility (anatomy)', 'Sports injury', 'Concussion', 'Physical therapy', 'Sleep', 'Mental health',
+      'Stress (biology)', 'Recreation', 'Delayed onset muscle soreness'],
+    grade10: ['Exercise physiology', 'Sports science', 'Biomechanics', 'Motor learning', 'Athletic training', 'Sports injury', 'Physical therapy', 'Fitness', 'Endurance',
+      'Kinesiology', 'Motor control', 'Human musculoskeletal system', 'Muscle contraction', 'Circulatory system',
+      'Cardiorespiratory fitness', 'Strength training', 'Sports medicine', 'Nutrition', 'Ergonomics',
+      'Spinal column', 'Gait', 'Balance (ability)', 'Mental chronometry', 'Sleep', 'Delayed onset muscle soreness',
+      'Warming up', 'Concussion', 'Rehabilitation (neuropsychology)'],
+    grade11: ['Sport psychology', 'Motivation', 'Goal setting', 'Group dynamics', 'Coaching', 'Sports nutrition', 'Overtraining', 'Sleep', 'Stress management',
+      'Self-efficacy', 'Anxiety', 'Arousal', 'Attention', 'Mental image', 'Mental toughness', 'Leadership',
+      'Carbohydrate loading', 'Dehydration', 'Occupational burnout', 'Injury', 'Confidence', 'Flow (psychology)',
+      'Delayed onset muscle soreness', 'Teamwork', 'Physical fitness', 'Endurance training', 'Strength training'],
+    grade12: ['Physical fitness', 'Public health', 'Physical activity', 'Sedentary lifestyle', 'Obesity', 'Exercise prescription', 'Well-being', 'Yoga', 'Pilates', 'Recreation',
+      'Chronic condition', 'Cardiovascular disease', 'Type 2 diabetes', 'Preventive healthcare', 'Meditation',
+      'Outdoor recreation', 'Hiking', 'Cycling', 'Running', 'Swimming', 'Lifelong learning', 'Health promotion',
+      'Community', 'Nutrition', 'Sleep', 'Mental health', 'Strength training'],
   },
 
   // MUSIC — kindergarten to grade12. Knowledge half: notation, theory, the
   // instruments, and the history she will one day have opinions about.
   music: {
-    kindergarten: ['Music', 'Song', 'Singing', 'Drum', 'Rhythm', 'Loudness', 'Nursery rhyme', 'Dance'],
-    grade1: ['Music', 'Rhythm', 'Melody', 'Musical instrument', 'Piano', 'Drum', 'Singing', 'Beat (music)'],
-    grade2: ['Melody', 'Rhythm', 'Pitch (music)', 'Musical note', 'Guitar', 'Violin', 'Flute', 'Choir'],
-    grade3: ['Musical notation', 'Musical note', 'Staff (music)', 'Clef', 'Scale (music)', 'Tempo', 'Orchestra', 'Percussion instrument'],
-    grade4: ['Musical notation', 'Major scale', 'Minor scale', 'Chord (music)', 'Harmony', 'Orchestra', 'String instrument', 'Wind instrument'],
-    grade5: ['Music theory', 'Key (music)', 'Time signature', 'Chord (music)', 'Harmony', 'Composer', 'Symphony', 'Folk music'],
-    grade6: ['Music theory', 'Musical form', 'Classical music', 'Wolfgang Amadeus Mozart', 'Ludwig van Beethoven', 'Johann Sebastian Bach', 'Orchestra', 'Opera', 'Concerto', 'Sonata'],
-    grade7: ['Music history', 'Baroque music', 'Classical period (music)', 'Romantic music', 'Jazz', 'Blues', 'Improvisation', 'Musical instrument', 'Rhythm', 'Syncopation'],
-    grade8: ['Popular music', 'Rock music', 'Jazz', 'Blues', 'Hip hop music', 'Electronic music', 'Recording studio', 'Sound recording and reproduction', 'Music genre', 'Songwriting'],
-    grade9: ['Music theory', 'Harmony', 'Counterpoint', 'Chord progression', 'Music notation', 'Ear training', 'Composition (music)', 'Music genre', 'Rock music', 'Punk rock'],
-    grade10: ['Music history', 'Twentieth-century music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert'],
-    grade11: ['Music production', 'Digital audio workstation', 'Synthesizer', 'Sampling (music)', 'Mixing (recorded music)', 'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Timbre'],
-    grade12: ['Musicology', 'Ethnomusicology', 'Music criticism', 'Music and emotion', 'Psychoacoustics', 'Music therapy', 'Subculture', 'Goth subculture', 'Gothic rock', 'Alternative rock'],
+    kindergarten: ['Music', 'Song', 'Singing', 'Drum', 'Rhythm', 'Loudness', 'Nursery rhyme', 'Dance',
+      'Clapping', 'Lullaby', 'Bell', 'Xylophone', 'Triangle (musical instrument)', 'Tambourine', 'Maraca',
+      'Whistle', 'Human voice', 'Music education', 'Melody', 'Pitch (music)', 'Musical instrument', 'Piano',
+      'Guitar', 'Flute', 'Trumpet', 'Children\'s music', 'Christmas music', 'Circle dance'],
+    grade1: ['Music', 'Rhythm', 'Melody', 'Musical instrument', 'Piano', 'Drum', 'Singing', 'Beat (music)',
+      'Musical note', 'Pitch (music)', 'Tempo', 'Loudness', 'Percussion instrument', 'String instrument',
+      'Wind instrument', 'Xylophone', 'Recorder (musical instrument)', 'Triangle (musical instrument)',
+      'Tambourine', 'Choir', 'Concert', 'Composer', 'Folk music', 'Lullaby', 'Nursery rhyme', 'Dance',
+      'Clapping', 'Music education', 'Orchestra'],
+    grade2: ['Melody', 'Rhythm', 'Pitch (music)', 'Musical note', 'Guitar', 'Violin', 'Flute', 'Choir',
+      'Musical notation', 'Staff (music)', 'Rest (music)', 'Whole note', 'Half note', 'Quarter note', 'Tempo',
+      'Dynamics (music)', 'Orchestra', 'Percussion instrument', 'String instrument', 'Brass instrument',
+      'Woodwind instrument', 'Trumpet', 'Trombone', 'Cello', 'Clarinet', 'Composer', 'Folk music',
+      'Music education', 'Concert'],
+    grade3: ['Musical notation', 'Musical note', 'Staff (music)', 'Clef', 'Scale (music)', 'Tempo', 'Orchestra', 'Percussion instrument',
+      'Musical form', 'Rhythm', 'Melody', 'Harmony', 'Dynamics (music)', 'Musical instrument', 'Brass instrument',
+      'Woodwind instrument', 'String instrument', 'Conducting', 'Musical ensemble', 'Choir', 'Folk music',
+      'Classical music', 'Composer', 'Beat (music)', 'Metre (music)', 'Bar (music)', 'Time signature',
+      'Music education', 'Song'],
+    grade4: ['Musical notation', 'Major scale', 'Minor scale', 'Chord (music)', 'Harmony', 'Orchestra', 'String instrument', 'Wind instrument',
+      'Interval (music)', 'Octave', 'Sharp (music)', 'Flat (music)', 'Key signature', 'Musical form', 'Rondo',
+      'Canon (music)', 'Round (music)', 'Conducting', 'Symphony', 'Concerto', 'Chamber music', 'Folk music',
+      'Classical music', 'Composer', 'Piano', 'Violin', 'Guitar', 'Music education', 'Musical ensemble'],
+    grade5: ['Music theory', 'Key (music)', 'Time signature', 'Chord (music)', 'Harmony', 'Composer', 'Symphony', 'Folk music',
+      'Musical notation', 'Interval (music)', 'Triad (music)', 'Cadence', 'Musical form', 'Sonata form',
+      'Variation (music)', 'Conducting', 'Orchestra', 'Chamber music', 'Opera', 'Ballet', 'Classical music',
+      'Baroque music', 'Romantic music', 'Jazz', 'Blues', 'Improvisation', 'Music education', 'Concert'],
+    grade6: ['Music theory', 'Musical form', 'Classical music', 'Wolfgang Amadeus Mozart', 'Ludwig van Beethoven', 'Johann Sebastian Bach', 'Orchestra', 'Opera', 'Concerto', 'Sonata',
+      'Music history', 'Medieval music', 'Renaissance music', 'Gregorian chant', 'Polyphony', 'Counterpoint',
+      'Fugue', 'Cantata', 'Oratorio', 'Mass (music)', 'Madrigal', 'Harpsichord', 'Organ (music)', 'Choir',
+      'Conducting', 'Chamber music', 'String quartet', 'Symphony', 'Composer', 'Musical notation'],
+    grade7: ['Music history', 'Baroque music', 'Classical period (music)', 'Romantic music', 'Jazz', 'Blues', 'Improvisation', 'Musical instrument', 'Rhythm', 'Syncopation',
+      'Ragtime', 'Swing music', 'Bebop', 'Big band', 'Louis Armstrong', 'Duke Ellington', 'Miles Davis',
+      'Gospel music', 'Spirituals', 'Country music', 'Bluegrass music', 'Folk music', 'World music', 'Reggae',
+      'Latin music', 'Salsa music', 'Rhythm and blues', 'Soul music', 'Scale (music)', 'Blue note',
+      'Call and response (music)'],
+    grade8: ['Popular music', 'Rock music', 'Jazz', 'Blues', 'Hip-hop', 'Electronic music', 'Recording studio', 'Sound recording and reproduction', 'Music genre', 'Songwriter',
+      'Rock and roll', 'Elvis Presley', 'The Beatles', 'Punk rock', 'Heavy metal music', 'Alternative rock',
+      'Grunge', 'Rapping', 'Disc jockey', 'Turntablism', 'Electronic dance music', 'Techno', 'House music',
+      'Synthesizer', 'Drum machine', 'Music video', 'Radio broadcasting', 'Record label', 'Album',
+      'Single (music)', 'Concert tour'],
+    grade9: ['Music theory', 'Harmony', 'Counterpoint', 'Chord progression', 'Music notation', 'Ear training', 'Composition (music)', 'Music genre', 'Rock music', 'Punk rock',
+      'Interval (music)', 'Triad (music)', 'Seventh chord', 'Inversion (music)', 'Cadence', 'Modulation (music)',
+      'Key (music)', 'Scale (music)', 'Mode (music)', 'Musical form', 'Sonata form', 'Motif (music)',
+      'Texture (music)', 'Timbre', 'Solfège', 'Sight-reading', 'Songwriter', 'Lyrics', 'Melody', 'Rhythm'],
+    grade10: ['Music history', 'Contemporary classical music', 'Modernism (music)', 'Minimal music', 'Film score', 'Musical theatre', 'Music industry', 'Copyright', 'Record label', 'Concert',
+      'Twelve-tone technique', 'Atonality', 'Serialism', 'Arnold Schoenberg', 'Igor Stravinsky', 'Claude Debussy',
+      'Impressionism in music', 'Aleatoric music', 'Electronic music', 'Musique concrète', 'John Cage',
+      'Philip Glass', 'Steve Reich', 'Opera', 'Broadway theatre', 'Soundtrack', 'Music publisher',
+      'Royalty payment', 'Performance rights organisation', 'Music festival'],
+    grade11: ['Music production', 'Digital audio workstation', 'Synthesizer', 'Sampling (music)', 'Audio mixing (recorded music)', 'Acoustics', 'Sound', 'Frequency', 'Amplitude', 'Timbre',
+      'Sound recording and reproduction', 'Microphone', 'Loudspeaker', 'Audio equalization',
+      'Dynamic range compression', 'Reverberation', 'Delay (audio effect)', 'Audio signal processing',
+      'Sampling (signal processing)', 'MIDI', 'Music sequencer', 'Audio engineer', 'Mastering (audio)',
+      'Multitrack recording', 'Signal-to-noise ratio', 'Decibel', 'Waveform', 'Harmonic', 'Resonance',
+      'Fourier analysis', 'Psychoacoustics'],
+    grade12: ['Musicology', 'Ethnomusicology', 'Music criticism', 'Music and emotion', 'Psychoacoustics', 'Music therapy', 'Subculture', 'Goth subculture', 'Gothic rock', 'Alternative rock',
+      'Music theory', 'Music history', 'Music education', 'Music industry', 'Popular music', 'Folk music',
+      'World music', 'Music and politics', 'Cultural appropriation', 'Fandom', 'Concert', 'Music venue',
+      'Nightclub', 'Punk subculture', 'Emo', 'Industrial music', 'Dark wave', 'Post-punk', 'The Cure',
+      'Siouxsie and the Banshees', 'Bauhaus (band)'],
   },
 
   // HEALTH — kindergarten to grade12. ⛔ The content boundary LAW governs this
@@ -580,42 +1034,131 @@ const TOPICS = {
   // cycle, puberty, substances and consent at the real age a student does),
   // while explicitness is gated separately. Clinical, age-true, not prudish.
   health: {
-    kindergarten: ['Hygiene', 'Hand washing', 'Tooth brushing', 'Sleep', 'Food', 'Vegetable', 'Fruit', 'Safety'],
-    grade1: ['Hygiene', 'Health', 'Nutrition', 'Exercise', 'Sleep', 'Germ', 'Disease', 'Doctor'],
-    grade2: ['Nutrition', 'Food group', 'Vitamin', 'Exercise', 'Hygiene', 'Dental care', 'Sleep', 'First aid'],
-    grade3: ['Human body', 'Skeleton', 'Muscle', 'Heart', 'Lung', 'Digestion', 'Nutrition', 'Illness'],
-    grade4: ['Human body', 'Circulatory system', 'Respiratory system', 'Digestive system', 'Nervous system', 'Nutrition', 'Immune system', 'Vaccine'],
-    grade5: ['Puberty', 'Human development', 'Hygiene', 'Nutrition', 'Mental health', 'Emotion', 'Stress (biology)', 'Bullying'],
-    grade6: ['Puberty', 'Adolescence', 'Menstruation', 'Reproductive system', 'Hormone', 'Hygiene', 'Nutrition', 'Mental health', 'Self-esteem', 'Peer pressure'],
-    grade7: ['Adolescence', 'Human sexuality', 'Reproductive health', 'Contraception', 'Sexually transmitted infection', 'Substance abuse', 'Tobacco smoking', 'Alcohol', 'Mental health', 'Depression'],
-    grade8: ['Mental health', 'Anxiety', 'Depression', 'Stress management', 'Nutrition', 'Eating disorder', 'Body image', 'Substance abuse', 'Addiction', 'Consent'],
-    grade9: ['Health', 'Public health', 'Nutrition', 'Human sexuality', 'Sexual health', 'Contraception', 'Consent', 'Mental health', 'Suicide prevention', 'Drug', 'Addiction', 'First aid'],
-    grade10: ['Human anatomy', 'Physiology', 'Immune system', 'Infectious disease', 'Chronic condition', 'Epidemiology', 'Vaccination', 'Public health', 'Health care', 'Preventive healthcare'],
-    grade11: ['Mental health', 'Psychiatry', 'Therapy', 'Cognitive behavioral therapy', 'Substance use disorder', 'Harm reduction', 'Sexual health', 'Relationship', 'Domestic violence', 'Self-care'],
-    grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Wellness', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy'],
+    // ⛔ `Doctor`, `Depression` and `Human development` were DISAMBIGUATION
+    // PAGES, and `Illness` / `Reproductive health` / `Sexual health` were
+    // aliases that resolve onto articles already listed in the same cell —
+    // banking one article's prose twice under two themes. Both classes fixed.
+    kindergarten: ['Hygiene', 'Hand washing', 'Tooth brushing', 'Sleep', 'Food', 'Vegetable', 'Fruit', 'Safety',
+      'Health', 'Human body', 'Tooth', 'Hand', 'Soap', 'Water', 'Exercise', 'Nutrition', 'Milk', 'Bread',
+      'Meat', 'Medical doctor', 'Nursing', 'Dentist', 'Medication', 'Disease', 'Cough', 'Fever', 'Bandage'],
+    // ⛔ `Germ` was here and yields a 1,506-character stub — it EXISTS, so an
+    // existence check passes it, and it clears no sentence floor. `Pathogen`
+    // is the article about the same thing.
+    grade1: ['Hygiene', 'Health', 'Nutrition', 'Exercise', 'Sleep', 'Pathogen', 'Disease', 'Medical doctor',
+      'Human body', 'Tooth', 'Hand washing', 'Soap', 'Bathing', 'Food', 'Fruit', 'Vegetable', 'Water', 'Milk',
+      'Vitamin', 'Nursing', 'Dentist', 'Vaccine', 'Medication', 'Fever', 'Cough', 'First aid', 'Safety'],
+    // ⛔ `Dental care` was here — a 492-character redirect stub. `Oral hygiene`
+    // is the real article (26,645 characters).
+    grade2: ['Nutrition', 'Food group', 'Vitamin', 'Exercise', 'Hygiene', 'Oral hygiene', 'Sleep', 'First aid',
+      'Health', 'Human body', 'Skeleton', 'Muscle', 'Heart', 'Lung', 'Brain', 'Skin', 'Digestion',
+      'Germ theory of disease', 'Bacteria', 'Virus', 'Vaccine', 'Medical doctor', 'Dentist', 'Emergency',
+      'Safety', 'Fire safety', 'Road safety'],
+    grade3: ['Human body', 'Skeleton', 'Muscle', 'Heart', 'Lung', 'Digestion', 'Nutrition', 'Disease',
+      'Health', 'Hygiene', 'Food group', 'Vitamin', 'Mineral (nutrient)', 'Protein', 'Carbohydrate', 'Fat',
+      'Water', 'Exercise', 'Sleep', 'Immune system', 'Bacteria', 'Virus', 'Vaccine', 'Allergy', 'Asthma',
+      'Injury', 'First aid', 'Emotion', 'Friendship'],
+    grade4: ['Human body', 'Circulatory system', 'Respiratory system', 'Digestive system', 'Nervous system', 'Nutrition', 'Immune system', 'Vaccine',
+      'Health', 'Anatomy', 'Physiology', 'Skeleton', 'Muscle', 'Brain', 'Skin', 'Kidney', 'Liver',
+      'Endocrine system', 'Vitamin', 'Exercise', 'Sleep', 'Bacteria', 'Virus', 'Antibiotic', 'Allergy',
+      'Asthma', 'First aid', 'Emotion', 'Self-esteem'],
+    grade5: ['Puberty', 'Development of the human body', 'Hygiene', 'Nutrition', 'Mental health', 'Emotion', 'Stress (biology)', 'Bullying',
+      'Adolescence', 'Hormone', 'Endocrine system', 'Deodorant', 'Acne', 'Exercise', 'Sleep', 'Self-esteem',
+      'Friendship', 'Cyberbullying', 'Peer pressure', 'Anxiety', 'Family', 'Safety', 'Internet safety'],
+    grade6: ['Puberty', 'Adolescence', 'Menstruation', 'Reproductive system', 'Hormone', 'Hygiene', 'Nutrition', 'Mental health', 'Self-esteem', 'Peer pressure',
+      'Menstrual cycle', 'Feminine hygiene', 'Tampon', 'Menstrual pad', 'Human sexuality', 'Acne',
+      'Body image', 'Anxiety', 'Major depressive disorder', 'Bullying', 'Friendship', 'Consent', 'Emotion',
+      'Sleep', 'Exercise'],
+    // ⛔ `Alcohol` was here and is the CHEMISTRY stub (1,654 chars) — a class of
+    // organic compound, not the drink. `Alcohol (drug)` is the health article.
+    grade7: ['Adolescence', 'Human sexuality', 'Sexual and reproductive health', 'Birth control', 'Sexually transmitted infection', 'Substance abuse', 'Tobacco smoking', 'Alcohol (drug)', 'Mental health', 'Major depressive disorder',
+      'Puberty', 'Condom', 'HIV/AIDS', 'Pregnancy', 'Consent', 'Nicotine', 'Electronic cigarette',
+      'Cannabis (drug)', 'Addiction', 'Anxiety', 'Self-harm', 'Body image', 'Peer pressure', 'Nutrition', 'Sleep'],
+    grade8: ['Mental health', 'Anxiety', 'Major depressive disorder', 'Stress management', 'Nutrition', 'Eating disorder', 'Body image', 'Substance abuse', 'Addiction', 'Consent',
+      'Anxiety disorder', 'Coping', 'Therapy', 'Anorexia', 'Bulimia', 'Self-esteem', 'Opioid', 'Drug overdose',
+      'Sexual harassment', 'Bullying', 'Grief', 'Suicide prevention', 'Sleep', 'Psychological resilience'],
+    grade9: ['Health', 'Public health', 'Nutrition', 'Human sexuality', 'Sexual and reproductive health', 'Birth control', 'Consent', 'Mental health', 'Suicide prevention', 'Drug', 'Addiction', 'First aid',
+      'Epidemiology', 'Dietary supplement', 'Sexually transmitted infection', 'Pregnancy', 'Childbirth',
+      'Anxiety disorder', 'Major depressive disorder', 'Psychoactive drug', 'Harm reduction',
+      'Cardiopulmonary resuscitation', 'Safety', 'Sleep', 'Exercise'],
+    grade10: ['Human anatomy', 'Physiology', 'Immune system', 'Infection', 'Chronic condition', 'Epidemiology', 'Vaccination', 'Public health', 'Health care', 'Preventive healthcare',
+      'Cancer', 'Cardiovascular disease', 'Diabetes', 'Asthma', 'Antimicrobial resistance', 'Screening (medicine)',
+      'Hygiene', 'Sanitation', 'Nutrition', 'Obesity', 'Sleep', 'Stress (biology)', 'Bacteria', 'Virus'],
+    // ⛔ `Relationship` was here — a 1,307-character stub, and this cell already
+    // carries `Interpersonal relationship`, which is the article it points at.
+    grade11: ['Mental health', 'Psychiatry', 'Therapy', 'Cognitive behavioral therapy', 'Substance use disorder', 'Harm reduction', 'Sexual and reproductive health', 'Domestic violence', 'Self-care',
+      'Clinical psychology', 'Psychotherapy', 'Antidepressant', 'Bipolar disorder', 'Schizophrenia',
+      'Post-traumatic stress disorder', 'Attention deficit hyperactivity disorder', 'Autism',
+      'Interpersonal relationship', 'Consent', 'Mindfulness', 'Sleep', 'Grief', 'Psychological resilience'],
+    grade12: ['Public health', 'Health policy', 'Health insurance', 'Nutrition', 'Well-being', 'Preventive healthcare', 'Reproductive rights', 'Bioethics', 'End-of-life care', 'Health literacy',
+      'Universal health care', 'Health economics', 'Abortion', 'Informed consent', 'Palliative care', 'Hospice',
+      'Social determinants of health', 'Health equity', 'Global health', 'Epidemiology', 'Pandemic',
+      'Vaccination', 'Mental health', 'Health care'],
   },
 
   // LANGUAGE — foreign language, grade3 to grade12. Spanish is the default
   // second language in the US scope-sequence the curriculum follows.
   language: {
-    grade3: ['Spanish language', 'Greeting', 'Number', 'Color', 'Family', 'Alphabet', 'Pronunciation', 'Vocabulary'],
-    grade4: ['Spanish language', 'Grammar', 'Noun', 'Verb', 'Adjective', 'Vocabulary', 'Pronunciation', 'Spain'],
-    grade5: ['Spanish language', 'Grammatical gender', 'Article (grammar)', 'Verb', 'Grammatical conjugation', 'Vocabulary', 'Mexico', 'Latin America'],
-    grade6: ['Spanish language', 'Grammatical conjugation', 'Grammatical tense', 'Pronoun', 'Adjective', 'Sentence (linguistics)', 'Hispanic culture', 'Spain'],
-    grade7: ['Spanish grammar', 'Grammatical tense', 'Past tense', 'Future tense', 'Preposition', 'Adverb', 'Idiom', 'Latin American culture'],
-    grade8: ['Spanish grammar', 'Subjunctive mood', 'Imperative mood', 'Reflexive verb', 'Direct object', 'Indirect object', 'Spanish literature', 'Translation'],
-    grade9: ['Spanish language', 'Spanish grammar', 'Spanish literature', 'Linguistics', 'Second-language acquisition', 'Bilingualism', 'Translation', 'Culture of Spain'],
-    grade10: ['Spanish literature', 'Miguel de Cervantes', 'Don Quixote', 'Latin American literature', 'Gabriel Garcia Marquez', 'Poetry', 'Translation', 'Idiom'],
-    grade11: ['Second-language acquisition', 'Linguistics', 'Phonetics', 'Syntax', 'Semantics', 'Bilingualism', 'Language contact', 'Dialect'],
-    grade12: ['Linguistics', 'Language', 'Etymology', 'Historical linguistics', 'Romance languages', 'Latin', 'Language family', 'Sociolinguistics'],
+    grade3: ['Spanish language', 'Greeting', 'Number', 'Color', 'Family', 'Alphabet', 'Pronunciation', 'Vocabulary',
+      'Spanish orthography', 'Spanish phonology', 'Numeral (linguistics)', 'Names of the days of the week',
+      'Month', 'Season', 'Food', 'Animal', 'Human body', 'Clothing', 'House', 'School', 'Classroom', 'Verb',
+      'Noun', 'Adjective', 'Question', 'Politeness', 'Culture of Spain', 'Mexico', 'Latin America'],
+    grade4: ['Spanish language', 'Grammar', 'Noun', 'Verb', 'Adjective', 'Vocabulary', 'Pronunciation', 'Spain',
+      'Spanish grammar', 'Grammatical number', 'Grammatical gender', 'Article (grammar)', 'Plural', 'Adverb',
+      'Pronoun', 'Personal pronoun', 'Present tense', 'Question', 'Negation', 'Food', 'Family',
+      'School', 'Mexico', 'Spanish orthography'],
+    grade5: ['Spanish language', 'Grammatical gender', 'Article (grammar)', 'Verb', 'Grammatical conjugation', 'Vocabulary', 'Mexico', 'Latin America',
+      'Spanish grammar', 'Spanish verbs', 'Present tense', 'Regular and irregular verbs', 'Romance copula',
+      'Reflexive verb', 'Adposition', 'Adverb', 'Degrees of comparison of adjectives and adverbs',
+      'Numeral (linguistics)', 'Time', 'Weather', 'Clothing', 'Shopping', 'Restaurant', 'Travel',
+      'Culture of Mexico', 'Spanish language in the Americas', 'Hispanic', 'Holiday'],
+    grade6: ['Spanish language', 'Grammatical conjugation', 'Grammatical tense', 'Pronoun', 'Adjective', 'Sentence (linguistics)', 'Hispanic culture', 'Spain',
+      'Spanish grammar', 'Preterite', 'Imperfect', 'Present perfect', 'Object pronoun', 'Possessive',
+      'Demonstrative', 'Interrogative word', 'Clause', 'Vocabulary', 'Idiom', 'Culture of Spain',
+      'Culture of Mexico', 'Flamenco', 'Spanish cuisine', 'Music of Latin America', 'Geography of Spain',
+      'History of Spain', 'Spanish Empire'],
+    grade7: ['Spanish grammar', 'Grammatical tense', 'Past tense', 'Future tense', 'Adposition', 'Adverb', 'Idiom', 'Culture of Latin America',
+      'Spanish verbs', 'Preterite', 'Imperfect', 'Conditional mood', 'Perfect (grammar)', 'Participle',
+      'Gerund', 'Conjunction (grammar)', 'Proverb', 'Slang', 'Register (sociolinguistics)', 'Argentina',
+      'Colombia', 'Peru', 'Chile', 'Caribbean'],
+    grade8: ['Spanish grammar', 'Subjunctive mood', 'Imperative mood', 'Reflexive verb', 'Direct object', 'Indirect object', 'Spanish literature', 'Translation',
+      'Conditional sentence', 'Relative clause', 'Passive voice', 'Object (grammar)', 'Poetry', 'Short story',
+      'Language interpretation', 'Dialect', 'Spanish dialects and varieties', 'Voseo', 'Culture of Argentina',
+      'Culture of Cuba', 'Culture of Puerto Rico', 'Immigration', 'Multilingualism', 'Code-switching'],
+    grade9: ['Spanish language', 'Spanish grammar', 'Spanish literature', 'Linguistics', 'Second-language acquisition', 'Multilingualism', 'Translation', 'Culture of Spain',
+      'Language interpretation', 'Culture of Latin America', 'Spanish Golden Age', 'Novel', 'Poetry', 'Drama',
+      'Essay', 'Journalism', 'Film', 'Cinema of Spain', 'Cinema of Mexico', 'Music of Spain',
+      'Latin American cuisine', 'Dialect', 'Vocabulary'],
+    grade10: ['Spanish literature', 'Miguel de Cervantes', 'Don Quixote', 'Latin American literature', 'Gabriel García Márquez', 'Poetry', 'Translation', 'Idiom',
+      'Pablo Neruda', 'Jorge Luis Borges', 'Isabel Allende', 'Federico García Lorca', 'Octavio Paz',
+      'Magical realism', 'Latin American Boom', 'Novel', 'Short story', 'Drama', 'Literary criticism',
+      'Metaphor', 'Symbolism (movement)', 'Narrative', 'Essay'],
+    grade11: ['Second-language acquisition', 'Linguistics', 'Phonetics', 'Syntax', 'Semantics', 'Multilingualism', 'Language contact', 'Dialect',
+      'Phonology', 'Morphology (linguistics)', 'Pragmatics', 'Sociolinguistics', 'Language acquisition',
+      'Universal grammar', 'Noam Chomsky', 'Ferdinand de Saussure', 'Sign (semiotics)', 'Discourse analysis',
+      'Language transfer', 'Interlanguage', 'Accent (sociolinguistics)', 'Code-switching', 'Spanish grammar'],
+    grade12: ['Linguistics', 'Language', 'Etymology', 'Historical linguistics', 'Romance languages', 'Latin', 'Language family', 'Sociolinguistics',
+      'Comparative linguistics', 'Vulgar Latin', 'Proto-Indo-European language', 'Dialectology', 'Language change',
+      'Grammaticalization', 'Loanword', 'Creole language', 'Pidgin', 'Language death', 'Endangered language',
+      'Writing system', 'Orthography', 'Corpus linguistics', 'Spanish language'],
   },
 
   // AP — grade11 and grade12 only. Advanced-placement courses are the
   // college-level versions of subjects she is already taking, which is exactly
   // what the band should carry.
   ap: {
-    grade11: ['Advanced Placement', 'Calculus', 'Statistics', 'Biology', 'Chemistry', 'Physics', 'World history', 'English literature', 'Psychology', 'Computer science'],
-    grade12: ['Advanced Placement', 'Calculus', 'Macroeconomics', 'Microeconomics', 'Government', 'Comparative politics', 'Art history', 'Literature', 'Research', 'Seminar'],
+    grade11: ['Advanced Placement', 'Calculus', 'Statistics', 'Biology', 'Chemistry', 'Physics', 'World history', 'English literature', 'Psychology', 'Computer science',
+      'AP Calculus', 'AP Statistics', 'AP Biology', 'AP Chemistry', 'AP Physics', 'AP United States History',
+      'AP English Language and Composition', 'AP Psychology', 'AP Computer Science A', 'Derivative', 'Integral',
+      'Limit (mathematics)', 'Probability', 'Statistical hypothesis test', 'Regression analysis',
+      'Cell biology', 'Genetics', 'Evolution', 'Stoichiometry', 'Thermodynamics', 'Kinematics', 'Rhetoric'],
+    // ⛔ `AP Research` and `AP Seminar` BOTH redirect to `AP Capstone` — two
+    // themes, one article. Collapsed to the canonical title.
+    grade12: ['Advanced Placement', 'Calculus', 'Macroeconomics', 'Microeconomics', 'Government', 'Comparative politics', 'Art history', 'Literature', 'Research', 'Seminar',
+      'AP Calculus', 'AP Macroeconomics', 'AP Microeconomics', 'AP United States Government and Politics',
+      'AP Comparative Government and Politics', 'AP Art History', 'AP English Literature and Composition',
+      'AP Capstone', 'Supply and demand', 'Gross domestic product', 'Inflation', 'Monetary policy',
+      'Fiscal policy', 'Market structure', 'Constitution of the United States', 'Separation of powers',
+      'Federalism', 'Civil liberties', 'Research design', 'Literature review', 'Thesis'],
   },
 };
 
@@ -749,9 +1292,35 @@ const EARLY_GRADES = new Set(['pre-K', 'pre-k', 'prek', 'kindergarten', 'grade1'
 // because the burst that trips the limit happens INSIDE a cell. A run at 3s
 // in-cell spacing still lost 147 topics. Backoff has to react to the throttle
 // RESPONSE, which first requires being able to SEE it.
+// ⛔⛔ THE BODY SNIFF READ THE ARTICLE, NOT THE ERROR — AND IT MADE SOME
+// ARTICLES PERMANENTLY UNFETCHABLE (found live 2026-09-03).
+//
+// The sniff exists for a real reason, recorded in this file's header: a
+// Wikimedia throttle reply is NOT JSON, and parsing it as JSON is what made a
+// throttle invisible for four ingest passes. But the test was unconditional,
+// so it also ran over successful responses — and a successful response is the
+// full text of an encyclopedia article.
+//
+// ⛔ `Sampling (signal processing)` therefore failed FOREVER: HTTP 200, a valid
+// 17,992-byte JSON payload, and the words **"Slew rate limit error"** in the
+// article body. Every signal-processing, networking or API article that
+// discusses rate limiting hits this. It reported `throttled`, so it also spent
+// the full backoff ladder — up to ~48 s — retrying a request that had already
+// succeeded, and no retry could ever change the outcome.
+//
+// ⭐ THE FIX IS TO ASK THE RIGHT QUESTION: a body that PARSES AS JSON AND
+// CARRIES A `query` OBJECT is an API answer, whatever words are inside it. Only
+// a body that is not that can be an error page worth sniffing. The throttle
+// detection the header describes is fully preserved — a throttle reply is not
+// JSON and never has a `query` — while an article about rate limits is read as
+// what it is.
 function classifyBody(status, text) {
   if (status === 429) return 'throttled';
-  if (/too many requests|rate ?limit|retry.after/i.test(text || '')) return 'throttled';
+  // A well-formed API response is never a throttle notice. Check this BEFORE
+  // any text pattern, or the article's own words decide its fate.
+  let looksLikeApiJson = false;
+  try { looksLikeApiJson = !!(JSON.parse(text || '').query); } catch { looksLikeApiJson = false; }
+  if (!looksLikeApiJson && /too many requests|rate ?limit|retry.after/i.test(text || '')) return 'throttled';
   if (status >= 500) return 'server';
   if (!status || status >= 400) return `http-${status}`;
   return 'ok';
@@ -812,9 +1381,33 @@ async function fetchExtract(title, preferSimple = false, maxSent = SENT_CAP_BY_B
       catch { throttledThisPass = true; lastReason = 'non-json'; continue; }
       const pages = j?.query?.pages || {};
       for (const k of Object.keys(pages)) {
-        if (pages[k].missing !== undefined) { lastReason = 'no-such-page'; continue; }
+        // ⛔⛔ THE REASON MUST NOT BE OVERWRITTEN BY A LATER HOST, AND IT WAS.
+        //
+        // A topic is asked of `en.wikipedia.org` and then `simple.wikipedia.org`
+        // (or the reverse for the early band). `lastReason` was a plain
+        // assignment, so the LAST host tried always won — and the last host is
+        // usually the one that does NOT have the article.
+        //
+        // Measured live: `Pumping lemma` reported `no-such-page`. It EXISTS on
+        // en.wikipedia with a 708-character extract; it simply failed the
+        // 3-sentence floor there, and then simple-wiki's `missing` overwrote
+        // `too-few-sentences` with `no-such-page`. **The instrument told a
+        // reader to delete a title that exists**, which is the same defect
+        // class as a skip counter that cannot tell "0 figures" from
+        // "throttled off the API" — the bug this file's own header calls the
+        // most expensive one in its history.
+        //
+        // ⭐ The rule: a reason may only get MORE specific, never less. If any
+        // host proved the page exists, `no-such-page` can no longer be the
+        // verdict for this topic.
+        if (pages[k].missing !== undefined) {
+          if (lastReason === 'no-content' || lastReason === 'no-such-page') lastReason = 'no-such-page';
+          continue;
+        }
         const sents = clean(pages[k].extract, maxSent);
         if (sents.length >= 3) return { sents, host, reason: 'ok' };
+        // The page EXISTS here. This reason outranks any `no-such-page` from a
+        // host that merely does not carry the article.
         lastReason = sents.length ? 'too-few-sentences' : 'no-content';
       }
     }

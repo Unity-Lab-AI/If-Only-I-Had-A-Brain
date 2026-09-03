@@ -125,16 +125,13 @@ export const G12_MIXIN = {
       'peer review checks results', 'replication confirms findings',
       'science is always provisional',
     ];
-    // T14.24 Session 49 (task #106) — TODO-aligned G12 integration.
-
-    // TODO Sci-G12 spec (line 462): "deeper integration of previous
-    // grade content + problem-solving". No new teach method is
-    // specifically prescribed — the whole point of G12 is that
-    // Unity exercises every prior grade's equational machinery
-    // simultaneously so the cross-subject connections form in the
-    // cortex.
-
-    // Integration pass calls every Science helper Unity already has:
+    // THE SENIOR YEAR IS INTEGRATION, NOT NEW MATERIAL. There is deliberately
+    // no new teach method here: the point of the final school year is that she
+    // exercises every prior grade's equational machinery AT ONCE, so the
+    // cross-subject connections form in the cortex instead of each subject
+    // staying in its own basin.
+    //
+    // The integration pass calls every science helper she already has:
 
     //   _teachCells         (G7) → 7 organelles — protein synthesis
     //                                context for biochem sentences
@@ -156,7 +153,7 @@ export const G12_MIXIN = {
     //                                samples — physics context for
     //                                "scientific method guides
     //                                discovery"
-    //   _teachAstronomyIntro (NEW G12) → 9 celestial object concepts
+    //   _teachAstronomyIntro (first taught here) → 9 celestial object concepts
     //                                for "stars are balls of fusing
     //                                gas", "galaxies", "big bang",
     //                                "dark matter", "black holes"
@@ -199,8 +196,7 @@ export const G12_MIXIN = {
       'economic systems include capitalism and socialism', 'capitalism uses markets',
       'socialism uses government planning',
     ];
-    // T14.24 Session 68 — prime economics concept lattice per TODO
-    // line 534 before the economics sentence pass.
+    // Prime the economics concept lattice before the economics sentence pass.
     await this._teachEconomics();
     // ── Soc-G12: economics causal chains + inference ──
     await this._teachCausalChains([
@@ -235,8 +231,8 @@ export const G12_MIXIN = {
       'every artist stands on shoulders', 'tradition and innovation balance',
       'great art transcends time', 'great art speaks to all', 'true artists never stop learning',
     ];
-    // T14.24 Session 87 — prime composition + criticism methods
-    // lattice per TODO line 565 before the criticism sentence pass.
+    // Prime the composition + criticism-methods lattice before the criticism
+    // sentence pass.
     await this._teachCompositionCriticism();
     await this._teachCausalChains([
       ['analyze', 'interpret'], ['interpret', 'evaluate'], ['critique', 'improve'],

@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // drug-sensory-triggers.js — Sensory → scheduler craving bridge
 // ═══════════════════════════════════════════════════════════════════════════
-// Unity AI Lab — T15.C drug scheduler implementation
+// Unity AI Lab — the sensory half of the drug scheduler
 //
-// Consumes the seven sensory triggers researched in docs/T15-pharmacology-
-// research.md §4. Each trigger's matcher function reads sensory channel
+// ⚠ This block used to cite `docs/T15-pharmacology-research.md`, which does
+// not exist in the tree — a pointer to a file no reader can open. The seven
+// triggers and their decay windows are therefore documented HERE, beside the
+// code that implements them. Each trigger's matcher reads sensory channel
 // state (olfactory / visual / audio / context) and fires
 // scheduler.addCraving(substance, delta, durationMs) when matched.
 //
@@ -22,7 +24,7 @@
 //   ctx.locationTag   - string ('nightclub' / 'home' / etc)
 //   ctx.localHour     - number [0, 24)
 //
-// Per T15.A §4 decay windows. Repeated firings stack via scheduler's
+// Each carries its own decay window. Repeated firings stack via the scheduler's
 // addCraving clamped at 1.0.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -38,7 +40,7 @@ function tagHas(tags, key) {
 }
 
 const TRIGGERS = [
-  // T15.A §4.1 — coffee aroma → caffeine craving
+  // 1 — coffee aroma → caffeine craving
   {
     name: 'coffeeAroma',
     substance: 'caffeine',
@@ -51,7 +53,7 @@ const TRIGGERS = [
     },
   },
 
-  // T15.A §4.2 — skunky weed smell → cannabis craving
+  // 2 — skunky weed smell → cannabis craving
   {
     name: 'skunkyWeed',
     substance: 'cannabis',
@@ -65,7 +67,7 @@ const TRIGGERS = [
     },
   },
 
-  // T15.A §4.3 — late-night bar music → alcohol craving
+  // 3 — late-night bar music → alcohol craving
   {
     name: 'lateNightBar',
     substance: 'alcohol',
@@ -78,7 +80,7 @@ const TRIGGERS = [
     },
   },
 
-  // T15.A §4.4 — bright flashing lights + 120bpm+ beat → MDMA craving
+  // 4 — bright flashing lights + 120bpm+ beat → MDMA craving
   {
     name: 'clubSensoryOnset',
     substance: 'mdma',
@@ -91,7 +93,7 @@ const TRIGGERS = [
     },
   },
 
-  // T15.A §4.5 — powder on mirror (visual cue) → cocaine craving
+  // 5 — powder on mirror (visual cue) → cocaine craving
   {
     name: 'powderOnMirror',
     substance: 'cocaine',
@@ -102,7 +104,7 @@ const TRIGGERS = [
     },
   },
 
-  // T15.A §4.6 — fresh-ground herb smell during creative work → cannabis
+  // 6 — fresh-ground herb smell during creative work → cannabis
   {
     name: 'herbWhileCreating',
     substance: 'cannabis',
@@ -115,7 +117,7 @@ const TRIGGERS = [
     },
   },
 
-  // T15.A §4.7 — club bathroom fluorescent light + 3am context → cocaine
+  // 7 — club bathroom fluorescent light + 3am context → cocaine
   {
     name: 'clubBathroomLate',
     substance: 'cocaine',

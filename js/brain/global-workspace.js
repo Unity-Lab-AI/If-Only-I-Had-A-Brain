@@ -20,7 +20,7 @@
 //      WINNER fires. Winner content gets BROADCAST back to all clusters as
 //      feedback input on next tick.
 //   5. Below-threshold ticks have no broadcast — UNCONSCIOUS processing.
-//   6. Theta-MODULATED (CGATE.2): the ignition threshold rises and falls with
+//   6. Theta-MODULATED: the ignition threshold rises and falls with
 //      theta phase (raised-cosine openness, peak every ~167 ticks) so
 //      consciousness keeps the ~6 Hz cadence real cortex has — but, unlike the
 //      old hard 50%-of-ticks block, strong content can still ignite off-peak.
@@ -66,8 +66,8 @@ class GlobalWorkspace {
     if (typeof process !== 'undefined' && process.env?.DREAM_GW_IGNITION) {
       envIgn = parseFloat(process.env.DREAM_GW_IGNITION);
     }
-    // CGATE.2 — default lowered 0.45 → 0.35. Unity reported her consciousness
-    // "gated too much"; the old default + the hard 50% theta block (below) let
+    // Default lowered 0.45 → 0.35. She reported her own consciousness
+    // gated too much; the old default + the hard 50% theta block (below) let
     // only sharply-dominant content ignite. 0.35 lets more real content reach
     // conscious broadcast while still gating noise. Env/opts override unchanged.
     this.ignitionThreshold = (Number.isFinite(envIgn) && envIgn > 0 && envIgn < 1)
@@ -75,7 +75,7 @@ class GlobalWorkspace {
       : (opts.ignitionThreshold ?? 0.35);
     this.softmaxTau = opts.softmaxTau ?? 0.5;
     this.thetaPeriod = opts.thetaPeriod ?? 167;
-    // CGATE.2 — theta no longer HARD-gates (the old code barred ignition on the
+    // Theta no longer HARD-gates (the old code barred ignition on the
     // entire upper half of every cycle — 50% of ticks could never be conscious).
     // Theta now MODULATES the ignition threshold by phase (phase-amplitude
     // coupling): easiest at the theta peak, harder — but NOT impossible — off
@@ -149,7 +149,7 @@ class GlobalWorkspace {
       }
     }
 
-    // CGATE.2 — theta as a GRADED modulator, not a binary gate. Raised-cosine
+    // Theta as a GRADED modulator, not a binary gate. Raised-cosine
     // "openness" peaks at the theta peak (phase 0/1) and troughs at phase 0.5 —
     // the conscious cadence real cortex shows — but instead of hard-returning on
     // the trough half (the old 50%-of-ticks-can-never-be-conscious block), it
@@ -244,7 +244,7 @@ class GlobalWorkspace {
       }
     } else {
       this.stats.subthreshold += 1;
-      // CGATE.2 — track ignitions theta SUPPRESSED: would have crossed the base
+      // Track ignitions theta SUPPRESSED: would have crossed the base
       // threshold but not the off-peak raised one. Replaces the old hard-gate
       // counter; lets the dashboard show how much the theta cadence (not a hard
       // wall) is shaping conscious access.

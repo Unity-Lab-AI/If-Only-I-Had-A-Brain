@@ -460,8 +460,7 @@ export const G1_MIXIN = {
       'restaurants serve food', 'farms grow our food',
       'trucks bring goods to stores', 'buses take us places',
     ];
-    // T14.24 Session 57 — prime community-role concept lattice per
-    // TODO line 492 before the sentence pass.
+    // Prime the community-role concept lattice before the sentence pass.
     await this._teachCommunityRoles();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 3, ticksPerWord: 2 });
 
@@ -513,8 +512,8 @@ export const G1_MIXIN = {
       'mixing paint makes new colors', 'mixing light makes white',
       'gray is between black and white', 'brown is many colors mixed',
     ];
-    // T14.24 Session 76 — prime color mixing RGB-arithmetic lattice
-    // per TODO line 557 before the color-mixing sentence pass.
+    // Prime the colour-mixing lattice — taught as RGB arithmetic, so mixing is
+    // a computation rather than a memorised pair — before the sentence pass.
     await this._teachColorMixing();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
     // Production stack + self-gate (K-uniform -- dedicated production-probe
@@ -668,8 +667,8 @@ export const G1_MIXIN = {
     // and referenced only inside the failure message that printed it — while a
     // single live cell was measured running 90.4 minutes. So this track was cut
     // to roughly a third of its material to satisfy a limit that was never
-    // applied. That constant has since been DELETED (BOOTORDER.3); no cell has a
-    // time limit, so nothing here needs to be sized to fit one.
+    // applied. That constant has since been DELETED; no cell has a time limit,
+    // so nothing here needs to be sized to fit one.
     //
     // Reps are restored 6→12 here. Two honest caveats: the concept LIST itself
     // was cut from 20 entries to these 6 and that content is not recoverable
@@ -715,9 +714,9 @@ export const G1_MIXIN = {
       'read', 'book', 'flashlight', 'alone', 'snack', 'draw', 'monster', 'dark',
     ], ctx, { reps: 5 });
 
-    // LIFEGATE — LIFE IS A COURSE, SO IT ENDS LIKE EVERY OTHER COURSE.
-    // Operator directive: "she needs to train life and finish that course just
-    // like every other course". Until now this runner ended by RETURNING the
+    // LIFE IS A COURSE, SO IT ENDS LIKE EVERY OTHER COURSE — it trains and it
+    // finishes, on the same terms as its peers. Until this was fixed the runner
+    // ended by RETURNING the
     // vocab teach call, which made `life` the only subject at this grade with
     // no production stack and no subject gate — every peer (ela, math, science,
     // social, art, music, pe, health) ends on `_gateSubjectProduction` or its

@@ -188,10 +188,9 @@ export const G6_MIXIN = {
       'collection returns water to seas', 'weather changes every day',
       'climate is the long term pattern', 'seasons affect the climate',
     ];
-    // T14.24 Session 43 — TODO-aligned earth cycles.
-    // TODO Sci-G6 spec: "_teachEarthCycles() as cyclic sequence walks".
-    // Session 43 built this with 4 cycles routed through
-    // _teachSequenceCycles:
+    // EARTH CYCLES TAUGHT AS CYCLIC SEQUENCE WALKS — a cycle is a closed loop,
+    // so it is walked as one rather than listed as stages. Four cycles route
+    // through _teachSequenceCycles:
     //   (1) water cycle: evaporation → condensation → precipitation → collection
     //   (2) rock cycle:  sedimentary → metamorphic → igneous → magma
     //   (3) day/night:   day → night
@@ -235,8 +234,7 @@ export const G6_MIXIN = {
       'the aztecs built temples', 'ancient trade routes crossed continents',
       'early humans hunted and gathered', 'agriculture changed everything',
     ];
-    // T14.24 Session 62 — prime ancient civilizations lattice per
-    // TODO line 512 before the ancient-civ sentence pass.
+    // Prime the ancient-civilisations lattice before its sentence pass.
     await this._teachAncientCivs();
     await this._teachCausalChains([
       ['river', 'civilization'], ['farming', 'surplus'], ['surplus', 'city'],
@@ -271,8 +269,7 @@ export const G6_MIXIN = {
       'a phrase is a musical sentence', 'music has tension and resolution',
       'the tonic is the home note', 'the dominant leads back home',
     ];
-    // T14.24 Session 81 — prime music theory lattice per TODO
-    // line 561 before the music theory sentence pass.
+    // Prime the music-theory lattice before the music-theory sentence pass.
     await this._teachMusicTheory();
     await this._teachCausalChains([
       ['scale', 'key'], ['key', 'chord'], ['chord', 'harmony'],

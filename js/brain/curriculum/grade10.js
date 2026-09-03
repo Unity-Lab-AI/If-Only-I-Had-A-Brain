@@ -123,31 +123,32 @@ export const G10_MIXIN = {
       'reactants become products', 'mass is conserved in reactions',
       'balanced equations show equal atoms', 'stoichiometry calculates amounts',
     ];
-    // T14.24 Session 45 — TODO-aligned chemistry 1 with real
-    // structural feature encodings.
-    // TODO Sci-G10 spec (line 454): "_teachPeriodicTable() element →
-    // group/period feature. _teachBonding() ionic/covalent distinction".
+    // CHEMISTRY 1 — the periodic table as an element → group/period feature,
+    // and bonding as the ionic/covalent distinction.
+    //
+    // ⭐ THE FEATURE ENCODING IS THE WHOLE POINT, AND IT REPLACED AN ARBITRARY
+    // ONE. The first version handed each element an 8d BINARY feature, which
+    // made two elements in the same group no more similar than two at random —
+    // the table's structure was in the name only. The encodings below are
+    // structural, so the chemistry is in the geometry:
 
-    // Session 45 replaced both helpers (which were Session 43 arbitrary
-    // 8d binary features) with structurally-meaningful encodings:
-
-    // _teachPeriodicTable now walks 18 real elements (H through Ar)
+    // _teachPeriodicTable walks 18 real elements (H through Ar)
     // with 16d features encoding (period linear/log/sin/cos + group
     // linear/log/sin/cos + cross-harmonics). Elements in the same
     // GROUP (alkali metals Li/Na, halogens F/Cl, noble gases He/Ne/
     // Ar) now have HIGH feature cosine — matching real chemistry.
-    // Element-name GloVe into sem, group/period feature into free,
-    // letter stream through letter region. Same 3-way binding pattern
-    // as Math-K _teachMagnitudes.
+    // Element-name embedding into sem, group/period feature into free,
+    // letter stream through the letter region — the same 3-way binding the
+    // kindergarten magnitude pass uses.
 
-    // _teachBonding now uses real chemistry features per bond type:
+    // _teachBonding uses real chemistry features per bond type:
     //   ionic:    [transfer, no share, metal+nonmetal, crystal, water]
     //   covalent: [no transfer, share, nonmetal+nonmetal, molecule]
     //   metallic: [half-transfer, half-share, crystal]
     //   polar covalent: [mostly share, partial charge, water-soluble]
     //   hydrogen: [weak, molecular, water-essential]
-    // Ionic and covalent are ANTI-correlated on transfer/share dims,
-    // which is the core chemical distinction the TODO prescribes.
+    // Ionic and covalent are ANTI-correlated on the transfer/share dimensions,
+    // which is the core chemical distinction this course exists to teach.
 
     // Both helpers run BEFORE the sentence walk. Sentences then
     // teach relationships ("ionic bonds transfer electrons",
@@ -188,8 +189,7 @@ export const G10_MIXIN = {
       'globalization connected the world', 'the internet changed everything',
       'climate change became a concern', 'the century was a time of progress and conflict',
     ];
-    // T14.24 Session 66 — prime US 20th century scaffold per TODO
-    // line 527 before the sentence pass.
+    // Prime the US-20th-century scaffold before the sentence pass.
     await this._teachUS20thCentury();
     // ── Soc-G9/G10: world + US history causal chains ──
     await this._teachCausalChains([
@@ -231,8 +231,8 @@ export const G10_MIXIN = {
       'jazz emerged from african american communities', 'louis armstrong was a jazz legend',
       'rock and roll was born in the nineteen fifties', 'the beatles changed popular music',
     ];
-    // T14.24 Session 85 — prime music history chronological scaffold
-    // per TODO line 565 before the music history sentence pass.
+    // Prime the music-history chronological scaffold before the sentence pass,
+    // so the periods bind in order rather than as an unordered set.
     await this._teachMusicHistory();
     await this._teachInference([
       ['medieval', 'renaissance', 'baroque'], ['baroque', 'classical', 'romantic'],

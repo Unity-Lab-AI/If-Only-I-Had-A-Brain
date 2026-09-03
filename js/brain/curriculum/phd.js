@@ -24,11 +24,11 @@ export const PHD_MIXIN = {
       'creativity and rigor unite', 'unity has arrived at fluency',
       'the journey was worth every grade',
     ];
-    // Session 39 — TODO ELA-PhD spec: "full T14.6 tick-driven motor
-    // emission + T14.16.5 identity lock + all prior grade primitives
-    // running simultaneously". No new method — PhD runs everything.
-    // We trigger a PhD-level persona refresh if the identity lock is
-    // available, which activates full Unity voice.
+    // THE LITERATURE CEILING: full tick-driven motor emission, the identity
+    // lock, and every prior grade's primitives running at once. No new method —
+    // the doctoral year runs everything it already has. A persona refresh fires
+    // if the identity lock is available, which is what puts her full voice on
+    // the output the gate then measures.
     const cluster = this.cluster;
     if (cluster && typeof cluster.runIdentityRefresh === 'function') {
       try {
@@ -83,19 +83,17 @@ export const PHD_MIXIN = {
       'reproducibility is foundational', 'truth emerges over time',
       'unity stands at the research frontier',
     ];
-    // T14.24 Session 55 — Sci-PhD ceiling concept set. Primes the
-    // doctoral research basin (original contribution, defense, postdoc,
-    // tenure track, Kuhnian paradigm / anomaly / paradigm shift, citizen
-    // science, open science, data repository, research frontier) and
-    // then runs the sentence pass at reps=5 (one above Grad) so the
-    // PhD gate crosses with Unity-voice persona dims engaged.
+    // THE SCIENCE CEILING CONCEPT SET. Primes the doctoral-research basin
+    // (original contribution, defense, postdoc, tenure track, Kuhnian paradigm
+    // / anomaly / paradigm shift, citizen science, open science, data
+    // repository, research frontier), then runs the sentence pass one
+    // repetition above the graduate year.
     await this._teachOriginalResearchScience();
-    // T14.24 Session 55 — persona-integration hook. Sci-PhD is the
-    // last Sci cell before Social/Art tracks; per TODO line 480 the
-    // gate must "produce research-grade scientific discourse" in
-    // Unity's own voice, so we fire the cortex identity refresh here
-    // if available. The ELA-PhD runner already does this for the ELA
-    // track; Sci-PhD is the cross-track equivalent for science voice.
+    // PERSONA-INTEGRATION HOOK. This is the last science cell, and its gate
+    // asks for research-grade scientific discourse in HER OWN VOICE — so the
+    // cortex identity refresh fires here if it exists. The literature runner
+    // already does this for its track; this is the science-side equivalent,
+    // and without it the gate would be measuring voice she has not re-engaged.
     try {
       if (this.cluster && typeof this.cluster.runIdentityRefresh === 'function') {
         this.cluster.runIdentityRefresh();
@@ -123,12 +121,10 @@ export const PHD_MIXIN = {
       'every scholar stands on predecessors', 'the humanities and social sciences need rigor',
       'unity contributes to human understanding',
     ];
-    // T14.24 Session 74 — Soc-PhD ceiling concept set per TODO
-    // line 543. Primes the doctoral scholarship basin, runs the
-    // sentence pass at reps=5 (one above Grad), then fires the
-    // cortex identity refresh so the Soc-PhD gate crosses with
-    // Unity-voice persona dims engaged — parallel to Sci-PhD and
-    // ELA-PhD identity hooks.
+    // THE SOCIAL-SCIENCE CEILING CONCEPT SET. Primes the doctoral-scholarship
+    // basin, runs the sentence pass one repetition above the graduate year,
+    // then fires the cortex identity refresh so this gate is crossed in her own
+    // voice — the same shape as the science and literature ceilings.
     await this._teachOriginalHistoricalResearch();
     await this._teachCausalChains([
       ['dissertation', 'contribution'], ['contribution', 'field'],
@@ -167,14 +163,10 @@ export const PHD_MIXIN = {
       'unity speaks with her full voice', 'art and language are one at this level',
       'research fluency is complete',
     ];
-    // T14.24 Session 93 — Art-PhD ceiling concept set per TODO
-    // line 570. Primes the practice-based doctoral research basin,
-    // runs the sentence pass at reps=5 (one above Grad), fires the
-    // cortex identity refresh so the Art-PhD gate crosses with
-    // Unity-voice persona dims engaged. Parallel to Sci-PhD,
-    // Soc-PhD, ELA-PhD. Art-PhD is the LAST cell in T14.24 — after
-    // this, every one of the 95 cells has TODO-aligned named
-    // helpers.
+    // THE ART CEILING CONCEPT SET, and the last cell of the whole walk.
+    // Primes the practice-based doctoral-research basin, runs the sentence pass
+    // one repetition above the graduate year, and fires the cortex identity
+    // refresh so this gate too is crossed in her own voice.
     await this._teachPracticeBasedDoctoralResearch();
     await this._teachCausalChains([
       ['practice', 'research'], ['research', 'knowledge'], ['knowledge', 'contribution'],

@@ -60,7 +60,13 @@ async function examVocabPreWalk() {
   return (r && r.available) ? r : null;
 }
 
-const r = computeCoverage(mod, CORPUS);
+// ⛔ THE CLI IS NOT A DASHBOARD, so it does not inherit the dashboard's list cap.
+// `--json` and `--full` are the two modes whose whole purpose is to be acted on
+// — `⚠ THIN: … +103 more` names twelve cells and hides the hundred-and-three
+// that the next corpus pass is supposed to target. The COUNTS were always exact;
+// the LIST is what was lying by omission, and only to the consumer that needed it.
+const FULL = process.argv.includes('--json') || process.argv.includes('--full');
+const r = computeCoverage(mod, CORPUS, FULL ? { listCap: Infinity } : undefined);
 if (!r) {
   console.log('ABORT — curriculum module did not expose GRADE_ORDER / subjectsOwedAt.');
   process.exit(1);

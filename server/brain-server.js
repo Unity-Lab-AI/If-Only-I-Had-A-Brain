@@ -3764,6 +3764,11 @@ class ServerBrain {
       // cell's pictures the same way it asks for its text.
       this.cortexCluster.academicStoryFigures = (subject, grade) =>
         lifeCurriculum.academicStoryFigures(subject, grade);
+      // ⭐ FIGPAIR.1 — the SECTION-level view: each chapter section with its own
+      // sentences AND its own figures, so a diagram can be perceived while the
+      // page it sits on is the active state rather than hours later off a timer.
+      this.cortexCluster.academicStoryExperiences = (subject, grade) =>
+        lifeCurriculum.academicStoryExperiences(subject, grade);
       // The generated phonics exam rows — derived from the grapheme-phoneme
       // rules rather than typed. Same bridge, same reason: the question-bank
       // module is browser-bundled and cannot read a file. The curriculum guards
@@ -9463,6 +9468,186 @@ const httpServer = http.createServer((req, res) => {
       } catch {}
     }
     res.end(JSON.stringify({ versions, current: brain._saveVersion || 0, slots: CHECKPOINT_SLOTS }));
+    return;
+  }
+
+  // ⭐⭐ WEIGHTS DOWNLOAD — operator: *"i do want some download model weights
+  // buttons in the traingviewer so at any point i can click a button and a save
+  // as opens"*.
+  //
+  // Two routes: `/weights/list` enumerates what is downloadable right now, and
+  // `/weights/download?file=` streams one back as an attachment so the browser
+  // opens its Save As dialog.
+  //
+  // ⛔ STREAMED, NEVER READ INTO MEMORY. The binary weights measure **4.16 GB**
+  // on this machine right now; `readFileSync` would blow the heap and, worse,
+  // would pin the event loop for the whole read on the same loop the teach lane
+  // and the donor socket share.
+  //
+  // ⚠ ADMIN-GATED through the SAME `requireLoopback` every other privileged
+  // route uses — which behind the reverse proxy means the Forgejo-vouched
+  // identity, not merely localhost. These files ARE the brain; they do not go
+  // out over an unauthenticated lane.
+  // ⛔⛔⛔ THE KNOB WRITE LANE, AND ITS WHOLE DESIGN IS THAT A WRITE CANNOT LIE.
+  //
+  // The panel was read-only, which left the reader exactly where the operator
+  // was before it existed: able to NAME a value and unable to change it. This
+  // is the other half.
+  //
+  // ⛔ THE HARD PART IS NOT THE UI. Of the 205 knobs, **40 are `boot`** —
+  // captured once at import or at cluster construction — so writing one on a
+  // running brain sets `process.env`, reads back correctly, and **changes
+  // nothing whatsoever**. A lane that accepted those would be a lie with a
+  // green tick on it, and the nine cortical-microstructure switches
+  // (`DREAM_SMALL_WORLD`, `DREAM_LAMINATION`, `DREAM_HUBS`, …) are exactly that
+  // class: they shape the brain that gets BUILT, never the one running.
+  //
+  // ⭐ SO THE EFFECT CLASS IS THE GATE, not a decoration next to the field:
+  //   live    → applied, takes effect on the next read
+  //   cached   → applied, but REFUSED if the value has already been latched
+  //   boot     → REFUSED outright, with the restart requirement named
+  //   ???      → REFUSED; an unclassified knob is one nobody has proven is safe
+  // ⚠ `???` is currently ZERO, and the refusal stays anyway — it is the branch
+  // that keeps a newly-discovered knob from being writable before it is read.
+  if (req.url && req.url.split('?')[0] === '/knob' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/knob')) return;
+    let body = '';
+    req.on('data', (c) => { body += c; if (body.length > 8192) req.destroy(); });
+    req.on('end', () => {
+      const reply = (code, obj) => {
+        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(obj));
+      };
+      let key, value;
+      try { ({ key, value } = JSON.parse(body || '{}')); } catch { return reply(400, { ok: false, why: 'body is not JSON' }); }
+      if (typeof key !== 'string' || !/^DREAM_[A-Z0-9_]+$/.test(key)) {
+        return reply(400, { ok: false, why: 'key must be a DREAM_* name' });
+      }
+      let rows;
+      try { rows = require('./knob-registry.js').knobState().groups.flatMap((g) => g.knobs); }
+      catch (e) { return reply(500, { ok: false, why: `registry unavailable: ${e && e.message}` }); }
+      const knob = rows.find((r) => r.key === key);
+      // ⛔ NOT IN THE REGISTRY MEANS NOT WRITABLE. The registry is the list of
+      // knobs whose read site someone has actually located; a key outside it is
+      // one nobody can say anything true about.
+      if (!knob) return reply(404, { ok: false, why: `${key} is not a known knob — the registry has no read site for it` });
+      if (knob.effect === 'boot') {
+        return reply(409, {
+          ok: false, key, effect: 'boot', requiresRestart: true,
+          why: `${key} is captured once at boot (${knob.proof || knob.site || 'module scope'}). `
+             + 'Setting it now would read back correctly and change nothing. Set it in the launcher and restart.',
+        });
+      }
+      if (knob.effect === '???') {
+        return reply(409, { ok: false, key, effect: '???', why: `${key} has no verified effect class, so no write can be honest about what it does` });
+      }
+      const before = Object.prototype.hasOwnProperty.call(process.env, key) ? process.env[key] : null;
+      if (value === null || value === undefined || value === '') delete process.env[key];
+      else process.env[key] = String(value);
+      // ⚠ READ BACK FROM THE REGISTRY, NOT FROM `process.env`. Echoing the value
+      // just written proves only that an assignment happened; re-deriving it
+      // through the same path the panel reads is what proves the BRAIN sees it.
+      let after = null;
+      try { after = (require('./knob-registry.js').knobState().groups.flatMap((g) => g.knobs).find((r) => r.key === key) || {}).effective; }
+      catch { /* the write stands; the confirmation is best-effort */ }
+      return reply(200, {
+        ok: true, key, effect: knob.effect, before, after,
+        // ⚠ A `cached` knob is applied and reported HONESTLY: whether it lands
+        // depends on whether its one read has already happened, and this lane
+        // cannot know that from outside. Saying so beats a green tick.
+        caveat: knob.effect === 'cached'
+          ? 'cached: read once behind a first-use guard. If that read has already happened this boot, the value is stored and will NOT take effect until restart.'
+          : null,
+      });
+    });
+    return;
+  }
+
+  if (req.url === '/weights/list' && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/weights/list')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    try {
+      // ⛔ AN ALLOWLIST OF EXACT NAMES, NOT A DIRECTORY SCAN AND NOT A PATTERN.
+      // The download route below resolves `file` against THIS list only, so a
+      // traversal string can never name a path — there is nothing to traverse
+      // to. A scan would also expose whatever else happens to sit in server/.
+      const names = ['brain-weights.json', 'brain-weights.bin'];
+      for (let i = 0; i < CHECKPOINT_SLOTS; i++) {
+        names.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`);
+      }
+      const files = [];
+      for (const n of names) {
+        try {
+          const st = fs.statSync(path.join(__dirname, n));
+          if (!st.isFile() || st.size === 0) continue;
+          files.push({ name: n, bytes: st.size, mtime: st.mtimeMs });
+        } catch { /* absent slot — simply not offered */ }
+      }
+      // ⚠ A `.tmp` alongside a real file means a save is IN FLIGHT. It is
+      // reported so the page can warn, and it is deliberately NOT offered for
+      // download: half a checkpoint downloads as a complete-looking corrupt file.
+      let writing = null;
+      try {
+        const t = fs.statSync(path.join(__dirname, 'brain-weights.bin.tmp'));
+        if (t.isFile()) writing = { name: 'brain-weights.bin.tmp', bytes: t.size, mtime: t.mtimeMs };
+      } catch { /* no save in flight */ }
+      res.end(JSON.stringify({ files, writing, dir: 'server/' }));
+    } catch (err) {
+      res.end(JSON.stringify({ files: [], error: err && err.message }));
+    }
+    return;
+  }
+
+  if (req.url && req.url.startsWith('/weights/download') && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/weights/download')) return;
+    let want = '';
+    try { want = new URL(req.url, 'http://localhost').searchParams.get('file') || ''; } catch { want = ''; }
+    const allowed = ['brain-weights.json', 'brain-weights.bin'];
+    for (let i = 0; i < CHECKPOINT_SLOTS; i++) allowed.push(`brain-weights-v${i}.json`, `brain-weights-v${i}.bin`);
+    if (!allowed.includes(want)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'unknown weights file', allowed }));
+      return;
+    }
+    const full = path.join(__dirname, want);
+    let st;
+    try { st = fs.statSync(full); } catch {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `${want} does not exist on this box` }));
+      return;
+    }
+    // ⛔ REFUSE A FILE THAT IS BEING WRITTEN RIGHT NOW. A checkpoint save is not
+    // atomic from a reader's point of view, and a partially-written 4 GB binary
+    // downloads as a file that LOOKS complete and restores as garbage. Refusing
+    // with a reason is the only honest answer; the caller can retry in seconds.
+    if (want.endsWith('.bin')) {
+      try {
+        const tmp = fs.statSync(path.join(__dirname, 'brain-weights.bin.tmp'));
+        if (tmp.isFile() && (Date.now() - tmp.mtimeMs) < 30000) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'a weights save is in flight — retry in a moment', writingSince: tmp.mtimeMs }));
+          return;
+        }
+      } catch { /* no save in flight — proceed */ }
+    }
+    // `attachment` is what makes the browser open Save As rather than render it.
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(st.size),
+      'Content-Disposition': `attachment; filename="${want}"`,
+      'Cache-Control': 'no-store',
+    });
+    const stream = fs.createReadStream(full);
+    // ⚠ Destroy the read on client abort. A 4 GB stream whose browser tab closed
+    // would otherwise keep reading to the end, spending disk and loop time on a
+    // download nobody is receiving.
+    req.on('aborted', () => { try { stream.destroy(); } catch { /* nf */ } });
+    stream.on('error', (e) => {
+      console.warn('[Server] /weights/download stream failed —', e && e.message);
+      try { res.destroy(); } catch { /* nf */ }
+    });
+    console.log(`[Server] /weights/download streaming ${want} (${(st.size / 1048576).toFixed(1)} MB)`);
+    stream.pipe(res);
     return;
   }
 

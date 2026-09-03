@@ -352,7 +352,7 @@ class SparseMatmulPool {
   }
 
   /**
-   * T17.2 — Hebbian update across the worker pool. Each worker
+   * Hebbian update across the worker pool. Each worker
    * processes a disjoint row-range of the matrix's values buffer, so
    * there are no write collisions. Mutates the matrix in place (just
    * like `SparseMatrix.hebbianUpdate`) — after the promise resolves

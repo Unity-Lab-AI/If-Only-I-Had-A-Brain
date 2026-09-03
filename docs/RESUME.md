@@ -1,6 +1,330 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 SHE SEES THE WAVELETS, SHE HEARS, AND THE REVIEW CAUGHT MY OWN TOOLS FOUR TIMES (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-03 (LATEST — PICK UP HERE) THE TOPIC LISTS WERE THE CONSTRAINT, THE EARLY BAND IS CLEARED, AND TWO INSTRUMENTS WERE LYING
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> corpus     topic lists 1,872 -> 4,424 entries (+2,551) across 118 of 173 cells
+> coverage   119 cells at/above floor (was 74) · 70 THIN (was 115) · 4 EMPTY (all math/*)
+> words      56,615,176 reachable as-taught (was 50,035,781)
+> figures    57,574 reachable (was 41,627)
+> ingest     FINISHED. Nothing is running. 6 skips in 2,551 topics, all six resolved.
+> CODELEAK   93 -> 30 files carrying a task number in a comment (63 cleared by hand)
+> ```
+>
+> ### ⛔⛔ THE TWO THINGS THAT WILL BITE YOU, BOTH INSTRUMENTS THAT REPORTED A CLEAN LIE
+>
+> **① A TITLE THAT EXISTS IS NOT A TITLE THAT TEACHES.** Verifying 1,220 candidate article titles against the live API found three failure classes and **only the first is the one anybody checks for**:
+> - **MISSING** — loud, easy.
+> - **REDIRECT TO A DIFFERENT SUBJECT** — silent. `Team dynamics` resolves to **a Japanese motorsport team**. `Checks and balances` resolves to `Separation of powers`, *already in the same cell*, so one article gets banked **twice under two themes** — the entry `theme` comes from the ASKED title, so two aliases are two entries and the cell inflates with its own prose.
+> - **DISAMBIGUATION PAGE** — exists, resolves, returns prose, teaches nothing. **32 found, several already shipped** (`Texture` in `art/grade1`, `Balance`, `Doctor`, `Depression`, `Loop`).
+>
+> **② MY OWN DETECTORS LIED FOUR TIMES BEFORE ONE WORKED, AND THREE OF THE FOUR ERRED *CLEAN*.** Counting the task-number LAW violations: a broad ALLCAPS pattern said **9,905** (it was matching this codebase's own shouted emphasis); a namespace pattern said **0 tickets** (`'\\\\b'` through a shell became a JS *backspace character*, and a heredoc ate the backslashes the same way); a hand-picked "also an English word" exception list said **2,747** (the list had 8 entries and English has more — `// a self she couldn't SPEAK` got filed as a violation). **The truth is 2,370.** ⭐ What finally works: **derive both halves and self-test.** The ticket namespace comes from `TODO.md` + `FINALIZED.md` (409 stems); whether a stem is also an English word is answered by **the corpus she is taught from** (379,406 distinct words → 55 stems are ordinary English and count only with a `.N` suffix); and the scanner **refuses to run if its own self-test fails**.
+>
+> ### ⭐⭐ TWO REAL FETCHER BUGS, FOUND BY SIX SKIPS, BOTH FIXED AND BOTH PROVEN BY RE-RUNNING
+>
+> - **The skip reason named the LAST HOST TRIED, not the decisive one.** `Pumping lemma` reported `no-such-page` **while existing on en.wikipedia with a 708-character extract** — it failed the sentence floor there, then simple-wiki's `missing` overwrote the truthful reason. **It was telling a reader to delete a title that exists.**
+> - **The throttle detector read the ARTICLE instead of the ERROR.** `classifyBody` matched `rate ?limit` against the response body unconditionally, so `Sampling (signal processing)` — **HTTP 200, valid 17,992-byte JSON, containing *"Slew rate limit error"*** — was `throttled` forever, burning the ~48 s backoff ladder on a request that had already succeeded. **Every article discussing rate limiting was unreachable.** Fix: a body that parses as JSON and carries a `query` object is an API answer whatever words are inside it; the throttle check itself is preserved.
+>
+> ### ⛔ SHE HAS NEVER SPELLED ANYTHING (`SPELLTRUTH.1`, filed by Gee this session and answered)
+>
+> The perfectly-spelled words on her drawings are **a caption**: a hardcoded 5×7 bitmap font (`FONT5X7`) stamping the concept key the drawing lane already holds. **The code claims the opposite in three comments** — *"her own CLEAN trained hand"*, *"her existing trained glyphs"* — and there is **no vocabulary gate anywhere in `chat.js`**. ⚠ The fix is a decision with three defensible answers and was deliberately NOT taken unilaterally → `SPELLTRUTH.2`. **Adding wobble or deliberate mis-spelling is ruled out** — it fixes the look and leaves the provenance defect.
+>
+> ### ⚠ OWNED THIS SESSION
+> - Started a `sed -i` on `global-workspace.js` — the banned scripts-edit-files pattern. **Caught and reverted inside the same command**; verified no diff and no stray `.bak`, then did it by hand.
+> - Verified a per-grade curriculum file by direct `import()` and got `Cannot access 'G1_MIXIN' before initialization`. **I suspected my own edit first, stashed it, re-tested, and the error was pre-existing** — a circular-import TDZ the production entry never hits. **Verify those files through `curriculum.js`, never by direct import.**
+>
+> ### NEXT
+> - **Cascade this branch** — `feature/figpair-0902` is not merged.
+> - **`CODELEAK.1`: 30 files left**, concentrated in `curriculum.js`, `brain-server.js`, `chat.js`, `gpu.js`, `cluster.js`, `kindergarten.js`. The method is proven and mechanical; **the unit of progress is a WHOLE FILE**, because a half-swept file still violates the LAW.
+> - **`SPELLTRUTH.2` needs Gee's call** between the three options.
+> - **The 70 THIN cells are the textbook lane's job**, not another topic-list pass — `CURVEBUILD.2`'s re-price says the college and grad floors cannot be reached by fetching Wikipedia harder.
+> - ⛔ **Never `--replace`.** It replaces the whole CELL, not your fetcher's entries; it cost 323,434 sentences earlier today. Every run this session was `--only-missing`.
+
+---
+
+> ## ⭐⭐ 2026-09-03 (LATE) THE INGEST IS DONE AND COMMITTED, THE TITLE LIST IS CLEAN, AND I DESTROYED 323,434 SENTENCES AND CAUGHT IT
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> board      30 open · 25 in-progress · 50 closed-in-place awaiting migration
+> corpus     COMMITTED (3e7d23eb, 173 files) — 189 cells · 2.53M sentences as-taught
+> ingest     FINISHED. Nothing is running.
+> knobs      205 classified: live 162 · boot 40 · cached 3   (effect:'???' = 0)
+> walk       frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⛔⛔⛔ READ THIS BEFORE TOUCHING ANY CORPUS FETCHER: `--replace` REPLACES THE CELL, NOT YOUR SOURCE
+> Re-running one subject with `--replace` does **not** replace that fetcher's own
+> entries — it replaces the **whole cell**, wiping every other source in it. On
+> `social` that cost **323,434 sentences**:
+> ```
+>   social/phd    145,695 -> 3,405    lost pmc-oa + arxiv research
+>   social/grad   144,498 -> 2,211    same
+>   social/grade9  13,730 -> 2,429    lost wikibooks
+>   + college1, college2, grade10, grade11
+> ```
+> ⭐ **Caught only because the corpus-wide count moved 2,533,741 → 2,211,790 and
+> the delta was traced per-subject against git.** Restored with
+> `git checkout HEAD -- corpora/academic/social/`, then re-run WITHOUT
+> `--replace`: 378,385 with every source intact.
+> ⛔⛔ **AND IT WAS INVISIBLE IN FOUR OF FIVE SUBJECTS.** `art`/`pe`/`music`/
+> `health` came back −3, +666, +132, +376 because those cells only ever held
+> wikipedia. **A spot-check would have called `--replace` safe.**
+>
+> ### ⭐⭐ WHAT LANDED (6 commits, `a2f28e2f` → `3e7d23eb`)
+> - **The deepening pass ran to completion** — 175 cells, all 18 subjects.
+>   ⛔ **And it proved the constraint is the TOPIC LIST, not depth:** sentences
+>   2,533,753 → 2,533,741 (**−12**) while figures went **38,024 → 41,537
+>   (+3,513)**. A re-fetch of the same list returns the same articles.
+>   **So the next corpus move is `CURVEBUILD.6` (more topics), NOT another pass.**
+> - **`CURVEBUILD.12`: 1,147 titles verified, THREE failure classes found.**
+>   ① 5 missing → 4 real (`Portfolio (art)`, `Mixing (recorded music)`,
+>   `Lifetime fitness`, `Art and technology`); ② **2 redirects silently serving
+>   the WRONG SUBJECT** — `Declaration of Independence` and `Bill of Rights` were
+>   landing on generic political science in `social/grade5` and `grade8`;
+>   ③ ⭐ **pages that EXIST and teach nothing** — `Rest`, `Rehabilitation`,
+>   `Wellness` are **disambiguation pages** that pass every existence check.
+>   **`missing` tests existence; the corpus needs usable content.**
+> - **Verified by RE-RUNNING, not re-checking:** `pe` 3→0 `no-such-page`,
+>   `music` 1→0, `health` 1→0, `social` clean. `social/grade8` now holds the real
+>   Declaration at **51,409 chars** where it had 473 of generic definition.
+>
+> ### ⚠ TWO MORE OF MY OWN INSTRUMENTS LIED — THAT IS NINE THIS SESSION
+> - A title extractor reported `Newton\` missing; it had **broken on the escaped
+>   quote** in `'Newton\'s laws of motion'`, which exists. **The only false
+>   positive today that would have DELETED a working topic.**
+> - The elementary-only sweep reported clean **for the third of the data it
+>   covered**, and the runtime then found 4 more above grade5.
+> ⭐ **The standing rule: a check scoped narrower than the data gives a clean bill
+> for the part it happened to cover.**
+>
+> ### ⏳ NEXT, IN ORDER
+> 1. **The figure sweep** — 4,925 owed, ledger now wired so failures record their
+>    reason. ⛔ `failures.jsonl` still does not exist; the ledger landed after the
+>    original run stopped, so that decay curve's reasons are gone for good.
+> 2. **`CURVEBUILD.6`** — more topics per cell. **This is now the evidence-backed
+>    next corpus move**, not a guess.
+> 3. Unblocked without network: **`STACKSWEEP.1`** (categories 1-6, 8-10, 12; 7
+>    and 11 done) · **`CODELEAK.1`** (781 lines) · `TEACHVIEW.8/.9`.
+> ⚠ **Wants your call:** `REGFIND.9` (changes what she SAYS) · `NOFALLBACK.7`
+> (needs a latency measurement first).
+> ⚠ **`.claude/scripts/fetch-libretexts-corpora.mjs` is untracked and inert** —
+> built, licence-gated, never run. Left alone on your instruction.
+
+---
+
+> ## 2026-09-03 THE INGEST IS RUNNING, EVERY KNOB IS CLASSIFIED AND WRITABLE, AND SEVEN OF MY OWN INSTRUMENTS LIED
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> board      32 open · 25 in-progress · 48 closed-in-place awaiting migration
+> INGEST     RUNNING — fetch-academic-corpora.mjs, 167 cells, 17 of 18 subjects
+> knobs      205 classified: live 162 · boot 40 · cached 3   (effect:'???' = 0)
+> walk       frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⛔⛔ THERE IS A LIVE JOB. DO NOT START A SECOND CORPUS WRITER.
+> `fetch-academic-corpora.mjs` is re-fetching every academic cell with **no
+> per-topic cap**. Science/social/ela complete pre-K→phd; art, research, pe,
+> music, health done; **`language` in progress, `ap` last.** Log:
+> `.scratch/curvebuild11.log`.
+> ⭐ **It is far faster than the board predicted** — the 4.4 min/cell estimate was
+> taken under the throttle later root-caused as the **User-Agent**, not rate.
+> ⛔ **Two things are QUEUED BEHIND IT AND MUST NOT BE STARTED EARLY:**
+> `CURVEBUILD.12` (3 requests; it already earned a **429** against a live wiki
+> ingest) and the **figure sweep**, which re-reads `corpora/` at every batch — so
+> sweeping before the deepening finishes strands every newly-harvested plate.
+>
+> ### ⭐⭐ WHAT SHIPPED (14 commits, `f05a4d8c` → `18bfe636`)
+> - **Every knob classified and the panel can now TURN them.** `effect:'???'`
+>   **171 → 0** by reading each site. `POST /knob` applies the 165 that can
+>   honestly take a write and **REFUSES the 40 boot-frozen with a 409** — writing
+>   one sets the env, reads back correctly, and changes **nothing**. The
+>   confirmation is **re-derived through the registry, not echoed**.
+> - **Categories rebuilt** on the axis of *what a knob governs*: 17 → 10, and
+>   `Other` (which held the brain's own tick interval) was **renamed** `UNSORTED`
+>   then emptied by reading.
+> - **`PHASEBAR.1` closed, both halves.** The bar counted work the grade forbids
+>   (14 units, 11 grade-gated, so a 21% ceiling at kindergarten); and `done: 0`
+>   turned out **never to be a bug** — credit lands on EXIT and one unit runs
+>   **14.9 hours**. Fixed by naming the in-flight unit, **not** by crediting early.
+> - **Six thresholds derived** over 200,000 samples/distribution, and
+>   `DREAM_RANGE_MAX_RUNS` turned out **not to be a tunable at all** — 16 is the
+>   donor's own acceptance limit.
+> - **`CRYSTAL.1` + `CORPUSBRACKET.1`** closed by measuring: one fix had already
+>   shipped, one corpus had healed (4 wiki markers in 2.53M sentences).
+>
+> ### ⛔⛔⛔ SEVEN OF MY OWN INSTRUMENTS LIED — CHECK ANY DETECTOR BEFORE BELIEVING IT
+> Today added three to the four already on record: a **guard-block parser** that
+> found 2 of 7 grade gates; a **bracket classifier** that called `[sic]`
+> contamination; and a **producer/consumer sweep** that reported **421 of 421**
+> fields "read nowhere" — including `color` and `meanVoltage` — because a mangled
+> character class matched nothing. **A 100% hit rate is a red flag, not a
+> jackpot.** Nothing from that run was filed.
+> ⭐ **The rule now in `wiki/gotchas/instruments-that-lie`: test a fresh detector
+> against a known-positive AND a known-negative before writing down one verdict.**
+>
+> ### ⚠ THREE DEFECTS I INTRODUCED TODAY, ALL CAUGHT BY MY OWN CHECKS
+> 1. **Sparse knob entries CLOBBERED discovery** — 18 knobs gained an effect class
+>    and lost group, default and description. Fixed at the merge, not per-entry.
+> 2. **A second entry for one knob published TWICE** — 210 knobs, 5 duplicates.
+>    The hand array now folds by key.
+> 3. **The coverage auditor began measuring a different corpus than the walk** —
+>    moving cleaning to the reader left it counting bytes on disk (**8,715
+>    sentences / 233,157 words** apart). 0.46%, and it decides band-floor passes.
+>    Now counts through the reader's own helper; **verified 0 divergence.**
+> ⚠ **And 9 of the `CODELEAK.1` violations I removed were mine, written today** —
+> task numbers put into source *while cataloguing that exact violation*.
+>
+> ### ⏳ NEXT, IN ORDER
+> 1. **Let the ingest finish** (`language`, then `ap`), then **re-measure the
+>    corpus** — `wiki/modules/corpora.md` is `stale` and only a re-measure closes
+>    it. ⛔ Do not bump `last-verified` to quiet the hook.
+> 2. **`CURVEBUILD.12`** — 3 requests, the moment the wiki quota is free.
+> 3. **The figure sweep** — 4,925 owed, now with the failure ledger wired so it
+>    finally records WHY each one fails. ⛔ `failures.jsonl` does not exist yet;
+>    the ledger landed after the run stopped, so the decay curve's reasons are
+>    gone for good.
+> 4. Unblocked without network: **`STACKSWEEP.1`** (9 categories left; 7 and 11
+>    done) · **`CODELEAK.1`** (781 lines) · `TEACHVIEW.8/.9`.
+> ⚠ **Wants your call, not mine:** `REGFIND.9` (changes what she SAYS) and
+> `NOFALLBACK.7` (needs a latency measurement first).
+
+---
+
+> ## 2026-09-02 (LATE) THE DOWNLOAD IS STOPPED ON PURPOSE, ALL 205 KNOBS HAVE A REASON, AND FOUR OF MY OWN INSTRUMENTS LIED
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> board      41 open · 23 in-progress · 38 closed-in-place awaiting migration
+> corpus     0 contaminated sentences reach her — cleaned at the READER, disk unchanged
+> figures    26,458 / 31,383 (84.3%) — STOPPED DELIBERATELY, nothing running
+> walk       frozen ON PURPOSE — training still being BUILT
+> ```
+> ⛔ **THE FIGURE NUMBERS ON THIS LINE WERE WRONG IN THIS FILE'S PREVIOUS VERSION AND THE CORRECTION MATTERS.** It read `26,457 / 32,296 (81.9%)`. **`26,457` is the LEDGER count — the number the producer's own code explicitly refuses to trust**, because a field is ledgered when it is *written* and delivered when it is *committed*. **`32,296` counts 913 figures the pipeline deliberately never collects**: 89 site-furniture images, 631 with no anchor text, 193 in formats nothing can decode. Both replaced with figures measured by running production code.
+>
+> ### ⛔⛔ THE FIGURE RUN WAS STOPPED, AND THE CURVE IS WHY — NOT IMPATIENCE
+> Gee approved it: *"that whole plane from start to fininsh will work tell me when tthe downloads finished two more passes"*. Yield per `--limit 1500` pass: **911 → 854 → 860 → 862 → 788 → 692 → 617 → 553 → 539 → 405 → 331 → 270 → 207 → 156 → 121 → 98**, success **61% → 6.5%**, a clean **×0.81 geometric decay** — my projection said ×0.81 and the last two passes measured ×0.78.
+> ```
+>   ~675 further figures before it yields <1/pass · ~25 passes · ~4 hours
+>   4,925 of 31,383 still owed — an UNKNOWN share of them dead, not "~5,400"
+> ```
+> ⭐ **Stopped CLEANLY** — only the outer loop was killed, so the in-flight batch generated, committed and pushed before exiting. Zero processes left. ⛔ **Much of the tail is DEAD, not slow** (404s, undecodable formats, moved repos) and **every pass re-attempted every one of them**, because failures were recorded nowhere. **That curve IS the cost of the missing ledger, drawn out over hours.**
+> ⚠ **I previously wrote that "the 5,400 are DEAD". That number came from the wrong denominator, and the word "dead" was a projection, not a reading** — with no ledger there was nothing that could tell a 404 from a timeout. **193 of them are provably dead by format; the rest are unclassified until a sweep runs with the ledger wired in.**
+>
+> ### ⭐⭐ THE REBUILD IS IN — `.claude/scripts/figure-failure-ledger.mjs` + `js/brain/figure-identity.cjs`
+> Failure ledger written **as it happens** (the run gets KILLED — that is how it normally ends), permanent-vs-transient classification, retry selector with an attempt cap, and the live permanent/transient split now printed **while a run goes** rather than in hindsight.
+> ⚠ **The classifier leans one way ON PURPOSE: when in doubt, TRANSIENT.** A wrongly-transient row costs one retry; a wrongly-permanent row loses that figure forever with nothing left to re-examine it.
+> ✅ **Since shipped:** `--retry` mode (sources its list from the ledger alone, caps attempts, reports the permanent and given-up sets instead of dropping them) · **the key rule collapsed from FIVE copies to one owner** · the format rule's two copies, **which did not agree**, merged · the progress counter now reports the pass's own delta.
+> ⏳ **Still owed:** **one sweep over the 4,925, with the ledger now wired in, then `--retry` against what it records.** ⛔ **`failures.jsonl` does not exist** — the ledger landed *after* the run stopped, so the 15 passes that produced the decay curve wrote down none of their reasons and nothing can recover them. The retry mode says so out loud rather than reporting "nothing to do".
+>
+> ### ⛔⛔⛔ FOUR OF MY OWN INSTRUMENTS LIED IN ONE SESSION — CHECK BEFORE TRUSTING ANY OF THEM
+> 1. **A brace-depth scope classifier** called two module-scope constants `live`.
+> 2. **A column-0 classifier that scored 6/6** against hand-read truth and was *still* wrong — it called **107 of 192** boot-frozen; spot-checking four found three were live. **The 6/6 was luck.**
+> 3. **A doc-vs-code audit** that concatenated every digit in a prose cell, turning `` `1800000` (30 min) `` into **180000030**.
+> 4. **The knob registry scanned ITSELF** and invented a knob called `DREAM_` from an elided name in its own comment.
+> ⭐ **And a harness assertion I nearly dismissed found a real bug:** a torn last line in the ledger doesn't just lose itself — **the next append glues onto it**, so every restart silently swallowed its own first recorded failure.
+>
+> ### ⭐ ALL 205 KNOBS NOW CARRY A REASON — 186 unexplained → **0**
+> ```
+>   set 71 · derived 29 · config 43 · inherited 61 · stale 1 · unknown 0
+> ```
+> ⚠ **The count grew 193 → 206 → 205 because the scanner had MISSED A WHOLE ACCESS PATTERN** — `_envNum('KEY', default)` never writes `process.env.`, hiding **11 knobs including the sem→motor RECTIFICATION pair** (what stops saturation hard-stopping the walk) and **both K-gate thresholds at 0.80.** **Gee's question found it; the panel could not.**
+> ⭐ **A third effect class exists and is the dangerous one:** `cached` — read once behind an `if undefined` guard, **identical to `live` in source**, and on a running brain a write is accepted, reads back correctly and is **silently ignored.** `DREAM_FIRING_TARGET_PCT` and `DREAM_NOISE_GATE` were both mislabelled `live`.
+> ⛔ **`DREAM_REP_COMPRESS = 40` is the one STALE value.** Measured against a corpus **11.2× smaller**; live collision load measures **1,542–7,471** against a sweep that called **0.246** "production" and whose table stops at **25**. **This brain runs 60–300× beyond anything anyone measured.** Sweep it at the press.
+>
+> ### ⭐ ALSO SHIPPED
+> **The vocabulary cap is GONE** (60 → unlimited; my reason for keeping it was wrong twice — 5.5× on the word count, 20× on concurrency; real cost **19.8 h once, ever**) · **8 of 9 courses now rehearse earlier grades** (+0.225% of the prose lane) · **`FIGPAIR.1`** — the figure lands on the page it belongs to · **knob save / drag-drop load with a diff / reset preview** · **hacker-green CRT theme** with a legibility-bounded static roll · **download-weights buttons** · **`TEMPORAL.1` designed** (time is already implemented — `ojaUpdate(state_t, state_t+1)` — and has never been pointed at vision).
+>
+> ### ⛔⛔ TWO FOULS OF MINE, BOTH REAL
+> **① I committed brain work into the LIVE field repo and deleted 23,782 files from it, pushed.** Cause: `cd .../BrainWaves` chained with `git add -A && git commit` in one command. **Recovered** (`git restore --source --staged`, no LFS re-download, origin verified back at 24,330) and the generator was never disrupted. ⛔ **Rule: never chain `cd <other repo>` with a commit.** ⚠ **It was caught by the WIKI STALENESS hook** — an unrelated instrument — and **walked straight past the Git Flow guard, which only watches this directory.**
+> **② `import()` EXECUTES a module.** I used it as a "does this load" check all session; on the producer it **started a real run for two minutes.** No harm — but it also exposed that **my own `grab()` change had silently broken every SVG rendition** an hour earlier.
+>
+> ### ⏳ NEXT
+> **Finish the retry pass** and the two duplicated rules, **then `MATHLEAK.1`'s re-ingest and `MATHGAP.1`'s ingest half** (both were only ever blocked because the generator re-read `corpora/` every batch) · **`CORPUSCALE.2`** the collision-load sweep · **`KNOBFIND.5/.6`** the values that want measuring not describing · **`TEACHVIEW.9`** the rest of the monitor.
+> ⛔ **`TEMPORAL.1` and `CURVEBUILD.3` wait for the fresh walk** — both change what she is taught.
+>
+> ⚠ **STANDING BOUND: almost everything here is a STATIC read or a harness. Nothing has been seen on a running brain.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 THE FIGURE GOES ON ITS OWN PAGE, THE KNOBS ARE UNREACHABLE, AND 8 OF 9 COURSES NEVER REHEARSE (superseded — the top block is current)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch      feature/figpair-0902 — FIGPAIR.1 BUILT AND HARNESSED 43/43, docs swept
+> develop/main pushed to both remotes and equal as of 35005fc4
+> RUNNING     the figure-field job — batch 19 generated, ~20,820 / 32,296 (64%)
+> walk        frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⭐⭐ FIGPAIR.1 IS DONE, AND ITS OWN HARNESS CAUGHT A BUG IN MY BUILD
+> The proof is one line — `[T<n>]` is a section's sentences taught, `f` is one of **that section's** figures perceived, from `science/grade5` through the real `Curriculum.prototype`:
+> ```
+> [T94] f f f f f  [T40] f  [T118] f f f  [T120] f  [T120] f f f f  [T33]  [T34]  [T531] f f f f f f f f f f f f
+> ```
+> ⛔⛔ **The bug it caught: the store key collided.** My first cut passed the bare section theme as `opts.key`, and the key is built from it — so **every figure in a section resolved to ONE address**. Only the first of the five cell-biology pictures would ever have landed, **at an address no other lane uses**, so the cell lane and the drain would both have missed it and re-fetched from the network. Fixed to the shared `theme + hash(url)` rule. ⭐ **Because the rule is shared the two lanes now COMPOSE** — what the section walk banked reads as already-held to the cell lane, which spends its six per-visit attempts on the figures that had **no field at all**. **43/43: 18 accessor · 4 key rule (189-cell sweep, 0 figures lost) · 9 on the real mixin with `fetch` instrumented (a gated miss = 0 fetch calls) · 12 on the real prototype.**
+> ⚠ **Two wiki claims were corrected against the code on the way:** `curriculum.js` and `student-question-banks.js` were both documented as **"browser-bundled"** and **neither is in `js/app.bundle.js`**. The bridge exists because of the browser **contract** (browser-safe ESM, no filesystem), not because of a build output. ⏳ **Not seen on a running brain** — a press must show `figuresInline` climbing and `figFieldOnlyMiss` naming the fall-throughs.
+>
+> ### ⭐⭐⭐ THE KNOBS ARE IN THE TEACH VIEW NOW — ALL 193, WITH TOOLTIPS, DIALS, AN EQUALIZER AND A TRACE
+> Gee had asked five times and I had filed it five times. **Built:** `server/knob-registry.js` → `state.knobs` → the Training-knobs card, rendered **above** the teach-bus guard so a stopped walk still shows them.
+> - ⛔ **The hard field is `effect`, not the value.** A knob read once at module scope was frozen at boot — a write reads back correctly and **changes nothing about the training**. Every row is `live` / `boot-frozen` / `???`, and **`???` renders as itself.**
+> - ⛔⛔ **MY FIRST CLASSIFIER LIED AND WAS DISCARDED.** A brace-depth scanner called `DREAM_PHASE_BUDGET_MS` and `DREAM_STRUCTURE_DOSE` **live** when both are module-scope constants (the IIFE defeats depth counting) — caught by spot-checking it against two sites I had already read. **Only 4 of 193 are genuinely boot-frozen.** ⭐ And it corrected the board: **`DREAM_CONTENT_LR` is LIVE**, not captured at boot as `TEACHKNOB.1` claimed.
+> - ⭐ **193 not 30.** The brain reads 190; shipping my 30 hand-written ones would have been a complete-looking instrument over a sixth of the truth. The rest are **discovered from the running source**, described by the comment at their read site or their row in `ADMIN-CONTROLS.md` (**89 there, rescuing 47 with no comment**). **134/193 described — and the panel prints that ratio as its own incompleteness.**
+> - **Two real bugs the render harness caught first:** the escaper **did not escape double quotes**, so one quote in a real code comment closed the `data-tip` attribute and injected the rest as markup; and markdown leaked from all three sources — **fixed at the publish chokepoint**, because per-source meant three fixes and a missed fourth, which is what had already happened. **19/19.**
+>
+> ### ⭐⭐ AND EIGHT OF NINE COURSES REHEARSE NOW (`TEACHKNOB.2`)
+> `_rehearseEarlierGrades` at the `_cellRunner` chokepoint, **before** the new material (the gate at the end grades *this* grade). Budget split **evenly across every earlier grade**, each with **its own cursor**. **RE-PRICE computed before it shipped and re-run through the real method: +0.225% of the prose lane, +77.6 min across a ~24-day walk**, worst cell 0.667%. Knobs `DREAM_REHEARSAL_FRACTION/_MAX/_REPS`. **12/12 + 7/7 proving the new checkpoint tags cannot skew the phase count.**
+>
+> ### ⛔⛔ AND HIS THIRD QUESTION HAS A BAD ANSWER — `CORPUSCALE.1`
+> *"did we re scale the cells phases and grades to all the new corpus?"* — **phase counts, band floors and `DREAM_CONTENT_LR` are all current** (re-derived 2026-09-02). ⛔ **`VOCAB_CAP` is not.** It is **hardcoded at 60 per cell visit with no env knob**, and the median cell needs **94 visits** to anchor its words (`science/phd` needs **1,743**). A cell is visited a handful of times, so **most of the corpus binds on basins the pre-vocab step never reached** — the exact failure that step exists to prevent, defeated by scale. ⚠ **Raising it was priced and does not fit: ~25 days to anchor all 1,996,943 words once.** ⭐ **The cheap fix is the ORDER, measured at 3.0×** — the window rotates in corpus order; top-60 **by frequency** covers **20.71% of a cell's word occurrences against 6.85%**, for the same 60 lookups and **no re-price**.
+>
+> ### ⛔⛔ NEW RULING — I AM THE ONE WHO TURNS THE KNOBS, AND THEY LIVE IN THE TEACH VIEW (`TEACHKNOB.4`)
+> Gee: *"we have all the knobs in the teachview ... you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain after we get the wavlets downladed and all todos done"*. **This re-scopes `TEACHKNOB.1`: read-only is now step one of two, not the deliverable.** ⛔ **The hard part is not the UI — it is that a write must not be able to lie.** Several of the 31 are captured **once at boot** (`DREAM_CONTENT_LR` at `curriculum.js:24188` is proven), so a live write would read back correctly and change nothing about the training. **Every knob gets classified LIVE / NEXT-CELL / BOOT-FROZEN before one write control is drawn, and a BOOT-FROZEN knob renders as refused-with-a-reason — never accepted and silently ignored.** ⚠ **RE-PRICE binds me exactly as it would him**: lowering a dose mid-test still means recomputing `corpus × reps × scale × visits` first.
+>
+> ### ⛔⛔ GEE'S CORRECTION THAT DROVE FIGPAIR — I HAD THE FIGURE LANE WRONG
+> His words: *"we DO NOT JUST FEED HER THE WAVES CONSECUTIVELY WE GIVE HER EACH ONE AT THE SAME TIME SHE IS TRAING THE TEXT AND CHAPETERSECTIONS ... it would be stupid to just feed her a shit tone of images on a fucking timer with no fucking relation to the actual text"*.
+> - ⭐ **The corpus already agrees with him:** `science/grade5` holds **8 experiences**, one carrying `theme: "cell-biology-"`, an **8,142-char story AND its own 5 figures**, each with the context prose it sits inside. **The section and its pictures are stored together.**
+> - ⛔ **Three accessors destroy that pairing:** `academicStorySentences` flattens all sections into one array · `academicStoryFigures` flattens all figures and loses the owner · `storyExperiences` preserves sections but **drops `figures` entirely** (`life-curriculum.js:105`). No `academicStoryExperiences` existed.
+> - ⛔ **What was lost is NOT the caption binding** — a queued figure carries its own alt/caption/context and binds to its own words wherever it drains. **CO-ACTIVATION was lost.** A cell diagram perceived while she is taught weather never fires together with the cell-biology prose. **The picture kept its caption and lost its lesson.**
+> - ⭐⭐ **The timer only existed because a figure cost ~7.7 s.** With the field consumer it is a **~50 ms local read** — `math/grade10` goes from **462 cell visits** to **~138 seconds**. **The cap and the timer were both consequences of a cost that no longer exists.**
+> - ⚠ **`fieldOnly` IS THE LOAD-BEARING GATE:** inline perception must refuse to fall back to the network, or a fieldless cell reverts to 7.7 s each and puts **5.9 hours inside one cell pass**. **Field hit → inline beside its text. Miss → the queue. Never the reverse.**
+>
+> ### ⛔ THE KNOBS — 31 EXIST, HE CAN REACH NONE OF THEM
+> `217` distinct `DREAM_*` knobs; **31** govern training/weights/saturation/consolidation; the dashboard shows **4**, and **none of the four are training knobs.** They are read from `process.env` at boot = the systemd unit = **a box he has no shell on.** `TEACHKNOB.1` wants a **read-only panel first** — today he cannot answer *"what is `DREAM_CONTENT_LR` actually set to right now?"*. ⚠ Write support is separate and heavier: several are captured once at boot, so a live write would change nothing while appearing to work.
+>
+> ### ⛔⛔ "WITHOUT REPLACING OLD TEACHINGS WITH CURRENT" — 8 OF 9 COURSES HAVE NO REHEARSAL
+> What protects old learning: **Oja self-normalises** (but its `−η·post²·w` term IS the forgetting mechanism) · **saturation detection with a replay VETO** (8 consumers) · **CLS consolidation replay** with a fair-share cursor — ⚠ **that is MEMORY consolidation, not CURRICULUM rehearsal** · and **a real spaced-repetition refresh that covers ELA alphabet mechanics and nothing else.** ⛔ `math`, `science`, `social`, `art`, `music`, `pe`, `health`, `life` get **no re-presentation of earlier grades at any point** — when grade 10 trains, the Oja decay on grade 3 is **unopposed**. `TEACHKNOB.2`. **Fix at the `_cellRunner` chokepoint and RE-PRICE first.**
+>
+> ### ✅ THE DISK QUESTION IS CLOSED — AND THE NUMBER THAT DROVE IT WAS NEVER MEASURED
+> **The box is 1 TB** (Gee: *"we have 1T on the box i found out"*). The `500 GB` that `REGFIND.8`, `WAVESEE.7` and one operator acceptance all rested on was **a sentence in `visual-memory.js`, repeated three times** — corrected at all three sites. Real arithmetic **counting all three copies of the fields** (Forgejo LFS + the pulled `fields/` staging copy + the visual store): **~420 GB of 1,000, 42%**, against an 8 GB save floor. ⚠ **The acceptance was given twice against wrong numbers and survives both — that is luck, not verification.** The disk panel (`state.disk`, `usedPct`, `saveDeferrals`) is the standing mitigation.
+>
+> ### ⭐ ALSO SHIPPED TODAY
+> She **reads the wavelet fields** · she **hears** (`describeAudio` had zero consumers until now) · the **eye is driven again** and the **gaze reaches server state** · the **vox lane and old TTS are gutted** (`voice.js` 860 → 720) · the **box disk is visible**.
+>
+> ### ⏳ NEXT
+> **`CORPUSCALE.1`** the frequency-ordered vocab window — **3.0× more prose anchored for the same cost and no re-price** · **`TEACHKNOB.4`** the write lane, gated on proving every effect class (only 4 boot-frozen, but **166 are still `???`**) · **`TEACHVIEW.8/.9`** the rest of his bars/graphs ask · then the field-job-blocked set: **`WAVESEE.2`**, **`WAVESEE.6`** (failure rate ~43% and climbing into the tail), **`REGFIND.1`**, **`MATHLEAK.1`**, the 4 empty maths cells, and **`REGRESSION.1`'s** unreviewed half.
+>
+> ⚠ **STANDING BOUND: almost everything here is a STATIC read. Nothing has been seen on a running brain.**
+
+---
+
+> ## ⭐⭐⭐ 2026-09-02 SHE SEES THE WAVELETS, SHE HEARS, AND THE REVIEW CAUGHT MY OWN TOOLS FOUR TIMES (superseded — the block above is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
@@ -37,13 +361,13 @@
 > - **4 EMPTY and 115 THIN cells** of 193. Not errors — a smaller education. `MATHGAP.1`.
 >
 > ### ⏳ NEXT — everything unblocked is DONE; all of this waits on the field job
-> **`WAVESEE.2`** (collapse the duplicated `figKey` — the producer cannot be edited while its loop respawns node every batch) · **`WAVESEE.6`** (the ~43%-and-climbing failures: ledger them, classify permanent vs transient, retry only those) · **`REGFIND.1`** (fix the counter and the stop condition) · **`MATHLEAK.1`** re-ingest · **the 4 empty maths cells** · then **`REGRESSION.1`'s remaining half** — `emit.js`, `language-cortex.js`, the bundle's 134k-line drop, and the seven orphan exports are still unreviewed.
+> **`WAVESEE.2`** (collapse the duplicated `figKey` — the producer cannot be edited while its loop respawns node every batch) · **`WAVESEE.6`** (the ~43%-and-climbing failures: ledger them, classify permanent vs transient, retry only those) · **`REGFIND.1`** (fix the counter and the stop condition) · **`MATHLEAK.1`** re-ingest · **the 4 empty maths cells** · then **`REGRESSION.1`'s remaining half** — `emit.js` and `language-cortex.js` are still unreviewed. ⛔ **RETRACTED 2026-09-02: "the bundle's 134k-line drop" was NEVER REAL — I invented it here and carried it across sessions as outstanding work.** `js/app.bundle.js` measures **23,320 / 23,325 / 23,377 / 23,222 / 23,236 / 23,380** lines across the last six commits that touched it: stable, no drop of any size. **A fabricated item had been sitting on the to-do list being deferred.** See `REGFIND.9`.
 >
 > ⚠ **THE STANDING HONESTY BOUND:** almost everything above is a STATIC read. **Nothing here has been seen on a running brain**, and a static read reported as a live verdict is the defect class this whole review exists to catch.
 
 ---
 
-> ## ⭐⭐⭐ 2026-09-02 SHE READS THE WAVELETS, AND THE REVIEW CAUGHT MY OWN INSTRUMENTS (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 SHE READS THE WAVELETS, AND THE REVIEW CAUGHT MY OWN INSTRUMENTS (superseded — the top block is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
@@ -81,7 +405,7 @@
 
 ---
 
-> ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-02 THE PICTURES BECAME EQUATIONS, AND THE LANE HAD NEVER BEEN RUN (superseded — the top block is current)
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
@@ -408,7 +732,7 @@
 
 ---
 
-> ## ⭐⭐⭐ 2026-09-02 FIFTH + SIXTH BATCH (LATEST — PICK UP HERE) — THE REPOSITORY KEPT ALREADY HAVING WHAT THE BOARD WAS ASKING FOR
+> ## ⭐⭐⭐ 2026-09-02 FIFTH + SIXTH BATCH (superseded — the top block is current) — THE REPOSITORY KEPT ALREADY HAVING WHAT THE BOARD WAS ASKING FOR
 >
 > ### Read in this order: this block → `docs/TODO.md` (`CURVEDEPTH.11` is the live successor) → the batches below.
 >
@@ -627,7 +951,7 @@
 
 
 
-> ## ⛔⛔⛔ 2026-09-01 NEWBORNMUTE (LATEST — PICK UP HERE) — THE RETRIEVAL LANE IS GONE FOR EVERY BRAIN, AND IT EXPOSED A SECOND ORACLE THAT IS BIGGER THAN THE ONE REMOVED
+> ## ⛔⛔⛔ 2026-09-01 NEWBORNMUTE (superseded — the top block is current) — THE RETRIEVAL LANE IS GONE FOR EVERY BRAIN, AND IT EXPOSED A SECOND ORACLE THAT IS BIGGER THAN THE ONE REMOVED
 >
 > ### Read in this order: this block → `docs/TODO.md` (`ORACLEB`, then `REGRESSION` which is the LAST item) → the blocks below.
 >

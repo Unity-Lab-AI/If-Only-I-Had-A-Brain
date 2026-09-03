@@ -9,7 +9,7 @@
 // so governState → governTick → imagineFromState sequencing is preserved
 // without the caller awaiting the governor calls.
 import { parentPort } from 'node:worker_threads';
-// PAINT.6 (2026-08-21) — Node has no ImageData, and the CPU reconstruct path
+// Node has no ImageData, and the CPU reconstruct path
 // (`transform.js reconstructImageData`, reached via `imagine()`) constructs one.
 // Any server-side caller of imagine() crashed with "ImageData is not defined"
 // before this — which is why the schema palette was being GUESSED from two

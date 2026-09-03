@@ -100,11 +100,10 @@ export const G9_MIXIN = {
       'carnivores eat meat', 'omnivores eat both',
       'food webs show multiple connections', 'ecosystems reach dynamic equilibrium',
     ];
-    // T14.24 Session 44 — TODO-aligned biology 1 deepening.
-    // TODO Sci-G9 spec (line 451): "deeper walks on cell organelles,
-    // DNA structure, evolution principles". Three-part teaching:
+    // BIOLOGY 1 — deeper walks over cell organelles, DNA structure and the
+    // principles of evolution. Three parts:
 
-    //   1. _teachCells (from G7) — reinforces the 7 organelle basins
+    //   1. _teachCells (from grade 7) — reinforces the 7 organelle basins
     //      (cell/nucleus/mitochondria/membrane/cytoplasm/ribosome/
     //      chloroplast) so G9's deeper biology sentences have stable
     //      anchors when discussing "gregor mendel", "punnett square",
@@ -173,8 +172,7 @@ export const G9_MIXIN = {
       'the ottoman empire declined', 'world war one began in nineteen fourteen',
       'trench warfare was brutal', 'the war ended in nineteen eighteen',
     ];
-    // T14.24 Session 65 — prime world history modern scaffold per
-    // TODO line 524 before the sentence pass.
+    // Prime the modern world-history scaffold before the sentence pass.
     await this._teachWorldHistoryModern();
     await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
     const _af = await this._autoFinal(SENTENCES);
@@ -198,8 +196,7 @@ export const G9_MIXIN = {
       'cubism broke forms into shapes', 'picasso co invented cubism',
       'abstract art left behind representation', 'pollock dripped paint on canvas',
     ];
-    // T14.24 Session 84 — prime art history chronological scaffold
-    // per TODO line 565 before the art history sentence pass.
+    // Prime the art-history chronological scaffold before its sentence pass.
     await this._teachArtHistory();
     // ── Art-G9: art movement progression as inference chains ──
     await this._teachInference([

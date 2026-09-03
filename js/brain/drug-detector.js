@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // drug-detector.js — Substance-offer detection in text/voice input
 // ═══════════════════════════════════════════════════════════════════════════
-// Unity AI Lab — T15 Drug State Dynamics Rebuild (C5)
+// Unity AI Lab — drug state dynamics
 //
 // Parses incoming user text for substance-related events:
 //   - OFFER       : user is offering Unity a substance ("want a joint?")
@@ -64,7 +64,7 @@ const SUBSTANCE_SYNONYMS = {
   ghb: [
     'ghb', 'g', 'liquid ecstasy', 'liquid g', 'gbl'
   ],
-  // T15.C — nicotine + caffeine added for the 11-substance scheduler.
+  // Nicotine + caffeine, bringing the scheduler to 11 substances.
   // Nicotine is persona-excluded at decide() time (Unity rejects tobacco)
   // but the detector still recognizes offers so the rejection lands
   // with the right reason code.

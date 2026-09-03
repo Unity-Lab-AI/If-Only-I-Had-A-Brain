@@ -208,7 +208,7 @@ export class ComponentSynth {
   }
 
   /**
-   * T14.17 — cortex entity readout vector (what the cortex is representing now),
+   * Cortex entity readout vector (what the cortex is representing now),
    * or null. Extracted so single + multi generation share one source.
    */
   _cortexEntityVec(brainState) {
