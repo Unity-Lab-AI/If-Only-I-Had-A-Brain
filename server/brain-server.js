@@ -9509,6 +9509,53 @@ const httpServer = http.createServer((req, res) => {
   //   ???      → REFUSED; an unclassified knob is one nobody has proven is safe
   // ⚠ `???` is currently ZERO, and the refusal stays anyway — it is the branch
   // that keeps a newly-discovered knob from being writable before it is read.
+  // ── THE TEACH-VIEW BENCH, FIRED FROM A PRESS, LIVE DURING TRAINING ─────────
+  //
+  // Operator: *"runnable from a press and live running during brain training"*.
+  // He has no server access — only dashboard buttons — so a command-line bench
+  // would be one nobody who needs it can run, on the box where the answer lives.
+  //
+  // ⛔ IT MUST NOT DISTURB THE WALK IT REPORTS ON. Every read behind this is of
+  // ALREADY-PUBLISHED state: the cached `_curriculumCoverage` (computed once at
+  // boot precisely so it never rides a request), `knobState()` (3 ms warm), the
+  // ledger's own counters, and the field store's in-memory tallies. Nothing is
+  // recomputed, nothing touches the cortex or the GPU. The reply carries the
+  // bench's own wall-clock so a slow bench is visible rather than mysterious.
+  //
+  // ⭐ THE PREVIOUS LEDGER TOTAL IS CARRIED ACROSS CALLS, and that is what turns
+  // a count into a verdict: "1,200 rows" cannot tell a working ledger from a
+  // frozen one, but "+40 since the last bench" can, and a zero advance during an
+  // active walk is a RED rather than a shrug.
+  if (req.url && req.url.split('?')[0] === '/teach-bench' && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/teach-bench')) return;
+    try {
+      const tvb = require('./teachview-bench.js');
+      const out = tvb.benchNow({ brain: this, prevLedgerTotal: this._teachBenchPrevLedgerTotal });
+      this._teachBenchPrevLedgerTotal = out.ledgerTotal;
+      // Into the console ring as well as the reply — the ring is what the
+      // dashboard operator can actually read without a terminal.
+      for (const line of out.text.split('\n')) console.log(`[TeachBench] ${line}`);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify({
+        ok: true,
+        verdict: out.result.verdict,
+        working: out.result.working,
+        green: out.result.green,
+        red: out.result.red,
+        grey: out.result.grey,
+        ms: out.result.ms,
+        surfaces: out.result.surfaces,
+        text: out.text,
+      }));
+    } catch (e) {
+      // ⚠ A bench that throws must say so loudly rather than 500 silently — a
+      // missing readout reads as "not run", and "not run" gets mistaken for fine.
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, verdict: 'BENCH FAILED', error: (e && e.message) || String(e) }));
+    }
+    return;
+  }
+
   if (req.url && req.url.split('?')[0] === '/knob' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/knob')) return;
     let body = '';

@@ -239,6 +239,9 @@
           <button id="tvClear" class="tv-tip"
             title="Clear the pane only. Nothing is unlearned and no count is reset."
             data-tip="Empty the reading pane.&#10;&#10;⚠ This clears the DISPLAY only. Nothing is unlearned, no counter is reset, and the server-side ring is untouched.">clear</button>
+          <button id="tvBench" class="tv-tip"
+            title="Sweep every surface of this page against the LIVE brain and say WORKING or NOT WORKING."
+            data-tip="Run the full sweep bench, right now, against the running brain.&#10;&#10;It checks every surface this page depends on — the knob registry, the knob write lane, the teach ledger, the corpus feed, the figure lane, and whether any field shown here has no producer — and returns one WORKING / NOT WORKING line plus a reason per surface.&#10;&#10;⛔ It reads ALREADY-PUBLISHED state only. No cortex reads, no GPU work, no filesystem sweep — running it cannot disturb the training it is reporting on, and it prints its own cost so a slow bench is visible.&#10;&#10;⚠ GREY is not a pass. It means the bench could not see that surface — usually because the walk was idle. Re-run it during teaching.">bench</button>
           <label class="tv-sub tv-tip"
             title="How fast queued items are drained into the pane."
             data-tip="How many queued items are drawn per second.&#10;&#10;Lower to actually read the text; raise to work through a backlog. This changes only how fast you SEE items — never how fast she is taught.">rate <input id="tvRate" type="range" min="1" max="20" value="4" /></label>
@@ -454,6 +457,34 @@ $('tvPause').onclick = () => {
 };
 $('tvStep').onclick = () => { if (paused) drainOne(); };
 $('tvClear').onclick = () => { $('tvFeed').innerHTML = ''; };
+
+// ── THE BENCH PRESS ──────────────────────────────────────────────────────────
+// Fires the full sweep against the LIVE brain and prints the readout straight
+// into the reading pane, because that is the surface already in front of whoever
+// pressed it. The verdict line leads, so the answer to "is this working" is the
+// first thing visible rather than something to be inferred from six rows.
+// ⚠ A failed FETCH is reported as a failed BENCH, not as silence — a missing
+// readout reads as "not run", and "not run" gets mistaken for fine.
+$('tvBench').onclick = async () => {
+  const feed = $('tvFeed');
+  const box = document.createElement('div');
+  box.className = 'tv-item';
+  box.textContent = 'bench: running…';
+  feed.appendChild(box);
+  feed.scrollTop = feed.scrollHeight;
+  try {
+    const r = await fetch('/teach-bench', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j || j.ok !== true) {
+      box.textContent = `bench FAILED — ${(j && j.error) || 'the brain returned no verdict'}`;
+      return;
+    }
+    box.textContent = j.text;
+  } catch (e) {
+    box.textContent = `bench FAILED — could not reach the brain (${e && e.message ? e.message : 'no response'}). That is a bench failure, not a pass.`;
+  }
+  feed.scrollTop = feed.scrollHeight;
+};
 $('tvRate').oninput = (e) => { rate = +e.target.value; $('tvRateLbl').textContent = rate + '/s'; };
 
 function laneClass(lane) {
