@@ -1690,7 +1690,7 @@ Gee (verbatim): *"we need a fucking text book like everything else you fool"*
 > ⚠ **SUPERSEDED BY THE ABOVE: the per-export history walk over the remaining 65** — for each, the last commit where a consumer existed, classified **(a) never wired · (b) orphaned deliberately · (c) ⛔ consumer deleted as collateral, i.e. a crucial component left unwired.** ⚠ `STACKSWEEP.6` stays blocked behind this: deleting an export whose consumer was collateral damage destroys the evidence that it was.
 >
 > **Original filing:**
-- [~] `STACKSWEEP.8` — ⭐⭐ **THE 65 READ AND CLASSIFIED BY WHAT THEY ACTUALLY ARE, 2026-09-02 — and the honest headline is that the real number is SEVEN, not 65.** Gee: *"you should be able to tell what they are suppose to do and be fore in the code by greping and reading the code"*. ⛔ **The detector's own metric conflated two different things**, because it counts references OUTSIDE the defining file only:
+- [x] `STACKSWEEP.8` — ✅ **CLOSED 2026-09-03 — the one live defect among the seven is fixed; see the verdict inside.** ⭐⭐ **THE 65 READ AND CLASSIFIED BY WHAT THEY ACTUALLY ARE, 2026-09-02 — and the honest headline is that the real number is SEVEN, not 65.** Gee: *"you should be able to tell what they are suppose to do and be fore in the code by greping and reading the code"*. ⛔ **The detector's own metric conflated two different things**, because it counts references OUTSIDE the defining file only:
   ```
     A  used INSIDE its own file — capability IS wired, the `export` is surplus   38
     B  used NOWHERE, not even internally — built and never wired                 27
@@ -1710,7 +1710,15 @@ Gee (verbatim): *"we need a fucking text book like everything else you fool"*
   | `imageToCappedData` `mindspace/transform.js` | browser-only — draws an `<img>` to a canvas capped at `EQ_LONG_EDGE`, with the source-pixel bomb guard lifted when TRUSTED | ⚠ **superseded**: her vision now perceives server-side; this is the browser lane's capper |
   | `termsAboveThreshold` `mindspace/transform.js` | counts equation terms above a deviation threshold on a rec | ⚠ **diagnostic with no reader** |
 
-  ⏳ **NEXT: `getGrantedPermissions` is the only one of the seven that is a live defect**, and it is a two-line decision — wire the read into the boot path so a returning visitor's grant is remembered, or remove the write so nothing pretends to persist. ⚠ **Browsers remember permission grants themselves, so the user-visible impact may be nil** — that must be checked before calling it a fix, or this becomes a change that improves a number and nothing else.
+  ✅⭐⭐ **DONE 2026-09-03 — AND NEITHER OF THE TWO OPTIONS THIS ROW OFFERED WAS THE RIGHT ONE.**
+  - ⛔ **"Wire the read in so a returning visitor's grant is remembered" IS A TRAP.** `localStorage` records what we saw ONCE; it cannot observe the current permission state. A user who revokes microphone access in browser settings would still be shown a remembered **`granted`** — **a green light over a dead channel**, which is exactly the instrument-that-lies class this whole sweep exists to find. Implementing the row's own suggestion would have created the defect the row is about.
+  - ⛔ **"Remove the write so nothing pretends to persist" throws away a real signal** — whether this visitor has ever granted before, which is what separates a first prompt from a re-prompt.
+  - ⭐ **SO THE SOURCE OF TRUTH CHANGED INSTEAD.** New `queryLivePermissions()` asks `navigator.permissions.query` for `granted` / `denied` / `prompt` **as of now**, and the boot path consumes it. The stored record is kept for the one question it can answer honestly, and its `timestamp` is documented as the age of the claim rather than dropped.
+  - ⛔ **`unknown` IS NOT `denied`, and that distinction is enforced.** Safari has historically not implemented the `camera`/`microphone` descriptors, so an unsupported or throwing query resolves to `unknown` and the UI keeps a neutral "asking…" — **reporting a refusal the browser never gave would be the same lie in the other direction.**
+  - **The panel now reads:** `granted (remembered)` · `blocked in browser settings` · `asking again…` (this visitor has granted before) · `asking…` (first time) · `off` (channel toggled off pre-boot).
+  - **Verified:** module exports `getGrantedPermissions, queryLivePermissions, requestPermissions`; `queryLivePermissions` present in the rebuilt `app.bundle.js`. **The store is no longer write-only.**
+
+  **Original filing of the next step:** ⏳ **NEXT: `getGrantedPermissions` is the only one of the seven that is a live defect**, and it is a two-line decision — wire the read into the boot path so a returning visitor's grant is remembered, or remove the write so nothing pretends to persist. ⚠ **Browsers remember permission grants themselves, so the user-visible impact may be nil** — that must be checked before calling it a fix, or this becomes a change that improves a number and nothing else.
 
 ## FOUR MORE RULINGS — the blocked decisions, answered — filed 2026-09-02
 
