@@ -10922,9 +10922,12 @@ export class Curriculum {
 
   /**
    * T18.13.b — resolve the max grade index from DREAM_MAX_GRADE env var
-   * or opts.maxGrade. Defaults to 'kindergarten' per Pre-K + K ONLY
-   * scope LAW. Returns -1 if uncapped (DREAM_MAX_GRADE=phd or any
-   * grade at or after GRADE_ORDER's last entry).
+   * or opts.maxGrade. ⛔ DEFAULTS TO UNCAPPED — the full pre-K→PhD walk. This
+   * comment used to say *"Defaults to 'kindergarten' per Pre-K + K ONLY scope
+   * LAW"*, and that LAW is REVOKED; the body below has defaulted to `'phd'`
+   * since, so the description contradicted the four lines under it. Returns -1
+   * when uncapped (which is the default, or any grade at/after GRADE_ORDER's
+   * last entry). The env var still caps lower, for testing.
    */
   _resolveMaxGradeIdx() {
     const envMax = (typeof process !== 'undefined' && process.env && process.env.DREAM_MAX_GRADE)
@@ -11094,7 +11097,15 @@ export class Curriculum {
     // T18.13.b — Pre-K + K ONLY cap. `DREAM_MAX_GRADE=phd` unsets the cap.
     const maxIdx = this._resolveMaxGradeIdx();
     const capLabel = maxIdx >= 0 ? GRADE_ORDER[maxIdx] : 'phd';
-    this._hb(`[Curriculum] T18.13 grade cap = '${capLabel}' (set DREAM_MAX_GRADE env to change; defaults to 'kindergarten' per Pre-K + K ONLY LAW)`);
+    // ⛔ THIS LINE USED TO TELL THE OPERATOR THE CAP WAS 'kindergarten' — and it
+    // has not been for months. `_resolveMaxGradeIdx` defaults to `'phd'`; the
+    // Pre-K + K ONLY scope was REVOKED, and the resolver's own comment says so.
+    // The log line was never updated with it, so the one surface reporting the
+    // grade cap was announcing a cap that does not exist and naming a revoked
+    // LAW as its authority. **An instrument describing a bound the code does not
+    // apply is the defect class this ledger is full of** — and this one would
+    // read as "the walk stops at K" to anyone reading the boot log.
+    this._hb(`[Curriculum] T18.13 grade cap = '${capLabel}' (set DREAM_MAX_GRADE to cap lower for testing; DEFAULT IS UNCAPPED — the full pre-K→PhD walk, since the Pre-K+K-only scope was revoked)`);
 
     // T18.13.a — START AT i=0 (pre-K) NOT i=1. Hard-coded `i=1` was
     // silently skipping every subject's pre-K runner — the exact bug

@@ -618,7 +618,7 @@ Per the 2026-06-27 amendment a cell passes on **learning completion**, not answe
 | `DREAM_PRECELL_VOCAB` | ⚠ | lever | The pre-cell vocabulary pass that teaches meanings before bindings |
 | `DREAM_MECH_EVERY_CELL` | ✅ opt-**out** | lever | Language mechanics in every ELA cell. Runs by default — this disables it |
 | `DREAM_K_UPFRONT_SEED` | ⚠ off | lever | Upfront K-vocabulary seeding. Off deliberately — an upfront bulk Hebbian blurs basins |
-| `DREAM_SENTENCE_TRANSITION_REPS` | ✅ `10` | lever | Reps for sentence-transition training |
+| `DREAM_SENTENCE_TRANSITION_REPS` | ✅ `24` | lever | Rep **floor** for sentence-transition training (`curriculum.js`: `let transReps = 24`), set because the content sentences were passing `reps:2` — too shallow for grade vocabulary to bind into a sequence. ⛔ **This row said `10` until 2026-09-02 and the `✅` claimed the value had been read out of the code.** It had not: the read site is `parseInt(process?.env?.DREAM_SENTENCE_TRANSITION_REPS, 10)` and **the `10` recorded here was the `parseInt` RADIX**, not a default. The same mistake put `10` on `DREAM_LANG_CORTEX` below |
 | `DREAM_SELF_FRAME_LIGHT_MAX_UNITS` | ⚠ | lever | Cap for the **light** first-person reframe at the vocab/sentence chokepoints (distinct from `DREAM_SELF_FRAME_MAX_UNITS` above) |
 | `DREAM_PATTERN_TEACH_THROTTLE_MS` | ⚠ | lever | Throttle between pattern-teach fires |
 | `DREAM_PER_WORD_TEACH_TIMEOUT_MS` | ⚠ | escape hatch | Per-word teach timeout so one word cannot hang a phase |
@@ -696,7 +696,7 @@ Each shapes how the cortex is WIRED, so each is applied at construction. ⛔ Cha
 
 | Env | Default | Kind | What it does |
 |---|---|---|---|
-| `DREAM_LANG_CORTEX` | ✅ `10` | lever | Language-cortex sizing term |
+| `DREAM_LANG_CORTEX` | ✅ `100000` | lever | Dense language-cortex size. The code's own note: scaled back up to **100K for meaningful capacity**, with this env var overriding for smaller or larger local testing. ⛔ **This row said `10` until 2026-09-02 — the same `parseInt(x, 10)` RADIX mistake as `DREAM_SENTENCE_TRANSITION_REPS` above**, and the `✅` wrongly claimed it had been read from the code. ⚠ **A four-order-of-magnitude error in a sizing knob, on the doc a reader would trust to avoid editing code** |
 | `DREAM_LANG_RAM_FRACTION` | ⚠ | lever | Share of the RAM budget the dense language cortex may claim |
 | `DREAM_LANG_VRAM_RESERVE_MB` | ⚠ | lever | VRAM held back for the language cortex |
 
