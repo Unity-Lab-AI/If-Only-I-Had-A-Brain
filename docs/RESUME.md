@@ -1,6 +1,80 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-03 THE INGEST IS RUNNING, EVERY KNOB IS CLASSIFIED AND WRITABLE, AND SEVEN OF MY OWN INSTRUMENTS LIED (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-03 (LATE) THE INGEST IS DONE AND COMMITTED, THE TITLE LIST IS CLEAN, AND I DESTROYED 323,434 SENTENCES AND CAUGHT IT (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> board      30 open · 25 in-progress · 50 closed-in-place awaiting migration
+> corpus     COMMITTED (3e7d23eb, 173 files) — 189 cells · 2.53M sentences as-taught
+> ingest     FINISHED. Nothing is running.
+> knobs      205 classified: live 162 · boot 40 · cached 3   (effect:'???' = 0)
+> walk       frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⛔⛔⛔ READ THIS BEFORE TOUCHING ANY CORPUS FETCHER: `--replace` REPLACES THE CELL, NOT YOUR SOURCE
+> Re-running one subject with `--replace` does **not** replace that fetcher's own
+> entries — it replaces the **whole cell**, wiping every other source in it. On
+> `social` that cost **323,434 sentences**:
+> ```
+>   social/phd    145,695 -> 3,405    lost pmc-oa + arxiv research
+>   social/grad   144,498 -> 2,211    same
+>   social/grade9  13,730 -> 2,429    lost wikibooks
+>   + college1, college2, grade10, grade11
+> ```
+> ⭐ **Caught only because the corpus-wide count moved 2,533,741 → 2,211,790 and
+> the delta was traced per-subject against git.** Restored with
+> `git checkout HEAD -- corpora/academic/social/`, then re-run WITHOUT
+> `--replace`: 378,385 with every source intact.
+> ⛔⛔ **AND IT WAS INVISIBLE IN FOUR OF FIVE SUBJECTS.** `art`/`pe`/`music`/
+> `health` came back −3, +666, +132, +376 because those cells only ever held
+> wikipedia. **A spot-check would have called `--replace` safe.**
+>
+> ### ⭐⭐ WHAT LANDED (6 commits, `a2f28e2f` → `3e7d23eb`)
+> - **The deepening pass ran to completion** — 175 cells, all 18 subjects.
+>   ⛔ **And it proved the constraint is the TOPIC LIST, not depth:** sentences
+>   2,533,753 → 2,533,741 (**−12**) while figures went **38,024 → 41,537
+>   (+3,513)**. A re-fetch of the same list returns the same articles.
+>   **So the next corpus move is `CURVEBUILD.6` (more topics), NOT another pass.**
+> - **`CURVEBUILD.12`: 1,147 titles verified, THREE failure classes found.**
+>   ① 5 missing → 4 real (`Portfolio (art)`, `Mixing (recorded music)`,
+>   `Lifetime fitness`, `Art and technology`); ② **2 redirects silently serving
+>   the WRONG SUBJECT** — `Declaration of Independence` and `Bill of Rights` were
+>   landing on generic political science in `social/grade5` and `grade8`;
+>   ③ ⭐ **pages that EXIST and teach nothing** — `Rest`, `Rehabilitation`,
+>   `Wellness` are **disambiguation pages** that pass every existence check.
+>   **`missing` tests existence; the corpus needs usable content.**
+> - **Verified by RE-RUNNING, not re-checking:** `pe` 3→0 `no-such-page`,
+>   `music` 1→0, `health` 1→0, `social` clean. `social/grade8` now holds the real
+>   Declaration at **51,409 chars** where it had 473 of generic definition.
+>
+> ### ⚠ TWO MORE OF MY OWN INSTRUMENTS LIED — THAT IS NINE THIS SESSION
+> - A title extractor reported `Newton\` missing; it had **broken on the escaped
+>   quote** in `'Newton\'s laws of motion'`, which exists. **The only false
+>   positive today that would have DELETED a working topic.**
+> - The elementary-only sweep reported clean **for the third of the data it
+>   covered**, and the runtime then found 4 more above grade5.
+> ⭐ **The standing rule: a check scoped narrower than the data gives a clean bill
+> for the part it happened to cover.**
+>
+> ### ⏳ NEXT, IN ORDER
+> 1. **The figure sweep** — 4,925 owed, ledger now wired so failures record their
+>    reason. ⛔ `failures.jsonl` still does not exist; the ledger landed after the
+>    original run stopped, so that decay curve's reasons are gone for good.
+> 2. **`CURVEBUILD.6`** — more topics per cell. **This is now the evidence-backed
+>    next corpus move**, not a guess.
+> 3. Unblocked without network: **`STACKSWEEP.1`** (categories 1-6, 8-10, 12; 7
+>    and 11 done) · **`CODELEAK.1`** (781 lines) · `TEACHVIEW.8/.9`.
+> ⚠ **Wants your call:** `REGFIND.9` (changes what she SAYS) · `NOFALLBACK.7`
+> (needs a latency measurement first).
+> ⚠ **`.claude/scripts/fetch-libretexts-corpora.mjs` is untracked and inert** —
+> built, licence-gated, never run. Left alone on your instruction.
+
+---
+
+> ## 2026-09-03 THE INGEST IS RUNNING, EVERY KNOB IS CLASSIFIED AND WRITABLE, AND SEVEN OF MY OWN INSTRUMENTS LIED
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
