@@ -37,6 +37,54 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `CORPUSBUFFER` — THE BOOKS ARRIVE WHILE SHE TRAINS, AND THE BOX NEVER HOLDS TWO CORPORA
+
+Gee (verbatim):
+
+> *"okay that is good lets have buttons in the trainer virewr for download of couprus like buffer on auto and manual download but a max of one complete copy on the box"*
+
+> *"not counting forgejo"*
+
+> *"okay no manual then"*
+
+⛔ **THE MANUAL BUTTON WAS WITHDRAWN BEFORE ANY CODE WAS WRITTEN and there is deliberately none.** `arm` and `disarm`, nothing else. **A manual control appearing later is a regression against that instruction, not a missing feature.**
+
+**⛔⛔ THE BOUND IS THE HARD PART, AND THE EXISTING PRESS PATH BREAKS IT TODAY.** `deploy/self-update.sh` does `git clone --depth 1` into a temp directory and then `rsync -a --delete` into place — so for the length of the sync **the box holds the temp clone AND the live corpus**, about 800 MB-1.2 GB where the bound allows 395 MB. That path stays as the press-time bulk sync; this lane is the one that can run *during* training, so it is the one that had to obey.
+
+**⭐ WHAT MAKES ONE COPY POSSIBLE: THE CORPUS IS NOT LFS.** The data repo's `.gitattributes` marks only `*.field.json` and the vector file as LFS, so **the 193 corpus cells are ordinary git objects** and can be streamed out one at a time with `git cat-file`. **Nothing is ever checked out, so there is no second working tree at any instant** — the bound is a property of the design rather than something a cleanup step restores afterwards.
+
+**⛔ THE SCAFFOLD IS DESTROYED AFTER EVERY BATCH, and that is the part that would otherwise become a second copy by accident.** A blobless bare repo starts as metadata only, but **every blob streamed through it is RETAINED in its object store** — left alone across a full pass it would quietly accumulate a compressed copy of the whole corpus beside the real one. Teardown lives in a `finally`, so a batch that throws cleans up too: **a scaffold that survives one failure is a scaffold that accumulates.**
+
+**⭐ NO NEW SECRET, WHICH WAS A HARD CONSTRAINT AND NOT A PREFERENCE.** Gee has dashboard buttons and no box access, so a Forgejo API route would have needed a token nobody could install. The box already fetches this repository over SSH inside `deploy/self-update.sh`, so the same key does this.
+
+**⛔ NOTHING SYNCHRONOUS.** It runs inside the brain's process, and this project has already paid for diagnostics that rode the very loop they measured — `execFileSync` on a network fetch would pin the event loop for the whole round trip and stall the walk it exists to feed. A single-flight guard skips an overlapping tick rather than queueing it, **because two ticks would build two scaffolds, which is the one thing this module exists to prevent.**
+
+**MEASURED ON THE PRODUCTION MODULE — 11/11**, with a local git repository standing in for the data repo so every real step ran (blobless fetch, `ls-tree`, blob-id comparison, `cat-file` streaming, atomic rename, checksum verify, teardown):
+
+```
+  plan finds every cell owed on an empty box        5 of 5
+  a batch pulls exactly its limit                   2 pulled, 3 owed
+  delivered files byte-identical to source          2 identical
+  the whole corpus arrives                          5/5 identical
+  a re-plan on a complete box owes NOTHING          owed 0, have 5
+  only the CHANGED cell becomes owed again          g3.json
+  the changed cell is replaced in place             identical
+  no scaffold survives any batch                    0 present
+  no half-written file left in the corpus           none
+  the box holds exactly one copy by bytes           653,747 B vs 653,747 B = 1.000x
+  peak scratch stayed below one corpus              0.1 MB vs 0.62 MB
+```
+
+⭐ **The fifth line is the one that decides whether "buffer" means anything.** If the blob comparison were wrong, every pass would re-download the entire corpus and converge on nothing.
+
+**⛔⛔ A TRAP FOUND WHILE VERIFYING, AND IT NEARLY WENT THE OTHER WAY.** The blob-id check first disagreed with git on **2 of 4** sampled cells — and the code was right, the test was wrong: `git hash-object` applies the repository's CRLF filters and returns the NORMALISED hash, while `cat-file blob` emits raw bytes. **10 of 12 sampled corpus cells contain CRLF.** Re-run with `--no-filters`: **12/12.** ⚠ The real failure mode is recorded in the module: if a box ever converts line endings on checkout, every file looks different forever and the buffer re-downloads the corpus on every pass — **visible rather than silent, because `owed` and `have` are both published instead of a single percentage.**
+
+⚠ **OWNED — MY OWN HARNESS LIED ONCE, THE SAME WAY EVERY OTHER INSTRUMENT THIS WEEK DID.** The one-copy check reported **0.800x** and read as a real defect. It was comparing against the source's byte total recorded **before** step ⑥ deliberately shrank a cell upstream. Re-measured at compare time: **1.000x**. **A number taken before the thing it measures changed is not a measurement.**
+
+⚠ **NOT PROVEN AGAINST THE REAL REMOTE.** Every step is exercised, but against a local repository — the live Forgejo fetch has not been run from here. **The first arm on the box is the real proof**, and the label reports its own failure with a reason rather than going quiet.
+
+---
+
 ## 2026-09-03 — `FIELDSIZE.2` — THE DATA REPO'S 26,000 PENDING DELETIONS ARE CORRECT, AND ONE ORDINARY COMMIT WOULD HAVE ACTED ON THEM
 
 The producer writes a field, uploads it, and deletes the local copy immediately — which is exactly what Gee asked for: *"only ever have one copy on the box and one in forgejo"*. The consequence nobody had written down is that **`git status` in that repository reports ~26,000 pending `D` entries**, because the tree tracks 26,359 fields and the working copy holds a few hundred.
