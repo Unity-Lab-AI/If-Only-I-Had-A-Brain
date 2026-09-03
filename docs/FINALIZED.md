@@ -5,6 +5,49 @@
 
 ---
 
+## 2026-09-03 — `FIELDSIZE.1` — THE FIELD RUN WAS 8.2x OVERSIZED AND NO INSTRUMENT HAD EVER MEASURED A FIELD
+
+Gee, verbatim, on being shown the 537 GB projection:
+
+> *"we were oinly downloading 100G of coeffients not 500G we can never store two copies of that one in forgejo and once when update freshwalk pulls the forgjo"*
+
+**The comparison IS the finding, and it is the one nobody had ever made:**
+
+```
+  already delivered   26,359 fields   114.1 GB   mean  4.43 MB     <- "100G"
+  the stopped run        503 fields    17.9 GB   mean 36.40 MB     <- 8.2x
+  largest single field                           511.8 MB
+  projected onto 14,731                ~537 GB                     <- "500G"
+
+  AFTER THE FIX, measured on a 53-field even spread
+                          53 fields     0.24 GB   mean  4.69 MB     <- parity, 6% apart
+  25 of those 53 were larger than the bound and were bounded
+```
+
+⛔⛔ **THE CAUSE WAS IN THE URL, IN PLAIN TEXT, AND SAID `utm_content=original`.** The corpus records each figure's ORIGINAL address — **33,041 of its 59,473 citations are `upload.wikimedia` originals and exactly 11 are thumbnails** — and the raster path handed that straight to `grab()` with no width bound anywhere. Measured on the stopped run's output: renditions of **8880x5520**, **7376x7401**, **5390x3096**, **4961x3508**. The 7376x7401 is 54.6 megapixels and produced the 511.8 MB field by itself.
+
+⭐⭐ **THE 1600px CONTRACT ALREADY EXISTED AND ONLY VECTORS WERE EVER HELD TO IT.** `wikiRendition()` asks the MediaWiki API for `iiurlwidth=1600`, and its own comment explains that width as measured rather than stylistic — but it was reached **only when a direct decode had already failed**, which only ever happens to an SVG. **Every photograph, scan and plate in the corpus bypassed the bound the file was written to enforce.**
+
+⭐ **WHY THE FIRST 26,359 LOOKED FINE — AND THIS IS THE GENERAL LESSON.** They are the figures whose recorded URL already pointed somewhere sane. **The 14,731 left over are the residue**, so the leftovers are systematically the giant un-thumbnailable plates, and the regression could only ever become visible on the retry run. **A mean taken over the easy half of a corpus is not a mean.**
+
+⛔⛔ **AND THE REAL DEFECT IS THAT NOTHING EVER COMPARED A FIELD TO A FIELD.** The producer reported coefficients and megabytes-so-far and **never once measured a written field against the ones already banked** — so a pass running at 8.2x the corpus norm read exactly like a healthy pass for 300 figures. The progress line now carries `mean X MB/field vs 4.43 banked`, a bounded-count, and a one-shot divergence warn that names the projected total in GB. **A mean is only a fact beside the mean it has to match.**
+
+**WHAT SHIPPED**
+
+- **The rendition is asked for FIRST, before a byte of image is downloaded** — so a 54-megapixel original is never pulled down at all. ⭐ This is a bandwidth fix as much as a size fix: **throughput went 0.13/s → 1.11/s, and the ETA 32h → ~3.6h.** The API is on `<wiki>/w/api.php`, a different host from `upload.wikimedia.org`, so it does not spend the rate budget the image fetches are already competing for.
+- **A rendition that will not serve no longer condemns a figure whose own address works** — the recorded URL is tried second and the abandoned reason travels into the failure ledger.
+- **A post-decode backstop bound**, because **26,421 of the 59,473 citations are not on Wikimedia at all** and have no rendition API to ask. Without it one un-thumbnailable plate is still free to write a half-gigabyte field.
+- **479 oversized untracked fields deleted, 23.80 GB reclaimed**, selected by **the field's own recorded dimensions rather than a timestamp guess**, and separated from the 18 oversized fields that are already committed to LFS and are grandfathered.
+- **Three stale claims corrected in the same commit** — the file header, the DONE summary and `index.json`'s own `note` all said *"FULL resolution"*, which the bound makes false. **A summary that overstates what was analysed is the same defect class as the mean that was never taken.**
+
+⛔ **WHAT WAS EXPLICITLY NOT DONE: dropping below the corpus norm.** `visual-memory.js` carries a measured argument against pre-transform downsampling — at 320px a real 1600x1181 figure keeps **27,204 coefficients against 184,981**, because the fine subbands that carry a one-pixel axis-label stroke are never created. **This restores the norm; it does not go under it.** The 8880px renditions were not a better percept and were not even reproducible — they were whichever address the ingest happened to record.
+
+⚠ **THE HONEST TOTAL IS NOT 100 GB AND IS NOT CLAIMED TO BE.** At the measured 4.69 MB the remaining 14,467 come to **~68 GB**, so the completed set lands near **182 GB — one copy in Forgejo, one on the box.** That is **3.0x smaller than the path the run was on** and still 1.6x the old baseline, **because the figure count itself is growing 26,359 → 41,765 (+58%)**. If 182 GB is too much the next lever is encoding, not resolution: a real field gzips **10.95 MB → 5.36 MB (51%)** with byte-identical coefficients.
+
+⚠ **OWNED: `FIELD_MAXSIDE` WAS DECLARED INSIDE THE WORKER BRANCH** and the main thread's progress line reads it, so the first real run died on `FIELD_MAXSIDE is not defined`. **This file's own header already records that trap** — it is its own worker entry point, so anything both halves use must resolve in both — and `node --check` passed both times. **Only running it found it, twice now.**
+
+---
+
 ## 2026-09-03 — `CURVEBUILD.6` — THE TOPIC LISTS WERE THE BINDING CONSTRAINT, AND EXPANDING THEM CLEARED THE ENTIRE EARLY BAND
 
 The previous pass proved the constraint by experiment rather than argument: re-fetching the SAME topic list returned the same articles (**sentences −12**) while only the picture count moved (**+3,513 figures**). So this pass added TOPICS, not depth.
