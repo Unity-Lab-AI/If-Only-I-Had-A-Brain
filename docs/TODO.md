@@ -937,7 +937,28 @@ Gee (verbatim): *"thats alot of fucking issues!!!!! i hope u are fully handling 
 > ⚠ **STILL OUTSTANDING and NOT swept by this batch: categories 1, 2, 4, 5, 6, 8, 9, 10, 11 and 12a/12b.** ⛔ **The 71 `exports referenced nowhere` this run reports are `STACKSWEEP.6`'s scope and stay deferred there** — an unnecessary export widens the API surface but breaks nothing, and this codebase has been bitten by deleting things that looked unused. **Naming them here so the count is not mistaken for a clean sweep of category 2**, which is about orphaned files, modules and corpora, not exports.
 >
 > **Original filing:**
-- [ ] `STACKSWEEP.1` — ⛔ **THE SWEEP ITSELF. Every category below gets its own pass, its own detection method, and a written verdict per finding — including the ones that turn out to be FINE, because "checked and correct" is a result the next sweep must not have to re-derive.**
+- [~] `STACKSWEEP.1` — ⛔ **THE SWEEP ITSELF. Every category below gets its own pass, its own detection method, and a written verdict per finding — including the ones that turn out to be FINE, because "checked and correct" is a result the next sweep must not have to re-derive.**
+
+  ### ✅ CATEGORY 7 — PROBED-FOR AND NEVER DEFINED — **CLEAN, 2026-09-03**
+
+  **Method:** every `typeof this|cluster|cl|brain.<name> === 'function'` guard in `js/**` + `server/**` (bundles excluded) → **169 distinct probed names** → each checked for a definition anywhere in the tree.
+
+  **Result: 7 candidates, and ALL SEVEN are false positives. Zero real findings.** The precedent case that opened this category (`_teachWordSpellingDirectFinal`, 37 call sites and zero definitions) has no surviving equivalent.
+
+  - ⛔⛔ **SIX OF SEVEN ARE THE DETECTOR'S KNOWN BLIND SPOT, AND THIS QUANTIFIES IT: RUNTIME ATTACHMENT.** `_saveCheckpoint` (`brain-server.js:4129`), `lifeStoryExperiences` (`:3749`), `selfCodeInventory` (`:3727`), `_drugDetector` (`:4173`), `_sensoryTriggers` (`:4181`) are all assigned onto the cluster/curriculum at boot, and `_onDeviceLost` arrives through a **setter** (`gpu-compute.js:570`). **A static definition search cannot see any of them** — which is exactly the blind spot recorded when six findings in an earlier audit turned out to be false the same way. **The rate is now measured: 86%.**
+  - ⭐ **THE SEVENTH IS THE MOST INTERESTING AND IT IS ALSO CORRECT.** `_dictionaryOracleEmit` really was deleted (2026-09-01, under no-fallbacks) and `curriculum.js:5715` really does still probe for it — **on purpose, INVERTED.** The guard raises an issue if the oracle ever comes *back*: *"a boot check that demands a fallback exist is a boot check that will happily re-admit one."* **A probe for something deliberately absent is a regression detector, not dead code**, and a sweep that deleted it would have removed the thing guarding the deletion.
+  - ⚠ **THE STANDING RULE THIS CONFIRMS:** a `typeof` guard is evidence of a QUESTION, never of an absence. **Every hit in this category must be resolved by reading the runtime wiring**, because the language cannot distinguish "never existed" from "attached somewhere else at boot".
+
+  ### ⛔ CATEGORY 6 — ATTEMPTED 2026-09-03, DETECTOR DISCARDED, NO FINDINGS CLAIMED
+
+  A first pass at *producer/consumer name mismatch* returned **421 of 421 published state fields "read nowhere"** — including `color`, `position` and `meanVoltage`. **That is not a finding, it is a broken instrument**, and it was thrown away instead of filed.
+
+  - **The bug, isolated rather than guessed:** the consumer-side regex was built by string concatenation with an escaped character class, and shell quoting mangled it — so it matched **nothing**, and every field came back orphaned. A plain `includes()` finds all three test names immediately; my regex found none.
+  - ⛔ **A 100% hit rate is a red flag, not a jackpot.** The tell was that the output contained CSS properties from a style object literal and a field (`meanVoltage`) whose consumer is documented in this very board. **A sweep that indicts everything has indicted its own author.**
+  - ⚠ **NOTHING FROM THAT RUN IS RECORDED AS A RESULT**, because a broken detector's output is not weaker evidence — it is no evidence, and filing it would have cost the next reader a day disproving 421 phantoms.
+  - ⭐ **This is the seventh instrument in one session to need checking before being believed**, after the scope classifier, the 6/6 column classifier, the digit-concatenating doc audit, the sitemap "shards" miscount, the guard-block parser, and the bracket-debris classifier that called `[sic]` contamination. **The rate is the finding: assume a freshly-written detector is wrong until a known-good case proves otherwise.**
+
+  ⏳ **Remaining categories: 1-6 and 8-12.** Category 6 wants a rebuild that is **tested against a known-positive and a known-negative FIRST** — `meanVoltage` must come back "read" and a genuinely orphaned field must come back "unread" — before a single verdict is written down.
 
   **THE CATEGORIES — his list, plus the `ectx12` he asked me to fill from what this codebase has actually done:**
   1. **BUILT BUT NOT WIRED** — a real implementation nothing calls. *Precedent: the five college tracks; `separability` with no producer.*
