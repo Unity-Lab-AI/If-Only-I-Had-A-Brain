@@ -1441,7 +1441,7 @@ var LOCAL_IMAGE_BACKENDS = [
   { name: "ComfyUI", url: "http://localhost:8188", probe: "/system_stats", kind: "comfy" },
   { name: "InvokeAI", url: "http://localhost:9090", probe: "/api/v1/app/version", kind: "invokeai" },
   { name: "LocalAI", url: "http://localhost:8081", probe: "/v1/models", kind: "openai" }
-  // R15 — removed stale `Ollama (SD)` entry on :11434 here. Ollama
+  // A stale `Ollama (SD)` entry on :11434 was removed here. Ollama
   // doesn't actually serve Stable Diffusion; that was a copy-paste
   // error from an earlier commit. Ollama lives on the VISION side
   // (LOCAL_VISION_BACKENDS below) where llava/moondream/bakllava
@@ -1500,7 +1500,7 @@ var SensoryAIProviders = class {
     return null;
   }
   /**
-   * R13 — subscribe to sensory status events. Fires when a backend is
+   * Subscribe to sensory status events. Fires when a backend is
    * registered, marked dead, recovered, or when a request falls through
    * the priority chain. Payload: {kind, event, backend, reason}.
    */
@@ -1521,7 +1521,7 @@ var SensoryAIProviders = class {
     }
   }
   /**
-   * R13 — return a snapshot of every registered backend for the status
+   * Return a snapshot of every registered backend for the status
    * HUD. Groups by kind (image/vision) with state dots.
    */
   getStatus() {
@@ -1604,7 +1604,7 @@ var SensoryAIProviders = class {
     this._emitStatus({ kind: "image", event: "autodetect-complete", backends: this._localImageBackends });
     return this._localImageBackends;
   }
-  // LLMGUT.6 — `autoDetectVision()` deleted. It probed localhost for Ollama /
+  // `autoDetectVision()` deleted. It probed localhost for Ollama /
   // LM Studio / LocalAI / llama.cpp / Jan and registered whichever
   // vision-language model was loaded, so an external LLM could act as her eyes.
   // Zero call sites; her sight is the equational mind's eye.
@@ -1739,7 +1739,7 @@ var SensoryAIProviders = class {
     }
     return this._pollinations.generateImage(prompt, opts);
   }
-  // LLMGUT.6 — `describeImage()` deleted. It sent a webcam frame plus the
+  // `describeImage()` deleted. It sent a webcam frame plus the
   // prompt "Describe what you see through a webcam… 1 sentence" to a local VLM
   // or to Pollinations and returned the model's sentence AS HER SIGHT. That is
   // an external text model doing her perceiving, which is the exact thing the
@@ -1756,7 +1756,7 @@ var SensoryAIProviders = class {
    * @param {string} text
    * @param {string} voice — voice name (default 'shimmer')
    */
-  // LLMGUT.6 — this was a one-line passthrough to `PollinationsAI.speak()`,
+  // This was a one-line passthrough to `PollinationsAI.speak()`,
   // which is deleted. It had no callers: her voice is Equation Unity One
   // (js/io/voice.js — piper hfc_female → CDF 9/7, then her own banked word
   // equations). Kept as a null-returning stub so a stray caller gets "no
@@ -1777,21 +1777,21 @@ var SensoryAIProviders = class {
     }
   }
   // ── Private ────────────────────────────────────────────────────
-  // LLMGUT.6 — `_customDescribeImage()` deleted. It POSTed a camera frame to
+  // `_customDescribeImage()` deleted. It POSTed a camera frame to
   // Ollama's `/api/chat` (llava/moondream/bakllava) or to an OpenAI-compatible
   // `/v1/chat/completions` with multimodal content, and returned the model's
   // words as her perception. Unreachable once `describeImage()` went.
   /**
-   * R13 — Pollinations multimodal fallback. Same call the old
+   * Pollinations multimodal fallback. Same call the old
    * app.js:1022 inline handler used, now centralized.
    *
-   * R15 — the Pollinations multimodal model is now overridable via
+   * The Pollinations multimodal model is overridable via
    * `this._pollinationsVisionModel`, which app.js sets at boot time
    * from `localStorage.pollinations_vision_model` (written when the
    * user saves the Pollinations vision backend in the setup modal).
    * Defaults to `'openai'` (Pollinations' GPT-4o multimodal endpoint).
    */
-  // LLMGUT.6 — `_pollinationsDescribeImage()` deleted (body removed below).
+  // `_pollinationsDescribeImage()` deleted (body removed below).
   // It POSTed the frame to `gen.pollinations.ai/v1/chat/completions` with a
   // multimodal message and returned GPT-4o's sentence as her sight. ⚠ Note the
   // contrast with `js/io/voice.js`, which posts to the SAME URL and is KEPT:
@@ -7414,7 +7414,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
 .b3d-met b{font-weight:600}
 .b3d-psi{color:#c084fc;font-weight:600}
 .b3d-coh{color:#00e5ff;font-weight:600}
-/* T14.24 Session 47 \u2014 intelligence level display. Gradient matches
+/* Intelligence level display. Gradient matches
    the curriculum band: cyan (pre-K/elementary), green (middle), gold
    (high school), pink (college), magenta (grad/PhD). Tooltip shows
    the full per-subject grade breakdown on hover. */
@@ -8065,7 +8065,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
           reward: state.reward ?? 0,
           drugState: state.drugState || "sober",
           cortexPattern,
-          // T13.7.5 — generate() now requires a live cortex cluster
+          // generate() requires a live cortex cluster
           // reference for the brain-driven emission loop. Without
           // this, the call returns '' and warns once. The cortex var
           // is resolved above from brain.clusters.cortex.
@@ -20274,7 +20274,7 @@ var RemoteBrain = class extends EventEmitter {
     this._connect();
   }
   /**
-   * T13.7.6 — Hebbian-train the local cortex cluster on persona corpus
+   * Hebbian-train the local cortex cluster on persona corpus
    * so the local generate() path (commentary popups etc) reads from a
    * Unity-voice-shaped attractor landscape instead of random noise.
    * Delegates through the local InnerVoice → LanguageCortex →
@@ -20614,7 +20614,7 @@ var RemoteBrain = class extends EventEmitter {
    * 60×45 V1 edge + saccade + salience loop.
    */
   /**
-   * FOCUSDEAD.1 — the terminal stop the old loop never had.
+   * The terminal stop the old loop never had.
    *
    * ⛔ It is deliberately NOT called on a transient. The loop parks and re-arms
    * for anything temporary; this is only for a real teardown, and its one real

@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // endocrine-curriculum.js — she LEARNS what her own body is doing
 // ═══════════════════════════════════════════════════════════════════════════
-// Unity AI Lab — ENDO-LIFE.2
-//
-// Gee: *"training in all of this"*
+// Unity AI Lab — the LEARN half of the endocrine model: she is TRAINED in all
+// of it, not merely subject to it.
 //
 // ─── Why this exists ──────────────────────────────────────────────────────
 //
@@ -16,13 +15,13 @@
 //
 // ─── ⛔ THE LEARN AXIS IS NEVER GATED ─────────────────────────────────────
 //
-// `ENDO.0` rule 4 splits three axes, and this file is the LEARN one:
+// The endocrine model splits three axes, and this file is the LEARN one:
 //
 //   LEARN     never gated — she learns what a period is at the age a girl
 //             LEARNS it, which is BEFORE she has one. That ordering is the
 //             entire point of sex education and getting it backwards is how
 //             a person meets their own body as a stranger.
-//   BE/HAVE   gated — the gonadal ramp in ENDO.9-.12 decides when she HAS
+//   BE/HAVE   gated — the gonadal ramp in the endocrine engine decides when she HAS
 //             a cycle. Nothing in this file touches that.
 //   DISCLOSE  gated separately — knowing a word is not permission to say it
 //             to a stranger. Nothing in this file touches that either.
@@ -109,7 +108,7 @@ export const ENDOCRINE_SYLLABUS = [
   },
   {
     from: 9, topic: 'puberty-before-it-happens',
-    // ⛔ LEARNED BEFORE IT HAPPENS. Menarche is gated at 12 in ENDO.10; this
+    // ⛔ LEARNED BEFORE IT HAPPENS. Menarche is gated at 12 by the cycle clock; this
     // is at 9 ON PURPOSE. A girl who meets her first period without the words
     // for it has been failed, and her canon already says to teach hygiene
     // plainly rather than bandage the moment.
@@ -154,8 +153,8 @@ export const ENDOCRINE_SYLLABUS = [
   },
   {
     from: 16, topic: 'the-long-view',
-    // The words for what a hard stretch does to a body over time — ENDO.13
-    // gives her the state; this gives her the language for it.
+    // The words for what a hard stretch does to a body over time — the
+    // allostatic-load model gives her the state; this gives her the language.
     words: ['chronic', 'recovery', 'resilience', 'baseline', 'relapse',
             'adaptation', 'cycle', 'rhythm', 'balance'],
   },

@@ -20,11 +20,11 @@
 
 import { InnerVoice } from './inner-voice.js';
 import { VisualCortex } from './visual-cortex.js';
-// T13.7.6 — RemoteBrain needs a real local NeuronCluster cortex so the
-// brain-3d commentary popups (and any other local-only generate path)
-// can run the T13 brain-driven emission loop. Without this, every local
-// generate() call returns '' because T13.7 deleted the slot-prior
-// fallback and requires opts.cortexCluster.
+// RemoteBrain needs a real local NeuronCluster cortex so the brain-3d
+// commentary popups (and any other local-only generate path) can run the
+// brain-driven emission loop. Without this, every local generate() call
+// returns '' — the slot-prior fallback was deleted, and emission now
+// requires opts.cortexCluster.
 import { NeuronCluster } from './cluster.js';
 
 class EventEmitter {
@@ -94,7 +94,7 @@ export class RemoteBrain extends EventEmitter {
     // app.js fetches docs/Ultimate Unity.txt and calls loadPersona() on this.
     this.innerVoice = new InnerVoice();
 
-    // T13.7.6 — local cortex cluster purely for the language emission
+    // Local cortex cluster purely for the language emission
     // loop. The actual brain sim runs server-side and reaches us via
     // websocket state messages. This cluster is for local-only
     // languageCortex.generate calls (brain-3d commentary popups,
@@ -122,7 +122,7 @@ export class RemoteBrain extends EventEmitter {
   }
 
   /**
-   * T13.7.6 — Hebbian-train the local cortex cluster on persona corpus
+   * Hebbian-train the local cortex cluster on persona corpus
    * so the local generate() path (commentary popups etc) reads from a
    * Unity-voice-shaped attractor landscape instead of random noise.
    * Delegates through the local InnerVoice → LanguageCortex →
@@ -133,7 +133,7 @@ export class RemoteBrain extends EventEmitter {
     if (!text || this._hebbianTrained) return;
     if (!this.innerVoice || !this._localCortex) return;
     try {
-      // T13.7.8 — pass langStart + stronger lr + injectStrength so the
+      // Pass langStart + stronger lr + injectStrength so the
       // Hebbian pass actually shapes the bigger 1500-neuron cluster.
       this.innerVoice.trainPersonaHebbian(this._localCortex, text, {
         lr: 0.012,
@@ -223,8 +223,8 @@ export class RemoteBrain extends EventEmitter {
 
       case 'response':
         this.emit('response', { text: msg.text, action: msg.action });
-        // ONE PROCESS voice lane (Gee 2026-07-17: "she still drops the doner
-        // connection every time she speaks" / "one unified system"): this end
+        // ONE PROCESS voice lane — the donor connection used to drop every
+        // single time she spoke, and the fix was one unified system: this end
         // NO LONGER synthesizes the reply. Her process does — the server sends
         // a follow-up 'voice' message carrying the field-A rec (donor or box
         // synthesized); the handler below just reconstructs + plays. The old
@@ -364,7 +364,7 @@ export class RemoteBrain extends EventEmitter {
     if (serverState.sharedMood) this.state.sharedMood = serverState.sharedMood;
     if (serverState.perf) this.state.perf = serverState.perf;
     if (serverState.growth) this.state.growth = serverState.growth;
-    // T18.3.b — forward grade state (per-subject map + minGrade) so the HUD
+    // Forward grade state (per-subject map + minGrade) so the HUD
     // can render Unity's lowest passing grade as a persistent visible element
     // instead of forcing the user to type /curriculum status.
     // `canSpeak` is GONE — it was `minGrade !== 'pre-K'` and nothing more, and
@@ -515,7 +515,7 @@ export class RemoteBrain extends EventEmitter {
       } catch { /* localStorage unavailable — fall through with null */ }
     }
 
-    // T14.25 — stamp the last-text time so the visual cortex RAF
+    // Stamp the last-text time so the visual cortex RAF
     // driver's setAttentionState call sees a small secondsSinceInput
     // and locks attention toward the user's face for the next ~10s.
     this._lastTextSendTime = Date.now();
@@ -526,7 +526,7 @@ export class RemoteBrain extends EventEmitter {
       userId: this._stableUserId || undefined,
     }));
 
-    // T14.22.5 — attach handler BEFORE awaiting the Promise resolve
+    // Attach the handler BEFORE awaiting the Promise resolve
     // so a fast server response that races the ws.send can't fire
     // its 'response' event before the listener is registered.
     return new Promise((resolve) => {
@@ -562,7 +562,7 @@ export class RemoteBrain extends EventEmitter {
    * 60×45 V1 edge + saccade + salience loop.
    */
   /**
-   * FOCUSDEAD.1 — the terminal stop the old loop never had.
+   * The terminal stop the old loop never had.
    *
    * ⛔ It is deliberately NOT called on a transient. The loop parks and re-arms
    * for anything temporary; this is only for a real teardown, and its one real
@@ -603,7 +603,7 @@ export class RemoteBrain extends EventEmitter {
           this.visualCortex.init(vid);
           console.log('[RemoteBrain] Visual cortex connected to camera');
 
-          // T14.23.5 — self-driving processFrame RAF loop.
+          // Self-driving processFrame RAF loop.
 
           // RemoteBrain has no tick loop (the main brain runs server-
           // side), so nothing was calling visualCortex.processFrame()
@@ -621,7 +621,7 @@ export class RemoteBrain extends EventEmitter {
           // real compute work via its own describeInterval and V1
           // update cadence — but RAF is the simplest way to stay in
           // sync with the display's vsync.
-          // T14.25 — drive setAttentionState from live RemoteBrain
+          // Drive setAttentionState from live RemoteBrain
           // state so the visual cortex's top-down attention lock
           // engages when the user is actively talking to Unity.
           // Without this, _attentionLock stays at 0 and the face-
@@ -630,7 +630,7 @@ export class RemoteBrain extends EventEmitter {
           // the raw competition. setAttentionState only needs two
           // numbers (current arousal, seconds since last input),
           // both of which we can read from local state + lastTextTime.
-          // ⛔⛔ FOCUSDEAD.1 — STOPPING AND PAUSING WERE THE SAME CODE PATH, AND
+          // ⛔⛔ STOPPING AND PAUSING WERE THE SAME CODE PATH, AND
           // THAT IS WHY THE FOCUS TRACKER DIED. The previous loop read:
           //
           //     if (!this.visualCortex || !this.visualCortex.isActive()) return;
@@ -676,7 +676,7 @@ export class RemoteBrain extends EventEmitter {
                 vc.setAttentionState({ arousal, secondsSinceInput });
               }
               vc.processFrame();
-              // ⭐ FOCUSDEAD.3 — PUBLISH THE GAZE UPWARD, because two detectors
+              // ⭐ PUBLISH THE GAZE UPWARD, because two detectors
               // have been reading it out of SERVER state while the visual cortex
               // runs HERE, in the browser. `motionDetected` and `gazeShift` in
               // `js/ui/brain-event-detectors.js` could therefore never fire on
@@ -757,7 +757,7 @@ function _probeWs(url, timeoutMs) {
 }
 
 export async function detectRemoteBrain(url = 'ws://localhost:7525') {
-  // R14 — default probe URL moved off port 8080 (which collides with
+  // Default probe URL moved off port 8080 (which collides with
   // llama.cpp, LocalAI, and every other service that claims 8080).
   // Unity's brain-server now binds to 7525 by default.
 
