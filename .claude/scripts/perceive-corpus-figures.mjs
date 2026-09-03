@@ -228,7 +228,34 @@ function collectFigures() {
 if (isMainThread) {
   const argv = process.argv.slice(2);
   const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
-  const OUT = path.resolve(arg('--out', path.join(ROOT, 'server', 'corpus-figures.db')));
+  // ⛔⛔ THE FIELDS LIVE IN THE DATA REPO AND NOWHERE ELSE.
+  //
+  // Operator: *"just make sure you arnt storing the fields in both repos thay go
+  // in brain waves repo. and only get pulled to the brain box on freshwalk and
+  // will always copy over them selves as to only ever have one copy on the box
+  // and one in forgejo"*.
+  //
+  // ⛔ THE OLD DEFAULT WAS `server/corpus-figures.db` — INSIDE THIS CODE REPO —
+  // and that is exactly how **1.19 GB of field blobs across 68 files** ended up
+  // in this repository's history, on a remote that is PUBLIC. The path is
+  // gitignored now, so a repeat could no longer be committed, but a default that
+  // writes a second copy onto the same disk is still the wrong default: it makes
+  // "which one is real" a question, and the answer would drift.
+  //
+  // The default is now the data repo. `--out` still overrides for a one-off, and
+  // the guard below refuses any target inside this repository whatever is passed.
+  const DEFAULT_OUT = path.resolve(ROOT, '..', 'BrainWaves');
+  const OUT = path.resolve(arg('--out', DEFAULT_OUT));
+  // ⛔ A REFUSAL, NOT A WARNING. Writing fields into the code tree is the one
+  // mistake this script must not be able to make twice, and a warning scrolls
+  // past on a run that takes hours.
+  const rel = path.relative(ROOT, OUT);
+  if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) {
+    console.error(`[figures] REFUSING to write fields inside the code repository (${OUT}).`);
+    console.error('[figures] The fields belong in the data repo and nowhere else — one copy in Forgejo,');
+    console.error('[figures] one on the brain box, none here. Pass --out <data repo> or leave it unset.');
+    process.exit(2);
+  }
   const LIMIT = Number(arg('--limit', 0)) || 0;
   // Each figure is a network fetch followed by a heavy single-threaded CDF 9/7
   // transform, so the two overlap and the transform is what saturates. Use the
