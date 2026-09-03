@@ -360,3 +360,9 @@ graphify-out/
 /*.jpg
 /*.jpeg
 /*.webp
+
+# Default --out path for the figure generator. A run started without an
+# explicit --out lands here; it is generated output and never belongs in git.
+# (One was committed by accident on 2026-09-02 when an ESM "does it load" check
+# executed the script.)
+server/corpus-figures.db/

@@ -557,14 +557,39 @@ if (isMainThread) {
       }
 
       let img = host._decodeImageToRGBA(buf);
+      // ⛔⛔ THE SECOND CALL SITE OF `grab`, AND CHANGING ITS RETURN SHAPE BROKE
+      // IT SILENTLY. When `grab` started returning `{buf, status, message}`
+      // instead of a bare Buffer, this line still read `b2.length` — which is
+      // `undefined` on an object, so the guard was always false and **EVERY
+      // vector rendition failed without a word.** All 28 decode failures in the
+      // first ledger the new code ever wrote were SVGs, which is what exposed it.
+      // ⭐ A changed return shape must be chased to every caller, and a harness
+      // that only exercises the happy path will not find the one that was missed.
+      let renditionTried = false, renditionUrl = null, renditionErr = null;
       if (!img && renderable(job.url)) {
-        const alt = await wikiRendition(job.url);
-        if (alt) {
-          const b2 = await grab(alt);
-          if (b2 && b2.length > 64) img = host._decodeImageToRGBA(b2);
+        renditionTried = true;
+        renditionUrl = await wikiRendition(job.url);
+        if (renditionUrl) {
+          const got2 = await grab(renditionUrl);
+          if (got2 && got2.buf && got2.buf.length > 64) img = host._decodeImageToRGBA(got2.buf);
+          else renditionErr = (got2 && got2.message) || 'rendition fetch returned no body';
+        } else {
+          renditionErr = 'the wiki API offered no rendition for this file';
         }
       }
-      if (!img) { parentPort.postMessage({ err: 1, stage: 'decode', key: job.key, url: job.url, msg: 'decoder returned nothing' }); return; }
+      if (!img) {
+        // ⚠ NAME WHICH PATH FAILED. "decoder returned nothing" told the ledger
+        // nothing it could classify, so 28 vector failures all landed in the
+        // catch-all "no stated cause — may be a truncated download" bucket and
+        // would have been retried forever.
+        const why = renditionTried
+          ? (renditionErr
+            ? `no decoder for this format, and the rendition path failed: ${renditionErr}`
+            : 'no decoder for this format, and its rendition did not decode either')
+          : 'decoder returned nothing';
+        parentPort.postMessage({ err: 1, stage: 'decode', key: job.key, url: job.url, msg: why });
+        return;
+      }
       // A plate under 32px on a side is a spacer or an icon, not an illustration
       // — transforming it wastes the pass and stores a percept of nothing.
       if (Math.max(img.w, img.h) < 32) { parentPort.postMessage({ err: 1, stage: 'tiny', key: job.key, url: job.url, msg: `too small: ${img.w}x${img.h}` }); return; }

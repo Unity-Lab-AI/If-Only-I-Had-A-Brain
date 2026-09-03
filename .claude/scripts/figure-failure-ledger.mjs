@@ -71,6 +71,23 @@ export function classifyFailure(f = {}) {
   if (/^(gif|pdf|djvu|stl|webm|mp4|svgz)$/.test(ext)) {
     return { kind: PERMANENT, reason: `.${ext} — no decoder in this path, and a retry fetches the same bytes`, retryable: false };
   }
+  // ⛔ A VECTOR WHOSE RENDITION PATH ALSO FAILED IS PERMANENT, and telling that
+  // apart from a plain decode failure matters: 28 SVGs in the first ledger this
+  // module ever wrote all landed in the catch-all "no stated cause" bucket and
+  // would have been retried forever. The distinguishing evidence is whether the
+  // rendition was even OFFERED — if the wiki API has no rendition for a file,
+  // no number of retries produces one.
+  if (stage === 'decode' && /the wiki api offered no rendition/.test(msg)) {
+    return { kind: PERMANENT, reason: 'no decoder, and the wiki offers no rendition of this file', retryable: false };
+  }
+  // ⚠ But a rendition that was OFFERED and then failed to FETCH is transient —
+  // that is a network fault on a URL that demonstrably exists.
+  if (stage === 'decode' && /rendition path failed/.test(msg)) {
+    return { kind: TRANSIENT, reason: 'a rendition exists but fetching it failed', retryable: true };
+  }
+  if (stage === 'decode' && /rendition did not decode/.test(msg)) {
+    return { kind: PERMANENT, reason: 'the rendition itself does not decode — nothing further to try', retryable: false };
+  }
   if (stage === 'decode' && /unsupported|no decoder|unknown format|bad magic/.test(msg)) {
     return { kind: PERMANENT, reason: 'undecodable media type', retryable: false };
   }
