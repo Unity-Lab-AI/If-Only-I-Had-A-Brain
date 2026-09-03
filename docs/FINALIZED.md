@@ -37,6 +37,34 @@ Gee, verbatim, and this question is the reason half of this row did not ship:
 
 ---
 
+## 2026-09-03 — `EARLYTEACH.2` — COUNTING IS TAUGHT EQUATIONALLY, AND SEVEN OF THE TEN COUNTING WORDS HAD NO QUANTITY BEHIND THEM
+
+Gee's decision: **the equational math runners teach it directly** — no prose lane, no carve-out to the law that maths is taught equationally. The primary-grade arithmetic primer that would have supplied it **does not exist on Gutenberg**, searched properly by classification rather than title, so this is the answer instead of fetching harder.
+
+**⛔ THE LATENT DEFECT THE WORK EXPOSED.** `runMathPreK` bound `['three','four'] … ['nine','ten']` — but only `one`, `two` and `three` had ever been given a concept basin. **Seven of the ten counting words were being associated as bare tokens with no quantity behind them**, so the count sequence was a chain of symbols rather than a ladder of magnitudes. All ten now carry a basin on the same magnitude ramp.
+
+**⭐ THE NUMERAL ENCODING *IS* THE LESSON, not a table.** Each written symbol `1`–`10` is taught with the **same feature vector as its word**, so the numeral and the number word land in the *same basin*. That is the equational statement of "this mark means this quantity" — a string-pair lookup would have taught her that two tokens co-occur, which is a different and much weaker claim. Bindings run **both directions** on purpose: reading a numeral and producing one are different acts, and a single direction teaches only the first.
+
+**⭐ THE THREE COUNTING PRINCIPLES, none of which this cell taught** — and they are exactly what separates counting from reciting:
+
+| principle | what it means | why its absence matters |
+|---|---|---|
+| ONE-TO-ONE | one number word per object, one object per word | without it, counting is a song |
+| CARDINALITY | the LAST word said is the answer | without it, she reaches the end and has no result |
+| ORDER-IRRELEVANCE | rearranging the objects does not change the number | without it, a number is a property of an arrangement |
+
+**⭐ SUBITISING**, which stops *"how many"* from always meaning "recite the sequence": small groups are SEEN, larger ones COUNTED, and the boundary is real rather than stylistic — people recognise up to about three or four at a glance.
+
+**⭐⭐ KINDERGARTEN NEEDED NOTHING, AND CHECKING THAT WAS THE MOST USEFUL PART.** `runMathKReal` already ships addition/subtraction/comparison transformations, decomposition, make-ten, teen decomposition, count-to-hundred, skip-counting by tens, **`_teachMagnitudeToMotor` (magnitude → digit character)**, the number-name sequence and word-form arithmetic. **"Reading a number sentence" was already there.** ⛔ Adding a second counting layer on top would have been duplicate teaching wearing the look of coverage — **the gap was one cell wide, not a band.**
+
+⚠ **CHECKED BEFORE WRITING, NOT AFTER:** `learnWord` keeps `[a-z0-9'-]`, so digit tokens survive into the dictionary; they are stripped from BIGRAMS only, which is correct because a numeral is not a word that follows another word in speech.
+
+⚠ **`see` and `many` are re-taught inside this cell deliberately.** They are taught elsewhere in pre-K, so the bindings here were correct only for as long as nobody reordered the cells. Re-teaching costs one pass over two words and makes the cell stand alone.
+
+⚠ **Verified through `curriculum.js`, never by direct import** of the per-grade file — that route hits a circular-import TDZ the production entry never takes, which has already cost one false alarm on this project.
+
+---
+
 ## 2026-09-03 — `REGFIND.9` — THE DERIVATION LANE HAS CALLERS FOR THE FIRST TIME, AND THE CONTRACT IT ADVERTISED IS NOW TRUE
 
 Gee's choice, 2026-09-03: **"Wire it, with the episodic commit."**

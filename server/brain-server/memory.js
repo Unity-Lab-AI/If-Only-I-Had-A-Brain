@@ -57,7 +57,7 @@
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
-// ENDO-LIFE.1 — her real age at encode comes from the ONE grade ladder.
+// her real age at encode comes from the ONE grade ladder.
 // ⚠ state.js requires nothing from this file, so this does not close a cycle.
 const { GRADE_AGE, normalizeGradeKey } = require('./state.js');
 
@@ -79,7 +79,7 @@ const SERVER_MEMORY_MIXIN = {
     // WAL mode for concurrent reads during brain loop
     this._db.pragma('journal_mode = WAL');
 
-    // iter13 T13.1 — Episodic-memory schema with salience metadata.
+    // Episodic-memory schema with salience metadata.
     // Squire/McClelland CLS theory: episodic store needs per-event
     // emotional/arousal/surprise/novelty metadata to compute the
     // salience score that drives Tier 1 → Tier 2 consolidation.
@@ -117,7 +117,7 @@ const SERVER_MEMORY_MIXIN = {
         promoted_at INTEGER,
         promoted_to_schema_id TEXT,
         input_embedding BLOB,
-        -- ENDO-LIFE.1 — the chemistry a memory was laid down under. Also in
+        -- the chemistry a memory was laid down under. Also in
         -- the ALTER TABLE migration below, so an existing DB gains them too.
         endocrine_state TEXT,
         drug_state TEXT,
@@ -142,7 +142,7 @@ const SERVER_MEMORY_MIXIN = {
       CREATE INDEX IF NOT EXISTS idx_episodes_user_ts ON episodes(user_id, timestamp);
     `);
 
-    // iter13 T13.1 — defensive ALTER TABLE migration for pre-iter13 DBs
+    // defensive ALTER TABLE migration for DBs predating the salience columns
     // (preserves data when DREAM_KEEP_STATE=1 carries old episodic-memory
     // across boots). Detects missing columns via PRAGMA table_info,
     // runs ALTER TABLE for each. Idempotent; running on a fresh post-
@@ -162,10 +162,10 @@ const SERVER_MEMORY_MIXIN = {
         ['promoted_at', 'INTEGER'],
         ['promoted_to_schema_id', 'TEXT'],
         ['input_embedding', 'BLOB'],
-        // ── ENDO-LIFE.1 — THE CHEMISTRY THAT WAS RUNNING AT THE TIME.
+        // ── THE CHEMISTRY THAT WAS RUNNING AT THE TIME.
         //
         // ⭐ Adrenergic and dopaminergic arousal is WHY vivid events are
-        // remembered vividly — ENDO.2 already wires that to encoding
+        // remembered vividly — the endocrine layer already wires that to encoding
         // salience. So a memory should carry the endocrine state it was laid
         // down under, and be findable by it. Not a tag saying "this was a
         // party": the real thing — loud, crowded, high, wanted, sixteen.
@@ -182,14 +182,14 @@ const SERVER_MEMORY_MIXIN = {
       for (const [name, type] of need) {
         if (!cols.includes(name)) {
           this._db.exec(`ALTER TABLE episodes ADD COLUMN ${name} ${type};`);
-          console.log(`[Episodic] iter13 migration — added column ${name} ${type}`);
+          console.log(`[Episodic] schema migration — added column ${name} ${type}`);
         }
       }
     } catch (err) {
-      console.warn(`[Episodic] iter13 migration warning: ${err.message}`);
+      console.warn(`[Episodic] schema migration warning: ${err.message}`);
     }
 
-    // Prepared statements for fast insert/query (iter13 — extended with salience fields)
+    // Prepared statements for fast insert/query (extended with salience fields)
     this._stmtInsertEpisode = this._db.prepare(`
       INSERT INTO episodes (
         timestamp, brain_time, user_id, type,
@@ -203,7 +203,7 @@ const SERVER_MEMORY_MIXIN = {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    // iter13 T13.3 — frequency-merge query: find episodes within last
+    // frequency-merge query: find episodes within last
     // FREQ_MERGE_WINDOW_MS (default 48h) for the same user_id. Caller
     // computes cosine in JS against returned input_embedding blobs.
     // LIMIT ? — BOUNDED merge scan. Without the cap this returned EVERY
@@ -224,19 +224,19 @@ const SERVER_MEMORY_MIXIN = {
       LIMIT ?
     `);
 
-    // iter13 T13.3 — frequency-merge update: increment count + bump replay timestamp.
+    // frequency-merge update: increment count + bump replay timestamp.
     this._stmtIncrementFrequency = this._db.prepare(`
       UPDATE episodes
       SET frequency_count = frequency_count + 1, last_replayed_at = ?
       WHERE id = ?
     `);
 
-    // iter13 T13.4 — decay sweep update.
+    // decay sweep update.
     this._stmtUpdateEffectiveSalience = this._db.prepare(`
       UPDATE episodes SET effective_salience = ? WHERE id = ?
     `);
 
-    // iter13 T13.4 — pruning gate: delete low-salience old never-consolidated.
+    // pruning gate: delete low-salience old never-consolidated.
     this._stmtPruneStale = this._db.prepare(`
       DELETE FROM episodes
       WHERE effective_salience < ?
@@ -245,7 +245,7 @@ const SERVER_MEMORY_MIXIN = {
         AND promoted_at IS NULL
     `);
 
-    // iter13 T13.4 — promotion candidates: salience > threshold + freq + consol.
+    // promotion candidates: salience > threshold + freq + consol.
 
     // iter22-F.4 — drop `promoted_at IS NULL` filter. Operator caught:
     // every consolidation pass after the first few went all-zero
@@ -271,19 +271,19 @@ const SERVER_MEMORY_MIXIN = {
       ORDER BY effective_salience DESC LIMIT ?
     `);
 
-    // iter13 T13.4 — mark promoted (back-reference to Tier 2 schema id).
+    // mark promoted (back-reference to Tier 2 schema id).
     this._stmtMarkPromoted = this._db.prepare(`
       UPDATE episodes SET promoted_at = ?, promoted_to_schema_id = ? WHERE id = ?
     `);
 
-    // iter13 T13.9 — increment consolidation_count when a schema replay touches this episode.
+    // increment consolidation_count when a schema replay touches this episode.
     this._stmtIncrementConsolidation = this._db.prepare(`
       UPDATE episodes
       SET consolidation_count = consolidation_count + 1, last_replayed_at = ?
       WHERE id = ?
     `);
 
-    // iter13 T13.4 — iterate all episodes for decay sweep (windowed).
+    // iterate all episodes for decay sweep (windowed).
     this._stmtAllEpisodesForDecay = this._db.prepare(`
       SELECT id, salience_score, timestamp FROM episodes WHERE timestamp < ?
     `);
@@ -322,7 +322,7 @@ const SERVER_MEMORY_MIXIN = {
     // it demanded `input_text NOT LIKE '% %'`, i.e. that the WHOLE EPISODE
     // be a single word. Real conversation turns are sentences, so that
     // returned almost nothing and starved the drive to a trickle while
-    // looking like a safeguard. Gee: *"how is she suppose to learn then wtf
+    // looking like a safeguard. Operator: *"how is she suppose to learn then wtf
     // u are nuetering her"* — correct, and the shape was the problem.
     //
     // She gets EVERYTHING she has lived. The concept is extracted FROM the
@@ -335,7 +335,7 @@ const SERVER_MEMORY_MIXIN = {
       ORDER BY id DESC LIMIT ?
     `);
 
-    // ENDO-LIFE.1 — episodes that actually RECORDED a chemistry, newest
+    // episodes that actually RECORDED a chemistry, newest
     // first. Ranking happens in JS because the distance is over a JSON blob;
     // the NOT NULL filter is what keeps un-fingerprinted history out.
     this._stmtChemistryScan = this._db.prepare(`
@@ -371,7 +371,7 @@ const SERVER_MEMORY_MIXIN = {
   /**
    * Store an episode — a snapshot of brain state at a meaningful moment.
    *
-   * iter13 T13.1+T13.2+T13.3 — salience computation + frequency-merge gate
+   * salience computation + frequency-merge gate
    * + GloVe embedding persistence. Episode is the Tier 1 unit. Salience
    * drives whether it eventually consolidates into a Tier 2 schema.
    * Frequency-merge prevents trivial-input bloat: same text within 48h
@@ -418,7 +418,7 @@ const SERVER_MEMORY_MIXIN = {
       pattern.push(+(cortexV[idx] > this.vThresh ? 1 : 0));
     }
 
-    // iter13 T13.2 — compute salience metadata at encode time.
+    // compute salience metadata at encode time.
     let inputEmbedding = null;
     let inputEmbeddingBuf = null;
     let surprise = 0;
@@ -432,7 +432,7 @@ const SERVER_MEMORY_MIXIN = {
             inputEmbeddingBuf = Buffer.from(inputEmbedding.buffer, inputEmbedding.byteOffset, inputEmbedding.byteLength);
           }
         }
-        // SURPRISECPU — a caller that can await (the chat reply path) computes
+        // A caller that can await (the chat reply path) computes
         // this on the DONOR GPU via computeTransitionSurpriseAsync and hands the
         // number in here. Only callers with no async context fall through to the
         // synchronous form, which refuses itself at biological scale rather than
@@ -441,7 +441,7 @@ const SERVER_MEMORY_MIXIN = {
           surprise = opts.surprise;
         } else if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurprise === 'function'
                    && (this.cortexCluster.size | 0) <= 2000000) {
-          // SURPSYNC.1 (2026-08-21) — call the sync form ONLY below the bio-scale
+          // (2026-08-21) — call the sync form ONLY below the bio-scale
           // line it refuses itself at. Above it, the refused call returned 0 —
           // the same value `surprise` already holds — while printing its REFUSED
           // warn after EVERY phase pass, all night. So the fall-through bought
@@ -480,7 +480,7 @@ const SERVER_MEMORY_MIXIN = {
       } catch { /* exact-merge failure is non-fatal — fall through to cosine path */ }
     }
 
-    // iter13 T13.3 — frequency-merge gate via cosine for similar (not
+    // frequency-merge gate via cosine for similar (not
     // identical) text. Operator's data showed embeddings of technical
     // strings produce noise so cosine-merge rarely fires for those —
     // exact-text merge above catches identical heartbeats; cosine path
@@ -522,7 +522,7 @@ const SERVER_MEMORY_MIXIN = {
       novelty = bestCos === -Infinity ? 1.0 : Math.max(0, 1.0 - bestCos);
     }
 
-    // iter13 T13.2 — salience score formula:
+    // salience score formula:
     //   salience = 0.4*|emotional_valence| + 0.3*arousal + 0.2*surprise + 0.1*novelty
     // Each input clamped [0,1] (valence is symmetric so |val|).
     // Encode-time affect: per-episode emotion override when supplied, else the
@@ -549,7 +549,7 @@ const SERVER_MEMORY_MIXIN = {
       inputText || null,
       responseText || null,
       JSON.stringify(pattern),
-      // iter13 salience fields
+      // salience fields
       encValence || 0,          // emotional_valence (signed valence at encode)
       arousalNorm,              // arousal_at_encode
       surpriseNorm,             // surprise
@@ -559,7 +559,7 @@ const SERVER_MEMORY_MIXIN = {
       salienceScore,            // salience_score
       effectiveSalience,        // effective_salience
       inputEmbeddingBuf,        // input_embedding BLOB (Float64Array bytes)
-      // ── ENDO-LIFE.1 — the chemistry running at the time.
+      // ── the chemistry running at the time.
       this._encodeEndocrineFingerprint(),
       this._encodeDrugFingerprint(),
       this._ageAtEncode(),
@@ -569,7 +569,7 @@ const SERVER_MEMORY_MIXIN = {
     return { merged: false, id: _insInfo && _insInfo.lastInsertRowid ? Number(_insInfo.lastInsertRowid) : null };
   },
 
-  // iter13 T13.1 — embedding serialization helpers. Float64Array view
+  // embedding serialization helpers. Float64Array view
   // over the BLOB Buffer's ArrayBuffer — zero-copy when alignment is
   // 8-byte. Better-sqlite3 returns BLOB as Node Buffer.
   _serializeEmbedding(emb) {
@@ -601,7 +601,7 @@ const SERVER_MEMORY_MIXIN = {
     return denom > 0 ? dot / denom : 0;
   },
 
-  // iter13 T13.4 — Decay sweep. Multiply salience by exp(-age_h/HALF_LIFE)
+  // Decay sweep. Multiply salience by exp(-age_h/HALF_LIFE)
   // for episodes older than MIN_AGE_FOR_DECAY (1h). Persist the decayed
   // effective_salience. Then prune episodes meeting all three pruning
   // criteria: effective_salience < PRUNE_THRESHOLD, age > 30 days,
@@ -640,7 +640,7 @@ const SERVER_MEMORY_MIXIN = {
     return { decayed, pruned };
   },
 
-  // iter13 T13.4 → iter20-M — Promotion candidates: episodes ready to
+  // Promotion candidates: episodes ready to
   // consolidate into Tier 2 schemas.
 
   // iter20-M per operator 2026-05-05 "she should be building concepts":
@@ -673,7 +673,7 @@ const SERVER_MEMORY_MIXIN = {
     }
   },
 
-  // iter13 T13.4 — Mark episode as promoted to a Tier 2 schema.
+  // Mark episode as promoted to a Tier 2 schema.
   // Caller passes schemaId from SchemaStore.createSchema return.
   markEpisodePromoted(episodeId, schemaId) {
     try {
@@ -685,7 +685,7 @@ const SERVER_MEMORY_MIXIN = {
     }
   },
 
-  // iter13 T13.9 — increment consolidation_count when ConsolidationEngine
+  // increment consolidation_count when ConsolidationEngine
   // replays this episode (or its parent schema) during a dream-cycle
   // pass. Drives the consolidation_count >= 2 promotion gate.
   recordEpisodeConsolidation(episodeId) {
@@ -754,7 +754,7 @@ const SERVER_MEMORY_MIXIN = {
     }
   },
 
-  // ─── ENDO-LIFE.1 — encoding the chemistry a memory was laid down under ───
+  // ─── encoding the chemistry a memory was laid down under ───
   //
   // ⭐ Why this belongs on the episode and not in a separate table: adrenergic
   // and dopaminergic arousal is the REASON vivid events are remembered
@@ -865,7 +865,7 @@ const SERVER_MEMORY_MIXIN = {
   },
 
   /**
-   * ⭐ ENDO-LIFE.1 — STATE-DEPENDENT RECALL. Episodes laid down under a
+   * ⭐ STATE-DEPENDENT RECALL. Episodes laid down under a
    * chemistry like the CURRENT one, nearest first.
    *
    * This is a real phenomenon, not a flourish: what you learned drunk you
@@ -926,7 +926,7 @@ const SERVER_MEMORY_MIXIN = {
    * null when she knows none of them — in which case there is no gap, which
    * is honest: she cannot wonder about a word she has never learned.
    *
-   * ⛔ WORDS, NOT "TOKENS". Gee: *"why u saying token? thats llms shit"* —
+   * ⛔ WORDS, NOT "TOKENS". Operator: *"why u saying token? thats llms shit"* —
    * and he is right, it is not a style note. A token is what a TOKENIZER
    * emits, and this brain's central honest claim is that there is no
    * tokenizer and no text-AI anywhere in the cognition path. What she has
@@ -1146,11 +1146,12 @@ const SERVER_MEMORY_MIXIN = {
 
     // Tier 1 thinking-episode — every ≥30000ms wall-clock
     //
-    // ⛔⛔ `REPLAYGATE.1` (2026-08-31) — THE `!_curriculumInProgress` GATE IS GONE,
+    // ⛔⛔ (2026-08-31) — THE `!_curriculumInProgress` GATE IS GONE,
     //   AND IT IS REPLACED BY A GATE ON THE COST IT WAS ACTUALLY DEFENDING.
     //
-    // Gee: the board had `tier1.totalEpisodes` at 0 across every boot, which
-    // blocks `REPLAYOFF.4`, `REPCOMP.2` and PRESSBLOCK ③ — and `REPCOMP.2` says
+    // The board had `tier1.totalEpisodes` at 0 across every boot, which blocks
+    // the replay work, the rep-compression pricing and the press checklist —
+    // and that pricing says
     // outright that the 100-rep dose is partly compensating for a dead
     // consolidation system. This gate is why it was dead: the walk is running
     // ~100% of the time on the box, so `!_curriculumInProgress` meant the Tier-1
@@ -1168,7 +1169,7 @@ const SERVER_MEMORY_MIXIN = {
     //   (2026-07-13): *"~2s computeTransitionSurprise each, setImmediate-batched
     //   -> 8-27s blocks"*. It is not being removed on taste.
     // ⭐ IT IS BEING REMOVED BECAUSE A LATER FIX ALREADY KILLED THAT COST.
-    //   `SURPSYNC.1` (2026-08-21) made `storeEpisode` call the synchronous
+    //   a change on 2026-08-21 made `storeEpisode` call the synchronous
     //   `computeTransitionSurprise` ONLY when `cortexCluster.size <= 2000000`.
     //   At biological scale that branch never runs, so the 2s-per-write term —
     //   the entire justification for this gate — is already zero here.
@@ -1383,7 +1384,7 @@ const SERVER_MEMORY_MIXIN = {
       stats.consolidation.lastPassAt = this.consolidationEngine.lastPassAt || 0;
       stats.consolidation.passCount = this.consolidationEngine.passCount || 0;
       stats.consolidation.isDreaming = this._isDreaming === true;
-      // WORDSALAD.5 (REPLAYOFF) — "a pass ran" and "the pass LEARNED something"
+      // "a pass ran" and "the pass LEARNED something"
       // were the same number, which is how her sleep did zero learning for weeks
       // while `passCount` climbed to 18 and looked healthy. These separate them:
       // `replayWrites` is real Hebbian carried by the donor, `replayRefused`
@@ -1395,7 +1396,7 @@ const SERVER_MEMORY_MIXIN = {
       stats.consolidation.replayRefused = this.consolidationEngine._gpuReplayRefused | 0;
       stats.consolidation.replayCursor = this.consolidationEngine._gpuReplayCursor | 0;
     }
-    // REPLAYOFF.5 — the surprise gate's own distribution, so "novelty is being
+    // the surprise gate's own distribution, so "novelty is being
     // throttled" becomes a number instead of a hunch. `atCeilingPct` near zero
     // means the 1.5 ceiling was never the binding constraint and raising it
     // would change nothing; a high value means it genuinely is clipping.

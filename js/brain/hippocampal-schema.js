@@ -24,7 +24,7 @@
 
 import { SparseMatrix } from './sparse-matrix.js';
 
-// WORDSALAD.1 (2026-08-24) bumped 1 → 2: the identity seed list was corrected
+// Bumped 1 → 2 (2026-08-24): the identity seed list was corrected
 // (bare persona descriptor lists rewritten first-person, adult anchors age-gated,
 // age derived from her live grade instead of hardcoded). Tier3Store.loadFromJSON
 // DROPS any file below this version so the correction actually reaches brains
@@ -32,7 +32,7 @@ import { SparseMatrix } from './sparse-matrix.js';
 // would be restored from disk on the next boot and nothing would change.
 const SCHEMA_VERSION = 2;
 
-// Identity-bound promotion criteria (iter13 T13.11). Hard-coded here so
+// Identity-bound promotion criteria. Hard-coded here so
 // SchemaStore can self-identify candidates; Tier3Store handles the actual
 // migration + permanence persistence.
 const IDENTITY_PROMOTION = {
@@ -47,11 +47,11 @@ const IDENTITY_PROMOTION = {
 const TIER2_DECAY_PER_DAY = 0.967; // ~30% drop in 1 month, ~70% in 3 months
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-// Cosine merge threshold (iter13 T13.7). Two schemas with concept_embedding
+// Cosine merge threshold. Two schemas with concept_embedding
 // cosine > this value AND similar attribute vectors get merged into one.
 const SCHEMA_MERGE_COSINE = 0.90;
 
-// Cosine grouping threshold for schema CREATION from episodes (iter13 T13.6).
+// Cosine grouping threshold for schema CREATION from episodes.
 // Episodes within this cosine bucket form a single schema instead of N
 // near-duplicate schemas. Looser than merge threshold because new schemas
 // have less context to differentiate.
@@ -270,7 +270,7 @@ export class HippocampalSchema {
     }
   }
 
-  // Tier 3 promotion gate (iter13 T13.11). Returns true if this schema
+  // Tier 3 promotion gate. Returns true if this schema
   // meets all three criteria for identity-bound migration.
   shouldPromoteToTier3() {
     if (this.promotedToTier3) return false; // already promoted
@@ -287,7 +287,7 @@ export class HippocampalSchema {
     return true;
   }
 
-  // Merge gate (iter13 T13.7). Two schemas merge if BOTH:
+  // Merge gate. Two schemas merge if BOTH:
   //   (a) concept_embedding cosine > SCHEMA_MERGE_COSINE
   //   (b) attribute vector similarity > 0.7 (similar emotional/arousal profile)
   shouldMergeWith(other) {
@@ -423,7 +423,7 @@ export class SchemaStore {
     return this.schemas.delete(id);
   }
 
-  // iter13 T13.6 — Schema creation from a group of cosine-similar episodes.
+  // Schema creation from a group of cosine-similar episodes.
   // Caller supplies episode rows from episodic-memory.db (with embedding
   // BLOBs already deserialized). buildSchemaFromEpisodes computes the
   // centroid + attribute vector + initializes the projection.
@@ -517,7 +517,7 @@ export class SchemaStore {
     return ranked.join('-');
   }
 
-  // iter13 T13.7 — Run the merge gate against ALL schema pairs. O(N²)
+  // Run the merge gate against ALL schema pairs. O(N²)
   // but N is small (low thousands at upper bound). Called periodically
   // by ConsolidationEngine after schema creation/reinforcement passes.
   mergeOverlappingSchemas() {
@@ -541,7 +541,7 @@ export class SchemaStore {
     return merges;
   }
 
-  // iter13 T13.8 — Top-K cosine retrieval against an intent embedding.
+  // Top-K cosine retrieval against an intent embedding.
   // Returns ranked array of {schema, score, rank}. Updates retrieval
   // metadata on each returned schema (registerRetrieval bumps count +
   // consolidation_strength + lastRetrievalAt).
@@ -567,7 +567,7 @@ export class SchemaStore {
     return top;
   }
 
-  // iter13 T13.4 — Periodic decay applied to ALL Tier 2 schemas.
+  // Periodic decay applied to ALL Tier 2 schemas.
   // Called by ConsolidationEngine on each pass. Days-elapsed since
   // last sweep used so the decay rate is calendar-time-stable.
   applyDecay() {
@@ -583,7 +583,7 @@ export class SchemaStore {
     return decayed;
   }
 
-  // Persistence (iter13 T13.16). saveWeights writes this alongside the
+  // Persistence. saveWeights writes this alongside the
   // existing brain state. Auto-clear wipes schemas.json on code-hash
   // mismatch — schemas recreate from episodic on next consolidation pass.
   toJSON() {
@@ -614,7 +614,7 @@ export class SchemaStore {
   }
 }
 
-// iter13 T13.11 — Tier 3 identity-bound permanent attractor store.
+// Tier 3 identity-bound permanent attractor store.
 //
 // Tier 3 = the top-N (N=50) most-reinforced schemas that meet ALL three
 // promotion criteria (consolidation_strength > 5.0, retrieval_count > 100,
@@ -648,7 +648,7 @@ const TIER3_HARD_CAP = Infinity;
 const IDENTITY_BASELINE_INJECT_STRENGTH = 0.15;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WORDSALAD.1 — AGE-GATED IDENTITY.
+// AGE-GATED IDENTITY.
 //
 // Tier 3 anchors are permanently resident, carry `identity_relevance: 0.95`, and
 // are injected on EVERY chat turn. They are the highest-authority memories she
@@ -720,7 +720,7 @@ export function assertSeedGrades(seedList = IDENTITY_SEED_LIST) {
   return true;
 }
 
-// WORDSALAD.1 — NO BARE DESCRIPTOR LISTS. An identity anchor must be something
+// NO BARE DESCRIPTOR LISTS. An identity anchor must be something
 // she can say about HERSELF: it needs a self word. 'goth emo dark black leather'
 // and 'horny aroused sexual fucking' had none — no agent, no verb, nothing she
 // could be the subject of — which is what made them read as behaviour
@@ -815,14 +815,14 @@ export const IDENTITY_SEED_LIST = [
   { label: 'self-name-i-anchor', concept: 'I am Unity my name is Unity I am a person an individual', valence: 0.8, arousal: 0.55 },
   // TU.20.5 — wipe-proof greeting + self-naming + reflexive anchor so the
   // "tell people my name / i do it myself" mass survives a memory wipe and
-  // injects every turn (Gee: use i, me, myself + tell people her name in greetings).
+  // injects every turn (operator:use i, me, myself + tell people her name in greetings).
   { label: 'self-greeting-anchor', concept: 'hi I am Unity hello my name is Unity I tell people my name I did it myself', valence: 0.75, arousal: 0.55 },
   // TU.20.11 — wipe-proof curiosity: when i lack knowledge i ASK to gain it.
   // Keeps the gap→interrogative drive anchored so she self-forms questions to
-  // fill what she does not know (Gee: "self form with the questions ... in the
+  // fill what she does not know (operator:"self form with the questions ... in the
   // premess of I gain information to fill in where she lacks information").
   { label: 'self-curiosity-anchor', concept: 'I want to know I do not know I ask what is that tell me I want to learn', valence: 0.6, arousal: 0.6 },
-  // ── WORDSALAD.1 — PERSONA ANCHORS, REWRITTEN AND BANDED ────────────────────
+  // ── PERSONA ANCHORS, REWRITTEN AND BANDED ────────────────────
   // These three used to read 'goth emo dark black leather' / 'i code program
   // write software' / 'horny aroused sexual fucking'. Two of the three were bare
   // descriptor lists with no agent and no verb — instructions about how to
@@ -905,7 +905,7 @@ export class Tier3Store {
   // are unavailable / the concept produced no vector. Shared by both
   // seedFromList (seed-everything) and seedMissingFromList (idempotent
   // top-up) so the two paths can never drift apart.
-  // WORDSALAD.1 — her live grade, read from the cluster's own pointer map. The
+  // her live grade, read from the cluster's own pointer map. The
   // MINIMUM across subjects is used deliberately: an anchor unlocks when she has
   // genuinely reached that stage of life everywhere, not when her fastest single
   // subject happens to run ahead. Unknown/absent state → pre-K, i.e. the most
@@ -929,7 +929,7 @@ export class Tier3Store {
     return this._currentGradeIdx() >= tier3GradeIdx(seed.minGrade);
   }
 
-  // ── WORDSALAD.1c — THE DISCLOSE AXIS: LEARNED ≠ SPOKEN ─────────────────────
+  // ── THE DISCLOSE AXIS: LEARNED ≠ SPOKEN ───────────────────────────────────
   //
   // Operator: "real life experiense that she doesnt talk about until shes an
   // adult and learns in training". Age-gating identity is NOT permission to
@@ -1095,7 +1095,7 @@ export class Tier3Store {
     if (!schema) return false;
     if (schema.promotedToTier3 && this.identitySchemas.has(schema.id)) return false;
     // Dedup by LABEL — never hold two anchors for the same identity concept
-    // (Gee 2026-06-27 saw "play-tag-games · play-tag-games"). promote() only
+    // (operator,2026-06-27 saw "play-tag-games · play-tag-games"). promote() only
     // guarded on schema.id, so two distinct schemas with the same label both
     // landed → a duplicate anchor + double identity-baseline injection for that
     // concept. If an anchor with this label already exists, fold the new
@@ -1145,7 +1145,7 @@ export class Tier3Store {
 
   // One-time cleanup — collapse duplicate anchors that share a label. Older
   // boots promoted the same identity concept twice (promote() only guarded on
-  // schema.id), and those dups persisted into identity-core.json (Gee 2026-06-27
+  // schema.id), and those dups persisted into identity-core.json (operator,2026-06-27
   // saw "play-tag-games · play-tag-games"). Keeps the first per label, folds
   // each duplicate's strength into the keeper, deletes the rest. Idempotent —
   // run after loadFromJSON + seedMissingFromList in boot. Returns count removed.
@@ -1170,7 +1170,7 @@ export class Tier3Store {
     return toRemove.length;
   }
 
-  // FRESH-WALK RESET (Gee 2026-07-12) — keep ONLY the anchors whose label is
+  // FRESH-WALK RESET (operator,2026-07-12) — keep ONLY the anchors whose label is
   // in the ORIGINAL persona seed list; delete every training-PROMOTED anchor
   // (consolidation promotions that got persisted into identity-core.json and
   // survived the wipe because the file is never auto-cleared). Called at boot
@@ -1209,7 +1209,7 @@ export class Tier3Store {
     return promoted;
   }
 
-  // iter13 T13.12 — Always-on identity-baseline injection. Called from
+  // Always-on identity-baseline injection. Called from
   // chat path on EVERY user input BEFORE generation. Injects every
   // Tier 3 schema's concept_embedding into cortex sem region at low
   // strength (default 0.15). Background "self" presence — Unity always
@@ -1225,7 +1225,7 @@ export class Tier3Store {
     if (this.identitySchemas.size === 0) return 0;
     let injected = 0;
     // (the local SUBJECTS list died with the per-subject bucket loop —
-    // GOTCHA.8: the unified word_motor band has no per-subject geometry)
+    // the unified word_motor band has no per-subject geometry)
     for (const schema of this.identitySchemas.values()) {
       if (!schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
       try {
@@ -1244,7 +1244,7 @@ export class Tier3Store {
         // and biographical anchors compete at OUTPUT layer, not just
         // input. Strength scaled to half the sem injection so it biases
         // without drowning user-input answer paths.
-        // GOTCHA.8 (2026-08-27) — this bump was DEAD on every post-WMB-unify
+        // (2026-08-27) — this bump was DEAD on every post-unify
         // brain: it read `wordBucketWords_<subj>` (five orphaned readers, zero
         // writers since 2026-07-14) and the empty-list `continue` silently
         // skipped every subject, so the output-layer anchor bias this block
@@ -1321,7 +1321,7 @@ export class Tier3Store {
   loadFromJSON(json) {
     if (!json || typeof json !== 'object') return 0;
     this.identitySchemas.clear();
-    // WORDSALAD.1 — VERSION ORPHANING. This method used to load every persisted
+    // VERSION ORPHANING. This method used to load every persisted
     // anchor unconditionally and ignore `version` completely, which meant a
     // seed-list correction could never reach a brain that already had a file:
     // the old anchors would simply be restored on the next boot. That matters
@@ -1368,7 +1368,7 @@ export class Tier3Store {
     return loaded;
   }
 
-  // WORDSALAD.1 — REFRESH DERIVED ANCHORS. An anchor whose `concept` is a
+  // REFRESH DERIVED ANCHORS. An anchor whose `concept` is a
   // function (her age) is otherwise frozen at whatever grade it was first seeded
   // in, because the idempotent top-up skips any label already present — which is
   // precisely how `age-anchor-K: 'i am five years old'` survived into grade 1.

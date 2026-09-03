@@ -533,9 +533,117 @@ export const PREK_MIXIN = {
       ['pattern','repeat'], ['red','blue'], ['blue','red'],
     ], { reps: 8, label: 'PREK-MATH-SHAPE-SORT', relationTagId: 5 });
 
+    // ── EARLY NUMBER INSTRUCTION — TAUGHT HERE, NOT READ FROM PROSE ─────────
+    //
+    // Operator decision, 2026-09-03: learning to count, to name a numeral and to
+    // read a number sentence lives in the equational maths curriculum, with **no
+    // prose lane and no carve-out** to the law that maths is taught equationally.
+    // The primary-grade arithmetic primer that would have supplied it does not
+    // exist on Gutenberg — searched properly by classification, not by title —
+    // and this is the answer instead of fetching harder.
+    //
+    // ⛔ NONE OF THIS IS COMPUTING A SUM. She is already taught the operations;
+    // this is the layer UNDERNEATH that makes an operation mean something — the
+    // difference between reciting the count sequence and knowing what a number IS.
+    //
+    // ⛔ AND IT CLOSES A LATENT GAP IN THIS CELL: the pairs above bind `four`
+    // through `ten`, and only `one`/`two`/`three` had ever been given a concept
+    // basin. Seven of the ten counting words were being associated as bare
+    // tokens with no quantity behind them.
+    const COUNT_WORDS = [
+      { name: 'four',  feat: [0.40, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: 'five',  feat: [0.50, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: 'six',   feat: [0.60, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: 'seven', feat: [0.70, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: 'eight', feat: [0.80, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: 'nine',  feat: [0.90, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: 'ten',   feat: [1.00, 0, 0, 0, 0, 0, 0, 0.5] },
+    ];
+    await this._conceptTeach(COUNT_WORDS, 8);
+
+    // ⭐ NUMERAL RECOGNITION, AND THE ENCODING *IS* THE LESSON. Each written
+    // symbol is taught with the SAME feature vector as its word, so the numeral
+    // and the number word land in the SAME basin — which is the equational way
+    // of saying "this mark means this quantity", rather than a lookup table
+    // pairing two strings.
+    // ⚠ Digit tokens survive the vocabulary path (`learnWord` keeps `[a-z0-9'-]`),
+    // checked before this was written. They are dropped from BIGRAMS only, which
+    // is correct — a numeral is not a word that follows another word in speech.
+    const NUMERAL_CONCEPTS = [
+      { name: '1',  feat: [0.10, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '2',  feat: [0.20, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '3',  feat: [0.30, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '4',  feat: [0.40, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '5',  feat: [0.50, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '6',  feat: [0.60, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '7',  feat: [0.70, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '8',  feat: [0.80, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '9',  feat: [0.90, 0, 0, 0, 0, 0, 0, 0.5] },
+      { name: '10', feat: [1.00, 0, 0, 0, 0, 0, 0, 0.5] },
+    ];
+    await this._conceptTeach(NUMERAL_CONCEPTS, 8);
+
+    // The support words the principles below are stated in. ⛔ Taught BEFORE
+    // they are used in any binding — the pre-taught rule exists because a
+    // binding onto a word she has never been given lands on noise, and a gate
+    // would then test a word she was never taught.
+    await this._conceptTeach([
+      { name: 'number',  feat: [0.5, 0, 0.3, 0, 0, 0, 0, 0.5] },
+      { name: 'last',    feat: [0.9, 0, 0, 0, 0, 0, 0, 0.3] },
+      { name: 'amount',  feat: [0.5, 0, 0.3, 0, 0, 0, 0, 0.5] },
+      { name: 'each',    feat: [0.2, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'group',   feat: [0.6, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'row',     feat: [0.4, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'pile',    feat: [0.6, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'same',    feat: [0.5, 0, 0.3, 0, 0, 0, 0, 0] },
+      // ⚠ `see` and `many` are taught elsewhere in pre-K, and re-teaching them
+      // HERE removes an ordering dependency rather than duplicating work: the
+      // bindings below use them, and a binding whose word is only registered by
+      // a DIFFERENT cell is correct exactly as long as nobody reorders the cells.
+      // `_conceptTeach` is idempotent-by-reinforcement, so the cost is one more
+      // pass over two words and the gain is that this cell stands alone.
+      { name: 'see',     feat: [0.5, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: 'many',    feat: [0.8, 0, 0.3, 0, 0, 0, 0, 0.5] },
+    ], 8);
+
+    // ⭐ THE SYMBOL LINK, BOTH DIRECTIONS ON PURPOSE. Reading a numeral and
+    // producing one are different acts, and a single-direction binding teaches
+    // only the first.
+    await this._teachAssociationPairs([
+      ['1', 'one'], ['2', 'two'], ['3', 'three'], ['4', 'four'], ['5', 'five'],
+      ['6', 'six'], ['7', 'seven'], ['8', 'eight'], ['9', 'nine'], ['10', 'ten'],
+      ['one', '1'], ['two', '2'], ['three', '3'], ['four', '4'], ['five', '5'],
+      ['six', '6'], ['seven', '7'], ['eight', '8'], ['nine', '9'], ['ten', '10'],
+    ], { reps: 8, label: 'PREK-MATH-NUMERAL', relationTagId: 5 });
+
+    // ⭐ THE THREE COUNTING PRINCIPLES, which are what separate counting from
+    // reciting. Real early-years instruction teaches these explicitly and this
+    // cell taught none of them:
+    //   ONE-TO-ONE   — one number word per object, one object per word
+    //   CARDINALITY  — the LAST word said is the answer, not just the end of a song
+    //   ORDER-IRRELEVANCE — rearranging the objects does not change the number
+    await this._teachAssociationPairs([
+      ['count', 'each'], ['each', 'one'], ['count', 'number'],
+      ['count', 'last'], ['last', 'amount'], ['amount', 'number'],
+      ['many', 'amount'], ['count', 'amount'],
+      ['row', 'same'], ['pile', 'same'], ['group', 'same'],
+      ['row', 'group'], ['pile', 'group'], ['same', 'number'],
+    ], { reps: 8, label: 'PREK-MATH-COUNT-PRINCIPLES', relationTagId: 5 });
+
+    // ⭐ SUBITISING — a small group is SEEN, a larger one must be COUNTED, and
+    // the boundary is real rather than stylistic: people recognise up to about
+    // three or four at a glance and count beyond it. Teaching both halves is
+    // what stops "how many" always meaning "recite the sequence".
+    await this._teachAssociationPairs([
+      ['1', 'see'], ['2', 'see'], ['3', 'see'],
+      ['5', 'count'], ['6', 'count'], ['7', 'count'],
+      ['8', 'count'], ['9', 'count'], ['10', 'count'],
+    ], { reps: 8, label: 'PREK-MATH-SUBITISE', relationTagId: 5 });
+
     return await this._gateVocabList(
       QUANTITY_CONCEPTS.map(c => c.name)
-        .concat(['circle', 'square', 'triangle', 'count', 'sort', 'pattern'])
+        .concat(COUNT_WORDS.map(c => c.name))
+        .concat(['circle', 'square', 'triangle', 'count', 'sort', 'pattern', 'number', 'amount'])
     );
   },
 
