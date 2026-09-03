@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-09-03 — `CURVEBUILD.11` — THE DEEPENING PASS RAN, AND IT PROVED THE CONSTRAINT IS THE TOPIC LIST
+
+175 cells, all 18 subjects, **~2.44M cleaned sentences written**. Skips named rather than swallowed: `no-such-page 12 · no-content 11 · too-few-sentences 1`.
+
+⭐ **Far faster than the row predicted.** Its ~4.4 min/cell estimate was taken under the throttle later root-caused as the **User-Agent**, not rate.
+
+⛔⛔ **AND PROSE DID NOT DEEPEN.** Measured through the same accessor before and after:
+
+```
+  sentences before   2,533,753
+  sentences after    2,533,741     (−12)
+  figures  before       38,024
+  figures  after        41,537     (+3,513)
+```
+
+⭐ **That is `CURVEBUILD.6` confirmed by experiment rather than a failed run.** That row states *"the topic lists are now the binding constraint, and they are still 6-20 entries."* A re-fetch of the SAME list returns the same articles, so removing the per-topic cap buys nothing once every topic is already read whole. **The pass proved the constraint is the LIST, not the depth per entry** — and a run that had merely *looked* successful would have buried that.
+
+⚠ **The real gain is 3,513 figures**, which matters for the picture lanes and for `FIGTEXT.5`.
+
+⏳ **Consequence for the next move: `CURVEBUILD.6` (more topics), NOT another deepening pass.** Re-running this would cost hours and return the same prose.
+
+---
+
 ## 2026-09-03 — `TEACHKNOB.4` — THE KNOB WRITE LANE, AND IT REFUSES RATHER THAN LIES
 
 Gee's ruling, verbatim: *"you willl be the one setting all the knobs and monitoring them and keeping them proper as we do the test of the brain"*. `TEACHKNOB.1` had ruled *"a read-only knob panel first"*; this row re-scoped that, because a panel I can read but not turn leaves me exactly where the operator was before it existed — able to name a value and unable to change it.
