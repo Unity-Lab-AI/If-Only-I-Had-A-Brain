@@ -37,6 +37,11 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { Worker, isMainThread, parentPort, workerData, threadId } from 'worker_threads';
+// ⭐ The failure ledger lives in its own module because this file could not be
+// edited while it was running — its batch loop respawns `node` every batch, so
+// an edit would have landed mid-run. It was written and harnessed standalone
+// first, then wired in here once the run was stopped.
+import { FailureLedger } from './figure-failure-ledger.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -326,6 +331,12 @@ if (isMainThread) {
   // been delivered once the local field is deleted, so it is written before the
   // counters are believed and never rewritten in place.
   const ledgerFd = fs.openSync(LEDGER, 'a');
+  // ⭐⭐ THE FAILURE LEDGER — the twin of the line above, and the thing whose
+  // absence turned a 32,296-figure run into a four-hour grind that stopped at
+  // 26,457. `uploaded.jsonl` records SUCCESSES; without a failure record every
+  // pass re-attempted every dead URL from every previous pass, and the delivered
+  // yield fell 911 → 98 per pass while the run kept reporting itself healthy.
+  const failLedger = new FailureLedger(path.join(OUT, 'failures.jsonl'));
   const t0 = Date.now();
   let next = 0, done = 0, live = CONC;
   const indexRows = [];
@@ -339,6 +350,13 @@ if (isMainThread) {
     console.log(`[figures] ${done.toLocaleString()}/${todo.length.toLocaleString()}  ok ${stats.ok.toLocaleString()}`
       + `  httpFail ${stats.httpFail}  decodeFail ${stats.decodeFail}  transformFail ${stats.transformFail}  tooSmall ${stats.tinyDrop}`
       + (UPLOAD ? `  uploadFail ${stats.uploadFail}` : '')
+      // ⭐ THE SPLIT THAT DECIDES WHETHER ANOTHER PASS IS WORTH RUNNING, on
+      // screen WHILE it runs rather than only in hindsight. A rising permanent
+      // count with a flat transient count means the tail is dead and the next
+      // pass will yield nothing — which is exactly the curve nobody could see.
+      + (failLedger.counts.total
+        ? `  |  fail ${failLedger.counts.permanent} permanent / ${failLedger.counts.transient} transient`
+        : '')
       + `  |  ${(stats.bytes / 1048576).toFixed(0)} MB stored  ${(stats.coeffs / 1e6).toFixed(1)}M coefficients`
       + `  |  ${rate.toFixed(2)}/s  ETA ${h}h${String(m).padStart(2, '0')}m`);
   };
@@ -358,6 +376,22 @@ if (isMainThread) {
       if (msg === 'ready') { feed(); return; }
       done++;
       if (msg.err) {
+        // ⭐⭐ EVERY FAILURE IS WRITTEN DOWN, WITH ITS REASON, AS IT HAPPENS.
+        //
+        // ⛔ This is the line whose absence cost four hours. The counters below
+        // are aggregates, they go to stdout, and the batch loop greps stdout down
+        // to three patterns — so every REASON died at the pipe and every pass
+        // re-attempted every dead URL from every previous pass. The delivered
+        // yield fell 911 → 98 per pass while the run "worked".
+        //
+        // ⚠ Non-fatal by construction: a ledger that could break the producer
+        // would be worse than no ledger.
+        try {
+          failLedger.record({
+            key: msg.key, url: msg.url, stage: msg.stage,
+            status: msg.status, message: msg.msg,
+          });
+        } catch { /* the ledger must never be able to stop the run */ }
         if (msg.stage === 'http') stats.httpFail++;
         else if (msg.stage === 'decode') stats.decodeFail++;
         else if (msg.stage === 'tiny') stats.tinyDrop++;
@@ -433,16 +467,31 @@ if (isMainThread) {
   const { equationalizeImageData } = await import(pathToFileURL(path.join(ROOT, 'js', 'brain', 'mindspace', 'transform.js')).href);
 
   const UAH = { 'User-Agent': workerData.UA };
+  // ⛔⛔ RETURNS WHY IT FAILED, NOT JUST `null`. This function used to swallow
+  // the status and the exception and hand back a bare `null`, so the caller
+  // could only report "http" — and that is precisely why a run could burn four
+  // hours re-attempting dead URLs: **nothing downstream could tell a 404 from a
+  // timeout**, so nothing could ever stop retrying the 404.
+  //
+  // ⚠ The internal 3-attempt retry ALSO hid an attempt count. A figure that
+  // failed here had already been tried three times, and the ledger needs to know
+  // that before it decides whether a fourth is worth anything.
   const grab = async (url) => {
+    let lastStatus = 0, lastMsg = '';
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const r = await fetch(url, { headers: UAH, signal: AbortSignal.timeout(45000) });
-        if (r.ok) return Buffer.from(await r.arrayBuffer());
-        if (r.status === 404 || r.status === 410) return null;   // a fact about the file, not a transient
-      } catch { /* retried */ }
+        if (r.ok) return { buf: Buffer.from(await r.arrayBuffer()) };
+        lastStatus = r.status; lastMsg = `HTTP ${r.status}`;
+        // A fact about the file rather than a transient — stop immediately and
+        // say so, so the ledger can mark it permanent and never come back.
+        if (r.status === 404 || r.status === 410) return { status: r.status, message: `HTTP ${r.status}`, tries: attempt + 1 };
+      } catch (e) {
+        lastMsg = (e && e.message) || 'fetch threw';
+      }
       await new Promise((res) => setTimeout(res, 800 * (attempt + 1)));
     }
-    return null;
+    return { status: lastStatus, message: lastMsg || 'no response after 3 attempts', tries: 3 };
   };
 
   // ⛔⛔ A VECTOR HAS NO PIXELS UNTIL SOMETHING CHOOSES A SIZE, so an SVG cannot
@@ -492,8 +541,20 @@ if (isMainThread) {
   parentPort.on('message', async (job) => {
     if (job === null) { process.exit(0); }
     try {
-      let buf = await grab(job.url);
-      if (!buf || buf.length < 64) { parentPort.postMessage({ err: 1, stage: 'http', key: job.key }); return; }
+      const got = await grab(job.url);
+      const buf = got && got.buf;
+      if (!buf || buf.length < 64) {
+        // ⭐ THE URL, THE STATUS AND THE MESSAGE TRAVEL WITH THE FAILURE. Without
+        // all three the ledger cannot classify, and a classifier that cannot
+        // separate 404 from timeout is the decay curve all over again.
+        parentPort.postMessage({
+          err: 1, stage: 'http', key: job.key, url: job.url,
+          status: (got && got.status) || 0,
+          msg: (got && got.message) || (buf ? `only ${buf.length} bytes` : 'no body'),
+          tries: (got && got.tries) || 0,
+        });
+        return;
+      }
 
       let img = host._decodeImageToRGBA(buf);
       if (!img && renderable(job.url)) {
@@ -503,13 +564,13 @@ if (isMainThread) {
           if (b2 && b2.length > 64) img = host._decodeImageToRGBA(b2);
         }
       }
-      if (!img) { parentPort.postMessage({ err: 1, stage: 'decode', key: job.key }); return; }
+      if (!img) { parentPort.postMessage({ err: 1, stage: 'decode', key: job.key, url: job.url, msg: 'decoder returned nothing' }); return; }
       // A plate under 32px on a side is a spacer or an icon, not an illustration
       // — transforming it wastes the pass and stores a percept of nothing.
-      if (Math.max(img.w, img.h) < 32) { parentPort.postMessage({ err: 1, stage: 'tiny', key: job.key }); return; }
+      if (Math.max(img.w, img.h) < 32) { parentPort.postMessage({ err: 1, stage: 'tiny', key: job.key, url: job.url, msg: `too small: ${img.w}x${img.h}` }); return; }
 
       const rec = equationalizeImageData({ width: img.w, height: img.h, data: img.data });
-      if (!rec || !rec.channels) { parentPort.postMessage({ err: 1, stage: 'transform', key: job.key }); return; }
+      if (!rec || !rec.channels) { parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: 'transform produced no channels' }); return; }
       rec.fidelity = { psnr_db: null, source: 'corpus-figure' };
 
       // Split exactly the way the live store does: JSON skeleton + one binary
@@ -578,13 +639,13 @@ if (isMainThread) {
           try { fs.unlinkSync(p); } catch { /* the sweep will get it */ }
           parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length, uploaded: up });
         } else {
-          parentPort.postMessage({ err: 1, stage: 'upload', key: job.key, msg: `PUT ${up || 'failed'}` });
+          parentPort.postMessage({ err: 1, stage: 'upload', key: job.key, url: job.url, msg: `PUT ${up || 'failed'}` });
         }
         return;
       }
       parentPort.postMessage({ key: job.key, bytes: entry.length, coeffs, px: img.w * img.h, url: job.url, w: img.w, h: img.h, citations: job.links.length });
     } catch (e) {
-      parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, msg: e && e.message });
+      parentPort.postMessage({ err: 1, stage: 'transform', key: job.key, url: job.url, msg: e && e.message });
     }
   });
 }
