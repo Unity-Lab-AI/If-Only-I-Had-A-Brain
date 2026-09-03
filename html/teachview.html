@@ -242,6 +242,10 @@
           <button id="tvBench" class="tv-tip"
             title="Sweep every surface of this page against the LIVE brain and say WORKING or NOT WORKING."
             data-tip="Run the full sweep bench, right now, against the running brain.&#10;&#10;It checks every surface this page depends on — the knob registry, the knob write lane, the teach ledger, the corpus feed, the figure lane, and whether any field shown here has no producer — and returns one WORKING / NOT WORKING line plus a reason per surface.&#10;&#10;⛔ It reads ALREADY-PUBLISHED state only. No cortex reads, no GPU work, no filesystem sweep — running it cannot disturb the training it is reporting on, and it prints its own cost so a slow bench is visible.&#10;&#10;⚠ GREY is not a pass. It means the bench could not see that surface — usually because the walk was idle. Re-run it during teaching.">bench</button>
+          <button id="tvBuf" class="tv-tip"
+            title="Arm the corpus buffer — the books download in the background, a few files at a time, while she trains."
+            data-tip="Arm the CORPUS BUFFER.&#10;&#10;The books stream in from the data repo in the background, a few files at a time, while she trains — instead of the whole 395 MB arriving in one blocking sync at press time.&#10;&#10;⛔ A MAXIMUM OF ONE COMPLETE COPY EVER SITS ON THIS BOX. Nothing is ever checked out: each file is streamed straight into its final path and verified by checksum before it counts. The scratch space used to do it is destroyed after every batch, so it cannot slowly become a second copy — and the peak it ever reached is shown beside the progress.&#10;&#10;⚠ It only fetches what actually DIFFERS. Files already on the box are recognised by content, so re-arming costs nothing.&#10;&#10;Click again to disarm. Disarming stops the next batch; it never deletes anything already downloaded.">buffer</button>
+          <span class="tv-sub" id="tvBufLbl">buffer off</span>
           <label class="tv-sub tv-tip"
             title="How fast queued items are drained into the pane."
             data-tip="How many queued items are drawn per second.&#10;&#10;Lower to actually read the text; raise to work through a backlog. This changes only how fast you SEE items — never how fast she is taught.">rate <input id="tvRate" type="range" min="1" max="20" value="4" /></label>
@@ -485,6 +489,65 @@ $('tvBench').onclick = async () => {
   }
   feed.scrollTop = feed.scrollHeight;
 };
+// ── THE CORPUS BUFFER ────────────────────────────────────────────────────────
+// One control, and it is a TOGGLE rather than an action, because the operator
+// asked for the books to arrive "on auto" — a mode, not a one-shot. A manual
+// pull was asked for and withdrawn the same day, so there is deliberately no
+// second button here.
+//
+// ⚠ THE LABEL NEVER SAYS "off" WHILE WORK IS OUTSTANDING. A buffer that is
+// disarmed with files still owed is a different state from one that is finished,
+// and collapsing those two into "off" is how a half-delivered corpus reads as a
+// complete one.
+let bufTimer = null;
+function renderBuf(b) {
+  const lbl = $('tvBufLbl');
+  if (!b) { lbl.textContent = 'buffer —'; return; }
+  const owed = (b.owed === null || b.owed === undefined) ? '?' : b.owed;
+  const have = (b.have === null || b.have === undefined) ? '?' : b.have;
+  const tot = (b.total === null || b.total === undefined) ? '?' : b.total;
+  let s;
+  if (b.phase === 'error') {
+    // The reason travels with the state, always — a buffer that stopped for a
+    // reason nobody can read is the instrument failure this page exists to end.
+    s = `buffer ERROR — ${b.lastErr || 'no reason recorded'}`;
+  } else if (b.auto) {
+    s = owed === 0 ? `buffer on · complete (${have}/${tot})`
+      : `buffer on · ${b.phase} · ${owed} owed of ${tot} · +${b.pulledThisRun} this run (${b.mbThisRun} MB)`;
+  } else {
+    s = owed === 0 && b.total ? `buffer off · complete (${have}/${tot})`
+      : `buffer off${owed === '?' ? '' : ` · ${owed} still owed`}`;
+  }
+  // The bound the operator actually asked for, shown as a number rather than
+  // promised in a tooltip.
+  s += ` · ${b.onDiskMb} MB on box, 1 copy`;
+  if (b.scaffoldPeakMb > 0) s += ` (peak scratch ${b.scaffoldPeakMb} MB)`;
+  lbl.textContent = s;
+  $('tvBuf').textContent = b.auto ? 'buffer on' : 'buffer';
+}
+async function bufPoke(action) {
+  try {
+    const r = await fetch(`/corpus-buffer?action=${encodeURIComponent(action)}`, { method: 'POST', cache: 'no-store' });
+    const j = await r.json();
+    if (!j || j.ok !== true) { $('tvBufLbl').textContent = `buffer ERROR — ${(j && j.error) || 'no reply'}`; return null; }
+    renderBuf(j.buffer);
+    return j.buffer;
+  } catch (e) {
+    $('tvBufLbl').textContent = `buffer ERROR — could not reach the brain (${e && e.message ? e.message : 'no response'})`;
+    return null;
+  }
+}
+$('tvBuf').onclick = async () => {
+  const cur = await bufPoke('state');
+  const armed = cur && cur.auto;
+  const b = await bufPoke(armed ? 'disarm' : 'arm');
+  if (b && b.auto && !bufTimer) bufTimer = setInterval(() => bufPoke('state'), 4000);
+  if (b && !b.auto && bufTimer) { clearInterval(bufTimer); bufTimer = null; }
+};
+// One read at load so the label states the truth before anything is pressed —
+// including the case where a previous session left the buffer armed.
+bufPoke('state').then((b) => { if (b && b.auto && !bufTimer) bufTimer = setInterval(() => bufPoke('state'), 4000); });
+
 $('tvRate').oninput = (e) => { rate = +e.target.value; $('tvRateLbl').textContent = rate + '/s'; };
 
 function laneClass(lane) {

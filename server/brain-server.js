@@ -9556,6 +9556,37 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // ── THE CORPUS BUFFER, DRIVEN FROM THE TEACH VIEWER ───────────────────────
+  //
+  // Operator: *"lets have buttons in the trainer virewr for download of couprus
+  // like buffer on auto"*, bounded by *"a max of one complete copy on the box"*
+  // and scoped by his own clarification *"not counting forgejo"*.
+  //
+  // ⛔ AUTO ONLY. A manual pull button was asked for and then WITHDRAWN the same
+  // day (*"okay no manual then"*), so there is deliberately no on-demand action
+  // here — `arm` and `disarm` and nothing else. A manual control appearing later
+  // is a regression against that instruction, not a missing feature.
+  //
+  // ⚠ The state read is free and always allowed: a viewer that cannot show the
+  // buffer without arming it would make "look at it" and "change it" the same
+  // gesture, which is how a read-only glance turns into a download.
+  if (req.url && req.url.split('?')[0] === '/corpus-buffer' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/corpus-buffer')) return;
+    try {
+      const cs = require('./corpus-sync.js');
+      const action = (new URL(req.url, 'http://x')).searchParams.get('action') || 'state';
+      if (action === 'arm') cs.startAuto();
+      else if (action === 'disarm') cs.stopAuto();
+      else if (action === 'plan') { cs.plan(); }   // deliberately not awaited — the page polls
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+      res.end(JSON.stringify({ ok: true, action, buffer: cs.corpusSyncState() }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: (e && e.message) || String(e) }));
+    }
+    return;
+  }
+
   if (req.url && req.url.split('?')[0] === '/knob' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/knob')) return;
     let body = '';
