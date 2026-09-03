@@ -176,6 +176,133 @@ const KNOBS = [
     what: 'Minimum retained dose under compression.',
   },
 
+  // ══ KNOBEFFECT.1 — batch 5: the last 48, across twelve files ══════════════
+  //
+  // ⛔⛔ `cluster.js` IS WHY INDENTATION WAS NEVER GOING TO WORK, and it is the
+  // file the two failed classifiers both stumbled on. Three different shapes
+  // live at similar indents:
+  //   • `const COHERENCE_MIN = (() => { … process.env … })()` — the read sits
+  //     at indent 4 and is **module scope**, because the IIFE around it is.
+  //   • nine reads at indent 6 inside `constructor(name, size, opts)`.
+  //   • reads at indent 6-14 inside `stepAwait()` / `injectEmbeddingToRegion()`.
+  // Indentation is identical across all three; only the enclosing construct
+  // decides, and it was read for every one of them.
+  //
+  // ⭐⭐ A CONSTRUCTOR READ IS `boot`, AND CALLING IT `live` WOULD BE THE
+  // DANGEROUS ANSWER. The value is captured when the cluster is CONSTRUCTED;
+  // existing clusters keep theirs, and a running brain never re-runs it. So a
+  // write is accepted, reads back, and changes nothing — which is precisely the
+  // silent failure this column exists to warn about. **The nine microstructure
+  // switches (`DREAM_SMALL_WORLD`, `DREAM_LAMINATION`, `DREAM_HUBS`, …) are all
+  // of this kind: they shape the brain that gets BUILT, not the one running.**
+  { key: 'DREAM_COHERENCE_MIN', effect: 'boot', group: 'Brain dynamics', proof: 'read at indent 4 but INSIDE the module-scope IIFE `const COHERENCE_MIN = (() => …)()` (cluster.js:229) — scope read 2026-09-03' },
+  { key: 'DREAM_TOPOGRAPHIC', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(name, size, opts)` — captured at cluster construction' },
+  { key: 'DREAM_SMALL_WORLD', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_MICROCOLUMNS', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_LAMINATION', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_HUBS', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_THETA_GAMMA', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_PREDICTIVE_CODING', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_BCM', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` into `this._bcmEnabled` — captured at construction' },
+  { key: 'DREAM_SM_WMAX', effect: 'boot', group: 'Brain dynamics', proof: 'read in `constructor(…)` — captured at cluster construction' },
+  { key: 'DREAM_INNERVOICE_FORCE_CPU', effect: 'live', group: 'Speech & emission', proof: 'read in `injectEmbeddingToRegion(…)`, NOT the constructor — the constructor closes at cluster.js:1362 (checked 2026-09-03)' },
+  { key: 'DREAM_SURPRISE_MAX', effect: 'live', group: 'Brain dynamics', proof: 'read in `buildKScalesForProjection(…)` — per projection build' },
+  { key: 'DREAM_TICK_BREATHE_MS', effect: 'live', group: 'Brain dynamics', proof: 'read in `async stepAwait(dt)`; the `!== undefined` tests the env STRING, not a memo — per tick' },
+  { key: 'DREAM_GEN_PROPAGATE_CHUNKED', effect: 'live', group: 'Brain dynamics', proof: 'read in `async stepAwait(dt)` — per tick' },
+  // definition-service.js + kindergarten.js — column-0 top-level consts
+  { key: 'DREAM_DEF_CACHE_CAP', effect: 'boot', group: 'Memory & consolidation', proof: 'column-0 `const CACHE_MAX = …` — once at import' },
+  { key: 'DREAM_DEFINITION_CACHE_FILE', effect: 'boot', group: 'Memory & consolidation', proof: 'column-0 `const _envCachePath = …` — once at import' },
+  { key: 'DREAM_GATE_PROD_MIN', effect: 'boot', group: 'Curriculum, gates & schedule', proof: 'column-0 `const K_GATE_PROD_MIN = _kGateEnvNum(…)` — once at import' },
+  { key: 'DREAM_GATE_PATH_MIN', effect: 'boot', group: 'Curriculum, gates & schedule', proof: 'column-0 `const K_GATE_PATH_MIN = _kGateEnvNum(…)` — once at import' },
+  { key: 'DREAM_VOCAB_RETEACH_MS', effect: 'live', group: 'Teaching dose & repetition' },
+  { key: 'DREAM_KEEP_STATE', effect: 'live', group: 'Persistence & checkpoints' },
+  // the rest, one per file
+  { key: 'DREAM_CHAT_MAX_WORDS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_WORD_MOTOR_VOCAB_CAP', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_FIGURE_FIELDS_DIR', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_MINDSEYE_MAX_SIDE', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_GW_IGNITION', effect: 'live', group: 'Brain dynamics' },
+  { key: 'DREAM_CSR_FREE_MIN_MB', effect: 'live', group: 'Watchdogs, bounds & safety' },
+  { key: 'DREAM_SAVE_MIN_FREE_DISK_MB', effect: 'live', group: 'Persistence & checkpoints' },
+  { key: 'DREAM_SAVE_MIN_FREE_MB', effect: 'live', group: 'Persistence & checkpoints' },
+  { key: 'DREAM_BC_COMPOUND_COH_MIN', effect: 'live', group: 'Brain dynamics' },
+  // brain-server.js — the 19 batch 1 deliberately left, now read
+  { key: 'DREAM_NO_HEAP_REEXEC', effect: 'boot', group: 'Watchdogs, bounds & safety', proof: 'top-level re-exec branch at brain-server.js:100 — evaluated once, before anything else' },
+  { key: 'DREAM_HEAP_REEXECED', effect: 'boot', group: 'Watchdogs, bounds & safety', proof: 'same top-level re-exec branch — the guard that stops an infinite re-exec loop' },
+  { key: 'DREAM_RESPECT_VRAM_CAP', effect: 'boot', group: 'GPU & donor', proof: 'inside the top-level RESOURCES/VRAM sizing block — once at boot' },
+  { key: 'DREAM_DONOR_FIT_MB', effect: 'boot', group: 'GPU & donor', proof: 'inside the top-level RESOURCES sizing block — once at boot' },
+  { key: 'DREAM_LANG_VRAM_RESERVE_MB', effect: 'boot', group: 'GPU & donor', proof: 'inside the module-scope `const BRAIN_VRAM_ALLOC = (function(){…})()` IIFE' },
+  { key: 'DREAM_SUBSTEPS_NATIVE', effect: 'boot', group: 'Brain dynamics', proof: 'inside the module-scope `_SUBSTEPS_NATIVE_AUTO` const expression' },
+  { key: 'DREAM_FORCE_CLEAR', effect: 'live', group: 'Persistence & checkpoints', proof: 'read inside `autoClearStaleState()` — re-read whenever that runs' },
+  { key: 'DREAM_READBACK_STOP_BUDGET_MS', effect: 'live', group: 'GPU & donor', proof: 'read inside `async _readbackBeforeStop(reason)`' },
+  { key: 'DREAM_LANG_RAM_FRACTION', effect: 'live', group: 'Speech & emission', proof: 'read inside `async _initLanguageSubsystem()`' },
+  { key: 'DREAM_LANG_CORTEX', effect: 'live', group: 'Speech & emission', proof: 'read inside `async _initLanguageSubsystem()`' },
+  { key: 'DREAM_LANG_UNPIN', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_NO_PRIMARY_WATCHDOG_MS', effect: 'live', group: 'Watchdogs, bounds & safety' },
+  { key: 'DREAM_UPLOAD_WATCHDOG_MS', effect: 'live', group: 'Watchdogs, bounds & safety' },
+  { key: 'DREAM_REUPLOAD_DEBOUNCE_MS', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_WEIGHTS_PAIR_TOL_SEC', effect: 'live', group: 'Persistence & checkpoints' },
+  { key: 'DREAM_NO_DONOR_ID_EVICT', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_DF7_PROMOTE_COOLDOWN_S', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_HB_BUF_FORGIVE_MB', effect: 'live', group: 'GPU & donor' },
+  { key: 'DREAM_LOOP_FREEZE_WARN_MS', effect: 'boot', group: 'Watchdogs, bounds & safety', proof: 'passed into the watchdog worker at construction — the worker keeps the value it was started with' },
+
+  // ══ KNOBEFFECT.1 — batch 4: `chat.js` (26) + `visual-memory.js` (16) ══════
+  //
+  // `chat.js` is a mixin body — all 26 reads sit inside methods, 0 cache-guard
+  // candidates, so all `live`. `visual-memory.js` is the first file in this
+  // sweep that MIXES the two: **three column-0 `const` declarations, read and
+  // confirmed one by one**, and thirteen in-method reads.
+  //
+  // ⛔ THOSE THREE ARE THE ONES THAT MATTER MOST TO GET RIGHT, because they are
+  // the store's RAM and image bounds — `DREAM_VM_CAP` (25,000 entries),
+  // `DREAM_VM_MAX_MB` and `DREAM_REF_MAXSIDE`. **A write to any of them on a
+  // running brain does nothing**, and the panel previously said `???` rather
+  // than saying so.
+  { key: 'DREAM_VM_CAP', effect: 'boot', group: 'Vision & imagination', proof: 'column-0 `const VM_CAP = …` — top-level, evaluated once at import (read 2026-09-03)' },
+  { key: 'DREAM_VM_MAX_MB', effect: 'boot', group: 'Vision & imagination', proof: 'column-0 `const VM_BYTES = …` — top-level, once at import (read 2026-09-03)' },
+  { key: 'DREAM_REF_MAXSIDE', effect: 'boot', group: 'Vision & imagination', proof: 'column-0 `const REF_MAXSIDE = …` — top-level, once at import (read 2026-09-03)' },
+  { key: 'DREAM_VM_RELATE_MAX_QUEUE', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_VM_RELATE_MAX_PAIRS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_OWNART_INGEST_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_OWNART_INGEST_WALK_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_PERCEPT_GROUND_MAX_QUEUE', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_VM_RECALL_COOLDOWN_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_REF_FETCH_GAP_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_REF_FETCH_COOLDOWN_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_REF_MIN_DETAIL', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_REF_FETCH_TIMEOUT_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_JPEG_MAX_MB', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_FIGDRAIN_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_REF_RENDER_PX', effect: 'live' },
+  // chat.js — all live, groups by what each governs rather than by file
+  { key: 'DREAM_CHAT_IMAGE_PRIORITY_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_IMAGINE_DRAW_PROB', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_DRAW_STYLE', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_ART_WEIGHT_MIN_GAP_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_ART_WEIGHT_MAX_QUEUE', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_ART_WEIGHT_MAX_PAIRS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_OWNART_CANVAS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_OWNART_MAX_SUBJECTS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_ART_RELEARN_GAP_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_PRACTICE_GAP_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_PRACTICE_ITERS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_DRAW_CANVAS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_LOOKUP_HOLD_MS', effect: 'live', group: 'Vision & imagination' },
+  { key: 'DREAM_EYE_PROCESS', effect: 'live' },
+  { key: 'DREAM_EYE_SHOW_THOUGHT', effect: 'live' },
+  { key: 'DREAM_EYE_TRANSITION_MS', effect: 'live' },
+  { key: 'DREAM_SPONTANEOUS_IMG_AROUSAL', effect: 'live' },
+  { key: 'DREAM_SPONTANEOUS_IMG_GAP_MS', effect: 'live' },
+  { key: 'DREAM_INQUIRE_DEPTH', effect: 'live' },
+  { key: 'DREAM_THOUGHT_CONCEPT_GAP_MS', effect: 'live' },
+  { key: 'DREAM_ABLATION_LOG', effect: 'live' },
+  { key: 'DREAM_INNERVOICE_MAX_NEURONS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_INNERVOICE_GPU_GEN', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_INNERVOICE_GPU_GEN_MIN_DONORS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_CHAT_QPROBE_TIMEOUT_MS', effect: 'live', group: 'Speech & emission' },
+  { key: 'DREAM_DF7_FANOUT_PROPAGATE', effect: 'live', group: 'GPU & donor' },
+
   // ══ KNOBEFFECT.1 — batch 3: `server/brain-server/gpu.js`, all 30 ══════════
   //
   // Same shape as batch 2 and for the same structural reason: `gpu.js` is a

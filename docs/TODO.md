@@ -2728,7 +2728,16 @@ Gee (verbatim):
 
 **Three separate asks, filed as three rows so none of them hides inside another.**
 
-- [ ] `KNOBEFFECT.1` — ⛔ **EVERY KNOB NEEDS ITS EFFECT CLASS. 171 OF 205 HAVE NONE, AND THE PANEL'S MOST DANGEROUS COLUMN IS THE ONE MOSTLY BLANK.** Measured 2026-09-03 while deriving the six thresholds: `knobState()` publishes `effect: '???'` for **171** rows.
+- [x] `KNOBEFFECT.1` — ✅⭐⭐ **DONE 2026-09-03 — `effect: '???'` IS ZERO. All 205 knobs carry a class: `live 162 · boot 40 · cached 3`.** The acceptance test this row set for itself is met, the way `provenance` reached "0 knobs with no recorded reason".
+  - **Five reading passes, not 171:** `brain-server.js` 37 · `curriculum.js` 33 · `gpu.js` 30 · `chat.js` 26 · `visual-memory.js` 16 · `cluster.js` 14 · nine other files 15.
+  - ⛔⛔ **`cluster.js` IS WHY NO DETECTOR WOULD HAVE WORKED, and it is the file both earlier classifiers stumbled on.** Three different scopes live at nearly identical indents: `const COHERENCE_MIN = (() => { … })()` reads at indent 4 and is **module scope**; nine reads at indent 6 sit in `constructor(name, size, opts)`; more at indent 6-14 sit in `stepAwait()`. **Indentation cannot separate them — only the enclosing construct can, and it was read for every one.**
+  - ⭐⭐ **THE MOST CONSEQUENTIAL FINDING: A CONSTRUCTOR READ IS `boot`, AND CALLING IT `live` WOULD HAVE BEEN THE DANGEROUS ANSWER.** The value is captured when a cluster is CONSTRUCTED, so on a running brain a write is accepted, reads back correctly, and changes nothing. **The nine cortical-microstructure switches — `DREAM_SMALL_WORLD`, `DREAM_LAMINATION`, `DREAM_HUBS`, `DREAM_MICROCOLUMNS`, `DREAM_THETA_GAMMA`, `DREAM_TOPOGRAPHIC`, `DREAM_PREDICTIVE_CODING`, `DREAM_BCM`, `DREAM_SM_WMAX` — are all of this kind: they shape the brain that gets BUILT, never the one running.**
+  - ⚠ **`DREAM_INNERVOICE_FORCE_CPU` was nearly mis-filed with them** — it sits at the same indent in the same file, but the constructor closes at `cluster.js:1362` and the read is at `:1564` inside `injectEmbeddingToRegion()`. **`live`.** Checked because the neighbours were constructor reads, not because anything looked wrong.
+  - ⚠ **The `cached` shape was screened for at every site, never assumed absent** — `cached` and `live` are identical in source and only the guard's SUBJECT tells them apart. Two candidates surfaced and both were **`live` on reading**: each tested the env STRING, not a memo field.
+  - ⛔ **`live` MEANS THE READ RE-RUNS, not that a knob is useful to turn mid-walk.** Several of these methods run once per cell or once per boot; the class says a write WILL be seen the next time that path runs, which is the question the panel answers.
+  - **Verified after every batch:** 205 knobs · 0 duplicates · 0 without a recorded reason.
+
+  **Original filing:** ⛔ **EVERY KNOB NEEDS ITS EFFECT CLASS. 171 OF 205 HAVE NONE, AND THE PANEL'S MOST DANGEROUS COLUMN IS THE ONE MOSTLY BLANK.** Measured 2026-09-03 while deriving the six thresholds: `knobState()` publishes `effect: '???'` for **171** rows.
   - **Why it is the dangerous column.** Provenance answers *"does anyone have a reason for this number?"* — that axis is complete (0 knobs with no recorded reason). **Effect answers *"if I change it, does anything happen?"*, and on a running brain the wrong answer is silent.** The `cached` class is the trap already on record: read once behind an `if (this._x === undefined)` guard, **identical to `live` in source**, so a write is accepted, reads back correctly, and is **ignored**.
   - ⭐ **The two fixed today show the shape and the cost.** `DREAM_RANGE_MAX_RUNS` and `DREAM_CHAT_COHERENCE_FLOOR` both published `???` while their scopes had *already been read* — one is `boot` (module-scope IIFE, a write on a live brain does nothing) and one is `live` (re-read per call). **Hand-declaring them fixed both; the count stayed 205, so the merge dedupes and adding an entry for a discovered key is safe.**
   - **Why the gap exists, mechanically:** the runtime scanner recovers a knob's KEY and DEFAULT from the source text but cannot infer scope, so every discovered-but-not-hand-declared knob defaults to `???`. Only the hand-written `KNOBS` array carries `effect`.
@@ -2747,12 +2756,30 @@ Gee (verbatim):
   - ⭐ **A side observation for `KNOBEFFECT.3`:** `DREAM_TICK_MS` — the brain's tick interval — lands in the group **`Other`**. The categorization gap is not hypothetical.
   - **Remaining, by file:** `js/brain/curriculum.js` 33 · `server/brain-server/gpu.js` 30 · `server/brain-server/chat.js` 26 · `server/brain-server/visual-memory.js` 16 · `js/brain/cluster.js` 14 · `server/brain-server.js` 19 · 10 others 15. **156 of the original 171 sit in six files**, so this is six reading passes, not 171.
 
-- [ ] `KNOBEFFECT.2` — **PROPER ORGANIZATION.** Gee's word, and it is about the panel's SHAPE, not its content.
+- [x] `KNOBEFFECT.2` — ✅ **DONE 2026-09-03.** Groups publish in a fixed `GROUP_ORDER`; knobs stay alphabetical inside each (that half already existed).
+  - ⛔ **THE COMMENT CLAIMED A SORT THAT DID NOT EXIST.** It read *"groups sorted by size so the biggest subjects lead"* — only the within-group sort was ever implemented, so group order was **insertion order**: whatever sequence the hand array and the scanner happened to produce. **A comment describing behaviour the code does not have is the same defect as a field nobody renders.**
+  - ⭐ **AND SIZE WOULD HAVE BEEN THE WRONG RULE.** A size-ordered list **rearranges itself as knobs are added**, so a reader who learns where something lives is wrong next week. The order is fixed and meaningful — outward from her to the machine: what she is taught → what she says → what she keeps → what she sees → how her brain runs → where it computes → how it is saved → what protects it → how it is served.
+  - ⚠ **Verified presentation-only before touching it:** the teach view renders `groups[].knobs[]` directly and the save/load file keys on `key`, not position, so a re-order cannot break a saved knob set.
+
+  **Original filing:** **PROPER ORGANIZATION.** Gee's word, and it is about the panel's SHAPE, not its content.
   - **What is there now:** knobs are emitted in whatever order the hand-written array and the runtime scanner produce, inside groups that were named as the entries were written. **A knob's position carries no meaning**, so finding one means scanning.
   - **What organization would mean here, concretely:** a stable, predictable order within every group (alphabetical by key is the cheapest honest rule); groups themselves ordered by the lane they govern rather than by when someone added them; and the panel's existing filter/search surfacing that order instead of fighting it.
   - ⚠ **The `--list`-style question to answer first: is the current grouping load-bearing anywhere?** The teach view renders `groups[].knobs[]` directly, so a re-order is presentation-only — but that must be confirmed by reading the consumer, not assumed, because a save/load file that keys on position would break.
 
-- [ ] `KNOBEFFECT.3` — **PROPER CATEGORIZATIONS.** Distinct from `.2`: organization is ORDER, categorization is WHICH BUCKET a knob belongs in.
+- [x] `KNOBEFFECT.3` — ✅ **DONE 2026-09-03 — 17 groups → 10, on the axis of WHAT THE KNOB GOVERNS, and the UNSORTED pen is EMPTY.**
+  ```
+    Teaching dose & repetition 16 · Curriculum, gates & schedule 18 · Speech & emission 19
+    Memory & consolidation 8 · Vision & imagination 37 · Brain dynamics 32
+    GPU & donor 46 · Persistence & checkpoints 6 · Watchdogs, bounds & safety 21
+    Serving & network 2
+  ```
+  - ⛔ **What was wrong:** groups were named as entries were written, so they answered different questions. `Bounds & budgets` (33) was a cross-cutting SHAPE — *a bound on WHAT?* — `GPU dispatch` (1) duplicated `GPU & donor`, and `Other` (17) held **the brain's own tick interval**.
+  - ⭐ **`Other` was RENAMED, not kept:** `UNSORTED — no category read yet`. *Other* reads like a category; it is an admission nobody looked, and the name now says so. **All 17 were then placed by reading** — two (`DREAM_LEARN_GEOMETRY`, a per-sentence learning-rate lane despite the name; `DREAM_INQUIRE_DEPTH`, her follow-up question chain) needed their SITES read because their descriptions did not say.
+  - ⭐ **The example that made the ask concrete is fixed:** `DREAM_CHAT_COHERENCE_FLOOR` moved out of `Saturation & coherence`. That group held the saturation thresholds and a speech gate, related by the word "coherence" and nothing else — **those gate PLASTICITY, this gates whether she SPEAKS.**
+  - ⚠ **`Watchdogs, bounds & safety` fell 56 → 21** as the batches read each knob and moved it to the lane it actually governs. **The wholesale mapping was a holding pen and it emptied itself**, which is what a holding pen is supposed to do.
+  - **Done as a 17-entry group map plus per-knob overrides in the same entries as the effect classes — one touch per knob, no rework.**
+
+  **Original filing:** **PROPER CATEGORIZATIONS.** Distinct from `.2`: organization is ORDER, categorization is WHICH BUCKET a knob belongs in.
   - **The groups are ad-hoc and were never audited.** `Saturation & coherence` currently holds both saturation thresholds and a chat emission floor — related by the word "coherence" and by nothing else, since one gates plasticity and the other gates whether she speaks.
   - **The axis that would actually help:** what the knob GOVERNS — teaching dose · emission/speech · GPU dispatch · memory & consolidation · vision · scheduling & cadence · safety bounds. **A person turning a knob is asking "what will this change about her?", and the group name should answer it.**
   - ⚠ **Recategorizing moves rows between groups, so it must land WITH `.2`'s ordering or the panel shuffles twice**, and any saved knob file must still load — the loader keys on `key`, which is what makes this safe, and that is worth re-verifying before touching it.
