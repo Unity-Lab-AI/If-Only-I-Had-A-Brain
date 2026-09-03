@@ -532,6 +532,82 @@ const TOPICS = {
   // Advanced -> ML -> the computational-neuroscience research (she builds a
   // brain). This is the ACADEMIC CS-degree prose; complements (does not
   // replace) the self-taught corpora/coding/ HTML-CSS-JS hobby track.
+  // ── MATHS — the ONLY subject that had no wiki lane at all ──────────────────
+  //
+  // ⛔⛔ FOUR MATHS CELLS HAD NO FILE ON DISK, AND THEY ARE THE ENTIRE `EMPTY`
+  // COLUMN OF EVERY COVERAGE RUN: `math/pre-K`, `math/college4`, `math/grad`,
+  // `math/phd`. Maths reached the corpus through textbook mirrors only
+  // (Illustrative Mathematics K-10, OpenStax 10-12), so any cell no book covered
+  // simply had nothing — and `math` is absent from `BY_DESIGN_NO_PROSE`, because
+  // the operator ruled *"we need a fucking text book like everything else you
+  // fool"*. A subject that is not exempt and has no lane is a hole, not a policy.
+  //
+  // ⚠ THIS DOES NOT MAKE MATHS A PROSE SUBJECT. The grade-completion gate still
+  // requires maths be TAUGHT equationally — no word lists, no sentence arrays,
+  // no first-letter production. This is reading ABOUT mathematics, the same way
+  // the textbook cells already are; it is what she reads, not how she is taught.
+  //
+  // ⚠ `phd` is pointed at the wavelet and signal-processing literature on
+  // purpose: the CDF 9/7 transform IS her perception, so at the ceiling her
+  // maths reading and her own substrate are the same subject.
+  math: {
+    // ⛔ `Big`, `Small`, `More` and `Less` were the obvious pre-K words and all
+    // four are DISAMBIGUATION PAGES — they resolve, return prose, and teach
+    // nothing about quantity. `Size`, `Measurement` and the comparison concepts
+    // carry that ground honestly instead.
+    'pre-K': ['Number', 'Counting', 'Shape', 'Circle', 'Square', 'Triangle', 'Rectangle',
+      '1', '2', '3', 'Size', 'Pattern', 'Sorting', 'Measurement', 'Length', 'Weight',
+      'Clock', 'Calendar', 'Money', 'Addition', 'Subtraction'],
+    // Geometry — the cell was 60,414 words against a 146,000 floor, on one book.
+    grade9: ['Geometry', 'Euclidean geometry', 'Point (geometry)', 'Line (geometry)', 'Euclidean plane',
+      'Angle', 'Triangle', 'Congruence (geometry)', 'Similarity (geometry)', 'Pythagorean theorem',
+      'Circle', 'Polygon', 'Quadrilateral', 'Parallelogram', 'Trapezoid', 'Perimeter', 'Area',
+      'Volume', 'Surface area', 'Solid geometry', 'Transformation (function)', 'Reflection (mathematics)',
+      'Rotation (mathematics)', 'Translation (geometry)', 'Dilation (metric space)', 'Coordinate system',
+      'Cartesian coordinate system', 'Slope', 'Distance', 'Midpoint', 'Mathematical proof', 'Theorem',
+      'Axiom', 'Trigonometry', 'Sine and cosine', 'Tangent', 'Right triangle', 'Special right triangle',
+      'Law of sines', 'Law of cosines', 'Symmetry', 'Tessellation', 'Euclid', "Euclid's Elements"],
+    // ⛔ `Sine` AND `Cosine` both resolve to `Sine and cosine` — two asked-for
+    // titles, one article, which would bank the same prose twice under two
+    // themes. Collapsed to the canonical one.
+    college2: ['Linear algebra', 'Vector space', 'Matrix (mathematics)', 'Determinant',
+      'Eigenvalues and eigenvectors', 'Linear map', 'Basis (linear algebra)', 'Linear independence',
+      'Rank (linear algebra)', 'System of linear equations', 'Gaussian elimination', 'Matrix multiplication',
+      'Invertible matrix', 'Orthogonality', 'Inner product space', 'Dot product', 'Cross product',
+      'Vector projection', 'Diagonalizable matrix', 'Singular value decomposition', 'Differential equation',
+      'Ordinary differential equation', 'Partial differential equation', 'Laplace transform',
+      'Fourier series', 'Series (mathematics)', 'Taylor series', 'Power series', 'Convergent series', 'Sequence'],
+    college4: ['Real analysis', 'Mathematical analysis', 'Limit of a function', 'Continuous function',
+      'Derivative', 'Riemann integral', 'Lebesgue integral', 'Metric space', 'Topology', 'Open set',
+      'Compact space', 'Cauchy sequence', 'Uniform convergence', 'Abstract algebra', 'Group (mathematics)',
+      'Ring (mathematics)', 'Field (mathematics)', 'Group theory', 'Homomorphism', 'Isomorphism',
+      'Vector space', 'Number theory', 'Prime number', 'Modular arithmetic', 'Complex analysis',
+      'Complex number', 'Holomorphic function', 'Probability theory', 'Random variable',
+      'Probability distribution', 'Expected value', 'Variance', 'Central limit theorem',
+      'Law of large numbers', 'Combinatorics', 'Graph theory', 'Mathematical logic', 'Set theory',
+      'Cardinality', 'Axiom of choice'],
+    grad: ['Measure (mathematics)', 'Measure space', 'Lebesgue measure', 'Functional analysis',
+      'Banach space', 'Hilbert space', 'Operator theory', 'Spectral theorem', 'Differential geometry',
+      'Manifold', 'Tangent space', 'Riemannian manifold', 'Curvature', 'Algebraic topology', 'Homotopy',
+      'Homology (mathematics)', 'Fundamental group', 'Category theory', 'Functor',
+      'Natural transformation', 'Numerical analysis', 'Finite element method', 'Optimization problem',
+      'Convex optimization', 'Gradient descent', 'Stochastic process', 'Markov chain',
+      'Martingale (probability theory)', 'Brownian motion', 'Information theory',
+      'Entropy (information theory)', 'Dynamical system', 'Chaos theory', 'Ergodic theory',
+      'Partial differential equation', 'Fourier analysis', 'Wavelet', 'Harmonic analysis'],
+    phd: ['Wavelet', 'Wavelet transform', 'Discrete wavelet transform', 'Continuous wavelet transform',
+      'Multiresolution analysis', 'Haar wavelet', 'Daubechies wavelet', 'Fourier transform',
+      'Fast Fourier transform', 'Signal processing', 'Sampling (signal processing)',
+      'Nyquist–Shannon sampling theorem', 'Convolution', 'Filter bank', 'Compressed sensing',
+      'Sparse approximation', 'Basis pursuit', 'Principal component analysis',
+      'Singular value decomposition', 'Matrix decomposition', 'Numerical linear algebra',
+      'Iterative method', 'Conjugate gradient method', 'Spectral graph theory', 'Laplacian matrix',
+      'Nonlinear dimensionality reduction', 'Dimensionality reduction', 'Approximation theory',
+      'Functional analysis', 'Hilbert space', 'Operator theory', 'Frame (linear algebra)',
+      'Orthogonal basis', 'Besov space', 'Sobolev space', 'Distribution (mathematical analysis)',
+      'Harmonic analysis', 'Time–frequency analysis'],
+  },
+
   cs: {
     // ⛔ CORPUSGAP (2026-08-31) — CS IS INTRODUCED AT GRADE 5 AND HAD ZERO
     //   CORPUS FOR ANY K-12 GRADE. The map went straight to college1, so all
