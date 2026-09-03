@@ -176,6 +176,44 @@ const KNOBS = [
     what: 'Minimum retained dose under compression.',
   },
 
+  // ══ KNOBEFFECT.3 — emptying the UNSORTED pen ══════════════════════════════
+  //
+  // ⭐ ALL 17 PLACED BY READING what each one governs, not by keyword. The pen
+  // is named `UNSORTED — no category read yet` precisely so it stays visibly
+  // empty-or-not; leaving rows in it would be the honest failure, and clearing
+  // it by guessing would be the dishonest success.
+  //
+  // ⚠ Two could not be placed from their descriptions and their SITES were read:
+  // `DREAM_LEARN_GEOMETRY` runs a deliberately tiny learning rate on every
+  // sentence of the walk (a teaching-dose lane, not a vision one, despite the
+  // name), and `DREAM_INQUIRE_DEPTH` bounds the follow-up question chain she
+  // builds while talking.
+  { key: 'DREAM_TICK_MS', group: 'Brain dynamics' },
+  { key: 'DREAM_ABLATION_LOG', group: 'Watchdogs, bounds & safety' },
+  { key: 'DREAM_EYE_PROCESS', group: 'Vision & imagination' },
+  { key: 'DREAM_EYE_SHOW_THOUGHT', group: 'Vision & imagination' },
+  { key: 'DREAM_EYE_TRANSITION_MS', group: 'Vision & imagination' },
+  { key: 'DREAM_REF_RENDER_PX', group: 'Vision & imagination' },
+  { key: 'DREAM_SPONTANEOUS_IMG_AROUSAL', group: 'Vision & imagination' },
+  { key: 'DREAM_SPONTANEOUS_IMG_GAP_MS', group: 'Vision & imagination' },
+  { key: 'DREAM_FORCE_CLEAR', group: 'Persistence & checkpoints' },
+  { key: 'DREAM_HELD_BACK', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_K_UPFRONT_SEED', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_MECH_EVERY_CELL', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_LEARN_GEOMETRY', group: 'Teaching dose & repetition' },
+  { key: 'DREAM_INQUIRE_DEPTH', group: 'Speech & emission' },
+  { key: 'DREAM_THOUGHT_CONCEPT_GAP_MS', group: 'Speech & emission' },
+  { key: 'DREAM_SELF_UPDATE_CMD', group: 'Serving & network' },
+  { key: 'DREAM_UPDATE_STALE_MS', group: 'Serving & network' },
+
+  // ⭐ The batch-1 effect classes below predate the taxonomy, so their groups
+  // come from the legacy map. Each is corrected in place as its file's reading
+  // pass runs — the ones whose mapped group is already right are left alone
+  // rather than restated, because a redundant override is another thing to keep
+  // in sync.
+  { key: 'DREAM_WALK_TICK_MS', group: 'Curriculum, gates & schedule' },
+  { key: 'DREAM_POLLINATIONS_KEY', group: 'Vision & imagination' },
+
   // ══ KNOBEFFECT.1 — effect classes, batch 1: `server/brain-server.js` ═══════
   //
   // ⛔ CLASSIFIED BY READING EACH SITE, NOT BY A SCOPE DETECTOR. Two detectors
@@ -225,7 +263,11 @@ const KNOBS = [
     what: '⛔ NOT A TUNING DIAL — it is the DONOR\'S acceptance limit (donor.rs:1249). Above 16 the donor silently DISCARDS the frame while this side records it as GPU-carried, skipping the CPU pass 4 times in 5. Raise it only to match a donor that has raised its own handler cap.',
   },
   {
-    key: 'DREAM_CHAT_COHERENCE_FLOOR', group: 'Saturation & coherence', dflt: '0.10',
+    // ⭐ MOVED OUT OF `Saturation & coherence` 2026-09-03 — the example that
+    // made the categorization ask concrete. That group held both the saturation
+    // thresholds and this, related by the word "coherence" and by nothing else:
+    // those gate PLASTICITY, this gates whether she SPEAKS.
+    key: 'DREAM_CHAT_COHERENCE_FLOOR', group: 'Speech & emission', dflt: '0.10',
     provenance: 'inherited',
     effect: 'live', site: 'js/brain/language-cortex.js:2335',
     proof: 're-read from `process.env` inside the emission function on every call — a write takes effect on the next reply, no restart',
@@ -880,6 +922,66 @@ function plain(s) {
  * inferred, and nothing reports a health it cannot know.
  */
 function knobState() {
+  // ══ KNOBEFFECT.3 — THE CANONICAL CATEGORIES, AND KNOBEFFECT.2's GROUP ORDER ══
+  //
+  // Operator: *"proper orgainaization and catorigzations"*.
+  //
+  // ⛔ THE OLD GROUPS WERE NAMED AS ENTRIES WERE WRITTEN, so they answered
+  // different questions. `Bounds & budgets` (33) is a cross-cutting SHAPE — a
+  // bound on WHAT? — while `GPU dispatch` (1) duplicated `GPU & donor`, and
+  // `Other` (17) held the brain's own tick interval.
+  //
+  // ⭐ THE AXIS IS WHAT THE KNOB GOVERNS, because the person turning one is
+  // asking *"what will this change about her?"* and the group name should
+  // answer it. The list order is the display order and reads outward from her
+  // to the machine: what she is taught → what she says → what she keeps → what
+  // she sees → how her brain runs → where it computes → how it is saved → what
+  // protects it → how it is served.
+  //
+  // ⚠ ONE MAP OF 17 ENTRIES, NOT 205 EDITS. Recategorising per-knob would mean
+  // touching every entry twice — once now and again when its effect class is
+  // read — so the legacy name is mapped wholesale and individual knobs are
+  // corrected as they are read for `KNOBEFFECT.1`. Fewer touches, no rework.
+  const GROUP_ORDER = [
+    'Teaching dose & repetition',
+    'Curriculum, gates & schedule',
+    'Speech & emission',
+    'Memory & consolidation',
+    'Vision & imagination',
+    'Brain dynamics',
+    'GPU & donor',
+    'Persistence & checkpoints',
+    'Watchdogs, bounds & safety',
+    'Serving & network',
+    'UNSORTED — no category read yet',
+  ];
+  const GROUP_MAP = {
+    'Learning rate & dose': 'Teaching dose & repetition',
+    'Rep compression (dose vs rate)': 'Teaching dose & repetition',
+    'Teaching & schedule': 'Curriculum, gates & schedule',
+    'Gates & assessment': 'Curriculum, gates & schedule',
+    'Chat, emission & language': 'Speech & emission',
+    'Consolidation & replay': 'Memory & consolidation',
+    "Vision, art & the mind's eye": 'Vision & imagination',
+    'Firing & drive': 'Brain dynamics',
+    'Cortical microstructure': 'Brain dynamics',
+    'Saturation & coherence': 'Brain dynamics',
+    'GPU & donor': 'GPU & donor',
+    'GPU dispatch': 'GPU & donor',
+    'Persistence & checkpoints': 'Persistence & checkpoints',
+    'Watchdogs & timing': 'Watchdogs, bounds & safety',
+    // ⚠ `Bounds & budgets` lands here WHOLESALE and that is a holding pen, not a
+    // verdict: a budget on the teach dose and a watchdog timeout are different
+    // subjects. Each moves to the lane it actually governs as it is read.
+    'Bounds & budgets': 'Watchdogs, bounds & safety',
+    'Network & serving': 'Serving & network',
+    // ⛔ RENAMED, NOT KEPT. `Other` reads like a category; it is an admission
+    // that nobody has looked. The name now says so, which is the difference
+    // between a bucket and a backlog.
+    Other: 'UNSORTED — no category read yet',
+  };
+  const canonicalGroup = (g) => GROUP_MAP[g] || (GROUP_ORDER.includes(g) ? g : 'UNSORTED — no category read yet');
+
   const groups = new Map();
   let overridden = 0, boot = 0, unproven = 0, described = 0;
 
@@ -914,7 +1016,28 @@ function knobState() {
   // keeps the original property: the hand-written `site` never rots, because
   // discovery's freshly-resolved line wins over a recorded one.
   const _disc = (() => { try { return discover(); } catch { return new Map(); } })();
-  const all = [...KNOBS].map((k) => {
+  // ⛔⛔ FOLD THE HAND ARRAY BY KEY FIRST — TWO ENTRIES FOR ONE KNOB MUST NOT
+  // BOTH SURVIVE. `KNOBS` is written in thematic batches, so the same knob
+  // legitimately appears twice: once where its effect class was recorded and
+  // again where its category was. Without this fold both rows published, and
+  // the panel grew to **210 knobs with 5 duplicates** — caught by the
+  // count-and-duplicate check immediately after the edit that caused it.
+  //
+  // Later entries overlay earlier ones field by field, so a batch can add ONE
+  // property to a knob another batch already described without repeating the
+  // rest — the same overlay rule that applies between the hand array and
+  // discovery, applied within the hand array itself.
+  const _folded = [];
+  const _foldIdx = new Map();
+  for (const k of KNOBS) {
+    const at = _foldIdx.get(k.key);
+    if (at === undefined) { _foldIdx.set(k.key, _folded.length); _folded.push({ ...k }); continue; }
+    const tgt = _folded[at];
+    for (const [f, v] of Object.entries(k)) {
+      if (v !== undefined && v !== null && v !== '') tgt[f] = v;
+    }
+  }
+  const all = _folded.map((k) => {
     const d = _disc.get(k.key);
     if (!d) return k;
     const merged = { ...d };
@@ -949,8 +1072,9 @@ function knobState() {
     // completeness — a row with no description says so, and the total says how
     // many there are.
     if (!k.discovered || k.described) described++;
-    if (!groups.has(k.group)) groups.set(k.group, []);
-    groups.get(k.group).push({
+    const _g = canonicalGroup(k.group);
+    if (!groups.has(_g)) groups.set(_g, []);
+    groups.get(_g).push({
       key: k.key,
       value: raw,
       overridden: isSet,
@@ -983,8 +1107,18 @@ function knobState() {
       what: plain(k.what),
     });
   }
-  // Groups sorted by size so the biggest subjects lead, and knobs sorted by
-  // name inside each so a key can be found by eye in a 190-row list.
+  // ⛔ THIS COMMENT CLAIMED A SORT THAT DID NOT EXIST. It said *"groups sorted
+  // by size so the biggest subjects lead"* — and only the WITHIN-group sort was
+  // ever implemented, so group order was insertion order: whatever sequence the
+  // hand-written array and the runtime scanner happened to produce. **A comment
+  // describing behaviour the code does not have is the same defect as a field
+  // nobody renders.**
+  //
+  // ⭐ AND SIZE WOULD HAVE BEEN THE WRONG RULE ANYWAY (`KNOBEFFECT.2`): a
+  // size-ordered list REARRANGES ITSELF as knobs are added, so a reader who
+  // learns where something lives is wrong next week. `GROUP_ORDER` is fixed and
+  // meaningful — outward from her to the machine — so position becomes
+  // learnable. Knobs stay alphabetical inside each group.
   for (const list of groups.values()) list.sort((a, b) => a.key.localeCompare(b.key));
 
   // Provenance tallies, so the page can lead with "how many of these numbers
@@ -1018,7 +1152,16 @@ function knobState() {
     // and an unproven knob must not be offered one on a guess.
     writable: false,
     writeNote: 'read-only — a write lane needs every effect class proven first, and a boot-frozen knob must refuse rather than accept',
-    groups: [...groups.entries()].map(([name, knobs]) => ({ name, knobs })),
+    // ⭐ Published in `GROUP_ORDER`, so a group's position is a fact about what
+    // it governs rather than about how many knobs it currently holds. A name not
+    // in the list sorts last rather than being dropped — an unknown category
+    // must stay visible, and the UNSORTED pen belongs at the bottom regardless.
+    groups: [...groups.entries()]
+      .sort((a, b) => {
+        const ia = GROUP_ORDER.indexOf(a[0]); const ib = GROUP_ORDER.indexOf(b[0]);
+        return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || a[0].localeCompare(b[0]);
+      })
+      .map(([name, knobs]) => ({ name, knobs })),
   };
 }
 
