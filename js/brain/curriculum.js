@@ -3156,6 +3156,9 @@ export class Curriculum {
           // to the lexical count only when there are no gates to read, which is
           // the correct answer for a phase that has none.
           this._phaseWorkTotal = this._phaseReachableTotal(name);
+          // A fresh phase has nothing in flight yet; carrying the previous
+          // phase's unit forward would be a stale name wearing a live age.
+          this._phaseWorkInflight = null;
           // PHONPROG.1a — clear any self-published cursor from the PREVIOUS
           // phase. A stale exact-looking percentage outliving its phase is the
           // same lying-instrument shape this fix exists to remove.
@@ -3191,6 +3194,26 @@ export class Curriculum {
         // CELLBOUND.E - the expected-unit set captured by reference alongside
         // the tally, so credit lands on the phase this call actually ran inside.
         const workExpect = isCellPhase ? null : this._phaseWorkExpect;
+        // ⛔⛔ THE IN-FLIGHT UNIT IS NAMED ON ENTRY, BECAUSE `done` CANNOT MOVE
+        // AND THAT IS CORRECT BEHAVIOUR MISREADING AS A DEAD BAR.
+        //
+        // Credit is granted on EXIT — deliberately, so an unfinished unit is
+        // never counted as done — and one of these units is priced in its own
+        // comment at **14.9 hours in a single call**. So `done: 0` was both
+        // accurate and useless: two live samples 417 s apart read
+        // `{done: 0, total: 14, frac: 0}` while `cellSubPhases` moved
+        // 105,072 → 108,275. She was working; the bar could not say so.
+        //
+        // ⭐ THE FIX IS NOT TO CREDIT EARLY. Crediting on entry would make
+        // `done` move by lying about completion, which is the defect this
+        // instrument exists to avoid. It is to say WHICH unit is in flight and
+        // HOW LONG it has been there — a 4-hour age on a named unit is the
+        // difference between "stuck" and "this one takes hours", and no
+        // fraction can express that.
+        if (!isCellPhase && workSeen && (!workExpect || workExpect.has(name))
+            && !workSeen.has(name) && !this._phaseWorkInflight) {
+          this._phaseWorkInflight = { name, at: Date.now() };
+        }
         if (isCellPhase) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
@@ -3295,12 +3318,23 @@ export class Curriculum {
             this._phaseWorkSeen = null;
             this._phaseWorkTotal = 0;
             this._phaseWorkExpect = null;
+            // The in-flight marker retires with its own phase. A unit name
+            // outliving the phase it ran inside is the stale-tag defect that
+            // has already made an age climb across whole eras and name the
+            // wrong culprit.
+            this._phaseWorkInflight = null;
             cl._phaseDeadlineAt = 0;
             cl._phaseDeadlineName = null;
           } else if (workSeen && (!workExpect || workExpect.has(name))) {
             // A nested teach call is one unit of the enclosing phase's work,
             // credited on EXIT so an in-flight unit is never counted as done.
             workSeen.add(name);
+            // It is no longer in flight — cleared only if THIS unit is the one
+            // marked, so a nested sibling finishing cannot clear the long unit
+            // that is actually holding the phase.
+            if (this._phaseWorkInflight && this._phaseWorkInflight.name === name) {
+              this._phaseWorkInflight = null;
+            }
           }
         }
       };
@@ -3950,8 +3984,13 @@ export class Curriculum {
       // sitting at 0% for its whole duration and then jumping.
       //
       // `total` is the count of distinct nested `_teach*` units the phase's own
-      // source calls; `done` is how many have FINISHED (counted on exit, not on
-      // entry, so an in-flight unit is never reported as complete). A vocabulary
+      // source calls THAT THIS GRADE CAN REACH — eleven of the ELA mechanics
+      // phase's fourteen sit behind grade guards, so a raw lexical count gave
+      // the bar a 21% ceiling at kindergarten. `done` is how many have FINISHED
+      // (counted on exit, not on entry, so an in-flight unit is never reported
+      // as complete), and `inflight`/`inflightMs` name the unit currently
+      // running and how long it has held — because `done` sitting at 0 for
+      // hours is correct here and says nothing. A vocabulary
       // list running inside the phase is within-phase work too, so its position
       // folds into the SAME fraction rather than becoming a second signal the UI
       // would have to choose between.
@@ -3966,11 +4005,22 @@ export class Curriculum {
             const done = this._phaseWorkSeen ? this._phaseWorkSeen.size : 0;
             const vp = this._vocabProgress;
             const vFrac = (vp && vp.total > 0) ? Math.min(1, (vp.taught | 0) / vp.total) : 0;
+            // ⭐ THE UNIT CURRENTLY RUNNING, WITH ITS AGE — the answer to
+            // "is she stuck?" that a fraction cannot give. `done` legitimately
+            // sits at 0 for hours because credit is granted on exit and one
+            // unit is priced at 14.9 hours per call, so without this the bar
+            // is indistinguishable from a dead one. ⚠ Reported ALONGSIDE
+            // `done`, never folded into it: an in-flight unit is not progress,
+            // and inflating the fraction to look alive is the exact lie this
+            // instrument exists to avoid.
+            const inf = this._phaseWorkInflight;
             return {
               name: this._phaseWorkName || null,
               done,
               total: this._phaseWorkTotal,
               frac: Math.min(0.99, (done + vFrac) / this._phaseWorkTotal),
+              inflight: inf ? inf.name : null,
+              inflightMs: inf ? (Date.now() - inf.at) : null,
             };
           })()
         : null,

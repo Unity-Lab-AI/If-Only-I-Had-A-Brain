@@ -32,7 +32,21 @@ The within-phase progress bar sat at `{name: _teachLanguageMechanics, done: 0, t
 
 ⛔⛔ **My own throwaway parser got this wrong first, which is why the harness exists.** A quick depth-tracking probe reported **8 ungated units and found only g1 and g9**, missing g2/g3/g5/g7/g11 — a confident wrong answer contradicting the row's own static trace. The source read by eye was the arbiter. **Fifth instrument this session to need checking before being believed**, after the scope classifier, the 6/6-scoring column classifier, the digit-concatenating doc audit, and the sitemap counter that reported "29,535 shards, 0 pages".
 
-⛔ **The `done: 0` half is NOT claimed and stays open.** Two candidate mechanisms were already disproved by reading; the surviving explanation is that credit is granted on EXIT and `_teachConcreteSentences` is priced in its own comment at **14.9 hours in a single call**. Fixing the denominator does not move `done`. **Read `cellSubPhases`, not `frac`, until that half lands.**
+### The `done: 0` half — closed the same day, and it was never a bug
+
+Credit is granted on EXIT, deliberately, so an unfinished unit is never counted as done — and `_teachConcreteSentences` is priced in its own comment at **14.9 hours in a single call**. **`done: 0` was correct.** The defect was that correct-and-working looked identical to dead.
+
+⛔ **The fix is NOT to credit early.** Crediting on entry would make the number move by lying about completion — exactly the failure this instrument exists to prevent, and the tempting "fix".
+
+⭐ `phaseWork` now carries **`inflight` + `inflightMs`**: which unit is running and how long it has held. *"work 0/3 · running `_teachConcreteSentences` (4.0h)"* answers "is she stuck?" — **a fraction cannot.** Reported alongside `done`, never folded into it.
+
+⚠ The marker retires with its own phase, and a sibling finishing cannot clear the long unit actually holding the phase — both guard against the stale-tag defect that has already made an age climb across whole eras and name the wrong culprit.
+
+⛔⛔ **It would have shipped as an instrument nobody reads.** The dashboard rendered `work ${done}/${total}` and stopped, so the new fields would have reached the browser with nothing drawing them — the same shape as the endocrine `lastError` that arrived under a comment promising it would be visible. `dashboard.html` renders the tail now, and an older backend without the fields renders exactly as before.
+
+⚠ **The publish path was not where I guessed:** `status.phaseWork`, not `status.liveness.phaseWork`. My first read-back probe looked in the wrong place and reported `undefined` — **the enclosing function decides the path, not the assignment's indentation**, already recorded in this ledger from the `state.readback` → `state.profiling.readback` mismatch.
+
+**Verified for this half:** 6/6 in-flight semantics (entry marks · sibling exit does NOT clear · own exit clears and credits · teardown clears) · payload read back through the REAL `getCurriculumStatus()` · 6/6 on the exact renderer expression, including the backward-compatible case.
 
 **Verified:** `node --check` · real `import()` of the module · a live `Curriculum` instance harnessed at **all 20 grades** · an all-phase sweep proving 252 of 253 totals unchanged. ⚠ **That sweep was run at ONE grade (kindergarten)** — it generalises only because exactly one phase carries a gate at all, and saying so beats leaving it implied.
 
