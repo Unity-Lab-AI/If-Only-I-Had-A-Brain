@@ -1,6 +1,88 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-09-02 (LATE) THE DOWNLOAD IS STOPPED ON PURPOSE, ALL 205 KNOBS HAVE A REASON, AND FOUR OF MY OWN INSTRUMENTS LIED (LATEST — PICK UP HERE)
+> ## ⭐⭐⭐ 2026-09-03 THE INGEST IS RUNNING, EVERY KNOB IS CLASSIFIED AND WRITABLE, AND SEVEN OF MY OWN INSTRUMENTS LIED (LATEST — PICK UP HERE)
+>
+> ### Read in this order: this block → `docs/TODO.md` → the blocks below.
+>
+> ### ⛔ STATE RIGHT NOW
+> ```
+> branch     feature/figpair-0902 — NOT cascaded yet
+> board      32 open · 25 in-progress · 48 closed-in-place awaiting migration
+> INGEST     RUNNING — fetch-academic-corpora.mjs, 167 cells, 17 of 18 subjects
+> knobs      205 classified: live 162 · boot 40 · cached 3   (effect:'???' = 0)
+> walk       frozen ON PURPOSE — training still being BUILT
+> ```
+>
+> ### ⛔⛔ THERE IS A LIVE JOB. DO NOT START A SECOND CORPUS WRITER.
+> `fetch-academic-corpora.mjs` is re-fetching every academic cell with **no
+> per-topic cap**. Science/social/ela complete pre-K→phd; art, research, pe,
+> music, health done; **`language` in progress, `ap` last.** Log:
+> `.scratch/curvebuild11.log`.
+> ⭐ **It is far faster than the board predicted** — the 4.4 min/cell estimate was
+> taken under the throttle later root-caused as the **User-Agent**, not rate.
+> ⛔ **Two things are QUEUED BEHIND IT AND MUST NOT BE STARTED EARLY:**
+> `CURVEBUILD.12` (3 requests; it already earned a **429** against a live wiki
+> ingest) and the **figure sweep**, which re-reads `corpora/` at every batch — so
+> sweeping before the deepening finishes strands every newly-harvested plate.
+>
+> ### ⭐⭐ WHAT SHIPPED (14 commits, `f05a4d8c` → `18bfe636`)
+> - **Every knob classified and the panel can now TURN them.** `effect:'???'`
+>   **171 → 0** by reading each site. `POST /knob` applies the 165 that can
+>   honestly take a write and **REFUSES the 40 boot-frozen with a 409** — writing
+>   one sets the env, reads back correctly, and changes **nothing**. The
+>   confirmation is **re-derived through the registry, not echoed**.
+> - **Categories rebuilt** on the axis of *what a knob governs*: 17 → 10, and
+>   `Other` (which held the brain's own tick interval) was **renamed** `UNSORTED`
+>   then emptied by reading.
+> - **`PHASEBAR.1` closed, both halves.** The bar counted work the grade forbids
+>   (14 units, 11 grade-gated, so a 21% ceiling at kindergarten); and `done: 0`
+>   turned out **never to be a bug** — credit lands on EXIT and one unit runs
+>   **14.9 hours**. Fixed by naming the in-flight unit, **not** by crediting early.
+> - **Six thresholds derived** over 200,000 samples/distribution, and
+>   `DREAM_RANGE_MAX_RUNS` turned out **not to be a tunable at all** — 16 is the
+>   donor's own acceptance limit.
+> - **`CRYSTAL.1` + `CORPUSBRACKET.1`** closed by measuring: one fix had already
+>   shipped, one corpus had healed (4 wiki markers in 2.53M sentences).
+>
+> ### ⛔⛔⛔ SEVEN OF MY OWN INSTRUMENTS LIED — CHECK ANY DETECTOR BEFORE BELIEVING IT
+> Today added three to the four already on record: a **guard-block parser** that
+> found 2 of 7 grade gates; a **bracket classifier** that called `[sic]`
+> contamination; and a **producer/consumer sweep** that reported **421 of 421**
+> fields "read nowhere" — including `color` and `meanVoltage` — because a mangled
+> character class matched nothing. **A 100% hit rate is a red flag, not a
+> jackpot.** Nothing from that run was filed.
+> ⭐ **The rule now in `wiki/gotchas/instruments-that-lie`: test a fresh detector
+> against a known-positive AND a known-negative before writing down one verdict.**
+>
+> ### ⚠ THREE DEFECTS I INTRODUCED TODAY, ALL CAUGHT BY MY OWN CHECKS
+> 1. **Sparse knob entries CLOBBERED discovery** — 18 knobs gained an effect class
+>    and lost group, default and description. Fixed at the merge, not per-entry.
+> 2. **A second entry for one knob published TWICE** — 210 knobs, 5 duplicates.
+>    The hand array now folds by key.
+> 3. **The coverage auditor began measuring a different corpus than the walk** —
+>    moving cleaning to the reader left it counting bytes on disk (**8,715
+>    sentences / 233,157 words** apart). 0.46%, and it decides band-floor passes.
+>    Now counts through the reader's own helper; **verified 0 divergence.**
+> ⚠ **And 9 of the `CODELEAK.1` violations I removed were mine, written today** —
+> task numbers put into source *while cataloguing that exact violation*.
+>
+> ### ⏳ NEXT, IN ORDER
+> 1. **Let the ingest finish** (`language`, then `ap`), then **re-measure the
+>    corpus** — `wiki/modules/corpora.md` is `stale` and only a re-measure closes
+>    it. ⛔ Do not bump `last-verified` to quiet the hook.
+> 2. **`CURVEBUILD.12`** — 3 requests, the moment the wiki quota is free.
+> 3. **The figure sweep** — 4,925 owed, now with the failure ledger wired so it
+>    finally records WHY each one fails. ⛔ `failures.jsonl` does not exist yet;
+>    the ledger landed after the run stopped, so the decay curve's reasons are
+>    gone for good.
+> 4. Unblocked without network: **`STACKSWEEP.1`** (9 categories left; 7 and 11
+>    done) · **`CODELEAK.1`** (781 lines) · `TEACHVIEW.8/.9`.
+> ⚠ **Wants your call, not mine:** `REGFIND.9` (changes what she SAYS) and
+> `NOFALLBACK.7` (needs a latency measurement first).
+
+---
+
+> ## 2026-09-02 (LATE) THE DOWNLOAD IS STOPPED ON PURPOSE, ALL 205 KNOBS HAVE A REASON, AND FOUR OF MY OWN INSTRUMENTS LIED
 >
 > ### Read in this order: this block → `docs/TODO.md` → the blocks below.
 >
